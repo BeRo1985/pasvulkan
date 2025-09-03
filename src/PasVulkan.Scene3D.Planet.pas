@@ -456,6 +456,8 @@ type TpvScene3DPlanets=class;
               procedure ReleaseOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure AcquireOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure ReleaseOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure AcquireOnUpdateQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure ReleaseOnUpdateQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure AcquireWaterOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure ReleaseWaterOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure AcquireWaterOnSimulationQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
@@ -2442,6 +2444,10 @@ type TpvScene3DPlanets=class;
        fVulkanComputeFence:TpvVulkanFence;
        fVulkanComputeCommandPool:TpvVulkanCommandPool;
        fVulkanComputeCommandBuffer:TpvVulkanCommandBuffer;
+       fVulkanUpdateQueue:TpvVulkanQueue;
+       fVulkanUpdateFence:TpvVulkanFence;
+       fVulkanUpdateCommandPool:TpvVulkanCommandPool;
+       fVulkanUpdateCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanUniversalQueue:TpvVulkanQueue;
        fVulkanUniversalFence:TpvVulkanFence;
        fVulkanUniversalCommandPool:TpvVulkanCommandPool;
@@ -3716,9 +3722,9 @@ begin
                                                                       pvAllocationGroupIDScene3DPlanetStatic,
                                                                       'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPrecipitationSimulationMapBuffers['+IntToStr(Index)+']'
                                                                      ); 
-    fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
-                                             fPlanet.fVulkanComputeCommandBuffer,
-                                             fPlanet.fVulkanComputeFence,
+    fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanUpdateQueue,
+                                             fPlanet.fVulkanUpdateCommandBuffer,
+                                             fPlanet.fVulkanUpdateFence,
                                              fPrecipitationSimulationMapBuffers[Index],
                                              0,
                                              fPrecipitationSimulationMapBuffers[Index].Size);
@@ -3743,9 +3749,9 @@ begin
                                                                      pvAllocationGroupIDScene3DPlanetStatic,
                                                                      'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPrecipitationAdvectionMapBuffers['+IntToStr(Index)+']'
                                                                     );
-    fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
-                                             fPlanet.fVulkanComputeCommandBuffer,
-                                             fPlanet.fVulkanComputeFence,
+    fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanUpdateQueue,
+                                             fPlanet.fVulkanUpdateCommandBuffer,
+                                             fPlanet.fVulkanUpdateFence,
                                              fPrecipitationAdvectionMapBuffers[Index],
                                              0,
                                              fPrecipitationAdvectionMapBuffers[Index].Size);
@@ -4016,9 +4022,9 @@ begin
                                                'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileDirtyMapBuffer'
                                               );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTileDirtyMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileDirtyMapBuffer');
-   fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
-                                            fPlanet.fVulkanComputeCommandBuffer,
-                                            fPlanet.fVulkanComputeFence,
+   fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanUpdateQueue,
+                                            fPlanet.fVulkanUpdateCommandBuffer,
+                                            fPlanet.fVulkanUpdateFence,
                                             fTileDirtyMapBuffer,
                                             0,
                                             fTileDirtyMapBuffer.Size);
@@ -4042,9 +4048,9 @@ begin
                                                        'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileExpandedDirtyMapBuffer'
                                                       );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTileExpandedDirtyMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileExpandedDirtyMapBuffer');
-   fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
-                                            fPlanet.fVulkanComputeCommandBuffer,
-                                            fPlanet.fVulkanComputeFence,
+   fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanUpdateQueue,
+                                            fPlanet.fVulkanUpdateCommandBuffer,
+                                            fPlanet.fVulkanUpdateFence,
                                             fTileExpandedDirtyMapBuffer,
                                             0,
                                             fTileExpandedDirtyMapBuffer.Size);
@@ -4068,9 +4074,9 @@ begin
                                                  'TpvScene3DPlanet.fTileDirtyQueueBuffer['+IntToStr(fInFlightFrameIndex)+']'
                                                 );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTileDirtyQueueBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.fTileDirtyQueueBuffer['+IntToStr(fInFlightFrameIndex)+']');
-   fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
-                                            fPlanet.fVulkanComputeCommandBuffer,
-                                            fPlanet.fVulkanComputeFence,
+   fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanUpdateQueue,
+                                            fPlanet.fVulkanUpdateCommandBuffer,
+                                            fPlanet.fVulkanUpdateFence,
                                             fTileDirtyQueueBuffer,
                                             0,
                                             fTileDirtyQueueBuffer.Size);
@@ -4802,7 +4808,7 @@ begin
                                                         0,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                         fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                         fPrecipitationMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
@@ -4812,7 +4818,7 @@ begin
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
-                                                        fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
+fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                         fAtmosphereMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
@@ -5046,6 +5052,24 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3DPlanet.TData.AcquireOnUpdateQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+ if fPlanet.fVulkanDevice.UpdateQueueFamilyIndex=fPlanet.fVulkanDevice.UniversalQueueFamilyIndex then begin
+  AcquireOnUniversalQueue(aCommandBuffer);
+ end else if fPlanet.fVulkanDevice.UpdateQueueFamilyIndex=fPlanet.fVulkanDevice.ComputeQueueFamilyIndex then begin
+  AcquireOnComputeQueue(aCommandBuffer);
+ end;
+end;
+
+procedure TpvScene3DPlanet.TData.ReleaseOnUpdateQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+ if fPlanet.fVulkanDevice.UpdateQueueFamilyIndex=fPlanet.fVulkanDevice.UniversalQueueFamilyIndex then begin
+  ReleaseOnUniversalQueue(aCommandBuffer);
+ end else if fPlanet.fVulkanDevice.UpdateQueueFamilyIndex=fPlanet.fVulkanDevice.ComputeQueueFamilyIndex then begin
+  ReleaseOnComputeQueue(aCommandBuffer);
+ end;
 end;
 
 procedure TpvScene3DPlanet.TData.AcquireWaterOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
@@ -5543,7 +5567,7 @@ begin
    end;
   end;
 
-  CommandBuffer:=fPlanet.fVulkanComputeCommandBuffer;
+  CommandBuffer:=fPlanet.fVulkanUpdateCommandBuffer;
 
   ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                          0,
@@ -5620,17 +5644,17 @@ begin
 
  if assigned(fPlanet.fVulkanDevice) and assigned(fTileDirtyMapBuffer) and (length(fTileDirtyMap)>0) then begin
 
-  fPlanet.fVulkanDevice.MemoryStaging.Download(fPlanet.fVulkanComputeQueue,
-                                               fPlanet.fVulkanComputeCommandBuffer,
-                                               fPlanet.fVulkanComputeFence,
+  fPlanet.fVulkanDevice.MemoryStaging.Download(fPlanet.fVulkanUpdateQueue,
+                                               fPlanet.fVulkanUpdateCommandBuffer,
+                                               fPlanet.fVulkanUpdateFence,
                                                fTileDirtyMapBuffer,
                                                0,
                                                fTileDirtyMap[0],
                                                fTileDirtyMapBuffer.Size);
 
-  fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
-                                           fPlanet.fVulkanComputeCommandBuffer,
-                                           fPlanet.fVulkanComputeFence,
+  fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanUpdateQueue,
+                                           fPlanet.fVulkanUpdateCommandBuffer,
+                                           fPlanet.fVulkanUpdateFence,
                                            fTileDirtyMapBuffer,
                                            0,
                                            fTileDirtyMapBuffer.Size);
@@ -9331,6 +9355,7 @@ begin
 
    Fence:=TpvVulkanFence.Create(fPlanet.fVulkanDevice);
    try
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(Fence.Handle,VK_OBJECT_TYPE_FENCE,'TpvScene3DPlanet.TSerializedData.Download.Fence');
 
     Download(Queue,CommandBuffer,Fence);
 
@@ -9365,6 +9390,7 @@ begin
 
    Fence:=TpvVulkanFence.Create(fPlanet.fVulkanDevice);
    try
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(Fence.Handle,VK_OBJECT_TYPE_FENCE,'TpvScene3DPlanet.TSerializedData.Upload.Fence');
 
     Upload(Queue,CommandBuffer,Fence);
 
@@ -9399,6 +9425,7 @@ begin
 
    Fence:=TpvVulkanFence.Create(fPlanet.fVulkanDevice);
    try
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(Fence.Handle,VK_OBJECT_TYPE_FENCE,'TpvScene3DPlanet.TSerializedData.Upload.Fence');
 
     CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
     CommandBuffer.BeginRecording;
@@ -14989,9 +15016,9 @@ begin
                                       pvAllocationGroupIDScene3DPlanetStatic,
                                       'TpvScene3DPlanet.THeightMapDataInitialization.fDataBuffer'
                                      );
-  fVulkanDevice.MemoryStaging.Upload(fPlanet.fVulkanComputeQueue,
-                                     fPlanet.fVulkanComputeCommandBuffer,
-                                     fPlanet.fVulkanComputeFence,
+  fVulkanDevice.MemoryStaging.Upload(fPlanet.fVulkanUpdateQueue,
+                                     fPlanet.fVulkanUpdateCommandBuffer,
+                                     fPlanet.fVulkanUpdateFence,
                                      Pointer(TpvPtrUInt(TpvPtrUInt(fData.Memory)+TpvPtrUInt(fData.Position)))^,
                                      fDataBuffer,
                                      0,
@@ -24455,6 +24482,18 @@ begin
   fVulkanComputeCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanComputeCommandPool);
 
   fVulkanComputeFence:=TpvVulkanFence.Create(fVulkanDevice);
+  fVulkanDevice.DebugUtils.SetObjectName(fVulkanComputeFence.Handle,VK_OBJECT_TYPE_FENCE,'TpvScene3DPlanet.fVulkanComputeFence');
+
+  fVulkanUpdateQueue:=fVulkanDevice.UpdateQueue;
+
+  fVulkanUpdateCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                        fVulkanDevice.UpdateQueueFamilyIndex,
+                                                        TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+  fVulkanUpdateCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanUpdateCommandPool);
+
+  fVulkanUpdateFence:=TpvVulkanFence.Create(fVulkanDevice);
+  fVulkanDevice.DebugUtils.SetObjectName(fVulkanUpdateFence.Handle,VK_OBJECT_TYPE_FENCE,'TpvScene3DPlanet.fVulkanUpdateFence');
 
   fVulkanUniversalQueue:=fVulkanDevice.UniversalQueue;
 
@@ -24465,6 +24504,7 @@ begin
   fVulkanUniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanUniversalCommandPool);
 
   fVulkanUniversalFence:=TpvVulkanFence.Create(fVulkanDevice);
+  fVulkanDevice.DebugUtils.SetObjectName(fVulkanUniversalFence.Handle,VK_OBJECT_TYPE_FENCE,'TpvScene3DPlanet.fVulkanUniversalFence');
 
   fVulkanUniversalAcquireReleaseCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
                                                                          fVulkanDevice.UniversalQueueFamilyIndex,
@@ -24945,6 +24985,12 @@ begin
  FreeAndNil(fVulkanUniversalCommandBuffer);
 
  FreeAndNil(fVulkanUniversalCommandPool);
+
+ FreeAndNil(fVulkanUpdateFence);
+
+ FreeAndNil(fVulkanUpdateCommandBuffer);
+
+ FreeAndNil(fVulkanUpdateCommandPool);
 
  FreeAndNil(fVulkanComputeFence);
 
@@ -25908,8 +25954,8 @@ begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCommandBufferLock);
  try
   if fCommandBufferLevel=0 then begin
-   fVulkanComputeCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-   fVulkanComputeCommandBuffer.BeginRecording;
+   fVulkanUpdateCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   fVulkanUpdateCommandBuffer.BeginRecording;
   end;
   inc(fCommandBufferLevel);
  finally
@@ -25924,13 +25970,13 @@ begin
   if fCommandBufferLevel>0 then begin
    dec(fCommandBufferLevel);
    if fCommandBufferLevel=0 then begin
-    fVulkanComputeCommandBuffer.EndRecording;
-    fVulkanComputeCommandBuffer.Execute(fVulkanComputeQueue,
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                        nil,
-                                        nil,
-                                        fVulkanComputeFence,
-                                        true);
+    fVulkanUpdateCommandBuffer.EndRecording;
+    fVulkanUpdateCommandBuffer.Execute(fVulkanUpdateQueue,
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                       nil,
+                                       nil,
+                                       fVulkanUpdateFence,
+                                       true);
    end;
   end;
  finally
@@ -25943,15 +25989,15 @@ begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCommandBufferLock);
  try
   if fCommandBufferLevel=1 then begin
-   fVulkanComputeCommandBuffer.EndRecording;
-   fVulkanComputeCommandBuffer.Execute(fVulkanComputeQueue,
-                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                       nil,
-                                       nil,
-                                       fVulkanComputeFence,
-                                       true);
-   fVulkanComputeCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-   fVulkanComputeCommandBuffer.BeginRecording;
+   fVulkanUpdateCommandBuffer.EndRecording;
+   fVulkanUpdateCommandBuffer.Execute(fVulkanUpdateQueue,
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      nil,
+                                      nil,
+                                      fVulkanUpdateFence,
+                                      true);
+   fVulkanUpdateCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   fVulkanUpdateCommandBuffer.BeginRecording;
   end;
  finally
   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fCommandBufferLock);
@@ -25979,24 +26025,24 @@ begin
     try
 
      if assigned(aData) then begin
-      HeightMapDataInitialization.Execute(fVulkanComputeCommandBuffer);
+      HeightMapDataInitialization.Execute(fVulkanUpdateCommandBuffer);
      end else begin
-      fHeightMapRandomInitialization.Execute(fVulkanComputeCommandBuffer);
+      fHeightMapRandomInitialization.Execute(fVulkanUpdateCommandBuffer);
      end;
 
-    {fVisualMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
+    {fVisualMeshIndexGeneration.Execute(fVulkanUpdateCommandBuffer);
 
-     fPhysicsMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);}
+     fPhysicsMeshIndexGeneration.Execute(fVulkanUpdateCommandBuffer);}
 
-     fTiledMeshBoundingVolumesGeneration.Execute(fVulkanComputeCommandBuffer);
+     fTiledMeshBoundingVolumesGeneration.Execute(fVulkanUpdateCommandBuffer);
 
-     fBlendMapInitialization.Execute(fVulkanComputeCommandBuffer);
+     fBlendMapInitialization.Execute(fVulkanUpdateCommandBuffer);
 
-     fGrassMapInitialization.Execute(fVulkanComputeCommandBuffer);
+     fGrassMapInitialization.Execute(fVulkanUpdateCommandBuffer);
 
-     fPrecipitationMapInitialization.Execute(fVulkanComputeCommandBuffer);
+     fPrecipitationMapInitialization.Execute(fVulkanUpdateCommandBuffer);
 
-     fAtmosphereMapInitialization.Execute(fVulkanComputeCommandBuffer);
+     fAtmosphereMapInitialization.Execute(fVulkanUpdateCommandBuffer);
 
      BufferMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
      BufferMemoryBarriers[0].pNext:=nil;
@@ -26028,32 +26074,32 @@ begin
      BufferMemoryBarriers[2].offset:=0;
      BufferMemoryBarriers[2].size:=fData.fWaterFlowMapBuffer.Size;
 
-     fVulkanComputeCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                                    0,
-                                                    0,
-                                                    nil,
-                                                    Length(BufferMemoryBarriers),
-                                                    @BufferMemoryBarriers,
-                                                    0,
-                                                    nil);
+     fVulkanUpdateCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                   0,
+                                                   0,
+                                                   nil,
+                                                   Length(BufferMemoryBarriers),
+                                                   @BufferMemoryBarriers,
+                                                   0,
+                                                   nil);
 
      // Clear water height map buffers
-     fVulkanComputeCommandBuffer.CmdFillBuffer(fData.fWaterHeightMapBuffers[0].Handle,
-                                               0,
-                                               fData.fWaterHeightMapBuffers[0].Size,
-                                               0);
+     fVulkanUpdateCommandBuffer.CmdFillBuffer(fData.fWaterHeightMapBuffers[0].Handle,
+                                              0,
+                                              fData.fWaterHeightMapBuffers[0].Size,
+                                              0);
 
-     fVulkanComputeCommandBuffer.CmdFillBuffer(fData.fWaterHeightMapBuffers[1].Handle,
-                                               0,
-                                               fData.fWaterHeightMapBuffers[1].Size,
-                                               0); 
+     fVulkanUpdateCommandBuffer.CmdFillBuffer(fData.fWaterHeightMapBuffers[1].Handle,
+                                              0,
+                                              fData.fWaterHeightMapBuffers[1].Size,
+                                             0);
 
      // Clear water flow map buffer
-     fVulkanComputeCommandBuffer.CmdFillBuffer(fData.fWaterFlowMapBuffer.Handle,
-                                               0,
-                                               fData.fWaterFlowMapBuffer.Size,
-                                               0);
+     fVulkanUpdateCommandBuffer.CmdFillBuffer(fData.fWaterFlowMapBuffer.Handle,
+                                              0,
+                                              fData.fWaterFlowMapBuffer.Size,
+                                              0);
 
      BufferMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
      BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
@@ -26064,15 +26110,15 @@ begin
      BufferMemoryBarriers[2].srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
      BufferMemoryBarriers[2].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
 
-     fVulkanComputeCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                                    0,
-                                                    0,
-                                                    nil,
-                                                    Length(BufferMemoryBarriers),
-                                                    @BufferMemoryBarriers,
-                                                    0,
-                                                    nil);
+     fVulkanUpdateCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                   0,
+                                                   0,
+                                                   nil,
+                                                   Length(BufferMemoryBarriers),
+                                                   @BufferMemoryBarriers,
+                                                   0,
+                                                   nil);
 
     finally
      EndUpdate;
@@ -26090,41 +26136,41 @@ begin
 
    begin
 
-    fVulkanDevice.MemoryStaging.Upload(fVulkanComputeQueue,
-                                       fVulkanComputeCommandBuffer,
-                                       fVulkanComputeFence,
+    fVulkanDevice.MemoryStaging.Upload(fVulkanUpdateQueue,
+                                       fVulkanUpdateCommandBuffer,
+                                       fVulkanUpdateFence,
                                        fTiledVisualMeshIndices.ItemArray[0],
                                        fData.fVisualMeshIndexBuffer,
                                        0,
                                        fTiledVisualMeshIndices.Count*SizeOf(TpvUInt32));
 
-    fVulkanDevice.MemoryStaging.Upload(fVulkanComputeQueue,
-                                       fVulkanComputeCommandBuffer,
-                                       fVulkanComputeFence,
+    fVulkanDevice.MemoryStaging.Upload(fVulkanUpdateQueue,
+                                       fVulkanUpdateCommandBuffer,
+                                       fVulkanUpdateFence,
                                        fTiledVisualMeshIndexGroups.ItemArray[0],
                                        fData.fTiledVisualMeshIndexGroupsBuffer,
                                        0,
                                        fTiledVisualMeshIndexGroups.Count*SizeOf(TTiledMeshIndexGroup));
 
-{   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                         fVulkanComputeCommandBuffer,
-                                         fVulkanComputeFence,
+{   fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                         fVulkanUpdateCommandBuffer,
+                                         fVulkanUpdateFence,
                                          fData.fPhysicsMeshIndexBuffer,
                                          0,
                                          fData.fPhysicsMeshIndices.ItemArray[0],
                                          fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*6*SizeOf(TpvUInt32));}
 
-    fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                         fVulkanComputeCommandBuffer,
-                                         fVulkanComputeFence,
+    fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                         fVulkanUpdateCommandBuffer,
+                                         fVulkanUpdateFence,
                                          fData.fTiledMeshBoundingBoxesBuffer,
                                          0,
                                          fData.fTiledMeshBoundingBoxes.ItemArray[0],
                                          fTileMapResolution*fTileMapResolution*SizeOf(TpvScene3DPlanet.TData.TTiledMeshBoundingBox));
 
-    fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                         fVulkanComputeCommandBuffer,
-                                         fVulkanComputeFence,
+    fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                         fVulkanUpdateCommandBuffer,
+                                         fVulkanUpdateFence,
                                          fData.fTiledMeshBoundingSpheresBuffer,
                                          0,
                                          fData.fTiledMeshBoundingSpheres.ItemArray[0],
@@ -26134,9 +26180,9 @@ begin
 
    begin
 
-    fData.Download(fVulkanComputeQueue,
-                   fVulkanComputeCommandBuffer,
-                   fVulkanComputeFence,
+    fData.Download(fVulkanUpdateQueue,
+                   fVulkanUpdateCommandBuffer,
+                   fVulkanUpdateFence,
                    true,
                    true,
                    true,
@@ -26173,7 +26219,7 @@ begin
 
    fHeightMapFlatten.fPushConstants.BrushRotation:=aBrushRotation*TwoPI;
 
-   fHeightMapFlatten.Execute(fVulkanComputeCommandBuffer);
+   fHeightMapFlatten.Execute(fVulkanUpdateCommandBuffer);
 
   finally
    EndUpdate;
@@ -26200,15 +26246,15 @@ begin
    BeginUpdate;
    try
 
-    fRayIntersection.Execute(fVulkanComputeCommandBuffer,aRayOrigin,aRayDirection);
+    fRayIntersection.Execute(fVulkanUpdateCommandBuffer,aRayOrigin,aRayDirection);
 
    finally
     EndUpdate;
    end;
 
-   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                        fVulkanComputeCommandBuffer,
-                                        fVulkanComputeFence,
+   fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                        fVulkanUpdateCommandBuffer,
+                                        fVulkanUpdateFence,
                                         fData.fRayIntersectionResultBuffer,
                                         0,
                                         HitNormalTime,
@@ -26260,9 +26306,9 @@ begin
 
  if assigned(fVulkanDevice) and
     (fData.fDirtyHeightMap or fData.fDirtyBlendMap or fData.fDirtyGrassMap or fData.fDirtyPrecipitationMap or fData.fDirtyAtmosphereMap) then begin
-  fData.Upload(fVulkanComputeQueue,
-               fVulkanComputeCommandBuffer,
-               fVulkanComputeFence,
+  fData.Upload(fVulkanUpdateQueue,
+               fVulkanUpdateCommandBuffer,
+               fVulkanUpdateFence,
                fData.fDirtyHeightMap,
                fData.fDirtyBlendMap,
                fData.fDirtyGrassMap,
@@ -26288,12 +26334,12 @@ begin
    try
 
     try
-     fBlendMapModification.Execute(fVulkanComputeCommandBuffer,fBlendMapModificationItems[aInFlightFrameIndex]);
+     fBlendMapModification.Execute(fVulkanUpdateCommandBuffer,fBlendMapModificationItems[aInFlightFrameIndex]);
     finally
      fBlendMapModificationItems[aInFlightFrameIndex].Value:=0.0;
     end;
 
-    fBlendMapDownsampling.Execute(fVulkanComputeCommandBuffer);
+    fBlendMapDownsampling.Execute(fVulkanUpdateCommandBuffer);
 
    finally
     EndUpdate;
@@ -26305,9 +26351,9 @@ begin
 
    fBlendMapTransferGeneration:=fBlendMapUpdateGeneration;
 
-   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                        fVulkanComputeCommandBuffer,
-                                        fVulkanComputeFence,
+   fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                        fVulkanUpdateCommandBuffer,
+                                        fVulkanUpdateFence,
                                         fData.fBlendMiniMapBuffer,
                                         0,
                                         fData.fBlendMiniMapData[0],
@@ -26324,15 +26370,15 @@ begin
    BeginUpdate;
    try
 
-    fBlendMapDownsampling.Execute(fVulkanComputeCommandBuffer);
+    fBlendMapDownsampling.Execute(fVulkanUpdateCommandBuffer);
 
    finally
     EndUpdate;
    end;
 
-   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                        fVulkanComputeCommandBuffer,
-                                        fVulkanComputeFence,
+   fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                        fVulkanUpdateCommandBuffer,
+                                        fVulkanUpdateFence,
                                         fData.fBlendMiniMapBuffer,
                                         0,
                                         fData.fBlendMiniMapData[0],
@@ -26351,7 +26397,7 @@ begin
 
     while fGrassMapModificationPerInFlightFrameItems[aInFlightFrameIndex].Dequeue(GrassMapModificationItem) do begin
      if abs(GrassMapModificationItem.Value)>1e-7 then begin
-      fGrassMapModification.Execute(fVulkanComputeCommandBuffer,GrassMapModificationItem);
+      fGrassMapModification.Execute(fVulkanUpdateCommandBuffer,GrassMapModificationItem);
      end;
     end;
 
@@ -26381,7 +26427,7 @@ begin
    try
 
     try
-     fPrecipitationMapModification.Execute(fVulkanComputeCommandBuffer,fPrecipitationMapModificationItems[aInFlightFrameIndex]);
+     fPrecipitationMapModification.Execute(fVulkanUpdateCommandBuffer,fPrecipitationMapModificationItems[aInFlightFrameIndex]);
     finally
      fPrecipitationMapModificationItems[aInFlightFrameIndex].Value:=0.0;
     end;
@@ -26403,9 +26449,9 @@ begin
    BeginUpdate;
    try
 
-    fPrecipitationMapSimulation.Execute(fVulkanComputeCommandBuffer,pvApplication.DeltaTime);
+    fPrecipitationMapSimulation.Execute(fVulkanUpdateCommandBuffer,pvApplication.DeltaTime);
 
-    fPrecipitationMapSimulationTransfer.Execute(fVulkanComputeCommandBuffer);
+    fPrecipitationMapSimulationTransfer.Execute(fVulkanUpdateCommandBuffer);
 
    finally
     EndUpdate;
@@ -26425,7 +26471,7 @@ begin
    try
 
     try
-     fAtmosphereMapModification.Execute(fVulkanComputeCommandBuffer,fAtmosphereMapModificationItems[aInFlightFrameIndex]);
+     fAtmosphereMapModification.Execute(fVulkanUpdateCommandBuffer,fAtmosphereMapModificationItems[aInFlightFrameIndex]);
     finally
      fAtmosphereMapModificationItems[aInFlightFrameIndex].Value:=0.0;
     end;
@@ -26456,7 +26502,7 @@ begin
      BeginUpdate;
      try
 
-      fAtmosphereMapUpdate.Execute(fVulkanComputeCommandBuffer,Steps);
+      fAtmosphereMapUpdate.Execute(fVulkanUpdateCommandBuffer,Steps);
 
      finally
       EndUpdate;
@@ -26485,11 +26531,11 @@ begin
    BeginUpdate;
    try
 
-    fAtmosphereMapDownsampling.Execute(fVulkanComputeCommandBuffer);
+    fAtmosphereMapDownsampling.Execute(fVulkanUpdateCommandBuffer);
 
-    fPrecipitationMapDownsampling.Execute(fVulkanComputeCommandBuffer);
+    fPrecipitationMapDownsampling.Execute(fVulkanUpdateCommandBuffer);
 
-    fPrecipitationAtmosphereMapCombination.Execute(fVulkanComputeCommandBuffer);
+    fPrecipitationAtmosphereMapCombination.Execute(fVulkanUpdateCommandBuffer);
 
    finally
     EndUpdate;
@@ -26506,9 +26552,9 @@ begin
 
   fData.fAtmosphereMiniMapTransferGeneration:=fData.fAtmosphereMiniMapGeneration;
 
-  fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                       fVulkanComputeCommandBuffer,
-                                       fVulkanComputeFence,
+  fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                       fVulkanUpdateCommandBuffer,
+                                       fVulkanUpdateFence,
                                        fData.fAtmosphereMiniMapBuffer,
                                        0,
                                        fData.fAtmosphereMiniMapData[0],
@@ -26522,9 +26568,9 @@ begin
 
   fData.fPrecipitationMiniMapTransferGeneration:=fData.fPrecipitationMiniMapGeneration;
 
-  fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                       fVulkanComputeCommandBuffer,
-                                       fVulkanComputeFence,
+  fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                       fVulkanUpdateCommandBuffer,
+                                       fVulkanUpdateFence,
                                        fData.fPrecipitationMiniMapBuffer,
                                        0,
                                        fData.fPrecipitationMiniMapData[0],
@@ -26548,7 +26594,7 @@ begin
 
     if (aInFlightFrameIndex>=0) and (abs(fHeightMapModificationItems[aInFlightFrameIndex].Value)>1e-7) then begin
      try
-      fHeightMapModification.Execute(fVulkanComputeCommandBuffer,fHeightMapModificationItems[aInFlightFrameIndex]);
+      fHeightMapModification.Execute(fVulkanUpdateCommandBuffer,fHeightMapModificationItems[aInFlightFrameIndex]);
      finally
       fHeightMapModificationItems[aInFlightFrameIndex].Value:=0.0;
      end;
@@ -26562,7 +26608,7 @@ begin
       fHeightMapFlatten.fPushConstants.TargetHeight:=fHeightMapFlattenItems[aInFlightFrameIndex].TargetHeight;
       fHeightMapFlatten.fPushConstants.BrushIndex:=fHeightMapFlattenItems[aInFlightFrameIndex].BrushIndex;
       fHeightMapFlatten.fPushConstants.BrushRotation:=fHeightMapFlattenItems[aInFlightFrameIndex].BrushRotation*TwoPI;
-      fHeightMapFlatten.Execute(fVulkanComputeCommandBuffer);
+      fHeightMapFlatten.Execute(fVulkanUpdateCommandBuffer);
      finally
       fHeightMapFlattenItems[aInFlightFrameIndex].TargetHeight:=0.0;
      end;
@@ -26572,18 +26618,18 @@ begin
 
      fData.fHeightMapProcessedGeneration:=fData.fHeightMapGeneration;
 
-     fTileDirtyExpansion.Execute(fVulkanComputeCommandBuffer);
+     fTileDirtyExpansion.Execute(fVulkanUpdateCommandBuffer);
 
-     fTileDirtyQueueGeneration.Execute(fVulkanComputeCommandBuffer);
+     fTileDirtyQueueGeneration.Execute(fVulkanUpdateCommandBuffer);
 
      if fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
 
       EndUpdate;
       try
 
-       fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                            fVulkanComputeCommandBuffer,
-                                            fVulkanComputeFence,
+       fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                            fVulkanUpdateCommandBuffer,
+                                            fVulkanUpdateFence,
                                             fData.fTileDirtyQueueBuffer,
                                             SizeOf(TVkUInt32),
                                             fData.fCountDirtyTiles,
@@ -26599,19 +26645,19 @@ begin
 
      end;
 
-     fHeightMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
+     fHeightMapMipMapGeneration.Execute(fVulkanUpdateCommandBuffer);
 
-     fNormalMapGeneration.Execute(fVulkanComputeCommandBuffer);
+     fNormalMapGeneration.Execute(fVulkanUpdateCommandBuffer);
 
-     fNormalMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
+     fNormalMapMipMapGeneration.Execute(fVulkanUpdateCommandBuffer);
 
-     fVisualMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
+     fVisualMeshVertexGeneration.Execute(fVulkanUpdateCommandBuffer);
 
-     fVisualMeshDistanceGeneration.Execute(fVulkanComputeCommandBuffer);
+     fVisualMeshDistanceGeneration.Execute(fVulkanUpdateCommandBuffer);
 
-     fPhysicsMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
+     fPhysicsMeshVertexGeneration.Execute(fVulkanUpdateCommandBuffer);
 
-     fPhysicsMeshSlopeGeneration.Execute(fVulkanComputeCommandBuffer);
+     fPhysicsMeshSlopeGeneration.Execute(fVulkanUpdateCommandBuffer);
 
      fData.fVisualMeshVertexBufferNextRenderIndex:=fData.fVisualMeshVertexBufferUpdateIndex and 1;
 
@@ -26628,9 +26674,9 @@ begin
    end;
 
    if not fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
-    fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                         fVulkanComputeCommandBuffer,
-                                         fVulkanComputeFence,
+    fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                         fVulkanUpdateCommandBuffer,
+                                         fVulkanUpdateFence,
                                          fData.fTileDirtyQueueBuffer,
                                          SizeOf(TVkUInt32),
                                          fData.fCountDirtyTiles,
@@ -26650,9 +26696,9 @@ begin
 
     end else begin
 
-     fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                          fVulkanComputeCommandBuffer,
-                                          fVulkanComputeFence,
+     fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                          fVulkanUpdateCommandBuffer,
+                                          fVulkanUpdateFence,
                                           fData.fTileDirtyQueueBuffer,
                                           SizeOf(TVkUInt32)*6,
                                           fData.fTileDirtyQueueItems.ItemArray[0],
@@ -26707,17 +26753,17 @@ begin
 
     if fData.fCountDirtyTiles=(fTileMapResolution*fTileMapResolution) then begin
 
-     fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                          fVulkanComputeCommandBuffer,
-                                          fVulkanComputeFence,
+     fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                          fVulkanUpdateCommandBuffer,
+                                          fVulkanUpdateFence,
                                           fData.fPhysicsMeshVertexBuffer,
                                           0,
                                           fData.fPhysicsMeshVertices.ItemArray[0],
                                           fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
 
-     fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
-                                          fVulkanComputeCommandBuffer,
-                                          fVulkanComputeFence,
+     fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
+                                          fVulkanUpdateCommandBuffer,
+                                          fVulkanUpdateFence,
                                           fData.fPhysicsMeshSlopeBuffer,
                                           0,
                                           fData.fPhysicsMeshSlopes.ItemArray[0],
@@ -26778,9 +26824,9 @@ begin
                                                   fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshSlope));
        end;
       finally
-       fVulkanDevice.MemoryStaging.ProcessQueue(fVulkanComputeQueue,
-                                                fVulkanComputeCommandBuffer,
-                                                fVulkanComputeFence,
+       fVulkanDevice.MemoryStaging.ProcessQueue(fVulkanUpdateQueue,
+                                                fVulkanUpdateCommandBuffer,
+                                                fVulkanUpdateFence,
                                                 fVulkanMemoryStagingQueue);
       end;
 
@@ -26815,9 +26861,9 @@ begin
 
  if assigned(fVulkanDevice) and
     (UpdatedHeightMap or UpdatedBlendMap or UpdatedGrass or UpdatedPrecipitation or UpdatedAtmosphere) then begin
-  fData.Download(fVulkanComputeQueue,
-                 fVulkanComputeCommandBuffer,
-                 fVulkanComputeFence,
+  fData.Download(fVulkanUpdateQueue,
+                 fVulkanUpdateCommandBuffer,
+                 fVulkanUpdateFence,
                  UpdatedHeightMap,
                  UpdatedBlendMap,
                  UpdatedGrass,
@@ -26828,7 +26874,7 @@ begin
 {if assigned(fVulkanDevice) and UpdateWaterVisibility then begin
   BeginUpdate;
   try
-   fWaterCullPass.Execute(fVulkanComputeCommandBuffer);
+   fWaterCullPass.Execute(fVulkanUpdateCommandBuffer);
   finally
    EndUpdate;
   end;
@@ -26869,8 +26915,8 @@ begin
 
 {   if fData.fVisualMeshGeneration<>fData.fHeightMapGeneration then begin
      fData.fVisualMeshGeneration:=fData.fHeightMapGeneration;
-     fVisualMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
-     fVisualMeshDistanceGeneration.Execute(fVulkanComputeCommandBuffer);
+     fVisualMeshVertexGeneration.Execute(fVulkanUpdateCommandBuffer);
+     fVisualMeshDistanceGeneration.Execute(fVulkanUpdateCommandBuffer);
      fData.fVisualMeshVertexBufferNextRenderIndex:=fData.fVisualMeshVertexBufferUpdateIndex and 1;
      fData.fVisualMeshVertexBufferUpdateIndex:=(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1;
     end;}
@@ -26878,7 +26924,7 @@ begin
     if assigned(InFlightFrameData) then begin
 
      if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-      InFlightFrameData.AcquireOnComputeQueue(fVulkanComputeCommandBuffer);
+      InFlightFrameData.AcquireOnUpdateQueue(fVulkanUpdateCommandBuffer);
      end;
 
      if (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) or
@@ -26887,7 +26933,7 @@ begin
         (InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration) or
         (InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration) then begin
       if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-       fData.TransferTo(fVulkanComputeCommandBuffer,
+       fData.TransferTo(fVulkanUpdateCommandBuffer,
                         InFlightFrameData,
                         InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration,
                         InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration,
@@ -26904,7 +26950,7 @@ begin
      end;
 
      if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-      InFlightFrameData.ReleaseOnComputeQueue(fVulkanComputeCommandBuffer);
+      InFlightFrameData.ReleaseOnUpdateQueue(fVulkanUpdateCommandBuffer);
      end;
 
     end;

@@ -704,6 +704,7 @@ type EpvVulkanException=class(Exception);
        fPresentQueueFamilyIndex:TpvInt32;
        fGraphicsQueueFamilyIndex:TpvInt32;
        fComputeQueueFamilyIndex:TpvInt32;
+       fUpdateQueueFamilyIndex:TpvInt32;
        fTransferQueueFamilyIndex:TpvInt32;
        fAllQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
        fQueueFamilyIndices:TVkUInt32DynamicArrayList;
@@ -712,11 +713,13 @@ type EpvVulkanException=class(Exception);
        fPresentQueue:TpvVulkanQueue;
        fGraphicsQueue:TpvVulkanQueue;
        fComputeQueue:TpvVulkanQueue;
+       fUpdateQueue:TpvVulkanQueue;
        fTransferQueue:TpvVulkanQueue;
        fUniversalQueues:TpvVulkanQueues;
        fPresentQueues:TpvVulkanQueues;
        fGraphicsQueues:TpvVulkanQueues;
        fComputeQueues:TpvVulkanQueues;
+       fUpdateQueues:TpvVulkanQueues;
        fTransferQueues:TpvVulkanQueues;
        fMemoryManager:TpvVulkanDeviceMemoryManager;
        fMemoryStaging:TpvVulkanDeviceMemoryStaging;
@@ -791,6 +794,7 @@ type EpvVulkanException=class(Exception);
        property PresentQueueFamilyIndex:TpvInt32 read fPresentQueueFamilyIndex;
        property GraphicsQueueFamilyIndex:TpvInt32 read fGraphicsQueueFamilyIndex;
        property ComputeQueueFamilyIndex:TpvInt32 read fComputeQueueFamilyIndex;
+       property UpdateQueueFamilyIndex:TpvInt32 read fUpdateQueueFamilyIndex;
        property TransferQueueFamilyIndex:TpvInt32 read fTransferQueueFamilyIndex;
        property QueueFamilyIndices:TVkUInt32DynamicArrayList read fQueueFamilyIndices;
        property QueueFamilyQueues:TpvVulkanQueueFamilyQueues read fQueueFamilyQueues;
@@ -798,11 +802,13 @@ type EpvVulkanException=class(Exception);
        property PresentQueue:TpvVulkanQueue read fPresentQueue;
        property GraphicsQueue:TpvVulkanQueue read fGraphicsQueue;
        property ComputeQueue:TpvVulkanQueue read fComputeQueue;
+       property UpdateQueue:TpvVulkanQueue read fUpdateQueue;
        property TransferQueue:TpvVulkanQueue read fTransferQueue;
        property UniversalQueues:TpvVulkanQueues read fUniversalQueues;
        property PresentQueues:TpvVulkanQueues read fPresentQueues;
        property GraphicsQueues:TpvVulkanQueues read fGraphicsQueues;
        property ComputeQueues:TpvVulkanQueues read fComputeQueues;
+       property UpdateQueues:TpvVulkanQueues read fUpdateQueues;
        property TransferQueues:TpvVulkanQueues read fTransferQueues;
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
        property MemoryStaging:TpvVulkanDeviceMemoryStaging read fMemoryStaging;
@@ -10114,18 +10120,21 @@ begin
  fPresentQueueFamilyIndex:=-1;
  fGraphicsQueueFamilyIndex:=-1;
  fComputeQueueFamilyIndex:=-1;
+ fUpdateQueueFamilyIndex:=-1;
  fTransferQueueFamilyIndex:=-1;
 
  fUniversalQueue:=nil;
  fPresentQueue:=nil;
  fGraphicsQueue:=nil;
  fComputeQueue:=nil;
+ fUpdateQueue:=nil;
  fTransferQueue:=nil;
 
  fUniversalQueues:=nil;
  fPresentQueues:=nil;
  fGraphicsQueues:=nil;
  fComputeQueues:=nil;
+ fUpdateQueues:=nil;
  fTransferQueues:=nil;
 
  fImageFormatList:=false;
@@ -10292,6 +10301,7 @@ begin
  fPresentQueues:=nil;
  fGraphicsQueues:=nil;
  fComputeQueues:=nil;
+ fUpdateQueues:=nil;
  fTransferQueues:=nil;
  FreeAndNil(fMemoryStaging);
  FreeAndNil(fMemoryManager);
@@ -11216,6 +11226,41 @@ begin
   end else begin
    fTransferQueue:=nil;
    fTransferQueues:=nil;
+  end;
+
+  // Assign update queue to a multiple universal or compute queue
+  begin
+
+   fUpdateQueueFamilyIndex:=-1;
+
+   // First check if multiple universal queues are availabe
+   if fUniversalQueueFamilyIndex>=0 then begin
+    // Extract one queue from the universal queue family
+    if length(fUniversalQueues)>1 then begin
+     fUpdateQueue:=fUniversalQueues[length(fUniversalQueues)-1];
+     SetLength(fUniversalQueues,length(fUniversalQueues)-1);
+     fUpdateQueueFamilyIndex:=fUniversalQueueFamilyIndex;
+     fUpdateQueues:=nil;
+     SetLength(fUpdateQueues,1);
+     fUpdateQueues[0]:=fUpdateQueue;
+    end;
+   end;
+
+   if fUpdateQueueFamilyIndex<0 then begin
+    // Then check for multiple compute queues
+    if fComputeQueueFamilyIndex>=0 then begin
+     // Extract one queue from the compute queue family
+     if length(fComputeQueues)>1 then begin
+      fUpdateQueue:=fComputeQueues[length(fComputeQueues)-1];
+      SetLength(fComputeQueues,length(fComputeQueues)-1);
+      fUpdateQueueFamilyIndex:=fComputeQueueFamilyIndex;
+      fUpdateQueues:=nil;
+      SetLength(fUpdateQueues,1);
+      fUpdateQueues[0]:=fUpdateQueue;
+     end;
+    end;
+   end;
+
   end;
 
   fMemoryManager.Initialize;
