@@ -3170,7 +3170,7 @@ begin
  end else begin
   result:=TpvVector2.InlineableCreate(Frac(aUV.x),Frac(aUV.y));
  end;
-end; 
+end;
 
 function WrapOctahedralTexelCoordinates(const aTexel,aTexSize:TpvInt32Vector2):TpvInt32Vector2;
 begin
