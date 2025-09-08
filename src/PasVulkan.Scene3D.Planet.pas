@@ -2683,7 +2683,7 @@ type TpvScene3DPlanets=class;
        procedure EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
        procedure EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
-       procedure EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
+       procedure EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aOnlyIfEmpty:Boolean);
        procedure EnqueuePrecipitationMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueAtmosphereMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
@@ -27217,16 +27217,18 @@ begin
  end;
 end;
 
-procedure TpvScene3DPlanet.EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
+procedure TpvScene3DPlanet.EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aOnlyIfEmpty:Boolean);
 var GrassMapModificationItem:TGrassMapModificationItem;
 begin
  if aInFlightFrameIndex>=0 then begin
-  GrassMapModificationItem.PositionRadius:=TpvVector4.Create(aPosition.Normalize,aRadius);
-  GrassMapModificationItem.InnerRadius:=Max(1e-6,aBorderRadius);
-  GrassMapModificationItem.Value:=aValue;
-  GrassMapModificationItem.BrushIndex:=fData.fSelectedBrush;
-  GrassMapModificationItem.BrushRotation:=fData.fBrushRotation;
-  fGrassMapModificationPerInFlightFrameItems[aInFlightFrameIndex].Enqueue(GrassMapModificationItem);
+  if (not aOnlyIfEmpty) or fGrassMapModificationPerInFlightFrameItems[aInFlightFrameIndex].IsEmpty then begin
+   GrassMapModificationItem.PositionRadius:=TpvVector4.Create(aPosition.Normalize,aRadius);
+   GrassMapModificationItem.InnerRadius:=Max(1e-6,aBorderRadius);
+   GrassMapModificationItem.Value:=aValue;
+   GrassMapModificationItem.BrushIndex:=fData.fSelectedBrush;
+   GrassMapModificationItem.BrushRotation:=fData.fBrushRotation;
+   fGrassMapModificationPerInFlightFrameItems[aInFlightFrameIndex].Enqueue(GrassMapModificationItem);
+  end;
  end;
 end;
 
