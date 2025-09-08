@@ -662,6 +662,8 @@ type EpvScene3D=class(Exception);
               procedure SetDissolveColor1(const aValue:TpvVector3);
               function GetDissolveWidth:TpvFloat;
               procedure SetDissolveWidth(const aValue:TpvFloat);
+              function GetColorKeysActive:Boolean;
+              procedure SetColorKeysActive(const aValue:Boolean);
               function GetColorKeyR:TpvVector4;
               procedure SetColorKeyR(const aValue:TpvVector4);
               function GetColorKeyG:TpvVector4;
@@ -701,6 +703,7 @@ type EpvScene3D=class(Exception);
              published
               property DissolveWidth:TpvFloat read GetDissolveWidth write SetDissolveWidth;
              public
+              property ColorKeysActive:Boolean read GetColorKeysActive write SetColorKeysActive;
               property ColorKeyR:TpvVector4 read GetColorKeyR write SetColorKeyR;
               property ColorKeyG:TpvVector4 read GetColorKeyG write SetColorKeyG;
               property ColorKeyB:TpvVector4 read GetColorKeyB write SetColorKeyB;
@@ -5522,6 +5525,22 @@ procedure TpvScene3D.TInstanceData.SetDissolveWidth(const aValue:TpvFloat);
 begin
  if GPUInstanceData^.DissolveColor1Width.w<>aValue then begin
   GPUInstanceData^.DissolveColor1Width.w:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceData.GetColorKeysActive:Boolean;
+begin
+ result:=(GPUInstanceData^.Flags and TpvUInt32(TpvUInt32(1) shl 0))<>0; 
+end;
+
+procedure TpvScene3D.TInstanceData.SetColorKeysActive(const aValue:Boolean);
+begin
+ if ((GPUInstanceData^.Flags and TpvUInt32(TpvUInt32(1) shl 0))<>0)<>aValue then begin
+  if aValue then begin
+   GPUInstanceData^.Flags:=GPUInstanceData^.Flags or TpvUInt32(TpvUInt32(1) shl 0);
+  end else begin
+   GPUInstanceData^.Flags:=GPUInstanceData^.Flags and not TpvUInt32(TpvUInt32(1) shl 0);
+  end;
  end;
 end;
 
