@@ -515,20 +515,29 @@ type EpvScene3D=class(Exception);
             PGPUCachedRaytracingVertex=^TGPUCachedRaytracingVertex;
             TGPUCachedRaytracingVertices=array of TGPUCachedRaytracingVertex;
             { TGPUInstanceData }
-            TGPUInstanceData=packed record // 64 bytes per instance data for now, can be extended later
+            TGPUInstanceData=packed record // 128 bytes per instance data for now, can be extended later
              
-             // vec4 begin
+             // uvec4 begin
              Selected:TpvFloat;
              Dissolve:TpvFloat;
              DitheredTransparency:TpvFloat;
-             Unused:TpvFloat;
-             // vec4 end
+             Flags:TpvUInt32;
+             // uvec4 end
 
              SelectedColorIntensity:TpvVector4; // xyz = color (RGB), w = intensity
 
              DissolveColor0Scale:TpvVector4; // xyz = color0 (RGB), w = scale
 
              DissolveColor1Width:TpvVector4; // xyz = color1 (RGB), w = width
+
+             ColorKeyR:TpvHalfFloatVector4;
+             ColorKeyG:TpvHalfFloatVector4;
+
+             ColorKeyB:TpvHalfFloatVector4;
+             ColorKeyA:TpvHalfFloatVector4;
+
+             Unused0:TpvUInt32;
+             Unused1:TpvUInt32;
 
             end;
             PGPUInstanceData=^TGPUInstanceData;
@@ -3647,13 +3656,22 @@ type EpvScene3D=class(Exception);
                Selected:0.0;
                Dissolve:0.0;
                DitheredTransparency:0.0;
-               Unused:0.0;
+               Flags:0;
 
                SelectedColorIntensity:(x:0.0;y:0.0;z:0.0;w:0.0);
 
                DissolveColor0Scale:(x:0.0;y:0.0;z:0.0;w:0.0);
 
                DissolveColor1Width:(x:0.0;y:0.0;z:0.0;w:0.0);
+
+               ColorKeyR:(RawIntComponents:(0,0,0,0));
+               ColorKeyG:(RawIntComponents:(0,0,0,0));
+
+               ColorKeyB:(RawIntComponents:(0,0,0,0));
+               ColorKeyA:(RawIntComponents:(0,0,0,0));
+
+               Unused0:0;
+               Unused1:0;
 
               );
       private

@@ -99,10 +99,20 @@ layout(set = 0, binding = 3, std430) readonly buffer Materials {
 #endif
 
 struct InstanceData { 
-  vec4 SelectedDissolveDitheredTransparencyUnused;
+  
+  uvec4 SelectedDissolveDitheredTransparencyFlags;
+  
   vec4 SelectedColorIntensity;
+  
   vec4 DissolveColor0Scale;
   vec4 DissolveColor1Width;  
+
+  uvec4 colorKeysRG; // 2x half float RGBA
+  uvec4 colorKeysBA; // 2x half float RGBA
+
+  // For alignment
+  uvec4 unused0;
+  uvec4 unused1;
 };
 
 layout(set = 0, binding = 4, std430) readonly buffer InstanceDataBuffer {

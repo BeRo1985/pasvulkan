@@ -465,7 +465,8 @@ type PpvScalar=^TpvScalar;
         1:(x,y:TpvHalfFloat);
         2:(r,g:TpvHalfFloat);
         3:(s,t:TpvHalfFloat);
-     end;
+        4:(RawIntComponents:array[0..1] of TpvUInt16);
+    end;
 
      PpvHalfFloatVector3=^TpvHalfFloatVector3;
      TpvHalfFloatVector3=record
@@ -475,7 +476,8 @@ type PpvScalar=^TpvScalar;
         1:(x,y,z:TpvHalfFloat);
         2:(r,g,b:TpvHalfFloat);
         3:(s,t,p:TpvHalfFloat);
-        5:(Vector2:TpvHalfFloatVector2);
+        4:(Vector2:TpvHalfFloatVector2);
+        5:(RawIntComponents:array[0..2] of TpvUInt16);
      end;
 
      PpvHalfFloatVector4=^TpvHalfFloatVector4;
@@ -488,6 +490,7 @@ type PpvScalar=^TpvScalar;
         3:(s,t,p,q:TpvHalfFloat);
         5:(Vector2:TpvHalfFloatVector2);
         6:(Vector3:TpvHalfFloatVector3);
+        7:(RawIntComponents:array[0..3] of TpvUInt16);
      end;
 
      PpvInt8PackedTangentSpace=^TpvInt8PackedTangentSpace;
