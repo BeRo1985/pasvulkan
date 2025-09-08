@@ -2622,6 +2622,13 @@ type TpvScene3DPlanets=class;
        fAtmosphereReductionOffset:TpvFloat;
        fWaterRainSettings:TpvScene3DPlanet.TWaterRainSettings;
        fPrecipitationSimulationSettings:TpvScene3DPlanet.TPrecipitationSimulationSettings;
+       fQueuedDownload:Boolean;
+       fQueuedUpdatedHeightMap:Boolean;
+       fQueuedUpdatedBlendMap:Boolean;
+       fQueuedUpdatedGrass:Boolean;
+       fQueuedUpdatedPrecipitation:Boolean;
+       fQueuedUpdatedAtmosphere:Boolean;
+       fQueuedDownloadLastTime:TpvHighResolutionTime;
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -2683,7 +2690,7 @@ type TpvScene3DPlanets=class;
        procedure EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
        procedure EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
-       procedure EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aOnlyIfEmpty:Boolean);
+       procedure EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aOnlyIfEmpty:Boolean=false);
        procedure EnqueuePrecipitationMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueAtmosphereMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
@@ -24174,6 +24181,15 @@ begin
 
  fAtmosphereReductionOffset:=-1.0/255.0;
 
+ fQueuedDownload:=false;
+ fQueuedUpdatedHeightMap:=false;
+ fQueuedUpdatedBlendMap:=false;
+ fQueuedUpdatedGrass:=false;
+ fQueuedUpdatedPrecipitation:=false;
+ fQueuedUpdatedAtmosphere:=false;
+
+ fQueuedDownloadLastTime:=0;
+
  fBrushes:=aBrushes;
 
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
@@ -26286,6 +26302,7 @@ var QueueTileIndex,Steps:TpvSizeInt;
     RaytracingTile:TRaytracingTile;
     CurrentRaytracingTileQueue:TRaytracingTiles;
     GrassMapModificationItem:TGrassMapModificationItem;
+    NowTime:TpvHighResolutionTime;
 begin
 
  fData.fCountDirtyTiles:=0;
@@ -26861,14 +26878,34 @@ begin
 
  if assigned(fVulkanDevice) and
     (UpdatedHeightMap or UpdatedBlendMap or UpdatedGrass or UpdatedPrecipitation or UpdatedAtmosphere) then begin
-  fData.Download(fVulkanUpdateQueue,
-                 fVulkanUpdateCommandBuffer,
-                 fVulkanUpdateFence,
-                 UpdatedHeightMap,
-                 UpdatedBlendMap,
-                 UpdatedGrass,
-                 UpdatedPrecipitation,
-                 UpdatedAtmosphere);
+  fQueuedDownload:=true;
+  fQueuedUpdatedHeightMap:=fQueuedUpdatedHeightMap or UpdatedHeightMap;
+  fQueuedUpdatedBlendMap:=fQueuedUpdatedBlendMap or UpdatedBlendMap;
+  fQueuedUpdatedGrass:=fQueuedUpdatedGrass or UpdatedGrass;
+  fQueuedUpdatedPrecipitation:=fQueuedUpdatedPrecipitation or UpdatedPrecipitation;
+  fQueuedUpdatedAtmosphere:=fQueuedUpdatedAtmosphere or UpdatedAtmosphere;
+ end;
+
+ if assigned(fVulkanDevice) and fQueuedDownload then begin
+  NowTime:=pvApplication.HighResolutionTimer.GetTime;
+  if (fQueuedDownloadLastTime=0) or
+     (abs(fQueuedDownloadLastTime-NowTime)>=pvApplication.HighResolutionTimer.QuarterSecondInterval) then begin
+   fQueuedDownloadLastTime:=NowTime;
+   fData.Download(fVulkanUpdateQueue,
+                  fVulkanUpdateCommandBuffer,
+                  fVulkanUpdateFence,
+                  fQueuedUpdatedHeightMap,
+                  fQueuedUpdatedBlendMap,
+                  fQueuedUpdatedGrass,
+                  fQueuedUpdatedPrecipitation,
+                  fQueuedUpdatedAtmosphere);
+   fQueuedDownload:=false;
+   fQueuedUpdatedHeightMap:=false;
+   fQueuedUpdatedBlendMap:=false;
+   fQueuedUpdatedGrass:=false;
+   fQueuedUpdatedPrecipitation:=false;
+   fQueuedUpdatedAtmosphere:=false;
+  end;
  end;
 
 {if assigned(fVulkanDevice) and UpdateWaterVisibility then begin
