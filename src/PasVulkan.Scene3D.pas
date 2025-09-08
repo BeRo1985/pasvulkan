@@ -662,6 +662,14 @@ type EpvScene3D=class(Exception);
               procedure SetDissolveColor1(const aValue:TpvVector3);
               function GetDissolveWidth:TpvFloat;
               procedure SetDissolveWidth(const aValue:TpvFloat);
+              function GetColorKeyR:TpvVector4;
+              procedure SetColorKeyR(const aValue:TpvVector4);
+              function GetColorKeyG:TpvVector4;
+              procedure SetColorKeyG(const aValue:TpvVector4);
+              function GetColorKeyB:TpvVector4;
+              procedure SetColorKeyB(const aValue:TpvVector4);
+              function GetColorKeyA:TpvVector4;
+              procedure SetColorKeyA(const aValue:TpvVector4);
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
@@ -692,6 +700,11 @@ type EpvScene3D=class(Exception);
               property DissolveColor1:TpvVector3 read GetDissolveColor1 write SetDissolveColor1;
              published
               property DissolveWidth:TpvFloat read GetDissolveWidth write SetDissolveWidth;
+             public
+              property ColorKeyR:TpvVector4 read GetColorKeyR write SetColorKeyR;
+              property ColorKeyG:TpvVector4 read GetColorKeyG write SetColorKeyG;
+              property ColorKeyB:TpvVector4 read GetColorKeyB write SetColorKeyB;
+              property ColorKeyA:TpvVector4 read GetColorKeyA write SetColorKeyA;
             end;
             TInstanceDataList=TpvObjectGenericList<TInstanceData>;
             { TBaseObject }
@@ -5509,6 +5522,90 @@ procedure TpvScene3D.TInstanceData.SetDissolveWidth(const aValue:TpvFloat);
 begin
  if GPUInstanceData^.DissolveColor1Width.w<>aValue then begin
   GPUInstanceData^.DissolveColor1Width.w:=aValue;
+ end;
+end;
+
+function TpvScene3D.TInstanceData.GetColorKeyR:TpvVector4;
+begin
+ result.x:=GPUInstanceData^.ColorKeyR.x;
+ result.y:=GPUInstanceData^.ColorKeyR.y;
+ result.z:=GPUInstanceData^.ColorKeyR.z;
+ result.w:=GPUInstanceData^.ColorKeyR.w;
+end;
+
+procedure TpvScene3D.TInstanceData.SetColorKeyR(const aValue:TpvVector4);
+begin
+ if (GPUInstanceData^.ColorKeyR.x<>aValue.x) or
+    (GPUInstanceData^.ColorKeyR.y<>aValue.y) or
+    (GPUInstanceData^.ColorKeyR.z<>aValue.z) or
+    (GPUInstanceData^.ColorKeyR.w<>aValue.w) then begin
+  GPUInstanceData^.ColorKeyR.x:=aValue.x;
+  GPUInstanceData^.ColorKeyR.y:=aValue.y;
+  GPUInstanceData^.ColorKeyR.z:=aValue.z;
+  GPUInstanceData^.ColorKeyR.w:=aValue.w;
+ end;
+end;
+
+function TpvScene3D.TInstanceData.GetColorKeyG:TpvVector4;
+begin
+ result.x:=GPUInstanceData^.ColorKeyG.x;
+ result.y:=GPUInstanceData^.ColorKeyG.y;
+ result.z:=GPUInstanceData^.ColorKeyG.z;
+ result.w:=GPUInstanceData^.ColorKeyG.w;
+end;
+
+procedure TpvScene3D.TInstanceData.SetColorKeyG(const aValue:TpvVector4);
+begin
+ if (GPUInstanceData^.ColorKeyG.x<>aValue.x) or
+    (GPUInstanceData^.ColorKeyG.y<>aValue.y) or
+    (GPUInstanceData^.ColorKeyG.z<>aValue.z) or
+    (GPUInstanceData^.ColorKeyG.w<>aValue.w) then begin
+  GPUInstanceData^.ColorKeyG.x:=aValue.x;
+  GPUInstanceData^.ColorKeyG.y:=aValue.y;
+  GPUInstanceData^.ColorKeyG.z:=aValue.z;
+  GPUInstanceData^.ColorKeyG.w:=aValue.w;
+ end;
+end;
+
+function TpvScene3D.TInstanceData.GetColorKeyB:TpvVector4;
+begin
+ result.x:=GPUInstanceData^.ColorKeyB.x;
+ result.y:=GPUInstanceData^.ColorKeyB.y;
+ result.z:=GPUInstanceData^.ColorKeyB.z;
+ result.w:=GPUInstanceData^.ColorKeyB.w;
+end;
+
+procedure TpvScene3D.TInstanceData.SetColorKeyB(const aValue:TpvVector4);
+begin
+ if (GPUInstanceData^.ColorKeyB.x<>aValue.x) or
+    (GPUInstanceData^.ColorKeyB.y<>aValue.y) or
+    (GPUInstanceData^.ColorKeyB.z<>aValue.z) or
+    (GPUInstanceData^.ColorKeyB.w<>aValue.w) then begin
+  GPUInstanceData^.ColorKeyB.x:=aValue.x;
+  GPUInstanceData^.ColorKeyB.y:=aValue.y;
+  GPUInstanceData^.ColorKeyB.z:=aValue.z;
+  GPUInstanceData^.ColorKeyB.w:=aValue.w;
+ end;
+end;
+
+function TpvScene3D.TInstanceData.GetColorKeyA:TpvVector4;
+begin
+ result.x:=GPUInstanceData^.ColorKeyA.x;
+ result.y:=GPUInstanceData^.ColorKeyA.y;
+ result.z:=GPUInstanceData^.ColorKeyA.z;
+ result.w:=GPUInstanceData^.ColorKeyA.w;
+end;
+
+procedure TpvScene3D.TInstanceData.SetColorKeyA(const aValue:TpvVector4);
+begin
+ if (GPUInstanceData^.ColorKeyA.x<>aValue.x) or
+    (GPUInstanceData^.ColorKeyA.y<>aValue.y) or
+    (GPUInstanceData^.ColorKeyA.z<>aValue.z) or
+    (GPUInstanceData^.ColorKeyA.w<>aValue.w) then begin
+  GPUInstanceData^.ColorKeyA.x:=aValue.x;
+  GPUInstanceData^.ColorKeyA.y:=aValue.y;
+  GPUInstanceData^.ColorKeyA.z:=aValue.z;
+  GPUInstanceData^.ColorKeyA.w:=aValue.w;
  end;
 end;
 
