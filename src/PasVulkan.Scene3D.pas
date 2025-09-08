@@ -1293,6 +1293,7 @@ type EpvScene3D=class(Exception);
                      ForceRayOpaque:boolean;
                      NoWetness:boolean;
                      ExtendedWetness:boolean;
+                     ColorKeys:boolean;
                      NormalTexture:TTextureReference;
                      NormalTextureScale:TpvFloat;
                      OcclusionTexture:TTextureReference;
@@ -1327,6 +1328,7 @@ type EpvScene3D=class(Exception);
                      ForceRayOpaque:false;
                      NoWetness:false;
                      ExtendedWetness:false;
+                     ColorKeys:false;
                      NormalTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      NormalTextureScale:1.0;
                      OcclusionTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
@@ -9506,6 +9508,7 @@ begin
   fData.ForceRayOpaque:=(Flags and 4)<>0;
   fData.NoWetness:=(Flags and 8)<>0;
   fData.ExtendedWetness:=(Flags and 16)<>0;
+  fData.ColorKeys:=(Flags and 32)<>0;
 
   fData.AlphaCutOff:=StreamIO.ReadFloat;
 
@@ -9845,6 +9848,9 @@ begin
   if fData.ExtendedWetness then begin
    Flags:=Flags or 16;
   end;
+  if fData.ColorKeys then begin
+   Flags:=Flags or 32;
+  end;
   StreamIO.WriteUInt32(Flags);
 
   StreamIO.WriteFloat(fData.AlphaCutOff);
@@ -10092,6 +10098,7 @@ begin
   fData.ForceRayOpaque:=pos('_forcerayopaque',LowerCaseName)<>0;
   fData.NoWetness:=pos('_nowetness',LowerCaseName)<>0;
   fData.ExtendedWetness:=pos('_extendedwetness',LowerCaseName)<>0;
+  fData.ColorKeys:=pos('_colorkeys',LowerCaseName)<>0;
 
   begin
    fData.AlphaCutOff:=aSourceMaterial.AlphaCutOff;
@@ -10606,6 +10613,10 @@ begin
  fShaderData:=DefaultShaderData;
 
  fShaderData.Flags:=0;
+
+ if fData.ColorKeys then begin
+  fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 25);
+ end;
 
  if fData.ExtendedWetness then begin
   fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 26);

@@ -537,7 +537,7 @@ void main() {
           metallic = metallicRoughness.x;
           perceptualRoughness = metallicRoughness.y;
           baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
-          if((inInstanceDataIndex > 0u) && ((flags & (1u << 30u)) != 0u)){
+          if((inInstanceDataIndex > 0u) && ((flags & (1u << 25u)) != 0u)){
             applyMaterialInstanceDataEffect(uint(inInstanceDataIndex), baseColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false);
           }
           vec3 specularColorFactor = material.specularFactor.xyz;
@@ -555,7 +555,7 @@ void main() {
           ior = 0.0;
           vec4 specularGlossiness = textureFetch(1, vec4(1.0), true) * vec4(material.specularFactor.xyz, material.metallicRoughnessNormalScaleOcclusionStrengthFactor.y);
           baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
-          if((inInstanceDataIndex > 0u) && ((flags & (1u << 30u)) != 0u)){
+          if((inInstanceDataIndex > 0u) && ((flags & (1u << 25u)) != 0u)){
             applyMaterialInstanceDataEffect(uint(inInstanceDataIndex), baseColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false);
           }         
           perceptualRoughness = clamp(1.0 - specularGlossiness.w, 1e-3, 1.0);
@@ -934,7 +934,7 @@ void main() {
     }
     case smUnlit: {
       color = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
-      if((inInstanceDataIndex > 0u) && ((flags & (1u << 30u)) != 0u)){
+      if((inInstanceDataIndex > 0u) && ((flags & (1u << 25u)) != 0u)){
         applyMaterialInstanceDataEffect(uint(inInstanceDataIndex), color, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false);
       }      
       color *= vec2((litIntensity * 0.25) + 0.75, 1.0).xxxy;
