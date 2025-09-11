@@ -11375,9 +11375,7 @@ end;
 procedure TpvApplication.SetNextScreen(const aNextScreen:TpvApplicationScreen);
 begin
  if (fScreen<>aNextScreen) and (fNextScreen<>aNextScreen) then begin
-  if assigned(fNextScreen) then begin
-   fNextScreen.Free;
-  end;
+  FreeAndNil(fNextScreen);
   fNextScreen:=aNextScreen;
   fHasNewNextScreen:=true;
  end;
@@ -12358,6 +12356,8 @@ var Index,Counter,Tries:TpvInt32;
     OK,Found:boolean;
     DoSkipNextFrameForRendering,ReadyForSwapChainLatency:boolean;
     CurrentJobWorkerThread:TPasMPJobWorkerThread;
+    LocalNextScreen:TpvApplicationScreen;
+    LocalNextScreenClass:TpvApplicationScreenClass;
 begin
 
  if assigned(fPasMPInstance.Profiler) then begin
@@ -12486,15 +12486,17 @@ begin
 
  if fHasNewNextScreen then begin
   fHasNewNextScreen:=false;
-  if assigned(fNextScreenClass) then begin
-   if not (assigned(fScreen) and (fScreen is fNextScreenClass)) then begin
-    SetScreen(fNextScreenClass.Create);
-   end;
-  end else if fScreen<>fNextScreen then begin
-   SetScreen(fNextScreen);
-  end;
+  LocalNextScreen:=fNextScreen;
+  LocalNextScreenClass:=fNextScreenClass;
   fNextScreen:=nil;
   fNextScreenClass:=nil;
+  if assigned(LocalNextScreenClass) then begin
+   if not (assigned(fScreen) and (fScreen is LocalNextScreenClass)) then begin
+    SetScreen(LocalNextScreenClass.Create);
+   end;
+  end else if fScreen<>LocalNextScreen then begin
+   SetScreen(LocalNextScreen);
+  end;
  end;
 
  if fCurrentMaximized<>TpvInt32(fMaximized) then begin
