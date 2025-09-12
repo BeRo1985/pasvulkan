@@ -28566,7 +28566,11 @@ begin
   fAccelerationStructureInputBufferUsageFlags:=TVkBufferUsageFlags(0);
  end;
 
+{$ifdef PasVulkanLowMem}
+ fPlanetSingleBuffers:=true;
+{$else}
  fPlanetSingleBuffers:=false;
+{$endif}
 
  fMeshGenerationCounter:=1;
 
