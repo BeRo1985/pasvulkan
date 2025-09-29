@@ -18,6 +18,7 @@ struct Material {
   vec4 clearcoatFactorClearcoatRoughnessFactor;
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
   vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
+  vec4 diffuseTransmissionColorFactor;
   uvec4 volumeAttenuationColorAnisotropyStrengthAnisotropyRotation;
   uvec4 dispersionShadowCastMaskShadowReceiveMaskUnused;
   uvec4 hologramBlock0;
@@ -71,6 +72,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
   vec4 clearcoatFactorClearcoatRoughnessFactor;
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
   vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
+  vec4 diffuseTransmissionColorFactor;
   uvec4 volumeAttenuationColorAnisotropyStrengthAnisotropyRotation;
   uvec4 dispersionShadowCastMaskShadowReceiveMaskUnused;
   uvec4 hologramBlock0;

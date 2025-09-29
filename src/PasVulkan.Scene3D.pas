@@ -198,6 +198,8 @@ type EpvScene3D=class(Exception);
               PBRTransmissionTexture=14,
               PBRVolumeThicknessTexture=15,
               PBRAnisotropyTexture=16,
+              PBRDiffuseTransmissionTexture=17,
+              PBRDiffuseTransmissionColorTexture=18,
               Dummy=256
              );
             TTextureIndex=
@@ -222,7 +224,9 @@ type EpvScene3D=class(Exception);
               PBRSpecularGlossinessDiffuseTexture=16,
               PBRSpecularGlossinessSpecularGlossinessTexture=17,
               PBRUnlitColorTexture=18,
-              PBRAnisotropyTexture=19
+              PBRAnisotropyTexture=19,
+              PBRDiffuseTransmissionTexture=20,
+              PBRDiffuseTransmissionColorTexture=21
              );
             TVertexAttributeBindingLocations=class
              public
@@ -536,8 +540,8 @@ type EpvScene3D=class(Exception);
              ColorKeyB:TpvHalfFloatVector4;
              ColorKeyA:TpvHalfFloatVector4;
 
-             Unused0:TpvUInt32;
-             Unused1:TpvUInt32;
+             Unused0:array[0..3] of TpvUInt32;
+             Unused1:array[0..3] of TpvUInt32;
 
             end;
             PGPUInstanceData=^TGPUInstanceData;
@@ -1177,6 +1181,14 @@ type EpvScene3D=class(Exception);
                     Factor:TpvFloat;
                     Texture:TTextureReference;
                    end;
+                   TDiffuseTransmission=record
+                    Active:boolean;
+                    Opaque:boolean;
+                    Factor:TpvFloat;
+                    ColorFactor:TpvVector3;
+                    Texture:TTextureReference;
+                    ColorTexture:TTextureReference;
+                   end;
                    TVolume=record
                     Active:boolean;
                     ThicknessFactor:TpvFloat;
@@ -1224,6 +1236,7 @@ type EpvScene3D=class(Exception);
                       ClearcoatFactorClearcoatRoughnessFactor:TpvVector4;
                       IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:TpvVector4;
                       IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance:TpvVector4;
+                      DiffuseTransmissionColorFactor:TpvVector4;
                       // uvec4 Begin
                        VolumeAttenuationColor:TpvVector3;
                        AnisotropyStrength:TpvUInt16; // Half float
@@ -1308,6 +1321,7 @@ type EpvScene3D=class(Exception);
                      IOR:TpvFloat;
                      Iridescence:TIridescence;
                      Transmission:TTransmission;
+                     DiffuseTransmission:TDiffuseTransmission;
                      Volume:TVolume;
                      Anisotropy:TAnisotropy;
                      Dispersion:TDispersion;
@@ -1387,6 +1401,14 @@ type EpvScene3D=class(Exception);
                       Factor:0.0;
                       Texture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      );
+                     DiffuseTransmission:(
+                      Active:false;
+                      Opaque:false;
+                      Factor:0.0;
+                      ColorFactor:(x:1.0;y:1.0;z:1.0);
+                      Texture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
+                      ColorTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
+                     );
                      Volume:(
                       Active:false;
                       ThicknessFactor:0.0;
@@ -1435,6 +1457,7 @@ type EpvScene3D=class(Exception);
                      ClearcoatFactorClearcoatRoughnessFactor:(x:0.0;y:0.0;z:1.0;w:1.0);
                      IORIridescenceFactorIridescenceIorIridescenceThicknessMinimum:(x:1.5;y:0.0;z:1.3;w:100.0);
                      IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance:(x:400.0;y:0.0;z:0.0;w:Infinity);
+                     DiffuseTransmissionColorFactor:(x:1.0;y:1.0;z:1.0;w:0.0);
                      VolumeAttenuationColor:(x:1.0;y:1.0;z:1.0);
                      AnisotropyStrength:0;
                      AnisotropyRotation:0;
@@ -2019,6 +2042,8 @@ type EpvScene3D=class(Exception);
                                    PointerMaterialPBRSpecularFactor,
                                    PointerMaterialPBRSpecularColorFactor,
                                    PointerMaterialPBRTransmissionFactor,
+                                   PointerMaterialPBRDiffuseTransmissionFactor,
+                                   PointerMaterialPBRDiffuseTransmissionColorFactor,
                                    PointerMaterialPBRVolumeThicknessFactor,
                                    PointerMaterialPBRVolumeAttenuationDistance,
                                    PointerMaterialPBRVolumeAttenuationColor,
@@ -2076,6 +2101,8 @@ type EpvScene3D=class(Exception);
                                     TTarget.PointerMaterialPBRSpecularFactor,
                                     TTarget.PointerMaterialPBRSpecularColorFactor,
                                     TTarget.PointerMaterialPBRTransmissionFactor,
+                                    TTarget.PointerMaterialPBRDiffuseTransmissionFactor,
+                                    TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor,
                                     TTarget.PointerMaterialPBRVolumeThicknessFactor,
                                     TTarget.PointerMaterialPBRVolumeAttenuationDistance,
                                     TTarget.PointerMaterialPBRVolumeAttenuationColor,
@@ -2791,6 +2818,8 @@ type EpvScene3D=class(Exception);
                                    DefaultMaterialPBRSpecularFactor,
                                    DefaultMaterialPBRSpecularColorFactor,
                                    DefaultMaterialPBRTransmissionFactor,
+                                   DefaultMaterialPBRDiffuseTransmissionFactor,
+                                   DefaultMaterialPBRDiffuseTransmissionColorFactor,
                                    DefaultMaterialPBRVolumeThicknessFactor,
                                    DefaultMaterialPBRVolumeAttenuationDistance,
                                    DefaultMaterialPBRVolumeAttenuationColor,
@@ -2838,6 +2867,8 @@ type EpvScene3D=class(Exception);
                                    MaterialPBRSpecularFactor,
                                    MaterialPBRSpecularColorFactor,
                                    MaterialPBRTransmissionFactor,
+                                   MaterialPBRDiffuseTransmissionFactor,
+                                   MaterialPBRDiffuseTransmissionColorFactor,
                                    MaterialPBRVolumeThicknessFactor,
                                    MaterialPBRVolumeAttenuationDistance,
                                    MaterialPBRVolumeAttenuationColor,
@@ -2893,6 +2924,8 @@ type EpvScene3D=class(Exception);
                                      MaterialPBRSpecularFactor:TpvFloat;
                                      MaterialPBRSpecularColorFactor:TpvVector3;
                                      MaterialPBRTransmissionFactor:TpvFloat;
+                                     MaterialPBRDiffuseTransmissionFactor:TpvFloat;
+                                     MaterialPBRDiffuseTransmissionColorFactor:TpvVector3;
                                      MaterialPBRVolumeThicknessFactor:TpvFloat;
                                      MaterialPBRVolumeAttenuationDistance:TpvFloat;
                                      MaterialPBRVolumeAttenuationColor:TpvVector3;
@@ -3666,7 +3699,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($00000008);
+             PVMFVersion=TpVUInt32($00000009);
              ProceduralTextureImageHookDefault:TProceduralTextureImageHook=(Hook:nil;AllocateTexture:true);
              EmptyGPUInstanceData:TGPUInstanceData=
               (
@@ -3688,8 +3721,8 @@ type EpvScene3D=class(Exception);
                ColorKeyB:(RawIntComponents:(0,0,0,0));
                ColorKeyA:(RawIntComponents:(0,0,0,0));
 
-               Unused0:0;
-               Unused1:0;
+               Unused0:(0,0,0,0);
+               Unused1:(0,0,0,0);
 
               );
       private
@@ -8838,6 +8871,12 @@ begin
   TpvScene3D.TTextureIndex.PBRTransmissionTexture:begin
    result:=@Transmission.Texture.Transform;
   end;
+  TpvScene3D.TTextureIndex.PBRDiffuseTransmissionTexture:begin
+   result:=@DiffuseTransmission.Texture.Transform;
+  end;
+  TpvScene3D.TTextureIndex.PBRDiffuseTransmissionColorTexture:begin
+   result:=@DiffuseTransmission.ColorTexture.Transform;
+  end;
   TpvScene3D.TTextureIndex.PBRVolumeThicknessTexture:begin
    result:=@Volume.ThicknessTexture.Transform;
   end;
@@ -8990,6 +9029,20 @@ begin
    fData.Transmission.Texture.Texture.DecRef;
   finally
    fData.Transmission.Texture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.DiffuseTransmission.Texture.Texture) then begin
+  try
+   fData.DiffuseTransmission.Texture.Texture.DecRef;
+  finally
+   fData.DiffuseTransmission.Texture.Texture:=nil;
+  end;
+ end;
+ if assigned(fData.DiffuseTransmission.ColorTexture.Texture) then begin
+  try
+   fData.DiffuseTransmission.ColorTexture.Texture.DecRef;
+  finally
+   fData.DiffuseTransmission.ColorTexture.Texture:=nil;
   end;
  end;
  if assigned(fData.Volume.ThicknessTexture.Texture) then begin
@@ -9190,6 +9243,20 @@ begin
       fData.Transmission.Texture.Texture:=nil;
      end;
     end;
+    if assigned(fData.DiffuseTransmission.Texture.Texture) then begin
+     try
+      fData.DiffuseTransmission.Texture.Texture.DecRef;
+     finally
+      fData.DiffuseTransmission.Texture.Texture:=nil;
+     end;
+    end;
+    if assigned(fData.DiffuseTransmission.ColorTexture.Texture) then begin
+     try
+      fData.DiffuseTransmission.ColorTexture.Texture.DecRef;
+     finally
+      fData.DiffuseTransmission.ColorTexture.Texture:=nil;
+     end;
+    end;
     if assigned(fData.Volume.ThicknessTexture.Texture) then begin
      try
       fData.Volume.ThicknessTexture.Texture.DecRef;
@@ -9353,6 +9420,18 @@ begin
         fSceneInstance.fWhiteTexture.Upload;
        end;
 
+       if assigned(fData.DiffuseTransmission.Texture.Texture) then begin
+        fData.DiffuseTransmission.Texture.Texture.Upload;
+       end else begin
+        fSceneInstance.fWhiteTexture.Upload;
+       end;
+
+       if assigned(fData.DiffuseTransmission.ColorTexture.Texture) then begin
+        fData.DiffuseTransmission.ColorTexture.Texture.Upload;
+       end else begin
+        fSceneInstance.fWhiteTexture.Upload;
+       end;
+
        if assigned(fData.Volume.ThicknessTexture.Texture) then begin
         fData.Volume.ThicknessTexture.Texture.Upload;
        end else begin
@@ -9462,6 +9541,12 @@ begin
    end;
    if assigned(fData.Transmission.Texture.Texture) then begin
     fData.Transmission.Texture.Texture.IncRef;
+   end;
+   if assigned(fData.DiffuseTransmission.Texture.Texture) then begin
+    fData.DiffuseTransmission.Texture.Texture.IncRef;
+   end;
+   if assigned(fData.DiffuseTransmission.ColorTexture.Texture) then begin
+    fData.DiffuseTransmission.ColorTexture.Texture.IncRef;
    end;
    if assigned(fData.Volume.ThicknessTexture.Texture) then begin
     fData.Volume.ThicknessTexture.Texture.IncRef;
@@ -9647,6 +9732,24 @@ begin
 
   begin
 
+   // Diffuse Transmission
+
+   fData.DiffuseTransmission.Active:=StreamIO.ReadBoolean;
+
+   fData.DiffuseTransmission.Opaque:=StreamIO.ReadBoolean;
+
+   fData.DiffuseTransmission.Factor:=StreamIO.ReadFloat;
+
+   fData.DiffuseTransmission.ColorFactor:=StreamIO.ReadVector3;
+
+   fData.DiffuseTransmission.Texture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+   fData.DiffuseTransmission.ColorTexture.LoadFromStream(aStream,aTextures,fSceneInstance);
+
+  end;
+
+  begin
+
    // Volume
 
    fData.Volume.Active:=StreamIO.ReadBoolean;
@@ -9808,6 +9911,14 @@ begin
 
  if assigned(fData.Transmission.Texture.Texture) then begin
   fData.Transmission.Texture.Texture.PrepareSaveToStream(aImages,aSamplers,aTextures);
+ end;
+
+ if assigned(fData.DiffuseTransmission.Texture.Texture) then begin
+  fData.DiffuseTransmission.Texture.Texture.PrepareSaveToStream(aImages,aSamplers,aTextures);
+ end;
+
+ if assigned(fData.DiffuseTransmission.ColorTexture.Texture) then begin
+  fData.DiffuseTransmission.ColorTexture.Texture.PrepareSaveToStream(aImages,aSamplers,aTextures);
  end;
 
  if assigned(fData.Volume.ThicknessTexture.Texture) then begin
@@ -9991,6 +10102,24 @@ begin
 
   begin
 
+   // Diffuse Transmission
+
+   StreamIO.WriteBoolean(fData.DiffuseTransmission.Active);
+
+   StreamIO.WriteBoolean(fData.DiffuseTransmission.Opaque);
+
+   StreamIO.WriteFloat(fData.DiffuseTransmission.Factor);
+
+   StreamIO.WriteVector3(fData.DiffuseTransmission.ColorFactor);
+
+   fData.DiffuseTransmission.Texture.SaveToStream(aStream,aTextures);
+
+   fData.DiffuseTransmission.Texture.SaveToStream(aStream,aTextures);
+
+  end;
+
+  begin
+
    // Volume
 
    StreamIO.WriteBoolean(fData.Volume.Active);
@@ -10082,6 +10211,7 @@ var Index:TpvSizeInt;
     JSONItem:TPasJSONItem;
     JSONObject:TPasJSONItemObject;
     LowerCaseName:TpvUTF8String;
+    IsOpaque:Boolean;
 begin
 
  fName:=aSourceMaterial.Name;
@@ -10113,6 +10243,7 @@ begin
      fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Blend;
     end;
    end;
+   IsOpaque:=fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque;
    fData.DoubleSided:=aSourceMaterial.DoubleSided;
    fData.EmissiveFactor:=TpvVector4.InlineableCreate(aSourceMaterial.EmissiveFactor[0],aSourceMaterial.EmissiveFactor[1],aSourceMaterial.EmissiveFactor[2],1.0);
    if (aSourceMaterial.EmissiveTexture.Index>=0) and (aSourceMaterial.EmissiveTexture.Index<aTextureMap.Count) then begin
@@ -10447,7 +10578,7 @@ begin
     JSONObject:=TPasJSONItemObject(JSONItem);
     fSceneInstance.fHasTransmission:=true;
     fData.Transmission.Active:=true;
-    if fData.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque then begin
+    if IsOpaque then begin
      fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Blend;
      fData.Transmission.Opaque:=true;
     end else begin
@@ -10467,6 +10598,72 @@ begin
      end;
      fData.Transmission.Texture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
      fData.Transmission.Texture.Transform.AssignFromGLTF(fData.Transmission.Texture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+    end;
+   end;
+  end;
+
+  begin
+   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_diffuse_transmission'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    JSONObject:=TPasJSONItemObject(JSONItem);
+//  fSceneInstance.fHasTransmission:=true;
+{   if IsOpaque then begin
+     fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Blend;
+     fData.DiffuseTransmission.Opaque:=true;
+    end else begin
+     fData.DiffuseTransmission.Opaque:=false;
+    end;}
+    fData.DiffuseTransmission.Active:=true;
+    fData.DiffuseTransmission.Factor:=TPasJSON.GetNumber(JSONObject.Properties['diffuseTransmissionFactor'],0.0);
+    JSONItem:=JSONObject.Properties['diffuseTransmissionColorFactor'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) then begin
+     if TPasJSONItemArray(JSONItem).Count>0 then begin
+      fData.DiffuseTransmission.ColorFactor.x:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[0],1.0);
+     end else begin
+      fData.DiffuseTransmission.ColorFactor.x:=1.0;
+     end;
+     if TPasJSONItemArray(JSONItem).Count>1 then begin
+      fData.DiffuseTransmission.ColorFactor.y:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[1],1.0);
+     end else begin
+      fData.DiffuseTransmission.ColorFactor.y:=1.0;
+     end;
+     if TPasJSONItemArray(JSONItem).Count>2 then begin
+      fData.DiffuseTransmission.ColorFactor.z:=TPasJSON.GetNumber(TPasJSONItemArray(JSONItem).Items[2],1.0);
+     end else begin
+      fData.DiffuseTransmission.ColorFactor.z:=1.0;
+     end;
+    end else begin
+     fData.DiffuseTransmission.ColorFactor.x:=1.0;
+     fData.DiffuseTransmission.ColorFactor.y:=1.0;
+     fData.DiffuseTransmission.ColorFactor.z:=1.0;
+    end;
+    JSONItem:=JSONObject.Properties['diffuseTransmissionTexture'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.DiffuseTransmission.Texture.Texture:=aTextureMap[Index];
+      if assigned(fData.DiffuseTransmission.Texture.Texture) then begin
+       fData.DiffuseTransmission.Texture.Texture.IncRef;
+      end;
+     end else begin
+      fData.DiffuseTransmission.Texture.Texture:=nil;
+     end;
+     fData.DiffuseTransmission.Texture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+     fData.DiffuseTransmission.Texture.Transform.AssignFromGLTF(fData.DiffuseTransmission.Texture,TPasJSONItemObject(JSONItem).Properties['extensions']);
+    end;
+    JSONItem:=JSONObject.Properties['diffuseTransmissionColorTexture'];
+    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+     Index:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['index'],-1);
+     if (Index>=0) and (Index<aTextureMap.Count) then begin
+      fData.DiffuseTransmission.ColorTexture.Texture:=aTextureMap[Index];
+      if assigned(fData.DiffuseTransmission.Texture.Texture) then begin
+       fData.DiffuseTransmission.ColorTexture.Texture.IncRef;
+      end;
+     end else begin
+      fData.DiffuseTransmission.ColorTexture.Texture:=nil;
+     end;
+     fData.DiffuseTransmission.ColorTexture.TexCoord:=TPasJSON.GetInt64(TPasJSONItemObject(JSONItem).Properties['texCoord'],0);
+     fData.DiffuseTransmission.ColorTexture.Transform.AssignFromGLTF(fData.DiffuseTransmission.ColorTexture,TPasJSONItemObject(JSONItem).Properties['extensions']);
     end;
    end;
   end;
@@ -10649,7 +10846,8 @@ begin
   TpvScene3D.TMaterial.TAlphaMode.Blend:begin
    fShaderData.AlphaCutOff:=0.0;
    fShaderData.Flags:=fShaderData.Flags or (1 shl 5);
-   if fData.Transmission.Active and fData.Transmission.Opaque then begin
+   if (fData.Transmission.Active and fData.Transmission.Opaque){or
+      (fData.DiffuseTransmission.Active and fData.DiffuseTransmission.Opaque)}then begin
     fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 31);
    end;
   end;
@@ -10876,6 +11074,21 @@ begin
   PpvHalfFloat(pointer(@fShaderData.HologramGlowSpeed))^:=fData.Hologram.GlowSpeed;
   PpvHalfFloat(pointer(@fShaderData.HologramGlowMin))^:=fData.Hologram.GlowMin;
   PpvHalfFloat(pointer(@fShaderData.HologramGlowMax))^:=fData.Hologram.GlowMax;
+ end;
+
+ if fData.DiffuseTransmission.Active then begin
+  fShaderData.Flags:=fShaderData.Flags or (1 shl 16);
+  fShaderData.DiffuseTransmissionColorFactor:=TpvVector4.InlineableCreate(fData.DiffuseTransmission.ColorFactor,fData.DiffuseTransmission.Factor);
+  if assigned(fData.DiffuseTransmission.Texture.Texture) then begin
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 17);
+   fShaderData.Textures[17]:=(fData.DiffuseTransmission.Texture.Texture.ID and $ffff) or ((fData.DiffuseTransmission.Texture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[17]:=fData.DiffuseTransmission.Texture.Transform.ToAlignedMatrix3x2;
+  end;
+  if assigned(fData.DiffuseTransmission.ColorTexture.Texture) then begin
+   fShaderData.Textures0:=fShaderData.Textures0 or (1 shl 18);
+   fShaderData.Textures[18]:=(fData.DiffuseTransmission.ColorTexture.Texture.ID and $ffff) or ((fData.DiffuseTransmission.ColorTexture.TexCoord and $f) shl 16);
+   fShaderData.TextureTransforms[18]:=fData.DiffuseTransmission.ColorTexture.Transform.ToAlignedMatrix3x2;
+  end;
  end;
 
  TPasMPInterlocked.Increment(fGeneration);
@@ -12884,6 +13097,12 @@ begin
            if TargetPointerStrings[4]='transmissionTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRTransmissionTexture;
            end;
+          end else if TargetPointerStrings[3]='pbrDiffuseTransmission' then begin
+           if TargetPointerStrings[4]='diffuseTransmissionTexture' then begin
+            TextureRawIndex:=TpvScene3D.TTextureIndex.PBRDiffuseTransmissionTexture;
+           end else if TargetPointerStrings[4]='diffuseTransmissionColorTexture' then begin
+            TextureRawIndex:=TpvScene3D.TTextureIndex.PBRDiffuseTransmissionColorTexture;
+           end;
           end else if TargetPointerStrings[3]='pbrVolume' then begin
            if TargetPointerStrings[4]='thicknessTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRVolumeThicknessTexture;
@@ -12946,6 +13165,14 @@ begin
          if length(TargetPointerStrings)>4 then begin
           if TargetPointerStrings[4]='transmissionFactor' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor;
+          end;
+         end;
+        end else if TargetPointerStrings[3]='KHR_materials_diffuse_transmission' then begin
+         if length(TargetPointerStrings)>4 then begin
+          if TargetPointerStrings[4]='diffuseTransmissionFactor' then begin
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor;
+          end else if TargetPointerStrings[4]='diffuseTransmissionColorFactor' then begin
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor;
           end;
          end;
         end else if TargetPointerStrings[3]='KHR_materials_iridescence' then begin
@@ -13486,6 +13713,7 @@ begin
     TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
     TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor,
     TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor,
     TAnimation.TChannel.TTarget.PointerMaterialHologramDirection,
     TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor,
     TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor,
@@ -13543,6 +13771,7 @@ begin
     TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor,
     TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor,
     TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor,
     TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
     TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
     TAnimation.TChannel.TTarget.PointerTextureRotation,
@@ -18114,6 +18343,8 @@ begin
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
@@ -21944,6 +22175,8 @@ var Index,AnimatedTextureIndex:TpvSizeInt;
     MaterialPBRSpecularFactorSum:TpvScene3D.TScalarSum;
     MaterialPBRSpecularColorFactorSum:TpvScene3D.TVector3Sum;
     MaterialPBRTransmissionFactorSum:TpvScene3D.TScalarSum;
+    MaterialPBRDiffuseTransmissionFactorSum:TpvScene3D.TScalarSum;
+    MaterialPBRDiffuseTransmissionColorFactorSum:TpvScene3D.TVector3Sum;
     MaterialPBRVolumeThicknessFactorSum:TpvScene3D.TScalarSum;
     MaterialPBRVolumeAttenuationDistanceSum:TpvScene3D.TScalarSum;
     MaterialPBRVolumeAttenuationColorSum:TpvScene3D.TVector3Sum;
@@ -22002,6 +22235,8 @@ begin
   MaterialPBRSpecularFactorSum.Clear;
   MaterialPBRSpecularColorFactorSum.Clear;
   MaterialPBRTransmissionFactorSum.Clear;
+  MaterialPBRDiffuseTransmissionFactorSum.Clear;
+  MaterialPBRDiffuseTransmissionColorFactorSum.Clear;
   MaterialPBRVolumeThicknessFactorSum.Clear;
   MaterialPBRVolumeAttenuationDistanceSum.Clear;
   MaterialPBRVolumeAttenuationColorSum.Clear;
@@ -22064,6 +22299,8 @@ begin
       MaterialPBRSpecularFactorSum.Add(fData.PBRMetallicRoughness.SpecularFactor,Factor,Additive);
       MaterialPBRSpecularColorFactorSum.Add(fData.PBRMetallicRoughness.SpecularColorFactor,Factor,Additive);
       MaterialPBRTransmissionFactorSum.Add(fData.Transmission.Factor,Factor,Additive);
+      MaterialPBRDiffuseTransmissionFactorSum.Add(fData.DiffuseTransmission.Factor,Factor,Additive);
+      MaterialPBRDiffuseTransmissionColorFactorSum.Add(fData.DiffuseTransmission.ColorFactor,Factor,Additive);
       MaterialPBRVolumeThicknessFactorSum.Add(fData.Volume.ThicknessFactor,Factor,Additive);
       MaterialPBRVolumeAttenuationColorSum.Add(fData.Volume.AttenuationColor,Factor,Additive);
       MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor,Additive);
@@ -22238,6 +22475,20 @@ begin
         MaterialPBRTransmissionFactorSum.Add(fData.Transmission.Factor,Factor,Additive);
        end else begin
         MaterialPBRTransmissionFactorSum.Add(Overwrite^.MaterialPBRTransmissionFactor,Factor,Additive);
+       end;
+      end;
+      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDiffuseTransmissionFactor in Overwrite^.Flags then begin
+        MaterialPBRDiffuseTransmissionFactorSum.Add(fData.DiffuseTransmission.Factor,Factor,Additive);
+       end else begin
+        MaterialPBRDiffuseTransmissionFactorSum.Add(Overwrite^.MaterialPBRDiffuseTransmissionFactor,Factor,Additive);
+       end;
+      end;
+      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionColorFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDiffuseTransmissionColorFactor in Overwrite^.Flags then begin
+        MaterialPBRDiffuseTransmissionColorFactorSum.Add(fData.DiffuseTransmission.ColorFactor,Factor,Additive);
+       end else begin
+        MaterialPBRDiffuseTransmissionColorFactorSum.Add(Overwrite^.MaterialPBRDiffuseTransmissionColorFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeThicknessFactor in Overwrite^.Flags then begin
@@ -22458,6 +22709,8 @@ begin
   fWorkData.PBRMetallicRoughness.SpecularFactor:=MaterialPBRSpecularFactorSum.Get(fData.PBRMetallicRoughness.SpecularFactor);
   fWorkData.PBRMetallicRoughness.SpecularColorFactor:=MaterialPBRSpecularColorFactorSum.Get(fData.PBRMetallicRoughness.SpecularColorFactor);
   fWorkData.Transmission.Factor:=MaterialPBRTransmissionFactorSum.Get(fData.Transmission.Factor);
+  fWorkData.DiffuseTransmission.Factor:=MaterialPBRDiffuseTransmissionFactorSum.Get(fData.DiffuseTransmission.Factor);
+  fWorkData.DiffuseTransmission.ColorFactor:=MaterialPBRDiffuseTransmissionColorFactorSum.Get(fData.DiffuseTransmission.ColorFactor);
   fWorkData.Volume.ThicknessFactor:=MaterialPBRVolumeThicknessFactorSum.Get(fData.Volume.ThicknessFactor);
   fWorkData.Volume.AttenuationColor:=MaterialPBRVolumeAttenuationColorSum.Get(fData.Volume.AttenuationColor);
   fWorkData.Volume.AttenuationDistance:=MaterialPBRVolumeAttenuationDistanceSum.Get(fData.Volume.AttenuationDistance);
@@ -25289,6 +25542,8 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
@@ -25463,6 +25718,16 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
              ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
              Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRTransmissionFactor);
              MaterialOverwrite^.MaterialPBRTransmissionFactor:=Scalar;
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor:begin
+             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionFactor);
+             MaterialOverwrite^.MaterialPBRDiffuseTransmissionFactor:=Scalar;
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor:begin
+             ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionColorFactor);
+             MaterialOverwrite^.MaterialPBRDiffuseTransmissionColorFactor:=Vector3;
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor:begin
              ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
@@ -25870,6 +26135,8 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
@@ -26011,6 +26278,14 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor:begin
              MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRTransmissionFactor,
                                                                  TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRTransmissionFactor];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor:begin
+             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDiffuseTransmissionFactor,
+                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionFactor];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor:begin
+             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDiffuseTransmissionColorFactor,
+                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionColorFactor];
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor:begin
              MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRVolumeThicknessFactor,
@@ -34664,6 +34939,8 @@ begin
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor,
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,

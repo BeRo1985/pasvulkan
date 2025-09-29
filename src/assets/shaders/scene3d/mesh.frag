@@ -286,11 +286,16 @@ uint flags, shadingModel;
 
 #if defined(TRANSMISSION)
 float transmissionFactor = 0.0;
+float volumeDispersion = 0.0;
+#endif
+
 float volumeThickness = 0.0;
 float volumeAttenuationDistance = 1.0 / 0.0; // +INF
 vec3 volumeAttenuationColor = vec3(1.0); 
-float volumeDispersion = 0.0;
-#endif
+
+float diffuseTransmissionFactor = 0.0;
+vec3 diffuseTransmissionColorFactor = vec3(1.0);
+float diffuseTransmissionThickness = 1.0; 
 
 #include "blendnormals.glsl"
 
@@ -708,19 +713,34 @@ void main() {
         }
       }
 
+      // Transmission, diffuse transmission and volume 
+      if ((flags & ((1u << 11u) | (1u << 16u))) != 0u) {
+
 #if defined(TRANSMISSION)
-      if ((flags & (1u << 11u)) != 0u) {
-        transmissionFactor = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.y * (((textureFlags.x & (1 << 14)) != 0) ? textureFetch(14, vec4(1.0), false).x : 1.0);  
+        // Transmission
+        if ((flags & (1u << 11u)) != 0u) {
+          transmissionFactor = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.y * (((textureFlags.x & (1 << 14)) != 0) ? textureFetch(14, vec4(1.0), false).x : 1.0);  
+          if((flags & (1u << 14u)) != 0u){
+            volumeDispersion = uintBitsToFloat(material.dispersionShadowCastMaskShadowReceiveMaskUnused.x);
+          }
+        }
+#endif 
+
+        // Volume
         if ((flags & (1u << 12u)) != 0u) {
           volumeThickness = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.z * (((textureFlags.x & (1 << 15)) != 0) ? textureFetch(15, vec4(1.0), false).y : 1.0);  
           volumeAttenuationDistance = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.w;        
           volumeAttenuationColor = uintBitsToFloat(material.volumeAttenuationColorAnisotropyStrengthAnisotropyRotation.xyz);        
         }
-        if((flags & (1u << 14u)) != 0u){
-          volumeDispersion = uintBitsToFloat(material.dispersionShadowCastMaskShadowReceiveMaskUnused.x);
+
+        // Diffuse transmission
+        if ((flags & (1u << 16u)) != 0u) {
+          diffuseTransmissionFactor = material.diffuseTransmissionColorFactor.w * (((textureFlags.x & (1 << 17)) != 0) ? textureFetch(17, vec4(1.0), false).x : 1.0); 
+          diffuseTransmissionColorFactor = material.diffuseTransmissionColorFactor.xyz * (((textureFlags.x & (1 << 18)) != 0) ? textureFetch(18, vec4(1.0), true).xyz : vec3(1.0));
+          diffuseTransmissionThickness = volumeThickness * dot(inModelScale.xyz, vec3(0.3333333333)); 
         }
-      }
-#endif 
+
+      }  
 
       vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0);
 
@@ -860,7 +880,19 @@ void main() {
       float iblWeight = 1.0; // for future sky occulsion 
 #endif
       vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz; 
+
+      // Diffuse transmission
+      if ((flags & (1u << 16u)) != 0u) {
+        vec3 iblDiffuseTransmission = getIBLDiffuse(-normal) * diffuseTransmissionColorFactor;
+        if((flags & (1u << 12u)) != 0u){
+          iblDiffuseTransmission = applyVolumeAttenuation(iblDiffuseTransmission, diffuseTransmissionThickness, volumeAttenuationColor, volumeAttenuationDistance);
+        }
+        iblDiffuse = mix(iblDiffuse, iblDiffuseTransmission,  diffuseTransmissionFactor);
+      }
+
 #if defined(TRANSMISSION)
+
+      // Transmission
       if ((flags & (1u << 11u)) != 0u) {
         vec3 iblSpecularTransmission = getIBLVolumeRefraction(normal.xyz, 
                                                               viewDirection,

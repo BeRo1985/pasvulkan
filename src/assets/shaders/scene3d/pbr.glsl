@@ -237,6 +237,31 @@ float albedoSheenScalingLUT(const in float NdotV, const in float sheenRoughnessF
   return textureLod(uImageBasedLightingBRDFTextures[2], vec2(NdotV, sheenRoughnessFactor), 0.0).x;  //
 }
 
+/////////////////////////////
+
+// Compute attenuated light as it travels through a volume.
+vec3 applyVolumeAttenuation(vec3 radiance, float transmissionDistance, vec3 attenuationColor, float attenuationDistance) {
+  if (isinf(attenuationDistance) || (attenuationDistance == 0.0)) {
+    // Attenuation distance is infinity (which we indicate by zero), i.e. the transmitted color is not attenuated at all.
+    return radiance;
+  } else {
+    // Compute light attenuation using Beer's law.
+#if 0    
+    vec3 attenuationCoefficient = -log(attenuationColor) / attenuationDistance;
+    vec3 transmittance = exp(-attenuationCoefficient * transmissionDistance);  // Beer's law
+#else
+    vec3 transmittance = pow(attenuationColor, vec3(transmissionDistance / attenuationDistance));  // Beer's law
+#endif
+    return transmittance * radiance;
+  }
+}
+
+vec3 getVolumeTransmissionRay(vec3 n, vec3 v, float thickness, float ior) {
+  return normalize(refract(-v, normalize(n), 1.0 / ior)) * thickness * inModelScale;
+}
+
+/////////////////////////////
+
 void doSingleLight(const in vec3 lightColor, 
                    const in vec3 lightLit, 
                    const in vec3 lightDirection, // Direction from surface point to light
@@ -283,10 +308,35 @@ void doSingleLight(const in vec3 lightColor,
   vec3 lightSheen = vec3(0.0);
   float lightAlbedoSheenScaling = 1.0; 
 
-#if defined(CAN_HAVE_EXTENDED_PBR_MATERIAL) && defined(TRANSMISSION)
+#if defined(CAN_HAVE_EXTENDED_PBR_MATERIAL)
+
+  // Diffuse transmission  
+  if ((flags & (1u << 16u)) != 0u) {
+    lightDiffuse *= 1.0 - diffuseTransmissionFactor; 
+    if(dot(normal, lightDirection) < 0.0){
+      vec3 lightDiffuseBTDF = lightIntensity * NDotL * BRDF_lambertian(diffuseTransmissionColorFactor.xyz);
+      vec3 lightMirror = normalize(lightDirection + (2.0 * dot(-lightDirection, normal) * normal));
+      float diffuseVDotH = clamp(dot(viewDirection, lightMirror), 0.0, 1.0);
+      dielectricFresnel = F_Schlick(F0Dielectric * specularWeight, F90Dielectric, abs(diffuseVDotH));
+      // Volume attenuation
+      if ((flags & (1u << 12u)) != 0u) {
+        lightDiffuseBTDF = applyVolumeAttenuation(
+          lightDiffuseBTDF, 
+          diffuseTransmissionThickness, 
+          volumeAttenuationColor, 
+          volumeAttenuationDistance
+        );
+      }
+      lightDiffuse += lightDiffuseBTDF * diffuseTransmissionFactor;
+    }
+  }
+
+#ifdef TRANSMISSION
+  // Transmission
   if ((flags & (1u << 11u)) != 0u) {
     lightDiffuse = mix(lightDiffuse, transmittedLight, transmissionFactor);
   }
+#endif
 #endif
 
   if((NDotL > 0.0) || (NDotV > 0.0)) // <= TODO: Check if this check is right, if it produces no missing light output
@@ -470,29 +520,6 @@ vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, 
 
   // Transmission BTDF
   return baseColor * D * Vis;
-}
-
-/////////////////////////////
-
-// Compute attenuated light as it travels through a volume.
-vec3 applyVolumeAttenuation(vec3 radiance, float transmissionDistance, vec3 attenuationColor, float attenuationDistance) {
-  if (isinf(attenuationDistance) || (attenuationDistance == 0.0)) {
-    // Attenuation distance is infinity (which we indicate by zero), i.e. the transmitted color is not attenuated at all.
-    return radiance;
-  } else {
-    // Compute light attenuation using Beer's law.
-#if 0    
-    vec3 attenuationCoefficient = -log(attenuationColor) / attenuationDistance;
-    vec3 transmittance = exp(-attenuationCoefficient * transmissionDistance);  // Beer's law
-#else
-    vec3 transmittance = pow(attenuationColor, vec3(transmissionDistance / attenuationDistance));  // Beer's law
-#endif
-    return transmittance * radiance;
-  }
-}
-
-vec3 getVolumeTransmissionRay(vec3 n, vec3 v, float thickness, float ior) {
-  return normalize(refract(-v, normalize(n), 1.0 / ior)) * thickness * inModelScale;
 }
 
 /////////////////////////////
