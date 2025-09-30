@@ -308,7 +308,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 #endif
             if((lightAttenuation > 0.0) 
 #ifdef CAN_HAVE_EXTENDED_PBR_MATERIAL
-               || ((flags & ((1u << 7u) | (1u << 8u))) != 0u)
+               || ((flags & ((1u << 7u) | (1u << 8u) | (1u << 16u))) != 0u)
 #endif
                ){
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
@@ -320,6 +320,11 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 #else
               vec3 transmittedLight = vec3(0.0);
 #ifdef TRANSMISSION
+              // Diffuse transmission
+              if ((flags & (1u << 16u)) != 0u) {
+              }
+
+              // Transmission
 #ifndef TRANSMISSION_FORCED
               if((flags & (1u << 11u)) != 0u) 
 #endif

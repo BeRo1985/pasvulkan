@@ -314,7 +314,8 @@ void doSingleLight(const in vec3 lightColor,
   if ((flags & (1u << 16u)) != 0u) {
     lightDiffuse *= 1.0 - diffuseTransmissionFactor; 
     if(dot(normal, lightDirection) < 0.0){
-      vec3 lightDiffuseBTDF = lightIntensity * NDotL * BRDF_lambertian(diffuseTransmissionColorFactor.xyz);
+      float lightNDotL = clamp(dot(normal, -lightDirection), 0.0, 1.0);
+      vec3 lightDiffuseBTDF = lightIntensity * lightNDotL * BRDF_lambertian(diffuseTransmissionColorFactor.xyz);
       vec3 lightMirror = normalize(lightDirection + (2.0 * dot(-lightDirection, normal) * normal));
       float diffuseVDotH = clamp(dot(viewDirection, lightMirror), 0.0, 1.0);
       dielectricFresnel = F_Schlick(F0Dielectric * specularWeight, F90Dielectric, abs(diffuseVDotH));
