@@ -13061,13 +13061,13 @@ begin
         end;
         8:begin
          if TargetPointerStrings[2]='extensions' then begin
-          if TargetPointerStrings[3]='pbrSpecularGlossiness' then begin
+          if (TargetPointerStrings[3]='pbrSpecularGlossiness') or (TargetPointerStrings[3]='KHR_materials_specular_glossiness') then begin
            if TargetPointerStrings[4]='diffuseTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSpecularGlossinessDiffuseTexture;
            end else if TargetPointerStrings[4]='specularGlossinessTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSpecularGlossinessSpecularGlossinessTexture;
            end;
-          end else if TargetPointerStrings[3]='pbrClearCoat' then begin
+          end else if (TargetPointerStrings[3]='pbrClearCoat') or (TargetPointerStrings[3]='KHR_materials_clearcoat') then begin
            if TargetPointerStrings[4]='clearcoatTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRClearCoatTexture;
            end else if TargetPointerStrings[4]='clearcoatRoughnessTexture' then begin
@@ -13075,39 +13075,39 @@ begin
            end else if TargetPointerStrings[4]='clearcoatNormalTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRClearCoatNormalTexture;
            end;
-          end else if TargetPointerStrings[3]='pbrSheen' then begin
+          end else if (TargetPointerStrings[3]='pbrSheen') or (TargetPointerStrings[3]='KHR_materials_sheen') then begin
            if TargetPointerStrings[4]='sheenColorTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSheenColorTexture;
            end else if TargetPointerStrings[4]='sheenRoughnessTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSheenRoughnessTexture;
            end;
-          end else if TargetPointerStrings[3]='pbrSpecular' then begin
+          end else if (TargetPointerStrings[3]='pbrSpecular') or (TargetPointerStrings[3]='KHR_materials_specular') then begin
            if TargetPointerStrings[4]='specularTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSpecularSpecularTexture;
            end else if TargetPointerStrings[4]='specularColorTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRSpecularSpecularColorTexture;
            end;
-          end else if TargetPointerStrings[3]='pbrIridescence' then begin
-           if TargetPointerStrings[4]='iridesceneTexture' then begin
+          end else if (TargetPointerStrings[3]='pbrIridescence') or (TargetPointerStrings[3]='KHR_materials_iridescence') then begin
+           if TargetPointerStrings[4]='iridescenceTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRIridescenceTexture;
            end else if TargetPointerStrings[4]='iridescenceThicknessTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRIridescenceThicknessTexture;
            end;
-          end else if TargetPointerStrings[3]='pbrTransmission' then begin
+          end else if (TargetPointerStrings[3]='pbrTransmission') or (TargetPointerStrings[3]='KHR_materials_transmission') then begin
            if TargetPointerStrings[4]='transmissionTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRTransmissionTexture;
            end;
-          end else if TargetPointerStrings[3]='pbrDiffuseTransmission' then begin
+          end else if (TargetPointerStrings[3]='pbrDiffuseTransmission') or (TargetPointerStrings[3]='KHR_materials_diffuse_transmission') then begin
            if TargetPointerStrings[4]='diffuseTransmissionTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRDiffuseTransmissionTexture;
            end else if TargetPointerStrings[4]='diffuseTransmissionColorTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRDiffuseTransmissionColorTexture;
            end;
-          end else if TargetPointerStrings[3]='pbrVolume' then begin
+          end else if (TargetPointerStrings[3]='pbrVolume') or (TargetPointerStrings[3]='KHR_materials_volume') then begin
            if TargetPointerStrings[4]='thicknessTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRVolumeThicknessTexture;
            end;
-          end else if TargetPointerStrings[3]='pbrAnisotropy' then begin
+          end else if (TargetPointerStrings[3]='pbrAnisotropy') or (TargetPointerStrings[3]='KHR_materials_anisotropy') then begin
            if TargetPointerStrings[4]='anisotropyTexture' then begin
             TextureRawIndex:=TpvScene3D.TTextureIndex.PBRAnisotropyTexture;
            end;
