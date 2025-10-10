@@ -21575,7 +21575,7 @@ begin
  begin
 
   // Calculate the first barycentric coordinate of the triangle
-  bc0:=TpvVector2.InlineableCreate(x,TpvFloat(aResolution)-y)*InverseResolution;
+  bc0:=TpvVector2.InlineableCreate(x,(aResolution+0.0)-y)*InverseResolution;
   if Inversed then begin
    bc0:=bc0+TpvVector2.InlineableCreate(0.5*InverseResolution,0.0);
   end;
@@ -21647,7 +21647,7 @@ begin
  begin
 
   // Calculate the first barycentric coordinate of the triangle
-  bc0:=TpvVector2.InlineableCreate(x,TpvFloat(aResolution)-y)*InverseResolution;
+  bc0:=TpvVector2.InlineableCreate(x,(aResolution+0.0)-y)*InverseResolution;
   if Inversed then begin
    bc0:=bc0+TpvVector2.InlineableCreate(0.5*InverseResolution,0.0);
   end;
