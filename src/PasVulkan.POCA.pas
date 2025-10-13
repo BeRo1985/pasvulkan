@@ -67,6 +67,7 @@ uses SysUtils,
      Vulkan,
      PasMP,
      PasDblStrUtils,
+     PasJSON,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Math.Double,
@@ -201,6 +202,9 @@ function POCASetInputEventHashNone(const aContext:PPOCAContext;const aHash:TPOCA
 function POCASetInputEventHashKey(const aContext:PPOCAContext;const aHash:TPOCAValue;const aKeyEvent:TpvApplicationInputKeyEvent):TPOCAValue;
 function POCASetInputEventHashPointer(const aContext:PPOCAContext;const aHash:TPOCAValue;const aPointerEvent:TpvApplicationInputPointerEvent):TPOCAValue;
 function POCASetInputEventHashScroll(const aContext:PPOCAContext;const aHash:TPOCAValue;const aRelativeAmount:TpvVector2):TPOCAValue;
+
+function JSONToPOCAValue(const aContext:PPOCAContext;const aJSON:TPasJSONItem):TPOCAValue;
+function POCAValueToJSON(const aContext:PPOCAContext;const aValue:TPOCAValue):TPasJSONItem;
 
 procedure InitializeForPOCAContext(const aContext:PPOCAContext);
 procedure FinalizeForPOCAContext(const aContext:PPOCAContext);
@@ -9843,6 +9847,92 @@ begin
  POCAHashSetString(aContext,aHash,'EventType',POCANewNumber(aContext,EVENT_SCROLLED));
  POCAHashSetString(aContext,aHash,'RelativeAmount',POCANewVector2(aContext,aRelativeAmount));
  result:=aHash;
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// JSON Conversion
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function JSONToPOCAValue(const aContext:PPOCAContext;const aJSON:TPasJSONItem):TPOCAValue;
+var Index:TpvSizeInt;
+    HashValue:TPOCAValue;
+    ArrayValue:TPOCAValue;
+begin
+ if assigned(aJSON) then begin
+  if aJSON is TPasJSONItemNull then begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end else if aJSON is TPasJSONItemBoolean then begin
+   if TPasJSON.GetBoolean(aJSON,false) then begin
+    result.Num:=1.0;
+   end else begin
+    result.Num:=0.0;
+   end;
+  end else if aJSON is TPasJSONItemNumber then begin
+   result:=POCANewNumber(aContext,TPasJSON.GetNumber(aJSON,0.0));
+  end else if aJSON is TPasJSONItemString then begin
+   result:=POCANewString(aContext,TPasJSON.GetString(aJSON,''));
+  end else if aJSON is TPasJSONItemArray then begin
+   ArrayValue:=POCANewArray(aContext);
+   for Index:=0 to TPasJSONItemArray(aJSON).Count-1 do begin
+    POCAArrayPush(ArrayValue,JSONToPOCAValue(aContext,TPasJSONItemArray(aJSON).Items[Index]));
+   end;
+   result:=ArrayValue;
+  end else if aJSON is TPasJSONItemObject then begin
+   HashValue:=POCANewHash(aContext);
+   for Index:=0 to TPasJSONItemObject(aJSON).Count-1 do begin
+    POCAHashSetString(aContext,HashValue,TPasJSONItemObject(aJSON).Keys[Index],JSONToPOCAValue(aContext,TPasJSONItemObject(aJSON).Values[Index]));
+   end;
+   result:=HashValue;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+ 
+function POCAValueToJSON(const aContext:PPOCAContext;const aValue:TPOCAValue):TPasJSONItem;
+var Index:TpvSizeInt;
+    Key,Keys,Value:TPOCAValue;
+    KeyString:TPOCARawByteString;
+begin
+ case POCAGetValueType(aValue) of
+  pvtNULL:begin
+   result:=TPasJSONItemNull.Create;
+  end;
+  pvtNUMBER:begin
+   result:=TPasJSONItemNumber.Create(aValue.Num);
+  end;
+  pvtSTRING:begin
+   result:=TPasJSONItemString.Create(POCAGetStringValue(aContext,aValue));
+  end;
+  pvtARRAY:begin
+   result:=TPasJSONItemArray.Create;
+   for Index:=0 to TpvSizeInt(POCAArraySize(aValue))-1 do begin
+    TPasJSONItemArray(result).Add(POCAValueToJSON(aContext,POCAArrayGet(aValue,Index)));
+   end;
+  end;
+  pvtHash:begin
+   result:=TPasJSONItemObject.Create;
+   POCAHashOwnKeys(aContext,Keys,aValue);
+   POCAArraySort(aContext,Keys);
+   if POCAGetValueType(Keys)=pvtARRAY then begin
+    Value.CastedUInt64:=POCAValueNullCastedUInt64;
+    for Index:=0 to POCAArraySize(Keys)-1 do begin
+     Key:=POCAArrayGet(Keys,Index);
+     if POCAHashGet(aContext,aValue,Key,Value) then begin
+      TPasJSONItemObject(result).Add(
+       POCAGetStringValue(aContext,Key),
+       POCAValueToJSON(aContext,Value)
+      );
+     end;
+    end;
+   end;
+  end;
+  else begin
+   result:=TPasJSONItemNull.Create;
+  end;
+ end;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
