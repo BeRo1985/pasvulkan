@@ -9859,32 +9859,40 @@ var Index:TpvSizeInt;
     ArrayValue:TPOCAValue;
 begin
  if assigned(aJSON) then begin
-  if aJSON is TPasJSONItemNull then begin
-   result.CastedUInt64:=POCAValueNullCastedUInt64;
-  end else if aJSON is TPasJSONItemBoolean then begin
-   if TPasJSON.GetBoolean(aJSON,false) then begin
-    result.Num:=1.0;
-   end else begin
-    result.Num:=0.0;
+  case aJSON.ItemType of
+   TPasJSONItemType.Null:begin
+    result.CastedUInt64:=POCAValueNullCastedUInt64;
    end;
-  end else if aJSON is TPasJSONItemNumber then begin
-   result:=POCANewNumber(aContext,TPasJSON.GetNumber(aJSON,0.0));
-  end else if aJSON is TPasJSONItemString then begin
-   result:=POCANewString(aContext,TPasJSON.GetString(aJSON,''));
-  end else if aJSON is TPasJSONItemArray then begin
-   ArrayValue:=POCANewArray(aContext);
-   for Index:=0 to TPasJSONItemArray(aJSON).Count-1 do begin
-    POCAArrayPush(ArrayValue,JSONToPOCAValue(aContext,TPasJSONItemArray(aJSON).Items[Index]));
+   TPasJSONItemType.Boolean_:begin
+    if TPasJSON.GetBoolean(aJSON,false) then begin
+     result.Num:=1.0;
+    end else begin
+     result.Num:=0.0;
+    end;
    end;
-   result:=ArrayValue;
-  end else if aJSON is TPasJSONItemObject then begin
-   HashValue:=POCANewHash(aContext);
-   for Index:=0 to TPasJSONItemObject(aJSON).Count-1 do begin
-    POCAHashSetString(aContext,HashValue,TPasJSONItemObject(aJSON).Keys[Index],JSONToPOCAValue(aContext,TPasJSONItemObject(aJSON).Values[Index]));
+   TPasJSONItemType.Number:begin
+    result:=POCANewNumber(aContext,TPasJSON.GetNumber(aJSON,0.0));
    end;
-   result:=HashValue;
-  end else begin
-   result.CastedUInt64:=POCAValueNullCastedUInt64;
+   TPasJSONItemType.String_:begin
+    result:=POCANewString(aContext,TPasJSON.GetString(aJSON,''));
+   end;
+   TPasJSONItemType.Array_:begin
+    ArrayValue:=POCANewArray(aContext);
+    for Index:=0 to TPasJSONItemArray(aJSON).Count-1 do begin
+     POCAArrayPush(ArrayValue,JSONToPOCAValue(aContext,TPasJSONItemArray(aJSON).Items[Index]));
+    end;
+    result:=ArrayValue;
+   end;
+   TPasJSONItemType.Object_:begin
+    HashValue:=POCANewHash(aContext);
+    for Index:=0 to TPasJSONItemObject(aJSON).Count-1 do begin
+     POCAHashSetString(aContext,HashValue,TPasJSONItemObject(aJSON).Keys[Index],JSONToPOCAValue(aContext,TPasJSONItemObject(aJSON).Values[Index]));
+    end;
+    result:=HashValue;
+   end;
+   else begin
+    result.CastedUInt64:=POCAValueNullCastedUInt64;
+   end;
   end;
  end else begin
   result.CastedUInt64:=POCAValueNullCastedUInt64;
