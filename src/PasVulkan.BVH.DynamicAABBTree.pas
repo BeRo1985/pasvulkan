@@ -2859,7 +2859,7 @@ begin
      // Add the node to the result list in a sorted way
      ResultItem.Node:=Node;
      ResultItem.Distance:=aGetDistance(Node,aPoint);
-     if ResultItem.Distance<=aMaxDistance then begin
+     if (ResultItem.Distance>=0.0) and (ResultItem.Distance<=aMaxDistance) then begin
       
       if ResultItemArray.Count>0 then begin
 
