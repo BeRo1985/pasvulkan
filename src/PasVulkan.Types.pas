@@ -158,6 +158,26 @@ type PPpvInt8=^PpvInt8;
 
      TpvDoubles=array of TpvDouble;
 
+     PPpvDoubleArray=^PpvDoubleArray;
+     PpvDoubleArray=^TpvDoubleArray;
+     TpvDoubleArray=array[0..65535] of TpvDouble;
+
+     PPpvInt8Array=^PpvInt8Array;
+     PpvInt8Array=^TpvInt8Array;
+     TpvInt8Array=array[0..65535] of TpvInt8;
+
+     PPpvInt16Array=^PpvInt16Array;
+     PpvInt16Array=^TpvInt16Array;
+     TpvInt16Array=array[0..65535] of TpvInt16;
+
+     PPpvInt32Array=^PpvInt32Array;
+     PpvInt32Array=^TpvInt32Array;
+     TpvInt32Array=array[0..65535] of TpvInt32;
+
+     PPpvInt64Array=^PpvInt64Array;
+     PpvInt64Array=^TpvInt64Array;
+     TpvInt64Array=array[0..65535] of TpvInt64;
+
      TpvInt32DynamicArray=array of TpvInt32;
 
 {    PPTime=^PTime;
