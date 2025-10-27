@@ -22,7 +22,8 @@ var application = {
       this.data.cameraY = 0;
       this.data.gameWidth = 4000;
       this.data.gameHeight = 500;
-      
+      this.data.time = 0.0;
+            
       // Virtual canvas size (the size we design for)
       this.data.virtualWidth = 800;
       this.data.virtualHeight = 500;
@@ -504,6 +505,9 @@ var application = {
       this.updatePlayer(deltaTime);
       this.updateEnemies(deltaTime);
     }
+
+    this.data.time += deltaTime;
+
   },
 
   onInputEvent: function(event) {
@@ -806,10 +810,13 @@ var application = {
     // Draw based on game mode
     if (this.data.gameMode === this.MODE_STARTSCREEN) {
       // Start screen
-      canvas.setFontSize(64);
+      let offsetX = Math.sin(this.data.time * 2.0) * 5.0;
+      let offsetY = Math.cos(this.data.time * 2.0) * 5.0;
+      let offsetScale = 1.0 + (Math.sin(this.data.time * 3.0) * 0.05);
+      canvas.setFontSize(64 * offsetScale);
       canvas.setColor(1.0, 0.5, 0.125, 1.0); // Orange text
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
-      canvas.drawText("SUPER CUBI", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 100);
+      canvas.drawText("SUPER CUBI", this.data.virtualWidth / 2 + offsetX, this.data.virtualHeight / 2 - 100 + offsetY);
       
       canvas.setFontSize(32);
       canvas.setColor(1.0, 0.84, 0.0, 1.0); // Gold text
