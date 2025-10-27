@@ -407,12 +407,15 @@ var application = {
       let isDown = (event.KeyEventType === Input.KeyEventTypes.KEYEVENT_DOWN);
       
       if (event.KeyCode === Input.KeyCodes.KEYCODE_LEFT) {
+        print("Left key ", isDown ? "down\n" : "up\n");
         this.data.keys.left = isDown;
         return true;
       } else if (event.KeyCode === Input.KeyCodes.KEYCODE_RIGHT) {
+        print("Right key ", isDown ? "down\n" : "up\n");
         this.data.keys.right = isDown;
         return true;
       } else if (event.KeyCode === Input.KeyCodes.KEYCODE_UP) {
+        print("Up key ", isDown ? "down\n" : "up\n");
         this.data.keys.up = isDown;
         return true;
       } else if (event.KeyCode === Input.KeyCodes.KEYCODE_SPACE) {
