@@ -8,6 +8,7 @@ var application = {
   MODE_STARTSCREEN: 0,
   MODE_RUNNING: 1,
   MODE_GAMEOVER: 2,
+  MODE_LEVELCOMPLETE: 3,
 
   create: function() {
     print("POCA: Platformer create\n");
@@ -435,8 +436,7 @@ var application = {
         player.y + player.height > this.data.goal.y) {
       // Player reached goal
       this.data.score += 1000;
-      print("POCA: Level complete! Score: ", this.data.score, "\n");
-      this.initGame(this.MODE_STARTSCREEN);
+      this.levelComplete();
     }
 
     // Screen boundaries - falling off bottom
@@ -506,6 +506,11 @@ var application = {
     print("POCA: Game Over! Final Score: ", this.data.score, "\n");
   },
 
+  levelComplete: function() {
+    this.data.gameMode = this.MODE_LEVELCOMPLETE;
+    print("POCA: Level Complete! Score: ", this.data.score, "\n");
+  },
+
   update: function(deltaTime) {
     if (!this.data || !this.data.initialized) return;
     
@@ -551,6 +556,11 @@ var application = {
             }
             // Restart game from game over screen
             else if (this.data.gameMode === this.MODE_GAMEOVER) {
+              this.initGame(this.MODE_STARTSCREEN);
+              return true;
+            }
+            // Continue from level complete screen
+            else if (this.data.gameMode === this.MODE_LEVELCOMPLETE) {
               this.initGame(this.MODE_STARTSCREEN);
               return true;
             }
@@ -893,6 +903,30 @@ var application = {
       
       canvas.setFontSize(24);
       canvas.setColor(0.0, 0.5, 0.0, 1.0); // Green text
+      canvas.drawText("Press SPACE to continue", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 60 + 2.0);
+      canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
+      canvas.drawText("Press SPACE to continue", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
+      
+      canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Leading); // Reset to left
+      
+    } else if (this.data.gameMode === this.MODE_LEVELCOMPLETE) {
+      // Level complete screen
+      let offsetScale = 1.0 + (Math.sin(this.data.time * 3.0) * 0.05);
+      canvas.setFontSize(64 * offsetScale);
+      canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
+      canvas.setColor(0.5, 0.42, 0.0, 1.0); // Gold shadow
+      canvas.drawText("LEVEL COMPLETE!", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 - 60 + 2.0);
+      canvas.setColor(1.0, 0.84, 0.0, 1.0); // Gold text
+      canvas.drawText("LEVEL COMPLETE!", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 60);
+      
+      canvas.setFontSize(32);
+      canvas.setColor(0.5, 0.5, 0.5, 1.0); // Shadow
+      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 2.0);
+      canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
+      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2, this.data.virtualHeight / 2);
+      
+      canvas.setFontSize(24);
+      canvas.setColor(0.0, 0.5, 0.0, 1.0); // Green shadow
       canvas.drawText("Press SPACE to continue", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 60 + 2.0);
       canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
       canvas.drawText("Press SPACE to continue", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
