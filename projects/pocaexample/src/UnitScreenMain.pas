@@ -933,7 +933,7 @@ begin
 
  POCACallFunction('onApplicationUpdate',[POCANewNumber(fPOCAContext,aDeltaTime)],nil);
 
- POCACallFunction('onApplicationUpdateCanvas',[POCANewNumber(fPOCAContext,aDeltaTime)],nil);
+ POCACallFunction('onApplicationUpdateCanvas',[POCANewNumber(fPOCAContext,aDeltaTime),POCANewNumber(fPOCAContext,fVulkanCanvas.Width),POCANewNumber(fPOCAContext,fVulkanCanvas.Height),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.width),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.height)],nil);
 
  fConsole.OnSetDrawColor:=CansoleOnSetDrawColor;
  fConsole.OnDrawRect:=ConsoleOnDrawRect;

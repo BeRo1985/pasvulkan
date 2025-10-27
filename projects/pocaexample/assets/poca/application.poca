@@ -9,6 +9,12 @@ var application = {
     if (this.data && !this.data.initialized) {
       this.data.initialized = true;
       this.data.counter = 0;
+      this.data.ball = {
+        position: { x: 0.0, y: 0.0 },
+        velocity: { x: 100.0, y: 150.0 }
+      };
+      this.data.canvasWidth = 800;
+      this.data.canvasHeight = 600;
     }
   },
 
@@ -78,15 +84,29 @@ var application = {
     // Cleanup the native canvas if needed
   },  
 
-  updateCanvas: function(deltaTime) {
+  updateCanvas: function(deltaTime, width, height, nativeWidth, nativeHeight) {
     // Update the native canvas if needed
+
+    let ball = this.data.ball;  
+
+    // Update ball position
+    ball.position.x += ball.velocity.x * deltaTime;
+    ball.position.y += ball.velocity.y * deltaTime;
+    // Bounce off walls
+    if (ball.position.x < 0 || ball.position.x > width) {
+      ball.velocity.x = -ball.velocity.x;
+    }
+    if (ball.position.y < 0 || ball.position.y > height) {
+      ball.velocity.y = -ball.velocity.y;
+    }
+
   },
 
   drawCanvas: function(nativeCanvas, width, height, nativeWidth, nativeHeight) {
     // Draw on the native canvas if needed
 
     let canvas = nativeCanvas;
-    
+
     canvas.setColor(1.0, 0.0, 0.0, 1.0);
     canvas.drawFilledCircle(64.0, 64.0, 32.0);
 

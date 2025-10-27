@@ -150,9 +150,9 @@ function onApplicationDestroyCanvas(nativeCanvas) {
 }
 
 // called at update time to update the canvas
-function onApplicationUpdateCanvas(deltaTime) {
+function onApplicationUpdateCanvas(deltaTime, width, height, nativeWidth, nativeHeight) {
   if (application) {
-    application?.updateCanvas(deltaTime); // call the updateCanvas function of the application object
+    application?.updateCanvas(deltaTime, width, height, nativeWidth, nativeHeight); // call the updateCanvas function of the application object
   }
 }
 
