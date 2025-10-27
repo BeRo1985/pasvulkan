@@ -670,7 +670,7 @@ var application = {
     
     // Draw score
     canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
-    canvas.drawText("Score: " + this.data.score, 10, 10);
+    canvas.drawText("Score: " ~ this.data.score, 10, 10);
     
     // Simple lives indicator - draw hearts as circles
     for (let i = 0; i < this.data.lives; i++) {
@@ -686,7 +686,7 @@ var application = {
       canvas.drawText("GAME OVER", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 30);
       canvas.setFontSize(24);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
-      canvas.drawText("Final Score: " + this.data.score, this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 20);
+      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 20);
       canvas.setTextHorizontalAlignment(0); // Reset to left
     }
   }
