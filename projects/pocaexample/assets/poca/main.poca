@@ -1,5 +1,5 @@
 
-var applicationData = {}; // Application data object, used to store application-specific data with survival across application code reloads  
+var applicationData = { initialized: false }; // Application data object, used to store application-specific data with survival across application code reloads  
 var application = null; // the application object, used to access the application functions
 
 function loadCode() {
