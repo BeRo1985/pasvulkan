@@ -56,9 +56,6 @@ var application = {
       this.data.enemies = [];
       this.data.goal = null;
       
-      // Initialize font
-      this.data.fontVGA = null;
-      
       this.initGame();
     }
   },
