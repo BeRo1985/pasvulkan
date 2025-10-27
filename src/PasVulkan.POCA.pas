@@ -7944,12 +7944,15 @@ begin
  // Check for Font
  if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAFontGhostPointer) then begin
   Font:=TpvFont(POCAGhostFastGetPointer(aArguments^[ArgumentIndex]));
+  Canvas.Font:=Font;
+  inc(ArgumentIndex);
+ end else if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCACanvasFontGhostPointer) then begin
+  Font:=TpvCanvasFont(POCAGhostFastGetPointer(aArguments^[ArgumentIndex])).VulkanFont;
+  Canvas.Font:=Font;
   inc(ArgumentIndex);
  end else begin
   Font:=nil;
  end;
-
- Canvas.Font:=Font;
 
  result:=aThis;
 
