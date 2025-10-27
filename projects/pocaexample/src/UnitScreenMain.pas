@@ -85,6 +85,7 @@ type { TScreenMain }
        fPOCAContext:PPOCAContext;
        fPOCACode:PPOCACode;
        fPOCAUserIOWriteBuffer:TpvUTF8String;
+       fPOCAVulkanCanvas:TPOCAValue;
        fInputEventHash:TPOCAValue;
        fLastPOCAGarbageCollectTime:TpvHighResolutionTime;
        fNextPOCAFullGarbageCollectTime:TpvHighResolutionTime;
@@ -682,6 +683,11 @@ begin
 
  POCAInitialize;
 
+ fPOCAVulkanCanvas:=POCANewCanvas(fPOCAContext,fVulkanCanvas);
+ POCAHashSetString(fPOCAContext,fPOCAContext.Instance^.Globals.RootHash,'hudvulkancanvas',fPOCAVulkanCanvas);
+
+ POCACallFunction('onApplicationCreateCanvas',[fPOCAVulkanCanvas],nil);
+
  POCACallFunction('onApplicationShow',[],nil);
 
 end;
@@ -689,24 +695,36 @@ end;
 procedure TScreenMain.Hide;
 var Index:TpvInt32;
 begin
+
  POCACallFunction('onApplicationHide',[],nil);
+ POCACallFunction('onApplicationDestroyCanvas',[fPOCAVulkanCanvas],nil);
+
+ POCAHashDeleteString(fPOCAContext,fPOCAContext.Instance^.Globals.RootHash,'hudvulkancanvas');
+ fPOCAVulkanCanvas:=POCAValueNull;
+
  FreeAndNil(fVulkanFont);
  FreeAndNil(fVulkanFontSpriteAtlas);
  FreeAndNil(fVulkanSpriteAtlas);
  FreeAndNil(fVulkanCanvas);
  FreeAndNil(fVulkanRenderPass);
+
  for Index:=0 to MaxInFlightFrames-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[Index]);
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
+
  FreeAndNil(fVulkanCommandPool);
+
  FreeAndNil(fVulkanTransferCommandBufferFence);
  FreeAndNil(fVulkanTransferCommandBuffer);
  FreeAndNil(fVulkanTransferCommandPool);
+
  FreeAndNil(fVulkanGraphicsCommandBufferFence);
  FreeAndNil(fVulkanGraphicsCommandBuffer);
  FreeAndNil(fVulkanGraphicsCommandPool);
+
  inherited Hide;
+
 end;
 
 procedure TScreenMain.Resume;
@@ -915,6 +933,8 @@ begin
 
  POCACallFunction('onApplicationUpdate',[POCANewNumber(fPOCAContext,aDeltaTime)],nil);
 
+ POCACallFunction('onApplicationUpdateCanvas',[POCANewNumber(fPOCAContext,aDeltaTime)],nil);
+
  fConsole.OnSetDrawColor:=CansoleOnSetDrawColor;
  fConsole.OnDrawRect:=ConsoleOnDrawRect;
  fConsole.OnDrawCodePoint:=ConsoleOnDrawCodePoint;
@@ -943,7 +963,7 @@ begin
 
  fVulkanCanvas.FontSize:=-16;
 
-//POCACallFunction('onApplicationDrawCanvas',[POCANewNumber(fPOCAContext,aDeltaTime)],nil);
+ POCACallFunction('onApplicationDrawCanvas',[fPOCAVulkanCanvas,POCANewNumber(fPOCAContext,fVulkanCanvas.Width),POCANewNumber(fPOCAContext,fVulkanCanvas.Height),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.width),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.height)],nil);
 
  fConsole.Draw(aDeltaTime);
 
