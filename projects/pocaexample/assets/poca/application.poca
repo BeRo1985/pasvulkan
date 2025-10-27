@@ -649,7 +649,7 @@ var application = {
       let parallaxX = cloud.x - (cameraX * cloud.layer);
       let parallaxY = cloud.y - (cameraY * cloud.layer);
 
-      let colorFactor = 0.5 + 0.5 * cloud.layer; // Lighter for farther layers
+      let colorFactor = 0.75 + 0.25 * cloud.layer; // Lighter for farther layers
       canvas.setColor(colorFactor, colorFactor, colorFactor, 1.0);       
 
       // Scale cloud size based on scale factor
