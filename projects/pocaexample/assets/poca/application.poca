@@ -653,13 +653,23 @@ var application = {
       let parallaxX = cloud.x - (cameraX * cloud.layer);
       let parallaxY = cloud.y - (cameraY * cloud.layer);
 
-      let colorFactor = 0.75 + 0.25 * cloud.layer; // Lighter for farther layers
-      canvas.setColor(colorFactor, colorFactor, colorFactor, 1.0);       
-
       // Scale cloud size based on scale factor
       let baseSize = 30;
       let size1 = baseSize * cloud.scale;
       let size2 = 35 * cloud.scale;
+
+      let backColorFactor = 0.5 + 0.125 * cloud.layer; // Lighter for farther layers
+      canvas.setColor(backColorFactor, backColorFactor, backColorFactor, 0.5);       
+      
+      // Draw three overlapping circles to form a cloud
+      let offsetX = -2.5 * cloud.scale;
+      let offsetY = 2.5 * cloud.scale;
+      canvas.drawFilledCircle(parallaxX + offsetX, parallaxY + offsetY, size1);
+      canvas.drawFilledCircle(parallaxX + size1 + offsetX, parallaxY - 10 + offsetY, size2);
+      canvas.drawFilledCircle(parallaxX + size1 * 2 + offsetX, parallaxY + offsetY, size1);
+
+      let colorFactor = 0.75 + 0.25 * cloud.layer; // Lighter for farther layers
+      canvas.setColor(colorFactor, colorFactor, colorFactor, 1.0);       
       
       // Draw three overlapping circles to form a cloud
       canvas.drawFilledCircle(parallaxX, parallaxY, size1);
