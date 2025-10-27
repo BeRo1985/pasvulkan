@@ -482,9 +482,26 @@ var application = {
     let cameraX = this.data.cameraX;
     let cameraY = this.data.cameraY;
 
-    // Draw background sky BEFORE view matrix (fill entire actual canvas including borders)
-    canvas.setColor(0.53, 0.81, 0.92, 1.0); // Sky blue
+    // Draw background sky with gradient BEFORE view matrix (fill entire actual canvas including borders)
+    // Set up linear gradient from light blue at top to white at bottom
+    canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+    canvas.setStartColor(0.53, 0.81, 0.92, 1.0); // Sky blue at top
+    canvas.setStopColor(0.87, 0.95, 1.0, 1.0);   // Light blue/white at bottom
+    
+    // Set fill matrix for vertical gradient (top to bottom)
+    let gradientMatrix = Matrix4x4.create(
+      0, 1 / width, 0, 0,
+      1 / height, 0, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    );
+    canvas.setFillMatrix(gradientMatrix);
+    
+    // Draw the gradient rectangle
     canvas.drawFilledRectangle(0, 0, width, height);
+    
+    // Reset to solid color fill style for other drawing
+    canvas.setFillStyle(Canvas.FillStyle.Color);
 
     // Calculate scale to fit virtual canvas within actual canvas while preserving aspect ratio
     let scale;
