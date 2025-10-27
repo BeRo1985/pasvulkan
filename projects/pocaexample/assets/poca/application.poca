@@ -255,8 +255,8 @@ var application = {
     }
 
     // Update camera to follow player
-    let centerX = this.data.canvasWidth / 2;
-    let centerY = this.data.canvasHeight / 2;
+    let centerX = this.data.virtualWidth / 2;
+    let centerY = this.data.virtualHeight / 2;
     let safeZoneWidth = 200;
     let safeZoneHeight = 150;
 
@@ -273,8 +273,8 @@ var application = {
     }
 
     // Keep camera within bounds
-    this.data.cameraX = Math.max(0, Math.min(this.data.cameraX, this.data.gameWidth - this.data.canvasWidth));
-    this.data.cameraY = Math.max(0, Math.min(this.data.cameraY, this.data.gameHeight - this.data.canvasHeight));
+    this.data.cameraX = Math.max(0, Math.min(this.data.cameraX, this.data.gameWidth - this.data.virtualWidth));
+    this.data.cameraY = Math.max(0, Math.min(this.data.cameraY, this.data.gameHeight - this.data.virtualHeight));
 
     // Coin collection
     for (let i = 0; i < this.data.coins.length; i++) {
@@ -462,6 +462,10 @@ var application = {
     let cameraX = this.data.cameraX;
     let cameraY = this.data.cameraY;
 
+    // Draw background sky BEFORE view matrix (fill entire actual canvas including borders)
+    canvas.setColor(0.53, 0.81, 0.92, 1.0); // Sky blue
+    canvas.drawFilledRectangle(0, 0, width, height);
+
     // Calculate scale to fit virtual canvas within actual canvas while preserving aspect ratio
     let scale;
     if (width / height < this.data.virtualWidth / this.data.virtualHeight) {
@@ -497,11 +501,7 @@ var application = {
     let viewMatrix = m1.mul(m2).mul(m3);
     canvas.setViewMatrix(viewMatrix);
 
-    // Now draw everything in virtual canvas coordinates
-
-    // Draw background (sky gradient simulated with blue)
-    canvas.setColor(0.53, 0.81, 0.92, 1.0); // Sky blue
-    canvas.drawFilledRectangle(0, 0, this.data.virtualWidth, this.data.virtualHeight);
+    // Now draw everything in virtual canvas coordinates (not the sky background)
 
     // Draw clouds (white fluffy clouds)
     canvas.setColor(1.0, 1.0, 1.0, 1.0);
