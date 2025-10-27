@@ -105,9 +105,11 @@ var application = {
     // Bounce off walls
     if ((ball.position.x < ball.size) || (ball.position.x > (width - ball.size))) {
       ball.velocity.x = -ball.velocity.x;
-    }
+      ball.position.x = Math.max(ball.size, Math.min(ball.position.x, width - ball.size));
+    }    
     if ((ball.position.y < ball.size) || (ball.position.y > (height - ball.size))) {
       ball.velocity.y = -ball.velocity.y;
+      ball.position.y = Math.max(ball.size, Math.min(ball.position.y, height - ball.size));
     }
 
   },

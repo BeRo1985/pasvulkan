@@ -22,6 +22,8 @@ unit UnitScreenMain;
  {$optimization level1}
 {$ifend}
 
+{$undef WithConsole}
+
 interface
 
 uses SysUtils,
