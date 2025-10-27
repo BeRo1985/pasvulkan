@@ -285,11 +285,17 @@ var application = {
   },
 
   updatePlayer: function(deltaTime) {
-    if (this.data.gameMode !== this.MODE_RUNNING) return;
+    if(!(this.data.gameMode === this.MODE_STARTSCREEN || this.data.gameMode === this.MODE_RUNNING)) return;
 
     let player = this.data.player;
     
     // Horizontal movement
+    if (this.data.gameMode === this.MODE_STARTSCREEN) {
+      // Disable movement on start screen
+      this.data.keys.left = false;
+      this.data.keys.right = false;
+      this.data.keys.up = false;
+    }
     if (this.data.keys.left) {
       player.velocityX = -player.speed;
       player.facing = 'left';
@@ -407,13 +413,15 @@ var application = {
           player.velocityY = -8; // Small bounce
         } else {
           // Player hit enemy - take damage
-          player.x = 100;
-          player.y = 300;
-          player.velocityX = 0;
-          player.velocityY = 0;
           this.data.lives--;
           if (this.data.lives <= 0) {
             this.gameOver();
+          }else{
+            // Reset player position
+            player.x = 100;
+            player.y = 300;
+            player.velocityX = 0;
+            player.velocityY = 0;
           }
         }
       }
@@ -445,7 +453,7 @@ var application = {
   },
 
   updateEnemies: function(deltaTime) {
-    if (this.data.gameMode !== this.MODE_RUNNING) return;
+    if(!(this.data.gameMode === this.MODE_STARTSCREEN || this.data.gameMode === this.MODE_RUNNING)) return;
 
     for (let i = 0; i < this.data.enemies.length; i++) {
       let enemy = this.data.enemies[i];
@@ -501,7 +509,7 @@ var application = {
   update: function(deltaTime) {
     if (!this.data || !this.data.initialized) return;
     
-    if (this.data.gameMode === this.MODE_RUNNING) {
+    if (this.data.gameMode === this.MODE_STARTSCREEN || this.data.gameMode === this.MODE_RUNNING) {
       this.updatePlayer(deltaTime);
       this.updateEnemies(deltaTime);
     }
