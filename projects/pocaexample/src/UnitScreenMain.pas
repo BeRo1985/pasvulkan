@@ -80,7 +80,9 @@ type { TScreenMain }
        fVulkanCanvas:TpvCanvas;
        fVulkanFont:TpvFont;
        fReady:boolean;
+{$ifdef WithConsole}
        fConsole:TpvConsole;
+{$endif}
        fPOCAInstance:PPOCAInstance;
        fPOCAContext:PPOCAContext;
        fPOCACode:PPOCACode;
@@ -318,6 +320,7 @@ begin
   end;
  end;
 
+{$ifdef WithConsole}
  fConsole:=TpvConsole.Create;
  fConsole.SetChrDim(80,25);
  fConsole.WriteLine(#0#15'Console Test');
@@ -327,6 +330,7 @@ begin
  fConsole.WriteLine(#0#12'Use the '#0#14'"'#0#13'force'#0#14'"'#0#12' of this '#0#$9b'blinking-capable'#0#12' console!');
  fConsole.WriteLine('');
  fConsole.UpdateScreen;
+{$endif}
 
  POCACallFunction('onApplicationCreate',[],nil);
 
@@ -335,7 +339,9 @@ end;
 destructor TScreenMain.Destroy;
 begin
  POCACallFunction('onApplicationDestroy',[],nil);
+{$ifdef WithConsole}
  FreeAndNil(fConsole);
+{$endif}
  FinalizeForPOCAContext(fPOCAContext);
  POCAContextDestroy(fPOCAContext);
  POCAInstanceDestroy(fPOCAInstance);
@@ -866,7 +872,9 @@ begin
   result:=true;
   exit;
  end;
+{$ifdef WithConsole}
  result:=fConsole.KeyEvent(aKeyEvent);
+{$endif}
 end;
 
 function TScreenMain.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
@@ -935,9 +943,11 @@ begin
 
  POCACallFunction('onApplicationUpdateCanvas',[POCANewNumber(fPOCAContext,aDeltaTime),POCANewNumber(fPOCAContext,fVulkanCanvas.Width),POCANewNumber(fPOCAContext,fVulkanCanvas.Height),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.width),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.height)],nil);
 
+{$ifdef WithConsole}
  fConsole.OnSetDrawColor:=CansoleOnSetDrawColor;
  fConsole.OnDrawRect:=ConsoleOnDrawRect;
  fConsole.OnDrawCodePoint:=ConsoleOnDrawCodePoint;
+{$endif}
 
  fVulkanCanvas.Start(pvApplication.UpdateInFlightFrameIndex);
 
@@ -963,7 +973,9 @@ begin
                            TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*
                            TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5,0);
 
+{$ifdef WithConsole}
  fConsole.Draw(aDeltaTime);
+{$endif}
 
  fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.Identity;
  POCACallFunction('onApplicationDrawCanvas',[fPOCAVulkanCanvas,POCANewNumber(fPOCAContext,fVulkanCanvas.Width),POCANewNumber(fPOCAContext,fVulkanCanvas.Height),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.width),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.height)],nil);
