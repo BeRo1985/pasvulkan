@@ -17,6 +17,12 @@ var application = {
       this.data.cameraY = 0;
       this.data.gameWidth = 4000;
       this.data.gameHeight = 500;
+      
+      // Virtual canvas size (the size we design for)
+      this.data.virtualWidth = 800;
+      this.data.virtualHeight = 500;
+      
+      // Actual canvas size (will be updated in resize)
       this.data.canvasWidth = 800;
       this.data.canvasHeight = 500;
       
@@ -456,9 +462,46 @@ var application = {
     let cameraX = this.data.cameraX;
     let cameraY = this.data.cameraY;
 
+    // Calculate scale to fit virtual canvas within actual canvas while preserving aspect ratio
+    let scale;
+    if (width / height < this.data.virtualWidth / this.data.virtualHeight) {
+      scale = width / this.data.virtualWidth;
+    } else {
+      scale = height / this.data.virtualHeight;
+    }
+
+    // Create view matrix to scale and center the virtual canvas
+    // Translate to virtual center -> Scale -> Translate to actual center
+    let m1 = Matrix4x4.create(
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      -this.data.virtualWidth * 0.5, -this.data.virtualHeight * 0.5, 0, 1
+    );
+    
+    let m2 = Matrix4x4.create(
+      scale, 0, 0, 0,
+      0, scale, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    );
+    
+    let m3 = Matrix4x4.create(
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      width * 0.5, height * 0.5, 0, 1
+    );
+    
+    // Combine matrices: m1 * m2 * m3
+    let viewMatrix = m1.mul(m2).mul(m3);
+    canvas.setViewMatrix(viewMatrix);
+
+    // Now draw everything in virtual canvas coordinates
+
     // Draw background (sky gradient simulated with blue)
     canvas.setColor(0.53, 0.81, 0.92, 1.0); // Sky blue
-    canvas.drawFilledRectangle(0, 0, width, height);
+    canvas.drawFilledRectangle(0, 0, this.data.virtualWidth, this.data.virtualHeight);
 
     // Draw clouds (white fluffy clouds)
     canvas.setColor(1.0, 1.0, 1.0, 1.0);
