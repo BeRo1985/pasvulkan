@@ -265,6 +265,25 @@ begin
  end;
 end;
 
+function POCACanvasFunctionCREATECANVASFONTFROMGLOBAL(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var CanvasFont:TpvCanvasFont;
+    Name:TpvUTF8String;
+begin
+ if aCountArguments>0 then begin
+  Name:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  Name:='';
+ end;
+ CanvasFont:=TpvCanvasFont.Create;
+ CanvasFont.VulkanFontSpriteAtlas:=nil; // Not needed here, because we use global assets
+ if Name='vga' then begin
+  CanvasFont.VulkanFont:=ScreenMain.fVulkanFont;
+ end else begin
+  CanvasFont.VulkanFont:=ScreenMain.fVulkanFont;
+ end;
+ result:=POCANewCanvasFont(aContext,CanvasFont);
+end;
+
 { TScreenMain }
 
 constructor TScreenMain.Create;
@@ -368,6 +387,7 @@ begin
  HostData^.TransferQueue:=pvApplication.VulkanDevice.TransferQueue;
  HostData^.TransferCommandBuffer:=fVulkanTransferCommandBuffer;
  HostData^.TransferCommandBufferFence:=fVulkanTransferCommandBufferFence;
+ POCAAddNativeFunction(fPOCAContext,HostData^.CanvasHash,'createCanvasFontFromGlobal',POCACanvasFunctionCREATECANVASFONTFROMGLOBAL);
 end;
 
 procedure TScreenMain.POCAGarbageCollect;

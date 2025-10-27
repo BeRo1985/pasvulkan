@@ -56,6 +56,9 @@ var application = {
       this.data.enemies = [];
       this.data.goal = null;
       
+      // Initialize font
+      this.data.fontVGA = null;
+      
       this.initGame();
     }
   },
@@ -442,9 +445,11 @@ var application = {
 
   createCanvas: function(nativeCanvas) {
     print("POCA: Application createCanvas\n");
+    this.data.fontVGA = nativeCanvas.createCanvasFontFromGlobal("vga");
   },
 
   destroyCanvas: function(nativeCanvas) {
+    this.data.fontVGA = null;
     print("POCA: Application destroyCanvas\n");
   },
 
@@ -661,14 +666,30 @@ var application = {
     }
 
     // Draw UI
-    canvas.setColor(1.0, 1.0, 1.0, 1.0);
-    // Score text approximation (using rectangles as we don't have text rendering easily)
-    // In a real implementation, you'd use canvas.drawText() with a font
+    // Set font for text rendering
+    canvas.setFont(this.data.fontVGA);
+    canvas.setFontSize(24);
+    
+    // Draw score
+    canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
+    canvas.drawText("Score: " + this.data.score, 10, 10);
     
     // Simple lives indicator - draw hearts as circles
     for (let i = 0; i < this.data.lives; i++) {
       canvas.setColor(1.0, 0.0, 0.0, 1.0);
-      canvas.drawFilledCircle(20 + i * 25, 30, 8);
+      canvas.drawFilledCircle(20 + i * 25, 50, 8);
+    }
+    
+    // Game over or win message
+    if (!this.data.gameRunning) {
+      canvas.setFontSize(48);
+      canvas.setColor(1.0, 0.0, 0.0, 1.0); // Red text
+      canvas.setTextHorizontalAlignment(1); // Center
+      canvas.drawText("GAME OVER", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 30);
+      canvas.setFontSize(24);
+      canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
+      canvas.drawText("Final Score: " + this.data.score, this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 20);
+      canvas.setTextHorizontalAlignment(0); // Reset to left
     }
   }
 
