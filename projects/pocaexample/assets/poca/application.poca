@@ -466,13 +466,13 @@ var application = {
 
         let isDown = (event.KeyEventType === Input.KeyEventTypes.KEYEVENT_DOWN);
         
-        if (event.KeyCode === Input.KeyCodes.KEYCODE_LEFT) {
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_LEFT || event.KeyCode === Input.KeyCodes.KEYCODE_A) {
           this.data.keys.left = isDown;
           return true;
-        } else if (event.KeyCode === Input.KeyCodes.KEYCODE_RIGHT) {
+        } else if (event.KeyCode === Input.KeyCodes.KEYCODE_RIGHT || event.KeyCode === Input.KeyCodes.KEYCODE_D) {
           this.data.keys.right = isDown;
           return true;
-        } else if (event.KeyCode === Input.KeyCodes.KEYCODE_UP) {
+        } else if (event.KeyCode === Input.KeyCodes.KEYCODE_UP || event.KeyCode === Input.KeyCodes.KEYCODE_W) {
           this.data.keys.up = isDown;
           return true;
         } else if (event.KeyCode === Input.KeyCodes.KEYCODE_SPACE) {        
@@ -763,7 +763,7 @@ var application = {
       
       canvas.setFontSize(24);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
-      canvas.drawText("Arrow keys to move", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 20);
+      canvas.drawText("Arrow keys or WASD to move", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 20);
       canvas.drawText("Space to jump", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 50);
       
       canvas.setFontSize(32);
