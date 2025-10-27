@@ -425,6 +425,7 @@ var application = {
             player.y = 300;
             player.velocityX = 0;
             player.velocityY = 0;
+            player.facing = 'right';
           }
         }
       }
