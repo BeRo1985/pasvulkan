@@ -485,8 +485,8 @@ var application = {
     // Draw background sky with gradient BEFORE view matrix (fill entire actual canvas including borders)
     // Set up linear gradient from darker blue at top to lighter blue at bottom
     canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
-    canvas.setStartColor(0.18, 0.49, 0.89, 1.0); // Deep vibrant blue at top
-    canvas.setStopColor(0.40, 0.70, 0.98, 1.0);  // Bright cyan-blue at bottom
+    canvas.setStartColor(0.0625, 0.25, 0.75, 1.0);
+    canvas.setStopColor(0.5, 0.75, 1.0, 1.0); 
     
     // Set fill matrix for vertical gradient (top to bottom)
     let gradientMatrix = Matrix4x4.create(
