@@ -850,7 +850,7 @@ var application = {
       
       canvas.setFontSize(24);
       canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
-      canvas.drawText("Press SPACE to back to start screen", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
+      canvas.drawText("Press SPACE to continue", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
       
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Leading); // Reset to left
     }
