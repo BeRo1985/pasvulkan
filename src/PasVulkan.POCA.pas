@@ -3166,8 +3166,8 @@ end;
 function POCAMatrix3x3FunctionTranspose(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix3x3:PpvMatrix3x3D;
 begin
- if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
-  Matrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
   result:=POCANewMatrix3x3(aContext,Matrix3x3^.Transpose);
  end else begin
   result:=POCAValueNull;
@@ -3188,8 +3188,8 @@ end;
 function POCAMatrix3x3FunctionInverse(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix3x3:PpvMatrix3x3D;
 begin
- if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
-  Matrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
   result:=POCANewMatrix3x3(aContext,Matrix3x3^.Inverse);
  end else begin
   result:=POCAValueNull;
@@ -3199,8 +3199,8 @@ end;
 function POCAMatrix3x3FunctionAdjugate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix3x3:PpvMatrix3x3D;
 begin
- if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
-  Matrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
   result:=POCANewMatrix3x3(aContext,Matrix3x3^.Adjugate);
  end else begin
   result:=POCAValueNull;
@@ -3902,8 +3902,8 @@ end;
 function POCAMatrix4x4FunctionTranspose(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix4x4:PpvMatrix4x4D;
 begin
- if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
-  Matrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
   result:=POCANewMatrix4x4(aContext,Matrix4x4^.Transpose);
  end else begin
   result:=POCAValueNull;
@@ -3913,8 +3913,8 @@ end;
 function POCAMatrix4x4FunctionDeterminant(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix4x4:PpvMatrix4x4D;
 begin
- if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
-  Matrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
   result.Num:=Matrix4x4^.Determinant;
  end else begin
   result:=POCAValueNull;
@@ -3924,8 +3924,8 @@ end;
 function POCAMatrix4x4FunctionInverse(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix4x4:PpvMatrix4x4D;
 begin
- if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
-  Matrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
   result:=POCANewMatrix4x4(aContext,Matrix4x4^.Inverse);
  end else begin
   result:=POCAValueNull;
@@ -3935,8 +3935,8 @@ end;
 function POCAMatrix4x4FunctionAdjugate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix4x4:PpvMatrix4x4D;
 begin
- if (aCountArguments=1) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
-  Matrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
   result:=POCANewMatrix4x4(aContext,Matrix4x4^.Adjugate);
  end else begin
   result:=POCAValueNull;

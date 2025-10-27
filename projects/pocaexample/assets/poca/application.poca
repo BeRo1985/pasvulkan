@@ -663,6 +663,91 @@ var application = {
 
     // Now draw everything in virtual canvas coordinates (not the sky background)
 
+    // Draw sun with rotating rays
+    let sunX = 400;
+    let sunY = 100;
+    let sunRadius = 40;
+    let rayCount = 8;
+    let rayRotation = this.data.time * 0.5; // Slow rotation
+    
+    // Draw sun rays (rotating)
+    canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+    canvas.setStartColor(1.0, 1.0, 0.5, 1.0);
+    canvas.setStopColor(1.0, 0.75, 0.0, 0.0); 
+    for (let i = 0; i < rayCount; i++) {
+      let angle = (i / rayCount) * Math.PI * 2 + rayRotation;
+      let rayLength = 128;
+      let rayWidth = 8;
+      
+      // Calculate ray position
+      let rayX = sunX + Math.sin(angle) * (sunRadius + rayLength / 2);
+      let rayY = sunY + Math.cos(angle) * (sunRadius + rayLength / 2);
+      
+      // Create rotation matrix for the ray
+      let cos = Math.cos(angle);
+      let sin = Math.sin(angle);
+      
+      // Model matrix composed of three transformations:
+      // 1. Translate to origin
+      // 2. Rotate around origin
+      // 3. Translate to final position
+      let toOriginMatrix = Matrix4x4.create(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -rayWidth / 2, -rayLength, 0, 1
+      );
+      
+      let rotationMatrix = Matrix4x4.create(
+        cos, -sin, 0, 0,
+        sin, cos, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      );
+      
+      let translationMatrix = Matrix4x4.create(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        rayX, rayY, 0, 1
+      );
+
+      let rayMatrix = toOriginMatrix.mul(rotationMatrix).mul(translationMatrix);
+
+      let fillMatrix = Matrix4x4.create(
+        0, 1 / rayWidth, 0, 0,
+        1 / rayLength, 0, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      );
+      fillMatrix = rayMatrix.inverse().mul(fillMatrix);
+      canvas.setFillMatrix(fillMatrix);
+
+      canvas.setModelMatrix(rayMatrix);
+      canvas.setColor(1.0, 1.0, 0.5, 1.0); // Soft yellow with transparency
+      canvas.drawFilledRectangle(0, 0, rayWidth, rayLength);
+    }
+    
+    // Reset model matrix
+    let identityMatrix = Matrix4x4.create(
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    );
+    canvas.setModelMatrix(identityMatrix);
+    
+    // Reset fill style to solid color
+    canvas.setFillStyle(Canvas.FillStyle.Color);
+
+    // Draw sun core (bright yellow circle)
+    canvas.setColor(1.0, 1.0, 0.5, 1.0);
+    canvas.drawFilledCircle(sunX, sunY, sunRadius);
+    
+    // Draw sun highlight (lighter center)
+    canvas.setColor(1.0, 1.0, 0.6, 1.0);
+    canvas.drawFilledCircle(sunX - 8, sunY - 8, sunRadius * 0.6);
+
     // Draw clouds with parallax scrolling (white fluffy clouds)
     
     for (let i = 0; i < this.data.clouds.length; i++) {
