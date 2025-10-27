@@ -823,21 +823,32 @@ var application = {
       let offsetX = Math.sin(this.data.time * 2.0) * 5.0;
       let offsetY = Math.cos(this.data.time * 2.0) * 5.0;
       let offsetScale = 1.0 + (Math.sin(this.data.time * 3.0) * 0.05);
+      let otherOffsetX = Math.cos((this.data.time + 0.3725) * 2.5) * 2.0; 
+      let otherOffsetY = Math.sin((this.data.time + 0.3725) * 2.5) * 2.0;
       canvas.setFontSize(64 * offsetScale);
-      canvas.setColor(1.0, 0.5, 0.125, 1.0); // Orange text
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
+      canvas.setColor(1.0 * 0.5, 0.5 * 0.5, 0.125 * 0.5, 1.0); // Orange text
+      canvas.drawText("SUPER CUBI", this.data.virtualWidth / 2 + offsetX + otherOffsetX, this.data.virtualHeight / 2 - 100 + offsetY + otherOffsetY);
+      canvas.setColor(1.0, 0.5, 0.125, 1.0); // Orange text
       canvas.drawText("SUPER CUBI", this.data.virtualWidth / 2 + offsetX, this.data.virtualHeight / 2 - 100 + offsetY);
       
       canvas.setFontSize(32);
+      canvas.setColor(1.0 * 0.5, 0.84 * 0.5, 0.0 * 0.5, 1.0); // Gold text
+      canvas.drawText("Adventure", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 - 40 + 2.0);
       canvas.setColor(1.0, 0.84, 0.0, 1.0); // Gold text
       canvas.drawText("Adventure", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 40);
       
       canvas.setFontSize(24);
+      canvas.setColor(0.5, 0.5, 0.5, 1.0); // White text
+      canvas.drawText("Arrow keys or WASD to move", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 20 + 2.0);
+      canvas.drawText("Space to jump", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 50 + 2.0);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
       canvas.drawText("Arrow keys or WASD to move", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 20);
       canvas.drawText("Space to jump", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 50);
       
       canvas.setFontSize(32);
+      canvas.setColor(0.0, 0.5, 0.0, 1.0); // Green text
+      canvas.drawText("Press SPACE to start", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 120 + 2.0);
       canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
       canvas.drawText("Press SPACE to start", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 120);
       
@@ -845,6 +856,8 @@ var application = {
       
     } else if (this.data.gameMode === this.MODE_RUNNING) {
       // Draw score during gameplay
+      canvas.setColor(0.5, 0.5, 0.5, 1.0); // White text
+      canvas.drawText("Score: " ~ this.data.score, 10 - 2.0, 10 + 2.0);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
       canvas.drawText("Score: " ~ this.data.score, 10, 10);
       
@@ -858,15 +871,21 @@ var application = {
       // Game over screen
       let offsetScale = 1.0 + (Math.sin(this.data.time * 3.0) * 0.05);
       canvas.setFontSize(64 * offsetScale);
-      canvas.setColor(1.0, 0.0, 0.0, 1.0); // Red text
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
+      canvas.setColor(0.5, 0.0, 0.0, 1.0); // Red text
+      canvas.drawText("GAME OVER", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 - 60 + 2.0);
+      canvas.setColor(1.0, 0.0, 0.0, 1.0); // Red text
       canvas.drawText("GAME OVER", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 60);
       
       canvas.setFontSize(32);
+      canvas.setColor(0.5, 0.5, 0.5, 1.0); // White text
+      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 60 + 2.0);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
       canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2, this.data.virtualHeight / 2);
       
       canvas.setFontSize(24);
+      canvas.setColor(0.0, 0.5, 0.0, 1.0); // Green text
+      canvas.drawText("Press SPACE to continue", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 60 + 2.0);
       canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
       canvas.drawText("Press SPACE to continue", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
       
