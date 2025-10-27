@@ -61,11 +61,11 @@ var application = {
       this.data.enemies = [];
       this.data.goal = null;
       
-      this.initGame();
+      this.initGame(this.MODE_STARTSCREEN);
     }
   },
 
-  initGame: function() {
+  initGame: function(gameMode) {
     print("POCA: Initializing game\n");
     
     // Reset game state
@@ -73,7 +73,7 @@ var application = {
     this.data.lives = 3;
     this.data.cameraX = 0;
     this.data.cameraY = 0;
-    this.data.gameMode = this.MODE_RUNNING;
+    this.data.gameMode = gameMode;
 
     // Reset player
     this.data.player.x = 100;
@@ -331,7 +331,7 @@ var application = {
       // Player reached goal
       this.data.score += 1000;
       print("POCA: Level complete! Score: ", this.data.score, "\n");
-      this.initGame();
+      this.initGame(this.MODE_STARTSCREEN);
     }
 
     // Screen boundaries - falling off bottom
@@ -433,12 +433,12 @@ var application = {
           if (isDown) {
             // Start game from start screen
             if (this.data.gameMode === this.MODE_STARTSCREEN) {
-              this.initGame();
+              this.initGame(this.MODE_RUNNING);
               return true;
             }
             // Restart game from game over screen
             else if (this.data.gameMode === this.MODE_GAMEOVER) {
-              this.initGame();
+              this.initGame(this.MODE_STARTSCREEN);
               return true;
             }
             // Jump during gameplay
@@ -732,7 +732,7 @@ var application = {
       
       canvas.setFontSize(24);
       canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
-      canvas.drawText("Press SPACE to restart", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
+      canvas.drawText("Press SPACE to back to start screen", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
       
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Leading); // Reset to left
     }
