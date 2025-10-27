@@ -1,128 +1,626 @@
 
+// Platformer game application for POCA
 var application = {
 
   data: null,
 
   create: function() {
-    print("POCA: Application create\n");
-    // Initialize application data
-    if (this.data && !this.data.initialized) {
+    print("POCA: Platformer create\n");
+    
+    // Initialize game state only if not already initialized
+    if (!this.data.initialized) {
       this.data.initialized = true;
-      this.data.counter = 0;
-      this.data.ball = {
-        position: { x: 0.0, y: 0.0 },
-        velocity: { x: 100.0, y: 150.0 },
-        size: 32.0,
-        needToReset: true
-      };
+      this.data.gameRunning = false;
+      this.data.score = 0;
+      this.data.lives = 3;
+      this.data.cameraX = 0;
+      this.data.cameraY = 0;
+      this.data.gameWidth = 4000;
+      this.data.gameHeight = 500;
       this.data.canvasWidth = 800;
-      this.data.canvasHeight = 600;
+      this.data.canvasHeight = 500;
+      
+      // Player properties
+      this.data.player = {
+        x: 100,
+        y: 300,
+        width: 32,
+        height: 32,
+        velocityX: 0,
+        velocityY: 0,
+        speed: 4,
+        jumpPower: 15,
+        isJumping: false,
+        gravity: 0.5,
+        maxFallSpeed: 15,
+        friction: 0.5,
+        facing: 'right'
+      };
+      
+      // Key state tracking
+      this.data.keys = {
+        left: false,
+        right: false,
+        up: false,
+        space: false
+      };
+      
+      this.data.platforms = [];
+      this.data.coins = [];
+      this.data.enemies = [];
+      this.data.goal = null;
+      
+      this.initGame();
     }
+  },
+
+  initGame: function() {
+    print("POCA: Initializing game\n");
+    
+    // Reset game state
+    this.data.score = 0;
+    this.data.lives = 3;
+    this.data.cameraX = 0;
+    this.data.cameraY = 0;
+    this.data.gameRunning = true;
+
+    // Reset player
+    this.data.player.x = 100;
+    this.data.player.y = 300;
+    this.data.player.velocityX = 0;
+    this.data.player.velocityY = 0;
+    this.data.player.isJumping = false;
+
+    // Create platforms
+    this.data.platforms = [
+      // Ground
+      { x: 0, y: 450, width: 200, height: 50 },
+      { x: 250, y: 450, width: 150, height: 50 },
+      { x: 450, y: 450, width: 150, height: 50 },
+      { x: 650, y: 450, width: 150, height: 50 },
+      { x: 850, y: 450, width: 150, height: 50 },
+
+      // Platforms
+      { x: 300, y: 350, width: 100, height: 20 },
+      { x: 500, y: 300, width: 100, height: 20 },
+      { x: 700, y: 250, width: 100, height: 20 },
+      { x: 900, y: 350, width: 100, height: 20 },
+      { x: 1100, y: 300, width: 100, height: 20 },
+      { x: 1300, y: 250, width: 100, height: 20 },
+      { x: 1500, y: 350, width: 100, height: 20 },
+      { x: 1700, y: 300, width: 100, height: 20 },
+      { x: 1900, y: 250, width: 100, height: 20 },
+      { x: 2100, y: 350, width: 100, height: 20 },
+      { x: 2300, y: 300, width: 100, height: 20 },
+      { x: 2500, y: 250, width: 100, height: 20 },
+      { x: 2700, y: 350, width: 100, height: 20 },
+      { x: 2900, y: 300, width: 100, height: 20 },
+      { x: 3100, y: 250, width: 100, height: 20 },
+      { x: 3300, y: 350, width: 100, height: 20 },
+      { x: 3500, y: 300, width: 100, height: 20 },
+      { x: 3700, y: 250, width: 100, height: 20 },
+
+      // Final platform
+      { x: 3900, y: 400, width: 100, height: 50 }
+    ];
+
+    // Create coins
+    this.data.coins = [];
+    for (let i = 0; i < 50; i++) {
+      this.data.coins.push({
+        x: 100 + Math.random() * (this.data.gameWidth - 200),
+        y: 100 + Math.random() * 300,
+        width: 16,
+        height: 16,
+        collected: false
+      });
+    }
+
+    // Create enemies
+    this.data.enemies = [
+      { x: 400, y: 420, width: 32, height: 32, speed: 2, direction: 1 },
+      { x: 800, y: 420, width: 32, height: 32, speed: 1.5, direction: -1 },
+      { x: 1100, y: 270, width: 32, height: 32, speed: 2.5, direction: 1 },
+      { x: 1500, y: 320, width: 32, height: 32, speed: 1.8, direction: -1 },
+      { x: 1900, y: 220, width: 32, height: 32, speed: 2.2, direction: 1 },
+      { x: 2300, y: 270, width: 32, height: 32, speed: 1.7, direction: -1 },
+      { x: 2700, y: 320, width: 32, height: 32, speed: 2.3, direction: 1 },
+      { x: 3100, y: 220, width: 32, height: 32, speed: 1.9, direction: -1 },
+      { x: 3500, y: 270, width: 32, height: 32, speed: 2.1, direction: 1 }
+    ];
+
+    // Create goal
+    this.data.goal = {
+      x: 3900,
+      y: 350,
+      width: 32,
+      height: 50
+    };
   },
 
   destroy: function() {
     print("POCA: Application destroy\n");
-    // Cleanup application data if needed
   },
 
   show: function() {
     print("POCA: Application show\n");
-    // Handle application becoming visible
   },
 
   hide: function() {
     print("POCA: Application hide\n");
-    // Handle application becoming hidden
   },
 
   resume: function() {
     print("POCA: Application resume\n");
-    // Handle application resuming
   },
 
   pause: function() {
     print("POCA: Application pause\n");
-    // Handle application pausing
   },
 
   resize: function(width, height) {
     print("POCA: Application resize to ", width, "x", height, "\n");
-    // Handle application resizing
-    this.data.ball.needToReset = true; // reset ball position on resize
+    this.data.canvasWidth = width;
+    this.data.canvasHeight = height;
   },
 
   afterCreateSwapChain: function() {
     print("POCA: Application afterCreateSwapChain\n");
-    // Handle actions after swap chain creation
   },
 
   beforeDestroySwapChain: function() {
     print("POCA: Application beforeDestroySwapChain\n");
-    // Handle actions before swap chain destruction
   },
 
   check: function(deltaTime) {
     // Perform checks before update
   },
 
+  updatePlayer: function(deltaTime) {
+    if (!this.data.gameRunning) return;
+
+    let player = this.data.player;
+    
+    // Horizontal movement
+    if (this.data.keys.left) {
+      player.velocityX = -player.speed;
+      player.facing = 'left';
+    } else if (this.data.keys.right) {
+      player.velocityX = player.speed;
+      player.facing = 'right';
+    } else {
+      player.velocityX *= player.friction; // Friction
+    }
+
+    // Apply gravity
+    player.velocityY += player.gravity;
+    
+    // Cap fall speed
+    if (player.velocityY > player.maxFallSpeed) {
+      player.velocityY = player.maxFallSpeed;
+    }
+
+    // Update position
+    player.x += player.velocityX;
+    player.y += player.velocityY;
+
+    // Platform collision detection
+    let onGround = false;
+    for (let i = 0; i < this.data.platforms.length; i++) {
+      let platform = this.data.platforms[i];
+      
+      if (player.x < platform.x + platform.width &&
+          player.x + player.width > platform.x &&
+          player.y < platform.y + platform.height &&
+          player.y + player.height > platform.y) {
+
+        // Collision from top
+        if (player.velocityY > 0 && player.y < platform.y) {
+          player.y = platform.y - player.height;
+          player.velocityY = 0;
+          player.isJumping = false;
+          onGround = true;
+        }
+        // Collision from bottom
+        else if (player.velocityY < 0 && player.y > platform.y) {
+          player.y = platform.y + platform.height;
+          player.velocityY = 0;
+        }
+        // Collision from left
+        else if (player.velocityX > 0 && player.x < platform.x) {
+          player.x = platform.x - player.width;
+          player.velocityX = 0;
+        }
+        // Collision from right
+        else if (player.velocityX < 0 && player.x > platform.x) {
+          player.x = platform.x + platform.width;
+          player.velocityX = 0;
+        }
+      }
+    }
+
+    // Keep player within level boundaries
+    if (player.x < 0) {
+      player.x = 0;
+      player.velocityX = 0;
+    } else if (player.x + player.width > this.data.gameWidth) {
+      player.x = this.data.gameWidth - player.width;
+      player.velocityX = 0;
+    }
+
+    // Update camera to follow player
+    let centerX = this.data.canvasWidth / 2;
+    let centerY = this.data.canvasHeight / 2;
+    let safeZoneWidth = 200;
+    let safeZoneHeight = 150;
+
+    if (player.x < this.data.cameraX + centerX - safeZoneWidth) {
+      this.data.cameraX = player.x - (centerX - safeZoneWidth);
+    } else if (player.x > this.data.cameraX + centerX + safeZoneWidth) {
+      this.data.cameraX = player.x - (centerX + safeZoneWidth);
+    }
+
+    if (player.y < this.data.cameraY + centerY - safeZoneHeight) {
+      this.data.cameraY = player.y - (centerY - safeZoneHeight);
+    } else if (player.y > this.data.cameraY + centerY + safeZoneHeight) {
+      this.data.cameraY = player.y - (centerY + safeZoneHeight);
+    }
+
+    // Keep camera within bounds
+    this.data.cameraX = Math.max(0, Math.min(this.data.cameraX, this.data.gameWidth - this.data.canvasWidth));
+    this.data.cameraY = Math.max(0, Math.min(this.data.cameraY, this.data.gameHeight - this.data.canvasHeight));
+
+    // Coin collection
+    for (let i = 0; i < this.data.coins.length; i++) {
+      let coin = this.data.coins[i];
+      if (!coin.collected &&
+          player.x < coin.x + coin.width &&
+          player.x + player.width > coin.x &&
+          player.y < coin.y + coin.height &&
+          player.y + player.height > coin.y) {
+        coin.collected = true;
+        this.data.score += 100;
+      }
+    }
+
+    // Enemy collision
+    for (let i = this.data.enemies.length - 1; i >= 0; i--) {
+      let enemy = this.data.enemies[i];
+      if (player.x < enemy.x + enemy.width &&
+          player.x + player.width > enemy.x &&
+          player.y < enemy.y + enemy.height &&
+          player.y + player.height > enemy.y) {
+        
+        // Check if player is jumping on enemy from above
+        if (player.velocityY > 0 && player.y + player.height - player.velocityY < enemy.y + 10) {
+          // Player jumped on enemy - eliminate it
+          this.data.enemies.splice(i, 1);
+          this.data.score += 200;
+          player.velocityY = -8; // Small bounce
+        } else {
+          // Player hit enemy - take damage
+          player.x = 100;
+          player.y = 300;
+          player.velocityX = 0;
+          player.velocityY = 0;
+          this.data.lives--;
+          if (this.data.lives <= 0) {
+            this.gameOver();
+          }
+        }
+      }
+    }
+
+    // Goal collision
+    if (this.data.goal &&
+        player.x < this.data.goal.x + this.data.goal.width &&
+        player.x + player.width > this.data.goal.x &&
+        player.y < this.data.goal.y + this.data.goal.height &&
+        player.y + player.height > this.data.goal.y) {
+      // Player reached goal
+      this.data.score += 1000;
+      print("POCA: Level complete! Score: ", this.data.score, "\n");
+      this.initGame();
+    }
+
+    // Screen boundaries - falling off bottom
+    if (player.y > this.data.gameHeight) {
+      player.x = 100;
+      player.y = 300;
+      player.velocityX = 0;
+      player.velocityY = 0;
+      this.data.lives--;
+      if (this.data.lives <= 0) {
+        this.gameOver();
+      }
+    }
+  },
+
+  updateEnemies: function(deltaTime) {
+    if (!this.data.gameRunning) return;
+
+    for (let i = 0; i < this.data.enemies.length; i++) {
+      let enemy = this.data.enemies[i];
+      
+      // Calculate next position
+      let nextX = enemy.x + enemy.speed * enemy.direction;
+      
+      // Check if there will be ground under the enemy
+      let groundAhead = false;
+      let checkX = enemy.direction > 0 ? nextX + enemy.width : nextX;
+      let checkY = enemy.y + enemy.height + 5;
+      
+      for (let j = 0; j < this.data.platforms.length; j++) {
+        let platform = this.data.platforms[j];
+        if (checkX >= platform.x && 
+            checkX <= platform.x + platform.width &&
+            checkY >= platform.y && 
+            checkY <= platform.y + platform.height) {
+          groundAhead = true;
+          break;
+        }
+      }
+      
+      // Check if enemy will hit a wall
+      let wallAhead = false;
+      for (let j = 0; j < this.data.platforms.length; j++) {
+        let platform = this.data.platforms[j];
+        if (nextX < platform.x + platform.width &&
+            nextX + enemy.width > platform.x &&
+            enemy.y < platform.y + platform.height &&
+            enemy.y + enemy.height > platform.y) {
+          if (Math.abs(enemy.y + enemy.height - platform.y) > 10) {
+            wallAhead = true;
+            break;
+          }
+        }
+      }
+      
+      // Reverse direction if no ground ahead or wall ahead
+      if (!groundAhead || wallAhead) {
+        enemy.direction *= -1;
+      } else {
+        enemy.x = nextX;
+      }
+    }
+  },
+
+  gameOver: function() {
+    this.data.gameRunning = false;
+    print("POCA: Game Over! Final Score: ", this.data.score, "\n");
+  },
+
   update: function(deltaTime) {
-    // Update application logic
-    this.data.counter += deltaTime;
-    //print("POCA: Application update, counter = " + this.data.counter + "\n");
+    if (!this.data || !this.data.initialized) return;
+    
+    if (this.data.gameRunning) {
+      this.updatePlayer(deltaTime);
+      this.updateEnemies(deltaTime);
+    }
   },
 
   onInputEvent: function(event) {
-    // Handle input events
-    //print("POCA: Application onInputEvent\n");
-    return false; // return true if the event was handled
+    if (!event || !this.data) return false;
+
+    // Handle keyboard events
+    if (event.EventType === Input.EventTypes.EVENT_KEY) {
+      let isDown = (event.KeyEventType === Input.KeyEventTypes.KEYEVENT_DOWN);
+      
+      if (event.KeyCode === Input.KeyCodes.KEYCODE_LEFT) {
+        this.data.keys.left = isDown;
+        return true;
+      } else if (event.KeyCode === Input.KeyCodes.KEYCODE_RIGHT) {
+        this.data.keys.right = isDown;
+        return true;
+      } else if (event.KeyCode === Input.KeyCodes.KEYCODE_UP) {
+        this.data.keys.up = isDown;
+        return true;
+      } else if (event.KeyCode === Input.KeyCodes.KEYCODE_SPACE) {
+        if (isDown && !this.data.player.isJumping && this.data.gameRunning) {
+          this.data.player.velocityY = -this.data.player.jumpPower;
+          this.data.player.isJumping = true;
+        }
+        this.data.keys.space = isDown;
+        return true;
+      }
+    }
+    
+    return false;
   },
 
   createCanvas: function(nativeCanvas) {
     print("POCA: Application createCanvas\n");
-    // Setup the native canvas if needed
   },
 
   destroyCanvas: function(nativeCanvas) {
     print("POCA: Application destroyCanvas\n");
-    // Cleanup the native canvas if needed
-  },  
+  },
 
   updateCanvas: function(deltaTime, width, height, nativeWidth, nativeHeight) {
-    // Update the native canvas if needed
-
-    let ball = this.data.ball;  
-
-    if (ball.needToReset) {
-      // Initialize ball position in the center
-      ball.position.x = width * 0.5;
-      ball.position.y = height * 0.5;
-      ball.needToReset = false;
-    }
-
-    // Update ball position
-    ball.position.x += ball.velocity.x * deltaTime;
-    ball.position.y += ball.velocity.y * deltaTime;
-    // Bounce off walls
-    if ((ball.position.x < ball.size) || (ball.position.x > (width - ball.size))) {
-      ball.velocity.x = -ball.velocity.x;
-      ball.position.x = Math.max(ball.size, Math.min(ball.position.x, width - ball.size));
-    }    
-    if ((ball.position.y < ball.size) || (ball.position.y > (height - ball.size))) {
-      ball.velocity.y = -ball.velocity.y;
-      ball.position.y = Math.max(ball.size, Math.min(ball.position.y, height - ball.size));
-    }
-
+    // Canvas updates handled in update()
   },
 
   drawCanvas: function(nativeCanvas, width, height, nativeWidth, nativeHeight) {
-    // Draw on the native canvas if needed
+    if (!this.data || !this.data.initialized) {
+      print("POCA: drawCanvas called but data not initialized!\n");
+      return;
+    }
 
     let canvas = nativeCanvas;
+    let cameraX = this.data.cameraX;
+    let cameraY = this.data.cameraY;
 
-    let ball = this.data.ball;  
-    canvas.setColor(1.0, 0.0, 0.0, 1.0);
-    canvas.drawFilledCircle(ball.position.x, ball.position.y, ball.size);
+    // Draw background (sky gradient simulated with blue)
+    canvas.setColor(0.53, 0.81, 0.92, 1.0); // Sky blue
+    canvas.drawFilledRectangle(0, 0, width, height);
 
+    // Draw clouds (white fluffy clouds)
+    canvas.setColor(1.0, 1.0, 1.0, 1.0);
+    
+    // Cloud 1
+    canvas.drawFilledCircle(100, 80, 30);
+    canvas.drawFilledCircle(130, 70, 35);
+    canvas.drawFilledCircle(160, 80, 30);
+    
+    // Cloud 2
+    canvas.drawFilledCircle(300, 120, 30);
+    canvas.drawFilledCircle(330, 110, 35);
+    canvas.drawFilledCircle(360, 120, 30);
+    
+    // Cloud 3
+    canvas.drawFilledCircle(500, 60, 30);
+    canvas.drawFilledCircle(530, 50, 35);
+    canvas.drawFilledCircle(560, 60, 30);
+    
+    // Cloud 4
+    canvas.drawFilledCircle(650, 100, 30);
+    canvas.drawFilledCircle(680, 90, 35);
+    canvas.drawFilledCircle(710, 100, 30);
+
+    // Draw platforms
+    for (let i = 0; i < this.data.platforms.length; i++) {
+      let platform = this.data.platforms[i];
+      
+      // Brown platform
+      canvas.setColor(0.55, 0.27, 0.07, 1.0);
+      canvas.drawFilledRectangle(
+        platform.x - cameraX,
+        platform.y - cameraY,
+        platform.width,
+        platform.height
+      );
+
+      // Green grass top
+      canvas.setColor(0.13, 0.55, 0.13, 1.0);
+      canvas.drawFilledRectangle(
+        platform.x - cameraX,
+        platform.y - cameraY,
+        platform.width,
+        5
+      );
+    }
+
+    // Draw coins
+    for (let i = 0; i < this.data.coins.length; i++) {
+      let coin = this.data.coins[i];
+      if (!coin.collected) {
+        // Gold coin
+        canvas.setColor(1.0, 0.84, 0.0, 1.0);
+        canvas.drawFilledCircle(
+          coin.x + coin.width / 2 - cameraX,
+          coin.y + coin.height / 2 - cameraY,
+          coin.width / 2
+        );
+        
+        // White shine
+        canvas.setColor(1.0, 1.0, 1.0, 1.0);
+        canvas.drawFilledCircle(
+          coin.x + coin.width / 3 - cameraX,
+          coin.y + coin.height / 3 - cameraY,
+          coin.width / 6
+        );
+      }
+    }
+
+    // Draw enemies
+    for (let i = 0; i < this.data.enemies.length; i++) {
+      let enemy = this.data.enemies[i];
+      
+      // Dark red enemy body
+      canvas.setColor(0.55, 0.0, 0.0, 1.0);
+      canvas.drawFilledRectangle(
+        enemy.x - cameraX,
+        enemy.y - cameraY,
+        enemy.width,
+        enemy.height
+      );
+
+      // Black eyes
+      canvas.setColor(0.0, 0.0, 0.0, 1.0);
+      canvas.drawFilledRectangle(
+        enemy.x + 8 - cameraX,
+        enemy.y + 8 - cameraY,
+        4,
+        4
+      );
+      canvas.drawFilledRectangle(
+        enemy.x + 20 - cameraX,
+        enemy.y + 8 - cameraY,
+        4,
+        4
+      );
+    }
+
+    // Draw goal
+    if (this.data.goal) {
+      let goal = this.data.goal;
+      
+      // Green flag pole base
+      canvas.setColor(0.0, 1.0, 0.0, 1.0);
+      canvas.drawFilledRectangle(
+        goal.x - cameraX,
+        goal.y - cameraY,
+        goal.width,
+        goal.height
+      );
+
+      // White pole
+      canvas.setColor(1.0, 1.0, 1.0, 1.0);
+      canvas.drawFilledRectangle(
+        goal.x + 10 - cameraX,
+        goal.y + 5 - cameraY,
+        2,
+        30
+      );
+
+      // Red flag (triangle approximated with rectangle)
+      canvas.setColor(1.0, 0.0, 0.0, 1.0);
+      canvas.drawFilledRectangle(
+        goal.x + 12 - cameraX,
+        goal.y + 5 - cameraY,
+        13,
+        20
+      );
+    }
+
+    // Draw player
+    let player = this.data.player;
+    canvas.setColor(1.0, 0.33, 0.33, 1.0); // Red player
+    canvas.drawFilledRectangle(
+      player.x - cameraX,
+      player.y - cameraY,
+      player.width,
+      player.height
+    );
+
+    // Player eye
+    canvas.setColor(0.0, 0.0, 0.0, 1.0);
+    if (player.facing == 'right') {
+      canvas.drawFilledRectangle(
+        player.x + 20 - cameraX,
+        player.y + 8 - cameraY,
+        4,
+        4
+      );
+    } else {
+      canvas.drawFilledRectangle(
+        player.x + 8 - cameraX,
+        player.y + 8 - cameraY,
+        4,
+        4
+      );
+    }
+
+    // Draw UI
+    canvas.setColor(1.0, 1.0, 1.0, 1.0);
+    // Score text approximation (using rectangles as we don't have text rendering easily)
+    // In a real implementation, you'd use canvas.drawText() with a font
+    
+    // Simple lives indicator - draw hearts as circles
+    for (let i = 0; i < this.data.lives; i++) {
+      canvas.setColor(1.0, 0.0, 0.0, 1.0);
+      canvas.drawFilledCircle(20 + i * 25, 30, 8);
+    }
   }
 
 };

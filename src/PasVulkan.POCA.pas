@@ -9335,7 +9335,7 @@ begin
  POCAHashSetString(aContext,Hash,'KEYCODE_CAPSLOCK',POCANewNumber(aContext,KEYCODE_CAPSLOCK));
  POCAHashSetString(aContext,Hash,'KEYCODE_NUMLOCK',POCANewNumber(aContext,KEYCODE_NUMLOCK));
  POCAHashSetString(aContext,Hash,'KEYCODE_SCROLLLOCK',POCANewNumber(aContext,KEYCODE_SCROLLLOCK));
-{}
+ // Modifier keys
  POCAHashSetString(aContext,Hash,'KEYCODE_RSHIFT',POCANewNumber(aContext,KEYCODE_RSHIFT));
  POCAHashSetString(aContext,Hash,'KEYCODE_LSHIFT',POCANewNumber(aContext,KEYCODE_LSHIFT));
  POCAHashSetString(aContext,Hash,'KEYCODE_RCTRL',POCANewNumber(aContext,KEYCODE_RCTRL));
