@@ -4,13 +4,18 @@ var application = {
 
   data: null,
 
+  // Game mode constants
+  MODE_STARTSCREEN: 0,
+  MODE_RUNNING: 1,
+  MODE_GAMEOVER: 2,
+
   create: function() {
     print("POCA: Platformer create\n");
     
     // Initialize game state only if not already initialized
     if (!this.data.initialized) {
       this.data.initialized = true;
-      this.data.gameRunning = false;
+      this.data.gameMode = this.MODE_STARTSCREEN;
       this.data.score = 0;
       this.data.lives = 3;
       this.data.cameraX = 0;
@@ -68,7 +73,7 @@ var application = {
     this.data.lives = 3;
     this.data.cameraX = 0;
     this.data.cameraY = 0;
-    this.data.gameRunning = true;
+    this.data.gameMode = this.MODE_RUNNING;
 
     // Reset player
     this.data.player.x = 100;
@@ -183,7 +188,7 @@ var application = {
   },
 
   updatePlayer: function(deltaTime) {
-    if (!this.data.gameRunning) return;
+    if (this.data.gameMode !== this.MODE_RUNNING) return;
 
     let player = this.data.player;
     
@@ -343,7 +348,7 @@ var application = {
   },
 
   updateEnemies: function(deltaTime) {
-    if (!this.data.gameRunning) return;
+    if (this.data.gameMode !== this.MODE_RUNNING) return;
 
     for (let i = 0; i < this.data.enemies.length; i++) {
       let enemy = this.data.enemies[i];
@@ -392,14 +397,14 @@ var application = {
   },
 
   gameOver: function() {
-    this.data.gameRunning = false;
+    this.data.gameMode = this.MODE_GAMEOVER;
     print("POCA: Game Over! Final Score: ", this.data.score, "\n");
   },
 
   update: function(deltaTime) {
     if (!this.data || !this.data.initialized) return;
     
-    if (this.data.gameRunning) {
+    if (this.data.gameMode === this.MODE_RUNNING) {
       this.updatePlayer(deltaTime);
       this.updateEnemies(deltaTime);
     }
@@ -425,9 +430,22 @@ var application = {
           this.data.keys.up = isDown;
           return true;
         } else if (event.KeyCode === Input.KeyCodes.KEYCODE_SPACE) {        
-          if (isDown && !this.data.player.isJumping && this.data.gameRunning) {
-            this.data.player.velocityY = -this.data.player.jumpPower;
-            this.data.player.isJumping = true;
+          if (isDown) {
+            // Start game from start screen
+            if (this.data.gameMode === this.MODE_STARTSCREEN) {
+              this.initGame();
+              return true;
+            }
+            // Restart game from game over screen
+            else if (this.data.gameMode === this.MODE_GAMEOVER) {
+              this.initGame();
+              return true;
+            }
+            // Jump during gameplay
+            else if (this.data.gameMode === this.MODE_RUNNING && !this.data.player.isJumping) {
+              this.data.player.velocityY = -this.data.player.jumpPower;
+              this.data.player.isJumping = true;
+            }
           }
           this.data.keys.space = isDown;
           return true;
@@ -664,29 +682,58 @@ var application = {
 
     // Draw UI
     // Set font for text rendering
-    print("Setting font for text rendering ", String.dump(this.data.fontVGA), "\n");
     canvas.setFont(this.data.fontVGA);
     canvas.setFontSize(24);
     
-    // Draw score
-    canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
-    canvas.drawText("Score: " ~ this.data.score, 10, 10);
-    
-    // Simple lives indicator - draw hearts as circles
-    for (let i = 0; i < this.data.lives; i++) {
-      canvas.setColor(1.0, 0.0, 0.0, 1.0);
-      canvas.drawFilledCircle(20 + i * 25, 50, 8);
-    }
-    
-    // Game over or win message
-    if (!this.data.gameRunning) {
-      canvas.setFontSize(48);
-      canvas.setColor(1.0, 0.0, 0.0, 1.0); // Red text
+    // Draw based on game mode
+    if (this.data.gameMode === this.MODE_STARTSCREEN) {
+      // Start screen
+      canvas.setFontSize(64);
+      canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
       canvas.setTextHorizontalAlignment(1); // Center
-      canvas.drawText("GAME OVER", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 30);
+      canvas.drawText("PLATFORMER", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 100);
+      
+      canvas.setFontSize(32);
+      canvas.setColor(1.0, 0.84, 0.0, 1.0); // Gold text
+      canvas.drawText("Adventure", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 40);
+      
       canvas.setFontSize(24);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
-      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 20);
+      canvas.drawText("Arrow keys to move", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 20);
+      canvas.drawText("Space to jump", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 50);
+      
+      canvas.setFontSize(32);
+      canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
+      canvas.drawText("Press SPACE to start", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 120);
+      
+      canvas.setTextHorizontalAlignment(0); // Reset to left
+      
+    } else if (this.data.gameMode === this.MODE_RUNNING) {
+      // Draw score during gameplay
+      canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
+      canvas.drawText("Score: " ~ this.data.score, 10, 10);
+      
+      // Simple lives indicator - draw hearts as circles
+      for (let i = 0; i < this.data.lives; i++) {
+        canvas.setColor(1.0, 0.0, 0.0, 1.0);
+        canvas.drawFilledCircle(20 + i * 25, 50, 8);
+      }
+      
+    } else if (this.data.gameMode === this.MODE_GAMEOVER) {
+      // Game over screen
+      canvas.setFontSize(64);
+      canvas.setColor(1.0, 0.0, 0.0, 1.0); // Red text
+      canvas.setTextHorizontalAlignment(1); // Center
+      canvas.drawText("GAME OVER", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 60);
+      
+      canvas.setFontSize(32);
+      canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
+      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2, this.data.virtualHeight / 2);
+      
+      canvas.setFontSize(24);
+      canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
+      canvas.drawText("Press SPACE to restart", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
+      
       canvas.setTextHorizontalAlignment(0); // Reset to left
     }
   }
