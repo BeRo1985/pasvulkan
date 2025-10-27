@@ -38,7 +38,7 @@ var application = {
   },
 
   resize: function(width, height) {
-    print("POCA: Application resize to " + width + "x" + height + "\n");
+    print("POCA: Application resize to ", width, "x", height, "\n");
     // Handle application resizing
   },
 
