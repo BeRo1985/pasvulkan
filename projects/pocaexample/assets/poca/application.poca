@@ -21,9 +21,15 @@ var application = {
       this.data.lives = 3;
       this.data.cameraX = 0;
       this.data.cameraY = 0;
+      this.data.cameraLastX = 0;
+      this.data.cameraLastY = 0;
+      this.data.cameraRenderX = 0;
+      this.data.cameraRenderY = 0;
       this.data.gameWidth = 4000;
       this.data.gameHeight = 500;
       this.data.time = 0.0;
+      this.data.accumulator = 0.0;
+      this.data.first = true;
             
       // Virtual canvas size (the size we design for)
       this.data.virtualWidth = 800;
@@ -37,6 +43,10 @@ var application = {
       this.data.player = {
         x: 100,
         y: 300,
+        lastX: 100,
+        lastY: 300,
+        renderX: 100,
+        renderY: 300,
         width: 32,
         height: 32,
         velocityX: 0,
@@ -76,11 +86,21 @@ var application = {
     this.data.lives = 3;
     this.data.cameraX = 0;
     this.data.cameraY = 0;
+    this.data.cameraLastX = 0;
+    this.data.cameraLastY = 0;
+    this.data.cameraRenderX = 0;
+    this.data.cameraRenderY = 0;
     this.data.gameMode = gameMode;
+    this.data.accumulator = 0.0;
+    this.data.first = true;
 
     // Reset player
     this.data.player.x = 100;
     this.data.player.y = 300;
+    this.data.player.lastX = 100;
+    this.data.player.lastY = 300;
+    this.data.player.renderX = 100;
+    this.data.player.renderY = 300;
     this.data.player.velocityX = 0;
     this.data.player.velocityY = 0;
     this.data.player.isJumping = false;
@@ -228,15 +248,15 @@ var application = {
 
     // Create enemies
     this.data.enemies = [
-      { x: 400, y: 420, width: 32, height: 32, speed: 2, direction: 1 },
-      { x: 800, y: 420, width: 32, height: 32, speed: 1.5, direction: -1 },
-      { x: 1100, y: 270, width: 32, height: 32, speed: 2.5, direction: 1 },
-      { x: 1500, y: 320, width: 32, height: 32, speed: 1.8, direction: -1 },
-      { x: 1900, y: 220, width: 32, height: 32, speed: 2.2, direction: 1 },
-      { x: 2300, y: 270, width: 32, height: 32, speed: 1.7, direction: -1 },
-      { x: 2700, y: 320, width: 32, height: 32, speed: 2.3, direction: 1 },
-      { x: 3100, y: 220, width: 32, height: 32, speed: 1.9, direction: -1 },
-      { x: 3500, y: 270, width: 32, height: 32, speed: 2.1, direction: 1 }
+      { x: 400, y: 420, lastX: 400, lastY: 420, renderX: 400, renderY: 420, width: 32, height: 32, speed: 2, direction: 1 },
+      { x: 800, y: 420, lastX: 800, lastY: 420, renderX: 800, renderY: 420, width: 32, height: 32, speed: 1.5, direction: -1 },
+      { x: 1100, y: 270, lastX: 1100, lastY: 270, renderX: 1100, renderY: 270, width: 32, height: 32, speed: 2.5, direction: 1 },
+      { x: 1500, y: 320, lastX: 1500, lastY: 320, renderX: 1500, renderY: 320, width: 32, height: 32, speed: 1.8, direction: -1 },
+      { x: 1900, y: 220, lastX: 1900, lastY: 220, renderX: 1900, renderY: 220, width: 32, height: 32, speed: 2.2, direction: 1 },
+      { x: 2300, y: 270, lastX: 2300, lastY: 270, renderX: 2300, renderY: 270, width: 32, height: 32, speed: 1.7, direction: -1 },
+      { x: 2700, y: 320, lastX: 2700, lastY: 320, renderX: 2700, renderY: 320, width: 32, height: 32, speed: 2.3, direction: 1 },
+      { x: 3100, y: 220, lastX: 3100, lastY: 220, renderX: 3100, renderY: 220, width: 32, height: 32, speed: 1.9, direction: -1 },
+      { x: 3500, y: 270, lastX: 3500, lastY: 270, renderX: 3500, renderY: 270, width: 32, height: 32, speed: 2.1, direction: 1 }
     ];
 
     // Create goal
@@ -423,6 +443,10 @@ var application = {
             // Reset player position
             player.x = 100;
             player.y = 300;
+            player.lastX = 100;
+            player.lastY = 300;
+            player.renderX = 100;
+            player.renderY = 300;
             player.velocityX = 0;
             player.velocityY = 0;
             player.facing = 'right';
@@ -444,13 +468,18 @@ var application = {
 
     // Screen boundaries - falling off bottom
     if (player.y > this.data.gameHeight) {
-      player.x = 100;
-      player.y = 300;
-      player.velocityX = 0;
-      player.velocityY = 0;
       this.data.lives--;
       if (this.data.lives <= 0) {
         this.gameOver();
+      }else{  
+        player.x = 100;
+        player.y = 300;
+        player.lastX = 100;
+        player.lastY = 300;
+        player.renderX = 100;
+        player.renderY = 300;
+        player.velocityX = 0;
+        player.velocityY = 0;
       }
     }
   },
@@ -514,13 +543,81 @@ var application = {
     print("POCA: Level Complete! Score: ", this.data.score, "\n");
   },
 
-  update: function(deltaTime) {
+  storeLast: function() {
+
+    if (!this.data || !this.data.initialized) return;
+
+    // Store last frame state
+    for (let i = 0; i < this.data.enemies.length; i++) {
+      let enemy = this.data.enemies[i];
+      enemy.lastX = enemy.x;
+      enemy.lastY = enemy.y;
+    }
+
+    this.data.player.lastX = this.data.player.x;
+    this.data.player.lastY = this.data.player.y;
+
+    this.data.cameraLastX = this.data.cameraX;
+    this.data.cameraLastY = this.data.cameraY;
+
+  },
+
+  updateStep: function(deltaTime) {
     if (!this.data || !this.data.initialized) return;
     
     if (this.data.gameMode === this.MODE_STARTSCREEN || this.data.gameMode === this.MODE_RUNNING) {
       this.updatePlayer(deltaTime);
       this.updateEnemies(deltaTime);
     }
+
+  },
+
+  interpolate: function(alpha) {
+
+    if (!this.data || !this.data.initialized) return;
+
+    let invAlpha = 1.0 - alpha;
+
+    // Interpolate enemy positions
+    for (let i = 0; i < this.data.enemies.length; i++) {
+      let enemy = this.data.enemies[i];
+      enemy.renderX = (enemy.lastX * invAlpha) + (enemy.x * alpha);
+      enemy.renderY = (enemy.lastY * invAlpha) + (enemy.y * alpha);
+    }
+
+    // Interpolate player position
+    let player = this.data.player;
+    player.renderX = (player.lastX * invAlpha) + (player.x * alpha);
+    player.renderY = (player.lastY * invAlpha) + (player.y * alpha);
+
+    // Interpolate camera position
+    this.data.cameraRenderX = (this.data.cameraLastX * invAlpha) + (this.data.cameraX * alpha);
+    this.data.cameraRenderY = (this.data.cameraLastY * invAlpha) + (this.data.cameraY * alpha);
+
+  },
+
+  update: function(deltaTime) {
+    if (!this.data || !this.data.initialized) return;
+
+    let tickRate = 1.0 / 60.0; // 60 updates per second
+    let accumulator = Math.min(this.data.accumulator, 0.25); // Prevent spiral of death
+    accumulator += deltaTime;
+ 
+    if(this.data.first){
+      this.storeLast();
+      this.data.first = false;
+    }
+
+    while (accumulator >= tickRate) {
+      this.storeLast();
+      this.updateStep(tickRate);
+      accumulator -= tickRate;
+    }
+
+    this.data.accumulator = accumulator;
+
+    let alpha = accumulator / tickRate;
+    this.interpolate(alpha);
 
     this.data.time += deltaTime;
 
@@ -605,8 +702,8 @@ var application = {
     }
 
     let canvas = nativeCanvas;
-    let cameraX = this.data.cameraX;
-    let cameraY = this.data.cameraY;
+    let cameraX = this.data.cameraRenderX;
+    let cameraY = this.data.cameraRenderY;
 
     // Draw background sky with gradient BEFORE view matrix (fill entire actual canvas including borders)
     // Set up linear gradient from darker blue at top to lighter blue at bottom
@@ -860,8 +957,8 @@ var application = {
       // Dark red enemy body
       canvas.setColor(0.55, 0.0, 0.0, 1.0);
       canvas.drawFilledRectangle(
-        enemy.x - cameraX,
-        enemy.y - cameraY,
+        enemy.renderX - cameraX,
+        enemy.renderY - cameraY,
         enemy.width,
         enemy.height
       );
@@ -870,14 +967,14 @@ var application = {
       let eyeOffset = enemy.direction * 2; // Shift 2 pixels in walk direction
       canvas.setColor(0.0, 0.0, 0.0, 1.0);
       canvas.drawFilledRectangle(
-        enemy.x + 8 + eyeOffset - cameraX,
-        enemy.y + 8 - cameraY,
+        enemy.renderX + 8 + eyeOffset - cameraX,
+        enemy.renderY + 8 - cameraY,
         4,
         4
       );
       canvas.drawFilledRectangle(
-        enemy.x + 20 + eyeOffset - cameraX,
-        enemy.y + 8 - cameraY,
+        enemy.renderX + 20 + eyeOffset - cameraX,
+        enemy.renderY + 8 - cameraY,
         4,
         4
       );
@@ -919,8 +1016,8 @@ var application = {
     let player = this.data.player;
     canvas.setColor(1.0, 0.33, 0.33, 1.0); // Red player
     canvas.drawFilledRectangle(
-      player.x - cameraX,
-      player.y - cameraY,
+      player.renderX - cameraX,
+      player.renderY - cameraY,
       player.width,
       player.height
     );
@@ -929,15 +1026,15 @@ var application = {
     canvas.setColor(0.0, 0.0, 0.0, 1.0);
     if (player.facing == 'right') {
       canvas.drawFilledRectangle(
-        player.x + 20 - cameraX,
-        player.y + 8 - cameraY,
+        player.renderX + 20 - cameraX,
+        player.renderY + 8 - cameraY,
         4,
         4
       );
     } else {
       canvas.drawFilledRectangle(
-        player.x + 8 - cameraX,
-        player.y + 8 - cameraY,
+        player.renderX + 8 - cameraX,
+        player.renderY + 8 - cameraY,
         4,
         4
       );
