@@ -770,12 +770,21 @@ end;
 
 function TScreenMain.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
+ result:=false;
+ if POCAProcessInputKeyEvent(aKeyEvent) then begin
+  result:=true;
+  exit;
+ end;
  result:=fConsole.KeyEvent(aKeyEvent);
 end;
 
 function TScreenMain.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 begin
  result:=false;
+ if POCAProcessInputPointerEvent(aPointerEvent) then begin
+  result:=true;
+  exit;
+ end;
  if fReady then begin
   case aPointerEvent.PointerEventType of
    TpvApplicationInputPointerEventType.Down:begin
@@ -793,6 +802,10 @@ end;
 function TScreenMain.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  result:=false;
+ if POCAProcessInputScrollEvent(aRelativeAmount) then begin
+  result:=true;
+  exit;
+ end;
 end;
 
 function TScreenMain.CanBeParallelProcessed:boolean;
