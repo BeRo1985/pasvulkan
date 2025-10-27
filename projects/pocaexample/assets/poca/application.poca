@@ -12,6 +12,7 @@ var application = {
       this.data.ball = {
         position: { x: 0.0, y: 0.0 },
         velocity: { x: 100.0, y: 150.0 }
+        size: 32.0
       };
       this.data.canvasWidth = 800;
       this.data.canvasHeight = 600;
@@ -93,10 +94,10 @@ var application = {
     ball.position.x += ball.velocity.x * deltaTime;
     ball.position.y += ball.velocity.y * deltaTime;
     // Bounce off walls
-    if (ball.position.x < 0 || ball.position.x > width) {
+    if ((ball.position.x < ball.size) || (ball.position.x > (width - ball.size))) {
       ball.velocity.x = -ball.velocity.x;
     }
-    if (ball.position.y < 0 || ball.position.y > height) {
+    if ((ball.position.y < ball.size) || (ball.position.y > (height - ball.size))) {
       ball.velocity.y = -ball.velocity.y;
     }
 
@@ -109,7 +110,7 @@ var application = {
 
     let ball = this.data.ball;  
     canvas.setColor(1.0, 0.0, 0.0, 1.0);
-    canvas.drawFilledCircle(ball.position.x, ball.position.y, 32.0);
+    canvas.drawFilledCircle(ball.position.x, ball.position.y, ball.size);
 
   }
 
