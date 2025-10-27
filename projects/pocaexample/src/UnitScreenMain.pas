@@ -963,9 +963,9 @@ begin
 
  fVulkanCanvas.FontSize:=-16;
 
- POCACallFunction('onApplicationDrawCanvas',[fPOCAVulkanCanvas,POCANewNumber(fPOCAContext,fVulkanCanvas.Width),POCANewNumber(fPOCAContext,fVulkanCanvas.Height),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.width),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.height)],nil);
-
  fConsole.Draw(aDeltaTime);
+
+ POCACallFunction('onApplicationDrawCanvas',[fPOCAVulkanCanvas,POCANewNumber(fPOCAContext,fVulkanCanvas.Width),POCANewNumber(fPOCAContext,fVulkanCanvas.Height),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.width),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.height)],nil);
 
  fVulkanCanvas.Stop;
 

@@ -84,6 +84,12 @@ var application = {
 
   drawCanvas: function(nativeCanvas, width, height, nativeWidth, nativeHeight) {
     // Draw on the native canvas if needed
+
+    let canvas = nativeCanvas;
+    
+    canvas.setColor(1.0, 0.0, 0.0, 1.0);
+    canvas.drawFilledCircle(64.0, 64.0, 32.0);
+
   }
 
 };
