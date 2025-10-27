@@ -343,6 +343,67 @@ begin
  inherited Destroy;
 end;
 
+procedure TScreenMain.POCAInitialize;
+var HostData:PPOCAHostData;
+begin
+ HostData:=PPOCAHostData(fPOCAContext.Instance^.Globals.HostData);
+ HostData^.GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
+ HostData^.GraphicsCommandBuffer:=fVulkanGraphicsCommandBuffer;
+ HostData^.GraphicsCommandBufferFence:=fVulkanGraphicsCommandBufferFence;
+ HostData^.TransferQueue:=pvApplication.VulkanDevice.TransferQueue;
+ HostData^.TransferCommandBuffer:=fVulkanTransferCommandBuffer;
+ HostData^.TransferCommandBufferFence:=fVulkanTransferCommandBufferFence;
+end;
+
+procedure TScreenMain.POCAGarbageCollect;
+var ta,tb,t:TpvHighResolutionTime;
+    MemoryUsageItem:PMemoryUsageItem;
+begin
+
+ fCriticalSection.Enter;
+ try
+
+  ta:=pvApplication.HighResolutionTimer.GetTime;
+
+  if (fLastPOCAFullCycleCounter=fPOCAInstance.Globals.GarbageCollector.FullCycleCounter) and
+     (pvApplication.HighResolutionTimer.GetTime>=fNextPOCAFullGarbageCollectTime) then begin
+   POCAGarbageCollectorProcessFullCycle(fPOCAInstance);
+  end else begin
+   POCAGarbageCollectorProcessIncrementalCycle(fPOCAInstance);
+  end;
+
+  tb:=pvApplication.HighResolutionTimer.GetTime;
+
+  t:=pvApplication.HighResolutionTimer.ToMilliseconds(tb-ta);
+  if t>0 then begin
+// Sleep(0);
+  end;
+
+  if fLastPOCAFullCycleCounter<>fPOCAInstance.Globals.GarbageCollector.FullCycleCounter then begin
+   fLastPOCAFullCycleCounter:=fPOCAInstance.Globals.GarbageCollector.FullCycleCounter;
+   fNextPOCAFullGarbageCollectTime:=pvApplication.HighResolutionTimer.GetTime+(pvApplication.HighResolutionTimer.SecondInterval*GarbageCollectorFullInterval);
+   POCAResetTemporarySaves(fPOCAContext);
+  end;
+
+  fMemUsageItemTimeAccumulator:=fMemUsageItemTimeAccumulator+(pvApplication.DeltaTime*60.0);
+  if fMemUsageItemTimeAccumulator>=1.0 then begin
+   fMemUsageItemTimeAccumulator:=frac(fMemUsageItemTimeAccumulator);
+   fMemoryUsageItemIndex:=(fMemoryUsageItemIndex+1) and MemoryUsageItemMask;
+   MemoryUsageItem:=@fMemoryUsageItems[fMemoryUsageItemIndex and MemoryUsageItemMask];
+   MemoryUsageItem^.Time:=fMemUsageItemTime;
+   MemoryUsageItem^.POCAAllocated:=fPOCAInstance.Globals.GarbageCollector.Allocated;
+   MemoryUsageItem^.POCAFreeCount:=fPOCAInstance.Globals.GarbageCollector.FreeCount;
+  end;
+  fMemUsageItemTime:=fMemUsageItemTime+pvApplication.DeltaTime;
+
+  fLastPOCAGarbageCollectTime:=pvApplication.HighResolutionTimer.GetTime;
+
+ finally
+  fCriticalSection.Leave;
+ end;
+
+end;
+
 procedure TScreenMain.POCAExecute(const aCode:TpvUTF8String;const aFileName:TpvUTF8String);
 var Line:TpvUTF8String;
     POCACode,POCAValue:TPOCAValue;
@@ -621,11 +682,14 @@ begin
 
  POCAInitialize;
 
+ POCACallFunction('onApplicationShow',[],nil);
+
 end;
 
 procedure TScreenMain.Hide;
 var Index:TpvInt32;
 begin
+ POCACallFunction('onApplicationHide',[],nil);
  FreeAndNil(fVulkanFont);
  FreeAndNil(fVulkanFontSpriteAtlas);
  FreeAndNil(fVulkanSpriteAtlas);
@@ -648,16 +712,19 @@ end;
 procedure TScreenMain.Resume;
 begin
  inherited Resume;
+ POCACallFunction('onApplicationResume',[],nil);
 end;
 
 procedure TScreenMain.Pause;
 begin
+ POCACallFunction('onApplicationPause',[],nil);
  inherited Pause;
 end;
 
 procedure TScreenMain.Resize(const aWidth,aHeight:TpvInt32);
 begin
  inherited Resize(aWidth,aHeight);
+ POCACallFunction('onApplicationResize',[POCANewNumber(fPOCAContext,aWidth),POCANewNumber(fPOCAContext,aHeight)],nil);
 end;
 
 procedure TScreenMain.AfterCreateSwapChain;
@@ -762,10 +829,13 @@ begin
   fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
  end;
 
+ POCACallFunction('onApplicationAfterCreateSwapChain',[],nil);
+
 end;
 
 procedure TScreenMain.BeforeDestroySwapChain;
 begin
+ POCACallFunction('onApplicationBeforeDestroySwapChain',[],nil);
  fVulkanCanvas.VulkanRenderPass:=nil;
  FreeAndNil(fVulkanRenderPass);
  inherited BeforeDestroySwapChain;
@@ -819,67 +889,7 @@ end;
 procedure TScreenMain.Check(const aDeltaTime:TpvDouble);
 begin
  inherited Check(aDeltaTime);
-end;
-
-procedure TScreenMain.POCAInitialize;
-var HostData:PPOCAHostData;
-begin
- HostData:=PPOCAHostData(fPOCAContext.Instance^.Globals.HostData);
- HostData^.GraphicsQueue:=pvApplication.VulkanDevice.GraphicsQueue;
- HostData^.GraphicsCommandBuffer:=fVulkanGraphicsCommandBuffer;
- HostData^.GraphicsCommandBufferFence:=fVulkanGraphicsCommandBufferFence;
- HostData^.TransferQueue:=pvApplication.VulkanDevice.TransferQueue;
- HostData^.TransferCommandBuffer:=fVulkanTransferCommandBuffer;
- HostData^.TransferCommandBufferFence:=fVulkanTransferCommandBufferFence;
-end;
-
-procedure TScreenMain.POCAGarbageCollect;
-var ta,tb,t:TpvHighResolutionTime;
-    MemoryUsageItem:PMemoryUsageItem;
-begin
-
- fCriticalSection.Enter;
- try
-
-  ta:=pvApplication.HighResolutionTimer.GetTime;
-
-  if (fLastPOCAFullCycleCounter=fPOCAInstance.Globals.GarbageCollector.FullCycleCounter) and
-     (pvApplication.HighResolutionTimer.GetTime>=fNextPOCAFullGarbageCollectTime) then begin
-   POCAGarbageCollectorProcessFullCycle(fPOCAInstance);
-  end else begin
-   POCAGarbageCollectorProcessIncrementalCycle(fPOCAInstance);
-  end;
-
-  tb:=pvApplication.HighResolutionTimer.GetTime;
-
-  t:=pvApplication.HighResolutionTimer.ToMilliseconds(tb-ta);
-  if t>0 then begin
-// Sleep(0);
-  end;
-
-  if fLastPOCAFullCycleCounter<>fPOCAInstance.Globals.GarbageCollector.FullCycleCounter then begin
-   fLastPOCAFullCycleCounter:=fPOCAInstance.Globals.GarbageCollector.FullCycleCounter;
-   fNextPOCAFullGarbageCollectTime:=pvApplication.HighResolutionTimer.GetTime+(pvApplication.HighResolutionTimer.SecondInterval*GarbageCollectorFullInterval);
-   POCAResetTemporarySaves(fPOCAContext);
-  end;
-
-  fMemUsageItemTimeAccumulator:=fMemUsageItemTimeAccumulator+(pvApplication.DeltaTime*60.0);
-  if fMemUsageItemTimeAccumulator>=1.0 then begin
-   fMemUsageItemTimeAccumulator:=frac(fMemUsageItemTimeAccumulator);
-   fMemoryUsageItemIndex:=(fMemoryUsageItemIndex+1) and MemoryUsageItemMask;
-   MemoryUsageItem:=@fMemoryUsageItems[fMemoryUsageItemIndex and MemoryUsageItemMask];
-   MemoryUsageItem^.Time:=fMemUsageItemTime;
-   MemoryUsageItem^.POCAAllocated:=fPOCAInstance.Globals.GarbageCollector.Allocated;
-   MemoryUsageItem^.POCAFreeCount:=fPOCAInstance.Globals.GarbageCollector.FreeCount;
-  end;
-  fMemUsageItemTime:=fMemUsageItemTime+pvApplication.DeltaTime;
-
-  fLastPOCAGarbageCollectTime:=pvApplication.HighResolutionTimer.GetTime;
-
- finally
-  fCriticalSection.Leave;
- end;
-
+ POCACallFunction('onApplicationCheck',[POCANewNumber(fPOCAContext,aDeltaTime)],nil);
 end;
 
 procedure TScreenMain.CansoleOnSetDrawColor(const aColor:TpvVector4);
@@ -902,6 +912,8 @@ var Scale:TpvFloat;
 begin
 
  inherited Update(aDeltaTime);
+
+ POCACallFunction('onApplicationUpdate',[POCANewNumber(fPOCAContext,aDeltaTime)],nil);
 
  fConsole.OnSetDrawColor:=CansoleOnSetDrawColor;
  fConsole.OnDrawRect:=ConsoleOnDrawRect;
@@ -930,6 +942,8 @@ begin
  fVulkanCanvas.Font:=fVulkanFont;
 
  fVulkanCanvas.FontSize:=-16;
+
+//POCACallFunction('onApplicationDrawCanvas',[POCANewNumber(fPOCAContext,aDeltaTime)],nil);
 
  fConsole.Draw(aDeltaTime);
 

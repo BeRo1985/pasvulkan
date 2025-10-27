@@ -32,6 +32,10 @@ var application = {
     // Finalize loading application session
   },
 
+  check: function(deltaTime) {
+    // Perform checks before update
+  },
+
   update: function(deltaTime) {
     // Update application logic
     this.data.counter += deltaTime;
