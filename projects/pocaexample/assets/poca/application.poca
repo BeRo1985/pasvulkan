@@ -667,14 +667,20 @@ var application = {
     
     for (let i = 0; i < this.data.clouds.length; i++) {
       let cloud = this.data.clouds[i];
+
+      // Calculate parallax offsets using sine and cosine for smooth movement for fluffiness motion
+      let parallaxOffsetX = Math.sin(this.data.time * 0.75 + cloud.x * 0.50) * 5;
+      let parallaxOffsetY = Math.cos(this.data.time * 0.50 + cloud.y * 0.75) * 2;
+      let parallaxScale = 1.0 + Math.sin(this.data.time + cloud.x * 0.25) * 0.05;
+
       // Apply parallax effect by multiplying camera position by layer depth
-      let parallaxX = cloud.x - (cameraX * cloud.layer);
-      let parallaxY = cloud.y - (cameraY * cloud.layer);
+      let parallaxX = cloud.x + parallaxOffsetX - (cameraX * cloud.layer);
+      let parallaxY = cloud.y + parallaxOffsetY - (cameraY * cloud.layer);
 
       // Scale cloud size based on scale factor
       let baseSize = 30;
-      let size1 = baseSize * cloud.scale;
-      let size2 = 35 * cloud.scale;
+      let size1 = baseSize * cloud.scale * parallaxScale;
+      let size2 = (baseSize * 1.125) * cloud.scale * parallaxScale;
 
       let backColorFactor = 0.5 + 0.125 * cloud.layer; // Lighter for farther layers
       canvas.setColor(backColorFactor, backColorFactor, backColorFactor, 0.5);       
