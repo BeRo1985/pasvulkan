@@ -941,6 +941,14 @@ begin
 
  fVulkanCanvas.Start(pvApplication.UpdateInFlightFrameIndex);
 
+ fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
+
+ fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
+
+ fVulkanCanvas.Font:=fVulkanFont;
+
+ fVulkanCanvas.FontSize:=-16;
+
  // Scaled to fit within the canvas while preserving its aspect ratio and centered, with possible black borders
  if (fVulkanCanvas.Width/fVulkanCanvas.Height)<(640.0/400.0) then begin
   Scale:=fVulkanCanvas.Width/640;
@@ -955,16 +963,9 @@ begin
                            TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*
                            TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5,0);
 
- fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
-
- fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
-
- fVulkanCanvas.Font:=fVulkanFont;
-
- fVulkanCanvas.FontSize:=-16;
-
  fConsole.Draw(aDeltaTime);
 
+ fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.Identity;
  POCACallFunction('onApplicationDrawCanvas',[fPOCAVulkanCanvas,POCANewNumber(fPOCAContext,fVulkanCanvas.Width),POCANewNumber(fPOCAContext,fVulkanCanvas.Height),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.width),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.height)],nil);
 
  fVulkanCanvas.Stop;
