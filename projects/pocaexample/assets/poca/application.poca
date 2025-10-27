@@ -17,19 +17,39 @@ var application = {
     // Cleanup application data if needed
   },
 
-  startLoad: function() {
-    print("POCA: Application startLoad\n");
-    // Prepare for loading application session
+  show: function() {
+    print("POCA: Application show\n");
+    // Handle application becoming visible
   },
 
-  backgroundLoad: function() {
-    print("POCA: Application backgroundLoad\n");
-    // Handle background loading tasks
+  hide: function() {
+    print("POCA: Application hide\n");
+    // Handle application becoming hidden
   },
 
-  finishLoad: function() {
-    print("POCA: Application finishLoad\n");
-    // Finalize loading application session
+  resume: function() {
+    print("POCA: Application resume\n");
+    // Handle application resuming
+  },
+
+  pause: function() {
+    print("POCA: Application pause\n");
+    // Handle application pausing
+  },
+
+  resize: function(width, height) {
+    print("POCA: Application resize to " + width + "x" + height + "\n");
+    // Handle application resizing
+  },
+
+  afterCreateSwapChain: function() {
+    print("POCA: Application afterCreateSwapChain\n");
+    // Handle actions after swap chain creation
+  },
+
+  beforeDestroySwapChain: function() {
+    print("POCA: Application beforeDestroySwapChain\n");
+    // Handle actions before swap chain destruction
   },
 
   check: function(deltaTime) {
@@ -40,28 +60,6 @@ var application = {
     // Update application logic
     this.data.counter += deltaTime;
     //print("POCA: Application update, counter = " + this.data.counter + "\n");
-  },
-
-  beginUpdate: function(deltaTime) {
-    // Prepare for rendering if needed
-    //print("POCA: Application beginUpdate\n"); 
-  },
-
-  endUpdate: function(deltaTime) {
-    // Finalize rendering if needed
-    //print("POCA: Application endUpdate\n");
-  },
-
-  updateStore: function(deltaTime) {
-    // Update stored data if needed
-  },
-
-  updateInterpolation: function(alpha) {
-    // Update interpolation if needed
-  },
-
-  updateStep: function(deltaTime) {
-    // Update fixed timestep logic if needed
   },
 
   onInputEvent: function(event) {

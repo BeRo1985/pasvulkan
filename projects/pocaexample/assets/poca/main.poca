@@ -33,27 +33,59 @@ function onApplicationDestroy() {
 
 }
 
-// called when the loading of a application session starts
-function onApplicationStartLoad() {
-  print("POCA: onApplicationStartLoad\n");
+// called when the application screen becomes visible
+function onApplicationShow() {
+  print("POCA: onApplicationShow\n");
   if (application) {
-    application?.startLoad(); // call the startLoad function of the application object
+    application?.show(); // call the show function of the application object
   }
 }
 
-// called when the loading of a application session goes into the background
-function onApplicationBackgroundLoad() {
-  print("POCA: onApplicationBackgroundLoad\n");
+// called when the application screen becomes hidden
+function onApplicationHide() {
+  print("POCA: onApplicationHide\n");
   if (application) {
-    application?.backgroundLoad(); // call the backgroundLoad function of the application object
+    application?.hide(); // call the hide function of the application object
   }
 }
 
-// called when the loading of a application session finishes
-function onApplicationFinishLoad() {
-  print("POCA: onApplicationFinishLoad\n");
+// called when the application is resumed
+function onApplicationResume() {
+  print("POCA: onApplicationResume\n");
   if (application) {
-    application?.finishLoad(); // call the finishLoad function of the application object
+    application?.resume(); // call the resume function of the application object
+  }
+}
+
+// called when the application is paused
+function onApplicationPause() {
+  print("POCA: onApplicationPause\n");
+  if (application) {
+    application?.pause(); // call the pause function of the application object
+  }
+}
+
+// called when the application is resized
+function onApplicationResize(width, height) {
+  print("POCA: onApplicationResize to ",  width, "x", height, "\n");
+  if (application) {
+    application?.resize(width, height); // call the resize function of the application object
+  }
+}
+
+// called after the swap chain of the application is created
+function onApplicationAfterCreateSwapChain() {
+  print("POCA: onApplicationAfterCreateSwapChain\n");
+  if (application) {
+    application?.afterCreateSwapChain(); // call the afterCreateSwapChain function of the application object
+  }
+}
+
+// called before the swap chain of the application is destroyed
+function onApplicationBeforeDestroySwapChain() {
+  print("POCA: onApplicationBeforeDestroySwapChain\n");
+  if (application) {
+    application?.beforeDestroySwapChain(); // call the beforeDestroySwapChain function of the application
   }
 }
 
@@ -71,46 +103,6 @@ function onApplicationUpdate(deltaTime) {
   //print("POCA: onApplicationUpdate\n");
   if (application) {
     application?.update(deltaTime); // call the update function of the application object
-  }
-}
-
-// called every frame when the application update function enters the "Fix your timestep" loop
-function onApplicationBeginUpdate(deltaTime) {
-  //print("POCA: onApplicationBeginUpdate\n");
-  if (application) {
-    application?.beginUpdate(deltaTime); // call the beginUpdate function of the application object
-  }
-}
-
-// called every frame when the application update function leaves the "Fix your timestep" loop
-function onApplicationEndUpdate(deltaTime) {
-  //print("POCA: onApplicationEndUpdate\n");
-  if (application) {
-    application?.endUpdate(deltaTime); // call the endUpdate function of the application object
-  }
-}
-
-// called every "Fix your timestep" iteration when the application update function must store the current state of the application for interpolation for the "Fix your timestep" approach
-function onApplicationUpdateStore() {
-  //print("POCA: onApplicationUpdateStore\n");
-  if (application) {
-    application?.updateStore(); // call the updateStore function of the application object
-  }
-}
-
-// called every frame when the application update function must interpolate the application state for the "Fix your timestep" approach
-function onApplicationUpdateInterpolation(alpha) {
-  //print("POCA: onApplicationUpdateInterpolation\n");
-  if (application) {
-    application?.updateInterpolation(alpha); // call the updateInterpolation function of the application object
-  }
-}
-
-// called every "Fix your timestep" iteration when the application update function must update the application state
-function onApplicationUpdateStep(deltaTime) {
-  //print("POCA: onApplicationUpdateStep\n");
-  if (application) {
-    application?.updateStep(deltaTime); // call the updateInterpolation function of the application object
   }
 }
 
