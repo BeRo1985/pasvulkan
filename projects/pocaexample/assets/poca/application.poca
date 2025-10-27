@@ -107,8 +107,9 @@ var application = {
 
     let canvas = nativeCanvas;
 
+    let ball = this.data.ball;  
     canvas.setColor(1.0, 0.0, 0.0, 1.0);
-    canvas.drawFilledCircle(64.0, 64.0, 32.0);
+    canvas.drawFilledCircle(ball.position.x, ball.position.y, 32.0);
 
   }
 
