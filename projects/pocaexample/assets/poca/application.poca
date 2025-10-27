@@ -857,7 +857,7 @@ var application = {
     } else if (this.data.gameMode === this.MODE_RUNNING) {
       // Draw score during gameplay
       canvas.setColor(0.5, 0.5, 0.5, 1.0); // White text
-      canvas.drawText("Score: " ~ this.data.score, 10 - 2.0, 10 + 2.0);
+      canvas.drawText("Score: " ~ this.data.score, 10 - 1.0, 10 + 1.0);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
       canvas.drawText("Score: " ~ this.data.score, 10, 10);
       
