@@ -101,6 +101,12 @@ type { TScreenMain }
        fMemUsageItemTimeAccumulator:TpvDouble;
        fMemUsageItemTime:TpvDouble;
        fCriticalSection:TPasMPCriticalSection;
+       fOldFPS:TpvInt32;
+       fFPSTimeAccumulator:TpvDouble;
+       fFrameRateTimeAccumulator:TpvDouble;
+       fPercentileXthFrameRate:TpvDouble;
+       fMedianFrameTime:TpvDouble;
+       fFrameTimeString:string;
        procedure POCAInitialize;
        procedure POCAGarbageCollect;
        function POCAProcessInputKeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
@@ -937,6 +943,15 @@ end;
 
 procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
 var Scale:TpvFloat;
+    FPS:TpvInt32;
+    FPSString:string;
+    RenderCPUTimeString:string;
+    UpdateCPUTimeString:string;
+    PercentileXthFPSString:string;
+    PercentileXthFrameTimeString:string;
+    MedianFPSString:string;
+    MedianFrameTimeString:string;
+    FrameTime,PhysicsTimeStep,RenderCPUTime,PercentileXthFPS,PercentileXthFrameRate,MedianFPS,MedianFrameTime:TpvDouble;
 begin
 
  inherited Update(aDeltaTime);
@@ -987,6 +1002,39 @@ begin
  fReady:=true;
 
  POCAGarbageCollect;
+
+ FPS:=round(pvApplication.FramesPerSecond*100.0);
+ fFPSTimeAccumulator:=fFPSTimeAccumulator+aDeltaTime;
+ if (fFPSTimeAccumulator>=0.1) or (length(fFrameTimeString)=0) then begin
+  fFPSTimeAccumulator:=frac(fFPSTimeAccumulator*10.0)*0.1;
+  fOldFPS:=Low(Int32);
+ end;
+
+ fFrameRateTimeAccumulator:=fFrameRateTimeAccumulator+aDeltaTime;
+ if fFrameRateTimeAccumulator>=1.0 then begin
+  fFrameRateTimeAccumulator:=frac(fFrameRateTimeAccumulator);
+  fPercentileXthFrameRate:=pvApplication.GetPercentileXthFrameTime(95.0);
+  fMedianFrameTime:=pvApplication.GetMedianFrameTime(1.0); // of the last second
+ end;
+
+ if abs(fOldFPS-FPS)>=100 then begin
+  fOldFPS:=FPS;
+  PercentileXthFrameRate:=fPercentileXthFrameRate;
+  PercentileXthFPS:=1.0/Max(1e-4,PercentileXthFrameRate);
+  MedianFrameTime:=fMedianFrameTime;
+  MedianFPS:=1.0/Max(1e-4,MedianFrameTime);
+  str((FPS*0.01):4:2,FPSString);
+  //fScene3D.GetProfilerTimes(RenderCPUTime,FrameTime);
+  //str(FrameTime*1000.0:4:2,fFrameTimeString);
+  //str(pvApplication.HighResolutionTimer.ToFloatSeconds(fRenderCPUTime)*1000.0:4:2,RenderCPUTimeString);
+  //str(pvApplication.HighResolutionTimer.ToFloatSeconds(CPUTime)*1000.0:4:2,UpdateCPUTimeString);
+  str(PercentileXthFPS:4:2,PercentileXthFPSString);
+  str(PercentileXthFrameRate*1000.0:4:2,PercentileXthFrameTimeString);
+  str(MedianFPS:4:2,MedianFPSString);
+  str(MedianFrameTime*1000.0:4:2,MedianFrameTimeString);
+  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+PercentileXthFPSString+' FPS 95%] ['+PercentileXthFrameTimeString+' ms 95%] ['+MedianFPSString+' FPS median] ['+MedianFrameTimeString+' ms median]';
+//pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms GPU time] ['+RenderCPUTimeString+' ms render CPU time] ['+UpdateCPUTimeString+' ms update CPU time] ['+PercentileXthFPSString+' FPS 95%] ['+PercentileXthFrameTimeString+' ms 95%] ['+MedianFPSString+' FPS median] ['+MedianFrameTimeString+' ms median]';
+ end;
 
 end;
 
