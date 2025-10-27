@@ -495,7 +495,7 @@ begin
  fCriticalSection.Enter;
  try
   POCASetInputEventHashKey(fPOCAContext,fInputEventHash,aKeyEvent);
-  result:=POCACallFunction('onInputEvent',[fInputEventHash],@ResultValue);
+  result:=POCACallFunction('onApplicationInputEvent',[fInputEventHash],@ResultValue);
   if result then begin
    result:=POCAGetBooleanValue(fPOCAContext,ResultValue);
   end;
@@ -510,7 +510,7 @@ begin
  fCriticalSection.Enter;
  try
   POCASetInputEventHashPointer(fPOCAContext,fInputEventHash,aPointerEvent);
-  result:=POCACallFunction('onInputEvent',[fInputEventHash],@ResultValue);
+  result:=POCACallFunction('onApplicationInputEvent',[fInputEventHash],@ResultValue);
   if result then begin
    result:=POCAGetBooleanValue(fPOCAContext,ResultValue);
   end;
@@ -525,7 +525,7 @@ begin
  fCriticalSection.Enter;
  try
   POCASetInputEventHashScroll(fPOCAContext,fInputEventHash,aRelativeAmount);
-  result:=POCACallFunction('onInputEvent',[fInputEventHash],@ResultValue);
+  result:=POCACallFunction('onApplicationInputEvent',[fInputEventHash],@ResultValue);
   if result then begin
    result:=POCAGetBooleanValue(fPOCAContext,ResultValue);
   end;
