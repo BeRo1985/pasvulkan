@@ -1,0 +1,89 @@
+
+var application = {
+
+  data: null,
+
+  create: function() {
+    print("POCA: Application create\n");
+    // Initialize application data
+    if (!this.data.initialized) {
+      this.data.initialized = true;
+      this.data.counter = 0;
+    }
+  },
+
+  destroy: function() {
+    print("POCA: Application destroy\n");
+    // Cleanup application data if needed
+  },
+
+  startLoad: function() {
+    print("POCA: Application startLoad\n");
+    // Prepare for loading application session
+  },
+
+  backgroundLoad: function() {
+    print("POCA: Application backgroundLoad\n");
+    // Handle background loading tasks
+  },
+
+  finishLoad: function() {
+    print("POCA: Application finishLoad\n");
+    // Finalize loading application session
+  },
+
+  update: function(deltaTime) {
+    // Update application logic
+    this.data.counter += deltaTime;
+    //print("POCA: Application update, counter = " + this.data.counter + "\n");
+  },
+
+  beginUpdate: function(deltaTime) {
+    // Prepare for rendering if needed
+    //print("POCA: Application beginUpdate\n"); 
+  },
+
+  endUpdate: function(deltaTime) {
+    // Finalize rendering if needed
+    //print("POCA: Application endUpdate\n");
+  },
+
+  updateStore: function(deltaTime) {
+    // Update stored data if needed
+  },
+
+  updateInterpolation: function(alpha) {
+    // Update interpolation if needed
+  },
+
+  updateStep: function(deltaTime) {
+    // Update fixed timestep logic if needed
+  },
+
+  onInputEvent: function(event) {
+    // Handle input events
+    //print("POCA: Application onInputEvent\n");
+    return false; // return true if the event was handled
+  },
+
+  createCanvas: function(nativeCanvas) {
+    print("POCA: Application createCanvas\n");
+    // Setup the native canvas if needed
+  },
+
+  destroyCanvas: function(nativeCanvas) {
+    print("POCA: Application destroyCanvas\n");
+    // Cleanup the native canvas if needed
+  },  
+
+  updateCanvas: function(deltaTime) {
+    // Update the native canvas if needed
+  },
+
+  drawCanvas: function(nativeCanvas, width, height, nativeWidth, nativeHeight) {
+    // Draw on the native canvas if needed
+  }
+
+};
+
+return application;
