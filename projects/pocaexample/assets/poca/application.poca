@@ -807,7 +807,7 @@ var application = {
     if (this.data.gameMode === this.MODE_STARTSCREEN) {
       // Start screen
       canvas.setFontSize(64);
-      canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
+      canvas.setColor(1.0, 0.5, 0.125, 1.0); // Orange text
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
       canvas.drawText("SUPER CUBI", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 100);
       
