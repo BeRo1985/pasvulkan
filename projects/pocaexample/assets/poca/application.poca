@@ -846,7 +846,8 @@ var application = {
       
     } else if (this.data.gameMode === this.MODE_GAMEOVER) {
       // Game over screen
-      canvas.setFontSize(64);
+      let offsetScale = 1.0 + (Math.sin(this.data.time * 3.0) * 0.05);
+      canvas.setFontSize(64 * offsetScale);
       canvas.setColor(1.0, 0.0, 0.0, 1.0); // Red text
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
       canvas.drawText("GAME OVER", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 60);
