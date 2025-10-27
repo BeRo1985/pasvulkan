@@ -400,32 +400,35 @@ var application = {
   },
 
   onInputEvent: function(event) {
-    if (!event || !this.data) return false;
+    if (!event || !this.data || !this.data.initialized) return false;
 
     // Handle keyboard events
     if (event.EventType === Input.EventTypes.EVENT_KEY) {
-      let isDown = (event.KeyEventType === Input.KeyEventTypes.KEYEVENT_DOWN);
       
-      if (event.KeyCode === Input.KeyCodes.KEYCODE_LEFT) {
-        print("Left key ", isDown ? "down\n" : "up\n");
-        this.data.keys.left = isDown;
-        return true;
-      } else if (event.KeyCode === Input.KeyCodes.KEYCODE_RIGHT) {
-        print("Right key ", isDown ? "down\n" : "up\n");
-        this.data.keys.right = isDown;
-        return true;
-      } else if (event.KeyCode === Input.KeyCodes.KEYCODE_UP) {
-        print("Up key ", isDown ? "down\n" : "up\n");
-        this.data.keys.up = isDown;
-        return true;
-      } else if (event.KeyCode === Input.KeyCodes.KEYCODE_SPACE) {
-        if (isDown && !this.data.player.isJumping && this.data.gameRunning) {
-          this.data.player.velocityY = -this.data.player.jumpPower;
-          this.data.player.isJumping = true;
+      if ((event.KeyEventType === Input.KeyEventTypes.KEYEVENT_DOWN) || (event.KeyEventType === Input.KeyEventTypes.KEYEVENT_UP)) {
+
+        let isDown = (event.KeyEventType === Input.KeyEventTypes.KEYEVENT_DOWN);
+        
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_LEFT) {
+          this.data.keys.left = isDown;
+          return true;
+        } else if (event.KeyCode === Input.KeyCodes.KEYCODE_RIGHT) {
+          this.data.keys.right = isDown;
+          return true;
+        } else if (event.KeyCode === Input.KeyCodes.KEYCODE_UP) {
+          this.data.keys.up = isDown;
+          return true;
+        } else if (event.KeyCode === Input.KeyCodes.KEYCODE_SPACE) {        
+          if (isDown && !this.data.player.isJumping && this.data.gameRunning) {
+            this.data.player.velocityY = -this.data.player.jumpPower;
+            this.data.player.isJumping = true;
+          }
+          this.data.keys.space = isDown;
+          return true;
         }
-        this.data.keys.space = isDown;
-        return true;
+
       }
+
     }
     
     return false;
