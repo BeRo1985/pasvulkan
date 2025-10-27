@@ -676,7 +676,7 @@ var application = {
     canvas.setStopColor(1.0, 0.75, 0.0, 0.0); 
     for (let i = 0; i < rayCount; i++) {
       let angle = (i / rayCount) * Math.PI * 2 + rayRotation;
-      let rayLength = 128;
+      let rayLength = 64;
       let rayWidth = 8;
       
       // Calculate ray position
@@ -737,15 +737,34 @@ var application = {
     );
     canvas.setModelMatrix(identityMatrix);
     
-    // Reset fill style to solid color
-    canvas.setFillStyle(Canvas.FillStyle.Color);
+    // Set fill style for sun
+    canvas.setFillStyle(Canvas.FillStyle.RadialGradient);
+    let sunToOriginMatrix = Matrix4x4.create(
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      -sunX, -sunY, 0, 1
+    );
+    let sunScaleMatrix = Matrix4x4.create(
+      1 / sunRadius, 0, 0, 0,
+      0, 1 / sunRadius, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    );
+    let sunFillMatrix = sunToOriginMatrix.mul(sunScaleMatrix); 
+    canvas.setFillMatrix(sunFillMatrix);
+    canvas.setStartColor(1.0, 1.0, 0.5, 1.0);
+    canvas.setStopColor(1.0, 0.75, 0.0, 1.0);
 
     // Draw sun core (bright yellow circle)
     canvas.setColor(1.0, 1.0, 0.5, 1.0);
     canvas.drawFilledCircle(sunX, sunY, sunRadius);
     
+    // Reset fill style to solid color
+    canvas.setFillStyle(Canvas.FillStyle.Color);
+
     // Draw sun highlight (lighter center)
-    canvas.setColor(1.0, 1.0, 0.6, 1.0);
+    canvas.setColor(1.0, 1.0, 0.6, 0.3275);
     canvas.drawFilledCircle(sunX - 8, sunY - 8, sunRadius * 0.6);
 
     // Draw clouds with parallax scrolling (white fluffy clouds)
