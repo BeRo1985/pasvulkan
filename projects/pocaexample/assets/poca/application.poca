@@ -879,7 +879,7 @@ var application = {
       
       canvas.setFontSize(32);
       canvas.setColor(0.5, 0.5, 0.5, 1.0); // White text
-      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 60 + 2.0);
+      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 2.0);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
       canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2, this.data.virtualHeight / 2);
       
