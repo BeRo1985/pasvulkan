@@ -664,6 +664,7 @@ var application = {
 
     // Draw UI
     // Set font for text rendering
+    print("Setting font for text rendering ", this.data.fontVGA, "\n");
     canvas.setFont(this.data.fontVGA);
     canvas.setFontSize(24);
     
