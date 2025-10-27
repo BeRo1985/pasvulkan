@@ -809,7 +809,7 @@ var application = {
       canvas.setFontSize(64);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
-      canvas.drawText("PLATFORMER", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 100);
+      canvas.drawText("SUPER CUBI", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 100);
       
       canvas.setFontSize(32);
       canvas.setColor(1.0, 0.84, 0.0, 1.0); // Gold text
