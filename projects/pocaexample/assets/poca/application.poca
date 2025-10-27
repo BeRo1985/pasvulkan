@@ -115,17 +115,63 @@ var application = {
       { x: 3900, y: 400, width: 100, height: 50 }
     ];
 
-    // Create coins
-    this.data.coins = [];
-    for (let i = 0; i < 50; i++) {
-      this.data.coins.push({
-        x: 100 + Math.random() * (this.data.gameWidth - 200),
-        y: 100 + Math.random() * 300,
-        width: 16,
-        height: 16,
-        collected: false
-      });
-    }
+    // Create coins at fixed positions above platforms
+    this.data.coins = [
+      // Above first set of platforms
+      { x: 350, y: 310, width: 16, height: 16, collected: false },
+      { x: 380, y: 310, width: 16, height: 16, collected: false },
+      { x: 550, y: 260, width: 16, height: 16, collected: false },
+      { x: 580, y: 260, width: 16, height: 16, collected: false },
+      { x: 750, y: 210, width: 16, height: 16, collected: false },
+      { x: 780, y: 210, width: 16, height: 16, collected: false },
+      
+      // Above middle platforms
+      { x: 950, y: 310, width: 16, height: 16, collected: false },
+      { x: 980, y: 310, width: 16, height: 16, collected: false },
+      { x: 1150, y: 260, width: 16, height: 16, collected: false },
+      { x: 1180, y: 260, width: 16, height: 16, collected: false },
+      { x: 1350, y: 210, width: 16, height: 16, collected: false },
+      { x: 1380, y: 210, width: 16, height: 16, collected: false },
+      { x: 1550, y: 310, width: 16, height: 16, collected: false },
+      { x: 1580, y: 310, width: 16, height: 16, collected: false },
+      { x: 1750, y: 260, width: 16, height: 16, collected: false },
+      { x: 1780, y: 260, width: 16, height: 16, collected: false },
+      { x: 1950, y: 210, width: 16, height: 16, collected: false },
+      { x: 1980, y: 210, width: 16, height: 16, collected: false },
+      
+      // Above later platforms
+      { x: 2150, y: 310, width: 16, height: 16, collected: false },
+      { x: 2180, y: 310, width: 16, height: 16, collected: false },
+      { x: 2350, y: 260, width: 16, height: 16, collected: false },
+      { x: 2380, y: 260, width: 16, height: 16, collected: false },
+      { x: 2550, y: 210, width: 16, height: 16, collected: false },
+      { x: 2580, y: 210, width: 16, height: 16, collected: false },
+      { x: 2750, y: 310, width: 16, height: 16, collected: false },
+      { x: 2780, y: 310, width: 16, height: 16, collected: false },
+      { x: 2950, y: 260, width: 16, height: 16, collected: false },
+      { x: 2980, y: 260, width: 16, height: 16, collected: false },
+      { x: 3150, y: 210, width: 16, height: 16, collected: false },
+      { x: 3180, y: 210, width: 16, height: 16, collected: false },
+      { x: 3350, y: 310, width: 16, height: 16, collected: false },
+      { x: 3380, y: 310, width: 16, height: 16, collected: false },
+      { x: 3550, y: 260, width: 16, height: 16, collected: false },
+      { x: 3580, y: 260, width: 16, height: 16, collected: false },
+      { x: 3750, y: 210, width: 16, height: 16, collected: false },
+      { x: 3780, y: 210, width: 16, height: 16, collected: false },
+      
+      // Some floating coins in the air
+      { x: 200, y: 250, width: 16, height: 16, collected: false },
+      { x: 230, y: 250, width: 16, height: 16, collected: false },
+      { x: 600, y: 150, width: 16, height: 16, collected: false },
+      { x: 1000, y: 180, width: 16, height: 16, collected: false },
+      { x: 1400, y: 150, width: 16, height: 16, collected: false },
+      { x: 1800, y: 120, width: 16, height: 16, collected: false },
+      { x: 2200, y: 150, width: 16, height: 16, collected: false },
+      { x: 2600, y: 180, width: 16, height: 16, collected: false },
+      { x: 3000, y: 150, width: 16, height: 16, collected: false },
+      { x: 3400, y: 120, width: 16, height: 16, collected: false },
+      { x: 3800, y: 150, width: 16, height: 16, collected: false }
+    ];
 
     // Create enemies
     this.data.enemies = [
