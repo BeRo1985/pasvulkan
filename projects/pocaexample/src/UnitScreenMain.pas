@@ -327,10 +327,13 @@ begin
  fConsole.WriteLine('');
  fConsole.UpdateScreen;
 
+ POCACallFunction('onApplicationCreate',[],nil);
+
 end;
 
 destructor TScreenMain.Destroy;
 begin
+ POCACallFunction('onApplicationDestroy',[],nil);
  FreeAndNil(fConsole);
  FinalizeForPOCAContext(fPOCAContext);
  POCAContextDestroy(fPOCAContext);

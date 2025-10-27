@@ -6,7 +6,7 @@ var application = {
   create: function() {
     print("POCA: Application create\n");
     // Initialize application data
-    if (!this.data.initialized) {
+    if (this.data && !this.data.initialized) {
       this.data.initialized = true;
       this.data.counter = 0;
     }
