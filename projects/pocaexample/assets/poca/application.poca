@@ -690,7 +690,7 @@ var application = {
       // Start screen
       canvas.setFontSize(64);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
-      canvas.setTextHorizontalAlignment(1); // Center
+      canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
       canvas.drawText("PLATFORMER", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 100);
       
       canvas.setFontSize(32);
@@ -706,7 +706,7 @@ var application = {
       canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
       canvas.drawText("Press SPACE to start", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 120);
       
-      canvas.setTextHorizontalAlignment(0); // Reset to left
+      canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Leading); // Reset to left
       
     } else if (this.data.gameMode === this.MODE_RUNNING) {
       // Draw score during gameplay
@@ -723,7 +723,7 @@ var application = {
       // Game over screen
       canvas.setFontSize(64);
       canvas.setColor(1.0, 0.0, 0.0, 1.0); // Red text
-      canvas.setTextHorizontalAlignment(1); // Center
+      canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
       canvas.drawText("GAME OVER", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 60);
       
       canvas.setFontSize(32);
@@ -734,7 +734,7 @@ var application = {
       canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
       canvas.drawText("Press SPACE to restart", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
       
-      canvas.setTextHorizontalAlignment(0); // Reset to left
+      canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Leading); // Reset to left
     }
   }
 
