@@ -473,6 +473,11 @@ var application = {
           this.data.keys.right = isDown;
           return true;
         } else if (event.KeyCode === Input.KeyCodes.KEYCODE_UP || event.KeyCode === Input.KeyCodes.KEYCODE_W) {
+          // Jump also on up, not just space
+          if (this.data.gameMode === this.MODE_RUNNING && !this.data.player.isJumping) {
+              this.data.player.velocityY = -this.data.player.jumpPower;
+              this.data.player.isJumping = true;
+          }
           this.data.keys.up = isDown;
           return true;
         } else if (event.KeyCode === Input.KeyCodes.KEYCODE_SPACE) {        
