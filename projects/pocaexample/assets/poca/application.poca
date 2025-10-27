@@ -12,7 +12,8 @@ var application = {
       this.data.ball = {
         position: { x: 0.0, y: 0.0 },
         velocity: { x: 100.0, y: 150.0 },
-        size: 32.0
+        size: 32.0,
+        needToReset: true
       };
       this.data.canvasWidth = 800;
       this.data.canvasHeight = 600;
@@ -47,6 +48,7 @@ var application = {
   resize: function(width, height) {
     print("POCA: Application resize to ", width, "x", height, "\n");
     // Handle application resizing
+    this.data.ball.needToReset = true; // reset ball position on resize
   },
 
   afterCreateSwapChain: function() {
@@ -89,6 +91,13 @@ var application = {
     // Update the native canvas if needed
 
     let ball = this.data.ball;  
+
+    if (ball.needToReset) {
+      // Initialize ball position in the center
+      ball.position.x = width * 0.5;
+      ball.position.y = height * 0.5;
+      ball.needToReset = false;
+    }
 
     // Update ball position
     ball.position.x += ball.velocity.x * deltaTime;
