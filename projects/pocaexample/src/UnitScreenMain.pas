@@ -952,9 +952,12 @@ var Scale:TpvFloat;
     MedianFPSString:string;
     MedianFrameTimeString:string;
     FrameTime,PhysicsTimeStep,RenderCPUTime,PercentileXthFPS,PercentileXthFrameRate,MedianFPS,MedianFrameTime:TpvDouble;
+    UpdateTime:TpvHighResolutionTime;
 begin
 
  inherited Update(aDeltaTime);
+
+ UpdateTime:=pvApplication.HighResolutionTimer.GetTime;
 
  POCACallFunction('onApplicationUpdate',[POCANewNumber(fPOCAContext,aDeltaTime)],nil);
 
@@ -1003,6 +1006,8 @@ begin
 
  POCAGarbageCollect;
 
+ UpdateTime:=pvApplication.HighResolutionTimer.GetTime-UpdateTime;
+
  FPS:=round(pvApplication.FramesPerSecond*100.0);
  fFPSTimeAccumulator:=fFPSTimeAccumulator+aDeltaTime;
  if (fFPSTimeAccumulator>=0.1) or (length(fFrameTimeString)=0) then begin
@@ -1027,12 +1032,12 @@ begin
   //fScene3D.GetProfilerTimes(RenderCPUTime,FrameTime);
   //str(FrameTime*1000.0:4:2,fFrameTimeString);
   //str(pvApplication.HighResolutionTimer.ToFloatSeconds(fRenderCPUTime)*1000.0:4:2,RenderCPUTimeString);
-  //str(pvApplication.HighResolutionTimer.ToFloatSeconds(CPUTime)*1000.0:4:2,UpdateCPUTimeString);
+  str(pvApplication.HighResolutionTimer.ToFloatSeconds(UpdateTime)*1000.0:4:2,UpdateCPUTimeString);
   str(PercentileXthFPS:4:2,PercentileXthFPSString);
   str(PercentileXthFrameRate*1000.0:4:2,PercentileXthFrameTimeString);
   str(MedianFPS:4:2,MedianFPSString);
   str(MedianFrameTime*1000.0:4:2,MedianFrameTimeString);
-  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+PercentileXthFPSString+' FPS 95%] ['+PercentileXthFrameTimeString+' ms 95%] ['+MedianFPSString+' FPS median] ['+MedianFrameTimeString+' ms median]';
+  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+UpdateCPUTimeString+' ms update CPU time] ['+PercentileXthFPSString+' FPS 95%] ['+PercentileXthFrameTimeString+' ms 95%] ['+MedianFPSString+' FPS median] ['+MedianFrameTimeString+' ms median]';
 //pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms GPU time] ['+RenderCPUTimeString+' ms render CPU time] ['+UpdateCPUTimeString+' ms update CPU time] ['+PercentileXthFPSString+' FPS 95%] ['+PercentileXthFrameTimeString+' ms 95%] ['+MedianFPSString+' FPS median] ['+MedianFrameTimeString+' ms median]';
  end;
 
