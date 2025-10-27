@@ -667,16 +667,17 @@ var application = {
         enemy.height
       );
 
-      // Black eyes
+      // Black eyes - slightly shifted in walking direction
+      let eyeOffset = enemy.direction * 2; // Shift 2 pixels in walk direction
       canvas.setColor(0.0, 0.0, 0.0, 1.0);
       canvas.drawFilledRectangle(
-        enemy.x + 8 - cameraX,
+        enemy.x + 8 + eyeOffset - cameraX,
         enemy.y + 8 - cameraY,
         4,
         4
       );
       canvas.drawFilledRectangle(
-        enemy.x + 20 - cameraX,
+        enemy.x + 20 + eyeOffset - cameraX,
         enemy.y + 8 - cameraY,
         4,
         4
