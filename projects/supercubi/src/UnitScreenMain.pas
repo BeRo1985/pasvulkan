@@ -43,8 +43,7 @@ uses SysUtils,
      PasVulkan.TrueTypeFont,
      POCA,
      PasVulkan.POCA,
-     PasVulkan.Console,
-     UnitSounds;
+     PasVulkan.Console;
 
 type { TScreenMain }
 
@@ -108,7 +107,7 @@ type { TScreenMain }
        fPercentileXthFrameRate:TpvDouble;
        fMedianFrameTime:TpvDouble;
        fFrameTimeString:string;
-       fSoundManager:TSoundManager;
+       fPOCAAudio:TpvPOCAAudio;
        procedure POCAInitialize;
        procedure POCAGarbageCollect;
        function POCAProcessInputKeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
@@ -334,7 +333,7 @@ begin
 
  fPOCAUserIOWriteBuffer:='';
 
- fSoundManager:=TSoundManager.Create(self);
+ fPOCAAudio:=TpvPOCAAudio.Create(fPOCAInstance);
 
  if pvApplication.Assets.ExistAsset('poca/main.poca') then begin
   Stream:=pvApplication.Assets.GetAssetStream('poca/main.poca');
@@ -370,7 +369,7 @@ begin
 
  POCACallFunction('onApplicationCreate',[],nil);
 
- fSoundManager.BackgroundLoad;
+ fPOCAAudio.Load;
 
 end;
 
@@ -380,7 +379,7 @@ begin
 {$ifdef WithConsole}
  FreeAndNil(fConsole);
 {$endif}
- FreeAndNil(fSoundManager);
+ FreeAndNil(fPOCAAudio);
  FinalizeForPOCAContext(fPOCAContext);
  POCAContextDestroy(fPOCAContext);
  POCAInstanceDestroy(fPOCAInstance);
