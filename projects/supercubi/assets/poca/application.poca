@@ -451,6 +451,9 @@ var application = {
           this.data.enemies.splice(i, 1);
           this.data.score += 200;
           player.velocityY = -8; // Small bounce
+          if(this.data.sounds.enemyterminate) {
+            this.data.sounds.enemyterminate.play(1.0, 0.0, 1.0);
+          }
         } else {
           // Player hit enemy - take damage
           this.data.lives--;
