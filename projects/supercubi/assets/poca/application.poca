@@ -75,6 +75,10 @@ var application = {
       this.data.clouds = [];
 
       this.data.music = MusicManager.create("supercubi_music","music/background_music.ogg");
+
+      this.data.sounds = {
+        jump: SoundManager.create("supercubi_jump","sounds/jump.wav")
+      };
       
       this.initGame(this.MODE_STARTSCREEN);
     }
@@ -631,6 +635,14 @@ var application = {
 
   },
 
+  jump: function(){
+    if (this.data.gameMode === this.MODE_RUNNING && !this.data.player.isJumping) {
+      this.data.player.velocityY = -this.data.player.jumpPower;
+      this.data.player.isJumping = true;
+      this.data.sounds.jump.play(1.0, 0.0, 1.0);
+    }
+  },
+
   onInputEvent: function(event) {
     if (!event || !this.data || !this.data.initialized) return false;
 
@@ -649,10 +661,7 @@ var application = {
           return true;
         } else if (event.KeyCode === Input.KeyCodes.KEYCODE_UP || event.KeyCode === Input.KeyCodes.KEYCODE_W) {
           // Jump also on up, not just space
-          if (this.data.gameMode === this.MODE_RUNNING && !this.data.player.isJumping) {
-              this.data.player.velocityY = -this.data.player.jumpPower;
-              this.data.player.isJumping = true;
-          }
+          this.jump();
           this.data.keys.up = isDown;
           return true;
         } else if (event.KeyCode === Input.KeyCodes.KEYCODE_SPACE) {        
@@ -673,9 +682,8 @@ var application = {
               return true;
             }
             // Jump during gameplay
-            else if (this.data.gameMode === this.MODE_RUNNING && !this.data.player.isJumping) {
-              this.data.player.velocityY = -this.data.player.jumpPower;
-              this.data.player.isJumping = true;
+            else {
+              this.jump();
             }
           }
           this.data.keys.space = isDown;
