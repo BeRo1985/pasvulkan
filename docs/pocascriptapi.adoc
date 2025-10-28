@@ -4540,7 +4540,7 @@ The PasVulkan POCA Script API provides a comprehensive set of types and function
 
 All types support operator overloading and provide fluent APIs for method chaining. The Canvas API is hardware-accelerated using Vulkan for high-performance 2D rendering. The Audio API provides both simple 2D and advanced 3D spatial audio capabilities.
 
-For the base POCA scripting features (Array, Boolean, Console, String, Math, etc.), please refer to the link:../externals/poca/docs/scriptapi.adoc[POCA Script API Documentation].
+For the base POCA scripting features (Array, Boolean, Console, String, Math, etc.), please refer to the link:https://github.com/BeRo1985/poca/docs/scriptapi.adoc[POCA Script API Documentation].
 
 '''''
 
