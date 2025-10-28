@@ -983,6 +983,23 @@ var application = {
       let enemy = this.data.enemies[i];
       
       // Dark red enemy body
+      canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+      canvas.setStartColor(0.75, 0.0, 0.0, 1.0);
+      canvas.setStopColor(0.55, 0.0, 0.0, 1.0);
+      let enemyToOriginMatrix = Matrix4x4.create(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -(enemy.renderX - cameraX), -(enemy.renderY - cameraY), 0, 1
+      );
+      let enemyScaleMatrix = Matrix4x4.create(
+        0, 1 / enemy.width, 0, 0,
+        1 / enemy.height, 0, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      );
+      let enemyFillMatrix = enemyToOriginMatrix.clone().mul(enemyScaleMatrix);
+      canvas.setFillMatrix(enemyFillMatrix);
       canvas.setColor(0.55, 0.0, 0.0, 1.0);
       canvas.drawFilledRectangle(
         enemy.renderX - cameraX,
@@ -993,6 +1010,7 @@ var application = {
 
       // Black eyes - slightly shifted in walking direction
       let eyeOffset = enemy.direction * 2; // Shift 2 pixels in walk direction
+      canvas.setFillStyle(Canvas.FillStyle.Color);
       canvas.setColor(0.0, 0.0, 0.0, 1.0);
       canvas.drawFilledRectangle(
         enemy.renderX + 8 + eyeOffset - cameraX,
@@ -1042,6 +1060,23 @@ var application = {
 
     // Draw player
     let player = this.data.player;
+    canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+    canvas.setStartColor(1.0, 0.5, 0.5, 1.0);
+    canvas.setStopColor(0.75, 0.25, 0.25, 1.0);
+    let playerToOriginMatrix = Matrix4x4.create(
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      -(player.renderX - cameraX), -(player.renderY - cameraY), 0, 1
+    );
+    let playerScaleMatrix = Matrix4x4.create(
+      0, 1 / player.width, 0, 0,
+      1 / player.height, 0, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    );
+    let playerFillMatrix = playerToOriginMatrix.clone().mul(playerScaleMatrix);
+    canvas.setFillMatrix(playerFillMatrix);
     canvas.setColor(1.0, 0.33, 0.33, 1.0); // Red player
     canvas.drawFilledRectangle(
       player.renderX - cameraX,
@@ -1051,6 +1086,7 @@ var application = {
     );
 
     // Player eye
+    canvas.setFillStyle(Canvas.FillStyle.Color);
     canvas.setColor(0.0, 0.0, 0.0, 1.0);
     if (player.facing == 'right') {
       canvas.drawFilledRectangle(
