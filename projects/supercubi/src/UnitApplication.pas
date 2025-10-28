@@ -77,7 +77,7 @@ begin
  Title:='supercubi';
  PathName:='supercubi.pasvulkan';
  StartScreen:=TScreenMain;
- VisibleMouseCursor:=true;
+ VisibleMouseCursor:=false;
  CatchMouse:=false;
  HideSystemBars:=true;
  AndroidSeparateMouseAndTouch:=true;
