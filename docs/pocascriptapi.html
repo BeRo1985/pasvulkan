@@ -792,7 +792,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_canvas_properties_getters_and_setters">Canvas Properties (Getters and Setters)</a>
 <ul class="sectlevel3">
 <li><a href="#_getcliprect">getClipRect()</a></li>
-<li><a href="#_setcliprect">setClipRect()</a></li>
+<li><a href="#_setcliprectlefttop_widthheight">setClipRect(leftTop, widthHeight)</a></li>
 <li><a href="#_setscissor">setScissor()</a></li>
 <li><a href="#_getblendingmode">getBlendingMode()</a></li>
 <li><a href="#_setblendingmode">setBlendingMode()</a></li>
@@ -8431,13 +8431,15 @@ puts("Clip rect: " + clipRect.toString());</code></pre>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_setcliprect">setClipRect()</h4>
+<h4 id="_setcliprectlefttop_widthheight">setClipRect(leftTop, widthHeight)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.setClipRect(leftTop, widthHeight);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setClipRect(leftTop, widthHeight);
+// or
+canvas.setClipRect(x, y, width, height);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -8450,22 +8452,53 @@ puts("Clip rect: " + clipRect.toString());</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><code>leftTop</code> (Vector2): Top-left corner position</p>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>leftTop</code> (Vector2): Top-left corner position.</p>
 </li>
 <li>
-<p><code>widthHeight</code> (Vector2): Width and height</p>
+<p><code>widthHeight</code> (Vector2): Width and height.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> None.</p>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code> (number): The left X coordinate.</p>
+</li>
+<li>
+<p><code>y</code> (number): The top Y coordinate.</p>
+</li>
+<li>
+<p><code>width</code> (number): The width of the clip rectangle.</p>
+</li>
+<li>
+<p><code>height</code> (number): The height of the clip rectangle.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.setClipRect(Vector2.create(10, 10), Vector2.create(200, 150));
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Vector2:
+canvas.setClipRect(Vector2.create(10, 10), Vector2.create(200, 150));
+
+// or using individual numbers:
+canvas.setClipRect(10, 10, 200, 150);
+
 canvas.drawFilledRectangle(Vector2.create(0, 0), Vector2.create(300, 300));
 // Only the portion within the clip rect is drawn</code></pre>
 </div>
@@ -13062,7 +13095,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 22:37:47 +0100
+Last updated 2025-10-28 22:53:40 +0100
 </div>
 </div>
 </body>

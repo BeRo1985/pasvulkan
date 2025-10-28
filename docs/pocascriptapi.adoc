@@ -4033,25 +4033,38 @@ puts("Clip rect: " + clipRect.toString());
 
 '''''
 
-==== setClipRect()
+==== setClipRect(leftTop, widthHeight)
 
 *Usage:*
 
 [source,js]
 ----
 canvas.setClipRect(leftTop, widthHeight);
+// or
+canvas.setClipRect(x, y, width, height);
 ----
 
 * *Description:* Sets the clipping rectangle to restrict rendering to a specific area.
 * *Parameters:*
-** `+leftTop+` (Vector2): Top-left corner position
-** `+widthHeight+` (Vector2): Width and height
-* *Return Value:* None.
+** *Option A:*
+*** `+leftTop+` (Vector2): Top-left corner position.
+*** `+widthHeight+` (Vector2): Width and height.
+** or *Option B:*
+*** `+x+` (number): The left X coordinate.
+*** `+y+` (number): The top Y coordinate.
+*** `+width+` (number): The width of the clip rectangle.
+*** `+height+` (number): The height of the clip rectangle.
+* *Return Value:* The canvas itself.
 * *Example:*
 +
 [source,js]
 ----
+// Using Vector2:
 canvas.setClipRect(Vector2.create(10, 10), Vector2.create(200, 150));
+
+// or using individual numbers:
+canvas.setClipRect(10, 10, 200, 150);
+
 canvas.drawFilledRectangle(Vector2.create(0, 0), Vector2.create(300, 300));
 // Only the portion within the clip rect is drawn
 ----
