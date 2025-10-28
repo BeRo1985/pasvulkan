@@ -2276,22 +2276,57 @@ Matrix4x4 supports the same operator overloading as Matrix3x3:
 
 === Overview
 
-The Sprite type represents a 2D image or sprite atlas region that can be rendered on screen. Sprite objects are typically created and managed by the host application and passed to scripts.
+The Sprite type represents a 2D image or sprite atlas region that can be rendered on screen. Sprites are created by loading them into a SpriteAtlas and then retrieved for rendering.
 
 '''''
 
-=== Sprite Creation
+=== Creating Sprites
 
-Sprites are not directly created in scripts - they are provided by the host application through the game/application logic. Sprites can be drawn using Canvas methods like `+drawSprite()+`.
+Sprites are not created directly - they are created through SpriteAtlas methods:
+
+* `+SpriteAtlas.load()+` - Load a sprite from an image file
+* `+SpriteAtlas.loadSignedDistanceFieldSprite()+` - Create an SDF sprite from SVG path data
+* `+SpriteAtlas.get()+` - Retrieve a previously loaded sprite by name
+
+'''''
+
+=== Using Sprites
+
+Once you have a Sprite object (from a SpriteAtlas), you can draw it using Canvas methods:
 
 *Example:*
 
 [source,js]
 ----
-// Sprites are provided by the host application
-// Then used in drawing operations
-canvas.drawSprite(mySprite, x, y, width, height);
+// Create and load sprites into an atlas
+let atlas = SpriteAtlas.create();
+let playerSprite = atlas.load("player", "sprites/player.png", true, 2, 1);
+atlas.upload(); // Upload to GPU
+
+// Draw the sprite
+canvas.drawSpritePosition(playerSprite, Vector2.create(100, 100));
+
+// Or with more control
+canvas.drawSprite(
+  playerSprite,
+  Vector2.create(0, 0),      // Source position
+  Vector2.create(64, 64),    // Source size
+  Vector2.create(100, 100),  // Destination position
+  Vector2.create(128, 128)   // Destination size (scaled)
+);
 ----
+
+'''''
+
+=== Sprite Canvas Drawing Methods
+
+Sprites can be drawn using these Canvas methods:
+
+* `+canvas.drawSprite(sprite, srcPos, srcSize, destPos, destSize)+`
+* `+canvas.drawSpriteOriginRotation(sprite, srcPos, srcSize, destPos, destSize, origin, angle)+`
+* `+canvas.drawSpritePosition(sprite, position)+`
+
+See the Canvas API documentation for full details on these methods.
 
 '''''
 
@@ -2299,21 +2334,172 @@ canvas.drawSprite(mySprite, x, y, width, height);
 
 === Overview
 
-The SpriteAtlas type manages a collection of sprites packed into a single texture atlas for efficient rendering. SpriteAtlas objects are created and managed by the host application.
+The SpriteAtlas type manages a collection of sprites packed into a single texture atlas for efficient rendering. It supports loading images from files and creating signed distance field sprites for vector graphics.
 
 '''''
 
-=== SpriteAtlas Usage
+=== Global SpriteAtlas Object
 
-SpriteAtlas objects are provided by the host application. Individual sprites within an atlas can be accessed and rendered through the host interface.
+==== SpriteAtlas.create()
 
-*Example:*
+*Usage:*
 
 [source,js]
 ----
-// SpriteAtlas is managed by the host application
-// Access individual sprites and render them
-canvas.drawSprite(atlas.getSprite("character"), x, y, width, height);
+let atlas = SpriteAtlas.create(sRGB, depth16Bit, mipMaps, useConvexHullTrimming);
+----
+
+* *Description:* Creates a new sprite atlas.
+* *Parameters:*
+** `+sRGB+` (boolean): Use sRGB color space (default: true)
+** `+depth16Bit+` (boolean): Use 16-bit depth (default: false)
+** `+mipMaps+` (boolean): Generate mipmaps (default: true)
+** `+useConvexHullTrimming+` (boolean): Use convex hull for trimming (default: false)
+* *Return Value:* A new SpriteAtlas object.
+* *Example:*
++
+[source,js]
+----
+let atlas = SpriteAtlas.create(true, false, true, false);
+----
+
+'''''
+
+=== SpriteAtlas Methods
+
+==== load()
+
+*Usage:*
+
+[source,js]
+----
+let sprite = atlas.load(name, filename, automaticTrim, padding, trimPadding);
+----
+
+* *Description:* Loads a sprite from an image file into the atlas.
+* *Parameters:*
+** `+name+` (string): Name to identify the sprite
+** `+filename+` (string): Path to the image file
+** `+automaticTrim+` (boolean): Automatically trim transparent pixels (default: false)
+** `+padding+` (number): Padding around the sprite in pixels (default: 0)
+** `+trimPadding+` (number): Extra padding for trimmed sprites (default: 0)
+* *Return Value:* A Sprite object.
+* *Example:*
++
+[source,js]
+----
+let sprite = atlas.load("player", "sprites/player.png", true, 2, 1);
+----
+
+'''''
+
+==== loadSignedDistanceFieldSprite()
+
+*Usage:*
+
+[source,js]
+----
+let sprite = atlas.loadSignedDistanceFieldSprite(name, svgPath, imageWidth, imageHeight, 
+                                                 automaticTrim, padding, trimPadding,
+                                                 scale, offsetX, offsetY, vectorPathFillRule,
+                                                 sdfVariant, protectBorder);
+----
+
+* *Description:* Creates a signed distance field sprite from SVG path data for high-quality scalable graphics.
+* *Parameters:*
+** `+name+` (string): Name to identify the sprite
+** `+svgPath+` (string): SVG path data
+** `+imageWidth+` (number): Width of generated image (default: 64)
+** `+imageHeight+` (number): Height of generated image (default: 64)
+** `+automaticTrim+` (boolean): Automatically trim (default: true)
+** `+padding+` (number): Padding in pixels (default: 2)
+** `+trimPadding+` (number): Trim padding (default: 0)
+** `+scale+` (number): Scale factor (default: 1.0)
+** `+offsetX+` (number): X offset (default: 0.0)
+** `+offsetY+` (number): Y offset (default: 0.0)
+** `+vectorPathFillRule+` (number): Fill rule (0=NonZero, 1=EvenOdd, default: 0)
+** `+sdfVariant+` (number): SDF variant (default: 4 for Default)
+** `+protectBorder+` (boolean): Protect border (default: false)
+* *Return Value:* A Sprite object with SDF data.
+* *Example:*
++
+[source,js]
+----
+let icon = atlas.loadSignedDistanceFieldSprite(
+  "heart",
+  "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
+  64, 64
+);
+----
+
+'''''
+
+==== get()
+
+*Usage:*
+
+[source,js]
+----
+let sprite = atlas.get(name);
+----
+
+* *Description:* Retrieves a previously loaded sprite by name.
+* *Parameters:*
+** `+name+` (string): Name of the sprite
+* *Return Value:* A Sprite object, or null if not found.
+* *Example:*
++
+[source,js]
+----
+let playerSprite = atlas.get("player");
+canvas.drawSpritePosition(playerSprite, Vector2.create(100, 100));
+----
+
+'''''
+
+==== upload()
+
+*Usage:*
+
+[source,js]
+----
+atlas.upload();
+----
+
+* *Description:* Uploads the atlas to GPU memory. Must be called after loading all sprites and before rendering.
+* *Parameters:* None.
+* *Return Value:* The atlas itself (for method chaining).
+* *Example:*
++
+[source,js]
+----
+let atlas = SpriteAtlas.create();
+atlas.load("sprite1", "img1.png");
+atlas.load("sprite2", "img2.png");
+atlas.upload(); // Upload to GPU
+----
+
+'''''
+
+==== destroy()
+
+*Usage:*
+
+[source,js]
+----
+atlas.destroy();
+----
+
+* *Description:* Explicitly destroys the sprite atlas and frees its resources.
+* *Parameters:* None.
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+let tempAtlas = SpriteAtlas.create();
+// Use atlas...
+tempAtlas.destroy(); // Free resources
 ----
 
 '''''
@@ -2383,23 +2569,13 @@ temp.destroy(); // Free resources immediately
 
 === Overview
 
-The Font type represents a font that can be used for text rendering. Font objects are typically loaded and managed by the host application.
+The Font type represents a font that can be used for text rendering.
 
 '''''
 
-=== Font Usage
+=== Font Properties and Methods
 
-Font objects are provided by the host application and can be used with Canvas text drawing methods through the Canvas font settings.
-
-*Example:*
-
-[source,js]
-----
-// Fonts are typically provided by the host application
-canvas.setFont(myFont);
-canvas.setFontSize(24);
-canvas.drawText("Hello World", x, y);
-----
+Font objects are loaded by the host application and can be used with Canvas text drawing methods.
 
 '''''
 

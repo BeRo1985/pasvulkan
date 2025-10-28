@@ -654,13 +654,28 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_sprite">Sprite</a>
 <ul class="sectlevel2">
 <li><a href="#_overview_8">Overview</a></li>
-<li><a href="#_sprite_creation">Sprite Creation</a></li>
+<li><a href="#_creating_sprites">Creating Sprites</a></li>
+<li><a href="#_using_sprites">Using Sprites</a></li>
+<li><a href="#_sprite_canvas_drawing_methods">Sprite Canvas Drawing Methods</a></li>
 </ul>
 </li>
 <li><a href="#_spriteatlas">SpriteAtlas</a>
 <ul class="sectlevel2">
 <li><a href="#_overview_9">Overview</a></li>
-<li><a href="#_spriteatlas_usage">SpriteAtlas Usage</a></li>
+<li><a href="#_global_spriteatlas_object">Global SpriteAtlas Object</a>
+<ul class="sectlevel3">
+<li><a href="#_spriteatlas_create">SpriteAtlas.create()</a></li>
+</ul>
+</li>
+<li><a href="#_spriteatlas_methods">SpriteAtlas Methods</a>
+<ul class="sectlevel3">
+<li><a href="#_load">load()</a></li>
+<li><a href="#_loadsigneddistancefieldsprite">loadSignedDistanceFieldSprite()</a></li>
+<li><a href="#_get">get()</a></li>
+<li><a href="#_upload">upload()</a></li>
+<li><a href="#_destroy">destroy()</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#_texture">Texture</a>
@@ -673,7 +688,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#_texture_methods">Texture Methods</a>
 <ul class="sectlevel3">
-<li><a href="#_destroy">destroy()</a></li>
+<li><a href="#_destroy_2">destroy()</a></li>
 </ul>
 </li>
 </ul>
@@ -681,7 +696,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_font">Font</a>
 <ul class="sectlevel2">
 <li><a href="#_overview_11">Overview</a></li>
-<li><a href="#_font_usage">Font Usage</a></li>
+<li><a href="#_font_properties_and_methods">Font Properties and Methods</a></li>
 </ul>
 </li>
 <li><a href="#_canvasfont">CanvasFont</a>
@@ -694,7 +709,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#_canvasfont_methods">CanvasFont Methods</a>
 <ul class="sectlevel3">
-<li><a href="#_destroy_2">destroy()</a></li>
+<li><a href="#_destroy_3">destroy()</a></li>
 </ul>
 </li>
 </ul>
@@ -705,7 +720,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_canvasshape_usage">CanvasShape Usage</a></li>
 <li><a href="#_canvasshape_methods">CanvasShape Methods</a>
 <ul class="sectlevel3">
-<li><a href="#_destroy_3">destroy()</a></li>
+<li><a href="#_destroy_4">destroy()</a></li>
 </ul>
 </li>
 </ul>
@@ -5003,24 +5018,80 @@ canvas.setProjectionMatrix(mvp);</code></pre>
 <div class="sect2">
 <h3 id="_overview_8">Overview</h3>
 <div class="paragraph">
-<p>The Sprite type represents a 2D image or sprite atlas region that can be rendered on screen. Sprite objects are typically created and managed by the host application and passed to scripts.</p>
+<p>The Sprite type represents a 2D image or sprite atlas region that can be rendered on screen. Sprites are created by loading them into a SpriteAtlas and then retrieved for rendering.</p>
 </div>
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_sprite_creation">Sprite Creation</h3>
+<h3 id="_creating_sprites">Creating Sprites</h3>
 <div class="paragraph">
-<p>Sprites are not directly created in scripts - they are provided by the host application through the game/application logic. Sprites can be drawn using Canvas methods like <code>drawSprite()</code>.</p>
+<p>Sprites are not created directly - they are created through SpriteAtlas methods:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>SpriteAtlas.load()</code> - Load a sprite from an image file</p>
+</li>
+<li>
+<p><code>SpriteAtlas.loadSignedDistanceFieldSprite()</code> - Create an SDF sprite from SVG path data</p>
+</li>
+<li>
+<p><code>SpriteAtlas.get()</code> - Retrieve a previously loaded sprite by name</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_using_sprites">Using Sprites</h3>
+<div class="paragraph">
+<p>Once you have a Sprite object (from a SpriteAtlas), you can draw it using Canvas methods:</p>
 </div>
 <div class="paragraph">
 <p><strong>Example:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">// Sprites are provided by the host application
-// Then used in drawing operations
-canvas.drawSprite(mySprite, x, y, width, height);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">// Create and load sprites into an atlas
+let atlas = SpriteAtlas.create();
+let playerSprite = atlas.load("player", "sprites/player.png", true, 2, 1);
+atlas.upload(); // Upload to GPU
+
+// Draw the sprite
+canvas.drawSpritePosition(playerSprite, Vector2.create(100, 100));
+
+// Or with more control
+canvas.drawSprite(
+  playerSprite,
+  Vector2.create(0, 0),      // Source position
+  Vector2.create(64, 64),    // Source size
+  Vector2.create(100, 100),  // Destination position
+  Vector2.create(128, 128)   // Destination size (scaled)
+);</code></pre>
 </div>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_sprite_canvas_drawing_methods">Sprite Canvas Drawing Methods</h3>
+<div class="paragraph">
+<p>Sprites can be drawn using these Canvas methods:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>canvas.drawSprite(sprite, srcPos, srcSize, destPos, destSize)</code></p>
+</li>
+<li>
+<p><code>canvas.drawSpriteOriginRotation(sprite, srcPos, srcSize, destPos, destSize, origin, angle)</code></p>
+</li>
+<li>
+<p><code>canvas.drawSpritePosition(sprite, position)</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>See the Canvas API documentation for full details on these methods.</p>
 </div>
 <hr>
 </div>
@@ -5032,26 +5103,311 @@ canvas.drawSprite(mySprite, x, y, width, height);</code></pre>
 <div class="sect2">
 <h3 id="_overview_9">Overview</h3>
 <div class="paragraph">
-<p>The SpriteAtlas type manages a collection of sprites packed into a single texture atlas for efficient rendering. SpriteAtlas objects are created and managed by the host application.</p>
+<p>The SpriteAtlas type manages a collection of sprites packed into a single texture atlas for efficient rendering. It supports loading images from files and creating signed distance field sprites for vector graphics.</p>
 </div>
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_spriteatlas_usage">SpriteAtlas Usage</h3>
+<h3 id="_global_spriteatlas_object">Global SpriteAtlas Object</h3>
+<div class="sect3">
+<h4 id="_spriteatlas_create">SpriteAtlas.create()</h4>
 <div class="paragraph">
-<p>SpriteAtlas objects are provided by the host application. Individual sprites within an atlas can be accessed and rendered through the host interface.</p>
-</div>
-<div class="paragraph">
-<p><strong>Example:</strong></p>
+<p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">// SpriteAtlas is managed by the host application
-// Access individual sprites and render them
-canvas.drawSprite(atlas.getSprite("character"), x, y, width, height);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">let atlas = SpriteAtlas.create(sRGB, depth16Bit, mipMaps, useConvexHullTrimming);</code></pre>
 </div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a new sprite atlas.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sRGB</code> (boolean): Use sRGB color space (default: true)</p>
+</li>
+<li>
+<p><code>depth16Bit</code> (boolean): Use 16-bit depth (default: false)</p>
+</li>
+<li>
+<p><code>mipMaps</code> (boolean): Generate mipmaps (default: true)</p>
+</li>
+<li>
+<p><code>useConvexHullTrimming</code> (boolean): Use convex hull for trimming (default: false)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new SpriteAtlas object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let atlas = SpriteAtlas.create(true, false, true, false);</code></pre>
+</div>
+</div>
+</li>
+</ul>
 </div>
 <hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_spriteatlas_methods">SpriteAtlas Methods</h3>
+<div class="sect3">
+<h4 id="_load">load()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let sprite = atlas.load(name, filename, automaticTrim, padding, trimPadding);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Loads a sprite from an image file into the atlas.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>name</code> (string): Name to identify the sprite</p>
+</li>
+<li>
+<p><code>filename</code> (string): Path to the image file</p>
+</li>
+<li>
+<p><code>automaticTrim</code> (boolean): Automatically trim transparent pixels (default: false)</p>
+</li>
+<li>
+<p><code>padding</code> (number): Padding around the sprite in pixels (default: 0)</p>
+</li>
+<li>
+<p><code>trimPadding</code> (number): Extra padding for trimmed sprites (default: 0)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A Sprite object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let sprite = atlas.load("player", "sprites/player.png", true, 2, 1);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_loadsigneddistancefieldsprite">loadSignedDistanceFieldSprite()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let sprite = atlas.loadSignedDistanceFieldSprite(name, svgPath, imageWidth, imageHeight,
+                                                 automaticTrim, padding, trimPadding,
+                                                 scale, offsetX, offsetY, vectorPathFillRule,
+                                                 sdfVariant, protectBorder);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a signed distance field sprite from SVG path data for high-quality scalable graphics.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>name</code> (string): Name to identify the sprite</p>
+</li>
+<li>
+<p><code>svgPath</code> (string): SVG path data</p>
+</li>
+<li>
+<p><code>imageWidth</code> (number): Width of generated image (default: 64)</p>
+</li>
+<li>
+<p><code>imageHeight</code> (number): Height of generated image (default: 64)</p>
+</li>
+<li>
+<p><code>automaticTrim</code> (boolean): Automatically trim (default: true)</p>
+</li>
+<li>
+<p><code>padding</code> (number): Padding in pixels (default: 2)</p>
+</li>
+<li>
+<p><code>trimPadding</code> (number): Trim padding (default: 0)</p>
+</li>
+<li>
+<p><code>scale</code> (number): Scale factor (default: 1.0)</p>
+</li>
+<li>
+<p><code>offsetX</code> (number): X offset (default: 0.0)</p>
+</li>
+<li>
+<p><code>offsetY</code> (number): Y offset (default: 0.0)</p>
+</li>
+<li>
+<p><code>vectorPathFillRule</code> (number): Fill rule (0=NonZero, 1=EvenOdd, default: 0)</p>
+</li>
+<li>
+<p><code>sdfVariant</code> (number): SDF variant (default: 4 for Default)</p>
+</li>
+<li>
+<p><code>protectBorder</code> (boolean): Protect border (default: false)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A Sprite object with SDF data.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let icon = atlas.loadSignedDistanceFieldSprite(
+  "heart",
+  "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
+  64, 64
+);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_get">get()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let sprite = atlas.get(name);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Retrieves a previously loaded sprite by name.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>name</code> (string): Name of the sprite</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A Sprite object, or null if not found.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let playerSprite = atlas.get("player");
+canvas.drawSpritePosition(playerSprite, Vector2.create(100, 100));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_upload">upload()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">atlas.upload();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Uploads the atlas to GPU memory. Must be called after loading all sprites and before rendering.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The atlas itself (for method chaining).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let atlas = SpriteAtlas.create();
+atlas.load("sprite1", "img1.png");
+atlas.load("sprite2", "img2.png");
+atlas.upload(); // Upload to GPU</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_destroy">destroy()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">atlas.destroy();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Explicitly destroys the sprite atlas and frees its resources.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let tempAtlas = SpriteAtlas.create();
+// Use atlas...
+tempAtlas.destroy(); // Free resources</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
 </div>
 </div>
 </div>
@@ -5121,7 +5477,7 @@ canvas.setTexture(myTexture);</code></pre>
 <div class="sect2">
 <h3 id="_texture_methods">Texture Methods</h3>
 <div class="sect3">
-<h4 id="_destroy">destroy()</h4>
+<h4 id="_destroy_2">destroy()</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
@@ -5164,25 +5520,14 @@ temp.destroy(); // Free resources immediately</code></pre>
 <div class="sect2">
 <h3 id="_overview_11">Overview</h3>
 <div class="paragraph">
-<p>The Font type represents a font that can be used for text rendering. Font objects are typically loaded and managed by the host application.</p>
+<p>The Font type represents a font that can be used for text rendering.</p>
 </div>
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_font_usage">Font Usage</h3>
+<h3 id="_font_properties_and_methods">Font Properties and Methods</h3>
 <div class="paragraph">
-<p>Font objects are provided by the host application and can be used with Canvas text drawing methods through the Canvas font settings.</p>
-</div>
-<div class="paragraph">
-<p><strong>Example:</strong></p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">// Fonts are typically provided by the host application
-canvas.setFont(myFont);
-canvas.setFontSize(24);
-canvas.drawText("Hello World", x, y);</code></pre>
-</div>
+<p>Font objects are loaded by the host application and can be used with Canvas text drawing methods.</p>
 </div>
 <hr>
 </div>
@@ -5259,7 +5604,7 @@ canvas.drawText("High Quality Text", 100, 100);</code></pre>
 <div class="sect2">
 <h3 id="_canvasfont_methods">CanvasFont Methods</h3>
 <div class="sect3">
-<h4 id="_destroy_2">destroy()</h4>
+<h4 id="_destroy_3">destroy()</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
@@ -5316,7 +5661,7 @@ tempFont.destroy(); // Free resources</code></pre>
 <div class="sect2">
 <h3 id="_canvasshape_methods">CanvasShape Methods</h3>
 <div class="sect3">
-<h4 id="_destroy_3">destroy()</h4>
+<h4 id="_destroy_4">destroy()</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
@@ -9718,7 +10063,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 20:33:27 +0100
+Last updated 2025-10-28 20:44:34 +0100
 </div>
 </div>
 </body>
