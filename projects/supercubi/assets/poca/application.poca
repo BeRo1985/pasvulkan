@@ -1280,6 +1280,28 @@ var application = {
       
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Leading); // Reset to left
     }
+
+    // Letterboxing: draw black bars on sides or top/bottom if needed
+    canvas.setModelMatrix(identityMatrix); // Reset model matrix
+    canvas.setFillStyle(Canvas.FillStyle.Color);
+    canvas.setColor(0.0, 0.0, 0.0, 1.0);
+    if (width / height < this.data.virtualWidth / this.data.virtualHeight) {
+      // Black bars on top and bottom
+      let totalBarHeight = height - (this.data.virtualHeight * scale);
+      let barHeight = totalBarHeight / 2;
+      // Top bar
+      canvas.drawFilledRectangle(0, 0, width, barHeight);
+      // Bottom bar
+      canvas.drawFilledRectangle(0, height - barHeight, width, barHeight);
+/*   } else {
+      // Black bars on left and right
+      let totalBarWidth = width - (this.data.virtualWidth * scale);
+      let barWidth = totalBarWidth / 2;
+      // Left bar
+      canvas.drawFilledRectangle(0, 0, barWidth, height);
+      // Right bar
+      canvas.drawFilledRectangle(width - barWidth, 0, barWidth, height);*/
+    }
   }
 
 };
