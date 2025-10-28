@@ -379,6 +379,9 @@ var application = {
         }
         // Collision from bottom
         else if (player.velocityY < 0 && player.y > platform.y) {
+          if(player.velocityY > player.gravity) { // Only play sound if significant collision
+            collisionDetected = true;
+          }
           player.y = platform.y + platform.height;
           player.velocityY = 0;
         }
