@@ -73,6 +73,8 @@ var application = {
       this.data.enemies = [];
       this.data.goal = null;
       this.data.clouds = [];
+
+      this.data.music = MusicManager.create("supercubi_music","music/background_music.ogg");
       
       this.initGame(this.MODE_STARTSCREEN);
     }
@@ -275,9 +277,15 @@ var application = {
 
   show: function() {
     print("POCA: Application show\n");
+    if(this.data && this.data.initialized && this.data.music) {
+      this.data.music.play(1.0, 0.0, 1.0, true); // Volume, Panning, Rate, Loop 
+    }
   },
 
   hide: function() {
+    if(this.data && this.data.initialized && this.data.music) {
+      this.data.music.stop();
+    }
     print("POCA: Application hide\n");
   },
 
