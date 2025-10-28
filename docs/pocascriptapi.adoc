@@ -12,7 +12,7 @@
 
 This document describes the PasVulkan-specific extensions to the POCA scripting API. PasVulkan provides a comprehensive set of types and functions for 2D/3D graphics, mathematics, input handling, and sprite management within POCA scripts.
 
-For the base POCA scripting API (Array, Boolean, Console, etc.), please refer to link:../externals/poca/docs/scriptapi.adoc[POCA Script API Documentation].
+For the base POCA scripting API (Array, Boolean, Console, etc.), please refer to link:https://github.com/BeRo1985/poca/docs/scriptapi.adoc[POCA Script API Documentation].
 
 '''''
 
