@@ -506,6 +506,30 @@ begin
  end;
 end;
 
+function POCAVector2FunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Vector2:PpvVector2D;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAVector2Ghost) then begin
+  Vector2:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewVector2(aContext,Vector2^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector2FunctionCopy(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Vector2,OtherVector2:PpvVector2D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector2Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector2Ghost) then begin
+  Vector2:=POCAGhostFastGetPointer(aThis);
+  OtherVector2:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector2^:=OtherVector2^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 function POCAVector2FunctionAdd(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Vector2:PpvVector2D;
     OtherVector2:PpvVector2D;
@@ -757,6 +781,8 @@ begin
  POCAAddNativeFunction(aContext,HostData^.Vector2Hash,'nlerp',POCAVector2FunctionNlerp);
  POCAAddNativeFunction(aContext,HostData^.Vector2Hash,'slerp',POCAVector2FunctionSlerp);
  POCAAddNativeFunction(aContext,HostData^.Vector2Hash,'sqlerp',POCAVector2FunctionSqlerp);
+ POCAAddNativeFunction(aContext,HostData^.Vector2Hash,'clone',POCAVector2FunctionClone);
+ POCAAddNativeFunction(aContext,HostData^.Vector2Hash,'copy',POCAVector2FunctionCopy);
  POCAAddNativeFunction(aContext,HostData^.Vector2Hash,'add',POCAVector2FunctionAdd);
  POCAAddNativeFunction(aContext,HostData^.Vector2Hash,'sub',POCAVector2FunctionSub);
  POCAAddNativeFunction(aContext,HostData^.Vector2Hash,'mul',POCAVector2FunctionMul);
@@ -1098,6 +1124,30 @@ begin
  end;
 end;
 
+function POCAVector3FunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Vector3:PpvVector3;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAVector3Ghost) then begin
+  Vector3:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewVector3(aContext,Vector3^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector3FunctionCopy(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Vector3,OtherVector3:PpvVector3;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) then begin
+  Vector3:=POCAGhostFastGetPointer(aThis);
+  OtherVector3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector3^:=OtherVector3^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 function POCAVector3FunctionAdd(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Vector3:PpvVector3D;
     OtherVector3:PpvVector3D;
@@ -1368,6 +1418,8 @@ begin
  POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'nlerp',POCAVector3FunctionNlerp);
  POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'slerp',POCAVector3FunctionSlerp);
  POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'sqlerp',POCAVector3FunctionSqlerp);
+ POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'clone',POCAVector3FunctionClone);
+ POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'copy',POCAVector3FunctionCopy);
  POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'add',POCAVector3FunctionAdd);
  POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'sub',POCAVector3FunctionSub);
  POCAAddNativeFunction(aContext,HostData^.Vector3Hash,'mul',POCAVector3FunctionMul);
@@ -1738,6 +1790,30 @@ begin
  end;
 end;
 
+function POCAVector4FunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Vector4:PpvVector4;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewVector4(aContext,Vector4^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAVector4FunctionCopy(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Vector4,OtherVector4:PpvVector4;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
+  Vector4:=POCAGhostFastGetPointer(aThis);
+  OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Vector4^:=OtherVector4^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 function POCAVector4FunctionAdd(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Vector4:PpvVector4D;
     OtherVector4:PpvVector4D;
@@ -1989,6 +2065,8 @@ begin
  POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'nlerp',POCAVector4FunctionNlerp);
  POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'slerp',POCAVector4FunctionSlerp);
  POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'sqlerp',POCAVector4FunctionSqlerp);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'clone',POCAVector4FunctionClone);
+ POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'copy',POCAVector4FunctionCopy);
  POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'add',POCAVector4FunctionAdd);
  POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'sub',POCAVector4FunctionSub);
  POCAAddNativeFunction(aContext,HostData^.Vector4Hash,'mul',POCAVector4FunctionMul);
@@ -2397,6 +2475,30 @@ begin
  end;
 end;
 
+function POCAQuaternionFunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion:PpvQuaternion;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewQuaternion(aContext,Quaternion^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionCopy(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion,OtherQuaternion:PpvQuaternion;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aThis);
+  OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Quaternion^:=OtherQuaternion^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 function POCAQuaternionFunctionAdd(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Quaternion:PpvQuaternionD;
     OtherQuaternion:PpvQuaternionD;
@@ -2663,6 +2765,8 @@ begin
  POCAAddNativeFunction(aContext,HostData^.QuaternionHash,'nlerp',POCAQuaternionFunctionNlerp);
  POCAAddNativeFunction(aContext,HostData^.QuaternionHash,'slerp',POCAQuaternionFunctionSlerp);
  POCAAddNativeFunction(aContext,HostData^.QuaternionHash,'sqlerp',POCAQuaternionFunctionSqlerp);
+ POCAAddNativeFunction(aContext,HostData^.QuaternionHash,'clone',POCAQuaternionFunctionClone);
+ POCAAddNativeFunction(aContext,HostData^.QuaternionHash,'copy',POCAQuaternionFunctionCopy);
  POCAAddNativeFunction(aContext,HostData^.QuaternionHash,'add',POCAQuaternionFunctionAdd);
  POCAAddNativeFunction(aContext,HostData^.QuaternionHash,'sub',POCAQuaternionFunctionSub);
  POCAAddNativeFunction(aContext,HostData^.QuaternionHash,'mul',POCAQuaternionFunctionMul);
@@ -2998,6 +3102,30 @@ begin
  end;
 end;
 
+function POCAMatrix3x3FunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix3x3:PpvMatrix3x3D;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewMatrix3x3(aContext,Matrix3x3^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCopy(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix3x3,OtherMatrix3x3:PpvMatrix3x3D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
+  OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Matrix3x3^:=OtherMatrix3x3^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 function POCAMatrix3x3FunctionMul(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix3x3,OtherMatrix3x3:PpvMatrix3x3D;
     Factor:TpvDouble;
@@ -3289,6 +3417,8 @@ begin
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.Matrix3x3Hash);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'add',POCAMatrix3x3FunctionAdd);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'sub',POCAMatrix3x3FunctionSub);
+ POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'clone',POCAMatrix3x3FunctionClone);
+ POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'copy',POCAMatrix3x3FunctionCopy);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'mul',POCAMatrix3x3FunctionMul);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'transpose',POCAMatrix3x3FunctionTranspose);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'determinant',POCAMatrix3x3FunctionDeterminant);
@@ -3733,6 +3863,30 @@ begin
  end;
 end;
 
+function POCAMatrix4x4FunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix4x4:PpvMatrix4x4;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
+  result:=POCANewMatrix4x4(aContext,Matrix4x4^);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCopy(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
+  OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Matrix4x4^:=OtherMatrix4x4^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 function POCAMatrix4x4FunctionMul(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4D;
     Factor:TpvDouble;
@@ -4025,6 +4179,8 @@ begin
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.Matrix4x4Hash);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'add',POCAMatrix4x4FunctionAdd);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'sub',POCAMatrix4x4FunctionSub);
+ POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'clone',POCAMatrix4x4FunctionClone);
+ POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'copy',POCAMatrix4x4FunctionCopy);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'mul',POCAMatrix4x4FunctionMul);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'transpose',POCAMatrix4x4FunctionTranspose);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'determinant',POCAMatrix4x4FunctionDeterminant);

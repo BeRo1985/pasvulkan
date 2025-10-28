@@ -906,10 +906,27 @@ var application = {
     }
 
     // Draw platforms
+    canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
     for (let i = 0; i < this.data.platforms.length; i++) {
       let platform = this.data.platforms[i];
       
       // Brown platform
+      canvas.setStartColor(0.55, 0.27, 0.07, 1.0);
+      canvas.setStopColor(0.27, 0.13, 0.0, 1.0);
+      let platformToOriginMatrix = Matrix4x4.create(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -(platform.x - cameraX), -(platform.y - cameraY), 0, 1
+      );
+      let platformScaleMatrix = Matrix4x4.create(
+        0, 1 / platform.width, 0, 0,
+        1 / platform.height, 0, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      );
+      let platformFillMatrix = platformToOriginMatrix.mul(platformScaleMatrix);
+      canvas.setFillMatrix(platformFillMatrix);
       canvas.setColor(0.55, 0.27, 0.07, 1.0);
       canvas.drawFilledRectangle(
         platform.x - cameraX,
@@ -919,16 +936,33 @@ var application = {
       );
 
       // Green grass top
+      canvas.setStartColor(0.13, 0.55, 0.13, 1.0);
+      canvas.setStopColor(0.075, 0.275, 0.075, 0.0);
       canvas.setColor(0.13, 0.55, 0.13, 1.0);
+      platformToOriginMatrix = Matrix4x4.create(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -(platform.x - cameraX), -(platform.y - cameraY), 0, 1
+      );
+      platformScaleMatrix = Matrix4x4.create(
+        0, 1 / platform.width, 0, 0,
+        1 / 10, 0, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      );
+      platformFillMatrix = platformToOriginMatrix.mul(platformScaleMatrix);
+      canvas.setFillMatrix(platformFillMatrix);
       canvas.drawFilledRectangle(
         platform.x - cameraX,
         platform.y - cameraY,
         platform.width,
-        5
+        10
       );
     }
 
     // Draw coins
+    canvas.setFillStyle(Canvas.FillStyle.Color);
     for (let i = 0; i < this.data.coins.length; i++) {
       let coin = this.data.coins[i];
       if (!coin.collected) {
