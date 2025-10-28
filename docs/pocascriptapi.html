@@ -1,0 +1,6766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.23">
+<title>PasVulkan POCA Script API Documentation</title>
+<style>
+/*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
+/* Uncomment the following line when using as a custom stylesheet */
+/* @import "https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700"; */
+html{font-family:sans-serif;-webkit-text-size-adjust:100%}
+a{background:none}
+a:focus{outline:thin dotted}
+a:active,a:hover{outline:0}
+h1{font-size:2em;margin:.67em 0}
+b,strong{font-weight:bold}
+abbr{font-size:.9em}
+abbr[title]{cursor:help;border-bottom:1px dotted #dddddf;text-decoration:none}
+dfn{font-style:italic}
+hr{height:0}
+mark{background:#ff0;color:#000}
+code,kbd,pre,samp{font-family:monospace;font-size:1em}
+pre{white-space:pre-wrap}
+q{quotes:"\201C" "\201D" "\2018" "\2019"}
+small{font-size:80%}
+sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}
+sup{top:-.5em}
+sub{bottom:-.25em}
+img{border:0}
+svg:not(:root){overflow:hidden}
+figure{margin:0}
+audio,video{display:inline-block}
+audio:not([controls]){display:none;height:0}
+fieldset{border:1px solid silver;margin:0 2px;padding:.35em .625em .75em}
+legend{border:0;padding:0}
+button,input,select,textarea{font-family:inherit;font-size:100%;margin:0}
+button,input{line-height:normal}
+button,select{text-transform:none}
+button,html input[type=button],input[type=reset],input[type=submit]{-webkit-appearance:button;cursor:pointer}
+button[disabled],html input[disabled]{cursor:default}
+input[type=checkbox],input[type=radio]{padding:0}
+button::-moz-focus-inner,input::-moz-focus-inner{border:0;padding:0}
+textarea{overflow:auto;vertical-align:top}
+table{border-collapse:collapse;border-spacing:0}
+*,::before,::after{box-sizing:border-box}
+html,body{font-size:100%}
+body{background:#fff;color:rgba(0,0,0,.8);padding:0;margin:0;font-family:"Noto Serif","DejaVu Serif",serif;line-height:1;position:relative;cursor:auto;-moz-tab-size:4;-o-tab-size:4;tab-size:4;word-wrap:anywhere;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased}
+a:hover{cursor:pointer}
+img,object,embed{max-width:100%;height:auto}
+object,embed{height:100%}
+img{-ms-interpolation-mode:bicubic}
+.left{float:left!important}
+.right{float:right!important}
+.text-left{text-align:left!important}
+.text-right{text-align:right!important}
+.text-center{text-align:center!important}
+.text-justify{text-align:justify!important}
+.hide{display:none}
+img,object,svg{display:inline-block;vertical-align:middle}
+textarea{height:auto;min-height:50px}
+select{width:100%}
+.subheader,.admonitionblock td.content>.title,.audioblock>.title,.exampleblock>.title,.imageblock>.title,.listingblock>.title,.literalblock>.title,.stemblock>.title,.openblock>.title,.paragraph>.title,.quoteblock>.title,table.tableblock>.title,.verseblock>.title,.videoblock>.title,.dlist>.title,.olist>.title,.ulist>.title,.qlist>.title,.hdlist>.title{line-height:1.45;color:#7a2518;font-weight:400;margin-top:0;margin-bottom:.25em}
+div,dl,dt,dd,ul,ol,li,h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6,pre,form,p,blockquote,th,td{margin:0;padding:0}
+a{color:#2156a5;text-decoration:underline;line-height:inherit}
+a:hover,a:focus{color:#1d4b8f}
+a img{border:0}
+p{line-height:1.6;margin-bottom:1.25em;text-rendering:optimizeLegibility}
+p aside{font-size:.875em;line-height:1.35;font-style:italic}
+h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6{font-family:"Open Sans","DejaVu Sans",sans-serif;font-weight:300;font-style:normal;color:#ba3925;text-rendering:optimizeLegibility;margin-top:1em;margin-bottom:.5em;line-height:1.0125em}
+h1 small,h2 small,h3 small,#toctitle small,.sidebarblock>.content>.title small,h4 small,h5 small,h6 small{font-size:60%;color:#e99b8f;line-height:0}
+h1{font-size:2.125em}
+h2{font-size:1.6875em}
+h3,#toctitle,.sidebarblock>.content>.title{font-size:1.375em}
+h4,h5{font-size:1.125em}
+h6{font-size:1em}
+hr{border:solid #dddddf;border-width:1px 0 0;clear:both;margin:1.25em 0 1.1875em}
+em,i{font-style:italic;line-height:inherit}
+strong,b{font-weight:bold;line-height:inherit}
+small{font-size:60%;line-height:inherit}
+code{font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;font-weight:400;color:rgba(0,0,0,.9)}
+ul,ol,dl{line-height:1.6;margin-bottom:1.25em;list-style-position:outside;font-family:inherit}
+ul,ol{margin-left:1.5em}
+ul li ul,ul li ol{margin-left:1.25em;margin-bottom:0}
+ul.circle{list-style-type:circle}
+ul.disc{list-style-type:disc}
+ul.square{list-style-type:square}
+ul.circle ul:not([class]),ul.disc ul:not([class]),ul.square ul:not([class]){list-style:inherit}
+ol li ul,ol li ol{margin-left:1.25em;margin-bottom:0}
+dl dt{margin-bottom:.3125em;font-weight:bold}
+dl dd{margin-bottom:1.25em}
+blockquote{margin:0 0 1.25em;padding:.5625em 1.25em 0 1.1875em;border-left:1px solid #ddd}
+blockquote,blockquote p{line-height:1.6;color:rgba(0,0,0,.85)}
+@media screen and (min-width:768px){h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6{line-height:1.2}
+h1{font-size:2.75em}
+h2{font-size:2.3125em}
+h3,#toctitle,.sidebarblock>.content>.title{font-size:1.6875em}
+h4{font-size:1.4375em}}
+table{background:#fff;margin-bottom:1.25em;border:1px solid #dedede;word-wrap:normal}
+table thead,table tfoot{background:#f7f8f7}
+table thead tr th,table thead tr td,table tfoot tr th,table tfoot tr td{padding:.5em .625em .625em;font-size:inherit;color:rgba(0,0,0,.8);text-align:left}
+table tr th,table tr td{padding:.5625em .625em;font-size:inherit;color:rgba(0,0,0,.8)}
+table tr.even,table tr.alt{background:#f8f8f7}
+table thead tr th,table tfoot tr th,table tbody tr td,table tr td,table tfoot tr td{line-height:1.6}
+h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6{line-height:1.2;word-spacing:-.05em}
+h1 strong,h2 strong,h3 strong,#toctitle strong,.sidebarblock>.content>.title strong,h4 strong,h5 strong,h6 strong{font-weight:400}
+.center{margin-left:auto;margin-right:auto}
+.stretch{width:100%}
+.clearfix::before,.clearfix::after,.float-group::before,.float-group::after{content:" ";display:table}
+.clearfix::after,.float-group::after{clear:both}
+:not(pre).nobreak{word-wrap:normal}
+:not(pre).nowrap{white-space:nowrap}
+:not(pre).pre-wrap{white-space:pre-wrap}
+:not(pre):not([class^=L])>code{font-size:.9375em;font-style:normal!important;letter-spacing:0;padding:.1em .5ex;word-spacing:-.15em;background:#f7f7f8;border-radius:4px;line-height:1.45;text-rendering:optimizeSpeed}
+pre{color:rgba(0,0,0,.9);font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;line-height:1.45;text-rendering:optimizeSpeed}
+pre code,pre pre{color:inherit;font-size:inherit;line-height:inherit}
+pre>code{display:block}
+pre.nowrap,pre.nowrap pre{white-space:pre;word-wrap:normal}
+em em{font-style:normal}
+strong strong{font-weight:400}
+.keyseq{color:rgba(51,51,51,.8)}
+kbd{font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;display:inline-block;color:rgba(0,0,0,.8);font-size:.65em;line-height:1.45;background:#f7f7f7;border:1px solid #ccc;border-radius:3px;box-shadow:0 1px 0 rgba(0,0,0,.2),inset 0 0 0 .1em #fff;margin:0 .15em;padding:.2em .5em;vertical-align:middle;position:relative;top:-.1em;white-space:nowrap}
+.keyseq kbd:first-child{margin-left:0}
+.keyseq kbd:last-child{margin-right:0}
+.menuseq,.menuref{color:#000}
+.menuseq b:not(.caret),.menuref{font-weight:inherit}
+.menuseq{word-spacing:-.02em}
+.menuseq b.caret{font-size:1.25em;line-height:.8}
+.menuseq i.caret{font-weight:bold;text-align:center;width:.45em}
+b.button::before,b.button::after{position:relative;top:-1px;font-weight:400}
+b.button::before{content:"[";padding:0 3px 0 2px}
+b.button::after{content:"]";padding:0 2px 0 3px}
+p a>code:hover{color:rgba(0,0,0,.9)}
+#header,#content,#footnotes,#footer{width:100%;margin:0 auto;max-width:62.5em;*zoom:1;position:relative;padding-left:.9375em;padding-right:.9375em}
+#header::before,#header::after,#content::before,#content::after,#footnotes::before,#footnotes::after,#footer::before,#footer::after{content:" ";display:table}
+#header::after,#content::after,#footnotes::after,#footer::after{clear:both}
+#content{margin-top:1.25em}
+#content::before{content:none}
+#header>h1:first-child{color:rgba(0,0,0,.85);margin-top:2.25rem;margin-bottom:0}
+#header>h1:first-child+#toc{margin-top:8px;border-top:1px solid #dddddf}
+#header>h1:only-child{border-bottom:1px solid #dddddf;padding-bottom:8px}
+#header .details{border-bottom:1px solid #dddddf;line-height:1.45;padding-top:.25em;padding-bottom:.25em;padding-left:.25em;color:rgba(0,0,0,.6);display:flex;flex-flow:row wrap}
+#header .details span:first-child{margin-left:-.125em}
+#header .details span.email a{color:rgba(0,0,0,.85)}
+#header .details br{display:none}
+#header .details br+span::before{content:"\00a0\2013\00a0"}
+#header .details br+span.author::before{content:"\00a0\22c5\00a0";color:rgba(0,0,0,.85)}
+#header .details br+span#revremark::before{content:"\00a0|\00a0"}
+#header #revnumber{text-transform:capitalize}
+#header #revnumber::after{content:"\00a0"}
+#content>h1:first-child:not([class]){color:rgba(0,0,0,.85);border-bottom:1px solid #dddddf;padding-bottom:8px;margin-top:0;padding-top:1rem;margin-bottom:1.25rem}
+#toc{border-bottom:1px solid #e7e7e9;padding-bottom:.5em}
+#toc>ul{margin-left:.125em}
+#toc ul.sectlevel0>li>a{font-style:italic}
+#toc ul.sectlevel0 ul.sectlevel1{margin:.5em 0}
+#toc ul{font-family:"Open Sans","DejaVu Sans",sans-serif;list-style-type:none}
+#toc li{line-height:1.3334;margin-top:.3334em}
+#toc a{text-decoration:none}
+#toc a:active{text-decoration:underline}
+#toctitle{color:#7a2518;font-size:1.2em}
+@media screen and (min-width:768px){#toctitle{font-size:1.375em}
+body.toc2{padding-left:15em;padding-right:0}
+body.toc2 #header>h1:nth-last-child(2){border-bottom:1px solid #dddddf;padding-bottom:8px}
+#toc.toc2{margin-top:0!important;background:#f8f8f7;position:fixed;width:15em;left:0;top:0;border-right:1px solid #e7e7e9;border-top-width:0!important;border-bottom-width:0!important;z-index:1000;padding:1.25em 1em;height:100%;overflow:auto}
+#toc.toc2 #toctitle{margin-top:0;margin-bottom:.8rem;font-size:1.2em}
+#toc.toc2>ul{font-size:.9em;margin-bottom:0}
+#toc.toc2 ul ul{margin-left:0;padding-left:1em}
+#toc.toc2 ul.sectlevel0 ul.sectlevel1{padding-left:0;margin-top:.5em;margin-bottom:.5em}
+body.toc2.toc-right{padding-left:0;padding-right:15em}
+body.toc2.toc-right #toc.toc2{border-right-width:0;border-left:1px solid #e7e7e9;left:auto;right:0}}
+@media screen and (min-width:1280px){body.toc2{padding-left:20em;padding-right:0}
+#toc.toc2{width:20em}
+#toc.toc2 #toctitle{font-size:1.375em}
+#toc.toc2>ul{font-size:.95em}
+#toc.toc2 ul ul{padding-left:1.25em}
+body.toc2.toc-right{padding-left:0;padding-right:20em}}
+#content #toc{border:1px solid #e0e0dc;margin-bottom:1.25em;padding:1.25em;background:#f8f8f7;border-radius:4px}
+#content #toc>:first-child{margin-top:0}
+#content #toc>:last-child{margin-bottom:0}
+#footer{max-width:none;background:rgba(0,0,0,.8);padding:1.25em}
+#footer-text{color:hsla(0,0%,100%,.8);line-height:1.44}
+#content{margin-bottom:.625em}
+.sect1{padding-bottom:.625em}
+@media screen and (min-width:768px){#content{margin-bottom:1.25em}
+.sect1{padding-bottom:1.25em}}
+.sect1:last-child{padding-bottom:0}
+.sect1+.sect1{border-top:1px solid #e7e7e9}
+#content h1>a.anchor,h2>a.anchor,h3>a.anchor,#toctitle>a.anchor,.sidebarblock>.content>.title>a.anchor,h4>a.anchor,h5>a.anchor,h6>a.anchor{position:absolute;z-index:1001;width:1.5ex;margin-left:-1.5ex;display:block;text-decoration:none!important;visibility:hidden;text-align:center;font-weight:400}
+#content h1>a.anchor::before,h2>a.anchor::before,h3>a.anchor::before,#toctitle>a.anchor::before,.sidebarblock>.content>.title>a.anchor::before,h4>a.anchor::before,h5>a.anchor::before,h6>a.anchor::before{content:"\00A7";font-size:.85em;display:block;padding-top:.1em}
+#content h1:hover>a.anchor,#content h1>a.anchor:hover,h2:hover>a.anchor,h2>a.anchor:hover,h3:hover>a.anchor,#toctitle:hover>a.anchor,.sidebarblock>.content>.title:hover>a.anchor,h3>a.anchor:hover,#toctitle>a.anchor:hover,.sidebarblock>.content>.title>a.anchor:hover,h4:hover>a.anchor,h4>a.anchor:hover,h5:hover>a.anchor,h5>a.anchor:hover,h6:hover>a.anchor,h6>a.anchor:hover{visibility:visible}
+#content h1>a.link,h2>a.link,h3>a.link,#toctitle>a.link,.sidebarblock>.content>.title>a.link,h4>a.link,h5>a.link,h6>a.link{color:#ba3925;text-decoration:none}
+#content h1>a.link:hover,h2>a.link:hover,h3>a.link:hover,#toctitle>a.link:hover,.sidebarblock>.content>.title>a.link:hover,h4>a.link:hover,h5>a.link:hover,h6>a.link:hover{color:#a53221}
+details,.audioblock,.imageblock,.literalblock,.listingblock,.stemblock,.videoblock{margin-bottom:1.25em}
+details{margin-left:1.25rem}
+details>summary{cursor:pointer;display:block;position:relative;line-height:1.6;margin-bottom:.625rem;outline:none;-webkit-tap-highlight-color:transparent}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";border:solid transparent;border-left:solid;border-width:.3em 0 .3em .5em;position:absolute;top:.5em;left:-1.25rem;transform:translateX(15%)}
+details[open]>summary::before{border:solid transparent;border-top:solid;border-width:.5em .3em 0;transform:translateY(15%)}
+details>summary::after{content:"";width:1.25rem;height:1em;position:absolute;top:.3em;left:-1.25rem}
+.admonitionblock td.content>.title,.audioblock>.title,.exampleblock>.title,.imageblock>.title,.listingblock>.title,.literalblock>.title,.stemblock>.title,.openblock>.title,.paragraph>.title,.quoteblock>.title,table.tableblock>.title,.verseblock>.title,.videoblock>.title,.dlist>.title,.olist>.title,.ulist>.title,.qlist>.title,.hdlist>.title{text-rendering:optimizeLegibility;text-align:left;font-family:"Noto Serif","DejaVu Serif",serif;font-size:1rem;font-style:italic}
+table.tableblock.fit-content>caption.title{white-space:nowrap;width:0}
+.paragraph.lead>p,#preamble>.sectionbody>[class=paragraph]:first-of-type p{font-size:1.21875em;line-height:1.6;color:rgba(0,0,0,.85)}
+.admonitionblock>table{border-collapse:separate;border:0;background:none;width:100%}
+.admonitionblock>table td.icon{text-align:center;width:80px}
+.admonitionblock>table td.icon img{max-width:none}
+.admonitionblock>table td.icon .title{font-weight:bold;font-family:"Open Sans","DejaVu Sans",sans-serif;text-transform:uppercase}
+.admonitionblock>table td.content{padding-left:1.125em;padding-right:1.25em;border-left:1px solid #dddddf;color:rgba(0,0,0,.6);word-wrap:anywhere}
+.admonitionblock>table td.content>:last-child>:last-child{margin-bottom:0}
+.exampleblock>.content{border:1px solid #e6e6e6;margin-bottom:1.25em;padding:1.25em;background:#fff;border-radius:4px}
+.sidebarblock{border:1px solid #dbdbd6;margin-bottom:1.25em;padding:1.25em;background:#f3f3f2;border-radius:4px}
+.sidebarblock>.content>.title{color:#7a2518;margin-top:0;text-align:center}
+.exampleblock>.content>:first-child,.sidebarblock>.content>:first-child{margin-top:0}
+.exampleblock>.content>:last-child,.exampleblock>.content>:last-child>:last-child,.exampleblock>.content .olist>ol>li:last-child>:last-child,.exampleblock>.content .ulist>ul>li:last-child>:last-child,.exampleblock>.content .qlist>ol>li:last-child>:last-child,.sidebarblock>.content>:last-child,.sidebarblock>.content>:last-child>:last-child,.sidebarblock>.content .olist>ol>li:last-child>:last-child,.sidebarblock>.content .ulist>ul>li:last-child>:last-child,.sidebarblock>.content .qlist>ol>li:last-child>:last-child{margin-bottom:0}
+.literalblock pre,.listingblock>.content>pre{border-radius:4px;overflow-x:auto;padding:1em;font-size:.8125em}
+@media screen and (min-width:768px){.literalblock pre,.listingblock>.content>pre{font-size:.90625em}}
+@media screen and (min-width:1280px){.literalblock pre,.listingblock>.content>pre{font-size:1em}}
+.literalblock pre,.listingblock>.content>pre:not(.highlight),.listingblock>.content>pre[class=highlight],.listingblock>.content>pre[class^="highlight "]{background:#f7f7f8}
+.literalblock.output pre{color:#f7f7f8;background:rgba(0,0,0,.9)}
+.listingblock>.content{position:relative}
+.listingblock code[data-lang]::before{display:none;content:attr(data-lang);position:absolute;font-size:.75em;top:.425rem;right:.5rem;line-height:1;text-transform:uppercase;color:inherit;opacity:.5}
+.listingblock:hover code[data-lang]::before{display:block}
+.listingblock.terminal pre .command::before{content:attr(data-prompt);padding-right:.5em;color:inherit;opacity:.5}
+.listingblock.terminal pre .command:not([data-prompt])::before{content:"$"}
+.listingblock pre.highlightjs{padding:0}
+.listingblock pre.highlightjs>code{padding:1em;border-radius:4px}
+.listingblock pre.prettyprint{border-width:0}
+.prettyprint{background:#f7f7f8}
+pre.prettyprint .linenums{line-height:1.45;margin-left:2em}
+pre.prettyprint li{background:none;list-style-type:inherit;padding-left:0}
+pre.prettyprint li code[data-lang]::before{opacity:1}
+pre.prettyprint li:not(:first-child) code[data-lang]::before{display:none}
+table.linenotable{border-collapse:separate;border:0;margin-bottom:0;background:none}
+table.linenotable td[class]{color:inherit;vertical-align:top;padding:0;line-height:inherit;white-space:normal}
+table.linenotable td.code{padding-left:.75em}
+table.linenotable td.linenos,pre.pygments .linenos{border-right:1px solid;opacity:.35;padding-right:.5em;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}
+pre.pygments span.linenos{display:inline-block;margin-right:.75em}
+.quoteblock{margin:0 1em 1.25em 1.5em;display:table}
+.quoteblock:not(.excerpt)>.title{margin-left:-1.5em;margin-bottom:.75em}
+.quoteblock blockquote,.quoteblock p{color:rgba(0,0,0,.85);font-size:1.15rem;line-height:1.75;word-spacing:.1em;letter-spacing:0;font-style:italic;text-align:justify}
+.quoteblock blockquote{margin:0;padding:0;border:0}
+.quoteblock blockquote::before{content:"\201c";float:left;font-size:2.75em;font-weight:bold;line-height:.6em;margin-left:-.6em;color:#7a2518;text-shadow:0 1px 2px rgba(0,0,0,.1)}
+.quoteblock blockquote>.paragraph:last-child p{margin-bottom:0}
+.quoteblock .attribution{margin-top:.75em;margin-right:.5ex;text-align:right}
+.verseblock{margin:0 1em 1.25em}
+.verseblock pre{font-family:"Open Sans","DejaVu Sans",sans-serif;font-size:1.15rem;color:rgba(0,0,0,.85);font-weight:300;text-rendering:optimizeLegibility}
+.verseblock pre strong{font-weight:400}
+.verseblock .attribution{margin-top:1.25rem;margin-left:.5ex}
+.quoteblock .attribution,.verseblock .attribution{font-size:.9375em;line-height:1.45;font-style:italic}
+.quoteblock .attribution br,.verseblock .attribution br{display:none}
+.quoteblock .attribution cite,.verseblock .attribution cite{display:block;letter-spacing:-.025em;color:rgba(0,0,0,.6)}
+.quoteblock.abstract blockquote::before,.quoteblock.excerpt blockquote::before,.quoteblock .quoteblock blockquote::before{display:none}
+.quoteblock.abstract blockquote,.quoteblock.abstract p,.quoteblock.excerpt blockquote,.quoteblock.excerpt p,.quoteblock .quoteblock blockquote,.quoteblock .quoteblock p{line-height:1.6;word-spacing:0}
+.quoteblock.abstract{margin:0 1em 1.25em;display:block}
+.quoteblock.abstract>.title{margin:0 0 .375em;font-size:1.15em;text-align:center}
+.quoteblock.excerpt>blockquote,.quoteblock .quoteblock{padding:0 0 .25em 1em;border-left:.25em solid #dddddf}
+.quoteblock.excerpt,.quoteblock .quoteblock{margin-left:0}
+.quoteblock.excerpt blockquote,.quoteblock.excerpt p,.quoteblock .quoteblock blockquote,.quoteblock .quoteblock p{color:inherit;font-size:1.0625rem}
+.quoteblock.excerpt .attribution,.quoteblock .quoteblock .attribution{color:inherit;font-size:.85rem;text-align:left;margin-right:0}
+p.tableblock:last-child{margin-bottom:0}
+td.tableblock>.content{margin-bottom:1.25em;word-wrap:anywhere}
+td.tableblock>.content>:last-child{margin-bottom:-1.25em}
+table.tableblock,th.tableblock,td.tableblock{border:0 solid #dedede}
+table.grid-all>*>tr>*{border-width:1px}
+table.grid-cols>*>tr>*{border-width:0 1px}
+table.grid-rows>*>tr>*{border-width:1px 0}
+table.frame-all{border-width:1px}
+table.frame-ends{border-width:1px 0}
+table.frame-sides{border-width:0 1px}
+table.frame-none>colgroup+*>:first-child>*,table.frame-sides>colgroup+*>:first-child>*{border-top-width:0}
+table.frame-none>:last-child>:last-child>*,table.frame-sides>:last-child>:last-child>*{border-bottom-width:0}
+table.frame-none>*>tr>:first-child,table.frame-ends>*>tr>:first-child{border-left-width:0}
+table.frame-none>*>tr>:last-child,table.frame-ends>*>tr>:last-child{border-right-width:0}
+table.stripes-all>*>tr,table.stripes-odd>*>tr:nth-of-type(odd),table.stripes-even>*>tr:nth-of-type(even),table.stripes-hover>*>tr:hover{background:#f8f8f7}
+th.halign-left,td.halign-left{text-align:left}
+th.halign-right,td.halign-right{text-align:right}
+th.halign-center,td.halign-center{text-align:center}
+th.valign-top,td.valign-top{vertical-align:top}
+th.valign-bottom,td.valign-bottom{vertical-align:bottom}
+th.valign-middle,td.valign-middle{vertical-align:middle}
+table thead th,table tfoot th{font-weight:bold}
+tbody tr th{background:#f7f8f7}
+tbody tr th,tbody tr th p,tfoot tr th,tfoot tr th p{color:rgba(0,0,0,.8);font-weight:bold}
+p.tableblock>code:only-child{background:none;padding:0}
+p.tableblock{font-size:1em}
+ol{margin-left:1.75em}
+ul li ol{margin-left:1.5em}
+dl dd{margin-left:1.125em}
+dl dd:last-child,dl dd:last-child>:last-child{margin-bottom:0}
+li p,ul dd,ol dd,.olist .olist,.ulist .ulist,.ulist .olist,.olist .ulist{margin-bottom:.625em}
+ul.checklist,ul.none,ol.none,ul.no-bullet,ol.no-bullet,ol.unnumbered,ul.unstyled,ol.unstyled{list-style-type:none}
+ul.no-bullet,ol.no-bullet,ol.unnumbered{margin-left:.625em}
+ul.unstyled,ol.unstyled{margin-left:0}
+li>p:empty:only-child::before{content:"";display:inline-block}
+ul.checklist>li>p:first-child{margin-left:-1em}
+ul.checklist>li>p:first-child>.fa-square-o:first-child,ul.checklist>li>p:first-child>.fa-check-square-o:first-child{width:1.25em;font-size:.8em;position:relative;bottom:.125em}
+ul.checklist>li>p:first-child>input[type=checkbox]:first-child{margin-right:.25em}
+ul.inline{display:flex;flex-flow:row wrap;list-style:none;margin:0 0 .625em -1.25em}
+ul.inline>li{margin-left:1.25em}
+.unstyled dl dt{font-weight:400;font-style:normal}
+ol.arabic{list-style-type:decimal}
+ol.decimal{list-style-type:decimal-leading-zero}
+ol.loweralpha{list-style-type:lower-alpha}
+ol.upperalpha{list-style-type:upper-alpha}
+ol.lowerroman{list-style-type:lower-roman}
+ol.upperroman{list-style-type:upper-roman}
+ol.lowergreek{list-style-type:lower-greek}
+.hdlist>table,.colist>table{border:0;background:none}
+.hdlist>table>tbody>tr,.colist>table>tbody>tr{background:none}
+td.hdlist1,td.hdlist2{vertical-align:top;padding:0 .625em}
+td.hdlist1{font-weight:bold;padding-bottom:1.25em}
+td.hdlist2{word-wrap:anywhere}
+.literalblock+.colist,.listingblock+.colist{margin-top:-.5em}
+.colist td:not([class]):first-child{padding:.4em .75em 0;line-height:1;vertical-align:top}
+.colist td:not([class]):first-child img{max-width:none}
+.colist td:not([class]):last-child{padding:.25em 0}
+.thumb,.th{line-height:0;display:inline-block;border:4px solid #fff;box-shadow:0 0 0 1px #ddd}
+.imageblock.left{margin:.25em .625em 1.25em 0}
+.imageblock.right{margin:.25em 0 1.25em .625em}
+.imageblock>.title{margin-bottom:0}
+.imageblock.thumb,.imageblock.th{border-width:6px}
+.imageblock.thumb>.title,.imageblock.th>.title{padding:0 .125em}
+.image.left,.image.right{margin-top:.25em;margin-bottom:.25em;display:inline-block;line-height:0}
+.image.left{margin-right:.625em}
+.image.right{margin-left:.625em}
+a.image{text-decoration:none;display:inline-block}
+a.image object{pointer-events:none}
+sup.footnote,sup.footnoteref{font-size:.875em;position:static;vertical-align:super}
+sup.footnote a,sup.footnoteref a{text-decoration:none}
+sup.footnote a:active,sup.footnoteref a:active,#footnotes .footnote a:first-of-type:active{text-decoration:underline}
+#footnotes{padding-top:.75em;padding-bottom:.75em;margin-bottom:.625em}
+#footnotes hr{width:20%;min-width:6.25em;margin:-.25em 0 .75em;border-width:1px 0 0}
+#footnotes .footnote{padding:0 .375em 0 .225em;line-height:1.3334;font-size:.875em;margin-left:1.2em;margin-bottom:.2em}
+#footnotes .footnote a:first-of-type{font-weight:bold;text-decoration:none;margin-left:-1.05em}
+#footnotes .footnote:last-of-type{margin-bottom:0}
+#content #footnotes{margin-top:-.625em;margin-bottom:0;padding:.75em 0}
+div.unbreakable{page-break-inside:avoid}
+.big{font-size:larger}
+.small{font-size:smaller}
+.underline{text-decoration:underline}
+.overline{text-decoration:overline}
+.line-through{text-decoration:line-through}
+.aqua{color:#00bfbf}
+.aqua-background{background:#00fafa}
+.black{color:#000}
+.black-background{background:#000}
+.blue{color:#0000bf}
+.blue-background{background:#0000fa}
+.fuchsia{color:#bf00bf}
+.fuchsia-background{background:#fa00fa}
+.gray{color:#606060}
+.gray-background{background:#7d7d7d}
+.green{color:#006000}
+.green-background{background:#007d00}
+.lime{color:#00bf00}
+.lime-background{background:#00fa00}
+.maroon{color:#600000}
+.maroon-background{background:#7d0000}
+.navy{color:#000060}
+.navy-background{background:#00007d}
+.olive{color:#606000}
+.olive-background{background:#7d7d00}
+.purple{color:#600060}
+.purple-background{background:#7d007d}
+.red{color:#bf0000}
+.red-background{background:#fa0000}
+.silver{color:#909090}
+.silver-background{background:#bcbcbc}
+.teal{color:#006060}
+.teal-background{background:#007d7d}
+.white{color:#bfbfbf}
+.white-background{background:#fafafa}
+.yellow{color:#bfbf00}
+.yellow-background{background:#fafa00}
+span.icon>.fa{cursor:default}
+a span.icon>.fa{cursor:inherit}
+.admonitionblock td.icon [class^="fa icon-"]{font-size:2.5em;text-shadow:1px 1px 2px rgba(0,0,0,.5);cursor:default}
+.admonitionblock td.icon .icon-note::before{content:"\f05a";color:#19407c}
+.admonitionblock td.icon .icon-tip::before{content:"\f0eb";text-shadow:1px 1px 2px rgba(155,155,0,.8);color:#111}
+.admonitionblock td.icon .icon-warning::before{content:"\f071";color:#bf6900}
+.admonitionblock td.icon .icon-caution::before{content:"\f06d";color:#bf3400}
+.admonitionblock td.icon .icon-important::before{content:"\f06a";color:#bf0000}
+.conum[data-value]{display:inline-block;color:#fff!important;background:rgba(0,0,0,.8);border-radius:50%;text-align:center;font-size:.75em;width:1.67em;height:1.67em;line-height:1.67em;font-family:"Open Sans","DejaVu Sans",sans-serif;font-style:normal;font-weight:bold}
+.conum[data-value] *{color:#fff!important}
+.conum[data-value]+b{display:none}
+.conum[data-value]::after{content:attr(data-value)}
+pre .conum[data-value]{position:relative;top:-.125em}
+b.conum *{color:inherit!important}
+.conum:not([data-value]):empty{display:none}
+dt,th.tableblock,td.content,div.footnote{text-rendering:optimizeLegibility}
+h1,h2,p,td.content,span.alt,summary{letter-spacing:-.01em}
+p strong,td.content strong,div.footnote strong{letter-spacing:-.005em}
+p,blockquote,dt,td.content,td.hdlist1,span.alt,summary{font-size:1.0625rem}
+p{margin-bottom:1.25rem}
+.sidebarblock p,.sidebarblock dt,.sidebarblock td.content,p.tableblock{font-size:1em}
+.exampleblock>.content{background:#fffef7;border-color:#e0e0dc;box-shadow:0 1px 4px #e0e0dc}
+.print-only{display:none!important}
+@page{margin:1.25cm .75cm}
+@media print{*{box-shadow:none!important;text-shadow:none!important}
+html{font-size:80%}
+a{color:inherit!important;text-decoration:underline!important}
+a.bare,a[href^="#"],a[href^="mailto:"]{text-decoration:none!important}
+a[href^="http:"]:not(.bare)::after,a[href^="https:"]:not(.bare)::after{content:"(" attr(href) ")";display:inline-block;font-size:.875em;padding-left:.25em}
+abbr[title]{border-bottom:1px dotted}
+abbr[title]::after{content:" (" attr(title) ")"}
+pre,blockquote,tr,img,object,svg{page-break-inside:avoid}
+thead{display:table-header-group}
+svg{max-width:100%}
+p,blockquote,dt,td.content{font-size:1em;orphans:3;widows:3}
+h2,h3,#toctitle,.sidebarblock>.content>.title{page-break-after:avoid}
+#header,#content,#footnotes,#footer{max-width:none}
+#toc,.sidebarblock,.exampleblock>.content{background:none!important}
+#toc{border-bottom:1px solid #dddddf!important;padding-bottom:0!important}
+body.book #header{text-align:center}
+body.book #header>h1:first-child{border:0!important;margin:2.5em 0 1em}
+body.book #header .details{border:0!important;display:block;padding:0!important}
+body.book #header .details span:first-child{margin-left:0!important}
+body.book #header .details br{display:block}
+body.book #header .details br+span::before{content:none!important}
+body.book #toc{border:0!important;text-align:left!important;padding:0!important;margin:0!important}
+body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-break-before:always}
+.listingblock code[data-lang]::before{display:block}
+#footer{padding:0 .9375em}
+.hide-on-print{display:none!important}
+.print-only{display:block!important}
+.hide-for-print{display:none!important}
+.show-for-print{display:inherit!important}}
+@media amzn-kf8,print{#header>h1:first-child{margin-top:1.25rem}
+.sect1{padding:0!important}
+.sect1+.sect1{border:0}
+#footer{background:none}
+#footer-text{color:rgba(0,0,0,.6);font-size:.9em}}
+@media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
+</style>
+</head>
+<body class="article">
+<div id="header">
+<h1>PasVulkan POCA Script API Documentation</h1>
+</div>
+<div id="content">
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p></p>
+</div>
+</div>
+<div id="toc" class="toc">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_overview">Overview</a></li>
+<li><a href="#_vector2">Vector2</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_2">Overview</a></li>
+<li><a href="#_global_vector2_object">Global Vector2 Object</a>
+<ul class="sectlevel3">
+<li><a href="#_vector2_create">Vector2.create()</a></li>
+</ul>
+</li>
+<li><a href="#_vector2_properties">Vector2 Properties</a>
+<ul class="sectlevel3">
+<li><a href="#_x_r">x, r</a></li>
+<li><a href="#_y_g">y, g</a></li>
+</ul>
+</li>
+<li><a href="#_vector2_methods">Vector2 Methods</a>
+<ul class="sectlevel3">
+<li><a href="#_length">length()</a></li>
+<li><a href="#_squaredlength">squaredLength()</a></li>
+<li><a href="#_normalize">normalize()</a></li>
+<li><a href="#_dotother">dot(other)</a></li>
+<li><a href="#_crossother">cross(other)</a></li>
+<li><a href="#_distancetoother">distanceTo(other)</a></li>
+<li><a href="#_lerpother_t">lerp(other, t)</a></li>
+<li><a href="#_nlerpother_t">nlerp(other, t)</a></li>
+<li><a href="#_slerpother_t">slerp(other, t)</a></li>
+<li><a href="#_sqlerpother_t">sqlerp(other, t)</a></li>
+<li><a href="#_clone">clone()</a></li>
+<li><a href="#_copyother">copy(other)</a></li>
+<li><a href="#_addother">add(other)</a></li>
+<li><a href="#_subother">sub(other)</a></li>
+<li><a href="#_mulvalue">mul(value)</a></li>
+<li><a href="#_divvalue">div(value)</a></li>
+<li><a href="#_neg">neg()</a></li>
+<li><a href="#_equalother">equal(other)</a></li>
+<li><a href="#_notequalother">notEqual(other)</a></li>
+<li><a href="#_tostring">toString()</a></li>
+</ul>
+</li>
+<li><a href="#_operator_overloading">Operator Overloading</a></li>
+</ul>
+</li>
+<li><a href="#_vector3">Vector3</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_3">Overview</a></li>
+<li><a href="#_global_vector3_object">Global Vector3 Object</a>
+<ul class="sectlevel3">
+<li><a href="#_vector3_create">Vector3.create()</a></li>
+</ul>
+</li>
+<li><a href="#_vector3_properties">Vector3 Properties</a>
+<ul class="sectlevel3">
+<li><a href="#_x_r_y_g_z_b">x, r / y, g / z, b</a></li>
+</ul>
+</li>
+<li><a href="#_vector3_methods">Vector3 Methods</a></li>
+</ul>
+</li>
+<li><a href="#_vector4">Vector4</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_4">Overview</a></li>
+<li><a href="#_global_vector4_object">Global Vector4 Object</a>
+<ul class="sectlevel3">
+<li><a href="#_vector4_create">Vector4.create()</a></li>
+</ul>
+</li>
+<li><a href="#_vector4_properties">Vector4 Properties</a></li>
+<li><a href="#_vector4_methods">Vector4 Methods</a></li>
+</ul>
+</li>
+<li><a href="#_quaternion">Quaternion</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_5">Overview</a></li>
+<li><a href="#_global_quaternion_object">Global Quaternion Object</a>
+<ul class="sectlevel3">
+<li><a href="#_quaternion_create">Quaternion.create()</a></li>
+</ul>
+</li>
+<li><a href="#_quaternion_properties">Quaternion Properties</a></li>
+<li><a href="#_quaternion_methods">Quaternion Methods</a></li>
+</ul>
+</li>
+<li><a href="#_matrix3x3">Matrix3x3</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_6">Overview</a></li>
+<li><a href="#_global_matrix3x3_object">Global Matrix3x3 Object</a>
+<ul class="sectlevel3">
+<li><a href="#_matrix3x3_create">Matrix3x3.create()</a></li>
+</ul>
+</li>
+<li><a href="#_matrix3x3_properties">Matrix3x3 Properties</a></li>
+<li><a href="#_matrix3x3_methods">Matrix3x3 Methods</a></li>
+</ul>
+</li>
+<li><a href="#_matrix4x4">Matrix4x4</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_7">Overview</a></li>
+<li><a href="#_global_matrix4x4_object">Global Matrix4x4 Object</a>
+<ul class="sectlevel3">
+<li><a href="#_matrix4x4_create">Matrix4x4.create()</a></li>
+</ul>
+</li>
+<li><a href="#_matrix4x4_properties">Matrix4x4 Properties</a></li>
+<li><a href="#_matrix4x4_methods">Matrix4x4 Methods</a></li>
+</ul>
+</li>
+<li><a href="#_sprite">Sprite</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_8">Overview</a></li>
+<li><a href="#_sprite_properties_and_methods">Sprite Properties and Methods</a></li>
+</ul>
+</li>
+<li><a href="#_spriteatlas">SpriteAtlas</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_9">Overview</a></li>
+<li><a href="#_spriteatlas_properties_and_methods">SpriteAtlas Properties and Methods</a></li>
+</ul>
+</li>
+<li><a href="#_texture">Texture</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_10">Overview</a></li>
+<li><a href="#_texture_properties_and_methods">Texture Properties and Methods</a></li>
+</ul>
+</li>
+<li><a href="#_font">Font</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_11">Overview</a></li>
+<li><a href="#_font_properties_and_methods">Font Properties and Methods</a></li>
+</ul>
+</li>
+<li><a href="#_canvasfont">CanvasFont</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_12">Overview</a></li>
+<li><a href="#_canvasfont_properties_and_methods">CanvasFont Properties and Methods</a></li>
+</ul>
+</li>
+<li><a href="#_canvasshape">CanvasShape</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_13">Overview</a></li>
+<li><a href="#_canvasshape_properties_and_methods">CanvasShape Properties and Methods</a></li>
+</ul>
+</li>
+<li><a href="#_canvas">Canvas</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_14">Overview</a></li>
+<li><a href="#_canvas_dimensions">Canvas Dimensions</a>
+<ul class="sectlevel3">
+<li><a href="#_getwidth">getWidth()</a></li>
+<li><a href="#_getheight">getHeight()</a></li>
+</ul>
+</li>
+<li><a href="#_canvas_drawing_operations">Canvas Drawing Operations</a>
+<ul class="sectlevel3">
+<li><a href="#_clearcolor">clear(color)</a></li>
+<li><a href="#_drawfilledcirclecenter_radius">drawFilledCircle(center, radius)</a></li>
+<li><a href="#_drawfilledellipsecenter_radius">drawFilledEllipse(center, radius)</a></li>
+<li><a href="#_drawfilledrectangletopleft_size">drawFilledRectangle(topLeft, size)</a></li>
+<li><a href="#_drawfilledrectanglecentercenter_size">drawFilledRectangleCenter(center, size)</a></li>
+<li><a href="#_drawfilledroundedrectangletopleft_size_radius">drawFilledRoundedRectangle(topLeft, size, radius)</a></li>
+<li><a href="#_drawfilledroundedrectanglecentercenter_size_radius">drawFilledRoundedRectangleCenter(center, size, radius)</a></li>
+<li><a href="#_drawfilledcirclearcringsegmentcenter_startangle_endangle_innerradius_outerradius">drawFilledCircleArcRingSegment(center, startAngle, endAngle, innerRadius, outerRadius)</a></li>
+<li><a href="#_drawtexturedrectangletopleft_size">drawTexturedRectangle(topLeft, size)</a></li>
+<li><a href="#_drawtexturedrectanglecentercenter_size">drawTexturedRectangleCenter(center, size)</a></li>
+<li><a href="#_drawspritesprite_position_size">drawSprite(sprite, position, size)</a></li>
+<li><a href="#_drawspriteoriginrotationsprite_position_origin_rotation_size">drawSpriteOriginRotation(sprite, position, origin, rotation, size)</a></li>
+<li><a href="#_drawspritepositionsprite_position">drawSpritePosition(sprite, position)</a></li>
+</ul>
+</li>
+<li><a href="#_canvas_text_drawing">Canvas Text Drawing</a>
+<ul class="sectlevel3">
+<li><a href="#_drawtexttext_position">drawText(text, position)</a></li>
+<li><a href="#_drawtextcodepointcodepoint_position">drawTextCodePoint(codePoint, position)</a></li>
+<li><a href="#_textwidthtext">textWidth(text)</a></li>
+<li><a href="#_textheighttext">textHeight(text)</a></li>
+<li><a href="#_textsizetext">textSize(text)</a></li>
+<li><a href="#_textrowheight">textRowHeight()</a></li>
+</ul>
+</li>
+<li><a href="#_canvas_path_operations">Canvas Path Operations</a>
+<ul class="sectlevel3">
+<li><a href="#_beginpath">beginPath()</a></li>
+<li><a href="#_movetoposition">moveTo(position)</a></li>
+<li><a href="#_linetoposition">lineTo(position)</a></li>
+<li><a href="#_quadraticcurvetocontrol_end">quadraticCurveTo(control, end)</a></li>
+<li><a href="#_cubiccurvetocontrol1_control2_end">cubicCurveTo(control1, control2, end)</a></li>
+<li><a href="#_arccenter_radius_startangle_endangle_counterclockwise">arc(center, radius, startAngle, endAngle, counterClockwise)</a></li>
+<li><a href="#_arctopoint1_point2_radius">arcTo(point1, point2, radius)</a></li>
+<li><a href="#_ellipsecenter_radius">ellipse(center, radius)</a></li>
+<li><a href="#_circlecenter_radius">circle(center, radius)</a></li>
+<li><a href="#_rectangletopleft_size">rectangle(topLeft, size)</a></li>
+<li><a href="#_rectanglecentercenter_size">rectangleCenter(center, size)</a></li>
+<li><a href="#_roundedrectangletopleft_size_radius">roundedRectangle(topLeft, size, radius)</a></li>
+<li><a href="#_roundedrectanglecentercenter_size_radius">roundedRectangleCenter(center, size, radius)</a></li>
+<li><a href="#_closepath">closePath()</a></li>
+<li><a href="#_endpath">endPath()</a></li>
+<li><a href="#_stroke">stroke()</a></li>
+<li><a href="#_fill">fill()</a></li>
+</ul>
+</li>
+<li><a href="#_canvas_state_management">Canvas State Management</a>
+<ul class="sectlevel3">
+<li><a href="#_push">push()</a></li>
+<li><a href="#_pop">pop()</a></li>
+<li><a href="#_flush">flush()</a></li>
+</ul>
+</li>
+<li><a href="#_canvas_properties_getters_and_setters">Canvas Properties (Getters and Setters)</a>
+<ul class="sectlevel3">
+<li><a href="#_clipping">Clipping</a></li>
+<li><a href="#_blending">Blending</a></li>
+<li><a href="#_line_style">Line Style</a></li>
+<li><a href="#_z_position">Z-Position</a></li>
+<li><a href="#_text_alignment">Text Alignment</a></li>
+<li><a href="#_font_2">Font</a></li>
+<li><a href="#_texture_2">Texture</a></li>
+<li><a href="#_fill_style">Fill Style</a></li>
+<li><a href="#_colors">Colors</a></li>
+<li><a href="#_matrices">Matrices</a></li>
+<li><a href="#_advanced">Advanced</a></li>
+</ul>
+</li>
+<li><a href="#_canvas_enumerations">Canvas Enumerations</a>
+<ul class="sectlevel3">
+<li><a href="#_canvas_blendingmode">Canvas.BlendingMode</a></li>
+<li><a href="#_canvas_linecap">Canvas.LineCap</a></li>
+<li><a href="#_canvas_linejoin">Canvas.LineJoin</a></li>
+<li><a href="#_canvas_fillrule">Canvas.FillRule</a></li>
+<li><a href="#_canvas_fillstyle">Canvas.FillStyle</a></li>
+<li><a href="#_canvas_fillwrapmode">Canvas.FillWrapMode</a></li>
+<li><a href="#_canvas_texthorizontalalignment">Canvas.TextHorizontalAlignment</a></li>
+<li><a href="#_canvas_textverticalalignment">Canvas.TextVerticalAlignment</a></li>
+<li><a href="#_canvas_vectorpathfillrule">Canvas.VectorPathFillRule</a></li>
+<li><a href="#_canvas_signeddistancefield2dvariant">Canvas.SignedDistanceField2DVariant</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#_input">Input</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_15">Overview</a></li>
+<li><a href="#_input_event_types">Input Event Types</a></li>
+<li><a href="#_key_codes">Key Codes</a>
+<ul class="sectlevel3">
+<li><a href="#_special_keys">Special Keys</a></li>
+<li><a href="#_punctuation_and_symbol_keys">Punctuation and Symbol Keys</a></li>
+<li><a href="#_alphanumeric_keys">Alphanumeric Keys</a></li>
+<li><a href="#_function_keys">Function Keys</a></li>
+<li><a href="#_arrow_keys">Arrow Keys</a></li>
+<li><a href="#_modifier_keys">Modifier Keys</a></li>
+<li><a href="#_numpad_keys">Numpad Keys</a></li>
+<li><a href="#_advanced_numpad_keys">Advanced Numpad Keys</a></li>
+<li><a href="#_navigation_keys">Navigation Keys</a></li>
+<li><a href="#_lock_keys">Lock Keys</a></li>
+<li><a href="#_system_keys">System Keys</a></li>
+<li><a href="#_media_keys">Media Keys</a></li>
+<li><a href="#_application_control_keys">Application Control Keys</a></li>
+<li><a href="#_display_and_brightness_keys">Display and Brightness Keys</a></li>
+<li><a href="#_international_keys">International Keys</a></li>
+<li><a href="#_mobileandroid_keys">Mobile/Android Keys</a></li>
+<li><a href="#_game_controller_keys">Game Controller Keys</a></li>
+<li><a href="#_other_keys">Other Keys</a></li>
+</ul>
+</li>
+<li><a href="#_key_modifier_flags">Key Modifier Flags</a></li>
+<li><a href="#_pointer_button_flags">Pointer Button Flags</a></li>
+<li><a href="#_input_event_hash_structure">Input Event Hash Structure</a>
+<ul class="sectlevel3">
+<li><a href="#_key_event_hash">Key Event Hash</a></li>
+<li><a href="#_pointer_event_hash">Pointer Event Hash</a></li>
+<li><a href="#_scroll_event_hash">Scroll Event Hash</a></li>
+</ul>
+</li>
+<li><a href="#_example_input_handling">Example: Input Handling</a></li>
+</ul>
+</li>
+<li><a href="#_audio">Audio</a>
+<ul class="sectlevel2">
+<li><a href="#_overview_16">Overview</a></li>
+<li><a href="#_soundmanager">SoundManager</a>
+<ul class="sectlevel3">
+<li><a href="#_soundmanager_create">SoundManager.create()</a></li>
+<li><a href="#_soundmanager_find">SoundManager.find()</a></li>
+<li><a href="#_soundmanager_remove">SoundManager.remove()</a></li>
+<li><a href="#_soundmanager_clear">SoundManager.clear()</a></li>
+</ul>
+</li>
+<li><a href="#_sound_objects">Sound Objects</a>
+<ul class="sectlevel3">
+<li><a href="#_sound_valid">sound.valid()</a></li>
+<li><a href="#_sound_destroy">sound.destroy()</a></li>
+<li><a href="#_sound_load">sound.load()</a></li>
+<li><a href="#_sound_reload">sound.reload()</a></li>
+<li><a href="#_sound_getname">sound.getName()</a></li>
+<li><a href="#_sound_getuid">sound.getUID()</a></li>
+<li><a href="#_sound_getfilename">sound.getFileName()</a></li>
+<li><a href="#_sound_getpolyphony">sound.getPolyphony()</a></li>
+<li><a href="#_sound_getloop">sound.getLoop()</a></li>
+<li><a href="#_sound_getrealvoices">sound.getRealVoices()</a></li>
+<li><a href="#_sound_getfadeoutduration">sound.getFadeOutDuration()</a></li>
+<li><a href="#_sound_play">sound.play()</a></li>
+<li><a href="#_sound_playspatialization">sound.playSpatialization()</a></li>
+<li><a href="#_sound_stop">sound.stop()</a></li>
+<li><a href="#_sound_keyoff">sound.keyOff()</a></li>
+<li><a href="#_sound_setvolume">sound.setVolume()</a></li>
+<li><a href="#_sound_setpanning">sound.setPanning()</a></li>
+<li><a href="#_sound_setrate">sound.setRate()</a></li>
+<li><a href="#_sound_setposition">sound.setPosition()</a></li>
+<li><a href="#_sound_seteffectmix">sound.setEffectMix()</a></li>
+<li><a href="#_sound_isplaying">sound.isPlaying()</a></li>
+<li><a href="#_sound_isvoiceplaying">sound.isVoicePlaying()</a></li>
+</ul>
+</li>
+<li><a href="#_musicmanager">MusicManager</a>
+<ul class="sectlevel3">
+<li><a href="#_musicmanager_create">MusicManager.create()</a></li>
+<li><a href="#_musicmanager_find">MusicManager.find()</a></li>
+<li><a href="#_musicmanager_remove">MusicManager.remove()</a></li>
+<li><a href="#_musicmanager_clear">MusicManager.clear()</a></li>
+</ul>
+</li>
+<li><a href="#_music_objects">Music Objects</a>
+<ul class="sectlevel3">
+<li><a href="#_music_valid">music.valid()</a></li>
+<li><a href="#_music_destroy">music.destroy()</a></li>
+<li><a href="#_music_load">music.load()</a></li>
+<li><a href="#_music_reload">music.reload()</a></li>
+<li><a href="#_music_getname">music.getName()</a></li>
+<li><a href="#_music_getuid">music.getUID()</a></li>
+<li><a href="#_music_getfilename">music.getFileName()</a></li>
+<li><a href="#_music_play">music.play()</a></li>
+<li><a href="#_music_stop">music.stop()</a></li>
+<li><a href="#_music_setvolume">music.setVolume()</a></li>
+<li><a href="#_music_setpanning">music.setPanning()</a></li>
+<li><a href="#_music_setrate">music.setRate()</a></li>
+<li><a href="#_music_isplaying">music.isPlaying()</a></li>
+</ul>
+</li>
+<li><a href="#_example_audio_usage">Example: Audio Usage</a></li>
+</ul>
+</li>
+<li><a href="#_summary">Summary</a></li>
+<li><a href="#_integration_with_pasvulkan">Integration with PasVulkan</a></li>
+</ul>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_overview">Overview</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This document describes the PasVulkan-specific extensions to the POCA scripting API. PasVulkan provides a comprehensive set of types and functions for 2D/3D graphics, mathematics, input handling, and sprite management within POCA scripts.</p>
+</div>
+<div class="paragraph">
+<p>For the base POCA scripting API (Array, Boolean, Console, etc.), please refer to <a href="../externals/poca/docs/scriptapi.adoc">POCA Script API Documentation</a>.</p>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_vector2">Vector2</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_2">Overview</h3>
+<div class="paragraph">
+<p>The Vector2 type represents a 2-dimensional vector with x and y components. It is exposed as a ghost object in POCA scripts and provides comprehensive vector mathematics operations.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_global_vector2_object">Global Vector2 Object</h3>
+<div class="sect3">
+<h4 id="_vector2_create">Vector2.create()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector2.create(x, y);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a new 2D vector with the specified x and y components.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code> (number): The x component of the vector (default: 0.0)</p>
+</li>
+<li>
+<p><code>y</code> (number): The y component of the vector (default: 0.0)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Vector2 object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let position = Vector2.create(10.5, 20.3);
+let origin = Vector2.create(); // (0, 0)</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_vector2_properties">Vector2 Properties</h3>
+<div class="sect3">
+<h4 id="_x_r">x, r</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let xValue = vec.x;
+vec.x = 5.0;
+let rValue = vec.r; // Same as x</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Gets or sets the x component of the vector. The <code>r</code> property is an alias for <code>x</code>.</p>
+</li>
+<li>
+<p><strong>Type:</strong> number</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector2.create(3, 4);
+vec.x = 10;
+puts("X component: " + vec.x);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_y_g">y, g</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let yValue = vec.y;
+vec.y = 5.0;
+let gValue = vec.g; // Same as y</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Gets or sets the y component of the vector. The <code>g</code> property is an alias for <code>y</code>.</p>
+</li>
+<li>
+<p><strong>Type:</strong> number</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector2.create(3, 4);
+vec.y = 8;
+puts("Y component: " + vec.y);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_vector2_methods">Vector2 Methods</h3>
+<div class="sect3">
+<h4 id="_length">length()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let len = vec.length();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the Euclidean length (magnitude) of the vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The length of the vector as a number.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector2.create(3, 4);
+let len = vec.length(); // Returns 5.0</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_squaredlength">squaredLength()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let sqLen = vec.squaredLength();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the squared length of the vector. This is more efficient than <code>length()</code> when you only need to compare lengths.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The squared length of the vector.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector2.create(3, 4);
+let sqLen = vec.squaredLength(); // Returns 25.0</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_normalize">normalize()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">vec.normalize();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Normalizes the vector in place, making it a unit vector (length = 1).</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector2.create(3, 4);
+vec.normalize(); // vec is now (0.6, 0.8)</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_dotother">dot(other)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let dotProduct = vec.dot(otherVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Computes the dot product of this vector with another vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2): The other vector.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The dot product as a number.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let v1 = Vector2.create(1, 0);
+let v2 = Vector2.create(0, 1);
+let dot = v1.dot(v2); // Returns 0.0</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_crossother">cross(other)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let crossProduct = vec.cross(otherVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Computes the 2D cross product (z component of the 3D cross product) with another vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2): The other vector.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The cross product as a number.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let v1 = Vector2.create(1, 0);
+let v2 = Vector2.create(0, 1);
+let cross = v1.cross(v2); // Returns 1.0</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_distancetoother">distanceTo(other)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let distance = vec.distanceTo(otherVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Computes the Euclidean distance between this vector and another vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2): The other vector.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The distance as a number.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let v1 = Vector2.create(0, 0);
+let v2 = Vector2.create(3, 4);
+let dist = v1.distanceTo(v2); // Returns 5.0</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_lerpother_t">lerp(other, t)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = vec.lerp(otherVec, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs linear interpolation between this vector and another vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2): The target vector.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new interpolated Vector2.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let v1 = Vector2.create(0, 0);
+let v2 = Vector2.create(10, 10);
+let mid = v1.lerp(v2, 0.5); // Returns (5, 5)</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_nlerpother_t">nlerp(other, t)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = vec.nlerp(otherVec, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs normalized linear interpolation between this vector and another vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2): The target vector.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new normalized interpolated Vector2.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_slerpother_t">slerp(other, t)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = vec.slerp(otherVec, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs spherical linear interpolation between this vector and another vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2): The target vector.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new spherically interpolated Vector2.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sqlerpother_t">sqlerp(other, t)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = vec.sqlerp(otherVec, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs squared spherical linear interpolation.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2): The target vector.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new interpolated Vector2.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_clone">clone()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let copy = vec.clone();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a copy of this vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Vector2 with the same components.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let original = Vector2.create(5, 10);
+let copy = original.clone();</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_copyother">copy(other)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">vec.copy(otherVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Copies the components from another vector to this vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2): The vector to copy from.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The vector itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_addother">add(other)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">vec.add(otherVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Adds another vector to this vector in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2 or number): The vector or scalar to add.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The vector itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector2.create(1, 2);
+vec.add(Vector2.create(3, 4)); // vec is now (4, 6)</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_subother">sub(other)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">vec.sub(otherVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Subtracts another vector from this vector in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2 or number): The vector or scalar to subtract.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The vector itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_mulvalue">mul(value)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">vec.mul(scalar);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Multiplies this vector by a scalar or another vector (component-wise) in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>value</code> (number or Vector2): The scalar or vector to multiply by.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The vector itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector2.create(2, 3);
+vec.mul(2); // vec is now (4, 6)</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_divvalue">div(value)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">vec.div(scalar);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Divides this vector by a scalar or another vector (component-wise) in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>value</code> (number or Vector2): The scalar or vector to divide by.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The vector itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_neg">neg()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">vec.neg();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Negates this vector in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The vector itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector2.create(3, -4);
+vec.neg(); // vec is now (-3, 4)</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_equalother">equal(other)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let isEqual = vec.equal(otherVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Checks if this vector equals another vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2): The vector to compare with.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> 1 if equal, 0 otherwise.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_notequalother">notEqual(other)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let isNotEqual = vec.notEqual(otherVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Checks if this vector is not equal to another vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Vector2): The vector to compare with.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> 1 if not equal, 0 otherwise.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_tostring">toString()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let str = vec.toString();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Converts the vector to a string representation.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> A string representation of the vector.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector2.create(3.5, 4.2);
+puts(vec.toString()); // Outputs something like "(3.5, 4.2)"</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_operator_overloading">Operator Overloading</h3>
+<div class="paragraph">
+<p>Vector2 supports operator overloading for common mathematical operations:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Addition:</strong> <code>vec1 + vec2</code> or <code>vec + scalar</code></p>
+</li>
+<li>
+<p><strong>Subtraction:</strong> <code>vec1 - vec2</code> or <code>vec - scalar</code></p>
+</li>
+<li>
+<p><strong>Multiplication:</strong> <code>vec * scalar</code> or <code>vec1 * vec2</code></p>
+</li>
+<li>
+<p><strong>Division:</strong> <code>vec / scalar</code> or <code>vec1 / vec2</code></p>
+</li>
+<li>
+<p><strong>Negation:</strong> <code>-vec</code></p>
+</li>
+<li>
+<p><strong>Equality:</strong> <code>vec1 == vec2</code></p>
+</li>
+<li>
+<p><strong>Inequality:</strong> <code>vec1 != vec2</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let v1 = Vector2.create(1, 2);
+let v2 = Vector2.create(3, 4);
+let sum = v1 + v2; // (4, 6)
+let scaled = v1 * 2; // (2, 4)</code></pre>
+</div>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_vector3">Vector3</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_3">Overview</h3>
+<div class="paragraph">
+<p>The Vector3 type represents a 3-dimensional vector with x, y, and z components. It provides similar functionality to Vector2 but for 3D space.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_global_vector3_object">Global Vector3 Object</h3>
+<div class="sect3">
+<h4 id="_vector3_create">Vector3.create()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector3.create(x, y, z);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a new 3D vector with the specified x, y, and z components.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code> (number): The x component (default: 0.0)</p>
+</li>
+<li>
+<p><code>y</code> (number): The y component (default: 0.0)</p>
+</li>
+<li>
+<p><code>z</code> (number): The z component (default: 0.0)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Vector3 object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let position = Vector3.create(10, 20, 30);
+let origin = Vector3.create(); // (0, 0, 0)</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_vector3_properties">Vector3 Properties</h3>
+<div class="sect3">
+<h4 id="_x_r_y_g_z_b">x, r / y, g / z, b</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let xValue = vec.x; // or vec.r
+let yValue = vec.y; // or vec.g
+let zValue = vec.z; // or vec.b
+vec.x = 5.0;
+vec.y = 10.0;
+vec.z = 15.0;</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Gets or sets the x, y, or z components of the vector. The <code>r</code>, <code>g</code>, and <code>b</code> properties are aliases for <code>x</code>, <code>y</code>, and <code>z</code> respectively.</p>
+</li>
+<li>
+<p><strong>Type:</strong> number</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_vector3_methods">Vector3 Methods</h3>
+<div class="paragraph">
+<p>Vector3 provides the same methods as Vector2, adapted for 3D space:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>length()</code></p>
+</li>
+<li>
+<p><code>squaredLength()</code></p>
+</li>
+<li>
+<p><code>normalize()</code></p>
+</li>
+<li>
+<p><code>dot(other)</code></p>
+</li>
+<li>
+<p><code>cross(other)</code> - Returns a Vector3</p>
+</li>
+<li>
+<p><code>distanceTo(other)</code></p>
+</li>
+<li>
+<p><code>lerp(other, t)</code></p>
+</li>
+<li>
+<p><code>nlerp(other, t)</code></p>
+</li>
+<li>
+<p><code>slerp(other, t)</code></p>
+</li>
+<li>
+<p><code>sqlerp(other, t)</code></p>
+</li>
+<li>
+<p><code>clone()</code></p>
+</li>
+<li>
+<p><code>copy(other)</code></p>
+</li>
+<li>
+<p><code>add(other)</code></p>
+</li>
+<li>
+<p><code>sub(other)</code></p>
+</li>
+<li>
+<p><code>mul(value)</code></p>
+</li>
+<li>
+<p><code>div(value)</code></p>
+</li>
+<li>
+<p><code>neg()</code></p>
+</li>
+<li>
+<p><code>equal(other)</code></p>
+</li>
+<li>
+<p><code>notEqual(other)</code></p>
+</li>
+<li>
+<p><code>toString()</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Vector3 also supports the same operator overloading as Vector2.</p>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_vector4">Vector4</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_4">Overview</h3>
+<div class="paragraph">
+<p>The Vector4 type represents a 4-dimensional vector with x, y, z, and w components. Commonly used for colors (RGBA) or homogeneous coordinates.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_global_vector4_object">Global Vector4 Object</h3>
+<div class="sect3">
+<h4 id="_vector4_create">Vector4.create()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector4.create(x, y, z, w);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a new 4D vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code> (number): The x component (default: 0.0)</p>
+</li>
+<li>
+<p><code>y</code> (number): The y component (default: 0.0)</p>
+</li>
+<li>
+<p><code>z</code> (number): The z component (default: 0.0)</p>
+</li>
+<li>
+<p><code>w</code> (number): The w component (default: 0.0)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Vector4 object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let color = Vector4.create(1.0, 0.0, 0.0, 1.0); // Red color</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_vector4_properties">Vector4 Properties</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code>, <code>r</code>: First component</p>
+</li>
+<li>
+<p><code>y</code>, <code>g</code>: Second component</p>
+</li>
+<li>
+<p><code>z</code>, <code>b</code>: Third component</p>
+</li>
+<li>
+<p><code>w</code>, <code>a</code>: Fourth component</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_vector4_methods">Vector4 Methods</h3>
+<div class="paragraph">
+<p>Vector4 provides the same methods as Vector2 and Vector3, adapted for 4D space. All methods and operators work similarly.</p>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_quaternion">Quaternion</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_5">Overview</h3>
+<div class="paragraph">
+<p>The Quaternion type represents a rotation in 3D space using four components (x, y, z, w). Quaternions are preferred over Euler angles for many rotation operations.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_global_quaternion_object">Global Quaternion Object</h3>
+<div class="sect3">
+<h4 id="_quaternion_create">Quaternion.create()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.create(x, y, z, w);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a new quaternion.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code> (number): The x component (default: 0.0)</p>
+</li>
+<li>
+<p><code>y</code> (number): The y component (default: 0.0)</p>
+</li>
+<li>
+<p><code>z</code> (number): The z component (default: 0.0)</p>
+</li>
+<li>
+<p><code>w</code> (number): The w component (default: 1.0)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Quaternion object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let identity = Quaternion.create(); // Identity rotation</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_quaternion_properties">Quaternion Properties</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code>: X component</p>
+</li>
+<li>
+<p><code>y</code>: Y component</p>
+</li>
+<li>
+<p><code>z</code>: Z component</p>
+</li>
+<li>
+<p><code>w</code>: W component</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_quaternion_methods">Quaternion Methods</h3>
+<div class="paragraph">
+<p>Quaternion provides methods similar to vectors:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>length()</code></p>
+</li>
+<li>
+<p><code>squaredLength()</code></p>
+</li>
+<li>
+<p><code>normalize()</code></p>
+</li>
+<li>
+<p><code>dot(other)</code></p>
+</li>
+<li>
+<p><code>lerp(other, t)</code></p>
+</li>
+<li>
+<p><code>nlerp(other, t)</code></p>
+</li>
+<li>
+<p><code>slerp(other, t)</code></p>
+</li>
+<li>
+<p><code>sqlerp(other, t)</code></p>
+</li>
+<li>
+<p><code>clone()</code></p>
+</li>
+<li>
+<p><code>copy(other)</code></p>
+</li>
+<li>
+<p><code>add(other)</code></p>
+</li>
+<li>
+<p><code>sub(other)</code></p>
+</li>
+<li>
+<p><code>mul(other)</code> - Quaternion multiplication</p>
+</li>
+<li>
+<p><code>div(value)</code></p>
+</li>
+<li>
+<p><code>neg()</code></p>
+</li>
+<li>
+<p><code>equal(other)</code></p>
+</li>
+<li>
+<p><code>notEqual(other)</code></p>
+</li>
+<li>
+<p><code>toString()</code></p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_matrix3x3">Matrix3x3</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_6">Overview</h3>
+<div class="paragraph">
+<p>The Matrix3x3 type represents a 3x3 matrix, commonly used for 2D transformations.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_global_matrix3x3_object">Global Matrix3x3 Object</h3>
+<div class="sect3">
+<h4 id="_matrix3x3_create">Matrix3x3.create()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.create(
+  m00, m01, m02,
+  m10, m11, m12,
+  m20, m21, m22
+);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a new 3x3 matrix. If no parameters are provided, creates an identity matrix.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> Nine numbers representing the matrix elements (row-major order).</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let identity = Matrix3x3.create(); // Identity matrix</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_matrix3x3_properties">Matrix3x3 Properties</h3>
+<div class="paragraph">
+<p>Matrix3x3 provides indexed access to its elements:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>m00</code>, <code>m01</code>, <code>m02</code>: First row</p>
+</li>
+<li>
+<p><code>m10</code>, <code>m11</code>, <code>m12</code>: Second row</p>
+</li>
+<li>
+<p><code>m20</code>, <code>m21</code>, <code>m22</code>: Third row</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_matrix3x3_methods">Matrix3x3 Methods</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><code>clone()</code>: Creates a copy of the matrix</p>
+</li>
+<li>
+<p><code>copy(other)</code>: Copies from another matrix</p>
+</li>
+<li>
+<p><code>add(other)</code>: Matrix addition</p>
+</li>
+<li>
+<p><code>sub(other)</code>: Matrix subtraction</p>
+</li>
+<li>
+<p><code>mul(other)</code>: Matrix multiplication</p>
+</li>
+<li>
+<p><code>div(value)</code>: Scalar division</p>
+</li>
+<li>
+<p><code>neg()</code>: Negation</p>
+</li>
+<li>
+<p><code>equal(other)</code>: Equality check</p>
+</li>
+<li>
+<p><code>notEqual(other)</code>: Inequality check</p>
+</li>
+<li>
+<p><code>toString()</code>: String representation</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_matrix4x4">Matrix4x4</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_7">Overview</h3>
+<div class="paragraph">
+<p>The Matrix4x4 type represents a 4x4 matrix, the standard transformation matrix for 3D graphics.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_global_matrix4x4_object">Global Matrix4x4 Object</h3>
+<div class="sect3">
+<h4 id="_matrix4x4_create">Matrix4x4.create()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.create(
+  m00, m01, m02, m03,
+  m10, m11, m12, m13,
+  m20, m21, m22, m23,
+  m30, m31, m32, m33
+);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a new 4x4 matrix. If no parameters are provided, creates an identity matrix.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> Sixteen numbers representing the matrix elements (row-major order).</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let identity = Matrix4x4.create(); // Identity matrix</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_matrix4x4_properties">Matrix4x4 Properties</h3>
+<div class="paragraph">
+<p>Matrix4x4 provides indexed access to all 16 elements (<code>m00</code> through <code>m33</code>).</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_matrix4x4_methods">Matrix4x4 Methods</h3>
+<div class="paragraph">
+<p>Matrix4x4 provides the same methods as Matrix3x3, adapted for 4x4 matrices.</p>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_sprite">Sprite</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_8">Overview</h3>
+<div class="paragraph">
+<p>The Sprite type represents a 2D image or sprite atlas region that can be rendered on screen.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_sprite_properties_and_methods">Sprite Properties and Methods</h3>
+<div class="paragraph">
+<p>Sprite objects are typically created by the host application and passed to scripts. They don&#8217;t have a direct <code>create</code> method in scripts but can be manipulated through Canvas drawing methods.</p>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_spriteatlas">SpriteAtlas</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_9">Overview</h3>
+<div class="paragraph">
+<p>The SpriteAtlas type manages a collection of sprites packed into a single texture atlas for efficient rendering.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_spriteatlas_properties_and_methods">SpriteAtlas Properties and Methods</h3>
+<div class="paragraph">
+<p>SpriteAtlas objects are typically created by the host application. Scripts can access sprites within an atlas through the host-provided interface.</p>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_texture">Texture</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_10">Overview</h3>
+<div class="paragraph">
+<p>The Texture type represents a Vulkan texture that can be used for rendering.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_texture_properties_and_methods">Texture Properties and Methods</h3>
+<div class="paragraph">
+<p>Texture objects are managed by the host application and passed to scripts for use in Canvas operations.</p>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_font">Font</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_11">Overview</h3>
+<div class="paragraph">
+<p>The Font type represents a font that can be used for text rendering.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_font_properties_and_methods">Font Properties and Methods</h3>
+<div class="paragraph">
+<p>Font objects are loaded by the host application and can be used with Canvas text drawing methods.</p>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_canvasfont">CanvasFont</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_12">Overview</h3>
+<div class="paragraph">
+<p>The CanvasFont type is a specialized font wrapper for Canvas-based text rendering.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_canvasfont_properties_and_methods">CanvasFont Properties and Methods</h3>
+<div class="paragraph">
+<p>CanvasFont objects extend Font functionality specifically for Canvas operations.</p>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_canvasshape">CanvasShape</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_13">Overview</h3>
+<div class="paragraph">
+<p>The CanvasShape type represents a 2D vector shape that can be stroked or filled.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_canvasshape_properties_and_methods">CanvasShape Properties and Methods</h3>
+<div class="paragraph">
+<p>CanvasShape objects are created through Canvas path operations and can be reused for efficient rendering.</p>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_canvas">Canvas</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_14">Overview</h3>
+<div class="paragraph">
+<p>The Canvas API provides a comprehensive 2D drawing interface similar to HTML5 Canvas but with additional features for game development. Canvas operations are hardware-accelerated using Vulkan.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_canvas_dimensions">Canvas Dimensions</h3>
+<div class="sect3">
+<h4 id="_getwidth">getWidth()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let width = canvas.getWidth();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the width of the canvas in pixels.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas width as a number.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getheight">getHeight()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let height = canvas.getHeight();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the height of the canvas in pixels.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas height as a number.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_canvas_drawing_operations">Canvas Drawing Operations</h3>
+<div class="sect3">
+<h4 id="_clearcolor">clear(color)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.clear(color);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Clears the entire canvas with the specified color.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>color</code> (Vector4): The clear color (RGBA).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself (for method chaining).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.clear(Vector4.create(0, 0, 0, 1)); // Clear to black</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawfilledcirclecenter_radius">drawFilledCircle(center, radius)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledCircle(center, radius);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a filled circle.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>center</code> (Vector2): The center position.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The circle radius.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red
+canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawfilledellipsecenter_radius">drawFilledEllipse(center, radius)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledEllipse(center, radius);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a filled ellipse.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>center</code> (Vector2): The center position.</p>
+</li>
+<li>
+<p><code>radius</code> (Vector2): The x and y radii.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawfilledrectangletopleft_size">drawFilledRectangle(topLeft, size)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRectangle(topLeft, size);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a filled rectangle.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>topLeft</code> (Vector2): The top-left corner position.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The width and height.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRectangle(
+  Vector2.create(50, 50),
+  Vector2.create(100, 80)
+);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawfilledrectanglecentercenter_size">drawFilledRectangleCenter(center, size)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRectangleCenter(center, size);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a filled rectangle centered at the specified position.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>center</code> (Vector2): The center position.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The width and height.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawfilledroundedrectangletopleft_size_radius">drawFilledRoundedRectangle(topLeft, size, radius)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRoundedRectangle(topLeft, size, radius);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a filled rounded rectangle.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>topLeft</code> (Vector2): The top-left corner position.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The width and height.</p>
+</li>
+<li>
+<p><code>radius</code> (Vector4): The corner radii (top-left, top-right, bottom-right, bottom-left).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawfilledroundedrectanglecentercenter_size_radius">drawFilledRoundedRectangleCenter(center, size, radius)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRoundedRectangleCenter(center, size, radius);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a filled rounded rectangle centered at the specified position.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>center</code> (Vector2): The center position.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The width and height.</p>
+</li>
+<li>
+<p><code>radius</code> (Vector4): The corner radii.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawfilledcirclearcringsegmentcenter_startangle_endangle_innerradius_outerradius">drawFilledCircleArcRingSegment(center, startAngle, endAngle, innerRadius, outerRadius)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledCircleArcRingSegment(center, startAngle, endAngle, innerRadius, outerRadius);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a filled circular arc ring segment (like a pie slice).</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>center</code> (Vector2): The center position.</p>
+</li>
+<li>
+<p><code>startAngle</code> (number): The start angle in radians.</p>
+</li>
+<li>
+<p><code>endAngle</code> (number): The end angle in radians.</p>
+</li>
+<li>
+<p><code>innerRadius</code> (number): The inner radius.</p>
+</li>
+<li>
+<p><code>outerRadius</code> (number): The outer radius.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawtexturedrectangletopleft_size">drawTexturedRectangle(topLeft, size)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawTexturedRectangle(topLeft, size);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a textured rectangle using the current texture.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>topLeft</code> (Vector2): The top-left corner position.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The width and height.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawtexturedrectanglecentercenter_size">drawTexturedRectangleCenter(center, size)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawTexturedRectangleCenter(center, size);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a textured rectangle centered at the specified position.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>center</code> (Vector2): The center position.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The width and height.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawspritesprite_position_size">drawSprite(sprite, position, size)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawSprite(sprite, position, size);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a sprite at the specified position.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sprite</code> (Sprite): The sprite to draw.</p>
+</li>
+<li>
+<p><code>position</code> (Vector2): The position to draw at.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The size to draw (optional, uses sprite size if omitted).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawspriteoriginrotationsprite_position_origin_rotation_size">drawSpriteOriginRotation(sprite, position, origin, rotation, size)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawSpriteOriginRotation(sprite, position, origin, rotation, size);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a sprite with custom origin and rotation.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sprite</code> (Sprite): The sprite to draw.</p>
+</li>
+<li>
+<p><code>position</code> (Vector2): The position to draw at.</p>
+</li>
+<li>
+<p><code>origin</code> (Vector2): The origin point for rotation (0-1 normalized).</p>
+</li>
+<li>
+<p><code>rotation</code> (number): The rotation angle in radians.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The size to draw.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawspritepositionsprite_position">drawSpritePosition(sprite, position)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawSpritePosition(sprite, position);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a sprite at the specified position with its default size.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sprite</code> (Sprite): The sprite to draw.</p>
+</li>
+<li>
+<p><code>position</code> (Vector2): The position to draw at.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_canvas_text_drawing">Canvas Text Drawing</h3>
+<div class="sect3">
+<h4 id="_drawtexttext_position">drawText(text, position)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawText(text, position);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws text at the specified position using the current font.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>text</code> (string): The text to draw.</p>
+</li>
+<li>
+<p><code>position</code> (Vector2): The position to draw at.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFont(myFont);
+canvas.setFontSize(24);
+canvas.setColor(Vector4.create(1, 1, 1, 1)); // White
+canvas.drawText("Hello, World!", Vector2.create(100, 100));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawtextcodepointcodepoint_position">drawTextCodePoint(codePoint, position)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawTextCodePoint(codePoint, position);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a single Unicode code point at the specified position.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>codePoint</code> (number): The Unicode code point.</p>
+</li>
+<li>
+<p><code>position</code> (Vector2): The position to draw at.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_textwidthtext">textWidth(text)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let width = canvas.textWidth(text);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Measures the width of text when rendered with the current font.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>text</code> (string): The text to measure.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The text width in pixels.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_textheighttext">textHeight(text)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let height = canvas.textHeight(text);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Measures the height of text when rendered with the current font.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>text</code> (string): The text to measure.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The text height in pixels.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_textsizetext">textSize(text)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let size = canvas.textSize(text);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Measures both width and height of text.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>text</code> (string): The text to measure.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A Vector2 containing width and height.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_textrowheight">textRowHeight()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let rowHeight = canvas.textRowHeight();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the line height for the current font.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The row height in pixels.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_canvas_path_operations">Canvas Path Operations</h3>
+<div class="sect3">
+<h4 id="_beginpath">beginPath()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Begins a new path. Call this before defining path commands.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_movetoposition">moveTo(position)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.moveTo(position);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Moves the current path position without drawing.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>position</code> (Vector2): The position to move to.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_linetoposition">lineTo(position)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.lineTo(position);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a line from the current position to the specified position.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>position</code> (Vector2): The end position.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_quadraticcurvetocontrol_end">quadraticCurveTo(control, end)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.quadraticCurveTo(control, end);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a quadratic Bézier curve.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>control</code> (Vector2): The control point.</p>
+</li>
+<li>
+<p><code>end</code> (Vector2): The end point.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_cubiccurvetocontrol1_control2_end">cubicCurveTo(control1, control2, end)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.cubicCurveTo(control1, control2, end);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a cubic Bézier curve.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>control1</code> (Vector2): The first control point.</p>
+</li>
+<li>
+<p><code>control2</code> (Vector2): The second control point.</p>
+</li>
+<li>
+<p><code>end</code> (Vector2): The end point.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_arccenter_radius_startangle_endangle_counterclockwise">arc(center, radius, startAngle, endAngle, counterClockwise)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.arc(center, radius, startAngle, endAngle, counterClockwise);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Adds an arc to the current path.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>center</code> (Vector2): The center of the arc.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The arc radius.</p>
+</li>
+<li>
+<p><code>startAngle</code> (number): The start angle in radians.</p>
+</li>
+<li>
+<p><code>endAngle</code> (number): The end angle in radians.</p>
+</li>
+<li>
+<p><code>counterClockwise</code> (boolean): Whether to draw counter-clockwise.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_arctopoint1_point2_radius">arcTo(point1, point2, radius)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.arcTo(point1, point2, radius);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Adds an arc to the current path using control points.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>point1</code> (Vector2): The first control point.</p>
+</li>
+<li>
+<p><code>point2</code> (Vector2): The second control point.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The arc radius.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_ellipsecenter_radius">ellipse(center, radius)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.ellipse(center, radius);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Adds an ellipse to the current path.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>center</code> (Vector2): The center of the ellipse.</p>
+</li>
+<li>
+<p><code>radius</code> (Vector2): The x and y radii.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_circlecenter_radius">circle(center, radius)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.circle(center, radius);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Adds a circle to the current path.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>center</code> (Vector2): The center of the circle.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The circle radius.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_rectangletopleft_size">rectangle(topLeft, size)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.rectangle(topLeft, size);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Adds a rectangle to the current path.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>topLeft</code> (Vector2): The top-left corner.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The width and height.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_rectanglecentercenter_size">rectangleCenter(center, size)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.rectangleCenter(center, size);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Adds a centered rectangle to the current path.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>center</code> (Vector2): The center position.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The width and height.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_roundedrectangletopleft_size_radius">roundedRectangle(topLeft, size, radius)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.roundedRectangle(topLeft, size, radius);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Adds a rounded rectangle to the current path.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>topLeft</code> (Vector2): The top-left corner.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The width and height.</p>
+</li>
+<li>
+<p><code>radius</code> (Vector4): The corner radii.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_roundedrectanglecentercenter_size_radius">roundedRectangleCenter(center, size, radius)</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.roundedRectangleCenter(center, size, radius);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Adds a centered rounded rectangle to the current path.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>center</code> (Vector2): The center position.</p>
+</li>
+<li>
+<p><code>size</code> (Vector2): The width and height.</p>
+</li>
+<li>
+<p><code>radius</code> (Vector4): The corner radii.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_closepath">closePath()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.closePath();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Closes the current path by connecting the end to the start.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_endpath">endPath()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.endPath();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Ends the current path definition.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_stroke">stroke()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.stroke();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Strokes the current path with the current stroke style.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+canvas.moveTo(Vector2.create(10, 10));
+canvas.lineTo(Vector2.create(100, 100));
+canvas.setLineWidth(2);
+canvas.setColor(Vector4.create(1, 0, 0, 1));
+canvas.stroke();</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_fill">fill()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.fill();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Fills the current path with the current fill style.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_canvas_state_management">Canvas State Management</h3>
+<div class="sect3">
+<h4 id="_push">push()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.push();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Saves the current canvas state (transformations, styles, etc.) onto a stack.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.push();
+canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red
+// ... draw something ...
+canvas.pop(); // Restore previous color</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_pop">pop()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.pop();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Restores the canvas state from the stack.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_flush">flush()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.flush();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Flushes pending draw commands to the GPU.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_canvas_properties_getters_and_setters">Canvas Properties (Getters and Setters)</h3>
+<div class="sect3">
+<h4 id="_clipping">Clipping</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>getClipRect()</code>: Returns the current clipping rectangle.</p>
+</li>
+<li>
+<p><code>setClipRect(rect)</code>: Sets the clipping rectangle.</p>
+</li>
+<li>
+<p><code>setScissor(rect)</code>: Sets the scissor rectangle.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_blending">Blending</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>getBlendingMode()</code>: Returns the current blending mode.</p>
+</li>
+<li>
+<p><code>setBlendingMode(mode)</code>: Sets the blending mode (see Canvas.BlendingMode).</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_line_style">Line Style</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>getLineCap()</code>: Returns the current line cap style.</p>
+</li>
+<li>
+<p><code>setLineCap(cap)</code>: Sets the line cap (see Canvas.LineCap).</p>
+</li>
+<li>
+<p><code>getLineJoin()</code>: Returns the current line join style.</p>
+</li>
+<li>
+<p><code>setLineJoin(join)</code>: Sets the line join (see Canvas.LineJoin).</p>
+</li>
+<li>
+<p><code>getLineWidth()</code>: Returns the current line width.</p>
+</li>
+<li>
+<p><code>setLineWidth(width)</code>: Sets the line width.</p>
+</li>
+<li>
+<p><code>getMiterLimit()</code>: Returns the current miter limit.</p>
+</li>
+<li>
+<p><code>setMiterLimit(limit)</code>: Sets the miter limit.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_z_position">Z-Position</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>getZPosition()</code>: Returns the current Z position.</p>
+</li>
+<li>
+<p><code>setZPosition(z)</code>: Sets the Z position for depth sorting.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_text_alignment">Text Alignment</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>getTextHorizontalAlignment()</code>: Returns horizontal text alignment.</p>
+</li>
+<li>
+<p><code>setTextHorizontalAlignment(alignment)</code>: Sets horizontal alignment (see Canvas.TextHorizontalAlignment).</p>
+</li>
+<li>
+<p><code>getTextVerticalAlignment()</code>: Returns vertical text alignment.</p>
+</li>
+<li>
+<p><code>setTextVerticalAlignment(alignment)</code>: Sets vertical alignment (see Canvas.TextVerticalAlignment).</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_font_2">Font</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>getFont()</code>: Returns the current font.</p>
+</li>
+<li>
+<p><code>setFont(font)</code>: Sets the current font.</p>
+</li>
+<li>
+<p><code>getFontSize()</code>: Returns the current font size.</p>
+</li>
+<li>
+<p><code>setFontSize(size)</code>: Sets the font size.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_texture_2">Texture</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>getTexture()</code>: Returns the current texture.</p>
+</li>
+<li>
+<p><code>setTexture(texture)</code>: Sets the current texture.</p>
+</li>
+<li>
+<p><code>getMaskTexture()</code>: Returns the current mask texture.</p>
+</li>
+<li>
+<p><code>setMaskTexture(texture)</code>: Sets the mask texture.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_fill_style">Fill Style</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>getFillStyle()</code>: Returns the current fill style.</p>
+</li>
+<li>
+<p><code>setFillStyle(style)</code>: Sets the fill style (see Canvas.FillStyle).</p>
+</li>
+<li>
+<p><code>getFillRule()</code>: Returns the current fill rule.</p>
+</li>
+<li>
+<p><code>setFillRule(rule)</code>: Sets the fill rule (see Canvas.FillRule).</p>
+</li>
+<li>
+<p><code>getFillWrapMode()</code>: Returns the fill wrap mode.</p>
+</li>
+<li>
+<p><code>setFillWrapMode(mode)</code>: Sets the fill wrap mode (see Canvas.FillWrapMode).</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_colors">Colors</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>getColor()</code>: Returns the current color.</p>
+</li>
+<li>
+<p><code>setColor(color)</code>: Sets the current color (Vector4).</p>
+</li>
+<li>
+<p><code>getStartColor()</code>: Returns the gradient start color.</p>
+</li>
+<li>
+<p><code>setStartColor(color)</code>: Sets the gradient start color.</p>
+</li>
+<li>
+<p><code>getStopColor()</code>: Returns the gradient stop color.</p>
+</li>
+<li>
+<p><code>setStopColor(color)</code>: Sets the gradient stop color.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_matrices">Matrices</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>getProjectionMatrix()</code>: Returns the projection matrix.</p>
+</li>
+<li>
+<p><code>setProjectionMatrix(matrix)</code>: Sets the projection matrix.</p>
+</li>
+<li>
+<p><code>getViewMatrix()</code>: Returns the view matrix.</p>
+</li>
+<li>
+<p><code>setViewMatrix(matrix)</code>: Sets the view matrix.</p>
+</li>
+<li>
+<p><code>getModelMatrix()</code>: Returns the model matrix.</p>
+</li>
+<li>
+<p><code>setModelMatrix(matrix)</code>: Sets the model matrix.</p>
+</li>
+<li>
+<p><code>getFillMatrix()</code>: Returns the fill matrix.</p>
+</li>
+<li>
+<p><code>setFillMatrix(matrix)</code>: Sets the fill matrix.</p>
+</li>
+<li>
+<p><code>getMaskMatrix()</code>: Returns the mask matrix.</p>
+</li>
+<li>
+<p><code>setMaskMatrix(matrix)</code>: Sets the mask matrix.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_advanced">Advanced</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>setStrokePattern(pattern)</code>: Sets the stroke pattern.</p>
+</li>
+<li>
+<p><code>drawShape(shape)</code>: Draws a canvas shape.</p>
+</li>
+<li>
+<p><code>getStrokeShape()</code>: Returns the current stroke shape.</p>
+</li>
+<li>
+<p><code>getFillShape()</code>: Returns the current fill shape.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_canvas_enumerations">Canvas Enumerations</h3>
+<div class="paragraph">
+<p>The Canvas namespace provides several enumeration objects:</p>
+</div>
+<div class="sect3">
+<h4 id="_canvas_blendingmode">Canvas.BlendingMode</h4>
+<div class="paragraph">
+<p>Blending modes for compositing:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>None</code>: No blending</p>
+</li>
+<li>
+<p><code>NoDiscard</code>: No discard blending</p>
+</li>
+<li>
+<p><code>AlphaBlending</code>: Standard alpha blending</p>
+</li>
+<li>
+<p><code>AdditiveBlending</code>: Additive blending</p>
+</li>
+<li>
+<p><code>OnlyDepth</code>: Only depth rendering</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setBlendingMode(Canvas.BlendingMode.AlphaBlending);
+canvas.setBlendingMode(Canvas.BlendingMode.AdditiveBlending); // For glow effects</code></pre>
+</div>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_canvas_linecap">Canvas.LineCap</h4>
+<div class="paragraph">
+<p>Line cap styles:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>Butt</code>: Butt line cap (flat end)</p>
+</li>
+<li>
+<p><code>Square</code>: Square line cap (extends half line width)</p>
+</li>
+<li>
+<p><code>Round</code>: Round line cap</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setLineCap(Canvas.LineCap.Round);</code></pre>
+</div>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_canvas_linejoin">Canvas.LineJoin</h4>
+<div class="paragraph">
+<p>Line join styles:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>Bevel</code>: Beveled line join</p>
+</li>
+<li>
+<p><code>Miter</code>: Mitered line join</p>
+</li>
+<li>
+<p><code>Round</code>: Rounded line join</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setLineJoin(Canvas.LineJoin.Round);</code></pre>
+</div>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_canvas_fillrule">Canvas.FillRule</h4>
+<div class="paragraph">
+<p>Fill rules for path filling:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>DoNotMatter</code>: Fill rule does not matter</p>
+</li>
+<li>
+<p><code>NonZero</code>: Non-zero winding rule</p>
+</li>
+<li>
+<p><code>EvenOdd</code>: Even-odd rule</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillRule(Canvas.FillRule.EvenOdd);</code></pre>
+</div>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_canvas_fillstyle">Canvas.FillStyle</h4>
+<div class="paragraph">
+<p>Fill styles:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>Color</code>: Solid color fill</p>
+</li>
+<li>
+<p><code>Image</code>: Image/texture fill</p>
+</li>
+<li>
+<p><code>LinearGradient</code>: Linear gradient fill</p>
+</li>
+<li>
+<p><code>RadialGradient</code>: Radial gradient fill</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillStyle(Canvas.FillStyle.Color);
+canvas.setFillStyle(Canvas.FillStyle.LinearGradient);</code></pre>
+</div>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_canvas_fillwrapmode">Canvas.FillWrapMode</h4>
+<div class="paragraph">
+<p>Texture wrap modes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>None</code>: No wrapping</p>
+</li>
+<li>
+<p><code>WrappedRepeat</code>: Wrapped repeat mode</p>
+</li>
+<li>
+<p><code>MirroredRepeat</code>: Mirrored repeat mode</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillWrapMode(Canvas.FillWrapMode.WrappedRepeat);</code></pre>
+</div>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_canvas_texthorizontalalignment">Canvas.TextHorizontalAlignment</h4>
+<div class="paragraph">
+<p>Horizontal text alignment:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>Leading</code>: Leading alignment (left in LTR, right in RTL)</p>
+</li>
+<li>
+<p><code>Center</code>: Center alignment</p>
+</li>
+<li>
+<p><code>Tailing</code>: Tailing alignment (right in LTR, left in RTL)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);</code></pre>
+</div>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_canvas_textverticalalignment">Canvas.TextVerticalAlignment</h4>
+<div class="paragraph">
+<p>Vertical text alignment:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>Leading</code>: Leading alignment (top)</p>
+</li>
+<li>
+<p><code>Middle</code>: Middle alignment (vertical center)</p>
+</li>
+<li>
+<p><code>Tailing</code>: Tailing alignment (bottom)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setTextVerticalAlignment(Canvas.TextVerticalAlignment.Middle);</code></pre>
+</div>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_canvas_vectorpathfillrule">Canvas.VectorPathFillRule</h4>
+<div class="paragraph">
+<p>Vector path fill rules:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>NonZero</code>: Non-zero winding rule</p>
+</li>
+<li>
+<p><code>EvenOdd</code>: Even-odd rule</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_canvas_signeddistancefield2dvariant">Canvas.SignedDistanceField2DVariant</h4>
+<div class="paragraph">
+<p>SDF rendering variants for advanced text and shape rendering:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>SDF</code>: Standard signed distance field</p>
+</li>
+<li>
+<p><code>SSAASDF</code>: Super-sampled anti-aliased SDF</p>
+</li>
+<li>
+<p><code>GSDF</code>: Gradient-based SDF</p>
+</li>
+<li>
+<p><code>MSDF</code>: Multi-channel signed distance field</p>
+</li>
+<li>
+<p><code>Default</code>: Default SDF variant</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// SDF variants are typically set at the system level
+// and used internally for high-quality text rendering</code></pre>
+</div>
+</div>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_input">Input</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_15">Overview</h3>
+<div class="paragraph">
+<p>The Input API provides access to keyboard, mouse, and pointer events. Event data is passed through hash objects containing event information.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_input_event_types">Input Event Types</h3>
+<div class="paragraph">
+<p>The Input.EventType enumeration defines the following event types:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>EVENT_NONE</code>: No event</p>
+</li>
+<li>
+<p><code>EVENT_KEY</code>: Keyboard event</p>
+</li>
+<li>
+<p><code>EVENT_POINTER</code>: Pointer/mouse event</p>
+</li>
+<li>
+<p><code>EVENT_SCROLLED</code>: Scroll wheel event</p>
+</li>
+<li>
+<p><code>EVENT_DRAGDROPFILE</code>: Drag and drop file event</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_key_codes">Key Codes</h3>
+<div class="paragraph">
+<p>The Input.KeyCode enumeration provides constants for all keyboard keys:</p>
+</div>
+<div class="sect3">
+<h4 id="_special_keys">Special Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_QUIT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_ANYKEY</code></p>
+</li>
+<li>
+<p><code>KEYCODE_UNKNOWN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_FIRST</code></p>
+</li>
+<li>
+<p><code>KEYCODE_BACKSPACE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_TAB</code></p>
+</li>
+<li>
+<p><code>KEYCODE_RETURN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_PAUSE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_ESCAPE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_SPACE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_DELETE</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_punctuation_and_symbol_keys">Punctuation and Symbol Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_EXCLAIM</code> (!)</p>
+</li>
+<li>
+<p><code>KEYCODE_QUOTEDBL</code> (")</p>
+</li>
+<li>
+<p><code>KEYCODE_HASH</code> (#)</p>
+</li>
+<li>
+<p><code>KEYCODE_DOLLAR</code> ($)</p>
+</li>
+<li>
+<p><code>KEYCODE_AMPERSAND</code> (&amp;)</p>
+</li>
+<li>
+<p><code>KEYCODE_APOSTROPHE</code> (')</p>
+</li>
+<li>
+<p><code>KEYCODE_LEFTPAREN</code> (()</p>
+</li>
+<li>
+<p><code>KEYCODE_RIGHTPAREN</code> ())</p>
+</li>
+<li>
+<p><code>KEYCODE_ASTERISK</code> (*)</p>
+</li>
+<li>
+<p><code>KEYCODE_PLUS</code> (+)</p>
+</li>
+<li>
+<p><code>KEYCODE_COMMA</code> (,)</p>
+</li>
+<li>
+<p><code>KEYCODE_MINUS</code> (-)</p>
+</li>
+<li>
+<p><code>KEYCODE_PERIOD</code> (.)</p>
+</li>
+<li>
+<p><code>KEYCODE_SLASH</code> (/)</p>
+</li>
+<li>
+<p><code>KEYCODE_COLON</code> (:)</p>
+</li>
+<li>
+<p><code>KEYCODE_SEMICOLON</code> (;)</p>
+</li>
+<li>
+<p><code>KEYCODE_LESS</code> (&lt;)</p>
+</li>
+<li>
+<p><code>KEYCODE_EQUALS</code> (=)</p>
+</li>
+<li>
+<p><code>KEYCODE_GREATER</code> (&gt;)</p>
+</li>
+<li>
+<p><code>KEYCODE_QUESTION</code> (?)</p>
+</li>
+<li>
+<p><code>KEYCODE_AT</code> (@)</p>
+</li>
+<li>
+<p><code>KEYCODE_LEFTBRACKET</code> ([)</p>
+</li>
+<li>
+<p><code>KEYCODE_BACKSLASH</code> (\)</p>
+</li>
+<li>
+<p><code>KEYCODE_RIGHTBRACKET</code> (])</p>
+</li>
+<li>
+<p><code>KEYCODE_CARET</code> (^)</p>
+</li>
+<li>
+<p><code>KEYCODE_UNDERSCORE</code> (_)</p>
+</li>
+<li>
+<p><code>KEYCODE_BACKQUOTE</code> (`)</p>
+</li>
+<li>
+<p><code>KEYCODE_LEFTBRACE</code> ({)</p>
+</li>
+<li>
+<p><code>KEYCODE_PIPE</code> (|)</p>
+</li>
+<li>
+<p><code>KEYCODE_RIGHTBRACE</code> (})</p>
+</li>
+<li>
+<p><code>KEYCODE_TILDE</code> (~)</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_alphanumeric_keys">Alphanumeric Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_0</code> through <code>KEYCODE_9</code></p>
+</li>
+<li>
+<p><code>KEYCODE_A</code> through <code>KEYCODE_Z</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_function_keys">Function Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_F1</code> through <code>KEYCODE_F24</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_arrow_keys">Arrow Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_UP</code></p>
+</li>
+<li>
+<p><code>KEYCODE_DOWN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_LEFT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_RIGHT</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_modifier_keys">Modifier Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_LSHIFT</code>, <code>KEYCODE_RSHIFT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_LCTRL</code>, <code>KEYCODE_RCTRL</code></p>
+</li>
+<li>
+<p><code>KEYCODE_LALT</code>, <code>KEYCODE_RALT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_LGUI</code>, <code>KEYCODE_RGUI</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_numpad_keys">Numpad Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_KP0</code> through <code>KEYCODE_KP9</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_PERIOD</code>, <code>KEYCODE_KP_DIVIDE</code>, <code>KEYCODE_KP_MULTIPLY</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_MINUS</code>, <code>KEYCODE_KP_PLUS</code>, <code>KEYCODE_KP_ENTER</code>, <code>KEYCODE_KP_EQUALS</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_advanced_numpad_keys">Advanced Numpad Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_KP_00</code>, <code>KEYCODE_KP_000</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_LEFTPAREN</code>, <code>KEYCODE_KP_RIGHTPAREN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_LEFTBRACE</code>, <code>KEYCODE_KP_RIGHTBRACE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_TAB</code>, <code>KEYCODE_KP_BACKSPACE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_A</code> through <code>KEYCODE_KP_F</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_XOR</code>, <code>KEYCODE_KP_POWER</code>, <code>KEYCODE_KP_PERCENT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_LESS</code>, <code>KEYCODE_KP_GREATER</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_AMPERSAND</code>, <code>KEYCODE_KP_DBLAMPERSAND</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_VERTICALBAR</code>, <code>KEYCODE_KP_DBLVERTICALBAR</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_COLON</code>, <code>KEYCODE_KP_COMMA</code>, <code>KEYCODE_KP_HASH</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_SPACE</code>, <code>KEYCODE_KP_AT</code>, <code>KEYCODE_KP_EXCLAM</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_MEMSTORE</code>, <code>KEYCODE_KP_MEMRECALL</code>, <code>KEYCODE_KP_MEMCLEAR</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_MEMADD</code>, <code>KEYCODE_KP_MEMSUBTRACT</code>, <code>KEYCODE_KP_MEMMULTIPLY</code>, <code>KEYCODE_KP_MEMDIVIDE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_PLUSMINUS</code>, <code>KEYCODE_KP_CLEAR</code>, <code>KEYCODE_KP_CLEARENTRY</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_BINARY</code>, <code>KEYCODE_KP_OCTAL</code>, <code>KEYCODE_KP_DECIMAL</code>, <code>KEYCODE_KP_HEXADECIMAL</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KP_EQUALSAS400</code></p>
+</li>
+<li>
+<p><code>KEYCODE_THOUSANDSSEPARATOR</code>, <code>KEYCODE_DECIMALSEPARATOR</code></p>
+</li>
+<li>
+<p><code>KEYCODE_CURRENCYUNIT</code>, <code>KEYCODE_CURRENCYSUBUNIT</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_navigation_keys">Navigation Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_HOME</code></p>
+</li>
+<li>
+<p><code>KEYCODE_END</code></p>
+</li>
+<li>
+<p><code>KEYCODE_PAGEUP</code></p>
+</li>
+<li>
+<p><code>KEYCODE_PAGEDOWN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_INSERT</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_lock_keys">Lock Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_CAPSLOCK</code></p>
+</li>
+<li>
+<p><code>KEYCODE_NUMLOCK</code></p>
+</li>
+<li>
+<p><code>KEYCODE_SCROLLLOCK</code></p>
+</li>
+<li>
+<p><code>KEYCODE_LOCKINGCAPSLOCK</code></p>
+</li>
+<li>
+<p><code>KEYCODE_LOCKINGNUMLOCK</code></p>
+</li>
+<li>
+<p><code>KEYCODE_LOCKINGSCROLLLOCK</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_system_keys">System Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_MODE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_HELP</code></p>
+</li>
+<li>
+<p><code>KEYCODE_PRINTSCREEN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_SYSREQ</code></p>
+</li>
+<li>
+<p><code>KEYCODE_MENU</code></p>
+</li>
+<li>
+<p><code>KEYCODE_POWER</code></p>
+</li>
+<li>
+<p><code>KEYCODE_APPLICATION</code></p>
+</li>
+<li>
+<p><code>KEYCODE_SELECT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_STOP</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AGAIN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_UNDO</code></p>
+</li>
+<li>
+<p><code>KEYCODE_CUT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_COPY</code></p>
+</li>
+<li>
+<p><code>KEYCODE_PASTE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_FIND</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_media_keys">Media Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_MUTE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_VOLUMEUP</code></p>
+</li>
+<li>
+<p><code>KEYCODE_VOLUMEDOWN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AUDIONEXT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AUDIOPREV</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AUDIOSTOP</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AUDIOPLAY</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AUDIOMUTE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_MEDIASELECT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AUDIO_FAST_FORWARD</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AUDIO_REWIND</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_application_control_keys">Application Control Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_WWW</code></p>
+</li>
+<li>
+<p><code>KEYCODE_MAIL</code></p>
+</li>
+<li>
+<p><code>KEYCODE_CALCULATOR</code></p>
+</li>
+<li>
+<p><code>KEYCODE_COMPUTER</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AC_SEARCH</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AC_HOME</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AC_BACK</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AC_FORWARD</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AC_STOP</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AC_REFRESH</code></p>
+</li>
+<li>
+<p><code>KEYCODE_AC_BOOKMARKS</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_display_and_brightness_keys">Display and Brightness Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_BRIGHTNESSDOWN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_BRIGHTNESSUP</code></p>
+</li>
+<li>
+<p><code>KEYCODE_DISPLAYSWITCH</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KBDILLUMTOGGLE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KBDILLUMDOWN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KBDILLUMUP</code></p>
+</li>
+<li>
+<p><code>KEYCODE_EJECT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_SLEEP</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_international_keys">International Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_INTERNATIONAL1</code> through <code>KEYCODE_INTERNATIONAL9</code></p>
+</li>
+<li>
+<p><code>KEYCODE_LANG1</code> through <code>KEYCODE_LANG9</code></p>
+</li>
+<li>
+<p><code>KEYCODE_NONUSBACKSLASH</code></p>
+</li>
+<li>
+<p><code>KEYCODE_NONUSHASH</code></p>
+</li>
+<li>
+<p><code>KEYCODE_102ND</code></p>
+</li>
+<li>
+<p><code>KEYCODE_KATAKANAHIRAGANA</code></p>
+</li>
+<li>
+<p><code>KEYCODE_HENKAN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_MUHENKAN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_HANGEUL</code></p>
+</li>
+<li>
+<p><code>KEYCODE_HANJA</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_mobileandroid_keys">Mobile/Android Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_BACK</code></p>
+</li>
+<li>
+<p><code>KEYCODE_CAMERA</code></p>
+</li>
+<li>
+<p><code>KEYCODE_CALL</code></p>
+</li>
+<li>
+<p><code>KEYCODE_CENTER</code></p>
+</li>
+<li>
+<p><code>KEYCODE_FORWARD_DEL</code></p>
+</li>
+<li>
+<p><code>KEYCODE_DPAD_CENTER</code>, <code>KEYCODE_DPAD_LEFT</code>, <code>KEYCODE_DPAD_RIGHT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_DPAD_DOWN</code>, <code>KEYCODE_DPAD_UP</code></p>
+</li>
+<li>
+<p><code>KEYCODE_ENDCALL</code></p>
+</li>
+<li>
+<p><code>KEYCODE_ENVELOPE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_EXPLORER</code></p>
+</li>
+<li>
+<p><code>KEYCODE_FOCUS</code></p>
+</li>
+<li>
+<p><code>KEYCODE_GRAVE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_HEADSETHOOK</code></p>
+</li>
+<li>
+<p><code>KEYCODE_NOTIFICATION</code></p>
+</li>
+<li>
+<p><code>KEYCODE_PICTSYMBOLS</code></p>
+</li>
+<li>
+<p><code>KEYCODE_SWITCH_CHARSET</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_game_controller_keys">Game Controller Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_BUTTON_CIRCLE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_BUTTON_A</code>, <code>KEYCODE_BUTTON_B</code>, <code>KEYCODE_BUTTON_C</code></p>
+</li>
+<li>
+<p><code>KEYCODE_BUTTON_X</code>, <code>KEYCODE_BUTTON_Y</code>, <code>KEYCODE_BUTTON_Z</code></p>
+</li>
+<li>
+<p><code>KEYCODE_BUTTON_L1</code>, <code>KEYCODE_BUTTON_R1</code></p>
+</li>
+<li>
+<p><code>KEYCODE_BUTTON_L2</code>, <code>KEYCODE_BUTTON_R2</code></p>
+</li>
+<li>
+<p><code>KEYCODE_BUTTON_THUMBL</code>, <code>KEYCODE_BUTTON_THUMBR</code></p>
+</li>
+<li>
+<p><code>KEYCODE_BUTTON_START</code>, <code>KEYCODE_BUTTON_SELECT</code>, <code>KEYCODE_BUTTON_MODE</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_other_keys">Other Keys</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYCODE_ALTERASE</code></p>
+</li>
+<li>
+<p><code>KEYCODE_CANCEL</code></p>
+</li>
+<li>
+<p><code>KEYCODE_CLEAR</code></p>
+</li>
+<li>
+<p><code>KEYCODE_PRIOR</code></p>
+</li>
+<li>
+<p><code>KEYCODE_RETURN2</code></p>
+</li>
+<li>
+<p><code>KEYCODE_SEPARATOR</code></p>
+</li>
+<li>
+<p><code>KEYCODE_OUT</code></p>
+</li>
+<li>
+<p><code>KEYCODE_OPER</code></p>
+</li>
+<li>
+<p><code>KEYCODE_CLEARAGAIN</code></p>
+</li>
+<li>
+<p><code>KEYCODE_CRSEL</code></p>
+</li>
+<li>
+<p><code>KEYCODE_EXSEL</code></p>
+</li>
+<li>
+<p><code>KEYCODE_COUNT</code> (Total number of key codes)</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_key_modifier_flags">Key Modifier Flags</h3>
+<div class="paragraph">
+<p>The Input.KeyModifier enumeration provides flags for modifier key states:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYMOD_NONE</code></p>
+</li>
+<li>
+<p><code>KEYMOD_LSHIFT</code></p>
+</li>
+<li>
+<p><code>KEYMOD_RSHIFT</code></p>
+</li>
+<li>
+<p><code>KEYMOD_LCTRL</code></p>
+</li>
+<li>
+<p><code>KEYMOD_RCTRL</code></p>
+</li>
+<li>
+<p><code>KEYMOD_LALT</code></p>
+</li>
+<li>
+<p><code>KEYMOD_RALT</code></p>
+</li>
+<li>
+<p><code>KEYMOD_LMETA</code></p>
+</li>
+<li>
+<p><code>KEYMOD_RMETA</code></p>
+</li>
+<li>
+<p><code>KEYMOD_NUM</code></p>
+</li>
+<li>
+<p><code>KEYMOD_CAPS</code></p>
+</li>
+<li>
+<p><code>KEYMOD_MODE</code></p>
+</li>
+<li>
+<p><code>KEYMOD_CTRL</code></p>
+</li>
+<li>
+<p><code>KEYMOD_SHIFT</code></p>
+</li>
+<li>
+<p><code>KEYMOD_ALT</code></p>
+</li>
+<li>
+<p><code>KEYMOD_META</code></p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_pointer_button_flags">Pointer Button Flags</h3>
+<div class="paragraph">
+<p>The Input.PointerButton enumeration provides flags for pointer buttons:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>BUTTON_NONE</code></p>
+</li>
+<li>
+<p><code>BUTTON_LEFT</code></p>
+</li>
+<li>
+<p><code>BUTTON_MIDDLE</code></p>
+</li>
+<li>
+<p><code>BUTTON_RIGHT</code></p>
+</li>
+<li>
+<p><code>BUTTON_X1</code></p>
+</li>
+<li>
+<p><code>BUTTON_X2</code></p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_input_event_hash_structure">Input Event Hash Structure</h3>
+<div class="paragraph">
+<p>Input events are passed to scripts as hash objects with the following structure:</p>
+</div>
+<div class="sect3">
+<h4 id="_key_event_hash">Key Event Hash</h4>
+<div class="paragraph">
+<p>When <code>eventType</code> is <code>EVENT_KEY</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>eventType</code>: The event type (EVENT_KEY)</p>
+</li>
+<li>
+<p><code>keyCode</code>: The key code (from Input.KeyCode)</p>
+</li>
+<li>
+<p><code>modifiers</code>: Key modifier flags</p>
+</li>
+<li>
+<p><code>pressed</code>: 1 if key was pressed, 0 if released</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_pointer_event_hash">Pointer Event Hash</h4>
+<div class="paragraph">
+<p>When <code>eventType</code> is <code>EVENT_POINTER</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>eventType</code>: The event type (EVENT_POINTER)</p>
+</li>
+<li>
+<p><code>position</code>: Vector2 with pointer position</p>
+</li>
+<li>
+<p><code>delta</code>: Vector2 with movement delta</p>
+</li>
+<li>
+<p><code>buttons</code>: Button state flags</p>
+</li>
+<li>
+<p><code>pressure</code>: Pointer pressure (0.0 to 1.0)</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_scroll_event_hash">Scroll Event Hash</h4>
+<div class="paragraph">
+<p>When <code>eventType</code> is <code>EVENT_SCROLLED</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>eventType</code>: The event type (EVENT_SCROLLED)</p>
+</li>
+<li>
+<p><code>delta</code>: Vector2 with scroll delta</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_example_input_handling">Example: Input Handling</h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// In your update function, handle input events
+function onInput(event) {
+  let eventType = event.eventType;
+
+  if (eventType == Input.EventType.EVENT_KEY) {
+    let keyCode = event.keyCode;
+    let pressed = event.pressed;
+
+    if (keyCode == Input.KeyCode.KEYCODE_ESCAPE &amp;&amp; pressed) {
+      // Handle escape key press
+      puts("Escape pressed!");
+    }
+
+    if (keyCode == Input.KeyCode.KEYCODE_SPACE &amp;&amp; pressed) {
+      // Handle space bar
+      playerJump();
+    }
+  } else if (eventType == Input.EventType.EVENT_POINTER) {
+    let position = event.position;
+    let buttons = event.buttons;
+
+    if (buttons &amp; Input.PointerButton.BUTTON_LEFT) {
+      // Handle left mouse button
+      handleClick(position);
+    }
+  } else if (eventType == Input.EventType.EVENT_SCROLLED) {
+    let delta = event.delta;
+    // Handle scroll
+    zoom += delta.y;
+  }
+}</code></pre>
+</div>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_audio">Audio</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview_16">Overview</h3>
+<div class="paragraph">
+<p>The Audio API provides comprehensive sound and music playback capabilities. It manages sound effects (with polyphony and spatial audio support) and background music. The API consists of two main components: the SoundManager for managing sound effects, and the MusicManager for managing background music.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_soundmanager">SoundManager</h3>
+<div class="paragraph">
+<p>The SoundManager namespace provides functions for creating, finding, and managing sound effects.</p>
+</div>
+<div class="sect3">
+<h4 id="_soundmanager_create">SoundManager.create()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let sound = SoundManager.create(name, fileName, polyphony, loop, realVoices, fadeOutDuration);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a new sound effect with the specified parameters.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>name</code> (string): A unique identifier for the sound.</p>
+</li>
+<li>
+<p><code>fileName</code> (string): The path to the audio file.</p>
+</li>
+<li>
+<p><code>polyphony</code> (number): Maximum number of simultaneous instances of this sound (default: 1).</p>
+</li>
+<li>
+<p><code>loop</code> (number): Whether the sound should loop (1 for true, 0 for false, default: 1).</p>
+</li>
+<li>
+<p><code>realVoices</code> (number): Number of real audio voices to allocate (-1 for automatic, default: -1).</p>
+</li>
+<li>
+<p><code>fadeOutDuration</code> (number): Duration of fade-out in seconds when stopping (default: 0.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A Sound object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Create a sound effect that can play 4 times simultaneously
+let explosionSound = SoundManager.create("explosion", "sounds/explosion.ogg", 4, 0, -1, 0.5);
+
+// Create a looping ambient sound
+let ambientSound = SoundManager.create("ambient", "sounds/ambient.ogg", 1, 1);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_soundmanager_find">SoundManager.find()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let sound = SoundManager.find(name);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Finds a previously created sound by name.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>name</code> (string): The name of the sound to find.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The Sound object, or null if not found.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let sound = SoundManager.find("explosion");
+if (sound.valid()) {
+  sound.play(1.0, 0.0, 1.0);
+}</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_soundmanager_remove">SoundManager.remove()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">SoundManager.remove(name);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Removes and destroys a sound by name.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>name</code> (string): The name of the sound to remove.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_soundmanager_clear">SoundManager.clear()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">SoundManager.clear();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Removes all sounds from the manager.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_sound_objects">Sound Objects</h3>
+<div class="paragraph">
+<p>Sound objects are created through the SoundManager and provide methods for playback control.</p>
+</div>
+<div class="sect3">
+<h4 id="_sound_valid">sound.valid()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let isValid = sound.valid();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Checks if the sound object is valid and ready to use.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> 1 if valid, 0 otherwise.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_destroy">sound.destroy()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">sound.destroy();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Destroys the sound object and releases its resources.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_load">sound.load()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">sound.load();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Loads the sound data from disk.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_reload">sound.reload()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">sound.reload();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Reloads the sound data from disk.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_getname">sound.getName()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let name = sound.getName();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the name of the sound.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The sound name as a string.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_getuid">sound.getUID()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let uid = sound.getUID();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the unique identifier of the sound.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The UID as a number.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_getfilename">sound.getFileName()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let fileName = sound.getFileName();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the file name of the sound.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The file name as a string.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_getpolyphony">sound.getPolyphony()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let polyphony = sound.getPolyphony();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the maximum polyphony of the sound.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The polyphony value.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_getloop">sound.getLoop()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let loop = sound.getLoop();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns whether the sound loops.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> 1 if looping, 0 otherwise.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_getrealvoices">sound.getRealVoices()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let realVoices = sound.getRealVoices();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the number of real voices allocated for this sound.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The number of real voices.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_getfadeoutduration">sound.getFadeOutDuration()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let duration = sound.getFadeOutDuration();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the fade-out duration in seconds.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The fade-out duration.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_play">sound.play()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let voiceID = sound.play(volume, panning, rate);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Plays the sound with the specified parameters.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>volume</code> (number): Volume level (0.0 to 1.0 or higher).</p>
+</li>
+<li>
+<p><code>panning</code> (number): Stereo panning (-1.0 for left, 0.0 for center, 1.0 for right).</p>
+</li>
+<li>
+<p><code>rate</code> (number): Playback rate (1.0 is normal speed).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A voice ID that can be used to control this specific playback instance.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let voiceID = sound.play(0.8, 0.0, 1.0); // Play at 80% volume, centered</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_playspatialization">sound.playSpatialization()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let voiceID = sound.playSpatialization(volume, panning, rate, spatialization, position, velocity, local);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Plays the sound with 3D spatial audio.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>volume</code> (number): Volume level.</p>
+</li>
+<li>
+<p><code>panning</code> (number): Stereo panning.</p>
+</li>
+<li>
+<p><code>rate</code> (number): Playback rate.</p>
+</li>
+<li>
+<p><code>spatialization</code> (number): Enable spatialization (1 for true, 0 for false).</p>
+</li>
+<li>
+<p><code>position</code> (Vector3): 3D position of the sound source.</p>
+</li>
+<li>
+<p><code>velocity</code> (Vector3): 3D velocity of the sound source (for Doppler effect).</p>
+</li>
+<li>
+<p><code>local</code> (number): Use local coordinates (1) or world coordinates (0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A voice ID.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let pos = Vector3.create(10, 0, 5);
+let vel = Vector3.create(0, 0, 0);
+let voiceID = sound.playSpatialization(1.0, 0.0, 1.0, 1, pos, vel, 0);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_stop">sound.stop()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">sound.stop(voiceID);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Stops a specific playback instance.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>voiceID</code> (number): The voice ID returned by play() or playSpatialization().</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_keyoff">sound.keyOff()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">sound.keyOff(voiceID);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Triggers the release phase of a sound (for sounds with ADSR envelopes).</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>voiceID</code> (number): The voice ID.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_setvolume">sound.setVolume()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">sound.setVolume(voiceID, volume);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Changes the volume of a playing sound instance.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>voiceID</code> (number): The voice ID.</p>
+</li>
+<li>
+<p><code>volume</code> (number): The new volume level.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The voice ID.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_setpanning">sound.setPanning()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">sound.setPanning(voiceID, panning);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Changes the panning of a playing sound instance.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>voiceID</code> (number): The voice ID.</p>
+</li>
+<li>
+<p><code>panning</code> (number): The new panning value.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The voice ID.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_setrate">sound.setRate()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">sound.setRate(voiceID, rate);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Changes the playback rate of a playing sound instance.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>voiceID</code> (number): The voice ID.</p>
+</li>
+<li>
+<p><code>rate</code> (number): The new playback rate.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The voice ID.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_setposition">sound.setPosition()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">sound.setPosition(voiceID, spatialization, position, velocity, local);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Updates the 3D position and velocity of a playing sound instance.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>voiceID</code> (number): The voice ID.</p>
+</li>
+<li>
+<p><code>spatialization</code> (number): Enable spatialization.</p>
+</li>
+<li>
+<p><code>position</code> (Vector3): New 3D position.</p>
+</li>
+<li>
+<p><code>velocity</code> (Vector3): New 3D velocity.</p>
+</li>
+<li>
+<p><code>local</code> (number): Use local coordinates.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The voice ID.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_seteffectmix">sound.setEffectMix()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">sound.setEffectMix(voiceID, active);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Enables or disables audio effects for a playing sound instance.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>voiceID</code> (number): The voice ID.</p>
+</li>
+<li>
+<p><code>active</code> (number): 1 to enable effects, 0 to disable.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The voice ID.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_isplaying">sound.isPlaying()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let playing = sound.isPlaying();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Checks if any instance of this sound is currently playing.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> 1 if playing, 0 otherwise.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sound_isvoiceplaying">sound.isVoicePlaying()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let playing = sound.isVoicePlaying(voiceID);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Checks if a specific voice instance is currently playing.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>voiceID</code> (number): The voice ID to check.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> 1 if playing, 0 otherwise.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_musicmanager">MusicManager</h3>
+<div class="paragraph">
+<p>The MusicManager namespace provides functions for managing background music.</p>
+</div>
+<div class="sect3">
+<h4 id="_musicmanager_create">MusicManager.create()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let music = MusicManager.create(name, fileName);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a new music track.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>name</code> (string): A unique identifier for the music.</p>
+</li>
+<li>
+<p><code>fileName</code> (string): The path to the audio file.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A Music object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let bgMusic = MusicManager.create("background", "music/background.ogg");</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_musicmanager_find">MusicManager.find()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let music = MusicManager.find(name);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Finds a previously created music track by name.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>name</code> (string): The name of the music to find.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The Music object, or null if not found.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_musicmanager_remove">MusicManager.remove()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">MusicManager.remove(name);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Removes and destroys a music track by name.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>name</code> (string): The name of the music to remove.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_musicmanager_clear">MusicManager.clear()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">MusicManager.clear();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Removes all music tracks from the manager.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_music_objects">Music Objects</h3>
+<div class="paragraph">
+<p>Music objects are created through the MusicManager and provide methods for playback control.</p>
+</div>
+<div class="sect3">
+<h4 id="_music_valid">music.valid()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let isValid = music.valid();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Checks if the music object is valid and ready to use.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> 1 if valid, 0 otherwise.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_destroy">music.destroy()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">music.destroy();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Destroys the music object and releases its resources.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_load">music.load()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">music.load();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Loads the music data from disk.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_reload">music.reload()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">music.reload();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Reloads the music data from disk.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_getname">music.getName()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let name = music.getName();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the name of the music track.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The music name as a string.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_getuid">music.getUID()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let uid = music.getUID();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the unique identifier of the music track.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The UID as a number.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_getfilename">music.getFileName()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let fileName = music.getFileName();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the file name of the music track.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The file name as a string.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_play">music.play()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">music.play(volume, panning, rate, loop);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Plays the music track.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>volume</code> (number): Volume level (0.0 to 1.0 or higher).</p>
+</li>
+<li>
+<p><code>panning</code> (number): Stereo panning (-1.0 to 1.0).</p>
+</li>
+<li>
+<p><code>rate</code> (number): Playback rate (1.0 is normal speed).</p>
+</li>
+<li>
+<p><code>loop</code> (number): Whether to loop (1 for true, 0 for false).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">music.play(0.7, 0.0, 1.0, 1); // Play at 70% volume, centered, looping</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_stop">music.stop()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">music.stop();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Stops the music playback.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_setvolume">music.setVolume()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">music.setVolume(volume);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Changes the volume of the currently playing music.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>volume</code> (number): The new volume level.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_setpanning">music.setPanning()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">music.setPanning(panning);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Changes the panning of the currently playing music.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>panning</code> (number): The new panning value.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_setrate">music.setRate()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">music.setRate(rate);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Changes the playback rate of the currently playing music.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rate</code> (number): The new playback rate.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_music_isplaying">music.isPlaying()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let playing = music.isPlaying();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Checks if the music is currently playing.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> 1 if playing, 0 otherwise.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_example_audio_usage">Example: Audio Usage</h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Create and play sound effects
+let explosionSound = SoundManager.create("explosion", "sounds/explosion.wav", 4, 0);
+let jumpSound = SoundManager.create("jump", "sounds/jump.wav", 2, 0);
+
+// Play sound effects
+explosionSound.play(1.0, 0.0, 1.0);
+
+// Play with 3D spatialization
+let enemyPos = Vector3.create(10, 0, 5);
+let enemyVel = Vector3.create(0, 0, 0);
+let voiceID = explosionSound.playSpatialization(0.8, 0.0, 1.0, 1, enemyPos, enemyVel, 0);
+
+// Create and play background music
+let bgMusic = MusicManager.create("bgm", "music/background.ogg");
+bgMusic.play(0.6, 0.0, 1.0, 1); // Loop the music
+
+// Later, fade out music by reducing volume
+bgMusic.setVolume(0.3);
+
+// Stop music
+bgMusic.stop();
+
+// Clean up
+SoundManager.clear();
+MusicManager.clear();</code></pre>
+</div>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_summary">Summary</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The PasVulkan POCA Script API provides a comprehensive set of types and functions for game development:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Math Types:</strong> Vector2, Vector3, Vector4, Quaternion, Matrix3x3, Matrix4x4</p>
+</li>
+<li>
+<p><strong>Graphics Types:</strong> Sprite, SpriteAtlas, Texture, Font, CanvasFont, CanvasShape</p>
+</li>
+<li>
+<p><strong>Canvas API:</strong> Comprehensive 2D drawing with shapes, text, sprites, and paths</p>
+</li>
+<li>
+<p><strong>Input API:</strong> Keyboard, mouse, and pointer event handling</p>
+</li>
+<li>
+<p><strong>Audio API:</strong> Sound effects with polyphony and 3D spatialization, background music playback</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>All types support operator overloading and provide fluent APIs for method chaining. The Canvas API is hardware-accelerated using Vulkan for high-performance 2D rendering. The Audio API provides both simple 2D and advanced 3D spatial audio capabilities.</p>
+</div>
+<div class="paragraph">
+<p>For the base POCA scripting features (Array, Boolean, Console, String, Math, etc.), please refer to the <a href="../externals/poca/docs/scriptapi.adoc">POCA Script API Documentation</a>.</p>
+</div>
+<hr>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_integration_with_pasvulkan">Integration with PasVulkan</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>To use these APIs in your PasVulkan application:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Create a POCA context using the POCA library</p>
+</li>
+<li>
+<p>Call <code>InitializeForPOCAContext</code> to register all PasVulkan types and functions</p>
+</li>
+<li>
+<p>Create a <code>TpvPOCAAudio</code> instance to enable audio functionality</p>
+</li>
+<li>
+<p>Load and execute your POCA scripts</p>
+</li>
+<li>
+<p>Pass Canvas, Sprite, Font, and other objects from your PasVulkan application to scripts</p>
+</li>
+<li>
+<p>Handle input events and forward them to scripts through event hashes</p>
+</li>
+<li>
+<p>Call <code>FinalizeForPOCAContext</code> when done to clean up resources</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The PasVulkan POCA integration is designed to provide a complete scripting solution for games and applications built with PasVulkan.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2025-10-28 18:35:50 +0100
+</div>
+</div>
+</body>
+</html>
