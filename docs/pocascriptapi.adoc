@@ -3245,8 +3245,6 @@ canvas.drawSpritePosition(sprite, x, y);
 +
 [source,js]
 ----
-let sprite = Sprite.create("icon.png");
-
 // Using Vector2:
 canvas.drawSpritePosition(sprite, Vector2.create(50, 100));
 
