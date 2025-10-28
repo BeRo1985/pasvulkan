@@ -43,7 +43,8 @@ uses SysUtils,
      PasVulkan.TrueTypeFont,
      POCA,
      PasVulkan.POCA,
-     PasVulkan.Console;
+     PasVulkan.Console,
+     UnitSounds;
 
 type { TScreenMain }
 
@@ -107,6 +108,7 @@ type { TScreenMain }
        fPercentileXthFrameRate:TpvDouble;
        fMedianFrameTime:TpvDouble;
        fFrameTimeString:string;
+       fSoundManager:TSoundManager;
        procedure POCAInitialize;
        procedure POCAGarbageCollect;
        function POCAProcessInputKeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
@@ -150,6 +152,11 @@ type { TScreenMain }
        procedure Update(const aDeltaTime:TpvDouble); override;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
+
+      public
+
+       property POCAInstance:PPOCAInstance read fPOCAInstance;
+       property POCAContext:PPOCAContext read fPOCAContext;
 
      end;
 
@@ -327,6 +334,8 @@ begin
 
  fPOCAUserIOWriteBuffer:='';
 
+ fSoundManager:=TSoundManager.Create(self);
+
  if pvApplication.Assets.ExistAsset('poca/main.poca') then begin
   Stream:=pvApplication.Assets.GetAssetStream('poca/main.poca');
   if assigned(Stream) then begin
@@ -361,6 +370,8 @@ begin
 
  POCACallFunction('onApplicationCreate',[],nil);
 
+ fSoundManager.BackgroundLoad;
+
 end;
 
 destructor TScreenMain.Destroy;
@@ -369,6 +380,7 @@ begin
 {$ifdef WithConsole}
  FreeAndNil(fConsole);
 {$endif}
+ FreeAndNil(fSoundManager);
  FinalizeForPOCAContext(fPOCAContext);
  POCAContextDestroy(fPOCAContext);
  POCAInstanceDestroy(fPOCAInstance);
