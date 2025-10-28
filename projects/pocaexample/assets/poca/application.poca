@@ -887,6 +887,7 @@ var application = {
       let size2 = (baseSize * 1.125) * cloud.scale * parallaxScale;
 
       let backColorFactor = 0.5 + 0.125 * cloud.layer; // Lighter for farther layers
+       canvas.setFillStyle(Canvas.FillStyle.Color);
       canvas.setColor(backColorFactor, backColorFactor, backColorFactor, 0.5);       
       
       // Draw three overlapping circles to form a cloud
@@ -897,6 +898,23 @@ var application = {
       canvas.drawFilledCircle(parallaxX + size1 * 2 + offsetX, parallaxY + offsetY, size1);
 
       let colorFactor = 0.75 + 0.25 * cloud.layer; // Lighter for farther layers
+      canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+      canvas.setStartColor(colorFactor, colorFactor, colorFactor, 1.0);
+      canvas.setStopColor(colorFactor * 0.75, colorFactor * 0.75, colorFactor * 0.75, 1.0);
+      let cloudToOriginMatrix = Matrix4x4.create(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -parallaxX, -parallaxY, 0, 1
+      );
+      let cloudScaleMatrix = Matrix4x4.create(
+        0, 1 / (size1 * 3), 0, 0,
+        1 / (size1 * 1.5), 0, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      );
+      let cloudFillMatrix = cloudToOriginMatrix.mul(cloudScaleMatrix);
+      canvas.setFillMatrix(cloudFillMatrix);
       canvas.setColor(colorFactor, colorFactor, colorFactor, 1.0);       
       
       // Draw three overlapping circles to form a cloud
