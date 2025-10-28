@@ -811,7 +811,7 @@ var application = {
     canvas.setFillMatrix(gradientMatrix);
     
     // Draw the gradient rectangle, more width to cover entire canvas area including borders
-    canvas.drawFilledRectangle(-this.data.virtualWidth * 2, 0, this.data.virtualWidth * 4, this.data.virtualHeight);
+    canvas.drawFilledRectangle(-this.data.virtualWidth * 8, 0, this.data.virtualWidth * 16, this.data.virtualHeight);
     
     // Reset to solid color fill style for other drawing
     canvas.setFillStyle(Canvas.FillStyle.Color);
