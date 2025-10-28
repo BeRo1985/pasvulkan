@@ -2276,13 +2276,22 @@ Matrix4x4 supports the same operator overloading as Matrix3x3:
 
 === Overview
 
-The Sprite type represents a 2D image or sprite atlas region that can be rendered on screen.
+The Sprite type represents a 2D image or sprite atlas region that can be rendered on screen. Sprite objects are typically created and managed by the host application and passed to scripts.
 
 '''''
 
-=== Sprite Properties and Methods
+=== Sprite Creation
 
-Sprite objects are typically created by the host application and passed to scripts. They don't have a direct `+create+` method in scripts but can be manipulated through Canvas drawing methods.
+Sprites are not directly created in scripts - they are provided by the host application through the game/application logic. Sprites can be drawn using Canvas methods like `+drawSprite()+`.
+
+*Example:*
+
+[source,js]
+----
+// Sprites are provided by the host application
+// Then used in drawing operations
+canvas.drawSprite(mySprite, x, y, width, height);
+----
 
 '''''
 
@@ -2290,13 +2299,22 @@ Sprite objects are typically created by the host application and passed to scrip
 
 === Overview
 
-The SpriteAtlas type manages a collection of sprites packed into a single texture atlas for efficient rendering.
+The SpriteAtlas type manages a collection of sprites packed into a single texture atlas for efficient rendering. SpriteAtlas objects are created and managed by the host application.
 
 '''''
 
-=== SpriteAtlas Properties and Methods
+=== SpriteAtlas Usage
 
-SpriteAtlas objects are typically created by the host application. Scripts can access sprites within an atlas through the host-provided interface.
+SpriteAtlas objects are provided by the host application. Individual sprites within an atlas can be accessed and rendered through the host interface.
+
+*Example:*
+
+[source,js]
+----
+// SpriteAtlas is managed by the host application
+// Access individual sprites and render them
+canvas.drawSprite(atlas.getSprite("character"), x, y, width, height);
+----
 
 '''''
 
@@ -2304,13 +2322,60 @@ SpriteAtlas objects are typically created by the host application. Scripts can a
 
 === Overview
 
-The Texture type represents a Vulkan texture that can be used for rendering.
+The Texture type represents a Vulkan texture that can be used for rendering. Textures can be loaded from image files and used in Canvas operations.
 
 '''''
 
-=== Texture Properties and Methods
+=== Global Texture Object
 
-Texture objects are managed by the host application and passed to scripts for use in Canvas operations.
+==== Texture.create()
+
+*Usage:*
+
+[source,js]
+----
+let texture = Texture.create(filename, mipmaps, srgb, additionalSRGB);
+----
+
+* *Description:* Creates a texture from an image file.
+* *Parameters:*
+** `+filename+` (string): Path to the image file
+** `+mipmaps+` (boolean): Whether to generate mipmaps (default: true)
+** `+srgb+` (boolean): Whether to use sRGB color space (default: false)
+** `+additionalSRGB+` (boolean): Additional sRGB flag (default: false)
+* *Return Value:* A new Texture object.
+* *Example:*
++
+[source,js]
+----
+let myTexture = Texture.create("assets/textures/wall.png", true, false, false);
+canvas.setTexture(myTexture);
+----
+
+'''''
+
+=== Texture Methods
+
+==== destroy()
+
+*Usage:*
+
+[source,js]
+----
+texture.destroy();
+----
+
+* *Description:* Explicitly destroys the texture and frees its resources.
+* *Parameters:* None.
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+let temp = Texture.create("temp.png");
+// Use texture...
+temp.destroy(); // Free resources immediately
+----
 
 '''''
 
@@ -2318,13 +2383,23 @@ Texture objects are managed by the host application and passed to scripts for us
 
 === Overview
 
-The Font type represents a font that can be used for text rendering.
+The Font type represents a font that can be used for text rendering. Font objects are typically loaded and managed by the host application.
 
 '''''
 
-=== Font Properties and Methods
+=== Font Usage
 
-Font objects are loaded by the host application and can be used with Canvas text drawing methods.
+Font objects are provided by the host application and can be used with Canvas text drawing methods through the Canvas font settings.
+
+*Example:*
+
+[source,js]
+----
+// Fonts are typically provided by the host application
+canvas.setFont(myFont);
+canvas.setFontSize(24);
+canvas.drawText("Hello World", x, y);
+----
 
 '''''
 
@@ -2332,13 +2407,63 @@ Font objects are loaded by the host application and can be used with Canvas text
 
 === Overview
 
-The CanvasFont type is a specialized font wrapper for Canvas-based text rendering.
+The CanvasFont type is a specialized font for Canvas-based text rendering with distance field support for high-quality text at any size.
 
 '''''
 
-=== CanvasFont Properties and Methods
+=== Global CanvasFont Object
 
-CanvasFont objects extend Font functionality specifically for Canvas operations.
+==== CanvasFont.create()
+
+*Usage:*
+
+[source,js]
+----
+let font = CanvasFont.create(filename, dpi, atlasSize, firstCodePoint, lastCodePoint);
+----
+
+* *Description:* Creates a canvas font from a TrueType font file.
+* *Parameters:*
+** `+filename+` (string): Path to the TTF font file
+** `+dpi+` (number): DPI for font rendering (default: 96)
+** `+atlasSize+` (number): Size of the texture atlas (default: 512)
+** `+firstCodePoint+` (number): First Unicode code point to include (default: 0)
+** `+lastCodePoint+` (number): Last Unicode code point to include (default: 255)
+* *Return Value:* A new CanvasFont object.
+* *Example:*
++
+[source,js]
+----
+let font = CanvasFont.create("fonts/roboto.ttf", 96, 512, 0, 255);
+canvas.setFont(font);
+canvas.setFontSize(32);
+canvas.drawText("High Quality Text", 100, 100);
+----
+
+'''''
+
+=== CanvasFont Methods
+
+==== destroy()
+
+*Usage:*
+
+[source,js]
+----
+font.destroy();
+----
+
+* *Description:* Explicitly destroys the font and frees its resources.
+* *Parameters:* None.
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+let tempFont = CanvasFont.create("temp.ttf");
+// Use font...
+tempFont.destroy(); // Free resources
+----
 
 '''''
 
@@ -2346,13 +2471,43 @@ CanvasFont objects extend Font functionality specifically for Canvas operations.
 
 === Overview
 
-The CanvasShape type represents a 2D vector shape that can be stroked or filled.
+The CanvasShape type represents a 2D vector shape created from Canvas paths that can be stroked or filled multiple times efficiently. Shapes are created by capturing Canvas path operations.
 
 '''''
 
-=== CanvasShape Properties and Methods
+=== CanvasShape Usage
 
-CanvasShape objects are created through Canvas path operations and can be reused for efficient rendering.
+CanvasShape objects are created through Canvas methods like `+getStrokeShape()+` and `+getFillShape()+` after building a path.
+
+'''''
+
+=== CanvasShape Methods
+
+==== destroy()
+
+*Usage:*
+
+[source,js]
+----
+shape.destroy();
+----
+
+* *Description:* Explicitly destroys the shape and frees its resources.
+* *Parameters:* None.
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+canvas.circle(0, 0, 50);
+canvas.endPath();
+let shape = canvas.getFillShape();
+// Draw shape multiple times
+canvas.drawShape(shape);
+// When done
+shape.destroy();
+----
 
 '''''
 

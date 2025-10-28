@@ -654,37 +654,60 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_sprite">Sprite</a>
 <ul class="sectlevel2">
 <li><a href="#_overview_8">Overview</a></li>
-<li><a href="#_sprite_properties_and_methods">Sprite Properties and Methods</a></li>
+<li><a href="#_sprite_creation">Sprite Creation</a></li>
 </ul>
 </li>
 <li><a href="#_spriteatlas">SpriteAtlas</a>
 <ul class="sectlevel2">
 <li><a href="#_overview_9">Overview</a></li>
-<li><a href="#_spriteatlas_properties_and_methods">SpriteAtlas Properties and Methods</a></li>
+<li><a href="#_spriteatlas_usage">SpriteAtlas Usage</a></li>
 </ul>
 </li>
 <li><a href="#_texture">Texture</a>
 <ul class="sectlevel2">
 <li><a href="#_overview_10">Overview</a></li>
-<li><a href="#_texture_properties_and_methods">Texture Properties and Methods</a></li>
+<li><a href="#_global_texture_object">Global Texture Object</a>
+<ul class="sectlevel3">
+<li><a href="#_texture_create">Texture.create()</a></li>
+</ul>
+</li>
+<li><a href="#_texture_methods">Texture Methods</a>
+<ul class="sectlevel3">
+<li><a href="#_destroy">destroy()</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#_font">Font</a>
 <ul class="sectlevel2">
 <li><a href="#_overview_11">Overview</a></li>
-<li><a href="#_font_properties_and_methods">Font Properties and Methods</a></li>
+<li><a href="#_font_usage">Font Usage</a></li>
 </ul>
 </li>
 <li><a href="#_canvasfont">CanvasFont</a>
 <ul class="sectlevel2">
 <li><a href="#_overview_12">Overview</a></li>
-<li><a href="#_canvasfont_properties_and_methods">CanvasFont Properties and Methods</a></li>
+<li><a href="#_global_canvasfont_object">Global CanvasFont Object</a>
+<ul class="sectlevel3">
+<li><a href="#_canvasfont_create">CanvasFont.create()</a></li>
+</ul>
+</li>
+<li><a href="#_canvasfont_methods">CanvasFont Methods</a>
+<ul class="sectlevel3">
+<li><a href="#_destroy_2">destroy()</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#_canvasshape">CanvasShape</a>
 <ul class="sectlevel2">
 <li><a href="#_overview_13">Overview</a></li>
-<li><a href="#_canvasshape_properties_and_methods">CanvasShape Properties and Methods</a></li>
+<li><a href="#_canvasshape_usage">CanvasShape Usage</a></li>
+<li><a href="#_canvasshape_methods">CanvasShape Methods</a>
+<ul class="sectlevel3">
+<li><a href="#_destroy_3">destroy()</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#_canvas">Canvas</a>
@@ -4980,14 +5003,24 @@ canvas.setProjectionMatrix(mvp);</code></pre>
 <div class="sect2">
 <h3 id="_overview_8">Overview</h3>
 <div class="paragraph">
-<p>The Sprite type represents a 2D image or sprite atlas region that can be rendered on screen.</p>
+<p>The Sprite type represents a 2D image or sprite atlas region that can be rendered on screen. Sprite objects are typically created and managed by the host application and passed to scripts.</p>
 </div>
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_sprite_properties_and_methods">Sprite Properties and Methods</h3>
+<h3 id="_sprite_creation">Sprite Creation</h3>
 <div class="paragraph">
-<p>Sprite objects are typically created by the host application and passed to scripts. They don&#8217;t have a direct <code>create</code> method in scripts but can be manipulated through Canvas drawing methods.</p>
+<p>Sprites are not directly created in scripts - they are provided by the host application through the game/application logic. Sprites can be drawn using Canvas methods like <code>drawSprite()</code>.</p>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Sprites are provided by the host application
+// Then used in drawing operations
+canvas.drawSprite(mySprite, x, y, width, height);</code></pre>
+</div>
 </div>
 <hr>
 </div>
@@ -4999,14 +5032,24 @@ canvas.setProjectionMatrix(mvp);</code></pre>
 <div class="sect2">
 <h3 id="_overview_9">Overview</h3>
 <div class="paragraph">
-<p>The SpriteAtlas type manages a collection of sprites packed into a single texture atlas for efficient rendering.</p>
+<p>The SpriteAtlas type manages a collection of sprites packed into a single texture atlas for efficient rendering. SpriteAtlas objects are created and managed by the host application.</p>
 </div>
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_spriteatlas_properties_and_methods">SpriteAtlas Properties and Methods</h3>
+<h3 id="_spriteatlas_usage">SpriteAtlas Usage</h3>
 <div class="paragraph">
-<p>SpriteAtlas objects are typically created by the host application. Scripts can access sprites within an atlas through the host-provided interface.</p>
+<p>SpriteAtlas objects are provided by the host application. Individual sprites within an atlas can be accessed and rendered through the host interface.</p>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// SpriteAtlas is managed by the host application
+// Access individual sprites and render them
+canvas.drawSprite(atlas.getSprite("character"), x, y, width, height);</code></pre>
+</div>
 </div>
 <hr>
 </div>
@@ -5018,16 +5061,100 @@ canvas.setProjectionMatrix(mvp);</code></pre>
 <div class="sect2">
 <h3 id="_overview_10">Overview</h3>
 <div class="paragraph">
-<p>The Texture type represents a Vulkan texture that can be used for rendering.</p>
+<p>The Texture type represents a Vulkan texture that can be used for rendering. Textures can be loaded from image files and used in Canvas operations.</p>
 </div>
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_texture_properties_and_methods">Texture Properties and Methods</h3>
+<h3 id="_global_texture_object">Global Texture Object</h3>
+<div class="sect3">
+<h4 id="_texture_create">Texture.create()</h4>
 <div class="paragraph">
-<p>Texture objects are managed by the host application and passed to scripts for use in Canvas operations.</p>
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let texture = Texture.create(filename, mipmaps, srgb, additionalSRGB);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a texture from an image file.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>filename</code> (string): Path to the image file</p>
+</li>
+<li>
+<p><code>mipmaps</code> (boolean): Whether to generate mipmaps (default: true)</p>
+</li>
+<li>
+<p><code>srgb</code> (boolean): Whether to use sRGB color space (default: false)</p>
+</li>
+<li>
+<p><code>additionalSRGB</code> (boolean): Additional sRGB flag (default: false)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Texture object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let myTexture = Texture.create("assets/textures/wall.png", true, false, false);
+canvas.setTexture(myTexture);</code></pre>
+</div>
+</div>
+</li>
+</ul>
 </div>
 <hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_texture_methods">Texture Methods</h3>
+<div class="sect3">
+<h4 id="_destroy">destroy()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">texture.destroy();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Explicitly destroys the texture and frees its resources.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let temp = Texture.create("temp.png");
+// Use texture...
+temp.destroy(); // Free resources immediately</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
 </div>
 </div>
 </div>
@@ -5037,14 +5164,25 @@ canvas.setProjectionMatrix(mvp);</code></pre>
 <div class="sect2">
 <h3 id="_overview_11">Overview</h3>
 <div class="paragraph">
-<p>The Font type represents a font that can be used for text rendering.</p>
+<p>The Font type represents a font that can be used for text rendering. Font objects are typically loaded and managed by the host application.</p>
 </div>
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_font_properties_and_methods">Font Properties and Methods</h3>
+<h3 id="_font_usage">Font Usage</h3>
 <div class="paragraph">
-<p>Font objects are loaded by the host application and can be used with Canvas text drawing methods.</p>
+<p>Font objects are provided by the host application and can be used with Canvas text drawing methods through the Canvas font settings.</p>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Fonts are typically provided by the host application
+canvas.setFont(myFont);
+canvas.setFontSize(24);
+canvas.drawText("Hello World", x, y);</code></pre>
+</div>
 </div>
 <hr>
 </div>
@@ -5056,16 +5194,105 @@ canvas.setProjectionMatrix(mvp);</code></pre>
 <div class="sect2">
 <h3 id="_overview_12">Overview</h3>
 <div class="paragraph">
-<p>The CanvasFont type is a specialized font wrapper for Canvas-based text rendering.</p>
+<p>The CanvasFont type is a specialized font for Canvas-based text rendering with distance field support for high-quality text at any size.</p>
 </div>
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_canvasfont_properties_and_methods">CanvasFont Properties and Methods</h3>
+<h3 id="_global_canvasfont_object">Global CanvasFont Object</h3>
+<div class="sect3">
+<h4 id="_canvasfont_create">CanvasFont.create()</h4>
 <div class="paragraph">
-<p>CanvasFont objects extend Font functionality specifically for Canvas operations.</p>
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let font = CanvasFont.create(filename, dpi, atlasSize, firstCodePoint, lastCodePoint);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a canvas font from a TrueType font file.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>filename</code> (string): Path to the TTF font file</p>
+</li>
+<li>
+<p><code>dpi</code> (number): DPI for font rendering (default: 96)</p>
+</li>
+<li>
+<p><code>atlasSize</code> (number): Size of the texture atlas (default: 512)</p>
+</li>
+<li>
+<p><code>firstCodePoint</code> (number): First Unicode code point to include (default: 0)</p>
+</li>
+<li>
+<p><code>lastCodePoint</code> (number): Last Unicode code point to include (default: 255)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new CanvasFont object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let font = CanvasFont.create("fonts/roboto.ttf", 96, 512, 0, 255);
+canvas.setFont(font);
+canvas.setFontSize(32);
+canvas.drawText("High Quality Text", 100, 100);</code></pre>
+</div>
+</div>
+</li>
+</ul>
 </div>
 <hr>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_canvasfont_methods">CanvasFont Methods</h3>
+<div class="sect3">
+<h4 id="_destroy_2">destroy()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">font.destroy();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Explicitly destroys the font and frees its resources.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let tempFont = CanvasFont.create("temp.ttf");
+// Use font...
+tempFont.destroy(); // Free resources</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
 </div>
 </div>
 </div>
@@ -5075,16 +5302,59 @@ canvas.setProjectionMatrix(mvp);</code></pre>
 <div class="sect2">
 <h3 id="_overview_13">Overview</h3>
 <div class="paragraph">
-<p>The CanvasShape type represents a 2D vector shape that can be stroked or filled.</p>
+<p>The CanvasShape type represents a 2D vector shape created from Canvas paths that can be stroked or filled multiple times efficiently. Shapes are created by capturing Canvas path operations.</p>
 </div>
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_canvasshape_properties_and_methods">CanvasShape Properties and Methods</h3>
+<h3 id="_canvasshape_usage">CanvasShape Usage</h3>
 <div class="paragraph">
-<p>CanvasShape objects are created through Canvas path operations and can be reused for efficient rendering.</p>
+<p>CanvasShape objects are created through Canvas methods like <code>getStrokeShape()</code> and <code>getFillShape()</code> after building a path.</p>
 </div>
 <hr>
+</div>
+<div class="sect2">
+<h3 id="_canvasshape_methods">CanvasShape Methods</h3>
+<div class="sect3">
+<h4 id="_destroy_3">destroy()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">shape.destroy();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Explicitly destroys the shape and frees its resources.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+canvas.circle(0, 0, 50);
+canvas.endPath();
+let shape = canvas.getFillShape();
+// Draw shape multiple times
+canvas.drawShape(shape);
+// When done
+shape.destroy();</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
 </div>
 </div>
 </div>
@@ -9448,7 +9718,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 18:51:43 +0100
+Last updated 2025-10-28 20:33:27 +0100
 </div>
 </div>
 </body>
