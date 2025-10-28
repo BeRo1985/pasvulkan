@@ -2758,19 +2758,31 @@ canvas.clear(Vector4.create(0, 0, 0, 1)); // Clear to black
 [source,js]
 ----
 canvas.drawFilledCircle(center, radius);
+// or
+canvas.drawFilledCircle(centerX, centerY, radius);
 ----
 
 * *Description:* Draws a filled circle.
 * *Parameters:*
-** `+center+` (Vector2): The center position.
-** `+radius+` (number): The circle radius.
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+radius+` (number): The circle radius.
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+radius+` (number): The circle radius.
 * *Return Value:* The canvas itself.
 * *Example:*
 +
 [source,js]
 ----
 canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red
+
+// Using Vector2:
 canvas.drawFilledCircle(Vector2.create(100, 100), 50);
+
+// or using individual numbers:
+canvas.drawFilledCircle(100, 100, 50);
 ----
 
 '''''
@@ -2782,13 +2794,31 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);
 [source,js]
 ----
 canvas.drawFilledEllipse(center, radius);
+// or
+canvas.drawFilledEllipse(centerX, centerY, radiusX, radiusY);
 ----
 
 * *Description:* Draws a filled ellipse.
 * *Parameters:*
-** `+center+` (Vector2): The center position.
-** `+radius+` (Vector2): The x and y radii.
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+radius+` (Vector2): The x and y radii.
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+radiusX+` (number): The X radius.
+*** `+radiusY+` (number): The Y radius.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Vector2:
+canvas.drawFilledEllipse(Vector2.create(100, 100), Vector2.create(80, 40));
+
+// or using individual numbers:
+canvas.drawFilledEllipse(100, 100, 80, 40);
+----
 
 '''''
 
@@ -2799,21 +2829,33 @@ canvas.drawFilledEllipse(center, radius);
 [source,js]
 ----
 canvas.drawFilledRectangle(topLeft, size);
+// or
+canvas.drawFilledRectangle(x, y, width, height);
 ----
 
 * *Description:* Draws a filled rectangle.
 * *Parameters:*
-** `+topLeft+` (Vector2): The top-left corner position.
-** `+size+` (Vector2): The width and height.
+** *Option A:*
+*** `+topLeft+` (Vector2): The top-left corner position.
+*** `+size+` (Vector2): The width and height.
+** or *Option B:*
+*** `+x+` (number): The left X coordinate.
+*** `+y+` (number): The top Y coordinate.
+*** `+width+` (number): The rectangle width.
+*** `+height+` (number): The rectangle height.
 * *Return Value:* The canvas itself.
 * *Example:*
 +
 [source,js]
 ----
+// Using Vector2:
 canvas.drawFilledRectangle(
   Vector2.create(50, 50),
   Vector2.create(100, 80)
 );
+
+// or using individual numbers:
+canvas.drawFilledRectangle(50, 50, 100, 80);
 ----
 
 '''''
@@ -2825,13 +2867,31 @@ canvas.drawFilledRectangle(
 [source,js]
 ----
 canvas.drawFilledRectangleCenter(center, size);
+// or
+canvas.drawFilledRectangleCenter(centerX, centerY, width, height);
 ----
 
 * *Description:* Draws a filled rectangle centered at the specified position.
 * *Parameters:*
-** `+center+` (Vector2): The center position.
-** `+size+` (Vector2): The width and height.
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+size+` (Vector2): The width and height.
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+width+` (number): The rectangle width.
+*** `+height+` (number): The rectangle height.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Vector2:
+canvas.drawFilledRectangleCenter(Vector2.create(200, 150), Vector2.create(100, 80));
+
+// or using individual numbers:
+canvas.drawFilledRectangleCenter(200, 150, 100, 80);
+----
 
 '''''
 
@@ -2842,14 +2902,37 @@ canvas.drawFilledRectangleCenter(center, size);
 [source,js]
 ----
 canvas.drawFilledRoundedRectangle(topLeft, size, radius);
+// or
+canvas.drawFilledRoundedRectangle(x, y, width, height, radius);
 ----
 
 * *Description:* Draws a filled rounded rectangle.
 * *Parameters:*
-** `+topLeft+` (Vector2): The top-left corner position.
-** `+size+` (Vector2): The width and height.
-** `+radius+` (Vector4): The corner radii (top-left, top-right, bottom-right, bottom-left).
+** *Option A:*
+*** `+topLeft+` (Vector2): The top-left corner position.
+*** `+size+` (Vector2): The width and height.
+*** `+radius+` (number): The corner radius for all corners.
+** or *Option B:*
+*** `+x+` (number): The left X coordinate.
+*** `+y+` (number): The top Y coordinate.
+*** `+width+` (number): The rectangle width.
+*** `+height+` (number): The rectangle height.
+*** `+radius+` (number): The corner radius for all corners.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Vector2:
+canvas.drawFilledRoundedRectangle(
+  Vector2.create(50, 50), 
+  Vector2.create(200, 100), 
+  15
+);
+
+// or using individual numbers:
+canvas.drawFilledRoundedRectangle(50, 50, 200, 100, 15);
+----
 
 '''''
 
@@ -2860,106 +2943,280 @@ canvas.drawFilledRoundedRectangle(topLeft, size, radius);
 [source,js]
 ----
 canvas.drawFilledRoundedRectangleCenter(center, size, radius);
+// or
+canvas.drawFilledRoundedRectangleCenter(centerX, centerY, width, height, radius);
 ----
 
 * *Description:* Draws a filled rounded rectangle centered at the specified position.
 * *Parameters:*
-** `+center+` (Vector2): The center position.
-** `+size+` (Vector2): The width and height.
-** `+radius+` (Vector4): The corner radii.
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+size+` (Vector2): The width and height.
+*** `+radius+` (number): The corner radius for all corners.
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+width+` (number): The rectangle width.
+*** `+height+` (number): The rectangle height.
+*** `+radius+` (number): The corner radius for all corners.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Vector2:
+canvas.drawFilledRoundedRectangleCenter(Vector2.create(200, 150), Vector2.create(100, 80), 10);
+
+// or using individual numbers:
+canvas.drawFilledRoundedRectangleCenter(200, 150, 100, 80, 10);
+----
 
 '''''
 
-==== drawFilledCircleArcRingSegment(center, startAngle, endAngle, innerRadius, outerRadius)
+==== drawFilledCircleArcRingSegment(center, innerRadius, outerRadius, startAngle, endAngle, gapThickness)
 
 *Usage:*
 
 [source,js]
 ----
-canvas.drawFilledCircleArcRingSegment(center, startAngle, endAngle, innerRadius, outerRadius);
+canvas.drawFilledCircleArcRingSegment(center, innerRadius, outerRadius, startAngle, endAngle, gapThickness);
+// or
+canvas.drawFilledCircleArcRingSegment(centerX, centerY, innerRadius, outerRadius, startAngle, endAngle, gapThickness);
 ----
 
 * *Description:* Draws a filled circular arc ring segment (like a pie slice).
 * *Parameters:*
-** `+center+` (Vector2): The center position.
-** `+startAngle+` (number): The start angle in radians.
-** `+endAngle+` (number): The end angle in radians.
-** `+innerRadius+` (number): The inner radius.
-** `+outerRadius+` (number): The outer radius.
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+innerRadius+` (number): The inner radius.
+*** `+outerRadius+` (number): The outer radius.
+*** `+startAngle+` (number): The start angle in radians.
+*** `+endAngle+` (number): The end angle in radians.
+*** `+gapThickness+` (number): Gap thickness (default: 0.0).
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+innerRadius+` (number): The inner radius.
+*** `+outerRadius+` (number): The outer radius.
+*** `+startAngle+` (number): The start angle in radians.
+*** `+endAngle+` (number): The end angle in radians.
+*** `+gapThickness+` (number): Gap thickness (default: 0.0).
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Draw a quarter-circle ring using Vector2:
+canvas.drawFilledCircleArcRingSegment(
+  Vector2.create(200, 200), 
+  30, 50, 
+  0, Math.PI / 2, 
+  0
+);
+
+// or using individual numbers:
+canvas.drawFilledCircleArcRingSegment(200, 200, 30, 50, 0, Math.PI / 2, 0);
+----
 
 '''''
 
-==== drawTexturedRectangle(topLeft, size)
+==== drawTexturedRectangle(texture, topLeft, size, rotationAngle, textureArrayLayer)
 
 *Usage:*
 
 [source,js]
 ----
-canvas.drawTexturedRectangle(topLeft, size);
+canvas.drawTexturedRectangle(texture, topLeft, size, rotationAngle, textureArrayLayer);
+// or
+canvas.drawTexturedRectangle(texture, x, y, width, height, rotationAngle, textureArrayLayer);
 ----
 
-* *Description:* Draws a textured rectangle using the current texture.
+* *Description:* Draws a textured rectangle using the specified texture.
 * *Parameters:*
-** `+topLeft+` (Vector2): The top-left corner position.
-** `+size+` (Vector2): The width and height.
+** *Option A:*
+*** `+texture+` (Texture): The texture to use.
+*** `+topLeft+` (Vector2): The top-left corner position.
+*** `+size+` (Vector2): The width and height.
+*** `+rotationAngle+` (number): Rotation angle in radians (default: 0.0).
+*** `+textureArrayLayer+` (number): Texture array layer index (default: 0).
+** or *Option B:*
+*** `+texture+` (Texture): The texture to use.
+*** `+x+` (number): The left X coordinate.
+*** `+y+` (number): The top Y coordinate.
+*** `+width+` (number): The rectangle width.
+*** `+height+` (number): The rectangle height.
+*** `+rotationAngle+` (number): Rotation angle in radians (default: 0.0).
+*** `+textureArrayLayer+` (number): Texture array layer index (default: 0).
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+let texture = Texture.create("background.png");
+
+// Using Vector2:
+canvas.drawTexturedRectangle(
+  texture,
+  Vector2.create(0, 0), 
+  Vector2.create(800, 600),
+  0, 0
+);
+
+// or using individual numbers:
+canvas.drawTexturedRectangle(texture, 0, 0, 800, 600, 0, 0);
+----
 
 '''''
 
-==== drawTexturedRectangleCenter(center, size)
+==== drawTexturedRectangleCenter(texture, center, size, rotationAngle, textureArrayLayer)
 
 *Usage:*
 
 [source,js]
 ----
-canvas.drawTexturedRectangleCenter(center, size);
+canvas.drawTexturedRectangleCenter(texture, center, size, rotationAngle, textureArrayLayer);
+// or
+canvas.drawTexturedRectangleCenter(texture, centerX, centerY, width, height, rotationAngle, textureArrayLayer);
 ----
 
 * *Description:* Draws a textured rectangle centered at the specified position.
 * *Parameters:*
-** `+center+` (Vector2): The center position.
-** `+size+` (Vector2): The width and height.
+** *Option A:*
+*** `+texture+` (Texture): The texture to use.
+*** `+center+` (Vector2): The center position.
+*** `+size+` (Vector2): The width and height.
+*** `+rotationAngle+` (number): Rotation angle in radians (default: 0.0).
+*** `+textureArrayLayer+` (number): Texture array layer index (default: 0).
+** or *Option B:*
+*** `+texture+` (Texture): The texture to use.
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+width+` (number): The rectangle width.
+*** `+height+` (number): The rectangle height.
+*** `+rotationAngle+` (number): Rotation angle in radians (default: 0.0).
+*** `+textureArrayLayer+` (number): Texture array layer index (default: 0).
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+let texture = Texture.create("sprite.png");
+
+// Using Vector2:
+canvas.drawTexturedRectangleCenter(
+  texture,
+  Vector2.create(400, 300), 
+  Vector2.create(64, 64),
+  Math.PI / 4, 0
+);
+
+// or using individual numbers:
+canvas.drawTexturedRectangleCenter(texture, 400, 300, 64, 64, Math.PI / 4, 0);
+----
 
 '''''
 
-==== drawSprite(sprite, position, size)
+==== drawSprite(sprite, srcPosition, srcSize, destPosition, destSize)
 
 *Usage:*
 
 [source,js]
 ----
-canvas.drawSprite(sprite, position, size);
+canvas.drawSprite(sprite, srcPosition, srcSize, destPosition, destSize);
+// or
+canvas.drawSprite(sprite, srcX, srcY, srcWidth, srcHeight, destX, destY, destWidth, destHeight);
 ----
 
-* *Description:* Draws a sprite at the specified position.
+* *Description:* Draws a sprite from a source rectangle to a destination rectangle.
 * *Parameters:*
-** `+sprite+` (Sprite): The sprite to draw.
-** `+position+` (Vector2): The position to draw at.
-** `+size+` (Vector2): The size to draw (optional, uses sprite size if omitted).
+** *Option A:*
+*** `+sprite+` (Sprite): The sprite to draw.
+*** `+srcPosition+` (Vector2): The source position in the sprite.
+*** `+srcSize+` (Vector2): The source size to copy from the sprite.
+*** `+destPosition+` (Vector2): The destination position on the canvas.
+*** `+destSize+` (Vector2): The destination size on the canvas.
+** or *Option B:*
+*** `+sprite+` (Sprite): The sprite to draw.
+*** `+srcX+` (number): The source X position in the sprite.
+*** `+srcY+` (number): The source Y position in the sprite.
+*** `+srcWidth+` (number): The source width to copy from the sprite.
+*** `+srcHeight+` (number): The source height to copy from the sprite.
+*** `+destX+` (number): The destination X position on the canvas.
+*** `+destY+` (number): The destination Y position on the canvas.
+*** `+destWidth+` (number): The destination width on the canvas.
+*** `+destHeight+` (number): The destination height on the canvas.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+let sprite = Sprite.create("characters.png");
+
+// Using Vector2 (copy 32x32 region from (0,0) to 64x64 at (100,100)):
+canvas.drawSprite(
+  sprite,
+  Vector2.create(0, 0), Vector2.create(32, 32),
+  Vector2.create(100, 100), Vector2.create(64, 64)
+);
+
+// or using individual numbers:
+canvas.drawSprite(sprite, 0, 0, 32, 32, 100, 100, 64, 64);
+----
 
 '''''
 
-==== drawSpriteOriginRotation(sprite, position, origin, rotation, size)
+==== drawSpriteOriginRotation(sprite, srcPosition, srcSize, destPosition, destSize, origin, rotation)
 
 *Usage:*
 
 [source,js]
 ----
-canvas.drawSpriteOriginRotation(sprite, position, origin, rotation, size);
+canvas.drawSpriteOriginRotation(sprite, srcPosition, srcSize, destPosition, destSize, origin, rotation);
+// or
+canvas.drawSpriteOriginRotation(sprite, srcX, srcY, srcWidth, srcHeight, destX, destY, destWidth, destHeight, originX, originY, rotation);
 ----
 
-* *Description:* Draws a sprite with custom origin and rotation.
+* *Description:* Draws a sprite with custom origin and rotation from a source rectangle to a destination rectangle.
 * *Parameters:*
-** `+sprite+` (Sprite): The sprite to draw.
-** `+position+` (Vector2): The position to draw at.
-** `+origin+` (Vector2): The origin point for rotation (0-1 normalized).
-** `+rotation+` (number): The rotation angle in radians.
-** `+size+` (Vector2): The size to draw.
+** *Option A:*
+*** `+sprite+` (Sprite): The sprite to draw.
+*** `+srcPosition+` (Vector2): The source position in the sprite.
+*** `+srcSize+` (Vector2): The source size to copy from the sprite.
+*** `+destPosition+` (Vector2): The destination position on the canvas.
+*** `+destSize+` (Vector2): The destination size on the canvas.
+*** `+origin+` (Vector2): The origin point for rotation (in sprite coordinates).
+*** `+rotation+` (number): The rotation angle in radians.
+** or *Option B:*
+*** `+sprite+` (Sprite): The sprite to draw.
+*** `+srcX+` (number): The source X position in the sprite.
+*** `+srcY+` (number): The source Y position in the sprite.
+*** `+srcWidth+` (number): The source width to copy from the sprite.
+*** `+srcHeight+` (number): The source height to copy from the sprite.
+*** `+destX+` (number): The destination X position on the canvas.
+*** `+destY+` (number): The destination Y position on the canvas.
+*** `+destWidth+` (number): The destination width on the canvas.
+*** `+destHeight+` (number): The destination height on the canvas.
+*** `+originX+` (number): The origin X coordinate for rotation.
+*** `+originY+` (number): The origin Y coordinate for rotation.
+*** `+rotation+` (number): The rotation angle in radians.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+let sprite = Sprite.create("player.png");
+
+// Using Vector2 (rotate around center):
+canvas.drawSpriteOriginRotation(
+  sprite,
+  Vector2.create(0, 0), Vector2.create(32, 32),
+  Vector2.create(100, 100), Vector2.create(64, 64),
+  Vector2.create(16, 16), Math.PI / 4
+);
+
+// or using individual numbers:
+canvas.drawSpriteOriginRotation(sprite, 0, 0, 32, 32, 100, 100, 64, 64, 16, 16, Math.PI / 4);
+----
 
 '''''
 
@@ -2970,13 +3227,32 @@ canvas.drawSpriteOriginRotation(sprite, position, origin, rotation, size);
 [source,js]
 ----
 canvas.drawSpritePosition(sprite, position);
+// or
+canvas.drawSpritePosition(sprite, x, y);
 ----
 
 * *Description:* Draws a sprite at the specified position with its default size.
 * *Parameters:*
-** `+sprite+` (Sprite): The sprite to draw.
-** `+position+` (Vector2): The position to draw at.
+** *Option A:*
+*** `+sprite+` (Sprite): The sprite to draw.
+*** `+position+` (Vector2): The position to draw at.
+** or *Option B:*
+*** `+sprite+` (Sprite): The sprite to draw.
+*** `+x+` (number): The X coordinate to draw at.
+*** `+y+` (number): The Y coordinate to draw at.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+let sprite = Sprite.create("icon.png");
+
+// Using Vector2:
+canvas.drawSpritePosition(sprite, Vector2.create(50, 100));
+
+// or using individual numbers:
+canvas.drawSpritePosition(sprite, 50, 100);
+----
 
 '''''
 

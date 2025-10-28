@@ -743,11 +743,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_drawfilledrectanglecentercenter_size">drawFilledRectangleCenter(center, size)</a></li>
 <li><a href="#_drawfilledroundedrectangletopleft_size_radius">drawFilledRoundedRectangle(topLeft, size, radius)</a></li>
 <li><a href="#_drawfilledroundedrectanglecentercenter_size_radius">drawFilledRoundedRectangleCenter(center, size, radius)</a></li>
-<li><a href="#_drawfilledcirclearcringsegmentcenter_startangle_endangle_innerradius_outerradius">drawFilledCircleArcRingSegment(center, startAngle, endAngle, innerRadius, outerRadius)</a></li>
-<li><a href="#_drawtexturedrectangletopleft_size">drawTexturedRectangle(topLeft, size)</a></li>
-<li><a href="#_drawtexturedrectanglecentercenter_size">drawTexturedRectangleCenter(center, size)</a></li>
-<li><a href="#_drawspritesprite_position_size">drawSprite(sprite, position, size)</a></li>
-<li><a href="#_drawspriteoriginrotationsprite_position_origin_rotation_size">drawSpriteOriginRotation(sprite, position, origin, rotation, size)</a></li>
+<li><a href="#_drawfilledcirclearcringsegmentcenter_innerradius_outerradius_startangle_endangle_gapthickness">drawFilledCircleArcRingSegment(center, innerRadius, outerRadius, startAngle, endAngle, gapThickness)</a></li>
+<li><a href="#_drawtexturedrectangletexture_topleft_size_rotationangle_texturearraylayer">drawTexturedRectangle(texture, topLeft, size, rotationAngle, textureArrayLayer)</a></li>
+<li><a href="#_drawtexturedrectanglecentertexture_center_size_rotationangle_texturearraylayer">drawTexturedRectangleCenter(texture, center, size, rotationAngle, textureArrayLayer)</a></li>
+<li><a href="#_drawspritesprite_srcposition_srcsize_destposition_destsize">drawSprite(sprite, srcPosition, srcSize, destPosition, destSize)</a></li>
+<li><a href="#_drawspriteoriginrotationsprite_srcposition_srcsize_destposition_destsize_origin_rotation">drawSpriteOriginRotation(sprite, srcPosition, srcSize, destPosition, destSize, origin, rotation)</a></li>
 <li><a href="#_drawspritepositionsprite_position">drawSpritePosition(sprite, position)</a></li>
 </ul>
 </li>
@@ -5863,7 +5863,9 @@ shape.destroy();</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledCircle(center, radius);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledCircle(center, radius);
+// or
+canvas.drawFilledCircle(centerX, centerY, radius);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -5876,10 +5878,33 @@ shape.destroy();</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>center</code> (Vector2): The center position.</p>
 </li>
 <li>
 <p><code>radius</code> (number): The circle radius.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>centerX</code> (number): The center X coordinate.</p>
+</li>
+<li>
+<p><code>centerY</code> (number): The center Y coordinate.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The circle radius.</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
@@ -5892,7 +5917,12 @@ shape.destroy();</code></pre>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red
-canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
+
+// Using Vector2:
+canvas.drawFilledCircle(Vector2.create(100, 100), 50);
+
+// or using individual numbers:
+canvas.drawFilledCircle(100, 100, 50);</code></pre>
 </div>
 </div>
 </li>
@@ -5907,7 +5937,9 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledEllipse(center, radius);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledEllipse(center, radius);
+// or
+canvas.drawFilledEllipse(centerX, centerY, radiusX, radiusY);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -5920,6 +5952,10 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>center</code> (Vector2): The center position.</p>
 </li>
 <li>
@@ -5929,7 +5965,41 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>centerX</code> (number): The center X coordinate.</p>
+</li>
+<li>
+<p><code>centerY</code> (number): The center Y coordinate.</p>
+</li>
+<li>
+<p><code>radiusX</code> (number): The X radius.</p>
+</li>
+<li>
+<p><code>radiusY</code> (number): The Y radius.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Vector2:
+canvas.drawFilledEllipse(Vector2.create(100, 100), Vector2.create(80, 40));
+
+// or using individual numbers:
+canvas.drawFilledEllipse(100, 100, 80, 40);</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -5942,7 +6012,9 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRectangle(topLeft, size);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRectangle(topLeft, size);
+// or
+canvas.drawFilledRectangle(x, y, width, height);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -5955,10 +6027,36 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>topLeft</code> (Vector2): The top-left corner position.</p>
 </li>
 <li>
 <p><code>size</code> (Vector2): The width and height.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code> (number): The left X coordinate.</p>
+</li>
+<li>
+<p><code>y</code> (number): The top Y coordinate.</p>
+</li>
+<li>
+<p><code>width</code> (number): The rectangle width.</p>
+</li>
+<li>
+<p><code>height</code> (number): The rectangle height.</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
@@ -5970,10 +6068,14 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <p><strong>Example:</strong></p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRectangle(
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Vector2:
+canvas.drawFilledRectangle(
   Vector2.create(50, 50),
   Vector2.create(100, 80)
-);</code></pre>
+);
+
+// or using individual numbers:
+canvas.drawFilledRectangle(50, 50, 100, 80);</code></pre>
 </div>
 </div>
 </li>
@@ -5988,7 +6090,9 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRectangleCenter(center, size);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRectangleCenter(center, size);
+// or
+canvas.drawFilledRectangleCenter(centerX, centerY, width, height);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -6001,6 +6105,10 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>center</code> (Vector2): The center position.</p>
 </li>
 <li>
@@ -6010,7 +6118,41 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>centerX</code> (number): The center X coordinate.</p>
+</li>
+<li>
+<p><code>centerY</code> (number): The center Y coordinate.</p>
+</li>
+<li>
+<p><code>width</code> (number): The rectangle width.</p>
+</li>
+<li>
+<p><code>height</code> (number): The rectangle height.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Vector2:
+canvas.drawFilledRectangleCenter(Vector2.create(200, 150), Vector2.create(100, 80));
+
+// or using individual numbers:
+canvas.drawFilledRectangleCenter(200, 150, 100, 80);</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -6023,7 +6165,9 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRoundedRectangle(topLeft, size, radius);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRoundedRectangle(topLeft, size, radius);
+// or
+canvas.drawFilledRoundedRectangle(x, y, width, height, radius);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -6036,19 +6180,64 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>topLeft</code> (Vector2): The top-left corner position.</p>
 </li>
 <li>
 <p><code>size</code> (Vector2): The width and height.</p>
 </li>
 <li>
-<p><code>radius</code> (Vector4): The corner radii (top-left, top-right, bottom-right, bottom-left).</p>
+<p><code>radius</code> (number): The corner radius for all corners.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code> (number): The left X coordinate.</p>
+</li>
+<li>
+<p><code>y</code> (number): The top Y coordinate.</p>
+</li>
+<li>
+<p><code>width</code> (number): The rectangle width.</p>
+</li>
+<li>
+<p><code>height</code> (number): The rectangle height.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The corner radius for all corners.</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
 </li>
 <li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Vector2:
+canvas.drawFilledRoundedRectangle(
+  Vector2.create(50, 50),
+  Vector2.create(200, 100),
+  15
+);
+
+// or using individual numbers:
+canvas.drawFilledRoundedRectangle(50, 50, 200, 100, 15);</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -6061,7 +6250,9 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRoundedRectangleCenter(center, size, radius);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledRoundedRectangleCenter(center, size, radius);
+// or
+canvas.drawFilledRoundedRectangleCenter(centerX, centerY, width, height, radius);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -6074,13 +6265,42 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>center</code> (Vector2): The center position.</p>
 </li>
 <li>
 <p><code>size</code> (Vector2): The width and height.</p>
 </li>
 <li>
-<p><code>radius</code> (Vector4): The corner radii.</p>
+<p><code>radius</code> (number): The corner radius for all corners.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>centerX</code> (number): The center X coordinate.</p>
+</li>
+<li>
+<p><code>centerY</code> (number): The center Y coordinate.</p>
+</li>
+<li>
+<p><code>width</code> (number): The rectangle width.</p>
+</li>
+<li>
+<p><code>height</code> (number): The rectangle height.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The corner radius for all corners.</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
@@ -6088,18 +6308,32 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
 </li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Vector2:
+canvas.drawFilledRoundedRectangleCenter(Vector2.create(200, 150), Vector2.create(100, 80), 10);
+
+// or using individual numbers:
+canvas.drawFilledRoundedRectangleCenter(200, 150, 100, 80, 10);</code></pre>
+</div>
+</div>
+</li>
 </ul>
 </div>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_drawfilledcirclearcringsegmentcenter_startangle_endangle_innerradius_outerradius">drawFilledCircleArcRingSegment(center, startAngle, endAngle, innerRadius, outerRadius)</h4>
+<h4 id="_drawfilledcirclearcringsegmentcenter_innerradius_outerradius_startangle_endangle_gapthickness">drawFilledCircleArcRingSegment(center, innerRadius, outerRadius, startAngle, endAngle, gapThickness)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledCircleArcRingSegment(center, startAngle, endAngle, innerRadius, outerRadius);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawFilledCircleArcRingSegment(center, innerRadius, outerRadius, startAngle, endAngle, gapThickness);
+// or
+canvas.drawFilledCircleArcRingSegment(centerX, centerY, innerRadius, outerRadius, startAngle, endAngle, gapThickness);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -6112,7 +6346,17 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>center</code> (Vector2): The center position.</p>
+</li>
+<li>
+<p><code>innerRadius</code> (number): The inner radius.</p>
+</li>
+<li>
+<p><code>outerRadius</code> (number): The outer radius.</p>
 </li>
 <li>
 <p><code>startAngle</code> (number): The start angle in radians.</p>
@@ -6121,10 +6365,38 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <p><code>endAngle</code> (number): The end angle in radians.</p>
 </li>
 <li>
+<p><code>gapThickness</code> (number): Gap thickness (default: 0.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>centerX</code> (number): The center X coordinate.</p>
+</li>
+<li>
+<p><code>centerY</code> (number): The center Y coordinate.</p>
+</li>
+<li>
 <p><code>innerRadius</code> (number): The inner radius.</p>
 </li>
 <li>
 <p><code>outerRadius</code> (number): The outer radius.</p>
+</li>
+<li>
+<p><code>startAngle</code> (number): The start angle in radians.</p>
+</li>
+<li>
+<p><code>endAngle</code> (number): The end angle in radians.</p>
+</li>
+<li>
+<p><code>gapThickness</code> (number): Gap thickness (default: 0.0).</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
@@ -6132,34 +6404,97 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
 </li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Draw a quarter-circle ring using Vector2:
+canvas.drawFilledCircleArcRingSegment(
+  Vector2.create(200, 200),
+  30, 50,
+  0, Math.PI / 2,
+  0
+);
+
+// or using individual numbers:
+canvas.drawFilledCircleArcRingSegment(200, 200, 30, 50, 0, Math.PI / 2, 0);</code></pre>
+</div>
+</div>
+</li>
 </ul>
 </div>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_drawtexturedrectangletopleft_size">drawTexturedRectangle(topLeft, size)</h4>
+<h4 id="_drawtexturedrectangletexture_topleft_size_rotationangle_texturearraylayer">drawTexturedRectangle(texture, topLeft, size, rotationAngle, textureArrayLayer)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawTexturedRectangle(topLeft, size);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawTexturedRectangle(texture, topLeft, size, rotationAngle, textureArrayLayer);
+// or
+canvas.drawTexturedRectangle(texture, x, y, width, height, rotationAngle, textureArrayLayer);</code></pre>
 </div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Draws a textured rectangle using the current texture.</p>
+<p><strong>Description:</strong> Draws a textured rectangle using the specified texture.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>texture</code> (Texture): The texture to use.</p>
+</li>
+<li>
 <p><code>topLeft</code> (Vector2): The top-left corner position.</p>
 </li>
 <li>
 <p><code>size</code> (Vector2): The width and height.</p>
+</li>
+<li>
+<p><code>rotationAngle</code> (number): Rotation angle in radians (default: 0.0).</p>
+</li>
+<li>
+<p><code>textureArrayLayer</code> (number): Texture array layer index (default: 0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>texture</code> (Texture): The texture to use.</p>
+</li>
+<li>
+<p><code>x</code> (number): The left X coordinate.</p>
+</li>
+<li>
+<p><code>y</code> (number): The top Y coordinate.</p>
+</li>
+<li>
+<p><code>width</code> (number): The rectangle width.</p>
+</li>
+<li>
+<p><code>height</code> (number): The rectangle height.</p>
+</li>
+<li>
+<p><code>rotationAngle</code> (number): Rotation angle in radians (default: 0.0).</p>
+</li>
+<li>
+<p><code>textureArrayLayer</code> (number): Texture array layer index (default: 0).</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
@@ -6167,18 +6502,39 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
 </li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let texture = Texture.create("background.png");
+
+// Using Vector2:
+canvas.drawTexturedRectangle(
+  texture,
+  Vector2.create(0, 0),
+  Vector2.create(800, 600),
+  0, 0
+);
+
+// or using individual numbers:
+canvas.drawTexturedRectangle(texture, 0, 0, 800, 600, 0, 0);</code></pre>
+</div>
+</div>
+</li>
 </ul>
 </div>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_drawtexturedrectanglecentercenter_size">drawTexturedRectangleCenter(center, size)</h4>
+<h4 id="_drawtexturedrectanglecentertexture_center_size_rotationangle_texturearraylayer">drawTexturedRectangleCenter(texture, center, size, rotationAngle, textureArrayLayer)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawTexturedRectangleCenter(center, size);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawTexturedRectangleCenter(texture, center, size, rotationAngle, textureArrayLayer);
+// or
+canvas.drawTexturedRectangleCenter(texture, centerX, centerY, width, height, rotationAngle, textureArrayLayer);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -6191,48 +6547,160 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>texture</code> (Texture): The texture to use.</p>
+</li>
+<li>
 <p><code>center</code> (Vector2): The center position.</p>
 </li>
 <li>
 <p><code>size</code> (Vector2): The width and height.</p>
 </li>
+<li>
+<p><code>rotationAngle</code> (number): Rotation angle in radians (default: 0.0).</p>
+</li>
+<li>
+<p><code>textureArrayLayer</code> (number): Texture array layer index (default: 0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>texture</code> (Texture): The texture to use.</p>
+</li>
+<li>
+<p><code>centerX</code> (number): The center X coordinate.</p>
+</li>
+<li>
+<p><code>centerY</code> (number): The center Y coordinate.</p>
+</li>
+<li>
+<p><code>width</code> (number): The rectangle width.</p>
+</li>
+<li>
+<p><code>height</code> (number): The rectangle height.</p>
+</li>
+<li>
+<p><code>rotationAngle</code> (number): Rotation angle in radians (default: 0.0).</p>
+</li>
+<li>
+<p><code>textureArrayLayer</code> (number): Texture array layer index (default: 0).</p>
+</li>
+</ul>
+</div>
+</li>
 </ul>
 </div>
 </li>
 <li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
 </li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let texture = Texture.create("sprite.png");
+
+// Using Vector2:
+canvas.drawTexturedRectangleCenter(
+  texture,
+  Vector2.create(400, 300),
+  Vector2.create(64, 64),
+  Math.PI / 4, 0
+);
+
+// or using individual numbers:
+canvas.drawTexturedRectangleCenter(texture, 400, 300, 64, 64, Math.PI / 4, 0);</code></pre>
+</div>
+</div>
+</li>
 </ul>
 </div>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_drawspritesprite_position_size">drawSprite(sprite, position, size)</h4>
+<h4 id="_drawspritesprite_srcposition_srcsize_destposition_destsize">drawSprite(sprite, srcPosition, srcSize, destPosition, destSize)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawSprite(sprite, position, size);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawSprite(sprite, srcPosition, srcSize, destPosition, destSize);
+// or
+canvas.drawSprite(sprite, srcX, srcY, srcWidth, srcHeight, destX, destY, destWidth, destHeight);</code></pre>
 </div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Draws a sprite at the specified position.</p>
+<p><strong>Description:</strong> Draws a sprite from a source rectangle to a destination rectangle.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>sprite</code> (Sprite): The sprite to draw.</p>
 </li>
 <li>
-<p><code>position</code> (Vector2): The position to draw at.</p>
+<p><code>srcPosition</code> (Vector2): The source position in the sprite.</p>
 </li>
 <li>
-<p><code>size</code> (Vector2): The size to draw (optional, uses sprite size if omitted).</p>
+<p><code>srcSize</code> (Vector2): The source size to copy from the sprite.</p>
+</li>
+<li>
+<p><code>destPosition</code> (Vector2): The destination position on the canvas.</p>
+</li>
+<li>
+<p><code>destSize</code> (Vector2): The destination size on the canvas.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sprite</code> (Sprite): The sprite to draw.</p>
+</li>
+<li>
+<p><code>srcX</code> (number): The source X position in the sprite.</p>
+</li>
+<li>
+<p><code>srcY</code> (number): The source Y position in the sprite.</p>
+</li>
+<li>
+<p><code>srcWidth</code> (number): The source width to copy from the sprite.</p>
+</li>
+<li>
+<p><code>srcHeight</code> (number): The source height to copy from the sprite.</p>
+</li>
+<li>
+<p><code>destX</code> (number): The destination X position on the canvas.</p>
+</li>
+<li>
+<p><code>destY</code> (number): The destination Y position on the canvas.</p>
+</li>
+<li>
+<p><code>destWidth</code> (number): The destination width on the canvas.</p>
+</li>
+<li>
+<p><code>destHeight</code> (number): The destination height on the canvas.</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
@@ -6240,49 +6708,144 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
 </li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let sprite = Sprite.create("characters.png");
+
+// Using Vector2 (copy 32x32 region from (0,0) to 64x64 at (100,100)):
+canvas.drawSprite(
+  sprite,
+  Vector2.create(0, 0), Vector2.create(32, 32),
+  Vector2.create(100, 100), Vector2.create(64, 64)
+);
+
+// or using individual numbers:
+canvas.drawSprite(sprite, 0, 0, 32, 32, 100, 100, 64, 64);</code></pre>
+</div>
+</div>
+</li>
 </ul>
 </div>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_drawspriteoriginrotationsprite_position_origin_rotation_size">drawSpriteOriginRotation(sprite, position, origin, rotation, size)</h4>
+<h4 id="_drawspriteoriginrotationsprite_srcposition_srcsize_destposition_destsize_origin_rotation">drawSpriteOriginRotation(sprite, srcPosition, srcSize, destPosition, destSize, origin, rotation)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawSpriteOriginRotation(sprite, position, origin, rotation, size);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawSpriteOriginRotation(sprite, srcPosition, srcSize, destPosition, destSize, origin, rotation);
+// or
+canvas.drawSpriteOriginRotation(sprite, srcX, srcY, srcWidth, srcHeight, destX, destY, destWidth, destHeight, originX, originY, rotation);</code></pre>
 </div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Draws a sprite with custom origin and rotation.</p>
+<p><strong>Description:</strong> Draws a sprite with custom origin and rotation from a source rectangle to a destination rectangle.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>sprite</code> (Sprite): The sprite to draw.</p>
 </li>
 <li>
-<p><code>position</code> (Vector2): The position to draw at.</p>
+<p><code>srcPosition</code> (Vector2): The source position in the sprite.</p>
 </li>
 <li>
-<p><code>origin</code> (Vector2): The origin point for rotation (0-1 normalized).</p>
+<p><code>srcSize</code> (Vector2): The source size to copy from the sprite.</p>
+</li>
+<li>
+<p><code>destPosition</code> (Vector2): The destination position on the canvas.</p>
+</li>
+<li>
+<p><code>destSize</code> (Vector2): The destination size on the canvas.</p>
+</li>
+<li>
+<p><code>origin</code> (Vector2): The origin point for rotation (in sprite coordinates).</p>
 </li>
 <li>
 <p><code>rotation</code> (number): The rotation angle in radians.</p>
 </li>
+</ul>
+</div>
+</li>
 <li>
-<p><code>size</code> (Vector2): The size to draw.</p>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sprite</code> (Sprite): The sprite to draw.</p>
+</li>
+<li>
+<p><code>srcX</code> (number): The source X position in the sprite.</p>
+</li>
+<li>
+<p><code>srcY</code> (number): The source Y position in the sprite.</p>
+</li>
+<li>
+<p><code>srcWidth</code> (number): The source width to copy from the sprite.</p>
+</li>
+<li>
+<p><code>srcHeight</code> (number): The source height to copy from the sprite.</p>
+</li>
+<li>
+<p><code>destX</code> (number): The destination X position on the canvas.</p>
+</li>
+<li>
+<p><code>destY</code> (number): The destination Y position on the canvas.</p>
+</li>
+<li>
+<p><code>destWidth</code> (number): The destination width on the canvas.</p>
+</li>
+<li>
+<p><code>destHeight</code> (number): The destination height on the canvas.</p>
+</li>
+<li>
+<p><code>originX</code> (number): The origin X coordinate for rotation.</p>
+</li>
+<li>
+<p><code>originY</code> (number): The origin Y coordinate for rotation.</p>
+</li>
+<li>
+<p><code>rotation</code> (number): The rotation angle in radians.</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
 </li>
 <li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let sprite = Sprite.create("player.png");
+
+// Using Vector2 (rotate around center):
+canvas.drawSpriteOriginRotation(
+  sprite,
+  Vector2.create(0, 0), Vector2.create(32, 32),
+  Vector2.create(100, 100), Vector2.create(64, 64),
+  Vector2.create(16, 16), Math.PI / 4
+);
+
+// or using individual numbers:
+canvas.drawSpriteOriginRotation(sprite, 0, 0, 32, 32, 100, 100, 64, 64, 16, 16, Math.PI / 4);</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -6295,7 +6858,9 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawSpritePosition(sprite, position);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawSpritePosition(sprite, position);
+// or
+canvas.drawSpritePosition(sprite, x, y);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -6308,6 +6873,10 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>sprite</code> (Sprite): The sprite to draw.</p>
 </li>
 <li>
@@ -6317,7 +6886,40 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sprite</code> (Sprite): The sprite to draw.</p>
+</li>
+<li>
+<p><code>x</code> (number): The X coordinate to draw at.</p>
+</li>
+<li>
+<p><code>y</code> (number): The Y coordinate to draw at.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let sprite = Sprite.create("icon.png");
+
+// Using Vector2:
+canvas.drawSpritePosition(sprite, Vector2.create(50, 100));
+
+// or using individual numbers:
+canvas.drawSpritePosition(sprite, 50, 100);</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -11862,7 +12464,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 21:04:10 +0100
+Last updated 2025-10-28 21:59:52 +0100
 </div>
 </div>
 </body>
