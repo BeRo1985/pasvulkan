@@ -3443,91 +3443,1022 @@ canvas.flush();
 
 === Canvas Properties (Getters and Setters)
 
-==== Clipping
+==== getClipRect()
 
-* `+getClipRect()+`: Returns the current clipping rectangle.
-* `+setClipRect(rect)+`: Sets the clipping rectangle.
-* `+setScissor(rect)+`: Sets the scissor rectangle.
+*Usage:*
 
-==== Blending
+[source,js]
+----
+let rect = canvas.getClipRect();
+----
 
-* `+getBlendingMode()+`: Returns the current blending mode.
-* `+setBlendingMode(mode)+`: Sets the blending mode (see Canvas.BlendingMode).
+* *Description:* Returns the current clipping rectangle as a Vector4 (x, y, width, height).
+* *Parameters:* None.
+* *Return Value:* Vector4 representing the clipping rectangle.
+* *Example:*
++
+[source,js]
+----
+let clipRect = canvas.getClipRect();
+puts("Clip rect: " + clipRect.toString());
+----
 
-==== Line Style
+'''''
 
-* `+getLineCap()+`: Returns the current line cap style.
-* `+setLineCap(cap)+`: Sets the line cap (see Canvas.LineCap).
-* `+getLineJoin()+`: Returns the current line join style.
-* `+setLineJoin(join)+`: Sets the line join (see Canvas.LineJoin).
-* `+getLineWidth()+`: Returns the current line width.
-* `+setLineWidth(width)+`: Sets the line width.
-* `+getMiterLimit()+`: Returns the current miter limit.
-* `+setMiterLimit(limit)+`: Sets the miter limit.
+==== setClipRect()
 
-==== Z-Position
+*Usage:*
 
-* `+getZPosition()+`: Returns the current Z position.
-* `+setZPosition(z)+`: Sets the Z position for depth sorting.
+[source,js]
+----
+canvas.setClipRect(leftTop, widthHeight);
+----
 
-==== Text Alignment
+* *Description:* Sets the clipping rectangle to restrict rendering to a specific area.
+* *Parameters:*
+** `+leftTop+` (Vector2): Top-left corner position
+** `+widthHeight+` (Vector2): Width and height
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setClipRect(Vector2.create(10, 10), Vector2.create(200, 150));
+canvas.drawFilledRectangle(Vector2.create(0, 0), Vector2.create(300, 300));
+// Only the portion within the clip rect is drawn
+----
 
-* `+getTextHorizontalAlignment()+`: Returns horizontal text alignment.
-* `+setTextHorizontalAlignment(alignment)+`: Sets horizontal alignment (see Canvas.TextHorizontalAlignment).
-* `+getTextVerticalAlignment()+`: Returns vertical text alignment.
-* `+setTextVerticalAlignment(alignment)+`: Sets vertical alignment (see Canvas.TextVerticalAlignment).
+'''''
 
-==== Font
+==== setScissor()
 
-* `+getFont()+`: Returns the current font.
-* `+setFont(font)+`: Sets the current font.
-* `+getFontSize()+`: Returns the current font size.
-* `+setFontSize(size)+`: Sets the font size.
+*Usage:*
 
-==== Texture
+[source,js]
+----
+canvas.setScissor(left, top, width, height);
+----
 
-* `+getTexture()+`: Returns the current texture.
-* `+setTexture(texture)+`: Sets the current texture.
-* `+getMaskTexture()+`: Returns the current mask texture.
-* `+setMaskTexture(texture)+`: Sets the mask texture.
+* *Description:* Sets the scissor rectangle for hardware-accelerated clipping.
+* *Parameters:*
+** `+left+` (number): Left edge in pixels
+** `+top+` (number): Top edge in pixels
+** `+width+` (number): Width in pixels
+** `+height+` (number): Height in pixels
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setScissor(0, 0, 800, 600);
+----
 
-==== Fill Style
+'''''
 
-* `+getFillStyle()+`: Returns the current fill style.
-* `+setFillStyle(style)+`: Sets the fill style (see Canvas.FillStyle).
-* `+getFillRule()+`: Returns the current fill rule.
-* `+setFillRule(rule)+`: Sets the fill rule (see Canvas.FillRule).
-* `+getFillWrapMode()+`: Returns the fill wrap mode.
-* `+setFillWrapMode(mode)+`: Sets the fill wrap mode (see Canvas.FillWrapMode).
+==== getBlendingMode()
 
-==== Colors
+*Usage:*
 
-* `+getColor()+`: Returns the current color.
-* `+setColor(color)+`: Sets the current color (Vector4).
-* `+getStartColor()+`: Returns the gradient start color.
-* `+setStartColor(color)+`: Sets the gradient start color.
-* `+getStopColor()+`: Returns the gradient stop color.
-* `+setStopColor(color)+`: Sets the gradient stop color.
+[source,js]
+----
+let mode = canvas.getBlendingMode();
+----
 
-==== Matrices
+* *Description:* Returns the current blending mode.
+* *Parameters:* None.
+* *Return Value:* Number representing the blending mode (see Canvas.BlendingMode).
 
-* `+getProjectionMatrix()+`: Returns the projection matrix.
-* `+setProjectionMatrix(matrix)+`: Sets the projection matrix.
-* `+getViewMatrix()+`: Returns the view matrix.
-* `+setViewMatrix(matrix)+`: Sets the view matrix.
-* `+getModelMatrix()+`: Returns the model matrix.
-* `+setModelMatrix(matrix)+`: Sets the model matrix.
-* `+getFillMatrix()+`: Returns the fill matrix.
-* `+setFillMatrix(matrix)+`: Sets the fill matrix.
-* `+getMaskMatrix()+`: Returns the mask matrix.
-* `+setMaskMatrix(matrix)+`: Sets the mask matrix.
+'''''
 
-==== Advanced
+==== setBlendingMode()
 
-* `+setStrokePattern(pattern)+`: Sets the stroke pattern.
-* `+drawShape(shape)+`: Draws a canvas shape.
-* `+getStrokeShape()+`: Returns the current stroke shape.
-* `+getFillShape()+`: Returns the current fill shape.
+*Usage:*
+
+[source,js]
+----
+canvas.setBlendingMode(mode);
+----
+
+* *Description:* Sets the blending mode for compositing operations.
+* *Parameters:*
+** `+mode+` (number): Blending mode (use Canvas.BlendingMode constants)
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setBlendingMode(Canvas.BlendingMode.AdditiveBlending);
+canvas.setColor(Vector4.create(1, 1, 1, 0.5));
+canvas.drawFilledCircle(Vector2.create(100, 100), 50);
+----
+
+'''''
+
+==== getLineCap()
+
+*Usage:*
+
+[source,js]
+----
+let cap = canvas.getLineCap();
+----
+
+* *Description:* Returns the current line cap style.
+* *Parameters:* None.
+* *Return Value:* Number representing the line cap style (see Canvas.LineCap).
+
+'''''
+
+==== setLineCap()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setLineCap(cap);
+----
+
+* *Description:* Sets the line cap style for path strokes.
+* *Parameters:*
+** `+cap+` (number): Line cap style (use Canvas.LineCap constants)
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setLineCap(Canvas.LineCap.Round);
+canvas.setLineWidth(10);
+canvas.beginPath();
+canvas.moveTo(Vector2.create(10, 100));
+canvas.lineTo(Vector2.create(200, 100));
+canvas.stroke();
+----
+
+'''''
+
+==== getLineJoin()
+
+*Usage:*
+
+[source,js]
+----
+let join = canvas.getLineJoin();
+----
+
+* *Description:* Returns the current line join style.
+* *Parameters:* None.
+* *Return Value:* Number representing the line join style (see Canvas.LineJoin).
+
+'''''
+
+==== setLineJoin()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setLineJoin(join);
+----
+
+* *Description:* Sets the line join style for path corners.
+* *Parameters:*
+** `+join+` (number): Line join style (use Canvas.LineJoin constants)
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setLineJoin(Canvas.LineJoin.Miter);
+canvas.setLineWidth(10);
+canvas.beginPath();
+canvas.moveTo(Vector2.create(10, 10));
+canvas.lineTo(Vector2.create(100, 10));
+canvas.lineTo(Vector2.create(100, 100));
+canvas.stroke();
+----
+
+'''''
+
+==== getLineWidth()
+
+*Usage:*
+
+[source,js]
+----
+let width = canvas.getLineWidth();
+----
+
+* *Description:* Returns the current line width in pixels.
+* *Parameters:* None.
+* *Return Value:* Number representing the line width.
+
+'''''
+
+==== setLineWidth()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setLineWidth(width);
+----
+
+* *Description:* Sets the line width for path strokes.
+* *Parameters:*
+** `+width+` (number): Line width in pixels
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setLineWidth(5);
+canvas.beginPath();
+canvas.circle(Vector2.create(100, 100), 50);
+canvas.stroke();
+----
+
+'''''
+
+==== getMiterLimit()
+
+*Usage:*
+
+[source,js]
+----
+let limit = canvas.getMiterLimit();
+----
+
+* *Description:* Returns the current miter limit for line joins.
+* *Parameters:* None.
+* *Return Value:* Number representing the miter limit.
+
+'''''
+
+==== setMiterLimit()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setMiterLimit(limit);
+----
+
+* *Description:* Sets the miter limit to control sharp corners in path strokes.
+* *Parameters:*
+** `+limit+` (number): Miter limit value
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setMiterLimit(10);
+canvas.setLineJoin(Canvas.LineJoin.Miter);
+----
+
+'''''
+
+==== getZPosition()
+
+*Usage:*
+
+[source,js]
+----
+let z = canvas.getZPosition();
+----
+
+* *Description:* Returns the current Z position for depth sorting.
+* *Parameters:* None.
+* *Return Value:* Number representing the Z position.
+
+'''''
+
+==== setZPosition()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setZPosition(z);
+----
+
+* *Description:* Sets the Z position for depth sorting of drawn elements.
+* *Parameters:*
+** `+z+` (number): Z position (higher values are drawn on top)
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setZPosition(0);
+canvas.drawFilledRectangle(Vector2.create(10, 10), Vector2.create(100, 100));
+canvas.setZPosition(1);
+canvas.drawFilledCircle(Vector2.create(60, 60), 40); // Drawn on top
+----
+
+'''''
+
+==== getTextHorizontalAlignment()
+
+*Usage:*
+
+[source,js]
+----
+let align = canvas.getTextHorizontalAlignment();
+----
+
+* *Description:* Returns the current horizontal text alignment.
+* *Parameters:* None.
+* *Return Value:* Number representing the alignment (see Canvas.TextHorizontalAlignment).
+
+'''''
+
+==== setTextHorizontalAlignment()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setTextHorizontalAlignment(alignment);
+----
+
+* *Description:* Sets the horizontal text alignment.
+* *Parameters:*
+** `+alignment+` (number): Alignment mode (use Canvas.TextHorizontalAlignment constants)
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
+canvas.drawText("Centered Text", Vector2.create(400, 300));
+----
+
+'''''
+
+==== getTextVerticalAlignment()
+
+*Usage:*
+
+[source,js]
+----
+let align = canvas.getTextVerticalAlignment();
+----
+
+* *Description:* Returns the current vertical text alignment.
+* *Parameters:* None.
+* *Return Value:* Number representing the alignment (see Canvas.TextVerticalAlignment).
+
+'''''
+
+==== setTextVerticalAlignment()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setTextVerticalAlignment(alignment);
+----
+
+* *Description:* Sets the vertical text alignment.
+* *Parameters:*
+** `+alignment+` (number): Alignment mode (use Canvas.TextVerticalAlignment constants)
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setTextVerticalAlignment(Canvas.TextVerticalAlignment.Middle);
+canvas.drawText("Middle Aligned", Vector2.create(100, 300));
+----
+
+'''''
+
+==== getFont()
+
+*Usage:*
+
+[source,js]
+----
+let font = canvas.getFont();
+----
+
+* *Description:* Returns the current font object.
+* *Parameters:* None.
+* *Return Value:* Font object.
+
+'''''
+
+==== setFont()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setFont(font);
+----
+
+* *Description:* Sets the current font for text rendering.
+* *Parameters:*
+** `+font+` (Font or CanvasFont): Font object to use
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+let myFont = CanvasFont.create("fonts/arial.ttf", 96, 512);
+canvas.setFont(myFont);
+canvas.drawText("Custom Font", Vector2.create(100, 100));
+----
+
+'''''
+
+==== getFontSize()
+
+*Usage:*
+
+[source,js]
+----
+let size = canvas.getFontSize();
+----
+
+* *Description:* Returns the current font size in pixels.
+* *Parameters:* None.
+* *Return Value:* Number representing the font size.
+
+'''''
+
+==== setFontSize()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setFontSize(size);
+----
+
+* *Description:* Sets the font size for text rendering.
+* *Parameters:*
+** `+size+` (number): Font size in pixels
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setFontSize(24);
+canvas.drawText("24px Text", Vector2.create(10, 50));
+canvas.setFontSize(48);
+canvas.drawText("48px Text", Vector2.create(10, 100));
+----
+
+'''''
+
+==== getTexture()
+
+*Usage:*
+
+[source,js]
+----
+let texture = canvas.getTexture();
+----
+
+* *Description:* Returns the current texture.
+* *Parameters:* None.
+* *Return Value:* Texture object or null.
+
+'''''
+
+==== setTexture()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setTexture(texture);
+----
+
+* *Description:* Sets the current texture for textured fills.
+* *Parameters:*
+** `+texture+` (Texture): Texture object to use
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+let tex = Texture.create("pattern.png");
+canvas.setTexture(tex);
+canvas.setFillStyle(Canvas.FillStyle.Image);
+canvas.drawFilledRectangle(Vector2.create(0, 0), Vector2.create(200, 200));
+----
+
+'''''
+
+==== getMaskTexture()
+
+*Usage:*
+
+[source,js]
+----
+let maskTex = canvas.getMaskTexture();
+----
+
+* *Description:* Returns the current mask texture.
+* *Parameters:* None.
+* *Return Value:* Texture object or null.
+
+'''''
+
+==== setMaskTexture()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setMaskTexture(texture);
+----
+
+* *Description:* Sets the mask texture for advanced masking effects.
+* *Parameters:*
+** `+texture+` (Texture): Mask texture object
+* *Return Value:* None.
+
+'''''
+
+==== getFillStyle()
+
+*Usage:*
+
+[source,js]
+----
+let style = canvas.getFillStyle();
+----
+
+* *Description:* Returns the current fill style.
+* *Parameters:* None.
+* *Return Value:* Number representing the fill style (see Canvas.FillStyle).
+
+'''''
+
+==== setFillStyle()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setFillStyle(style);
+----
+
+* *Description:* Sets the fill style for shapes.
+* *Parameters:*
+** `+style+` (number): Fill style (use Canvas.FillStyle constants)
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+canvas.setStartColor(Vector4.create(1, 0, 0, 1)); // Red
+canvas.setStopColor(Vector4.create(0, 0, 1, 1));  // Blue
+canvas.drawFilledRectangle(Vector2.create(0, 0), Vector2.create(200, 200));
+----
+
+'''''
+
+==== getFillRule()
+
+*Usage:*
+
+[source,js]
+----
+let rule = canvas.getFillRule();
+----
+
+* *Description:* Returns the current fill rule.
+* *Parameters:* None.
+* *Return Value:* Number representing the fill rule (see Canvas.FillRule).
+
+'''''
+
+==== setFillRule()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setFillRule(rule);
+----
+
+* *Description:* Sets the fill rule for complex paths.
+* *Parameters:*
+** `+rule+` (number): Fill rule (use Canvas.FillRule constants)
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setFillRule(Canvas.FillRule.EvenOdd);
+canvas.beginPath();
+// Draw complex self-intersecting path
+canvas.fill();
+----
+
+'''''
+
+==== getFillWrapMode()
+
+*Usage:*
+
+[source,js]
+----
+let mode = canvas.getFillWrapMode();
+----
+
+* *Description:* Returns the current fill wrap mode.
+* *Parameters:* None.
+* *Return Value:* Number representing the wrap mode (see Canvas.FillWrapMode).
+
+'''''
+
+==== setFillWrapMode()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setFillWrapMode(mode);
+----
+
+* *Description:* Sets the fill wrap mode for textured fills.
+* *Parameters:*
+** `+mode+` (number): Wrap mode (use Canvas.FillWrapMode constants)
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setFillWrapMode(Canvas.FillWrapMode.WrappedRepeat);
+canvas.setFillStyle(Canvas.FillStyle.Image);
+----
+
+'''''
+
+==== getColor()
+
+*Usage:*
+
+[source,js]
+----
+let color = canvas.getColor();
+----
+
+* *Description:* Returns the current drawing color.
+* *Parameters:* None.
+* *Return Value:* Vector4 representing RGBA color.
+
+'''''
+
+==== setColor()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setColor(color);
+----
+
+* *Description:* Sets the current drawing color.
+* *Parameters:*
+** `+color+` (Vector4): RGBA color (components 0.0-1.0)
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red
+canvas.drawFilledCircle(Vector2.create(100, 100), 50);
+----
+
+'''''
+
+==== getStartColor()
+
+*Usage:*
+
+[source,js]
+----
+let color = canvas.getStartColor();
+----
+
+* *Description:* Returns the gradient start color.
+* *Parameters:* None.
+* *Return Value:* Vector4 representing RGBA color.
+
+'''''
+
+==== setStartColor()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setStartColor(color);
+----
+
+* *Description:* Sets the gradient start color.
+* *Parameters:*
+** `+color+` (Vector4): RGBA color
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+canvas.setStartColor(Vector4.create(1, 1, 0, 1)); // Yellow
+canvas.setStopColor(Vector4.create(1, 0, 1, 1));  // Magenta
+----
+
+'''''
+
+==== getStopColor()
+
+*Usage:*
+
+[source,js]
+----
+let color = canvas.getStopColor();
+----
+
+* *Description:* Returns the gradient stop color.
+* *Parameters:* None.
+* *Return Value:* Vector4 representing RGBA color.
+
+'''''
+
+==== setStopColor()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setStopColor(color);
+----
+
+* *Description:* Sets the gradient stop color.
+* *Parameters:*
+** `+color+` (Vector4): RGBA color
+* *Return Value:* None.
+
+'''''
+
+==== getProjectionMatrix()
+
+*Usage:*
+
+[source,js]
+----
+let matrix = canvas.getProjectionMatrix();
+----
+
+* *Description:* Returns the current projection matrix.
+* *Parameters:* None.
+* *Return Value:* Matrix4x4 object.
+
+'''''
+
+==== setProjectionMatrix()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setProjectionMatrix(matrix);
+----
+
+* *Description:* Sets the projection matrix for 3D transforms.
+* *Parameters:*
+** `+matrix+` (Matrix4x4): Projection matrix
+* *Return Value:* None.
+
+'''''
+
+==== getViewMatrix()
+
+*Usage:*
+
+[source,js]
+----
+let matrix = canvas.getViewMatrix();
+----
+
+* *Description:* Returns the current view matrix.
+* *Parameters:* None.
+* *Return Value:* Matrix4x4 object.
+
+'''''
+
+==== setViewMatrix()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setViewMatrix(matrix);
+----
+
+* *Description:* Sets the view matrix for camera transforms.
+* *Parameters:*
+** `+matrix+` (Matrix4x4): View matrix
+* *Return Value:* None.
+
+'''''
+
+==== getModelMatrix()
+
+*Usage:*
+
+[source,js]
+----
+let matrix = canvas.getModelMatrix();
+----
+
+* *Description:* Returns the current model matrix.
+* *Parameters:* None.
+* *Return Value:* Matrix4x4 object.
+
+'''''
+
+==== setModelMatrix()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setModelMatrix(matrix);
+----
+
+* *Description:* Sets the model matrix for object transforms.
+* *Parameters:*
+** `+matrix+` (Matrix4x4): Model matrix
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+let model = Matrix4x4.create();
+// Apply transformations to model matrix
+canvas.setModelMatrix(model);
+canvas.drawFilledRectangle(Vector2.create(0, 0), Vector2.create(100, 100));
+----
+
+'''''
+
+==== getFillMatrix()
+
+*Usage:*
+
+[source,js]
+----
+let matrix = canvas.getFillMatrix();
+----
+
+* *Description:* Returns the current fill matrix for texture/gradient transforms.
+* *Parameters:* None.
+* *Return Value:* Matrix4x4 object.
+
+'''''
+
+==== setFillMatrix()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setFillMatrix(matrix);
+----
+
+* *Description:* Sets the fill matrix for transforming fill textures/gradients.
+* *Parameters:*
+** `+matrix+` (Matrix4x4): Fill transformation matrix
+* *Return Value:* None.
+
+'''''
+
+==== getMaskMatrix()
+
+*Usage:*
+
+[source,js]
+----
+let matrix = canvas.getMaskMatrix();
+----
+
+* *Description:* Returns the current mask matrix.
+* *Parameters:* None.
+* *Return Value:* Matrix4x4 object.
+
+'''''
+
+==== setMaskMatrix()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setMaskMatrix(matrix);
+----
+
+* *Description:* Sets the mask matrix for transforming mask textures.
+* *Parameters:*
+** `+matrix+` (Matrix4x4): Mask transformation matrix
+* *Return Value:* None.
+
+'''''
+
+==== setStrokePattern()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setStrokePattern(pattern);
+----
+
+* *Description:* Sets a stroke pattern for dashed/dotted lines.
+* *Parameters:*
+** `+pattern+` (string): Pattern string
+* *Return Value:* None.
+
+'''''
+
+==== drawShape()
+
+*Usage:*
+
+[source,js]
+----
+canvas.drawShape(shape);
+----
+
+* *Description:* Draws a previously created CanvasShape.
+* *Parameters:*
+** `+shape+` (CanvasShape): Shape object to draw
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+canvas.circle(Vector2.create(0, 0), 50);
+canvas.endPath();
+let shape = canvas.getFillShape();
+// Draw the shape multiple times
+canvas.drawShape(shape);
+----
+
+'''''
+
+==== getStrokeShape()
+
+*Usage:*
+
+[source,js]
+----
+let shape = canvas.getStrokeShape();
+----
+
+* *Description:* Returns a CanvasShape from the current path's stroke.
+* *Parameters:* None.
+* *Return Value:* CanvasShape object.
+
+'''''
+
+==== getFillShape()
+
+*Usage:*
+
+[source,js]
+----
+let shape = canvas.getFillShape();
+----
+
+* *Description:* Returns a CanvasShape from the current path's fill.
+* *Parameters:* None.
+* *Return Value:* CanvasShape object.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+canvas.rectangle(Vector2.create(0, 0), Vector2.create(100, 100));
+canvas.endPath();
+let fillShape = canvas.getFillShape();
+// Reuse this shape for efficient rendering
+for (let i = 0; i < 10; i++) {
+  canvas.push();
+  canvas.setModelMatrix(/* transform */);
+  canvas.drawShape(fillShape);
+  canvas.pop();
+}
+----
 
 '''''
 

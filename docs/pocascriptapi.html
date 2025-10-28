@@ -791,17 +791,59 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#_canvas_properties_getters_and_setters">Canvas Properties (Getters and Setters)</a>
 <ul class="sectlevel3">
-<li><a href="#_clipping">Clipping</a></li>
-<li><a href="#_blending">Blending</a></li>
-<li><a href="#_line_style">Line Style</a></li>
-<li><a href="#_z_position">Z-Position</a></li>
-<li><a href="#_text_alignment">Text Alignment</a></li>
-<li><a href="#_font_2">Font</a></li>
-<li><a href="#_texture_2">Texture</a></li>
-<li><a href="#_fill_style">Fill Style</a></li>
-<li><a href="#_colors">Colors</a></li>
-<li><a href="#_matrices">Matrices</a></li>
-<li><a href="#_advanced">Advanced</a></li>
+<li><a href="#_getcliprect">getClipRect()</a></li>
+<li><a href="#_setcliprect">setClipRect()</a></li>
+<li><a href="#_setscissor">setScissor()</a></li>
+<li><a href="#_getblendingmode">getBlendingMode()</a></li>
+<li><a href="#_setblendingmode">setBlendingMode()</a></li>
+<li><a href="#_getlinecap">getLineCap()</a></li>
+<li><a href="#_setlinecap">setLineCap()</a></li>
+<li><a href="#_getlinejoin">getLineJoin()</a></li>
+<li><a href="#_setlinejoin">setLineJoin()</a></li>
+<li><a href="#_getlinewidth">getLineWidth()</a></li>
+<li><a href="#_setlinewidth">setLineWidth()</a></li>
+<li><a href="#_getmiterlimit">getMiterLimit()</a></li>
+<li><a href="#_setmiterlimit">setMiterLimit()</a></li>
+<li><a href="#_getzposition">getZPosition()</a></li>
+<li><a href="#_setzposition">setZPosition()</a></li>
+<li><a href="#_gettexthorizontalalignment">getTextHorizontalAlignment()</a></li>
+<li><a href="#_settexthorizontalalignment">setTextHorizontalAlignment()</a></li>
+<li><a href="#_gettextverticalalignment">getTextVerticalAlignment()</a></li>
+<li><a href="#_settextverticalalignment">setTextVerticalAlignment()</a></li>
+<li><a href="#_getfont">getFont()</a></li>
+<li><a href="#_setfont">setFont()</a></li>
+<li><a href="#_getfontsize">getFontSize()</a></li>
+<li><a href="#_setfontsize">setFontSize()</a></li>
+<li><a href="#_gettexture">getTexture()</a></li>
+<li><a href="#_settexture">setTexture()</a></li>
+<li><a href="#_getmasktexture">getMaskTexture()</a></li>
+<li><a href="#_setmasktexture">setMaskTexture()</a></li>
+<li><a href="#_getfillstyle">getFillStyle()</a></li>
+<li><a href="#_setfillstyle">setFillStyle()</a></li>
+<li><a href="#_getfillrule">getFillRule()</a></li>
+<li><a href="#_setfillrule">setFillRule()</a></li>
+<li><a href="#_getfillwrapmode">getFillWrapMode()</a></li>
+<li><a href="#_setfillwrapmode">setFillWrapMode()</a></li>
+<li><a href="#_getcolor">getColor()</a></li>
+<li><a href="#_setcolor">setColor()</a></li>
+<li><a href="#_getstartcolor">getStartColor()</a></li>
+<li><a href="#_setstartcolor">setStartColor()</a></li>
+<li><a href="#_getstopcolor">getStopColor()</a></li>
+<li><a href="#_setstopcolor">setStopColor()</a></li>
+<li><a href="#_getprojectionmatrix">getProjectionMatrix()</a></li>
+<li><a href="#_setprojectionmatrix">setProjectionMatrix()</a></li>
+<li><a href="#_getviewmatrix">getViewMatrix()</a></li>
+<li><a href="#_setviewmatrix">setViewMatrix()</a></li>
+<li><a href="#_getmodelmatrix">getModelMatrix()</a></li>
+<li><a href="#_setmodelmatrix">setModelMatrix()</a></li>
+<li><a href="#_getfillmatrix">getFillMatrix()</a></li>
+<li><a href="#_setfillmatrix">setFillMatrix()</a></li>
+<li><a href="#_getmaskmatrix">getMaskMatrix()</a></li>
+<li><a href="#_setmaskmatrix">setMaskMatrix()</a></li>
+<li><a href="#_setstrokepattern">setStrokePattern()</a></li>
+<li><a href="#_drawshape">drawShape()</a></li>
+<li><a href="#_getstrokeshape">getStrokeShape()</a></li>
+<li><a href="#_getfillshape">getFillShape()</a></li>
 </ul>
 </li>
 <li><a href="#_canvas_enumerations">Canvas Enumerations</a>
@@ -7149,237 +7191,1763 @@ canvas.pop(); // Restore previous color</code></pre>
 <div class="sect2">
 <h3 id="_canvas_properties_getters_and_setters">Canvas Properties (Getters and Setters)</h3>
 <div class="sect3">
-<h4 id="_clipping">Clipping</h4>
+<h4 id="_getcliprect">getClipRect()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let rect = canvas.getClipRect();</code></pre>
+</div>
+</div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>getClipRect()</code>: Returns the current clipping rectangle.</p>
+<p><strong>Description:</strong> Returns the current clipping rectangle as a Vector4 (x, y, width, height).</p>
 </li>
 <li>
-<p><code>setClipRect(rect)</code>: Sets the clipping rectangle.</p>
+<p><strong>Parameters:</strong> None.</p>
 </li>
 <li>
-<p><code>setScissor(rect)</code>: Sets the scissor rectangle.</p>
+<p><strong>Return Value:</strong> Vector4 representing the clipping rectangle.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let clipRect = canvas.getClipRect();
+puts("Clip rect: " + clipRect.toString());</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
+<hr>
 </div>
 <div class="sect3">
-<h4 id="_blending">Blending</h4>
+<h4 id="_setcliprect">setClipRect()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setClipRect(leftTop, widthHeight);</code></pre>
+</div>
+</div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>getBlendingMode()</code>: Returns the current blending mode.</p>
+<p><strong>Description:</strong> Sets the clipping rectangle to restrict rendering to a specific area.</p>
 </li>
 <li>
-<p><code>setBlendingMode(mode)</code>: Sets the blending mode (see Canvas.BlendingMode).</p>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>leftTop</code> (Vector2): Top-left corner position</p>
+</li>
+<li>
+<p><code>widthHeight</code> (Vector2): Width and height</p>
 </li>
 </ul>
 </div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setClipRect(Vector2.create(10, 10), Vector2.create(200, 150));
+canvas.drawFilledRectangle(Vector2.create(0, 0), Vector2.create(300, 300));
+// Only the portion within the clip rect is drawn</code></pre>
 </div>
-<div class="sect3">
-<h4 id="_line_style">Line Style</h4>
-<div class="ulist">
-<ul>
-<li>
-<p><code>getLineCap()</code>: Returns the current line cap style.</p>
-</li>
-<li>
-<p><code>setLineCap(cap)</code>: Sets the line cap (see Canvas.LineCap).</p>
-</li>
-<li>
-<p><code>getLineJoin()</code>: Returns the current line join style.</p>
-</li>
-<li>
-<p><code>setLineJoin(join)</code>: Sets the line join (see Canvas.LineJoin).</p>
-</li>
-<li>
-<p><code>getLineWidth()</code>: Returns the current line width.</p>
-</li>
-<li>
-<p><code>setLineWidth(width)</code>: Sets the line width.</p>
-</li>
-<li>
-<p><code>getMiterLimit()</code>: Returns the current miter limit.</p>
-</li>
-<li>
-<p><code>setMiterLimit(limit)</code>: Sets the miter limit.</p>
+</div>
 </li>
 </ul>
 </div>
+<hr>
 </div>
 <div class="sect3">
-<h4 id="_z_position">Z-Position</h4>
+<h4 id="_setscissor">setScissor()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setScissor(left, top, width, height);</code></pre>
+</div>
+</div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>getZPosition()</code>: Returns the current Z position.</p>
+<p><strong>Description:</strong> Sets the scissor rectangle for hardware-accelerated clipping.</p>
 </li>
 <li>
-<p><code>setZPosition(z)</code>: Sets the Z position for depth sorting.</p>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>left</code> (number): Left edge in pixels</p>
+</li>
+<li>
+<p><code>top</code> (number): Top edge in pixels</p>
+</li>
+<li>
+<p><code>width</code> (number): Width in pixels</p>
+</li>
+<li>
+<p><code>height</code> (number): Height in pixels</p>
 </li>
 </ul>
 </div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setScissor(0, 0, 800, 600);</code></pre>
 </div>
-<div class="sect3">
-<h4 id="_text_alignment">Text Alignment</h4>
-<div class="ulist">
-<ul>
-<li>
-<p><code>getTextHorizontalAlignment()</code>: Returns horizontal text alignment.</p>
-</li>
-<li>
-<p><code>setTextHorizontalAlignment(alignment)</code>: Sets horizontal alignment (see Canvas.TextHorizontalAlignment).</p>
-</li>
-<li>
-<p><code>getTextVerticalAlignment()</code>: Returns vertical text alignment.</p>
-</li>
-<li>
-<p><code>setTextVerticalAlignment(alignment)</code>: Sets vertical alignment (see Canvas.TextVerticalAlignment).</p>
+</div>
 </li>
 </ul>
 </div>
+<hr>
 </div>
 <div class="sect3">
-<h4 id="_font_2">Font</h4>
+<h4 id="_getblendingmode">getBlendingMode()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mode = canvas.getBlendingMode();</code></pre>
+</div>
+</div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>getFont()</code>: Returns the current font.</p>
+<p><strong>Description:</strong> Returns the current blending mode.</p>
 </li>
 <li>
-<p><code>setFont(font)</code>: Sets the current font.</p>
+<p><strong>Parameters:</strong> None.</p>
 </li>
 <li>
-<p><code>getFontSize()</code>: Returns the current font size.</p>
-</li>
-<li>
-<p><code>setFontSize(size)</code>: Sets the font size.</p>
+<p><strong>Return Value:</strong> Number representing the blending mode (see Canvas.BlendingMode).</p>
 </li>
 </ul>
 </div>
+<hr>
 </div>
 <div class="sect3">
-<h4 id="_texture_2">Texture</h4>
+<h4 id="_setblendingmode">setBlendingMode()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setBlendingMode(mode);</code></pre>
+</div>
+</div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>getTexture()</code>: Returns the current texture.</p>
+<p><strong>Description:</strong> Sets the blending mode for compositing operations.</p>
 </li>
 <li>
-<p><code>setTexture(texture)</code>: Sets the current texture.</p>
-</li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
 <li>
-<p><code>getMaskTexture()</code>: Returns the current mask texture.</p>
-</li>
-<li>
-<p><code>setMaskTexture(texture)</code>: Sets the mask texture.</p>
+<p><code>mode</code> (number): Blending mode (use Canvas.BlendingMode constants)</p>
 </li>
 </ul>
 </div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setBlendingMode(Canvas.BlendingMode.AdditiveBlending);
+canvas.setColor(Vector4.create(1, 1, 1, 0.5));
+canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 </div>
-<div class="sect3">
-<h4 id="_fill_style">Fill Style</h4>
-<div class="ulist">
-<ul>
-<li>
-<p><code>getFillStyle()</code>: Returns the current fill style.</p>
-</li>
-<li>
-<p><code>setFillStyle(style)</code>: Sets the fill style (see Canvas.FillStyle).</p>
-</li>
-<li>
-<p><code>getFillRule()</code>: Returns the current fill rule.</p>
-</li>
-<li>
-<p><code>setFillRule(rule)</code>: Sets the fill rule (see Canvas.FillRule).</p>
-</li>
-<li>
-<p><code>getFillWrapMode()</code>: Returns the fill wrap mode.</p>
-</li>
-<li>
-<p><code>setFillWrapMode(mode)</code>: Sets the fill wrap mode (see Canvas.FillWrapMode).</p>
+</div>
 </li>
 </ul>
 </div>
+<hr>
 </div>
 <div class="sect3">
-<h4 id="_colors">Colors</h4>
+<h4 id="_getlinecap">getLineCap()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let cap = canvas.getLineCap();</code></pre>
+</div>
+</div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>getColor()</code>: Returns the current color.</p>
+<p><strong>Description:</strong> Returns the current line cap style.</p>
 </li>
 <li>
-<p><code>setColor(color)</code>: Sets the current color (Vector4).</p>
+<p><strong>Parameters:</strong> None.</p>
 </li>
 <li>
-<p><code>getStartColor()</code>: Returns the gradient start color.</p>
-</li>
-<li>
-<p><code>setStartColor(color)</code>: Sets the gradient start color.</p>
-</li>
-<li>
-<p><code>getStopColor()</code>: Returns the gradient stop color.</p>
-</li>
-<li>
-<p><code>setStopColor(color)</code>: Sets the gradient stop color.</p>
+<p><strong>Return Value:</strong> Number representing the line cap style (see Canvas.LineCap).</p>
 </li>
 </ul>
 </div>
+<hr>
 </div>
 <div class="sect3">
-<h4 id="_matrices">Matrices</h4>
+<h4 id="_setlinecap">setLineCap()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setLineCap(cap);</code></pre>
+</div>
+</div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>getProjectionMatrix()</code>: Returns the projection matrix.</p>
+<p><strong>Description:</strong> Sets the line cap style for path strokes.</p>
 </li>
 <li>
-<p><code>setProjectionMatrix(matrix)</code>: Sets the projection matrix.</p>
-</li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
 <li>
-<p><code>getViewMatrix()</code>: Returns the view matrix.</p>
-</li>
-<li>
-<p><code>setViewMatrix(matrix)</code>: Sets the view matrix.</p>
-</li>
-<li>
-<p><code>getModelMatrix()</code>: Returns the model matrix.</p>
-</li>
-<li>
-<p><code>setModelMatrix(matrix)</code>: Sets the model matrix.</p>
-</li>
-<li>
-<p><code>getFillMatrix()</code>: Returns the fill matrix.</p>
-</li>
-<li>
-<p><code>setFillMatrix(matrix)</code>: Sets the fill matrix.</p>
-</li>
-<li>
-<p><code>getMaskMatrix()</code>: Returns the mask matrix.</p>
-</li>
-<li>
-<p><code>setMaskMatrix(matrix)</code>: Sets the mask matrix.</p>
+<p><code>cap</code> (number): Line cap style (use Canvas.LineCap constants)</p>
 </li>
 </ul>
 </div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setLineCap(Canvas.LineCap.Round);
+canvas.setLineWidth(10);
+canvas.beginPath();
+canvas.moveTo(Vector2.create(10, 100));
+canvas.lineTo(Vector2.create(200, 100));
+canvas.stroke();</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
 </div>
 <div class="sect3">
-<h4 id="_advanced">Advanced</h4>
+<h4 id="_getlinejoin">getLineJoin()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let join = canvas.getLineJoin();</code></pre>
+</div>
+</div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>setStrokePattern(pattern)</code>: Sets the stroke pattern.</p>
+<p><strong>Description:</strong> Returns the current line join style.</p>
 </li>
 <li>
-<p><code>drawShape(shape)</code>: Draws a canvas shape.</p>
+<p><strong>Parameters:</strong> None.</p>
 </li>
 <li>
-<p><code>getStrokeShape()</code>: Returns the current stroke shape.</p>
+<p><strong>Return Value:</strong> Number representing the line join style (see Canvas.LineJoin).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setlinejoin">setLineJoin()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setLineJoin(join);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the line join style for path corners.</p>
 </li>
 <li>
-<p><code>getFillShape()</code>: Returns the current fill shape.</p>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>join</code> (number): Line join style (use Canvas.LineJoin constants)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setLineJoin(Canvas.LineJoin.Miter);
+canvas.setLineWidth(10);
+canvas.beginPath();
+canvas.moveTo(Vector2.create(10, 10));
+canvas.lineTo(Vector2.create(100, 10));
+canvas.lineTo(Vector2.create(100, 100));
+canvas.stroke();</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getlinewidth">getLineWidth()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let width = canvas.getLineWidth();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current line width in pixels.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Number representing the line width.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setlinewidth">setLineWidth()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setLineWidth(width);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the line width for path strokes.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>width</code> (number): Line width in pixels</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setLineWidth(5);
+canvas.beginPath();
+canvas.circle(Vector2.create(100, 100), 50);
+canvas.stroke();</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getmiterlimit">getMiterLimit()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let limit = canvas.getMiterLimit();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current miter limit for line joins.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Number representing the miter limit.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setmiterlimit">setMiterLimit()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setMiterLimit(limit);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the miter limit to control sharp corners in path strokes.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>limit</code> (number): Miter limit value</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setMiterLimit(10);
+canvas.setLineJoin(Canvas.LineJoin.Miter);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getzposition">getZPosition()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let z = canvas.getZPosition();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current Z position for depth sorting.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Number representing the Z position.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setzposition">setZPosition()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setZPosition(z);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the Z position for depth sorting of drawn elements.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>z</code> (number): Z position (higher values are drawn on top)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setZPosition(0);
+canvas.drawFilledRectangle(Vector2.create(10, 10), Vector2.create(100, 100));
+canvas.setZPosition(1);
+canvas.drawFilledCircle(Vector2.create(60, 60), 40); // Drawn on top</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_gettexthorizontalalignment">getTextHorizontalAlignment()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let align = canvas.getTextHorizontalAlignment();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current horizontal text alignment.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Number representing the alignment (see Canvas.TextHorizontalAlignment).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_settexthorizontalalignment">setTextHorizontalAlignment()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setTextHorizontalAlignment(alignment);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the horizontal text alignment.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>alignment</code> (number): Alignment mode (use Canvas.TextHorizontalAlignment constants)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
+canvas.drawText("Centered Text", Vector2.create(400, 300));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_gettextverticalalignment">getTextVerticalAlignment()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let align = canvas.getTextVerticalAlignment();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current vertical text alignment.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Number representing the alignment (see Canvas.TextVerticalAlignment).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_settextverticalalignment">setTextVerticalAlignment()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setTextVerticalAlignment(alignment);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the vertical text alignment.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>alignment</code> (number): Alignment mode (use Canvas.TextVerticalAlignment constants)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setTextVerticalAlignment(Canvas.TextVerticalAlignment.Middle);
+canvas.drawText("Middle Aligned", Vector2.create(100, 300));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getfont">getFont()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let font = canvas.getFont();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current font object.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Font object.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setfont">setFont()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFont(font);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the current font for text rendering.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>font</code> (Font or CanvasFont): Font object to use</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let myFont = CanvasFont.create("fonts/arial.ttf", 96, 512);
+canvas.setFont(myFont);
+canvas.drawText("Custom Font", Vector2.create(100, 100));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getfontsize">getFontSize()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let size = canvas.getFontSize();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current font size in pixels.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Number representing the font size.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setfontsize">setFontSize()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFontSize(size);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the font size for text rendering.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>size</code> (number): Font size in pixels</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFontSize(24);
+canvas.drawText("24px Text", Vector2.create(10, 50));
+canvas.setFontSize(48);
+canvas.drawText("48px Text", Vector2.create(10, 100));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_gettexture">getTexture()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let texture = canvas.getTexture();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current texture.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Texture object or null.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_settexture">setTexture()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setTexture(texture);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the current texture for textured fills.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>texture</code> (Texture): Texture object to use</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let tex = Texture.create("pattern.png");
+canvas.setTexture(tex);
+canvas.setFillStyle(Canvas.FillStyle.Image);
+canvas.drawFilledRectangle(Vector2.create(0, 0), Vector2.create(200, 200));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getmasktexture">getMaskTexture()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let maskTex = canvas.getMaskTexture();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current mask texture.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Texture object or null.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setmasktexture">setMaskTexture()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setMaskTexture(texture);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the mask texture for advanced masking effects.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>texture</code> (Texture): Mask texture object</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getfillstyle">getFillStyle()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let style = canvas.getFillStyle();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current fill style.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Number representing the fill style (see Canvas.FillStyle).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setfillstyle">setFillStyle()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillStyle(style);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the fill style for shapes.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>style</code> (number): Fill style (use Canvas.FillStyle constants)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+canvas.setStartColor(Vector4.create(1, 0, 0, 1)); // Red
+canvas.setStopColor(Vector4.create(0, 0, 1, 1));  // Blue
+canvas.drawFilledRectangle(Vector2.create(0, 0), Vector2.create(200, 200));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getfillrule">getFillRule()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let rule = canvas.getFillRule();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current fill rule.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Number representing the fill rule (see Canvas.FillRule).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setfillrule">setFillRule()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillRule(rule);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the fill rule for complex paths.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rule</code> (number): Fill rule (use Canvas.FillRule constants)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillRule(Canvas.FillRule.EvenOdd);
+canvas.beginPath();
+// Draw complex self-intersecting path
+canvas.fill();</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getfillwrapmode">getFillWrapMode()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mode = canvas.getFillWrapMode();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current fill wrap mode.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Number representing the wrap mode (see Canvas.FillWrapMode).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setfillwrapmode">setFillWrapMode()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillWrapMode(mode);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the fill wrap mode for textured fills.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>mode</code> (number): Wrap mode (use Canvas.FillWrapMode constants)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillWrapMode(Canvas.FillWrapMode.WrappedRepeat);
+canvas.setFillStyle(Canvas.FillStyle.Image);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getcolor">getColor()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let color = canvas.getColor();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current drawing color.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Vector4 representing RGBA color.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setcolor">setColor()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setColor(color);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the current drawing color.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>color</code> (Vector4): RGBA color (components 0.0-1.0)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red
+canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getstartcolor">getStartColor()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let color = canvas.getStartColor();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the gradient start color.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Vector4 representing RGBA color.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setstartcolor">setStartColor()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setStartColor(color);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the gradient start color.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>color</code> (Vector4): RGBA color</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+canvas.setStartColor(Vector4.create(1, 1, 0, 1)); // Yellow
+canvas.setStopColor(Vector4.create(1, 0, 1, 1));  // Magenta</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getstopcolor">getStopColor()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let color = canvas.getStopColor();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the gradient stop color.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Vector4 representing RGBA color.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setstopcolor">setStopColor()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setStopColor(color);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the gradient stop color.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>color</code> (Vector4): RGBA color</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getprojectionmatrix">getProjectionMatrix()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let matrix = canvas.getProjectionMatrix();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current projection matrix.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Matrix4x4 object.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setprojectionmatrix">setProjectionMatrix()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setProjectionMatrix(matrix);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the projection matrix for 3D transforms.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>matrix</code> (Matrix4x4): Projection matrix</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getviewmatrix">getViewMatrix()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let matrix = canvas.getViewMatrix();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current view matrix.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Matrix4x4 object.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setviewmatrix">setViewMatrix()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setViewMatrix(matrix);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the view matrix for camera transforms.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>matrix</code> (Matrix4x4): View matrix</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getmodelmatrix">getModelMatrix()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let matrix = canvas.getModelMatrix();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current model matrix.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Matrix4x4 object.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setmodelmatrix">setModelMatrix()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setModelMatrix(matrix);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the model matrix for object transforms.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>matrix</code> (Matrix4x4): Model matrix</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let model = Matrix4x4.create();
+// Apply transformations to model matrix
+canvas.setModelMatrix(model);
+canvas.drawFilledRectangle(Vector2.create(0, 0), Vector2.create(100, 100));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getfillmatrix">getFillMatrix()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let matrix = canvas.getFillMatrix();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current fill matrix for texture/gradient transforms.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Matrix4x4 object.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setfillmatrix">setFillMatrix()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillMatrix(matrix);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the fill matrix for transforming fill textures/gradients.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>matrix</code> (Matrix4x4): Fill transformation matrix</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getmaskmatrix">getMaskMatrix()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let matrix = canvas.getMaskMatrix();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns the current mask matrix.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> Matrix4x4 object.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setmaskmatrix">setMaskMatrix()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setMaskMatrix(matrix);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets the mask matrix for transforming mask textures.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>matrix</code> (Matrix4x4): Mask transformation matrix</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_setstrokepattern">setStrokePattern()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setStrokePattern(pattern);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Sets a stroke pattern for dashed/dotted lines.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>pattern</code> (string): Pattern string</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_drawshape">drawShape()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawShape(shape);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Draws a previously created CanvasShape.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>shape</code> (CanvasShape): Shape object to draw</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> None.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+canvas.circle(Vector2.create(0, 0), 50);
+canvas.endPath();
+let shape = canvas.getFillShape();
+// Draw the shape multiple times
+canvas.drawShape(shape);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getstrokeshape">getStrokeShape()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let shape = canvas.getStrokeShape();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns a CanvasShape from the current path&#8217;s stroke.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> CanvasShape object.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_getfillshape">getFillShape()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let shape = canvas.getFillShape();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Returns a CanvasShape from the current path&#8217;s fill.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> CanvasShape object.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+canvas.rectangle(Vector2.create(0, 0), Vector2.create(100, 100));
+canvas.endPath();
+let fillShape = canvas.getFillShape();
+// Reuse this shape for efficient rendering
+for (let i = 0; i &lt; 10; i++) {
+  canvas.push();
+  canvas.setModelMatrix(/* transform */);
+  canvas.drawShape(fillShape);
+  canvas.pop();
+}</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -10063,7 +11631,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 20:44:34 +0100
+Last updated 2025-10-28 20:52:42 +0100
 </div>
 </div>
 </body>
