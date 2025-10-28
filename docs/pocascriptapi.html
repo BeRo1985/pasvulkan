@@ -6929,7 +6929,9 @@ canvas.drawSpritePosition(sprite, 50, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawText(text, position);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawText(text, position);
+// or
+canvas.drawText(text, x, y);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -6942,10 +6944,33 @@ canvas.drawSpritePosition(sprite, 50, 100);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>text</code> (string): The text to draw.</p>
 </li>
 <li>
 <p><code>position</code> (Vector2): The position to draw at.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>text</code> (string): The text to draw.</p>
+</li>
+<li>
+<p><code>x</code> (number): The X coordinate to draw at.</p>
+</li>
+<li>
+<p><code>y</code> (number): The Y coordinate to draw at.</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
@@ -6960,7 +6985,12 @@ canvas.drawSpritePosition(sprite, 50, 100);</code></pre>
 <pre class="highlight"><code class="language-js" data-lang="js">canvas.setFont(myFont);
 canvas.setFontSize(24);
 canvas.setColor(Vector4.create(1, 1, 1, 1)); // White
-canvas.drawText("Hello, World!", Vector2.create(100, 100));</code></pre>
+
+// Using Vector2:
+canvas.drawText("Hello, World!", Vector2.create(100, 100));
+
+// or using individual numbers:
+canvas.drawText("Hello, World!", 100, 100);</code></pre>
 </div>
 </div>
 </li>
@@ -12458,7 +12488,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 22:01:45 +0100
+Last updated 2025-10-28 22:02:20 +0100
 </div>
 </div>
 </body>

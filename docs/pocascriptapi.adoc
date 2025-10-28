@@ -3259,12 +3259,19 @@ canvas.drawSpritePosition(sprite, 50, 100);
 [source,js]
 ----
 canvas.drawText(text, position);
+// or
+canvas.drawText(text, x, y);
 ----
 
 * *Description:* Draws text at the specified position using the current font.
 * *Parameters:*
-** `+text+` (string): The text to draw.
-** `+position+` (Vector2): The position to draw at.
+** *Option A:*
+*** `+text+` (string): The text to draw.
+*** `+position+` (Vector2): The position to draw at.
+** or *Option B:*
+*** `+text+` (string): The text to draw.
+*** `+x+` (number): The X coordinate to draw at.
+*** `+y+` (number): The Y coordinate to draw at.
 * *Return Value:* The canvas itself.
 * *Example:*
 +
@@ -3273,7 +3280,12 @@ canvas.drawText(text, position);
 canvas.setFont(myFont);
 canvas.setFontSize(24);
 canvas.setColor(Vector4.create(1, 1, 1, 1)); // White
+
+// Using Vector2:
 canvas.drawText("Hello, World!", Vector2.create(100, 100));
+
+// or using individual numbers:
+canvas.drawText("Hello, World!", 100, 100);
 ----
 
 '''''
