@@ -1125,7 +1125,7 @@ begin
 end;
 
 function POCAVector3FunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Vector3:PpvVector3;
+var Vector3:PpvVector3D;
 begin
  if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAVector3Ghost) then begin
   Vector3:=POCAGhostFastGetPointer(aThis);
@@ -1136,7 +1136,7 @@ begin
 end;
 
 function POCAVector3FunctionCopy(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Vector3,OtherVector3:PpvVector3;
+var Vector3,OtherVector3:PpvVector3D;
 begin
  if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) then begin
   Vector3:=POCAGhostFastGetPointer(aThis);
@@ -1791,7 +1791,7 @@ begin
 end;
 
 function POCAVector4FunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Vector4:PpvVector4;
+var Vector4:PpvVector4D;
 begin
  if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) then begin
   Vector4:=POCAGhostFastGetPointer(aThis);
@@ -1802,7 +1802,7 @@ begin
 end;
 
 function POCAVector4FunctionCopy(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Vector4,OtherVector4:PpvVector4;
+var Vector4,OtherVector4:PpvVector4D;
 begin
  if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
   Vector4:=POCAGhostFastGetPointer(aThis);
@@ -2476,7 +2476,7 @@ begin
 end;
 
 function POCAQuaternionFunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Quaternion:PpvQuaternion;
+var Quaternion:PpvQuaternionD;
 begin
  if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) then begin
   Quaternion:=POCAGhostFastGetPointer(aThis);
@@ -2487,7 +2487,7 @@ begin
 end;
 
 function POCAQuaternionFunctionCopy(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Quaternion,OtherQuaternion:PpvQuaternion;
+var Quaternion,OtherQuaternion:PpvQuaternionD;
 begin
  if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
   Quaternion:=POCAGhostFastGetPointer(aThis);
