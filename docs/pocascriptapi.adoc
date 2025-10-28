@@ -4853,19 +4853,46 @@ let matrix = canvas.getProjectionMatrix();
 
 '''''
 
-==== setProjectionMatrix()
+==== setProjectionMatrix(matrix)
 
 *Usage:*
 
 [source,js]
 ----
 canvas.setProjectionMatrix(matrix);
+// or
+canvas.setProjectionMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33);
 ----
 
 * *Description:* Sets the projection matrix for 3D transforms.
 * *Parameters:*
-** `+matrix+` (Matrix4x4): Projection matrix
-* *Return Value:* None.
+** *Option A:*
+*** `+matrix+` (Matrix4x4): Projection matrix.
+** or *Option B:*
+*** `+m00, m01, m02, m03+` (numbers): First row of the matrix.
+*** `+m10, m11, m12, m13+` (numbers): Second row of the matrix.
+*** `+m20, m21, m22, m23+` (numbers): Third row of the matrix.
+*** `+m30, m31, m32, m33+` (numbers): Fourth row of the matrix.
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Matrix4x4:
+let matrix = Matrix4x4.create(1, 0. 0, 0,
+                              0, 1, 0, 0,
+                              0, 0, 1, 0,
+                              0, 0, 0, 1);
+canvas.setProjectionMatrix(matrix);
+
+// or using individual numbers (identity matrix):
+canvas.setProjectionMatrix(
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1
+);
+----
 
 '''''
 
@@ -4884,19 +4911,46 @@ let matrix = canvas.getViewMatrix();
 
 '''''
 
-==== setViewMatrix()
+==== setViewMatrix(matrix)
 
 *Usage:*
 
 [source,js]
 ----
 canvas.setViewMatrix(matrix);
+// or
+canvas.setViewMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33);
 ----
 
 * *Description:* Sets the view matrix for camera transforms.
 * *Parameters:*
-** `+matrix+` (Matrix4x4): View matrix
-* *Return Value:* None.
+** *Option A:*
+*** `+matrix+` (Matrix4x4): View matrix.
+** or *Option B:*
+*** `+m00, m01, m02, m03+` (numbers): First row of the matrix.
+*** `+m10, m11, m12, m13+` (numbers): Second row of the matrix.
+*** `+m20, m21, m22, m23+` (numbers): Third row of the matrix.
+*** `+m30, m31, m32, m33+` (numbers): Fourth row of the matrix.
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Matrix4x4:
+let matrix = Matrix4x4.create(1, 0. 0, 0,
+                              0, 1, 0, 0,
+                              0, 0, 1, 0,
+                              0, 0, 0, 1);
+canvas.setViewMatrix(matrix);
+
+// or using individual numbers (identity matrix):
+canvas.setViewMatrix(
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1
+);
+----
 
 '''''
 

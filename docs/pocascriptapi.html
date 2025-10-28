@@ -831,9 +831,9 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_getstopcolor">getStopColor()</a></li>
 <li><a href="#_setstopcolorcolor">setStopColor(color)</a></li>
 <li><a href="#_getprojectionmatrix">getProjectionMatrix()</a></li>
-<li><a href="#_setprojectionmatrix">setProjectionMatrix()</a></li>
+<li><a href="#_setprojectionmatrixmatrix">setProjectionMatrix(matrix)</a></li>
 <li><a href="#_getviewmatrix">getViewMatrix()</a></li>
-<li><a href="#_setviewmatrix">setViewMatrix()</a></li>
+<li><a href="#_setviewmatrixmatrix">setViewMatrix(matrix)</a></li>
 <li><a href="#_getmodelmatrix">getModelMatrix()</a></li>
 <li><a href="#_setmodelmatrix">setModelMatrix()</a></li>
 <li><a href="#_getfillmatrix">getFillMatrix()</a></li>
@@ -9887,13 +9887,15 @@ canvas.setStopColor(1, 0, 1, 1);  // Magenta</code></pre>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_setprojectionmatrix">setProjectionMatrix()</h4>
+<h4 id="_setprojectionmatrixmatrix">setProjectionMatrix(matrix)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.setProjectionMatrix(matrix);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setProjectionMatrix(matrix);
+// or
+canvas.setProjectionMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -9906,13 +9908,60 @@ canvas.setStopColor(1, 0, 1, 1);  // Magenta</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><code>matrix</code> (Matrix4x4): Projection matrix</p>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>matrix</code> (Matrix4x4): Projection matrix.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> None.</p>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>m00, m01, m02, m03</code> (numbers): First row of the matrix.</p>
+</li>
+<li>
+<p><code>m10, m11, m12, m13</code> (numbers): Second row of the matrix.</p>
+</li>
+<li>
+<p><code>m20, m21, m22, m23</code> (numbers): Third row of the matrix.</p>
+</li>
+<li>
+<p><code>m30, m31, m32, m33</code> (numbers): Fourth row of the matrix.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Matrix4x4:
+let matrix = Matrix4x4.create(1, 0. 0, 0,
+                              0, 1, 0, 0,
+                              0, 0, 1, 0,
+                              0, 0, 0, 1);
+canvas.setProjectionMatrix(matrix);
+
+// or using individual numbers (identity matrix):
+canvas.setProjectionMatrix(
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1
+);</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -9944,13 +9993,15 @@ canvas.setStopColor(1, 0, 1, 1);  // Magenta</code></pre>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_setviewmatrix">setViewMatrix()</h4>
+<h4 id="_setviewmatrixmatrix">setViewMatrix(matrix)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.setViewMatrix(matrix);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setViewMatrix(matrix);
+// or
+canvas.setViewMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -9963,13 +10014,60 @@ canvas.setStopColor(1, 0, 1, 1);  // Magenta</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><code>matrix</code> (Matrix4x4): View matrix</p>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>matrix</code> (Matrix4x4): View matrix.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> None.</p>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>m00, m01, m02, m03</code> (numbers): First row of the matrix.</p>
+</li>
+<li>
+<p><code>m10, m11, m12, m13</code> (numbers): Second row of the matrix.</p>
+</li>
+<li>
+<p><code>m20, m21, m22, m23</code> (numbers): Third row of the matrix.</p>
+</li>
+<li>
+<p><code>m30, m31, m32, m33</code> (numbers): Fourth row of the matrix.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Matrix4x4:
+let matrix = Matrix4x4.create(1, 0. 0, 0,
+                              0, 1, 0, 0,
+                              0, 0, 1, 0,
+                              0, 0, 0, 1);
+canvas.setViewMatrix(matrix);
+
+// or using individual numbers (identity matrix):
+canvas.setViewMatrix(
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1
+);</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -13205,7 +13303,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 23:17:45 +0100
+Last updated 2025-10-28 23:24:19 +0100
 </div>
 </div>
 </body>
