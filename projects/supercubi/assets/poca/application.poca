@@ -757,27 +757,6 @@ var application = {
     let cameraX = this.data.cameraRenderX;
     let cameraY = this.data.cameraRenderY;
 
-    // Draw background sky with gradient BEFORE view matrix (fill entire actual canvas including borders)
-    // Set up linear gradient from darker blue at top to lighter blue at bottom
-    canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
-    canvas.setStartColor(0.0625, 0.25, 0.75, 1.0);
-    canvas.setStopColor(0.5, 0.75, 1.0, 1.0); 
-    
-    // Set fill matrix for vertical gradient (top to bottom)
-    let gradientMatrix = Matrix4x4.create(
-      0, 1 / width, 0, 0,
-      1 / height, 0, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1
-    );
-    canvas.setFillMatrix(gradientMatrix);
-    
-    // Draw the gradient rectangle
-    canvas.drawFilledRectangle(0, 0, width, height);
-    
-    // Reset to solid color fill style for other drawing
-    canvas.setFillStyle(Canvas.FillStyle.Color);
-
     // Calculate scale to fit virtual canvas within actual canvas while preserving aspect ratio
     let scale;
     if (width / height < this.data.virtualWidth / this.data.virtualHeight) {
@@ -813,7 +792,29 @@ var application = {
     let viewMatrix = m1.mul(m2).mul(m3);
     canvas.setViewMatrix(viewMatrix);
 
-    // Now draw everything in virtual canvas coordinates (not the sky background)
+    // Now draw everything in virtual canvas coordinates 
+    
+    // Draw sky background (light blue)
+    // Draw background sky with gradient BEFORE view matrix (fill entire actual canvas including borders)
+    // Set up linear gradient from darker blue at top to lighter blue at bottom
+    canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+    canvas.setStartColor(0.0625, 0.25, 0.75, 1.0);
+    canvas.setStopColor(0.5, 0.75, 1.0, 1.0); 
+    
+    // Set fill matrix for vertical gradient (top to bottom)
+    let gradientMatrix = Matrix4x4.create(
+      0, 1 / this.data.virtualWidth, 0, 0,
+      1 / this.data.virtualHeight, 0, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    );
+    canvas.setFillMatrix(gradientMatrix);
+    
+    // Draw the gradient rectangle, more width to cover entire canvas area including borders
+    canvas.drawFilledRectangle(-this.data.virtualWidth * 2, 0, this.data.virtualWidth * 4, this.data.virtualHeight);
+    
+    // Reset to solid color fill style for other drawing
+    canvas.setFillStyle(Canvas.FillStyle.Color);
 
     // Draw sun with rotating rays
     let sunX = 400;
@@ -1281,27 +1282,6 @@ var application = {
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Leading); // Reset to left
     }
 
-    // Letterboxing: draw black bars on sides or top/bottom if needed
-    canvas.setModelMatrix(identityMatrix); // Reset model matrix
-    canvas.setFillStyle(Canvas.FillStyle.Color);
-    canvas.setColor(0.0, 0.0, 0.0, 1.0);
-    if (width / height < this.data.virtualWidth / this.data.virtualHeight) {
-      // Black bars on top and bottom
-      let totalBarHeight = height - (this.data.virtualHeight * scale);
-      let barHeight = totalBarHeight / 2;
-      // Top bar
-      canvas.drawFilledRectangle(0, 0, width, barHeight);
-      // Bottom bar
-      canvas.drawFilledRectangle(0, height - barHeight, width, barHeight);
-/*   } else {
-      // Black bars on left and right
-      let totalBarWidth = width - (this.data.virtualWidth * scale);
-      let barWidth = totalBarWidth / 2;
-      // Left bar
-      canvas.drawFilledRectangle(0, 0, barWidth, height);
-      // Right bar
-      canvas.drawFilledRectangle(width - barWidth, 0, barWidth, height);*/
-    }
   }
 
 };
