@@ -288,7 +288,7 @@ var application = {
   show: function() {
     print("POCA: Application show\n");
     if(this.data && this.data.initialized && this.data.music) {
-      this.data.music.play(1.0, 0.0, 1.0, true); // Volume, Panning, Rate, Loop 
+      this.data.music.play(0.3275, 0.0, 1.0, true); // Volume, Panning, Rate, Loop 
     }
   },
 
