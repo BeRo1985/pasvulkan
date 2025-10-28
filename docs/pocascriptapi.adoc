@@ -4969,26 +4969,44 @@ let matrix = canvas.getModelMatrix();
 
 '''''
 
-==== setModelMatrix()
+==== setModelMatrix(matrix)
 
 *Usage:*
 
 [source,js]
 ----
 canvas.setModelMatrix(matrix);
+// or
+canvas.setModelMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33);
 ----
 
 * *Description:* Sets the model matrix for object transforms.
 * *Parameters:*
-** `+matrix+` (Matrix4x4): Model matrix
-* *Return Value:* None.
+** *Option A:*
+*** `+matrix+` (Matrix4x4): Model matrix.
+** or *Option B:*
+*** `+m00, m01, m02, m03+` (numbers): First row of the matrix.
+*** `+m10, m11, m12, m13+` (numbers): Second row of the matrix.
+*** `+m20, m21, m22, m23+` (numbers): Third row of the matrix.
+*** `+m30, m31, m32, m33+` (numbers): Fourth row of the matrix.
+* *Return Value:* The canvas itself.
 * *Example:*
 +
 [source,js]
 ----
-let model = Matrix4x4.create();
-// Apply transformations to model matrix
-canvas.setModelMatrix(model);
+// Using Matrix4x4.create():
+let matrix = Matrix4x4.create(1, 0, 0, 0,
+                              0, 1, 0, 0,
+                              0, 0, 1, 0,
+                              0, 0, 0, 1);
+canvas.setModelMatrix(matrix);
+
+// or using individual numbers (identity matrix):
+canvas.setModelMatrix(1, 0, 0, 0,
+                      0, 1, 0, 0,
+                      0, 0, 1, 0,
+                      0, 0, 0, 1);
+
 canvas.drawFilledRectangle(Vector2.create(0, 0), Vector2.create(100, 100));
 ----
 
@@ -5009,19 +5027,44 @@ let matrix = canvas.getFillMatrix();
 
 '''''
 
-==== setFillMatrix()
+==== setFillMatrix(matrix)
 
 *Usage:*
 
 [source,js]
 ----
 canvas.setFillMatrix(matrix);
+// or
+canvas.setFillMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33);
 ----
 
 * *Description:* Sets the fill matrix for transforming fill textures/gradients.
 * *Parameters:*
-** `+matrix+` (Matrix4x4): Fill transformation matrix
-* *Return Value:* None.
+** *Option A:*
+*** `+matrix+` (Matrix4x4): Fill transformation matrix.
+** or *Option B:*
+*** `+m00, m01, m02, m03+` (numbers): First row of the matrix.
+*** `+m10, m11, m12, m13+` (numbers): Second row of the matrix.
+*** `+m20, m21, m22, m23+` (numbers): Third row of the matrix.
+*** `+m30, m31, m32, m33+` (numbers): Fourth row of the matrix.
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Matrix4x4.create():
+let matrix = Matrix4x4.create(2, 0, 0, 0,
+                              0, 2, 0, 0,
+                              0, 0, 1, 0,
+                              0, 0, 0, 1);
+canvas.setFillMatrix(matrix);
+
+// or using individual numbers (scale by 2):
+canvas.setFillMatrix(2, 0, 0, 0,
+                     0, 2, 0, 0,
+                     0, 0, 1, 0,
+                     0, 0, 0, 1);
+----
 
 '''''
 
@@ -5040,19 +5083,44 @@ let matrix = canvas.getMaskMatrix();
 
 '''''
 
-==== setMaskMatrix()
+==== setMaskMatrix(matrix)
 
 *Usage:*
 
 [source,js]
 ----
 canvas.setMaskMatrix(matrix);
+// or
+canvas.setMaskMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33);
 ----
 
 * *Description:* Sets the mask matrix for transforming mask textures.
 * *Parameters:*
-** `+matrix+` (Matrix4x4): Mask transformation matrix
-* *Return Value:* None.
+** *Option A:*
+*** `+matrix+` (Matrix4x4): Mask transformation matrix.
+** or *Option B:*
+*** `+m00, m01, m02, m03+` (numbers): First row of the matrix.
+*** `+m10, m11, m12, m13+` (numbers): Second row of the matrix.
+*** `+m20, m21, m22, m23+` (numbers): Third row of the matrix.
+*** `+m30, m31, m32, m33+` (numbers): Fourth row of the matrix.
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Matrix4x4.create():
+let matrix = Matrix4x4.create(1, 0, 0, 0,
+                              0, 1, 0, 0,
+                              0, 0, 1, 0,
+                              0, 0, 0, 1);
+canvas.setMaskMatrix(matrix);
+
+// or using individual numbers (identity matrix):
+canvas.setMaskMatrix(1, 0, 0, 0,
+                     0, 1, 0, 0,
+                     0, 0, 1, 0,
+                     0, 0, 0, 1);
+----
 
 '''''
 
