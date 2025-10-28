@@ -3204,8 +3204,6 @@ canvas.drawSpriteOriginRotation(sprite, srcX, srcY, srcWidth, srcHeight, destX, 
 +
 [source,js]
 ----
-let sprite = Sprite.create("player.png");
-
 // Using Vector2 (rotate around center):
 canvas.drawSpriteOriginRotation(
   sprite,
