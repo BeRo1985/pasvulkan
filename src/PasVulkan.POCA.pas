@@ -8966,6 +8966,33 @@ begin
  end;
 end;
 
+function POCAGetVector3Argument(aContext:PPOCAContext;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;var aArgumentIndex:TPOCAInt32):TpvVector3D;
+begin
+ if (aArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[aArgumentIndex])=POCAVector3GhostPointer) then begin
+  result:=POCAGetVector3Value(aArguments^[aArgumentIndex]);
+  inc(aArgumentIndex);
+ end else begin
+  if aArgumentIndex<aCountArguments then begin
+   result.x:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.x:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.y:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.y:=0.0;
+  end;
+  if aArgumentIndex<aCountArguments then begin
+   result.z:=POCAGetNumberValue(aContext,aArguments^[aArgumentIndex]);
+   inc(aArgumentIndex);
+  end else begin
+   result.z:=0.0;
+  end;
+ end;
+end;
+
 function POCACanvasFunctionGETPROJECTIONMATRIX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Canvas:TpvCanvas;
     ProjectionMatrix:TpvMatrix4x4D;
@@ -10682,18 +10709,8 @@ begin
     inc(ArgumentIndex);
    end;
    if Spatialization then begin
-    if ArgumentIndex<aCountArguments then begin
-     Position:=POCAGetVector3Value(aArguments[ArgumentIndex]);
-     inc(ArgumentIndex);
-    end else begin
-     Position:=TpvVector3.Origin;
-    end;
-    if ArgumentIndex<aCountArguments then begin
-     Velocity:=POCAGetVector3Value(aArguments[ArgumentIndex]);
-     inc(ArgumentIndex);
-    end else begin
-     Velocity:=TpvVector3.Origin;
-    end;
+    Position:=POCAGetVector3Argument(aContext,aArguments,aCountArguments,ArgumentIndex);
+    Velocity:=POCAGetVector3Argument(aContext,aArguments,aCountArguments,ArgumentIndex);
    end else begin
     Position:=TpvVector3.Origin;
     Velocity:=TpvVector3.Origin;
@@ -10916,18 +10933,8 @@ begin
     Spatialization:=false;
    end;
    if Spatialization then begin
-    if ArgumentIndex<aCountArguments then begin
-     Origin:=POCAGetVector3Value(aArguments[ArgumentIndex]);
-     inc(ArgumentIndex);
-    end else begin
-     Origin:=TpvVector3.Origin;
-    end;
-    if ArgumentIndex<aCountArguments then begin
-     Velocity:=POCAGetVector3Value(aArguments[ArgumentIndex]);
-     inc(ArgumentIndex);
-    end else begin
-     Velocity:=TpvVector3.Origin;
-    end;
+    Origin:=POCAGetVector3Argument(aContext,aArguments,aCountArguments,ArgumentIndex);
+    Velocity:=POCAGetVector3Argument(aContext,aArguments,aCountArguments,ArgumentIndex);
    end else begin
     Origin:=TpvVector3.Origin;
     Velocity:=TpvVector3.Origin;

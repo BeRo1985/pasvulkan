@@ -931,13 +931,13 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_sound_getrealvoices">sound.getRealVoices()</a></li>
 <li><a href="#_sound_getfadeoutduration">sound.getFadeOutDuration()</a></li>
 <li><a href="#_sound_play">sound.play()</a></li>
-<li><a href="#_sound_playspatialization">sound.playSpatialization()</a></li>
+<li><a href="#_sound_playspatializationvolume_panning_rate_spatialization_position_velocity_local">sound.playSpatialization(volume, panning, rate, spatialization, position, velocity, local)</a></li>
 <li><a href="#_sound_stop">sound.stop()</a></li>
 <li><a href="#_sound_keyoff">sound.keyOff()</a></li>
 <li><a href="#_sound_setvolume">sound.setVolume()</a></li>
 <li><a href="#_sound_setpanning">sound.setPanning()</a></li>
 <li><a href="#_sound_setrate">sound.setRate()</a></li>
-<li><a href="#_sound_setposition">sound.setPosition()</a></li>
+<li><a href="#_sound_setpositionvoiceid_spatialization_position_velocity_local">sound.setPosition(voiceID, spatialization, position, velocity, local)</a></li>
 <li><a href="#_sound_seteffectmix">sound.setEffectMix()</a></li>
 <li><a href="#_sound_isplaying">sound.isPlaying()</a></li>
 <li><a href="#_sound_isvoiceplaying">sound.isVoicePlaying()</a></li>
@@ -12448,13 +12448,15 @@ if (sound.valid()) {
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_sound_playspatialization">sound.playSpatialization()</h4>
+<h4 id="_sound_playspatializationvolume_panning_rate_spatialization_position_velocity_local">sound.playSpatialization(volume, panning, rate, spatialization, position, velocity, local)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">let voiceID = sound.playSpatialization(volume, panning, rate, spatialization, position, velocity, local);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">let voiceID = sound.playSpatialization(volume, panning, rate, spatialization, position, velocity, local);
+// or when spatialization is enabled, you can use individual numbers:
+let voiceID = sound.playSpatialization(volume, panning, rate, spatialization, x, y, z, vx, vy, vz, local);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -12479,10 +12481,37 @@ if (sound.valid()) {
 <p><code>spatialization</code> (number): Enable spatialization (1 for true, 0 for false).</p>
 </li>
 <li>
+<p><strong>When spatialization is enabled:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>position</code> (Vector3): 3D position of the sound source.</p>
 </li>
 <li>
 <p><code>velocity</code> (Vector3): 3D velocity of the sound source (for Doppler effect).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x, y, z</code> (numbers): 3D position coordinates.</p>
+</li>
+<li>
+<p><code>vx, vy, vz</code> (numbers): 3D velocity components.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p><code>local</code> (number): Use local coordinates (1) or world coordinates (0).</p>
@@ -12497,9 +12526,13 @@ if (sound.valid()) {
 <p><strong>Example:</strong></p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">let pos = Vector3.create(10, 0, 5);
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Vector3:
+let pos = Vector3.create(10, 0, 5);
 let vel = Vector3.create(0, 0, 0);
-let voiceID = sound.playSpatialization(1.0, 0.0, 1.0, 1, pos, vel, 0);</code></pre>
+let voiceID = sound.playSpatialization(1.0, 0.0, 1.0, 1, pos, vel, 0);
+
+// or using individual numbers:
+let voiceID = sound.playSpatialization(1.0, 0.0, 1.0, 1, 10, 0, 5, 0, 0, 0, 0);</code></pre>
 </div>
 </div>
 </li>
@@ -12677,13 +12710,15 @@ let voiceID = sound.playSpatialization(1.0, 0.0, 1.0, 1, pos, vel, 0);</code></p
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_sound_setposition">sound.setPosition()</h4>
+<h4 id="_sound_setpositionvoiceid_spatialization_position_velocity_local">sound.setPosition(voiceID, spatialization, position, velocity, local)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">sound.setPosition(voiceID, spatialization, position, velocity, local);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">sound.setPosition(voiceID, spatialization, position, velocity, local);
+// or when spatialization is enabled, you can use individual numbers:
+sound.setPosition(voiceID, spatialization, x, y, z, vx, vy, vz, local);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -12702,10 +12737,37 @@ let voiceID = sound.playSpatialization(1.0, 0.0, 1.0, 1, pos, vel, 0);</code></p
 <p><code>spatialization</code> (number): Enable spatialization.</p>
 </li>
 <li>
+<p><strong>When spatialization is enabled:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>position</code> (Vector3): New 3D position.</p>
 </li>
 <li>
 <p><code>velocity</code> (Vector3): New 3D velocity.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x, y, z</code> (numbers): New 3D position coordinates.</p>
+</li>
+<li>
+<p><code>vx, vy, vz</code> (numbers): New 3D velocity components.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p><code>local</code> (number): Use local coordinates.</p>
@@ -12715,6 +12777,20 @@ let voiceID = sound.playSpatialization(1.0, 0.0, 1.0, 1, pos, vel, 0);</code></p
 </li>
 <li>
 <p><strong>Return Value:</strong> The voice ID.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Vector3:
+let newPos = Vector3.create(15, 5, 0);
+let newVel = Vector3.create(2, 0, 0);
+sound.setPosition(voiceID, 1, newPos, newVel, 0);
+
+// or using individual numbers:
+sound.setPosition(voiceID, 1, 15, 5, 0, 2, 0, 0, 0);</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -13435,7 +13511,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 23:33:02 +0100
+Last updated 2025-10-28 23:49:48 +0100
 </div>
 </div>
 </body>

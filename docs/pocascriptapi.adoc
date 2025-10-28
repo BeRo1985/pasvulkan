@@ -6137,13 +6137,15 @@ let voiceID = sound.play(0.8, 0.0, 1.0); // Play at 80% volume, centered
 
 '''''
 
-==== sound.playSpatialization()
+==== sound.playSpatialization(volume, panning, rate, spatialization, position, velocity, local)
 
 *Usage:*
 
 [source,js]
 ----
 let voiceID = sound.playSpatialization(volume, panning, rate, spatialization, position, velocity, local);
+// or when spatialization is enabled, you can use individual numbers:
+let voiceID = sound.playSpatialization(volume, panning, rate, spatialization, x, y, z, vx, vy, vz, local);
 ----
 
 * *Description:* Plays the sound with 3D spatial audio.
@@ -6152,17 +6154,26 @@ let voiceID = sound.playSpatialization(volume, panning, rate, spatialization, po
 ** `+panning+` (number): Stereo panning.
 ** `+rate+` (number): Playback rate.
 ** `+spatialization+` (number): Enable spatialization (1 for true, 0 for false).
-** `+position+` (Vector3): 3D position of the sound source.
-** `+velocity+` (Vector3): 3D velocity of the sound source (for Doppler effect).
+** *When spatialization is enabled:*
+*** *Option A:*
+**** `+position+` (Vector3): 3D position of the sound source.
+**** `+velocity+` (Vector3): 3D velocity of the sound source (for Doppler effect).
+*** or *Option B:*
+**** `+x, y, z+` (numbers): 3D position coordinates.
+**** `+vx, vy, vz+` (numbers): 3D velocity components.
 ** `+local+` (number): Use local coordinates (1) or world coordinates (0).
 * *Return Value:* A voice ID.
 * *Example:*
 +
 [source,js]
 ----
+// Using Vector3:
 let pos = Vector3.create(10, 0, 5);
 let vel = Vector3.create(0, 0, 0);
 let voiceID = sound.playSpatialization(1.0, 0.0, 1.0, 1, pos, vel, 0);
+
+// or using individual numbers:
+let voiceID = sound.playSpatialization(1.0, 0.0, 1.0, 1, 10, 0, 5, 0, 0, 0, 0);
 ----
 
 '''''
@@ -6250,23 +6261,42 @@ sound.setRate(voiceID, rate);
 
 '''''
 
-==== sound.setPosition()
+==== sound.setPosition(voiceID, spatialization, position, velocity, local)
 
 *Usage:*
 
 [source,js]
 ----
 sound.setPosition(voiceID, spatialization, position, velocity, local);
+// or when spatialization is enabled, you can use individual numbers:
+sound.setPosition(voiceID, spatialization, x, y, z, vx, vy, vz, local);
 ----
 
 * *Description:* Updates the 3D position and velocity of a playing sound instance.
 * *Parameters:*
 ** `+voiceID+` (number): The voice ID.
 ** `+spatialization+` (number): Enable spatialization.
-** `+position+` (Vector3): New 3D position.
-** `+velocity+` (Vector3): New 3D velocity.
+** *When spatialization is enabled:*
+*** *Option A:*
+**** `+position+` (Vector3): New 3D position.
+**** `+velocity+` (Vector3): New 3D velocity.
+*** or *Option B:*
+**** `+x, y, z+` (numbers): New 3D position coordinates.
+**** `+vx, vy, vz+` (numbers): New 3D velocity components.
 ** `+local+` (number): Use local coordinates.
 * *Return Value:* The voice ID.
+* *Example:*
++
+[source,js]
+----
+// Using Vector3:
+let newPos = Vector3.create(15, 5, 0);
+let newVel = Vector3.create(2, 0, 0);
+sound.setPosition(voiceID, 1, newPos, newVel, 0);
+
+// or using individual numbers:
+sound.setPosition(voiceID, 1, 15, 5, 0, 2, 0, 0, 0);
+----
 
 '''''
 
