@@ -103,6 +103,7 @@ var application = {
     this.data.cameraRenderX = 0;
     this.data.cameraRenderY = 0;
     this.data.gameMode = gameMode;
+    this.data.time = 0.0;
     this.data.accumulator = 0.0;
     this.data.first = true;
 
@@ -431,6 +432,13 @@ var application = {
       this.data.cameraY = player.y - (centerY - safeZoneHeight);
     } else if (player.y > this.data.cameraY + centerY + safeZoneHeight) {
       this.data.cameraY = player.y - (centerY + safeZoneHeight);
+    }
+
+    // Camera scrolls slowly on start screen in both directions
+    if (this.data.gameMode === this.MODE_STARTSCREEN) {
+      let scrollTime = Math.fract(this.data.time * 0.1);
+      scrollTime = 1.0 - (Math.abs(scrollTime - 0.5) * 2.0); // Triangle wave
+      this.data.cameraX = scrollTime * (this.data.gameWidth - this.data.virtualWidth);
     }
 
     // Keep camera within bounds
