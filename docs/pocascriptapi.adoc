@@ -3150,8 +3150,6 @@ canvas.drawSprite(sprite, srcX, srcY, srcWidth, srcHeight, destX, destY, destWid
 +
 [source,js]
 ----
-let sprite = Sprite.create("characters.png");
-
 // Using Vector2 (copy 32x32 region from (0,0) to 64x64 at (100,100)):
 canvas.drawSprite(
   sprite,
