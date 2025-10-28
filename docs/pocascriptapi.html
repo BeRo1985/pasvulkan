@@ -825,11 +825,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_getfillwrapmode">getFillWrapMode()</a></li>
 <li><a href="#_setfillwrapmode">setFillWrapMode()</a></li>
 <li><a href="#_getcolor">getColor()</a></li>
-<li><a href="#_setcolor">setColor()</a></li>
+<li><a href="#_setcolorcolor">setColor(color)</a></li>
 <li><a href="#_getstartcolor">getStartColor()</a></li>
-<li><a href="#_setstartcolor">setStartColor()</a></li>
+<li><a href="#_setstartcolorcolor">setStartColor(color)</a></li>
 <li><a href="#_getstopcolor">getStopColor()</a></li>
-<li><a href="#_setstopcolor">setStopColor()</a></li>
+<li><a href="#_setstopcolorcolor">setStopColor(color)</a></li>
 <li><a href="#_getprojectionmatrix">getProjectionMatrix()</a></li>
 <li><a href="#_setprojectionmatrix">setProjectionMatrix()</a></li>
 <li><a href="#_getviewmatrix">getViewMatrix()</a></li>
@@ -9587,13 +9587,15 @@ canvas.setFillStyle(Canvas.FillStyle.Image);</code></pre>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_setcolor">setColor()</h4>
+<h4 id="_setcolorcolor">setColor(color)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.setColor(color);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setColor(color);
+// or
+canvas.setColor(r, g, b, a);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -9606,19 +9608,50 @@ canvas.setFillStyle(Canvas.FillStyle.Image);</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><code>color</code> (Vector4): RGBA color (components 0.0-1.0)</p>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>color</code> (Vector4): RGBA color (components 0.0-1.0).</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> None.</p>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>r</code> (number): Red component (0.0-1.0).</p>
+</li>
+<li>
+<p><code>g</code> (number): Green component (0.0-1.0).</p>
+</li>
+<li>
+<p><code>b</code> (number): Blue component (0.0-1.0).</p>
+</li>
+<li>
+<p><code>a</code> (number): Alpha component (0.0-1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Vector4:
+canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red
+
+// or using individual numbers:
+canvas.setColor(1, 0, 0, 1); // Red
+
 canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 </div>
 </div>
@@ -9653,13 +9686,15 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_setstartcolor">setStartColor()</h4>
+<h4 id="_setstartcolorcolor">setStartColor(color)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.setStartColor(color);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setStartColor(color);
+// or
+canvas.setStartColor(r, g, b, a);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -9672,20 +9707,52 @@ canvas.drawFilledCircle(Vector2.create(100, 100), 50);</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><code>color</code> (Vector4): RGBA color</p>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>color</code> (Vector4): RGBA color (components 0.0-1.0).</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> None.</p>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>r</code> (number): Red component (0.0-1.0).</p>
+</li>
+<li>
+<p><code>g</code> (number): Green component (0.0-1.0).</p>
+</li>
+<li>
+<p><code>b</code> (number): Blue component (0.0-1.0).</p>
+</li>
+<li>
+<p><code>a</code> (number): Alpha component (0.0-1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+
+// Using Vector4:
 canvas.setStartColor(Vector4.create(1, 1, 0, 1)); // Yellow
+
+// or using individual numbers:
+canvas.setStartColor(1, 1, 0, 1); // Yellow
+
 canvas.setStopColor(Vector4.create(1, 0, 1, 1));  // Magenta</code></pre>
 </div>
 </div>
@@ -9720,13 +9787,15 @@ canvas.setStopColor(Vector4.create(1, 0, 1, 1));  // Magenta</code></pre>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_setstopcolor">setStopColor()</h4>
+<h4 id="_setstopcolorcolor">setStopColor(color)</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.setStopColor(color);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setStopColor(color);
+// or
+canvas.setStopColor(r, g, b, a);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -9739,13 +9808,54 @@ canvas.setStopColor(Vector4.create(1, 0, 1, 1));  // Magenta</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><code>color</code> (Vector4): RGBA color</p>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>color</code> (Vector4): RGBA color (components 0.0-1.0).</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> None.</p>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>r</code> (number): Red component (0.0-1.0).</p>
+</li>
+<li>
+<p><code>g</code> (number): Green component (0.0-1.0).</p>
+</li>
+<li>
+<p><code>b</code> (number): Blue component (0.0-1.0).</p>
+</li>
+<li>
+<p><code>a</code> (number): Alpha component (0.0-1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+canvas.setStartColor(Vector4.create(1, 1, 0, 1)); // Yellow
+
+// Using Vector4:
+canvas.setStopColor(Vector4.create(1, 0, 1, 1));  // Magenta
+
+// or using individual numbers:
+canvas.setStopColor(1, 0, 1, 1);  // Magenta</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -13095,7 +13205,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 22:53:40 +0100
+Last updated 2025-10-28 23:17:45 +0100
 </div>
 </div>
 </body>

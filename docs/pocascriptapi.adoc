@@ -4697,24 +4697,37 @@ let color = canvas.getColor();
 
 '''''
 
-==== setColor()
+==== setColor(color)
 
 *Usage:*
 
 [source,js]
 ----
 canvas.setColor(color);
+// or
+canvas.setColor(r, g, b, a);
 ----
 
 * *Description:* Sets the current drawing color.
 * *Parameters:*
-** `+color+` (Vector4): RGBA color (components 0.0-1.0)
-* *Return Value:* None.
+** *Option A:*
+*** `+color+` (Vector4): RGBA color (components 0.0-1.0).
+** or *Option B:*
+*** `+r+` (number): Red component (0.0-1.0).
+*** `+g+` (number): Green component (0.0-1.0).
+*** `+b+` (number): Blue component (0.0-1.0).
+*** `+a+` (number): Alpha component (0.0-1.0).
+* *Return Value:* The canvas itself.
 * *Example:*
 +
 [source,js]
 ----
+// Using Vector4:
 canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red
+
+// or using individual numbers:
+canvas.setColor(1, 0, 0, 1); // Red
+
 canvas.drawFilledCircle(Vector2.create(100, 100), 50);
 ----
 
@@ -4735,25 +4748,39 @@ let color = canvas.getStartColor();
 
 '''''
 
-==== setStartColor()
+==== setStartColor(color)
 
 *Usage:*
 
 [source,js]
 ----
 canvas.setStartColor(color);
+// or
+canvas.setStartColor(r, g, b, a);
 ----
 
 * *Description:* Sets the gradient start color.
 * *Parameters:*
-** `+color+` (Vector4): RGBA color
-* *Return Value:* None.
+** *Option A:*
+*** `+color+` (Vector4): RGBA color (components 0.0-1.0).
+** or *Option B:*
+*** `+r+` (number): Red component (0.0-1.0).
+*** `+g+` (number): Green component (0.0-1.0).
+*** `+b+` (number): Blue component (0.0-1.0).
+*** `+a+` (number): Alpha component (0.0-1.0).
+* *Return Value:* The canvas itself.
 * *Example:*
 +
 [source,js]
 ----
 canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+
+// Using Vector4:
 canvas.setStartColor(Vector4.create(1, 1, 0, 1)); // Yellow
+
+// or using individual numbers:
+canvas.setStartColor(1, 1, 0, 1); // Yellow
+
 canvas.setStopColor(Vector4.create(1, 0, 1, 1));  // Magenta
 ----
 
@@ -4774,19 +4801,40 @@ let color = canvas.getStopColor();
 
 '''''
 
-==== setStopColor()
+==== setStopColor(color)
 
 *Usage:*
 
 [source,js]
 ----
 canvas.setStopColor(color);
+// or
+canvas.setStopColor(r, g, b, a);
 ----
 
 * *Description:* Sets the gradient stop color.
 * *Parameters:*
-** `+color+` (Vector4): RGBA color
-* *Return Value:* None.
+** *Option A:*
+*** `+color+` (Vector4): RGBA color (components 0.0-1.0).
+** or *Option B:*
+*** `+r+` (number): Red component (0.0-1.0).
+*** `+g+` (number): Green component (0.0-1.0).
+*** `+b+` (number): Blue component (0.0-1.0).
+*** `+a+` (number): Alpha component (0.0-1.0).
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+canvas.setStartColor(Vector4.create(1, 1, 0, 1)); // Yellow
+
+// Using Vector4:
+canvas.setStopColor(Vector4.create(1, 0, 1, 1));  // Magenta
+
+// or using individual numbers:
+canvas.setStopColor(1, 0, 1, 1);  // Magenta
+----
 
 '''''
 
