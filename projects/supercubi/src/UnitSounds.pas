@@ -55,6 +55,10 @@ type TSoundManager=class
             TSounds=TpvObjectGenericList<TSound>;
             TSoundExistHashList=TpvHashMap<TSound,Boolean>;
             TSoundHashList=TpvStringHashMap<TSound>;
+            TMusic=class;
+            TMusics=TpvObjectGenericList<TMusic>;
+            TMusicExistHashList=TpvHashMap<TMusic,Boolean>;
+            TMusicHashList=TpvStringHashMap<TMusic>;
             { TSound }
             TSound=class
              private
@@ -107,12 +111,54 @@ type TSoundManager=class
               property POCAInstanceValue:TPOCAValue read fPOCAInstanceValue;
              published
             end;
+            { TMusic }
+            TMusic=class
+             private
+              fSoundManager:TSoundManager;
+              fGame:TObject;
+              fIndex:TpvSizeInt;
+              fUID:TPasMPUInt64;
+              fUIDString:TpvUTF8String;
+              fName:TpvUTF8String;
+              fFileName:TpvUTF8String;
+              fMusic:TpvAudioSoundMusic;
+              fReady:TPasMPBool32;
+              fPOCAInstanceValue:TPOCAValue;
+              fUIDPOCAKeyValue:TPOCAValue;
+              fReferenceCounter:TpvInt32;
+             public
+              constructor Create(const aSounds:TSoundManager;const aName,aFileName:TpvUTF8String); reintroduce;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+              procedure IncRef;
+              procedure DecRef;
+              procedure BackgroundLoad;
+              procedure Reload;
+              procedure UpdateAudio;
+             public
+              procedure Play(Volume,Panning,Rate:TpvFloat;Loop:boolean);
+              procedure Stop;
+              procedure SetVolume(Volume:TpvFloat);
+              procedure SetPanning(Panning:TpvFloat);
+              procedure SetRate(Rate:TpvFloat);
+              function IsPlaying:boolean;
+             public
+              property UID:TPasMPUInt64 read fUID;
+              property Ready:TPasMPBool32 read fReady write fReady;
+              property Music:TpvAudioSoundMusic read fMusic;
+              property POCAInstanceValue:TPOCAValue read fPOCAInstanceValue;
+             published
+            end;
             TUIDFreeList=TpvDynamicFastStack<TPasMPUInt64>;
       private
        fGame:TObject;
        fSounds:TSounds;
        fSoundExistHashList:TSoundExistHashList;
        fSoundHashList:TSoundHashList;
+       fMusics:TMusics;
+       fMusicExistHashList:TMusicExistHashList;
+       fMusicHashList:TMusicHashList;
        fLock:TPasMPCriticalSection;
        fUIDCounter:TPasMPUInt64;
        fUIDFreeListLock:TPasMPCriticalSection;
@@ -120,6 +166,8 @@ type TSoundManager=class
        fPOCASubContext:PPOCAContext;
        fPOCASoundHash:TPOCAValue;
        fPOCASoundGhostHash:TPOCAValue;
+       fPOCAMusicHash:TPOCAValue;
+       fPOCAMusicGhostHash:TPOCAValue;
       public
        constructor Create(const aGame:TObject); reintroduce;
        destructor Destroy; override;
@@ -129,6 +177,10 @@ type TSoundManager=class
        function Find(const aName:TpvUTF8String):TSound;
        procedure Remove(const aSound:TSound); overload;
        procedure Remove(const aName:TpvUTF8String); overload;
+       function AddMusic(const aName,aFileName:TpvUTF8String):TMusic;
+       function FindMusic(const aName:TpvUTF8String):TMusic;
+       procedure RemoveMusic(const aMusic:TMusic); overload;
+       procedure RemoveMusic(const aName:TpvUTF8String); overload;
        procedure Clear;
       public
      end;
@@ -151,6 +203,17 @@ const POCASoundGhost:TPOCAGhostType=
         GetKey:nil;
         SetKey:nil;
         Name:'Sound'
+       );
+
+const POCAMusicGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Music'
        );
 
 function POCASoundsCreate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
@@ -896,6 +959,395 @@ begin
  end;
 end;
 
+// POCA Music API
+
+function POCAMusicsCreate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+    Name,FileName:TpvUTF8String;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) then begin
+  Sounds:=TSoundManager(aUserData);
+  ArgumentIndex:=0;
+  if ArgumentIndex<aCountArguments then begin
+   Name:=POCAGetStringValue(aContext,aArguments[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Name:='';
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   FileName:=POCAGetStringValue(aContext,aArguments[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   FileName:='';
+  end;
+  if assigned(Sounds) then begin
+   Music:=Sounds.AddMusic(Name,FileName);
+   if assigned(Music) then begin
+    Music.BackgroundLoad;
+    result:=Music.fPOCAInstanceValue;
+   end else begin
+    result.CastedUInt64:=POCAValueNullCastedUInt64;
+   end;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicsFind(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+    Name:TpvUTF8String;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) then begin
+  Sounds:=TSoundManager(aUserData);
+  ArgumentIndex:=0;
+  if ArgumentIndex<aCountArguments then begin
+   Name:=POCAGetStringValue(aContext,aArguments[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Name:='';
+  end;
+  if assigned(Sounds) then begin
+   Music:=Sounds.FindMusic(Name);
+   if assigned(Music) then begin
+    result:=Music.fPOCAInstanceValue;
+   end else begin
+    result.CastedUInt64:=POCAValueNullCastedUInt64;
+   end;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicsRemove(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+    Name:TpvUTF8String;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) then begin
+  Sounds:=TSoundManager(aUserData);
+  ArgumentIndex:=0;
+  if ArgumentIndex<aCountArguments then begin
+   if POCAGhostGetType(aArguments[ArgumentIndex])=@POCAMusicGhost then begin
+    Music:=POCAGhostFastGetPointer(aArguments[ArgumentIndex]);
+    inc(ArgumentIndex);
+   end else begin
+    Name:=POCAGetStringValue(aContext,aArguments[ArgumentIndex]);
+    inc(ArgumentIndex);
+    if assigned(Sounds) then begin
+     Music:=Sounds.FindMusic(Name);
+    end else begin
+     Music:=nil;
+    end;
+   end;
+  end else begin
+   Music:=nil;
+  end;
+  if assigned(Sounds) and assigned(Music) then begin
+   Sounds.RemoveMusic(Music);
+  end;
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicsClear(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TSoundManager;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) then begin
+  Sounds:=TSoundManager(aUserData);
+  Sounds.fLock.Acquire;
+  try
+   while Sounds.fMusics.Count>0 do begin
+    Sounds.fMusics[Sounds.fMusics.Count-1].Free;
+   end;
+  finally
+   Sounds.fLock.Release;
+  end;
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashValid(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TSoundManager(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  result.Num:=ord(Sounds.fMusicExistHashList.ExistKey(Music)) and 1;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashDestroy(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TSoundManager(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   Music.Free;
+   result.Num:=1.0;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashReload(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  Sounds:=TSoundManager(aUserData);
+  if assigned(Sounds) then begin
+   Music:=POCAGhostFastGetPointer(aThis);
+   if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+    Music.Reload;
+    result:=Music.fPOCAInstanceValue;
+   end;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashGetName(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TSoundManager(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   result:=POCANewString(Sounds.fPOCASubContext,Music.fName);
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashGetUID(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TSoundManager(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   if Music.fUID<=TpvUInt64($001fffffffffffff) then begin
+    result:=POCANewNumber(Sounds.fPOCASubContext,Music.fUID);
+   end else begin
+    result:=POCANewUniqueString(Sounds.fPOCASubContext,Music.fUIDString);
+   end;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashGetFileName(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TSoundManager(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   result:=POCANewString(Sounds.fPOCASubContext,Music.fFileName);
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashPlay(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+    Volume,Panning,Rate:TpvDouble;
+    Loop:boolean;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TSoundManager(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   ArgumentIndex:=0;
+   if ArgumentIndex<aCountArguments then begin
+    Volume:=POCAGetNumberValue(aContext,aArguments[ArgumentIndex]);
+    inc(ArgumentIndex);
+   end else begin
+    Volume:=1.0;
+   end;
+   if ArgumentIndex<aCountArguments then begin
+    Panning:=POCAGetNumberValue(aContext,aArguments[ArgumentIndex]);
+    inc(ArgumentIndex);
+   end else begin
+    Panning:=0.0;
+   end;
+   if ArgumentIndex<aCountArguments then begin
+    Rate:=POCAGetNumberValue(aContext,aArguments[ArgumentIndex]);
+    inc(ArgumentIndex);
+   end else begin
+    Rate:=1.0;
+   end;
+   if ArgumentIndex<aCountArguments then begin
+    Loop:=(POCAGetValueType(aArguments[ArgumentIndex])=pvtNUMBER) and (POCAGetNumberValue(aContext,aArguments[ArgumentIndex])<>0.0);
+    inc(ArgumentIndex);
+   end else begin
+    Loop:=false;
+   end;
+   Music.Play(Volume,Panning,Rate,Loop);
+   result:=aThis;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashStop(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TSoundManager(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   Music.Stop;
+   result:=aThis;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashSetVolume(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+    Volume:TpvDouble;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TSoundManager(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   ArgumentIndex:=0;
+   if ArgumentIndex<aCountArguments then begin
+    Volume:=POCAGetNumberValue(aContext,aArguments[ArgumentIndex]);
+    inc(ArgumentIndex);
+   end else begin
+    Volume:=1.0;
+   end;
+   Music.SetVolume(Volume);
+   result:=aThis;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashSetPanning(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+    Panning:TpvDouble;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TSoundManager(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   ArgumentIndex:=0;
+   if ArgumentIndex<aCountArguments then begin
+    Panning:=POCAGetNumberValue(aContext,aArguments[ArgumentIndex]);
+    inc(ArgumentIndex);
+   end else begin
+    Panning:=0.0;
+   end;
+   Music.SetPanning(Panning);
+   result:=aThis;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashSetRate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+    Rate:TpvDouble;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TSoundManager(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   ArgumentIndex:=0;
+   if ArgumentIndex<aCountArguments then begin
+    Rate:=POCAGetNumberValue(aContext,aArguments[ArgumentIndex]);
+    inc(ArgumentIndex);
+   end else begin
+    Rate:=1.0;
+   end;
+   Music.SetRate(Rate);
+   result:=aThis;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashIsPlaying(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TSoundManager;
+    Music:TSoundManager.TMusic;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TSoundManager) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TSoundManager(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   result.Num:=ord(Music.IsPlaying) and 1;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
 { TSoundManager.TSound }
 
 constructor TSoundManager.TSound.Create(const aSounds:TSoundManager;const aName,aFileName:TpvUTF8String;const aPolyphony:TpvInt32;const aLoop,aRealVoices:TpvInt32;const aFadeOutDuration:TpvDouble);
@@ -1226,6 +1678,260 @@ begin
  end;
 end;
 
+{ TSoundManager.TMusic }
+
+constructor TSoundManager.TMusic.Create(const aSounds:TSoundManager;const aName,aFileName:TpvUTF8String);
+begin
+
+ inherited Create;
+
+ fSoundManager:=aSounds;
+
+ fName:=aName;
+
+ fFileName:=aFileName;
+
+ fReady:=false;
+
+ fReferenceCounter:=0;
+
+ fSoundManager.fUIDFreeListLock.Acquire;
+ try
+  if not fSoundManager.fUIDFreeList.Pop(fUID) then begin
+   repeat
+    fUID:=TPasMPInterlocked.Increment(fSoundManager.fUIDCounter);
+   until fUID<>0;
+  end;
+ finally
+  fSoundManager.fUIDFreeListLock.Release;
+ end;
+
+end;
+
+destructor TSoundManager.TMusic.Destroy;
+begin
+
+ if assigned(pvApplication.Audio) then begin
+  pvApplication.Audio.Lock;
+  try
+   if assigned(fMusic) then begin
+    try
+     fMusic.Stop;
+     fMusic.Free;
+    finally
+     fMusic:=nil;
+    end;
+   end;
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+
+ if fUID<>0 then begin
+  fSoundManager.fUIDFreeListLock.Acquire;
+  try
+   fSoundManager.fUIDFreeList.Push(fUID);
+  finally
+   fSoundManager.fUIDFreeListLock.Release;
+  end;
+ end;
+
+ inherited Destroy;
+
+end;
+
+procedure TSoundManager.TMusic.AfterConstruction;
+begin
+ inherited AfterConstruction;
+
+ if assigned(fSoundManager) then begin
+
+  fSoundManager.fLock.Acquire;
+  try
+
+   fIndex:=fSoundManager.fMusics.Add(self);
+   fSoundManager.fMusicHashList.Add(fName,self);
+   fSoundManager.fMusicExistHashList.Add(self,true);
+
+   fPOCAInstanceValue:=POCANewGhost(fSoundManager.fPOCASubContext,@POCAMusicGhost,self);
+   POCAGhostSetHashValue(fPOCAInstanceValue,fSoundManager.fPOCAMusicGhostHash);
+   if fUID<=TpvUInt64($001fffffffffffff) then begin
+    fUIDPOCAKeyValue:=POCANewNumber(fSoundManager.fPOCASubContext,fUID);
+   end else begin
+    fUIDPOCAKeyValue:=POCANewUniqueString(fSoundManager.fPOCASubContext,fUIDString);
+   end;
+
+   POCAHashSet(fSoundManager.fPOCASubContext,fSoundManager.fPOCAMusicHash,fUIDPOCAKeyValue,fPOCAInstanceValue);
+
+  finally
+   fSoundManager.fLock.Release;
+  end;
+
+ end;
+
+end;
+
+procedure TSoundManager.TMusic.BeforeDestruction;
+begin
+
+ if assigned(fSoundManager) then begin
+
+  fSoundManager.fLock.Acquire;
+  try
+
+   POCAHashDelete(fSoundManager.fPOCASubContext,fSoundManager.fPOCAMusicHash,fUIDPOCAKeyValue);
+
+   fSoundManager.fMusicExistHashList.Delete(self);
+   fSoundManager.fMusicHashList.Delete(fName);
+   fSoundManager.fMusics.RemoveWithoutFree(self);
+
+  finally
+   fSoundManager.fLock.Release;
+  end;
+
+ end;
+
+ inherited BeforeDestruction;
+
+end;
+
+procedure TSoundManager.TMusic.IncRef;
+begin
+ TPasMPInterlocked.Increment(fReferenceCounter);
+end;
+
+procedure TSoundManager.TMusic.DecRef;
+begin
+ if TPasMPInterlocked.Decrement(fReferenceCounter)=0 then begin
+  Free;
+ end;
+end;
+
+procedure TSoundManager.TMusic.BackgroundLoad;
+begin
+ if assigned(pvApplication.Audio) then begin
+  pvApplication.Audio.Lock;
+  try
+   if pvApplication.Assets.ExistAsset(fFileName) then begin
+    fMusic:=pvApplication.Audio.Musics.Load(fName,pvApplication.Assets.GetAssetStream(fFileName),true);
+    fReady:=assigned(fMusic);
+   end else begin
+    fMusic:=nil;
+    fReady:=false;
+   end;
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
+procedure TSoundManager.TMusic.Reload;
+begin
+ if assigned(pvApplication.Audio) then begin
+  pvApplication.Audio.Lock;
+  try
+   if assigned(fMusic) then begin
+    try
+     fMusic.Stop;
+     fMusic.Free;
+    finally
+     fMusic:=nil;
+    end;
+   end;
+   BackgroundLoad;
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
+procedure TSoundManager.TMusic.UpdateAudio;
+begin
+ if assigned(pvApplication.Audio) and assigned(fMusic) then begin
+  pvApplication.Audio.Lock;
+  try
+   // Music update is handled by audio engine automatically
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
+procedure TSoundManager.TMusic.Play(Volume,Panning,Rate:TpvFloat;Loop:boolean);
+begin
+ if assigned(pvApplication.Audio) and assigned(fMusic) then begin
+  pvApplication.Audio.Lock;
+  try
+   fMusic.Play(Volume,Panning,Rate,Loop);
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
+procedure TSoundManager.TMusic.Stop;
+begin
+ if assigned(pvApplication.Audio) and assigned(fMusic) then begin
+  pvApplication.Audio.Lock;
+  try
+   fMusic.Stop;
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
+procedure TSoundManager.TMusic.SetVolume(Volume:TpvFloat);
+begin
+ if assigned(pvApplication.Audio) and assigned(fMusic) then begin
+  pvApplication.Audio.Lock;
+  try
+   fMusic.SetVolume(Volume);
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
+procedure TSoundManager.TMusic.SetPanning(Panning:TpvFloat);
+begin
+ if assigned(pvApplication.Audio) and assigned(fMusic) then begin
+  pvApplication.Audio.Lock;
+  try
+   fMusic.SetPanning(Panning);
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
+procedure TSoundManager.TMusic.SetRate(Rate:TpvFloat);
+begin
+ if assigned(pvApplication.Audio) and assigned(fMusic) then begin
+  pvApplication.Audio.Lock;
+  try
+   fMusic.SetRate(Rate);
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
+function TSoundManager.TMusic.IsPlaying:boolean;
+begin
+ result:=false;
+ if assigned(pvApplication.Audio) and assigned(fMusic) then begin
+  pvApplication.Audio.Lock;
+  try
+   result:=fMusic.IsPlaying;
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
+{ TSoundManager }
+
 { TSoundManager }
 
 constructor TSoundManager.Create(const aGame:TObject);
@@ -1277,6 +1983,29 @@ begin
 
  POCAHashSetString(fPOCASubContext,fPOCASubContext^.Instance^.Globals.NameSpace,'SoundHash',fPOCASoundGhostHash);
 
+ fPOCAMusicGhostHash:=POCANewHash(fPOCASubContext);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'valid',POCAMusicHashValid,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'destroy',POCAMusicHashDestroy,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'reload',POCAMusicHashReload,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'getName',POCAMusicHashGetName,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'getUID',POCAMusicHashGetUID,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'getFileName',POCAMusicHashGetFileName,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'play',POCAMusicHashPlay,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'stop',POCAMusicHashStop,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'setVolume',POCAMusicHashSetVolume,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'setPanning',POCAMusicHashSetPanning,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'setRate',POCAMusicHashSetRate,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'isPlaying',POCAMusicHashIsPlaying,nil,self);
+
+ fPOCAMusicHash:=POCANewHash(fPOCASubContext);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'create',POCAMusicsCreate,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'find',POCAMusicsFind,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'remove',POCAMusicsRemove,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'clear',POCAMusicsClear,nil,self);
+ POCAHashSetString(fPOCASubContext,fPOCASubContext^.Instance^.Globals.NameSpace,'MusicManager',fPOCAMusicHash);
+
+ POCAHashSetString(fPOCASubContext,fPOCASubContext^.Instance^.Globals.NameSpace,'MusicHash',fPOCAMusicGhostHash);
+
  fUIDCounter:=0;
 
  fSoundHashList:=TSoundHashList.Create(nil);
@@ -1285,10 +2014,25 @@ begin
 
  fSounds:=TSounds.Create(true);
 
+ fMusicHashList:=TMusicHashList.Create(nil);
+
+ fMusicExistHashList:=TMusicExistHashList.Create(false);
+
+ fMusics:=TMusics.Create(true);
+
 end;
 
 destructor TSoundManager.Destroy;
 begin
+
+ while fMusics.Count>0 do begin
+  fMusics[fMusics.Count-1].Free;
+ end;
+ FreeAndNil(fMusics);
+
+ FreeAndNil(fMusicExistHashList);
+
+ FreeAndNil(fMusicHashList);
 
  while fSounds.Count>0 do begin
   fSounds[fSounds.Count-1].Free;
@@ -1299,6 +2043,8 @@ begin
 
  FreeAndNil(fSoundHashList);
 
+ POCAHashDeleteString(fPOCASubContext,fPOCASubContext^.Instance^.Globals.NameSpace,'MusicManager');
+ POCAHashDeleteString(fPOCASubContext,fPOCASubContext^.Instance^.Globals.NameSpace,'MusicHash');
  POCAHashDeleteString(fPOCASubContext,fPOCASubContext^.Instance^.Globals.NameSpace,'SoundManager');
  POCAHashDeleteString(fPOCASubContext,fPOCASubContext^.Instance^.Globals.NameSpace,'SoundHash');
  POCAContextDestroy(fPOCASubContext);
@@ -1323,6 +2069,9 @@ begin
   for Index:=0 to fSounds.Count-1 do begin
    fSounds[Index].BackgroundLoad;
   end;
+  for Index:=0 to fMusics.Count-1 do begin
+   fMusics[Index].BackgroundLoad;
+  end;
  finally
   fLock.Release;
  end;
@@ -1335,6 +2084,9 @@ begin
  try
   for Index:=0 to fSounds.Count-1 do begin
    fSounds[Index].UpdateAudio;
+  end;
+  for Index:=0 to fMusics.Count-1 do begin
+   fMusics[Index].UpdateAudio;
   end;
  finally
   fLock.Release;
@@ -1385,8 +2137,51 @@ procedure TSoundManager.Clear;
 begin
  fLock.Acquire;
  try
+  while fMusics.Count>0 do begin
+   fMusics[fMusics.Count-1].Free;
+  end;
   while fSounds.Count>0 do begin
    fSounds[fSounds.Count-1].Free;
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
+function TSoundManager.AddMusic(const aName,aFileName:TpvUTF8String):TMusic;
+begin
+ result:=TMusic.Create(self,aName,aFileName);
+end;
+
+function TSoundManager.FindMusic(const aName:TpvUTF8String):TMusic;
+begin
+ fLock.Acquire;
+ try
+  if fMusicHashList.ExistKey(aName) then begin
+   result:=fMusicHashList[aName];
+  end else begin
+   result:=nil;
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
+procedure TSoundManager.RemoveMusic(const aMusic:TMusic);
+begin
+ if assigned(aMusic) then begin
+  aMusic.Free;
+ end;
+end;
+
+procedure TSoundManager.RemoveMusic(const aName:TpvUTF8String);
+var Music:TMusic;
+begin
+ fLock.Acquire;
+ try
+  Music:=FindMusic(aName);
+  if assigned(Music) then begin
+   Music.Free;
   end;
  finally
   fLock.Release;
