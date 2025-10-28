@@ -3408,12 +3408,30 @@ canvas.beginPath();
 [source,js]
 ----
 canvas.moveTo(position);
+// or
+canvas.moveTo(x, y);
 ----
 
 * *Description:* Moves the current path position without drawing.
 * *Parameters:*
-** `+position+` (Vector2): The position to move to.
+** *Option A:*
+*** `+position+` (Vector2): The position to move to.
+** or *Option B:*
+*** `+x+` (number): The X coordinate to move to.
+*** `+y+` (number): The Y coordinate to move to.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+
+// Using Vector2:
+canvas.moveTo(Vector2.create(50, 50));
+
+// or using individual numbers:
+canvas.moveTo(50, 50);
+----
 
 '''''
 
@@ -3424,12 +3442,33 @@ canvas.moveTo(position);
 [source,js]
 ----
 canvas.lineTo(position);
+// or
+canvas.lineTo(x, y);
 ----
 
 * *Description:* Draws a line from the current position to the specified position.
 * *Parameters:*
-** `+position+` (Vector2): The end position.
+** *Option A:*
+*** `+position+` (Vector2): The end position.
+** or *Option B:*
+*** `+x+` (number): The end X coordinate.
+*** `+y+` (number): The end Y coordinate.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+canvas.moveTo(10, 10);
+
+// Using Vector2:
+canvas.lineTo(Vector2.create(100, 100));
+
+// or using individual numbers:
+canvas.lineTo(100, 100);
+
+canvas.stroke();
+----
 
 '''''
 
@@ -3440,13 +3479,36 @@ canvas.lineTo(position);
 [source,js]
 ----
 canvas.quadraticCurveTo(control, end);
+// or
+canvas.quadraticCurveTo(controlX, controlY, endX, endY);
 ----
 
 * *Description:* Draws a quadratic Bézier curve.
 * *Parameters:*
-** `+control+` (Vector2): The control point.
-** `+end+` (Vector2): The end point.
+** *Option A:*
+*** `+control+` (Vector2): The control point.
+*** `+end+` (Vector2): The end point.
+** or *Option B:*
+*** `+controlX+` (number): The control point X coordinate.
+*** `+controlY+` (number): The control point Y coordinate.
+*** `+endX+` (number): The end point X coordinate.
+*** `+endY+` (number): The end point Y coordinate.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+canvas.moveTo(10, 10);
+
+// Using Vector2:
+canvas.quadraticCurveTo(Vector2.create(50, 5), Vector2.create(90, 10));
+
+// or using individual numbers:
+canvas.quadraticCurveTo(50, 5, 90, 10);
+
+canvas.stroke();
+----
 
 '''''
 
@@ -3457,14 +3519,43 @@ canvas.quadraticCurveTo(control, end);
 [source,js]
 ----
 canvas.cubicCurveTo(control1, control2, end);
+// or
+canvas.cubicCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY);
 ----
 
 * *Description:* Draws a cubic Bézier curve.
 * *Parameters:*
-** `+control1+` (Vector2): The first control point.
-** `+control2+` (Vector2): The second control point.
-** `+end+` (Vector2): The end point.
+** *Option A:*
+*** `+control1+` (Vector2): The first control point.
+*** `+control2+` (Vector2): The second control point.
+*** `+end+` (Vector2): The end point.
+** or *Option B:*
+*** `+cp1X+` (number): The first control point X coordinate.
+*** `+cp1Y+` (number): The first control point Y coordinate.
+*** `+cp2X+` (number): The second control point X coordinate.
+*** `+cp2Y+` (number): The second control point Y coordinate.
+*** `+endX+` (number): The end point X coordinate.
+*** `+endY+` (number): The end point Y coordinate.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+canvas.moveTo(10, 10);
+
+// Using Vector2:
+canvas.cubicCurveTo(
+  Vector2.create(20, 5), 
+  Vector2.create(80, 5), 
+  Vector2.create(90, 10)
+);
+
+// or using individual numbers:
+canvas.cubicCurveTo(20, 5, 80, 5, 90, 10);
+
+canvas.stroke();
+----
 
 '''''
 
@@ -3475,16 +3566,40 @@ canvas.cubicCurveTo(control1, control2, end);
 [source,js]
 ----
 canvas.arc(center, radius, startAngle, endAngle, counterClockwise);
+// or
+canvas.arc(centerX, centerY, radius, startAngle, endAngle, counterClockwise);
 ----
 
 * *Description:* Adds an arc to the current path.
 * *Parameters:*
-** `+center+` (Vector2): The center of the arc.
-** `+radius+` (number): The arc radius.
-** `+startAngle+` (number): The start angle in radians.
-** `+endAngle+` (number): The end angle in radians.
-** `+counterClockwise+` (boolean): Whether to draw counter-clockwise.
+** *Option A:*
+*** `+center+` (Vector2): The center of the arc.
+*** `+radius+` (number): The arc radius.
+*** `+startAngle+` (number): The start angle in radians.
+*** `+endAngle+` (number): The end angle in radians.
+*** `+counterClockwise+` (boolean): Whether to draw counter-clockwise.
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+radius+` (number): The arc radius.
+*** `+startAngle+` (number): The start angle in radians.
+*** `+endAngle+` (number): The end angle in radians.
+*** `+counterClockwise+` (boolean): Whether to draw counter-clockwise.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+
+// Using Vector2 (draw a quarter circle):
+canvas.arc(Vector2.create(100, 100), 50, 0, Math.PI / 2, false);
+
+// or using individual numbers:
+canvas.arc(100, 100, 50, 0, Math.PI / 2, false);
+
+canvas.stroke();
+----
 
 '''''
 
@@ -3495,14 +3610,38 @@ canvas.arc(center, radius, startAngle, endAngle, counterClockwise);
 [source,js]
 ----
 canvas.arcTo(point1, point2, radius);
+// or
+canvas.arcTo(x1, y1, x2, y2, radius);
 ----
 
 * *Description:* Adds an arc to the current path using control points.
 * *Parameters:*
-** `+point1+` (Vector2): The first control point.
-** `+point2+` (Vector2): The second control point.
-** `+radius+` (number): The arc radius.
+** *Option A:*
+*** `+point1+` (Vector2): The first control point.
+*** `+point2+` (Vector2): The second control point.
+*** `+radius+` (number): The arc radius.
+** or *Option B:*
+*** `+x1+` (number): The first control point X coordinate.
+*** `+y1+` (number): The first control point Y coordinate.
+*** `+x2+` (number): The second control point X coordinate.
+*** `+y2+` (number): The second control point Y coordinate.
+*** `+radius+` (number): The arc radius.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+canvas.moveTo(10, 10);
+
+// Using Vector2:
+canvas.arcTo(Vector2.create(50, 10), Vector2.create(50, 50), 20);
+
+// or using individual numbers:
+canvas.arcTo(50, 10, 50, 50, 20);
+
+canvas.stroke();
+----
 
 '''''
 
@@ -3513,13 +3652,35 @@ canvas.arcTo(point1, point2, radius);
 [source,js]
 ----
 canvas.ellipse(center, radius);
+// or
+canvas.ellipse(centerX, centerY, radiusX, radiusY);
 ----
 
 * *Description:* Adds an ellipse to the current path.
 * *Parameters:*
-** `+center+` (Vector2): The center of the ellipse.
-** `+radius+` (Vector2): The x and y radii.
+** *Option A:*
+*** `+center+` (Vector2): The center of the ellipse.
+*** `+radius+` (Vector2): The x and y radii.
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+radiusX+` (number): The X radius.
+*** `+radiusY+` (number): The Y radius.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+
+// Using Vector2:
+canvas.ellipse(Vector2.create(100, 100), Vector2.create(60, 40));
+
+// or using individual numbers:
+canvas.ellipse(100, 100, 60, 40);
+
+canvas.stroke();
+----
 
 '''''
 
@@ -3530,13 +3691,34 @@ canvas.ellipse(center, radius);
 [source,js]
 ----
 canvas.circle(center, radius);
+// or
+canvas.circle(centerX, centerY, radius);
 ----
 
 * *Description:* Adds a circle to the current path.
 * *Parameters:*
-** `+center+` (Vector2): The center of the circle.
-** `+radius+` (number): The circle radius.
+** *Option A:*
+*** `+center+` (Vector2): The center of the circle.
+*** `+radius+` (number): The circle radius.
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+radius+` (number): The circle radius.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+
+// Using Vector2:
+canvas.circle(Vector2.create(100, 100), 50);
+
+// or using individual numbers:
+canvas.circle(100, 100, 50);
+
+canvas.fill();
+----
 
 '''''
 
@@ -3547,13 +3729,35 @@ canvas.circle(center, radius);
 [source,js]
 ----
 canvas.rectangle(topLeft, size);
+// or
+canvas.rectangle(x, y, width, height);
 ----
 
 * *Description:* Adds a rectangle to the current path.
 * *Parameters:*
-** `+topLeft+` (Vector2): The top-left corner.
-** `+size+` (Vector2): The width and height.
+** *Option A:*
+*** `+topLeft+` (Vector2): The top-left corner.
+*** `+size+` (Vector2): The width and height.
+** or *Option B:*
+*** `+x+` (number): The left X coordinate.
+*** `+y+` (number): The top Y coordinate.
+*** `+width+` (number): The rectangle width.
+*** `+height+` (number): The rectangle height.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+
+// Using Vector2:
+canvas.rectangle(Vector2.create(10, 10), Vector2.create(100, 80));
+
+// or using individual numbers:
+canvas.rectangle(10, 10, 100, 80);
+
+canvas.stroke();
+----
 
 '''''
 
@@ -3564,13 +3768,35 @@ canvas.rectangle(topLeft, size);
 [source,js]
 ----
 canvas.rectangleCenter(center, size);
+// or
+canvas.rectangleCenter(centerX, centerY, width, height);
 ----
 
 * *Description:* Adds a centered rectangle to the current path.
 * *Parameters:*
-** `+center+` (Vector2): The center position.
-** `+size+` (Vector2): The width and height.
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+size+` (Vector2): The width and height.
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+width+` (number): The rectangle width.
+*** `+height+` (number): The rectangle height.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+
+// Using Vector2:
+canvas.rectangleCenter(Vector2.create(100, 100), Vector2.create(80, 60));
+
+// or using individual numbers:
+canvas.rectangleCenter(100, 100, 80, 60);
+
+canvas.fill();
+----
 
 '''''
 
@@ -3581,14 +3807,37 @@ canvas.rectangleCenter(center, size);
 [source,js]
 ----
 canvas.roundedRectangle(topLeft, size, radius);
+// or
+canvas.roundedRectangle(x, y, width, height, radius);
 ----
 
 * *Description:* Adds a rounded rectangle to the current path.
 * *Parameters:*
-** `+topLeft+` (Vector2): The top-left corner.
-** `+size+` (Vector2): The width and height.
-** `+radius+` (Vector4): The corner radii.
+** *Option A:*
+*** `+topLeft+` (Vector2): The top-left corner.
+*** `+size+` (Vector2): The width and height.
+*** `+radius+` (number): The corner radius for all corners.
+** or *Option B:*
+*** `+x+` (number): The left X coordinate.
+*** `+y+` (number): The top Y coordinate.
+*** `+width+` (number): The rectangle width.
+*** `+height+` (number): The rectangle height.
+*** `+radius+` (number): The corner radius for all corners.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+
+// Using Vector2:
+canvas.roundedRectangle(Vector2.create(10, 10), Vector2.create(100, 80), 15);
+
+// or using individual numbers:
+canvas.roundedRectangle(10, 10, 100, 80, 15);
+
+canvas.stroke();
+----
 
 '''''
 
@@ -3599,14 +3848,37 @@ canvas.roundedRectangle(topLeft, size, radius);
 [source,js]
 ----
 canvas.roundedRectangleCenter(center, size, radius);
+// or
+canvas.roundedRectangleCenter(centerX, centerY, width, height, radius);
 ----
 
 * *Description:* Adds a centered rounded rectangle to the current path.
 * *Parameters:*
-** `+center+` (Vector2): The center position.
-** `+size+` (Vector2): The width and height.
-** `+radius+` (Vector4): The corner radii.
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+size+` (Vector2): The width and height.
+*** `+radius+` (number): The corner radius for all corners.
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+width+` (number): The rectangle width.
+*** `+height+` (number): The rectangle height.
+*** `+radius+` (number): The corner radius for all corners.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.beginPath();
+
+// Using Vector2:
+canvas.roundedRectangleCenter(Vector2.create(100, 100), Vector2.create(80, 60), 10);
+
+// or using individual numbers:
+canvas.roundedRectangleCenter(100, 100, 80, 60, 10);
+
+canvas.fill();
+----
 
 '''''
 

@@ -7223,7 +7223,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.moveTo(position);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.moveTo(position);
+// or
+canvas.moveTo(x, y);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7236,13 +7238,47 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>position</code> (Vector2): The position to move to.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code> (number): The X coordinate to move to.</p>
+</li>
+<li>
+<p><code>y</code> (number): The Y coordinate to move to.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+
+// Using Vector2:
+canvas.moveTo(Vector2.create(50, 50));
+
+// or using individual numbers:
+canvas.moveTo(50, 50);</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -7255,7 +7291,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.lineTo(position);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.lineTo(position);
+// or
+canvas.lineTo(x, y);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7268,13 +7306,50 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>position</code> (Vector2): The end position.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code> (number): The end X coordinate.</p>
+</li>
+<li>
+<p><code>y</code> (number): The end Y coordinate.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+canvas.moveTo(10, 10);
+
+// Using Vector2:
+canvas.lineTo(Vector2.create(100, 100));
+
+// or using individual numbers:
+canvas.lineTo(100, 100);
+
+canvas.stroke();</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -7287,7 +7362,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.quadraticCurveTo(control, end);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.quadraticCurveTo(control, end);
+// or
+canvas.quadraticCurveTo(controlX, controlY, endX, endY);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7300,6 +7377,10 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>control</code> (Vector2): The control point.</p>
 </li>
 <li>
@@ -7309,7 +7390,46 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>controlX</code> (number): The control point X coordinate.</p>
+</li>
+<li>
+<p><code>controlY</code> (number): The control point Y coordinate.</p>
+</li>
+<li>
+<p><code>endX</code> (number): The end point X coordinate.</p>
+</li>
+<li>
+<p><code>endY</code> (number): The end point Y coordinate.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+canvas.moveTo(10, 10);
+
+// Using Vector2:
+canvas.quadraticCurveTo(Vector2.create(50, 5), Vector2.create(90, 10));
+
+// or using individual numbers:
+canvas.quadraticCurveTo(50, 5, 90, 10);
+
+canvas.stroke();</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -7322,7 +7442,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.cubicCurveTo(control1, control2, end);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.cubicCurveTo(control1, control2, end);
+// or
+canvas.cubicCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7332,6 +7454,10 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Option A:</strong></p>
 <div class="ulist">
 <ul>
 <li>
@@ -7347,7 +7473,56 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>cp1X</code> (number): The first control point X coordinate.</p>
+</li>
+<li>
+<p><code>cp1Y</code> (number): The first control point Y coordinate.</p>
+</li>
+<li>
+<p><code>cp2X</code> (number): The second control point X coordinate.</p>
+</li>
+<li>
+<p><code>cp2Y</code> (number): The second control point Y coordinate.</p>
+</li>
+<li>
+<p><code>endX</code> (number): The end point X coordinate.</p>
+</li>
+<li>
+<p><code>endY</code> (number): The end point Y coordinate.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+canvas.moveTo(10, 10);
+
+// Using Vector2:
+canvas.cubicCurveTo(
+  Vector2.create(20, 5),
+  Vector2.create(80, 5),
+  Vector2.create(90, 10)
+);
+
+// or using individual numbers:
+canvas.cubicCurveTo(20, 5, 80, 5, 90, 10);
+
+canvas.stroke();</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -7360,7 +7535,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.arc(center, radius, startAngle, endAngle, counterClockwise);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.arc(center, radius, startAngle, endAngle, counterClockwise);
+// or
+canvas.arc(centerX, centerY, radius, startAngle, endAngle, counterClockwise);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7370,6 +7547,10 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Option A:</strong></p>
 <div class="ulist">
 <ul>
 <li>
@@ -7391,7 +7572,51 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>centerX</code> (number): The center X coordinate.</p>
+</li>
+<li>
+<p><code>centerY</code> (number): The center Y coordinate.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The arc radius.</p>
+</li>
+<li>
+<p><code>startAngle</code> (number): The start angle in radians.</p>
+</li>
+<li>
+<p><code>endAngle</code> (number): The end angle in radians.</p>
+</li>
+<li>
+<p><code>counterClockwise</code> (boolean): Whether to draw counter-clockwise.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+
+// Using Vector2 (draw a quarter circle):
+canvas.arc(Vector2.create(100, 100), 50, 0, Math.PI / 2, false);
+
+// or using individual numbers:
+canvas.arc(100, 100, 50, 0, Math.PI / 2, false);
+
+canvas.stroke();</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -7404,7 +7629,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.arcTo(point1, point2, radius);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.arcTo(point1, point2, radius);
+// or
+canvas.arcTo(x1, y1, x2, y2, radius);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7414,6 +7641,10 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Option A:</strong></p>
 <div class="ulist">
 <ul>
 <li>
@@ -7429,7 +7660,49 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x1</code> (number): The first control point X coordinate.</p>
+</li>
+<li>
+<p><code>y1</code> (number): The first control point Y coordinate.</p>
+</li>
+<li>
+<p><code>x2</code> (number): The second control point X coordinate.</p>
+</li>
+<li>
+<p><code>y2</code> (number): The second control point Y coordinate.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The arc radius.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+canvas.moveTo(10, 10);
+
+// Using Vector2:
+canvas.arcTo(Vector2.create(50, 10), Vector2.create(50, 50), 20);
+
+// or using individual numbers:
+canvas.arcTo(50, 10, 50, 50, 20);
+
+canvas.stroke();</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -7442,7 +7715,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.ellipse(center, radius);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.ellipse(center, radius);
+// or
+canvas.ellipse(centerX, centerY, radiusX, radiusY);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7455,6 +7730,10 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>center</code> (Vector2): The center of the ellipse.</p>
 </li>
 <li>
@@ -7464,7 +7743,45 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>centerX</code> (number): The center X coordinate.</p>
+</li>
+<li>
+<p><code>centerY</code> (number): The center Y coordinate.</p>
+</li>
+<li>
+<p><code>radiusX</code> (number): The X radius.</p>
+</li>
+<li>
+<p><code>radiusY</code> (number): The Y radius.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+
+// Using Vector2:
+canvas.ellipse(Vector2.create(100, 100), Vector2.create(60, 40));
+
+// or using individual numbers:
+canvas.ellipse(100, 100, 60, 40);
+
+canvas.stroke();</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -7477,7 +7794,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.circle(center, radius);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.circle(center, radius);
+// or
+canvas.circle(centerX, centerY, radius);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7490,6 +7809,10 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>center</code> (Vector2): The center of the circle.</p>
 </li>
 <li>
@@ -7499,7 +7822,42 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>centerX</code> (number): The center X coordinate.</p>
+</li>
+<li>
+<p><code>centerY</code> (number): The center Y coordinate.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The circle radius.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+
+// Using Vector2:
+canvas.circle(Vector2.create(100, 100), 50);
+
+// or using individual numbers:
+canvas.circle(100, 100, 50);
+
+canvas.fill();</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -7512,7 +7870,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.rectangle(topLeft, size);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.rectangle(topLeft, size);
+// or
+canvas.rectangle(x, y, width, height);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7525,6 +7885,10 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>topLeft</code> (Vector2): The top-left corner.</p>
 </li>
 <li>
@@ -7534,7 +7898,45 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code> (number): The left X coordinate.</p>
+</li>
+<li>
+<p><code>y</code> (number): The top Y coordinate.</p>
+</li>
+<li>
+<p><code>width</code> (number): The rectangle width.</p>
+</li>
+<li>
+<p><code>height</code> (number): The rectangle height.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+
+// Using Vector2:
+canvas.rectangle(Vector2.create(10, 10), Vector2.create(100, 80));
+
+// or using individual numbers:
+canvas.rectangle(10, 10, 100, 80);
+
+canvas.stroke();</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -7547,7 +7949,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.rectangleCenter(center, size);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.rectangleCenter(center, size);
+// or
+canvas.rectangleCenter(centerX, centerY, width, height);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7560,6 +7964,10 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>center</code> (Vector2): The center position.</p>
 </li>
 <li>
@@ -7569,7 +7977,45 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>centerX</code> (number): The center X coordinate.</p>
+</li>
+<li>
+<p><code>centerY</code> (number): The center Y coordinate.</p>
+</li>
+<li>
+<p><code>width</code> (number): The rectangle width.</p>
+</li>
+<li>
+<p><code>height</code> (number): The rectangle height.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+
+// Using Vector2:
+canvas.rectangleCenter(Vector2.create(100, 100), Vector2.create(80, 60));
+
+// or using individual numbers:
+canvas.rectangleCenter(100, 100, 80, 60);
+
+canvas.fill();</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -7582,7 +8028,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.roundedRectangle(topLeft, size, radius);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.roundedRectangle(topLeft, size, radius);
+// or
+canvas.roundedRectangle(x, y, width, height, radius);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7595,19 +8043,64 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>topLeft</code> (Vector2): The top-left corner.</p>
 </li>
 <li>
 <p><code>size</code> (Vector2): The width and height.</p>
 </li>
 <li>
-<p><code>radius</code> (Vector4): The corner radii.</p>
+<p><code>radius</code> (number): The corner radius for all corners.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>x</code> (number): The left X coordinate.</p>
+</li>
+<li>
+<p><code>y</code> (number): The top Y coordinate.</p>
+</li>
+<li>
+<p><code>width</code> (number): The rectangle width.</p>
+</li>
+<li>
+<p><code>height</code> (number): The rectangle height.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The corner radius for all corners.</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
 </li>
 <li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+
+// Using Vector2:
+canvas.roundedRectangle(Vector2.create(10, 10), Vector2.create(100, 80), 15);
+
+// or using individual numbers:
+canvas.roundedRectangle(10, 10, 100, 80, 15);
+
+canvas.stroke();</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -7620,7 +8113,9 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.roundedRectangleCenter(center, size, radius);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.roundedRectangleCenter(center, size, radius);
+// or
+canvas.roundedRectangleCenter(centerX, centerY, width, height, radius);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7633,19 +8128,64 @@ canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>center</code> (Vector2): The center position.</p>
 </li>
 <li>
 <p><code>size</code> (Vector2): The width and height.</p>
 </li>
 <li>
-<p><code>radius</code> (Vector4): The corner radii.</p>
+<p><code>radius</code> (number): The corner radius for all corners.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>centerX</code> (number): The center X coordinate.</p>
+</li>
+<li>
+<p><code>centerY</code> (number): The center Y coordinate.</p>
+</li>
+<li>
+<p><code>width</code> (number): The rectangle width.</p>
+</li>
+<li>
+<p><code>height</code> (number): The rectangle height.</p>
+</li>
+<li>
+<p><code>radius</code> (number): The corner radius for all corners.</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
 </li>
 <li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.beginPath();
+
+// Using Vector2:
+canvas.roundedRectangleCenter(Vector2.create(100, 100), Vector2.create(80, 60), 10);
+
+// or using individual numbers:
+canvas.roundedRectangleCenter(100, 100, 80, 60, 10);
+
+canvas.fill();</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -12522,7 +13062,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 22:05:00 +0100
+Last updated 2025-10-28 22:37:47 +0100
 </div>
 </div>
 </body>
