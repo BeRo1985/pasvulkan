@@ -890,6 +890,12 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#_key_modifier_flags">Key Modifier Flags</a></li>
 <li><a href="#_pointer_button_flags">Pointer Button Flags</a></li>
+<li><a href="#_pointer_event_types">Pointer Event Types</a></li>
+<li><a href="#_key_event_types">Key Event Types</a></li>
+<li><a href="#_joystick_hat_positions">Joystick Hat Positions</a></li>
+<li><a href="#_game_controller_bind_types">Game Controller Bind Types</a></li>
+<li><a href="#_game_controller_axes">Game Controller Axes</a></li>
+<li><a href="#_game_controller_buttons">Game Controller Buttons</a></li>
 <li><a href="#_input_event_hash_structure">Input Event Hash Structure</a>
 <ul class="sectlevel3">
 <li><a href="#_key_event_hash">Key Event Hash</a></li>
@@ -10010,22 +10016,247 @@ canvas.setFillStyle(Canvas.FillStyle.LinearGradient);</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><code>BUTTON_NONE</code></p>
+<p><code>POINTERBUTTON_NONE</code></p>
 </li>
 <li>
-<p><code>BUTTON_LEFT</code></p>
+<p><code>POINTERBUTTON_LEFT</code></p>
 </li>
 <li>
-<p><code>BUTTON_MIDDLE</code></p>
+<p><code>POINTERBUTTON_MIDDLE</code></p>
 </li>
 <li>
-<p><code>BUTTON_RIGHT</code></p>
+<p><code>POINTERBUTTON_RIGHT</code></p>
 </li>
 <li>
-<p><code>BUTTON_X1</code></p>
+<p><code>POINTERBUTTON_X1</code></p>
 </li>
 <li>
-<p><code>BUTTON_X2</code></p>
+<p><code>POINTERBUTTON_X2</code></p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_pointer_event_types">Pointer Event Types</h3>
+<div class="paragraph">
+<p>The Input.PointerEventTypes enumeration defines pointer/mouse event types:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>POINTEREVENT_DOWN</code>: Pointer button pressed</p>
+</li>
+<li>
+<p><code>POINTEREVENT_UP</code>: Pointer button released</p>
+</li>
+<li>
+<p><code>POINTEREVENT_MOTION</code>: Pointer moved</p>
+</li>
+<li>
+<p><code>POINTEREVENT_DRAG</code>: Pointer dragged (moved while button pressed)</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_key_event_types">Key Event Types</h3>
+<div class="paragraph">
+<p>The Input.KeyEventTypes enumeration defines keyboard event types:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>KEYEVENT_DOWN</code>: Key pressed</p>
+</li>
+<li>
+<p><code>KEYEVENT_UP</code>: Key released</p>
+</li>
+<li>
+<p><code>KEYEVENT_TYPED</code>: Key typed (with repeat)</p>
+</li>
+<li>
+<p><code>KEYEVENT_UNICODE</code>: Unicode character input</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_joystick_hat_positions">Joystick Hat Positions</h3>
+<div class="paragraph">
+<p>The Input.JoystickHats enumeration provides constants for joystick hat (D-pad) positions:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>JOYSTICK_HAT_CENTERED</code>: Hat centered (no direction)</p>
+</li>
+<li>
+<p><code>JOYSTICK_HAT_LEFT</code>: Hat pushed left</p>
+</li>
+<li>
+<p><code>JOYSTICK_HAT_RIGHT</code>: Hat pushed right</p>
+</li>
+<li>
+<p><code>JOYSTICK_HAT_UP</code>: Hat pushed up</p>
+</li>
+<li>
+<p><code>JOYSTICK_HAT_DOWN</code>: Hat pushed down</p>
+</li>
+<li>
+<p><code>JOYSTICK_HAT_LEFTUP</code>: Hat pushed left and up (diagonal)</p>
+</li>
+<li>
+<p><code>JOYSTICK_HAT_RIGHTUP</code>: Hat pushed right and up (diagonal)</p>
+</li>
+<li>
+<p><code>JOYSTICK_HAT_LEFTDOWN</code>: Hat pushed left and down (diagonal)</p>
+</li>
+<li>
+<p><code>JOYSTICK_HAT_RIGHTDOWN</code>: Hat pushed right and down (diagonal)</p>
+</li>
+<li>
+<p><code>JOYSTICK_HAT_NONE</code>: No hat input</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_game_controller_bind_types">Game Controller Bind Types</h3>
+<div class="paragraph">
+<p>The Input.GameControllerBindTypes enumeration defines controller binding types:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>GAME_CONTROLLER_BINDTYPE_NONE</code>: No binding</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BINDTYPE_BUTTON</code>: Bound to a button</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BINDTYPE_AXIS</code>: Bound to an axis</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BINDTYPE_HAT</code>: Bound to a hat/D-pad</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_game_controller_axes">Game Controller Axes</h3>
+<div class="paragraph">
+<p>The Input.GameControllerAxes enumeration defines standard game controller analog axes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>GAME_CONTROLLER_AXIS_INVALID</code>: Invalid axis</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_AXIS_LEFTX</code>: Left stick X axis</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_AXIS_LEFTY</code>: Left stick Y axis</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_AXIS_RIGHTX</code>: Right stick X axis</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_AXIS_RIGHTY</code>: Right stick Y axis</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_AXIS_TRIGGERLEFT</code>: Left trigger axis</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_AXIS_TRIGGERRIGHT</code>: Right trigger axis</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_AXIS_MAX</code>: Maximum axis index</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_game_controller_buttons">Game Controller Buttons</h3>
+<div class="paragraph">
+<p>The Input.GameControllerButtons enumeration defines standard game controller buttons:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_INVALID</code>: Invalid button</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_A</code>: A button (Xbox) / Cross (PlayStation)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_B</code>: B button (Xbox) / Circle (PlayStation)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_X</code>: X button (Xbox) / Square (PlayStation)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_Y</code>: Y button (Xbox) / Triangle (PlayStation)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_BACK</code>: Back/Select button</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_GUIDE</code>: Guide/Home button</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_START</code>: Start button</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_LEFTSTICK</code>: Left stick click</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_RIGHTSTICK</code>: Right stick click</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_LEFTSHOULDER</code>: Left shoulder button (LB/L1)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_RIGHTSHOULDER</code>: Right shoulder button (RB/R1)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_DPAD_UP</code>: D-pad up</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_DPAD_DOWN</code>: D-pad down</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_DPAD_LEFT</code>: D-pad left</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_DPAD_RIGHT</code>: D-pad right</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_MISC1</code>: Misc button 1 (e.g., Xbox Share button)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_PADDLE1</code>: Paddle 1 (Xbox Elite)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_PADDLE2</code>: Paddle 2 (Xbox Elite)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_PADDLE3</code>: Paddle 3 (Xbox Elite)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_PADDLE4</code>: Paddle 4 (Xbox Elite)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_TOUCHPAD</code>: Touchpad button (PlayStation)</p>
+</li>
+<li>
+<p><code>GAME_CONTROLLER_BUTTON_MAX</code>: Maximum button index</p>
 </li>
 </ul>
 </div>
@@ -11631,7 +11862,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 20:52:42 +0100
+Last updated 2025-10-28 21:04:10 +0100
 </div>
 </div>
 </body>

@@ -4918,12 +4918,108 @@ The Input.KeyModifier enumeration provides flags for modifier key states:
 
 The Input.PointerButton enumeration provides flags for pointer buttons:
 
-* `+BUTTON_NONE+`
-* `+BUTTON_LEFT+`
-* `+BUTTON_MIDDLE+`
-* `+BUTTON_RIGHT+`
-* `+BUTTON_X1+`
-* `+BUTTON_X2+`
+* `+POINTERBUTTON_NONE+`
+* `+POINTERBUTTON_LEFT+`
+* `+POINTERBUTTON_MIDDLE+`
+* `+POINTERBUTTON_RIGHT+`
+* `+POINTERBUTTON_X1+`
+* `+POINTERBUTTON_X2+`
+
+'''''
+
+=== Pointer Event Types
+
+The Input.PointerEventTypes enumeration defines pointer/mouse event types:
+
+* `+POINTEREVENT_DOWN+`: Pointer button pressed
+* `+POINTEREVENT_UP+`: Pointer button released
+* `+POINTEREVENT_MOTION+`: Pointer moved
+* `+POINTEREVENT_DRAG+`: Pointer dragged (moved while button pressed)
+
+'''''
+
+=== Key Event Types
+
+The Input.KeyEventTypes enumeration defines keyboard event types:
+
+* `+KEYEVENT_DOWN+`: Key pressed
+* `+KEYEVENT_UP+`: Key released
+* `+KEYEVENT_TYPED+`: Key typed (with repeat)
+* `+KEYEVENT_UNICODE+`: Unicode character input
+
+'''''
+
+=== Joystick Hat Positions
+
+The Input.JoystickHats enumeration provides constants for joystick hat (D-pad) positions:
+
+* `+JOYSTICK_HAT_CENTERED+`: Hat centered (no direction)
+* `+JOYSTICK_HAT_LEFT+`: Hat pushed left
+* `+JOYSTICK_HAT_RIGHT+`: Hat pushed right
+* `+JOYSTICK_HAT_UP+`: Hat pushed up
+* `+JOYSTICK_HAT_DOWN+`: Hat pushed down
+* `+JOYSTICK_HAT_LEFTUP+`: Hat pushed left and up (diagonal)
+* `+JOYSTICK_HAT_RIGHTUP+`: Hat pushed right and up (diagonal)
+* `+JOYSTICK_HAT_LEFTDOWN+`: Hat pushed left and down (diagonal)
+* `+JOYSTICK_HAT_RIGHTDOWN+`: Hat pushed right and down (diagonal)
+* `+JOYSTICK_HAT_NONE+`: No hat input
+
+'''''
+
+=== Game Controller Bind Types
+
+The Input.GameControllerBindTypes enumeration defines controller binding types:
+
+* `+GAME_CONTROLLER_BINDTYPE_NONE+`: No binding
+* `+GAME_CONTROLLER_BINDTYPE_BUTTON+`: Bound to a button
+* `+GAME_CONTROLLER_BINDTYPE_AXIS+`: Bound to an axis
+* `+GAME_CONTROLLER_BINDTYPE_HAT+`: Bound to a hat/D-pad
+
+'''''
+
+=== Game Controller Axes
+
+The Input.GameControllerAxes enumeration defines standard game controller analog axes:
+
+* `+GAME_CONTROLLER_AXIS_INVALID+`: Invalid axis
+* `+GAME_CONTROLLER_AXIS_LEFTX+`: Left stick X axis
+* `+GAME_CONTROLLER_AXIS_LEFTY+`: Left stick Y axis
+* `+GAME_CONTROLLER_AXIS_RIGHTX+`: Right stick X axis
+* `+GAME_CONTROLLER_AXIS_RIGHTY+`: Right stick Y axis
+* `+GAME_CONTROLLER_AXIS_TRIGGERLEFT+`: Left trigger axis
+* `+GAME_CONTROLLER_AXIS_TRIGGERRIGHT+`: Right trigger axis
+* `+GAME_CONTROLLER_AXIS_MAX+`: Maximum axis index
+
+'''''
+
+=== Game Controller Buttons
+
+The Input.GameControllerButtons enumeration defines standard game controller buttons:
+
+* `+GAME_CONTROLLER_BUTTON_INVALID+`: Invalid button
+* `+GAME_CONTROLLER_BUTTON_A+`: A button (Xbox) / Cross (PlayStation)
+* `+GAME_CONTROLLER_BUTTON_B+`: B button (Xbox) / Circle (PlayStation)
+* `+GAME_CONTROLLER_BUTTON_X+`: X button (Xbox) / Square (PlayStation)
+* `+GAME_CONTROLLER_BUTTON_Y+`: Y button (Xbox) / Triangle (PlayStation)
+* `+GAME_CONTROLLER_BUTTON_BACK+`: Back/Select button
+* `+GAME_CONTROLLER_BUTTON_GUIDE+`: Guide/Home button
+* `+GAME_CONTROLLER_BUTTON_START+`: Start button
+* `+GAME_CONTROLLER_BUTTON_LEFTSTICK+`: Left stick click
+* `+GAME_CONTROLLER_BUTTON_RIGHTSTICK+`: Right stick click
+* `+GAME_CONTROLLER_BUTTON_LEFTSHOULDER+`: Left shoulder button (LB/L1)
+* `+GAME_CONTROLLER_BUTTON_RIGHTSHOULDER+`: Right shoulder button (RB/R1)
+* `+GAME_CONTROLLER_BUTTON_DPAD_UP+`: D-pad up
+* `+GAME_CONTROLLER_BUTTON_DPAD_DOWN+`: D-pad down
+* `+GAME_CONTROLLER_BUTTON_DPAD_LEFT+`: D-pad left
+* `+GAME_CONTROLLER_BUTTON_DPAD_RIGHT+`: D-pad right
+* `+GAME_CONTROLLER_BUTTON_MISC1+`: Misc button 1 (e.g., Xbox Share button)
+* `+GAME_CONTROLLER_BUTTON_PADDLE1+`: Paddle 1 (Xbox Elite)
+* `+GAME_CONTROLLER_BUTTON_PADDLE2+`: Paddle 2 (Xbox Elite)
+* `+GAME_CONTROLLER_BUTTON_PADDLE3+`: Paddle 3 (Xbox Elite)
+* `+GAME_CONTROLLER_BUTTON_PADDLE4+`: Paddle 4 (Xbox Elite)
+* `+GAME_CONTROLLER_BUTTON_TOUCHPAD+`: Touchpad button (PlayStation)
+* `+GAME_CONTROLLER_BUTTON_MAX+`: Maximum button index
+
 
 '''''
 
