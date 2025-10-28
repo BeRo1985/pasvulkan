@@ -216,7 +216,7 @@ const POCAMusicGhost:TPOCAGhostType=
         Name:'Music'
        );
 
-function POCASoundsCreate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+function POCASoundManagerCreate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var ArgumentIndex:TPOCAInt32;
     Sounds:TSoundManager;
     Sound:TSoundManager.TSound;
@@ -279,7 +279,7 @@ begin
  end;
 end;
 
-function POCASoundsFind(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+function POCASoundManagerFind(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var ArgumentIndex:TPOCAInt32;
     Sounds:TSoundManager;
     Sound:TSoundManager.TSound;
@@ -309,7 +309,7 @@ begin
  end;
 end;
 
-function POCASoundsRemove(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+function POCASoundManagerRemove(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var ArgumentIndex:TPOCAInt32;
     Sounds:TSoundManager;
     Sound:TSoundManager.TSound;
@@ -343,7 +343,7 @@ begin
  end;
 end;
 
-function POCASoundsClear(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+function POCASoundManagerClear(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 begin
  if assigned(aUserData) and (TObject(aUserData) is TSoundManager) then begin
   TSoundManager(aUserData).Clear;
@@ -961,7 +961,7 @@ end;
 
 // POCA Music API
 
-function POCAMusicsCreate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+function POCAMusicManagerCreate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var ArgumentIndex:TPOCAInt32;
     Sounds:TSoundManager;
     Music:TSoundManager.TMusic;
@@ -998,7 +998,7 @@ begin
  end;
 end;
 
-function POCAMusicsFind(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+function POCAMusicManagerFind(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var ArgumentIndex:TPOCAInt32;
     Sounds:TSoundManager;
     Music:TSoundManager.TMusic;
@@ -1028,7 +1028,7 @@ begin
  end;
 end;
 
-function POCAMusicsRemove(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+function POCAMusicManagerRemove(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var ArgumentIndex:TPOCAInt32;
     Sounds:TSoundManager;
     Music:TSoundManager.TMusic;
@@ -1062,7 +1062,7 @@ begin
  end;
 end;
 
-function POCAMusicsClear(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+function POCAMusicManagerClear(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Sounds:TSoundManager;
 begin
  if assigned(aUserData) and (TObject(aUserData) is TSoundManager) then begin
@@ -1975,10 +1975,10 @@ begin
  POCAAddNativeFunction(fPOCASubContext,fPOCASoundGhostHash,'isVoicePlaying',POCASoundHashIsVoicePlaying,nil,self);
 
  fPOCASoundHash:=POCANewHash(fPOCASubContext);
- POCAAddNativeFunction(fPOCASubContext,fPOCASoundHash,'create',POCASoundsCreate,nil,self);
- POCAAddNativeFunction(fPOCASubContext,fPOCASoundHash,'find',POCASoundsFind,nil,self);
- POCAAddNativeFunction(fPOCASubContext,fPOCASoundHash,'remove',POCASoundsRemove,nil,self);
- POCAAddNativeFunction(fPOCASubContext,fPOCASoundHash,'clear',POCASoundsClear,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCASoundHash,'create',POCASoundManagerCreate,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCASoundHash,'find',POCASoundManagerFind,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCASoundHash,'remove',POCASoundManagerRemove,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCASoundHash,'clear',POCASoundManagerClear,nil,self);
  POCAHashSetString(fPOCASubContext,fPOCASubContext^.Instance^.Globals.NameSpace,'SoundManager',fPOCASoundHash);
 
  POCAHashSetString(fPOCASubContext,fPOCASubContext^.Instance^.Globals.NameSpace,'SoundHash',fPOCASoundGhostHash);
@@ -1998,10 +1998,10 @@ begin
  POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'isPlaying',POCAMusicHashIsPlaying,nil,self);
 
  fPOCAMusicHash:=POCANewHash(fPOCASubContext);
- POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'create',POCAMusicsCreate,nil,self);
- POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'find',POCAMusicsFind,nil,self);
- POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'remove',POCAMusicsRemove,nil,self);
- POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'clear',POCAMusicsClear,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'create',POCAMusicManagerCreate,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'find',POCAMusicManagerFind,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'remove',POCAMusicManagerRemove,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'clear',POCAMusicManagerClear,nil,self);
  POCAHashSetString(fPOCASubContext,fPOCASubContext^.Instance^.Globals.NameSpace,'MusicManager',fPOCAMusicHash);
 
  POCAHashSetString(fPOCASubContext,fPOCASubContext^.Instance^.Globals.NameSpace,'MusicHash',fPOCAMusicGhostHash);
