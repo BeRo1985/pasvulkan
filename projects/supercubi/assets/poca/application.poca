@@ -434,6 +434,9 @@ var application = {
           player.y + player.height > coin.y) {
         coin.collected = true;
         this.data.score += 100;
+        if(this.data.sounds.collect) {
+          this.data.sounds.collect.play(1.0, 0.0, 1.0);
+        }
       }
     }
 
