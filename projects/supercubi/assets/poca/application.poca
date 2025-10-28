@@ -77,6 +77,7 @@ var application = {
       this.data.music = MusicManager.create("supercubi_music","music/background_music.ogg");
 
       this.data.sounds = {
+        block: SoundManager.create("supercubi_block","sounds/block.wav"), 
         collect: SoundManager.create("supercubi_collect","sounds/collect.wav"),
         enemyterminate: SoundManager.create("supercubi_enemyterminate","sounds/enemy_terminate.wav"),
         gameover: SoundManager.create("supercubi_gameover","sounds/gameover.wav"),
@@ -359,7 +360,7 @@ var application = {
     player.y += player.velocityY;
 
     // Platform collision detection
-    let onGround = false;
+    let onGround = false, collisionDetected = false;
     for (let i = 0; i < this.data.platforms.length; i++) {
       let platform = this.data.platforms[i];
       
@@ -374,6 +375,7 @@ var application = {
           player.velocityY = 0;
           player.isJumping = false;
           onGround = true;
+          collisionDetected = true;
         }
         // Collision from bottom
         else if (player.velocityY < 0 && player.y > platform.y) {
@@ -384,11 +386,13 @@ var application = {
         else if (player.velocityX > 0 && player.x < platform.x) {
           player.x = platform.x - player.width;
           player.velocityX = 0;
+          collisionDetected = true;
         }
         // Collision from right
         else if (player.velocityX < 0 && player.x > platform.x) {
           player.x = platform.x + platform.width;
           player.velocityX = 0;
+          collisionDetected = true;
         }
       }
     }
@@ -397,9 +401,15 @@ var application = {
     if (player.x < 0) {
       player.x = 0;
       player.velocityX = 0;
+      collisionDetected = true;
     } else if (player.x + player.width > this.data.gameWidth) {
       player.x = this.data.gameWidth - player.width;
       player.velocityX = 0;
+      collisionDetected = true;
+    }
+
+    if(collisionDetected && this.data.sounds.block) {
+      this.data.sounds.block.play(1.0, 0.0, 1.0);
     }
 
     // Update camera to follow player
