@@ -77,13 +77,13 @@ var application = {
       this.data.music = MusicManager.create("supercubi_music","music/background_music.ogg");
 
       this.data.sounds = {
-        block: SoundManager.create("supercubi_block","sounds/block.wav"), 
-        collect: SoundManager.create("supercubi_collect","sounds/collect.wav"),
-        enemyterminate: SoundManager.create("supercubi_enemyterminate","sounds/enemy_terminate.wav"),
-        gameover: SoundManager.create("supercubi_gameover","sounds/gameover.wav"),
-        hurt: SoundManager.create("supercubi_hurt","sounds/hurt.wav"),
-        jump: SoundManager.create("supercubi_jump","sounds/jump.wav"),
-        levelcomplete: SoundManager.create("supercubi_levelcomplete","sounds/level_complete.wav")
+        block: SoundManager.create("supercubi_block","sounds/block.wav", 4), 
+        collect: SoundManager.create("supercubi_collect","sounds/collect.wav", 4),
+        enemyterminate: SoundManager.create("supercubi_enemyterminate","sounds/enemy_terminate.wav", 4),
+        gameover: SoundManager.create("supercubi_gameover","sounds/gameover.wav", 1),
+        hurt: SoundManager.create("supercubi_hurt","sounds/hurt.wav", 1),
+        jump: SoundManager.create("supercubi_jump","sounds/jump.wav", 1),
+        levelcomplete: SoundManager.create("supercubi_levelcomplete","sounds/level_complete.wav", 1)
       };
       
       this.initGame(this.MODE_STARTSCREEN);
@@ -1039,11 +1039,14 @@ var application = {
         );
         
         // White shine
+        let offsetX = Math.sin(this.data.time * 0.9 + coin.x * 0.1) * 0.25;
+        let offsetY = Math.cos(this.data.time * 0.8 + coin.x * 0.1) * 0.25;
+        let scale = 1.0 + Math.sin(this.data.time * 2.0 + coin.x * 0.5 + Math.sin(this.data.time * 0.5 + coin.x * 0.1)) * 0.1;
         canvas.setColor(1.0, 1.0, 1.0, 1.0);
         canvas.drawFilledCircle(
-          coin.x + coin.width / 3 - cameraX,
-          coin.y + coin.height / 3 - cameraY,
-          coin.width / 6
+          coin.x + coin.width / 3 - cameraX + offsetX,
+          coin.y + coin.height / 3 - cameraY + offsetY,
+          (coin.width / 6) * scale
         );
       }
     }
