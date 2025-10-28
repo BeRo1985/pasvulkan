@@ -3864,7 +3864,7 @@ begin
 end;
 
 function POCAMatrix4x4FunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix4x4:PpvMatrix4x4;
+var Matrix4x4:PpvMatrix4x4D;
 begin
  if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
   Matrix4x4:=POCAGhostFastGetPointer(aThis);
@@ -3875,7 +3875,7 @@ begin
 end;
 
 function POCAMatrix4x4FunctionCopy(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4;
+var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4D;
 begin
  if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
   Matrix4x4:=POCAGhostFastGetPointer(aThis);

@@ -925,7 +925,7 @@ var application = {
         0, 0, 1, 0,
         0, 0, 0, 1
       );
-      let platformFillMatrix = platformToOriginMatrix.mul(platformScaleMatrix);
+      let platformFillMatrix = platformToOriginMatrix.clone().mul(platformScaleMatrix);
       canvas.setFillMatrix(platformFillMatrix);
       canvas.setColor(0.55, 0.27, 0.07, 1.0);
       canvas.drawFilledRectangle(
@@ -939,19 +939,13 @@ var application = {
       canvas.setStartColor(0.13, 0.55, 0.13, 1.0);
       canvas.setStopColor(0.075, 0.275, 0.075, 0.0);
       canvas.setColor(0.13, 0.55, 0.13, 1.0);
-      platformToOriginMatrix = Matrix4x4.create(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        -(platform.x - cameraX), -(platform.y - cameraY), 0, 1
-      );
       platformScaleMatrix = Matrix4x4.create(
         0, 1 / platform.width, 0, 0,
         1 / 10, 0, 0, 0,
         0, 0, 1, 0,
         0, 0, 0, 1
       );
-      platformFillMatrix = platformToOriginMatrix.mul(platformScaleMatrix);
+      platformFillMatrix = platformToOriginMatrix.clone().mul(platformScaleMatrix);
       canvas.setFillMatrix(platformFillMatrix);
       canvas.drawFilledRectangle(
         platform.x - cameraX,
