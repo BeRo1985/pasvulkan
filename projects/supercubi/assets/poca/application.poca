@@ -470,6 +470,9 @@ var application = {
             player.velocityX = 0;
             player.velocityY = 0;
             player.facing = 'right';
+            if(this.data.sounds.hurt) {
+              this.data.sounds.hurt.play(1.0, 0.0, 1.0);
+            }
           }
         }
       }
@@ -500,6 +503,9 @@ var application = {
         player.renderY = 300;
         player.velocityX = 0;
         player.velocityY = 0;
+        if(this.data.sounds.hurt) {
+          this.data.sounds.hurt.play(1.0, 0.0, 1.0);
+        }
       }
     }
   },
