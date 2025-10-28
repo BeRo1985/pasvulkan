@@ -77,7 +77,12 @@ var application = {
       this.data.music = MusicManager.create("supercubi_music","music/background_music.ogg");
 
       this.data.sounds = {
-        jump: SoundManager.create("supercubi_jump","sounds/jump.wav")
+        collect: SoundManager.create("supercubi_collect","sounds/collect.wav"),
+        enemyterminate: SoundManager.create("supercubi_enemyterminate","sounds/enemy_terminate.wav"),
+        gameover: SoundManager.create("supercubi_gameover","sounds/gameover.wav"),
+        hurt: SoundManager.create("supercubi_hurt","sounds/hurt.wav"),
+        jump: SoundManager.create("supercubi_jump","sounds/jump.wav"),
+        levelcomplete: SoundManager.create("supercubi_levelcomplete","sounds/level_complete.wav")
       };
       
       this.initGame(this.MODE_STARTSCREEN);
@@ -548,11 +553,17 @@ var application = {
   gameOver: function() {
     this.data.gameMode = this.MODE_GAMEOVER;
     print("POCA: Game Over! Final Score: ", this.data.score, "\n");
+    if(this.data.sounds.gameover) {
+      this.data.sounds.gameover.play(1.0, 0.0, 1.0);
+    }
   },
 
   levelComplete: function() {
     this.data.gameMode = this.MODE_LEVELCOMPLETE;
     print("POCA: Level Complete! Score: ", this.data.score, "\n");
+    if(this.data.sounds.levelcomplete) {
+      this.data.sounds.levelcomplete.play(1.0, 0.0, 1.0);
+    }
   },
 
   storeLast: function() {
