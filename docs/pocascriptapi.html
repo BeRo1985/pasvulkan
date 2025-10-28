@@ -6506,9 +6506,7 @@ canvas.drawTexturedRectangle(texture, x, y, width, height, rotationAngle, textur
 <p><strong>Example:</strong></p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">let texture = Texture.create("background.png");
-
-// Using Vector2:
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Vector2:
 canvas.drawTexturedRectangle(
   texture,
   Vector2.create(0, 0),
@@ -6606,9 +6604,7 @@ canvas.drawTexturedRectangleCenter(texture, centerX, centerY, width, height, rot
 <p><strong>Example:</strong></p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">let texture = Texture.create("sprite.png");
-
-// Using Vector2:
+<pre class="highlight"><code class="language-js" data-lang="js">// Using Vector2:
 canvas.drawTexturedRectangleCenter(
   texture,
   Vector2.create(400, 300),
@@ -7005,7 +7001,9 @@ canvas.drawText("Hello, World!", 100, 100);</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawTextCodePoint(codePoint, position);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">canvas.drawTextCodePoint(codePoint, position);
+// or
+canvas.drawTextCodePoint(codePoint, x, y);</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -7018,6 +7016,10 @@ canvas.drawText("Hello, World!", 100, 100);</code></pre>
 <div class="ulist">
 <ul>
 <li>
+<p><strong>Option A:</strong></p>
+<div class="ulist">
+<ul>
+<li>
 <p><code>codePoint</code> (number): The Unicode code point.</p>
 </li>
 <li>
@@ -7027,7 +7029,39 @@ canvas.drawText("Hello, World!", 100, 100);</code></pre>
 </div>
 </li>
 <li>
+<p>or <strong>Option B:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>codePoint</code> (number): The Unicode code point.</p>
+</li>
+<li>
+<p><code>x</code> (number): The X coordinate to draw at.</p>
+</li>
+<li>
+<p><code>y</code> (number): The Y coordinate to draw at.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
 <p><strong>Return Value:</strong> The canvas itself.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">// Draw a Unicode heart symbol (U+2764)
+// Using Vector2:
+canvas.drawTextCodePoint(0x2764, Vector2.create(100, 100));
+
+// or using individual numbers:
+canvas.drawTextCodePoint(0x2764, 100, 100);</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
@@ -12488,7 +12522,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 22:02:20 +0100
+Last updated 2025-10-28 22:05:00 +0100
 </div>
 </div>
 </body>

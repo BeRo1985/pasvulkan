@@ -3052,8 +3052,6 @@ canvas.drawTexturedRectangle(texture, x, y, width, height, rotationAngle, textur
 +
 [source,js]
 ----
-let texture = Texture.create("background.png");
-
 // Using Vector2:
 canvas.drawTexturedRectangle(
   texture,
@@ -3100,8 +3098,6 @@ canvas.drawTexturedRectangleCenter(texture, centerX, centerY, width, height, rot
 +
 [source,js]
 ----
-let texture = Texture.create("sprite.png");
-
 // Using Vector2:
 canvas.drawTexturedRectangleCenter(
   texture,
@@ -3297,13 +3293,31 @@ canvas.drawText("Hello, World!", 100, 100);
 [source,js]
 ----
 canvas.drawTextCodePoint(codePoint, position);
+// or
+canvas.drawTextCodePoint(codePoint, x, y);
 ----
 
 * *Description:* Draws a single Unicode code point at the specified position.
 * *Parameters:*
-** `+codePoint+` (number): The Unicode code point.
-** `+position+` (Vector2): The position to draw at.
+** *Option A:*
+*** `+codePoint+` (number): The Unicode code point.
+*** `+position+` (Vector2): The position to draw at.
+** or *Option B:*
+*** `+codePoint+` (number): The Unicode code point.
+*** `+x+` (number): The X coordinate to draw at.
+*** `+y+` (number): The Y coordinate to draw at.
 * *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Draw a Unicode heart symbol (U+2764)
+// Using Vector2:
+canvas.drawTextCodePoint(0x2764, Vector2.create(100, 100));
+
+// or using individual numbers:
+canvas.drawTextCodePoint(0x2764, 100, 100);
+----
 
 '''''
 
