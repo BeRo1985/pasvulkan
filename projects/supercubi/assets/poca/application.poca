@@ -411,8 +411,7 @@ var application = {
       collisionDetected = true;
     }
 
-    if(collisionDetected && this.data.sounds.block) {
-      print("POCA: Block collision detected\n");
+    if(collisionDetected && this.data.sounds.block && this.data.gameMode === this.MODE_RUNNING) {
       this.data.sounds.block.play(1.0, 0.0, 1.0);
     }
 
@@ -448,7 +447,7 @@ var application = {
           player.y + player.height > coin.y) {
         coin.collected = true;
         this.data.score += 100;
-        if(this.data.sounds.collect) {
+        if(this.data.sounds.collect && this.data.gameMode === this.MODE_RUNNING) {
           this.data.sounds.collect.play(1.0, 0.0, 1.0);
         }
       }
@@ -468,7 +467,7 @@ var application = {
           this.data.enemies.splice(i, 1);
           this.data.score += 200;
           player.velocityY = -8; // Small bounce
-          if(this.data.sounds.enemyterminate) {
+          if(this.data.sounds.enemyterminate && this.data.gameMode === this.MODE_RUNNING) {
             this.data.sounds.enemyterminate.play(1.0, 0.0, 1.0);
           }
         } else {
@@ -487,7 +486,7 @@ var application = {
             player.velocityX = 0;
             player.velocityY = 0;
             player.facing = 'right';
-            if(this.data.sounds.hurt) {
+            if(this.data.sounds.hurt && this.data.gameMode === this.MODE_RUNNING) {
               this.data.sounds.hurt.play(1.0, 0.0, 1.0);
             }
           }
@@ -520,7 +519,7 @@ var application = {
         player.renderY = 300;
         player.velocityX = 0;
         player.velocityY = 0;
-        if(this.data.sounds.hurt) {
+        if(this.data.sounds.hurt && this.data.gameMode === this.MODE_RUNNING) {
           this.data.sounds.hurt.play(1.0, 0.0, 1.0);
         }
       }
