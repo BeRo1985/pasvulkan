@@ -1366,7 +1366,15 @@ var application = {
     
     // Draw based on game mode
     if (this.data.gameMode === this.MODE_STARTSCREEN) {
+
       // Start screen
+
+      const TitleText1 = "SUPER CUBI";
+      const TitleText2 = "Adventure";
+      const InfoText1 = "Arrow keys or WASD to move";
+      const InfoText2 = "Space to jump";
+      const InfoText3 = "Press SPACE to start";
+
       let offsetX = Math.sin(this.data.time * 2.0) * 5.0;
       let offsetY = Math.cos(this.data.time * 2.0) * 5.0;
       let offsetScale = 1.0 + (Math.sin(this.data.time * 3.0) * 0.05);
@@ -1375,92 +1383,108 @@ var application = {
       canvas.setFontSize(64 * offsetScale);
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
       canvas.setColor(1.0 * 0.5, 0.5 * 0.5, 0.125 * 0.5, 1.0); // Orange text
-      canvas.drawText("SUPER CUBI", this.data.virtualWidth / 2 + offsetX + otherOffsetX, this.data.virtualHeight / 2 - 100 + offsetY + otherOffsetY);
+      canvas.drawText(TitleText1, this.data.virtualWidth / 2 + offsetX + otherOffsetX, this.data.virtualHeight / 2 - 100 + offsetY + otherOffsetY);
       canvas.setColor(1.0, 0.5, 0.125, 1.0); // Orange text
-      canvas.drawText("SUPER CUBI", this.data.virtualWidth / 2 + offsetX, this.data.virtualHeight / 2 - 100 + offsetY);
-      
+      canvas.drawText(TitleText1, this.data.virtualWidth / 2 + offsetX, this.data.virtualHeight / 2 - 100 + offsetY);
+
       canvas.setFontSize(32);
       canvas.setColor(1.0 * 0.5, 0.84 * 0.5, 0.0 * 0.5, 1.0); // Gold text
-      canvas.drawText("Adventure", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 - 40 + 2.0);
+      canvas.drawText(TitleText2, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 - 40 + 2.0);
       canvas.setColor(1.0, 0.84, 0.0, 1.0); // Gold text
-      canvas.drawText("Adventure", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 40);
-      
+      canvas.drawText(TitleText2, this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 40);
+
       canvas.setFontSize(24);
       canvas.setColor(0.5, 0.5, 0.5, 1.0); // White text
-      canvas.drawText("Arrow keys or WASD to move", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 20 + 2.0);
-      canvas.drawText("Space to jump", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 50 + 2.0);
+      canvas.drawText(InfoText1, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 20 + 2.0);
+      canvas.drawText(InfoText2, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 50 + 2.0);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
-      canvas.drawText("Arrow keys or WASD to move", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 20);
-      canvas.drawText("Space to jump", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 50);
-      
+      canvas.drawText(InfoText1, this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 20);
+      canvas.drawText(InfoText2, this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 50);
+
       canvas.setFontSize(32);
       canvas.setColor(0.0, 0.5, 0.0, 1.0); // Green text
-      canvas.drawText("Press SPACE to start", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 120 + 2.0);
+      canvas.drawText(InfoText3, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 120 + 2.0);
       canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
-      canvas.drawText("Press SPACE to start", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 120);
-      
+      canvas.drawText(InfoText3, this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 120);
+
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Leading); // Reset to left
       
     } else if (this.data.gameMode === this.MODE_RUNNING) {
+
+      let ScoreText = "Score: " ~ this.data.score;
+
       // Draw score during gameplay
       canvas.setColor(0.5, 0.5, 0.5, 1.0); // White text
-      canvas.drawText("Score: " ~ this.data.score, 10 - 1.0, 10 + 1.0);
+      canvas.drawText(ScoreText, 10 - 1.0, 10 + 1.0);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
-      canvas.drawText("Score: " ~ this.data.score, 10, 10);
-      
+      canvas.drawText(ScoreText, 10, 10);
+
       // Simple lives indicator - draw hearts as circles
       for (let i = 0; i < this.data.lives; i++) {
         canvas.setColor(1.0, 0.0, 0.0, 1.0);
         canvas.drawFilledCircle(20 + i * 25, 50, 8);
       }
-      
+            
     } else if (this.data.gameMode === this.MODE_GAMEOVER) {
+      
       // Game over screen
+      
+      const GameOverText = "GAME OVER";
+      let FinalScoreText = "Final Score: " ~ this.data.score;
+      const ContinueText = "Press SPACE to continue";
+
       let offsetScale = 1.0 + (Math.sin(this.data.time * 3.0) * 0.05);
       canvas.setFontSize(64 * offsetScale);
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
       canvas.setColor(0.5, 0.0, 0.0, 1.0); // Red text
-      canvas.drawText("GAME OVER", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 - 60 + 2.0);
+      canvas.drawText(GameOverText, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 - 60 + 2.0);
       canvas.setColor(1.0, 0.0, 0.0, 1.0); // Red text
-      canvas.drawText("GAME OVER", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 60);
-      
+      canvas.drawText(GameOverText, this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 60);
+
       canvas.setFontSize(32);
       canvas.setColor(0.5, 0.5, 0.5, 1.0); // White text
-      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 2.0);
+      canvas.drawText(FinalScoreText, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 2.0);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
-      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2, this.data.virtualHeight / 2);
+      canvas.drawText(FinalScoreText, this.data.virtualWidth / 2, this.data.virtualHeight / 2);
       
       canvas.setFontSize(24);
       canvas.setColor(0.0, 0.5, 0.0, 1.0); // Green text
-      canvas.drawText("Press SPACE to continue", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 60 + 2.0);
+      canvas.drawText(ContinueText, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 60 + 2.0);
       canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
-      canvas.drawText("Press SPACE to continue", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
+      canvas.drawText(ContinueText, this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
       
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Leading); // Reset to left
       
     } else if (this.data.gameMode === this.MODE_LEVELCOMPLETE) {
+
       // Level complete screen
+
+      const LevelCompleteText = "LEVEL COMPLETE!";
+      let FinalScoreText = "Final Score: " ~ this.data.score;
+      const ContinueText = "Press SPACE to continue";
+      
       let offsetScale = 1.0 + (Math.sin(this.data.time * 3.0) * 0.05);
       canvas.setFontSize(64 * offsetScale);
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Center);
       canvas.setColor(0.5, 0.42, 0.0, 1.0); // Gold shadow
-      canvas.drawText("LEVEL COMPLETE!", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 - 60 + 2.0);
+      canvas.drawText(LevelCompleteText, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 - 60 + 2.0);
       canvas.setColor(1.0, 0.84, 0.0, 1.0); // Gold text
-      canvas.drawText("LEVEL COMPLETE!", this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 60);
-      
+      canvas.drawText(LevelCompleteText, this.data.virtualWidth / 2, this.data.virtualHeight / 2 - 60);
+
       canvas.setFontSize(32);
       canvas.setColor(0.5, 0.5, 0.5, 1.0); // Shadow
-      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 2.0);
+      canvas.drawText(FinalScoreText, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 2.0);
       canvas.setColor(1.0, 1.0, 1.0, 1.0); // White text
-      canvas.drawText("Final Score: " ~ this.data.score, this.data.virtualWidth / 2, this.data.virtualHeight / 2);
+      canvas.drawText(FinalScoreText, this.data.virtualWidth / 2, this.data.virtualHeight / 2);
       
       canvas.setFontSize(24);
       canvas.setColor(0.0, 0.5, 0.0, 1.0); // Green shadow
-      canvas.drawText("Press SPACE to continue", this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 60 + 2.0);
+      canvas.drawText(ContinueText, this.data.virtualWidth / 2 - 2.0, this.data.virtualHeight / 2 + 60 + 2.0);
       canvas.setColor(0.0, 1.0, 0.0, 1.0); // Green text
-      canvas.drawText("Press SPACE to continue", this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
-      
+      canvas.drawText(ContinueText, this.data.virtualWidth / 2, this.data.virtualHeight / 2 + 60);
+
       canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Leading); // Reset to left
+      
     }
 
   }
