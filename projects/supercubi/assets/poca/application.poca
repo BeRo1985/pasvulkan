@@ -1093,7 +1093,7 @@ var application = {
 
       // Culling
       let x = enemy.renderX - cameraX, y = enemy.renderY - cameraY;
-      if ((x > cullX1) || ((x + enemy.width) < cullX0) || (y > cullY1) || ((y + enemy.height) < cullY0)) {
+      if (((x - 1) > cullX1) || ((x + enemy.width + 1) < cullX0) || (y > cullY1) || ((y + enemy.height) < cullY0)) {
         continue; // Skip
       }
       
@@ -1144,83 +1144,92 @@ var application = {
     // Draw goal
     if (this.data.goal) {
       let goal = this.data.goal;
+
+      // Culling
+      let x = goal.x - cameraX, y = goal.y - cameraY;
+      if (!((x > cullX1) || ((x + goal.width) < cullX0) || (y > cullY1) || ((y + goal.height) < cullY0))) {
+        
+        // Not culled, draw it
+        
+        // Green flag pole base
+        canvas.setFillStyle(Canvas.FillStyle.RadialGradient);
+        canvas.setStartColor(0.25, 1.0, 0.25, 1.0);
+        canvas.setStopColor(0.125, 0.75, 0.125, 1.0);
+        let goalToOriginMatrix = Matrix4x4.create(
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          -(goal.x + goal.width / 2 - cameraX), -(goal.y + goal.height / 2 - cameraY), 0, 1
+        );
+        let goalScaleMatrix = Matrix4x4.create(
+          0, 2 / goal.width, 0, 0,
+          2 / goal.height, 0, 0, 0,
+          0, 0, 1, 0,
+          0, 0, 0, 1
+        );
+        let goalFillMatrix = goalToOriginMatrix.clone().mul(goalScaleMatrix);
+        canvas.setFillMatrix(goalFillMatrix);
+        canvas.setColor(1.0, 1.0, 1.0, 1.0);
+        canvas.drawFilledRectangle(
+          goal.x - cameraX,
+          goal.y - cameraY,
+          goal.width,
+          goal.height
+        );
+
+        // White pole
+        canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+        canvas.setStartColor(1.0, 1.0, 1.0, 1.0);
+        canvas.setStopColor(0.75, 0.75, 0.75, 1.0);
+        let poleToOriginMatrix = Matrix4x4.create(
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          -(goal.x + 11 - cameraX), -(goal.y + 5 - cameraY), 0, 1
+        );
+        let poleScaleMatrix = Matrix4x4.create(
+          0, 1 / 2, 0, 0,
+          1 / 30, 0, 0, 0,
+          0, 0, 1, 0,
+          0, 0, 0, 1
+        );
+        let poleFillMatrix = poleToOriginMatrix.clone().mul(poleScaleMatrix);
+        canvas.setFillMatrix(poleFillMatrix);
+        canvas.setColor(1.0, 1.0, 1.0, 1.0);
+        canvas.drawFilledRectangle(
+          goal.x + 10 - cameraX,
+          goal.y + 5 - cameraY,
+          2,
+          30
+        );
+
+        // Red flag (triangle approximated with rectangle)
+        canvas.setFillStyle(Canvas.FillStyle.RadialGradient);
+        canvas.setStartColor(1.0, 0.0, 0.0, 1.0);
+        canvas.setStopColor(0.1, 0.0, 0.0, 1.0);
+        let flagToOriginMatrix = Matrix4x4.create(
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          -(goal.x + 16 - cameraX), -(goal.y + 7.5 - cameraY), 0, 1
+        );
+        let flagScaleMatrix = Matrix4x4.create(
+          0, 1 / 13, 0, 0,
+          1 / 20, 0, 0, 0,  
+          0, 0, 1, 0,
+          0, 0, 0, 1
+        );
+        canvas.setFillMatrix(flagToOriginMatrix.clone().mul(flagScaleMatrix));
+        canvas.setColor(1.0, 1.0, 1.0, 1.0);
+        canvas.drawFilledRectangle(
+          goal.x + 12 - cameraX,
+          goal.y + 5 - cameraY,
+          13,
+          20
+        );
       
-      // Green flag pole base
-      canvas.setFillStyle(Canvas.FillStyle.RadialGradient);
-      canvas.setStartColor(0.25, 1.0, 0.25, 1.0);
-      canvas.setStopColor(0.125, 0.75, 0.125, 1.0);
-      let goalToOriginMatrix = Matrix4x4.create(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        -(goal.x + goal.width / 2 - cameraX), -(goal.y + goal.height / 2 - cameraY), 0, 1
-      );
-      let goalScaleMatrix = Matrix4x4.create(
-        0, 2 / goal.width, 0, 0,
-        2 / goal.height, 0, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-      );
-      let goalFillMatrix = goalToOriginMatrix.clone().mul(goalScaleMatrix);
-      canvas.setFillMatrix(goalFillMatrix);
-      canvas.setColor(1.0, 1.0, 1.0, 1.0);
-      canvas.drawFilledRectangle(
-        goal.x - cameraX,
-        goal.y - cameraY,
-        goal.width,
-        goal.height
-      );
+      }
 
-      // White pole
-      canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
-      canvas.setStartColor(1.0, 1.0, 1.0, 1.0);
-      canvas.setStopColor(0.75, 0.75, 0.75, 1.0);
-      let poleToOriginMatrix = Matrix4x4.create(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        -(goal.x + 11 - cameraX), -(goal.y + 5 - cameraY), 0, 1
-      );
-      let poleScaleMatrix = Matrix4x4.create(
-        0, 1 / 2, 0, 0,
-        1 / 30, 0, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-      );
-      let poleFillMatrix = poleToOriginMatrix.clone().mul(poleScaleMatrix);
-      canvas.setFillMatrix(poleFillMatrix);
-      canvas.setColor(1.0, 1.0, 1.0, 1.0);
-      canvas.drawFilledRectangle(
-        goal.x + 10 - cameraX,
-        goal.y + 5 - cameraY,
-        2,
-        30
-      );
-
-      // Red flag (triangle approximated with rectangle)
-      canvas.setFillStyle(Canvas.FillStyle.RadialGradient);
-      canvas.setStartColor(1.0, 0.0, 0.0, 1.0);
-      canvas.setStopColor(0.1, 0.0, 0.0, 1.0);
-      let flagToOriginMatrix = Matrix4x4.create(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        -(goal.x + 16 - cameraX), -(goal.y + 7.5 - cameraY), 0, 1
-      );
-      let flagScaleMatrix = Matrix4x4.create(
-        0, 1 / 13, 0, 0,
-        1 / 20, 0, 0, 0,  
-        0, 0, 1, 0,
-        0, 0, 0, 1
-      );
-      canvas.setFillMatrix(flagToOriginMatrix.clone().mul(flagScaleMatrix));
-      canvas.setColor(1.0, 1.0, 1.0, 1.0);
-      canvas.drawFilledRectangle(
-        goal.x + 12 - cameraX,
-        goal.y + 5 - cameraY,
-        13,
-        20
-      );
     }
 
     // Draw player
