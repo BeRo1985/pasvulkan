@@ -1642,33 +1642,41 @@ vec.add(Vector2.create(3, 4)); // vec is now (4, 6)</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">vec.mul(scalar);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">vec.mul(scalar);
+vec.mul(otherVec);
+vec.mul(matrix);</code></pre>
 </div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Multiplies this vector by a scalar or another vector (component-wise) in place.</p>
+<p><strong>Description:</strong> Multiplies this vector by a scalar, another vector (component-wise), or transforms it by a matrix, in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>value</code> (number or Vector2): The scalar or vector to multiply by.</p>
+<p><code>value</code> (number, Vector2, Matrix3x3, or Matrix4x4): The value to multiply/transform by.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> The vector itself.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector2.create(2, 3);
-vec.mul(2); // vec is now (4, 6)</code></pre>
+vec.mul(2); // vec is now (4, 6)
+
+let vec2 = Vector2.create(1, 2);
+vec2.mul(Vector2.create(3, 4)); // vec2 is now (3, 8)
+
+let transform = Matrix3x3.create(/* ... */);
+vec.mul(transform); // Transform vec by matrix</code></pre>
 </div>
 </div>
 </li>
@@ -1855,7 +1863,14 @@ puts(vec.toString()); // Outputs something like "(3.5, 4.2)"</code></pre>
 <p><strong>Subtraction:</strong> <code>vec1 - vec2</code> or <code>vec - scalar</code></p>
 </li>
 <li>
-<p><strong>Multiplication:</strong> <code>vec * scalar</code> or <code>vec1 * vec2</code></p>
+<p><strong>Multiplication:</strong> <code>vec * scalar</code>, <code>vec1 * vec2</code>, <code>vec * matrix</code>, or <code>matrix * vec</code></p>
+<div class="ulist">
+<ul>
+<li>
+<p>Supports Matrix3x3 and Matrix4x4 transformations in both orders</p>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p><strong>Division:</strong> <code>vec / scalar</code> or <code>vec1 / vec2</code></p>
@@ -1879,7 +1894,10 @@ puts(vec.toString()); // Outputs something like "(3.5, 4.2)"</code></pre>
 <pre class="highlight"><code class="language-js" data-lang="js">let v1 = Vector2.create(1, 2);
 let v2 = Vector2.create(3, 4);
 let sum = v1 + v2; // (4, 6)
-let scaled = v1 * 2; // (2, 4)</code></pre>
+let scaled = v1 * 2; // (2, 4)
+
+let transform = Matrix3x3.create(/* ... */);
+let transformed = v1 * transform; // Transform vector</code></pre>
 </div>
 </div>
 <hr>
@@ -2510,27 +2528,33 @@ let sum = v1.add(v2); // Returns Vector3(5, 7, 9)</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Multiplies this vector by another vector or scalar.</p>
+<p><strong>Description:</strong> Multiplies this vector by another vector, scalar, matrix, or quaternion.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>value</code> (Vector3 or number): The vector or scalar to multiply by.</p>
+<p><code>value</code> (Vector3, number, Matrix3x3, Matrix4x4, or Quaternion): The value to multiply/transform by.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Vector3.</p>
+<p><strong>Return Value:</strong> The modified vector itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector3.create(1, 2, 3);
-let scaled = vec.mul(2); // Returns Vector3(2, 4, 6)</code></pre>
+vec.mul(2); // vec is now (2, 4, 6)
+
+let mat = Matrix4x4.create(/* ... */);
+vec.mul(mat); // Transform vec by matrix
+
+let rot = Quaternion.create(/* ... */);
+vec.mul(rot); // Rotate vec by quaternion</code></pre>
 </div>
 </div>
 </li>
@@ -2706,7 +2730,7 @@ puts(vec.toString()); // Outputs something like "(1.5, 2.5, 3.5)"</code></pre>
 <div class="sect2">
 <h3 id="_vector3_operator_overloading">Vector3 Operator Overloading</h3>
 <div class="paragraph">
-<p>Vector3 supports the same operator overloading as Vector2:</p>
+<p>Vector3 supports operator overloading with extended multiplication support:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -2717,7 +2741,14 @@ puts(vec.toString()); // Outputs something like "(1.5, 2.5, 3.5)"</code></pre>
 <p><strong>Subtraction:</strong> <code>vec1 - vec2</code> or <code>vec - scalar</code></p>
 </li>
 <li>
-<p><strong>Multiplication:</strong> <code>vec * scalar</code> or <code>vec1 * vec2</code></p>
+<p><strong>Multiplication:</strong> <code>vec * scalar</code>, <code>vec1 * vec2</code>, <code>vec * matrix</code>, <code>vec * quat</code>, or <code>matrix/quat * vec</code></p>
+<div class="ulist">
+<ul>
+<li>
+<p>Supports Matrix3x3, Matrix4x4, and Quaternion transformations in both orders</p>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p><strong>Division:</strong> <code>vec / scalar</code> or <code>vec1 / vec2</code></p>
@@ -2732,6 +2763,17 @@ puts(vec.toString()); // Outputs something like "(1.5, 2.5, 3.5)"</code></pre>
 <p><strong>Inequality:</strong> <code>vec1 != vec2</code></p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let v = Vector3.create(1, 0, 0);
+let rotation = Quaternion.create(/* ... */);
+let rotated = v * rotation; // Rotate vector
+let backRotated = rotation * v; // Also works</code></pre>
+</div>
 </div>
 <hr>
 </div>
@@ -3285,27 +3327,33 @@ let copy = color.clone();</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Multiplies this vector by another vector or scalar.</p>
+<p><strong>Description:</strong> Multiplies this vector by another vector, scalar, matrix, or quaternion.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>value</code> (Vector4 or number): The vector or scalar to multiply by.</p>
+<p><code>value</code> (Vector4, number, Matrix3x3, Matrix4x4, or Quaternion): The value to multiply/transform by.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Vector4.</p>
+<p><strong>Return Value:</strong> The modified vector itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let color = Vector4.create(1, 0.5, 0.5, 1);
-let brighter = color.mul(1.5); // Brighten color</code></pre>
+color.mul(1.5); // Brighten color
+
+let mat = Matrix4x4.create(/* ... */);
+color.mul(mat); // Transform color by matrix
+
+let quat = Quaternion.create(/* ... */);
+color.mul(quat); // Rotate xyz components by quaternion</code></pre>
 </div>
 </div>
 </li>
@@ -3472,7 +3520,7 @@ puts(color.toString()); // Outputs something like "(1, 0, 0, 1)"</code></pre>
 <div class="sect2">
 <h3 id="_vector4_operator_overloading">Vector4 Operator Overloading</h3>
 <div class="paragraph">
-<p>Vector4 supports the same operator overloading as Vector2 and Vector3:</p>
+<p>Vector4 supports operator overloading with extended multiplication support:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -3483,7 +3531,17 @@ puts(color.toString()); // Outputs something like "(1, 0, 0, 1)"</code></pre>
 <p><strong>Subtraction:</strong> <code>vec1 - vec2</code> or <code>vec - scalar</code></p>
 </li>
 <li>
-<p><strong>Multiplication:</strong> <code>vec * scalar</code> or <code>vec1 * vec2</code></p>
+<p><strong>Multiplication:</strong> <code>vec * scalar</code>, <code>vec1 * vec2</code>, <code>vec * matrix</code>, <code>vec * quat</code>, or <code>matrix/quat * vec</code></p>
+<div class="ulist">
+<ul>
+<li>
+<p>Supports Matrix3x3, Matrix4x4, and Quaternion transformations in both orders</p>
+</li>
+<li>
+<p>When multiplying with Quaternion, rotates the xyz components</p>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p><strong>Division:</strong> <code>vec / scalar</code> or <code>vec1 / vec2</code></p>
@@ -3997,20 +4055,20 @@ let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Multiplies this quaternion by another. This combines rotations (note: order matters).</p>
+<p><strong>Description:</strong> Multiplies this quaternion by another quaternion, scalar, or vector. When multiplying quaternions, this combines rotations (note: order matters). When multiplying by a Vector3, it returns the rotated vector.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>other</code> (Quaternion): The quaternion to multiply by.</p>
+<p><code>other</code> (Quaternion, number, or Vector3): The quaternion, scalar, or vector to multiply by.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Quaternion representing the combined rotation.</p>
+<p><strong>Return Value:</strong> The modified quaternion itself when multiplying by Quaternion/number, or a new Vector3 when multiplying by Vector3.</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
@@ -4018,7 +4076,10 @@ let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation</code></pre>
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let rotX = Quaternion.create(/* rotation around X */);
 let rotY = Quaternion.create(/* rotation around Y */);
-let combined = rotX.mul(rotY); // Combined rotation</code></pre>
+rotX.mul(rotY); // Combined rotation in rotX
+
+let vec = Vector3.create(1, 0, 0);
+let rotated = rotX.mul(vec); // Returns rotated Vector3</code></pre>
 </div>
 </div>
 </li>
@@ -4196,10 +4257,20 @@ puts(quat.toString()); // Outputs something like "(0, 0, 0, 1)"</code></pre>
 <p><strong>Subtraction:</strong> <code>quat1 - quat2</code></p>
 </li>
 <li>
-<p><strong>Multiplication:</strong> <code>quat1 * quat2</code> (combines rotations)</p>
+<p><strong>Multiplication:</strong> <code>quat1 * quat2</code> (combines rotations), <code>quat * scalar</code>, <code>quat * vec</code>, or <code>vec * quat</code></p>
+<div class="ulist">
+<ul>
+<li>
+<p>Quaternion×Quaternion combines rotations</p>
 </li>
 <li>
-<p><strong>Division:</strong> <code>quat / scalar</code></p>
+<p>Quaternion×Vector3 or Vector3×Quaternion rotates the vector and returns a Vector3</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Division:</strong> <code>quat / scalar</code> or <code>quat1 / quat2</code></p>
 </li>
 <li>
 <p><strong>Negation:</strong> <code>-quat</code></p>
@@ -4211,6 +4282,19 @@ puts(quat.toString()); // Outputs something like "(0, 0, 0, 1)"</code></pre>
 <p><strong>Inequality:</strong> <code>quat1 != quat2</code></p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let q1 = Quaternion.create(/* ... */);
+let q2 = Quaternion.create(/* ... */);
+let combined = q1 * q2; // Combine rotations
+
+let vec = Vector3.create(1, 0, 0);
+let rotated = q1 * vec; // Returns rotated Vector3</code></pre>
+</div>
 </div>
 <hr>
 </div>
@@ -4431,20 +4515,20 @@ let copy = original.clone();</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Multiplies this matrix by another matrix or scalar. Matrix multiplication combines transformations.</p>
+<p><strong>Description:</strong> Multiplies this matrix by another matrix, scalar, vector, or quaternion. Matrix multiplication combines transformations. When multiplying by a vector, returns the transformed vector.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>other</code> (Matrix3x3 or number): The matrix or scalar to multiply by.</p>
+<p><code>other</code> (Matrix3x3, number, Vector2, Vector3, Vector4, or Quaternion): The value to multiply by.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Matrix3x3.</p>
+<p><strong>Return Value:</strong> The modified matrix itself when multiplying by Matrix3x3/number/Quaternion, or a new vector when multiplying by a vector.</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
@@ -4456,7 +4540,10 @@ let mat2 = Matrix3x3.create(
   0, 2, 0,
   0, 0, 1
 ); // 2x scale
-let combined = mat1.mul(mat2);</code></pre>
+mat1.mul(mat2); // mat1 is now scaled
+
+let vec = Vector3.create(1, 2, 3);
+let transformed = mat1.mul(vec); // Returns transformed Vector3</code></pre>
 </div>
 </div>
 </li>
@@ -4625,10 +4712,23 @@ let combined = mat1.mul(mat2);</code></pre>
 <p><strong>Subtraction:</strong> <code>mat1 - mat2</code></p>
 </li>
 <li>
-<p><strong>Multiplication:</strong> <code>mat1 * mat2</code> or <code>mat * scalar</code></p>
+<p><strong>Multiplication:</strong> <code>mat1 * mat2</code>, <code>mat * scalar</code>, <code>mat * vec</code>, <code>mat * quat</code>, or <code>vec/quat * mat</code></p>
+<div class="ulist">
+<ul>
+<li>
+<p>Matrix×Matrix combines transformations</p>
 </li>
 <li>
-<p><strong>Division:</strong> <code>mat / scalar</code></p>
+<p>Matrix×Vector (Vector2/3/4) or Vector×Matrix transforms the vector and returns the transformed vector</p>
+</li>
+<li>
+<p>Matrix×Quaternion or Quaternion×Matrix combines transformation and rotation</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Division:</strong> <code>mat / scalar</code> or <code>mat1 / mat2</code></p>
 </li>
 <li>
 <p><strong>Negation:</strong> <code>-mat</code></p>
@@ -4640,6 +4740,17 @@ let combined = mat1.mul(mat2);</code></pre>
 <p><strong>Inequality:</strong> <code>mat1 != mat2</code></p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.create(/* ... */);
+let vec = Vector3.create(1, 2, 3);
+let transformed = mat * vec; // Returns transformed Vector3
+let alsoTransformed = vec * mat; // Also works</code></pre>
+</div>
 </div>
 <hr>
 </div>
@@ -4848,20 +4959,20 @@ let copy = original.clone();</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Multiplies this matrix by another matrix or scalar. Matrix multiplication combines transformations.</p>
+<p><strong>Description:</strong> Multiplies this matrix by another matrix, scalar, vector, or quaternion. Matrix multiplication combines transformations. When multiplying by a vector, returns the transformed vector.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>other</code> (Matrix4x4 or number): The matrix or scalar to multiply by.</p>
+<p><code>other</code> (Matrix4x4, number, Vector2, Vector3, Vector4, or Quaternion): The value to multiply by.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Matrix4x4.</p>
+<p><strong>Return Value:</strong> The modified matrix itself when multiplying by Matrix4x4/number/Quaternion, or a new vector when multiplying by a vector.</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
@@ -4870,8 +4981,11 @@ let copy = original.clone();</code></pre>
 <pre class="highlight"><code class="language-js" data-lang="js">let projection = Matrix4x4.create(/* ... */);
 let view = Matrix4x4.create(/* ... */);
 let model = Matrix4x4.create(); // Identity
-let mvp = projection.mul(view).mul(model);
-canvas.setProjectionMatrix(mvp);</code></pre>
+projection.mul(view).mul(model); // Combine transformations
+canvas.setProjectionMatrix(projection);
+
+let position = Vector3.create(1, 2, 3);
+let transformed = model.mul(position); // Returns transformed Vector3</code></pre>
 </div>
 </div>
 </li>
@@ -5029,7 +5143,7 @@ canvas.setProjectionMatrix(mvp);</code></pre>
 <div class="sect2">
 <h3 id="_matrix4x4_operator_overloading">Matrix4x4 Operator Overloading</h3>
 <div class="paragraph">
-<p>Matrix4x4 supports the same operator overloading as Matrix3x3:</p>
+<p>Matrix4x4 supports operator overloading with extended capabilities:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -5040,10 +5154,23 @@ canvas.setProjectionMatrix(mvp);</code></pre>
 <p><strong>Subtraction:</strong> <code>mat1 - mat2</code></p>
 </li>
 <li>
-<p><strong>Multiplication:</strong> <code>mat1 * mat2</code> or <code>mat * scalar</code></p>
+<p><strong>Multiplication:</strong> <code>mat1 * mat2</code>, <code>mat * scalar</code>, <code>mat * vec</code>, <code>mat * quat</code>, or <code>vec/quat * mat</code></p>
+<div class="ulist">
+<ul>
+<li>
+<p>Matrix×Matrix combines transformations</p>
 </li>
 <li>
-<p><strong>Division:</strong> <code>mat / scalar</code></p>
+<p>Matrix×Vector (Vector2/3/4) or Vector×Matrix transforms the vector and returns the transformed vector</p>
+</li>
+<li>
+<p>Matrix×Quaternion or Quaternion×Matrix combines transformation and rotation</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Division:</strong> <code>mat / scalar</code> or <code>mat1 / mat2</code></p>
 </li>
 <li>
 <p><strong>Negation:</strong> <code>-mat</code></p>
@@ -5055,6 +5182,16 @@ canvas.setProjectionMatrix(mvp);</code></pre>
 <p><strong>Inequality:</strong> <code>mat1 != mat2</code></p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p><strong>Example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let transform = Matrix4x4.create(/* ... */);
+let position = Vector3.create(1, 2, 3);
+let worldPos = transform * position; // Returns transformed Vector3</code></pre>
+</div>
 </div>
 <hr>
 </div>
@@ -13511,7 +13648,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-28 23:49:48 +0100
+Last updated 2025-10-29 12:52:56 +0100
 </div>
 </div>
 </body>
