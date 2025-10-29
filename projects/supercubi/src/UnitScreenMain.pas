@@ -1001,23 +1001,30 @@ procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
 var Scale:TpvFloat;
     FPS:TpvInt32;
     FPSString:string;
-    RenderCPUTimeString:string;
+    TotalCPUTimeString:string;
     UpdateCPUTimeString:string;
+    RenderCPUTimeString:string;
     PercentileXthFPSString:string;
     PercentileXthFrameTimeString:string;
     MedianFPSString:string;
     MedianFrameTimeString:string;
     FrameTime,PercentileXthFPS,PercentileXthFrameRate,MedianFPS,MedianFrameTime:TpvDouble;
-    UpdateTime:TpvHighResolutionTime;
+    TotalTime,UpdateTime,RenderTime:TpvHighResolutionTime;
 begin
 
  inherited Update(aDeltaTime);
+
+ TotalTime:=pvApplication.HighResolutionTimer.GetTime;
 
  UpdateTime:=pvApplication.HighResolutionTimer.GetTime;
 
  POCACallFunction('onApplicationUpdate',[POCANewNumber(fPOCAContext,aDeltaTime)],nil);
 
  POCACallFunction('onApplicationUpdateCanvas',[POCANewNumber(fPOCAContext,aDeltaTime),POCANewNumber(fPOCAContext,fVulkanCanvas.Width),POCANewNumber(fPOCAContext,fVulkanCanvas.Height),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.width),POCANewNumber(fPOCAContext,fVulkanCanvas.Viewport.height)],nil);
+
+ UpdateTime:=pvApplication.HighResolutionTimer.GetTime-UpdateTime;
+
+ RenderTime:=pvApplication.HighResolutionTimer.GetTime;
 
 {$ifdef WithConsole}
  fConsole.OnSetDrawColor:=CansoleOnSetDrawColor;
@@ -1058,11 +1065,13 @@ begin
 
  fVulkanCanvas.Stop;
 
+ RenderTime:=pvApplication.HighResolutionTimer.GetTime-RenderTime;
+
  fReady:=true;
 
  POCAGarbageCollect;
 
- UpdateTime:=pvApplication.HighResolutionTimer.GetTime-UpdateTime;
+ TotalTime:=pvApplication.HighResolutionTimer.GetTime-TotalTime;
 
  FPS:=round(pvApplication.FramesPerSecond*100.0);
  fFPSTimeAccumulator:=fFPSTimeAccumulator+aDeltaTime;
@@ -1090,12 +1099,14 @@ begin
   //fScene3D.GetProfilerTimes(RenderCPUTime,FrameTime);
   //str(FrameTime*1000.0:4:2,fFrameTimeString);
   //str(pvApplication.HighResolutionTimer.ToFloatSeconds(fRenderCPUTime)*1000.0:4:2,RenderCPUTimeString);
+  str(pvApplication.HighResolutionTimer.ToFloatSeconds(TotalTime)*1000.0:4:2,TotalCPUTimeString);
   str(pvApplication.HighResolutionTimer.ToFloatSeconds(UpdateTime)*1000.0:4:2,UpdateCPUTimeString);
+  str(pvApplication.HighResolutionTimer.ToFloatSeconds(RenderTime)*1000.0:4:2,RenderCPUTimeString);
   str(PercentileXthFPS:4:2,PercentileXthFPSString);
   str(PercentileXthFrameRate*1000.0:4:2,PercentileXthFrameTimeString);
   str(MedianFPS:4:2,MedianFPSString);
   str(MedianFrameTime*1000.0:4:2,MedianFrameTimeString);
-  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+UpdateCPUTimeString+' ms update CPU time] ['+PercentileXthFPSString+' FPS 95%] ['+PercentileXthFrameTimeString+' ms 95%] ['+MedianFPSString+' FPS median] ['+MedianFrameTimeString+' ms median]';
+  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+TotalCPUTimeString+' ms CPU time] ['+UpdateCPUTimeString+' ms update CPU time] ['+RenderCPUTimeString+' ms render CPU time] ['+PercentileXthFPSString+' FPS 95%] ['+PercentileXthFrameTimeString+' ms 95%] ['+MedianFPSString+' FPS median] ['+MedianFrameTimeString+' ms median]';
 //pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms GPU time] ['+RenderCPUTimeString+' ms render CPU time] ['+UpdateCPUTimeString+' ms update CPU time] ['+PercentileXthFPSString+' FPS 95%] ['+PercentileXthFrameTimeString+' ms 95%] ['+MedianFPSString+' FPS median] ['+MedianFrameTimeString+' ms median]';
  end;
 
