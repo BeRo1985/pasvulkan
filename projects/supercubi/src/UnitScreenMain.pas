@@ -104,6 +104,7 @@ type { TScreenMain }
        fOldFPS:TpvInt32;
        fFPSTimeAccumulator:TpvDouble;
        fFrameRateTimeAccumulator:TpvDouble;
+       fFrameRateUpdateTimeAccumulator:TpvDouble;
        fPercentileXthFrameRate:TpvDouble;
        fMedianFrameTime:TpvDouble;
        fFrameTimeString:string;
@@ -302,6 +303,8 @@ begin
  ScreenMain:=self;
 
  fReady:=false;
+
+ fFrameRateUpdateTimeAccumulator:=1.0;
 
  fCriticalSection:=TPasMPCriticalSection.Create;
 
@@ -1075,7 +1078,9 @@ begin
   fMedianFrameTime:=pvApplication.GetMedianFrameTime(1.0); // of the last second
  end;
 
- if abs(fOldFPS-FPS)>=100 then begin
+ fFrameRateUpdateTimeAccumulator:=fFrameRateUpdateTimeAccumulator+(aDeltaTime*10.0);
+ if fFrameRateUpdateTimeAccumulator>=1.0 then begin //if abs(fOldFPS-FPS)>=100 then begin
+  fFrameRateUpdateTimeAccumulator:=frac(fFrameRateUpdateTimeAccumulator);
   fOldFPS:=FPS;
   PercentileXthFrameRate:=fPercentileXthFrameRate;
   PercentileXthFPS:=1.0/Max(1e-4,PercentileXthFrameRate);
