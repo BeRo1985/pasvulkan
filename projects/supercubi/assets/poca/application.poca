@@ -727,6 +727,8 @@ var application = {
   update: function(deltaTime) {
     if (!this.data || !this.data.initialized) return;
 
+    // "Fix your timestep" approach for consistent updates and consistent physics behavior
+
     let tickRate = 1.0 / 60.0; // 60 updates per second
     let accumulator = Math.min(this.data.accumulator, 0.25); // Prevent spiral of death
     accumulator += deltaTime;
