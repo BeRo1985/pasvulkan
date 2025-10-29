@@ -801,8 +801,15 @@ var application = {
     let viewMatrix = m1.mul(m2).mul(m3);
     canvas.setViewMatrix(viewMatrix);
 
-    // Now draw everything in virtual canvas coordinates 
-    
+    // Get culling rectangle in virtual canvas coordinates, per inverse of view matrix
+    let invScale = 1.0 / scale;
+    let cullX0 = ((width * -0.5) * invScale) + (this.data.virtualWidth * 0.5);
+    let cullY0 = ((height * -0.5) * invScale) + (this.data.virtualHeight * 0.5);
+    let cullX1 = cullX0 + (width * invScale);
+    let cullY1 = cullY0 + (height * invScale);
+
+    // Now draw everything in virtual canvas coordinates
+
     // Draw sky background (light blue)
     // Draw background sky with gradient BEFORE view matrix (fill entire actual canvas including borders)
     // Set up linear gradient from darker blue at top to lighter blue at bottom
@@ -834,7 +841,7 @@ var application = {
     
     // Draw sun rays (rotating)
     canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
-    canvas.setStartColor(1.0, 1.0, 0.5, 1.0);
+    canvas.setStartColor(1.0, 1.0, 0.25, 1.0);
     canvas.setStopColor(1.0, 0.75, 0.0, 0.0); 
     for (let i = 0; i < rayCount; i++) {
       let angle = (i / rayCount) * Math.PI * 2 + rayRotation;
@@ -886,7 +893,7 @@ var application = {
       canvas.setFillMatrix(fillMatrix);
 
       canvas.setModelMatrix(rayMatrix);
-      canvas.setColor(1.0, 1.0, 0.5, 1.0); // Soft yellow with transparency
+      canvas.setColor(1.0, 1.0, 1.0, 1.0); 
       canvas.drawFilledRectangle(0, 0, rayWidth, rayLength);
     }
     
@@ -899,6 +906,7 @@ var application = {
     );
     canvas.setModelMatrix(identityMatrix);
     
+    // Draw sun core (bright yellow circle)
     // Set fill style for sun
     canvas.setFillStyle(Canvas.FillStyle.RadialGradient);
     let sunToOriginMatrix = Matrix4x4.create(
@@ -915,17 +923,14 @@ var application = {
     );
     let sunFillMatrix = sunToOriginMatrix.mul(sunScaleMatrix); 
     canvas.setFillMatrix(sunFillMatrix);
-    canvas.setStartColor(1.0, 1.0, 0.5, 1.0);
+    canvas.setStartColor(1.0, 1.0, 0.25, 1.0);
     canvas.setStopColor(1.0, 0.75, 0.0, 1.0);
-
-    // Draw sun core (bright yellow circle)
-    canvas.setColor(1.0, 1.0, 0.5, 1.0);
+    canvas.setColor(1.0, 1.0, 1.0, 1.0);
     canvas.drawFilledCircle(sunX, sunY, sunRadius);
     
+    // Draw sun highlight (lighter center)
     // Reset fill style to solid color
     canvas.setFillStyle(Canvas.FillStyle.Color);
-
-    // Draw sun highlight (lighter center)
     canvas.setColor(1.0, 1.0, 0.6, 0.3275);
     canvas.drawFilledCircle(sunX - 8, sunY - 8, sunRadius * 0.6);
 
@@ -948,13 +953,21 @@ var application = {
       let size1 = baseSize * cloud.scale * parallaxScale;
       let size2 = (baseSize * 1.125) * cloud.scale * parallaxScale;
 
+      // Offsets for the back circles to create depth
+      let offsetX = -2.5 * cloud.scale;
+      let offsetY = 2.5 * cloud.scale;
+
+      // Culling
+      let x = parallaxX - size1 + offsetX, y = parallaxY + offsetY, width = (size1 * 4) + Math.abs(offsetX * 2), height = (size2 * 2) + Math.abs(offsetY * 2);
+      if ((x > cullX1) || ((x + width) < cullX0) || (y > cullY1) || ((y + height) < cullY0)) {
+        continue; // Skip
+      }
+
       let backColorFactor = 0.5 + 0.125 * cloud.layer; // Lighter for farther layers
-       canvas.setFillStyle(Canvas.FillStyle.Color);
+      canvas.setFillStyle(Canvas.FillStyle.Color);
       canvas.setColor(backColorFactor, backColorFactor, backColorFactor, 0.5);       
       
       // Draw three overlapping circles to form a cloud
-      let offsetX = -2.5 * cloud.scale;
-      let offsetY = 2.5 * cloud.scale;
       canvas.drawFilledCircle(parallaxX + offsetX, parallaxY + offsetY, size1);
       canvas.drawFilledCircle(parallaxX + size1 + offsetX, parallaxY - 10 + offsetY, size2);
       canvas.drawFilledCircle(parallaxX + size1 * 2 + offsetX, parallaxY + offsetY, size1);
@@ -962,7 +975,7 @@ var application = {
       let colorFactor = 0.75 + 0.25 * cloud.layer; // Lighter for farther layers
       canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
       canvas.setStartColor(colorFactor, colorFactor, colorFactor, 1.0);
-      canvas.setStopColor(colorFactor * 0.75, colorFactor * 0.75, colorFactor * 0.75, 1.0);
+      canvas.setStopColor(colorFactor * 0.5, colorFactor * 0.5, colorFactor * 0.5, 1.0);
       let cloudToOriginMatrix = Matrix4x4.create(
         1, 0, 0, 0,
         0, 1, 0, 0,
@@ -977,7 +990,7 @@ var application = {
       );
       let cloudFillMatrix = cloudToOriginMatrix.mul(cloudScaleMatrix);
       canvas.setFillMatrix(cloudFillMatrix);
-      canvas.setColor(colorFactor, colorFactor, colorFactor, 1.0);       
+      canvas.setColor(1.0, 1.0, 1.0, 1.0);       
       
       // Draw three overlapping circles to form a cloud
       canvas.drawFilledCircle(parallaxX, parallaxY, size1);
@@ -989,10 +1002,16 @@ var application = {
     canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
     for (let i = 0; i < this.data.platforms.length; i++) {
       let platform = this.data.platforms[i];
-      
+
+      // Culling
+      let x = platform.x - cameraX, y = platform.y - cameraY;
+      if ((x > cullX1) || ((x + platform.width) < cullX0) || (y > cullY1) || ((y + platform.height) < cullY0)) {
+        continue; // Skip
+      }
+            
       // Brown platform
-      canvas.setStartColor(0.55, 0.27, 0.07, 1.0);
-      canvas.setStopColor(0.27, 0.13, 0.0, 1.0);
+      canvas.setStartColor(0.3025, 0.0729, 0.0049, 1.0);
+      canvas.setStopColor(0.1485, 0.0351, 0.0000, 1.0);
       let platformToOriginMatrix = Matrix4x4.create(
         1, 0, 0, 0,
         0, 1, 0, 0,
@@ -1007,7 +1026,7 @@ var application = {
       );
       let platformFillMatrix = platformToOriginMatrix.clone().mul(platformScaleMatrix);
       canvas.setFillMatrix(platformFillMatrix);
-      canvas.setColor(0.55, 0.27, 0.07, 1.0);
+      canvas.setColor(1.0, 1.0, 1.0, 1.0);
       canvas.drawFilledRectangle(
         platform.x - cameraX,
         platform.y - cameraY,
@@ -1016,9 +1035,9 @@ var application = {
       );
 
       // Green grass top
-      canvas.setStartColor(0.13, 0.55, 0.13, 1.0);
-      canvas.setStopColor(0.075, 0.275, 0.075, 0.0);
-      canvas.setColor(0.13, 0.55, 0.13, 1.0);
+      canvas.setStartColor(0.013, 0.3025, 0.013, 1.0);
+      canvas.setStopColor(0.009, 0.275, 0.009, 0.0);
+      canvas.setColor(1.0, 1.0, 1.0, 1.0);
       platformScaleMatrix = Matrix4x4.create(
         0, 1 / platform.width, 0, 0,
         1 / 10, 0, 0, 0,
@@ -1040,6 +1059,13 @@ var application = {
     for (let i = 0; i < this.data.coins.length; i++) {
       let coin = this.data.coins[i];
       if (!coin.collected) {
+
+        // Culling
+        let x = coin.x - cameraX, y = coin.y - cameraY;
+        if ((x > cullX1) || ((x + coin.width) < cullX0) || (y > cullY1) || ((y + coin.height) < cullY0)) {
+          continue; // Skip
+        }
+
         // Gold coin
         canvas.setColor(1.0, 0.84, 0.0, 1.0);
         canvas.drawFilledCircle(
@@ -1064,11 +1090,17 @@ var application = {
     // Draw enemies
     for (let i = 0; i < this.data.enemies.length; i++) {
       let enemy = this.data.enemies[i];
+
+      // Culling
+      let x = enemy.renderX - cameraX, y = enemy.renderY - cameraY;
+      if ((x > cullX1) || ((x + enemy.width) < cullX0) || (y > cullY1) || ((y + enemy.height) < cullY0)) {
+        continue; // Skip
+      }
       
       // Dark red enemy body
       canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
-      canvas.setStartColor(0.75, 0.0, 0.0, 1.0);
-      canvas.setStopColor(0.55, 0.0, 0.0, 1.0);
+      canvas.setStartColor(0.4125, 0.0, 0.0, 1.0);
+      canvas.setStopColor(0.3025, 0.0, 0.0, 1.0);
       let enemyToOriginMatrix = Matrix4x4.create(
         1, 0, 0, 0,
         0, 1, 0, 0,
@@ -1083,7 +1115,7 @@ var application = {
       );
       let enemyFillMatrix = enemyToOriginMatrix.clone().mul(enemyScaleMatrix);
       canvas.setFillMatrix(enemyFillMatrix);
-      canvas.setColor(0.55, 0.0, 0.0, 1.0);
+      canvas.setColor(1.0, 1.0, 1.0, 1.0);
       canvas.drawFilledRectangle(
         enemy.renderX - cameraX,
         enemy.renderY - cameraY,
@@ -1114,7 +1146,24 @@ var application = {
       let goal = this.data.goal;
       
       // Green flag pole base
-      canvas.setColor(0.0, 1.0, 0.0, 1.0);
+      canvas.setFillStyle(Canvas.FillStyle.RadialGradient);
+      canvas.setStartColor(0.25, 1.0, 0.25, 1.0);
+      canvas.setStopColor(0.125, 0.75, 0.125, 1.0);
+      let goalToOriginMatrix = Matrix4x4.create(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -(goal.x + goal.width / 2 - cameraX), -(goal.y + goal.height / 2 - cameraY), 0, 1
+      );
+      let goalScaleMatrix = Matrix4x4.create(
+        0, 2 / goal.width, 0, 0,
+        2 / goal.height, 0, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      );
+      let goalFillMatrix = goalToOriginMatrix.clone().mul(goalScaleMatrix);
+      canvas.setFillMatrix(goalFillMatrix);
+      canvas.setColor(1.0, 1.0, 1.0, 1.0);
       canvas.drawFilledRectangle(
         goal.x - cameraX,
         goal.y - cameraY,
@@ -1123,6 +1172,23 @@ var application = {
       );
 
       // White pole
+      canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
+      canvas.setStartColor(1.0, 1.0, 1.0, 1.0);
+      canvas.setStopColor(0.75, 0.75, 0.75, 1.0);
+      let poleToOriginMatrix = Matrix4x4.create(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -(goal.x + 11 - cameraX), -(goal.y + 5 - cameraY), 0, 1
+      );
+      let poleScaleMatrix = Matrix4x4.create(
+        0, 1 / 2, 0, 0,
+        1 / 30, 0, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      );
+      let poleFillMatrix = poleToOriginMatrix.clone().mul(poleScaleMatrix);
+      canvas.setFillMatrix(poleFillMatrix);
       canvas.setColor(1.0, 1.0, 1.0, 1.0);
       canvas.drawFilledRectangle(
         goal.x + 10 - cameraX,
@@ -1132,7 +1198,23 @@ var application = {
       );
 
       // Red flag (triangle approximated with rectangle)
-      canvas.setColor(1.0, 0.0, 0.0, 1.0);
+      canvas.setFillStyle(Canvas.FillStyle.RadialGradient);
+      canvas.setStartColor(1.0, 0.0, 0.0, 1.0);
+      canvas.setStopColor(0.1, 0.0, 0.0, 1.0);
+      let flagToOriginMatrix = Matrix4x4.create(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -(goal.x + 16 - cameraX), -(goal.y + 7.5 - cameraY), 0, 1
+      );
+      let flagScaleMatrix = Matrix4x4.create(
+        0, 1 / 13, 0, 0,
+        1 / 20, 0, 0, 0,  
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      );
+      canvas.setFillMatrix(flagToOriginMatrix.clone().mul(flagScaleMatrix));
+      canvas.setColor(1.0, 1.0, 1.0, 1.0);
       canvas.drawFilledRectangle(
         goal.x + 12 - cameraX,
         goal.y + 5 - cameraY,
@@ -1144,8 +1226,8 @@ var application = {
     // Draw player
     let player = this.data.player;
     canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
-    canvas.setStartColor(1.0, 0.5, 0.5, 1.0);
-    canvas.setStopColor(0.75, 0.25, 0.25, 1.0);
+    canvas.setStartColor(1.0, 0.165, 0.165, 1.0);
+    canvas.setStopColor(0.75, 0.125, 0.125, 1.0);
     let playerToOriginMatrix = Matrix4x4.create(
       1, 0, 0, 0,
       0, 1, 0, 0,
@@ -1160,7 +1242,7 @@ var application = {
     );
     let playerFillMatrix = playerToOriginMatrix.clone().mul(playerScaleMatrix);
     canvas.setFillMatrix(playerFillMatrix);
-    canvas.setColor(1.0, 0.33, 0.33, 1.0); // Red player
+    canvas.setColor(1.0, 1.0, 1.0, 1.0); // Red player
     canvas.drawFilledRectangle(
       player.renderX - cameraX,
       player.renderY - cameraY,
