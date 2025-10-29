@@ -1007,7 +1007,7 @@ var Scale:TpvFloat;
     PercentileXthFrameTimeString:string;
     MedianFPSString:string;
     MedianFrameTimeString:string;
-    FrameTime,PhysicsTimeStep,RenderCPUTime,PercentileXthFPS,PercentileXthFrameRate,MedianFPS,MedianFrameTime:TpvDouble;
+    FrameTime,PercentileXthFPS,PercentileXthFrameRate,MedianFPS,MedianFrameTime:TpvDouble;
     UpdateTime:TpvHighResolutionTime;
 begin
 
