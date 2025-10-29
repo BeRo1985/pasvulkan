@@ -1007,8 +1007,10 @@ var application = {
 
     // Draw clouds with parallax scrolling (white fluffy clouds)
     
-    for (let i = 0; i < this.data.clouds.length; i++) {
-      let cloud = this.data.clouds[i];
+    let clouds = this.data.clouds;
+    let countClouds = clouds.length;
+    for (let i = 0; i < countClouds; i++) {
+      let cloud = clouds[i];
 
       // Calculate parallax offsets using sine and cosine for smooth movement for fluffiness motion
       let parallaxOffsetX = Math.sin(this.data.time * 0.75 + cloud.x * 0.50) * 5;
@@ -1070,9 +1072,11 @@ var application = {
     }
 
     // Draw platforms
+    let platforms = this.data.platforms;
+    let countPlatforms = platforms.length;
     canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
-    for (let i = 0; i < this.data.platforms.length; i++) {
-      let platform = this.data.platforms[i];
+    for (let i = 0; i < countPlatforms; i++) {
+      let platform = platforms[i];
 
       // Culling
       let x = platform.x - cameraX, y = platform.y - cameraY;
@@ -1126,9 +1130,11 @@ var application = {
     }
 
     // Draw coins
+    let coins = this.data.coins;
+    let countCoins = coins.length;
     canvas.setFillStyle(Canvas.FillStyle.Color);
-    for (let i = 0; i < this.data.coins.length; i++) {
-      let coin = this.data.coins[i];
+    for (let i = 0; i < countCoins; i++) {
+      let coin = coins[i];
       if (!coin.collected) {
 
         // Culling
@@ -1159,8 +1165,10 @@ var application = {
     }
 
     // Draw enemies
-    for (let i = 0; i < this.data.enemies.length; i++) {
-      let enemy = this.data.enemies[i];
+    let enemies = this.data.enemies;
+    let countEnemies = enemies.length;
+    for (let i = 0; i < countEnemies; i++) {
+      let enemy = enemies[i];
 
       // Culling
       let x = enemy.renderX - cameraX, y = enemy.renderY - cameraY;
