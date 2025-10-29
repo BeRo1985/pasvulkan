@@ -672,8 +672,10 @@ var application = {
     if (!this.data || !this.data.initialized) return;
 
     // Store last frame state
-    for (let i = 0; i < this.data.enemies.length; i++) {
-      let enemy = this.data.enemies[i];
+    let enemies = this.data.enemies;
+    let countEnemies = enemies.length;
+    for (let i = 0; i < countEnemies; i++) {
+      let enemy = enemies[i];
       enemy.lastX = enemy.x;
       enemy.lastY = enemy.y;
     }
@@ -703,8 +705,10 @@ var application = {
     let invAlpha = 1.0 - alpha;
 
     // Interpolate enemy positions
-    for (let i = 0; i < this.data.enemies.length; i++) {
-      let enemy = this.data.enemies[i];
+    let enemies = this.data.enemies;
+    let countEnemies = enemies.length;
+    for (let i = 0; i < countEnemies; i++) {
+      let enemy = enemies[i];
       enemy.renderX = (enemy.lastX * invAlpha) + (enemy.x * alpha);
       enemy.renderY = (enemy.lastY * invAlpha) + (enemy.y * alpha);
     }
