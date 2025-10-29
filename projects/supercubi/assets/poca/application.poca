@@ -261,15 +261,15 @@ var application = {
 
     // Create enemies
     this.data.enemies = [
-      { x: 400, y: 420, lastX: 400, lastY: 420, renderX: 400, renderY: 420, width: 32, height: 32, speed: 2, direction: 1 },
-      { x: 800, y: 420, lastX: 800, lastY: 420, renderX: 800, renderY: 420, width: 32, height: 32, speed: 1.5, direction: -1 },
-      { x: 1100, y: 270, lastX: 1100, lastY: 270, renderX: 1100, renderY: 270, width: 32, height: 32, speed: 2.5, direction: 1 },
-      { x: 1500, y: 320, lastX: 1500, lastY: 320, renderX: 1500, renderY: 320, width: 32, height: 32, speed: 1.8, direction: -1 },
-      { x: 1900, y: 220, lastX: 1900, lastY: 220, renderX: 1900, renderY: 220, width: 32, height: 32, speed: 2.2, direction: 1 },
-      { x: 2300, y: 270, lastX: 2300, lastY: 270, renderX: 2300, renderY: 270, width: 32, height: 32, speed: 1.7, direction: -1 },
-      { x: 2700, y: 320, lastX: 2700, lastY: 320, renderX: 2700, renderY: 320, width: 32, height: 32, speed: 2.3, direction: 1 },
-      { x: 3100, y: 220, lastX: 3100, lastY: 220, renderX: 3100, renderY: 220, width: 32, height: 32, speed: 1.9, direction: -1 },
-      { x: 3500, y: 270, lastX: 3500, lastY: 270, renderX: 3500, renderY: 270, width: 32, height: 32, speed: 2.1, direction: 1 }
+      { x: 400, y: 420, lastX: 400, lastY: 420, renderX: 400, renderY: 420, width: 32, height: 32, speed: 2, direction: 1, platformIndex: -1 },
+      { x: 800, y: 420, lastX: 800, lastY: 420, renderX: 800, renderY: 420, width: 32, height: 32, speed: 1.5, direction: -1, platformIndex: -1 },
+      { x: 1100, y: 270, lastX: 1100, lastY: 270, renderX: 1100, renderY: 270, width: 32, height: 32, speed: 2.5, direction: 1, platformIndex: -1 },
+      { x: 1500, y: 320, lastX: 1500, lastY: 320, renderX: 1500, renderY: 320, width: 32, height: 32, speed: 1.8, direction: -1, platformIndex: -1 },
+      { x: 1900, y: 220, lastX: 1900, lastY: 220, renderX: 1900, renderY: 220, width: 32, height: 32, speed: 2.2, direction: 1, platformIndex: -1 },
+      { x: 2300, y: 270, lastX: 2300, lastY: 270, renderX: 2300, renderY: 270, width: 32, height: 32, speed: 1.7, direction: -1, platformIndex: -1 },
+      { x: 2700, y: 320, lastX: 2700, lastY: 320, renderX: 2700, renderY: 320, width: 32, height: 32, speed: 2.3, direction: 1, platformIndex: -1 },
+      { x: 3100, y: 220, lastX: 3100, lastY: 220, renderX: 3100, renderY: 220, width: 32, height: 32, speed: 1.9, direction: -1, platformIndex: -1 },
+      { x: 3500, y: 270, lastX: 3500, lastY: 270, renderX: 3500, renderY: 270, width: 32, height: 32, speed: 2.1, direction: 1, platformIndex: -1 }
     ];
 
     // Create goal
@@ -329,7 +329,20 @@ var application = {
   updatePlayer: function(deltaTime) {
     if(!(this.data.gameMode === this.MODE_STARTSCREEN || this.data.gameMode === this.MODE_RUNNING)) return;
 
+    // Cache player
     let player = this.data.player;
+
+    // Cache platforms
+    let platforms = this.data.platforms;
+    let countPlatforms = platforms.length;
+
+    // Cache enemies
+    let enemies = this.data.enemies;
+    let countEnemies = enemies.length;
+
+    // Cache coins
+    let coins = this.data.coins;
+    let countCoins = coins.length;
     
     // Horizontal movement
     if (this.data.gameMode === this.MODE_STARTSCREEN) {
@@ -362,8 +375,9 @@ var application = {
 
     // Platform collision detection
     let onGround = false, collisionDetected = false;
-    for (let i = 0; i < this.data.platforms.length; i++) {
-      let platform = this.data.platforms[i];
+    for (let i = 0; i < countPlatforms; i++) {
+
+      let platform = platforms[i];
       
       if (player.x < platform.x + platform.width &&
           player.x + player.width > platform.x &&
@@ -447,8 +461,8 @@ var application = {
     this.data.cameraY = Math.max(0, Math.min(this.data.cameraY, this.data.gameHeight - this.data.virtualHeight));
 
     // Coin collection
-    for (let i = 0; i < this.data.coins.length; i++) {
-      let coin = this.data.coins[i];
+    for (let i = 0; i < countCoins; i++) {
+      let coin = coins[i];
       if (!coin.collected &&
           player.x < coin.x + coin.width &&
           player.x + player.width > coin.x &&
@@ -463,8 +477,8 @@ var application = {
     }
 
     // Enemy collision
-    for (let i = this.data.enemies.length - 1; i >= 0; i--) {
-      let enemy = this.data.enemies[i];
+    for (let i = countEnemies - 1; i >= 0; i--) {
+      let enemy = enemies[i];
       if (player.x < enemy.x + enemy.width &&
           player.x + player.width > enemy.x &&
           player.y < enemy.y + enemy.height &&
@@ -533,55 +547,108 @@ var application = {
         }
       }
     }
+
   },
 
   updateEnemies: function(deltaTime) {
+
     if(!(this.data.gameMode === this.MODE_STARTSCREEN || this.data.gameMode === this.MODE_RUNNING)) return;
 
-    for (let i = 0; i < this.data.enemies.length; i++) {
-      let enemy = this.data.enemies[i];
-      
+    // Cache platforms
+    let platforms = this.data.platforms;
+    let countPlatforms = platforms.length;
+
+    // Cache enemies
+    let enemies = this.data.enemies;
+    let countEnemies = enemies.length;
+
+    // Update each enemy
+    for (let i = 0; i < countEnemies; i++) {
+
+      let enemy = enemies[i];
+
       // Calculate next position
-      let nextX = enemy.x + enemy.speed * enemy.direction;
+      let nextX = enemy.x + (enemy.speed * enemy.direction);
       
-      // Check if there will be ground under the enemy
-      let groundAhead = false;
+      // Check if there will be ground under the enemy or if enemy will hit a wall
+      let groundAhead = false, wallAhead = false;
       let checkX = enemy.direction > 0 ? nextX + enemy.width : nextX;
       let checkY = enemy.y + enemy.height + 5;
-      
-      for (let j = 0; j < this.data.platforms.length; j++) {
-        let platform = this.data.platforms[j];
+
+      // Check current last known platform first for efficiency
+      if(enemy.platformIndex >= 0){
+
+        let platform = platforms[enemy.platformIndex];
+
+        // Check for ground ahead
         if (checkX >= platform.x && 
             checkX <= platform.x + platform.width &&
             checkY >= platform.y && 
             checkY <= platform.y + platform.height) {
           groundAhead = true;
-          break;
         }
-      }
       
-      // Check if enemy will hit a wall
-      let wallAhead = false;
-      for (let j = 0; j < this.data.platforms.length; j++) {
-        let platform = this.data.platforms[j];
+        // Check for wall ahead
         if (nextX < platform.x + platform.width &&
             nextX + enemy.width > platform.x &&
             enemy.y < platform.y + platform.height &&
             enemy.y + enemy.height > platform.y) {
-          if (Math.abs(enemy.y + enemy.height - platform.y) > 10) {
+          if (Math.abs((enemy.y + enemy.height) - platform.y) > 10) {
             wallAhead = true;
-            break;
           }
         }
+
+        // If enemy has moved off the platform, reset platformIndex
+        if (!(enemy.x >= platform.x && 
+              enemy.x + enemy.width <= platform.x + platform.width &&
+              enemy.y + enemy.height === platform.y)) {
+          enemy.platformIndex = -1;
+        }
+
       }
-      
+
+      // Then check all platforms if no platform assigned
+      if((enemy.platformIndex < 0) && (!groundAhead || wallAhead)){
+
+        for (let j = 0; j < countPlatforms; j++) {
+          
+          let platform = platforms[j];
+
+          // Check for ground ahead
+          if (checkX >= platform.x && 
+              checkX <= platform.x + platform.width &&
+              checkY >= platform.y && 
+              checkY <= platform.y + platform.height) {
+            groundAhead = true;
+            enemy.platformIndex = j;
+            break;
+          }
+        
+          // Check for wall ahead
+          if (nextX < platform.x + platform.width &&
+              nextX + enemy.width > platform.x &&
+              enemy.y < platform.y + platform.height &&
+              enemy.y + enemy.height > platform.y) {
+            if (Math.abs((enemy.y + enemy.height) - platform.y) > 10) {
+              wallAhead = true;
+              enemy.platformIndex = j;
+              break;
+            }
+          }
+
+        }
+
+      }
+        
       // Reverse direction if no ground ahead or wall ahead
       if (!groundAhead || wallAhead) {
         enemy.direction *= -1;
       } else {
         enemy.x = nextX;
       }
+
     }
+
   },
 
   gameOver: function() {
