@@ -914,6 +914,28 @@ begin
 {$ifdef WithConsole}
  result:=fConsole.KeyEvent(aKeyEvent);
 {$endif}
+ if not result then begin
+  case aKeyEvent.KeyEventType of
+   TpvApplicationInputKeyEventType.Typed:begin
+    case aKeyEvent.KeyCode of
+     KEYCODE_ESCAPE:begin
+      pvApplication.Terminate;
+      result:=true;
+     end;
+     KEYCODE_F4:begin
+      if ([TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT]*aKeyEvent.KeyModifiers)=[TpvApplicationInputKeyModifier.ALT] then begin
+       pvApplication.Terminate;
+       result:=true;
+      end;
+     end;
+     else begin
+     end;
+    end;
+   end;
+   else begin
+   end;
+  end;
+ end;
 end;
 
 function TScreenMain.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
