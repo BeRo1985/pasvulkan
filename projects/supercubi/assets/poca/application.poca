@@ -871,7 +871,7 @@ var application = {
     );
     
     // Combine matrices: m1 * m2 * m3
-    let viewMatrix = m1.mul(m2).mul(m3);
+    let viewMatrix = m1 * m2 * m3; // or m1.clone().mul(m2).mul(m3);
     canvas.setViewMatrix(viewMatrix);
 
     // Get culling rectangle in virtual canvas coordinates, per inverse of view matrix
