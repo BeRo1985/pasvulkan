@@ -162,4 +162,3 @@ function onApplicationDrawCanvas(nativeCanvas, width, height, nativeWidth, nativ
     application?.drawCanvas(nativeCanvas, width, height, nativeWidth, nativeHeight); // call the drawCanvas function of the application object
   }
 }
-
