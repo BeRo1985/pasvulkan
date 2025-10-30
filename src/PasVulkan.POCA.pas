@@ -3737,6 +3737,8 @@ begin
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3HashEvents,'__sqrt',POCAMatrix3x3FunctionOpSqrt);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3HashEvents,'__tostring',POCAMatrix3x3FunctionOpToString);
 
+ POCAHashSetHashEvents(aContext,HostData^.Matrix3x3Hash,HostData^.Matrix3x3HashEvents);
+
 end;
 
 procedure POCAInitMatrix3x3Namespace(aContext:PPOCAContext);
@@ -4537,6 +4539,8 @@ begin
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4HashEvents,'__neg',POCAMatrix4x4FunctionOpNeg);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4HashEvents,'__sqrt',POCAMatrix4x4FunctionOpSqrt);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4HashEvents,'__tostring',POCAMatrix4x4FunctionOpToString);
+
+ POCAHashSetHashEvents(aContext,HostData^.Matrix4x4Hash,HostData^.Matrix4x4HashEvents);
 
 end;
 
