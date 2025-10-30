@@ -305,12 +305,14 @@ let result = vec.slerp(otherVec, t);
 
 [source,js]
 ----
-let result = vec.sqlerp(otherVec, t);
+let result = vec.sqlerp(b, c, d, t);
 ----
 
-* *Description:* Performs squared spherical linear interpolation, modifying this vector in place.
+* *Description:* Performs squared spherical linear interpolation (squad), modifying this vector in place.
 * *Parameters:*
-** `+other+` (Vector2): The target vector.
+** `+b+` (Vector2): Second control point.
+** `+c+` (Vector2): Third control point.
+** `+d+` (Vector2): Fourth control point.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
 * *Return Value:* The vector itself (for method chaining).
 
@@ -805,12 +807,14 @@ let result = vec.slerp(other, t);
 
 [source,js]
 ----
-let result = vec.sqlerp(other, t);
+let result = vec.sqlerp(b, c, d, t);
 ----
 
-* *Description:* Performs squared spherical linear interpolation, modifying this vector in place.
+* *Description:* Performs squared spherical linear interpolation (squad), modifying this vector in place.
 * *Parameters:*
-** `+other+` (Vector3): The target vector.
+** `+b+` (Vector3): Second control point.
+** `+c+` (Vector3): Third control point.
+** `+d+` (Vector3): Fourth control point.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
 * *Return Value:* The vector itself (for method chaining).
 
@@ -1245,12 +1249,14 @@ let result = vec.slerp(other, t);
 
 [source,js]
 ----
-let result = vec.sqlerp(other, t);
+let result = vec.sqlerp(b, c, d, t);
 ----
 
-* *Description:* Performs squared spherical linear interpolation, modifying this vector in place.
+* *Description:* Performs squared spherical linear interpolation (squad), modifying this vector in place.
 * *Parameters:*
-** `+other+` (Vector4): The target vector.
+** `+b+` (Vector4): Second control point.
+** `+c+` (Vector4): Third control point.
+** `+d+` (Vector4): Fourth control point.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
 * *Return Value:* The vector itself (for method chaining).
 
@@ -1643,12 +1649,14 @@ q1.slerp(q2, 0.5); // q1 is now smoothly interpolated halfway
 
 [source,js]
 ----
-let result = quat.sqlerp(other, t);
+let result = quat.sqlerp(b, c, d, t);
 ----
 
-* *Description:* Performs squared spherical linear interpolation, modifying this quaternion in place.
+* *Description:* Performs squared spherical linear interpolation (squad), modifying this quaternion in place.
 * *Parameters:*
-** `+other+` (Quaternion): The target quaternion.
+** `+b+` (Quaternion): Second control point.
+** `+c+` (Quaternion): Third control point.
+** `+d+` (Quaternion): Fourth control point.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
 * *Return Value:* The quaternion itself (for method chaining).
 

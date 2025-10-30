@@ -1477,20 +1477,26 @@ v1.lerp(v2, 0.5); // v1 is now (5, 5)</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">let result = vec.sqlerp(otherVec, t);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">let result = vec.sqlerp(b, c, d, t);</code></pre>
 </div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs squared spherical linear interpolation, modifying this vector in place.</p>
+<p><strong>Description:</strong> Performs squared spherical linear interpolation (squad), modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>other</code> (Vector2): The target vector.</p>
+<p><code>b</code> (Vector2): Second control point.</p>
+</li>
+<li>
+<p><code>c</code> (Vector2): Third control point.</p>
+</li>
+<li>
+<p><code>d</code> (Vector2): Fourth control point.</p>
 </li>
 <li>
 <p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
@@ -2355,20 +2361,26 @@ start.lerp(end, 0.5); // start is now (5, 5, 5)</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">let result = vec.sqlerp(other, t);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">let result = vec.sqlerp(b, c, d, t);</code></pre>
 </div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs squared spherical linear interpolation, modifying this vector in place.</p>
+<p><strong>Description:</strong> Performs squared spherical linear interpolation (squad), modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>other</code> (Vector3): The target vector.</p>
+<p><code>b</code> (Vector3): Second control point.</p>
+</li>
+<li>
+<p><code>c</code> (Vector3): Third control point.</p>
+</li>
+<li>
+<p><code>d</code> (Vector3): Fourth control point.</p>
 </li>
 <li>
 <p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
@@ -3165,20 +3177,26 @@ red.lerp(blue, 0.5); // red is now purple</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">let result = vec.sqlerp(other, t);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">let result = vec.sqlerp(b, c, d, t);</code></pre>
 </div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs squared spherical linear interpolation, modifying this vector in place.</p>
+<p><strong>Description:</strong> Performs squared spherical linear interpolation (squad), modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>other</code> (Vector4): The target vector.</p>
+<p><code>b</code> (Vector4): Second control point.</p>
+</li>
+<li>
+<p><code>c</code> (Vector4): Third control point.</p>
+</li>
+<li>
+<p><code>d</code> (Vector4): Fourth control point.</p>
 </li>
 <li>
 <p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
@@ -3902,20 +3920,26 @@ q1.slerp(q2, 0.5); // q1 is now smoothly interpolated halfway</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-js" data-lang="js">let result = quat.sqlerp(other, t);</code></pre>
+<pre class="highlight"><code class="language-js" data-lang="js">let result = quat.sqlerp(b, c, d, t);</code></pre>
 </div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs squared spherical linear interpolation, modifying this quaternion in place.</p>
+<p><strong>Description:</strong> Performs squared spherical linear interpolation (squad), modifying this quaternion in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>other</code> (Quaternion): The target quaternion.</p>
+<p><code>b</code> (Quaternion): Second control point.</p>
+</li>
+<li>
+<p><code>c</code> (Quaternion): Third control point.</p>
+</li>
+<li>
+<p><code>d</code> (Quaternion): Fourth control point.</p>
 </li>
 <li>
 <p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
@@ -14019,7 +14043,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-30 03:49:49 +0100
+Last updated 2025-10-30 04:57:27 +0100
 </div>
 </div>
 </body>
