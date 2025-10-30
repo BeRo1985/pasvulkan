@@ -249,18 +249,18 @@ let dist = v1.distanceTo(v2); // Returns 5.0
 let result = vec.lerp(otherVec, t);
 ----
 
-* *Description:* Performs linear interpolation between this vector and another vector.
+* *Description:* Performs linear interpolation between this vector and another vector, modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector2): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new interpolated Vector2.
+* *Return Value:* The vector itself (for method chaining).
 * *Example:*
 +
 [source,js]
 ----
 let v1 = Vector2.create(0, 0);
 let v2 = Vector2.create(10, 10);
-let mid = v1.lerp(v2, 0.5); // Returns (5, 5)
+v1.lerp(v2, 0.5); // v1 is now (5, 5)
 ----
 
 '''''
@@ -274,11 +274,11 @@ let mid = v1.lerp(v2, 0.5); // Returns (5, 5)
 let result = vec.nlerp(otherVec, t);
 ----
 
-* *Description:* Performs normalized linear interpolation between this vector and another vector.
+* *Description:* Performs normalized linear interpolation between this vector and another vector, modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector2): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new normalized interpolated Vector2.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -291,11 +291,11 @@ let result = vec.nlerp(otherVec, t);
 let result = vec.slerp(otherVec, t);
 ----
 
-* *Description:* Performs spherical linear interpolation between this vector and another vector.
+* *Description:* Performs spherical linear interpolation between this vector and another vector, modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector2): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new spherically interpolated Vector2.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -308,11 +308,11 @@ let result = vec.slerp(otherVec, t);
 let result = vec.sqlerp(otherVec, t);
 ----
 
-* *Description:* Performs squared spherical linear interpolation.
+* *Description:* Performs squared spherical linear interpolation, modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector2): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new interpolated Vector2.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -749,18 +749,18 @@ let dist = v1.distanceTo(v2); // Returns 5.0
 let result = vec.lerp(other, t);
 ----
 
-* *Description:* Performs linear interpolation between this vector and another.
+* *Description:* Performs linear interpolation between this vector and another, modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector3): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new interpolated Vector3.
+* *Return Value:* The vector itself (for method chaining).
 * *Example:*
 +
 [source,js]
 ----
 let start = Vector3.create(0, 0, 0);
 let end = Vector3.create(10, 10, 10);
-let mid = start.lerp(end, 0.5); // Returns Vector3(5, 5, 5)
+start.lerp(end, 0.5); // start is now (5, 5, 5)
 ----
 
 '''''
@@ -774,11 +774,11 @@ let mid = start.lerp(end, 0.5); // Returns Vector3(5, 5, 5)
 let result = vec.nlerp(other, t);
 ----
 
-* *Description:* Performs normalized linear interpolation (lerp followed by normalization).
+* *Description:* Performs normalized linear interpolation (lerp followed by normalization), modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector3): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new normalized interpolated Vector3.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -791,11 +791,11 @@ let result = vec.nlerp(other, t);
 let result = vec.slerp(other, t);
 ----
 
-* *Description:* Performs spherical linear interpolation between this vector and another, maintaining constant angular velocity.
+* *Description:* Performs spherical linear interpolation between this vector and another, maintaining constant angular velocity, modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector3): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new interpolated Vector3.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -808,11 +808,11 @@ let result = vec.slerp(other, t);
 let result = vec.sqlerp(other, t);
 ----
 
-* *Description:* Performs squared spherical linear interpolation.
+* *Description:* Performs squared spherical linear interpolation, modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector3): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new interpolated Vector3.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -867,14 +867,14 @@ let result = vec.add(other);
 * *Description:* Adds another vector or scalar to this vector.
 * *Parameters:*
 ** `+other+` (Vector3 or number): The vector or scalar to add.
-* *Return Value:* A new Vector3.
+* *Return Value:* The vector itself (for method chaining).
 * *Example:*
 +
 [source,js]
 ----
 let v1 = Vector3.create(1, 2, 3);
 let v2 = Vector3.create(4, 5, 6);
-let sum = v1.add(v2); // Returns Vector3(5, 7, 9)
+v1.add(v2); // v1 is now (5, 7, 9)
 ----
 
 '''''
@@ -891,7 +891,7 @@ let result = vec.sub(other);
 * *Description:* Subtracts another vector or scalar from this vector.
 * *Parameters:*
 ** `+other+` (Vector3 or number): The vector or scalar to subtract.
-* *Return Value:* A new Vector3.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -907,7 +907,7 @@ let result = vec.mul(value);
 * *Description:* Multiplies this vector by another vector, scalar, matrix, or quaternion.
 * *Parameters:*
 ** `+value+` (Vector3, number, Matrix3x3, Matrix4x4, or Quaternion): The value to multiply/transform by.
-* *Return Value:* The modified vector itself (for method chaining).
+* *Return Value:* The vector itself (for method chaining).
 * *Example:*
 +
 [source,js]
@@ -936,7 +936,7 @@ let result = vec.div(value);
 * *Description:* Divides this vector by another vector or scalar.
 * *Parameters:*
 ** `+value+` (Vector3 or number): The vector or scalar to divide by.
-* *Return Value:* A new Vector3.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -949,15 +949,15 @@ let result = vec.div(value);
 let result = vec.neg();
 ----
 
-* *Description:* Returns the negation of this vector (all components multiplied by -1).
+* *Description:* Negates this vector (all components multiplied by -1).
 * *Parameters:* None.
-* *Return Value:* A new Vector3.
+* *Return Value:* The vector itself (for method chaining).
 * *Example:*
 +
 [source,js]
 ----
 let vec = Vector3.create(1, -2, 3);
-let negated = vec.neg(); // Returns Vector3(-1, 2, -3)
+vec.neg(); // vec is now (-1, 2, -3)
 ----
 
 '''''
@@ -1189,18 +1189,18 @@ let dist = vec.distanceTo(other);
 let result = vec.lerp(other, t);
 ----
 
-* *Description:* Performs linear interpolation between this vector and another.
+* *Description:* Performs linear interpolation between this vector and another, modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector4): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new interpolated Vector4.
+* *Return Value:* The vector itself (for method chaining).
 * *Example:*
 +
 [source,js]
 ----
 let red = Vector4.create(1, 0, 0, 1);
 let blue = Vector4.create(0, 0, 1, 1);
-let purple = red.lerp(blue, 0.5); // Mix colors
+red.lerp(blue, 0.5); // red is now purple
 ----
 
 '''''
@@ -1214,11 +1214,11 @@ let purple = red.lerp(blue, 0.5); // Mix colors
 let result = vec.nlerp(other, t);
 ----
 
-* *Description:* Performs normalized linear interpolation (lerp followed by normalization).
+* *Description:* Performs normalized linear interpolation (lerp followed by normalization), modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector4): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new normalized interpolated Vector4.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -1231,11 +1231,11 @@ let result = vec.nlerp(other, t);
 let result = vec.slerp(other, t);
 ----
 
-* *Description:* Performs spherical linear interpolation between this vector and another.
+* *Description:* Performs spherical linear interpolation between this vector and another, modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector4): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new interpolated Vector4.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -1248,11 +1248,11 @@ let result = vec.slerp(other, t);
 let result = vec.sqlerp(other, t);
 ----
 
-* *Description:* Performs squared spherical linear interpolation.
+* *Description:* Performs squared spherical linear interpolation, modifying this vector in place.
 * *Parameters:*
 ** `+other+` (Vector4): The target vector.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new interpolated Vector4.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -1294,7 +1294,7 @@ vec.copy(other);
 
 '''''
 
-==== add()
+====add()
 
 *Usage:*
 
@@ -1306,7 +1306,7 @@ let result = vec.add(other);
 * *Description:* Adds another vector or scalar to this vector.
 * *Parameters:*
 ** `+other+` (Vector4 or number): The vector or scalar to add.
-* *Return Value:* A new Vector4.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -1322,7 +1322,7 @@ let result = vec.sub(other);
 * *Description:* Subtracts another vector or scalar from this vector.
 * *Parameters:*
 ** `+other+` (Vector4 or number): The vector or scalar to subtract.
-* *Return Value:* A new Vector4.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -1338,7 +1338,7 @@ let result = vec.mul(value);
 * *Description:* Multiplies this vector by another vector, scalar, matrix, or quaternion.
 * *Parameters:*
 ** `+value+` (Vector4, number, Matrix3x3, Matrix4x4, or Quaternion): The value to multiply/transform by.
-* *Return Value:* The modified vector itself (for method chaining).
+* *Return Value:* The vector itself (for method chaining).
 * *Example:*
 +
 [source,js]
@@ -1367,7 +1367,7 @@ let result = vec.div(value);
 * *Description:* Divides this vector by another vector or scalar.
 * *Parameters:*
 ** `+value+` (Vector4 or number): The vector or scalar to divide by.
-* *Return Value:* A new Vector4.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -1380,9 +1380,9 @@ let result = vec.div(value);
 let result = vec.neg();
 ----
 
-* *Description:* Returns the negation of this vector (all components multiplied by -1).
+* *Description:* Negates this vector (all components multiplied by -1).
 * *Parameters:* None.
-* *Return Value:* A new Vector4.
+* *Return Value:* The vector itself (for method chaining).
 
 '''''
 
@@ -1579,11 +1579,11 @@ let dotProduct = quat.dot(other);
 let result = quat.lerp(other, t);
 ----
 
-* *Description:* Performs linear interpolation between this quaternion and another.
+* *Description:* Performs linear interpolation between this quaternion and another, modifying this quaternion in place.
 * *Parameters:*
 ** `+other+` (Quaternion): The target quaternion.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new interpolated Quaternion.
+* *Return Value:* The quaternion itself (for method chaining).
 
 '''''
 
@@ -1596,18 +1596,18 @@ let result = quat.lerp(other, t);
 let result = quat.nlerp(other, t);
 ----
 
-* *Description:* Performs normalized linear interpolation. This is faster than slerp but doesn't maintain constant angular velocity.
+* *Description:* Performs normalized linear interpolation, modifying this quaternion in place. This is faster than slerp but doesn't maintain constant angular velocity.
 * *Parameters:*
 ** `+other+` (Quaternion): The target quaternion.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new normalized interpolated Quaternion.
+* *Return Value:* The quaternion itself (for method chaining).
 * *Example:*
 +
 [source,js]
 ----
 let q1 = Quaternion.create(0, 0, 0, 1);
 let q2 = Quaternion.create(0, 0.707, 0, 0.707);
-let mid = q1.nlerp(q2, 0.5); // Fast rotation interpolation
+q1.nlerp(q2, 0.5); // q1 is now halfway interpolated
 ----
 
 '''''
@@ -1621,18 +1621,18 @@ let mid = q1.nlerp(q2, 0.5); // Fast rotation interpolation
 let result = quat.slerp(other, t);
 ----
 
-* *Description:* Performs spherical linear interpolation. This produces smooth rotation with constant angular velocity.
+* *Description:* Performs spherical linear interpolation, modifying this quaternion in place. This produces smooth rotation with constant angular velocity.
 * *Parameters:*
 ** `+other+` (Quaternion): The target quaternion.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new interpolated Quaternion.
+* *Return Value:* The quaternion itself (for method chaining).
 * *Example:*
 +
 [source,js]
 ----
 let q1 = Quaternion.create(0, 0, 0, 1); // Identity
 let q2 = Quaternion.create(0, 0.707, 0, 0.707); // 90° around Y
-let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation
+q1.slerp(q2, 0.5); // q1 is now smoothly interpolated halfway
 ----
 
 '''''
@@ -1646,11 +1646,11 @@ let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation
 let result = quat.sqlerp(other, t);
 ----
 
-* *Description:* Performs squared spherical linear interpolation.
+* *Description:* Performs squared spherical linear interpolation, modifying this quaternion in place.
 * *Parameters:*
 ** `+other+` (Quaternion): The target quaternion.
 ** `+t+` (number): The interpolation factor (0.0 to 1.0).
-* *Return Value:* A new interpolated Quaternion.
+* *Return Value:* The quaternion itself (for method chaining).
 
 '''''
 
@@ -1694,10 +1694,10 @@ quat.copy(other);
 let result = quat.add(other);
 ----
 
-* *Description:* Adds another quaternion to this quaternion.
+* *Description:* Adds another quaternion to this quaternion, modifying this quaternion in place.
 * *Parameters:*
 ** `+other+` (Quaternion): The quaternion to add.
-* *Return Value:* A new Quaternion.
+* *Return Value:* The quaternion itself (for method chaining).
 
 '''''
 
@@ -1710,10 +1710,10 @@ let result = quat.add(other);
 let result = quat.sub(other);
 ----
 
-* *Description:* Subtracts another quaternion from this quaternion.
+* *Description:* Subtracts another quaternion from this quaternion, modifying this quaternion in place.
 * *Parameters:*
 ** `+other+` (Quaternion): The quaternion to subtract.
-* *Return Value:* A new Quaternion.
+* *Return Value:* The quaternion itself (for method chaining).
 
 '''''
 
@@ -1753,10 +1753,10 @@ let rotated = rotX.mul(vec); // Returns rotated Vector3
 let result = quat.div(value);
 ----
 
-* *Description:* Divides this quaternion by a scalar value.
+* *Description:* Divides this quaternion by a scalar value or another quaternion, modifying this quaternion in place.
 * *Parameters:*
-** `+value+` (number): The scalar to divide by.
-* *Return Value:* A new Quaternion.
+** `+value+` (number or Quaternion): The scalar or quaternion to divide by.
+* *Return Value:* The quaternion itself (for method chaining).
 
 '''''
 
@@ -1769,9 +1769,9 @@ let result = quat.div(value);
 let result = quat.neg();
 ----
 
-* *Description:* Returns the negation of this quaternion (all components multiplied by -1).
+* *Description:* Negates this quaternion (all components multiplied by -1), modifying it in place.
 * *Parameters:* None.
-* *Return Value:* A new Quaternion.
+* *Return Value:* The quaternion itself (for method chaining).
 
 '''''
 
@@ -1954,7 +1954,7 @@ let result = mat.add(other);
 * *Description:* Adds another matrix to this matrix (element-wise addition).
 * *Parameters:*
 ** `+other+` (Matrix3x3): The matrix to add.
-* *Return Value:* A new Matrix3x3.
+* *Return Value:* The matrix itself (for method chaining).
 
 '''''
 
@@ -1970,7 +1970,7 @@ let result = mat.sub(other);
 * *Description:* Subtracts another matrix from this matrix (element-wise subtraction).
 * *Parameters:*
 ** `+other+` (Matrix3x3): The matrix to subtract.
-* *Return Value:* A new Matrix3x3.
+* *Return Value:* The matrix itself (for method chaining).
 
 '''''
 
@@ -2014,10 +2014,10 @@ let transformed = mat1.mul(vec); // Returns transformed Vector3
 let result = mat.div(value);
 ----
 
-* *Description:* Divides this matrix by a scalar (element-wise division).
+* *Description:* Divides this matrix by a scalar or another matrix (element-wise division), modifying this matrix in place.
 * *Parameters:*
-** `+value+` (number): The scalar to divide by.
-* *Return Value:* A new Matrix3x3.
+** `+value+` (number or Matrix3x3): The scalar or matrix to divide by.
+* *Return Value:* The matrix itself (for method chaining).
 
 '''''
 
@@ -2030,9 +2030,96 @@ let result = mat.div(value);
 let result = mat.neg();
 ----
 
-* *Description:* Returns the negation of this matrix (all elements multiplied by -1).
+* *Description:* Negates this matrix (all elements multiplied by -1), modifying it in place.
 * *Parameters:* None.
-* *Return Value:* A new Matrix3x3.
+* *Return Value:* The matrix itself (for method chaining).
+
+'''''
+
+==== lerp()
+
+*Usage:*
+
+[source,js]
+----
+let result = mat.lerp(other, t);
+----
+
+* *Description:* Performs linear interpolation between this matrix and another, modifying this matrix in place.
+* *Parameters:*
+** `+other+` (Matrix3x3): The target matrix.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The matrix itself (for method chaining).
+
+'''''
+
+==== nlerp()
+
+*Usage:*
+
+[source,js]
+----
+let result = mat.nlerp(other, t);
+----
+
+* *Description:* Performs normalized linear interpolation, modifying this matrix in place.
+* *Parameters:*
+** `+other+` (Matrix3x3): The target matrix.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The matrix itself (for method chaining).
+
+'''''
+
+==== slerp()
+
+*Usage:*
+
+[source,js]
+----
+let result = mat.slerp(other, t);
+----
+
+* *Description:* Performs spherical linear interpolation, modifying this matrix in place.
+* *Parameters:*
+** `+other+` (Matrix3x3): The target matrix.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The matrix itself (for method chaining).
+
+'''''
+
+==== elerp()
+
+*Usage:*
+
+[source,js]
+----
+let result = mat.elerp(other, t);
+----
+
+* *Description:* Performs exponential linear interpolation, modifying this matrix in place.
+* *Parameters:*
+** `+other+` (Matrix3x3): The target matrix.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The matrix itself (for method chaining).
+
+'''''
+
+==== sqlerp()
+
+*Usage:*
+
+[source,js]
+----
+let result = mat.sqlerp(b, c, d, t);
+----
+
+* *Description:* Performs squared spherical linear interpolation (squad), modifying this matrix in place.
+* *Parameters:*
+** `+b+` (Matrix3x3): Second control point.
+** `+c+` (Matrix3x3): Third control point.
+** `+d+` (Matrix3x3): Fourth control point.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The matrix itself (for method chaining).
 
 '''''
 
@@ -2204,7 +2291,7 @@ let result = mat.add(other);
 * *Description:* Adds another matrix to this matrix (element-wise addition).
 * *Parameters:*
 ** `+other+` (Matrix4x4): The matrix to add.
-* *Return Value:* A new Matrix4x4.
+* *Return Value:* The matrix itself (for method chaining).
 
 '''''
 
@@ -2220,7 +2307,7 @@ let result = mat.sub(other);
 * *Description:* Subtracts another matrix from this matrix (element-wise subtraction).
 * *Parameters:*
 ** `+other+` (Matrix4x4): The matrix to subtract.
-* *Return Value:* A new Matrix4x4.
+* *Return Value:* The matrix itself (for method chaining).
 
 '''''
 
@@ -2262,10 +2349,10 @@ let transformed = model.mul(position); // Returns transformed Vector3
 let result = mat.div(value);
 ----
 
-* *Description:* Divides this matrix by a scalar (element-wise division).
+* *Description:* Divides this matrix by a scalar or another matrix (element-wise division), modifying this matrix in place.
 * *Parameters:*
-** `+value+` (number): The scalar to divide by.
-* *Return Value:* A new Matrix4x4.
+** `+value+` (number or Matrix4x4): The scalar or matrix to divide by.
+* *Return Value:* The matrix itself (for method chaining).
 
 '''''
 
@@ -2278,9 +2365,96 @@ let result = mat.div(value);
 let result = mat.neg();
 ----
 
-* *Description:* Returns the negation of this matrix (all elements multiplied by -1).
+* *Description:* Negates this matrix (all elements multiplied by -1), modifying it in place.
 * *Parameters:* None.
-* *Return Value:* A new Matrix4x4.
+* *Return Value:* The matrix itself (for method chaining).
+
+'''''
+
+==== lerp()
+
+*Usage:*
+
+[source,js]
+----
+let result = mat.lerp(other, t);
+----
+
+* *Description:* Performs linear interpolation between this matrix and another, modifying this matrix in place.
+* *Parameters:*
+** `+other+` (Matrix4x4): The target matrix.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The matrix itself (for method chaining).
+
+'''''
+
+==== nlerp()
+
+*Usage:*
+
+[source,js]
+----
+let result = mat.nlerp(other, t);
+----
+
+* *Description:* Performs normalized linear interpolation, modifying this matrix in place.
+* *Parameters:*
+** `+other+` (Matrix4x4): The target matrix.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The matrix itself (for method chaining).
+
+'''''
+
+==== slerp()
+
+*Usage:*
+
+[source,js]
+----
+let result = mat.slerp(other, t);
+----
+
+* *Description:* Performs spherical linear interpolation, modifying this matrix in place.
+* *Parameters:*
+** `+other+` (Matrix4x4): The target matrix.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The matrix itself (for method chaining).
+
+'''''
+
+==== elerp()
+
+*Usage:*
+
+[source,js]
+----
+let result = mat.elerp(other, t);
+----
+
+* *Description:* Performs exponential linear interpolation, modifying this matrix in place.
+* *Parameters:*
+** `+other+` (Matrix4x4): The target matrix.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The matrix itself (for method chaining).
+
+'''''
+
+==== sqlerp()
+
+*Usage:*
+
+[source,js]
+----
+let result = mat.sqlerp(b, c, d, t);
+----
+
+* *Description:* Performs squared spherical linear interpolation (squad), modifying this matrix in place.
+* *Parameters:*
+** `+b+` (Matrix4x4): Second control point.
+** `+c+` (Matrix4x4): Third control point.
+** `+d+` (Matrix4x4): Fourth control point.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The matrix itself (for method chaining).
 
 '''''
 

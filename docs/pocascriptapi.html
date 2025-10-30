@@ -552,7 +552,6 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_sqlerp_2">sqlerp()</a></li>
 <li><a href="#_clone_3">clone()</a></li>
 <li><a href="#_copy_2">copy()</a></li>
-<li><a href="#_add_2">add()</a></li>
 <li><a href="#_sub_2">sub()</a></li>
 <li><a href="#_mul_2">mul()</a></li>
 <li><a href="#_div_2">div()</a></li>
@@ -586,7 +585,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_sqlerp_3">sqlerp()</a></li>
 <li><a href="#_clone_4">clone()</a></li>
 <li><a href="#_copy_3">copy()</a></li>
-<li><a href="#_add_3">add()</a></li>
+<li><a href="#_add_2">add()</a></li>
 <li><a href="#_sub_3">sub()</a></li>
 <li><a href="#_mul_3">mul()</a></li>
 <li><a href="#_div_3">div()</a></li>
@@ -612,11 +611,16 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel3">
 <li><a href="#_clone_5">clone()</a></li>
 <li><a href="#_copy_4">copy()</a></li>
-<li><a href="#_add_4">add()</a></li>
+<li><a href="#_add_3">add()</a></li>
 <li><a href="#_sub_4">sub()</a></li>
 <li><a href="#_mul_4">mul()</a></li>
 <li><a href="#_div_4">div()</a></li>
 <li><a href="#_neg_5">neg()</a></li>
+<li><a href="#_lerp_4">lerp()</a></li>
+<li><a href="#_nlerp_4">nlerp()</a></li>
+<li><a href="#_slerp_4">slerp()</a></li>
+<li><a href="#_elerp">elerp()</a></li>
+<li><a href="#_sqlerp_4">sqlerp()</a></li>
 <li><a href="#_equal_4">equal()</a></li>
 <li><a href="#_notequal_4">notEqual()</a></li>
 <li><a href="#_tostring_5">toString()</a></li>
@@ -638,11 +642,16 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel3">
 <li><a href="#_clone_6">clone()</a></li>
 <li><a href="#_copy_5">copy()</a></li>
-<li><a href="#_add_5">add()</a></li>
+<li><a href="#_add_4">add()</a></li>
 <li><a href="#_sub_5">sub()</a></li>
 <li><a href="#_mul_5">mul()</a></li>
 <li><a href="#_div_5">div()</a></li>
 <li><a href="#_neg_6">neg()</a></li>
+<li><a href="#_lerp_5">lerp()</a></li>
+<li><a href="#_nlerp_5">nlerp()</a></li>
+<li><a href="#_slerp_5">slerp()</a></li>
+<li><a href="#_elerp_2">elerp()</a></li>
+<li><a href="#_sqlerp_5">sqlerp()</a></li>
 <li><a href="#_equal_5">equal()</a></li>
 <li><a href="#_notequal_5">notEqual()</a></li>
 <li><a href="#_tostring_6">toString()</a></li>
@@ -1359,7 +1368,7 @@ let dist = v1.distanceTo(v2); // Returns 5.0</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs linear interpolation between this vector and another vector.</p>
+<p><strong>Description:</strong> Performs linear interpolation between this vector and another vector, modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -1375,7 +1384,7 @@ let dist = v1.distanceTo(v2); // Returns 5.0</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new interpolated Vector2.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
@@ -1383,7 +1392,7 @@ let dist = v1.distanceTo(v2); // Returns 5.0</code></pre>
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let v1 = Vector2.create(0, 0);
 let v2 = Vector2.create(10, 10);
-let mid = v1.lerp(v2, 0.5); // Returns (5, 5)</code></pre>
+v1.lerp(v2, 0.5); // v1 is now (5, 5)</code></pre>
 </div>
 </div>
 </li>
@@ -1404,7 +1413,7 @@ let mid = v1.lerp(v2, 0.5); // Returns (5, 5)</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs normalized linear interpolation between this vector and another vector.</p>
+<p><strong>Description:</strong> Performs normalized linear interpolation between this vector and another vector, modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -1420,7 +1429,7 @@ let mid = v1.lerp(v2, 0.5); // Returns (5, 5)</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new normalized interpolated Vector2.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -1439,7 +1448,7 @@ let mid = v1.lerp(v2, 0.5); // Returns (5, 5)</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs spherical linear interpolation between this vector and another vector.</p>
+<p><strong>Description:</strong> Performs spherical linear interpolation between this vector and another vector, modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -1455,7 +1464,7 @@ let mid = v1.lerp(v2, 0.5); // Returns (5, 5)</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new spherically interpolated Vector2.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -1474,7 +1483,7 @@ let mid = v1.lerp(v2, 0.5); // Returns (5, 5)</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs squared spherical linear interpolation.</p>
+<p><strong>Description:</strong> Performs squared spherical linear interpolation, modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -1490,7 +1499,7 @@ let mid = v1.lerp(v2, 0.5); // Returns (5, 5)</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new interpolated Vector2.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -2237,7 +2246,7 @@ let dist = v1.distanceTo(v2); // Returns 5.0</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs linear interpolation between this vector and another.</p>
+<p><strong>Description:</strong> Performs linear interpolation between this vector and another, modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -2253,7 +2262,7 @@ let dist = v1.distanceTo(v2); // Returns 5.0</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new interpolated Vector3.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
@@ -2261,7 +2270,7 @@ let dist = v1.distanceTo(v2); // Returns 5.0</code></pre>
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let start = Vector3.create(0, 0, 0);
 let end = Vector3.create(10, 10, 10);
-let mid = start.lerp(end, 0.5); // Returns Vector3(5, 5, 5)</code></pre>
+start.lerp(end, 0.5); // start is now (5, 5, 5)</code></pre>
 </div>
 </div>
 </li>
@@ -2282,7 +2291,7 @@ let mid = start.lerp(end, 0.5); // Returns Vector3(5, 5, 5)</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs normalized linear interpolation (lerp followed by normalization).</p>
+<p><strong>Description:</strong> Performs normalized linear interpolation (lerp followed by normalization), modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -2298,7 +2307,7 @@ let mid = start.lerp(end, 0.5); // Returns Vector3(5, 5, 5)</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new normalized interpolated Vector3.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -2317,7 +2326,7 @@ let mid = start.lerp(end, 0.5); // Returns Vector3(5, 5, 5)</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs spherical linear interpolation between this vector and another, maintaining constant angular velocity.</p>
+<p><strong>Description:</strong> Performs spherical linear interpolation between this vector and another, maintaining constant angular velocity, modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -2333,7 +2342,7 @@ let mid = start.lerp(end, 0.5); // Returns Vector3(5, 5, 5)</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new interpolated Vector3.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -2352,7 +2361,7 @@ let mid = start.lerp(end, 0.5); // Returns Vector3(5, 5, 5)</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs squared spherical linear interpolation.</p>
+<p><strong>Description:</strong> Performs squared spherical linear interpolation, modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -2368,7 +2377,7 @@ let mid = start.lerp(end, 0.5); // Returns Vector3(5, 5, 5)</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new interpolated Vector3.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -2467,7 +2476,7 @@ copy.x = 5; // original is unchanged</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Vector3.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
@@ -2475,7 +2484,7 @@ copy.x = 5; // original is unchanged</code></pre>
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let v1 = Vector3.create(1, 2, 3);
 let v2 = Vector3.create(4, 5, 6);
-let sum = v1.add(v2); // Returns Vector3(5, 7, 9)</code></pre>
+v1.add(v2); // v1 is now (5, 7, 9)</code></pre>
 </div>
 </div>
 </li>
@@ -2509,7 +2518,7 @@ let sum = v1.add(v2); // Returns Vector3(5, 7, 9)</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Vector3.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -2541,7 +2550,7 @@ let sum = v1.add(v2); // Returns Vector3(5, 7, 9)</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> The modified vector itself (for method chaining).</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
@@ -2588,7 +2597,7 @@ vec.mul(rot); // Rotate vec by quaternion</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Vector3.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -2607,20 +2616,20 @@ vec.mul(rot); // Rotate vec by quaternion</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Returns the negation of this vector (all components multiplied by -1).</p>
+<p><strong>Description:</strong> Negates this vector (all components multiplied by -1).</p>
 </li>
 <li>
 <p><strong>Parameters:</strong> None.</p>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Vector3.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let vec = Vector3.create(1, -2, 3);
-let negated = vec.neg(); // Returns Vector3(-1, 2, -3)</code></pre>
+vec.neg(); // vec is now (-1, 2, -3)</code></pre>
 </div>
 </div>
 </li>
@@ -3047,7 +3056,7 @@ let backRotated = rotation * v; // Also works</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs linear interpolation between this vector and another.</p>
+<p><strong>Description:</strong> Performs linear interpolation between this vector and another, modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -3063,7 +3072,7 @@ let backRotated = rotation * v; // Also works</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new interpolated Vector4.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
@@ -3071,7 +3080,7 @@ let backRotated = rotation * v; // Also works</code></pre>
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let red = Vector4.create(1, 0, 0, 1);
 let blue = Vector4.create(0, 0, 1, 1);
-let purple = red.lerp(blue, 0.5); // Mix colors</code></pre>
+red.lerp(blue, 0.5); // red is now purple</code></pre>
 </div>
 </div>
 </li>
@@ -3092,7 +3101,7 @@ let purple = red.lerp(blue, 0.5); // Mix colors</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs normalized linear interpolation (lerp followed by normalization).</p>
+<p><strong>Description:</strong> Performs normalized linear interpolation (lerp followed by normalization), modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -3108,7 +3117,7 @@ let purple = red.lerp(blue, 0.5); // Mix colors</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new normalized interpolated Vector4.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -3127,7 +3136,7 @@ let purple = red.lerp(blue, 0.5); // Mix colors</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs spherical linear interpolation between this vector and another.</p>
+<p><strong>Description:</strong> Performs spherical linear interpolation between this vector and another, modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -3143,7 +3152,7 @@ let purple = red.lerp(blue, 0.5); // Mix colors</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new interpolated Vector4.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -3162,7 +3171,7 @@ let purple = red.lerp(blue, 0.5); // Mix colors</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs squared spherical linear interpolation.</p>
+<p><strong>Description:</strong> Performs squared spherical linear interpolation, modifying this vector in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -3178,7 +3187,7 @@ let purple = red.lerp(blue, 0.5); // Mix colors</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new interpolated Vector4.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -3249,9 +3258,9 @@ let copy = color.clone();</code></pre>
 </ul>
 </div>
 <hr>
+<div class="paragraph">
+<p>====add()</p>
 </div>
-<div class="sect3">
-<h4 id="_add_2">add()</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
@@ -3276,7 +3285,7 @@ let copy = color.clone();</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Vector4.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -3308,7 +3317,7 @@ let copy = color.clone();</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Vector4.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -3340,7 +3349,7 @@ let copy = color.clone();</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> The modified vector itself (for method chaining).</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
@@ -3387,7 +3396,7 @@ color.mul(quat); // Rotate xyz components by quaternion</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Vector4.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -3406,13 +3415,13 @@ color.mul(quat); // Rotate xyz components by quaternion</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Returns the negation of this vector (all components multiplied by -1).</p>
+<p><strong>Description:</strong> Negates this vector (all components multiplied by -1).</p>
 </li>
 <li>
 <p><strong>Parameters:</strong> None.</p>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Vector4.</p>
+<p><strong>Return Value:</strong> The vector itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -3774,7 +3783,7 @@ quat.normalize(); // Now represents a valid rotation</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs linear interpolation between this quaternion and another.</p>
+<p><strong>Description:</strong> Performs linear interpolation between this quaternion and another, modifying this quaternion in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -3790,7 +3799,7 @@ quat.normalize(); // Now represents a valid rotation</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new interpolated Quaternion.</p>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -3809,7 +3818,7 @@ quat.normalize(); // Now represents a valid rotation</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs normalized linear interpolation. This is faster than slerp but doesn&#8217;t maintain constant angular velocity.</p>
+<p><strong>Description:</strong> Performs normalized linear interpolation, modifying this quaternion in place. This is faster than slerp but doesn&#8217;t maintain constant angular velocity.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -3825,7 +3834,7 @@ quat.normalize(); // Now represents a valid rotation</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new normalized interpolated Quaternion.</p>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
@@ -3833,7 +3842,7 @@ quat.normalize(); // Now represents a valid rotation</code></pre>
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let q1 = Quaternion.create(0, 0, 0, 1);
 let q2 = Quaternion.create(0, 0.707, 0, 0.707);
-let mid = q1.nlerp(q2, 0.5); // Fast rotation interpolation</code></pre>
+q1.nlerp(q2, 0.5); // q1 is now halfway interpolated</code></pre>
 </div>
 </div>
 </li>
@@ -3854,7 +3863,7 @@ let mid = q1.nlerp(q2, 0.5); // Fast rotation interpolation</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs spherical linear interpolation. This produces smooth rotation with constant angular velocity.</p>
+<p><strong>Description:</strong> Performs spherical linear interpolation, modifying this quaternion in place. This produces smooth rotation with constant angular velocity.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -3870,7 +3879,7 @@ let mid = q1.nlerp(q2, 0.5); // Fast rotation interpolation</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new interpolated Quaternion.</p>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
 </li>
 <li>
 <p><strong>Example:</strong></p>
@@ -3878,7 +3887,7 @@ let mid = q1.nlerp(q2, 0.5); // Fast rotation interpolation</code></pre>
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let q1 = Quaternion.create(0, 0, 0, 1); // Identity
 let q2 = Quaternion.create(0, 0.707, 0, 0.707); // 90° around Y
-let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation</code></pre>
+q1.slerp(q2, 0.5); // q1 is now smoothly interpolated halfway</code></pre>
 </div>
 </div>
 </li>
@@ -3899,7 +3908,7 @@ let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Performs squared spherical linear interpolation.</p>
+<p><strong>Description:</strong> Performs squared spherical linear interpolation, modifying this quaternion in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -3915,7 +3924,7 @@ let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new interpolated Quaternion.</p>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -3979,7 +3988,7 @@ let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation</code></pre>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_add_3">add()</h4>
+<h4 id="_add_2">add()</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
@@ -3991,7 +4000,7 @@ let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Adds another quaternion to this quaternion.</p>
+<p><strong>Description:</strong> Adds another quaternion to this quaternion, modifying this quaternion in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -4004,7 +4013,7 @@ let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Quaternion.</p>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -4023,7 +4032,7 @@ let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Subtracts another quaternion from this quaternion.</p>
+<p><strong>Description:</strong> Subtracts another quaternion from this quaternion, modifying this quaternion in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
@@ -4036,7 +4045,7 @@ let interpolated = q1.slerp(q2, 0.5); // Smooth halfway rotation</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Quaternion.</p>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -4100,20 +4109,20 @@ let rotated = rotX.mul(vec); // Returns rotated Vector3</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Divides this quaternion by a scalar value.</p>
+<p><strong>Description:</strong> Divides this quaternion by a scalar value or another quaternion, modifying this quaternion in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>value</code> (number): The scalar to divide by.</p>
+<p><code>value</code> (number or Quaternion): The scalar or quaternion to divide by.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Quaternion.</p>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -4132,13 +4141,13 @@ let rotated = rotX.mul(vec); // Returns rotated Vector3</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Returns the negation of this quaternion (all components multiplied by -1).</p>
+<p><strong>Description:</strong> Negates this quaternion (all components multiplied by -1), modifying it in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong> None.</p>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Quaternion.</p>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -4439,7 +4448,7 @@ let copy = original.clone();</code></pre>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_add_4">add()</h4>
+<h4 id="_add_3">add()</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
@@ -4464,7 +4473,7 @@ let copy = original.clone();</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Matrix3x3.</p>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -4496,7 +4505,7 @@ let copy = original.clone();</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Matrix3x3.</p>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -4564,20 +4573,20 @@ let transformed = mat1.mul(vec); // Returns transformed Vector3</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Divides this matrix by a scalar (element-wise division).</p>
+<p><strong>Description:</strong> Divides this matrix by a scalar or another matrix (element-wise division), modifying this matrix in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>value</code> (number): The scalar to divide by.</p>
+<p><code>value</code> (number or Matrix3x3): The scalar or matrix to divide by.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Matrix3x3.</p>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -4596,13 +4605,194 @@ let transformed = mat1.mul(vec); // Returns transformed Vector3</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Returns the negation of this matrix (all elements multiplied by -1).</p>
+<p><strong>Description:</strong> Negates this matrix (all elements multiplied by -1), modifying it in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong> None.</p>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Matrix3x3.</p>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_lerp_4">lerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = mat.lerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs linear interpolation between this matrix and another, modifying this matrix in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Matrix3x3): The target matrix.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_nlerp_4">nlerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = mat.nlerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs normalized linear interpolation, modifying this matrix in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Matrix3x3): The target matrix.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_slerp_4">slerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = mat.slerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs spherical linear interpolation, modifying this matrix in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Matrix3x3): The target matrix.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_elerp">elerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = mat.elerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs exponential linear interpolation, modifying this matrix in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Matrix3x3): The target matrix.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sqlerp_4">sqlerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = mat.sqlerp(b, c, d, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs squared spherical linear interpolation (squad), modifying this matrix in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>b</code> (Matrix3x3): Second control point.</p>
+</li>
+<li>
+<p><code>c</code> (Matrix3x3): Third control point.</p>
+</li>
+<li>
+<p><code>d</code> (Matrix3x3): Fourth control point.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -4883,7 +5073,7 @@ let copy = original.clone();</code></pre>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_add_5">add()</h4>
+<h4 id="_add_4">add()</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
@@ -4908,7 +5098,7 @@ let copy = original.clone();</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Matrix4x4.</p>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -4940,7 +5130,7 @@ let copy = original.clone();</code></pre>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Matrix4x4.</p>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -5006,20 +5196,20 @@ let transformed = model.mul(position); // Returns transformed Vector3</code></pr
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Divides this matrix by a scalar (element-wise division).</p>
+<p><strong>Description:</strong> Divides this matrix by a scalar or another matrix (element-wise division), modifying this matrix in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>value</code> (number): The scalar to divide by.</p>
+<p><code>value</code> (number or Matrix4x4): The scalar or matrix to divide by.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Matrix4x4.</p>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -5038,13 +5228,194 @@ let transformed = model.mul(position); // Returns transformed Vector3</code></pr
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Description:</strong> Returns the negation of this matrix (all elements multiplied by -1).</p>
+<p><strong>Description:</strong> Negates this matrix (all elements multiplied by -1), modifying it in place.</p>
 </li>
 <li>
 <p><strong>Parameters:</strong> None.</p>
 </li>
 <li>
-<p><strong>Return Value:</strong> A new Matrix4x4.</p>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_lerp_5">lerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = mat.lerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs linear interpolation between this matrix and another, modifying this matrix in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Matrix4x4): The target matrix.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_nlerp_5">nlerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = mat.nlerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs normalized linear interpolation, modifying this matrix in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Matrix4x4): The target matrix.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_slerp_5">slerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = mat.slerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs spherical linear interpolation, modifying this matrix in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Matrix4x4): The target matrix.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_elerp_2">elerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = mat.elerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs exponential linear interpolation, modifying this matrix in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Matrix4x4): The target matrix.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_sqlerp_5">sqlerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = mat.sqlerp(b, c, d, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs squared spherical linear interpolation (squad), modifying this matrix in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>b</code> (Matrix4x4): Second control point.</p>
+</li>
+<li>
+<p><code>c</code> (Matrix4x4): Third control point.</p>
+</li>
+<li>
+<p><code>d</code> (Matrix4x4): Fourth control point.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The matrix itself (for method chaining).</p>
 </li>
 </ul>
 </div>
@@ -13648,7 +14019,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-29 12:52:56 +0100
+Last updated 2025-10-30 03:49:49 +0100
 </div>
 </div>
 </body>

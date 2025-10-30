@@ -3372,6 +3372,37 @@ begin
  end;
 end;
 
+function POCAMatrix3x3FunctionDiv(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix3x3,OtherMatrix3x3:PpvMatrix3x3D;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) and (POCAGetValueType(aArguments^[0])=pvtNUMBER) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix3x3^:=Matrix3x3^/Factor;
+  result:=aThis;
+ end else if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
+  OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Matrix3x3^:=Matrix3x3^/OtherMatrix3x3^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionNeg(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix3x3:PpvMatrix3x3D;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
+  Matrix3x3^:=-Matrix3x3^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 function POCAMatrix3x3FunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix3x3:PpvMatrix3x3D;
 begin
@@ -3745,6 +3776,8 @@ begin
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'clone',POCAMatrix3x3FunctionClone);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'copy',POCAMatrix3x3FunctionCopy);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'mul',POCAMatrix3x3FunctionMul);
+ POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'div',POCAMatrix3x3FunctionDiv);
+ POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'neg',POCAMatrix3x3FunctionNeg);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'transpose',POCAMatrix3x3FunctionTranspose);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'determinant',POCAMatrix3x3FunctionDeterminant);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'inverse',POCAMatrix3x3FunctionInverse);
@@ -3752,6 +3785,7 @@ begin
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'lerp',POCAMatrix3x3FunctionLerp);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'nlerp',POCAMatrix3x3FunctionNlerp);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'slerp',POCAMatrix3x3FunctionSlerp);
+ POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'elerp',POCAMatrix3x3FunctionElerp);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'sqlerp',POCAMatrix3x3FunctionSqlerp);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'equal',POCAMatrix3x3FunctionEqual);
  POCAAddNativeFunction(aContext,HostData^.Matrix3x3Hash,'notEqual',POCAMatrix3x3FunctionNotEqual);
@@ -4190,6 +4224,37 @@ begin
  end;
 end;
 
+function POCAMatrix4x4FunctionDiv(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4D;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGetValueType(aArguments^[0])=pvtNUMBER) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix4x4^:=Matrix4x4^/Factor;
+  result:=aThis;
+ end else if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
+  OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Matrix4x4^:=Matrix4x4^/OtherMatrix4x4^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionNeg(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix4x4:PpvMatrix4x4D;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
+  Matrix4x4^:=-Matrix4x4^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 function POCAMatrix4x4FunctionClone(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix4x4:PpvMatrix4x4D;
 begin
@@ -4556,6 +4621,8 @@ begin
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'clone',POCAMatrix4x4FunctionClone);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'copy',POCAMatrix4x4FunctionCopy);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'mul',POCAMatrix4x4FunctionMul);
+ POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'div',POCAMatrix4x4FunctionDiv);
+ POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'neg',POCAMatrix4x4FunctionNeg);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'transpose',POCAMatrix4x4FunctionTranspose);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'determinant',POCAMatrix4x4FunctionDeterminant);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'inverse',POCAMatrix4x4FunctionInverse);
@@ -4563,6 +4630,7 @@ begin
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'lerp',POCAMatrix4x4FunctionLerp);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'nlerp',POCAMatrix4x4FunctionNlerp);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'slerp',POCAMatrix4x4FunctionSlerp);
+ POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'elerp',POCAMatrix4x4FunctionElerp);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'sqlerp',POCAMatrix4x4FunctionSqlerp);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'equal',POCAMatrix4x4FunctionEqual);
  POCAAddNativeFunction(aContext,HostData^.Matrix4x4Hash,'notEqual',POCAMatrix4x4FunctionNotEqual);
