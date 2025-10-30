@@ -540,7 +540,8 @@ var Vector2:PpvVector2D;
 begin
  if POCAGhostGetType(aThis)=@POCAVector2Ghost then begin
   Vector2:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewVector2(aContext,Vector2^.Normalize);
+  Vector2^:=Vector2^.Normalize;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -566,7 +567,8 @@ begin
  if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector2Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector2Ghost) then begin
   Vector2:=POCAGhostFastGetPointer(aThis);
   OtherVector2:=POCAGhostFastGetPointer(aArguments^[0]);
-  result:=POCANewVector2(aContext,Vector2^.Cross(OtherVector2^));
+  Vector2^:=Vector2^.Cross(OtherVector2^);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -594,7 +596,8 @@ begin
   Vector2:=POCAGhostFastGetPointer(aThis);
   OtherVector2:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewVector2(aContext,Vector2^.Lerp(OtherVector2^,Time));
+  Vector2^:=Vector2^.Lerp(OtherVector2^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -609,7 +612,8 @@ begin
   Vector2:=POCAGhostFastGetPointer(aThis);
   OtherVector2:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewVector2(aContext,Vector2^.Nlerp(OtherVector2^,Time));
+  Vector2^:=Vector2^.Nlerp(OtherVector2^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -624,7 +628,8 @@ begin
   Vector2:=POCAGhostFastGetPointer(aThis);
   OtherVector2:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewVector2(aContext,Vector2^.Slerp(OtherVector2^,Time));
+  Vector2^:=Vector2^.Slerp(OtherVector2^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -640,7 +645,8 @@ begin
   C:=POCAGhostFastGetPointer(aArguments^[1]);
   D:=POCAGhostFastGetPointer(aArguments^[2]);
   Time:=POCAGetNumberValue(aContext,aArguments^[3]);
-  result:=POCANewVector2(aContext,A^.Sqlerp(B^,C^,D^,Time));
+  A^:=A^.Sqlerp(B^,C^,D^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1188,7 +1194,8 @@ var Vector3:PpvVector3D;
 begin
  if POCAGhostGetType(aThis)=@POCAVector3Ghost then begin
   Vector3:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewVector3(aContext,Vector3^.Normalize);
+  Vector3^:=Vector3^.Normalize;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1214,7 +1221,8 @@ begin
  if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector3Ghost) then begin
   Vector3:=POCAGhostFastGetPointer(aThis);
   OtherVector3:=POCAGhostFastGetPointer(aArguments^[0]);
-  result:=POCANewVector3(aContext,Vector3^.Cross(OtherVector3^));
+  Vector3^:=Vector3^.Cross(OtherVector3^);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1242,7 +1250,8 @@ begin
   Vector3:=POCAGhostFastGetPointer(aThis);
   OtherVector3:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewVector3(aContext,Vector3^.Lerp(OtherVector3^,Time));
+  Vector3^:=Vector3^.Lerp(OtherVector3^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1257,7 +1266,8 @@ begin
   Vector3:=POCAGhostFastGetPointer(aThis);
   OtherVector3:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewVector3(aContext,Vector3^.Nlerp(OtherVector3^,Time));
+  Vector3^:=Vector3^.Nlerp(OtherVector3^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1272,7 +1282,8 @@ begin
   Vector3:=POCAGhostFastGetPointer(aThis);
   OtherVector3:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewVector3(aContext,Vector3^.Slerp(OtherVector3^,Time));
+  Vector3^:=Vector3^.Slerp(OtherVector3^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1288,7 +1299,8 @@ begin
   C:=POCAGhostFastGetPointer(aArguments^[1]);
   D:=POCAGhostFastGetPointer(aArguments^[2]);
   Time:=POCAGetNumberValue(aContext,aArguments^[3]);
-  result:=POCANewVector3(aContext,A^.Sqlerp(B^,C^,D^,Time));
+  A^:=A^.Sqlerp(B^,C^,D^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1877,7 +1889,8 @@ var Vector4:PpvVector4D;
 begin
  if POCAGhostGetType(aThis)=@POCAVector4Ghost then begin
   Vector4:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewVector4(aContext,Vector4^.Normalize);
+  Vector4^:=Vector4^.Normalize;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1899,14 +1912,13 @@ end;
 function POCAVector4FunctionCross(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Vector4:PpvVector4D;
     OtherVector4:PpvVector4D;
-    Temporary:TpvVector4D;
 begin
  if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAVector4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAVector4Ghost) then begin
   Vector4:=POCAGhostFastGetPointer(aThis);
   OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
-  Temporary.xyz:=Vector4^.xyz.Cross(OtherVector4^.xyz);
-  Temporary.w:=1.0;
-  result:=POCANewVector4(aContext,Temporary);
+  Vector4^.xyz:=Vector4^.xyz.Cross(OtherVector4^.xyz);
+  Vector4^.w:=1.0;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1934,7 +1946,8 @@ begin
   Vector4:=POCAGhostFastGetPointer(aThis);
   OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewVector4(aContext,Vector4^.Lerp(OtherVector4^,Time));
+  Vector4^:=Vector4^.Lerp(OtherVector4^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1949,7 +1962,8 @@ begin
   Vector4:=POCAGhostFastGetPointer(aThis);
   OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewVector4(aContext,Vector4^.Nlerp(OtherVector4^,Time));
+  Vector4^:=Vector4^.Nlerp(OtherVector4^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1964,7 +1978,8 @@ begin
   Vector4:=POCAGhostFastGetPointer(aThis);
   OtherVector4:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewVector4(aContext,Vector4^.Slerp(OtherVector4^,Time));
+  Vector4^:=Vector4^.Slerp(OtherVector4^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -1980,7 +1995,8 @@ begin
   C:=POCAGhostFastGetPointer(aArguments^[1]);
   D:=POCAGhostFastGetPointer(aArguments^[2]);
   Time:=POCAGetNumberValue(aContext,aArguments^[3]);
-  result:=POCANewVector4(aContext,A^.Sqlerp(B^,C^,D^,Time));
+  A^:=A^.Sqlerp(B^,C^,D^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -2554,7 +2570,8 @@ var Quaternion:PpvQuaternionD;
 begin
  if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
   Quaternion:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewQuaternion(aContext,Quaternion^.Conjugate);
+  Quaternion^:=Quaternion^.Conjugate;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -2565,7 +2582,8 @@ var Quaternion:PpvQuaternionD;
 begin
  if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
   Quaternion:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewQuaternion(aContext,Quaternion^.Inverse);
+  Quaternion^:=Quaternion^.Inverse;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -2576,7 +2594,8 @@ var Quaternion:PpvQuaternionD;
 begin
  if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
   Quaternion:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewQuaternion(aContext,Quaternion^.Log);
+  Quaternion^:=Quaternion^.Log;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -2587,7 +2606,8 @@ var Quaternion:PpvQuaternionD;
 begin
  if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
   Quaternion:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewQuaternion(aContext,Quaternion^.Exp);
+  Quaternion^:=Quaternion^.Exp;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -2620,7 +2640,8 @@ var Quaternion:PpvQuaternionD;
 begin
  if POCAGhostGetType(aThis)=@POCAQuaternionGhost then begin
   Quaternion:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewQuaternion(aContext,Quaternion^.Normalize);
+  Quaternion^:=Quaternion^.Normalize;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -2642,14 +2663,13 @@ end;
 function POCAQuaternionFunctionCross(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Quaternion:PpvQuaternionD;
     OtherQuaternion:PpvQuaternionD;
-    Temporary:TpvQuaternionD;
 begin
  if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAQuaternionGhost) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
   Quaternion:=POCAGhostFastGetPointer(aThis);
   OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
-  Temporary.xyz:=Quaternion^.xyz.Cross(OtherQuaternion^.xyz);
-  Temporary.w:=1.0;
-  result:=POCANewQuaternion(aContext,Temporary);
+  Quaternion^.xyz:=Quaternion^.xyz.Cross(OtherQuaternion^.xyz);
+  Quaternion^.w:=1.0;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -2664,7 +2684,8 @@ begin
   Quaternion:=POCAGhostFastGetPointer(aThis);
   OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewQuaternion(aContext,Quaternion^.Lerp(OtherQuaternion^,Time));
+  Quaternion^:=Quaternion^.Lerp(OtherQuaternion^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -2679,7 +2700,8 @@ begin
   Quaternion:=POCAGhostFastGetPointer(aThis);
   OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewQuaternion(aContext,Quaternion^.Nlerp(OtherQuaternion^,Time));
+  Quaternion^:=Quaternion^.Nlerp(OtherQuaternion^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -2694,7 +2716,8 @@ begin
   Quaternion:=POCAGhostFastGetPointer(aThis);
   OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewQuaternion(aContext,Quaternion^.Slerp(OtherQuaternion^,Time));
+  Quaternion^:=Quaternion^.Slerp(OtherQuaternion^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -2710,7 +2733,8 @@ begin
   C:=POCAGhostFastGetPointer(aArguments^[1]);
   D:=POCAGhostFastGetPointer(aArguments^[2]);
   Time:=POCAGetNumberValue(aContext,aArguments^[3]);
-  result:=POCANewQuaternion(aContext,A^.Sqlerp(B^,C^,D^,Time));
+  A^:=A^.Sqlerp(B^,C^,D^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -3589,7 +3613,8 @@ var Matrix3x3:PpvMatrix3x3D;
 begin
  if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
   Matrix3x3:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewMatrix3x3(aContext,Matrix3x3^.Transpose);
+  Matrix3x3^:=Matrix3x3^.Transpose;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -3611,7 +3636,8 @@ var Matrix3x3:PpvMatrix3x3D;
 begin
  if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
   Matrix3x3:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewMatrix3x3(aContext,Matrix3x3^.Inverse);
+  Matrix3x3^:=Matrix3x3^.Inverse;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -3622,7 +3648,8 @@ var Matrix3x3:PpvMatrix3x3D;
 begin
  if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
   Matrix3x3:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewMatrix3x3(aContext,Matrix3x3^.Adjugate);
+  Matrix3x3^:=Matrix3x3^.Adjugate;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -3636,7 +3663,8 @@ begin
   Matrix3x3:=POCAGhostFastGetPointer(aThis);
   OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewMatrix3x3(aContext,Matrix3x3^.Lerp(OtherMatrix3x3^,Time));
+  Matrix3x3^:=Matrix3x3^.Lerp(OtherMatrix3x3^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -3650,7 +3678,8 @@ begin
   Matrix3x3:=POCAGhostFastGetPointer(aThis);
   OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewMatrix3x3(aContext,Matrix3x3^.Nlerp(OtherMatrix3x3^,Time));
+  Matrix3x3^:=Matrix3x3^.Nlerp(OtherMatrix3x3^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -3664,7 +3693,8 @@ begin
   Matrix3x3:=POCAGhostFastGetPointer(aThis);
   OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewMatrix3x3(aContext,Matrix3x3^.Slerp(OtherMatrix3x3^,Time));
+  Matrix3x3^:=Matrix3x3^.Slerp(OtherMatrix3x3^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -3678,23 +3708,25 @@ begin
   Matrix3x3:=POCAGhostFastGetPointer(aThis);
   OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewMatrix3x3(aContext,Matrix3x3^.Elerp(OtherMatrix3x3^,Time));
+  Matrix3x3^:=Matrix3x3^.Elerp(OtherMatrix3x3^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
 end;
 
 function POCAMatrix3x3FunctionSqlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var A,B,C,D:TpvMatrix3x3D;
+var A,B,C,D:PpvMatrix3x3D;
     Time:TpvDouble;
 begin
  if (aCountArguments=4) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[1])=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[2])=@POCAMatrix3x3Ghost) and (POCAGetValueType(aArguments^[3])=pvtNUMBER) then begin
-  A:=PpvMatrix3x3D(POCAGhostFastGetPointer(aThis))^;
-  B:=PpvMatrix3x3D(POCAGhostFastGetPointer(aArguments^[0]))^;
-  C:=PpvMatrix3x3D(POCAGhostFastGetPointer(aArguments^[1]))^;
-  D:=PpvMatrix3x3D(POCAGhostFastGetPointer(aArguments^[2]))^;
+  A:=PpvMatrix3x3D(POCAGhostFastGetPointer(aThis));
+  B:=PpvMatrix3x3D(POCAGhostFastGetPointer(aArguments^[0]));
+  C:=PpvMatrix3x3D(POCAGhostFastGetPointer(aArguments^[1]));
+  D:=PpvMatrix3x3D(POCAGhostFastGetPointer(aArguments^[2]));
   Time:=POCAGetNumberValue(aContext,aArguments^[3]);
-  result:=POCANewMatrix3x3(aContext,A.Sqlerp(B,C,D,Time));
+  A^:=A^.Sqlerp(B^,C^,D^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -4392,7 +4424,8 @@ var Matrix4x4:PpvMatrix4x4D;
 begin
  if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
   Matrix4x4:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewMatrix4x4(aContext,Matrix4x4^.Transpose);
+  Matrix4x4^:=Matrix4x4^.Transpose;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -4414,7 +4447,8 @@ var Matrix4x4:PpvMatrix4x4D;
 begin
  if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
   Matrix4x4:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewMatrix4x4(aContext,Matrix4x4^.Inverse);
+  Matrix4x4^:=Matrix4x4^.Inverse;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -4425,7 +4459,8 @@ var Matrix4x4:PpvMatrix4x4D;
 begin
  if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
   Matrix4x4:=POCAGhostFastGetPointer(aThis);
-  result:=POCANewMatrix4x4(aContext,Matrix4x4^.Adjugate);
+  Matrix4x4^:=Matrix4x4^.Adjugate;
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -4439,7 +4474,8 @@ begin
   Matrix4x4:=POCAGhostFastGetPointer(aThis);
   OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewMatrix4x4(aContext,Matrix4x4^.Lerp(OtherMatrix4x4^,Time));
+  Matrix4x4^:=Matrix4x4^.Lerp(OtherMatrix4x4^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -4453,7 +4489,8 @@ begin
   Matrix4x4:=POCAGhostFastGetPointer(aThis);
   OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewMatrix4x4(aContext,Matrix4x4^.Nlerp(OtherMatrix4x4^,Time));
+  Matrix4x4^:=Matrix4x4^.Nlerp(OtherMatrix4x4^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -4467,7 +4504,8 @@ begin
   Matrix4x4:=POCAGhostFastGetPointer(aThis);
   OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewMatrix4x4(aContext,Matrix4x4^.Slerp(OtherMatrix4x4^,Time));
+  Matrix4x4^:=Matrix4x4^.Slerp(OtherMatrix4x4^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
@@ -4481,23 +4519,25 @@ begin
   Matrix4x4:=POCAGhostFastGetPointer(aThis);
   OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
   Time:=POCAGetNumberValue(aContext,aArguments^[1]);
-  result:=POCANewMatrix4x4(aContext,Matrix4x4^.Elerp(OtherMatrix4x4^,Time));
+  Matrix4x4^:=Matrix4x4^.Elerp(OtherMatrix4x4^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
 end;
 
 function POCAMatrix4x4FunctionSqlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var A,B,C,D:TpvMatrix4x4D;
+var A,B,C,D:PpvMatrix4x4D;
     Time:TpvDouble;
 begin
  if (aCountArguments=4) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[1])=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[2])=@POCAMatrix4x4Ghost) and (POCAGetValueType(aArguments^[3])=pvtNUMBER) then begin
-  A:=PpvMatrix4x4D(POCAGhostFastGetPointer(aThis))^;
-  B:=PpvMatrix4x4D(POCAGhostFastGetPointer(aArguments^[0]))^;
-  C:=PpvMatrix4x4D(POCAGhostFastGetPointer(aArguments^[1]))^;
-  D:=PpvMatrix4x4D(POCAGhostFastGetPointer(aArguments^[2]))^;
+  A:=PpvMatrix4x4D(POCAGhostFastGetPointer(aThis));
+  B:=PpvMatrix4x4D(POCAGhostFastGetPointer(aArguments^[0]));
+  C:=PpvMatrix4x4D(POCAGhostFastGetPointer(aArguments^[1]));
+  D:=PpvMatrix4x4D(POCAGhostFastGetPointer(aArguments^[2]));
   Time:=POCAGetNumberValue(aContext,aArguments^[3]);
-  result:=POCANewMatrix4x4(aContext,A.Sqlerp(B,C,D,Time));
+  A^:=A^.Sqlerp(B^,C^,D^,Time);
+  result:=aThis;
  end else begin
   result:=POCAValueNull;
  end;
