@@ -78,6 +78,7 @@ type { TpvTimedQueue }
             PHandle=^THandle;
             THandleArray=array of THandle;
             TData=T;
+            PData=^TData;
             TNode=record
              Time:TpvDouble;              // Time
              Sequence:TpvUInt64;          // Stable tiebreaker
@@ -95,7 +96,7 @@ type { TpvTimedQueue }
             end;
             PMapEntry=^TMapEntry;
             TMapEntryArray=array of TMapEntry;
-            TTraversalMethod=procedure(const aData:TData) of object;
+            TTraversalMethod=procedure(const aNode:PNode) of object;
       private
 
        // Nodes storage (flat array, never moved)
@@ -152,7 +153,10 @@ type { TpvTimedQueue }
       
        function Cancel(const aHandle:THandle):Boolean; inline;     // eager remove
        function MarkCancel(const aHandle:THandle):Boolean; inline; // lazy mark
-      
+
+       function PeekEarliest(const aData:PData;const aTime:PpvDouble;const aHandle:PHandle):Boolean; inline;
+       function PopEarliest(const aData:PData;const aTime:PpvDouble;const aHandle:PHandle):Boolean; inline;
+
        function PeekEarliestNode(out aNode:TNode):Boolean; inline;
        function PopEarliestNode(out aNode:TNode):Boolean; inline;
 
@@ -692,6 +696,52 @@ begin
  end;
 end;
 
+function TpvTimedQueue<T>.PeekEarliest(const aData:PData;const aTime:PpvDouble;const aHandle:PHandle):Boolean;
+var Node:PNode;
+begin
+ while (fCount>0) and fNodes[fHeap[0]].Dead do begin
+  RemoveAt(0);
+ end;
+ result:=fCount>0;
+ if result then begin
+  Node:=@fNodes[fHeap[0]];
+  if assigned(aData) then begin
+   aData^:=Node^.Data;
+  end;
+  if assigned(aTime) then begin
+   aTime^:=Node^.Time;
+  end;
+  if assigned(aHandle) then begin
+   aHandle^:=Node^.Handle;
+  end;
+ end;
+end;
+
+function TpvTimedQueue<T>.PopEarliest(const aData:PData;const aTime:PpvDouble;const aHandle:PHandle):Boolean;
+var Node:PNode;
+begin
+ while fCount>0 do begin
+  Node:=@fNodes[fHeap[0]];
+  if Node^.Dead then begin
+   RemoveAt(0);
+  end else begin
+   if assigned(aData) then begin
+    aData^:=Node^.Data;
+   end;
+   if assigned(aTime) then begin
+    aTime^:=Node^.Time;
+   end;
+   if assigned(aHandle) then begin
+    aHandle^:=Node^.Handle;
+   end;
+   RemoveAt(0);  
+   result:=true;
+   exit;
+  end;
+ end;
+ result:=false;
+end;
+
 function TpvTimedQueue<T>.PeekEarliestNode(out aNode:TNode):Boolean;
 var Node:PNode;
 begin
@@ -789,7 +839,7 @@ begin
   NodeIndex:=fHeap[Index];
   Node:=@fNodes[NodeIndex];
   if not Node^.Dead then begin
-   aTraversalMethod(Node^.Data);
+   aTraversalMethod(Node);
   end;
  end;
 end;  
