@@ -536,7 +536,7 @@ begin
    SiftDown(Index);
   end;
  end;
- 
+
 end;
 
 // === Public ==========================================================
@@ -742,11 +742,10 @@ begin
    Node^.Time:=Node^.Time-aDeltaTime; 
   end;
  
-  Expired:=0;
-
   // Remove all nodes that are now in the past (time < 0.0) via lazy marking,
   // then clean them from the heap top until the earliest is in the future.
   // We use lazy marking first to avoid O(n log n) heap removals.
+  Expired:=0;
   for Index:=0 to fCount-1 do begin
    Node:=@fNodes[fHeap[Index]];
    if (not Node^.Dead) and (Node^.Time<0.0) then begin
