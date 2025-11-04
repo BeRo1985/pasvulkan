@@ -81,7 +81,7 @@ type { TpvTimedQueue }
              Sequence:TpvUInt64;          // Stable tiebreaker
              Handle:THandle;              // Handle
              Data:TData;                  // User payload
-             Dead:TpvUInt8;               // Optional for lazy cancel (0/1)
+             Dead:Boolean;                // Optional for lazy cancel
             end;
             PNode=^TNode;
             TNodeArray=array of TNode;
@@ -154,6 +154,8 @@ type { TpvTimedQueue }
        function PopEarliest(out aData:TData):Boolean; inline;
 
        procedure Traverse(const aTraversalMethod:TTraversalMethod); inline;
+
+       procedure ShiftByTime(const aDeltaTime:TpvDouble); inline;
 
       published
 
@@ -413,7 +415,7 @@ begin
  
  // Return node slot to freelist
  fHeapPosition[NodeIndex]:=-1;
- fNodes[NodeIndex].Dead:=0; // Clear tombstone mark for reuse
+ fNodes[NodeIndex].Dead:=false; // Clear tombstone mark for reuse
  if length(fFreeList)<=fFreeTop then begin
   SetLength(fFreeList,length(fFreeList)+((length(fFreeList)+16) shr 1));
  end;
@@ -499,7 +501,7 @@ begin
  inc(fSequenceCounter);
  Node^.Handle:=result;
  Node^.Data:=aData;
- Node^.Dead:=0;
+ Node^.Dead:=false;
 
  // Insert into map
  MapPut(result,NodeIndex);
@@ -531,7 +533,7 @@ function TpvTimedQueue<T>.MarkCancel(const aHandle:THandle):Boolean;
 var NodeIndex:TpvSizeInt;
 begin
  if MapTryGet(aHandle,NodeIndex) then begin
-  fNodes[NodeIndex].Dead:=1;
+  fNodes[NodeIndex].Dead:=true;
   result:=true;
  end else begin
   result:=false;
@@ -541,7 +543,7 @@ end;
 function TpvTimedQueue<T>.PeekEarliestNode(out aNode:TNode):Boolean;
 var Node:PNode;
 begin
- while (fCount>0) and (fNodes[fHeap[0]].Dead<>0) do begin
+ while (fCount>0) and fNodes[fHeap[0]].Dead do begin
   RemoveAt(0);
  end;
  result:=fCount>0;
@@ -556,13 +558,13 @@ var Node:PNode;
 begin
  while fCount>0 do begin
   Node:=@fNodes[fHeap[0]];
-  if Node^.Dead=0 then begin
+  if Node^.Dead then begin
+   RemoveAt(0);
+  end else begin
    aNode:=Node^;
    RemoveAt(0);
    result:=true;
    exit;
-  end else begin
-   RemoveAt(0);
   end;
  end;
  result:=false;
@@ -571,7 +573,7 @@ end;
 function TpvTimedQueue<T>.PeekEarliest(out aData:TData):Boolean;
 var Node:PNode;
 begin
- while (fCount>0) and (fNodes[fHeap[0]].Dead<>0) do begin
+ while (fCount>0) and fNodes[fHeap[0]].Dead do begin
   RemoveAt(0);
  end;
  result:=fCount>0;
@@ -586,13 +588,13 @@ var Node:PNode;
 begin
  while fCount>0 do begin
   Node:=@fNodes[fHeap[0]];
-  if Node^.Dead=0 then begin
+  if Node^.Dead then begin
+   RemoveAt(0);
+  end else begin
    aData:=Node^.Data;
    RemoveAt(0);
    result:=true;
    exit;
-  end else begin
-   RemoveAt(0);
   end;
  end;
  result:=false;
@@ -605,10 +607,43 @@ begin
  for Index:=0 to fCount-1 do begin
   NodeIndex:=fHeap[Index];
   Node:=@fNodes[NodeIndex];
-  if Node^.Dead=0 then begin
+  if not Node^.Dead then begin
    aTraversalMethod(Node^.Data);
   end;
  end;
 end;  
+
+procedure TpvTimedQueue<T>.ShiftByTime(const aDeltaTime:TpvDouble);
+var Index:TpvSizeInt;
+    Node:PNode;
+begin
+ 
+ if fCount>0 then begin
+
+  // Adjust all times by the delta time 
+  for Index:=0 to fCount-1 do begin
+   Node:=@fNodes[fHeap[Index]];
+   Node^.Time:=Node^.Time-aDeltaTime; 
+  end;
+ 
+  // Remove all nodes that are now in the past (time < 0.0) via lazy marking,
+  // then clean them from the heap top until the earliest is in the future.
+  // We use lazy marking first to avoid O(n log n) heap removals.
+  for Index:=0 to fCount-1 do begin
+   Node:=@fNodes[fHeap[Index]];
+   if (not Node^.Dead) and (Node^.Time<0.0) then begin
+    Node^.Dead:=true;
+    inc(fMapTombstones);
+   end;
+  end;
+
+  // Now clean the heap by removing all dead nodes at the top
+  while (fCount>0) and fNodes[fHeap[0]].Dead do begin
+   RemoveAt(0);
+  end;
+
+ end;
+
+end; 
 
 end.
