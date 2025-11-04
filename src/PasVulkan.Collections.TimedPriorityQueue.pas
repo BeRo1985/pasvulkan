@@ -133,6 +133,7 @@ type EpvTimedPriorityQueue=class(Exception);
        fBruteforceSearchForUnusedHandlesAtOverflow:Boolean;
        fDoubleFloatingPointCompatibility:Boolean;
        fHandleCounterOverflowed:Boolean;
+       fExceptionOnHandleOverflow:Boolean;
 
        // Freelist of reusable node indices (stack)
        fFreeList:TIndexArray;
@@ -230,6 +231,13 @@ type EpvTimedPriorityQueue=class(Exception);
        // representation. It's recommended to enable this when handles may be passed through JavaScript, POCA, Lua or 
        // other scripting engines that use double-precision floating point for their numeric values.
        property DoubleFloatingPointCompatibility:Boolean read fDoubleFloatingPointCompatibility write fDoubleFloatingPointCompatibility;
+
+       // When enabled, immediately raises an exception when handle overflow occurs, otherwise it just wraps around. 
+       // It is useful to catch programming errors where too many handles are created. But it would be never occur 
+       // in practice, since even 53-bit handles allow for over 9 quadrillion unique handles, which is more than enough
+       // for most applications in their complete runtime lifetime.
+       property ExceptionOnHandleOverflow:Boolean read fExceptionOnHandleOverflow write fExceptionOnHandleOverflow;
+
        
      end;
 
@@ -918,8 +926,20 @@ begin
 
    end else begin
 
-    // No more handles available (free list exhausted and counter overflowed)
-    raise EpvTimedPriorityQueue.Create('No more unique handles available');
+    // Check if we should raise exception on overflow 
+    if fExceptionOnHandleOverflow then begin
+
+     // Raise exception on handle overflow  
+
+     // No more handles available (free list exhausted and counter overflowed)
+     raise EpvTimedPriorityQueue.Create('No more unique handles available');
+
+    end else begin
+     
+     // Otherwise allocate new handle normally (will wrap around)
+     result:=GetNextHandle;
+
+    end; 
 
    end;
 
@@ -954,7 +974,13 @@ begin
    // Wrap around check, when handle counter overflows, raise exception, 
    // since free list is also exhausted, so there are no more handles available
    if fHandleCounter=1 then begin
-    raise EpvTimedPriorityQueue.Create('Handle counter overflowed');
+    if fExceptionOnHandleOverflow then begin
+     raise EpvTimedPriorityQueue.Create('No more handles available');
+    end else begin
+     // Just wrap around (non-unique handles)
+     // Note: this will eventually reuse old handles that may still be in use
+     // if the user keeps creating new handles without reusing old ones.
+    end;
    end;
 
   end;
