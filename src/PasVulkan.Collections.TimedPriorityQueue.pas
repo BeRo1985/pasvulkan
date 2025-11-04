@@ -159,6 +159,10 @@ type EpvTimedPriorityQueue=class(Exception);
        function MapContains(const aHandle:THandle):Boolean; inline;
        procedure MapDelete(const aHandle:THandle); inline;
        
+       // Handle methods
+       procedure PopulateHandleFreeListOnOverflow;
+       function GetNextHandle:THandle; inline;
+
        // Heap methods
        procedure Resequence;
        procedure EnsureCapacity(const aNeed:TpvSizeInt); inline;
@@ -400,6 +404,79 @@ begin
   end;
  end;
 end; 
+
+// === Handle ==========================================================
+
+procedure TpvTimedPriorityQueue<T>.PopulateHandleFreeListOnOverflow;
+var Handle,MaxHandle:THandle;
+    FreeIndex:TpvSizeInt;
+begin
+ 
+ // One-time bruteforce scan to find all unused handles when overflow occurs
+ // This populates the handle free list with gaps in the handle space
+ 
+ // Determine maximum handle value based on compatibility mode
+ if fDoubleFloatingPointCompatibility then begin
+  MaxHandle:=TpvUInt64($001fffffffffffff); // 53-bit limit for double precision
+ end else begin
+  MaxHandle:=High(TpvUInt64); // Full 64-bit range
+ end;
+
+ // Scan entire handle space (skip handle 0 as it's reserved)
+ Handle:=1;
+ while Handle<=MaxHandle do begin
+  
+  // Check if this handle is not currently in use
+  if not MapContains(Handle) then begin
+   
+   // Add unused handle to free list
+   FreeIndex:=fHandleFreeTop;
+   inc(fHandleFreeTop);
+   if length(fHandleFreeList)<=fHandleFreeTop then begin
+    SetLength(fHandleFreeList,fHandleFreeTop+((fHandleFreeTop+1) shr 1));
+   end;
+   fHandleFreeList[FreeIndex]:=Handle;
+
+  end;
+
+  // Next handle
+  inc(Handle);
+  
+  // Skip zero on wraparound (should never happen in practice)
+  if Handle=0 then begin
+   break;
+  end;
+
+ end;
+
+ // If no free handles found after scan, raise exception
+ if fHandleFreeTop=0 then begin
+  raise EpvTimedPriorityQueue.Create('No more handles available');
+ end;
+
+end;
+
+function TpvTimedPriorityQueue<T>.GetNextHandle:THandle;
+begin
+ 
+ // Get current handle counter as result
+ result:=fHandleCounter;
+ 
+ // Increment handle counter, wrapping around if necessary 
+ if fDoubleFloatingPointCompatibility then begin
+  // When double floating point compatibility is requested, limit to 53 bits
+  fHandleCounter:=(fHandleCounter+1) and TpvUInt64($001fffffffffffff);
+ end else begin
+  // Otherwise normal increment for full 64-bit range
+  inc(fHandleCounter);
+ end;
+
+ // Skip zero handle, as it is reserved for invalid or non-existent handles
+ if fHandleCounter=0 then begin
+  fHandleCounter:=1;
+ end;
+
+end;
 
 // === Heap ============================================================
 
@@ -787,8 +864,6 @@ end;
 function TpvTimedPriorityQueue<T>.Push(const aTime:TTime;const aPriority:TPriority;const aData:TData):THandle;
 var HeapIndex,NodeIndex:TpvSizeInt;
     Node:PNode;
-    FirstHandleCounter:THandle;
-    First:Boolean;
 begin
 
  // Reuse a freed node slot if available
@@ -811,73 +886,39 @@ begin
 
    // Handle counter has overflowed before
 
-   // When bruteforce search is enabled, try to find unused handle (can be very slow!)
+   // When bruteforce search is enabled, do one-time population of handle free list
    if fBruteforceSearchForUnusedHandlesAtOverflow then begin
 
-    // Bruteforce search for unused handle. Attention: Very slow when many handles are in use! Deadlock-like long waits possible! 
-    First:=true;
-    repeat
+    // Do one-time bruteforce scan to populate handle free list with all gaps
+    // After this, we just use the free list normally (no more bruteforce)
+    PopulateHandleFreeListOnOverflow;
 
-     // Get current handle counter as result
-     result:=fHandleCounter;
-    
-     // Store first handle counter to detect full cycle 
-     if First then begin
-      FirstHandleCounter:=fHandleCounter;
-      First:=false;
-     end else begin
-      // Check for full cycle
-      if result=FirstHandleCounter then begin
-       // When full cycle done: no more unique handles available, raise exception
-       raise EpvTimedPriorityQueue.Create('No more unique handles available');
-      end;
-     end; 
-    
-     // Increment handle counter, wrapping around if necessary 
-     if fDoubleFloatingPointCompatibility then begin
-      // When double floating point compatibility is requested, limit to 53 bits
-      fHandleCounter:=(fHandleCounter+1) and TpvUInt64($001fffffffffffff);
-     end else begin
-      // Otherwise normal increment for full 64-bit range
-      inc(fHandleCounter);
-     end;
+    // Disable bruteforce flag now that free list is populated
+    fBruteforceSearchForUnusedHandlesAtOverflow:=false;
 
-     // Skip zero handle, as it is reserved for invalid or non-existent handles
-     if fHandleCounter=0 then begin
-      fHandleCounter:=1;
-     end;
+   end;
 
-     // Repeat until an unused handle is found
+   // Try to get handle from free list (populated by bruteforce or regular frees)
+   if fHandleFreeTop>0 then begin
 
-    until not MapContains(result);
+    // Get handle from free list
+    dec(fHandleFreeTop);
+    result:=fHandleFreeList[fHandleFreeTop];
 
-   end else begin  
+   end else begin
 
-    // Otherwise when no bruteforce search: just raise exception
+    // No more handles available (free list exhausted and counter overflowed)
+    raise EpvTimedPriorityQueue.Create('No more unique handles available');
 
-    raise EpvTimedPriorityQueue.Create('Handle counter overflowed');
-
-   end; 
+   end;
 
   end else begin
   
    // No previous overflow: allocate new handle normally
+   result:=GetNextHandle;
 
-   // Get current handle counter as result
-   result:=fHandleCounter;
-   
-   // Increment handle counter, wrapping around if necessary 
-   if fDoubleFloatingPointCompatibility then begin
-    // When double floating point compatibility is requested, limit to 53 bits
-    fHandleCounter:=(fHandleCounter+1) and TpvUInt64($001fffffffffffff);
-   end else begin
-    // Otherwise normal increment for full 64-bit range
-    inc(fHandleCounter);
-   end;
-
-   // Skip zero handle, as it is reserved for invalid or non-existent handles, and set overflow flag
-   if fHandleCounter=0 then begin
-    fHandleCounter:=1;
+   // Check for overflow and set flag
+   if fHandleCounter=1 then begin
     fHandleCounterOverflowed:=true;
    end; 
 
@@ -896,21 +937,12 @@ begin
 
   end else begin
 
-   // Get current handle counter as result
-   result:=fHandleCounter;
-   
-   // Increment handle counter, wrapping around if necessary 
-   if fDoubleFloatingPointCompatibility then begin
-    // When double floating point compatibility is requested, limit to 53 bits
-    fHandleCounter:=(fHandleCounter+1) and TpvUInt64($001fffffffffffff);
-   end else begin
-    // Otherwise normal increment for full 64-bit range
-    inc(fHandleCounter);
-   end;
+   // Allocate new handle
+   result:=GetNextHandle;
    
    // Wrap around check, when handle counter overflows, raise exception, 
    // since free list is also exhausted, so there are no more handles available
-   if fHandleCounter=0 then begin
+   if fHandleCounter=1 then begin
     raise EpvTimedPriorityQueue.Create('Handle counter overflowed');
    end;
 
