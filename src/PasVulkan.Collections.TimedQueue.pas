@@ -439,11 +439,21 @@ end;
 procedure TpvTimedQueue<T>.SiftDown(aIndex:TpvSizeInt);
 var Child1,Child2,Child3,Child4,MinimumIndex:TpvSizeInt;
 begin
+ 
+ // K-ary heap sift-down
  while true do begin
+  
+  // Calculate first child index
   Child1:=(aIndex*K)+1;
+  
+  // If no children (out of bounds), exit
   if Child1>=fCount then begin
+
    break;
+
   end else begin
+
+   // Find smallest child
    MinimumIndex:=Child1;
    Child2:=Child1+1;
    if (Child2<fCount) and Less(Child2,MinimumIndex) then begin
@@ -457,14 +467,19 @@ begin
    if (Child4<fCount) and Less(Child4,MinimumIndex) then begin
     MinimumIndex:=Child4;
    end;
-   if MinimumIndex=aIndex then begin
-    break;
-   end else begin
+
+   // Compare parent vs smallest child - only swap if child is smaller
+   if Less(MinimumIndex,aIndex) then begin
     Swap(aIndex,MinimumIndex);
     aIndex:=MinimumIndex;
+   end else begin
+    break;
    end;
+
   end; 
+
  end;
+
 end;
 
 procedure TpvTimedQueue<T>.RemoveAt(aIndex:TpvSizeInt);
