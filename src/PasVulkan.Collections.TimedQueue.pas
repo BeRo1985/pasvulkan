@@ -133,9 +133,10 @@ type { TpvTimedQueue }
 
        // Handle->Index open-addressing map (AoS)
        fMap:TMapEntryArray;
-       fMapSize:TpvSizeInt;       // Capacity (power of two)
-       fMapCount:TpvSizeInt;      // Total entries in map (excluding tombstones)
-       fMapSlotMask:TpvSizeInt;   // Mask (fMapSize-1)
+       fMapSize:TpvSizeInt;         // Capacity (power of two)
+       fMapCount:TpvSizeInt;        // Total entries in map (excluding tombstones)
+       fMapDeletedCount:TpvSizeInt; // Count of tombstones
+       fMapSlotMask:TpvSizeInt;     // Mask (fMapSize-1)
 
        // Map methods
        class function MapHash(const aHandle:THandle):TpvUInt64; static; inline;
@@ -147,6 +148,7 @@ type { TpvTimedQueue }
        procedure MapDelete(const aHandle:THandle); inline;
        
        // Heap methods
+       procedure Resequence;
        procedure EnsureCapacity(const aNeed:TpvSizeInt); inline;
        function Less(const aIndexA,aIndexB:TpvSizeInt):Boolean; inline;
        procedure Swap(const aIndexA,aIndexB:TpvSizeInt); inline;
@@ -241,6 +243,7 @@ begin
  fMapSize:=Capacity;
  fMapSlotMask:=Capacity-1;
  fMapCount:=0;
+ fMapDeletedCount:=0;
 end;
 
 procedure TpvTimedQueue<T>.MapRehash(const aNewCapacity:TpvSizeInt);
@@ -259,7 +262,7 @@ end;
 
 procedure TpvTimedQueue<T>.MapEnsure;
 begin
- if (fMapSize>0) and ((fMapCount*10)>=(fMapSize*7)) then begin
+ if (fMapSize>0) and (((fMapCount*10)>=(fMapSize*7))or (((fMapCount+fMapDeletedCount)*10)>=(fMapSize*8))) then begin
   MapRehash(TpvSizeInt(RoundUpToPowerOfTwoSizeUInt(TpvSizeUInt(fMapSize) shl 1)));
  end;
 end;
@@ -344,6 +347,7 @@ begin
     if (MapEntry^.State=StateUsed) and (MapEntry^.Key=aHandle) then begin
      MapEntry^.State:=StateDeleted; // Tombstone
      dec(fMapCount);
+     inc(fMapDeletedCount);
      exit;
     end else begin 
      Position:=(Position+1) and fMapSlotMask;
@@ -355,12 +359,36 @@ end;
 
 // === Heap ============================================================
 
+procedure TpvTimedQueue<T>.Resequence;
+var Index,NodeIndex:TpvSizeInt;
+    Node:PNode;
+    NewSequence:TpvUInt64;
+begin
+ 
+ // Reassign sequence numbers in heap order to maintain stable ordering
+ // This prevents sequence counter overflow (though practically impossible)
+ // Nodes in heap order get incrementing sequences, preserving their relative order
+ NewSequence:=0;
+ for Index:=0 to fCount-1 do begin
+  NodeIndex:=fHeap[Index];
+  Node:=@fNodes[NodeIndex];
+  if not Node^.Dead then begin
+   Node^.Sequence:=NewSequence;
+   inc(NewSequence);
+  end;
+ end;
+
+ // Reset sequence counter to continue from where we left off
+ fSequenceCounter:=NewSequence;
+
+end;
+
 procedure TpvTimedQueue<T>.EnsureCapacity(const aNeed:TpvSizeInt);
 var NewCapacity,OldCapacity:TpvSizeInt;
 begin
  if length(fNodes)<aNeed then begin
   OldCapacity:=length(fNodes);
-  NewCapacity:=Max(16,RoundUpToPowerOfTwo64(OldCapacity));
+  NewCapacity:=Max(16,RoundUpToPowerOfTwo64(Max(OldCapacity,aNeed)));
   SetLength(fNodes,NewCapacity);
   SetLength(fHeap,NewCapacity);
   SetLength(fHeapPosition,NewCapacity);
@@ -654,6 +682,7 @@ begin
  fMap:=nil;
  fMapSize:=0;
  fMapCount:=0;
+ fMapDeletedCount:=0;
  fMapSlotMask:=0; 
 end;
 
@@ -699,7 +728,14 @@ begin
  fHeapPosition[NodeIndex]:=HeapIndex;
  inc(fCount);
  SiftUp(HeapIndex);
- 
+
+ // Resequence if sequence counter is about to overflow, to keep stable tiebreaking working.
+ // But it will never happen in practice, as it would require billions of insertions per second for years.
+ // But we do it for correctness and completeness, just in case.  
+ if fSequenceCounter>=TpvUInt64($fffffffffffffffe) then begin
+  Resequence;
+ end;
+
 end;
 
 function TpvTimedQueue<T>.Cancel(const aHandle:THandle):Boolean;
@@ -951,6 +987,7 @@ end;
 procedure TpvTimedQueue<T>.Deserialize(const aSerializationData:TSerializationData);
 var Index,LiveCount,NodeIndex:TpvSizeInt;
     Node:PNode;
+    SequenceCounter:TpvUInt64;
 begin
  
  // Clear current state
@@ -981,8 +1018,12 @@ begin
 
  // Rebuild heap with only live (non-dead) nodes
  LiveCount:=0;
+ SequenceCounter:=0;
  for Index:=0 to fNodeCount-1 do begin
   Node:=@fNodes[Index];
+  if SequenceCounter<Node^.Sequence then begin
+   SequenceCounter:=Node^.Sequence;
+  end;
   if not Node^.Dead then begin
    // Add to heap
    fHeap[LiveCount]:=Index;
@@ -1003,6 +1044,9 @@ begin
 
  // Update heap count
  fCount:=LiveCount;
+
+ // Update sequence counter
+ fSequenceCounter:=SequenceCounter;
 
  // Bottom-up heapify for K-ary heap in O(n)
  // Last internal node is (fCount-2) div K; loop down to 0
