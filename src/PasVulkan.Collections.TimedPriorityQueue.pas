@@ -1029,6 +1029,9 @@ var Index,LiveCount,NodeIndex:TpvSizeInt;
     Node:PNode;
 begin
 
+ // Clean dead nodes and rebuild heap to ensure only live nodes are serialized
+ BulkCleanDeadAndRebuildHeap;
+
  // Serialize handle management state
  aSerializationData.fHandleCounter:=fHandleCounter;
  if fHandleFreeTop>0 then begin
