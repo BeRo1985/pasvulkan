@@ -360,11 +360,7 @@ var NewCapacity,OldCapacity:TpvSizeInt;
 begin
  if length(fNodes)<aNeed then begin
   OldCapacity:=length(fNodes);
-  NewCapacity:=OldCapacity;
-  if NewCapacity=0 then begin
-   NewCapacity:=16;
-  end;
-  NewCapacity:=RoundUpToPowerOfTwo64(aNeed);
+  NewCapacity:=Max(16,RoundUpToPowerOfTwo64(OldCapacity));
   SetLength(fNodes,NewCapacity);
   SetLength(fHeap,NewCapacity);
   SetLength(fHeapPosition,NewCapacity);
@@ -979,6 +975,9 @@ begin
    fNodes[Index]:=aSerializationData.fNodes[Index];
   end;
  end;
+
+ // Initialize map with the appropriate estimated capacity
+ MapInit(TpvSizeInt(RoundUpToPowerOfTwoSizeUInt(TpvSizeUInt(Max(16,fNodeCount shl 1)))));
 
  // Rebuild heap with only live (non-dead) nodes
  LiveCount:=0;
