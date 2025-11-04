@@ -119,8 +119,8 @@ type { TpvTimedQueue }
 
        // Map methods
        class function MapHash(const aHandle:THandle):TpvUInt64; static; inline;
-       procedure MapInit(const aCapacityPowerOfTwo:TpvSizeInt); inline;
-       procedure MapRehash(const aNewPowerOfTwo:TpvSizeInt);
+       procedure MapInit(const aCapacity:TpvSizeInt); inline;
+       procedure MapRehash(const aNewCapacity:TpvSizeInt);
        procedure MapEnsure; inline;
        procedure MapPut(const aHandle:THandle;const aIndex:TpvSizeInt); inline;
        function MapTryGet(const aHandle:THandle;out aIndex:TpvSizeInt):Boolean; inline;
@@ -137,7 +137,7 @@ type { TpvTimedQueue }
 
       public
 
-       constructor Create(const aInitialCapacity:TpvSizeInt=16;const aMapCapacityPowerOfTwo:TpvSizeInt=16);
+       constructor Create(const aInitialCapacity:TpvSizeInt=16;const aMapCapacity:TpvSizeInt=65536);
        destructor Destroy; override;
       
        procedure Clear;
@@ -175,13 +175,13 @@ begin
  result:=Value xor (Value shr 33);
 end;
 
-procedure TpvTimedQueue<T>.MapInit(const aCapacityPowerOfTwo:TpvSizeInt);
+procedure TpvTimedQueue<T>.MapInit(const aCapacity:TpvSizeInt);
 var Index,Capacity:TpvSizeInt;
 begin
- if aCapacityPowerOfTwo<4 then begin
-  Capacity:=1 shl 4;
+ if aCapacity<16 then begin
+  Capacity:=16;
  end else begin
-  Capacity:=1 shl aCapacityPowerOfTwo;
+  Capacity:=aCapacity;
  end;
  SetLength(fMap,Capacity);
  for Index:=0 to length(fMap)-1 do begin
@@ -192,13 +192,13 @@ begin
  fMapCount:=0;
 end;
 
-procedure TpvTimedQueue<T>.MapRehash(const aNewPowerOfTwo:TpvSizeInt);
+procedure TpvTimedQueue<T>.MapRehash(const aNewCapacity:TpvSizeInt);
 var OldMap:TMapEntryArray;
     Index:TpvSizeInt;
 begin
  OldMap:=fMap;
  fMap:=nil; // Dereference old map, so that OldMap keeps the reference without conflict with MapInit and MapPut
- MapInit(aNewPowerOfTwo);
+ MapInit(aNewCapacity);
  for Index:=0 to length(OldMap)-1 do begin
   if OldMap[Index].State=StateUsed then begin
    MapPut(OldMap[Index].Key,OldMap[Index].Value);
@@ -209,7 +209,7 @@ end;
 procedure TpvTimedQueue<T>.MapEnsure;
 begin
  if (fMapSize>0) and ((fMapCount*10)>=(fMapSize*7)) then begin
-  MapRehash({$if declared(BSRQWord)}BSRQWord{$else}BSRDWord{$ifend}(RoundUpToPowerOfTwo64(fMapSize))+1);
+  MapRehash(TpvSizeInt(RoundUpToPowerOfTwoSizeUInt(TpvSizeUInt(fMapSize) shl 1)));
  end;
 end;
 
@@ -537,7 +537,7 @@ end;
 
 // === Public ==========================================================
 
-constructor TpvTimedQueue<T>.Create(const aInitialCapacity:TpvSizeInt;const aMapCapacityPowerOfTwo:TpvSizeInt);
+constructor TpvTimedQueue<T>.Create(const aInitialCapacity:TpvSizeInt;const aMapCapacity:TpvSizeInt);
 var InitialCapacity:TpvSizeInt;
 begin
  inherited Create;
@@ -560,7 +560,7 @@ begin
  fNextHandle:=0;
  fFreeTop:=0;
  fMap:=nil;
- MapInit(aMapCapacityPowerOfTwo);
+ MapInit(aMapCapacity);
 end;
 
 destructor TpvTimedQueue<T>.Destroy;
