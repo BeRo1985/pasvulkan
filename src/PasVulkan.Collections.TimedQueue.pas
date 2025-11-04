@@ -976,7 +976,8 @@ begin
 end; 
 
 procedure TpvTimedQueue<T>.Serialize(const aSerializationData:TSerializationData);
-var Index:TpvSizeInt;
+var Index,LiveCount,NodeIndex:TpvSizeInt;
+    Node:PNode;
 begin
 
  // Serialize handle management state
@@ -988,15 +989,44 @@ begin
   aSerializationData.fHandleFreeList:=nil;
  end;
 
- // Serialize nodes
- SetLength(aSerializationData.fNodes,fNodeCount);
- if fNodeCount>0 then begin
-  // A simple move don't work because TData may contain managed types, so we need to copy element-wise
-  for Index:=0 to fNodeCount-1 do begin
-   aSerializationData.fNodes[Index]:=fNodes[Index];
+ // Serialize only live nodes in heap order (preserves sequence ordering)
+ // First count live nodes
+ LiveCount:=0;
+ for Index:=0 to fCount-1 do begin
+  NodeIndex:=fHeap[Index];
+  Node:=@fNodes[NodeIndex];
+  if not Node^.Dead then begin
+   inc(LiveCount);
   end;
  end;
+
+ // If any live nodes, copy them
+ if LiveCount>0 then begin
+
+  // Allocate space for live nodes
+  SetLength(aSerializationData.fNodes,LiveCount);
+  
+  // Copy live nodes in heap order
+  if LiveCount>0 then begin
+   LiveCount:=0;
+   for Index:=0 to fCount-1 do begin
+    NodeIndex:=fHeap[Index];
+    Node:=@fNodes[NodeIndex];
+    if not Node^.Dead then begin
+     // Copy element-wise because TData may contain managed types
+     aSerializationData.fNodes[LiveCount]:=Node^;
+     inc(LiveCount);
+    end;
+   end;
+  end;
+
+ end else begin
  
+  // No live nodes
+  aSerializationData.fNodes:=nil;
+
+ end;
+
 end;
 
 procedure TpvTimedQueue<T>.Deserialize(const aSerializationData:TSerializationData);
