@@ -156,9 +156,15 @@ type { TpvTimedQueue }
        function PeekEarliestNode(out aNode:TNode):Boolean; inline;
        function PopEarliestNode(out aNode:TNode):Boolean; inline;
 
-       function PeekEarliest(out aData:TData):Boolean; inline;
-       function PopEarliest(out aData:TData):Boolean; inline;
+       function PeekEarliestData(out aData:TData):Boolean; inline;
+       function PopEarliestData(out aData:TData):Boolean; inline;
 
+       function PeekEarliestTime(out aTime:TpvDouble):Boolean; inline;
+       function PopEarliestTime(out aTime:TpvDouble):Boolean; inline;
+
+       // Traverse all entries in arbitrary order, skipping dead entries. Useful for usage with a garbage collector of data for
+       // to mark these entries as live when these are used together with a scripting engine. 
+       // Don't use when you need ordered traversal.
        procedure Traverse(const aTraversalMethod:TTraversalMethod); inline;
 
        procedure ShiftByTime(const aDeltaTime:TpvDouble); inline;
@@ -716,7 +722,7 @@ begin
  result:=false;
 end;
 
-function TpvTimedQueue<T>.PeekEarliest(out aData:TData):Boolean;
+function TpvTimedQueue<T>.PeekEarliestData(out aData:TData):Boolean;
 var Node:PNode;
 begin
  while (fCount>0) and fNodes[fHeap[0]].Dead do begin
@@ -729,7 +735,7 @@ begin
  end;
 end;
 
-function TpvTimedQueue<T>.PopEarliest(out aData:TData):Boolean;
+function TpvTimedQueue<T>.PopEarliestData(out aData:TData):Boolean;
 var Node:PNode;
 begin
  while fCount>0 do begin
@@ -744,6 +750,35 @@ begin
   end;
  end;
  result:=false;
+end; 
+
+function TpvTimedQueue<T>.PeekEarliestTime(out aTime:TpvDouble):Boolean;
+var Node:PNode;
+begin
+ while (fCount>0) and fNodes[fHeap[0]].Dead do begin
+  RemoveAt(0);
+ end;
+ result:=fCount>0;
+ if result then begin
+  Node:=@fNodes[fHeap[0]];
+  aTime:=Node^.Time;
+ end;
+end;
+
+function TpvTimedQueue<T>.PopEarliestTime(out aTime:TpvDouble):Boolean;
+var Node:PNode;
+begin
+ while fCount>0 do begin
+  Node:=@fNodes[fHeap[0]];
+  if Node^.Dead then begin
+   RemoveAt(0);
+  end else begin
+   aTime:=Node^.Time;
+   RemoveAt(0);
+   result:=true;
+   exit;
+  end;
+ end; 
 end; 
 
 procedure TpvTimedQueue<T>.Traverse(const aTraversalMethod:TTraversalMethod);
