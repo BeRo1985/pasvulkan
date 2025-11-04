@@ -396,12 +396,63 @@ begin
 end;
 
 procedure TpvTimedQueue<T>.RemoveAt(aIndex:TpvSizeInt);
+{$if true}
+// More efficient version deciding direction only once
+var LastIndex,NodeIndex,ParentIndex,MoveIndex:TpvSizeInt;
+begin
+ LastIndex:=fCount-1;
+ NodeIndex:=fHeap[aIndex];
+
+ // Remove handle from map
+ MapDelete(fNodes[NodeIndex].Handle);
+
+ if aIndex<>LastIndex then begin
+  // Move last heap entry into the hole at aIndex
+  fHeap[aIndex]:=fHeap[LastIndex];
+  fHeapPosition[fHeap[aIndex]]:=aIndex;
+
+  // Shrink heap
+  dec(fCount);
+
+  // Decide direction once
+  MoveIndex:=aIndex;
+  if MoveIndex>0 then begin
+   ParentIndex:=(MoveIndex-1) div K;
+   if Less(MoveIndex,ParentIndex) then begin
+    // Key is smaller than parent, so it can only move up
+    SiftUp(MoveIndex);
+   end else begin
+    // Otherwise it can only move down
+    SiftDown(MoveIndex);
+   end;
+  end else begin
+   // At root, can only move down
+   SiftDown(MoveIndex);
+  end;
+
+ end else begin
+  // Removing the last element
+  dec(fCount);
+ end;
+
+ // Return node slot to freelist
+ fHeapPosition[NodeIndex]:=-1;
+ fNodes[NodeIndex].Dead:=false;
+ if length(fFreeList)<=fFreeTop then begin
+  SetLength(fFreeList,length(fFreeList)+((length(fFreeList)+16) shr 1));
+ end;
+ fFreeList[fFreeTop]:=NodeIndex;
+ inc(fFreeTop);
+end;
+{$else}
+// More straightforward but less efficient version
 var LastIndex,NodeIndex:TpvSizeInt;
 begin
  
  LastIndex:=fCount-1;
  NodeIndex:=fHeap[aIndex];
- 
+
+ // Remove handle from map
  MapDelete(fNodes[NodeIndex].Handle);
  
  if aIndex<>LastIndex then begin
@@ -424,6 +475,7 @@ begin
  inc(fFreeTop);
 
 end;
+{$endif}
 
 // === Public ==========================================================
 
