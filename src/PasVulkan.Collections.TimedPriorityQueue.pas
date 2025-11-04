@@ -847,6 +847,7 @@ begin
  fBruteforceSearchForUnusedHandlesAtOverflow:=false;
  fDoubleFloatingPointCompatibility:=false;
  fHandleCounterOverflowed:=false;
+ fExceptionOnHandleOverflow:=true;
  fFreeTop:=0;
  fHandleFreeTop:=0;
  fMap:=nil;
