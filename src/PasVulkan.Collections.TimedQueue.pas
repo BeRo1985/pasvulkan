@@ -134,6 +134,7 @@ type { TpvTimedQueue }
        procedure SiftUp(aIndex:TpvSizeInt); inline;
        procedure SiftDown(aIndex:TpvSizeInt); inline;
        procedure RemoveAt(aIndex:TpvSizeInt); inline;
+       procedure BulkCleanDeadAndRebuildHeap;
 
       public
 
@@ -396,15 +397,17 @@ begin
 end;
 
 procedure TpvTimedQueue<T>.RemoveAt(aIndex:TpvSizeInt);
-{$if true}
-// More efficient version deciding direction only once
+{$if false}
+// More efficient version deciding direction only once. TODO: Verify correctness
 var LastIndex,NodeIndex,ParentIndex,MoveIndex:TpvSizeInt;
+    Node:PNode;
 begin
  LastIndex:=fCount-1;
  NodeIndex:=fHeap[aIndex];
+ Node:=@fNodes[NodeIndex];
 
  // Remove handle from map
- MapDelete(fNodes[NodeIndex].Handle);
+ MapDelete(Node^.Handle);
 
  if aIndex<>LastIndex then begin
   // Move last heap entry into the hole at aIndex
@@ -437,24 +440,31 @@ begin
 
  // Return node slot to freelist
  fHeapPosition[NodeIndex]:=-1;
- fNodes[NodeIndex].Dead:=false;
+ Node^.Dead:=false;
  if length(fFreeList)<=fFreeTop then begin
   SetLength(fFreeList,length(fFreeList)+((length(fFreeList)+16) shr 1));
  end;
  fFreeList[fFreeTop]:=NodeIndex;
  inc(fFreeTop);
+
+ // Release managed fields early
+ Finalize(Node^.Data);
+ FillChar(Node^.Data,SizeOf(TData),0);
+
 end;
 {$else}
 // More straightforward but less efficient version
 var LastIndex,NodeIndex:TpvSizeInt;
+    Node:PNode;
 begin
  
  LastIndex:=fCount-1;
  NodeIndex:=fHeap[aIndex];
+ Node:=@fNodes[NodeIndex];
 
  // Remove handle from map
- MapDelete(fNodes[NodeIndex].Handle);
- 
+ MapDelete(Node^.Handle);
+
  if aIndex<>LastIndex then begin
   fHeap[aIndex]:=fHeap[LastIndex];
   fHeapPosition[fHeap[aIndex]]:=aIndex;
@@ -467,15 +477,66 @@ begin
  
  // Return node slot to freelist
  fHeapPosition[NodeIndex]:=-1;
- fNodes[NodeIndex].Dead:=false; // Clear tombstone mark for reuse
+ Node^.Dead:=false; // Clear tombstone mark for reuse
  if length(fFreeList)<=fFreeTop then begin
   SetLength(fFreeList,length(fFreeList)+((length(fFreeList)+16) shr 1));
  end;
  fFreeList[fFreeTop]:=NodeIndex;
  inc(fFreeTop);
 
+ // Release managed fields early
+ Finalize(Node^.Data);
+ FillChar(Node^.Data,SizeOf(TData),0);
+
 end;
 {$endif}
+
+procedure TpvTimedQueue<T>.BulkCleanDeadAndRebuildHeap;
+var Index,LiveCount,NodeIndex:TpvSizeInt;
+    Node:PNode;
+begin
+
+ // Compact live entries in-place at the front of fHeap
+ LiveCount:=0;
+ for Index:=0 to fCount-1 do begin
+  NodeIndex:=fHeap[Index];
+  Node:=@fNodes[NodeIndex];
+  if not Node^.Dead then begin
+   // Keep live entry
+   fHeap[LiveCount]:=NodeIndex;
+   inc(LiveCount);
+  end else begin
+   // Remove dead entry in bulk: drop handle, finalize payload, put on freelist
+   MapDelete(Node^.Handle);
+   // Release managed fields early
+   Finalize(Node^.Data);
+   FillChar(Node^.Data,SizeOf(TData),0);
+   Node^.Dead:=false; // clear tombstone for reuse
+   fHeapPosition[NodeIndex]:=-1;
+   if length(fFreeList)<=fFreeTop then begin
+    SetLength(fFreeList,length(fFreeList)+((length(fFreeList)+16) shr 1));
+   end;
+   fFreeList[fFreeTop]:=NodeIndex;
+   inc(fFreeTop);
+  end;
+ end;
+
+ // Update heap count to number of live entries
+ fCount:=LiveCount;
+
+ // Rebuild positions for live nodes
+ for Index:=0 to fCount-1 do begin
+  fHeapPosition[fHeap[Index]]:=Index;
+ end;
+
+ // Bottom-up heapify for K-ary heap in O(n)
+ // Last internal node is (fCount-2) div K; loop down to 0
+ if fCount>1 then begin
+  for Index:=((fCount-2) div K) downto 0 do begin
+   SiftDown(Index);
+  end;
+ end;
+end;
 
 // === Public ==========================================================
 
@@ -668,7 +729,7 @@ begin
 end;  
 
 procedure TpvTimedQueue<T>.ShiftByTime(const aDeltaTime:TpvDouble);
-var Index:TpvSizeInt;
+var Index,Expired:TpvSizeInt;
     Node:PNode;
 begin
  
@@ -680,6 +741,8 @@ begin
    Node^.Time:=Node^.Time-aDeltaTime; 
   end;
  
+  Expired:=0;
+
   // Remove all nodes that are now in the past (time < 0.0) via lazy marking,
   // then clean them from the heap top until the earliest is in the future.
   // We use lazy marking first to avoid O(n log n) heap removals.
@@ -687,13 +750,28 @@ begin
    Node:=@fNodes[fHeap[Index]];
    if (not Node^.Dead) and (Node^.Time<0.0) then begin
     Node^.Dead:=true;
+    inc(Expired);
    end;
   end;
 
-  // Now clean the heap by removing all dead nodes at the top
-  while (fCount>0) and fNodes[fHeap[0]].Dead do begin
-   RemoveAt(0);
-  end;
+  // If any expired nodes were found, clean them from the heap 
+  if Expired>0 then begin
+
+   // If a significant portion of nodes are expired, do a bulk clean and rebuild the heap
+   if Expired>(fCount shr 2) then begin
+    
+    BulkCleanDeadAndRebuildHeap;
+
+   end else begin
+    
+    // Now clean the heap by removing all dead nodes at the top
+    while (fCount>0) and fNodes[fHeap[0]].Dead do begin
+     RemoveAt(0);
+    end;
+
+   end; 
+
+  end; 
 
  end;
 
