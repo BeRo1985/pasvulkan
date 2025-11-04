@@ -211,7 +211,7 @@ end;
 procedure TpvTimedQueue<T>.MapEnsure;
 begin
  if (fMapSize>0) and (((fMapUsed+fMapTombstones)*10)>=(fMapSize*7)) then begin
-  MapRehash(BSRQWord(RoundUpToPowerOfTwo64(fMapSize))+1);
+  MapRehash({$if declared(BSRQWord)}BSRQWord{$else}BSRDWord{$ifend}(RoundUpToPowerOfTwo64(fMapSize))+1);
  end;
 end;
 
