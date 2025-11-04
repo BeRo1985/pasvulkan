@@ -308,10 +308,11 @@ end;
 // === Heap ============================================================
 
 procedure TpvTimedQueue<T>.EnsureCapacity(const aNeed:TpvSizeInt);
-var NewCapacity:TpvSizeInt;
+var NewCapacity,OldCapacity:TpvSizeInt;
 begin
  if length(fNodes)<aNeed then begin
-  NewCapacity:=length(fNodes);
+  OldCapacity:=length(fNodes);
+  NewCapacity:=OldCapacity;
   if NewCapacity=0 then begin
    NewCapacity:=16;
   end;
@@ -320,8 +321,8 @@ begin
   SetLength(fHeap,NewCapacity);
   SetLength(fHeapPosition,NewCapacity);
   SetLength(fFreeList,NewCapacity);
-  if NewCapacity>0 then begin
-   FillChar(fHeapPosition[0],NewCapacity*SizeOf(TpvSizeInt),$ff); // Initialize to -1
+  if NewCapacity>OldCapacity then begin
+   FillChar(fHeapPosition[OldCapacity],(NewCapacity-OldCapacity)*SizeOf(TpvSizeInt),$ff); // Initialize to -1
   end;
  end;
 end;
@@ -442,6 +443,7 @@ begin
  SetLength(fHeap,InitialCapacity);
  SetLength(fHeapPosition,InitialCapacity);
  SetLength(fFreeList,InitialCapacity);
+ FillChar(fHeapPosition[0],InitialCapacity*SizeOf(TpvSizeInt),$ff); // Initialize to -1
  fNodeCount:=0;
  fCount:=0;
  fSequenceCounter:=0;
