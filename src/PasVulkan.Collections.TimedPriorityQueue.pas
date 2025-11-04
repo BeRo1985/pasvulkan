@@ -561,7 +561,7 @@ begin
 end;
 {$else}
 // More straightforward but less efficient version
-var LastIndex,NodeIndex:TpvSizeInt;
+var LastIndex,NodeIndex,FreeIndex:TpvSizeInt;
     Node:PNode;
 begin
  
