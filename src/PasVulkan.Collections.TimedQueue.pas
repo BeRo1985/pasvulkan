@@ -79,7 +79,7 @@ type { TpvTimedQueue }
             THandleArray=array of THandle;
             TData=T;
             TNode=record
-             Time:TpvDouble;              // Time in seconds
+             Time:TpvDouble;              // Time
              Sequence:TpvUInt64;          // Stable tiebreaker
              Handle:THandle;              // Handle
              Data:TData;                  // User payload
