@@ -1046,7 +1046,12 @@ begin
  fCount:=LiveCount;
 
  // Update sequence counter
- fSequenceCounter:=SequenceCounter;
+ fSequenceCounter:=SequenceCounter+1;
+
+ // Reassign sequence numbers in heap order to maintain stable ordering
+ // This prevents sequence counter overflow (though practically impossible)
+ // Nodes in heap order get incrementing sequences, preserving their relative order
+ Resequence;
 
  // Bottom-up heapify for K-ary heap in O(n)
  // Last internal node is (fCount-2) div K; loop down to 0
