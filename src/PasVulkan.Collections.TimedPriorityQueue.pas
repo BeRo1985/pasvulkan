@@ -239,11 +239,7 @@ end;
 procedure TpvTimedPriorityQueue<T>.MapInit(const aCapacity:TpvSizeInt);
 var Index,Capacity:TpvSizeInt;
 begin
- if aCapacity<16 then begin
-  Capacity:=16;
- end else begin
-  Capacity:=TpvSizeInt(RoundUpToPowerOfTwoSizeUInt(TpvSizeUInt(aCapacity))); // Ensure power of two
- end;
+ Capacity:=TpvSizeInt(RoundUpToPowerOfTwoSizeUInt(TpvSizeUInt(Max(16,aCapacity)))); // Ensure power of two
  SetLength(fMap,Capacity);
  for Index:=0 to length(fMap)-1 do begin
   fMap[Index].State:=StateEmpty;
@@ -396,7 +392,7 @@ var NewCapacity,OldCapacity:TpvSizeInt;
 begin
  if length(fNodes)<aNeed then begin
   OldCapacity:=length(fNodes);
-  NewCapacity:=Max(16,RoundUpToPowerOfTwo64(Max(OldCapacity,aNeed)));
+  NewCapacity:=RoundUpToPowerOfTwo64(Max(16,Max(OldCapacity,aNeed)));
   SetLength(fNodes,NewCapacity);
   SetLength(fHeap,NewCapacity);
   SetLength(fHeapPosition,NewCapacity);
@@ -497,7 +493,7 @@ end;
 procedure TpvTimedPriorityQueue<T>.RemoveAt(aIndex:TpvSizeInt);
 {$if false}
 // More efficient version deciding direction only once. TODO: Verify correctness
-var LastIndex,NodeIndex,ParentIndex,MoveIndex:TpvSizeInt;
+var LastIndex,NodeIndex,ParentIndex,MoveIndex,FreeIndex:TpvSizeInt;
     Node:PNode;
 begin
  LastIndex:=fCount-1;
@@ -508,11 +504,12 @@ begin
  MapDelete(Node^.Handle);
 
  // Add handle to handle free list
- if length(fHandleFreeList)<=fHandleFreeTop then begin
-  SetLength(fHandleFreeList,length(fHandleFreeList)+((length(fHandleFreeList)+16) shr 1));
- end;
- fHandleFreeList[fHandleFreeTop]:=Node^.Handle;
+ FreeIndex:=fHandleFreeTop;
  inc(fHandleFreeTop);
+ if length(fHandleFreeList)<=fHandleFreeTop then begin
+  SetLength(fHandleFreeList,fHandleFreeTop+((fHandleFreeTop+1) shr 1));
+ end;
+ fHandleFreeList[FreeIndex]:=Node^.Handle;
 
  if aIndex<>LastIndex then begin
   // Move last heap entry into the hole at aIndex
@@ -545,12 +542,17 @@ begin
 
  // Return node slot to freelist
  fHeapPosition[NodeIndex]:=-1;
+ 
+ // Clear tombstone mark for reuse
  Node^.Dead:=false;
- if length(fFreeList)<=fFreeTop then begin
-  SetLength(fFreeList,length(fFreeList)+((length(fFreeList)+16) shr 1));
- end;
- fFreeList[fFreeTop]:=NodeIndex;
+
+ // Add node index to free list
+ FreeIndex:=fFreeTop;
  inc(fFreeTop);
+ if length(fFreeList)<=fFreeTop then begin
+  SetLength(fFreeList,fFreeTop+((fFreeTop+1) shr 1));
+ end;
+ fFreeList[FreeIndex]:=NodeIndex;
 
  // Release managed fields early
  Finalize(Node^.Data);
@@ -571,11 +573,12 @@ begin
  MapDelete(Node^.Handle);
 
  // Add handle to handle free list
- if length(fHandleFreeList)<=fHandleFreeTop then begin
-  SetLength(fHandleFreeList,length(fHandleFreeList)+((length(fHandleFreeList)+16) shr 1));
- end;
- fHandleFreeList[fHandleFreeTop]:=Node^.Handle;
+ FreeIndex:=fHandleFreeTop;
  inc(fHandleFreeTop);
+ if length(fHandleFreeList)<=fHandleFreeTop then begin
+  SetLength(fHandleFreeList,fHandleFreeTop+((fHandleFreeTop+1) shr 1));
+ end;
+ fHandleFreeList[FreeIndex]:=Node^.Handle;
 
  if aIndex<>LastIndex then begin
   fHeap[aIndex]:=fHeap[LastIndex];
@@ -589,12 +592,17 @@ begin
  
  // Return node slot to freelist
  fHeapPosition[NodeIndex]:=-1;
- Node^.Dead:=false; // Clear tombstone mark for reuse
- if length(fFreeList)<=fFreeTop then begin
-  SetLength(fFreeList,length(fFreeList)+((length(fFreeList)+16) shr 1));
- end;
- fFreeList[fFreeTop]:=NodeIndex;
+
+ // Clear tombstone mark for reuse
+ Node^.Dead:=false; 
+
+ // Add node index to free list
+ FreeIndex:=fFreeTop;
  inc(fFreeTop);
+ if length(fFreeList)<=fFreeTop then begin
+  SetLength(fFreeList,fFreeTop+((fFreeTop+1) shr 1));
+ end;
+ fFreeList[FreeIndex]:=NodeIndex;
 
  // Release managed fields early
  Finalize(Node^.Data);
@@ -604,39 +612,60 @@ end;
 {$endif}
 
 procedure TpvTimedPriorityQueue<T>.BulkCleanDeadAndRebuildHeap;
-var Index,LiveCount,NodeIndex:TpvSizeInt;
+var Index,LiveCount,NodeIndex,FreeIndex:TpvSizeInt;
     Node:PNode;
 begin
 
  // Compact live entries in-place at the front of fHeap
  LiveCount:=0;
  for Index:=0 to fCount-1 do begin
+
+  // Get node index from heap
   NodeIndex:=fHeap[Index];
+ 
+  // Get node pointer
   Node:=@fNodes[NodeIndex];
+  
+  // Check if node is marked dead
   if Node^.Dead then begin
+
    // Remove dead entry in bulk: drop handle, finalize payload, put on freelist
    MapDelete(Node^.Handle);
+
    // Add handle to handle free list
-   if length(fHandleFreeList)<=fHandleFreeTop then begin
-    SetLength(fHandleFreeList,length(fHandleFreeList)+((length(fHandleFreeList)+16) shr 1));
-   end;
-   fHandleFreeList[fHandleFreeTop]:=Node^.Handle;
+   FreeIndex:=fHandleFreeTop;
    inc(fHandleFreeTop);
+   if length(fHandleFreeList)<=fHandleFreeTop then begin
+    SetLength(fHandleFreeList,fHandleFreeTop+((fHandleFreeTop+1) shr 1));
+   end;
+   fHandleFreeList[FreeIndex]:=Node^.Handle;   
+   
    // Release managed fields early
    Finalize(Node^.Data);
    FillChar(Node^.Data,SizeOf(TData),#0);
-   Node^.Dead:=false; // clear tombstone for reuse
+   
+   // Clear tombstone mark for reuse
+   Node^.Dead:=false; 
+
+   // Mark heap position as free
    fHeapPosition[NodeIndex]:=-1;
+
+   // Add node index to free list
+   FreeIndex:=fFreeTop;
+   inc(fFreeTop);
    if length(fFreeList)<=fFreeTop then begin
-    SetLength(fFreeList,length(fFreeList)+((length(fFreeList)+16) shr 1));
+    SetLength(fFreeList,fFreeTop+((fFreeTop+1) shr 1));
    end;
    fFreeList[fFreeTop]:=NodeIndex;
-   inc(fFreeTop);
+
   end else begin
+   
    // Keep live entry
    fHeap[LiveCount]:=NodeIndex;
    inc(LiveCount);
+
   end;
+
  end;
 
  // Update heap count to number of live entries
@@ -663,10 +692,7 @@ constructor TpvTimedPriorityQueue<T>.Create(const aInitialCapacity:TpvSizeInt;co
 var InitialCapacity:TpvSizeInt;
 begin
  inherited Create;
- InitialCapacity:=aInitialCapacity;
- if InitialCapacity<16 then begin
-  InitialCapacity:=16;
- end;
+ InitialCapacity:=Max(16,aInitialCapacity);
  fNodes:=nil;
  fHeap:=nil;
  fHeapPosition:=nil;
@@ -1082,7 +1108,7 @@ begin
 end;
 
 procedure TpvTimedPriorityQueue<T>.Deserialize(const aSerializationData:TSerializationData);
-var Index,LiveCount,NodeIndex:TpvSizeInt;
+var Index,LiveCount,NodeIndex,FreeIndex:TpvSizeInt;
     Node:PNode;
     SequenceCounter:TpvUInt64;
 begin
@@ -1131,11 +1157,12 @@ begin
   end else begin
    // Dead node: add to free list
    fHeapPosition[Index]:=-1;
-   if length(fFreeList)<=fFreeTop then begin
-    SetLength(fFreeList,length(fFreeList)+((length(fFreeList)+16) shr 1));
-   end;
-   fFreeList[fFreeTop]:=Index;
+   FreeIndex:=fFreeTop;
    inc(fFreeTop);
+   if length(fFreeList)<=fFreeTop then begin
+    SetLength(fFreeList,fFreeTop+((fFreeTop+1) shr 1));
+   end;
+   fFreeList[FreeIndex]:=Index;
   end;
  end;
 
