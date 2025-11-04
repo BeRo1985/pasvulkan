@@ -501,11 +501,7 @@ begin
  for Index:=0 to fCount-1 do begin
   NodeIndex:=fHeap[Index];
   Node:=@fNodes[NodeIndex];
-  if not Node^.Dead then begin
-   // Keep live entry
-   fHeap[LiveCount]:=NodeIndex;
-   inc(LiveCount);
-  end else begin
+  if Node^.Dead then begin
    // Remove dead entry in bulk: drop handle, finalize payload, put on freelist
    MapDelete(Node^.Handle);
    // Release managed fields early
@@ -518,6 +514,10 @@ begin
    end;
    fFreeList[fFreeTop]:=NodeIndex;
    inc(fFreeTop);
+  end else begin
+   // Keep live entry
+   fHeap[LiveCount]:=NodeIndex;
+   inc(LiveCount);
   end;
  end;
 
@@ -536,6 +536,7 @@ begin
    SiftDown(Index);
   end;
  end;
+ 
 end;
 
 // === Public ==========================================================
