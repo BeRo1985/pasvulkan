@@ -97,6 +97,19 @@ type { TpvTimedQueue }
             PMapEntry=^TMapEntry;
             TMapEntryArray=array of TMapEntry;
             TTraversalMethod=procedure(const aNode:PNode) of object;
+            TSerializationData=class // For serialization purposes, including handle management state for persistent queues
+             private
+              fHandleCounter:THandle;
+              fHandleFreeList:THandleArray;
+              fNodes:TNodeArray;
+             public
+              constructor Create; reintroduce;
+              destructor Destroy; override;
+             public
+              property HandleCounter:THandle read fHandleCounter write fHandleCounter;
+              property HandleFreeList:THandleArray read fHandleFreeList write fHandleFreeList;
+              property Nodes:TNodeArray read fNodes write fNodes;
+            end;
       private
 
        // Nodes storage (flat array, never moved)
@@ -108,7 +121,7 @@ type { TpvTimedQueue }
        fHeapPosition:TIndexArray;
        fCount:TpvSizeInt;
        fSequenceCounter:TpvUInt64;
-       fNextHandle:THandle;
+       fHandleCounter:THandle;
 
        // Freelist of reusable node indices (stack)
        fFreeList:TIndexArray;
@@ -173,6 +186,9 @@ type { TpvTimedQueue }
 
        procedure ShiftByTime(const aDeltaTime:TpvDouble); inline;
 
+       procedure Serialize(const aSerializationData:TSerializationData); inline;
+       procedure Deserialize(const aSerializationData:TSerializationData); inline;
+
       published
 
        property Count:TpvSizeInt read fCount;
@@ -180,6 +196,25 @@ type { TpvTimedQueue }
      end;
 
 implementation
+
+{ TpvTimedQueue<T>.TSerializationData }
+
+constructor TpvTimedQueue<T>.TSerializationData.Create;
+begin
+ inherited Create;
+ fHandleCounter:=1;
+ fHandleFreeList:=nil;
+ fNodes:=nil;
+end;
+
+destructor TpvTimedQueue<T>.TSerializationData.Destroy;
+begin
+ fHandleFreeList:=nil;
+ fNodes:=nil;
+ inherited Destroy;
+end;
+
+{ TpvTimedQueue<T> }
 
 // === Map ===============================================================
 
@@ -594,7 +629,7 @@ begin
  fNodeCount:=0;
  fCount:=0;
  fSequenceCounter:=0;
- fNextHandle:=0;
+ fHandleCounter:=1;
  fFreeTop:=0;
  fHandleFreeTop:=0;
  fMap:=nil;
@@ -617,7 +652,7 @@ begin
  fNodeCount:=0;
  fCount:=0;
  fSequenceCounter:=0;
- fNextHandle:=0;
+ fHandleCounter:=1;
  fFreeTop:=0;
  fHandleFreeTop:=0;
  fMap:=nil;
@@ -646,8 +681,8 @@ begin
   dec(fHandleFreeTop);
   result:=fHandleFreeList[fHandleFreeTop];
  end else begin
-  inc(fNextHandle);
-  result:=fNextHandle;
+  result:=fHandleCounter;
+  inc(fHandleCounter);
  end;
 
  // Initialize node
@@ -891,5 +926,92 @@ begin
  end;
 
 end; 
+
+procedure TpvTimedQueue<T>.Serialize(const aSerializationData:TSerializationData);
+var Index:TpvSizeInt;
+begin
+
+ // Serialize handle management state
+ aSerializationData.fHandleCounter:=fHandleCounter;
+ if fHandleFreeTop>0 then begin
+  SetLength(aSerializationData.fHandleFreeList,fHandleFreeTop);
+  Move(fHandleFreeList[0],aSerializationData.fHandleFreeList[0],fHandleFreeTop*SizeOf(THandle));
+ end else begin
+  aSerializationData.fHandleFreeList:=nil;
+ end;
+
+ // Serialize nodes
+ SetLength(aSerializationData.fNodes,fNodeCount);
+ if fNodeCount>0 then begin
+  // A simple move don't work because TData may contain managed types, so we need to copy element-wise
+  for Index:=0 to fNodeCount-1 do begin
+   aSerializationData.fNodes[Index]:=fNodes[Index];
+  end;
+ end;
+ 
+end;
+
+procedure TpvTimedQueue<T>.Deserialize(const aSerializationData:TSerializationData);
+var Index,LiveCount,NodeIndex:TpvSizeInt;
+    Node:PNode;
+begin
+ 
+ // Clear current state
+ Clear;
+
+ // Restore handle management state
+ fHandleCounter:=aSerializationData.fHandleCounter;
+ fHandleFreeTop:=length(aSerializationData.fHandleFreeList);
+ if fHandleFreeTop>0 then begin
+  SetLength(fHandleFreeList,fHandleFreeTop);
+  Move(aSerializationData.fHandleFreeList[0],fHandleFreeList[0],fHandleFreeTop*SizeOf(THandle));
+ end else begin
+  fHandleFreeList:=nil;
+ end;
+
+ // Restore nodes
+ fNodeCount:=length(aSerializationData.fNodes);
+ if fNodeCount>0 then begin
+  EnsureCapacity(fNodeCount);
+  // Copy nodes element-wise because TData may contain managed types
+  for Index:=0 to fNodeCount-1 do begin
+   fNodes[Index]:=aSerializationData.fNodes[Index];
+  end;
+ end;
+
+ // Rebuild heap with only live (non-dead) nodes
+ LiveCount:=0;
+ for Index:=0 to fNodeCount-1 do begin
+  Node:=@fNodes[Index];
+  if not Node^.Dead then begin
+   // Add to heap
+   fHeap[LiveCount]:=Index;
+   fHeapPosition[Index]:=LiveCount;
+   // Add to map
+   MapPut(Node^.Handle,Index);
+   inc(LiveCount);
+  end else begin
+   // Dead node: add to free list
+   fHeapPosition[Index]:=-1;
+   if length(fFreeList)<=fFreeTop then begin
+    SetLength(fFreeList,length(fFreeList)+((length(fFreeList)+16) shr 1));
+   end;
+   fFreeList[fFreeTop]:=Index;
+   inc(fFreeTop);
+  end;
+ end;
+
+ // Update heap count
+ fCount:=LiveCount;
+
+ // Bottom-up heapify for K-ary heap in O(n)
+ // Last internal node is (fCount-2) div K; loop down to 0
+ if fCount>1 then begin
+  for Index:=((fCount-2) div K) downto 0 do begin
+   SiftDown(Index);
+  end;
+ end;
+
+end;
 
 end.
