@@ -218,6 +218,9 @@ type EpvTimedPriorityQueue=class(Exception);
 
        property BruteforceSearchForUnusedHandlesAtOverflow:Boolean read fBruteforceSearchForUnusedHandlesAtOverflow write fBruteforceSearchForUnusedHandlesAtOverflow;
 
+       // When enabled, limits handle values to 53 bits to ensure compatibility with double-precision floating point 
+       // representation. It's recommended to enable this when handles may be passed through JavaScript, POCA, Lua or 
+       // other scripting engines that use double-precision floating point for their numeric values.
        property DoubleFloatingPointCompatibility:Boolean read fDoubleFloatingPointCompatibility write fDoubleFloatingPointCompatibility;
        
      end;
