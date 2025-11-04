@@ -863,7 +863,8 @@ begin
    result:=true;
    exit;
   end;
- end; 
+ end;
+ result:=false; 
 end; 
 
 procedure TpvTimedQueue<T>.Traverse(const aTraversalMethod:TTraversalMethod);
