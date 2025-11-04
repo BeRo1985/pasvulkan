@@ -114,8 +114,7 @@ type { TpvTimedQueue }
        // Handle->Index open-addressing map (AoS)
        fMap:TMapEntryArray;
        fMapSize:TpvSizeInt;       // Capacity (power of two)
-       fMapUsed:TpvSizeInt;       // Used slots
-       fMapTombstones:TpvSizeInt; // Deleted (tombstone) slots since last rehash
+       fMapCount:TpvSizeInt;      // Total entries in map (excluding tombstones)
        fMapSlotMask:TpvSizeInt;   // Mask (fMapSize-1)
 
        // Map methods
@@ -161,7 +160,7 @@ type { TpvTimedQueue }
       published
 
        property Count:TpvSizeInt read fCount;
-
+       
      end;
 
 implementation
@@ -190,8 +189,7 @@ begin
  end;
  fMapSize:=Capacity;
  fMapSlotMask:=Capacity-1;
- fMapUsed:=0;
- fMapTombstones:=0;
+ fMapCount:=0;
 end;
 
 procedure TpvTimedQueue<T>.MapRehash(const aNewPowerOfTwo:TpvSizeInt);
@@ -210,7 +208,7 @@ end;
 
 procedure TpvTimedQueue<T>.MapEnsure;
 begin
- if (fMapSize>0) and (((fMapUsed+fMapTombstones)*10)>=(fMapSize*7)) then begin
+ if (fMapSize>0) and ((fMapCount*10)>=(fMapSize*7)) then begin
   MapRehash({$if declared(BSRQWord)}BSRQWord{$else}BSRDWord{$ifend}(RoundUpToPowerOfTwo64(fMapSize))+1);
  end;
 end;
@@ -233,13 +231,11 @@ begin
    if FirstDeleted>=0 then begin
     Position:=FirstDeleted;
     MapEntry:=@fMap[Position];
-    dec(fMapTombstones);
-   end else begin
-    inc(fMapUsed);
    end;
    MapEntry^.Key:=aHandle;
    MapEntry^.Value:=aIndex;
    MapEntry^.State:=StateUsed;
+   inc(fMapCount);
    exit;
   end else begin
    if MapEntry^.State=StateDeleted then begin
@@ -296,7 +292,7 @@ begin
    end else begin
     if (MapEntry^.State=StateUsed) and (MapEntry^.Key=aHandle) then begin
      MapEntry^.State:=StateDeleted; // Tombstone
-     inc(fMapTombstones);
+     dec(fMapCount);
      exit;
     end else begin 
      Position:=(Position+1) and fMapSlotMask;
@@ -586,8 +582,7 @@ begin
  fFreeTop:=0;
  fMap:=nil;
  fMapSize:=0;
- fMapUsed:=0;
- fMapTombstones:=0;
+ fMapCount:=0;
  fMapSlotMask:=0; 
 end;
 
@@ -628,7 +623,7 @@ begin
  fHeapPosition[NodeIndex]:=HeapIndex;
  inc(fCount);
  SiftUp(HeapIndex);
-
+ 
 end;
 
 function TpvTimedQueue<T>.Cancel(const aHandle:THandle):Boolean;
