@@ -232,7 +232,7 @@ begin
  if aCapacity<16 then begin
   Capacity:=16;
  end else begin
-  Capacity:=aCapacity;
+  Capacity:=TpvSizeInt(RoundUpToPowerOfTwoSizeUInt(TpvSizeUInt(aCapacity))); // Ensure power of two
  end;
  SetLength(fMap,Capacity);
  for Index:=0 to length(fMap)-1 do begin
