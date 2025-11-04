@@ -633,7 +633,6 @@ begin
    Node:=@fNodes[fHeap[Index]];
    if (not Node^.Dead) and (Node^.Time<0.0) then begin
     Node^.Dead:=true;
-    inc(fMapTombstones);
    end;
   end;
 
