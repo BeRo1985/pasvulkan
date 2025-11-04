@@ -75,6 +75,8 @@ type { TpvTimedQueue }
              StateUsed=1;
              StateDeleted=2;
        type THandle=TpvUInt64;
+            PHandle=^THandle;
+            THandleArray=array of THandle;
             TData=T;
             TNode=record
              Time:TpvDouble;              // Time in seconds
@@ -110,6 +112,10 @@ type { TpvTimedQueue }
        // Freelist of reusable node indices (stack)
        fFreeList:TIndexArray;
        fFreeTop:TpvSizeInt;
+
+       // Freelist of reusable handles (stack)
+       fHandleFreeList:THandleArray;
+       fHandleFreeTop:TpvSizeInt;
 
        // Handle->Index open-addressing map (AoS)
        fMap:TMapEntryArray;
@@ -405,6 +411,13 @@ begin
  // Remove handle from map
  MapDelete(Node^.Handle);
 
+ // Add handle to handle free list
+ if length(fHandleFreeList)<=fHandleFreeTop then begin
+  SetLength(fHandleFreeList,length(fHandleFreeList)+((length(fHandleFreeList)+16) shr 1));
+ end;
+ fHandleFreeList[fHandleFreeTop]:=Node^.Handle;
+ inc(fHandleFreeTop);
+
  if aIndex<>LastIndex then begin
   // Move last heap entry into the hole at aIndex
   fHeap[aIndex]:=fHeap[LastIndex];
@@ -461,6 +474,13 @@ begin
  // Remove handle from map
  MapDelete(Node^.Handle);
 
+ // Add handle to handle free list
+ if length(fHandleFreeList)<=fHandleFreeTop then begin
+  SetLength(fHandleFreeList,length(fHandleFreeList)+((length(fHandleFreeList)+16) shr 1));
+ end;
+ fHandleFreeList[fHandleFreeTop]:=Node^.Handle;
+ inc(fHandleFreeTop);
+
  if aIndex<>LastIndex then begin
   fHeap[aIndex]:=fHeap[LastIndex];
   fHeapPosition[fHeap[aIndex]]:=aIndex;
@@ -500,6 +520,12 @@ begin
   if Node^.Dead then begin
    // Remove dead entry in bulk: drop handle, finalize payload, put on freelist
    MapDelete(Node^.Handle);
+   // Add handle to handle free list
+   if length(fHandleFreeList)<=fHandleFreeTop then begin
+    SetLength(fHandleFreeList,length(fHandleFreeList)+((length(fHandleFreeList)+16) shr 1));
+   end;
+   fHandleFreeList[fHandleFreeTop]:=Node^.Handle;
+   inc(fHandleFreeTop);
    // Release managed fields early
    Finalize(Node^.Data);
    FillChar(Node^.Data,SizeOf(TData),0);
@@ -553,12 +579,14 @@ begin
  SetLength(fHeap,InitialCapacity);
  SetLength(fHeapPosition,InitialCapacity);
  SetLength(fFreeList,InitialCapacity);
+ SetLength(fHandleFreeList,InitialCapacity);
  FillChar(fHeapPosition[0],InitialCapacity*SizeOf(TpvSizeInt),$ff); // Initialize to -1
  fNodeCount:=0;
  fCount:=0;
  fSequenceCounter:=0;
  fNextHandle:=0;
  fFreeTop:=0;
+ fHandleFreeTop:=0;
  fMap:=nil;
  MapInit(aMapCapacity);
 end;
@@ -575,11 +603,13 @@ begin
  fHeap:=nil;
  fHeapPosition:=nil;
  fFreeList:=nil;
+ fHandleFreeList:=nil;
  fNodeCount:=0;
  fCount:=0;
  fSequenceCounter:=0;
  fNextHandle:=0;
  fFreeTop:=0;
+ fHandleFreeTop:=0;
  fMap:=nil;
  fMapSize:=0;
  fMapCount:=0;
@@ -601,9 +631,14 @@ begin
   inc(fNodeCount);
  end;
 
- // Get new handle
- inc(fNextHandle);
- result:=fNextHandle;
+ // Get handle: reuse from free list or allocate new
+ if fHandleFreeTop>0 then begin
+  dec(fHandleFreeTop);
+  result:=fHandleFreeList[fHandleFreeTop];
+ end else begin
+  inc(fNextHandle);
+  result:=fNextHandle;
+ end;
 
  // Initialize node
  Node:=@fNodes[NodeIndex];
