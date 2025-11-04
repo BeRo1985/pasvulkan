@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Collections.TimedQueue;
+unit PasVulkan.Collections.TimedPriorityQueue;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -67,8 +67,8 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math;
 
-type { TpvTimedQueue }
-     TpvTimedQueue<T>=class
+type { TpvTimedPriorityQueue }
+     TpvTimedPriorityQueue<T>=class
       public
        const K=4; // 4-ary heap
              StateEmpty=0;
@@ -77,10 +77,15 @@ type { TpvTimedQueue }
        type THandle=TpvUInt64;
             PHandle=^THandle;
             THandleArray=array of THandle;
+            TTime=TpvDouble;
+            PTime=^TTime;
+            TPriority=TpvInt32;
+            PPriority=^TPriority;
             TData=T;
             PData=^TData;
             TNode=record
-             Time:TpvDouble;              // Time
+             Time:TTime;                  // Time
+             Priority:TPriority;          // Priority (higher value = higher priority)
              Sequence:TpvUInt64;          // Stable tiebreaker
              Handle:THandle;              // Handle
              Data:TData;                  // User payload
@@ -164,13 +169,13 @@ type { TpvTimedQueue }
       
        procedure Clear;
       
-       function Push(const aTime:TpvDouble;const aData:TData):THandle; inline;
+       function Push(const aTime:TTime;const aPriority:TPriority;const aData:TData):THandle; inline;
       
        function Cancel(const aHandle:THandle):Boolean; inline;     // eager remove
        function MarkCancel(const aHandle:THandle):Boolean; inline; // lazy mark
 
-       function PeekEarliest(const aData:PData;const aTime:PpvDouble;const aHandle:PHandle):Boolean; inline;
-       function PopEarliest(const aData:PData;const aTime:PpvDouble;const aHandle:PHandle):Boolean; inline;
+       function PeekEarliest(const aData:PData;const aTime:PTime;const aPriority:PPriority;const aHandle:PHandle):Boolean; inline;
+       function PopEarliest(const aData:PData;const aTime:PTime;const aPriority:PPriority;const aHandle:PHandle):Boolean; inline;
 
        function PeekEarliestNode(out aNode:TNode):Boolean; inline;
        function PopEarliestNode(out aNode:TNode):Boolean; inline;
@@ -178,15 +183,18 @@ type { TpvTimedQueue }
        function PeekEarliestData(out aData:TData):Boolean; inline;
        function PopEarliestData(out aData:TData):Boolean; inline;
 
-       function PeekEarliestTime(out aTime:TpvDouble):Boolean; inline;
-       function PopEarliestTime(out aTime:TpvDouble):Boolean; inline;
+       function PeekEarliestTime(out aTime:TTime):Boolean; inline;
+       function PopEarliestTime(out aTime:TTime):Boolean; inline;
+
+       function PeekEarliestPriority(out aPriority:TPriority):Boolean; inline;
+       function PopEarliestPriority(out aPriority:TPriority):Boolean; inline;
 
        // Traverse all entries in arbitrary order, skipping dead entries. Useful for usage with a garbage collector of data for
        // to mark these entries as live when these are used together with a scripting engine. 
        // Don't use when you need ordered traversal.
        procedure Traverse(const aTraversalMethod:TTraversalMethod); inline;
 
-       procedure ShiftByTime(const aDeltaTime:TpvDouble); inline;
+       procedure ShiftByTime(const aDeltaTime:TTime); inline;
 
        procedure Serialize(const aSerializationData:TSerializationData); inline;
        procedure Deserialize(const aSerializationData:TSerializationData); inline;
@@ -199,9 +207,9 @@ type { TpvTimedQueue }
 
 implementation
 
-{ TpvTimedQueue<T>.TSerializationData }
+{ TpvTimedPriorityQueue<T>.TSerializationData }
 
-constructor TpvTimedQueue<T>.TSerializationData.Create;
+constructor TpvTimedPriorityQueue<T>.TSerializationData.Create;
 begin
  inherited Create;
  fHandleCounter:=1;
@@ -209,18 +217,18 @@ begin
  fNodes:=nil;
 end;
 
-destructor TpvTimedQueue<T>.TSerializationData.Destroy;
+destructor TpvTimedPriorityQueue<T>.TSerializationData.Destroy;
 begin
  fHandleFreeList:=nil;
  fNodes:=nil;
  inherited Destroy;
 end;
 
-{ TpvTimedQueue<T> }
+{ TpvTimedPriorityQueue<T> }
 
 // === Map ===============================================================
 
-class function TpvTimedQueue<T>.MapHash(const aHandle:THandle):TpvUInt64; 
+class function TpvTimedPriorityQueue<T>.MapHash(const aHandle:THandle):TpvUInt64; 
 const Multiplier=TpvUInt64($9e3779b97f4a7c15); // 64-bit golden ratio
 var Value:TpvUInt64;
 begin
@@ -228,7 +236,7 @@ begin
  result:=Value xor (Value shr 33);
 end;
 
-procedure TpvTimedQueue<T>.MapInit(const aCapacity:TpvSizeInt);
+procedure TpvTimedPriorityQueue<T>.MapInit(const aCapacity:TpvSizeInt);
 var Index,Capacity:TpvSizeInt;
 begin
  if aCapacity<16 then begin
@@ -246,7 +254,7 @@ begin
  fMapDeletedCount:=0;
 end;
 
-procedure TpvTimedQueue<T>.MapRehash(const aNewCapacity:TpvSizeInt);
+procedure TpvTimedPriorityQueue<T>.MapRehash(const aNewCapacity:TpvSizeInt);
 var OldMap:TMapEntryArray;
     Index:TpvSizeInt;
 begin
@@ -260,14 +268,14 @@ begin
  end;
 end;
 
-procedure TpvTimedQueue<T>.MapEnsure;
+procedure TpvTimedPriorityQueue<T>.MapEnsure;
 begin
  if (fMapSize>0) and (((fMapCount*10)>=(fMapSize*7))or (((fMapCount+fMapDeletedCount)*10)>=(fMapSize*8))) then begin
   MapRehash(TpvSizeInt(RoundUpToPowerOfTwoSizeUInt(TpvSizeUInt(fMapSize) shl 1)));
  end;
 end;
 
-procedure TpvTimedQueue<T>.MapPut(const aHandle:THandle;const aIndex:TpvSizeInt);
+procedure TpvTimedPriorityQueue<T>.MapPut(const aHandle:THandle;const aIndex:TpvSizeInt);
 var Position,FirstDeleted:TpvSizeInt;
     HashKey:TpvUInt64;
     MapEntry:PMapEntry;
@@ -305,7 +313,7 @@ begin
  end;
 end;
 
-function TpvTimedQueue<T>.MapTryGet(const aHandle:THandle;out aIndex:TpvSizeInt):Boolean;
+function TpvTimedPriorityQueue<T>.MapTryGet(const aHandle:THandle;out aIndex:TpvSizeInt):Boolean;
 var Position:TpvSizeInt;
     HashKey:TpvUInt64;
     MapEntry:PMapEntry;
@@ -331,7 +339,7 @@ begin
  end;
 end;
 
-procedure TpvTimedQueue<T>.MapDelete(const aHandle:THandle); 
+procedure TpvTimedPriorityQueue<T>.MapDelete(const aHandle:THandle); 
 var Position:TpvSizeInt;
     HashKey:TpvUInt64;
     MapEntry:PMapEntry;
@@ -359,7 +367,7 @@ end;
 
 // === Heap ============================================================
 
-procedure TpvTimedQueue<T>.Resequence;
+procedure TpvTimedPriorityQueue<T>.Resequence;
 var Index,NodeIndex:TpvSizeInt;
     Node:PNode;
     NewSequence:TpvUInt64;
@@ -383,7 +391,7 @@ begin
 
 end;
 
-procedure TpvTimedQueue<T>.EnsureCapacity(const aNeed:TpvSizeInt);
+procedure TpvTimedPriorityQueue<T>.EnsureCapacity(const aNeed:TpvSizeInt);
 var NewCapacity,OldCapacity:TpvSizeInt;
 begin
  if length(fNodes)<aNeed then begin
@@ -399,19 +407,23 @@ begin
  end;
 end;
 
-function TpvTimedQueue<T>.Less(const aIndexA,aIndexB:TpvSizeInt):Boolean;
+function TpvTimedPriorityQueue<T>.Less(const aIndexA,aIndexB:TpvSizeInt):Boolean;
 var NodeA,NodeB:PNode;
 begin
  NodeA:=@fNodes[fHeap[aIndexA]];
  NodeB:=@fNodes[fHeap[aIndexB]];
  if NodeA^.Time<>NodeB^.Time then begin
-  result:=NodeA^.Time<NodeB^.Time;
+  result:=NodeA^.Time<NodeB^.Time; // Earlier time means higher priority
  end else begin
-  result:=NodeA^.Sequence<NodeB^.Sequence;
+  if NodeA^.Priority<>NodeB^.Priority then begin
+   result:=NodeA^.Priority>NodeB^.Priority; // Higher priority value means higher priority
+  end else begin
+   result:=NodeA^.Sequence<NodeB^.Sequence;
+  end;
  end;
 end;
 
-procedure TpvTimedQueue<T>.Swap(const aIndexA,aIndexB:TpvSizeInt);
+procedure TpvTimedPriorityQueue<T>.Swap(const aIndexA,aIndexB:TpvSizeInt);
 var TempIndex:TpvSizeInt;
 begin
  TempIndex:=fHeap[aIndexA];
@@ -422,7 +434,7 @@ begin
  fHeapPosition[fHeap[aIndexB]]:=aIndexB;
 end;
 
-procedure TpvTimedQueue<T>.SiftUp(aIndex:TpvSizeInt);
+procedure TpvTimedPriorityQueue<T>.SiftUp(aIndex:TpvSizeInt);
 var ParentIndex:TpvSizeInt;
 begin
  while aIndex>0 do begin
@@ -436,7 +448,7 @@ begin
  end;
 end;
 
-procedure TpvTimedQueue<T>.SiftDown(aIndex:TpvSizeInt);
+procedure TpvTimedPriorityQueue<T>.SiftDown(aIndex:TpvSizeInt);
 var Child1,Child2,Child3,Child4,MinimumIndex:TpvSizeInt;
 begin
  
@@ -482,7 +494,7 @@ begin
 
 end;
 
-procedure TpvTimedQueue<T>.RemoveAt(aIndex:TpvSizeInt);
+procedure TpvTimedPriorityQueue<T>.RemoveAt(aIndex:TpvSizeInt);
 {$if false}
 // More efficient version deciding direction only once. TODO: Verify correctness
 var LastIndex,NodeIndex,ParentIndex,MoveIndex:TpvSizeInt;
@@ -591,7 +603,7 @@ begin
 end;
 {$endif}
 
-procedure TpvTimedQueue<T>.BulkCleanDeadAndRebuildHeap;
+procedure TpvTimedPriorityQueue<T>.BulkCleanDeadAndRebuildHeap;
 var Index,LiveCount,NodeIndex:TpvSizeInt;
     Node:PNode;
 begin
@@ -647,7 +659,7 @@ end;
 
 // === Public ==========================================================
 
-constructor TpvTimedQueue<T>.Create(const aInitialCapacity:TpvSizeInt;const aMapCapacity:TpvSizeInt);
+constructor TpvTimedPriorityQueue<T>.Create(const aInitialCapacity:TpvSizeInt;const aMapCapacity:TpvSizeInt);
 var InitialCapacity:TpvSizeInt;
 begin
  inherited Create;
@@ -675,13 +687,13 @@ begin
  MapInit(aMapCapacity);
 end;
 
-destructor TpvTimedQueue<T>.Destroy;
+destructor TpvTimedPriorityQueue<T>.Destroy;
 begin
  Clear;
  inherited Destroy;
 end;
 
-procedure TpvTimedQueue<T>.Clear;
+procedure TpvTimedPriorityQueue<T>.Clear;
 begin
  fNodes:=nil;
  fHeap:=nil;
@@ -701,7 +713,7 @@ begin
  fMapSlotMask:=0; 
 end;
 
-function TpvTimedQueue<T>.Push(const aTime:TpvDouble;const aData:TData):THandle;
+function TpvTimedPriorityQueue<T>.Push(const aTime:TTime;const aPriority:TPriority;const aData:TData):THandle;
 var HeapIndex,NodeIndex:TpvSizeInt;
     Node:PNode;
 begin
@@ -728,6 +740,7 @@ begin
  // Initialize node
  Node:=@fNodes[NodeIndex];
  Node^.Time:=aTime;
+ Node^.Priority:=aPriority;
  Node^.Sequence:=fSequenceCounter;
  inc(fSequenceCounter);
  Node^.Handle:=result;
@@ -753,7 +766,7 @@ begin
 
 end;
 
-function TpvTimedQueue<T>.Cancel(const aHandle:THandle):Boolean;
+function TpvTimedPriorityQueue<T>.Cancel(const aHandle:THandle):Boolean;
 var NodeIndex,HeapIndex:TpvSizeInt;
 begin
  if MapTryGet(aHandle,NodeIndex) then begin
@@ -767,7 +780,7 @@ begin
  end;
 end;
 
-function TpvTimedQueue<T>.MarkCancel(const aHandle:THandle):Boolean;
+function TpvTimedPriorityQueue<T>.MarkCancel(const aHandle:THandle):Boolean;
 var NodeIndex:TpvSizeInt;
 begin
  if MapTryGet(aHandle,NodeIndex) then begin
@@ -778,7 +791,7 @@ begin
  end;
 end;
 
-function TpvTimedQueue<T>.PeekEarliest(const aData:PData;const aTime:PpvDouble;const aHandle:PHandle):Boolean;
+function TpvTimedPriorityQueue<T>.PeekEarliest(const aData:PData;const aTime:PTime;const aPriority:PPriority;const aHandle:PHandle):Boolean;
 var Node:PNode;
 begin
  while (fCount>0) and fNodes[fHeap[0]].Dead do begin
@@ -793,13 +806,16 @@ begin
   if assigned(aTime) then begin
    aTime^:=Node^.Time;
   end;
+  if assigned(aPriority) then begin
+   aPriority^:=Node^.Priority;
+  end;
   if assigned(aHandle) then begin
    aHandle^:=Node^.Handle;
   end;
  end;
 end;
 
-function TpvTimedQueue<T>.PopEarliest(const aData:PData;const aTime:PpvDouble;const aHandle:PHandle):Boolean;
+function TpvTimedPriorityQueue<T>.PopEarliest(const aData:PData;const aTime:PTime;const aPriority:PPriority;const aHandle:PHandle):Boolean;
 var Node:PNode;
 begin
  while fCount>0 do begin
@@ -813,6 +829,9 @@ begin
    if assigned(aTime) then begin
     aTime^:=Node^.Time;
    end;
+   if assigned(aPriority) then begin
+    aPriority^:=Node^.Priority;
+   end;
    if assigned(aHandle) then begin
     aHandle^:=Node^.Handle;
    end;
@@ -824,7 +843,7 @@ begin
  result:=false;
 end;
 
-function TpvTimedQueue<T>.PeekEarliestNode(out aNode:TNode):Boolean;
+function TpvTimedPriorityQueue<T>.PeekEarliestNode(out aNode:TNode):Boolean;
 var Node:PNode;
 begin
  while (fCount>0) and fNodes[fHeap[0]].Dead do begin
@@ -837,7 +856,7 @@ begin
  end;
 end;
 
-function TpvTimedQueue<T>.PopEarliestNode(out aNode:TNode):Boolean;
+function TpvTimedPriorityQueue<T>.PopEarliestNode(out aNode:TNode):Boolean;
 var Node:PNode;
 begin
  while fCount>0 do begin
@@ -854,7 +873,7 @@ begin
  result:=false;
 end;
 
-function TpvTimedQueue<T>.PeekEarliestData(out aData:TData):Boolean;
+function TpvTimedPriorityQueue<T>.PeekEarliestData(out aData:TData):Boolean;
 var Node:PNode;
 begin
  while (fCount>0) and fNodes[fHeap[0]].Dead do begin
@@ -867,7 +886,7 @@ begin
  end;
 end;
 
-function TpvTimedQueue<T>.PopEarliestData(out aData:TData):Boolean;
+function TpvTimedPriorityQueue<T>.PopEarliestData(out aData:TData):Boolean;
 var Node:PNode;
 begin
  while fCount>0 do begin
@@ -884,7 +903,7 @@ begin
  result:=false;
 end; 
 
-function TpvTimedQueue<T>.PeekEarliestTime(out aTime:TpvDouble):Boolean;
+function TpvTimedPriorityQueue<T>.PeekEarliestTime(out aTime:TTime):Boolean;
 var Node:PNode;
 begin
  while (fCount>0) and fNodes[fHeap[0]].Dead do begin
@@ -897,7 +916,7 @@ begin
  end;
 end;
 
-function TpvTimedQueue<T>.PopEarliestTime(out aTime:TpvDouble):Boolean;
+function TpvTimedPriorityQueue<T>.PopEarliestTime(out aTime:TTime):Boolean;
 var Node:PNode;
 begin
  while fCount>0 do begin
@@ -914,7 +933,37 @@ begin
  result:=false; 
 end; 
 
-procedure TpvTimedQueue<T>.Traverse(const aTraversalMethod:TTraversalMethod);
+function TpvTimedPriorityQueue<T>.PeekEarliestPriority(out aPriority:TPriority):Boolean;
+var Node:PNode;
+begin
+ while (fCount>0) and fNodes[fHeap[0]].Dead do begin
+  RemoveAt(0);
+ end;
+ result:=fCount>0;
+ if result then begin
+  Node:=@fNodes[fHeap[0]];
+  aPriority:=Node^.Priority;
+ end;
+end;
+
+function TpvTimedPriorityQueue<T>.PopEarliestPriority(out aPriority:TPriority):Boolean;
+var Node:PNode;
+begin
+ while fCount>0 do begin
+  Node:=@fNodes[fHeap[0]];
+  if Node^.Dead then begin
+   RemoveAt(0);
+  end else begin
+   aPriority:=Node^.Priority;
+   RemoveAt(0);
+   result:=true;
+   exit;
+  end;
+ end;
+ result:=false; 
+end; 
+
+procedure TpvTimedPriorityQueue<T>.Traverse(const aTraversalMethod:TTraversalMethod);
 var Index,NodeIndex:TpvSizeInt;
     Node:PNode;
 begin
@@ -927,7 +976,7 @@ begin
  end;
 end;  
 
-procedure TpvTimedQueue<T>.ShiftByTime(const aDeltaTime:TpvDouble);
+procedure TpvTimedPriorityQueue<T>.ShiftByTime(const aDeltaTime:TTime);
 var Index,Expired:TpvSizeInt;
     Node:PNode;
 begin
@@ -975,7 +1024,7 @@ begin
 
 end; 
 
-procedure TpvTimedQueue<T>.Serialize(const aSerializationData:TSerializationData);
+procedure TpvTimedPriorityQueue<T>.Serialize(const aSerializationData:TSerializationData);
 var Index,LiveCount,NodeIndex:TpvSizeInt;
     Node:PNode;
 begin
@@ -1029,7 +1078,7 @@ begin
 
 end;
 
-procedure TpvTimedQueue<T>.Deserialize(const aSerializationData:TSerializationData);
+procedure TpvTimedPriorityQueue<T>.Deserialize(const aSerializationData:TSerializationData);
 var Index,LiveCount,NodeIndex:TpvSizeInt;
     Node:PNode;
     SequenceCounter:TpvUInt64;
