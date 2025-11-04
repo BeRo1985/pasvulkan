@@ -214,8 +214,16 @@ type EpvTimedPriorityQueue=class(Exception);
 
        property Count:TpvSizeInt read fCount;
 
+       // When enabled, ensures that each handle is unique and never reused, even after cancellation or popping.
+       // This is useful to prevent accidental cancellation of old handles that may be in use again at a later time,
+       // for example at entity/component systems and similar use cases.
        property UniqueHandles:Boolean read fUniqueHandles write fUniqueHandles;
 
+       // When enabled, performs a one-time bruteforce scan to find all unused handles when handle overflow occurs.
+       // It will be never occur in practice, but this ensures that all possible handles are reused before raising 
+       // an exception. It's just a theoretical safety measure, given that future systems have very large RAM sizes,
+       // otherwise it would lead to a out-of-memory situation, when the memory required for the scan exceeds
+       // available memory on today's systems.
        property BruteforceSearchForUnusedHandlesAtOverflow:Boolean read fBruteforceSearchForUnusedHandlesAtOverflow write fBruteforceSearchForUnusedHandlesAtOverflow;
 
        // When enabled, limits handle values to 53 bits to ensure compatibility with double-precision floating point 
