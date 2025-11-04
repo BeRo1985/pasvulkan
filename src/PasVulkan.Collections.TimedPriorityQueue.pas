@@ -402,7 +402,7 @@ begin
   SetLength(fHeapPosition,NewCapacity);
   SetLength(fFreeList,NewCapacity);
   if NewCapacity>OldCapacity then begin
-   FillChar(fHeapPosition[OldCapacity],(NewCapacity-OldCapacity)*SizeOf(TpvSizeInt),$ff); // Initialize to -1
+   FillChar(fHeapPosition[OldCapacity],(NewCapacity-OldCapacity)*SizeOf(TpvSizeInt),#$ff); // Initialize to -1
   end;
  end;
 end;
@@ -554,7 +554,7 @@ begin
 
  // Release managed fields early
  Finalize(Node^.Data);
- FillChar(Node^.Data,SizeOf(TData),0);
+ FillChar(Node^.Data,SizeOf(TData),#0);
 
 end;
 {$else}
@@ -598,7 +598,7 @@ begin
 
  // Release managed fields early
  Finalize(Node^.Data);
- FillChar(Node^.Data,SizeOf(TData),0);
+ FillChar(Node^.Data,SizeOf(TData),#0);
 
 end;
 {$endif}
@@ -624,7 +624,7 @@ begin
    inc(fHandleFreeTop);
    // Release managed fields early
    Finalize(Node^.Data);
-   FillChar(Node^.Data,SizeOf(TData),0);
+   FillChar(Node^.Data,SizeOf(TData),#0);
    Node^.Dead:=false; // clear tombstone for reuse
    fHeapPosition[NodeIndex]:=-1;
    if length(fFreeList)<=fFreeTop then begin
@@ -676,7 +676,7 @@ begin
  SetLength(fHeapPosition,InitialCapacity);
  SetLength(fFreeList,InitialCapacity);
  SetLength(fHandleFreeList,InitialCapacity);
- FillChar(fHeapPosition[0],InitialCapacity*SizeOf(TpvSizeInt),$ff); // Initialize to -1
+ FillChar(fHeapPosition[0],InitialCapacity*SizeOf(TpvSizeInt),#$ff); // Initialize to -1
  fNodeCount:=0;
  fCount:=0;
  fSequenceCounter:=0;
