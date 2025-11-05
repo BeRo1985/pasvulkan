@@ -103,7 +103,7 @@ type EpvTimedPriorityQueue=class(Exception);
             end;
             PMapEntry=^TMapEntry;
             TMapEntryArray=array of TMapEntry;
-            TTraversalMethod=procedure(const aNode:PNode) of object;
+            TTraversalMethod=function(const aNode:PNode):boolean of object;
             TSerializationData=class // For serialization purposes, including handle management state for persistent queues
              private
               fHandleCounter:THandle;
@@ -204,7 +204,7 @@ type EpvTimedPriorityQueue=class(Exception);
        // Traverse all entries in arbitrary order, skipping dead entries. Useful for usage with a garbage collector of data for
        // to mark these entries as live when these are used together with a scripting engine. 
        // Don't use when you need ordered traversal.
-       procedure Traverse(const aTraversalMethod:TTraversalMethod); inline;
+       function Traverse(const aTraversalMethod:TTraversalMethod):Boolean; inline;
 
        procedure ShiftByTime(const aDeltaTime:TTime); inline;
 
@@ -1214,15 +1214,18 @@ begin
  result:=false; 
 end; 
 
-procedure TpvTimedPriorityQueue<T>.Traverse(const aTraversalMethod:TTraversalMethod);
+function TpvTimedPriorityQueue<T>.Traverse(const aTraversalMethod:TTraversalMethod):Boolean;
 var Index,NodeIndex:TpvSizeInt;
     Node:PNode;
 begin
+ result:=false;
  for Index:=0 to fCount-1 do begin
   NodeIndex:=fHeap[Index];
   Node:=@fNodes[NodeIndex];
   if not Node^.Dead then begin
-   aTraversalMethod(Node);
+   if aTraversalMethod(Node) then begin
+    result:=true;
+   end;
   end;
  end;
 end;  
