@@ -201,6 +201,8 @@ type EpvTimedPriorityQueue=class(Exception);
        function PeekEarliestPriority(out aPriority:TPriority):Boolean; inline;
        function PopEarliestPriority(out aPriority:TPriority):Boolean; inline;
 
+       function Pop:Boolean; inline;
+
        // Traverse all entries in arbitrary order, skipping dead entries. Useful for usage with a garbage collector of data for
        // to mark these entries as live when these are used together with a scripting engine. 
        // Don't use when you need ordered traversal.
@@ -1211,8 +1213,24 @@ begin
    exit;
   end;
  end;
- result:=false; 
-end; 
+ result:=false;
+end;
+
+function TpvTimedPriorityQueue<T>.Pop:Boolean;
+var Node:PNode;
+begin
+ while fCount>0 do begin
+  Node:=@fNodes[fHeap[0]];
+  if Node^.Dead then begin
+   RemoveAt(0);
+  end else begin
+   RemoveAt(0);
+   result:=true;
+   exit;
+  end;
+ end;
+ result:=false;
+end;
 
 function TpvTimedPriorityQueue<T>.Traverse(const aTraversalMethod:TTraversalMethod):Boolean;
 var Index,NodeIndex:TpvSizeInt;
