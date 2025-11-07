@@ -152,13 +152,13 @@ type EpvTimedPriorityQueue=class(Exception);
 
        // Map methods
        class function MapHash(const aHandle:THandle):TpvUInt64; static; inline;
-       procedure MapInit(const aCapacity:TpvSizeInt); inline;
+       procedure MapInit(const aCapacity:TpvSizeInt);
        procedure MapRehash(const aNewCapacity:TpvSizeInt);
        procedure MapEnsure; inline;
-       procedure MapPut(const aHandle:THandle;const aIndex:TpvSizeInt); inline;
-       function MapTryGet(const aHandle:THandle;out aIndex:TpvSizeInt):Boolean; inline;
-       function MapContains(const aHandle:THandle):Boolean; inline;
-       procedure MapDelete(const aHandle:THandle); inline;
+       procedure MapPut(const aHandle:THandle;const aIndex:TpvSizeInt);
+       function MapTryGet(const aHandle:THandle;out aIndex:TpvSizeInt):Boolean;
+       function MapContains(const aHandle:THandle):Boolean;
+       procedure MapDelete(const aHandle:THandle);
        
        // Handle methods
        procedure PopulateHandleFreeListOnOverflow;
@@ -166,12 +166,12 @@ type EpvTimedPriorityQueue=class(Exception);
 
        // Heap methods
        procedure Resequence;
-       procedure EnsureCapacity(const aNeed:TpvSizeInt); inline;
+       procedure EnsureCapacity(const aNeed:TpvSizeInt);
        function Less(const aIndexA,aIndexB:TpvSizeInt):Boolean; inline;
        procedure Swap(const aIndexA,aIndexB:TpvSizeInt); inline;
-       procedure SiftUp(aIndex:TpvSizeInt); inline;
-       procedure SiftDown(aIndex:TpvSizeInt); inline;
-       procedure RemoveAt(aIndex:TpvSizeInt); inline;
+       procedure SiftUp(aIndex:TpvSizeInt);
+       procedure SiftDown(aIndex:TpvSizeInt);
+       procedure RemoveAt(aIndex:TpvSizeInt);
        procedure BulkCleanDeadAndRebuildHeap;
 
       public
@@ -181,37 +181,37 @@ type EpvTimedPriorityQueue=class(Exception);
       
        procedure Clear;
       
-       function Push(const aTime:TTime;const aPriority:TPriority;const aData:TData):THandle; inline;
+       function Push(const aTime:TTime;const aPriority:TPriority;const aData:TData):THandle;
       
-       function Cancel(const aHandle:THandle):Boolean; inline;     // eager remove
-       function MarkCancel(const aHandle:THandle):Boolean; inline; // lazy mark
+       function Cancel(const aHandle:THandle):Boolean;     // eager remove
+       function MarkCancel(const aHandle:THandle):Boolean; // lazy mark
 
-       function PeekEarliest(const aData:PData;const aTime:PTime;const aPriority:PPriority;const aHandle:PHandle):Boolean; inline;
-       function PopEarliest(const aData:PData;const aTime:PTime;const aPriority:PPriority;const aHandle:PHandle):Boolean; inline;
+       function PeekEarliest(const aData:PData;const aTime:PTime;const aPriority:PPriority;const aHandle:PHandle):Boolean;
+       function PopEarliest(const aData:PData;const aTime:PTime;const aPriority:PPriority;const aHandle:PHandle):Boolean;
 
-       function PeekEarliestNode(out aNode:TNode):Boolean; inline;
-       function PopEarliestNode(out aNode:TNode):Boolean; inline;
+       function PeekEarliestNode(out aNode:TNode):Boolean;
+       function PopEarliestNode(out aNode:TNode):Boolean;
 
-       function PeekEarliestData(out aData:TData):Boolean; inline;
-       function PopEarliestData(out aData:TData):Boolean; inline;
+       function PeekEarliestData(out aData:TData):Boolean;
+       function PopEarliestData(out aData:TData):Boolean;
 
-       function PeekEarliestTime(out aTime:TTime):Boolean; inline;
-       function PopEarliestTime(out aTime:TTime):Boolean; inline;
+       function PeekEarliestTime(out aTime:TTime):Boolean;
+       function PopEarliestTime(out aTime:TTime):Boolean;
 
-       function PeekEarliestPriority(out aPriority:TPriority):Boolean; inline;
-       function PopEarliestPriority(out aPriority:TPriority):Boolean; inline;
+       function PeekEarliestPriority(out aPriority:TPriority):Boolean;
+       function PopEarliestPriority(out aPriority:TPriority):Boolean;
 
        function Pop:Boolean; inline;
 
        // Traverse all entries in arbitrary order, skipping dead entries. Useful for usage with a garbage collector of data for
        // to mark these entries as live when these are used together with a scripting engine. 
        // Don't use when you need ordered traversal.
-       function Traverse(const aTraversalMethod:TTraversalMethod):Boolean; inline;
+       function Traverse(const aTraversalMethod:TTraversalMethod):Boolean;
 
-       procedure ShiftByTime(const aDeltaTime:TTime); inline;
+       procedure ShiftByTime(const aDeltaTime:TTime);
 
-       procedure Serialize(const aSerializationData:TSerializationData); inline;
-       procedure Deserialize(const aSerializationData:TSerializationData); inline;
+       procedure Serialize(const aSerializationData:TSerializationData);
+       procedure Deserialize(const aSerializationData:TSerializationData);
 
       published
 
