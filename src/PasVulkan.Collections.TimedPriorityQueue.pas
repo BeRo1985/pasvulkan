@@ -208,7 +208,7 @@ type EpvTimedPriorityQueue=class(Exception);
        // Don't use when you need ordered traversal.
        function Traverse(const aTraversalMethod:TTraversalMethod):Boolean;
 
-       procedure ShiftByTime(const aDeltaTime:TTime);
+       procedure ShiftByTime(const aDeltaTime:TTime;const aRemoveNegativeTime:Boolean=false);
 
        procedure Serialize(const aSerializationData:TSerializationData);
        procedure Deserialize(const aSerializationData:TSerializationData);
@@ -1248,7 +1248,7 @@ begin
  end;
 end;  
 
-procedure TpvTimedPriorityQueue<T>.ShiftByTime(const aDeltaTime:TTime);
+procedure TpvTimedPriorityQueue<T>.ShiftByTime(const aDeltaTime:TTime;const aRemoveNegativeTime:Boolean);
 var Index,Expired:TpvSizeInt;
     Node:PNode;
 begin
@@ -1264,33 +1264,37 @@ begin
   // Remove all nodes that are now in the past (time < 0.0) via lazy marking,
   // then clean them from the heap top until the earliest is in the future.
   // We use lazy marking first to avoid O(n log n) heap removals.
-  Expired:=0;
-  for Index:=0 to fCount-1 do begin
-   Node:=@fNodes[fHeap[Index]];
-   if (not Node^.Dead) and (Node^.Time<0.0) then begin
-    Node^.Dead:=true;
-    inc(Expired);
+  if aRemoveNegativeTime then begin
+
+   Expired:=0;
+   for Index:=0 to fCount-1 do begin
+    Node:=@fNodes[fHeap[Index]];
+    if (not Node^.Dead) and (Node^.Time<0.0) then begin
+     Node^.Dead:=true;
+     inc(Expired);
+    end;
    end;
-  end;
 
-  // If any expired nodes were found, clean them from the heap 
-  if Expired>0 then begin
+   // If any expired nodes were found, clean them from the heap
+   if Expired>0 then begin
 
-   // If a significant portion of nodes are expired, do a bulk clean and rebuild the heap
-   if Expired>(fCount shr 2) then begin
-    
-    BulkCleanDeadAndRebuildHeap;
+    // If a significant portion of nodes are expired, do a bulk clean and rebuild the heap
+    if Expired>(fCount shr 2) then begin
 
-   end else begin
-    
-    // Now clean the heap by removing all dead nodes at the top
-    while (fCount>0) and fNodes[fHeap[0]].Dead do begin
-     RemoveAt(0);
+     BulkCleanDeadAndRebuildHeap;
+
+    end else begin
+
+     // Now clean the heap by removing all dead nodes at the top
+     while (fCount>0) and fNodes[fHeap[0]].Dead do begin
+      RemoveAt(0);
+     end;
+
     end;
 
-   end; 
+   end;
 
-  end; 
+  end;
 
  end;
 
