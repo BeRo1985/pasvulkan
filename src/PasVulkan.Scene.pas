@@ -424,8 +424,10 @@ begin
   finally
    fScene.fAllNodesLock.Release;
   end;
-  TPasMPInterlocked.Increment(fScene.fCountToStartLoadNodes);
-  fIsCountToStartLoadNodes:=true;
+  if not fIsCountToStartLoadNodes then begin
+   TPasMPInterlocked.Increment(fScene.fCountToStartLoadNodes);
+   fIsCountToStartLoadNodes:=true;
+  end;
  end;
 end;
 
