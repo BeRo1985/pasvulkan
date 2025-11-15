@@ -28274,21 +28274,51 @@ begin
 end;
 
 function TpvScene3D.TGroup.TInstance.AssignToNonVirtualInstance(const aNonVirtualInstance:TInstance):boolean;
-var RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+var Index,Count:TpvSizeInt;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
  if (fVirtual and assigned(aNonVirtualInstance) and not aNonVirtualInstance.fVirtual) and 
-    ((aNonVirtualInstance.fMaxRenderInstanceCount=0) or
+    ((aNonVirtualInstance.fMaxRenderInstanceCount<=0) and
      (aNonVirtualInstance.fPreallocatedRenderInstanceCounter<aNonVirtualInstance.fMaxRenderInstanceCount)) then begin
+  
   fAssignedNonVirtualInstance:=aNonVirtualInstance;
-  if aNonVirtualInstance.fMaxRenderInstanceCount>0 then begin
-   RenderInstance:=aNonVirtualInstance.fPreallocatedRenderInstances.Items[aNonVirtualInstance.fPreallocatedRenderInstanceCounter];
+  
+  // Check when the non-virtual instance isn't allowed to have render instances
+  if aNonVirtualInstance.fMaxRenderInstanceCount=0 then begin
+
+   // Nothing in this case
+
+  end else begin
+
+   // Otherwise assign a render instance
+   
+   // Assign a preallocated render instance or create a new one when in dynamic pool mode
+   Index:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter;
    inc(aNonVirtualInstance.fPreallocatedRenderInstanceCounter);
+   if (aNonVirtualInstance.fMaxRenderInstanceCount<0) and
+      (aNonVirtualInstance.fPreallocatedRenderInstances.Count<aNonVirtualInstance.fPreallocatedRenderInstanceCounter) then begin
+    // Dynamic pool mode: create new render instances as needed, growing the pool by 50% each time
+    Count:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter+((aNonVirtualInstance.fPreallocatedRenderInstanceCounter+1) shr 1);
+    while aNonVirtualInstance.fPreallocatedRenderInstances.Count<Count do begin
+     RenderInstance:=aNonVirtualInstance.CreateRenderInstance;
+     RenderInstance.Active:=false;
+     aNonVirtualInstance.fPreallocatedRenderInstances.Add(RenderInstance);
+    end;
+   end;
+
+   // Assign the render instance
+   RenderInstance:=aNonVirtualInstance.fPreallocatedRenderInstances.RawItems[Index];
    RenderInstance.Active:=true;
    RenderInstance.ModelMatrix:=fModelMatrix;
+
   end;
+  
   result:=true;
+
  end else begin
+
   result:=false;
+
  end;
 end;
 
