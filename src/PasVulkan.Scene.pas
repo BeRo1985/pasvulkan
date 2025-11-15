@@ -977,7 +977,7 @@ begin
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.Unloaded)=TpvSceneNodeState.Unloaded then begin
           if Node.fIsCountToStartLoadNodes then begin
            Node.fIsCountToStartLoadNodes:=false;
-           TPasMPInterlocked.Decrement(fScene.fCountToStartLoadNodes);
+           TPasMPInterlocked.Decrement(fCountToStartLoadNodes);
           end;
          end;
         end;
@@ -1002,7 +1002,7 @@ begin
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartLoading)=TpvSceneNodeState.StartLoading then begin
           if Node.fIsCountToStartLoadNodes then begin
            Node.fIsCountToStartLoadNodes:=false;
-           TPasMPInterlocked.Decrement(fScene.fCountToStartLoadNodes);
+           TPasMPInterlocked.Decrement(fCountToStartLoadNodes);
           end;
          end;
         end;
