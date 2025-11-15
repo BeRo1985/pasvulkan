@@ -3384,8 +3384,7 @@ type EpvScene3D=class(Exception);
                      procedure UpdateStateHashMap;
                      procedure FrustumCullVirtualInstances(const aFrustums:TpvFrustumDynamicArray);
                     public
-                     constructor Create(const aGroup:TGroup;
-                                        const aMaxNonVirtualInstances:TpvSizeInt=20);
+                     constructor Create(const aGroup:TGroup;const aMaxNonVirtualInstances:TpvSizeInt);
                      destructor Destroy; override;
                      procedure RegisterVirtualInstance(const aInstance:TInstance);
                      procedure UnregisterVirtualInstance(const aInstance:TInstance);
@@ -35867,7 +35866,7 @@ begin
    end;
   end;
  end;
- 
+
 end;
 
 destructor TpvScene3D.TGroup.TVirtualInstanceManager.Destroy;
