@@ -156,6 +156,8 @@ type TpvScene=class;
              Loaded=TpvSceneNodeState(7);
              Failed=TpvSceneNodeState(8);
              Unloading=TpvSceneNodeState(9);
+             ManualLoad=TpvSceneNodeState(10);
+             ManualLoading=TpvSceneNodeState(11);
      end;
 
      { TpvSceneNode }
@@ -176,6 +178,7 @@ type TpvScene=class;
        fIsCountToStartLoadNodes:boolean;
        fIsCountToBackgroundLoadNodes:boolean;
        fIsCountToFinishLoadNodes:boolean;
+       fManualLoad:boolean;
       public
        fStartLoadVisitGeneration:TpvUInt32;
        fBackgroundLoadVisitGeneration:TpvUInt32;
@@ -212,6 +215,8 @@ type TpvScene=class;
        
        procedure WaitForLoaded; virtual;
        
+       procedure Load; virtual;
+
        function IsLoaded:boolean; virtual;
               
        procedure Check; virtual;
@@ -235,6 +240,7 @@ type TpvScene=class;
 
       public
        property State:TpvSceneNodeState read fState;
+       property ManualLoad:boolean read fManualLoad write fManualLoad;
       published
        property Scene:TpvScene read fScene;
        property Parent:TpvSceneNode read fParent;
@@ -357,6 +363,8 @@ begin
 
  fDestroying:=false;
 
+ ManualLoad:=false;
+
  fStartLoadVisitGeneration:=0;
  fBackgroundLoadVisitGeneration:=0;
  fFinishLoadVisitGeneration:=0;
@@ -424,9 +432,13 @@ begin
   finally
    fScene.fAllNodesLock.Release;
   end;
-  if not fIsCountToStartLoadNodes then begin
-   TPasMPInterlocked.Increment(fScene.fCountToStartLoadNodes);
-   fIsCountToStartLoadNodes:=true;
+  if ManualLoad then begin
+   TPasMPInterlocked.Write(fState,TpvSceneNodeState.ManualLoad);
+  end else begin
+   if not fIsCountToStartLoadNodes then begin
+    TPasMPInterlocked.Increment(fScene.fCountToStartLoadNodes);
+    fIsCountToStartLoadNodes:=true;
+   end;
   end;
  end;
 end;
@@ -711,6 +723,20 @@ begin
   end;
  finally
   pvApplication.Log(LOG_DEBUG,ClassName+'.WaitForLoaded','Leaving...');
+ end;
+end;
+
+procedure TpvSceneNode.Load;
+begin
+ if TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.ManualLoading,TpvSceneNodeState.ManualLoad)=TpvSceneNodeState.ManualLoad then begin
+  try
+   StartLoad;
+   BackgroundLoad;
+   FinishLoad;
+   TPasMPInterlocked.Write(fState,TpvSceneNodeState.Loaded);
+  except
+   TPasMPInterlocked.Write(fState,TpvSceneNodeState.Failed);
+  end;
  end;
 end;
 
