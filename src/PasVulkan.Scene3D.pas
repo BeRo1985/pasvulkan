@@ -36060,10 +36060,11 @@ end;
 procedure TpvScene3D.TGroup.TVirtualInstanceManager.UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt;
                                                                       const aFrustums:TpvFrustumDynamicArray;
                                                                       const aCameraPositions:TpvVector3DynamicArray);
-var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex:TpvSizeInt;
+var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex:TpvSizeInt;
     VirtualInstance,NonVirtualInstance,Candidate:TInstance;
     StateKey:TStateKey;
     Instances:TInstances;
+    RenderInstance:TInstance.TRenderInstance;
     AssignmentFunction:TAssignmentCallback;
     DebugInfo:PAssignmentDebugInfo;
     CameraPos:TpvVector3D;
@@ -36082,9 +36083,24 @@ begin
   // Clear debug info
   fCountDebugInfos:=0;
 
-  // Reset all non-virtual instances
+  // Reset all non-virtual instances in preparation for new assignments in an optimized way
+  // where we stop resetting as soon as we find an inactive non-virtual instance since all
+  // following ones will also be inactive (due to preallocation order) 
   for Index:=0 to fNonVirtualInstances.Count-1 do begin
-   fNonVirtualInstances[Index].Active:=false;
+   NonVirtualInstance:=fNonVirtualInstances[Index];
+   if NonVirtualInstance.Active then begin
+    NonVirtualInstance.Active:=false;
+    for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
+     RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances[Index];
+     if RenderInstance.Active then begin
+      RenderInstance.Active:=false;
+     end else begin
+      break;
+     end;
+    end;
+   end else begin
+    break;
+   end;
   end;
 
   // Reset all virtual instance assignments
