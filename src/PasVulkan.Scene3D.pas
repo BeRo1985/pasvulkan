@@ -3333,7 +3333,8 @@ type EpvScene3D=class(Exception);
                           TAssignmentCallback=function(const aVirtualInstance:TInstance;
                                                        const aCandidateNonVirtualInstances:TInstances;
                                                        const aInFlightFrameIndex:TpvSizeInt;
-                                                       const aCameraPositions:TpvVector3DynamicArray):TInstance of object;
+                                                       const aCameraPositions:TpvVector3DynamicArray;
+                                                       const aPreferDissimilar:Boolean):TInstance of object;
                           { TAssignmentDebugInfo }
                           TAssignmentDebugInfo=record
                            VirtualInstance:TInstance;
@@ -3376,7 +3377,8 @@ type EpvScene3D=class(Exception);
                      function DefaultAssignmentHeuristic(const aVirtualInstance:TInstance;
                                                          const aCandidateNonVirtualInstances:TInstances;
                                                          const aInFlightFrameIndex:TpvSizeInt;
-                                                         const aCameraPositions:TpvVector3DynamicArray):TInstance;
+                                                         const aCameraPositions:TpvVector3DynamicArray;
+                                                         const aPreferDissimilar:Boolean):TInstance;
                      function ComputeStateSimilarity(const aInstanceA,aInstanceB:TInstance):TpvFloat;
                      procedure UpdateStateHashMap;
                      procedure FrustumCullVirtualInstances(const aFrustums:TpvFrustumDynamicArray);
@@ -35976,7 +35978,8 @@ end;
 function TpvScene3D.TGroup.TVirtualInstanceManager.DefaultAssignmentHeuristic(const aVirtualInstance:TInstance;
                                                                               const aCandidateNonVirtualInstances:TInstances;
                                                                               const aInFlightFrameIndex:TpvSizeInt;
-                                                                              const aCameraPositions:TpvVector3DynamicArray):TInstance;
+                                                                              const aCameraPositions:TpvVector3DynamicArray;
+                                                                              const aPreferDissimilar:Boolean):TInstance;
 var Index:TpvSizeInt;
     Candidate:TInstance;
     BestCandidate:TInstance;
@@ -36009,7 +36012,13 @@ begin
   DistanceToCamera:=(aVirtualInstance.fModelMatrix.Translation.xyz-CameraPos).Length;
   
   // Combined score (similarity is more important than distance)
-  Score:=(Similarity*10.0)-(DistanceToCamera*0.001);
+  if aPreferDissimilar then begin
+   // Invert similarity: prefer LESS similar instances (dissimilar get high scores)
+   Score:=(-Similarity*10.0)-(DistanceToCamera*0.001);
+  end else begin
+   // Normal: prefer MORE similar instances
+   Score:=(Similarity*10.0)-(DistanceToCamera*0.001);
+  end;
   
   if Score>BestScore then begin
    BestScore:=Score;
@@ -36038,13 +36047,14 @@ end;
 procedure TpvScene3D.TGroup.TVirtualInstanceManager.UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt;
                                                                       const aFrustums:TpvFrustumDynamicArray;
                                                                       const aCameraPositions:TpvVector3DynamicArray);
-var Index,AssignedCount,DebugInfoIndex:TpvSizeInt;
-    VirtualInstance,NonVirtualInstance:TInstance;
+var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex:TpvSizeInt;
+    VirtualInstance,NonVirtualInstance,Candidate:TInstance;
     StateKey:TStateKey;
     Instances:TInstances;
     AssignmentFunction:TAssignmentCallback;
     DebugInfo:PAssignmentDebugInfo;
     CameraPos:TpvVector3D;
+    Similarity:TpvFloat;
 begin
 
  fLock.Acquire;
@@ -36079,6 +36089,10 @@ begin
    end;
   end;
   
+  // Two-step assignment strategy:
+  // Step 1: Assign dissimilar instances to non-virtual instances (need full GPU resources)
+  // Step 2: Assign similar instances to render instances (can share GPU resources via instancing)
+  
   // Assign virtual instances to non-virtual instances
   if assigned(fCustomAssignmentCallback) then begin
    AssignmentFunction:=fCustomAssignmentCallback;
@@ -36088,12 +36102,14 @@ begin
   
   AssignedCount:=0;
 
+  // Step 1: Process all visible instances with DISSIMILAR preference
+  // This assigns diverse instances to non-virtual instances first
   for Index:=0 to fVisibleInstances.Count-1 do begin
 
    VirtualInstance:=fVisibleInstances[Index];
    
-   // Find best non-virtual instance for this virtual instance
-   NonVirtualInstance:=AssignmentFunction(VirtualInstance,fNonVirtualInstances,aInFlightFrameIndex,aCameraPositions);
+   // Find best non-virtual instance for this virtual instance (prefer dissimilar)
+   NonVirtualInstance:=AssignmentFunction(VirtualInstance,fNonVirtualInstances,aInFlightFrameIndex,aCameraPositions,true); // true = prefer dissimilar
    
    if assigned(NonVirtualInstance) then begin
     // Assign virtual to non-virtual
@@ -36116,8 +36132,11 @@ begin
     
     // Automatically assign preallocated render instances to non-virtual instance
     // This links the virtual instance's rendering to the non-virtual instance's preallocated render instances
+    // Check if render instances are preallocated for this non-virtual instance
     if assigned(NonVirtualInstance.fPreallocatedRenderInstances) and 
        (NonVirtualInstance.fPreallocatedRenderInstances.Count>0) then begin
+     // Step 2 will be handled below: assign similar virtual instances to render instances
+     // For now, just mark that this non-virtual uses render instances
      NonVirtualInstance.fUseRenderInstances:=true;
      // The preallocated render instances are already created and will be used automatically
      // during rendering - no manual assignment needed
@@ -36146,9 +36165,71 @@ begin
 
   end;
   
-  // Handle unassigned virtual instances
-  for Index:=AssignedCount to fVisibleInstances.Count-1 do begin
-   fVisibleInstances[Index].UnassignFromNonVirtualInstance;
+  // Step 2: Try to assign remaining unassigned virtual instances to render instances
+  // This handles similar instances that can share GPU resources via instancing
+  for Index:=0 to fVisibleInstances.Count-1 do begin
+   VirtualInstance:=fVisibleInstances[Index];
+   
+   // Skip if already assigned in Step 1
+   if assigned(VirtualInstance.fAssignedNonVirtualInstance) then begin
+    continue;
+   end;
+   
+   // Try to find a non-virtual instance with available render instances and matching state
+   NonVirtualInstance:=nil;
+   for NonVirtualIndex:=0 to fNonVirtualInstances.Count-1 do begin
+    Candidate:=fNonVirtualInstances[NonVirtualIndex];
+    if Candidate.Active and 
+       assigned(Candidate.fPreallocatedRenderInstances) and 
+       (Candidate.fPreallocatedRenderInstances.Count>0) then begin
+     // Check state similarity - prefer matching states for render instance batching
+     Similarity:=ComputeStateSimilarity(VirtualInstance,Candidate);
+     if Similarity>0.8 then begin // High similarity threshold for render instancing
+      NonVirtualInstance:=Candidate;
+      break;
+     end;
+    end;
+   end;
+   
+   if assigned(NonVirtualInstance) then begin
+    // Assign to render instance of the non-virtual instance
+    VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance);
+    
+    // The actual render instance assignment will happen during rendering
+    // The preallocated render instances will be used for batched rendering
+    
+    inc(AssignedCount);
+    
+    // Collect debug info
+    if fDebugEnabled then begin
+     DebugInfoIndex:=fCountDebugInfos;
+     inc(fCountDebugInfos);
+     if length(fDebugInfos)<fCountDebugInfos then begin
+      SetLength(fDebugInfos,fCountDebugInfos+((fCountDebugInfos+1) shr 1));
+     end;
+     DebugInfo:=@fDebugInfos[DebugInfoIndex];
+     DebugInfo^.VirtualInstance:=VirtualInstance;
+     DebugInfo^.AssignedNonVirtualInstance:=NonVirtualInstance;
+     StateKey:=TStateKey.CreateFromInstance(VirtualInstance);
+     DebugInfo^.StateHash:=StateKey.Hash;
+     DebugInfo^.Distance:=(VirtualInstance.fModelMatrix.Translation.xyz-aCameraPositions[0]).Length;
+     DebugInfo^.Priority:=0.5; // Lower priority than Step 1 assignments
+     DebugInfo^.Visible:=true;
+     DebugInfo^.SceneIndex:=VirtualInstance.fScene;
+    end;
+   end;
+  end;
+  
+  // Handle remaining unassigned virtual instances
+  for Index:=0 to fVisibleInstances.Count-1 do begin
+   VirtualInstance:=fVisibleInstances[Index];
+   
+   // Skip if assigned
+   if assigned(VirtualInstance.fAssignedNonVirtualInstance) then begin
+    continue;
+   end;
+   
+   VirtualInstance.UnassignFromNonVirtualInstance;
    
    // Collect debug info for unassigned
    if fDebugEnabled then begin
@@ -36158,18 +36239,18 @@ begin
      SetLength(fDebugInfos,fCountDebugInfos+((fCountDebugInfos+1) shr 1));
     end;
     DebugInfo:=@fDebugInfos[DebugInfoIndex];
-    DebugInfo^.VirtualInstance:=fVisibleInstances[Index];
+    DebugInfo^.VirtualInstance:=VirtualInstance;
     DebugInfo^.AssignedNonVirtualInstance:=nil;
-    StateKey:=TStateKey.CreateFromInstance(fVisibleInstances[Index]);
+    StateKey:=TStateKey.CreateFromInstance(VirtualInstance);
     DebugInfo^.StateHash:=StateKey.Hash;
     if length(aCameraPositions)>0 then begin
-     DebugInfo^.Distance:=(fVisibleInstances[Index].fModelMatrix.Translation.xyz-aCameraPositions[0]).Length;
+     DebugInfo^.Distance:=(VirtualInstance.fModelMatrix.Translation.xyz-aCameraPositions[0]).Length;
     end else begin
      DebugInfo^.Distance:=0.0;
     end;
     DebugInfo^.Priority:=0.0;
     DebugInfo^.Visible:=true;
-    DebugInfo^.SceneIndex:=fVisibleInstances[Index].fScene;
+    DebugInfo^.SceneIndex:=VirtualInstance.fScene;
    end;
   end;
    
