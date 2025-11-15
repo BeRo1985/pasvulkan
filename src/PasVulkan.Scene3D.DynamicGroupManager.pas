@@ -108,6 +108,7 @@ type { TpvScene3DDynamicGroupManager }
               fReferenceCount:TpvInt32;
               fActive:Boolean;
               fLastUsedFrameIndex:TpvUInt64;
+              fIndex:TpvSizeInt; // Position in fInstancePool
              public
               property Instance:TpvScene3D.TGroup.TInstance read fInstance write fInstance;
               property StateKey:TStateKey read fStateKey write fStateKey;
@@ -115,6 +116,7 @@ type { TpvScene3DDynamicGroupManager }
               property ReferenceCount:TpvInt32 read fReferenceCount write fReferenceCount;
               property Active:Boolean read fActive write fActive;
               property LastUsedFrameIndex:TpvUInt64 read fLastUsedFrameIndex write fLastUsedFrameIndex;
+              property Index:TpvSizeInt read fIndex write fIndex;
             end;
             TInstancePoolEntries=TpvObjectGenericList<TInstancePoolEntry>;
             
@@ -137,16 +139,20 @@ type { TpvScene3DDynamicGroupManager }
               fRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
               fOwningInstance:TpvScene3D.TGroup.TInstance;
               fActive:Boolean;
+              fIndex:TpvSizeInt; // Position in fRenderInstancePool
              public
               property RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance read fRenderInstance write fRenderInstance;
               property OwningInstance:TpvScene3D.TGroup.TInstance read fOwningInstance write fOwningInstance;
               property Active:Boolean read fActive write fActive;
+              property Index:TpvSizeInt read fIndex write fIndex;
             end;
             TRenderInstancePoolEntries=TpvObjectGenericList<TRenderInstancePoolEntry>;
             
             // Type aliases for hash maps
             TGroupRegistry=TpvHashMap<TGroupKey,TpvScene3D.TGroup>;
             TActiveInstances=TpvHashMap<TStateKey,TInstancePoolEntry>;
+            TInstanceToPoolEntry=TpvHashMap<TpvScene3D.TGroup.TInstance,TInstancePoolEntry>;
+            TRenderInstanceToPoolEntry=TpvHashMap<TpvScene3D.TGroup.TInstance.TRenderInstance,TRenderInstancePoolEntry>;
             
             // Type aliases for free lists
             TInstanceFreeList=TpvDynamicStack<TInstancePoolEntry>;
@@ -166,6 +172,10 @@ type { TpvScene3DDynamicGroupManager }
        // Active instances: StateKey -> Instance pool entry
        fActiveInstances:TActiveInstances;
        fActiveInstancesCount:TpvSizeInt;
+       
+       // Reverse lookup maps for O(1) access
+       fInstanceToPoolEntry:TInstanceToPoolEntry;
+       fRenderInstanceToPoolEntry:TRenderInstanceToPoolEntry;
        
        // Instance pool (all allocated entries)
        fInstancePool:TInstancePoolEntries;
@@ -289,6 +299,9 @@ begin
  fActiveInstances:=TActiveInstances.Create(nil);
  fActiveInstancesCount:=0;
  
+ fInstanceToPoolEntry:=TInstanceToPoolEntry.Create(nil);
+ fRenderInstanceToPoolEntry:=TRenderInstanceToPoolEntry.Create(nil);
+ 
  fInstancePool:=TInstancePoolEntries.Create(true);
  fInstanceFreeList.Initialize;
  
@@ -310,9 +323,7 @@ begin
  // Clean up render instances
  for Index:=0 to fRenderInstancePool.Count-1 do begin
   RenderPoolEntry:=fRenderInstancePool.Items[Index];
-  if assigned(RenderPoolEntry.fRenderInstance) then begin
-   RenderPoolEntry.fRenderInstance.Free;
-  end;
+  FreeAndNil(RenderPoolEntry.fRenderInstance);
  end;
  FreeAndNil(fRenderInstancePool);
  fRenderInstanceFreeList.Finalize;
@@ -320,12 +331,13 @@ begin
  // Clean up instances - they're finally freed on shutdown
  for Index:=0 to fInstancePool.Count-1 do begin
   PoolEntry:=fInstancePool.Items[Index];
-  if assigned(PoolEntry.fInstance) then begin
-   PoolEntry.fInstance.Free;
-  end;
+  FreeAndNil(PoolEntry.fInstance);
  end;
  FreeAndNil(fInstancePool);
  fInstanceFreeList.Finalize;
+ 
+ FreeAndNil(fInstanceToPoolEntry);
+ FreeAndNil(fRenderInstanceToPoolEntry);
  
  FreeAndNil(fActiveInstances);
  FreeAndNil(fGroupInfos);
@@ -350,6 +362,7 @@ begin
  if not fInstanceFreeList.Pop(result) then begin
   // Otherwise allocate new entry
   result:=TInstancePoolEntry.Create;
+  result.fIndex:=fInstancePool.Count;
   fInstancePool.Add(result);
  end;
  result.fReferenceCount:=0;
@@ -363,6 +376,7 @@ begin
  if not fRenderInstanceFreeList.Pop(result) then begin
   // Otherwise allocate new entry
   result:=TRenderInstancePoolEntry.Create;
+  result.fIndex:=fRenderInstancePool.Count;
   fRenderInstancePool.Add(result);
  end;
 end;
@@ -479,6 +493,7 @@ begin
  result.fActive:=true;
  result.fLastUsedFrameIndex:=fCurrentFrameIndex;
  fActiveInstances.Add(aStateKey,result);
+ fInstanceToPoolEntry.Add(result.fInstance,result);
  inc(fActiveInstancesCount);
 
 end;
@@ -508,8 +523,7 @@ begin
 end;
 
 procedure TpvScene3DDynamicGroupManager.ReleaseInstance(const aInstance:TpvScene3D.TGroup.TInstance);
-var PoolIndex:TpvSizeInt;
-    PoolEntry:TInstancePoolEntry;
+var PoolEntry:TInstancePoolEntry;
     GroupInfo:TGroupInfo;
     FreeListThreshold:TpvSizeInt;
 begin
@@ -521,52 +535,46 @@ begin
  fLock.Acquire;
  try
 
-  // Find the pool entry for this instance
-  for PoolIndex:=0 to fInstancePool.Count-1 do begin
+  // Use reverse lookup map for O(1) access
+  if fInstanceToPoolEntry.TryGet(aInstance,PoolEntry) then begin
 
-   PoolEntry:=fInstancePool.Items[PoolIndex];
-   if PoolEntry.fInstance=aInstance then begin
+   dec(PoolEntry.fReferenceCount);
+   if PoolEntry.fReferenceCount<=0 then begin
 
-    dec(PoolEntry.fReferenceCount);
-    if PoolEntry.fReferenceCount<=0 then begin
+    // No more references, deactivate but keep in pool
+    PoolEntry.fActive:=false;
+    PoolEntry.fReferenceCount:=0;
+    fActiveInstances.Delete(PoolEntry.fStateKey);
+    dec(fActiveInstancesCount);
 
-     // No more references, deactivate but keep in pool
-     PoolEntry.fActive:=false;
-     PoolEntry.fReferenceCount:=0;
-     fActiveInstances.Delete(PoolEntry.fStateKey);
-     dec(fActiveInstancesCount);
+    // Check if this group is in dynamic mode (MaxInstances < 0)
+    if fGroupInfos.TryGet(PoolEntry.fGroupKey,GroupInfo) then begin
 
-     // Check if this group is in dynamic mode (MaxInstances < 0)
-     if fGroupInfos.TryGet(PoolEntry.fGroupKey,GroupInfo) then begin
+     if GroupInfo.fMaxInstances<0 then begin
+      // Dynamic mode: free instance if free list is too large
+      // Threshold: keep max 25% of current pool size as free
+      FreeListThreshold:=Max(16,fInstancePool.Count div 4);
 
-      if GroupInfo.fMaxInstances<0 then begin
-       // Dynamic mode: free instance if free list is too large
-       // Threshold: keep max 25% of current pool size as free
-       FreeListThreshold:=Max(16,fInstancePool.Count div 4);
+      if fInstanceFreeList.Count>FreeListThreshold then begin
 
-       if fInstanceFreeList.Count>FreeListThreshold then begin
-
-        // Free this instance
-        FreeAndNil(PoolEntry.fInstance);
-        // Don't add to free list, instance slot is now empty
-
-       end else begin
-
-        // Keep in free list for reuse
-        fInstanceFreeList.Push(PoolEntry);
-
-       end;
+       // Free this instance
+       fInstanceToPoolEntry.Delete(PoolEntry.fInstance);
+       FreeAndNil(PoolEntry.fInstance);
+       // Don't add to free list, instance slot is now empty
 
       end else begin
-       // Fixed pool mode: always keep for reuse
+
+       // Keep in free list for reuse
        fInstanceFreeList.Push(PoolEntry);
+
       end;
 
+     end else begin
+      // Fixed pool mode: always keep for reuse
+      fInstanceFreeList.Push(PoolEntry);
      end;
 
     end;
-
-    break;
 
    end;
 
@@ -608,6 +616,8 @@ begin
   
   PoolEntry.fOwningInstance:=aInstance;
   PoolEntry.fActive:=true;
+  
+  fRenderInstanceToPoolEntry.Add(result,PoolEntry);
 
  finally
   fLock.Release;
@@ -615,8 +625,7 @@ begin
 end;
 
 procedure TpvScene3DDynamicGroupManager.ReleaseRenderInstance(const aRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance);
-var PoolIndex:TpvSizeInt;
-    PoolEntry:TRenderInstancePoolEntry;
+var PoolEntry:TRenderInstancePoolEntry;
 begin
 
  if not assigned(aRenderInstance) then begin
@@ -626,20 +635,14 @@ begin
  fLock.Acquire;
  try
 
-  for PoolIndex:=0 to fRenderInstancePool.Count-1 do begin
+  // Use reverse lookup map for O(1) access
+  if fRenderInstanceToPoolEntry.TryGet(aRenderInstance,PoolEntry) then begin
 
-   PoolEntry:=fRenderInstancePool.Items[PoolIndex];
-
-   if PoolEntry.fRenderInstance=aRenderInstance then begin
-
-    PoolEntry.fActive:=false;
-    PoolEntry.fOwningInstance:=nil;
-
-    fRenderInstanceFreeList.Push(PoolEntry);
-
-    break;
-
-   end;
+   PoolEntry.fActive:=false;
+   PoolEntry.fOwningInstance:=nil;
+   
+   fRenderInstanceToPoolEntry.Delete(aRenderInstance);
+   fRenderInstanceFreeList.Push(PoolEntry);
 
   end;
 
