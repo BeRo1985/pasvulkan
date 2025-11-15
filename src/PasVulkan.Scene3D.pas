@@ -35939,6 +35939,7 @@ var Index:TpvSizeInt;
     Similarity:TpvFloat;
     TimeDiff:TpvDouble;
 begin
+
  result:=0.0;
  
  // Check if both instances are not null
@@ -35957,16 +35958,19 @@ begin
  if aInstanceA.fUseAnimationStates and aInstanceB.fUseAnimationStates and
     (length(aInstanceA.fAnimationStates)=length(aInstanceB.fAnimationStates)) then begin
   for Index:=0 to length(aInstanceA.fAnimationStates)-1 do begin
+
    // Time similarity (within 1 second = similar)
-   TimeDiff:=Abs(aInstanceA.fAnimationStates[Index].fTime-aInstanceB.fAnimationStates[Index].fTime);
+   TimeDiff:=abs(aInstanceA.fAnimationStates[Index].fTime-aInstanceB.fAnimationStates[Index].fTime);
    Similarity:=Similarity*(1.0/(1.0+TimeDiff));
    
    // Factor similarity
-   Similarity:=Similarity*(1.0-Abs(aInstanceA.fAnimationStates[Index].fFactor-aInstanceB.fAnimationStates[Index].fFactor));
+   Similarity:=Similarity*(1.0-abs(aInstanceA.fAnimationStates[Index].fFactor-aInstanceB.fAnimationStates[Index].fFactor));
+
   end;
  end;
  
  result:=Similarity;
+
 end;
 
 function TpvScene3D.TGroup.TVirtualInstanceManager.DefaultAssignmentHeuristic(const aVirtualInstance:TInstance;
@@ -35981,8 +35985,11 @@ var Index:TpvSizeInt;
     DistanceToCamera:TpvDouble;
     CameraPos:TpvVector3D;
 begin
+
  result:=nil;
+
  BestCandidate:=nil;
+
  BestScore:=-1.0;
  
  // Get camera position (use first camera if multiple)
@@ -36008,6 +36015,7 @@ begin
    BestScore:=Score;
    BestCandidate:=Candidate;
   end;
+
  end;
  
  result:=BestCandidate;
@@ -36034,7 +36042,7 @@ var Index,AssignedCount,DebugInfoIndex:TpvSizeInt;
     VirtualInstance,NonVirtualInstance:TInstance;
     StateKey:TStateKey;
     Instances:TInstances;
-    AssignmentFunc:TAssignmentCallback;
+    AssignmentFunction:TAssignmentCallback;
     DebugInfo:PAssignmentDebugInfo;
     CameraPos:TpvVector3D;
 begin
@@ -36072,17 +36080,20 @@ begin
   end;
   
   // Assign virtual instances to non-virtual instances
-  AssignedCount:=0;
-  AssignmentFunc:=fCustomAssignmentCallback;
-  if not Assigned(AssignmentFunc) then begin
-   AssignmentFunc:=DefaultAssignmentHeuristic;
+  if assigned(fCustomAssignmentCallback) then begin
+   AssignmentFunction:=fCustomAssignmentCallback;
+  end else begin
+   AssignmentFunction:=DefaultAssignmentHeuristic;
   end;
   
+  AssignedCount:=0;
+
   for Index:=0 to Min(fVisibleInstances.Count-1,fNonVirtualInstances.Count-1) do begin
+
    VirtualInstance:=fVisibleInstances[Index];
    
    // Find best non-virtual instance for this virtual instance
-   NonVirtualInstance:=AssignmentFunc(VirtualInstance,fNonVirtualInstances,aInFlightFrameIndex,aCameraPositions);
+   NonVirtualInstance:=AssignmentFunction(VirtualInstance,fNonVirtualInstances,aInFlightFrameIndex,aCameraPositions);
    
    if assigned(NonVirtualInstance) then begin
     // Assign virtual to non-virtual
@@ -36132,6 +36143,7 @@ begin
      DebugInfo^.SceneIndex:=VirtualInstance.fScene;
     end;
    end;
+
   end;
   
   // Handle unassigned virtual instances
