@@ -36088,7 +36088,7 @@ begin
   
   AssignedCount:=0;
 
-  for Index:=0 to Min(fVisibleInstances.Count-1,fNonVirtualInstances.Count-1) do begin
+  for Index:=0 to fVisibleInstances.Count-1 do begin
 
    VirtualInstance:=fVisibleInstances[Index];
    
