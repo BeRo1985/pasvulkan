@@ -28274,10 +28274,18 @@ begin
 end;
 
 function TpvScene3D.TGroup.TInstance.AssignToNonVirtualInstance(const aNonVirtualInstance:TInstance):boolean;
+var RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
- if (fVirtual and assigned(aNonVirtualInstance) and not aNonVirtualInstance.fVirtual) and (aNonVirtualInstance.fPreallocatedRenderInstanceCounter<aNonVirtualInstance.fPreallocatedRenderInstances.Count) then begin 
+ if (fVirtual and assigned(aNonVirtualInstance) and not aNonVirtualInstance.fVirtual) and 
+    ((aNonVirtualInstance.fMaxRenderInstanceCount=0) or
+     (aNonVirtualInstance.fPreallocatedRenderInstanceCounter<aNonVirtualInstance.fMaxRenderInstanceCount)) then begin
   fAssignedNonVirtualInstance:=aNonVirtualInstance;
-  inc(aNonVirtualInstance.fPreallocatedRenderInstanceCounter);
+  if aNonVirtualInstance.fMaxRenderInstanceCount>0 then begin
+   RenderInstance:=aNonVirtualInstance.fPreallocatedRenderInstances.Items[aNonVirtualInstance.fPreallocatedRenderInstanceCounter];
+   inc(aNonVirtualInstance.fPreallocatedRenderInstanceCounter);
+   RenderInstance.Active:=true;
+   RenderInstance.ModelMatrix:=fModelMatrix;
+  end;
   result:=true;
  end else begin
   result:=false;
@@ -35867,7 +35875,7 @@ begin
    Index:=fVirtualInstances.IndexOf(aInstance);
    if Index>=0 then begin
     fVirtualInstances.Remove(aInstance);
-    aInstance.UnassignFromNonVirtualInstance;
+    aInstance.fAssignedNonVirtualInstance:=nil;
     aInstance.fVirtualInstanceManager:=nil;
     fAssignmentDirty:=true;
    end;
@@ -36125,7 +36133,7 @@ begin
 
   // Reset all virtual instance assignments
   for Index:=0 to fVirtualInstances.Count-1 do begin
-   fVirtualInstances[Index].UnassignFromNonVirtualInstance;
+   fVirtualInstances[Index].fAssignedNonVirtualInstance:=nil;
   end;
   
   // Sort visible instances by priority (distance to camera, closer = higher priority)
@@ -36237,7 +36245,7 @@ begin
    NonVirtualInstance:=AssignmentFunction(VirtualInstance,fNonVirtualInstances,aInFlightFrameIndex,aCameraPositions,false); // false = prefer similar
    
    // Assign to render instance of the non-virtual instance, if possible 
-   if assigned(NonVirtualInstance) and VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
+   if assigned(NonVirtualInstance) and (NonVirtualInstance.fMaxRenderInstanceCount<>0) and VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
     
     // The actual render instance assignment will happen later
     // The preallocated render instances will be used for batched rendering
@@ -36273,9 +36281,7 @@ begin
    if assigned(VirtualInstance.fAssignedNonVirtualInstance) then begin
     continue;
    end;
-   
-   VirtualInstance.UnassignFromNonVirtualInstance;
-   
+
    // Collect debug info for unassigned
    if fDebugEnabled then begin
     DebugInfoIndex:=fCountDebugInfos;
@@ -36298,9 +36304,6 @@ begin
     DebugInfo^.SceneIndex:=VirtualInstance.fScene;
    end;
   end;
-
-  // Step 4: Assign render instances
-  // TODO: Assign render instances
    
   fAssignmentDirty:=false;
   
