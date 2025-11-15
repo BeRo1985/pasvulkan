@@ -203,6 +203,7 @@ type { TpvScene3DDynamicGroupManager }
        
        // Group management
        function RegisterGroup(const aGroupKey:TGroupKey;const aGroup:TpvScene3D.TGroup;const aMaxInstances:TpvSizeInt=1):Boolean;
+       function InitializeGroup(const aGroupKey:TGroupKey):Boolean;
        function UnregisterGroup(const aGroupKey:TGroupKey):Boolean;
        function GetGroup(const aGroupKey:TGroupKey):TpvScene3D.TGroup;
        function HasGroup(const aGroupKey:TGroupKey):Boolean;
@@ -383,8 +384,6 @@ end;
 
 function TpvScene3DDynamicGroupManager.RegisterGroup(const aGroupKey:TGroupKey;const aGroup:TpvScene3D.TGroup;const aMaxInstances:TpvSizeInt):Boolean;
 var GroupInfo:TGroupInfo;
-    Index:TpvSizeInt;
-    PoolEntry:TInstancePoolEntry;
 begin
  fLock.Acquire;
  try
@@ -402,17 +401,45 @@ begin
    GroupInfo.fCurrentInstanceCount:=0;
    fGroupInfos.Add(aGroupKey,GroupInfo);
 
-   // Preallocate instances only if max is >= 0 (fixed pool)
-   if aMaxInstances>=0 then begin
+  end;
 
-    for Index:=0 to aMaxInstances-1 do begin
-     PoolEntry:=AllocateInstancePoolEntry;
-     PoolEntry.fInstance:=aGroup.CreateInstance;
-     PoolEntry.fGroupKey:=aGroupKey;
-     PoolEntry.fActive:=false;
-     PoolEntry.fReferenceCount:=0;
-     fInstanceFreeList.Push(PoolEntry);
+ finally
+  fLock.Release;
+ end;
+
+end;
+
+function TpvScene3DDynamicGroupManager.InitializeGroup(const aGroupKey:TGroupKey):Boolean;
+var Group:TpvScene3D.TGroup;
+    GroupInfo:TGroupInfo;
+    Index:TpvSizeInt;
+    PoolEntry:TInstancePoolEntry;
+begin
+
+ result:=false;
+
+ fLock.Acquire;
+ try
+
+  if fGroupRegistry.TryGet(aGroupKey,Group) then begin
+
+   if fGroupInfos.TryGet(aGroupKey,GroupInfo) then begin
+
+    // Preallocate instances only if max is >= 0 (fixed pool)
+    if GroupInfo.fMaxInstances>=0 then begin
+
+     for Index:=0 to GroupInfo.fMaxInstances-1 do begin
+      PoolEntry:=AllocateInstancePoolEntry;
+      PoolEntry.fInstance:=Group.CreateInstance;
+      PoolEntry.fGroupKey:=aGroupKey;
+      PoolEntry.fActive:=false;
+      PoolEntry.fReferenceCount:=0;
+      fInstanceFreeList.Push(PoolEntry);
+     end;
+
     end;
+
+    result:=true;
 
    end;
 
