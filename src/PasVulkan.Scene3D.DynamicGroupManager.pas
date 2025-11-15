@@ -321,18 +321,18 @@ var Index:TpvSizeInt;
 begin
 
  // Clean up render instances
- for Index:=0 to fRenderInstancePool.Count-1 do begin
+{for Index:=0 to fRenderInstancePool.Count-1 do begin
   RenderPoolEntry:=fRenderInstancePool.Items[Index];
   FreeAndNil(RenderPoolEntry.fRenderInstance);
- end;
+ end;}
  FreeAndNil(fRenderInstancePool);
  fRenderInstanceFreeList.Finalize;
  
  // Clean up instances - they're finally freed on shutdown
- for Index:=0 to fInstancePool.Count-1 do begin
+{for Index:=0 to fInstancePool.Count-1 do begin
   PoolEntry:=fInstancePool.Items[Index];
   FreeAndNil(PoolEntry.fInstance);
- end;
+ end;}
  FreeAndNil(fInstancePool);
  fInstanceFreeList.Finalize;
  
