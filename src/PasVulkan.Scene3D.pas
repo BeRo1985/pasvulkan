@@ -3107,6 +3107,11 @@ type EpvScene3D=class(Exception);
                      fUpdateDynamic:TPasMPBool32;
                      fOrder:TpvInt64;
                      fHeadless:boolean;
+                     fVirtual:boolean;
+                     fAssignedNonVirtualInstance:TInstance;
+                     fVirtualInstanceManager:TObject; // Forward reference to TVirtualInstanceManager
+                     fUpdateAssignmentDistanceSquared:TpvDouble; // Temporary for sorting during assignment
+                     fStateHashMapNext:TInstance; // Single-linked list for state hash map
                      fPreviousActive:boolean;
                      fUseRenderInstances:boolean;
                      fUseSortedRenderInstances:boolean;
@@ -3149,6 +3154,10 @@ type EpvScene3D=class(Exception);
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
                      fRenderInstanceLock:TpvInt32;
                      fRenderInstances:TRenderInstances;
+                     fPreallocatedRenderInstances:TRenderInstances; // For virtual instance auto-assignment
+                     fAvailablePreallocatedRenderInstances:TRenderInstances; // Free pool for virtual instances
+                     fMaxRenderInstanceCount:TpvSizeInt; // Count of preallocated render instances for bookkeeping
+                     fVirtualToRenderInstanceMap:array of TRenderInstance; // Maps virtual instance index to render instance
                      fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
                      fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
                      fPerInFlightFrameRenderInstances:TPerInFlightFrameRenderInstances;
@@ -3209,7 +3218,7 @@ type EpvScene3D=class(Exception);
                                                                 const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
                      procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
                     public
-                     constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aHeadless:Boolean=false); reintroduce;
+                     constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aHeadless:Boolean=false;const aVirtual:Boolean=false); reintroduce;
                      destructor Destroy; override;
                      procedure AfterConstruction; override;
                      procedure BeforeDestruction; override;
@@ -3261,6 +3270,16 @@ type EpvScene3D=class(Exception);
                      function GetOrder:TpvInt64;
                      function CreateRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
                     public
+                     // Virtual instance support
+                     function IsVirtual:Boolean; inline;
+                     function IsAssignedForRendering:Boolean; inline;
+                     procedure AssignToNonVirtualInstance(const aNonVirtualInstance:TInstance);
+                     procedure UnassignFromNonVirtualInstance;
+                     function GetAssignedNonVirtualInstance:TInstance; inline;
+                    public
+                     // RenderInstance preallocation support
+                     procedure PreallocateRenderInstances(const aCount:TpvSizeInt);
+                    public
                      procedure StoreAnimationStates;
                      procedure InterpolateAnimationStates(const aAlpha:TpvDouble);
                     published
@@ -3287,6 +3306,9 @@ type EpvScene3D=class(Exception);
                      property BoundingBox:TpvAABB read fBoundingBox;
                      property BoundingSpheres:TBoundingSpheres read fBoundingSpheres;
                     public
+                     property Virtual_:Boolean read fVirtual;
+                     property AssignedNonVirtualInstance:TInstance read fAssignedNonVirtualInstance;
+                    public
                      property BufferRanges:PBufferRanges read fPointerToBufferRanges;
                     public
                      property Animations[const aIndex:TPasGLTFSizeInt]:TpvScene3D.TGroup.TInstance.TAnimation read GetAnimation;
@@ -3298,6 +3320,83 @@ type EpvScene3D=class(Exception);
                      property OnNodeMatrixPost:TOnNodeMatrix read fOnNodeMatrixPost write fOnNodeMatrixPost;
                      property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
                      property OnUpdate:TpvScene3D.TGroup.TInstance.TOnUpdate read fOnUpdate write fOnUpdate;
+                   end;
+                   { TVirtualInstance }
+                   TVirtualInstance=class(TInstance)
+                    public
+                     constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aHeadless:Boolean=false); reintroduce;
+                   end;
+                   { TVirtualInstanceManager }
+                   TVirtualInstanceManager=class
+                    public
+                     type { TAssignmentCallback }
+                          TAssignmentCallback=function(const aVirtualInstance:TInstance;
+                                                       const aCandidateNonVirtualInstances:TInstances;
+                                                       const aInFlightFrameIndex:TpvSizeInt;
+                                                       const aCameraPositions:TpvVector3DynamicArray):TInstance of object;
+                          { TAssignmentDebugInfo }
+                          TAssignmentDebugInfo=record
+                           VirtualInstance:TInstance;
+                           AssignedNonVirtualInstance:TInstance;
+                           StateHash:TpvUInt64;
+                           Distance:TpvDouble;
+                           Priority:TpvFloat;
+                           Visible:Boolean;
+                           SceneIndex:TpvSizeInt;
+                          end;
+                          PAssignmentDebugInfo=^TAssignmentDebugInfo;
+                          TAssignmentDebugInfos=array of TAssignmentDebugInfo;
+                          { TStateKey }
+                          TStateKey=record
+                           public
+                            Hash:TpvUInt64;
+                            SceneIndex:TpvSizeInt;
+                            AnimationStateHash:TpvUInt64;
+                            TimeQuantized:TpvInt64;
+                           public
+                            class function CreateFromInstance(const aInstance:TInstance):TStateKey; static;
+                            function Equals(const aOther:TStateKey):Boolean;
+                          end;
+                          PStateKey=^TStateKey;
+                          TStateKeyHashMap=TpvHashMap<TStateKey,TInstance>; // Maps to head of linked list
+                    private
+                     fGroup:TGroup;
+                     fNonVirtualInstances:TInstances;
+                     fVirtualInstances:TInstances;
+                     fVisibleInstances:TInstances; // Reused for frustum culling to avoid reallocations
+                     fMaxNonVirtualInstancesPerScene:TpvSizeInt;
+                     fAssignmentDirty:Boolean;
+                     fCustomAssignmentCallback:TAssignmentCallback;
+                     fDebugEnabled:Boolean;
+                     fDebugInfos:TAssignmentDebugInfos;
+                     fCountDebugInfos:TpvSizeInt;
+                     fLock:TPasMPSpinLock;
+                     fStateHashMap:TStateKeyHashMap;
+                     fSceneInstanceGroups:array of TInstances;
+                     function DefaultAssignmentHeuristic(const aVirtualInstance:TInstance;
+                                                         const aCandidateNonVirtualInstances:TInstances;
+                                                         const aInFlightFrameIndex:TpvSizeInt;
+                                                         const aCameraPositions:TpvVector3DynamicArray):TInstance;
+                     function ComputeStateSimilarity(const aInstanceA,aInstanceB:TInstance):TpvFloat;
+                     procedure UpdateStateHashMap;
+                     procedure FrustumCullVirtualInstances(const aFrustums:TpvFrustumDynamicArray);
+                    public
+                     constructor Create(const aGroup:TGroup;
+                                        const aMaxNonVirtualInstancesPerScene:TpvSizeInt=20);
+                     destructor Destroy; override;
+                     procedure RegisterVirtualInstance(const aInstance:TInstance);
+                     procedure UnregisterVirtualInstance(const aInstance:TInstance);
+                     procedure UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt;
+                                                 const aFrustums:TpvFrustumDynamicArray;
+                                                 const aCameraPositions:TpvVector3DynamicArray);
+                     function GetAssignedNonVirtualInstance(const aVirtualInstance:TInstance):TInstance;
+                     function IsVirtualInstanceAssigned(const aVirtualInstance:TInstance):Boolean;
+                     function GetDebugVisualizationData:TAssignmentDebugInfos;
+                    published
+                     property CustomAssignmentCallback:TAssignmentCallback read fCustomAssignmentCallback write fCustomAssignmentCallback;
+                     property DebugEnabled:Boolean read fDebugEnabled write fDebugEnabled;
+                     property DebugInfos:TAssignmentDebugInfos read fDebugInfos;
+                     property CountDebugInfos:TpvSizeInt read fCountDebugInfos;
                    end;
                    TMaterialsToDuplicate=TpvObjectGenericList<TpvScene3D.TMaterial>;
                    TMaterialIndexHashMap=TpvHashMap<TMaterial,TpvSizeInt>;
@@ -3361,6 +3460,9 @@ type EpvScene3D=class(Exception);
               fInstanceListLock:TPasMPSlimReaderWriterLock;
               fInstances:TInstances;
               fMaximumCountInstances:TpvSizeint;
+              fPreallocatedInstances:TInstances;
+              fPreallocatedInstanceCount:TpvSizeInt;
+              fVirtualInstanceManager:TVirtualInstanceManager;
               fBoundingBox:TpvAABB;
               fHasStaticBoundingBox:boolean;
               fStaticBoundingBox:TpvAABB;
@@ -3467,6 +3569,14 @@ type EpvScene3D=class(Exception);
               procedure AssignFromOBJ(const aSourceModel:TpvOBJModel);
              public
               function CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
+             public
+              // Instance preallocation support
+              procedure PreallocateInstances(const aCount:TpvSizeInt);
+              function GetPreallocatedInstance:TpvScene3D.TGroup.TInstance;
+             public
+              // Virtual instance manager
+              function GetOrCreateVirtualInstanceManager(const aMaxNonVirtualInstancesPerScene:TpvSizeInt=20):TVirtualInstanceManager;
+              property VirtualInstanceManager:TVirtualInstanceManager read fVirtualInstanceManager;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
              public
@@ -17685,6 +17795,11 @@ begin
  fInstances:=TInstances.Create;
  fInstances.OwnsObjects:=false;
 
+ fPreallocatedInstances:=nil;
+ fPreallocatedInstanceCount:=0;
+
+ fVirtualInstanceManager:=nil;
+
  fNodeNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
  fNodeNameIndexHashMapLowerCase:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
 
@@ -17748,6 +17863,19 @@ begin
  end;
  FreeAndNil(fInstances);
  FreeAndNil(fInstanceListLock);
+
+ // Cleanup virtual instance manager
+ if assigned(fVirtualInstanceManager) then begin
+  FreeAndNil(fVirtualInstanceManager);
+ end;
+
+ // Cleanup preallocated instances
+ if assigned(fPreallocatedInstances) then begin
+  while fPreallocatedInstances.Count>0 do begin
+   fPreallocatedInstances[fPreallocatedInstances.Count-1].Free;
+  end;
+  FreeAndNil(fPreallocatedInstances);
+ end;
 
  FreeAndNil(fUsedVisibleDrawNodes);
 
@@ -21799,10 +21927,53 @@ end;
 function TpvScene3D.TGroup.CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
 begin
  if (fMaximumCountInstances<0) or (fInstances.Count<fMaximumCountInstances) then begin
-  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self,nil,fHeadless or aHeadless);
+  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self,nil,fHeadless or aHeadless,false);
  end else begin
   result:=nil;
  end;
+end;
+
+procedure TpvScene3D.TGroup.PreallocateInstances(const aCount:TpvSizeInt);
+var Index:TpvSizeInt;
+    Instance:TpvScene3D.TGroup.TInstance;
+begin
+ if not assigned(fPreallocatedInstances) then begin
+  fPreallocatedInstances:=TpvScene3D.TGroup.TInstances.Create(false);
+ end;
+ 
+ fPreallocatedInstanceCount:=aCount;
+ 
+ // Create preallocated instances (with GPU resources but Active=false)
+ for Index:=0 to aCount-1 do begin
+  Instance:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self,nil,false,false);
+  if assigned(Instance) then begin
+   Instance.Active:=false; // Inactive by default
+   fPreallocatedInstances.Add(Instance);
+  end;
+ end;
+end;
+
+function TpvScene3D.TGroup.GetPreallocatedInstance:TpvScene3D.TGroup.TInstance;
+var Index:TpvSizeInt;
+begin
+ result:=nil;
+ if assigned(fPreallocatedInstances) then begin
+  // Find first inactive preallocated instance
+  for Index:=0 to fPreallocatedInstances.Count-1 do begin
+   if not fPreallocatedInstances[Index].Active then begin
+    result:=fPreallocatedInstances[Index];
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TpvScene3D.TGroup.GetOrCreateVirtualInstanceManager(const aMaxNonVirtualInstancesPerScene:TpvSizeInt):TVirtualInstanceManager;
+begin
+ if not assigned(fVirtualInstanceManager) then begin
+  fVirtualInstanceManager:=TpvScene3D.TGroup.TVirtualInstanceManager.Create(self,aMaxNonVirtualInstancesPerScene);
+ end;
+ result:=fVirtualInstanceManager;
 end;
 
 function TpvScene3D.TGroup.GetNodeIndexByName(const aNodeName:TpvUTF8String):TpvSizeInt;
@@ -23053,6 +23224,13 @@ begin
  Headless:=true;
 end;
 
+{ TpvScene3D.TGroup.TVirtualInstance }
+
+constructor TpvScene3D.TGroup.TVirtualInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aHeadless:Boolean);
+begin
+ inherited Create(aResourceManager,aParent,aMetaResource,aHeadless,true); // Always set aVirtual=true
+end;
+
 { TpvScene3D.TGroup.TInstances }
 
 procedure TpvScene3D.TGroup.TInstances.Sort;
@@ -23125,7 +23303,7 @@ end;
 
 { TpvScene3D.TGroup.TInstance }
 
-constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aHeadless:Boolean=false);
+constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aHeadless:Boolean=false;const aVirtual:Boolean=false);
 var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex,CountLightNodes:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     Node:TpvScene3D.TGroup.TNode;
@@ -23162,6 +23340,12 @@ begin
  fUpdateDynamic:=true;
 
  fHeadless:=aHeadless;
+
+ fVirtual:=aVirtual;
+
+ fAssignedNonVirtualInstance:=nil;
+
+ fVirtualInstanceManager:=nil;
 
  fApplyCameraRelativeTransform:=true;
 
@@ -23225,6 +23409,11 @@ begin
 
  fRenderInstances:=TpvScene3D.TGroup.TInstance.TRenderInstances.Create;
  fRenderInstances.OwnsObjects:=true;
+
+ fPreallocatedRenderInstances:=nil; // For virtual instance auto-assignment
+ fAvailablePreallocatedRenderInstances:=nil;
+ fMaxRenderInstanceCount:=-1; // -1 = dynamic mode, >=0 = fixed pool mode
+ fVirtualToRenderInstanceMap:=nil;
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fPerInFlightFrameRenderInstances[Index].Initialize;
@@ -23535,6 +23724,21 @@ begin
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fRenderInstanceLock);
   end;
  end;
+
+ // Cleanup preallocated render instances (for virtual instance assignment)
+ if assigned(fPreallocatedRenderInstances) then begin
+  while fPreallocatedRenderInstances.Count>0 do begin
+   RenderInstance:=fPreallocatedRenderInstances.ExtractIndex(fPreallocatedRenderInstances.Count-1);
+   FreeAndNil(RenderInstance);
+  end;
+  FreeAndNil(fPreallocatedRenderInstances);
+ end;
+
+ if assigned(fAvailablePreallocatedRenderInstances) then begin
+  FreeAndNil(fAvailablePreallocatedRenderInstances);
+ end;
+
+ fVirtualToRenderInstanceMap:=nil;
 
  ReleaseData;
 
@@ -23862,7 +24066,8 @@ var Index:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
 begin
 
- if assigned(fSceneInstance) and not fHeadless then begin
+ // Skip GPU resource allocation for headless and virtual instances
+ if assigned(fSceneInstance) and not (fHeadless or fVirtual) then begin
 
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
@@ -23951,7 +24156,8 @@ var Index:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
 begin
 
- if assigned(fSceneInstance) and not fHeadless then begin
+ // Skip GPU resource release for headless and virtual instances
+ if assigned(fSceneInstance) and not (fHeadless or fVirtual) then begin
 
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
@@ -23994,7 +24200,8 @@ procedure TpvScene3D.TGroup.TInstance.ReleaseDataForReallocation;
 var Index:TpvSizeInt;
 begin
 
- if assigned(fSceneInstance) and not fHeadless then begin
+ // Skip GPU resource release for headless and virtual instances
+ if assigned(fSceneInstance) and not (fHeadless or fVirtual) then begin
 
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
@@ -28050,6 +28257,79 @@ function TpvScene3D.TGroup.TInstance.CreateRenderInstance:TpvScene3D.TGroup.TIns
 begin
  result:=TpvScene3D.TGroup.TInstance.TRenderInstance.Create(self);
  fUseRenderInstances:=true;
+end;
+
+function TpvScene3D.TGroup.TInstance.IsVirtual:Boolean;
+begin
+ result:=fVirtual;
+end;
+
+function TpvScene3D.TGroup.TInstance.IsAssignedForRendering:Boolean;
+begin
+ result:=fVirtual and assigned(fAssignedNonVirtualInstance);
+end;
+
+procedure TpvScene3D.TGroup.TInstance.AssignToNonVirtualInstance(const aNonVirtualInstance:TInstance);
+begin
+ if fVirtual and assigned(aNonVirtualInstance) and not aNonVirtualInstance.fVirtual then begin
+  fAssignedNonVirtualInstance:=aNonVirtualInstance;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UnassignFromNonVirtualInstance;
+begin
+ fAssignedNonVirtualInstance:=nil;
+end;
+
+function TpvScene3D.TGroup.TInstance.GetAssignedNonVirtualInstance:TInstance;
+begin
+ result:=fAssignedNonVirtualInstance;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.PreallocateRenderInstances(const aCount:TpvSizeInt);
+var Index:TpvSizeInt;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+begin
+ if fMaxRenderInstanceCount<>aCount then begin
+  fMaxRenderInstanceCount:=aCount;
+  
+  // Always free all existing preallocated instances first
+  if assigned(fPreallocatedRenderInstances) then begin
+   while fPreallocatedRenderInstances.Count>0 do begin
+    RenderInstance:=fPreallocatedRenderInstances.ExtractIndex(fPreallocatedRenderInstances.Count-1);
+    FreeAndNil(RenderInstance);
+   end;
+   FreeAndNil(fPreallocatedRenderInstances);
+  end;
+  
+  if aCount<=0 then begin
+   FreeAndNil(fAvailablePreallocatedRenderInstances);
+   fVirtualToRenderInstanceMap:=nil;
+  end;
+  
+  // Reallocate if count > 0
+  if aCount>0 then begin
+   // Fixed pool mode: preallocate render instances for automatic virtual instance assignment
+   if assigned(fPreallocatedRenderInstances) then begin
+    fPreallocatedRenderInstances.Clear;
+   end else begin
+    fPreallocatedRenderInstances:=TpvScene3D.TGroup.TInstance.TRenderInstances.Create(false);
+   end;
+   
+   if assigned(fAvailablePreallocatedRenderInstances) then begin
+    fAvailablePreallocatedRenderInstances.Clear;
+   end else begin
+    fAvailablePreallocatedRenderInstances:=TpvScene3D.TGroup.TInstance.TRenderInstances.Create(false);
+   end;
+   
+   // Create preallocated render instances
+   for Index:=0 to aCount-1 do begin
+    RenderInstance:=TpvScene3D.TGroup.TInstance.TRenderInstance.Create(self);
+    fPreallocatedRenderInstances.Add(RenderInstance);
+    fAvailablePreallocatedRenderInstances.Add(RenderInstance); // Initially all are available
+   end;
+  end;
+ end;
 end;
 
 procedure TpvScene3D.TGroup.TInstance.StoreAnimationStates;
@@ -35450,6 +35730,466 @@ begin
   fRendererInstanceLock.Release;
  end;
 
+end;
+
+{ TpvScene3D.TGroup.TVirtualInstanceManager.TStateKey }
+
+class function TpvScene3D.TGroup.TVirtualInstanceManager.TStateKey.CreateFromInstance(const aInstance:TInstance):TStateKey;
+var Index:TpvSizeInt;
+    Hash:TpvUInt64;
+begin
+ result.SceneIndex:=aInstance.fScene;
+ 
+ // Compute animation state hash
+ result.AnimationStateHash:=0;
+ if aInstance.fUseAnimationStates and (length(aInstance.fAnimationStates)>0) then begin
+  for Index:=0 to length(aInstance.fAnimationStates)-1 do begin
+   // Simple hash combining animation index, time, and factor
+   Hash:=TpvUInt64(Index);
+   Hash:=(Hash*31)+TpvUInt64(Round(aInstance.fAnimationStates[Index].fTime*1000.0));
+   Hash:=(Hash*31)+TpvUInt64(Round(aInstance.fAnimationStates[Index].fFactor*65536.0));
+   result.AnimationStateHash:=result.AnimationStateHash xor Hash;
+  end;
+ end;
+ 
+ // Quantize time to 100ms buckets for better grouping
+{if assigned(aInstance.fSceneInstance) then begin
+  result.TimeQuantized:=Round(aInstance.fSceneInstance.fTime*10.0);
+ end else}begin
+  result.TimeQuantized:=0;
+ end;
+ 
+ // Compute overall hash
+ result.Hash:=result.AnimationStateHash xor TpvUInt64(result.SceneIndex) xor TpvUInt64(result.TimeQuantized);
+end;
+
+function TpvScene3D.TGroup.TVirtualInstanceManager.TStateKey.Equals(const aOther:TStateKey):Boolean;
+begin
+ result:=(Hash=aOther.Hash) and
+         (SceneIndex=aOther.SceneIndex) and
+         (AnimationStateHash=aOther.AnimationStateHash) and
+         (Abs(TimeQuantized-aOther.TimeQuantized)<=1); // Allow 1 time bucket tolerance
+end;
+
+{ TpvScene3D.TGroup.TVirtualInstanceManager }
+
+constructor TpvScene3D.TGroup.TVirtualInstanceManager.Create(const aGroup:TGroup;const aMaxNonVirtualInstancesPerScene:TpvSizeInt);
+var Index:TpvSizeInt;
+    Instance:TInstance;
+begin
+ inherited Create;
+ 
+ fGroup:=aGroup;
+ fMaxNonVirtualInstancesPerScene:=aMaxNonVirtualInstancesPerScene;
+ fAssignmentDirty:=true;
+ fCustomAssignmentCallback:=nil;
+ fDebugEnabled:=false;
+ fDebugInfos:=nil;
+ fCountDebugInfos:=0;
+ 
+ fLock:=TPasMPSpinLock.Create;
+ 
+ fNonVirtualInstances:=TInstances.Create(false);
+ fVirtualInstances:=TInstances.Create(false);
+ fVisibleInstances:=TInstances.Create(false); // Reused for frustum culling
+ 
+ fStateHashMap:=TStateKeyHashMap.Create(nil);
+ 
+ // Preallocate non-virtual instances for rendering
+ // We create one pool per scene, but start with a simple global pool
+ if assigned(fGroup.fPreallocatedInstances) and (fGroup.fPreallocatedInstances.Count>0) then begin
+  // Use existing preallocated instances
+  for Index:=0 to Min(fGroup.fPreallocatedInstances.Count-1,fMaxNonVirtualInstancesPerScene-1) do begin
+   Instance:=fGroup.fPreallocatedInstances[Index];
+   if assigned(Instance) and not Instance.fVirtual then begin
+    fNonVirtualInstances.Add(Instance);
+   end;
+  end;
+ end else begin
+  // Create new non-virtual instances
+  for Index:=0 to fMaxNonVirtualInstancesPerScene-1 do begin
+   Instance:=TInstance.Create(fGroup.ResourceManager,fGroup,nil,false,false);
+   if assigned(Instance) then begin
+    Instance.Active:=false; // Initially inactive
+    fNonVirtualInstances.Add(Instance);
+   end;
+  end;
+ end;
+end;
+
+destructor TpvScene3D.TGroup.TVirtualInstanceManager.Destroy;
+begin
+ FreeAndNil(fStateHashMap);
+
+ FreeAndNil(fVisibleInstances);
+
+ FreeAndNil(fVirtualInstances);
+
+ FreeAndNil(fNonVirtualInstances);
+
+ FreeAndNil(fLock);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3D.TGroup.TVirtualInstanceManager.RegisterVirtualInstance(const aInstance:TInstance);
+begin
+ if assigned(aInstance) and aInstance.fVirtual then begin
+  fLock.Acquire;
+  try
+   if fVirtualInstances.IndexOf(aInstance)<0 then begin
+    fVirtualInstances.Add(aInstance);
+    aInstance.fVirtualInstanceManager:=self;
+    fAssignmentDirty:=true;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TVirtualInstanceManager.UnregisterVirtualInstance(const aInstance:TInstance);
+var Index:TpvSizeInt;
+begin
+ if assigned(aInstance) then begin
+  fLock.Acquire;
+  try
+   Index:=fVirtualInstances.IndexOf(aInstance);
+   if Index>=0 then begin
+    fVirtualInstances.Remove(aInstance);
+    aInstance.UnassignFromNonVirtualInstance;
+    aInstance.fVirtualInstanceManager:=nil;
+    fAssignmentDirty:=true;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TVirtualInstanceManager.UpdateStateHashMap;
+var Index:TpvSizeInt;
+    StateKey:TStateKey;
+    VirtualInstance,HeadInstance:TInstance;
+begin
+
+ // Clear all linked list chains by clearing the hash map
+ fStateHashMap.Clear;
+ 
+ // Build new linked lists for each state key
+ for Index:=0 to fVirtualInstances.Count-1 do begin
+  VirtualInstance:=fVirtualInstances[Index];
+  if VirtualInstance.Active then begin
+   StateKey:=TStateKey.CreateFromInstance(VirtualInstance);
+   if fStateHashMap.TryGet(StateKey,HeadInstance) then begin
+    // Add to existing linked list
+    VirtualInstance.fStateHashMapNext:=HeadInstance;
+    fStateHashMap.Values[StateKey]:=VirtualInstance;
+   end else begin
+    // Start new linked list
+    VirtualInstance.fStateHashMapNext:=nil;
+    fStateHashMap.Add(StateKey,VirtualInstance);
+   end;
+  end;
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TVirtualInstanceManager.FrustumCullVirtualInstances(const aFrustums:TpvFrustumDynamicArray);
+var Index,FrustumIndex:TpvSizeInt;
+    Instance:TInstance;
+    Visible:Boolean;
+    BoundingSphere:TpvSphere;
+begin
+
+ fVisibleInstances.Clear;
+ 
+ for Index:=0 to fVirtualInstances.Count-1 do begin
+
+  Instance:=fVirtualInstances[Index];
+
+  if Instance.Active then begin
+
+   Visible:=length(aFrustums)=0; // If no frustums, all visible
+   
+   if not Visible then begin
+    // Check against all frustums
+    BoundingSphere:=Instance.fBoundingSpheres[0];
+    for FrustumIndex:=0 to length(aFrustums)-1 do begin
+     if aFrustums[FrustumIndex].SphereInFrustum(BoundingSphere.Center,BoundingSphere.Radius)>0 then begin
+      Visible:=true;
+      break;
+     end;
+    end;
+   end;
+   
+   if Visible then begin
+    fVisibleInstances.Add(Instance);
+   end;
+
+  end;
+
+ end;
+
+end;
+
+function TpvScene3D.TGroup.TVirtualInstanceManager.ComputeStateSimilarity(const aInstanceA,aInstanceB:TInstance):TpvFloat;
+var Index:TpvSizeInt;
+    Similarity:TpvFloat;
+    TimeDiff:TpvDouble;
+begin
+ result:=0.0;
+ 
+ // Check if both instances are not null
+ if not (assigned(aInstanceA) and assigned(aInstanceB)) then begin
+  exit;
+ end;
+ 
+ // Check scene match
+ if aInstanceA.fScene<>aInstanceB.fScene then begin
+  exit;
+ end;
+ 
+ Similarity:=1.0;
+ 
+ // Compare animation states
+ if aInstanceA.fUseAnimationStates and aInstanceB.fUseAnimationStates and
+    (length(aInstanceA.fAnimationStates)=length(aInstanceB.fAnimationStates)) then begin
+  for Index:=0 to length(aInstanceA.fAnimationStates)-1 do begin
+   // Time similarity (within 1 second = similar)
+   TimeDiff:=Abs(aInstanceA.fAnimationStates[Index].fTime-aInstanceB.fAnimationStates[Index].fTime);
+   Similarity:=Similarity*(1.0/(1.0+TimeDiff));
+   
+   // Factor similarity
+   Similarity:=Similarity*(1.0-Abs(aInstanceA.fAnimationStates[Index].fFactor-aInstanceB.fAnimationStates[Index].fFactor));
+  end;
+ end;
+ 
+ result:=Similarity;
+end;
+
+function TpvScene3D.TGroup.TVirtualInstanceManager.DefaultAssignmentHeuristic(const aVirtualInstance:TInstance;
+                                                                              const aCandidateNonVirtualInstances:TInstances;
+                                                                              const aInFlightFrameIndex:TpvSizeInt;
+                                                                              const aCameraPositions:TpvVector3DynamicArray):TInstance;
+var Index:TpvSizeInt;
+    Candidate:TInstance;
+    BestCandidate:TInstance;
+    BestScore,Score:TpvFloat;
+    Similarity:TpvFloat;
+    DistanceToCamera:TpvDouble;
+    CameraPos:TpvVector3D;
+begin
+ result:=nil;
+ BestCandidate:=nil;
+ BestScore:=-1.0;
+ 
+ // Get camera position (use first camera if multiple)
+ if length(aCameraPositions)>0 then begin
+  CameraPos:=aCameraPositions[0];
+ end else begin
+  CameraPos:=TpvVector3.Origin;
+ end;
+ 
+ for Index:=0 to aCandidateNonVirtualInstances.Count-1 do begin
+  Candidate:=aCandidateNonVirtualInstances[Index];
+  
+  // Compute similarity score
+  Similarity:=ComputeStateSimilarity(aVirtualInstance,Candidate);
+  
+  // Distance factor (closer virtual instances to camera get higher priority)
+  DistanceToCamera:=(aVirtualInstance.fModelMatrix.Translation.xyz-CameraPos).Length;
+  
+  // Combined score (similarity is more important than distance)
+  Score:=(Similarity*10.0)-(DistanceToCamera*0.001);
+  
+  if Score>BestScore then begin
+   BestScore:=Score;
+   BestCandidate:=Candidate;
+  end;
+ end;
+ 
+ result:=BestCandidate;
+end;
+
+function CompareInstancesByDistanceSquared(const a,b:TpvPointer):TpvInt32;
+var InstanceA,InstanceB:TpvScene3D.TGroup.TInstance;
+begin
+ InstanceA:=TpvScene3D.TGroup.TInstance(a^);
+ InstanceB:=TpvScene3D.TGroup.TInstance(b^);
+ if InstanceA.fUpdateAssignmentDistanceSquared<InstanceB.fUpdateAssignmentDistanceSquared then begin
+  result:=-1;
+ end else if InstanceA.fUpdateAssignmentDistanceSquared>InstanceB.fUpdateAssignmentDistanceSquared then begin
+  result:=1;
+ end else begin
+  result:=0;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TVirtualInstanceManager.UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt;
+                                                                      const aFrustums:TpvFrustumDynamicArray;
+                                                                      const aCameraPositions:TpvVector3DynamicArray);
+var Index,AssignedCount,DebugInfoIndex:TpvSizeInt;
+    VirtualInstance,NonVirtualInstance:TInstance;
+    StateKey:TStateKey;
+    Instances:TInstances;
+    AssignmentFunc:TAssignmentCallback;
+    DebugInfo:PAssignmentDebugInfo;
+    CameraPos:TpvVector3D;
+begin
+
+ fLock.Acquire;
+ try
+
+  // Update state hash map
+  UpdateStateHashMap;
+  
+  // Frustum cull virtual instances (uses fVisibleInstances)
+  FrustumCullVirtualInstances(aFrustums);
+  
+  // Clear debug info
+  fCountDebugInfos:=0;
+
+  // Reset all non-virtual instances
+  for Index:=0 to fNonVirtualInstances.Count-1 do begin
+   fNonVirtualInstances[Index].Active:=false;
+  end;
+  
+  // Sort visible instances by priority (distance to camera, closer = higher priority)
+  if (fVisibleInstances.Count>0) and (length(aCameraPositions)>0) then begin
+   CameraPos:=aCameraPositions[0];
+   
+   // Store distance squared in each instance for sorting
+   for Index:=0 to fVisibleInstances.Count-1 do begin
+    fVisibleInstances[Index].fUpdateAssignmentDistanceSquared:=(fVisibleInstances[Index].fModelMatrix.Translation.xyz-CameraPos).SquaredLength;
+   end;
+   
+   // Fast IndirectIntroSort (O(n log n) average case) - sorts pointers based on distance
+   if fVisibleInstances.Count>1 then begin
+    PasVulkan.Utils.IndirectIntroSort(@fVisibleInstances.RawItems[0],0,fVisibleInstances.Count-1,CompareInstancesByDistanceSquared);
+   end;
+  end;
+  
+  // Assign virtual instances to non-virtual instances
+  AssignedCount:=0;
+  AssignmentFunc:=fCustomAssignmentCallback;
+  if not Assigned(AssignmentFunc) then begin
+   AssignmentFunc:=DefaultAssignmentHeuristic;
+  end;
+  
+  for Index:=0 to Min(fVisibleInstances.Count-1,fNonVirtualInstances.Count-1) do begin
+   VirtualInstance:=fVisibleInstances[Index];
+   
+   // Find best non-virtual instance for this virtual instance
+   NonVirtualInstance:=AssignmentFunc(VirtualInstance,fNonVirtualInstances,aInFlightFrameIndex,aCameraPositions);
+   
+   if assigned(NonVirtualInstance) then begin
+    // Assign virtual to non-virtual
+    VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance);
+    
+    // Copy state from virtual to non-virtual
+    NonVirtualInstance.fModelMatrix:=VirtualInstance.fModelMatrix;
+    NonVirtualInstance.fScene:=VirtualInstance.fScene;
+    NonVirtualInstance.Active:=true;
+    
+    // Copy animation states
+    if VirtualInstance.fUseAnimationStates and (length(VirtualInstance.fAnimationStates)>0) then begin
+     NonVirtualInstance.fUseAnimationStates:=true;
+     if length(NonVirtualInstance.fAnimationStates)<length(VirtualInstance.fAnimationStates) then begin
+      SetLength(NonVirtualInstance.fAnimationStates,length(VirtualInstance.fAnimationStates));
+     end;
+     Move(VirtualInstance.fAnimationStates[0],NonVirtualInstance.fAnimationStates[0],
+          SizeOf(TpvScene3D.TGroup.TInstance.TAnimationState)*length(VirtualInstance.fAnimationStates));
+    end;
+    
+    // Automatically assign preallocated render instances to non-virtual instance
+    // This links the virtual instance's rendering to the non-virtual instance's preallocated render instances
+    if assigned(NonVirtualInstance.fPreallocatedRenderInstances) and 
+       (NonVirtualInstance.fPreallocatedRenderInstances.Count>0) then begin
+     NonVirtualInstance.fUseRenderInstances:=true;
+     // The preallocated render instances are already created and will be used automatically
+     // during rendering - no manual assignment needed
+    end;
+    
+    inc(AssignedCount);
+    
+    // Collect debug info
+    if fDebugEnabled then begin
+     DebugInfoIndex:=fCountDebugInfos;
+     inc(fCountDebugInfos);
+     if length(fDebugInfos)<fCountDebugInfos then begin
+      SetLength(fDebugInfos,fCountDebugInfos+((fCountDebugInfos+1) shr 1));
+     end;
+     DebugInfo:=@fDebugInfos[DebugInfoIndex];
+     DebugInfo^.VirtualInstance:=VirtualInstance;
+     DebugInfo^.AssignedNonVirtualInstance:=NonVirtualInstance;
+     StateKey:=TStateKey.CreateFromInstance(VirtualInstance);
+     DebugInfo^.StateHash:=StateKey.Hash;
+     DebugInfo^.Distance:=(VirtualInstance.fModelMatrix.Translation.xyz-aCameraPositions[0]).Length;
+     DebugInfo^.Priority:=1.0;
+     DebugInfo^.Visible:=true;
+     DebugInfo^.SceneIndex:=VirtualInstance.fScene;
+    end;
+   end;
+  end;
+  
+  // Handle unassigned virtual instances
+  for Index:=AssignedCount to fVisibleInstances.Count-1 do begin
+   fVisibleInstances[Index].UnassignFromNonVirtualInstance;
+   
+   // Collect debug info for unassigned
+   if fDebugEnabled then begin
+    DebugInfoIndex:=fCountDebugInfos;
+    inc(fCountDebugInfos);
+    if length(fDebugInfos)<fCountDebugInfos then begin
+     SetLength(fDebugInfos,fCountDebugInfos+((fCountDebugInfos+1) shr 1));
+    end;
+    DebugInfo:=@fDebugInfos[DebugInfoIndex];
+    DebugInfo^.VirtualInstance:=fVisibleInstances[Index];
+    DebugInfo^.AssignedNonVirtualInstance:=nil;
+    StateKey:=TStateKey.CreateFromInstance(fVisibleInstances[Index]);
+    DebugInfo^.StateHash:=StateKey.Hash;
+    if length(aCameraPositions)>0 then begin
+     DebugInfo^.Distance:=(fVisibleInstances[Index].fModelMatrix.Translation.xyz-aCameraPositions[0]).Length;
+    end else begin
+     DebugInfo^.Distance:=0.0;
+    end;
+    DebugInfo^.Priority:=0.0;
+    DebugInfo^.Visible:=true;
+    DebugInfo^.SceneIndex:=fVisibleInstances[Index].fScene;
+   end;
+  end;
+   
+  fAssignmentDirty:=false;
+  
+ finally
+  fLock.Release;
+ end;
+
+end;
+
+function TpvScene3D.TGroup.TVirtualInstanceManager.GetAssignedNonVirtualInstance(const aVirtualInstance:TInstance):TInstance;
+begin
+ result:=nil;
+ if assigned(aVirtualInstance) then begin
+  result:=aVirtualInstance.fAssignedNonVirtualInstance;
+ end;
+end;
+
+function TpvScene3D.TGroup.TVirtualInstanceManager.IsVirtualInstanceAssigned(const aVirtualInstance:TInstance):Boolean;
+begin
+ result:=assigned(aVirtualInstance) and assigned(aVirtualInstance.fAssignedNonVirtualInstance);
+end;
+
+function TpvScene3D.TGroup.TVirtualInstanceManager.GetDebugVisualizationData:TAssignmentDebugInfos;
+begin
+ fLock.Acquire;
+ try
+  result:=Copy(fDebugInfos,0,length(fDebugInfos));
+ finally
+  fLock.Release;
+ end;
 end;
 
 initialization
