@@ -173,7 +173,10 @@ type TpvScene=class;
        fLock:TpvInt32;
        fState:TpvSceneNodeState;
        fDestroying:boolean;
-      public 
+       fIsCountToStartLoadNodes:boolean;
+       fIsCountToBackgroundLoadNodes:boolean;
+       fIsCountToFinishLoadNodes:boolean;
+      public
        fStartLoadVisitGeneration:TpvUInt32;
        fBackgroundLoadVisitGeneration:TpvUInt32;
        fFinishLoadVisitGeneration:TpvUInt32;
@@ -339,6 +342,10 @@ begin
 
  fIndex:=-1;
 
+ fIsCountToStartLoadNodes:=false;
+ fIsCountToBackgroundLoadNodes:=false;
+ fIsCountToFinishLoadNodes:=false;
+
  fChildren:=TpvSceneNodes.Create;
  fChildren.OwnsObjects:=true;
 
@@ -416,8 +423,9 @@ begin
    fIndex:=fScene.fAllNodes.Add(self);
   finally
    fScene.fAllNodesLock.Release;
-  end; 
+  end;
   TPasMPInterlocked.Increment(fScene.fCountToStartLoadNodes);
+  fIsCountToStartLoadNodes:=true;
  end;
 end;
 
@@ -625,9 +633,15 @@ begin
  OldState:=TPasMPInterlocked.Read(fState);
  if (OldState=TpvSceneNodeState.Unloaded) or (OldState=TpvSceneNodeState.StartLoading) then begin
   TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.StartLoaded,OldState);
-  TPasMPInterlocked.Decrement(fScene.fCountToStartLoadNodes);
-  TPasMPInterlocked.Increment(fScene.fCountToBackgroundLoadNodes);
- end;  
+  if fIsCountToStartLoadNodes then begin
+   fIsCountToStartLoadNodes:=false;
+   TPasMPInterlocked.Decrement(fScene.fCountToStartLoadNodes);
+  end;
+  if not fIsCountToBackgroundLoadNodes then begin
+   TPasMPInterlocked.Increment(fScene.fCountToBackgroundLoadNodes);
+   fIsCountToBackgroundLoadNodes:=true;
+  end;
+ end;
 end;
 
 procedure TpvSceneNode.BeforeBackgroundLoad;
@@ -644,9 +658,15 @@ begin
  OldState:=TPasMPInterlocked.Read(fState);
  if (OldState=TpvSceneNodeState.StartLoaded) or (OldState=TpvSceneNodeState.BackgroundLoading) then begin
   TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.BackgroundLoaded,OldState);
-  TPasMPInterlocked.Decrement(fScene.fCountToBackgroundLoadNodes);
-  TPasMPInterlocked.Increment(fScene.fCountToFinishLoadNodes);
- end;  
+  if fIsCountToBackgroundLoadNodes then begin
+   fIsCountToBackgroundLoadNodes:=false;
+   TPasMPInterlocked.Decrement(fScene.fCountToBackgroundLoadNodes);
+  end;
+  if not fIsCountToFinishLoadNodes then begin
+   TPasMPInterlocked.Increment(fScene.fCountToFinishLoadNodes);
+   fIsCountToFinishLoadNodes:=true;
+  end;
+ end;
 end;
 
 procedure TpvSceneNode.BeforeFinishLoad;
@@ -664,7 +684,10 @@ begin
  if ((OldState=TpvSceneNodeState.BackgroundLoaded) or (OldState=TpvSceneNodeState.Loading)) and
     (TPasMPInterlocked.CompareExchange(fState,TpvSceneNodeState.Loaded,OldState)=OldState) then begin
   if assigned(fScene) then begin
-   TPasMPInterlocked.Decrement(fScene.fCountToFinishLoadNodes);
+   if fIsCountToFinishLoadNodes then begin
+    fIsCountToFinishLoadNodes:=false;
+    TPasMPInterlocked.Decrement(fScene.fCountToFinishLoadNodes);
+   end;
   end;
  end;
 end;
@@ -952,7 +975,10 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.StartLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.Unloaded)=TpvSceneNodeState.Unloaded then begin
-          TPasMPInterlocked.Decrement(fCountToStartLoadNodes);
+          if Node.fIsCountToStartLoadNodes then begin
+           Node.fIsCountToStartLoadNodes:=false;
+           TPasMPInterlocked.Decrement(fScene.fCountToStartLoadNodes);
+          end;
          end;
         end;
        end;
@@ -974,7 +1000,10 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.StartLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartLoading)=TpvSceneNodeState.StartLoading then begin
-          TPasMPInterlocked.Decrement(fCountToStartLoadNodes);
+          if Node.fIsCountToStartLoadNodes then begin
+           Node.fIsCountToStartLoadNodes:=false;
+           TPasMPInterlocked.Decrement(fScene.fCountToStartLoadNodes);
+          end;
          end;
         end;
        end;
@@ -1042,7 +1071,10 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.BackgroundLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.StartLoaded)=TpvSceneNodeState.StartLoaded then begin
-          TPasMPInterlocked.Decrement(fCountToBackgroundLoadNodes);
+          if Node.fIsCountToBackgroundLoadNodes then begin
+           Node.fIsCountToBackgroundLoadNodes:=false;
+           TPasMPInterlocked.Decrement(fCountToBackgroundLoadNodes);
+          end;
          end;
         end;
        end;
@@ -1064,7 +1096,10 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.BackgroundLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.BackgroundLoading)=TpvSceneNodeState.BackgroundLoading then begin
-          TPasMPInterlocked.Decrement(fCountToBackgroundLoadNodes);
+          if Node.fIsCountToBackgroundLoadNodes then begin
+           Node.fIsCountToBackgroundLoadNodes:=false;
+           TPasMPInterlocked.Decrement(fCountToBackgroundLoadNodes);
+          end;
          end;
         end;
        end;
@@ -1132,7 +1167,10 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.BackgroundLoaded)=TpvSceneNodeState.BackgroundLoaded then begin
-          TPasMPInterlocked.Decrement(fCountToFinishLoadNodes);
+          if Node.fIsCountToFinishLoadNodes then begin
+           Node.fIsCountToFinishLoadNodes:=false;
+           TPasMPInterlocked.Decrement(fCountToFinishLoadNodes);
+          end;
          end;
         end;
        end;
@@ -1154,7 +1192,10 @@ begin
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',DumpExceptionCallStack(e));
          if TPasMPInterlocked.CompareExchange(Node.fState,TpvSceneNodeState.Failed,TpvSceneNodeState.Loading)=TpvSceneNodeState.Loading then begin
-          TPasMPInterlocked.Decrement(fCountToFinishLoadNodes);
+          if Node.fIsCountToFinishLoadNodes then begin
+           Node.fIsCountToFinishLoadNodes:=false;
+           TPasMPInterlocked.Decrement(fCountToFinishLoadNodes);
+          end;
          end;
         end;
        end;
