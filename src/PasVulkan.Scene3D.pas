@@ -3570,6 +3570,7 @@ type EpvScene3D=class(Exception);
               procedure AssignFromOBJ(const aSourceModel:TpvOBJModel);
              public
               function CreateInstance(const aHeadless:Boolean=false;const aVirtual:Boolean=false):TpvScene3D.TGroup.TInstance;
+              function CreateVirtualInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TVirtualInstance;
              public
               // Instance preallocation support
               procedure PreallocateInstances(const aCount:TpvSizeInt);
@@ -21929,6 +21930,15 @@ function TpvScene3D.TGroup.CreateInstance(const aHeadless:Boolean;const aVirtual
 begin
  if (fMaximumCountInstances<0) or (fInstances.Count<fMaximumCountInstances) then begin
   result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self,nil,fHeadless or aHeadless,aVirtual);
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvScene3D.TGroup.CreateVirtualInstance(const aHeadless:Boolean):TpvScene3D.TGroup.TVirtualInstance;
+begin
+ if (fMaximumCountInstances<0) or (fInstances.Count<fMaximumCountInstances) then begin
+  result:=TpvScene3D.TGroup.TVirtualInstance.Create(ResourceManager,self,nil,fHeadless or aHeadless);
  end else begin
   result:=nil;
  end;
