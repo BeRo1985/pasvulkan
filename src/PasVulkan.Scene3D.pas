@@ -36299,7 +36299,8 @@ begin
     NonVirtualInstance.Active:=false;
     // Reset all non-virtual render instances in preparation for new assignments in an optimized way
     // where we stop resetting as soon as we find an inactive non-virtual render instance since all
-    // following ones will also be inactive (due to preallocation order) 
+    // following ones will also be inactive (due to preallocation order, and delete-with-swap-last
+    // doesn't happen here because we never remove render instances from the preallocated list) 
     for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
      RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
      if RenderInstance.Active then begin
