@@ -23951,6 +23951,40 @@ begin
     TPasMPInterlocked.Write(fIsNewInstance,TPasMPBool32(true));
    end;
 
+   // Register instance with virtual instance manager when applicable 
+   if assigned(fGroup.fVirtualInstanceManager) and not assigned(fVirtualInstanceManager) then begin
+    
+    fGroup.fVirtualInstanceManager.fLock.Acquire;
+    try
+ 
+     if fVirtual then begin
+
+      // Virtual instance
+
+      if fGroup.fVirtualInstanceManager.fVirtualInstances.IndexOf(self)<0 then begin
+       fGroup.fVirtualInstanceManager.fVirtualInstances.Add(self);
+       fVirtualInstanceManager:=fGroup.fVirtualInstanceManager;
+       fVirtualInstanceManager.fAssignmentDirty:=true;
+      end;
+
+     end else begin
+
+      // Non-virtual instance
+
+      if fGroup.fVirtualInstanceManager.fNonVirtualInstances.IndexOf(self)<0 then begin
+       fGroup.fVirtualInstanceManager.fNonVirtualInstances.Add(self);
+       fVirtualInstanceManager:=fGroup.fVirtualInstanceManager;
+       fVirtualInstanceManager.fAssignmentDirty:=true;
+      end;
+
+     end;
+
+    finally
+     fGroup.fVirtualInstanceManager.fLock.Release;
+    end;
+    
+   end; 
+
   finally
    fAdded:=true;
   end;
@@ -24385,6 +24419,7 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.Remove;
 var GroupInstance:TpvScene3D.TGroup.TInstance;
+    Index:TpvSizeInt; 
 begin
 
  if fAdded then begin
@@ -24393,6 +24428,46 @@ begin
 
    UpdateInvisible;
    try
+
+    // Unregister instance with virtual instance manager when applicable 
+    if assigned(fGroup.fVirtualInstanceManager) and assigned(fVirtualInstanceManager) then begin
+
+     try
+
+      fGroup.fVirtualInstanceManager.fLock.Acquire;
+      try
+
+       if fVirtual then begin
+
+        // Virtual instance
+
+        Index:=fGroup.fVirtualInstanceManager.fVirtualInstances.IndexOf(self); 
+        if Index>=0 then begin
+         fGroup.fVirtualInstanceManager.fVirtualInstances.ExtractIndex(Index);
+         fVirtualInstanceManager.fAssignmentDirty:=true;
+         fAssignedNonVirtualInstance:=nil;
+        end;
+
+       end else begin
+
+        // Non-virtual instance
+
+        if fGroup.fVirtualInstanceManager.fNonVirtualInstances.IndexOf(self)>=0 then begin
+         fGroup.fVirtualInstanceManager.fNonVirtualInstances.Remove(self);
+         fVirtualInstanceManager.fAssignmentDirty:=true;
+        end;
+
+       end;
+
+      finally
+       fGroup.fVirtualInstanceManager.fLock.Release;
+      end;
+
+     finally
+      fVirtualInstanceManager:=nil;
+     end;
+
+    end;  
 
     fSceneInstance.fGroupInstanceListLock.Acquire;
     try
