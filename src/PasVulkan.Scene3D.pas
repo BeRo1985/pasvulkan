@@ -36433,8 +36433,8 @@ begin
    // Assign to render instance of the non-virtual instance, if possible 
    if assigned(NonVirtualInstance) and (NonVirtualInstance.fMaxRenderInstanceCount<>0) and
       VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
-
-    fRemainingNonVirtualInstances.DeleteWithSwap(InstanceIndex);
+    
+    //fRemainingNonVirtualInstances.DeleteWithSwap(InstanceIndex); // Keep non-virtual instance for further assignments
 
     // The actual render instance assignment will happen later
     // The preallocated render instances will be used for batched rendering
