@@ -36247,7 +36247,7 @@ begin
    if NonVirtualInstance.Active then begin
     NonVirtualInstance.Active:=false;
     for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
-     RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances[Index];
+     RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances[RenderInstanceIndex];
      if RenderInstance.Active then begin
       RenderInstance.Active:=false;
      end else begin
