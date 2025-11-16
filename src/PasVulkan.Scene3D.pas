@@ -36247,7 +36247,7 @@ begin
  try
 
   // Update state hash map
-  UpdateStateHashMap;
+  // UpdateStateHashMap; // Not used currently
   
   // Frustum cull virtual instances (uses fRemainingVisibleInstances)
   FrustumCullVirtualInstances(aInFlightFrameIndex);
