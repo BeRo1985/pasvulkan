@@ -3569,7 +3569,7 @@ type EpvScene3D=class(Exception);
              public
               procedure AssignFromOBJ(const aSourceModel:TpvOBJModel);
              public
-              function CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
+              function CreateInstance(const aHeadless:Boolean=false;const aVirtual:Boolean=false):TpvScene3D.TGroup.TInstance;
              public
               // Instance preallocation support
               procedure PreallocateInstances(const aCount:TpvSizeInt);
@@ -21925,10 +21925,10 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
+function TpvScene3D.TGroup.CreateInstance(const aHeadless:Boolean;const aVirtual:Boolean):TpvScene3D.TGroup.TInstance;
 begin
  if (fMaximumCountInstances<0) or (fInstances.Count<fMaximumCountInstances) then begin
-  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self,nil,fHeadless or aHeadless,false);
+  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self,nil,fHeadless or aHeadless,aVirtual);
  end else begin
   result:=nil;
  end;
@@ -23933,7 +23933,8 @@ var Index:TpvSizeInt;
     SrcJointBlock,DstJointBlock:PJointBlock;
 begin
 
- if assigned(fSceneInstance) and not fHeadless then begin
+ // Skip for headless and virtual instances
+ if assigned(fSceneInstance) and not (fHeadless or fVirtual) then begin
 
   repeat
    Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
@@ -24068,7 +24069,7 @@ var Index:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
 begin
 
- // Skip GPU resource allocation for headless and virtual instances
+ // Skip for headless and virtual instances
  if assigned(fSceneInstance) and not (fHeadless or fVirtual) then begin
 
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
@@ -24158,7 +24159,7 @@ var Index:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
 begin
 
- // Skip GPU resource release for headless and virtual instances
+ // Skip for headless and virtual instances
  if assigned(fSceneInstance) and not (fHeadless or fVirtual) then begin
 
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
@@ -24202,7 +24203,7 @@ procedure TpvScene3D.TGroup.TInstance.ReleaseDataForReallocation;
 var Index:TpvSizeInt;
 begin
 
- // Skip GPU resource release for headless and virtual instances
+ // Skip for headless and virtual instances
  if assigned(fSceneInstance) and not (fHeadless or fVirtual) then begin
 
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
@@ -24232,7 +24233,8 @@ var Index:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
 begin
 
- if assigned(fSceneInstance) and not fHeadless then begin
+ // Skip for headless and virtual instances
+ if assigned(fSceneInstance) and not (fHeadless or fVirtual) then begin
 
   DoNeedUpdate:=false;
 
@@ -24551,7 +24553,8 @@ begin
 
       try
 
-       if assigned(fSceneInstance.fVulkanDevice) and not fHeadless then begin
+       // Skip for headless and virtual instances
+       if assigned(fSceneInstance.fVulkanDevice) and not (fHeadless or fVirtual) then begin
 
        end;
 
@@ -24582,7 +24585,8 @@ begin
   try
    if fUploaded then begin
     try
-     if not fHeadless then begin
+     // Skip for headless and virtual instances
+     if not (fHeadless or fVirtual) then begin
      end;
     finally
      fUploaded:=false;
@@ -27799,7 +27803,8 @@ begin
  if (aInFlightFrameIndex>=0) and
     fActives[aInFlightFrameIndex] and
     assigned(fActiveScenes[aInFlightFrameIndex]) and
-    not fHeadless then begin
+    // Skip for headless and virtual instances
+    not (fHeadless or fVirtual) then begin
   if (length(fNodeMatrices)>0) and (length(fNodeMatrices)=fBufferRanges.VulkanNodeMatricesBufferRange.Size) then begin
    Move(fNodeMatrices[0],fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex].Items[fBufferRanges.VulkanNodeMatricesBufferRange.Offset],length(fNodeMatrices)*SizeOf(TpvMatrix4x4));
   end;
@@ -27821,7 +27826,8 @@ begin
  if (aInFlightFrameIndex>=0) and
     fActives[aInFlightFrameIndex] and
     assigned(fActiveScenes[aInFlightFrameIndex]) and
-    not fHeadless then begin
+    // Skip for headless and virtual instances
+    not (fHeadless or fVirtual) then begin
 
   if (fPreparedMeshContentGeneration<>fGroup.fFrameUpdatedMeshContentGenerations[aInFlightFrameIndex]) and
      (fBufferRanges.VulkanVertexBufferRange.Offset>=0) then begin
@@ -28962,7 +28968,8 @@ var NodeIndex,IndicesStart,IndicesCount,InFlightFrameIndex,
     CachedVertexRange:TpvScene3D.TCachedVertexRange;
 begin
 
- if fActives[aInFlightFrameIndex] and not fHeadless then begin
+ // Skip for headless and virtual instances
+ if fActives[aInFlightFrameIndex] and not (fHeadless or fVirtual) then begin
 
   Scene:=fActiveScenes[aInFlightFrameIndex];
 
@@ -34286,7 +34293,8 @@ begin
 
        GroupInstance:=TpvScene3D.TGroup.TInstance(TreeNode^.UserData);
 
-       if (not GroupInstance.fHeadless) and GroupInstance.Group.Usable then begin
+       // Skip for headless and virtual instances
+       if (not (GroupInstance.fHeadless or GroupInstance.fVirtual)) and GroupInstance.Group.Usable then begin
 
         if aPotentiallyVisibleSetCulling then begin
          PotentiallyVisibleSetNodeIndex:=GroupInstance.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
