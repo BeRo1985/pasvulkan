@@ -3374,7 +3374,7 @@ type EpvScene3D=class(Exception);
                      fVirtualInstances:TInstances;
                      fRemainingVisibleInstances:TInstances;
                      fRemainingVirtualInstances:TInstances;
-                     fRemainingNonVirtualInstances:TInstances;
+                     fNonVirtualInstances:TInstances;
                      fMaximumNonVirtualInstances:TpvSizeInt;
                      fMaximumRenderInstancesPerNonVirtualInstance:TpvSizeInt;
                      fAssignmentDirty:Boolean;
@@ -35924,7 +35924,7 @@ begin
  fVirtualInstances:=TInstances.Create(false);
  fRemainingVisibleInstances:=TInstances.Create(false);
  fRemainingVirtualInstances:=TInstances.Create(false);
- fRemainingNonVirtualInstances:=TInstances.Create(false);
+ fNonVirtualInstances:=TInstances.Create(false);
 
  fStateHashMap:=TStateKeyHashMap.Create(nil);
  
@@ -35965,7 +35965,7 @@ begin
 
  FreeAndNil(fRemainingVirtualInstances);
 
- FreeAndNil(fRemainingNonVirtualInstances);
+ FreeAndNil(fNonVirtualInstances);
 
  FreeAndNil(fRemainingVisibleInstances);
 
@@ -36161,17 +36161,22 @@ begin
    end;
   end else begin
    // Candidate is a non-virtual instance in this case, and aInstance a virtual-instance
-   if Candidate.fMaxRenderInstanceCount>0 then begin
-    if assigned(aInstance) and aInstance.fUseRenderInstances then begin
-     CountRenderInstances:=aInstance.fCountActiveVirtualRenderInstances;
-    end else begin
-     CountRenderInstances:=1;
-    end; 
-    if (CountRenderInstances=0) or (Candidate.fMaxRenderInstanceCount<(Candidate.fPreallocatedRenderInstanceCounter+CountRenderInstances)) then begin
-     // Skip non-virtual instances that have reached their maximum render instance count or have no render instances
-     continue;
+   if Candidate.Active then begin 
+    if Candidate.fMaxRenderInstanceCount>0 then begin
+     if assigned(aInstance) and aInstance.fUseRenderInstances then begin
+      CountRenderInstances:=aInstance.fCountActiveVirtualRenderInstances;
+     end else begin
+      CountRenderInstances:=1;
+     end; 
+     if (CountRenderInstances=0) or (Candidate.fMaxRenderInstanceCount<(Candidate.fPreallocatedRenderInstanceCounter+CountRenderInstances)) then begin
+      // Skip non-virtual instances that have reached their maximum render instance count or have no render instances
+      continue;
+     end;
     end;
-   end;
+   end else begin
+    // Skip inactive non-virtual instances to avoid assigning to these invisible instances
+    continue;
+   end; 
   end;
 
   // Compute similarity score
@@ -36286,10 +36291,10 @@ begin
   fCountDebugInfos:=0;
 
   // Reset all non-virtual instances in preparation for new assignments
-  fRemainingNonVirtualInstances.ClearNoFree;
+  fNonVirtualInstances.ClearNoFree;
   for Index:=0 to fNonVirtualInstances.Count-1 do begin
    NonVirtualInstance:=fNonVirtualInstances[Index];
-   fRemainingNonVirtualInstances.Add(NonVirtualInstance);
+   fNonVirtualInstances.Add(NonVirtualInstance);
    if NonVirtualInstance.Active then begin
     NonVirtualInstance.Active:=false;
     // Reset all non-virtual render instances in preparation for new assignments in an optimized way
@@ -36460,13 +36465,11 @@ begin
    end;
    
    // Try to find a non-virtual instance with available render instances and matching state
-   NonVirtualInstance:=AssignmentFunction(VirtualInstance,nil,fRemainingNonVirtualInstances,aInFlightFrameIndex,CameraPositionPointer,false,InstanceIndex); // false = prefer similar
+   NonVirtualInstance:=AssignmentFunction(VirtualInstance,nil,fNonVirtualInstances,aInFlightFrameIndex,CameraPositionPointer,false,InstanceIndex); // false = prefer similar
    
    // Assign to render instance of the non-virtual instance, if possible 
    if assigned(NonVirtualInstance) and (NonVirtualInstance.fMaxRenderInstanceCount<>0) and
       VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
-    
-    //fRemainingNonVirtualInstances.DeleteWithSwap(InstanceIndex); // Keep non-virtual instance for further assignments
 
     // The actual render instance assignment will happen later
     // The preallocated render instances will be used for batched rendering
