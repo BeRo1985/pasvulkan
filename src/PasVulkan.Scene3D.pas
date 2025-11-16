@@ -3391,7 +3391,7 @@ type EpvScene3D=class(Exception);
                                                          const aCameraPosition:PpvVector3D;
                                                          const aPreferDissimilar:Boolean;
                                                          out aInstanceIndex:TpvSizeInt):TInstance;
-                     function ComputeStateSimilarity(const aInstanceA,aInstanceB:TInstance):TpvFloat;
+                     function ComputeStateSimilarity(const aInstanceA,aInstanceB:TInstance):TpvDouble;
                      procedure UpdateStateHashMap;
                     public
                      constructor Create(const aGroup:TGroup;const aMaximumNonVirtualInstances,aMaximumRenderInstancesPerNonVirtualInstance:TpvSizeInt);
@@ -36008,10 +36008,9 @@ begin
 
 end;
 
-function TpvScene3D.TGroup.TVirtualInstanceManager.ComputeStateSimilarity(const aInstanceA,aInstanceB:TInstance):TpvFloat;
+function TpvScene3D.TGroup.TVirtualInstanceManager.ComputeStateSimilarity(const aInstanceA,aInstanceB:TInstance):TpvDouble;
 var Index:TpvSizeInt;
-    Similarity:TpvFloat;
-    TimeDiff:TpvDouble;
+    Similarity,TimeDifference:TpvDouble;
 begin
 
  result:=0.0;
@@ -36034,8 +36033,8 @@ begin
   for Index:=0 to length(aInstanceA.fAnimationStates)-1 do begin
 
    // Time similarity (within 1 second = similar)
-   TimeDiff:=abs(aInstanceA.fAnimationStates[Index].fTime-aInstanceB.fAnimationStates[Index].fTime);
-   Similarity:=Similarity*(1.0/(1.0+TimeDiff));
+   TimeDifference:=abs(aInstanceA.fAnimationStates[Index].fTime-aInstanceB.fAnimationStates[Index].fTime);
+   Similarity:=Similarity*(1.0/(1.0+TimeDifference));
    
    // Factor similarity
    Similarity:=Similarity*(1.0-abs(aInstanceA.fAnimationStates[Index].fFactor-aInstanceB.fAnimationStates[Index].fFactor));
@@ -36130,7 +36129,7 @@ begin
   if aPreferDissimilar then begin
 
    // Invert similarity: prefer LESS similar instances (dissimilar get high scores)
-   Score:=(-Similarity*10.0)-(DistanceToCamera*0.001);
+   Score:=(Similarity*-10.0)-(DistanceToCamera*0.001);
 
    // Add temporal bonus or penalty if this was assigned last frame
    // Candidate is a virtual instance in this case, and aInstance a non-virtual instance
