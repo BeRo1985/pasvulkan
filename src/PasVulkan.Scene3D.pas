@@ -3381,7 +3381,6 @@ type EpvScene3D=class(Exception);
                      fCountDebugInfos:TpvSizeInt;
                      fLock:TPasMPSpinLock;
                      fStateHashMap:TStateKeyHashMap;
-                     fSceneInstanceGroups:array of TInstances;
                      function DefaultAssignmentHeuristic(const aInstance:TInstance;
                                                          const aCandidateOtherInstances:TInstances;
                                                          const aInFlightFrameIndex:TpvSizeInt;
@@ -36284,7 +36283,7 @@ begin
    VirtualInstance:=fVirtualInstances[Index];
    fRemainingVirtualInstances.Add(VirtualInstance);
    VirtualInstance.fAssignedNonVirtualInstance:=nil;
-   if VirtualInstance.fUseRenderInstances then begin
+   if VirtualInstance.fUseRenderInstances and (VirtualInstance.fMaxRenderInstanceCount<>0) then begin
     CountRenderInstances:=0;
     for RenderInstanceIndex:=0 to VirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
      RenderInstance:=VirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
