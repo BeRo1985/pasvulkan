@@ -35909,7 +35909,7 @@ begin
   try
    Index:=fVirtualInstances.IndexOf(aInstance);
    if Index>=0 then begin
-    fVirtualInstances.Remove(aInstance);
+    fVirtualInstances.ExtractIndex(Index);
     aInstance.fAssignedNonVirtualInstance:=nil;
     aInstance.fVirtualInstanceManager:=nil;
     fAssignmentDirty:=true;
