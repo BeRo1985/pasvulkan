@@ -747,7 +747,7 @@ begin
  FillChar(Node^.Data,SizeOf(TData),#0);
 
 end;
-{$endif}
+{$ifend}
 
 procedure TpvTimedPriorityQueue<T>.BulkCleanDeadAndRebuildHeap;
 var Index,LiveCount,NodeIndex,FreeIndex:TpvSizeInt;
