@@ -36202,7 +36202,7 @@ begin
 
    // Add temporal bonus or penalty if this was assigned last frame
    // Candidate is a virtual instance in this case, and aInstance a non-virtual instance
-   if assigned(Candidate.fAssignedNonVirtualInstance) then begin
+   if assigned(Candidate.fPreviousAssignedNonVirtualInstance) then begin
     if Candidate.fPreviousAssignedNonVirtualInstance=aTargetInstance then begin
      Score:=Score+5.0; // Temporal coherence bonus
     end else begin
