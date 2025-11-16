@@ -36316,8 +36316,8 @@ begin
    VirtualInstance.fAssignedNonVirtualInstance:=nil;
    if VirtualInstance.fUseRenderInstances and (VirtualInstance.fMaxRenderInstanceCount<>0) then begin
     CountRenderInstances:=0;
-    for RenderInstanceIndex:=0 to VirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
-     RenderInstance:=VirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
+    for RenderInstanceIndex:=0 to VirtualInstance.fRenderInstances.Count-1 do begin
+     RenderInstance:=VirtualInstance.fRenderInstances.RawItems[RenderInstanceIndex];
      if RenderInstance.Active then begin
       inc(CountRenderInstances);
      end else begin
