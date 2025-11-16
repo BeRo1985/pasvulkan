@@ -36321,14 +36321,10 @@ begin
    VirtualInstance.fAssignedNonVirtualInstance:=nil;
    if VirtualInstance.fUseRenderInstances and (VirtualInstance.fMaxRenderInstanceCount<>0) then begin
     CountRenderInstances:=0;
-    // fRenderInstances are always in active state order, first ones active, rest inactive, so we can
-    // stop counting as soon as we find an inactive one
     for RenderInstanceIndex:=0 to VirtualInstance.fRenderInstances.Count-1 do begin
      RenderInstance:=VirtualInstance.fRenderInstances.RawItems[RenderInstanceIndex];
      if RenderInstance.Active then begin
       inc(CountRenderInstances);
-     end else begin
-      break;
      end;
     end;
     VirtualInstance.fCountActiveVirtualRenderInstances:=CountRenderInstances;
