@@ -36154,9 +36154,9 @@ begin
     continue;
    end;
   end else begin
-   // Candidate is a non-virtual instance in this case
+   // Candidate is a non-virtual instance in this case, and aInstance a virtual-instance
    if Candidate.fMaxRenderInstanceCount>0 then begin
-    if aInstance.fUseRenderInstances then begin
+    if assigned(aInstance) and aInstance.fUseRenderInstances then begin
      CountRenderInstances:=aInstance.fCountActiveVirtualRenderInstances;
     end else begin
      CountRenderInstances:=1;
@@ -36169,11 +36169,21 @@ begin
   end;
 
   // Compute similarity score
-  Similarity:=ComputeStateSimilarity(aInstance,Candidate);
-  
+  if assigned(aInstance) then begin
+   Similarity:=ComputeStateSimilarity(aInstance,Candidate);
+  end else begin
+   Similarity:=1.0;
+  end;
+
   // Distance factor (closer virtual instances to camera get higher priority)
-  if assigned(aCameraPosition) and not aInstance.UseRenderInstances then begin
-   DistanceToCamera:=(aInstance.fModelMatrix.Translation.xyz-aCameraPosition^).Length;
+  if assigned(aInstance) and assigned(aCameraPosition) and not aInstance.UseRenderInstances then begin
+   if aPreferDissimilar then begin
+    // Candidate is a virtual instance in this case, and aInstance a non-virtual instance
+    DistanceToCamera:=(Candidate.fModelMatrix.Translation.xyz-aCameraPosition^).Length;
+   end else begin
+    // Candidate is a non-virtual instance in this case, and aInstance a virtual instance
+    DistanceToCamera:=(aInstance.fModelMatrix.Translation.xyz-aCameraPosition^).Length;
+   end;
   end else begin
    DistanceToCamera:=0.0;
   end;
@@ -36216,7 +36226,7 @@ end;
 procedure TpvScene3D.TGroup.TVirtualInstanceManager.UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt);
 var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex,InstanceIndex,
     CountRenderInstances:TpvSizeInt;
-    VirtualInstance,NonVirtualInstance,Candidate:TInstance;
+    VirtualInstance,LastNonVirtualInstance,NonVirtualInstance,Candidate:TInstance;
     StateKey:TStateKey;
     Instances:TInstances;
     RenderInstance:TInstance.TRenderInstance;
@@ -36324,13 +36334,18 @@ begin
 
   // Step 1: Inverted loop - iterate over non-virtual instances (much fewer than virtual)
   // Each non-virtual instance picks the best dissimilar virtual instance
+
+  NonVirtualInstance:=nil;
+
   for Index:=0 to fNonVirtualInstances.Count-1 do begin
 
+   LastNonVirtualInstance:=NonVirtualInstance;
+
    NonVirtualInstance:=fNonVirtualInstances[Index];
-   
-   // Find best virtual instance for this non-virtual instance (prefer dissimilar)
-   VirtualInstance:=AssignmentFunction(NonVirtualInstance,fRemainingVisibleInstances,aInFlightFrameIndex,CameraPositionPointer,true,InstanceIndex); // true = prefer dissimilar
-   
+
+   // Find best virtual instance for this non-virtual instance (prefer dissimilar to the each last)
+   VirtualInstance:=AssignmentFunction(LastNonVirtualInstance,fRemainingVisibleInstances,aInFlightFrameIndex,CameraPositionPointer,true,InstanceIndex); // true = prefer dissimilar
+
    // Assign virtual to non-virtual when possible
    if (assigned(VirtualInstance) and not assigned(VirtualInstance.fAssignedNonVirtualInstance)) and
       VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
