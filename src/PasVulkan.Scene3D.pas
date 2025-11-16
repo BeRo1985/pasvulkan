@@ -3577,7 +3577,7 @@ type EpvScene3D=class(Exception);
               function GetPreallocatedInstance:TpvScene3D.TGroup.TInstance;
              public
               // Virtual instance manager
-              function GetOrCreateVirtualInstanceManager(const aMaxNonVirtualInstances:TpvSizeInt=20):TVirtualInstanceManager;
+              function GetOrCreateVirtualInstanceManager(const aMaxNonVirtualInstances:TpvSizeInt):TVirtualInstanceManager;
               property VirtualInstanceManager:TVirtualInstanceManager read fVirtualInstanceManager;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
