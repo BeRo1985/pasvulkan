@@ -3334,7 +3334,7 @@ type EpvScene3D=class(Exception);
                           TAssignmentCallback=function(const aInstance:TInstance;
                                                        const aCandidateOtherInstances:TInstances;
                                                        const aInFlightFrameIndex:TpvSizeInt;
-                                                       const aCameraPositions:TpvVector3DynamicArray;
+                                                       const aCameraPosition:PpvVector3D;
                                                        const aPreferDissimilar:Boolean):TInstance of object;
                           { TAssignmentDebugInfo }
                           TAssignmentDebugInfo=record
@@ -3378,19 +3378,17 @@ type EpvScene3D=class(Exception);
                      function DefaultAssignmentHeuristic(const aInstance:TInstance;
                                                          const aCandidateOtherInstances:TInstances;
                                                          const aInFlightFrameIndex:TpvSizeInt;
-                                                         const aCameraPositions:TpvVector3DynamicArray;
+                                                         const aCameraPosition:PpvVector3D;
                                                          const aPreferDissimilar:Boolean):TInstance;
                      function ComputeStateSimilarity(const aInstanceA,aInstanceB:TInstance):TpvFloat;
                      procedure UpdateStateHashMap;
-                     procedure FrustumCullVirtualInstances(const aFrustums:TpvFrustumDynamicArray);
+                     procedure FrustumCullVirtualInstances(const aInFlightFrameIndex:TpvSizeInt);
                     public
                      constructor Create(const aGroup:TGroup;const aMaxNonVirtualInstances:TpvSizeInt);
                      destructor Destroy; override;
                      procedure RegisterVirtualInstance(const aInstance:TInstance);
                      procedure UnregisterVirtualInstance(const aInstance:TInstance);
-                     procedure UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt;
-                                                 const aFrustums:TpvFrustumDynamicArray;
-                                                 const aCameraPositions:TpvVector3DynamicArray);
+                     procedure UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt);
                      function GetAssignedNonVirtualInstance(const aVirtualInstance:TInstance):TInstance;
                      function IsVirtualInstanceAssigned(const aVirtualInstance:TInstance):Boolean;
                      function GetDebugVisualizationData:TAssignmentDebugInfos;
@@ -32653,9 +32651,7 @@ begin
    for Index:=0 to fGroups.Count-1 do begin
     Group:=fGroups[Index];
     if assigned(Group.fVirtualInstanceManager) then begin
-     Group.fVirtualInstanceManager.UpdateAssignments(aInFlightFrameIndex,
-                                                     nil,
-                                                     nil);
+     Group.fVirtualInstanceManager.UpdateAssignments(aInFlightFrameIndex);
     end;
    end;
 
@@ -35958,11 +35954,10 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TVirtualInstanceManager.FrustumCullVirtualInstances(const aFrustums:TpvFrustumDynamicArray);
-var Index,FrustumIndex:TpvSizeInt;
+procedure TpvScene3D.TGroup.TVirtualInstanceManager.FrustumCullVirtualInstances(const aInFlightFrameIndex:TpvSizeInt);
+var Index:TpvSizeInt;
     Instance:TInstance;
     Visible:Boolean;
-    BoundingSphere:TpvSphere;
 begin
 
  fVisibleInstances.Clear;
@@ -35973,19 +35968,12 @@ begin
 
   if Instance.Active then begin
 
-   Visible:=length(aFrustums)=0; // If no frustums, all visible
-   
-   if not Visible then begin
-    // Check against all frustums
-    BoundingSphere:=Instance.fBoundingSpheres[0];
-    for FrustumIndex:=0 to length(aFrustums)-1 do begin
-     if aFrustums[FrustumIndex].SphereInFrustum(BoundingSphere.Center,BoundingSphere.Radius)>0 then begin
-      Visible:=true;
-      break;
-     end;
-    end;
+   if (aInFlightFrameIndex>=0) and fSceneInstance.fUpdateCulling.fActive then begin
+    Visible:=fSceneInstance.fUpdateCulling.Check(Instance.ModelMatrix,Instance.fBoundingSpheres[aInFlightFrameIndex].Radius);
+   end else begin
+    Visible:=true; // If no frustums, all visible
    end;
-   
+
    if Visible then begin
     fVisibleInstances.Add(Instance);
    end;
@@ -36038,13 +36026,12 @@ end;
 function TpvScene3D.TGroup.TVirtualInstanceManager.DefaultAssignmentHeuristic(const aInstance:TInstance;
                                                                               const aCandidateOtherInstances:TInstances;
                                                                               const aInFlightFrameIndex:TpvSizeInt;
-                                                                              const aCameraPositions:TpvVector3DynamicArray;
+                                                                              const aCameraPosition:PpvVector3D;
                                                                               const aPreferDissimilar:Boolean):TInstance;
 var Index:TpvSizeInt;
     Candidate:TInstance;
     BestCandidate:TInstance;
     BestScore,Score,Similarity,DistanceToCamera:TpvDouble;
-    CameraPos:TpvVector3D;
 begin
 
  result:=nil;
@@ -36053,13 +36040,6 @@ begin
 
  BestScore:=-1.0;
  
- // Get camera position (use first camera if multiple)
- if length(aCameraPositions)>0 then begin
-  CameraPos:=aCameraPositions[0];
- end else begin
-  CameraPos:=TpvVector3.Origin;
- end;
-
  // When preferring dissimilar instances, then candidates are virtual instances
  // otherwise non-virtual instances, keep that in mind while reading this code
 
@@ -36085,8 +36065,12 @@ begin
   Similarity:=ComputeStateSimilarity(aInstance,Candidate);
   
   // Distance factor (closer virtual instances to camera get higher priority)
-  DistanceToCamera:=(aInstance.fModelMatrix.Translation.xyz-CameraPos).Length;
-  
+  if assigned(aCameraPosition) then begin
+   DistanceToCamera:=(aInstance.fModelMatrix.Translation.xyz-aCameraPosition^).Length;
+  end else begin
+   DistanceToCamera:=0.0;
+  end;
+
   // Combined score (similarity is more important than distance)
   if aPreferDissimilar then begin
    // Invert similarity: prefer LESS similar instances (dissimilar get high scores)
@@ -36129,9 +36113,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TVirtualInstanceManager.UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt;
-                                                                      const aFrustums:TpvFrustumDynamicArray;
-                                                                      const aCameraPositions:TpvVector3DynamicArray);
+procedure TpvScene3D.TGroup.TVirtualInstanceManager.UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt);
 var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex:TpvSizeInt;
     VirtualInstance,NonVirtualInstance,Candidate:TInstance;
     StateKey:TStateKey;
@@ -36139,7 +36121,8 @@ var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex:TpvSi
     RenderInstance:TInstance.TRenderInstance;
     AssignmentFunction:TAssignmentCallback;
     DebugInfo:PAssignmentDebugInfo;
-    CameraPos:TpvVector3D;
+    CameraPosition:TpvVector3D;
+    CameraPositionPointer:PpvVector3D;
     Similarity:TpvFloat;
 begin
 
@@ -36150,7 +36133,7 @@ begin
   UpdateStateHashMap;
   
   // Frustum cull virtual instances (uses fVisibleInstances)
-  FrustumCullVirtualInstances(aFrustums);
+  FrustumCullVirtualInstances(aInFlightFrameIndex);
   
   // Clear debug info
   fCountDebugInfos:=0;
@@ -36182,18 +36165,28 @@ begin
   end;
   
   // Sort visible instances by priority (distance to camera, closer = higher priority)
-  if (fVisibleInstances.Count>0) and (length(aCameraPositions)>0) then begin
-   CameraPos:=aCameraPositions[0];
-   
+  if (fVisibleInstances.Count>0) and fSceneInstance.fUpdateCulling.fActive then begin
+
+   CameraPosition:=fSceneInstance.fUpdateCulling.fCameraPosition;
+
+   CameraPositionPointer:=@CameraPosition;
+
    // Store distance squared in each instance for sorting
    for Index:=0 to fVisibleInstances.Count-1 do begin
-    fVisibleInstances[Index].fUpdateAssignmentDistanceSquared:=(fVisibleInstances[Index].fModelMatrix.Translation.xyz-CameraPos).SquaredLength;
+    fVisibleInstances[Index].fUpdateAssignmentDistanceSquared:=(fVisibleInstances[Index].fModelMatrix.Translation.xyz-CameraPosition).SquaredLength;
    end;
    
    // Fast IndirectIntroSort (O(n log n) average case) - sorts pointers based on distance
    if fVisibleInstances.Count>1 then begin
     PasVulkan.Utils.IndirectIntroSort(@fVisibleInstances.RawItems[0],0,fVisibleInstances.Count-1,CompareInstancesByDistanceSquared);
    end;
+
+  end else begin
+
+   CameraPosition:=TpvVector3.Origin;
+
+   CameraPositionPointer:=nil;
+
   end;
   
   // Two-step assignment strategy:
@@ -36216,7 +36209,7 @@ begin
    NonVirtualInstance:=fNonVirtualInstances[Index];
    
    // Find best virtual instance for this non-virtual instance (prefer dissimilar)
-   VirtualInstance:=AssignmentFunction(NonVirtualInstance,fVisibleInstances,aInFlightFrameIndex,aCameraPositions,true); // true = prefer dissimilar
+   VirtualInstance:=AssignmentFunction(NonVirtualInstance,fVisibleInstances,aInFlightFrameIndex,CameraPositionPointer,true); // true = prefer dissimilar
    
    // Assign virtual to non-virtual when possible
    if (assigned(VirtualInstance) and not assigned(VirtualInstance.fAssignedNonVirtualInstance)) and VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
@@ -36266,7 +36259,11 @@ begin
      DebugInfo^.AssignedNonVirtualInstance:=NonVirtualInstance;
      StateKey:=TStateKey.CreateFromInstance(VirtualInstance);
      DebugInfo^.StateHash:=StateKey.Hash;
-     DebugInfo^.Distance:=(VirtualInstance.fModelMatrix.Translation.xyz-aCameraPositions[0]).Length;
+     if assigned(CameraPositionPointer) then begin
+      DebugInfo^.Distance:=(VirtualInstance.fModelMatrix.Translation.xyz-CameraPositionPointer^).Length;
+     end else begin
+      DebugInfo^.Distance:=0.0;
+     end;
      DebugInfo^.Priority:=1.0;
      DebugInfo^.Visible:=true;
      DebugInfo^.SceneIndex:=VirtualInstance.fScene;
@@ -36287,7 +36284,7 @@ begin
    end;
    
    // Try to find a non-virtual instance with available render instances and matching state
-   NonVirtualInstance:=AssignmentFunction(VirtualInstance,fNonVirtualInstances,aInFlightFrameIndex,aCameraPositions,false); // false = prefer similar
+   NonVirtualInstance:=AssignmentFunction(VirtualInstance,fNonVirtualInstances,aInFlightFrameIndex,CameraPositionPointer,false); // false = prefer similar
    
    // Assign to render instance of the non-virtual instance, if possible 
    if assigned(NonVirtualInstance) and (NonVirtualInstance.fMaxRenderInstanceCount<>0) and VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
@@ -36309,7 +36306,11 @@ begin
      DebugInfo^.AssignedNonVirtualInstance:=NonVirtualInstance;
      StateKey:=TStateKey.CreateFromInstance(VirtualInstance);
      DebugInfo^.StateHash:=StateKey.Hash;
-     DebugInfo^.Distance:=(VirtualInstance.fModelMatrix.Translation.xyz-aCameraPositions[0]).Length;
+     if assigned(CameraPositionPointer) then begin
+      DebugInfo^.Distance:=(VirtualInstance.fModelMatrix.Translation.xyz-CameraPositionPointer^).Length;
+     end else begin
+      DebugInfo^.Distance:=0.0;
+     end;
      DebugInfo^.Priority:=0.5; // Lower priority than Step 1 assignments
      DebugInfo^.Visible:=true;
      DebugInfo^.SceneIndex:=VirtualInstance.fScene;
@@ -36339,8 +36340,8 @@ begin
     DebugInfo^.AssignedNonVirtualInstance:=nil;
     StateKey:=TStateKey.CreateFromInstance(VirtualInstance);
     DebugInfo^.StateHash:=StateKey.Hash;
-    if length(aCameraPositions)>0 then begin
-     DebugInfo^.Distance:=(VirtualInstance.fModelMatrix.Translation.xyz-aCameraPositions[0]).Length;
+    if assigned(CameraPositionPointer) then begin
+     DebugInfo^.Distance:=(VirtualInstance.fModelMatrix.Translation.xyz-CameraPositionPointer^).Length;
     end else begin
      DebugInfo^.Distance:=0.0;
     end;
