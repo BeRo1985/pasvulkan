@@ -28315,52 +28315,85 @@ begin
 end;
 
 function TpvScene3D.TGroup.TInstance.AssignToNonVirtualInstance(const aNonVirtualInstance:TInstance):boolean;
-var Index,Count:TpvSizeInt;
-    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+var Index,Count,CountRenderInstances,RenderInstanceIndex:TpvSizeInt;
+    VirtualRenderInstance,RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
- if (fVirtual and assigned(aNonVirtualInstance) and not aNonVirtualInstance.fVirtual) and 
-    ((aNonVirtualInstance.fMaxRenderInstanceCount<=0) and
-     (aNonVirtualInstance.fPreallocatedRenderInstanceCounter<aNonVirtualInstance.fMaxRenderInstanceCount)) then begin
-  
-  fAssignedNonVirtualInstance:=aNonVirtualInstance;
-  
-  // Check when the non-virtual instance isn't allowed to have render instances
-  if aNonVirtualInstance.fMaxRenderInstanceCount=0 then begin
 
-   // Nothing in this case
+ result:=false;
 
-  end else begin
+ if fVirtual and assigned(aNonVirtualInstance) and not aNonVirtualInstance.fVirtual then begin
 
-   // Otherwise assign a render instance
-   
-   // Assign a preallocated render instance or create a new one when in dynamic pool mode
-   Index:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter;
-   inc(aNonVirtualInstance.fPreallocatedRenderInstanceCounter);
-   if (aNonVirtualInstance.fMaxRenderInstanceCount<0) and
-      (aNonVirtualInstance.fPreallocatedRenderInstances.Count<aNonVirtualInstance.fPreallocatedRenderInstanceCounter) then begin
-    // Dynamic pool mode: create new render instances as needed, growing the pool by 50% each time
-    Count:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter+((aNonVirtualInstance.fPreallocatedRenderInstanceCounter+1) shr 1);
-    while aNonVirtualInstance.fPreallocatedRenderInstances.Count<Count do begin
-     RenderInstance:=aNonVirtualInstance.CreateRenderInstance;
-     RenderInstance.Active:=false;
-     aNonVirtualInstance.fPreallocatedRenderInstances.Add(RenderInstance);
+  if UseRenderInstances then begin
+   CountRenderInstances:=0;
+   for RenderInstanceIndex:=0 to fRenderInstances.Count-1 do begin
+    if fRenderInstances[RenderInstanceIndex].fActive then begin
+     inc(CountRenderInstances);
+    end else begin
+     break;
     end;
    end;
+  end else begin
+   CountRenderInstances:=1;
+  end;
 
-   // Assign the render instance
-   RenderInstance:=aNonVirtualInstance.fPreallocatedRenderInstances.RawItems[Index];
-   RenderInstance.Active:=true;
-   RenderInstance.ModelMatrix:=fModelMatrix;
+  if (CountRenderInstances>0) and
+     (aNonVirtualInstance.fMaxRenderInstanceCount<=0) and
+     ((aNonVirtualInstance.fPreallocatedRenderInstanceCounter+CountRenderInstances)<=aNonVirtualInstance.fMaxRenderInstanceCount) then begin
+
+   fAssignedNonVirtualInstance:=aNonVirtualInstance;
+
+   // Check when the non-virtual instance isn't allowed to have render instances
+   if aNonVirtualInstance.fMaxRenderInstanceCount=0 then begin
+
+    // Nothing in this case
+
+   end else begin
+
+    // Otherwise assign a render instance
+
+    // Assign a preallocated render instance or create a new one when in dynamic pool mode
+    Index:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter;
+    inc(aNonVirtualInstance.fPreallocatedRenderInstanceCounter,CountRenderInstances);
+    if (aNonVirtualInstance.fMaxRenderInstanceCount<0) and
+       (aNonVirtualInstance.fPreallocatedRenderInstances.Count<aNonVirtualInstance.fPreallocatedRenderInstanceCounter) then begin
+     // Dynamic pool mode: create new render instances as needed, growing the pool by 50% each time
+     Count:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter+((aNonVirtualInstance.fPreallocatedRenderInstanceCounter+1) shr 1);
+     while aNonVirtualInstance.fPreallocatedRenderInstances.Count<Count do begin
+      RenderInstance:=aNonVirtualInstance.CreateRenderInstance;
+      RenderInstance.Active:=false;
+      aNonVirtualInstance.fPreallocatedRenderInstances.Add(RenderInstance);
+     end;
+    end;
+
+    // Assign the render instance
+    if UseRenderInstances then begin
+     for RenderInstanceIndex:=0 to fRenderInstances.Count-1 do begin
+      VirtualRenderInstance:=fRenderInstances[RenderInstanceIndex];
+      if VirtualRenderInstance.fActive then begin
+       RenderInstance:=aNonVirtualInstance.fPreallocatedRenderInstances.RawItems[Index];
+       inc(Index);
+       RenderInstance.Active:=true;
+       RenderInstance.ModelMatrix:=VirtualRenderInstance.ModelMatrix;
+       RenderInstance.InstanceDataIndex:=VirtualRenderInstance.InstanceDataIndex;
+      end else begin
+       break;
+      end;
+     end;
+    end else begin
+     RenderInstance:=aNonVirtualInstance.fPreallocatedRenderInstances.RawItems[Index];
+     RenderInstance.Active:=true;
+     RenderInstance.ModelMatrix:=fModelMatrix;
+     RenderInstance.InstanceDataIndex:=0;
+    end;
+
+   end;
+
+   result:=true;
 
   end;
-  
-  result:=true;
-
- end else begin
-
-  result:=false;
 
  end;
+
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UnassignFromNonVirtualInstance;
@@ -36011,8 +36044,9 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TVirtualInstanceManager.FrustumCullVirtualInstances(const aInFlightFrameIndex:TpvSizeInt);
-var Index:TpvSizeInt;
+var Index,RenderInstanceIndex:TpvSizeInt;
     Instance:TInstance;
+    RenderInstance:TInstance.TRenderInstance;
     Visible:Boolean;
 begin
 
@@ -36025,7 +36059,20 @@ begin
   if Instance.Active then begin
 
    if (aInFlightFrameIndex>=0) and fSceneInstance.fUpdateCulling.fActive then begin
-    Visible:=fSceneInstance.fUpdateCulling.Check(Instance.ModelMatrix,Instance.fBoundingSpheres[aInFlightFrameIndex].Radius);
+    if Instance.UseRenderInstances then begin
+     Visible:=false;
+     for RenderInstanceIndex:=0 to Instance.fRenderInstances.Count-1 do begin
+      RenderInstance:=Instance.fRenderInstances.RawItems[RenderInstanceIndex];
+      if RenderInstance.fActive then begin
+       if fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,Instance.fBoundingSpheres[aInFlightFrameIndex].Radius) then begin
+        Visible:=true;
+        break;
+       end;
+      end;
+     end;
+    end else begin
+     Visible:=fSceneInstance.fUpdateCulling.Check(Instance.ModelMatrix,Instance.fBoundingSpheres[aInFlightFrameIndex].Radius);
+    end;
    end else begin
     Visible:=true; // If no frustums, all visible
    end;
@@ -36124,7 +36171,7 @@ begin
   Similarity:=ComputeStateSimilarity(aInstance,Candidate);
   
   // Distance factor (closer virtual instances to camera get higher priority)
-  if assigned(aCameraPosition) then begin
+  if assigned(aCameraPosition) and not aInstance.UseRenderInstances then begin
    DistanceToCamera:=(aInstance.fModelMatrix.Translation.xyz-aCameraPosition^).Length;
   end else begin
    DistanceToCamera:=0.0;
@@ -36134,17 +36181,9 @@ begin
   if aPreferDissimilar then begin
    // Invert similarity: prefer LESS similar instances (dissimilar get high scores)
    Score:=(-Similarity*10.0)-(DistanceToCamera*0.001);
-   if Candidate.Scene<>aInstance.Scene then begin
-    // Huge penalty for different scenes
-    Score:=Score-100000.0;
-   end;
   end else begin
    // Normal: prefer MORE similar instances
    Score:=(Similarity*10.0)-(DistanceToCamera*0.001);
-   if Candidate.Scene=aInstance.Scene then begin
-    // Huge bonus for same scenes
-    Score:=Score+100000.0;
-   end;
   end;
   
   if BestScore<Score then begin
@@ -36277,7 +36316,8 @@ begin
    VirtualInstance:=AssignmentFunction(NonVirtualInstance,fRemainingVisibleInstances,aInFlightFrameIndex,CameraPositionPointer,true,InstanceIndex); // true = prefer dissimilar
    
    // Assign virtual to non-virtual when possible
-   if (assigned(VirtualInstance) and not assigned(VirtualInstance.fAssignedNonVirtualInstance)) and VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
+   if (assigned(VirtualInstance) and not assigned(VirtualInstance.fAssignedNonVirtualInstance)) and
+      VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
 
     fRemainingVisibleInstances.DeleteWithSwap(InstanceIndex);
 
@@ -36354,7 +36394,8 @@ begin
    NonVirtualInstance:=AssignmentFunction(VirtualInstance,fRemainingNonVirtualInstances,aInFlightFrameIndex,CameraPositionPointer,false,InstanceIndex); // false = prefer similar
    
    // Assign to render instance of the non-virtual instance, if possible 
-   if assigned(NonVirtualInstance) and (NonVirtualInstance.fMaxRenderInstanceCount<>0) and VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
+   if assigned(NonVirtualInstance) and (NonVirtualInstance.fMaxRenderInstanceCount<>0) and
+      VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
 
     fRemainingNonVirtualInstances.DeleteWithSwap(InstanceIndex);
 
