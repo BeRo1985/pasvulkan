@@ -3398,8 +3398,6 @@ type EpvScene3D=class(Exception);
                     public
                      constructor Create(const aGroup:TGroup;const aMaximumNonVirtualInstances,aMaximumRenderInstancesPerNonVirtualInstance:TpvSizeInt);
                      destructor Destroy; override;
-                     procedure RegisterVirtualInstance(const aInstance:TInstance);
-                     procedure UnregisterVirtualInstance(const aInstance:TInstance);
                      procedure UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt);
                      function GetAssignedNonVirtualInstance(const aVirtualInstance:TInstance):TInstance;
                      function IsVirtualInstanceAssigned(const aVirtualInstance:TInstance):Boolean;
@@ -36054,41 +36052,6 @@ begin
 
  inherited Destroy;
 
-end;
-
-procedure TpvScene3D.TGroup.TVirtualInstanceManager.RegisterVirtualInstance(const aInstance:TInstance);
-begin
- if assigned(aInstance) and aInstance.fVirtual then begin
-  fLock.Acquire;
-  try
-   if fVirtualInstances.IndexOf(aInstance)<0 then begin
-    fVirtualInstances.Add(aInstance);
-    aInstance.fVirtualInstanceManager:=self;
-    fAssignmentDirty:=true;
-   end;
-  finally
-   fLock.Release;
-  end;
- end;
-end;
-
-procedure TpvScene3D.TGroup.TVirtualInstanceManager.UnregisterVirtualInstance(const aInstance:TInstance);
-var Index:TpvSizeInt;
-begin
- if assigned(aInstance) then begin
-  fLock.Acquire;
-  try
-   Index:=fVirtualInstances.IndexOf(aInstance);
-   if Index>=0 then begin
-    fVirtualInstances.ExtractIndex(Index);
-    aInstance.fAssignedNonVirtualInstance:=nil;
-    aInstance.fVirtualInstanceManager:=nil;
-    fAssignmentDirty:=true;
-   end;
-  finally
-   fLock.Release;
-  end;
- end;
 end;
 
 procedure TpvScene3D.TGroup.TVirtualInstanceManager.UpdateStateHashMap;
