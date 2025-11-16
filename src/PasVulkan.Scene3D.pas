@@ -35938,7 +35938,6 @@ begin
   if (fMaximumNonVirtualInstances>0) and (Count>fMaximumNonVirtualInstances) then begin
    Count:=fMaximumNonVirtualInstances;
   end;
-  fNonVirtualInstances.OwnsObjects:=true; // We own the instances now
   for Index:=0 to Count-1 do begin
    Instance:=fGroup.fPreallocatedInstances[Index];
    if assigned(Instance) and not Instance.fVirtual then begin
