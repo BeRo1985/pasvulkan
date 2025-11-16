@@ -2528,6 +2528,8 @@ type EpvScene3D=class(Exception);
                    { TInstances }
                    TInstances=class(TpvObjectGenericList<TInstance>)
                     public
+                     procedure DeleteWithSwap(const aIndex:TpvSizeInt);
+                     procedure RemoveWithSwap(const aInstance:TInstance);
                      procedure Sort;
                    end;
                    { TInstance }
@@ -3335,7 +3337,8 @@ type EpvScene3D=class(Exception);
                                                        const aCandidateOtherInstances:TInstances;
                                                        const aInFlightFrameIndex:TpvSizeInt;
                                                        const aCameraPosition:PpvVector3D;
-                                                       const aPreferDissimilar:Boolean):TInstance of object;
+                                                       const aPreferDissimilar:Boolean;
+                                                       out aInstanceIndex:TpvSizeInt):TInstance of object;
                           { TAssignmentDebugInfo }
                           TAssignmentDebugInfo=record
                            VirtualInstance:TInstance;
@@ -3365,7 +3368,9 @@ type EpvScene3D=class(Exception);
                      fGroup:TGroup;
                      fNonVirtualInstances:TInstances;
                      fVirtualInstances:TInstances;
-                     fVisibleInstances:TInstances; // Reused for frustum culling to avoid reallocations
+                     fRemainingVisibleInstances:TInstances;
+                     fRemainingVirtualInstances:TInstances;
+                     fRemainingNonVirtualInstances:TInstances;
                      fMaximumNonVirtualInstances:TpvSizeInt;
                      fMaximumRenderInstancesPerNonVirtualInstance:TpvSizeInt;
                      fAssignmentDirty:Boolean;
@@ -3380,7 +3385,8 @@ type EpvScene3D=class(Exception);
                                                          const aCandidateOtherInstances:TInstances;
                                                          const aInFlightFrameIndex:TpvSizeInt;
                                                          const aCameraPosition:PpvVector3D;
-                                                         const aPreferDissimilar:Boolean):TInstance;
+                                                         const aPreferDissimilar:Boolean;
+                                                         out aInstanceIndex:TpvSizeInt):TInstance;
                      function ComputeStateSimilarity(const aInstanceA,aInstanceB:TInstance):TpvFloat;
                      procedure UpdateStateHashMap;
                      procedure FrustumCullVirtualInstances(const aInFlightFrameIndex:TpvSizeInt);
@@ -23244,6 +23250,27 @@ end;
 
 { TpvScene3D.TGroup.TInstances }
 
+procedure TpvScene3D.TGroup.TInstances.DeleteWithSwap(const aIndex:TpvSizeInt);
+begin
+ if (aIndex>=0) and (aIndex<Count) then begin
+  if (aIndex+1)<Count then begin
+   Exchange(aIndex,Count-1);
+   ExtractIndex(Count-1);
+  end else begin
+   ExtractIndex(aIndex);
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstances.RemoveWithSwap(const aInstance:TInstance);
+var Index:TpvSizeInt;
+begin
+ Index:=IndexOf(aInstance);
+ if Index>=0 then begin
+  DeleteWithSwap(Index);
+ end;
+end;
+
 procedure TpvScene3D.TGroup.TInstances.Sort;
 var Index:TpvSizeInt;
     NeedSort:boolean;
@@ -35863,8 +35890,10 @@ begin
  
  fNonVirtualInstances:=TInstances.Create(false);
  fVirtualInstances:=TInstances.Create(false);
- fVisibleInstances:=TInstances.Create(false); // Reused for frustum culling
- 
+ fRemainingVisibleInstances:=TInstances.Create(false);
+ fRemainingVirtualInstances:=TInstances.Create(false);
+ fRemainingNonVirtualInstances:=TInstances.Create(false);
+
  fStateHashMap:=TStateKeyHashMap.Create(nil);
  
  // Preallocate non-virtual instances for rendering
@@ -35899,9 +35928,14 @@ end;
 
 destructor TpvScene3D.TGroup.TVirtualInstanceManager.Destroy;
 begin
+
  FreeAndNil(fStateHashMap);
 
- FreeAndNil(fVisibleInstances);
+ FreeAndNil(fRemainingVirtualInstances);
+
+ FreeAndNil(fRemainingNonVirtualInstances);
+
+ FreeAndNil(fRemainingVisibleInstances);
 
  FreeAndNil(fVirtualInstances);
 
@@ -35982,7 +36016,7 @@ var Index:TpvSizeInt;
     Visible:Boolean;
 begin
 
- fVisibleInstances.Clear;
+ fRemainingVisibleInstances.ClearNoFree;
  
  for Index:=0 to fVirtualInstances.Count-1 do begin
 
@@ -35997,7 +36031,7 @@ begin
    end;
 
    if Visible then begin
-    fVisibleInstances.Add(Instance);
+    fRemainingVisibleInstances.Add(Instance);
    end;
 
   end;
@@ -36049,7 +36083,8 @@ function TpvScene3D.TGroup.TVirtualInstanceManager.DefaultAssignmentHeuristic(co
                                                                               const aCandidateOtherInstances:TInstances;
                                                                               const aInFlightFrameIndex:TpvSizeInt;
                                                                               const aCameraPosition:PpvVector3D;
-                                                                              const aPreferDissimilar:Boolean):TInstance;
+                                                                              const aPreferDissimilar:Boolean;
+                                                                              out aInstanceIndex:TpvSizeInt):TInstance;
 var Index:TpvSizeInt;
     Candidate:TInstance;
     BestCandidate:TInstance;
@@ -36057,6 +36092,8 @@ var Index:TpvSizeInt;
 begin
 
  result:=nil;
+
+ aInstanceIndex:=-1;
 
  BestCandidate:=nil;
 
@@ -36113,6 +36150,7 @@ begin
   if BestScore<Score then begin
    BestScore:=Score;
    BestCandidate:=Candidate;
+   aInstanceIndex:=Index;
   end;
 
  end;
@@ -36136,7 +36174,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TVirtualInstanceManager.UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt);
-var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex:TpvSizeInt;
+var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex,InstanceIndex:TpvSizeInt;
     VirtualInstance,NonVirtualInstance,Candidate:TInstance;
     StateKey:TStateKey;
     Instances:TInstances;
@@ -36154,7 +36192,7 @@ begin
   // Update state hash map
   UpdateStateHashMap;
   
-  // Frustum cull virtual instances (uses fVisibleInstances)
+  // Frustum cull virtual instances (uses fRemainingVisibleInstances)
   FrustumCullVirtualInstances(aInFlightFrameIndex);
   
   // Clear debug info
@@ -36163,8 +36201,10 @@ begin
   // Reset all non-virtual instances in preparation for new assignments in an optimized way
   // where we stop resetting as soon as we find an inactive non-virtual instance since all
   // following ones will also be inactive (due to preallocation order) 
+  fRemainingNonVirtualInstances.ClearNoFree;
   for Index:=0 to fNonVirtualInstances.Count-1 do begin
    NonVirtualInstance:=fNonVirtualInstances[Index];
+   fRemainingNonVirtualInstances.Add(NonVirtualInstance);
    if NonVirtualInstance.Active then begin
     NonVirtualInstance.Active:=false;
     for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
@@ -36182,25 +36222,28 @@ begin
   end;
 
   // Reset all virtual instance assignments
+  fRemainingVirtualInstances.ClearNoFree;
   for Index:=0 to fVirtualInstances.Count-1 do begin
-   fVirtualInstances[Index].fAssignedNonVirtualInstance:=nil;
+   VirtualInstance:=fVirtualInstances[Index];
+   fRemainingVirtualInstances.Add(VirtualInstance);
+   VirtualInstance.fAssignedNonVirtualInstance:=nil;
   end;
   
   // Sort visible instances by priority (distance to camera, closer = higher priority)
-  if (fVisibleInstances.Count>0) and fSceneInstance.fUpdateCulling.fActive then begin
+  if (fRemainingVisibleInstances.Count>0) and fSceneInstance.fUpdateCulling.fActive then begin
 
    CameraPosition:=fSceneInstance.fUpdateCulling.fCameraPosition;
 
    CameraPositionPointer:=@CameraPosition;
 
    // Store distance squared in each instance for sorting
-   for Index:=0 to fVisibleInstances.Count-1 do begin
-    fVisibleInstances[Index].fUpdateAssignmentDistanceSquared:=(fVisibleInstances[Index].fModelMatrix.Translation.xyz-CameraPosition).SquaredLength;
+   for Index:=0 to fRemainingVisibleInstances.Count-1 do begin
+    fRemainingVisibleInstances[Index].fUpdateAssignmentDistanceSquared:=(fRemainingVisibleInstances[Index].fModelMatrix.Translation.xyz-CameraPosition).SquaredLength;
    end;
    
    // Fast IndirectIntroSort (O(n log n) average case) - sorts pointers based on distance
-   if fVisibleInstances.Count>1 then begin
-    PasVulkan.Utils.IndirectIntroSort(@fVisibleInstances.RawItems[0],0,fVisibleInstances.Count-1,CompareInstancesByDistanceSquared);
+   if fRemainingVisibleInstances.Count>1 then begin
+    PasVulkan.Utils.IndirectIntroSort(@fRemainingVisibleInstances.RawItems[0],0,fRemainingVisibleInstances.Count-1,CompareInstancesByDistanceSquared);
    end;
 
   end else begin
@@ -36231,11 +36274,13 @@ begin
    NonVirtualInstance:=fNonVirtualInstances[Index];
    
    // Find best virtual instance for this non-virtual instance (prefer dissimilar)
-   VirtualInstance:=AssignmentFunction(NonVirtualInstance,fVisibleInstances,aInFlightFrameIndex,CameraPositionPointer,true); // true = prefer dissimilar
+   VirtualInstance:=AssignmentFunction(NonVirtualInstance,fRemainingVisibleInstances,aInFlightFrameIndex,CameraPositionPointer,true,InstanceIndex); // true = prefer dissimilar
    
    // Assign virtual to non-virtual when possible
    if (assigned(VirtualInstance) and not assigned(VirtualInstance.fAssignedNonVirtualInstance)) and VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
-    
+
+    fRemainingVisibleInstances.DeleteWithSwap(InstanceIndex);
+
     // Copy state from virtual to non-virtual
     if NonVirtualInstance.fMaxRenderInstanceCount=0 then begin
      NonVirtualInstance.fModelMatrix:=VirtualInstance.fModelMatrix;
@@ -36296,9 +36341,9 @@ begin
   
   // Step 2: Try to assign remaining unassigned virtual instances to render instances
   // This handles similar instances that can share GPU resources via instancing
-  for Index:=0 to fVisibleInstances.Count-1 do begin
+  for Index:=0 to fRemainingVisibleInstances.Count-1 do begin
 
-   VirtualInstance:=fVisibleInstances[Index];
+   VirtualInstance:=fRemainingVisibleInstances[Index];
    
    // Skip if already assigned in Step 1
    if assigned(VirtualInstance.fAssignedNonVirtualInstance) then begin
@@ -36306,11 +36351,13 @@ begin
    end;
    
    // Try to find a non-virtual instance with available render instances and matching state
-   NonVirtualInstance:=AssignmentFunction(VirtualInstance,fNonVirtualInstances,aInFlightFrameIndex,CameraPositionPointer,false); // false = prefer similar
+   NonVirtualInstance:=AssignmentFunction(VirtualInstance,fRemainingNonVirtualInstances,aInFlightFrameIndex,CameraPositionPointer,false,InstanceIndex); // false = prefer similar
    
    // Assign to render instance of the non-virtual instance, if possible 
    if assigned(NonVirtualInstance) and (NonVirtualInstance.fMaxRenderInstanceCount<>0) and VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
-    
+
+    fRemainingNonVirtualInstances.DeleteWithSwap(InstanceIndex);
+
     // The actual render instance assignment will happen later
     // The preallocated render instances will be used for batched rendering
 
@@ -36342,8 +36389,8 @@ begin
   end;
   
   // Step 3: Handle remaining unassigned virtual instances
-  for Index:=0 to fVisibleInstances.Count-1 do begin
-   VirtualInstance:=fVisibleInstances[Index];
+  for Index:=0 to fRemainingVisibleInstances.Count-1 do begin
+   VirtualInstance:=fRemainingVisibleInstances[Index];
    
    // Skip if assigned
    if assigned(VirtualInstance.fAssignedNonVirtualInstance) then begin
