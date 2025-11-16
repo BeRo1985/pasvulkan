@@ -23756,13 +23756,7 @@ begin
  end;
 
  // Cleanup preallocated render instances (for virtual instance assignment)
- if assigned(fPreallocatedRenderInstances) then begin
-  while fPreallocatedRenderInstances.Count>0 do begin
-   RenderInstance:=fPreallocatedRenderInstances.ExtractIndex(fPreallocatedRenderInstances.Count-1);
-   FreeAndNil(RenderInstance);
-  end;
-  FreeAndNil(fPreallocatedRenderInstances);
- end;
+ FreeAndNil(fPreallocatedRenderInstances);
 
  if assigned(fAvailablePreallocatedRenderInstances) then begin
   FreeAndNil(fAvailablePreallocatedRenderInstances);
