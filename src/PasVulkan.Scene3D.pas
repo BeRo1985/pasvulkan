@@ -3374,7 +3374,7 @@ type EpvScene3D=class(Exception);
                      fVirtualInstances:TInstances;
                      fRemainingVisibleInstances:TInstances;
                      fRemainingVirtualInstances:TInstances;
-                     fNonVirtualInstances:TInstances;
+                     fAvailableNonVirtualInstances:TInstances;
                      fMaximumNonVirtualInstances:TpvSizeInt;
                      fMaximumRenderInstancesPerNonVirtualInstance:TpvSizeInt;
                      fAssignmentDirty:Boolean;
@@ -35924,7 +35924,7 @@ begin
  fVirtualInstances:=TInstances.Create(false);
  fRemainingVisibleInstances:=TInstances.Create(false);
  fRemainingVirtualInstances:=TInstances.Create(false);
- fNonVirtualInstances:=TInstances.Create(false);
+ fAvailableNonVirtualInstances:=TInstances.Create(false);
 
  fStateHashMap:=TStateKeyHashMap.Create(nil);
  
@@ -35963,9 +35963,9 @@ begin
  
  FreeAndNil(fStateHashMap);
 
- FreeAndNil(fRemainingVirtualInstances);
+ FreeAndNil(fAvailableNonVirtualInstances);
 
- FreeAndNil(fNonVirtualInstances);
+ FreeAndNil(fRemainingVirtualInstances);
 
  FreeAndNil(fRemainingVisibleInstances);
 
@@ -36291,10 +36291,10 @@ begin
   fCountDebugInfos:=0;
 
   // Reset all non-virtual instances in preparation for new assignments
-  fNonVirtualInstances.ClearNoFree;
+  fAvailableNonVirtualInstances.ClearNoFree;
   for Index:=0 to fNonVirtualInstances.Count-1 do begin
-   NonVirtualInstance:=fNonVirtualInstances[Index];
-   fNonVirtualInstances.Add(NonVirtualInstance);
+   NonVirtualInstance:=fAvailableNonVirtualInstances[Index];
+   fAvailableNonVirtualInstances.Add(NonVirtualInstance);
    if NonVirtualInstance.Active then begin
     NonVirtualInstance.Active:=false;
     // Reset all non-virtual render instances in preparation for new assignments in an optimized way
@@ -36377,11 +36377,11 @@ begin
 
   NonVirtualInstance:=nil;
 
-  for Index:=0 to fNonVirtualInstances.Count-1 do begin
+  for Index:=0 to fAvailableNonVirtualInstances.Count-1 do begin
 
    LastNonVirtualInstance:=NonVirtualInstance;
 
-   NonVirtualInstance:=fNonVirtualInstances[Index];
+   NonVirtualInstance:=fAvailableNonVirtualInstances[Index];
 
    // Find best virtual instance for this non-virtual instance (prefer dissimilar to the each last)
    VirtualInstance:=AssignmentFunction(LastNonVirtualInstance,NonVirtualInstance,fRemainingVisibleInstances,aInFlightFrameIndex,CameraPositionPointer,true,InstanceIndex); // true = prefer dissimilar
@@ -36462,7 +36462,7 @@ begin
    end;
    
    // Try to find a non-virtual instance with available render instances and matching state
-   NonVirtualInstance:=AssignmentFunction(VirtualInstance,nil,fNonVirtualInstances,aInFlightFrameIndex,CameraPositionPointer,false,InstanceIndex); // false = prefer similar
+   NonVirtualInstance:=AssignmentFunction(VirtualInstance,nil,fAvailableNonVirtualInstances,aInFlightFrameIndex,CameraPositionPointer,false,InstanceIndex); // false = prefer similar
    
    // Assign to render instance of the non-virtual instance, if possible 
    if assigned(NonVirtualInstance) and (NonVirtualInstance.fMaxRenderInstanceCount<>0) and
