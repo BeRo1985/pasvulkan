@@ -3470,8 +3470,6 @@ type EpvScene3D=class(Exception);
               fInstanceListLock:TPasMPSlimReaderWriterLock;
               fInstances:TInstances;
               fMaximumCountInstances:TpvSizeint;
-              fPreallocatedInstances:TInstances;
-              fPreallocatedInstanceCount:TpvSizeInt;
               fVirtualInstanceManager:TVirtualInstanceManager;
               fBoundingBox:TpvAABB;
               fHasStaticBoundingBox:boolean;
@@ -3580,10 +3578,6 @@ type EpvScene3D=class(Exception);
              public
               function CreateInstance(const aHeadless:Boolean=false;const aVirtual:Boolean=false):TpvScene3D.TGroup.TInstance;
               function CreateVirtualInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TVirtualInstance;
-             public
-              // Instance preallocation support
-              procedure PreallocateInstances(const aCount:TpvSizeInt);
-              function GetPreallocatedInstance:TpvScene3D.TGroup.TInstance;
              public
               // Virtual instance manager
               function GetOrCreateVirtualInstanceManager(const aMaximumNonVirtualInstances,aMaximumRenderInstancesPerNonVirtualInstance:TpvSizeInt):TVirtualInstanceManager;
@@ -17806,9 +17800,6 @@ begin
  fInstances:=TInstances.Create;
  fInstances.OwnsObjects:=false;
 
- fPreallocatedInstances:=nil;
- fPreallocatedInstanceCount:=0;
-
  fVirtualInstanceManager:=nil;
 
  fNodeNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
@@ -17878,14 +17869,6 @@ begin
  // Cleanup virtual instance manager
  if assigned(fVirtualInstanceManager) then begin
   FreeAndNil(fVirtualInstanceManager);
- end;
-
- // Cleanup preallocated instances
- if assigned(fPreallocatedInstances) then begin
-  while fPreallocatedInstances.Count>0 do begin
-   fPreallocatedInstances[fPreallocatedInstances.Count-1].Free;
-  end;
-  FreeAndNil(fPreallocatedInstances);
  end;
 
  FreeAndNil(fUsedVisibleDrawNodes);
@@ -21950,41 +21933,6 @@ begin
   result:=TpvScene3D.TGroup.TVirtualInstance.Create(ResourceManager,self,nil,fHeadless or aHeadless);
  end else begin
   result:=nil;
- end;
-end;
-
-procedure TpvScene3D.TGroup.PreallocateInstances(const aCount:TpvSizeInt);
-var Index:TpvSizeInt;
-    Instance:TpvScene3D.TGroup.TInstance;
-begin
- if not assigned(fPreallocatedInstances) then begin
-  fPreallocatedInstances:=TpvScene3D.TGroup.TInstances.Create(false);
- end;
- 
- fPreallocatedInstanceCount:=aCount;
- 
- // Create preallocated instances (with GPU resources but Active=false)
- for Index:=0 to aCount-1 do begin
-  Instance:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self,nil,false,false);
-  if assigned(Instance) then begin
-   Instance.Active:=false; // Inactive by default
-   fPreallocatedInstances.Add(Instance);
-  end;
- end;
-end;
-
-function TpvScene3D.TGroup.GetPreallocatedInstance:TpvScene3D.TGroup.TInstance;
-var Index:TpvSizeInt;
-begin
- result:=nil;
- if assigned(fPreallocatedInstances) then begin
-  // Find first inactive preallocated instance
-  for Index:=0 to fPreallocatedInstances.Count-1 do begin
-   if not fPreallocatedInstances[Index].Active then begin
-    result:=fPreallocatedInstances[Index];
-    exit;
-   end;
-  end;
  end;
 end;
 
@@ -35978,7 +35926,7 @@ end;
 { TpvScene3D.TGroup.TVirtualInstanceManager }
 
 constructor TpvScene3D.TGroup.TVirtualInstanceManager.Create(const aGroup:TGroup;const aMaximumNonVirtualInstances,aMaximumRenderInstancesPerNonVirtualInstance:TpvSizeInt);
-var Index,Count:TpvSizeInt;
+var Index:TpvSizeInt;
     Instance:TInstance;
 begin
  inherited Create;
@@ -36003,31 +35951,14 @@ begin
 
  fStateHashMap:=TStateKeyHashMap.Create(nil);
  
- // Preallocate non-virtual instances for rendering
- // We create one pool per scene, but start with a simple global pool
- if assigned(fGroup.fPreallocatedInstances) and (fGroup.fPreallocatedInstances.Count>0) then begin
-  // Use existing preallocated instances
-  Count:=fGroup.fPreallocatedInstances.Count;
-  if (fMaximumNonVirtualInstances>0) and (Count>fMaximumNonVirtualInstances) then begin
-   Count:=fMaximumNonVirtualInstances;
-  end;
-  for Index:=0 to Count-1 do begin
-   Instance:=fGroup.fPreallocatedInstances[Index];
-   if assigned(Instance) and not Instance.fVirtual then begin
-    Instance.Active:=false; // Initially inactive
-    fNonVirtualInstances.Add(Instance);
-    Instance.PreallocateRenderInstances(fMaximumRenderInstancesPerNonVirtualInstance);
-   end;
-  end;
- end else begin
-  // Create new non-virtual instances
-  for Index:=0 to fMaximumNonVirtualInstances-1 do begin
-   Instance:=TInstance.Create(fGroup.ResourceManager,fGroup,nil,false,false);
-   if assigned(Instance) then begin
-    Instance.Active:=false; // Initially inactive
-    fNonVirtualInstances.Add(Instance);
-    Instance.PreallocateRenderInstances(fMaximumRenderInstancesPerNonVirtualInstance);
-   end;
+ // Create non-virtual instance pool for rendering
+ // These instances will be activated/assigned as needed by UpdateAssignments
+ // Note: Instances auto-register via AfterConstruction
+ for Index:=0 to fMaximumNonVirtualInstances-1 do begin
+  Instance:=TInstance.Create(fGroup.ResourceManager,fGroup,nil,false,false);
+  if assigned(Instance) then begin
+   Instance.Active:=false; // Initially inactive
+   Instance.PreallocateRenderInstances(fMaximumRenderInstancesPerNonVirtualInstance);
   end;
  end;
 
