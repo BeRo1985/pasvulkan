@@ -32649,6 +32649,16 @@ begin
   fGroupInstanceListLock.Acquire;
   try
 
+   // Update virtual instances
+   for Index:=0 to fGroups.Count-1 do begin
+    Group:=fGroups[Index];
+    if assigned(Group.fVirtualInstanceManager) then begin
+     Group.fVirtualInstanceManager.UpdateAssignments(aInFlightFrameIndex,
+                                                     nil,
+                                                     nil);
+    end;
+   end;
+
    fGroupInstances.Sort;
 
    if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) then begin
