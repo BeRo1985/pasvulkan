@@ -3370,6 +3370,7 @@ type EpvScene3D=class(Exception);
                           TStateKeyHashMap=TpvHashMap<TStateKey,TInstance>; // Maps to head of linked list
                     private
                      fGroup:TGroup;
+                     fSceneInstance:TpvScene3D;
                      fNonVirtualInstances:TInstances;
                      fVirtualInstances:TInstances;
                      fRemainingVisibleInstances:TInstances;
@@ -35910,6 +35911,7 @@ begin
  inherited Create;
  
  fGroup:=aGroup;
+ fSceneInstance:=fGroup.fSceneInstance;
  fMaximumNonVirtualInstances:=aMaximumNonVirtualInstances;
  fMaximumRenderInstancesPerNonVirtualInstance:=aMaximumRenderInstancesPerNonVirtualInstance;
  fAssignmentDirty:=true;
