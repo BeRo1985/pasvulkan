@@ -36293,20 +36293,22 @@ begin
   fRemainingVirtualInstances.ClearNoFree;
   for Index:=0 to fVirtualInstances.Count-1 do begin
    VirtualInstance:=fVirtualInstances[Index];
-   fRemainingVirtualInstances.Add(VirtualInstance);
    VirtualInstance.fPreviousAssignedNonVirtualInstance:=VirtualInstance.fAssignedNonVirtualInstance;
    VirtualInstance.fAssignedNonVirtualInstance:=nil;
-   if VirtualInstance.fUseRenderInstances and (VirtualInstance.fMaxRenderInstanceCount<>0) then begin
-    CountRenderInstances:=0;
-    for RenderInstanceIndex:=0 to VirtualInstance.fRenderInstances.Count-1 do begin
-     RenderInstance:=VirtualInstance.fRenderInstances.RawItems[RenderInstanceIndex];
-     if RenderInstance.Active then begin
-      inc(CountRenderInstances);
+   if VirtualInstance.Active then begin
+    fRemainingVirtualInstances.Add(VirtualInstance);
+    if VirtualInstance.fUseRenderInstances and (VirtualInstance.fMaxRenderInstanceCount<>0) then begin
+     CountRenderInstances:=0;
+     for RenderInstanceIndex:=0 to VirtualInstance.fRenderInstances.Count-1 do begin
+      RenderInstance:=VirtualInstance.fRenderInstances.RawItems[RenderInstanceIndex];
+      if RenderInstance.Active then begin
+       inc(CountRenderInstances);
+      end;
      end;
+     VirtualInstance.fCountActiveVirtualRenderInstances:=CountRenderInstances;
+    end else begin
+     VirtualInstance.fCountActiveVirtualRenderInstances:=1;
     end;
-    VirtualInstance.fCountActiveVirtualRenderInstances:=CountRenderInstances;
-   end else begin
-    VirtualInstance.fCountActiveVirtualRenderInstances:=1;
    end;
   end;
   
