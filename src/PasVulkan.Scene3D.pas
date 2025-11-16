@@ -36423,7 +36423,7 @@ begin
     if (length(VirtualInstance.fAnimations)>0) and (length(VirtualInstance.fAnimations)=length(NonVirtualInstance.fAnimations)) then begin
      for AnimationIndex:=0 to length(VirtualInstance.fAnimations)-1 do begin
       VirtualInstanceAnimation:=VirtualInstance.fAnimations[AnimationIndex];
-      NonVirtualInstanceAnimation:=VirtualInstance.fAnimations[AnimationIndex];
+      NonVirtualInstanceAnimation:=NonVirtualInstance.fAnimations[AnimationIndex];
       NonVirtualInstanceAnimation.Assign(VirtualInstanceAnimation);
      end;
     end;
