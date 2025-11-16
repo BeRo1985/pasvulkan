@@ -36174,6 +36174,11 @@ begin
       // Skip non-virtual instances that have reached their maximum render instance count or have no render instances
       continue;
      end;
+    end else if Candidate.fMaxRenderInstanceCount=0 then begin
+     // Single instance only, already used in Step 1, so skip
+     continue;
+    end else begin
+     // No limit on render instances, when fMaxRenderInstanceCount<0   
     end;
    end else begin
     // Skip inactive non-virtual instances to avoid assigning to these invisible instances
