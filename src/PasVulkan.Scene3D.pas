@@ -36295,7 +36295,7 @@ begin
   // Reset all non-virtual instances in preparation for new assignments
   fAvailableNonVirtualInstances.ClearNoFree;
   for Index:=0 to fNonVirtualInstances.Count-1 do begin
-   NonVirtualInstance:=fAvailableNonVirtualInstances[Index];
+   NonVirtualInstance:=fNonVirtualInstances[Index];
    fAvailableNonVirtualInstances.Add(NonVirtualInstance);
    if NonVirtualInstance.Active then begin
     NonVirtualInstance.Active:=false;
