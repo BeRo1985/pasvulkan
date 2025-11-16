@@ -3117,6 +3117,7 @@ type EpvScene3D=class(Exception);
                      fPreviousActive:boolean;
                      fUseRenderInstances:boolean;
                      fUseSortedRenderInstances:boolean;
+                     fCountActiveVirtualRenderInstances:TpvSizeInt;
                      fIsNewInstance:TPasMPBool32;
                      fScene:TPasGLTFSizeInt;
                      fMaterialMap:TpvScene3D.TGroup.TMaterialMap;
@@ -28323,15 +28324,8 @@ begin
 
  if fVirtual and assigned(aNonVirtualInstance) and not aNonVirtualInstance.fVirtual then begin
 
-  if UseRenderInstances then begin
-   CountRenderInstances:=0;
-   for RenderInstanceIndex:=0 to fRenderInstances.Count-1 do begin
-    if fRenderInstances[RenderInstanceIndex].fActive then begin
-     inc(CountRenderInstances);
-    end else begin
-     break;
-    end;
-   end;
+  if fUseRenderInstances then begin
+   CountRenderInstances:=fCountActiveVirtualRenderInstances;
   end else begin
    CountRenderInstances:=1;
   end;
@@ -36132,7 +36126,7 @@ function TpvScene3D.TGroup.TVirtualInstanceManager.DefaultAssignmentHeuristic(co
                                                                               const aCameraPosition:PpvVector3D;
                                                                               const aPreferDissimilar:Boolean;
                                                                               out aInstanceIndex:TpvSizeInt):TInstance;
-var Index:TpvSizeInt;
+var Index,CountRenderInstances:TpvSizeInt;
     Candidate:TInstance;
     BestCandidate:TInstance;
     BestScore,Score,Similarity,DistanceToCamera:TpvDouble;
@@ -36161,9 +36155,16 @@ begin
    end;
   end else begin
    // Candidate is a non-virtual instance in this case
-   if (Candidate.fMaxRenderInstanceCount>0) and (Candidate.fPreallocatedRenderInstanceCounter>=Candidate.fMaxRenderInstanceCount) then begin
-    // Skip non-virtual instances that have reached their maximum render instance count
-    continue;
+   if Candidate.fMaxRenderInstanceCount>0 then begin
+    if aInstance.fUseRenderInstances then begin
+     CountRenderInstances:=aInstance.fCountActiveVirtualRenderInstances;
+    end else begin
+     CountRenderInstances:=1;
+    end; 
+    if (CountRenderInstances=0) or (Candidate.fMaxRenderInstanceCount<(Candidate.fPreallocatedRenderInstanceCounter+CountRenderInstances)) then begin
+     // Skip non-virtual instances that have reached their maximum render instance count or have no render instances
+     continue;
+    end;
    end;
   end;
 
@@ -36213,7 +36214,8 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TVirtualInstanceManager.UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt);
-var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex,InstanceIndex:TpvSizeInt;
+var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex,InstanceIndex,
+    CountRenderInstances:TpvSizeInt;
     VirtualInstance,NonVirtualInstance,Candidate:TInstance;
     StateKey:TStateKey;
     Instances:TInstances;
@@ -36247,7 +36249,7 @@ begin
    if NonVirtualInstance.Active then begin
     NonVirtualInstance.Active:=false;
     for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
-     RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances[RenderInstanceIndex];
+     RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
      if RenderInstance.Active then begin
       RenderInstance.Active:=false;
      end else begin
@@ -36266,6 +36268,20 @@ begin
    VirtualInstance:=fVirtualInstances[Index];
    fRemainingVirtualInstances.Add(VirtualInstance);
    VirtualInstance.fAssignedNonVirtualInstance:=nil;
+   if VirtualInstance.fUseRenderInstances then begin
+    CountRenderInstances:=0;
+    for RenderInstanceIndex:=0 to VirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
+     RenderInstance:=VirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
+     if RenderInstance.Active then begin
+      inc(CountRenderInstances);
+     end else begin
+      break;
+     end;
+    end;
+    VirtualInstance.fCountActiveVirtualRenderInstances:=CountRenderInstances;
+   end else begin
+    VirtualInstance.fCountActiveVirtualRenderInstances:=1;
+   end;
   end;
   
   // Sort visible instances by priority (distance to camera, closer = higher priority)
