@@ -3108,8 +3108,9 @@ type EpvScene3D=class(Exception);
                      fActive:boolean;
                      fUpdateDynamic:TPasMPBool32;
                      fOrder:TpvInt64;
-                     fHeadless:boolean;
+                     fHeadless:boolean;                     
                      fVirtual:boolean;
+                     fPreviousAssignedNonVirtualInstance:TInstance;
                      fAssignedNonVirtualInstance:TInstance;
                      fVirtualInstanceManager:TObject; // Forward reference to TVirtualInstanceManager
                      fUpdateAssignmentDistanceSquared:TpvDouble; // Temporary for sorting during assignment
@@ -3311,6 +3312,7 @@ type EpvScene3D=class(Exception);
                      property BoundingSpheres:TBoundingSpheres read fBoundingSpheres;
                     public
                      property Virtual_:Boolean read fVirtual;
+                     property PreviousAssignedNonVirtualInstance:TInstance read fPreviousAssignedNonVirtualInstance;
                      property AssignedNonVirtualInstance:TInstance read fAssignedNonVirtualInstance;
                     public
                      property BufferRanges:PBufferRanges read fPointerToBufferRanges;
@@ -3366,7 +3368,6 @@ type EpvScene3D=class(Exception);
                           end;
                           PStateKey=^TStateKey;
                           TStateKeyHashMap=TpvHashMap<TStateKey,TInstance>; // Maps to head of linked list
-                          TFrameAssignments=TpvHashMap<TInstance,TInstance>; // Maps virtual instance to assigned non-virtual instance
                     private
                      fGroup:TGroup;
                      fNonVirtualInstances:TInstances;
@@ -3383,8 +3384,6 @@ type EpvScene3D=class(Exception);
                      fCountDebugInfos:TpvSizeInt;
                      fLock:TPasMPSpinLock;
                      fStateHashMap:TStateKeyHashMap;
-                     fLastFrameAssignments:TFrameAssignments; // virtual -> non-virtual from last frame
-                     fNewFrameAssignments:TFrameAssignments; // virtual -> non-virtual from last frame
                      function DefaultAssignmentHeuristic(const aInstance:TInstance;
                                                          const aTargetInstance:TInstance;
                                                          const aCandidateOtherInstances:TInstances;
@@ -23386,6 +23385,8 @@ begin
 
  fVirtual:=aVirtual;
 
+ fPreviousAssignedNonVirtualInstance:=nil;
+
  fAssignedNonVirtualInstance:=nil;
  
  fVirtualInstanceManager:=nil;
@@ -35927,9 +35928,6 @@ begin
 
  fStateHashMap:=TStateKeyHashMap.Create(nil);
  
- fLastFrameAssignments:=TFrameAssignments.Create(nil);
- fNewFrameAssignments:=TFrameAssignments.Create(nil);
-
  // Preallocate non-virtual instances for rendering
  // We create one pool per scene, but start with a simple global pool
  if assigned(fGroup.fPreallocatedInstances) and (fGroup.fPreallocatedInstances.Count>0) then begin
@@ -35962,11 +35960,7 @@ end;
 
 destructor TpvScene3D.TGroup.TVirtualInstanceManager.Destroy;
 begin
-
- FreeAndNil(fNewFrameAssignments);
-
- FreeAndNil(fLastFrameAssignments);
-
+ 
  FreeAndNil(fStateHashMap);
 
  FreeAndNil(fRemainingVirtualInstances);
@@ -36208,7 +36202,7 @@ begin
 
    // Add temporal bonus if this was assigned last frame
    // Candidate is a virtual instance in this case, and aInstance a non-virtual instance
-   if fLastFrameAssignments[Candidate]=aTargetInstance then begin
+   if Candidate.fPreviousAssignedNonVirtualInstance=aTargetInstance then begin
     Score:=Score+5.0; // Temporal coherence bonus
    end;
 
@@ -36219,7 +36213,7 @@ begin
 
    // Add temporal bonus if this was assigned last frame
    // Candidate is a non-virtual instance in this case, and aInstance a virtual instance
-   if fLastFrameAssignments[aInstance]=Candidate then begin
+   if Candidate.fPreviousAssignedNonVirtualInstance=aInstance then begin
     Score:=Score+5.0; // Temporal coherence bonus
    end;
 
@@ -36269,7 +36263,6 @@ var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex,Insta
     CameraPosition:TpvVector3D;
     CameraPositionPointer:PpvVector3D;
     Similarity:TpvFloat;
-    FrameAssignments:TFrameAssignments; // for swapping between last and new frame assignments 
 begin
 
  fLock.Acquire;
@@ -36283,9 +36276,6 @@ begin
   
   // Clear debug info
   fCountDebugInfos:=0;
-
-  // Clear new frame assignments
-  fNewFrameAssignments.Clear;
 
   // Reset all non-virtual instances in preparation for new assignments in an optimized way
   // where we stop resetting as soon as we find an inactive non-virtual instance since all
@@ -36315,6 +36305,7 @@ begin
   for Index:=0 to fVirtualInstances.Count-1 do begin
    VirtualInstance:=fVirtualInstances[Index];
    fRemainingVirtualInstances.Add(VirtualInstance);
+   VirtualInstance.fPreviousAssignedNonVirtualInstance:=VirtualInstance.fAssignedNonVirtualInstance;
    VirtualInstance.fAssignedNonVirtualInstance:=nil;
    if VirtualInstance.fUseRenderInstances and (VirtualInstance.fMaxRenderInstanceCount<>0) then begin
     CountRenderInstances:=0;
@@ -36389,9 +36380,6 @@ begin
       VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
 
     fRemainingVisibleInstances.DeleteWithSwap(InstanceIndex);
-
-    // Remember assignment for temporal coherence
-    fNewFrameAssignments.Add(VirtualInstance,NonVirtualInstance);
 
     // Copy state from virtual to non-virtual
     if NonVirtualInstance.fMaxRenderInstanceCount=0 then begin
@@ -36476,9 +36464,6 @@ begin
 
     inc(AssignedCount);
 
-    // Remember assignment for temporal coherence
-    fNewFrameAssignments.Add(VirtualInstance,NonVirtualInstance);
-
     // Collect debug info
     if fDebugEnabled then begin
      DebugInfoIndex:=fCountDebugInfos;
@@ -36535,12 +36520,7 @@ begin
     DebugInfo^.SceneIndex:=VirtualInstance.fScene;
    end;
   end;
-
-  // Step 4: Swap frame assignments
-  FrameAssignments:=fLastFrameAssignments;
-  fLastFrameAssignments:=fNewFrameAssignments;
-  fNewFrameAssignments:=FrameAssignments;
-   
+  
   fAssignmentDirty:=false;
   
  finally
