@@ -23962,7 +23962,7 @@ begin
       if fGroup.fVirtualInstanceManager.fVirtualInstances.IndexOf(self)<0 then begin
        fGroup.fVirtualInstanceManager.fVirtualInstances.Add(self);
        fVirtualInstanceManager:=fGroup.fVirtualInstanceManager;
-       fVirtualInstanceManager.fAssignmentDirty:=true;
+       TVirtualInstanceManager(fVirtualInstanceManager).fAssignmentDirty:=true;
       end;
 
      end else begin
@@ -23972,7 +23972,7 @@ begin
       if fGroup.fVirtualInstanceManager.fNonVirtualInstances.IndexOf(self)<0 then begin
        fGroup.fVirtualInstanceManager.fNonVirtualInstances.Add(self);
        fVirtualInstanceManager:=fGroup.fVirtualInstanceManager;
-       fVirtualInstanceManager.fAssignmentDirty:=true;
+       TVirtualInstanceManager(fVirtualInstanceManager).fAssignmentDirty:=true;
       end;
 
      end;
@@ -24442,7 +24442,7 @@ begin
         Index:=fGroup.fVirtualInstanceManager.fVirtualInstances.IndexOf(self); 
         if Index>=0 then begin
          fGroup.fVirtualInstanceManager.fVirtualInstances.ExtractIndex(Index);
-         fVirtualInstanceManager.fAssignmentDirty:=true;
+         TVirtualInstanceManager(fVirtualInstanceManager).fAssignmentDirty:=true;
          fAssignedNonVirtualInstance:=nil;
         end;
 
@@ -24452,7 +24452,7 @@ begin
 
         if fGroup.fVirtualInstanceManager.fNonVirtualInstances.IndexOf(self)>=0 then begin
          fGroup.fVirtualInstanceManager.fNonVirtualInstances.Remove(self);
-         fVirtualInstanceManager.fAssignmentDirty:=true;
+         TVirtualInstanceManager(fVirtualInstanceManager).fAssignmentDirty:=true;
         end;
 
        end;
