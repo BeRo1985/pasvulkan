@@ -3373,7 +3373,6 @@ type EpvScene3D=class(Exception);
                      fSceneInstance:TpvScene3D;
                      fNonVirtualInstances:TInstances;
                      fVirtualInstances:TInstances;
-                     fRemainingVisibleInstances:TInstances;
                      fRemainingVirtualInstances:TInstances;
                      fAvailableNonVirtualInstances:TInstances;
                      fMaximumNonVirtualInstances:TpvSizeInt;
@@ -3394,7 +3393,6 @@ type EpvScene3D=class(Exception);
                                                          out aInstanceIndex:TpvSizeInt):TInstance;
                      function ComputeStateSimilarity(const aInstanceA,aInstanceB:TInstance):TpvFloat;
                      procedure UpdateStateHashMap;
-                     procedure FrustumCullVirtualInstances(const aInFlightFrameIndex:TpvSizeInt);
                     public
                      constructor Create(const aGroup:TGroup;const aMaximumNonVirtualInstances,aMaximumRenderInstancesPerNonVirtualInstance:TpvSizeInt);
                      destructor Destroy; override;
@@ -35945,7 +35943,6 @@ begin
  
  fNonVirtualInstances:=TInstances.Create(false);
  fVirtualInstances:=TInstances.Create(false);
- fRemainingVisibleInstances:=TInstances.Create(false);
  fRemainingVirtualInstances:=TInstances.Create(false);
  fAvailableNonVirtualInstances:=TInstances.Create(false);
 
@@ -35972,8 +35969,6 @@ begin
  FreeAndNil(fAvailableNonVirtualInstances);
 
  FreeAndNil(fRemainingVirtualInstances);
-
- FreeAndNil(fRemainingVisibleInstances);
 
  FreeAndNil(fVirtualInstances);
 
@@ -36009,50 +36004,6 @@ begin
     fStateHashMap.Add(StateKey,VirtualInstance);
    end;
   end;
- end;
-
-end;
-
-procedure TpvScene3D.TGroup.TVirtualInstanceManager.FrustumCullVirtualInstances(const aInFlightFrameIndex:TpvSizeInt);
-var Index,RenderInstanceIndex:TpvSizeInt;
-    Instance:TInstance;
-    RenderInstance:TInstance.TRenderInstance;
-    Visible:Boolean;
-begin
-
- fRemainingVisibleInstances.ClearNoFree;
- 
- for Index:=0 to fVirtualInstances.Count-1 do begin
-
-  Instance:=fVirtualInstances[Index];
-
-  if Instance.Active then begin
-
-   if (aInFlightFrameIndex>=0) and fSceneInstance.fUpdateCulling.fActive then begin
-    if Instance.UseRenderInstances then begin
-     Visible:=false;
-     for RenderInstanceIndex:=0 to Instance.fRenderInstances.Count-1 do begin
-      RenderInstance:=Instance.fRenderInstances.RawItems[RenderInstanceIndex];
-      if RenderInstance.fActive then begin
-       if fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,Instance.fBoundingSpheres[aInFlightFrameIndex].Radius) then begin
-        Visible:=true;
-        break;
-       end;
-      end;
-     end;
-    end else begin
-     Visible:=fSceneInstance.fUpdateCulling.Check(Instance.ModelMatrix,Instance.fBoundingSpheres[aInFlightFrameIndex].Radius);
-    end;
-   end else begin
-    Visible:=true; // If no frustums, all visible
-   end;
-
-   if Visible then begin
-    fRemainingVisibleInstances.Add(Instance);
-   end;
-
-  end;
-
  end;
 
 end;
@@ -36251,7 +36202,8 @@ var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex,Insta
     DebugInfo:PAssignmentDebugInfo;
     CameraPosition:TpvVector3D;
     CameraPositionPointer:PpvVector3D;
-    Similarity:TpvFloat;
+    Similarity:TpvDouble;
+    Visible:Boolean;
 begin
 
  fLock.Acquire;
@@ -36259,9 +36211,6 @@ begin
 
   // Update state hash map
   // UpdateStateHashMap; // Not used currently
-  
-  // Frustum cull virtual instances (uses fRemainingVisibleInstances)
-  FrustumCullVirtualInstances(aInFlightFrameIndex);
   
   // Clear debug info
   fCountDebugInfos:=0;
@@ -36292,41 +36241,73 @@ begin
   // Reset all virtual instance assignments
   fRemainingVirtualInstances.ClearNoFree;
   for Index:=0 to fVirtualInstances.Count-1 do begin
+
    VirtualInstance:=fVirtualInstances[Index];
+
    VirtualInstance.fPreviousAssignedNonVirtualInstance:=VirtualInstance.fAssignedNonVirtualInstance;
    VirtualInstance.fAssignedNonVirtualInstance:=nil;
+
    if VirtualInstance.Active then begin
-    fRemainingVirtualInstances.Add(VirtualInstance);
-    if VirtualInstance.fUseRenderInstances and (VirtualInstance.fMaxRenderInstanceCount<>0) then begin
-     CountRenderInstances:=0;
-     for RenderInstanceIndex:=0 to VirtualInstance.fRenderInstances.Count-1 do begin
-      RenderInstance:=VirtualInstance.fRenderInstances.RawItems[RenderInstanceIndex];
-      if RenderInstance.Active then begin
-       inc(CountRenderInstances);
+
+    if (aInFlightFrameIndex>=0) and fSceneInstance.fUpdateCulling.fActive then begin
+     if VirtualInstance.UseRenderInstances then begin
+      Visible:=false;
+      for RenderInstanceIndex:=0 to VirtualInstance.fRenderInstances.Count-1 do begin
+       RenderInstance:=VirtualInstance.fRenderInstances.RawItems[RenderInstanceIndex];
+       if RenderInstance.fActive then begin
+        if fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,VirtualInstance.fBoundingSpheres[aInFlightFrameIndex].Radius) then begin
+         Visible:=true;
+         break;
+        end;
+       end;
       end;
+     end else begin
+      Visible:=fSceneInstance.fUpdateCulling.Check(VirtualInstance.ModelMatrix,VirtualInstance.fBoundingSpheres[aInFlightFrameIndex].Radius);
      end;
-     VirtualInstance.fCountActiveVirtualRenderInstances:=CountRenderInstances;
     end else begin
-     VirtualInstance.fCountActiveVirtualRenderInstances:=1;
+     Visible:=true; // If no frustums, all visible
     end;
+
+    if Visible then begin
+
+     fRemainingVirtualInstances.Add(VirtualInstance);
+
+     if VirtualInstance.fUseRenderInstances and (VirtualInstance.fMaxRenderInstanceCount<>0) then begin
+      CountRenderInstances:=0;
+      for RenderInstanceIndex:=0 to VirtualInstance.fRenderInstances.Count-1 do begin
+       RenderInstance:=VirtualInstance.fRenderInstances.RawItems[RenderInstanceIndex];
+       if RenderInstance.Active then begin
+        inc(CountRenderInstances);
+       end;
+      end;
+      VirtualInstance.fCountActiveVirtualRenderInstances:=CountRenderInstances;
+     end else begin
+      VirtualInstance.fCountActiveVirtualRenderInstances:=1;
+     end;
+
+    end else begin
+     VirtualInstance.fCountActiveVirtualRenderInstances:=0;
+    end;
+
    end;
+
   end;
   
   // Sort visible instances by priority (distance to camera, closer = higher priority)
-  if (fRemainingVisibleInstances.Count>0) and fSceneInstance.fUpdateCulling.fActive then begin
+  if (fRemainingVirtualInstances.Count>0) and fSceneInstance.fUpdateCulling.fActive then begin
 
    CameraPosition:=fSceneInstance.fUpdateCulling.fCameraPosition;
 
    CameraPositionPointer:=@CameraPosition;
 
    // Store distance squared in each instance for sorting
-   for Index:=0 to fRemainingVisibleInstances.Count-1 do begin
-    fRemainingVisibleInstances[Index].fUpdateAssignmentDistanceSquared:=(fRemainingVisibleInstances[Index].fModelMatrix.Translation.xyz-CameraPosition).SquaredLength;
+   for Index:=0 to fRemainingVirtualInstances.Count-1 do begin
+    fRemainingVirtualInstances[Index].fUpdateAssignmentDistanceSquared:=(fRemainingVirtualInstances[Index].fModelMatrix.Translation.xyz-CameraPosition).SquaredLength;
    end;
    
    // Fast IndirectIntroSort (O(n log n) average case) - sorts pointers based on distance
-   if fRemainingVisibleInstances.Count>1 then begin
-    PasVulkan.Utils.IndirectIntroSort(@fRemainingVisibleInstances.RawItems[0],0,fRemainingVisibleInstances.Count-1,CompareInstancesByDistanceSquared);
+   if fRemainingVirtualInstances.Count>1 then begin
+    PasVulkan.Utils.IndirectIntroSort(@fRemainingVirtualInstances.RawItems[0],0,fRemainingVirtualInstances.Count-1,CompareInstancesByDistanceSquared);
    end;
 
   end else begin
@@ -36362,13 +36343,13 @@ begin
    NonVirtualInstance:=fAvailableNonVirtualInstances[Index];
 
    // Find best virtual instance for this non-virtual instance (prefer dissimilar to the each last)
-   VirtualInstance:=AssignmentFunction(LastNonVirtualInstance,NonVirtualInstance,fRemainingVisibleInstances,aInFlightFrameIndex,CameraPositionPointer,true,InstanceIndex); // true = prefer dissimilar
+   VirtualInstance:=AssignmentFunction(LastNonVirtualInstance,NonVirtualInstance,fRemainingVirtualInstances,aInFlightFrameIndex,CameraPositionPointer,true,InstanceIndex); // true = prefer dissimilar
 
    // Assign virtual to non-virtual when possible
    if (assigned(VirtualInstance) and not assigned(VirtualInstance.fAssignedNonVirtualInstance)) and
       VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
 
-    fRemainingVisibleInstances.DeleteWithSwap(InstanceIndex);
+    fRemainingVirtualInstances.DeleteWithSwap(InstanceIndex);
 
     // Copy state from virtual to non-virtual
     if NonVirtualInstance.fMaxRenderInstanceCount=0 then begin
@@ -36430,9 +36411,9 @@ begin
   
   // Step 2: Try to assign remaining unassigned virtual instances to render instances
   // This handles similar instances that can share GPU resources via instancing
-  for Index:=0 to fRemainingVisibleInstances.Count-1 do begin
+  for Index:=0 to fRemainingVirtualInstances.Count-1 do begin
 
-   VirtualInstance:=fRemainingVisibleInstances[Index];
+   VirtualInstance:=fRemainingVirtualInstances[Index];
    
    // Skip if already assigned in Step 1
    if assigned(VirtualInstance.fAssignedNonVirtualInstance) then begin
@@ -36477,8 +36458,8 @@ begin
   end;
   
   // Step 3: Handle remaining unassigned virtual instances
-  for Index:=0 to fRemainingVisibleInstances.Count-1 do begin
-   VirtualInstance:=fRemainingVisibleInstances[Index];
+  for Index:=0 to fRemainingVirtualInstances.Count-1 do begin
+   VirtualInstance:=fRemainingVirtualInstances[Index];
    
    // Skip if assigned
    if assigned(VirtualInstance.fAssignedNonVirtualInstance) then begin
