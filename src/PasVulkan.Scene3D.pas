@@ -28337,8 +28337,8 @@ begin
   end;
 
   if (CountRenderInstances>0) and
-     (aNonVirtualInstance.fMaxRenderInstanceCount<=0) and
-     ((aNonVirtualInstance.fPreallocatedRenderInstanceCounter+CountRenderInstances)<=aNonVirtualInstance.fMaxRenderInstanceCount) then begin
+     ((aNonVirtualInstance.fMaxRenderInstanceCount<=0) or
+      ((aNonVirtualInstance.fPreallocatedRenderInstanceCounter+CountRenderInstances)<=aNonVirtualInstance.fMaxRenderInstanceCount)) then begin
 
    fAssignedNonVirtualInstance:=aNonVirtualInstance;
 
