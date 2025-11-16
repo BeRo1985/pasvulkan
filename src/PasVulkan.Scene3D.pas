@@ -36303,8 +36303,6 @@ begin
      end;
     end;
     NonVirtualInstance.fPreallocatedRenderInstanceCounter:=0;
-   end else begin
-    break;
    end;
   end;
 
