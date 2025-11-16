@@ -36035,8 +36035,9 @@ begin
  Similarity:=1.0;
  
  // Compare animation states
- if aInstanceA.fUseAnimationStates and aInstanceB.fUseAnimationStates and
+ if (length(aInstanceA.fAnimationStates)>0) and
     (length(aInstanceA.fAnimationStates)=length(aInstanceB.fAnimationStates)) then begin
+
   for Index:=0 to length(aInstanceA.fAnimationStates)-1 do begin
 
    // Time similarity (within 1 second = similar)
@@ -36047,6 +36048,7 @@ begin
    Similarity:=Similarity*(1.0-abs(aInstanceA.fAnimationStates[Index].fFactor-aInstanceB.fAnimationStates[Index].fFactor));
 
   end;
+
  end;
  
  result:=Similarity;
@@ -36362,14 +36364,11 @@ begin
     NonVirtualInstance.Active:=true;
     
     // Copy animation states
-    if VirtualInstance.fUseAnimationStates and (length(VirtualInstance.fAnimationStates)>0) then begin
-     NonVirtualInstance.fUseAnimationStates:=true;
+    if length(VirtualInstance.fAnimationStates)>0 then begin
      if length(NonVirtualInstance.fAnimationStates)<length(VirtualInstance.fAnimationStates) then begin
       SetLength(NonVirtualInstance.fAnimationStates,length(VirtualInstance.fAnimationStates));
      end;
      Move(VirtualInstance.fAnimationStates[0],NonVirtualInstance.fAnimationStates[0],SizeOf(TpvScene3D.TGroup.TInstance.TAnimationState)*length(VirtualInstance.fAnimationStates));
-    end else begin
-     NonVirtualInstance.fUseAnimationStates:=false; 
     end;
     
     // Automatically assign preallocated render instances to non-virtual instance
