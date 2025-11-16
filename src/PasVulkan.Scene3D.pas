@@ -36201,6 +36201,12 @@ begin
    BestScore:=Score;
    BestCandidate:=Candidate;
    aInstanceIndex:=Index;
+   if not assigned(aInstance) then begin
+    // No need to continue searching, as we don't have an instance to compare to as we are just looking for any 
+    // first candidate and aCandidateOtherInstances is already pre-sorted by distance, so the first virtual
+    // instance in aCandidateOtherInstances will always have the best score of 0.0 in that case
+    break;
+   end;
   end;
 
  end;
