@@ -36200,21 +36200,29 @@ begin
    // Invert similarity: prefer LESS similar instances (dissimilar get high scores)
    Score:=(-Similarity*10.0)-(DistanceToCamera*0.001);
 
-   // Add temporal bonus if this was assigned last frame
+   // Add temporal bonus or penalty if this was assigned last frame
    // Candidate is a virtual instance in this case, and aInstance a non-virtual instance
-   if Candidate.fPreviousAssignedNonVirtualInstance=aTargetInstance then begin
-    Score:=Score+5.0; // Temporal coherence bonus
-   end;
+   if assigned(Candidate.fAssignedNonVirtualInstance) then begin
+    if Candidate.fPreviousAssignedNonVirtualInstance=aTargetInstance then begin
+     Score:=Score+5.0; // Temporal coherence bonus
+    end else begin
+     Score:=Score-1.0; // Slight penalty for switching assignments
+    end;
+   end; 
 
   end else begin
    
    // Normal: prefer MORE similar instances
    Score:=(Similarity*10.0)-(DistanceToCamera*0.001);
 
-   // Add temporal bonus if this was assigned last frame
+   // Add temporal bonus or penalty if this was assigned last frame
    // Candidate is a non-virtual instance in this case, and aInstance a virtual instance
-   if aInstance.fPreviousAssignedNonVirtualInstance=Candidate then begin
-    Score:=Score+5.0; // Temporal coherence bonus
+   if assigned(aInstance.fPreviousAssignedNonVirtualInstance) then begin
+    if aInstance.fPreviousAssignedNonVirtualInstance=Candidate then begin
+     Score:=Score+5.0; // Temporal coherence bonus
+    end else begin     
+     Score:=Score-1.0; // Slight penalty for switching assignments
+    end;
    end;
 
   end;
