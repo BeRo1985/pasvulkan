@@ -35948,6 +35948,10 @@ begin
 
  fStateHashMap:=TStateKeyHashMap.Create(nil);
  
+ // Link back to self early, so that TInstance.AfterConstruction is aware of it at allocating the
+ // non-virtual instances below in this constructor. After it, it would to be late. 
+ fGroup.fVirtualInstanceManager:=self;
+
  // Create non-virtual instance pool for rendering
  // These instances will be activated/assigned as needed by UpdateAssignments
  // Note: Instances auto-register via AfterConstruction
@@ -35975,6 +35979,9 @@ begin
  FreeAndNil(fNonVirtualInstances);
 
  FreeAndNil(fLock);
+
+ // Unlink back to self
+ fGroup.fVirtualInstanceManager:=nil;
 
  inherited Destroy;
 
