@@ -36062,7 +36062,6 @@ function TpvScene3D.TGroup.TVirtualInstanceManager.DefaultAssignmentHeuristic(co
                                                                               out aInstanceIndex:TpvSizeInt):TInstance;
 var Index,CountRenderInstances:TpvSizeInt;
     Candidate:TInstance;
-    BestCandidate:TInstance;
     BestScore,Score,Similarity,DistanceToCamera:TpvDouble;
 begin
 
@@ -36070,9 +36069,7 @@ begin
 
  aInstanceIndex:=-1;
 
- BestCandidate:=nil;
-
- BestScore:=-1.0;
+ BestScore:=-Infinity;
  
  // When preferring dissimilar instances, then candidates are virtual instances
  // otherwise non-virtual instances, keep that in mind while reading this code
@@ -36165,9 +36162,9 @@ begin
 
   end;
   
-  if BestScore<Score then begin
+  if (not assigned(result)) or (BestScore<Score) then begin
    BestScore:=Score;
-   BestCandidate:=Candidate;
+   result:=Candidate;
    aInstanceIndex:=Index;
 {  if not assigned(aInstance) then begin
     // No need to continue searching, as we don't have an instance to compare to as we are just looking for any 
@@ -36178,8 +36175,6 @@ begin
   end;
 
  end;
- 
- result:=BestCandidate;
 
 end;
 
