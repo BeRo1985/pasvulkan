@@ -2553,6 +2553,8 @@ type EpvScene3D=class(Exception);
                            public
                             constructor Create; reintroduce;
                             destructor Destroy; override;
+                            procedure Assign(const aFrom:TAnimation);
+                            function GetSimilarityTo(const aOther:TAnimation):TpvDouble;
                            published
                             property Factor:TpvFloat read fFactor write fFactor;
                             property Time:TpvDouble read fTime write fTime;
@@ -23274,6 +23276,44 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvScene3D.TGroup.TInstance.TAnimation.Assign(const aFrom:TpvScene3D.TGroup.TInstance.TAnimation);
+begin
+ fTime:=aFrom.fTime;
+ fShadowTime:=aFrom.fShadowTime;
+ fAdditive:=aFrom.fAdditive;
+ fComplete:=aFrom.fComplete;
+end;
+
+function TpvScene3D.TGroup.TInstance.TAnimation.GetSimilarityTo(const aOther:TAnimation):TpvDouble;
+var TimeDifference:TpvDouble;
+begin
+
+ if not assigned(aOther) then begin
+  result:=0.0;
+  exit;
+ end;
+ 
+ // Start with perfect similarity
+ result:=1.0;
+ 
+ // Time similarity (within 1 second = similar)
+ TimeDifference:=abs(fTime-aOther.fTime);
+ result:=result*(1.0/(1.0+TimeDifference));
+ 
+ // Factor similarity
+ result:=result*(1.0-abs(fFactor-aOther.fFactor));
+ 
+ // Boolean properties must match
+ if fAdditive<>aOther.fAdditive then begin
+  result:=result*0.5; // Penalty for different additive mode
+ end;
+ 
+ if fComplete<>aOther.fComplete then begin
+  result:=result*0.8; // Smaller penalty for different complete flag
+ end;
+
+end;
+
 { TpvScene3D.TGroup.TInstance.TBufferRanges }
 
 procedure TpvScene3D.TGroup.TInstance.TBufferRanges.Clear;
@@ -36035,9 +36075,8 @@ begin
  Similarity:=1.0;
  
  // Compare animation states
- if (length(aInstanceA.fAnimationStates)>0) and
+ if aInstanceA.fUseAnimationStates and aInstanceB.fUseAnimationStates and
     (length(aInstanceA.fAnimationStates)=length(aInstanceB.fAnimationStates)) then begin
-
   for Index:=0 to length(aInstanceA.fAnimationStates)-1 do begin
 
    // Time similarity (within 1 second = similar)
@@ -36048,9 +36087,14 @@ begin
    Similarity:=Similarity*(1.0-abs(aInstanceA.fAnimationStates[Index].fFactor-aInstanceB.fAnimationStates[Index].fFactor));
 
   end;
-
  end;
- 
+
+ if (length(aInstanceA.fAnimations)>0) and (length(aInstanceA.fAnimations)=length(aInstanceB.fAnimations)) then begin
+  for Index:=0 to length(aInstanceA.fAnimations)-1 do begin
+   Similarity:=Similarity*aInstanceA.fAnimations[Index].GetSimilarityTo(aInstanceB.fAnimations[Index]);
+  end;
+ end;
+
  result:=Similarity;
 
 end;
@@ -36196,7 +36240,7 @@ end;
 
 procedure TpvScene3D.TGroup.TVirtualInstanceManager.UpdateAssignments(const aInFlightFrameIndex:TpvSizeInt);
 var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex,InstanceIndex,
-    CountRenderInstances:TpvSizeInt;
+    CountRenderInstances,AnimationIndex:TpvSizeInt;
     VirtualInstance,LastNonVirtualInstance,NonVirtualInstance,Candidate:TInstance;
     StateKey:TStateKey;
     Instances:TInstances;
@@ -36207,6 +36251,7 @@ var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex,Insta
     CameraPositionPointer:PpvVector3D;
     Similarity:TpvDouble;
     Visible:Boolean;
+    VirtualInstanceAnimation,NonVirtualInstanceAnimation:TpvScene3D.TGroup.TInstance.TAnimation;
 begin
 
  fLock.Acquire;
@@ -36364,13 +36409,25 @@ begin
     NonVirtualInstance.Active:=true;
     
     // Copy animation states
-    if length(VirtualInstance.fAnimationStates)>0 then begin
+    if VirtualInstance.fUseAnimationStates and (length(VirtualInstance.fAnimationStates)>0) then begin
+     NonVirtualInstance.fUseAnimationStates:=true;
      if length(NonVirtualInstance.fAnimationStates)<length(VirtualInstance.fAnimationStates) then begin
       SetLength(NonVirtualInstance.fAnimationStates,length(VirtualInstance.fAnimationStates));
      end;
      Move(VirtualInstance.fAnimationStates[0],NonVirtualInstance.fAnimationStates[0],SizeOf(TpvScene3D.TGroup.TInstance.TAnimationState)*length(VirtualInstance.fAnimationStates));
+    end else begin
+     NonVirtualInstance.fUseAnimationStates:=false; 
     end;
-    
+
+    // Copy animations
+    if (length(VirtualInstance.fAnimations)>0) and (length(VirtualInstance.fAnimations)=length(NonVirtualInstance.fAnimations)) then begin
+     for AnimationIndex:=0 to length(VirtualInstance.fAnimations)-1 do begin
+      VirtualInstanceAnimation:=VirtualInstance.fAnimations[AnimationIndex];
+      NonVirtualInstanceAnimation:=VirtualInstance.fAnimations[AnimationIndex];
+      NonVirtualInstanceAnimation.Assign(VirtualInstanceAnimation);
+     end;
+    end;
+
     // Automatically assign preallocated render instances to non-virtual instance
     // This links the virtual instance's rendering to the non-virtual instance's preallocated render instances
     // Check if render instances are preallocated for this non-virtual instance
