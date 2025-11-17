@@ -32976,7 +32976,6 @@ begin
    fGroupInstanceListLock.Release;
   end;
 
-
  finally
   fGroupListLock.Release;
  end;
