@@ -23360,13 +23360,9 @@ begin
 
   fGroup:=TpvScene3D.TGroup(aParent);
 
-  fBoundingRadius:=(fGroup.fBoundingBox.Max-fGroup.fBoundingBox.Min).Length*2.0;
-
  end else begin
 
   fGroup:=nil;
-
-  fBoundingRadius:=-1.0;
 
  end;
 
@@ -23681,6 +23677,8 @@ begin
    SetLength(fCullVisibleBitmaps[Index],(fNodes.Count+31) shr 5);
   end;
  end;
+
+ fBoundingRadius:=-1.0;
 
  fAABBTreeProxy:=-1;
 
