@@ -3114,6 +3114,7 @@ type EpvScene3D=class(Exception);
                      fVirtual:boolean;
                      fPreviousAssignedNonVirtualInstance:TInstance;
                      fAssignedNonVirtualInstance:TInstance;
+                     fAssignedNonVirtualInstanceRenderInstance:TRenderInstance;
                      fVirtualInstanceManager:TObject; // Forward reference to TVirtualInstanceManager
                      fUpdateAssignmentDistanceSquared:TpvDouble; // Temporary for sorting during assignment
                      fStateHashMapNext:TInstance; // Single-linked list for state hash map
@@ -23383,6 +23384,8 @@ begin
  fPreviousAssignedNonVirtualInstance:=nil;
 
  fAssignedNonVirtualInstance:=nil;
+
+ fAssignedNonVirtualInstanceRenderInstance:=nil;
  
  fVirtualInstanceManager:=nil;
 
@@ -24447,6 +24450,7 @@ begin
          fGroup.fVirtualInstanceManager.fVirtualInstances.ExtractIndex(Index);
          TVirtualInstanceManager(fVirtualInstanceManager).fAssignmentDirty:=true;
          fAssignedNonVirtualInstance:=nil;
+         fAssignedNonVirtualInstanceRenderInstance:=nil;
         end;
 
        end else begin
@@ -28422,7 +28426,8 @@ begin
    // Check when the non-virtual instance isn't allowed to have render instances
    if aNonVirtualInstance.fMaxRenderInstanceCount=0 then begin
 
-    // Nothing in this case
+    // No render instance
+    fAssignedNonVirtualInstanceRenderInstance:=nil;
 
    end else begin
 
@@ -28452,6 +28457,7 @@ begin
        RenderInstance.Active:=true;
        RenderInstance.ModelMatrix:=VirtualRenderInstance.ModelMatrix;
        RenderInstance.InstanceDataIndex:=VirtualRenderInstance.InstanceDataIndex;
+       fAssignedNonVirtualInstanceRenderInstance:=RenderInstance;
       end else begin
        break;
       end;
@@ -28461,6 +28467,7 @@ begin
      RenderInstance.Active:=true;
      RenderInstance.ModelMatrix:=fModelMatrix;
      RenderInstance.InstanceDataIndex:=0;
+     fAssignedNonVirtualInstanceRenderInstance:=RenderInstance;
     end;
 
    end;
@@ -28476,6 +28483,7 @@ end;
 procedure TpvScene3D.TGroup.TInstance.UnassignFromNonVirtualInstance;
 begin
  fAssignedNonVirtualInstance:=nil;
+ fAssignedNonVirtualInstanceRenderInstance:=nil;
 end;
 
 function TpvScene3D.TGroup.TInstance.GetAssignedNonVirtualInstance:TInstance;
@@ -36402,6 +36410,7 @@ begin
 
    VirtualInstance.fPreviousAssignedNonVirtualInstance:=VirtualInstance.fAssignedNonVirtualInstance;
    VirtualInstance.fAssignedNonVirtualInstance:=nil;
+   VirtualInstance.fAssignedNonVirtualInstanceRenderInstance:=nil;
 
    if VirtualInstance.Active then begin
 
