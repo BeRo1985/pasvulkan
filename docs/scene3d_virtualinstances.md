@@ -518,7 +518,75 @@ end;
 
 ## Best Practices
 
-### 1. Right-Size Your Pools
+### 1. ⚠️ CRITICAL: Dependencies and Update Order Safety
+
+**Problem: Virtual Instance Properties Not in DAG Dependency Tracking**
+
+The `TInstance.Update` DAG system handles dependency ordering for regular instances (parent updates before child). Virtual instances **are part of the DAG**, but they're treated like non-virtual instances - the DAG system doesn't know about the **virtual-to-non-virtual assignment relationship**.
+
+**The Issue:**
+- Non-virtual instance A gets updated by DAG
+- Non-virtual instance A has virtual instances B and C assigned to it
+- Virtual instances B and C will update **later** in unpredictable order
+- If B or C have dependencies on each other, ordering is wrong!
+
+**When MaxRenderInstanceCount = 0 (Direct Assignment):**
+```
+❌ UNSAFE for virtual instances with dependencies/appendages!
+
+Non-Virtual Instance X (updates first - via DAG)
+├─ Virtual Instance A assigned → updates X.ModelMatrix (happens later, unpredictable order)
+└─ Virtual Instance B assigned → updates X.ModelMatrix (happens later, unpredictable order)
+
+Problem: If Virtual B depends on Virtual A (parent-child), but B updates before A:
+- B reads stale/incorrect transform from A
+- B writes incorrect ModelMatrix to Non-Virtual X
+- Result: Incorrect positioning, visual glitches, race conditions
+```
+
+**When MaxRenderInstanceCount > 0 (Render Instance Assignment):**
+```
+✅ SAFE for virtual instances with dependencies/appendages!
+
+Non-Virtual Instance X (updates first - via DAG)
+├─ Virtual Instance A → Render Instance X[0] (writes own slot)
+└─ Virtual Instance B → Render Instance X[1] (writes own slot)
+
+Each virtual gets independent render instance slot
+No race condition - separate memory locations
+Virtual A updates Render Instance X[0].ModelMatrix
+Virtual B updates Render Instance X[1].ModelMatrix
+Parent-child computation happens in each virtual's own Update (before writing)
+Unpredictable update order doesn't matter - isolated writes
+```
+
+**Best Practice:**
+- **Simple standalone objects** (trees, rocks, NPCs without attachments): `MaxRenderInstanceCount = 0` OK
+- **Objects with dependencies/appendages** (characters with weapons, vehicles with parts): `MaxRenderInstanceCount > 0` REQUIRED
+- **Default recommendation**: Always use `MaxRenderInstanceCount > 0` unless you're certain instances are independent
+
+**Why Render Instances Are Safe:**
+1. Each virtual instance writes to its own render instance slot
+2. No shared ModelMatrix between dependent virtuals
+3. Transform hierarchy resolved during virtual's Update (before writing to render instance)
+4. Unpredictable update order doesn't matter - isolated writes
+
+**Example:**
+```pascal
+// Character with attached weapon (dependency)
+CharacterGroup.GetOrCreateVirtualInstanceManager(
+ 50,   // Non-virtual instances
+ 100   // ✅ Render instances > 0 for safety!
+);
+
+// Simple trees (no dependencies)
+TreeGroup.GetOrCreateVirtualInstanceManager(
+ 20,   // Non-virtual instances  
+ 0     // ✅ Can use 0 - trees are independent
+);
+```
+
+### 2. Right-Size Your Pools
 
 ```pascal
 var Manager:TpvScene3D.TGroup.TVirtualInstanceManager;
@@ -534,7 +602,7 @@ begin
 end;
 ```
 
-### 2. Keep Virtual Instances Active
+### 3. Keep Virtual Instances Active
 
 ```pascal
 // Only set Active=true for instances that should render
@@ -544,7 +612,7 @@ VirtualInstance.Active:=IsInWorld and IsVisible;
 // (Saves CPU in UpdateAssignments)
 ```
 
-### 3. Minimize State Changes
+### 4. Minimize State Changes
 
 ```pascal
 // Good: Smooth animation
@@ -554,7 +622,7 @@ Animations[0].Time:=Animations[0].Time+DeltaTime;  // ✅ Continuous, stays simi
 Animations[0].Time:=Random*10.0;  // ❌ Breaks similarity, causes reassignment
 ```
 
-### 4. Use Scene Indices
+### 5. Use Scene Indices
 
 ```pascal
 // Separate by scene/level
@@ -563,7 +631,7 @@ VirtualInstance.Scene:=CurrentLevelIndex;
 // Manager only matches instances with same scene
 ```
 
-### 5. Profile Your Assignment Cost
+### 6. Profile Your Assignment Cost
 
 ```pascal
 var StartTime,AssignmentTime:TpvDouble;
