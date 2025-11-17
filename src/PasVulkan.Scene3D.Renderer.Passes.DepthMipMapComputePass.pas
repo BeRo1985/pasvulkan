@@ -361,11 +361,13 @@ begin
 
  /////
 
+ fCountMipMapLevelSets:=Min(((fInstance.DepthMipmappedArray2DImage.MipMapLevels-1)+3) shr 2,8);
+
  fReductionVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                       fInstance.Renderer.CountInFlightFrames*4);
- fReductionVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames);
- fReductionVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(4*4));
+                                                       fInstance.Renderer.CountInFlightFrames*fCountMipMapLevelSets*4);
+ fReductionVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*fCountMipMapLevelSets);
+ fReductionVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*fCountMipMapLevelSets*(4*4));
  fReductionVulkanDescriptorPool.Initialize;
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'DepthMipMapComputePass.fReductionVulkanDescriptorPool');
 
@@ -397,8 +399,6 @@ begin
                                                      nil,
                                                      0);
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'DepthMipMapComputePass.fReductionPipeline');
-
- fCountMipMapLevelSets:=Min(((fInstance.DepthMipmappedArray2DImage.MipMapLevels-1)+3) shr 2,8);
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   for MipMapLevelSetIndex:=0 to fCountMipMapLevelSets-1 do begin
