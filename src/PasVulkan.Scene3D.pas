@@ -3984,8 +3984,8 @@ type EpvScene3D=class(Exception);
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPCriticalSection;
        fGroupInstances:TGroup.TInstances;
+       fVirtualInstanceManagerGroupListLock:TPasMPCriticalSection;
        fVirtualInstanceManagerGroups:TGroups;
-       fVirtualInstanceManagerGroupListLock:TPasMPSlimReaderWriterLock;
        fLightAABBTree:TpvBVHDynamicAABBTree;
        fLightAABBTreeGeneration:TpvUInt64;
        fLightAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
@@ -29665,7 +29665,7 @@ begin
  fGroupInstances:=TGroup.TInstances.Create;
  fGroupInstances.OwnsObjects:=false;
 
- fVirtualInstanceManagerGroupListLock:=TPasMPSlimReaderWriterLock.Create;
+ fVirtualInstanceManagerGroupListLock:=TPasMPCriticalSection.Create;
  fVirtualInstanceManagerGroups:=TGroups.Create;
  fVirtualInstanceManagerGroups.OwnsObjects:=false;
 
@@ -35998,13 +35998,13 @@ begin
 
  // Register this group with Scene3D's virtual instance manager list
  if assigned(fSceneInstance) then begin
-  fSceneInstance.fVirtualInstanceManagerGroupListLock.AcquireWrite;
+  fSceneInstance.fVirtualInstanceManagerGroupListLock.Acquire;
   try
    if fSceneInstance.fVirtualInstanceManagerGroups.IndexOf(fGroup)<0 then begin
     fSceneInstance.fVirtualInstanceManagerGroups.Add(fGroup);
    end;
   finally
-   fSceneInstance.fVirtualInstanceManagerGroupListLock.ReleaseWrite;
+   fSceneInstance.fVirtualInstanceManagerGroupListLock.Release;
   end;
  end;
 
@@ -36038,11 +36038,11 @@ begin
 
  // Unregister this group from Scene3D's virtual instance manager list
  if assigned(fSceneInstance) then begin
-  fSceneInstance.fVirtualInstanceManagerGroupListLock.AcquireWrite;
+  fSceneInstance.fVirtualInstanceManagerGroupListLock.Acquire;
   try
    fSceneInstance.fVirtualInstanceManagerGroups.Remove(fGroup);
   finally
-   fSceneInstance.fVirtualInstanceManagerGroupListLock.ReleaseWrite;
+   fSceneInstance.fVirtualInstanceManagerGroupListLock.Release;
   end;
  end;
 
