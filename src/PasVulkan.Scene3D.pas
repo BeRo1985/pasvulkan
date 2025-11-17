@@ -3984,6 +3984,8 @@ type EpvScene3D=class(Exception);
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPCriticalSection;
        fGroupInstances:TGroup.TInstances;
+       fVirtualInstanceManagerGroups:TGroups;
+       fVirtualInstanceManagerGroupListLock:TPasMPSlimReaderWriterLock;
        fLightAABBTree:TpvBVHDynamicAABBTree;
        fLightAABBTreeGeneration:TpvUInt64;
        fLightAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
@@ -29663,6 +29665,10 @@ begin
  fGroupInstances:=TGroup.TInstances.Create;
  fGroupInstances.OwnsObjects:=false;
 
+ fVirtualInstanceManagerGroupListLock:=TPasMPSlimReaderWriterLock.Create;
+ fVirtualInstanceManagerGroups:=TGroups.Create;
+ fVirtualInstanceManagerGroups.OwnsObjects:=false;
+
  ReleaseFrameDelay:=fCountInFlightFrames+1;
 
  if assigned(fVulkanDevice) then begin
@@ -30632,6 +30638,9 @@ begin
  end;
  FreeAndNil(fGroups);
  FreeAndNil(fGroupListLock);
+
+ FreeAndNil(fVirtualInstanceManagerGroups);
+ FreeAndNil(fVirtualInstanceManagerGroupListLock);
 
  while fInstanceDataList.Count>0 do begin
   fInstanceDataList[fInstanceDataList.Count-1].Free;
@@ -35987,6 +35996,18 @@ begin
  // non-virtual instances below in this constructor. After it, it would to be late. 
  fGroup.fVirtualInstanceManager:=self;
 
+ // Register this group with Scene3D's virtual instance manager list
+ if assigned(fSceneInstance) then begin
+  fSceneInstance.fVirtualInstanceManagerGroupListLock.AcquireWrite;
+  try
+   if fSceneInstance.fVirtualInstanceManagerGroups.IndexOf(fGroup)<0 then begin
+    fSceneInstance.fVirtualInstanceManagerGroups.Add(fGroup);
+   end;
+  finally
+   fSceneInstance.fVirtualInstanceManagerGroupListLock.ReleaseWrite;
+  end;
+ end;
+
  // Create non-virtual instance pool for rendering
  // These instances will be activated/assigned as needed by UpdateAssignments
  // Note: Instances auto-register via AfterConstruction
@@ -36014,6 +36035,16 @@ begin
  FreeAndNil(fNonVirtualInstances);
 
  FreeAndNil(fLock);
+
+ // Unregister this group from Scene3D's virtual instance manager list
+ if assigned(fSceneInstance) then begin
+  fSceneInstance.fVirtualInstanceManagerGroupListLock.AcquireWrite;
+  try
+   fSceneInstance.fVirtualInstanceManagerGroups.Remove(fGroup);
+  finally
+   fSceneInstance.fVirtualInstanceManagerGroupListLock.ReleaseWrite;
+  end;
+ end;
 
  // Unlink back to self
  fGroup.fVirtualInstanceManager:=nil;
