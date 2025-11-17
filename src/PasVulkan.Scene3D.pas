@@ -23280,6 +23280,7 @@ procedure TpvScene3D.TGroup.TInstance.TAnimation.Assign(const aFrom:TpvScene3D.T
 begin
  fTime:=aFrom.fTime;
  fShadowTime:=aFrom.fShadowTime;
+ fFactor:=aFrom.fFactor;
  fAdditive:=aFrom.fAdditive;
  fComplete:=aFrom.fComplete;
 end;
@@ -36400,6 +36401,7 @@ begin
      NonVirtualInstance.fModelMatrix:=TpvMatrix4x4.Identity; // Because of render instances
     end;
     NonVirtualInstance.fScene:=VirtualInstance.fScene;
+    NonVirtualInstance.fRaytracingMask:=VirtualInstance.fRaytracingMask;
     NonVirtualInstance.Active:=true;
     
     // Copy animation states
