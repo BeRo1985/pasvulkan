@@ -32785,16 +32785,21 @@ begin
  fGroupListLock.Acquire;
  try
 
-  fGroupInstanceListLock.Acquire;
+  // Update virtual instances
+  fVirtualInstanceManagerGroupListLock.Acquire;
   try
-
-   // Update virtual instances
-   for Index:=0 to fGroups.Count-1 do begin
-    Group:=fGroups[Index];
+   for Index:=0 to fVirtualInstanceManagerGroups.Count-1 do begin
+    Group:=fVirtualInstanceManagerGroups[Index];
     if assigned(Group.fVirtualInstanceManager) then begin
      Group.fVirtualInstanceManager.UpdateAssignments(aInFlightFrameIndex);
     end;
    end;
+  finally
+   fVirtualInstanceManagerGroupListLock.Release;
+  end;
+
+  fGroupInstanceListLock.Acquire;
+  try
 
    fGroupInstances.Sort;
 
