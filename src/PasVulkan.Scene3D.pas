@@ -32683,6 +32683,28 @@ begin
  ParallelGroupInstanceUpdateFunction;
 end;
 
+type TpvScene3D_Update_VirtualInstanceManagerGroups_Data=record
+      Groups:TpvScene3D.TGroups;
+      InFlightFrameIndex:TpvSizeInt;
+     end;
+     PpvScene3D_Update_VirtualInstanceManagerGroups_Data=^TpvScene3D_Update_VirtualInstanceManagerGroups_Data;
+
+procedure TpvScene3D_Update_VirtualInstanceManagerGroups(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var Index:TPasMPNativeInt;
+    Group:TpvScene3D.TGroup;
+    CallData:PpvScene3D_Update_VirtualInstanceManagerGroups_Data;
+begin
+ if assigned(aData) then begin
+  CallData:=PpvScene3D_Update_VirtualInstanceManagerGroups_Data(aData);
+  for Index:=aFromIndex to aToIndex do begin
+   Group:=CallData^.Groups.RawItems[Index];
+   if assigned(Group) and assigned(Group.fVirtualInstanceManager) then begin
+    Group.fVirtualInstanceManager.UpdateAssignments(CallData^.InFlightFrameIndex);
+   end;
+  end;
+ end;
+end;
+
 type TpvScene3D_Update_Groups_Data=record
       Groups:TpvScene3D.TGroups;
       InFlightFrameIndex:TpvSizeInt;
@@ -32697,7 +32719,7 @@ begin
  if assigned(Data) then begin
   CallData:=PpvScene3D_Update_Groups_Data(Data);
   for Index:=FromIndex to ToIndex do begin
-   Group:=CallData^.Groups.Items[Index];
+   Group:=CallData^.Groups.RawItems[Index];
    if assigned(Group) and Group.Usable then begin
     Group.Update(CallData^.InFlightFrameIndex);
    end;
@@ -32723,6 +32745,7 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize,CountExtraJ
     Sphere:TpvSphere;
     StartCPUTime,EndCPUTime:TpvHighResolutionTime;
     Jobs:array of PPasMPJob;
+    Update_VirtualInstanceManagerGroups_Data:TpvScene3D_Update_VirtualInstanceManagerGroups_Data;
     Update_Groups_Data:TpvScene3D_Update_Groups_Data;
 begin
 
@@ -32788,10 +32811,32 @@ begin
   // Update virtual instances
   fVirtualInstanceManagerGroupListLock.Acquire;
   try
-   for Index:=0 to fVirtualInstanceManagerGroups.Count-1 do begin
-    Group:=fVirtualInstanceManagerGroups[Index];
-    if assigned(Group.fVirtualInstanceManager) then begin
-     Group.fVirtualInstanceManager.UpdateAssignments(aInFlightFrameIndex);
+   if fVirtualInstanceManagerGroups.Count>0 then begin
+    if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) and (fVirtualInstanceManagerGroups.Count>1) then begin
+     Update_VirtualInstanceManagerGroups_Data.Groups:=fVirtualInstanceManagerGroups;
+     Update_VirtualInstanceManagerGroups_Data.InFlightFrameIndex:=aInFlightFrameIndex;
+     fPasMPInstance.Invoke(
+      fPasMPInstance.ParallelFor(
+       @Update_VirtualInstanceManagerGroups_Data,
+       0,
+       fVirtualInstanceManagerGroups.Count-1,
+       TpvScene3D_Update_VirtualInstanceManagerGroups,
+       1,
+       PasMPDefaultDepth,
+       nil,
+       0,
+       PasMPAreaMaskUpdate,
+       PasMPAreaMaskRender,
+       true
+      )
+     );
+    end else begin
+     for Index:=0 to fVirtualInstanceManagerGroups.Count-1 do begin
+      Group:=fVirtualInstanceManagerGroups[Index];
+      if assigned(Group.fVirtualInstanceManager) then begin
+       Group.fVirtualInstanceManager.UpdateAssignments(aInFlightFrameIndex);
+      end;
+     end;
     end;
    end;
   finally
