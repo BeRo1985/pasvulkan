@@ -61,6 +61,8 @@ unit PasVulkan.Scene3D;
 {$m+}
 // - {$rangechecks on}
 
+{$undef PasVulkanScene3DVirualInstancesInsideDAG}
+
 interface
 
 uses {$ifdef Windows}
@@ -32656,6 +32658,7 @@ end;
 procedure TpvScene3D.ParallelGroupInstanceUpdateFunction;
 var OtherIndex:TpvSizeInt;
     GroupInstance,OtherGroupInstance:TpvScene3D.TGroup.TInstance;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     OK:boolean;
 begin
 
@@ -32697,6 +32700,42 @@ begin
        (TPasMPInterlocked.Read(GroupInstance.fAppendageInstance.fVisitedState[fParallelGroupInstanceUpdateInFlightFrameIndex])=0) then begin
      OK:=false;
     end;
+
+{$ifdef PasVulkanScene3DVirualInstancesInsideDAG}
+    // Check for virtual instance dependencies
+    if OK and assigned(GroupInstance.fVirtualInstanceManager) then begin
+
+     // First the single one
+     if OK and
+        assigned(GroupInstance.fAssignedVirtualInstance) and
+        GroupInstance.fAssignedVirtualInstance.Group.Usable and
+        (TPasMPInterlocked.Read(GroupInstance.fAssignedVirtualInstance.fVisitedState[fParallelGroupInstanceUpdateInFlightFrameIndex])=0) then begin
+      OK:=false;
+      break;
+     end;
+
+     // Then the render instance ones
+     if OK and (GroupInstance.fRenderInstances.Count>0) then begin
+      for OtherIndex:=0 to GroupInstance.fRenderInstances.Count-1 do begin
+       RenderInstance:=GroupInstance.fRenderInstances[OtherIndex];
+       if RenderInstance.Active then begin
+        if assigned(RenderInstance.fAssignedVirtualInstance) then begin
+         if RenderInstance.fAssignedVirtualInstance.Group.Usable and
+            (TPasMPInterlocked.Read(RenderInstance.fAssignedVirtualInstance.fVisitedState[fParallelGroupInstanceUpdateInFlightFrameIndex])=0) then begin
+          OK:=false;
+          break;
+         end;
+        end else begin
+         break;
+        end;
+       end else begin
+        break;
+       end;
+      end;
+     end;
+
+    end;
+{$endif}
 
      // Update group instance if all dependencies are ready
     if OK then begin
