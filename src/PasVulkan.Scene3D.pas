@@ -32915,14 +32915,14 @@ begin
         if GroupInstance.fRequiredDependencies.Count>0 then begin
          for AttachmentIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
           OtherGroupInstance:=GroupInstance.fRequiredDependencies.RawItems[AttachmentIndex];
-          if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
+          if assigned(OtherGroupInstance) andOtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
            GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
           end;
          end;
         end;
 
         OtherGroupInstance:=GroupInstance.fAppendageInstance;
-        if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
+        if assigned(OtherGroupInstance) and OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
          GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
         end;
 
