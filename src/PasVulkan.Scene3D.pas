@@ -27792,9 +27792,17 @@ begin
   end;
 
   if aInFlightFrameIndex>=0 then begin
+
+   // Update all instance nodes.
    for Index:=0 to fNodes.Count-1 do begin
     fNodes.RawItems[Index].Update(aInFlightFrameIndex);
    end;
+
+  end;
+
+  // Update the model matrix of the assigned non-virtual instance, if applicable. Needed for appendages and similar.
+  if fVirtual and assigned(fAssignedNonVirtualInstance) and assigned(fAssignedNonVirtualInstanceRenderInstance) then begin
+   fAssignedNonVirtualInstanceRenderInstance.ModelMatrix:=fModelMatrix;
   end;
 
   fPreviousActive:=true;
