@@ -3142,6 +3142,7 @@ type EpvScene3D=class(Exception);
                      fBoundingBox:TpvAABB;
                      fBoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
                      fBoundingSpheres:TBoundingSpheres;
+                     fBoundingRadius:TpvDouble;
                      fUserData:pointer;
                      fOnNodeMatrixPre:TOnNodeMatrix;
                      fOnNodeMatrixPost:TOnNodeMatrix;
@@ -3312,6 +3313,7 @@ type EpvScene3D=class(Exception);
                      property PerInFlightFrameRenderInstances:PPerInFlightFrameRenderInstances read fPointerToPerInFlightFrameRenderInstances;
                      property BoundingBox:TpvAABB read fBoundingBox;
                      property BoundingSpheres:TBoundingSpheres read fBoundingSpheres;
+                     property BoundingRadius:TpvDouble read fBoundingRadius write fBoundingRadius;
                     public
                      property Virtual_:Boolean read fVirtual;
                      property PreviousAssignedNonVirtualInstance:TInstance read fPreviousAssignedNonVirtualInstance;
@@ -23355,9 +23357,17 @@ begin
  inherited Create(aResourceManager,aParent,aMetaResource);
 
  if aParent is TGroup then begin
+
   fGroup:=TpvScene3D.TGroup(aParent);
+
+  fBoundingRadius:=(fGroup.fBoundingBox.Max-fGroup.fBoundingBox.Min).Length*2.0;
+
  end else begin
+
   fGroup:=nil;
+
+  fBoundingRadius:=-1.0;
+
  end;
 
  if assigned(fGroup) then begin
@@ -27409,7 +27419,11 @@ begin
    for Index:=0 to fRenderInstances.Count-1 do begin
     RenderInstance:=fRenderInstances[Index];
     if RenderInstance.fActive then begin
-     RenderInstance.fWorkActive:=fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,TemporaryVector);
+     if fBoundingRadius>0.0 then begin
+      RenderInstance.fWorkActive:=fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,fBoundingRadius);
+     end else begin
+      RenderInstance.fWorkActive:=fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,TemporaryVector);
+     end;
      if RenderInstance.fWorkActive then begin
       CanUpdate:=true;
      end;
@@ -27418,7 +27432,11 @@ begin
     end;
    end;
   end else if not fUseRenderInstances then begin
-   CanUpdate:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,TemporaryVector);
+   if fBoundingRadius>0.0 then begin
+    CanUpdate:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,fBoundingRadius);
+   end else begin
+    CanUpdate:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,TemporaryVector);
+   end;
   end else begin
    CanUpdate:=true;
   end;
@@ -36395,14 +36413,25 @@ begin
       for RenderInstanceIndex:=0 to VirtualInstance.fRenderInstances.Count-1 do begin
        RenderInstance:=VirtualInstance.fRenderInstances.RawItems[RenderInstanceIndex];
        if RenderInstance.fActive then begin
-        if fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,VirtualInstance.fBoundingSpheres[aInFlightFrameIndex].Radius) then begin
-         Visible:=true;
-         break;
+        if VirtualInstance.fBoundingRadius>0.0 then begin
+         if fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,VirtualInstance.fBoundingRadius) then begin
+          Visible:=true;
+          break;
+         end;
+        end else begin
+         if fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,VirtualInstance.fBoundingSpheres[aInFlightFrameIndex].Radius) then begin
+          Visible:=true;
+          break;
+         end;
         end;
        end;
       end;
      end else begin
-      Visible:=fSceneInstance.fUpdateCulling.Check(VirtualInstance.ModelMatrix,VirtualInstance.fBoundingSpheres[aInFlightFrameIndex].Radius);
+      if VirtualInstance.fBoundingRadius>0.0 then begin
+       Visible:=fSceneInstance.fUpdateCulling.Check(VirtualInstance.ModelMatrix,VirtualInstance.fBoundingRadius);
+      end else begin
+       Visible:=fSceneInstance.fUpdateCulling.Check(VirtualInstance.ModelMatrix,VirtualInstance.fBoundingSpheres[aInFlightFrameIndex].Radius);
+      end;
      end;
     end else begin
      Visible:=true; // If no frustums, all visible
