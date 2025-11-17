@@ -3023,6 +3023,8 @@ type EpvScene3D=class(Exception);
                             fApplyCameraRelativeTransform:TPasMPBool32;
                             fInstanceDataIndex:TpvUInt32;
                             fInstanceDataIndices:TRenderInstanceDataIndices;
+                            fAssignedVirtualInstance:TInstance;
+                            fAssignedVirtualInstanceRenderInstance:TRenderInstance;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
@@ -3115,6 +3117,7 @@ type EpvScene3D=class(Exception);
                      fPreviousAssignedNonVirtualInstance:TInstance;
                      fAssignedNonVirtualInstance:TInstance;
                      fAssignedNonVirtualInstanceRenderInstance:TRenderInstance;
+                     fAssignedVirtualInstance:TInstance;
                      fVirtualInstanceManager:TObject; // Forward reference to TVirtualInstanceManager
                      fUpdateAssignmentDistanceSquared:TpvDouble; // Temporary for sorting during assignment
                      fStateHashMapNext:TInstance; // Single-linked list for state hash map
@@ -23024,6 +23027,10 @@ begin
   fSceneInstance.fCullObjectIDLock.Release;
  end;
 
+ fAssignedVirtualInstance:=nil;
+
+ fAssignedVirtualInstanceRenderInstance:=nil;
+
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TRenderInstance.Destroy;
@@ -23386,6 +23393,8 @@ begin
  fAssignedNonVirtualInstance:=nil;
 
  fAssignedNonVirtualInstanceRenderInstance:=nil;
+
+ fAssignedVirtualInstance:=nil;
  
  fVirtualInstanceManager:=nil;
 
@@ -24460,6 +24469,7 @@ begin
         if fGroup.fVirtualInstanceManager.fNonVirtualInstances.IndexOf(self)>=0 then begin
          fGroup.fVirtualInstanceManager.fNonVirtualInstances.Remove(self);
          TVirtualInstanceManager(fVirtualInstanceManager).fAssignmentDirty:=true;
+         fAssignedVirtualInstance:=nil;
         end;
 
        end;
@@ -28437,6 +28447,9 @@ begin
     // No render instance
     fAssignedNonVirtualInstanceRenderInstance:=nil;
 
+    // Assign to non-virtual
+    aNonVirtualInstance.fAssignedVirtualInstance:=self;
+
    end else begin
 
     // Otherwise assign a render instance
@@ -28465,6 +28478,8 @@ begin
        RenderInstance.Active:=true;
        RenderInstance.ModelMatrix:=VirtualRenderInstance.ModelMatrix;
        RenderInstance.InstanceDataIndex:=VirtualRenderInstance.InstanceDataIndex;
+       RenderInstance.fAssignedVirtualInstance:=self;
+       RenderInstance.fAssignedVirtualInstanceRenderInstance:=VirtualRenderInstance;
        fAssignedNonVirtualInstanceRenderInstance:=RenderInstance;
       end else begin
        break;
@@ -28475,6 +28490,8 @@ begin
      RenderInstance.Active:=true;
      RenderInstance.ModelMatrix:=fModelMatrix;
      RenderInstance.InstanceDataIndex:=0;
+     RenderInstance.fAssignedVirtualInstance:=self;
+     RenderInstance.fAssignedVirtualInstanceRenderInstance:=nil;
      fAssignedNonVirtualInstanceRenderInstance:=RenderInstance;
     end;
 
@@ -36391,6 +36408,7 @@ begin
   fAvailableNonVirtualInstances.ClearNoFree;
   for Index:=0 to fNonVirtualInstances.Count-1 do begin
    NonVirtualInstance:=fNonVirtualInstances[Index];
+   NonVirtualInstance.fAssignedVirtualInstance:=nil;
    fAvailableNonVirtualInstances.Add(NonVirtualInstance);
    if NonVirtualInstance.Active then begin
     NonVirtualInstance.Active:=false;
@@ -36402,6 +36420,8 @@ begin
      RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
      if RenderInstance.Active then begin
       RenderInstance.Active:=false;
+      RenderInstance.fAssignedVirtualInstance:=nil;
+      RenderInstance.fAssignedVirtualInstanceRenderInstance:=nil;
      end else begin
       break;
      end;
