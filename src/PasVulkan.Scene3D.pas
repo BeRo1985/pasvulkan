@@ -3103,6 +3103,9 @@ type EpvScene3D=class(Exception);
                      fGroup:TGroup;
                      fLock:TPasMPSpinLock;
                      fDependencyLock:TPasMPSpinLock;
+                     fDirectedAcyclicGraphDependencies:TInstances;
+                     fCountDirectedAcyclicGraphDependencies:TPasMPInt32;
+                     fRemainingDirectedAcyclicGraphDependencies:TPasMPInt32;
                      fProvidedDependencies:TInstances;
                      fRequiredDependencies:TInstances;
                      fAttachmentAppendageLock:TPasMPSpinLock;
@@ -3992,6 +3995,8 @@ type EpvScene3D=class(Exception);
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPCriticalSection;
        fGroupInstances:TGroup.TInstances;
+       fLeafInstances:TGroup.TInstances;
+       fLinearInstanceChoreography:TGroup.TInstances;
        fVirtualInstanceManagerGroupListLock:TPasMPCriticalSection;
        fVirtualInstanceManagerGroups:TGroups;
        fLightAABBTree:TpvBVHDynamicAABBTree;
@@ -4183,6 +4188,8 @@ type EpvScene3D=class(Exception);
        procedure ParallelGroupInstanceUpdateFunction;
        procedure ParallelGroupInstanceUpdateParallelJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32);
        procedure UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+      private
+       procedure RebuildDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
       public
        class function DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; overload; static;
        class function DetectFileType(const aStream:TStream):TpvScene3D.TFileType; overload; static;
@@ -23406,6 +23413,8 @@ begin
 
  fDependencyLock:=TPasMPSpinLock.Create;
 
+ fDirectedAcyclicGraphDependencies:=TpvScene3D.TGroup.TInstances.Create(false);
+
  fProvidedDependencies:=TpvScene3D.TGroup.TInstances.Create(false);
 
  fRequiredDependencies:=TpvScene3D.TGroup.TInstances.Create(false);
@@ -23898,6 +23907,8 @@ begin
  FreeAndNil(fAttachments);
 
  FreeAndNil(fAttachmentAppendageLock);
+
+ FreeAndNil(fDirectedAcyclicGraphDependencies);
 
  FreeAndNil(fProvidedDependencies);
 
@@ -29721,6 +29732,10 @@ begin
  fGroupInstances:=TGroup.TInstances.Create;
  fGroupInstances.OwnsObjects:=false;
 
+ fLeafInstances:=TGroup.TInstances.Create(false);
+
+ fLinearInstanceChoreography:=TGroup.TInstances.Create(false);
+
  fVirtualInstanceManagerGroupListLock:=TPasMPCriticalSection.Create;
  fVirtualInstanceManagerGroups:=TGroups.Create;
  fVirtualInstanceManagerGroups.OwnsObjects:=false;
@@ -30685,6 +30700,10 @@ begin
  end;
  FreeAndNil(fGroupInstances);
  FreeAndNil(fGroupInstanceListLock);
+
+ FreeAndNil(fLeafInstances);
+
+ FreeAndNil(fLinearInstanceChoreography);
 
  FreeAndNil(fNewInstances);
  FreeAndNil(fNewInstanceListLock);
@@ -32820,6 +32839,152 @@ begin
  end;
 end;
 
+procedure TpvScene3D.RebuildDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
+type TGroupInstanceStack=TpvDynamicFastStack<TpvScene3D.TGroup.TInstance>;
+var GroupInstanceIndex,RenderInstanceIndex,AttachmentIndex,OtherGroupInstanceIndex:TpvSizeInt;
+    GroupInstance,OtherGroupInstance:TpvScene3D.TGroup.TInstance;
+    GroupInstanceRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+    GroupInstanceStack:TGroupInstanceStack;
+begin
+
+ GroupInstanceStack.Initialize;
+ try
+
+  fLeafInstances.ClearNoFree;
+
+  fLinearInstanceChoreography.ClearNoFree;
+
+  for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
+   GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
+   GroupInstance.fDirectedAcyclicGraphDependencies.ClearNoFree;
+   GroupInstance.fVisitedState[aInFlightFrameIndex]:=0;
+   if GroupInstance.fGroup.Usable and GroupInstance.fActive then begin
+    GroupInstanceStack.Push(GroupInstance);
+   end;
+  end;
+
+  for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
+
+   GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
+
+   if GroupInstance.fActive and GroupInstance.fGroup.Usable and (GroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
+
+    if (assigned(GroupInstance.fGroup.fVirtualInstanceManager) and
+        (GroupInstance.fVirtual or
+         ((not GroupInstance.fVirtual) and
+          (assigned(GroupInstance.fAssignedVirtualInstance) or
+           (GroupInstance.fRenderInstances.Count>0))))) or
+       assigned(GroupInstance.fAppendageInstance) or
+       (GroupInstance.fAttachments.Count>0) or
+       (GroupInstance.fRequiredDependencies.Count>0) or
+       (GroupInstance.fProvidedDependencies.Count>0) then begin
+
+     GroupInstanceStack.Push(GroupInstance);
+
+     while GroupInstanceStack.Pop(GroupInstance) do begin
+
+      case GroupInstance.fVisitedState[aInFlightFrameIndex] of
+
+       0:begin
+
+        GroupInstance.fDirectedAcyclicGraphDependencies.ClearNoFree;
+
+        if assigned(GroupInstance.fGroup.fVirtualInstanceManager) then begin
+         if not GroupInstance.fVirtual then begin
+          OtherGroupInstance:=GroupInstance.fAssignedVirtualInstance;
+          if assigned(OtherGroupInstance) and OtherGroupInstance.Active then begin
+           if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
+            GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+           end;
+          end else begin
+           for RenderInstanceIndex:=0 to GroupInstance.fRenderInstances.Count-1 do begin
+            GroupInstanceRenderInstance:=GroupInstance.fRenderInstances.RawItems[RenderInstanceIndex];
+            OtherGroupInstance:=GroupInstanceRenderInstance.fAssignedVirtualInstance;
+            if assigned(OtherGroupInstance) and OtherGroupInstance.Active then begin
+             if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
+              GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+             end;
+            end else begin
+             break;
+            end;
+           end;
+          end;
+         end;
+        end;
+
+        if GroupInstance.fRequiredDependencies.Count>0 then begin
+         for AttachmentIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
+          OtherGroupInstance:=GroupInstance.fRequiredDependencies.RawItems[AttachmentIndex];
+          if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
+           GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+          end;
+         end;
+        end;
+
+        OtherGroupInstance:=GroupInstance.fAppendageInstance;
+        if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
+         GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+        end;
+
+        GroupInstance.fCountDirectedAcyclicGraphDependencies:=GroupInstance.fDirectedAcyclicGraphDependencies.Count;
+        GroupInstance.fRemainingDirectedAcyclicGraphDependencies:=GroupInstance.fCountDirectedAcyclicGraphDependencies;
+
+        if GroupInstance.fDirectedAcyclicGraphDependencies.Count>0 then begin
+
+         GroupInstance.fVisitedState[aInFlightFrameIndex]:=1;
+         GroupInstanceStack.Push(GroupInstance);
+
+         for OtherGroupInstanceIndex:=0 to GroupInstance.fDirectedAcyclicGraphDependencies.Count-1 do begin
+          GroupInstanceStack.Push(GroupInstance.fDirectedAcyclicGraphDependencies.RawItems[OtherGroupInstanceIndex]);
+         end;
+
+        end else begin
+
+         GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+
+         fLeafInstances.Add(GroupInstance);
+
+         fLinearInstanceChoreography.Add(GroupInstance);
+
+        end;
+
+       end;
+
+       1:begin
+
+        GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+
+        fLinearInstanceChoreography.Add(GroupInstance);
+
+       end;
+
+       else begin
+       end;
+
+      end;
+
+     end;
+
+    end else begin
+
+     GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+
+     fLeafInstances.Add(GroupInstance);
+
+     fLinearInstanceChoreography.Add(GroupInstance);
+
+    end;
+
+   end;
+
+  end;
+
+ finally
+  GroupInstanceStack.Finalize;
+ end;
+
+end;
+
 procedure TpvScene3D.Update(const aInFlightFrameIndex:TpvSizeInt);
 type TGroupInstanceStack=TpvDynamicFastStack<TpvScene3D.TGroup.TInstance>;
 var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize,CountExtraJobs:TpvSizeInt;
@@ -32940,6 +33105,9 @@ begin
   try
 
    fGroupInstances.Sort;
+
+   // (Re-)Build directed acyclic graph
+   //RebuildDirectedAcyclicGraph(aInFlightFrameIndex);
 
    if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) then begin
 
