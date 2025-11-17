@@ -23902,11 +23902,13 @@ begin
 
   try
 
-   fSceneInstance.fGroupInstanceListLock.Acquire;
-   try
-    fSceneInstance.fGroupInstances.Add(self);
-   finally
-    fSceneInstance.fGroupInstanceListLock.Release;
+   if not (assigned(fGroup.fVirtualInstanceManager) and fVirtual) then begin
+    fSceneInstance.fGroupInstanceListLock.Acquire;
+    try
+     fSceneInstance.fGroupInstances.Add(self);
+    finally
+     fSceneInstance.fGroupInstanceListLock.Release;
+    end;
    end;
 
    fGroup.fInstanceListLock.Acquire;
@@ -24410,7 +24412,16 @@ begin
    UpdateInvisible;
    try
 
-    // Unregister instance with virtual instance manager when applicable 
+    if not (assigned(fVirtualInstanceManager) and fVirtual) then begin
+     fSceneInstance.fGroupInstanceListLock.Acquire;
+     try
+      fSceneInstance.fGroupInstances.Remove(self);
+     finally
+      fSceneInstance.fGroupInstanceListLock.Release;
+     end;
+    end;
+
+    // Unregister instance with virtual instance manager when applicable
     if assigned(fGroup.fVirtualInstanceManager) and assigned(fVirtualInstanceManager) then begin
 
      try
@@ -24449,13 +24460,6 @@ begin
      end;
 
     end;  
-
-    fSceneInstance.fGroupInstanceListLock.Acquire;
-    try
-     fSceneInstance.fGroupInstances.Remove(self);
-    finally
-     fSceneInstance.fGroupInstanceListLock.Release;
-    end;
 
     fGroup.fInstanceListLock.Acquire;
     try
