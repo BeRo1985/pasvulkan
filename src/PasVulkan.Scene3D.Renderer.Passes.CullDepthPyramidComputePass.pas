@@ -481,6 +481,8 @@ begin
 
  /////
 
+ fCountMipMapLevelSets:=Min(((MipmappedArray2DImage.MipMapLevels-1)+3) shr 2,8);
+
  fReductionVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames*fCountMipMapLevelSets*4);
@@ -517,8 +519,6 @@ begin
                                                      nil,
                                                      0);
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'CullDepthPyramidComputePass.fReductionPipeline');
-
- fCountMipMapLevelSets:=Min(((MipmappedArray2DImage.MipMapLevels-1)+3) shr 2,8);
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   for MipMapLevelSetIndex:=0 to fCountMipMapLevelSets-1 do begin
