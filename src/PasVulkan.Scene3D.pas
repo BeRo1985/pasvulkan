@@ -32858,9 +32858,6 @@ begin
    GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
    GroupInstance.fDirectedAcyclicGraphDependencies.ClearNoFree;
    GroupInstance.fVisitedState[aInFlightFrameIndex]:=0;
-   if GroupInstance.fGroup.Usable and GroupInstance.fActive then begin
-    GroupInstanceStack.Push(GroupInstance);
-   end;
   end;
 
   for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
