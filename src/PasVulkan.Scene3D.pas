@@ -4210,7 +4210,6 @@ type EpvScene3D=class(Exception);
        procedure InvalidateDirectedAcyclicGraph;
        procedure RebuildDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
        function CreateDirectedAcyclicGraphInstanceLeafsToRootJob(const aParentJob:PPasMPJob;const aInstance:TpvScene3D.TGroup.TInstance):PPasMPJob;
-       procedure PrepareDirectedAcyclicGraph;
        procedure ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
        procedure ProcessDirectedAcyclicGraphInstanceRecursive(const aInstance:TpvScene3D.TGroup.TInstance);
        procedure ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
@@ -33123,17 +33122,6 @@ begin
 
  end;
 
-end;
-
-procedure TpvScene3D.PrepareDirectedAcyclicGraph;
-var GroupInstanceIndex:TpvSizeInt;
-    GroupInstance:TpvScene3D.TGroup.TInstance;
-begin
- for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
-  GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
-  GroupInstance.fProcessState:=0;
-  GroupInstance.fRemainingDirectedAcyclicGraphInputDependencies:=GroupInstance.fDirectedAcyclicGraphInputDependencies.Count;
- end;
 end;
 
 procedure TpvScene3D.ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
