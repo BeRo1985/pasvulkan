@@ -27823,60 +27823,62 @@ begin
    if fUseRenderInstances then begin
     TemporaryBoundingBox:=fBoundingBox;
     First:=true;
-    TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
-    try
-     for Index:=0 to fRenderInstances.Count-1 do begin
-      RenderInstance:=fRenderInstances[Index];
-      if RenderInstance.fWorkActive then begin
-       TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
-       RenderInstance.fWorkModelMatrix:=fSceneInstance.TransformOrigin(RenderInstance.fModelMatrix,aInFlightFrameIndex,false);
-       RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
-       RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
-       RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
-       RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
-       if First then begin
-        First:=false;
-        fBoundingBox:=RenderInstance.fBoundingBox;
+    if fRenderInstances.Count>0 then begin
+     TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
+     try
+      for Index:=0 to fRenderInstances.Count-1 do begin
+       RenderInstance:=fRenderInstances[Index];
+       if RenderInstance.fWorkActive then begin
+        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
+        RenderInstance.fWorkModelMatrix:=fSceneInstance.TransformOrigin(RenderInstance.fModelMatrix,aInFlightFrameIndex,false);
+        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
+        RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+        RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
+        RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
+        if First then begin
+         First:=false;
+         fBoundingBox:=RenderInstance.fBoundingBox;
+        end else begin
+         fBoundingBox.DirectCombine(RenderInstance.fBoundingBox);
+        end;
+        if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
+           ((RenderInstance.fPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+            ((RenderInstance.fPotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+             fSceneInstance.fPotentiallyVisibleSet.fNodes[RenderInstance.fPotentiallyVisibleSetNodeIndex].fAABB.Contains(RenderInstance.fBoundingBox))) then begin
+         RenderInstance.fPotentiallyVisibleSetNodeIndex:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(RenderInstance.fBoundingBox);
+        end;
+        PerInFlightFrameRenderInstanceIndex:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNewIndex;
+        PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
+        PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
+        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
+        PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
+        PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fWorkModelMatrix;
+        if RenderInstance.fFirst then begin
+         RenderInstance.fFirst:=false;
+         PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
+        end else begin
+         PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
+        end;
+        PerInFlightFrameRenderInstance^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
+        RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
+        RenderInstance.UpdateLights(aInFlightFrameIndex);
        end else begin
-        fBoundingBox.DirectCombine(RenderInstance.fBoundingBox);
-       end;
-       if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
-          ((RenderInstance.fPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-           ((RenderInstance.fPotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
-            fSceneInstance.fPotentiallyVisibleSet.fNodes[RenderInstance.fPotentiallyVisibleSetNodeIndex].fAABB.Contains(RenderInstance.fBoundingBox))) then begin
-        RenderInstance.fPotentiallyVisibleSetNodeIndex:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(RenderInstance.fBoundingBox);
-       end;
-       PerInFlightFrameRenderInstanceIndex:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNewIndex;
-       PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
-       PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
-       PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
-       PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
-       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fWorkModelMatrix;
-       if RenderInstance.fFirst then begin
-        RenderInstance.fFirst:=false;
-        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
-       end else begin
-        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
-       end;
-       PerInFlightFrameRenderInstance^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
-       RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
-       RenderInstance.UpdateLights(aInFlightFrameIndex);
-      end else begin
-       if fUseSortedRenderInstances and
-          (not RenderInstance.fFirst) and
-          (RenderInstance.fPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and
-          ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) then begin
-        break;
-       end else begin
-        RenderInstance.fFirst:=true;
-        RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
-        TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
-        RenderInstance.RemoveLights;
+        if fUseSortedRenderInstances and
+           (not RenderInstance.fFirst) and
+           (RenderInstance.fPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and
+           ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) then begin
+         break;
+        end else begin
+         RenderInstance.fFirst:=true;
+         RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+         TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
+         RenderInstance.RemoveLights;
+        end;
        end;
       end;
+     finally
+      TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
      end;
-    finally
-     TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
     end;
    end;
   end;
@@ -27979,16 +27981,18 @@ begin
    end;
   end;
 
-  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
-  try
-   for Index:=0 to fRenderInstances.Count-1 do begin
-    RenderInstance:=fRenderInstances[Index];
-    RenderInstance.fFirst:=true;
-    TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
-    RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+  if fRenderInstances.Count>0 then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
+   try
+    for Index:=0 to fRenderInstances.Count-1 do begin
+     RenderInstance:=fRenderInstances[Index];
+     RenderInstance.fFirst:=true;
+     TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
+     RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+    end;
+   finally
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
    end;
-  finally
-   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
   end;
 
   if aInFlightFrameIndex>=0 then begin
