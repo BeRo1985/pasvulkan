@@ -4009,8 +4009,9 @@ type EpvScene3D=class(Exception);
        fGroups:TGroups;
        fGroupInstanceListLock:TPasMPCriticalSection;
        fGroupInstances:TGroup.TInstances;
-       fLeafInstances:TGroup.TInstances;
-       fLinearInstanceChoreography:TGroup.TInstances;
+       fDirectedAcyclicGraphLeafInstances:TGroup.TInstances;
+       fDirectedAcyclicGraphLeafInstancePasMPJobs:TPPasMPJobs;
+       fDirectedAcyclicGraphLinearInstanceChoreography:TGroup.TInstances;
        fVirtualInstanceManagerGroupListLock:TPasMPCriticalSection;
        fVirtualInstanceManagerGroups:TGroups;
        fLightAABBTree:TpvBVHDynamicAABBTree;
@@ -4171,6 +4172,7 @@ type EpvScene3D=class(Exception);
        fUpdateCulling:TpvScene3D.TUpdateCulling;
        fDirectedAcyclicGraphGeneration:TPasMPUInt32;
        fLastDirectedAcyclicGraphGeneration:TPasMPUInt32;
+       fDirectedAcyclicGraphInFlightFrameIndex:TpvSizeInt;
       public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -4212,6 +4214,8 @@ type EpvScene3D=class(Exception);
        procedure ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
        procedure ProcessDirectedAcyclicGraphInstanceRecursive(const aInstance:TpvScene3D.TGroup.TInstance);
        procedure ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+       procedure ProcessDirectedAcyclicGraphInstanceLeafsParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure ProcessDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
       public
        class function DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; overload; static;
        class function DetectFileType(const aStream:TStream):TpvScene3D.TFileType; overload; static;
@@ -29819,9 +29823,11 @@ begin
  fGroupInstances:=TGroup.TInstances.Create;
  fGroupInstances.OwnsObjects:=false;
 
- fLeafInstances:=TGroup.TInstances.Create(false);
+ fDirectedAcyclicGraphLeafInstances:=TGroup.TInstances.Create(false);
 
- fLinearInstanceChoreography:=TGroup.TInstances.Create(false);
+ fDirectedAcyclicGraphLeafInstancePasMPJobs:=nil;
+
+ fDirectedAcyclicGraphLinearInstanceChoreography:=TGroup.TInstances.Create(false);
 
  fVirtualInstanceManagerGroupListLock:=TPasMPCriticalSection.Create;
  fVirtualInstanceManagerGroups:=TGroups.Create;
@@ -30788,9 +30794,11 @@ begin
  FreeAndNil(fGroupInstances);
  FreeAndNil(fGroupInstanceListLock);
 
- FreeAndNil(fLeafInstances);
+ FreeAndNil(fDirectedAcyclicGraphLeafInstances);
 
- FreeAndNil(fLinearInstanceChoreography);
+ fDirectedAcyclicGraphLeafInstancePasMPJobs:=nil;
+
+ FreeAndNil(fDirectedAcyclicGraphLinearInstanceChoreography);
 
  FreeAndNil(fNewInstances);
  FreeAndNil(fNewInstanceListLock);
@@ -32947,9 +32955,9 @@ begin
   GroupInstanceStack.Initialize;
   try
 
-   fLeafInstances.ClearNoFree;
+   fDirectedAcyclicGraphLeafInstances.ClearNoFree;
 
-   fLinearInstanceChoreography.ClearNoFree;
+   fDirectedAcyclicGraphLinearInstanceChoreography.ClearNoFree;
 
    for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
     GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
@@ -33065,9 +33073,9 @@ begin
 
           GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
 
-          fLeafInstances.Add(GroupInstance);
+          fDirectedAcyclicGraphLeafInstances.Add(GroupInstance);
 
-          fLinearInstanceChoreography.Add(GroupInstance);
+          fDirectedAcyclicGraphLinearInstanceChoreography.Add(GroupInstance);
 
          end;
 
@@ -33077,7 +33085,7 @@ begin
 
          GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
 
-         fLinearInstanceChoreography.Add(GroupInstance);
+         fDirectedAcyclicGraphLinearInstanceChoreography.Add(GroupInstance);
 
         end;
 
@@ -33092,9 +33100,9 @@ begin
 
       GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
 
-      fLeafInstances.Add(GroupInstance);
+      fDirectedAcyclicGraphLeafInstances.Add(GroupInstance);
 
-      fLinearInstanceChoreography.Add(GroupInstance);
+      fDirectedAcyclicGraphLinearInstanceChoreography.Add(GroupInstance);
 
      end;
 
@@ -33127,6 +33135,7 @@ end;
 
 procedure TpvScene3D.ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
 begin
+ aInstance.Update(fDirectedAcyclicGraphInFlightFrameIndex);
 end;
 
 procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceRecursive(const aInstance:TpvScene3D.TGroup.TInstance);
@@ -33244,6 +33253,60 @@ begin
 
    end;
 
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceLeafsParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var Index:TPasMPNativeInt;
+begin
+ for Index:=aFromIndex to aToIndex do begin
+  aJob^.Data:=fDirectedAcyclicGraphLeafInstances.RawItems[Index];
+  ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(aJob,aThreadIndex);
+ end;
+end;
+
+procedure TpvScene3D.ProcessDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
+var Index,GroupInstanceIndex:TpvSizeInt;
+    GroupInstance:TpvScene3D.TGroup.TInstance;
+begin
+
+ fDirectedAcyclicGraphInFlightFrameIndex:=aInFlightFrameIndex;
+
+ if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) then begin
+
+  if fDirectedAcyclicGraphLeafInstances.Count>1 then begin
+
+   for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
+    GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
+    GroupInstance.fProcessState:=0;
+    GroupInstance.fRemainingDirectedAcyclicGraphInputDependencies:=GroupInstance.fDirectedAcyclicGraphInputDependencies.Count;
+   end;
+
+   if length(fDirectedAcyclicGraphLeafInstancePasMPJobs)<>fDirectedAcyclicGraphLeafInstances.Count then begin
+    SetLength(fDirectedAcyclicGraphLeafInstancePasMPJobs,fDirectedAcyclicGraphLeafInstances.Count);
+   end;
+
+   for Index:=0 to fDirectedAcyclicGraphLeafInstances.Count-1 do begin
+    fDirectedAcyclicGraphLeafInstancePasMPJobs[Index]:=CreateDirectedAcyclicGraphInstanceLeafsToRootJob(nil,fDirectedAcyclicGraphLeafInstances.RawItems[Index]);
+   end;
+
+   fPasMPInstance.Invoke(fDirectedAcyclicGraphLeafInstancePasMPJobs);
+
+  end else begin
+
+   for Index:=0 to fDirectedAcyclicGraphLinearInstanceChoreography.Count-1 do begin
+    ProcessDirectedAcyclicGraphRealInstance(fDirectedAcyclicGraphLinearInstanceChoreography.RawItems[Index]);
+   end;
+
+  end;
+
+ end else begin
+
+  for Index:=0 to fDirectedAcyclicGraphLinearInstanceChoreography.Count-1 do begin
+   ProcessDirectedAcyclicGraphRealInstance(fDirectedAcyclicGraphLinearInstanceChoreography.RawItems[Index]);
   end;
 
  end;
