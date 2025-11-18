@@ -33279,33 +33279,23 @@ begin
 
  fDirectedAcyclicGraphInFlightFrameIndex:=aInFlightFrameIndex;
 
- if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) then begin
+ if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) and (fDirectedAcyclicGraphLeafInstances.Count>1) then begin
 
-  if fDirectedAcyclicGraphLeafInstances.Count>1 then begin
-
-   for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
-    GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
-    GroupInstance.fProcessState:=0;
-    GroupInstance.fRemainingDirectedAcyclicGraphInputDependencies:=GroupInstance.fDirectedAcyclicGraphInputDependencies.Count;
-   end;
-
-   if length(fDirectedAcyclicGraphLeafInstancePasMPJobs)<>fDirectedAcyclicGraphLeafInstances.Count then begin
-    SetLength(fDirectedAcyclicGraphLeafInstancePasMPJobs,fDirectedAcyclicGraphLeafInstances.Count);
-   end;
-
-   for Index:=0 to fDirectedAcyclicGraphLeafInstances.Count-1 do begin
-    fDirectedAcyclicGraphLeafInstancePasMPJobs[Index]:=CreateDirectedAcyclicGraphInstanceLeafsToRootJob(nil,fDirectedAcyclicGraphLeafInstances.RawItems[Index]);
-   end;
-
-   fPasMPInstance.Invoke(fDirectedAcyclicGraphLeafInstancePasMPJobs);
-
-  end else begin
-
-   for Index:=0 to fDirectedAcyclicGraphLinearInstanceChoreography.Count-1 do begin
-    ProcessDirectedAcyclicGraphRealInstance(fDirectedAcyclicGraphLinearInstanceChoreography.RawItems[Index]);
-   end;
-
+  for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
+   GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
+   GroupInstance.fProcessState:=0;
+   GroupInstance.fRemainingDirectedAcyclicGraphInputDependencies:=GroupInstance.fDirectedAcyclicGraphInputDependencies.Count;
   end;
+
+  if length(fDirectedAcyclicGraphLeafInstancePasMPJobs)<>fDirectedAcyclicGraphLeafInstances.Count then begin
+   SetLength(fDirectedAcyclicGraphLeafInstancePasMPJobs,fDirectedAcyclicGraphLeafInstances.Count);
+  end;
+
+  for Index:=0 to fDirectedAcyclicGraphLeafInstances.Count-1 do begin
+   fDirectedAcyclicGraphLeafInstancePasMPJobs[Index]:=CreateDirectedAcyclicGraphInstanceLeafsToRootJob(nil,fDirectedAcyclicGraphLeafInstances.RawItems[Index]);
+  end;
+
+  fPasMPInstance.Invoke(fDirectedAcyclicGraphLeafInstancePasMPJobs);
 
  end else begin
 
