@@ -36972,7 +36972,9 @@ begin
     DebugInfo^.SceneIndex:=VirtualInstance.fScene;
    end;
   end;
-  
+
+  fSceneInstance.InvalidateDirectedAcyclicGraph;
+
   fAssignmentDirty:=false;
   
  finally
