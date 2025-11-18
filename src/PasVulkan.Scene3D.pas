@@ -33186,8 +33186,6 @@ var InstanceIndex,CountInstanceJobs:TpvSizeInt;
     JobWorkerThread:TPasMPJobWorkerThread;
 begin
 
-//RenderThread.EnsurePasMPThreadHasRealtimeAudioPriority(aThreadIndex);
-
  JobWorkerThread:=fPasMPInstance.JobWorkerThreads[aThreadIndex];
 
 {if (JobWorkerThread.AreaMask and UInt32($80000000))<>0 then begin
