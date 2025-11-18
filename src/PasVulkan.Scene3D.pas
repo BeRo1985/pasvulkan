@@ -3032,6 +3032,7 @@ type EpvScene3D=class(Exception);
                             fInstanceDataIndices:TRenderInstanceDataIndices;
                             fAssignedVirtualInstance:TInstance;
                             fAssignedVirtualInstanceRenderInstance:TRenderInstance;
+                            procedure SetActive(const aActive:boolean); inline;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
@@ -3049,7 +3050,7 @@ type EpvScene3D=class(Exception);
                             property InstanceDataIndex:TpvUInt32 read fInstanceDataIndex write fInstanceDataIndex;
                             property InstanceDataIndices:TRenderInstanceDataIndices read fInstanceDataIndices;
                            published
-                            property Active:Boolean read fActive write fActive;
+                            property Active:Boolean read fActive write SetActive;
                             property ActiveMask:TPasMPUInt32 read fActiveMask write fActiveMask;
                           end;
                           TRenderInstances=TpvObjectGenericList<TRenderInstance>;
@@ -23167,6 +23168,14 @@ begin
  fActiveMask:=0;
  RemoveLights;
  Free;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.SetActive(const aActive:boolean);
+begin
+ if fActive<>aActive then begin
+  fActive:=aActive;
+  fSceneInstance.InvalidateDirectedAcyclicGraph;
+ end;
 end;
 
 procedure TpvScene3D.TGroup.TInstance.TRenderInstance.UpdateLights(const aInFlightFrameIndex:TpvSizeInt);
