@@ -33263,6 +33263,9 @@ end;
 procedure TpvScene3D.ProcessDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
 var Index,GroupInstanceIndex:TpvSizeInt;
     GroupInstance:TpvScene3D.TGroup.TInstance;
+    Group:TpvScene3D.TGroup;
+    Job:PPasMPJob;
+    Update_Groups_Data:TpvScene3D_Update_Groups_Data;
 begin
 
  fDirectedAcyclicGraphInFlightFrameIndex:=aInFlightFrameIndex;
@@ -33283,9 +33286,28 @@ begin
    fDirectedAcyclicGraphLeafInstancePasMPJobs[Index]:=CreateDirectedAcyclicGraphInstanceLeafsToRootJob(nil,fDirectedAcyclicGraphLeafInstances.RawItems[Index]);
   end;
 
+  if fGroups.Count>0 then begin
+   Update_Groups_Data.Groups:=fGroups;
+   Update_Groups_Data.InFlightFrameIndex:=aInFlightFrameIndex;
+   Job:=fPasMPInstance.ParallelFor(@Update_Groups_Data,0,fGroups.Count-1,TpvScene3D_Update_Groups,1,PasMPDefaultDepth,nil);
+   fPasMPInstance.Run(Job);
+  end else begin
+   Job:=nil;
+  end;
+
   fPasMPInstance.Invoke(fDirectedAcyclicGraphLeafInstancePasMPJobs);
 
+  if assigned(Job) then begin
+   fPasMPInstance.WaitRelease(Job);
+  end;
+
  end else begin
+
+  for Group in fGroups do begin
+   if assigned(Group) and Group.Usable then begin
+    Group.Update(aInFlightFrameIndex);
+   end;
+  end;
 
   for Index:=0 to fDirectedAcyclicGraphLinearInstanceChoreography.Count-1 do begin
    ProcessDirectedAcyclicGraphRealInstance(fDirectedAcyclicGraphLinearInstanceChoreography.RawItems[Index]);
@@ -33425,20 +33447,7 @@ begin
    RebuildDirectedAcyclicGraph(aInFlightFrameIndex);
 
 {$if defined(NewDAG)}
-   if fGroups.Count>0 then begin
-    Update_Groups_Data.Groups:=fGroups;
-    Update_Groups_Data.InFlightFrameIndex:=aInFlightFrameIndex;
-    Job:=fPasMPInstance.ParallelFor(@Update_Groups_Data,0,fGroups.Count-1,TpvScene3D_Update_Groups,1,PasMPDefaultDepth,nil);
-    fPasMPInstance.Run(Job);
-   end else begin
-    Job:=nil;
-   end;
-
    ProcessDirectedAcyclicGraph(aInFlightFrameIndex);
-
-   if assigned(Job) then begin
-    fPasMPInstance.WaitRelease(Job);
-   end;
 {$else}
    if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) then begin
 
