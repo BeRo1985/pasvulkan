@@ -3967,9 +3967,6 @@ type EpvScene3D=class(Exception);
        fVulkanMaterialUniformBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanGPUInstanceDataBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fTechniques:TpvTechniques;
-       fParallelGroupInstanceUpdateQueue:TParallelGroupInstanceUpdateQueue;
-       fParallelGroupInstanceUpdateQueueLock:TPasMPSlimReaderWriterLock;
-       fParallelGroupInstanceUpdateInFlightFrameIndex:TpvSizeInt;
        fCullObjectIDLock:TPasMPSlimReaderWriterLock;
        fCullObjectIDManager:TIDManager;
        fMaxCullObjectID:TpvUInt32;
@@ -4204,8 +4201,6 @@ type EpvScene3D=class(Exception);
       private
        procedure ProcessFreeQueue;
       private
-       procedure ParallelGroupInstanceUpdateFunction;
-       procedure ParallelGroupInstanceUpdateParallelJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32);
        procedure UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       private
        procedure InvalidateDirectedAcyclicGraph;
@@ -29658,10 +29653,6 @@ begin
 
  fTechniques:=TpvTechniques.Create;
 
- fParallelGroupInstanceUpdateQueue.Initialize;
-
- fParallelGroupInstanceUpdateQueueLock:=TPasMPSlimReaderWriterLock.Create;
-
  fCullObjectIDLock:=TPasMPSlimReaderWriterLock.Create;
 
  fCullObjectIDManager:=TpvScene3D.TIDManager.Create;
@@ -30909,10 +30900,6 @@ begin
  FreeAndNil(fCullObjectIDManager);
 
  FreeAndNil(fCullObjectIDLock);
-
- fParallelGroupInstanceUpdateQueue.Finalize;
-
- FreeAndNil(fParallelGroupInstanceUpdateQueueLock);
 
  FreeAndNil(fTechniques);
 
@@ -32775,135 +32762,6 @@ begin
 
 end;
 
-// This procedure processes group instances in a parallel manner within a 
-// Directed Acyclic Graph (DAG) structure. Each group instance can only be 
-// updated if all its dependencies are processed. The function works by 
-// dequeuing instances from a parallel queue and checking if their required 
-// dependencies are ready. If all dependencies are resolved, the instance 
-// is updated and marked as processed. Otherwise, it is re-enqueued at the 
-// back of the queue to be checked again later, ensuring no deadlocks occur 
-// and preventing cyclic dependencies in a dynamic game environment.
-procedure TpvScene3D.ParallelGroupInstanceUpdateFunction;
-var OtherIndex:TpvSizeInt;
-    GroupInstance,OtherGroupInstance:TpvScene3D.TGroup.TInstance;
-    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
-    OK:boolean;
-begin
-
- repeat
-
-  // Dequeue
-  fParallelGroupInstanceUpdateQueueLock.Acquire;
-  try
-   OK:=fParallelGroupInstanceUpdateQueue.Dequeue(GroupInstance);
-  finally
-   fParallelGroupInstanceUpdateQueueLock.Release;
-  end;
-
-  if OK then begin
-
-   // Check if group instance is usable
-   if assigned(GroupInstance) and GroupInstance.fGroup.Usable then begin
-
-    // Initialize ready state
-    OK:=true;
-
-    // Check if all required dependencies are usable, ready and already processed
-    if GroupInstance.fRequiredDependencies.Count>0 then begin
-     for OtherIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
-      OtherGroupInstance:=GroupInstance.fRequiredDependencies[OtherIndex];
-      if (OtherGroupInstance<>GroupInstance.fAppendageInstance) and
-         OtherGroupInstance.Group.Usable and
-         (TPasMPInterlocked.Read(OtherGroupInstance.fVisitedState[fParallelGroupInstanceUpdateInFlightFrameIndex])=0) then begin
-       OK:=false;
-       break;
-      end;
-     end;
-    end;
-
-    // Check if appendage instance is usable, ready and already processed
-    if OK and
-       assigned(GroupInstance.fAppendageInstance) and
-       GroupInstance.fAppendageInstance.Group.Usable and
-       (TPasMPInterlocked.Read(GroupInstance.fAppendageInstance.fVisitedState[fParallelGroupInstanceUpdateInFlightFrameIndex])=0) then begin
-     OK:=false;
-    end;
-
-{$ifdef PasVulkanScene3DVirualInstancesInsideDAG}
-    // Check for virtual instance dependencies
-    if OK and assigned(GroupInstance.fVirtualInstanceManager) then begin
-
-     // First the single one
-     if OK and
-        assigned(GroupInstance.fAssignedVirtualInstance) and
-        GroupInstance.fAssignedVirtualInstance.Group.Usable and
-        (TPasMPInterlocked.Read(GroupInstance.fAssignedVirtualInstance.fVisitedState[fParallelGroupInstanceUpdateInFlightFrameIndex])=0) then begin
-      OK:=false;
-      break;
-     end;
-
-     // Then the render instance ones
-     if OK and (GroupInstance.fRenderInstances.Count>0) then begin
-      for OtherIndex:=0 to GroupInstance.fRenderInstances.Count-1 do begin
-       RenderInstance:=GroupInstance.fRenderInstances[OtherIndex];
-       if RenderInstance.Active then begin
-        if assigned(RenderInstance.fAssignedVirtualInstance) then begin
-         if RenderInstance.fAssignedVirtualInstance.Group.Usable and
-            (TPasMPInterlocked.Read(RenderInstance.fAssignedVirtualInstance.fVisitedState[fParallelGroupInstanceUpdateInFlightFrameIndex])=0) then begin
-          OK:=false;
-          break;
-         end;
-        end else begin
-         break;
-        end;
-       end else begin
-        break;
-       end;
-      end;
-     end;
-
-    end;
-{$endif}
-
-     // Update group instance if all dependencies are ready
-    if OK then begin
-
-     // We are ready, so update group instance
-     GroupInstance.Update(fParallelGroupInstanceUpdateInFlightFrameIndex);
-
-     // Mark group instance as ready and processed
-     TPasMPInterlocked.Write(GroupInstance.fVisitedState[fParallelGroupInstanceUpdateInFlightFrameIndex],2);
-
-    end else begin
-
-     // Not ready, so enqueue group instance again, but at the end of the queue, so that there is a chance that other group
-     // instances are processed first, so that there is no deadlock, given that it is a directed acyclic graph without cycles
-     fParallelGroupInstanceUpdateQueueLock.Acquire;
-     try
-      fParallelGroupInstanceUpdateQueue.Enqueue(GroupInstance);
-     finally
-      fParallelGroupInstanceUpdateQueueLock.Release;
-     end;
-
-    end;
-
-   end;
-
-  end else begin
-
-   break;
-
-  end;
-
- until false;
-
-end;
-
-procedure TpvScene3D.ParallelGroupInstanceUpdateParallelJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32);
-begin
- ParallelGroupInstanceUpdateFunction;
-end;
-
 type TpvScene3D_Update_VirtualInstanceManagerGroups_Data=record
       Groups:TpvScene3D.TGroups;
       InFlightFrameIndex:TpvSizeInt;
@@ -33318,9 +33176,7 @@ begin
 end;
 
 procedure TpvScene3D.Update(const aInFlightFrameIndex:TpvSizeInt);
-{$define NewDAG}
-type TGroupInstanceStack=TpvDynamicFastStack<TpvScene3D.TGroup.TInstance>;
-var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize,CountExtraJobs:TpvSizeInt;
+var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     MinMaterialID,MaxMaterialID:TpvInt32;
     Group:TpvScene3D.TGroup;
     GroupInstance,OtherGroupInstance:TpvScene3D.TGroup.TInstance;
@@ -33332,16 +33188,9 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize,CountExtraJ
     Material:TpvScene3D.TMaterial;
     Planet:TpvScene3DPlanet;
     Atmosphere:TpvScene3DAtmosphere;
-    GroupInstanceStack:TGroupInstanceStack;
     Sphere:TpvSphere;
     StartCPUTime,EndCPUTime:TpvHighResolutionTime;
-{$if defined(NewDAG)}
-    Job:PPasMPJob;
-{$else}
-    Jobs:array of PPasMPJob;
-{$ifend}
     Update_VirtualInstanceManagerGroups_Data:TpvScene3D_Update_VirtualInstanceManagerGroups_Data;
-    Update_Groups_Data:TpvScene3D_Update_Groups_Data;
 begin
 
  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -33443,148 +33292,9 @@ begin
 
    fGroupInstances.Sort;
 
-   // (Re-)Build directed acyclic graph
    RebuildDirectedAcyclicGraph(aInFlightFrameIndex);
 
-{$if defined(NewDAG)}
    ProcessDirectedAcyclicGraph(aInFlightFrameIndex);
-{$else}
-   if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) then begin
-
-    // Clear queue
-    fParallelGroupInstanceUpdateQueueLock.Acquire;
-    try
-     while fParallelGroupInstanceUpdateQueue.Dequeue(GroupInstance) do begin
-     end;
-    finally
-     fParallelGroupInstanceUpdateQueueLock.Release;
-    end;
-
-    // Initialize inital queue
-    for Index:=0 to fGroupInstances.Count-1 do begin
-     GroupInstance:=fGroupInstances[Index];
-     GroupInstance.fVisitedState[aInFlightFrameIndex]:=0;
-     fParallelGroupInstanceUpdateQueueLock.Acquire;
-     try
-      if not ((GroupInstance.fHeadless or GroupInstance.fVirtual) and
-              ((GroupInstance.fRequiredDependencies.Count=0) and
-               (GroupInstance.fProvidedDependencies.Count=0) and
-               (not assigned(GroupInstance.fAppendageInstance)) and
-               (GroupInstance.fAttachments.Count=0))) then begin
-       fParallelGroupInstanceUpdateQueue.Enqueue(GroupInstance);
-      end;
-     finally
-      fParallelGroupInstanceUpdateQueueLock.Release;
-     end;
-    end;
-
-    fParallelGroupInstanceUpdateInFlightFrameIndex:=aInFlightFrameIndex;
-
-    Jobs:=nil;
-    try
-
-     if fGroups.Count>0 then begin
-      CountExtraJobs:=1;
-     end else begin
-      CountExtraJobs:=0;
-     end;
-
-     SetLength(Jobs,Max(1,fPasMPInstance.CountJobWorkerThreads)+CountExtraJobs);
-
-     for Index:=0 to length(Jobs)-(1+CountExtraJobs) do begin
-      Jobs[Index]:=fPasMPInstance.Acquire(ParallelGroupInstanceUpdateParallelJobFunction,nil,nil,0,PasMPAreaMaskUpdate or TPasMPUInt32($f0000000),PasMPAreaMaskRender);
-     end;
-
-     if (CountExtraJobs>0) and (fGroups.Count>0) then begin
-      Update_Groups_Data.Groups:=fGroups;
-      Update_Groups_Data.InFlightFrameIndex:=aInFlightFrameIndex;
-      Jobs[length(Jobs)-1]:=fPasMPInstance.ParallelFor(@Update_Groups_Data,0,fGroups.Count-1,TpvScene3D_Update_Groups,1,PasMPDefaultDepth,nil);
-     end;
-
-     fPasMPInstance.Run(Jobs);
-
-     ParallelGroupInstanceUpdateFunction; // Help the worker threads at processing the queue, before waiting&releasing the jobs
-
-     fPasMPInstance.Wait(Jobs);
-
-     fPasMPInstance.Release(Jobs);
-
-    finally
-     Jobs:=nil;
-    end;
-
-    ParallelGroupInstanceUpdateFunction;
-
-   end else begin
-
-    for Group in fGroups do begin
-     if assigned(Group) and Group.Usable then begin
-      Group.Update(aInFlightFrameIndex);
-     end;
-    end;
-
-    GroupInstanceStack.Initialize;
-    try
-
-     for Index:=0 to fGroupInstances.Count-1 do begin
-      fGroupInstances[Index].fVisitedState[aInFlightFrameIndex]:=0;
-     end;
-
-     for Index:=0 to fGroupInstances.Count-1 do begin
-      GroupInstance:=fGroupInstances[Index];
-      if GroupInstance.fGroup.Usable and (GroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
-       if not ((GroupInstance.fHeadless or GroupInstance.fVirtual) and
-               ((GroupInstance.fRequiredDependencies.Count=0) and
-                (GroupInstance.fProvidedDependencies.Count=0) and
-                (not assigned(GroupInstance.fAppendageInstance)) and
-                (GroupInstance.fAttachments.Count=0))) then begin
-        if (GroupInstance.fRequiredDependencies.Count=0) and
-           ((not assigned(GroupInstance.fAppendageInstance)) or
-            (assigned(GroupInstance.fAppendageInstance) and
-             (GroupInstance.fAppendageInstance.fVisitedState[aInFlightFrameIndex]<>0))) then begin
-         GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
-         GroupInstance.Update(aInFlightFrameIndex);
-        end else begin
-         GroupInstanceStack.Push(GroupInstance);
-         while GroupInstanceStack.Pop(GroupInstance) do begin
-          case GroupInstance.fVisitedState[aInFlightFrameIndex] of
-           0:begin
-            GroupInstance.fVisitedState[aInFlightFrameIndex]:=1;
-            GroupInstanceStack.Push(GroupInstance);
-            for OtherIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
-             OtherGroupInstance:=GroupInstance.fRequiredDependencies[OtherIndex];
-             if (OtherGroupInstance<>GroupInstance.fAppendageInstance) and
-                OtherGroupInstance.Group.Usable and
-                (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
-              GroupInstanceStack.Push(OtherGroupInstance);
-             end;
-            end;
-            if assigned(GroupInstance.fAppendageInstance) then begin
-             OtherGroupInstance:=GroupInstance.fAppendageInstance;
-             if OtherGroupInstance.Group.Usable and (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
-              GroupInstanceStack.Push(OtherGroupInstance);
-             end;
-            end;
-           end;
-           1:begin
-            GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
-            GroupInstance.Update(aInFlightFrameIndex);
-           end;
-           else begin
-           end;
-          end;
-         end;
-        end;
-       end;
-      end;
-     end;
-
-    finally
-     GroupInstanceStack.Finalize;
-    end;
-
-   end;
-{$ifend}
 
   finally
    fGroupInstanceListLock.Release;
