@@ -32730,6 +32730,9 @@ begin
   GlobalRenderInstanceCullDataDynamicArray^.AddNew;
  end;
  GlobalRenderInstanceCullDataDynamicArray^.Count:=1;
+ if length(GlobalRenderInstanceCullDataDynamicArray^.Items)>0 then begin
+  FillChar(GlobalRenderInstanceCullDataDynamicArray^.Items[0],SizeOf(TCullData)*Length(GlobalRenderInstanceCullDataDynamicArray^.Items),#0);
+ end;
 
 end;
 
@@ -33162,7 +33165,7 @@ end;
 function TpvScene3D.CreateDirectedAcyclicGraphInstanceLeafsToRootJob(const aParentJob:PPasMPJob;const aInstance:TpvScene3D.TGroup.TInstance):PPasMPJob;
 begin
  if aInstance.ProcessStateTestAndSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateJobAllocated) then begin
-  result:=fPasMPInstance.Acquire(ProcessDirectedAcyclicGraphInstanceLeafsToRootJob,aInstance,{aParentJob}nil);
+  result:=fPasMPInstance.Acquire(ProcessDirectedAcyclicGraphInstanceLeafsToRootJob,aInstance,{aParentJob}nil,0,PasMPAreaMaskUpdate or TPasMPUInt32($f0000000),PasMPAreaMaskRender);
  end else begin
   result:=nil;
  end;
@@ -33330,7 +33333,11 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize,CountExtraJ
     GroupInstanceStack:TGroupInstanceStack;
     Sphere:TpvSphere;
     StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$if false}
+    Job:PPasMPJob;
+{$else}
     Jobs:array of PPasMPJob;
+{$ifend}
     Update_VirtualInstanceManagerGroups_Data:TpvScene3D_Update_VirtualInstanceManagerGroups_Data;
     Update_Groups_Data:TpvScene3D_Update_Groups_Data;
 begin
@@ -33437,6 +33444,20 @@ begin
    // (Re-)Build directed acyclic graph
    RebuildDirectedAcyclicGraph(aInFlightFrameIndex);
 
+{$if false}
+   if fGroups.Count>0 then begin
+    Job:=fPasMPInstance.Acquire(ParallelGroupInstanceUpdateParallelJobFunction,nil,nil,0,PasMPAreaMaskUpdate or TPasMPUInt32($f0000000),PasMPAreaMaskRender);
+    fPasMPInstance.Run(Job);
+   end else begin
+    Job:=nil;
+   end;
+
+   ProcessDirectedAcyclicGraph(aInFlightFrameIndex);
+
+   if assigned(Job) then begin
+    fPasMPInstance.WaitRelease(Job);
+   end;
+{$else}
    if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) then begin
 
     // Clear queue
@@ -33571,7 +33592,8 @@ begin
      GroupInstanceStack.Finalize;
     end;
 
-   end; 
+   end;
+{$ifend}
 
   finally
    fGroupInstanceListLock.Release;
