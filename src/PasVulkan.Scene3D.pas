@@ -27970,9 +27970,8 @@ begin
         end else begin
          RenderInstance.fFirst:=true;
          RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
-         if (TPasMPInterlocked.ExchangeBitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex)) and (TpvUInt32(1) shl aInFlightFrameIndex))<>0 then begin
-          RenderInstance.RemoveLights;
-         end;
+         TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
+         RenderInstance.RemoveLights;
         end;
        end;
       end;
