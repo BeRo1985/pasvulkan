@@ -4214,7 +4214,6 @@ type EpvScene3D=class(Exception);
        procedure ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
        procedure ProcessDirectedAcyclicGraphInstanceRecursive(const aInstance:TpvScene3D.TGroup.TInstance);
        procedure ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
-       procedure ProcessDirectedAcyclicGraphInstanceLeafsParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
        procedure ProcessDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
       public
        class function DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; overload; static;
@@ -33259,15 +33258,6 @@ begin
 
  end;
 
-end;
-
-procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceLeafsParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-var Index:TPasMPNativeInt;
-begin
- for Index:=aFromIndex to aToIndex do begin
-  aJob^.Data:=fDirectedAcyclicGraphLeafInstances.RawItems[Index];
-  ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(aJob,aThreadIndex);
- end;
 end;
 
 procedure TpvScene3D.ProcessDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
