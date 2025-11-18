@@ -2537,6 +2537,11 @@ type EpvScene3D=class(Exception);
                    { TInstance }
                    TInstance=class(TBaseObject)
                     public
+                     const ProcessStateJobAllocated=TPasMPUInt32(1) shl 0;
+                           ProcessStateJobPreprocessing=TPasMPUInt32(1) shl 1;
+                           ProcessStateProcessing=TPasMPUInt32(1) shl 30;
+                           ProcessStateDone=TPasMPUInt32(1) shl 31;
+                    public
                      type { TAnimation }
                           TAnimation=class
                            public
@@ -3103,9 +3108,10 @@ type EpvScene3D=class(Exception);
                      fGroup:TGroup;
                      fLock:TPasMPSpinLock;
                      fDependencyLock:TPasMPSpinLock;
-                     fDirectedAcyclicGraphDependencies:TInstances;
-                     fCountDirectedAcyclicGraphDependencies:TPasMPInt32;
-                     fRemainingDirectedAcyclicGraphDependencies:TPasMPInt32;
+                     fDirectedAcyclicGraphInputDependencies:TInstances;
+                     fDirectedAcyclicGraphOutputDependencies:TInstances;
+                     fDirectedAcyclicGraphPasMPJobs:TPPasMPJobs;
+                     fRemainingDirectedAcyclicGraphInputDependencies:TPasMPInt32;
                      fProvidedDependencies:TInstances;
                      fRequiredDependencies:TInstances;
                      fAttachmentAppendageLock:TPasMPSpinLock;
@@ -3198,6 +3204,7 @@ type EpvScene3D=class(Exception);
                      fRaytracingMask:TpvUInt8;
                      fCastingShadows:Boolean;
                      fApplyCameraRelativeTransform:TPasMPBool32;
+                     fProcessState:TPasMPUInt32;
                      procedure ConstructData(const aLock:boolean);
                      procedure AllocateData;
                      procedure ReleaseData;
@@ -3235,6 +3242,12 @@ type EpvScene3D=class(Exception);
                                                                 const aRelative:Boolean;
                                                                 const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
                      procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
+                    private
+                     procedure ProcessStateSetBitMask(const aBitMask:TPasMPUInt32);
+                     procedure ProcessStateClearBitMask(const aBitMask:TPasMPUInt32);
+                     function ProcessStateIsBitMaskSet(const aBitMask:TPasMPUInt32):boolean;
+                     function ProcessStateIsAnyBitMaskSet(const aBitMask:TPasMPUInt32):boolean;
+                     function ProcessStateTestAndSetBitMask(const aBitMask:TPasMPUInt32):boolean;
                     public
                      constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aHeadless:Boolean=false;const aVirtual:Boolean=false); reintroduce;
                      destructor Destroy; override;
@@ -4194,6 +4207,11 @@ type EpvScene3D=class(Exception);
       private
        procedure InvalidateDirectedAcyclicGraph;
        procedure RebuildDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
+       function CreateDirectedAcyclicGraphInstanceLeafsToRootJob(const aParentJob:PPasMPJob;const aInstance:TpvScene3D.TGroup.TInstance):PPasMPJob;
+       procedure PrepareDirectedAcyclicGraph;
+       procedure ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
+       procedure ProcessDirectedAcyclicGraphInstanceRecursive(const aInstance:TpvScene3D.TGroup.TInstance);
+       procedure ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
       public
        class function DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; overload; static;
        class function DetectFileType(const aStream:TStream):TpvScene3D.TFileType; overload; static;
@@ -23397,6 +23415,8 @@ begin
 
  fUpdateDynamic:=true;
 
+ fProcessState:=0;
+
  fHeadless:=aHeadless;
 
  fVirtual:=aVirtual;
@@ -23417,7 +23437,11 @@ begin
 
  fDependencyLock:=TPasMPSpinLock.Create;
 
- fDirectedAcyclicGraphDependencies:=TpvScene3D.TGroup.TInstances.Create(false);
+ fDirectedAcyclicGraphInputDependencies:=TpvScene3D.TGroup.TInstances.Create(false);
+
+ fDirectedAcyclicGraphOutputDependencies:=TpvScene3D.TGroup.TInstances.Create(false);
+
+ fDirectedAcyclicGraphPasMPJobs:=nil;
 
  fProvidedDependencies:=TpvScene3D.TGroup.TInstances.Create(false);
 
@@ -23912,7 +23936,11 @@ begin
 
  FreeAndNil(fAttachmentAppendageLock);
 
- FreeAndNil(fDirectedAcyclicGraphDependencies);
+ fDirectedAcyclicGraphPasMPJobs:=nil;
+
+ FreeAndNil(fDirectedAcyclicGraphInputDependencies);
+
+ FreeAndNil(fDirectedAcyclicGraphOutputDependencies);
 
  FreeAndNil(fProvidedDependencies);
 
@@ -29280,6 +29308,36 @@ begin
 
 end;
 
+procedure TpvScene3D.TGroup.TInstance.ProcessStateSetBitMask(const aBitMask:TPasMPUInt32);
+begin
+ TPasMPInterlocked.BitwiseOr(fProcessState,aBitMask);
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ProcessStateClearBitMask(const aBitMask:TPasMPUInt32);
+begin
+ TPasMPInterlocked.BitwiseAnd(fProcessState,not aBitMask);
+end;
+
+function TpvScene3D.TGroup.TInstance.ProcessStateIsBitMaskSet(const aBitMask:TPasMPUInt32): boolean;
+begin
+ result:=(TPasMPInterlocked.Read(fProcessState) and aBitMask)=aBitMask;
+end;
+
+function TpvScene3D.TGroup.TInstance.ProcessStateIsAnyBitMaskSet(const aBitMask:TPasMPUInt32):boolean;
+begin
+ result:=(TPasMPInterlocked.Read(fProcessState) and aBitMask)<>0;
+end;
+
+function TpvScene3D.TGroup.TInstance.ProcessStateTestAndSetBitMask(const aBitMask:TPasMPUInt32):boolean;
+var OldValue,LastValue:TPasMPUInt32;
+begin
+ repeat
+  OldValue:=fProcessState;
+  LastValue:=TPasMPInterlocked.CompareExchange(fProcessState,OldValue or aBitMask,OldValue);
+ until LastValue=OldValue;
+ result:=(LastValue and aBitMask)<>aBitMask;
+end;
+
 { TpvScene3D }
 
 constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aVirtualReality:TpvVirtualReality;const aRaytracing:Boolean;const aMeshShaders:Boolean;const aUseParallelQueues:Boolean;const aUseOwnPasMPInstance:Boolean);
@@ -32895,7 +32953,8 @@ begin
 
    for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
     GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
-    GroupInstance.fDirectedAcyclicGraphDependencies.ClearNoFree;
+    GroupInstance.fDirectedAcyclicGraphInputDependencies.ClearNoFree;
+    GroupInstance.fDirectedAcyclicGraphOutputDependencies.ClearNoFree;
     GroupInstance.fVisitedState[aInFlightFrameIndex]:=0;
    end;
 
@@ -32927,8 +32986,6 @@ begin
 
          GroupInstance.fVisitedState[aInFlightFrameIndex]:=1;
 
-         GroupInstance.fDirectedAcyclicGraphDependencies.ClearNoFree;
-
          if assigned(GroupInstance.fGroup.fVirtualInstanceManager) then begin
           if not GroupInstance.fVirtual then begin
            OtherGroupInstance:=GroupInstance.fAssignedVirtualInstance;
@@ -32936,8 +32993,11 @@ begin
             if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
              CycleDetected:=true;
              pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
-            end else if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
-             GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+            end else if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphInputDependencies.Contains(OtherGroupInstance) then begin
+             GroupInstance.fDirectedAcyclicGraphInputDependencies.Add(OtherGroupInstance);
+             if not OtherGroupInstance.fDirectedAcyclicGraphOutputDependencies.Contains(GroupInstance) then begin
+              OtherGroupInstance.fDirectedAcyclicGraphOutputDependencies.Add(GroupInstance);
+             end;
             end;
            end else begin
             for RenderInstanceIndex:=0 to GroupInstance.fRenderInstances.Count-1 do begin
@@ -32948,8 +33008,11 @@ begin
                if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
                 CycleDetected:=true;
                 pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
-               end else if not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
-                GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+               end else if not GroupInstance.fDirectedAcyclicGraphInputDependencies.Contains(OtherGroupInstance) then begin
+                GroupInstance.fDirectedAcyclicGraphInputDependencies.Add(OtherGroupInstance);
+                if not OtherGroupInstance.fDirectedAcyclicGraphOutputDependencies.Contains(GroupInstance) then begin
+                 OtherGroupInstance.fDirectedAcyclicGraphOutputDependencies.Add(GroupInstance);
+                end;
                end;
               end;
              end else begin
@@ -32967,8 +33030,11 @@ begin
             if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
              CycleDetected:=true;
              pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
-            end else if not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
-             GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+            end else if not GroupInstance.fDirectedAcyclicGraphInputDependencies.Contains(OtherGroupInstance) then begin
+             GroupInstance.fDirectedAcyclicGraphInputDependencies.Add(OtherGroupInstance);
+             if not OtherGroupInstance.fDirectedAcyclicGraphOutputDependencies.Contains(GroupInstance) then begin
+              OtherGroupInstance.fDirectedAcyclicGraphOutputDependencies.Add(GroupInstance);
+             end;
             end;
            end;
           end;
@@ -32979,20 +33045,20 @@ begin
           if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
            CycleDetected:=true;
            pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
-          end else if not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
-           GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+          end else if not GroupInstance.fDirectedAcyclicGraphInputDependencies.Contains(OtherGroupInstance) then begin
+           GroupInstance.fDirectedAcyclicGraphInputDependencies.Add(OtherGroupInstance);
+           if not OtherGroupInstance.fDirectedAcyclicGraphOutputDependencies.Contains(GroupInstance) then begin
+            OtherGroupInstance.fDirectedAcyclicGraphOutputDependencies.Add(GroupInstance);
+           end;
           end;
          end;
 
-         GroupInstance.fCountDirectedAcyclicGraphDependencies:=GroupInstance.fDirectedAcyclicGraphDependencies.Count;
-         GroupInstance.fRemainingDirectedAcyclicGraphDependencies:=GroupInstance.fCountDirectedAcyclicGraphDependencies;
-
-         if GroupInstance.fDirectedAcyclicGraphDependencies.Count>0 then begin
+         if GroupInstance.fDirectedAcyclicGraphInputDependencies.Count>0 then begin
 
           GroupInstanceStack.Push(GroupInstance);
 
-          for OtherGroupInstanceIndex:=0 to GroupInstance.fDirectedAcyclicGraphDependencies.Count-1 do begin
-           GroupInstanceStack.Push(GroupInstance.fDirectedAcyclicGraphDependencies.RawItems[OtherGroupInstanceIndex]);
+          for OtherGroupInstanceIndex:=0 to GroupInstance.fDirectedAcyclicGraphInputDependencies.Count-1 do begin
+           GroupInstanceStack.Push(GroupInstance.fDirectedAcyclicGraphInputDependencies.RawItems[OtherGroupInstanceIndex]);
           end;
 
          end else begin
@@ -33042,6 +33108,142 @@ begin
 
   finally
    GroupInstanceStack.Finalize;
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3D.PrepareDirectedAcyclicGraph;
+var GroupInstanceIndex:TpvSizeInt;
+    GroupInstance:TpvScene3D.TGroup.TInstance;
+begin
+ for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
+  GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
+  GroupInstance.fProcessState:=0;
+  GroupInstance.fRemainingDirectedAcyclicGraphInputDependencies:=GroupInstance.fDirectedAcyclicGraphInputDependencies.Count;
+ end;
+end;
+
+procedure TpvScene3D.ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
+begin
+end;
+
+procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceRecursive(const aInstance:TpvScene3D.TGroup.TInstance);
+var InstanceIndex:SizeInt;
+    OtherInstance:TpvScene3D.TGroup.TInstance;
+begin
+ if (not aInstance.ProcessStateIsBitMaskSet(TpvScene3D.TGroup.TInstance.ProcessStateJobAllocated)) and
+    aInstance.ProcessStateTestAndSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateProcessing) then begin
+  for InstanceIndex:=0 to aInstance.fDirectedAcyclicGraphInputDependencies.Count-1 do begin
+   OtherInstance:=aInstance.fDirectedAcyclicGraphInputDependencies.RawItems[InstanceIndex];
+   ProcessDirectedAcyclicGraphInstanceRecursive(OtherInstance);
+  end;
+  ProcessDirectedAcyclicGraphRealInstance(aInstance);
+  aInstance.ProcessStateSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateDone);
+  for InstanceIndex:=0 to aInstance.fDirectedAcyclicGraphOutputDependencies.Count-1 do begin
+   OtherInstance:=aInstance.fDirectedAcyclicGraphOutputDependencies.RawItems[InstanceIndex];
+   if (TPasMPInterlocked.Decrement(OtherInstance.fRemainingDirectedAcyclicGraphInputDependencies)<=0) and not aInstance.ProcessStateIsAnyBitMaskSet(TpvScene3D.TGroup.TInstance.ProcessStateJobAllocated or TpvScene3D.TGroup.TInstance.ProcessStateProcessing) then begin
+    ProcessDirectedAcyclicGraphInstanceRecursive(OtherInstance);
+   end;
+  end;
+ end;
+end;
+
+function TpvScene3D.CreateDirectedAcyclicGraphInstanceLeafsToRootJob(const aParentJob:PPasMPJob;const aInstance:TpvScene3D.TGroup.TInstance):PPasMPJob;
+begin
+ if aInstance.ProcessStateTestAndSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateJobAllocated) then begin
+  result:=fPasMPInstance.Acquire(ProcessDirectedAcyclicGraphInstanceLeafsToRootJob,aInstance,{aParentJob}nil);
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+type TNextAction=
+      (
+       Wait,
+       Retry
+      );
+     TNextActions=set of TNextAction;
+var InstanceIndex,CountInstanceJobs:TpvSizeInt;
+    CurrentInstance,OtherInstance:TpvScene3D.TGroup.TInstance;
+    OtherInstanceProcessState:TpvUInt32;
+    NextActions:TNextActions;
+    JobWorkerThread:TPasMPJobWorkerThread;
+begin
+
+//RenderThread.EnsurePasMPThreadHasRealtimeAudioPriority(aThreadIndex);
+
+ JobWorkerThread:=fPasMPInstance.JobWorkerThreads[aThreadIndex];
+
+{if (JobWorkerThread.AreaMask and UInt32($80000000))<>0 then begin
+
+  TPasMPInterlocked.BitwiseOr(aJob^.InternalData,PasMPJobFlagRequeue);
+
+ end else}begin
+
+  CurrentInstance:=aJob^.Data;
+
+  if assigned(CurrentInstance) then begin
+
+   if CurrentInstance.ProcessStateTestAndSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateJobPreprocessing) then begin
+
+    repeat
+
+     repeat
+      NextActions:=[];
+      for InstanceIndex:=0 to CurrentInstance.fDirectedAcyclicGraphInputDependencies.Count-1 do begin
+       OtherInstance:=CurrentInstance.fDirectedAcyclicGraphInputDependencies.RawItems[InstanceIndex];
+       OtherInstanceProcessState:=TPasMPInterlocked.Read(OtherInstance.fProcessState);
+       if (OtherInstanceProcessState and TpvScene3D.TGroup.TInstance.ProcessStateDone)=0 then begin
+        if (OtherInstanceProcessState and TpvScene3D.TGroup.TInstance.ProcessStateJobAllocated)<>0 then begin
+         // Instance has already an allocated job => Wait
+         Include(NextActions,TNextAction.Wait);
+         break;
+        end else begin
+         // Instance has no allocated job yet => Process it immediately for avoid dead-locks
+         ProcessDirectedAcyclicGraphInstanceRecursive(OtherInstance);
+         Include(NextActions,TNextAction.Retry);
+        end;
+       end;
+      end;
+      if (TNextAction.Wait in NextActions) and not fPasMPInstance.StealAndExecuteJob then begin
+       TPasMP.Yield;
+      end;
+     until (NextActions*[TNextAction.Wait,TNextAction.Retry])=[];
+
+     if CurrentInstance.ProcessStateTestAndSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateProcessing) then begin
+      try
+       ProcessDirectedAcyclicGraphRealInstance(CurrentInstance);
+      finally
+       CurrentInstance.ProcessStateSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateDone);
+      end;
+      if CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count>0 then begin
+       if length(CurrentInstance.fDirectedAcyclicGraphPasMPJobs)<>CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count then begin
+        SetLength(CurrentInstance.fDirectedAcyclicGraphPasMPJobs,CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count);
+       end;
+       CountInstanceJobs:=0;
+       for InstanceIndex:=0 to CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count-1 do begin
+        OtherInstance:=CurrentInstance.fDirectedAcyclicGraphOutputDependencies.RawItems[InstanceIndex];
+        if TPasMPInterlocked.Decrement(OtherInstance.fRemainingDirectedAcyclicGraphInputDependencies)<=0 then begin
+         CurrentInstance.fDirectedAcyclicGraphPasMPJobs[InstanceIndex]:=CreateDirectedAcyclicGraphInstanceLeafsToRootJob(aJob,OtherInstance);
+         inc(CountInstanceJobs);
+        end else begin
+         CurrentInstance.fDirectedAcyclicGraphPasMPJobs[InstanceIndex]:=nil;
+        end;
+       end;
+       if CountInstanceJobs>0 then begin
+        PasMPInstance.Invoke(CurrentInstance.fDirectedAcyclicGraphPasMPJobs);
+       end;
+      end;
+      break;
+     end;
+
+    until CurrentInstance.ProcessStateIsBitMaskSet(TpvScene3D.TGroup.TInstance.ProcessStateDone);
+
+   end;
+
   end;
 
  end;
