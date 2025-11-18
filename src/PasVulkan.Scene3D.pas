@@ -33298,21 +33298,8 @@ begin
 end;
 
 procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
-var JobWorkerThread:TPasMPJobWorkerThread;
 begin
-
- JobWorkerThread:=fPasMPInstance.JobWorkerThreads[aThreadIndex];
-
-{if (JobWorkerThread.AreaMask and UInt32($80000000))<>0 then begin
-
-  TPasMPInterlocked.BitwiseOr(aJob^.InternalData,PasMPJobFlagRequeue);
-
- end else}begin
-
-  ProcessDirectedAcyclicGraphInstance(aJob^.Data,aJob);
-
- end;
-
+ ProcessDirectedAcyclicGraphInstance(aJob^.Data,aJob);
 end;
 
 procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
