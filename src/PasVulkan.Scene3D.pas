@@ -23065,6 +23065,8 @@ begin
 
  fAssignedVirtualInstanceRenderInstance:=nil;
 
+ fSceneInstance.InvalidateDirectedAcyclicGraph;
+
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TRenderInstance.Destroy;
