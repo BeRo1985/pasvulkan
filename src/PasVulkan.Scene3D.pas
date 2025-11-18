@@ -4240,7 +4240,7 @@ type EpvScene3D=class(Exception);
        function CreateDirectedAcyclicGraphInstanceLeafsToRootJob(const aParentJob:PPasMPJob;const aInstance:TpvScene3D.TGroup.TInstance):PPasMPJob;
        procedure ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
        procedure ProcessDirectedAcyclicGraphInstanceRecursive(const aInstance:TpvScene3D.TGroup.TInstance);
-       procedure ProcessDirectedAcyclicGraphInstance(const aInstance:TpvScene3D.TGroup.TInstance);
+       procedure ProcessDirectedAcyclicGraphInstance(const aInstance:TpvScene3D.TGroup.TInstance;const aJob:PPasMPJob);
        procedure ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
        procedure ProcessDirectedAcyclicGraphInstanceParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
        procedure ProcessDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
@@ -33219,7 +33219,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.ProcessDirectedAcyclicGraphInstance(const aInstance:TpvScene3D.TGroup.TInstance);
+procedure TpvScene3D.ProcessDirectedAcyclicGraphInstance(const aInstance:TpvScene3D.TGroup.TInstance;const aJob:PPasMPJob);
 type TNextAction=
       (
        Wait,
@@ -33276,7 +33276,7 @@ begin
       for InstanceIndex:=0 to CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count-1 do begin
        OtherInstance:=CurrentInstance.fDirectedAcyclicGraphOutputDependencies.RawItems[InstanceIndex];
        if TPasMPInterlocked.Decrement(OtherInstance.fRemainingDirectedAcyclicGraphInputDependencies)<=0 then begin
-        CurrentInstance.fDirectedAcyclicGraphPasMPJobs[InstanceIndex]:=CreateDirectedAcyclicGraphInstanceLeafsToRootJob(nil,OtherInstance);
+        CurrentInstance.fDirectedAcyclicGraphPasMPJobs[InstanceIndex]:=CreateDirectedAcyclicGraphInstanceLeafsToRootJob(aJob,OtherInstance);
         inc(CountInstanceJobs);
        end else begin
         CurrentInstance.fDirectedAcyclicGraphPasMPJobs[InstanceIndex]:=nil;
@@ -33309,7 +33309,7 @@ begin
 
  end else}begin
 
-  ProcessDirectedAcyclicGraphInstance(aJob^.Data);
+  ProcessDirectedAcyclicGraphInstance(aJob^.Data,aJob);
 
  end;
 
@@ -33319,7 +33319,7 @@ procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceParallelForJob(const aJo
 var Index:TPasMPNativeInt;
 begin
  for Index:=aFromIndex to aToIndex do begin
-  ProcessDirectedAcyclicGraphInstance(fDirectedAcyclicGraphLeafInstances.RawItems[Index]);
+  ProcessDirectedAcyclicGraphInstance(fDirectedAcyclicGraphLeafInstances.RawItems[Index],aJob);
  end;
 end;
 
