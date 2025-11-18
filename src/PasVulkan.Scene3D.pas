@@ -4272,6 +4272,7 @@ type EpvScene3D=class(Exception);
        procedure ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure Check(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+       procedure DumpUpdateProfilingTimes;
        procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
        procedure ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
@@ -33597,6 +33598,23 @@ begin
  write(pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000:5:2,'ms ');
  writeln(pvApplication.HighResolutionTimer.ToFloatSeconds(TotalCPUTime)*1000:5:2,'ms');    //}
 
+end;
+
+procedure TpvScene3D.DumpUpdateProfilingTimes;
+begin
+ Writeln('Instance Update Profiling Times (in milliseconds):');
+ Writeln(' Reset Time: ',fInstanceTimeResetSum:7:5,' ms');
+ Writeln(' Camera Time: ',fInstanceTimeCameraSum:7:5,' ms');
+ Writeln(' Material Time: ',fInstanceTimeMaterialSum:7:5,' ms');
+ Writeln(' Animation Time: ',fInstanceTimeAnimationTimeSum:7:5,' ms');
+ Writeln(' Base Overwrite Time: ',fInstanceTimeBaseOverwriteTimeSum:7:5,' ms');
+ Writeln(' Light Time: ',fInstanceTimeLightSum:7:5,' ms');
+ Writeln(' Node Process Time: ',fInstanceTimeProcessNodesSum:7:5,' ms');
+ Writeln(' Skin Time: ',fInstanceTimeSkinsSum:7:5,' ms');
+ Writeln(' Bounding Time: ',fInstanceTimeBoundingSum:7:5,' ms');
+ Writeln(' Potentially Visible Set Time: ',fInstanceTimePotentiallyVisibleSetSum:7:5,' ms');
+ Writeln(' Render Instance Time: ',fInstanceTimeRenderInstanceSum:7:5,' ms');
+ Writeln(' AABB Tree Time: ',fInstanceTimeAABBTreeSum:7:5,' ms');
 end;
 
 procedure TpvScene3D.CollectLights(var aLightItemArray:TpvScene3D.TLightItems;
