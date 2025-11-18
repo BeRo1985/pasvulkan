@@ -4240,7 +4240,9 @@ type EpvScene3D=class(Exception);
        function CreateDirectedAcyclicGraphInstanceLeafsToRootJob(const aParentJob:PPasMPJob;const aInstance:TpvScene3D.TGroup.TInstance):PPasMPJob;
        procedure ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
        procedure ProcessDirectedAcyclicGraphInstanceRecursive(const aInstance:TpvScene3D.TGroup.TInstance);
+       procedure ProcessDirectedAcyclicGraphInstance(const aInstance:TpvScene3D.TGroup.TInstance);
        procedure ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+       procedure ProcessDirectedAcyclicGraphInstanceParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
        procedure ProcessDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
       public
        class function DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; overload; static;
@@ -33217,7 +33219,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+procedure TpvScene3D.ProcessDirectedAcyclicGraphInstance(const aInstance:TpvScene3D.TGroup.TInstance);
 type TNextAction=
       (
        Wait,
@@ -33228,7 +33230,75 @@ var InstanceIndex,CountInstanceJobs:TpvSizeInt;
     CurrentInstance,OtherInstance:TpvScene3D.TGroup.TInstance;
     OtherInstanceProcessState:TpvUInt32;
     NextActions:TNextActions;
-    JobWorkerThread:TPasMPJobWorkerThread;
+begin
+
+ CurrentInstance:=aInstance;
+
+ if assigned(CurrentInstance) then begin
+
+  if CurrentInstance.ProcessStateTestAndSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateJobPreprocessing) then begin
+
+   repeat
+
+    repeat
+     NextActions:=[];
+     for InstanceIndex:=0 to CurrentInstance.fDirectedAcyclicGraphInputDependencies.Count-1 do begin
+      OtherInstance:=CurrentInstance.fDirectedAcyclicGraphInputDependencies.RawItems[InstanceIndex];
+      OtherInstanceProcessState:=TPasMPInterlocked.Read(OtherInstance.fProcessState);
+      if (OtherInstanceProcessState and TpvScene3D.TGroup.TInstance.ProcessStateDone)=0 then begin
+       if (OtherInstanceProcessState and TpvScene3D.TGroup.TInstance.ProcessStateJobAllocated)<>0 then begin
+        // Instance has already an allocated job => Wait
+        Include(NextActions,TNextAction.Wait);
+        break;
+       end else begin
+        // Instance has no allocated job yet => Process it immediately for avoid dead-locks
+        ProcessDirectedAcyclicGraphInstanceRecursive(OtherInstance);
+        Include(NextActions,TNextAction.Retry);
+       end;
+      end;
+     end;
+     if (TNextAction.Wait in NextActions) and not fPasMPInstance.StealAndExecuteJob then begin
+      TPasMP.Yield;
+     end;
+    until (NextActions*[TNextAction.Wait,TNextAction.Retry])=[];
+
+    if CurrentInstance.ProcessStateTestAndSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateProcessing) then begin
+     try
+      ProcessDirectedAcyclicGraphRealInstance(CurrentInstance);
+     finally
+      CurrentInstance.ProcessStateSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateDone);
+     end;
+     if CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count>0 then begin
+      if length(CurrentInstance.fDirectedAcyclicGraphPasMPJobs)<>CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count then begin
+       SetLength(CurrentInstance.fDirectedAcyclicGraphPasMPJobs,CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count);
+      end;
+      CountInstanceJobs:=0;
+      for InstanceIndex:=0 to CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count-1 do begin
+       OtherInstance:=CurrentInstance.fDirectedAcyclicGraphOutputDependencies.RawItems[InstanceIndex];
+       if TPasMPInterlocked.Decrement(OtherInstance.fRemainingDirectedAcyclicGraphInputDependencies)<=0 then begin
+        CurrentInstance.fDirectedAcyclicGraphPasMPJobs[InstanceIndex]:=CreateDirectedAcyclicGraphInstanceLeafsToRootJob(nil,OtherInstance);
+        inc(CountInstanceJobs);
+       end else begin
+        CurrentInstance.fDirectedAcyclicGraphPasMPJobs[InstanceIndex]:=nil;
+       end;
+      end;
+      if CountInstanceJobs>0 then begin
+       fPasMPInstance.Invoke(CurrentInstance.fDirectedAcyclicGraphPasMPJobs);
+      end;
+     end;
+     break;
+    end;
+
+   until CurrentInstance.ProcessStateIsBitMaskSet(TpvScene3D.TGroup.TInstance.ProcessStateDone);
+
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+var JobWorkerThread:TPasMPJobWorkerThread;
 begin
 
  JobWorkerThread:=fPasMPInstance.JobWorkerThreads[aThreadIndex];
@@ -33239,78 +33309,25 @@ begin
 
  end else}begin
 
-  CurrentInstance:=aJob^.Data;
-
-  if assigned(CurrentInstance) then begin
-
-   if CurrentInstance.ProcessStateTestAndSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateJobPreprocessing) then begin
-
-    repeat
-
-     repeat
-      NextActions:=[];
-      for InstanceIndex:=0 to CurrentInstance.fDirectedAcyclicGraphInputDependencies.Count-1 do begin
-       OtherInstance:=CurrentInstance.fDirectedAcyclicGraphInputDependencies.RawItems[InstanceIndex];
-       OtherInstanceProcessState:=TPasMPInterlocked.Read(OtherInstance.fProcessState);
-       if (OtherInstanceProcessState and TpvScene3D.TGroup.TInstance.ProcessStateDone)=0 then begin
-        if (OtherInstanceProcessState and TpvScene3D.TGroup.TInstance.ProcessStateJobAllocated)<>0 then begin
-         // Instance has already an allocated job => Wait
-         Include(NextActions,TNextAction.Wait);
-         break;
-        end else begin
-         // Instance has no allocated job yet => Process it immediately for avoid dead-locks
-         ProcessDirectedAcyclicGraphInstanceRecursive(OtherInstance);
-         Include(NextActions,TNextAction.Retry);
-        end;
-       end;
-      end;
-      if (TNextAction.Wait in NextActions) and not fPasMPInstance.StealAndExecuteJob then begin
-       TPasMP.Yield;
-      end;
-     until (NextActions*[TNextAction.Wait,TNextAction.Retry])=[];
-
-     if CurrentInstance.ProcessStateTestAndSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateProcessing) then begin
-      try
-       ProcessDirectedAcyclicGraphRealInstance(CurrentInstance);
-      finally
-       CurrentInstance.ProcessStateSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateDone);
-      end;
-      if CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count>0 then begin
-       if length(CurrentInstance.fDirectedAcyclicGraphPasMPJobs)<>CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count then begin
-        SetLength(CurrentInstance.fDirectedAcyclicGraphPasMPJobs,CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count);
-       end;
-       CountInstanceJobs:=0;
-       for InstanceIndex:=0 to CurrentInstance.fDirectedAcyclicGraphOutputDependencies.Count-1 do begin
-        OtherInstance:=CurrentInstance.fDirectedAcyclicGraphOutputDependencies.RawItems[InstanceIndex];
-        if TPasMPInterlocked.Decrement(OtherInstance.fRemainingDirectedAcyclicGraphInputDependencies)<=0 then begin
-         CurrentInstance.fDirectedAcyclicGraphPasMPJobs[InstanceIndex]:=CreateDirectedAcyclicGraphInstanceLeafsToRootJob(aJob,OtherInstance);
-         inc(CountInstanceJobs);
-        end else begin
-         CurrentInstance.fDirectedAcyclicGraphPasMPJobs[InstanceIndex]:=nil;
-        end;
-       end;
-       if CountInstanceJobs>0 then begin
-        fPasMPInstance.Invoke(CurrentInstance.fDirectedAcyclicGraphPasMPJobs);
-       end;
-      end;
-      break;
-     end;
-
-    until CurrentInstance.ProcessStateIsBitMaskSet(TpvScene3D.TGroup.TInstance.ProcessStateDone);
-
-   end;
-
-  end;
+  ProcessDirectedAcyclicGraphInstance(aJob^.Data);
 
  end;
 
+end;
+
+procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var Index:TPasMPNativeInt;
+begin
+ for Index:=aFromIndex to aToIndex do begin
+  ProcessDirectedAcyclicGraphInstance(fDirectedAcyclicGraphLeafInstances.RawItems[Index]);
+ end;
 end;
 
 procedure TpvScene3D.ProcessDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
 var Index,GroupInstanceIndex:TpvSizeInt;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     Group:TpvScene3D.TGroup;
-    Job:PPasMPJob;
+    DirectedAcyclicGraphInstanceParallelForJob:PPasMPJob;
     Update_Groups_Data:TpvScene3D_Update_Groups_Data;
 begin
 
@@ -33324,27 +33341,43 @@ begin
    GroupInstance.fRemainingDirectedAcyclicGraphInputDependencies:=GroupInstance.fDirectedAcyclicGraphInputDependencies.Count;
   end;
 
-  if length(fDirectedAcyclicGraphLeafInstancePasMPJobs)<>fDirectedAcyclicGraphLeafInstances.Count then begin
-   SetLength(fDirectedAcyclicGraphLeafInstancePasMPJobs,fDirectedAcyclicGraphLeafInstances.Count);
-  end;
-
-  for Index:=0 to fDirectedAcyclicGraphLeafInstances.Count-1 do begin
-   fDirectedAcyclicGraphLeafInstancePasMPJobs[Index]:=CreateDirectedAcyclicGraphInstanceLeafsToRootJob(nil,fDirectedAcyclicGraphLeafInstances.RawItems[Index]);
-  end;
+  DirectedAcyclicGraphInstanceParallelForJob:=fPasMPInstance.ParallelFor(
+   nil,
+   0,
+   fDirectedAcyclicGraphLeafInstances.Count-1,
+   ProcessDirectedAcyclicGraphInstanceParallelForJob,
+   1,
+   PasMPDefaultDepth,
+   nil,
+   0,
+   PasMPAreaMaskUpdate,
+   PasMPAreaMaskRender,
+   true
+  );
 
   if fGroups.Count>0 then begin
    Update_Groups_Data.Groups:=fGroups;
    Update_Groups_Data.InFlightFrameIndex:=aInFlightFrameIndex;
-   Job:=fPasMPInstance.ParallelFor(@Update_Groups_Data,0,fGroups.Count-1,TpvScene3D_Update_Groups,1,PasMPDefaultDepth,nil);
-   fPasMPInstance.Run(Job);
+   fPasMPInstance.Invoke(
+    [
+     fPasMPInstance.ParallelFor(
+      @Update_Groups_Data,
+      0,
+      fGroups.Count-1,
+      TpvScene3D_Update_Groups,
+      1,
+      PasMPDefaultDepth,
+      nil,
+      0,
+      PasMPAreaMaskUpdate,
+      PasMPAreaMaskRender,
+      true
+     ),
+     DirectedAcyclicGraphInstanceParallelForJob
+    ]
+   );
   end else begin
-   Job:=nil;
-  end;
-
-  fPasMPInstance.Invoke(fDirectedAcyclicGraphLeafInstancePasMPJobs);
-
-  if assigned(Job) then begin
-   fPasMPInstance.WaitRelease(Job);
+   fPasMPInstance.Invoke(DirectedAcyclicGraphInstanceParallelForJob); 
   end;
 
  end else begin
