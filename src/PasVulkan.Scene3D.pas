@@ -4171,6 +4171,9 @@ type EpvScene3D=class(Exception);
        fDirectedAcyclicGraphGeneration:TPasMPUInt32;
        fLastDirectedAcyclicGraphGeneration:TPasMPUInt32;
        fDirectedAcyclicGraphInFlightFrameIndex:TpvSizeInt;
+       fTimeSortGPUInstances:TpvDouble;
+       fTimeRebuildDirectedAcyclicGraph:TpvDouble;
+       fTimeProcessDirectedAcyclicGraph:TpvDouble;
       public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -4491,6 +4494,9 @@ type EpvScene3D=class(Exception);
        property PasMPInstance:TPasMP read fPasMPInstance write fPasMPInstance;
        property UseOwnPasMPInstance:Boolean read fUseOwnPasMPInstance write fUseOwnPasMPInstance;
        property LoadGLTFTimeDuration:TpvDouble read fLoadGLTFTimeDuration;
+       property TimeSortGPUInstances:TpvDouble read fTimeSortGPUInstances;
+       property TimeRebuildDirectedAcyclicGraph:TpvDouble read fTimeRebuildDirectedAcyclicGraph;
+       property TimeProcessDirectedAcyclicGraph:TpvDouble read fTimeProcessDirectedAcyclicGraph;
        property ProceduralTextureImageHookStringHashMap:TProceduralTextureImageHookStringHashMap read fProceduralTextureImageHookStringHashMap;
      end;
 
@@ -33194,6 +33200,7 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     Atmosphere:TpvScene3DAtmosphere;
     Sphere:TpvSphere;
     StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+    PartStartCPUTime,PartEndCPUTime,PartCPUTime:TpvHighResolutionTime;
     Update_VirtualInstanceManagerGroups_Data:TpvScene3D_Update_VirtualInstanceManagerGroups_Data;
 begin
 
@@ -33294,11 +33301,23 @@ begin
   fGroupInstanceListLock.Acquire;
   try
 
+   PartStartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    fGroupInstances.Sort;
+   PartEndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+   PartCPUTime:=PartEndCPUTime-PartStartCPUTime;
+   fTimeSortGPUInstances:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0; // in ms
 
+   PartStartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    RebuildDirectedAcyclicGraph(aInFlightFrameIndex);
+   PartEndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+   PartCPUTime:=PartEndCPUTime-PartStartCPUTime;
+   fTimeRebuildDirectedAcyclicGraph:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0; // in ms
 
+   PartStartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    ProcessDirectedAcyclicGraph(aInFlightFrameIndex);
+   PartEndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+   PartCPUTime:=PartEndCPUTime-PartStartCPUTime;
+   fTimeProcessDirectedAcyclicGraph:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0; // in ms
 
   finally
    fGroupInstanceListLock.Release;
