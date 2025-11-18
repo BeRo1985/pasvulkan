@@ -27485,7 +27485,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
-{$undef UpdateProfilingTimes}
+{$define UpdateProfilingTimes}
 var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     WeightSum,WeightOverFactor:TpvDouble;
     Scene:TpvScene3D.TGroup.TScene;
@@ -27970,8 +27970,9 @@ begin
         end else begin
          RenderInstance.fFirst:=true;
          RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
-         TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
-         RenderInstance.RemoveLights;
+         if (TPasMPInterlocked.ExchangeBitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex)) and (TpvUInt32(1) shl aInFlightFrameIndex))<>0 then begin
+          RenderInstance.RemoveLights;
+         end;
         end;
        end;
       end;
