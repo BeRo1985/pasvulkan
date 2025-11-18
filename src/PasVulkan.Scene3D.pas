@@ -33156,7 +33156,7 @@ begin
   aInstance.ProcessStateSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateDone);
   for InstanceIndex:=0 to aInstance.fDirectedAcyclicGraphOutputDependencies.Count-1 do begin
    OtherInstance:=aInstance.fDirectedAcyclicGraphOutputDependencies.RawItems[InstanceIndex];
-   if (TPasMPInterlocked.Decrement(OtherInstance.fRemainingDirectedAcyclicGraphInputDependencies)<=0) and not aInstance.ProcessStateIsAnyBitMaskSet(TpvScene3D.TGroup.TInstance.ProcessStateJobAllocated or TpvScene3D.TGroup.TInstance.ProcessStateProcessing) then begin
+   if (TPasMPInterlocked.Decrement(OtherInstance.fRemainingDirectedAcyclicGraphInputDependencies)<=0) and not OtherInstance.ProcessStateIsAnyBitMaskSet(TpvScene3D.TGroup.TInstance.ProcessStateJobAllocated or TpvScene3D.TGroup.TInstance.ProcessStateProcessing) then begin
     ProcessDirectedAcyclicGraphInstanceRecursive(OtherInstance);
    end;
   end;
