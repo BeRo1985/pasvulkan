@@ -33245,7 +33245,7 @@ begin
         end;
        end;
        if CountInstanceJobs>0 then begin
-        PasMPInstance.Invoke(CurrentInstance.fDirectedAcyclicGraphPasMPJobs);
+        fPasMPInstance.Invoke(CurrentInstance.fDirectedAcyclicGraphPasMPJobs);
        end;
       end;
       break;
