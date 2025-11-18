@@ -27887,8 +27887,12 @@ begin
   end;
 
   // Update the model matrix of the assigned non-virtual instance, if applicable. Needed for appendages and similar.
-  if fVirtual and assigned(fAssignedNonVirtualInstance) and assigned(fAssignedNonVirtualInstanceRenderInstance) then begin
-   fAssignedNonVirtualInstanceRenderInstance.ModelMatrix:=fModelMatrix;
+  if fVirtual and assigned(fAssignedNonVirtualInstance) then begin
+   if assigned(fAssignedNonVirtualInstanceRenderInstance) then begin
+    fAssignedNonVirtualInstanceRenderInstance.ModelMatrix:=fModelMatrix;
+   end else begin
+    fAssignedNonVirtualInstance.ModelMatrix:=fModelMatrix;
+   end;
   end;
 
   fPreviousActive:=true;
