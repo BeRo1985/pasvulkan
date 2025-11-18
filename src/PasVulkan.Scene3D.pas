@@ -262,15 +262,15 @@ type EpvScene3D=class(Exception);
             end;
             TFileType=
              (
-              Unknown, 
+              Unknown,
               PVMF,
               GLTF,
               SAM,
               WavefrontOBJ,
-              ColladaDAE, 
+              ColladaDAE,
               FBX
              );
-            PFileType=^TFileType; 
+            PFileType=^TFileType;
             TVkPrimitiveTopologySet=set of TVkPrimitiveTopology;
             TUInt32Vector4=array[0..3] of TpvUInt32;
             TUInt16Vector4=array[0..3] of TpvUInt16;
@@ -522,7 +522,7 @@ type EpvScene3D=class(Exception);
             TGPUCachedRaytracingVertices=array of TGPUCachedRaytracingVertex;
             { TGPUInstanceData }
             TGPUInstanceData=packed record // 128 bytes per instance data for now, can be extended later
-             
+
              // uvec4 begin
              Selected:TpvFloat;
              Dissolve:TpvFloat;
@@ -1489,7 +1489,7 @@ type EpvScene3D=class(Exception);
                      HologramScanMax:0;
                      HologramGlowTiling:0;
                      HologramGlowSpeed:0;
-                     HologramGlowMin:0;                     
+                     HologramGlowMin:0;
                      HologramGlowMax:0;
                      AlphaCutOff:1.0;
                      Flags:0;
@@ -1872,7 +1872,7 @@ type EpvScene3D=class(Exception);
              ParticleVertices:TVkDeviceSize;
              ReferencedPlanetDataArray:TVkDeviceSize;
             end;
-            PGPURaytracingData=^TGPURaytracingData;            
+            PGPURaytracingData=^TGPURaytracingData;
             { TVulkanLongTermStaticBufferData }
             TVulkanLongTermStaticBufferData=class
              private
@@ -1909,7 +1909,7 @@ type EpvScene3D=class(Exception);
              published
               property BufferData:TVulkanLongTermStaticBufferData read fBufferData;
             end;
-            { TVulkanShortTermDynamicBufferData } 
+            { TVulkanShortTermDynamicBufferData }
             TVulkanShortTermDynamicBufferData=class
              private
               fSceneInstance:TpvScene3D;
@@ -2052,7 +2052,7 @@ type EpvScene3D=class(Exception);
                                    PointerMaterialPBRAnisotropyStrength,
                                    PointerMaterialPBRAnisotropyRotation,
                                    PointerMaterialPBRDispersion,
-                                   PointerMaterialHologramDirection,        
+                                   PointerMaterialHologramDirection,
                                    PointerMaterialHologramFlickerSpeed,
                                    PointerMaterialHologramFlickerMin,
                                    PointerMaterialHologramFlickerMax,
@@ -3124,7 +3124,7 @@ type EpvScene3D=class(Exception);
                      fActive:boolean;
                      fUpdateDynamic:TPasMPBool32;
                      fOrder:TpvInt64;
-                     fHeadless:boolean;                     
+                     fHeadless:boolean;
                      fVirtual:boolean;
                      fPreviousAssignedNonVirtualInstance:TInstance;
                      fAssignedNonVirtualInstance:TInstance;
@@ -3271,6 +3271,21 @@ type EpvScene3D=class(Exception);
                     public
                      function AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4;const aIgnoreScale:Boolean):Boolean;
                      function DetachFrom:Boolean;
+                    private
+                     procedure ResetLights(const aResetOverwrites:Boolean);
+                     procedure ResetCameras(const aResetOverwrites:Boolean);
+                     procedure ResetMaterials(const aResetOverwrites:Boolean);
+                     procedure ResetNodes(const aResetOverwrites:Boolean);
+                     procedure ProcessBaseOverwrite(const aFactor:TPasGLTFFloat);
+                     procedure ProcessAnimation(const aAnimationIndex:TpvSizeInt;const aAnimationTime:TpvDouble;const aFactor:TpvFloat);
+                     procedure ProcessNode(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty:boolean);
+                     procedure ProcessSkins;
+                     procedure ProcessBoundingBoxNodeRecursive(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt);
+                     procedure ProcessBoundingSceneBoxNodesWithManualStack(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene);
+                     procedure ProcessBoundingSceneBoxNodes(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene);
+                     procedure ProcessMorphSkinNode(const aInFlightFrameIndex:TpvSizeInt;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode);
+                     procedure ProcessSkinNode(const aInFlightFrameIndex:TpvSizeInt;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode);
+                     procedure GenerateAABBTreeSkipList(const aInFlightFrameIndex:TpvSizeInt);
                     public
                      procedure Check(const aInFlightFrameIndex:TpvSizeInt);
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
@@ -3553,7 +3568,7 @@ type EpvScene3D=class(Exception);
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
               procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
               procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-             public 
+             public
               procedure StoreAnimationStates;
               procedure InterpolateAnimationStates(const aAlpha:TpvDouble);
              public
@@ -3687,7 +3702,7 @@ type EpvScene3D=class(Exception);
              public
              private
               fSceneInstance:TpvScene3D;
-              fActive:TPasMPBool32;            // Indicates if culling is active at updating. Render culling is another thing.   
+              fActive:TPasMPBool32;            // Indicates if culling is active at updating. Render culling is another thing.
               fViewMatrix:TpvMatrix4x4D;       // View matrix for culling
               fProjectionMatrix:TpvMatrix4x4D; // Projection matrix for culling (for VR, the FOV should be larger than it is actually, so that the frustum should be contain both eyes)
               fCameraPosition:TpvVector3D;     // Camera position for culling (needed for shadows behind the camera, since things behind the camera are not inside the frustum)
@@ -5029,7 +5044,7 @@ type { TPOCAScene3DGroup }
        function getAnimationID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function getSceneID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function createAnimation(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
-       function setMaterialHologram(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue; 
+       function setMaterialHologram(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
      end;
 
 { TPOCAScene3DGroup }
@@ -5530,7 +5545,7 @@ begin
    fSceneInstance.ReleaseGPUInstanceDataIndex(fGPUInstanceDataIndex);
   finally
    fGPUInstanceDataIndex:=0;
-  end; 
+  end;
  end;
  inherited Destroy;
 end;
@@ -5723,7 +5738,7 @@ end;
 
 function TpvScene3D.TInstanceData.GetColorKeysActive:Boolean;
 begin
- result:=(GPUInstanceData^.Flags and TpvUInt32(TpvUInt32(1) shl 0))<>0; 
+ result:=(GPUInstanceData^.Flags and TpvUInt32(TpvUInt32(1) shl 0))<>0;
 end;
 
 procedure TpvScene3D.TInstanceData.SetColorKeysActive(const aValue:Boolean);
@@ -6767,7 +6782,7 @@ begin
 end;
 
 { TpvScene3D.TRaytracingGroupInstanceNode }
-            
+
 constructor TpvScene3D.TRaytracingGroupInstanceNode.Create(const aSceneInstance:TpvScene3D;
                                                            const aGroup:TpvScene3D.TGroup;
                                                            const aInstance:TpvScene3D.TGroup.TInstance;
@@ -6887,7 +6902,7 @@ begin
  // This check is to avoid empty BLASes when the mesh compute shader does not generate any geometry for the current frame yet, because
  // the mesh compute shader processes only active stuff. In the case of async loading, the mesh compute shader may not have processed
  // the vertices yet, so we have to wait until the geometry is processed, and then we can generate the BLASes for the first time.
- // Otherwise the BLASes would contain empty or even random data (when using uninitialized memory), which would cause incorrect 
+ // Otherwise the BLASes would contain empty or even random data (when using uninitialized memory), which would cause incorrect
  // raytracing results.
  if (not fInitialized) and not (fInstance.fActives[aInFlightFrameIndex] and fInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]) then begin
   result:=false;
@@ -7034,7 +7049,7 @@ begin
 
      fDirty:=true;
 
-     // Do a full rebuild every 64 updates, to avoid too many rebuilds, but with a little bit of fake randomness on base of the 
+     // Do a full rebuild every 64 updates, to avoid too many rebuilds, but with a little bit of fake randomness on base of the
      // pointer address to avoid all BLASes being updated at the same time, which would cause a performance hit.
      inc(fUpdateCounter);
      fUpdateDirty:=fDynamicGeometry and (((fUpdateCounter+(TpvPtrUInt(self)*39157)) and 63)<>0);
@@ -7934,7 +7949,7 @@ begin
  finally
   FreeAndNil(StreamIO);
  end;
- 
+
 end;
 
 procedure TpvScene3D.TImage.AssignFromIES(const aName:TpvUTF8String;const aIESLoader:TpvIESLoader;const aExtendedLightProfile:Boolean);
@@ -8128,7 +8143,7 @@ begin
   FreeAndNil(StreamIO);
  end;
 
-end; 
+end;
 
 procedure TpvScene3D.TSampler.SaveToStream(const aStream:TStream);
 var StreamIO:TpvStreamIO;
@@ -8702,7 +8717,7 @@ begin
 end;
 
 // Ensure that the image and sampler are in linear lists for saving for later lookup at loading again, since they are
-// actually global resources and not part of the texture nor the model/group itself 
+// actually global resources and not part of the texture nor the model/group itself
 procedure TpvScene3D.TTexture.PrepareSaveToStream(const aImages,aSamplers,aTextures:TpvObjectList);
 begin
  if aImages.IndexOf(fImage)<0 then begin
@@ -8935,7 +8950,7 @@ begin
   end else begin
    Transform.AssignDefault;
    TexCoord:=0;
-  end; 
+  end;
 
  finally
   FreeAndNil(StreamIO);
@@ -8958,11 +8973,11 @@ begin
   end;
 
   StreamIO.WriteInt64(TextureIndex);
-  
+
   if TextureIndex>=0 then begin
    Transform.SaveToStream(aStream);
    StreamIO.WriteInt64(TexCoord);
-  end; 
+  end;
 
  finally
   FreeAndNil(StreamIO);
@@ -10093,7 +10108,7 @@ procedure TpvScene3D.TMaterial.SaveToStream(const aStream:TStream;const aImages,
 var StreamIO:TpvStreamIO;
     Flags:TpvUInt32;
 begin
- 
+
  StreamIO:=TpvStreamIO.Create(aStream);
  try
 
@@ -10139,7 +10154,7 @@ begin
   StreamIO.WriteVector4(fData.EmissiveFactor);
 
   fData.EmissiveTexture.SaveToStream(aStream,aTextures);
-  
+
   begin
 
    // PBRMetallicRoughness
@@ -10161,7 +10176,7 @@ begin
    StreamIO.WriteVector3(fData.PBRMetallicRoughness.SpecularColorFactor);
 
    fData.PBRMetallicRoughness.SpecularColorTexture.SaveToStream(aStream,aTextures);
-   
+
   end;
 
   begin
@@ -10285,7 +10300,7 @@ begin
    StreamIO.WriteFloat(fData.Volume.ThicknessFactor);
 
    fData.Volume.ThicknessTexture.SaveToStream(aStream,aTextures);
-   
+
    StreamIO.WriteVector3(fData.Volume.AttenuationColor);
 
    StreamIO.WriteFloat(fData.Volume.AttenuationDistance);
@@ -10303,7 +10318,7 @@ begin
    StreamIO.WriteFloat(fData.Anisotropy.AnisotropyRotation);
 
    fData.Anisotropy.AnisotropyTexture.SaveToStream(aStream,aTextures);
-   
+
   end;
 
   begin
@@ -10359,10 +10374,10 @@ begin
   StreamIO.WriteUInt64(fData.AnimatedTextureMask);
 
  finally
-  FreeAndNil(StreamIO); 
+  FreeAndNil(StreamIO);
  end;
 
-end; 
+end;
 
 procedure TpvScene3D.TMaterial.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
 var Index:TpvSizeInt;
@@ -10903,7 +10918,7 @@ end;
 
 procedure TpvScene3D.TMaterial.LoadHologramFromJSON(const aJSONItem:TPasJSONItem);
 var JSONObject:TPasJSONItemObject;
-    JSONItem:TPasJSONItem;    
+    JSONItem:TPasJSONItem;
 begin
  if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
   JSONObject:=TPasJSONItemObject(aJSONItem);
@@ -10958,7 +10973,7 @@ begin
   fData.Hologram.GlowSpeed:=TPasJSON.GetNumber(JSONObject.Properties['glowSpeed'],fData.Hologram.GlowSpeed);
   fData.Hologram.GlowMin:=TPasJSON.GetNumber(JSONObject.Properties['glowMin'],fData.Hologram.GlowMin);
   fData.Hologram.GlowMax:=TPasJSON.GetNumber(JSONObject.Properties['glowMax'],fData.Hologram.GlowMax);
- end; 
+ end;
 end;
 
 procedure TpvScene3D.TMaterial.FillShaderData;
@@ -11862,7 +11877,7 @@ begin
    end else begin
     fNode:=nil;
    end;
-  end; 
+  end;
 
   fObjectIndex:=StreamIO.ReadUInt32;
 
@@ -11878,7 +11893,7 @@ begin
   fStartIndex:=StreamIO.ReadInt64;
 
   fCountIndices:=StreamIO.ReadInt64;
-  
+
  finally
   FreeAndNil(StreamIO);
  end;
@@ -12086,7 +12101,7 @@ begin
      ((not assigned(fVulkanMorphTargetVertexBuffer)) or (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) or
      ((not assigned(fVulkanJointBlockBuffer)) or (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock)))) then begin
 
-   // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before) or the buffers are 
+   // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before) or the buffers are
    // not yet allocated.
 
    FreeAndNil(fVulkanComputeDescriptorSet);
@@ -12589,7 +12604,7 @@ begin
    FreeAndNil(fVulkanDrawUniqueIndexBuffer);
    FreeAndNil(fVulkanMorphTargetVertexBuffer);
    FreeAndNil(fVulkanJointBlockBuffer);
-  end; 
+  end;
  end;
 end;
 
@@ -12634,7 +12649,7 @@ begin
  end;
 end;
 
-{ TVulkanShortTermDynamicBufferData } 
+{ TVulkanShortTermDynamicBufferData }
 
 constructor TpvScene3D.TVulkanShortTermDynamicBufferData.Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt);
 begin
@@ -12678,7 +12693,7 @@ begin
      ((not assigned(fVulkanMorphTargetVertexWeightsBuffer)) or (fVulkanMorphTargetVertexWeightsBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvFloat)))) then begin
 
    // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before)
-   // or the buffers are not yet allocated 
+   // or the buffers are not yet allocated
 
    FreeAndNil(fVulkanComputeDescriptorSet);
    FreeAndNil(fVulkanComputeDescriptorPool);
@@ -12822,7 +12837,7 @@ begin
                                                       fSceneInstance.fVulkanNodeMatricesBufferData[fInFlightFrameIndex].Items[0],
                                                       fVulkanNodeMatricesBuffer,
                                                       0,
-                                                      fSceneInstance.fVulkanNodeMatricesBufferData[fInFlightFrameIndex].Count*SizeOf(TpvMatrix4x4)); 
+                                                      fSceneInstance.fVulkanNodeMatricesBufferData[fInFlightFrameIndex].Count*SizeOf(TpvMatrix4x4));
    end;
 
    if (not assigned(fVulkanMorphTargetVertexWeightsBuffer)) or (fVulkanMorphTargetVertexWeightsBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvFloat))) then begin
@@ -13395,7 +13410,7 @@ begin
           end else if TargetPointerStrings[4]='flickerSpeed' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed;
           end else if TargetPointerStrings[4]='flickerMin' then begin
-           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin; 
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin;
           end else if TargetPointerStrings[4]='flickerMax' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax;
           end else if TargetPointerStrings[4]='mainColor' then begin
@@ -13405,7 +13420,7 @@ begin
           end else if TargetPointerStrings[4]='rimColor' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor;
           end else if TargetPointerStrings[4]='rimAlpha' then begin
-           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha; 
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha;
           end else if TargetPointerStrings[4]='rimPower' then begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialHologramRimPower;
           end else if TargetPointerStrings[4]='rimThreshold' then begin
@@ -13481,7 +13496,7 @@ begin
  StreamIO:=TpvStreamIO.Create(aStream);
  try
 
-  fName:=StreamIO.ReadUTF8String; 
+  fName:=StreamIO.ReadUTF8String;
 
   fTarget:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget(TpvUInt32(StreamIO.ReadUInt32));
 
@@ -13599,7 +13614,7 @@ end;
 procedure TpvScene3D.TGroup.TAnimation.TDefaultChannel.LoadFromStream(const aStream:TStream);
 var StreamIO:TpvStreamIO;
 begin
- 
+
  StreamIO:=TpvStreamIO.Create(aStream);
  try
 
@@ -14010,7 +14025,7 @@ begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
  try
-  
+
   fName:=StreamIO.ReadUTF8String;
 
   fCameraData.Type_:=TCameraData.TCameraType(TpvUInt32(StreamIO.ReadUInt32));
@@ -14037,7 +14052,7 @@ begin
 
  finally
   FreeAndNil(StreamIO);
- end; 
+ end;
 
 end;
 
@@ -14047,7 +14062,7 @@ begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
  try
-  
+
   StreamIO.WriteUTF8String(fName);
 
   StreamIO.WriteUInt32(TpvUInt32(fCameraData.Type_));
@@ -14074,7 +14089,7 @@ begin
 
  finally
   FreeAndNil(StreamIO);
- end; 
+ end;
 
 end;
 
@@ -14231,7 +14246,7 @@ var Index,BaseIndex:TpvSizeInt;
  function ConvertFloatToString(const aValue:TpvFloat):TpvUTF8String;
  begin
   result:=ConvertDoubleToString(aValue,omStandard,-1);
- end;   
+ end;
  procedure WriteLine(const aLine:TpvUTF8String);
  begin
   if length(aLine)>0 then begin
@@ -14239,7 +14254,7 @@ var Index,BaseIndex:TpvSizeInt;
   end;
   if length(LineEnding)>0 then begin
    aStream.Write(LineEnding[1],length(LineEnding));
-  end; 
+  end;
  end;
 begin
  if assigned(fTemporaryVertices) and assigned(fTemporaryIndices) then begin
@@ -14276,8 +14291,8 @@ begin
                     IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+1]+1)+' '+
                     IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1)+'/'+IntToStr(fTemporaryIndices.ItemArray[(Index*3)+2]+1));
     end;
-   end; 
-  end; 
+   end;
+  end;
  end else if {(fStartBufferVertexOffset>=0) and} (fStartBufferVertexOffset<fMesh.fGroup.fVertices.Count) and
              {(fStartBufferIndexOffset>=0) and} (fStartBufferIndexOffset<fMesh.fGroup.fIndices.Count) and
              (fCountVertices>0) and (fCountIndices>0) then begin
@@ -14318,7 +14333,7 @@ begin
    end;
   end;
  end;
-end; 
+end;
 
 procedure TpvScene3D.TGroup.TMesh.TPrimitive.DumpToOBJ(const aFileName:string);
 var Stream:TMemoryStream;
@@ -14343,7 +14358,7 @@ var Index,OriginalCountIndices:TpvSizeInt;
     CanAlignXToZero,CanAlignYToZero:boolean;
     MaxOffset:TpvFloat;
 begin
- 
+
  if (fPrimitiveTopology<>TpvScene3D.TPrimitiveTopology.Triangles) or (fTemporaryVertices.Count=0) or
     (aTexCoordIndex<0) or (aTexCoordIndex>=2) then begin
   exit;
@@ -14353,7 +14368,7 @@ begin
 
  Index:=0;
  while (Index+2)<OriginalCountIndices do begin
-  
+
   VertexIndices[0]:=fTemporaryIndices.ItemArray[Index+0];
   VertexIndices[1]:=fTemporaryIndices.ItemArray[Index+1];
   VertexIndices[2]:=fTemporaryIndices.ItemArray[Index+2];
@@ -14395,9 +14410,9 @@ begin
     end else begin
      MustDuplicateVertices[1]:=true;
      UVOffsets[1].x:=UVOffsets[1].x+1.0;
-    end; 
+    end;
    end;
-   
+
    if abs((UVs[0]^.x+UVOffsets[0].x)-(UVs[2]^.x+UVOffsets[2].x))>0.5 then begin
     if (UVs[0]^.x+UVOffsets[0].x)<(UVs[2]^.x+UVOffsets[2].x) then begin
      MustDuplicateVertices[0]:=true;
@@ -14405,7 +14420,7 @@ begin
     end else begin
      MustDuplicateVertices[2]:=true;
      UVOffsets[2].x:=UVOffsets[2].x+1.0;
-    end; 
+    end;
    end;
 
    if abs((UVs[1]^.x+UVOffsets[1].x)-(UVs[2]^.x+UVOffsets[2].x))>0.5 then begin
@@ -14415,7 +14430,7 @@ begin
     end else begin
      MustDuplicateVertices[2]:=true;
      UVOffsets[2].x:=UVOffsets[2].x+1.0;
-    end; 
+    end;
    end;
 
    if abs((UVs[0]^.y+UVOffsets[0].y)-(UVs[1]^.y+UVOffsets[1].y))>0.5 then begin
@@ -14425,7 +14440,7 @@ begin
     end else begin
      MustDuplicateVertices[1]:=true;
      UVOffsets[1].y:=UVOffsets[1].y+1.0;
-    end; 
+    end;
    end;
 
    if abs((UVs[0]^.y+UVOffsets[0].y)-(UVs[2]^.y+UVOffsets[2].y))>0.5 then begin
@@ -14435,7 +14450,7 @@ begin
     end else begin
      MustDuplicateVertices[2]:=true;
      UVOffsets[2].y:=UVOffsets[2].y+1.0;
-    end; 
+    end;
    end;
 
    if abs((UVs[1]^.y+UVOffsets[1].y)-(UVs[2]^.y+UVOffsets[2].y))>0.5 then begin
@@ -14445,22 +14460,22 @@ begin
     end else begin
      MustDuplicateVertices[2]:=true;
      UVOffsets[2].y:=UVOffsets[2].y+1.0;
-    end; 
+    end;
    end;
 
    if MustDuplicateVertices[0] or MustDuplicateVertices[1] or MustDuplicateVertices[2] then begin
 
     // Check if we can align to zero
-    CanAlignXToZero:=((UVs[0]^.x+UVOffsets[0].x)>=1.0) and ((UVs[1]^.x+UVOffsets[1].x)>=1.0) and ((UVs[2]^.x+UVOffsets[2].x)>=1.0); 
+    CanAlignXToZero:=((UVs[0]^.x+UVOffsets[0].x)>=1.0) and ((UVs[1]^.x+UVOffsets[1].x)>=1.0) and ((UVs[2]^.x+UVOffsets[2].x)>=1.0);
     CanAlignYToZero:=((UVs[0]^.y+UVOffsets[0].y)>=1.0) and ((UVs[1]^.y+UVOffsets[1].y)>=1.0) and ((UVs[2]^.y+UVOffsets[2].y)>=1.0);
 
-    if CanAlignXToZero or CanAlignYToZero then begin 
+    if CanAlignXToZero or CanAlignYToZero then begin
 
-     // Try to find the common maximum offset for all UVs first, if possible, otherwise just subtract 1.0 as fallback, for to     
+     // Try to find the common maximum offset for all UVs first, if possible, otherwise just subtract 1.0 as fallback, for to
      // ensure that the UVs are in the range [0.0,1.0] after the offsets have been applied as much as possible. Anyway, when
      // the texture sampler is set to repeat, the UVs will be wrapped around anyway, so it doesn't matter if the UVs are in the
      // range [0.0,1.0] or not, but it's better for other aspects with working with the UVs, like for example for post processing
-     // and post editing of the UVs or even for texture coordinate quantization, to have them in the range [0.0,1.0] as much as 
+     // and post editing of the UVs or even for texture coordinate quantization, to have them in the range [0.0,1.0] as much as
      // possible.
 
      if CanAlignXToZero then begin
@@ -14473,7 +14488,7 @@ begin
        UVOffsets[0].x:=UVOffsets[0].x-1.0;
        UVOffsets[1].x:=UVOffsets[1].x-1.0;
        UVOffsets[2].x:=UVOffsets[2].x-1.0;
-      end; 
+      end;
      end;
 
      if CanAlignYToZero then begin
@@ -14521,7 +14536,7 @@ begin
        UVs[0]:=@fTemporaryVertices.ItemArray[VertexIndices[0]].TexCoord0;
       end else begin
        UVs[0]:=@fTemporaryVertices.ItemArray[VertexIndices[0]].TexCoord1;
-      end; 
+      end;
       UVs[0]^:=UVs[0]^+UVOffsets[0];
      end;
      if MustDuplicateVertices[1] then begin
@@ -14543,15 +14558,15 @@ begin
       UVs[2]^:=UVs[2]^+UVOffsets[2];
      end;
 
-    end; 
+    end;
 
     fTemporaryIndices.ItemArray[Index+0]:=VertexIndices[0];
     fTemporaryIndices.ItemArray[Index+1]:=VertexIndices[1];
     fTemporaryIndices.ItemArray[Index+2]:=VertexIndices[2];
 
-   end;  
+   end;
 
-  end;  
+  end;
 
   inc(Index,3);
 
@@ -14639,7 +14654,7 @@ begin
     fTargetHashMap.Add(Target.Name,Target);
    finally
     Target.fIndex:=fTargets.Add(Target);
-   end; 
+   end;
   end;
 
   fMorphTargetBaseIndex:=StreamIO.ReadInt64;
@@ -14653,13 +14668,13 @@ begin
 
    NodeMeshPrimitiveInstance:=TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance.Create;
    try
-  
+
     NodeMeshPrimitiveInstance.fMorphTargetBaseIndex:=StreamIO.ReadInt64;
     NodeMeshPrimitiveInstance.fStartBufferVertexOffset:=StreamIO.ReadInt64;
     NodeMeshPrimitiveInstance.fStartBufferIndexOffset:=StreamIO.ReadInt64;
     NodeMeshPrimitiveInstance.fStartBufferDrawIndexOffset:=StreamIO.ReadInt64;
 
-    // Fix material IDs in the vertices, since these could be different after re-loading 
+    // Fix material IDs in the vertices, since these could be different after re-loading
     Vertex:=@fMesh.fGroup.fVertices.ItemArray[NodeMeshPrimitiveInstance.fStartBufferVertexOffset];
     for VertexIndex:=0 to fCountVertices-1 do begin
      Vertex^.MaterialID:=fMaterialID+1; // +1 because 0 = empty material
@@ -14673,7 +14688,7 @@ begin
   end;
 
   fRaytracingPrimitiveID:=StreamIO.ReadUInt64;
- 
+
  finally
   FreeAndNil(StreamIO);
  end;
@@ -15315,7 +15330,7 @@ begin
   for Index:=0 to fReferencedByNodes.Count-1 do begin
    fReferencedByNodes[Index]:=StreamIO.ReadUInt64;
   end;
-  
+
  finally
   FreeAndNil(StreamIO);
  end;
@@ -15346,9 +15361,9 @@ begin
   StreamIO.WriteInt64(fPrimitives.Count);
   for Index:=0 to fPrimitives.Count-1 do begin
    Primitive:=fPrimitives[Index];
-   Primitive.SaveToStream(aStream,aMaterials);  
+   Primitive.SaveToStream(aStream,aMaterials);
   end;
-   
+
   StreamIO.WriteAABB(fBoundingBox);
 
   StreamIO.WriteInt64(fWeights.Count);
@@ -16518,7 +16533,7 @@ begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
  try
-  
+
   fName:=StreamIO.ReadUTF8String;
 
   fIndex:=StreamIO.ReadInt64;
@@ -16879,7 +16894,7 @@ begin
     finally
      FreeAndNil(IESLoader);
     end;
-   end; 
+   end;
   end;
  end;
 end;
@@ -17044,7 +17059,7 @@ begin
   end else begin
    fSkin:=nil;
   end;
-  
+
   fLightIndex:=StreamIO.ReadInt64;
 
   Index:=StreamIO.ReadInt64;
@@ -17068,7 +17083,7 @@ begin
    StreamIO.ReadWithCheck(fWeights.ItemArray[0],Count*SizeOf(TpvFloat));
   end;
   fWeights.Finish;
-  
+
   fWeightsOffset:=StreamIO.ReadInt64;
 
   fJoint:=StreamIO.ReadInt64;
@@ -17177,7 +17192,7 @@ begin
   Count:=fUsedByScenesList.Count;
   StreamIO.WriteInt64(Count);
   for Index:=0 to Count-1 do begin
-   StreamIO.WriteInt64(fUsedByScenesList.Items[Index].fIndex); 
+   StreamIO.WriteInt64(fUsedByScenesList.Items[Index].fIndex);
   end;
 
   Count:=fChildren.Count;
@@ -17191,7 +17206,7 @@ begin
   for Index:=0 to Count-1 do begin
    StreamIO.WriteInt64(fSplittedChildren.Items[Index].fIndex);
   end;
-  
+
   if assigned(fMesh) then begin
    StreamIO.WriteInt64(fMesh.fIndex);
   end else begin
@@ -17263,7 +17278,7 @@ begin
  finally
   FreeAndNil(StreamIO);
  end;
- 
+
 end;
 
 procedure TpvScene3D.TGroup.TNode.Finish;
@@ -17513,7 +17528,7 @@ end;
 
 procedure TpvScene3D.TGroup.TScene.LoadFromStream(const aStream:TStream;const aMaterials:TpvObjectList);
 var StreamIO:TpvStreamIO;
-    Index,Count,NodeIndex:TpvSizeInt;    
+    Index,Count,NodeIndex:TpvSizeInt;
     DrawChoreographyBatchItem:TDrawChoreographyBatchItem;
     SkipListItem:PSkipListItem;
 begin
@@ -17588,9 +17603,9 @@ begin
     DrawChoreographyBatchItem.fGroup:=fGroup;
     DrawChoreographyBatchItem.fNode:=nil;
     DrawChoreographyBatchItem.LoadFromStream(aStream,aMaterials);
-   finally 
+   finally
     fDrawChoreographyBatchItems.Add(DrawChoreographyBatchItem);
-   end; 
+   end;
   end;
 
   Count:=StreamIO.ReadInt64;
@@ -17601,9 +17616,9 @@ begin
     DrawChoreographyBatchItem.fGroup:=fGroup;
     DrawChoreographyBatchItem.fNode:=nil;
     DrawChoreographyBatchItem.LoadFromStream(aStream,aMaterials);
-   finally 
+   finally
     fDrawChoreographyBatchUniqueItems.Add(DrawChoreographyBatchItem);
-   end; 
+   end;
   end;
 
   Count:=StreamIO.ReadInt64;
@@ -17728,7 +17743,7 @@ begin
  fLock:=TPasMPSpinLock.Create;
 
  fHasStaticBoundingBox:=false;
-              
+
  fObjects:=TBaseObjects.Create;
  fObjects.OwnsObjects:=false;
 
@@ -19910,7 +19925,7 @@ begin
     aMetaData^:=PMVFHeader.MetaData;
    end;
    result:=true;
-  end else begin  
+  end else begin
    result:=false;
   end;
   aStream.Seek(HeaderPosition,soBeginning);
@@ -19967,7 +19982,7 @@ var StreamIO:TpvStreamIO;
     JointBlocksStartTime,JointBlocksEndTime,
     JointBlockOffsetsStartTime,JointBlockOffsetsEndTime,
     MorphTargetVerticesStartTime,MorphTargetVerticesEndTime,
-    CamerasStartTime,CamerasEndTime,    
+    CamerasStartTime,CamerasEndTime,
     ImagesStartTime,ImagesEndTime,
     SamplersStartTime,SamplersEndTime,
     TexturesStartTime,TexturesEndTime,
@@ -19978,7 +19993,7 @@ var StreamIO:TpvStreamIO;
     AnimationsStartTime,AnimationsEndTime,
     NodesStartTime,NodesEndTime,
     UsedVisibleDrawNodesStartTime,UsedVisibleDrawNodesEndTime,
-    ScenesStartTime,ScenesEndTime,       
+    ScenesStartTime,ScenesEndTime,
     FixUpNodesStartTime,FixUpNodesEndTime,
     DrawChoreographyBatchItemsStartTime,DrawChoreographyBatchItemsEndTime,
     DrawChoreographyBatchUniqueItemsStartTime,DrawChoreographyBatchUniqueItemsEndTime,
@@ -20123,7 +20138,7 @@ begin
         end;
         CamerasEndTime:=pvApplication.HighResolutionTimer.GetTime;
 
-        // Read images        
+        // Read images
         pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.LoadFromStream("'+FileName+'")','Images Start');
         ImagesStartTime:=pvApplication.HighResolutionTimer.GetTime;
         Count:=StreamIO.ReadInt64;
@@ -20601,7 +20616,7 @@ begin
          end;
         end;
        end;
-      end; 
+      end;
       for Index:=0 to fLights.Count-1 do begin
        TpvScene3D.TGroup.TLight(fLights[Index]).PrepareSaveToStream(CollectedImages,CollectedSamplers,CollectedTextures);
       end;
@@ -20619,7 +20634,7 @@ begin
       end;
       StreamIO.WriteUInt32(Flags);
 
-      // Write morph target count 
+      // Write morph target count
       StreamIO.WriteInt64(fMorphTargetCount);
 
       // Write count node weights
@@ -20667,7 +20682,7 @@ begin
       if Count>0 then begin
        StreamIO.WriteWithCheck(fDrawChoreographyBatchCondensedUniqueIndices.Memory^,Count*SizeOf(TpvUInt32));
       end;
-          
+
       // Write joint blocks
       Count:=fJointBlocks.Count;
       StreamIO.WriteInt64(Count);
@@ -20813,7 +20828,7 @@ begin
       aStream.Seek(HeaderPosition,soBeginning);
       StreamIO.WriteWithCheck(PMVFHeader,SizeOf(TpvScene3D.TPVMFHeader));
       aStream.Seek(0,soEnd);
-      
+
      finally
       FreeAndNil(CollectedMaterials);
      end;
@@ -21162,7 +21177,7 @@ var StartTime,EndTime,
     TimeDuration:TpvDouble;
     TimeDurationString:TpvUTF8String;
 begin
- 
+
  StartTime:=pvApplication.HighResolutionTimer.GetTime;
 
  POCACodeString:='';
@@ -21730,7 +21745,7 @@ begin
        GroupNode.Children.Add(ObjectNode);
       finally
        ObjectNode.Finish;
-      end; 
+      end;
 
      end;
 
@@ -21819,7 +21834,7 @@ begin
        AssignFromOBJ(OBJ);
       finally
        FreeAndNil(OBJ);
-      end; 
+      end;
       result:=true;
      end;
      else begin
@@ -22382,8 +22397,8 @@ var Index,AnimatedTextureIndex:TpvSizeInt;
     MaterialHologramScanMaxSum:TpvScene3D.TScalarSum;
     MaterialHologramGlowTilingSum:TpvScene3D.TScalarSum;
     MaterialHologramGlowSpeedSum:TpvScene3D.TScalarSum;
-    MaterialHologramGlowMinSum:TpvScene3D.TScalarSum;  
-    MaterialHologramGlowMaxSum:TpvScene3D.TScalarSum;      
+    MaterialHologramGlowMinSum:TpvScene3D.TScalarSum;
+    MaterialHologramGlowMaxSum:TpvScene3D.TScalarSum;
     AnimatedTextureMask:TpvUInt64;
     TextureTransform:TpvScene3D.TMaterial.TTextureReference.PTransform;
     WorkTextureTransform:TpvScene3D.TMaterial.TTextureReference.PTransform;
@@ -22834,7 +22849,7 @@ begin
        end else begin
         MaterialHologramGlowMinSum.Add(Overwrite^.MaterialHologramGlowMin,Factor,Additive);
        end;
-      end;      
+      end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMax in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowMax in Overwrite^.Flags then begin
         MaterialHologramGlowMaxSum.Add(fData.Hologram.GlowMax,Factor,Additive);
@@ -23353,22 +23368,22 @@ begin
   result:=0.0;
   exit;
  end;
- 
+
  // Start with perfect similarity
  result:=1.0;
- 
+
  // Time similarity (within 1 second = similar)
  TimeDifference:=abs(fTime-aOther.fTime);
  result:=result*(1.0/(1.0+TimeDifference));
- 
+
  // Factor similarity
  result:=result*(1.0-abs(fFactor-aOther.fFactor));
- 
+
  // Boolean properties must match
  if fAdditive<>aOther.fAdditive then begin
   result:=result*0.5; // Penalty for different additive mode
  end;
- 
+
  if fComplete<>aOther.fComplete then begin
   result:=result*0.8; // Smaller penalty for different complete flag
  end;
@@ -23444,7 +23459,7 @@ begin
  fAssignedNonVirtualInstanceRenderInstance:=nil;
 
  fAssignedVirtualInstance:=nil;
- 
+
  fVirtualInstanceManager:=nil;
 
  fApplyCameraRelativeTransform:=true;
@@ -24016,12 +24031,12 @@ begin
     TPasMPInterlocked.Write(fIsNewInstance,TPasMPBool32(true));
    end;
 
-   // Register instance with virtual instance manager when applicable 
+   // Register instance with virtual instance manager when applicable
    if assigned(fGroup.fVirtualInstanceManager) and not assigned(fVirtualInstanceManager) then begin
-    
+
     fGroup.fVirtualInstanceManager.fLock.Acquire;
     try
- 
+
      if fVirtual then begin
 
       // Virtual instance
@@ -24047,8 +24062,8 @@ begin
     finally
      fGroup.fVirtualInstanceManager.fLock.Release;
     end;
-    
-   end; 
+
+   end;
 
    fSceneInstance.InvalidateDirectedAcyclicGraph;
 
@@ -24087,7 +24102,7 @@ begin
 
   if aLock then begin
    fSceneInstance.fBufferRangeAllocatorLock.Acquire;
-  end; 
+  end;
   try
 
    if fSceneInstance.fVulkanDynamicVertexBufferData.Count<(fBufferRanges.VulkanVertexBufferRange.Offset+fBufferRanges.VulkanVertexBufferRange.Size) then begin
@@ -24486,7 +24501,7 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.Remove;
 var GroupInstance:TpvScene3D.TGroup.TInstance;
-    Index:TpvSizeInt; 
+    Index:TpvSizeInt;
 begin
 
  if fAdded then begin
@@ -24517,7 +24532,7 @@ begin
 
         // Virtual instance
 
-        Index:=fGroup.fVirtualInstanceManager.fVirtualInstances.IndexOf(self); 
+        Index:=fGroup.fVirtualInstanceManager.fVirtualInstances.IndexOf(self);
         if Index>=0 then begin
          fGroup.fVirtualInstanceManager.fVirtualInstances.ExtractIndex(Index);
          TVirtualInstanceManager(fVirtualInstanceManager).fAssignmentDirty:=true;
@@ -24545,7 +24560,7 @@ begin
       fVirtualInstanceManager:=nil;
      end;
 
-    end;  
+    end;
 
     fGroup.fInstanceListLock.Acquire;
     try
@@ -24823,7 +24838,7 @@ begin
 
  LastSizeVRAM:=aTotalSizeVRAM;
  LastSizeRAM:=aTotalSizeRAM;
- 
+
  WriteLine('- Group Instance of Group "'+GroupName+'"');
  WriteLine('');
 
@@ -25114,1721 +25129,1196 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
- procedure ResetLights(const aResetOverwrites:Boolean);
- var Index:TPasGLTFSizeInt;
-     InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
- begin
+procedure TpvScene3D.TGroup.TInstance.ResetLights(const aResetOverwrites:Boolean);
+var Index:TPasGLTFSizeInt;
+    InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
+begin
+ for Index:=0 to fLights.Count-1 do begin
+  InstanceLight:=fLights[Index];
+  if assigned(InstanceLight) and aResetOverwrites then begin
+   InstanceLight.fCountOverwrites:=0;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ResetCameras(const aResetOverwrites:Boolean);
+var Index:TPasGLTFSizeInt;
+    InstanceCamera:TpvScene3D.TGroup.TInstance.TCamera;
+begin
+ for Index:=0 to fCameras.Count-1 do begin
+  InstanceCamera:=fCameras[Index];
+  if assigned(InstanceCamera) and aResetOverwrites then begin
+   InstanceCamera.fCountOverwrites:=0;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ResetMaterials(const aResetOverwrites:Boolean);
+var Index:TPasGLTFSizeInt;
+    InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
+begin
+ for Index:=0 to fMaterials.Count-1 do begin
+  InstanceMaterial:=fMaterials[Index];
+  if assigned(InstanceMaterial) and aResetOverwrites then begin
+   InstanceMaterial.fCountOverwrites:=0;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ResetNodes(const aResetOverwrites:Boolean);
+var Index:TPasGLTFSizeInt;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+begin
+ for Index:=0 to fNodes.Count-1 do begin
+  InstanceNode:=fNodes.RawItems[Index];
+  InstanceNode.fProcessed:=false;
+  if aResetOverwrites then begin
+   InstanceNode.fCountOverwrites:=0;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ProcessBaseOverwrite(const aFactor:TPasGLTFFloat);
+var Index:TPasGLTFSizeInt;
+    InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
+    InstanceCamera:TpvScene3D.TGroup.TInstance.TCamera;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    LightOverwrite:TpvScene3D.TGroup.TInstance.TLight.PLightOverwrite;
+    CameraOverwrite:TpvScene3D.TGroup.TInstance.TCamera.PCameraOverwrite;
+    NodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
+begin
+ if aFactor>=-0.5 then begin
   for Index:=0 to fLights.Count-1 do begin
    InstanceLight:=fLights[Index];
-   if assigned(InstanceLight) and aResetOverwrites then begin
-    InstanceLight.fCountOverwrites:=0;
+   if InstanceLight.fCountOverwrites<length(InstanceLight.fOverwrites) then begin
+    LightOverwrite:=@InstanceLight.fOverwrites[InstanceLight.fCountOverwrites];
+    LightOverwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Defaults];
+    LightOverwrite^.Factor:=Max(aFactor,0.0);
+    inc(InstanceLight.fCountOverwrites);
    end;
   end;
- end;
- procedure ResetCameras(const aResetOverwrites:Boolean);
- var Index:TPasGLTFSizeInt;
-     InstanceCamera:TpvScene3D.TGroup.TInstance.TCamera;
- begin
   for Index:=0 to fCameras.Count-1 do begin
    InstanceCamera:=fCameras[Index];
-   if assigned(InstanceCamera) and aResetOverwrites then begin
-    InstanceCamera.fCountOverwrites:=0;
+   if InstanceCamera.fCountOverwrites<length(InstanceCamera.fOverwrites) then begin
+    CameraOverwrite:=@InstanceCamera.fOverwrites[InstanceCamera.fCountOverwrites];
+    CameraOverwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.Defaults];
+    CameraOverwrite^.Factor:=Max(aFactor,0.0);
+    inc(InstanceCamera.fCountOverwrites);
    end;
   end;
- end;
- procedure ResetMaterials(const aResetOverwrites:Boolean);
- var Index:TPasGLTFSizeInt;
-     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
- begin
-  for Index:=0 to fMaterials.Count-1 do begin
-   InstanceMaterial:=fMaterials[Index];
-   if assigned(InstanceMaterial) and aResetOverwrites then begin
-    InstanceMaterial.fCountOverwrites:=0;
-   end;
-  end;
- end;
- procedure ResetNodes(const aResetOverwrites:Boolean);
- var Index:TPasGLTFSizeInt;
-     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
- begin
-  for Index:=0 to fNodes.Count-1 do begin
+  for Index:=0 to fGroup.fNodes.Count-1 do begin
    InstanceNode:=fNodes.RawItems[Index];
-   InstanceNode.fProcessed:=false;
-   if aResetOverwrites then begin
-    InstanceNode.fCountOverwrites:=0;
+   if InstanceNode.fCountOverwrites<length(InstanceNode.fOverwrites) then begin
+    NodeOverwrite:=@InstanceNode.fOverwrites[InstanceNode.fCountOverwrites];
+    NodeOverwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults];
+    NodeOverwrite^.Factor:=Max(aFactor,0.0);
+    inc(InstanceNode.fCountOverwrites);
    end;
   end;
  end;
- procedure ProcessBaseOverwrite(const aFactor:TPasGLTFFloat);
- var Index:TPasGLTFSizeInt;
-     InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
-     InstanceCamera:TpvScene3D.TGroup.TInstance.TCamera;
-     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
-     LightOverwrite:TpvScene3D.TGroup.TInstance.TLight.PLightOverwrite;
-     CameraOverwrite:TpvScene3D.TGroup.TInstance.TCamera.PCameraOverwrite;
-     NodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ProcessAnimation(const aAnimationIndex:TpvSizeInt;const aAnimationTime:TpvDouble;const aFactor:TpvFloat);
+ procedure ProcessScalar(out aScalar:TpvFloat;
+                         const aAnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
+                         const aTimeIndex0:TpvSizeInt;
+                         const aTimeIndex1:TpvSizeInt;
+                         const aKeyDelta:TpvDouble;
+                         const aFactor:TpvDouble);
+ var SqrFactor,CubeFactor:TpvDouble;
  begin
-  if aFactor>=-0.5 then begin
-   for Index:=0 to fLights.Count-1 do begin
-    InstanceLight:=fLights[Index];
-    if InstanceLight.fCountOverwrites<length(InstanceLight.fOverwrites) then begin
-     LightOverwrite:=@InstanceLight.fOverwrites[InstanceLight.fCountOverwrites];
-     LightOverwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Defaults];
-     LightOverwrite^.Factor:=Max(aFactor,0.0);
-     inc(InstanceLight.fCountOverwrites);
+  case aAnimationChannel.fInterpolation of
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+    aScalar:=(aAnimationChannel.fOutputScalarArray[aTimeIndex0]*(1.0-aFactor))+
+             (aAnimationChannel.fOutputScalarArray[aTimeIndex1]*aFactor);
+   end;
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+    if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
+     aScalar:=aAnimationChannel.fOutputScalarArray[aTimeIndex1];
+    end else begin
+     aScalar:=aAnimationChannel.fOutputScalarArray[aTimeIndex0];
     end;
    end;
-   for Index:=0 to fCameras.Count-1 do begin
-    InstanceCamera:=fCameras[Index];
-    if InstanceCamera.fCountOverwrites<length(InstanceCamera.fOverwrites) then begin
-     CameraOverwrite:=@InstanceCamera.fOverwrites[InstanceCamera.fCountOverwrites];
-     CameraOverwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.Defaults];
-     CameraOverwrite^.Factor:=Max(aFactor,0.0);
-     inc(InstanceCamera.fCountOverwrites);
-    end;
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+    SqrFactor:=sqr(aFactor);
+    CubeFactor:=SqrFactor*aFactor;
+    aScalar:=(((aAnimationChannel.fOutputScalarArray[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+              (aAnimationChannel.fOutputScalarArray[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
+               (aAnimationChannel.fOutputScalarArray[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                (aAnimationChannel.fOutputScalarArray[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
    end;
-   for Index:=0 to fGroup.fNodes.Count-1 do begin
-    InstanceNode:=fNodes.RawItems[Index];
-    if InstanceNode.fCountOverwrites<length(InstanceNode.fOverwrites) then begin
-     NodeOverwrite:=@InstanceNode.fOverwrites[InstanceNode.fCountOverwrites];
-     NodeOverwrite^.Flags:=[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults];
-     NodeOverwrite^.Factor:=Max(aFactor,0.0);
-     inc(InstanceNode.fCountOverwrites);
-    end;
+   else begin
+    Assert(false);
    end;
   end;
  end;
- procedure ProcessAnimation(const aAnimationIndex:TpvSizeInt;const aAnimationTime:TpvDouble;const aFactor:TpvFloat);
-  procedure ProcessScalar(out aScalar:TpvFloat;
+ procedure ProcessVector2(out aVector2:TpvVector2;
                           const aAnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
                           const aTimeIndex0:TpvSizeInt;
                           const aTimeIndex1:TpvSizeInt;
                           const aKeyDelta:TpvDouble;
                           const aFactor:TpvDouble);
-  var SqrFactor,CubeFactor:TpvDouble;
-  begin
-   case aAnimationChannel.fInterpolation of
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-     aScalar:=(aAnimationChannel.fOutputScalarArray[aTimeIndex0]*(1.0-aFactor))+
-              (aAnimationChannel.fOutputScalarArray[aTimeIndex1]*aFactor);
-    end;
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-     if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
-      aScalar:=aAnimationChannel.fOutputScalarArray[aTimeIndex1];
-     end else begin
-      aScalar:=aAnimationChannel.fOutputScalarArray[aTimeIndex0];
-     end;
-    end;
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-     SqrFactor:=sqr(aFactor);
-     CubeFactor:=SqrFactor*aFactor;
-     aScalar:=(((aAnimationChannel.fOutputScalarArray[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
-               (aAnimationChannel.fOutputScalarArray[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
-                (aAnimationChannel.fOutputScalarArray[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
-                 (aAnimationChannel.fOutputScalarArray[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
-    end;
-    else begin
-     Assert(false);
-    end;
-   end;
-  end;
-  procedure ProcessVector2(out aVector2:TpvVector2;
-                           const aAnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
-                           const aTimeIndex0:TpvSizeInt;
-                           const aTimeIndex1:TpvSizeInt;
-                           const aKeyDelta:TpvDouble;
-                           const aFactor:TpvDouble);
-  var SqrFactor,CubeFactor:TpvDouble;
-  begin
-   case aAnimationChannel.fInterpolation of
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-     aVector2:=(aAnimationChannel.fOutputVector2Array[aTimeIndex0]*(1.0-aFactor))+
-               (aAnimationChannel.fOutputVector2Array[aTimeIndex1]*aFactor);
-    end;
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-     if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
-      aVector2:=aAnimationChannel.fOutputVector2Array[aTimeIndex1];
-     end else begin
-      aVector2:=aAnimationChannel.fOutputVector2Array[aTimeIndex0];
-     end;
-    end;
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-     SqrFactor:=sqr(aFactor);
-     CubeFactor:=SqrFactor*aFactor;
-     aVector2:=(((aAnimationChannel.fOutputVector2Array[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
-                (aAnimationChannel.fOutputVector2Array[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
-                 (aAnimationChannel.fOutputVector2Array[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
-                  (aAnimationChannel.fOutputVector2Array[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
-    end;
-    else begin
-     Assert(false);
-    end;
-   end;
-  end;
-  procedure ProcessVector3(out aVector3:TpvVector3;
-                           const aAnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
-                           const aTimeIndex0:TpvSizeInt;
-                           const aTimeIndex1:TpvSizeInt;
-                           const aKeyDelta:TpvDouble;
-                           const aFactor:TpvDouble);
-  var SqrFactor,CubeFactor:TpvDouble;
-  begin
-   case aAnimationChannel.fInterpolation of
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-     aVector3:=(aAnimationChannel.fOutputVector3Array[aTimeIndex0]*(1.0-aFactor))+
-               (aAnimationChannel.fOutputVector3Array[aTimeIndex1]*aFactor);
-    end;
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-     if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
-      aVector3:=aAnimationChannel.fOutputVector3Array[aTimeIndex1];
-     end else begin
-      aVector3:=aAnimationChannel.fOutputVector3Array[aTimeIndex0];
-     end;
-    end;
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-     SqrFactor:=sqr(aFactor);
-     CubeFactor:=SqrFactor*aFactor;
-     aVector3:=(((aAnimationChannel.fOutputVector3Array[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
-                (aAnimationChannel.fOutputVector3Array[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
-                 (aAnimationChannel.fOutputVector3Array[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
-                  (aAnimationChannel.fOutputVector3Array[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
-    end;
-    else begin
-     Assert(false);
-    end;
-   end;
-  end;
-  procedure ProcessVector4(out aVector4:TpvVector4;
-                           const aAnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
-                           const aTimeIndex0:TpvSizeInt;
-                           const aTimeIndex1:TpvSizeInt;
-                           const aKeyDelta:TpvDouble;
-                           const aFactor:TpvDouble;
-                           const aRotation:boolean);
-  var SqrFactor,CubeFactor:TpvDouble;
-  begin
-   case aAnimationChannel.fInterpolation of
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-     if aRotation then begin
-//    aVector4:=aAnimationChannel.fOutputVector4Array[aTimeIndex0].Slerp(aAnimationChannel.fOutputVector4Array[aTimeIndex1],aFactor);
-      aVector4:=TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex0]).Slerp(TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex1]),aFactor).Vector;
-     end else begin
-      aVector4:=(aAnimationChannel.fOutputVector4Array[aTimeIndex0]*(1.0-aFactor))+
-                (aAnimationChannel.fOutputVector4Array[aTimeIndex1]*aFactor);
-     end;
-    end;
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-     if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
-      aVector4:=aAnimationChannel.fOutputVector4Array[aTimeIndex1];
-     end else begin
-      aVector4:=aAnimationChannel.fOutputVector4Array[aTimeIndex0];
-     end;
-    end;
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-     SqrFactor:=sqr(aFactor);
-     CubeFactor:=SqrFactor*aFactor;
-     aVector4:=(((aAnimationChannel.fOutputVector4Array[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
-                (aAnimationChannel.fOutputVector4Array[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
-                 (aAnimationChannel.fOutputVector4Array[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
-                  (aAnimationChannel.fOutputVector4Array[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
-     aVector4:=TpvQuaternion.Create(aVector4).Normalize.Vector;
-    end;
-    else begin
-     Assert(false);
-    end;
-   end;
-  end;
-  procedure ProcessWeights(const aNode:TpvScene3D.TGroup.TInstance.TNode;
-                           const aNodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
-                           const aAnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
-                           const aTimeIndex0:TpvSizeInt;
-                           const aTimeIndex1:TpvSizeInt;
-                           const aKeyDelta:TpvDouble;
-                           const aFactor:TpvDouble);
-  var CountWeights,WeightIndex:TpvSizeInt;
-      InvFactor,SqrFactor,CubeFactor:TpvDouble;
-  begin
-   CountWeights:=length(aNode.fWorkWeights);
-   Include(aNodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Weights);
-   case aAnimationChannel.fInterpolation of
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
-     InvFactor:=1.0-aFactor;
-     for WeightIndex:=0 to CountWeights-1 do begin
-      aNodeOverwrite^.Weights[WeightIndex]:=(aAnimationChannel.fOutputScalarArray[(aTimeIndex0*CountWeights)+WeightIndex]*InvFactor)+
-                                            (aAnimationChannel.fOutputScalarArray[(aTimeIndex1*CountWeights)+WeightIndex]*aFactor);
-     end;
-    end;
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
-     if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
-      for WeightIndex:=0 to CountWeights-1 do begin
-       aNodeOverwrite^.Weights[WeightIndex]:=aAnimationChannel.fOutputScalarArray[(aTimeIndex1*CountWeights)+WeightIndex];
-      end;
-     end else begin
-      for WeightIndex:=0 to CountWeights-1 do begin
-       aNodeOverwrite^.Weights[WeightIndex]:=aAnimationChannel.fOutputScalarArray[(aTimeIndex0*CountWeights)+WeightIndex];
-      end;
-     end;
-    end;
-    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
-     SqrFactor:=sqr(aFactor);
-     CubeFactor:=SqrFactor*aFactor;
-     for WeightIndex:=0 to CountWeights-1 do begin
-      aNodeOverwrite^.Weights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*aAnimationChannel.fOutputScalarArray[(((aTimeIndex0*3)+1)*CountWeights)+WeightIndex])+
-                                             (((CubeFactor-(2.0*SqrFactor))+aFactor)*aKeyDelta*aAnimationChannel.fOutputScalarArray[(((aTimeIndex0*3)+2)*CountWeights)+WeightIndex])+
-                                             (((3.0*SqrFactor)-(2.0*CubeFactor))*aAnimationChannel.fOutputScalarArray[(((aTimeIndex1*3)+1)*CountWeights)+WeightIndex])+
-                                             ((CubeFactor-SqrFactor)*aKeyDelta*aAnimationChannel.fOutputScalarArray[(((aTimeIndex1*3)+0)*CountWeights)+WeightIndex]);
-     end;
-    end;
-    else begin
-     Assert(false);
-    end;
-   end;
-  end;
- var ChannelIndex,
-     InstanceChannelIndex,
-     CountInstanceChannels,
-     InputTimeArrayIndex,
-     ReferenceNodeIndex,
-     NodeIndex,
-     ElementIndex,
-     CountTimeIndices,
-     LastIndex,
-     LowIndex,
-     HighIndex,
-     MidIndex,
-     TargetSubIndex:TpvSizeInt;
-     Animation:TpvScene3D.TGroup.TAnimation;
-     AnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
-     AnimationDefaultChannel:TpvScene3D.TGroup.TAnimation.TDefaultChannel;
-     InstanceAnimation:TpvScene3D.TGroup.TInstance.TAnimation;
-     InstanceAnimationChannelOverwrite:TpvScene3D.TGroup.TInstance.TAnimation.PChannelOverwrite;
-     //Node:TpvScene3D.TGroup.TNode;
-     Node:TpvScene3D.TGroup.TInstance.TNode;
-     Time,Factor,Value,KeyDelta,v0,v1,a,b:TpvDouble;
-     Scalar:TpvFloat;
-     Vector2:TpvVector2;
-     Vector3:TpvVector3;
-     Vector4:TpvVector4;
-     TimeIndices:array[0..1] of TpvSizeInt;
-     NodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
-     Mesh:TpvScene3D.TGroup.TMesh;
-     Light:TpvScene3D.TGroup.TInstance.TLight;
-     LightOverwrite:TpvScene3D.TGroup.TInstance.TLight.PLightOverwrite;
-     Camera:TpvScene3D.TGroup.TInstance.TCamera;
-     CameraOverwrite:TpvScene3D.TGroup.TInstance.TCamera.PCameraOverwrite;
-     Material:TpvScene3D.TGroup.TInstance.TMaterial;
-     MaterialOverwrite:TpvScene3D.TGroup.TInstance.TMaterial.PMaterialOverwrite;
+ var SqrFactor,CubeFactor:TpvDouble;
  begin
-
-  Animation:=fGroup.fAnimations[aAnimationIndex];
-
-  InstanceAnimation:=fAnimations[aAnimationIndex+1];
-
-  if InstanceAnimation.fComplete then begin
-   CountInstanceChannels:=length(InstanceAnimation.fChannelOverwrites);
-  end else begin
-   CountInstanceChannels:=Animation.fChannels.Count;
+  case aAnimationChannel.fInterpolation of
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+    aVector2:=(aAnimationChannel.fOutputVector2Array[aTimeIndex0]*(1.0-aFactor))+
+              (aAnimationChannel.fOutputVector2Array[aTimeIndex1]*aFactor);
+   end;
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+    if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
+     aVector2:=aAnimationChannel.fOutputVector2Array[aTimeIndex1];
+    end else begin
+     aVector2:=aAnimationChannel.fOutputVector2Array[aTimeIndex0];
+    end;
+   end;
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+    SqrFactor:=sqr(aFactor);
+    CubeFactor:=SqrFactor*aFactor;
+    aVector2:=(((aAnimationChannel.fOutputVector2Array[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+               (aAnimationChannel.fOutputVector2Array[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
+                (aAnimationChannel.fOutputVector2Array[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                 (aAnimationChannel.fOutputVector2Array[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
+   end;
+   else begin
+    Assert(false);
+   end;
   end;
-  if length(InstanceAnimation.fChannelOverwrites)>0 then begin
-   FillChar(InstanceAnimation.fChannelOverwrites[0],length(InstanceAnimation.fChannelOverwrites)*SizeOf(TpvScene3D.TGroup.TInstance.TAnimation.TChannelOverwrite),$ff);
+ end;
+ procedure ProcessVector3(out aVector3:TpvVector3;
+                          const aAnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
+                          const aTimeIndex0:TpvSizeInt;
+                          const aTimeIndex1:TpvSizeInt;
+                          const aKeyDelta:TpvDouble;
+                          const aFactor:TpvDouble);
+ var SqrFactor,CubeFactor:TpvDouble;
+ begin
+  case aAnimationChannel.fInterpolation of
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+    aVector3:=(aAnimationChannel.fOutputVector3Array[aTimeIndex0]*(1.0-aFactor))+
+              (aAnimationChannel.fOutputVector3Array[aTimeIndex1]*aFactor);
+   end;
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+    if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
+     aVector3:=aAnimationChannel.fOutputVector3Array[aTimeIndex1];
+    end else begin
+     aVector3:=aAnimationChannel.fOutputVector3Array[aTimeIndex0];
+    end;
+   end;
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+    SqrFactor:=sqr(aFactor);
+    CubeFactor:=SqrFactor*aFactor;
+    aVector3:=(((aAnimationChannel.fOutputVector3Array[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+               (aAnimationChannel.fOutputVector3Array[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
+                (aAnimationChannel.fOutputVector3Array[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                 (aAnimationChannel.fOutputVector3Array[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
+   end;
+   else begin
+    Assert(false);
+   end;
   end;
-
-  CountInstanceChannels:=0;
-
-  for ChannelIndex:=0 to Animation.fChannels.Count-1 do begin
-
-   AnimationChannel:=Animation.fChannels[ChannelIndex];
-
-   if (AnimationChannel.fTargetInstanceIndex>=0) and
-      (AnimationChannel.fTargetIndex>=0) and
-      (length(AnimationChannel.fInputTimeArray)>0) then begin
-
-    LastIndex:=InstanceAnimation.fLastIndices[ChannelIndex];
-
-    CountTimeIndices:=length(AnimationChannel.fInputTimeArray);
-
-    Time:=Min(Max(aAnimationTime,AnimationChannel.fInputTimeArray[0]),AnimationChannel.fInputTimeArray[CountTimeIndices-1]);
-
-    TimeIndices[1]:=-1;
-
-    if (LastIndex>0) and
-       (LastIndex<CountTimeIndices) and
-       (AnimationChannel.fInputTimeArray[LastIndex-1]<=Time) then begin
-     for InputTimeArrayIndex:=LastIndex to Min(LastIndex+3,CountTimeIndices-1) do begin
-      if (AnimationChannel.fInputTimeArray[InputTimeArrayIndex-1]<=Time) and
-         (Time<AnimationChannel.fInputTimeArray[InputTimeArrayIndex]) then begin
-       TimeIndices[1]:=InputTimeArrayIndex;
-       break;
-      end;
+ end;
+ procedure ProcessVector4(out aVector4:TpvVector4;
+                          const aAnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
+                          const aTimeIndex0:TpvSizeInt;
+                          const aTimeIndex1:TpvSizeInt;
+                          const aKeyDelta:TpvDouble;
+                          const aFactor:TpvDouble;
+                          const aRotation:boolean);
+ var SqrFactor,CubeFactor:TpvDouble;
+ begin
+  case aAnimationChannel.fInterpolation of
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+    if aRotation then begin
+//    aVector4:=aAnimationChannel.fOutputVector4Array[aTimeIndex0].Slerp(aAnimationChannel.fOutputVector4Array[aTimeIndex1],aFactor);
+     aVector4:=TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex0]).Slerp(TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex1]),aFactor).Vector;
+    end else begin
+     aVector4:=(aAnimationChannel.fOutputVector4Array[aTimeIndex0]*(1.0-aFactor))+
+               (aAnimationChannel.fOutputVector4Array[aTimeIndex1]*aFactor);
+    end;
+   end;
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+    if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
+     aVector4:=aAnimationChannel.fOutputVector4Array[aTimeIndex1];
+    end else begin
+     aVector4:=aAnimationChannel.fOutputVector4Array[aTimeIndex0];
+    end;
+   end;
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+    SqrFactor:=sqr(aFactor);
+    CubeFactor:=SqrFactor*aFactor;
+    aVector4:=(((aAnimationChannel.fOutputVector4Array[(aTimeIndex0*3)+1]*(((2.0*CubeFactor)-(3.0*SqrFactor))+1.0))+
+               (aAnimationChannel.fOutputVector4Array[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
+                (aAnimationChannel.fOutputVector4Array[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
+                 (aAnimationChannel.fOutputVector4Array[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
+    aVector4:=TpvQuaternion.Create(aVector4).Normalize.Vector;
+   end;
+   else begin
+    Assert(false);
+   end;
+  end;
+ end;
+ procedure ProcessWeights(const aNode:TpvScene3D.TGroup.TInstance.TNode;
+                          const aNodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
+                          const aAnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
+                          const aTimeIndex0:TpvSizeInt;
+                          const aTimeIndex1:TpvSizeInt;
+                          const aKeyDelta:TpvDouble;
+                          const aFactor:TpvDouble);
+ var CountWeights,WeightIndex:TpvSizeInt;
+     InvFactor,SqrFactor,CubeFactor:TpvDouble;
+ begin
+  CountWeights:=length(aNode.fWorkWeights);
+  Include(aNodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Weights);
+  case aAnimationChannel.fInterpolation of
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
+    InvFactor:=1.0-aFactor;
+    for WeightIndex:=0 to CountWeights-1 do begin
+     aNodeOverwrite^.Weights[WeightIndex]:=(aAnimationChannel.fOutputScalarArray[(aTimeIndex0*CountWeights)+WeightIndex]*InvFactor)+
+                                           (aAnimationChannel.fOutputScalarArray[(aTimeIndex1*CountWeights)+WeightIndex]*aFactor);
+    end;
+   end;
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Step:begin
+    if (aFactor>=1.0) or SameValue(aFactor,1.0) then begin
+     for WeightIndex:=0 to CountWeights-1 do begin
+      aNodeOverwrite^.Weights[WeightIndex]:=aAnimationChannel.fOutputScalarArray[(aTimeIndex1*CountWeights)+WeightIndex];
+     end;
+    end else begin
+     for WeightIndex:=0 to CountWeights-1 do begin
+      aNodeOverwrite^.Weights[WeightIndex]:=aAnimationChannel.fOutputScalarArray[(aTimeIndex0*CountWeights)+WeightIndex];
      end;
     end;
+   end;
+   TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline:begin
+    SqrFactor:=sqr(aFactor);
+    CubeFactor:=SqrFactor*aFactor;
+    for WeightIndex:=0 to CountWeights-1 do begin
+     aNodeOverwrite^.Weights[WeightIndex]:=((((2.0*CubeFactor)-(3.0*SqrFactor))+1.0)*aAnimationChannel.fOutputScalarArray[(((aTimeIndex0*3)+1)*CountWeights)+WeightIndex])+
+                                            (((CubeFactor-(2.0*SqrFactor))+aFactor)*aKeyDelta*aAnimationChannel.fOutputScalarArray[(((aTimeIndex0*3)+2)*CountWeights)+WeightIndex])+
+                                            (((3.0*SqrFactor)-(2.0*CubeFactor))*aAnimationChannel.fOutputScalarArray[(((aTimeIndex1*3)+1)*CountWeights)+WeightIndex])+
+                                            ((CubeFactor-SqrFactor)*aKeyDelta*aAnimationChannel.fOutputScalarArray[(((aTimeIndex1*3)+0)*CountWeights)+WeightIndex]);
+    end;
+   end;
+   else begin
+    Assert(false);
+   end;
+  end;
+ end;
+var ChannelIndex,
+    InstanceChannelIndex,
+    CountInstanceChannels,
+    InputTimeArrayIndex,
+    ReferenceNodeIndex,
+    NodeIndex,
+    ElementIndex,
+    CountTimeIndices,
+    LastIndex,
+    LowIndex,
+    HighIndex,
+    MidIndex,
+    TargetSubIndex:TpvSizeInt;
+    Animation:TpvScene3D.TGroup.TAnimation;
+    AnimationChannel:TpvScene3D.TGroup.TAnimation.TChannel;
+    AnimationDefaultChannel:TpvScene3D.TGroup.TAnimation.TDefaultChannel;
+    InstanceAnimation:TpvScene3D.TGroup.TInstance.TAnimation;
+    InstanceAnimationChannelOverwrite:TpvScene3D.TGroup.TInstance.TAnimation.PChannelOverwrite;
+    //Node:TpvScene3D.TGroup.TNode;
+    Node:TpvScene3D.TGroup.TInstance.TNode;
+    Time,Factor,Value,KeyDelta,v0,v1,a,b:TpvDouble;
+    Scalar:TpvFloat;
+    Vector2:TpvVector2;
+    Vector3:TpvVector3;
+    Vector4:TpvVector4;
+    TimeIndices:array[0..1] of TpvSizeInt;
+    NodeOverwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    Light:TpvScene3D.TGroup.TInstance.TLight;
+    LightOverwrite:TpvScene3D.TGroup.TInstance.TLight.PLightOverwrite;
+    Camera:TpvScene3D.TGroup.TInstance.TCamera;
+    CameraOverwrite:TpvScene3D.TGroup.TInstance.TCamera.PCameraOverwrite;
+    Material:TpvScene3D.TGroup.TInstance.TMaterial;
+    MaterialOverwrite:TpvScene3D.TGroup.TInstance.TMaterial.PMaterialOverwrite;
+begin
 
-    if TimeIndices[1]<0 then begin
-     if (CountTimeIndices>=2) and (Time<AnimationChannel.fInputTimeArray[1]) then begin
-      TimeIndices[1]:=1;
-     end else if Time<AnimationChannel.fInputTimeArray[0] then begin
-      TimeIndices[1]:=0;
-     end else if Time>=AnimationChannel.fInputTimeArray[CountTimeIndices-1] then begin
-      TimeIndices[1]:=CountTimeIndices-1;
-     end else begin
-      TimeIndices[1]:=-1;
-      LowIndex:=0;
-      HighIndex:=CountTimeIndices-1;
-      while LowIndex<=HighIndex do begin
-       MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
-       case Sign(AnimationChannel.fInputTimeArray[MidIndex]-Time) of
-        -1:begin
-         LowIndex:=MidIndex+1;
-        end;
-        1:begin
-         HighIndex:=MidIndex-1;
-        end;
-        else begin
-         TimeIndices[1]:=MidIndex+1;
-         break;
-        end;
+ Animation:=fGroup.fAnimations[aAnimationIndex];
+
+ InstanceAnimation:=fAnimations[aAnimationIndex+1];
+
+ if InstanceAnimation.fComplete then begin
+  CountInstanceChannels:=length(InstanceAnimation.fChannelOverwrites);
+ end else begin
+  CountInstanceChannels:=Animation.fChannels.Count;
+ end;
+ if length(InstanceAnimation.fChannelOverwrites)>0 then begin
+  FillChar(InstanceAnimation.fChannelOverwrites[0],length(InstanceAnimation.fChannelOverwrites)*SizeOf(TpvScene3D.TGroup.TInstance.TAnimation.TChannelOverwrite),$ff);
+ end;
+
+ CountInstanceChannels:=0;
+
+ for ChannelIndex:=0 to Animation.fChannels.Count-1 do begin
+
+  AnimationChannel:=Animation.fChannels[ChannelIndex];
+
+  if (AnimationChannel.fTargetInstanceIndex>=0) and
+     (AnimationChannel.fTargetIndex>=0) and
+     (length(AnimationChannel.fInputTimeArray)>0) then begin
+
+   LastIndex:=InstanceAnimation.fLastIndices[ChannelIndex];
+
+   CountTimeIndices:=length(AnimationChannel.fInputTimeArray);
+
+   Time:=Min(Max(aAnimationTime,AnimationChannel.fInputTimeArray[0]),AnimationChannel.fInputTimeArray[CountTimeIndices-1]);
+
+   TimeIndices[1]:=-1;
+
+   if (LastIndex>0) and
+      (LastIndex<CountTimeIndices) and
+      (AnimationChannel.fInputTimeArray[LastIndex-1]<=Time) then begin
+    for InputTimeArrayIndex:=LastIndex to Min(LastIndex+3,CountTimeIndices-1) do begin
+     if (AnimationChannel.fInputTimeArray[InputTimeArrayIndex-1]<=Time) and
+        (Time<AnimationChannel.fInputTimeArray[InputTimeArrayIndex]) then begin
+      TimeIndices[1]:=InputTimeArrayIndex;
+      break;
+     end;
+    end;
+   end;
+
+   if TimeIndices[1]<0 then begin
+    if (CountTimeIndices>=2) and (Time<AnimationChannel.fInputTimeArray[1]) then begin
+     TimeIndices[1]:=1;
+    end else if Time<AnimationChannel.fInputTimeArray[0] then begin
+     TimeIndices[1]:=0;
+    end else if Time>=AnimationChannel.fInputTimeArray[CountTimeIndices-1] then begin
+     TimeIndices[1]:=CountTimeIndices-1;
+    end else begin
+     TimeIndices[1]:=-1;
+     LowIndex:=0;
+     HighIndex:=CountTimeIndices-1;
+     while LowIndex<=HighIndex do begin
+      MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+      case Sign(AnimationChannel.fInputTimeArray[MidIndex]-Time) of
+       -1:begin
+        LowIndex:=MidIndex+1;
+       end;
+       1:begin
+        HighIndex:=MidIndex-1;
+       end;
+       else begin
+        TimeIndices[1]:=MidIndex+1;
+        break;
        end;
       end;
-      if TimeIndices[1]<0 then begin
-       if HighIndex<0 then begin
-        TimeIndices[1]:=1;
-       end else if LowIndex>=CountTimeIndices then begin
-        TimeIndices[1]:=CountTimeIndices-1;
+     end;
+     if TimeIndices[1]<0 then begin
+      if HighIndex<0 then begin
+       TimeIndices[1]:=1;
+      end else if LowIndex>=CountTimeIndices then begin
+       TimeIndices[1]:=CountTimeIndices-1;
+      end else begin
+       if LowIndex<HighIndex then begin
+        TimeIndices[1]:=LowIndex+1;
        end else begin
-        if LowIndex<HighIndex then begin
-         TimeIndices[1]:=LowIndex+1;
-        end else begin
-         TimeIndices[1]:=HighIndex+1;
-        end;
-        if TimeIndices[1]<1 then begin
-         TimeIndices[1]:=1;
-        end;
-       end;
-      end;
-      if TimeIndices[1]>=CountTimeIndices then begin
-       TimeIndices[1]:=CountTimeIndices-1;
-      end;
-     end;
-    end;
-
-    if (
-        (TimeIndices[1]<1) or
-        (TimeIndices[1]>=CountTimeIndices)
-       ) or
-       (
-        (AnimationChannel.fInputTimeArray[TimeIndices[1]-1]>Time) or
-        (
-         (
-          ((TimeIndices[1]+1)<CountTimeIndices) and
-          (Time>=AnimationChannel.fInputTimeArray[TimeIndices[1]])
-         ) or
-         (
-          ((TimeIndices[1]+1)=CountTimeIndices) and
-          (Time>AnimationChannel.fInputTimeArray[TimeIndices[1]])
-         )
-        )
-       ) then begin
-     if TimeIndices[1]<1 then begin
-      TimeIndices[1]:=1;
-     end;
-     if CountTimeIndices<2 then begin
-      TimeIndices[1]:=1;
-     end else begin
-      if TimeIndices[1]>=CountTimeIndices then begin
-       TimeIndices[1]:=CountTimeIndices-1;
-      end;
-      if (AnimationChannel.fInputTimeArray[TimeIndices[1]-1]>Time) or
-         (Time>=AnimationChannel.fInputTimeArray[TimeIndices[1]]) then begin
-       while (TimeIndices[1]>1) and
-             (AnimationChannel.fInputTimeArray[TimeIndices[1]-1]>Time) do begin
-        dec(TimeIndices[1]);
-       end;
-       while ((TimeIndices[1]+1)<CountTimeIndices) and
-             (Time>=AnimationChannel.fInputTimeArray[TimeIndices[1]]) do begin
-        inc(TimeIndices[1]);
+        TimeIndices[1]:=HighIndex+1;
        end;
        if TimeIndices[1]<1 then begin
         TimeIndices[1]:=1;
-       end else if TimeIndices[1]>=CountTimeIndices then begin
-        TimeIndices[1]:=CountTimeIndices-1;
        end;
       end;
      end;
-    end;
-
-    if TimeIndices[1]<0 then begin
-     TimeIndices[1]:=0;
-     for InputTimeArrayIndex:=1 to CountTimeIndices-1 do begin
-      if (AnimationChannel.fInputTimeArray[InputTimeArrayIndex-1]<=Time) and
-         (AnimationChannel.fInputTimeArray[InputTimeArrayIndex]>=Time) then begin
-       TimeIndices[1]:=InputTimeArrayIndex;
-       break;
-      end;
-     end;
-    end;
-
-    InstanceAnimation.fLastIndices[ChannelIndex]:=TimeIndices[1];
-
-    if TimeIndices[1]>=0 then begin
-
      if TimeIndices[1]>=CountTimeIndices then begin
       TimeIndices[1]:=CountTimeIndices-1;
      end;
-
-     TimeIndices[0]:=TimeIndices[1]-1;
-     if TimeIndices[0]<0 then begin
-      TimeIndices[0]:=0;
-     end;
-
-     KeyDelta:=AnimationChannel.fInputTimeArray[TimeIndices[1]]-AnimationChannel.fInputTimeArray[TimeIndices[0]];
-
-     if SameValue(TimeIndices[0],TimeIndices[1]) then begin
-      Factor:=0.0;
-     end else begin
-      Factor:=(Time-AnimationChannel.fInputTimeArray[TimeIndices[0]])/KeyDelta;
-      if Factor<0.0 then begin
-       Factor:=0.0;
-      end else if Factor>1.0 then begin
-       Factor:=1.0;
-      end;
-     end;
-
-     case AnimationChannel.fTarget of
-
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
-
-       if (AnimationChannel.fTargetIndex>=0) and (AnimationChannel.fTargetIndex<fNodes.Count) then begin
-
-        Node:=fNodes.RawItems[AnimationChannel.fTargetIndex];
-
-        NodeOverwrite:=nil;
-
-        if aFactor>=-0.5 then begin
-
-         InstanceChannelIndex:=AnimationChannel.fTargetInstanceIndex;
-         if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
-
-          InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
-          if InstanceAnimationChannelOverwrite^<0 then begin
-           if Node.fCountOverwrites<length(Node.fOverwrites) then begin
-            InstanceAnimationChannelOverwrite^:=Node.fCountOverwrites;
-            inc(Node.fCountOverwrites);
-            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
-             NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
-             NodeOverwrite^.Flags:=[];
-             if InstanceAnimation.fAdditive then begin
-              Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
-             end;
-             NodeOverwrite^.Factor:=Max(aFactor,0.0);
-            end else begin
-             NodeOverwrite:=nil;
-            end;
-           end else begin
-            NodeOverwrite:=nil;
-           end;
-          end else begin
-           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
-            NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
-           end else begin
-            NodeOverwrite:=nil;
-           end;
-          end;
-
-          if assigned(NodeOverwrite) then begin
-
-           case AnimationChannel.fTarget of
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
-             ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             case AnimationChannel.fTarget of
-              TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
-              TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation:begin
-               Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Translation);
-               NodeOverwrite^.Translation:=Vector3;
-              end;
-              TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
-              TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
-               Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Scale);
-               NodeOverwrite^.Scale:=Vector3;
-              end;
-              else begin
-              end;
-             end;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
-             ProcessVector4(Vector4,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor,true);
-             case AnimationChannel.fTarget of
-              TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
-              TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
-               Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Rotation);
-               NodeOverwrite^.Rotation.Vector:=Vector4;
-              end;
-              else begin
-              end;
-             end;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
-             ProcessWeights(Node,NodeOverwrite,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-            end;
-            else begin
-            end;
-           end;
-          end;
-
-         end;
-
-        end;
-
-       end;
-
-      end;
-
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMeshWeights:begin
-
-       if (AnimationChannel.fTargetIndex>=0) and (AnimationChannel.fTargetIndex<fGroup.fMeshes.Count) then begin
-
-        Mesh:=fGroup.fMeshes[AnimationChannel.fTargetIndex];
-
-        for ReferenceNodeIndex:=0 to Mesh.fReferencedByNodes.Count-1 do begin
-
-         NodeIndex:=Mesh.fReferencedByNodes.Items[ReferenceNodeIndex];
-
-         if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
-
-          Node:=fNodes.RawItems[NodeIndex];
-
-          NodeOverwrite:=nil;
-
-          if aFactor>=-0.5 then begin
-
-           InstanceChannelIndex:=AnimationChannel.fTargetInstanceIndex;
-           if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
-
-            InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
-            if InstanceAnimationChannelOverwrite^<0 then begin
-             if Node.fCountOverwrites<length(Node.fOverwrites) then begin
-              InstanceAnimationChannelOverwrite^:=Node.fCountOverwrites;
-              inc(Node.fCountOverwrites);
-              if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
-               NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
-               NodeOverwrite^.Flags:=[];
-               if InstanceAnimation.fAdditive then begin
-                Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
-               end;
-               NodeOverwrite^.Factor:=Max(aFactor,0.0);
-              end else begin
-               NodeOverwrite:=nil;
-              end;
-             end else begin
-              NodeOverwrite:=nil;
-             end;
-            end else begin
-             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
-              NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
-             end else begin
-              NodeOverwrite:=nil;
-             end;
-            end;
-
-            if assigned(NodeOverwrite) then begin
-             ProcessWeights(Node,NodeOverwrite,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-            end;
-
-           end;
-
-          end;
-
-         end;
-
-        end;
-
-       end;
-
-      end;
-
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
-
-       if (AnimationChannel.fTargetIndex>=0) and (AnimationChannel.fTargetIndex<fLights.Count) then begin
-
-        Light:=fLights[AnimationChannel.fTargetIndex];
-
-        LightOverwrite:=nil;
-
-        if aFactor>=-0.5 then begin
-
-         InstanceChannelIndex:=AnimationChannel.fTargetInstanceIndex;
-         if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
-
-          InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
-          if InstanceAnimationChannelOverwrite^<0 then begin
-           if Light.fCountOverwrites<length(Light.fOverwrites) then begin
-            InstanceAnimationChannelOverwrite^:=Light.fCountOverwrites;
-            inc(Light.fCountOverwrites);
-            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Light.fOverwrites)) then begin
-             LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
-             LightOverwrite^.Flags:=[];
-             if InstanceAnimation.fAdditive then begin
-              Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Additive);
-             end;
-             LightOverwrite^.Factor:=Max(aFactor,0.0);
-            end else begin
-             LightOverwrite:=nil;
-            end;
-           end else begin
-            LightOverwrite:=nil;
-           end;
-          end else begin
-           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Light.fOverwrites)) then begin
-            LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
-           end else begin
-            LightOverwrite:=nil;
-           end;
-          end;
-
-          if assigned(LightOverwrite) then begin
-
-           case AnimationChannel.fTarget of
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
-             ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Color);
-             LightOverwrite^.Color:=Vector3;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Intensity);
-             LightOverwrite^.Intensity:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Range);
-             LightOverwrite^.Range:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotInnerConeAngle);
-             LightOverwrite^.SpotInnerConeAngle:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotOuterConeAngle);
-             LightOverwrite^.SpotOuterConeAngle:=Scalar;
-            end;
-            else begin
-            end;
-           end;
-          end;
-
-         end;
-
-        end;
-
-       end;
-
-      end;
-
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
-
-       if (AnimationChannel.fTargetIndex>=0) and (AnimationChannel.fTargetIndex<fCameras.Count) then begin
-
-        Camera:=fCameras[AnimationChannel.fTargetIndex];
-
-        CameraOverwrite:=nil;
-
-        if aFactor>=-0.5 then begin
-
-         InstanceChannelIndex:=AnimationChannel.fTargetInstanceIndex;
-         if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
-
-          InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
-          if InstanceAnimationChannelOverwrite^<0 then begin
-           if Camera.fCountOverwrites<length(Camera.fOverwrites) then begin
-            InstanceAnimationChannelOverwrite^:=Camera.fCountOverwrites;
-            inc(Camera.fCountOverwrites);
-            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Camera.fOverwrites)) then begin
-             CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
-             CameraOverwrite^.Flags:=[];
-             if InstanceAnimation.fAdditive then begin
-              Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.Additive);
-             end;
-             CameraOverwrite^.Factor:=Max(aFactor,0.0);
-            end else begin
-             CameraOverwrite:=nil;
-            end;
-           end else begin
-            CameraOverwrite:=nil;
-           end;
-          end else begin
-           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Camera.fOverwrites)) then begin
-            CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
-           end else begin
-            CameraOverwrite:=nil;
-           end;
-          end;
-
-          if assigned(CameraOverwrite) then begin
-
-           case AnimationChannel.fTarget of
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicXMag);
-             CameraOverwrite^.OrthographicXMag:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicYMag);
-             CameraOverwrite^.OrthographicYMag:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZFar);
-             CameraOverwrite^.OrthographicZFar:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZNear);
-             CameraOverwrite^.OrthographicZNear:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveAspectRatio);
-             CameraOverwrite^.PerspectiveAspectRatio:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveYFov);
-             CameraOverwrite^.PerspectiveYFov:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZFar);
-             CameraOverwrite^.PerspectiveZFar:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZNear);
-             CameraOverwrite^.PerspectiveZNear:=Scalar;
-            end;
-            else begin
-            end;
-           end;
-          end;
-
-         end;
-
-        end;
-
-       end;
-
-      end;
-
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMinimum,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMaximum,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimPower,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin, 
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
-
-       if (AnimationChannel.fTargetIndex>=0) and (AnimationChannel.fTargetIndex<fMaterials.Count) then begin
-
-        Material:=fMaterials[AnimationChannel.fTargetIndex];
-
- {      if not assigned(Material) then begin
-         Material:=fMaterials[AnimationChannel.fTargetIndex];
-        end;}
-
-        TargetSubIndex:=AnimationChannel.fTargetSubIndex;
-
-        MaterialOverwrite:=nil;
-
-        if (aFactor>=-0.5) and assigned(Material) then begin
-
-         InstanceChannelIndex:=AnimationChannel.fTargetInstanceIndex;
-         if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
-
-          InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
-          if InstanceAnimationChannelOverwrite^<0 then begin
-           if Material.fCountOverwrites<length(Material.fOverwrites) then begin
-            InstanceAnimationChannelOverwrite^:=Material.fCountOverwrites;
-            inc(Material.fCountOverwrites);
-            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Material.fOverwrites)) then begin
-             MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
-             MaterialOverwrite^.Flags:=[];
-             if InstanceAnimation.fAdditive then begin
-              Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.Additive);
-             end;
-             MaterialOverwrite^.SubIndex:=TargetSubIndex;
-             MaterialOverwrite^.Factor:=Max(aFactor,0.0);
-            end else begin
-             MaterialOverwrite:=nil;
-            end;
-           end else begin
-            MaterialOverwrite:=nil;
-           end;
-          end else begin
-           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Material.fOverwrites)) then begin
-            MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
-           end else begin
-            MaterialOverwrite:=nil;
-           end;
-          end;
-
-          if assigned(MaterialOverwrite) then begin
-
-           case AnimationChannel.fTarget of
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
-             ProcessVector4(Vector4,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor,false);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor);
-             MaterialOverwrite^.MaterialPBRMetallicRoughnessBaseColorFactor:=Vector4;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessMetallicFactor);
-             MaterialOverwrite^.MaterialPBRMetallicRoughnessMetallicFactor:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessRoughnessFactor);
-             MaterialOverwrite^.MaterialPBRMetallicRoughnessRoughnessFactor:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialAlphaCutOff);
-             MaterialOverwrite^.MaterialAlphaCutOff:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor:begin
-             ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveFactor);
-             MaterialOverwrite^.MaterialEmissiveFactor:=Vector3;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialNormalTextureScale);
-             MaterialOverwrite^.MaterialNormalTextureScale:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialOcclusionTextureStrength);
-             MaterialOverwrite^.MaterialOcclusionTextureStrength:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRClearCoatFactor);
-             MaterialOverwrite^.MaterialPBRClearCoatFactor:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRClearCoatRoughnessFactor);
-             MaterialOverwrite^.MaterialPBRClearCoatRoughnessFactor:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveStrength);
-             MaterialOverwrite^.MaterialEmissiveStrength:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialIOR);
-             MaterialOverwrite^.MaterialIOR:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceFactor);
-             MaterialOverwrite^.MaterialPBRIridescenceFactor:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceIor);
-             MaterialOverwrite^.MaterialPBRIridescenceIor:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMinimum:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceMinimum);
-             MaterialOverwrite^.MaterialPBRIridescenceMinimum:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMaximum:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceMaximum);
-             MaterialOverwrite^.MaterialPBRIridescenceMaximum:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor:begin
-             ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSheenColorFactor);
-             MaterialOverwrite^.MaterialPBRSheenColorFactor:=Vector3;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSheenRoughnessFactor);
-             MaterialOverwrite^.MaterialPBRSheenRoughnessFactor:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSpecularFactor);
-             MaterialOverwrite^.MaterialPBRSpecularFactor:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor:begin
-             ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSpecularColorFactor);
-             MaterialOverwrite^.MaterialPBRSpecularColorFactor:=Vector3;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRTransmissionFactor);
-             MaterialOverwrite^.MaterialPBRTransmissionFactor:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionFactor);
-             MaterialOverwrite^.MaterialPBRDiffuseTransmissionFactor:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor:begin
-             ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionColorFactor);
-             MaterialOverwrite^.MaterialPBRDiffuseTransmissionColorFactor:=Vector3;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeThicknessFactor);
-             MaterialOverwrite^.MaterialPBRVolumeThicknessFactor:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeAttenuationDistance);
-             MaterialOverwrite^.MaterialPBRVolumeAttenuationDistance:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor:begin
-             ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeAttenuationColor);
-             MaterialOverwrite^.MaterialPBRVolumeAttenuationColor:=Vector3;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyStrength);
-             MaterialOverwrite^.MaterialPBRAnisotropyStrength:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyRotation);
-             MaterialOverwrite^.MaterialPBRAnisotropyRotation:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDispersion);
-             MaterialOverwrite^.MaterialPBRDispersion:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection:begin
-             ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramDirection);
-             MaterialOverwrite^.MaterialHologramDirection:=Vector3;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerSpeed);
-             MaterialOverwrite^.MaterialHologramFlickerSpeed:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMin);
-             MaterialOverwrite^.MaterialHologramFlickerMin:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMax);
-             MaterialOverwrite^.MaterialHologramFlickerMax:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor:begin
-             ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramMainColor);
-             MaterialOverwrite^.MaterialHologramMainColor:=Vector3;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramMainAlpha);
-             MaterialOverwrite^.MaterialHologramMainAlpha:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor:begin
-             ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimColor);
-             MaterialOverwrite^.MaterialHologramRimColor:=Vector3;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimAlpha);
-             MaterialOverwrite^.MaterialHologramRimAlpha:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimPower:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimPower);
-             MaterialOverwrite^.MaterialHologramRimPower:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimThreshold);
-             MaterialOverwrite^.MaterialHologramRimThreshold:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanTiling);
-             MaterialOverwrite^.MaterialHologramScanTiling:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanSpeed);
-             MaterialOverwrite^.MaterialHologramScanSpeed:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMin);
-             MaterialOverwrite^.MaterialHologramScanMin:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMax);
-             MaterialOverwrite^.MaterialHologramScanMax:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowTiling);
-             MaterialOverwrite^.MaterialHologramGlowTiling:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowSpeed);
-             MaterialOverwrite^.MaterialHologramGlowSpeed:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMin);
-             MaterialOverwrite^.MaterialHologramGlowMin:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMax);
-             MaterialOverwrite^.MaterialHologramGlowMax:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset:begin
-             ProcessVector2(Vector2,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureOffset);
-             MaterialOverwrite^.TextureOffset:=Vector2;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation:begin
-             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureRotation);
-             MaterialOverwrite^.TextureRotation:=Scalar;
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
-             ProcessVector2(Vector2,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureScale);
-             MaterialOverwrite^.TextureScale:=Vector2;
-            end;
-            else begin
-            end;
-           end;
-          end;
-
-         end;
-
-        end;
-
-       end;
-
-      end;
-
-      else begin
-      end;
-
-     end;
-
     end;
-
    end;
 
-  end;
+   if (
+       (TimeIndices[1]<1) or
+       (TimeIndices[1]>=CountTimeIndices)
+      ) or
+      (
+       (AnimationChannel.fInputTimeArray[TimeIndices[1]-1]>Time) or
+       (
+        (
+         ((TimeIndices[1]+1)<CountTimeIndices) and
+         (Time>=AnimationChannel.fInputTimeArray[TimeIndices[1]])
+        ) or
+        (
+         ((TimeIndices[1]+1)=CountTimeIndices) and
+         (Time>AnimationChannel.fInputTimeArray[TimeIndices[1]])
+        )
+       )
+      ) then begin
+    if TimeIndices[1]<1 then begin
+     TimeIndices[1]:=1;
+    end;
+    if CountTimeIndices<2 then begin
+     TimeIndices[1]:=1;
+    end else begin
+     if TimeIndices[1]>=CountTimeIndices then begin
+      TimeIndices[1]:=CountTimeIndices-1;
+     end;
+     if (AnimationChannel.fInputTimeArray[TimeIndices[1]-1]>Time) or
+        (Time>=AnimationChannel.fInputTimeArray[TimeIndices[1]]) then begin
+      while (TimeIndices[1]>1) and
+            (AnimationChannel.fInputTimeArray[TimeIndices[1]-1]>Time) do begin
+       dec(TimeIndices[1]);
+      end;
+      while ((TimeIndices[1]+1)<CountTimeIndices) and
+            (Time>=AnimationChannel.fInputTimeArray[TimeIndices[1]]) do begin
+       inc(TimeIndices[1]);
+      end;
+      if TimeIndices[1]<1 then begin
+       TimeIndices[1]:=1;
+      end else if TimeIndices[1]>=CountTimeIndices then begin
+       TimeIndices[1]:=CountTimeIndices-1;
+      end;
+     end;
+    end;
+   end;
 
-  if InstanceAnimation.fComplete then begin
+   if TimeIndices[1]<0 then begin
+    TimeIndices[1]:=0;
+    for InputTimeArrayIndex:=1 to CountTimeIndices-1 do begin
+     if (AnimationChannel.fInputTimeArray[InputTimeArrayIndex-1]<=Time) and
+        (AnimationChannel.fInputTimeArray[InputTimeArrayIndex]>=Time) then begin
+      TimeIndices[1]:=InputTimeArrayIndex;
+      break;
+     end;
+    end;
+   end;
 
-   for ChannelIndex:=0 to Animation.fDefaultChannels.Count-1 do begin
+   InstanceAnimation.fLastIndices[ChannelIndex]:=TimeIndices[1];
 
-    AnimationDefaultChannel:=Animation.fDefaultChannels[ChannelIndex];
+   if TimeIndices[1]>=0 then begin
 
-    if AnimationDefaultChannel.fTargetInstanceIndex>=0 then begin
+    if TimeIndices[1]>=CountTimeIndices then begin
+     TimeIndices[1]:=CountTimeIndices-1;
+    end;
 
-     case AnimationDefaultChannel.fTarget of
+    TimeIndices[0]:=TimeIndices[1]-1;
+    if TimeIndices[0]<0 then begin
+     TimeIndices[0]:=0;
+    end;
 
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
-       if (AnimationDefaultChannel.fTargetIndex>=0) and (AnimationDefaultChannel.fTargetIndex<fNodes.Count) then begin
-        Node:=fNodes.RawItems[AnimationDefaultChannel.fTargetIndex];
-        NodeOverwrite:=nil;
-        if aFactor>=-0.5 then begin
-         InstanceChannelIndex:=AnimationDefaultChannel.fTargetInstanceIndex;
-         if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
-          InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
-          if InstanceAnimationChannelOverwrite^<0 then begin
-           if Node.fCountOverwrites<length(Node.fOverwrites) then begin
-            InstanceAnimationChannelOverwrite^:=Node.fCountOverwrites;
-            inc(Node.fCountOverwrites);
-            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
-             NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
-             NodeOverwrite^.Flags:=[];
-             if InstanceAnimation.fAdditive then begin
-              Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
+    KeyDelta:=AnimationChannel.fInputTimeArray[TimeIndices[1]]-AnimationChannel.fInputTimeArray[TimeIndices[0]];
+
+    if SameValue(TimeIndices[0],TimeIndices[1]) then begin
+     Factor:=0.0;
+    end else begin
+     Factor:=(Time-AnimationChannel.fInputTimeArray[TimeIndices[0]])/KeyDelta;
+     if Factor<0.0 then begin
+      Factor:=0.0;
+     end else if Factor>1.0 then begin
+      Factor:=1.0;
+     end;
+    end;
+
+    case AnimationChannel.fTarget of
+
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
+
+      if (AnimationChannel.fTargetIndex>=0) and (AnimationChannel.fTargetIndex<fNodes.Count) then begin
+
+       Node:=fNodes.RawItems[AnimationChannel.fTargetIndex];
+
+       NodeOverwrite:=nil;
+
+       if aFactor>=-0.5 then begin
+
+        InstanceChannelIndex:=AnimationChannel.fTargetInstanceIndex;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          if Node.fCountOverwrites<length(Node.fOverwrites) then begin
+           InstanceAnimationChannelOverwrite^:=Node.fCountOverwrites;
+           inc(Node.fCountOverwrites);
+           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+            NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
+            NodeOverwrite^.Flags:=[];
+            if InstanceAnimation.fAdditive then begin
+             Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
+            end;
+            NodeOverwrite^.Factor:=Max(aFactor,0.0);
+           end else begin
+            NodeOverwrite:=nil;
+           end;
+          end else begin
+           NodeOverwrite:=nil;
+          end;
+         end else begin
+          if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+           NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
+          end else begin
+           NodeOverwrite:=nil;
+          end;
+         end;
+
+         if assigned(NodeOverwrite) then begin
+
+          case AnimationChannel.fTarget of
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
+            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            case AnimationChannel.fTarget of
+             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation:begin
+              Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Translation);
+              NodeOverwrite^.Translation:=Vector3;
              end;
-             NodeOverwrite^.Factor:=Max(aFactor,0.0);
+             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
+              Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Scale);
+              NodeOverwrite^.Scale:=Vector3;
+             end;
+             else begin
+             end;
+            end;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
+            ProcessVector4(Vector4,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor,true);
+            case AnimationChannel.fTarget of
+             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
+              Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Rotation);
+              NodeOverwrite^.Rotation.Vector:=Vector4;
+             end;
+             else begin
+             end;
+            end;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
+            ProcessWeights(Node,NodeOverwrite,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+           end;
+           else begin
+           end;
+          end;
+         end;
+
+        end;
+
+       end;
+
+      end;
+
+     end;
+
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMeshWeights:begin
+
+      if (AnimationChannel.fTargetIndex>=0) and (AnimationChannel.fTargetIndex<fGroup.fMeshes.Count) then begin
+
+       Mesh:=fGroup.fMeshes[AnimationChannel.fTargetIndex];
+
+       for ReferenceNodeIndex:=0 to Mesh.fReferencedByNodes.Count-1 do begin
+
+        NodeIndex:=Mesh.fReferencedByNodes.Items[ReferenceNodeIndex];
+
+        if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
+
+         Node:=fNodes.RawItems[NodeIndex];
+
+         NodeOverwrite:=nil;
+
+         if aFactor>=-0.5 then begin
+
+          InstanceChannelIndex:=AnimationChannel.fTargetInstanceIndex;
+          if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+
+           InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+           if InstanceAnimationChannelOverwrite^<0 then begin
+            if Node.fCountOverwrites<length(Node.fOverwrites) then begin
+             InstanceAnimationChannelOverwrite^:=Node.fCountOverwrites;
+             inc(Node.fCountOverwrites);
+             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+              NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
+              NodeOverwrite^.Flags:=[];
+              if InstanceAnimation.fAdditive then begin
+               Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
+              end;
+              NodeOverwrite^.Factor:=Max(aFactor,0.0);
+             end else begin
+              NodeOverwrite:=nil;
+             end;
             end else begin
              NodeOverwrite:=nil;
             end;
            end else begin
-            NodeOverwrite:=nil;
+            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+             NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
+            end else begin
+             NodeOverwrite:=nil;
+            end;
            end;
-          end else begin
-           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
-            NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
-           end else begin
-            NodeOverwrite:=nil;
+
+           if assigned(NodeOverwrite) then begin
+            ProcessWeights(Node,NodeOverwrite,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
            end;
+
           end;
-          if assigned(NodeOverwrite) then begin
-           case AnimationDefaultChannel.fTarget of
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation:begin
-             NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultTranslation,
-                                                         TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Translation];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
-             NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultScale,
-                                                         TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Scale];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
-             NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultRotation,
-                                                         TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Rotation];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
-             NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights,
-                                                         TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Weights];
-            end;
-            else begin
-            end;
-           end;
-          end;
+
          end;
+
         end;
+
        end;
+
       end;
 
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
-       if (AnimationDefaultChannel.fTargetIndex>=0) and (AnimationDefaultChannel.fTargetIndex<fLights.Count) then begin
-        Light:=fLights[AnimationDefaultChannel.fTargetIndex];
-        LightOverwrite:=nil;
-        if aFactor>=-0.5 then begin
-         InstanceChannelIndex:=AnimationDefaultChannel.fTargetInstanceIndex;
-         if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
-          InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
-          if InstanceAnimationChannelOverwrite^<0 then begin
-           if Light.fCountOverwrites<length(Light.fOverwrites) then begin
-            InstanceAnimationChannelOverwrite^:=Light.fCountOverwrites;
-            inc(Light.fCountOverwrites);
-            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Light.fOverwrites)) then begin
-             LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
-             LightOverwrite^.Flags:=[];
-             if InstanceAnimation.fAdditive then begin
-              Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Additive);
-             end;
-             LightOverwrite^.Factor:=Max(aFactor,0.0);
-            end else begin
-             LightOverwrite:=nil;
-            end;
-           end else begin
-            LightOverwrite:=nil;
-           end;
-          end else begin
+     end;
+
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
+
+      if (AnimationChannel.fTargetIndex>=0) and (AnimationChannel.fTargetIndex<fLights.Count) then begin
+
+       Light:=fLights[AnimationChannel.fTargetIndex];
+
+       LightOverwrite:=nil;
+
+       if aFactor>=-0.5 then begin
+
+        InstanceChannelIndex:=AnimationChannel.fTargetInstanceIndex;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          if Light.fCountOverwrites<length(Light.fOverwrites) then begin
+           InstanceAnimationChannelOverwrite^:=Light.fCountOverwrites;
+           inc(Light.fCountOverwrites);
            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Light.fOverwrites)) then begin
             LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
+            LightOverwrite^.Flags:=[];
+            if InstanceAnimation.fAdditive then begin
+             Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Additive);
+            end;
+            LightOverwrite^.Factor:=Max(aFactor,0.0);
            end else begin
             LightOverwrite:=nil;
            end;
+          end else begin
+           LightOverwrite:=nil;
           end;
-          if assigned(LightOverwrite) then begin
-           case AnimationDefaultChannel.fTarget of
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
-             LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultColor,
-                                                           TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Color];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity:begin
-             LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultIntensity,
-                                                           TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Intensity];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange:begin
-             LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultRange,
-                                                           TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Range];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle:begin
-             LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultSpotInnerConeAngle,
-                                                           TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotInnerConeAngle];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
-             LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultSpotOuterConeAngle,
-                                                           TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotOuterConeAngle];
-            end;
-            else begin
-            end;
+         end else begin
+          if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Light.fOverwrites)) then begin
+           LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
+          end else begin
+           LightOverwrite:=nil;
+          end;
+         end;
+
+         if assigned(LightOverwrite) then begin
+
+          case AnimationChannel.fTarget of
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
+            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Color);
+            LightOverwrite^.Color:=Vector3;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Intensity);
+            LightOverwrite^.Intensity:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Range);
+            LightOverwrite^.Range:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotInnerConeAngle);
+            LightOverwrite^.SpotInnerConeAngle:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotOuterConeAngle);
+            LightOverwrite^.SpotOuterConeAngle:=Scalar;
+           end;
+           else begin
            end;
           end;
          end;
+
         end;
+
        end;
+
       end;
 
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
-       if (AnimationDefaultChannel.fTargetIndex>=0) and (AnimationDefaultChannel.fTargetIndex<fCameras.Count) then begin
-        Camera:=fCameras[AnimationDefaultChannel.fTargetIndex];
-        CameraOverwrite:=nil;
-        if aFactor>=-0.5 then begin
-         InstanceChannelIndex:=AnimationDefaultChannel.fTargetInstanceIndex;
-         if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
-          InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
-          if InstanceAnimationChannelOverwrite^<0 then begin
-           if Camera.fCountOverwrites<length(Camera.fOverwrites) then begin
-            InstanceAnimationChannelOverwrite^:=Camera.fCountOverwrites;
-            inc(Camera.fCountOverwrites);
-            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Camera.fOverwrites)) then begin
-             CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
-             CameraOverwrite^.Flags:=[];
-             if InstanceAnimation.fAdditive then begin
-              Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.Additive);
-             end;
-             CameraOverwrite^.Factor:=Max(aFactor,0.0);
-            end else begin
-             CameraOverwrite:=nil;
-            end;
-           end;
-          end else begin
+     end;
+
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
+
+      if (AnimationChannel.fTargetIndex>=0) and (AnimationChannel.fTargetIndex<fCameras.Count) then begin
+
+       Camera:=fCameras[AnimationChannel.fTargetIndex];
+
+       CameraOverwrite:=nil;
+
+       if aFactor>=-0.5 then begin
+
+        InstanceChannelIndex:=AnimationChannel.fTargetInstanceIndex;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          if Camera.fCountOverwrites<length(Camera.fOverwrites) then begin
+           InstanceAnimationChannelOverwrite^:=Camera.fCountOverwrites;
+           inc(Camera.fCountOverwrites);
            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Camera.fOverwrites)) then begin
             CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
+            CameraOverwrite^.Flags:=[];
+            if InstanceAnimation.fAdditive then begin
+             Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.Additive);
+            end;
+            CameraOverwrite^.Factor:=Max(aFactor,0.0);
            end else begin
             CameraOverwrite:=nil;
            end;
+          end else begin
+           CameraOverwrite:=nil;
           end;
-          if assigned(CameraOverwrite) then begin
-           case AnimationDefaultChannel.fTarget of
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag:begin
-             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicXMag,
-                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicXMag];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag:begin
-             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicYMag,
-                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicYMag];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar:begin
-             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicZFar,
-                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZFar];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear:begin
-             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicZNear,
-                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZNear];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio:begin
-             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveAspectRatio,
-                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveAspectRatio];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov:begin
-             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveYFov,
-                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveYFov];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar:begin
-             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveZFar,
-                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZFar];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
-             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveZNear,
-                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZNear];
-            end;
-            else begin
-            end;
+         end else begin
+          if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Camera.fOverwrites)) then begin
+           CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
+          end else begin
+           CameraOverwrite:=nil;
+          end;
+         end;
+
+         if assigned(CameraOverwrite) then begin
+
+          case AnimationChannel.fTarget of
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicXMag);
+            CameraOverwrite^.OrthographicXMag:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicYMag);
+            CameraOverwrite^.OrthographicYMag:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZFar);
+            CameraOverwrite^.OrthographicZFar:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZNear);
+            CameraOverwrite^.OrthographicZNear:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveAspectRatio);
+            CameraOverwrite^.PerspectiveAspectRatio:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveYFov);
+            CameraOverwrite^.PerspectiveYFov:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZFar);
+            CameraOverwrite^.PerspectiveZFar:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZNear);
+            CameraOverwrite^.PerspectiveZNear:=Scalar;
+           end;
+           else begin
            end;
           end;
          end;
+
         end;
+
        end;
+
       end;
 
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMinimum,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMaximum,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimPower,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
-      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
-       if (AnimationDefaultChannel.fTargetIndex>=0) and (AnimationDefaultChannel.fTargetIndex<fMaterials.Count) then begin
-        Material:=fMaterials[AnimationDefaultChannel.fTargetIndex];
-        TargetSubIndex:=AnimationDefaultChannel.fTargetSubIndex;
-        MaterialOverwrite:=nil;
-        if (aFactor>=-0.5) and assigned(Material) then begin
-         InstanceChannelIndex:=AnimationDefaultChannel.fTargetInstanceIndex;
-         if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
-          InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
-          if InstanceAnimationChannelOverwrite^<0 then begin
-           if Material.fCountOverwrites<length(Material.fOverwrites) then begin
-            InstanceAnimationChannelOverwrite^:=Material.fCountOverwrites;
-            inc(Material.fCountOverwrites);
-            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Material.fOverwrites)) then begin
-             MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
-             MaterialOverwrite^.Flags:=[];
-             if InstanceAnimation.fAdditive then begin
-              Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.Additive);
-             end;
-             MaterialOverwrite^.SubIndex:=TargetSubIndex;
-             MaterialOverwrite^.Factor:=Max(aFactor,0.0);
-            end else begin
-             MaterialOverwrite:=nil;
+     end;
+
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMinimum,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMaximum,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimPower,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
+
+      if (AnimationChannel.fTargetIndex>=0) and (AnimationChannel.fTargetIndex<fMaterials.Count) then begin
+
+       Material:=fMaterials[AnimationChannel.fTargetIndex];
+
+{      if not assigned(Material) then begin
+        Material:=fMaterials[AnimationChannel.fTargetIndex];
+       end;}
+
+       TargetSubIndex:=AnimationChannel.fTargetSubIndex;
+
+       MaterialOverwrite:=nil;
+
+       if (aFactor>=-0.5) and assigned(Material) then begin
+
+        InstanceChannelIndex:=AnimationChannel.fTargetInstanceIndex;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          if Material.fCountOverwrites<length(Material.fOverwrites) then begin
+           InstanceAnimationChannelOverwrite^:=Material.fCountOverwrites;
+           inc(Material.fCountOverwrites);
+           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Material.fOverwrites)) then begin
+            MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
+            MaterialOverwrite^.Flags:=[];
+            if InstanceAnimation.fAdditive then begin
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.Additive);
             end;
+            MaterialOverwrite^.SubIndex:=TargetSubIndex;
+            MaterialOverwrite^.Factor:=Max(aFactor,0.0);
            end else begin
             MaterialOverwrite:=nil;
            end;
           end else begin
-           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Material.fOverwrites)) then begin
-            MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
-           end else begin
-            MaterialOverwrite:=nil;
-           end;
+           MaterialOverwrite:=nil;
           end;
-          if assigned(MaterialOverwrite) then begin
-           case AnimationDefaultChannel.fTarget of
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRMetallicRoughnessMetallicFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessMetallicFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRMetallicRoughnessRoughnessFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessRoughnessFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialAlphaCutOff,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialAlphaCutOff];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialEmissiveFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialNormalTextureScale,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialNormalTextureScale];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialOcclusionTextureStrength,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialOcclusionTextureStrength];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRClearCoatFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRClearCoatFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRClearCoatRoughnessFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRClearCoatRoughnessFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialEmissiveStrength,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveStrength];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialIOR,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialIOR];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceIor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceIor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMinimum:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceMinimum,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceMinimum];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMaximum:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceMaximum,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceMaximum];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSheenColorFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSheenColorFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSheenRoughnessFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSheenRoughnessFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSpecularFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSpecularFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSpecularColorFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSpecularColorFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRTransmissionFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRTransmissionFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDiffuseTransmissionFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDiffuseTransmissionColorFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionColorFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRVolumeThicknessFactor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeThicknessFactor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRVolumeAttenuationDistance,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeAttenuationDistance];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRVolumeAttenuationColor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeAttenuationColor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRAnisotropyStrength,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyStrength];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRAnisotropyRotation,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyRotation];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDispersion,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDispersion];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramDirection,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramDirection];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerSpeed,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerSpeed];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerMin,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMin];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerMax,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMax];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramMainColor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramMainColor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramMainAlpha,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramMainAlpha];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramRimColor,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimColor];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramRimAlpha,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimAlpha];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimPower:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramRimPower,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimPower];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramRimThreshold,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimThreshold];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanTiling,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanTiling];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanSpeed,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanSpeed];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanMin,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMin];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanMax,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMax];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowTiling,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowTiling];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowSpeed,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowSpeed];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowMin,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMin];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowMax,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMax];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultTextureOffset,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureOffset];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultTextureRotation,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureRotation];
-            end;
-            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
-             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultTextureScale,
-                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureScale];
-            end;
-            else begin
-            end;
+         end else begin
+          if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Material.fOverwrites)) then begin
+           MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
+          end else begin
+           MaterialOverwrite:=nil;
+          end;
+         end;
+
+         if assigned(MaterialOverwrite) then begin
+
+          case AnimationChannel.fTarget of
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
+            ProcessVector4(Vector4,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor,false);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor);
+            MaterialOverwrite^.MaterialPBRMetallicRoughnessBaseColorFactor:=Vector4;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessMetallicFactor);
+            MaterialOverwrite^.MaterialPBRMetallicRoughnessMetallicFactor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessRoughnessFactor);
+            MaterialOverwrite^.MaterialPBRMetallicRoughnessRoughnessFactor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialAlphaCutOff);
+            MaterialOverwrite^.MaterialAlphaCutOff:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor:begin
+            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveFactor);
+            MaterialOverwrite^.MaterialEmissiveFactor:=Vector3;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialNormalTextureScale);
+            MaterialOverwrite^.MaterialNormalTextureScale:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialOcclusionTextureStrength);
+            MaterialOverwrite^.MaterialOcclusionTextureStrength:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRClearCoatFactor);
+            MaterialOverwrite^.MaterialPBRClearCoatFactor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRClearCoatRoughnessFactor);
+            MaterialOverwrite^.MaterialPBRClearCoatRoughnessFactor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveStrength);
+            MaterialOverwrite^.MaterialEmissiveStrength:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialIOR);
+            MaterialOverwrite^.MaterialIOR:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceFactor);
+            MaterialOverwrite^.MaterialPBRIridescenceFactor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceIor);
+            MaterialOverwrite^.MaterialPBRIridescenceIor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMinimum:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceMinimum);
+            MaterialOverwrite^.MaterialPBRIridescenceMinimum:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMaximum:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceMaximum);
+            MaterialOverwrite^.MaterialPBRIridescenceMaximum:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor:begin
+            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSheenColorFactor);
+            MaterialOverwrite^.MaterialPBRSheenColorFactor:=Vector3;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSheenRoughnessFactor);
+            MaterialOverwrite^.MaterialPBRSheenRoughnessFactor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSpecularFactor);
+            MaterialOverwrite^.MaterialPBRSpecularFactor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor:begin
+            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSpecularColorFactor);
+            MaterialOverwrite^.MaterialPBRSpecularColorFactor:=Vector3;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRTransmissionFactor);
+            MaterialOverwrite^.MaterialPBRTransmissionFactor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionFactor);
+            MaterialOverwrite^.MaterialPBRDiffuseTransmissionFactor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor:begin
+            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionColorFactor);
+            MaterialOverwrite^.MaterialPBRDiffuseTransmissionColorFactor:=Vector3;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeThicknessFactor);
+            MaterialOverwrite^.MaterialPBRVolumeThicknessFactor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeAttenuationDistance);
+            MaterialOverwrite^.MaterialPBRVolumeAttenuationDistance:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor:begin
+            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeAttenuationColor);
+            MaterialOverwrite^.MaterialPBRVolumeAttenuationColor:=Vector3;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyStrength);
+            MaterialOverwrite^.MaterialPBRAnisotropyStrength:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyRotation);
+            MaterialOverwrite^.MaterialPBRAnisotropyRotation:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDispersion);
+            MaterialOverwrite^.MaterialPBRDispersion:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection:begin
+            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramDirection);
+            MaterialOverwrite^.MaterialHologramDirection:=Vector3;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerSpeed);
+            MaterialOverwrite^.MaterialHologramFlickerSpeed:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMin);
+            MaterialOverwrite^.MaterialHologramFlickerMin:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMax);
+            MaterialOverwrite^.MaterialHologramFlickerMax:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor:begin
+            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramMainColor);
+            MaterialOverwrite^.MaterialHologramMainColor:=Vector3;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramMainAlpha);
+            MaterialOverwrite^.MaterialHologramMainAlpha:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor:begin
+            ProcessVector3(Vector3,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimColor);
+            MaterialOverwrite^.MaterialHologramRimColor:=Vector3;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimAlpha);
+            MaterialOverwrite^.MaterialHologramRimAlpha:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimPower:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimPower);
+            MaterialOverwrite^.MaterialHologramRimPower:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimThreshold);
+            MaterialOverwrite^.MaterialHologramRimThreshold:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanTiling);
+            MaterialOverwrite^.MaterialHologramScanTiling:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanSpeed);
+            MaterialOverwrite^.MaterialHologramScanSpeed:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMin);
+            MaterialOverwrite^.MaterialHologramScanMin:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMax);
+            MaterialOverwrite^.MaterialHologramScanMax:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowTiling);
+            MaterialOverwrite^.MaterialHologramGlowTiling:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowSpeed);
+            MaterialOverwrite^.MaterialHologramGlowSpeed:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMin);
+            MaterialOverwrite^.MaterialHologramGlowMin:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMax);
+            MaterialOverwrite^.MaterialHologramGlowMax:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset:begin
+            ProcessVector2(Vector2,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureOffset);
+            MaterialOverwrite^.TextureOffset:=Vector2;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureRotation);
+            MaterialOverwrite^.TextureRotation:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
+            ProcessVector2(Vector2,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureScale);
+            MaterialOverwrite^.TextureScale:=Vector2;
+           end;
+           else begin
            end;
           end;
          end;
+
         end;
+
        end;
+
       end;
 
-      else begin
-      end;
+     end;
 
+     else begin
      end;
 
     end;
@@ -26838,609 +26328,1148 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
   end;
 
  end;
- procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty:boolean);
- var Index,OtherIndex,RotationCounter:TpvSizeInt;
-     Matrix:TpvMatrix4x4;
-     LightMatrix:TpvMatrix4x4D;
-     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
-     Node:TpvScene3D.TGroup.TNode;
-     Translation,Scale:TpvVector3;
-     WeightedRotation,AdditiveRotation:TpvQuaternion;
-     TranslationSum,ScaleSum:TVector3Sum;
-     Factor,
-     WeightedRotationFactorSum,
-     WeightsFactorSum:TpvDouble;
-     Overwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
-     FirstWeights,SkinUsed,Dirty,Additive,HasAdditiveRotation:boolean;
-     Light:TpvScene3D.TLight;
-     InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
-  procedure AddRotation(const aRotation:TpvQuaternion;const aFactor:TpvDouble;const aAdditive:Boolean);
-  begin
-   if not IsZero(aFactor) then begin
-    if aAdditive then begin
-     AdditiveRotation:=AdditiveRotation.Slerp(AdditiveRotation*aRotation,aFactor);
-     HasAdditiveRotation:=true;
-    end else begin
-     if RotationCounter=0 then begin
-      WeightedRotation:=aRotation;
-     end else begin
-      // Informal rolling weighted average proof as javascript/ecmascript:
-      // var data = [[1, 0.5], [2, 0.25], [3, 0.125], [4, 0.0625]]; // <= [[value, weight], ... ]
-      // var weightedAverage = 0, weightSum = 0;
-      // for(var i = 0; i < data.length; i++){
-      //   weightSum += data[i][1];
-      // }
-      // for(var i = 0; i < data.length; i++){
-      //    weightedAverage += data[i][0] * data[i][1];
-      // };
-      // weightedAverage /= weightSum;
-      // var rollingAverage = 0, rollingWeightSum = 0;
-      // for(var i = 0; i < data.length; i++){
-      //   //-------------------- THIS -----------------\\ should be replaced with the actual blend operation, for example slerping
-      //   rollingAverage += (data[i][0] - rollingAverage) * (data[i][1] / (rollingWeightSum + data[i][1]));
-      //   rollingWeightSum += data[i][1];
-      // }
-      // var output = [weightedAverage, rollingAverage, weightedAverage * weightSum, rollingAverage * weightSum];
-      // output should be [1.7333333333333334, 1.7333333333333334, 1.625, 1.625] then
-      // Slerp: Commutative =  No, Constant velocity = Yes, Torque minimal = Yes (no artefact-jumps)
-      // Nlerp: Commutative = Yes, Constant velocity = No,  Torque minimal = Yes (no artefact-jumps)
-      // Elerp: Commutative = Yes, Constant velocity = Yes, Torque minimal = No  (can produce artefact-jumps on too distinct to blending automation WeightedRotation frames)
-      WeightedRotation:=WeightedRotation.Slerp(aRotation,aFactor/(WeightedRotationFactorSum+aFactor)); // Rolling weighted average
-     end;
-     inc(RotationCounter);
-     WeightedRotationFactorSum:=WeightedRotationFactorSum+aFactor;
-    end;
-   end;
-  end;
- begin
-  SkinUsed:=false;
-  InstanceNode:=fNodes.RawItems[aNodeIndex];
-  Node:=fGroup.fNodes[aNodeIndex];
-  InstanceNode.fProcessed:=true;
-  Dirty:=aDirty;
-  if (InstanceNode.fCountOverwrites>0) and (Node.Flags<>[]) then begin
-   Dirty:=true;
-   SkinUsed:=true;
-   TranslationSum.Clear;
-   ScaleSum.Clear;
-   WeightedRotationFactorSum:=0.0;
-   WeightsFactorSum:=0.0;
-   FirstWeights:=true;
-   WeightedRotation:=TpvQuaternion.Identity;
-   AdditiveRotation:=TpvQuaternion.Identity;
-   HasAdditiveRotation:=false;
-   RotationCounter:=0;
-   for Index:=0 to InstanceNode.fCountOverwrites-1 do begin
-    Overwrite:=@InstanceNode.fOverwrites[Index];
-    Factor:=Overwrite^.Factor;
-    Additive:=TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive in Overwrite^.Flags;
-    if not IsZero(Factor) then begin
-     if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults in Overwrite^.Flags then begin
-      TranslationSum.Add(Node.fTranslation,Factor,Additive);
-      ScaleSum.Add(Node.fScale,Factor,Additive);
-      AddRotation(Node.fRotation,Factor,Additive);
-      if Node.fWeights.Count>0 then begin
-       if FirstWeights then begin
-        FirstWeights:=false;
-        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
-         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
-        end;
-        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsAdditiveSum)-1 do begin
-         InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=0.0;
+
+ if InstanceAnimation.fComplete then begin
+
+  for ChannelIndex:=0 to Animation.fDefaultChannels.Count-1 do begin
+
+   AnimationDefaultChannel:=Animation.fDefaultChannels[ChannelIndex];
+
+   if AnimationDefaultChannel.fTargetInstanceIndex>=0 then begin
+
+    case AnimationDefaultChannel.fTarget of
+
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
+      if (AnimationDefaultChannel.fTargetIndex>=0) and (AnimationDefaultChannel.fTargetIndex<fNodes.Count) then begin
+       Node:=fNodes.RawItems[AnimationDefaultChannel.fTargetIndex];
+       NodeOverwrite:=nil;
+       if aFactor>=-0.5 then begin
+        InstanceChannelIndex:=AnimationDefaultChannel.fTargetInstanceIndex;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          if Node.fCountOverwrites<length(Node.fOverwrites) then begin
+           InstanceAnimationChannelOverwrite^:=Node.fCountOverwrites;
+           inc(Node.fCountOverwrites);
+           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+            NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
+            NodeOverwrite^.Flags:=[];
+            if InstanceAnimation.fAdditive then begin
+             Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
+            end;
+            NodeOverwrite^.Factor:=Max(aFactor,0.0);
+           end else begin
+            NodeOverwrite:=nil;
+           end;
+          end else begin
+           NodeOverwrite:=nil;
+          end;
+         end else begin
+          if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.fOverwrites)) then begin
+           NodeOverwrite:=@Node.fOverwrites[InstanceAnimationChannelOverwrite^];
+          end else begin
+           NodeOverwrite:=nil;
+          end;
+         end;
+         if assigned(NodeOverwrite) then begin
+          case AnimationDefaultChannel.fTarget of
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation:begin
+            NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultTranslation,
+                                                        TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Translation];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
+            NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultScale,
+                                                        TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Scale];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation:begin
+            NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultRotation,
+                                                        TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Rotation];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
+            NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights,
+                                                        TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Weights];
+           end;
+           else begin
+           end;
+          end;
+         end;
         end;
        end;
-       if Additive then begin
+      end;
+     end;
+
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
+      if (AnimationDefaultChannel.fTargetIndex>=0) and (AnimationDefaultChannel.fTargetIndex<fLights.Count) then begin
+       Light:=fLights[AnimationDefaultChannel.fTargetIndex];
+       LightOverwrite:=nil;
+       if aFactor>=-0.5 then begin
+        InstanceChannelIndex:=AnimationDefaultChannel.fTargetInstanceIndex;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          if Light.fCountOverwrites<length(Light.fOverwrites) then begin
+           InstanceAnimationChannelOverwrite^:=Light.fCountOverwrites;
+           inc(Light.fCountOverwrites);
+           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Light.fOverwrites)) then begin
+            LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
+            LightOverwrite^.Flags:=[];
+            if InstanceAnimation.fAdditive then begin
+             Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Additive);
+            end;
+            LightOverwrite^.Factor:=Max(aFactor,0.0);
+           end else begin
+            LightOverwrite:=nil;
+           end;
+          end else begin
+           LightOverwrite:=nil;
+          end;
+         end else begin
+          if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Light.fOverwrites)) then begin
+           LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
+          end else begin
+           LightOverwrite:=nil;
+          end;
+         end;
+         if assigned(LightOverwrite) then begin
+          case AnimationDefaultChannel.fTarget of
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
+            LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultColor,
+                                                          TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Color];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity:begin
+            LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultIntensity,
+                                                          TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Intensity];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange:begin
+            LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultRange,
+                                                          TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Range];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle:begin
+            LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultSpotInnerConeAngle,
+                                                          TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotInnerConeAngle];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
+            LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultSpotOuterConeAngle,
+                                                          TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotOuterConeAngle];
+           end;
+           else begin
+           end;
+          end;
+         end;
+        end;
+       end;
+      end;
+     end;
+
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
+      if (AnimationDefaultChannel.fTargetIndex>=0) and (AnimationDefaultChannel.fTargetIndex<fCameras.Count) then begin
+       Camera:=fCameras[AnimationDefaultChannel.fTargetIndex];
+       CameraOverwrite:=nil;
+       if aFactor>=-0.5 then begin
+        InstanceChannelIndex:=AnimationDefaultChannel.fTargetInstanceIndex;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          if Camera.fCountOverwrites<length(Camera.fOverwrites) then begin
+           InstanceAnimationChannelOverwrite^:=Camera.fCountOverwrites;
+           inc(Camera.fCountOverwrites);
+           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Camera.fOverwrites)) then begin
+            CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
+            CameraOverwrite^.Flags:=[];
+            if InstanceAnimation.fAdditive then begin
+             Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.Additive);
+            end;
+            CameraOverwrite^.Factor:=Max(aFactor,0.0);
+           end else begin
+            CameraOverwrite:=nil;
+           end;
+          end;
+         end else begin
+          if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Camera.fOverwrites)) then begin
+           CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
+          end else begin
+           CameraOverwrite:=nil;
+          end;
+         end;
+         if assigned(CameraOverwrite) then begin
+          case AnimationDefaultChannel.fTarget of
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag:begin
+            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicXMag,
+                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicXMag];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag:begin
+            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicYMag,
+                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicYMag];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar:begin
+            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicZFar,
+                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZFar];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear:begin
+            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicZNear,
+                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZNear];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio:begin
+            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveAspectRatio,
+                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveAspectRatio];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov:begin
+            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveYFov,
+                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveYFov];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar:begin
+            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveZFar,
+                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZFar];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
+            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveZNear,
+                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZNear];
+           end;
+           else begin
+           end;
+          end;
+         end;
+        end;
+       end;
+      end;
+     end;
+
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMinimum,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMaximum,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimPower,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
+      if (AnimationDefaultChannel.fTargetIndex>=0) and (AnimationDefaultChannel.fTargetIndex<fMaterials.Count) then begin
+       Material:=fMaterials[AnimationDefaultChannel.fTargetIndex];
+       TargetSubIndex:=AnimationDefaultChannel.fTargetSubIndex;
+       MaterialOverwrite:=nil;
+       if (aFactor>=-0.5) and assigned(Material) then begin
+        InstanceChannelIndex:=AnimationDefaultChannel.fTargetInstanceIndex;
+        if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
+         InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
+         if InstanceAnimationChannelOverwrite^<0 then begin
+          if Material.fCountOverwrites<length(Material.fOverwrites) then begin
+           InstanceAnimationChannelOverwrite^:=Material.fCountOverwrites;
+           inc(Material.fCountOverwrites);
+           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Material.fOverwrites)) then begin
+            MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
+            MaterialOverwrite^.Flags:=[];
+            if InstanceAnimation.fAdditive then begin
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.Additive);
+            end;
+            MaterialOverwrite^.SubIndex:=TargetSubIndex;
+            MaterialOverwrite^.Factor:=Max(aFactor,0.0);
+           end else begin
+            MaterialOverwrite:=nil;
+           end;
+          end else begin
+           MaterialOverwrite:=nil;
+          end;
+         end else begin
+          if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Material.fOverwrites)) then begin
+           MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
+          end else begin
+           MaterialOverwrite:=nil;
+          end;
+         end;
+         if assigned(MaterialOverwrite) then begin
+          case AnimationDefaultChannel.fTarget of
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessMetallicFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRMetallicRoughnessMetallicFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessMetallicFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessRoughnessFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRMetallicRoughnessRoughnessFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessRoughnessFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialAlphaCutOff:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialAlphaCutOff,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialAlphaCutOff];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialEmissiveFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialNormalTextureScale:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialNormalTextureScale,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialNormalTextureScale];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialOcclusionTextureStrength:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialOcclusionTextureStrength,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialOcclusionTextureStrength];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRClearCoatFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRClearCoatFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRClearCoatRoughnessFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRClearCoatRoughnessFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialEmissiveStrength,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveStrength];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialIOR,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialIOR];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceIor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceIor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMinimum:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceMinimum,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceMinimum];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceMaximum:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceMaximum,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceMaximum];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenColorFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSheenColorFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSheenColorFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSheenRoughnessFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSheenRoughnessFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSheenRoughnessFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSpecularFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSpecularFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRSpecularColorFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSpecularColorFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSpecularColorFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRTransmissionFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRTransmissionFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRTransmissionFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDiffuseTransmissionFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDiffuseTransmissionColorFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDiffuseTransmissionColorFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDiffuseTransmissionColorFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeThicknessFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRVolumeThicknessFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeThicknessFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationDistance:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRVolumeAttenuationDistance,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeAttenuationDistance];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRVolumeAttenuationColor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeAttenuationColor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRAnisotropyStrength,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyStrength];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRAnisotropyRotation,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyRotation];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDispersion,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDispersion];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramDirection:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramDirection,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramDirection];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerSpeed:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerSpeed,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerSpeed];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMin:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerMin,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMin];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramFlickerMax:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramFlickerMax,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramFlickerMax];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainColor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramMainColor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramMainColor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramMainAlpha:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramMainAlpha,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramMainAlpha];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimColor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramRimColor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimColor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimAlpha:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramRimAlpha,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimAlpha];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimPower:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramRimPower,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimPower];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramRimThreshold:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramRimThreshold,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramRimThreshold];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanTiling:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanTiling,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanTiling];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanSpeed:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanSpeed,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanSpeed];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMin:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanMin,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMin];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramScanMax:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramScanMax,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramScanMax];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowTiling,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowTiling];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowSpeed,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowSpeed];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowMin,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMin];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialHologramGlowMax,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialHologramGlowMax];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultTextureOffset,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureOffset];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultTextureRotation,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureRotation];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultTextureScale,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureScale];
+           end;
+           else begin
+           end;
+          end;
+         end;
+        end;
+       end;
+      end;
+     end;
+
+     else begin
+     end;
+
+    end;
+
+   end;
+
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ProcessNode(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty:boolean);
+var Index,OtherIndex,RotationCounter:TpvSizeInt;
+    Matrix:TpvMatrix4x4;
+    LightMatrix:TpvMatrix4x4D;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    Node:TpvScene3D.TGroup.TNode;
+    Translation,Scale:TpvVector3;
+    WeightedRotation,AdditiveRotation:TpvQuaternion;
+    TranslationSum,ScaleSum:TVector3Sum;
+    Factor,
+    WeightedRotationFactorSum,
+    WeightsFactorSum:TpvDouble;
+    Overwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
+    FirstWeights,SkinUsed,Dirty,Additive,HasAdditiveRotation:boolean;
+    Light:TpvScene3D.TLight;
+    InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
+ procedure AddRotation(const aRotation:TpvQuaternion;const aFactor:TpvDouble;const aAdditive:Boolean);
+ begin
+  if not IsZero(aFactor) then begin
+   if aAdditive then begin
+    AdditiveRotation:=AdditiveRotation.Slerp(AdditiveRotation*aRotation,aFactor);
+    HasAdditiveRotation:=true;
+   end else begin
+    if RotationCounter=0 then begin
+     WeightedRotation:=aRotation;
+    end else begin
+     // Informal rolling weighted average proof as javascript/ecmascript:
+     // var data = [[1, 0.5], [2, 0.25], [3, 0.125], [4, 0.0625]]; // <= [[value, weight], ... ]
+     // var weightedAverage = 0, weightSum = 0;
+     // for(var i = 0; i < data.length; i++){
+     //   weightSum += data[i][1];
+     // }
+     // for(var i = 0; i < data.length; i++){
+     //    weightedAverage += data[i][0] * data[i][1];
+     // };
+     // weightedAverage /= weightSum;
+     // var rollingAverage = 0, rollingWeightSum = 0;
+     // for(var i = 0; i < data.length; i++){
+     //   //-------------------- THIS -----------------\\ should be replaced with the actual blend operation, for example slerping
+     //   rollingAverage += (data[i][0] - rollingAverage) * (data[i][1] / (rollingWeightSum + data[i][1]));
+     //   rollingWeightSum += data[i][1];
+     // }
+     // var output = [weightedAverage, rollingAverage, weightedAverage * weightSum, rollingAverage * weightSum];
+     // output should be [1.7333333333333334, 1.7333333333333334, 1.625, 1.625] then
+     // Slerp: Commutative =  No, Constant velocity = Yes, Torque minimal = Yes (no artefact-jumps)
+     // Nlerp: Commutative = Yes, Constant velocity = No,  Torque minimal = Yes (no artefact-jumps)
+     // Elerp: Commutative = Yes, Constant velocity = Yes, Torque minimal = No  (can produce artefact-jumps on too distinct to blending automation WeightedRotation frames)
+     WeightedRotation:=WeightedRotation.Slerp(aRotation,aFactor/(WeightedRotationFactorSum+aFactor)); // Rolling weighted average
+    end;
+    inc(RotationCounter);
+    WeightedRotationFactorSum:=WeightedRotationFactorSum+aFactor;
+   end;
+  end;
+ end;
+begin
+ SkinUsed:=false;
+ InstanceNode:=fNodes.RawItems[aNodeIndex];
+ Node:=fGroup.fNodes[aNodeIndex];
+ InstanceNode.fProcessed:=true;
+ Dirty:=aDirty;
+ if (InstanceNode.fCountOverwrites>0) and (Node.Flags<>[]) then begin
+  Dirty:=true;
+  SkinUsed:=true;
+  TranslationSum.Clear;
+  ScaleSum.Clear;
+  WeightedRotationFactorSum:=0.0;
+  WeightsFactorSum:=0.0;
+  FirstWeights:=true;
+  WeightedRotation:=TpvQuaternion.Identity;
+  AdditiveRotation:=TpvQuaternion.Identity;
+  HasAdditiveRotation:=false;
+  RotationCounter:=0;
+  for Index:=0 to InstanceNode.fCountOverwrites-1 do begin
+   Overwrite:=@InstanceNode.fOverwrites[Index];
+   Factor:=Overwrite^.Factor;
+   Additive:=TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive in Overwrite^.Flags;
+   if not IsZero(Factor) then begin
+    if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults in Overwrite^.Flags then begin
+     TranslationSum.Add(Node.fTranslation,Factor,Additive);
+     ScaleSum.Add(Node.fScale,Factor,Additive);
+     AddRotation(Node.fRotation,Factor,Additive);
+     if Node.fWeights.Count>0 then begin
+      if FirstWeights then begin
+       FirstWeights:=false;
+       for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
+        InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
+       end;
+       for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsAdditiveSum)-1 do begin
+        InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=0.0;
+       end;
+      end;
+      if Additive then begin
+       for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
+        InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+       end;
+      end else begin
+       for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
+        InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+       end;
+       WeightsFactorSum:=WeightsFactorSum+Factor;
+      end;
+     end;
+    end else begin
+     if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Translation in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultTranslation in Overwrite^.Flags then begin
+       TranslationSum.Add(Node.fTranslation,Factor,Additive);
+      end else begin
+       TranslationSum.Add(Overwrite^.Translation,Factor,Additive);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Scale in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultScale in Overwrite^.Flags then begin
+       ScaleSum.Add(Node.fScale,Factor,Additive);
+      end else begin
+       ScaleSum.Add(Overwrite^.Scale,Factor,Additive);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Rotation in Overwrite^.Flags then begin
+      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultRotation in Overwrite^.Flags then begin
+       AddRotation(Node.fRotation,Factor,Additive);
+      end else begin
+       AddRotation(Overwrite^.Rotation,Factor,Additive);
+      end;
+     end;
+     if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Weights in Overwrite^.Flags then begin
+      if FirstWeights then begin
+       FirstWeights:=false;
+       for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
+        InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
+       end;
+       for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsAdditiveSum)-1 do begin
+        InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=0.0;
+       end;
+      end;
+      if Additive then begin
+       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
          InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
         end;
        end else begin
+        for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
+         InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
+        end;
+       end;
+      end else begin
+       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
          InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
         end;
-        WeightsFactorSum:=WeightsFactorSum+Factor;
-       end;
-      end;
-     end else begin
-      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Translation in Overwrite^.Flags then begin
-       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultTranslation in Overwrite^.Flags then begin
-        TranslationSum.Add(Node.fTranslation,Factor,Additive);
        end else begin
-        TranslationSum.Add(Overwrite^.Translation,Factor,Additive);
-       end;
-      end;
-      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Scale in Overwrite^.Flags then begin
-       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultScale in Overwrite^.Flags then begin
-        ScaleSum.Add(Node.fScale,Factor,Additive);
-       end else begin
-        ScaleSum.Add(Overwrite^.Scale,Factor,Additive);
-       end;
-      end;
-      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Rotation in Overwrite^.Flags then begin
-       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultRotation in Overwrite^.Flags then begin
-        AddRotation(Node.fRotation,Factor,Additive);
-       end else begin
-        AddRotation(Overwrite^.Rotation,Factor,Additive);
-       end;
-      end;
-      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Weights in Overwrite^.Flags then begin
-       if FirstWeights then begin
-        FirstWeights:=false;
-        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
-         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
-        end;
-        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsAdditiveSum)-1 do begin
-         InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=0.0;
+        for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
+         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
         end;
        end;
-       if Additive then begin
-        if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
-         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
-          InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
-         end;
-        end else begin
-         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
-          InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
-         end;
-        end;
-       end else begin
-        if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
-         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
-          InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
-         end;
-        end else begin
-         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
-          InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
-         end;
-        end;
-        WeightsFactorSum:=WeightsFactorSum+Factor;
-       end;
+       WeightsFactorSum:=WeightsFactorSum+Factor;
       end;
      end;
     end;
    end;
-   Translation:=TranslationSum.Get(Node.fTranslation);
-   Scale:=ScaleSum.Get(Node.fScale);
-   if WeightedRotationFactorSum>0.0 then begin
-    WeightedRotation:=WeightedRotation.Normalize;
-   end else begin
-    WeightedRotation:=Node.fRotation;
-   end;
-   if HasAdditiveRotation then begin
-    WeightedRotation:=WeightedRotation*AdditiveRotation;
-   end;
-   if WeightsFactorSum>0.0 then begin
-    Factor:=1.0/WeightsFactorSum;
-    for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
-     InstanceNode.fWorkWeights[Index]:=(InstanceNode.fOverwriteWeightsSum[Index]*Factor)+InstanceNode.fOverwriteWeightsAdditiveSum[Index];
-    end;
-   end else begin
-    if FirstWeights then begin
-     for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
-      InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
-     end;
-    end else begin
-     for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
-      InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index]+InstanceNode.fOverwriteWeightsAdditiveSum[Index];
-     end;
-    end;
+  end;
+  Translation:=TranslationSum.Get(Node.fTranslation);
+  Scale:=ScaleSum.Get(Node.fScale);
+  if WeightedRotationFactorSum>0.0 then begin
+   WeightedRotation:=WeightedRotation.Normalize;
+  end else begin
+   WeightedRotation:=Node.fRotation;
+  end;
+  if HasAdditiveRotation then begin
+   WeightedRotation:=WeightedRotation*AdditiveRotation;
+  end;
+  if WeightsFactorSum>0.0 then begin
+   Factor:=1.0/WeightsFactorSum;
+   for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+    InstanceNode.fWorkWeights[Index]:=(InstanceNode.fOverwriteWeightsSum[Index]*Factor)+InstanceNode.fOverwriteWeightsAdditiveSum[Index];
    end;
   end else begin
-   Translation:=Node.fTranslation;
-   Scale:=Node.fScale;
-   WeightedRotation:=Node.fRotation;
-   for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
-    InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
-   end;
-  end;
-  Matrix:=TpvMatrix4x4.CreateScale(Scale)*
-          (TpvMatrix4x4.CreateFromQuaternion(WeightedRotation)*
-           TpvMatrix4x4.CreateTranslation(Translation));
-  if assigned(fOnNodeMatrixPre) then begin
-   if fOnNodeMatrixPre(self,Node,InstanceNode,Matrix) then begin
-    Dirty:=true;
-   end;
-  end;
-  Matrix:=Matrix*Node.fMatrix;
-  if assigned(fOnNodeMatrixPost) then begin
-   if fOnNodeMatrixPost(self,Node,InstanceNode,Matrix) then begin
-    Dirty:=true;
-   end;
-  end;
-  Matrix:=Matrix*aMatrix;
-  InstanceNode.fWorkMatrix:=Matrix;
-//InstanceNode.fWorkMatrices[aInFlightFrameIndex]:=Matrix;
-  if assigned(Node.fMesh) then begin
-   if Matrix.Determinant<0.0 then begin
-    Include(InstanceNode.fFlags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
+   if FirstWeights then begin
+    for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+     InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
+    end;
    end else begin
-    Exclude(InstanceNode.fFlags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
-   end;
-   if {SkinUsed and} assigned(Node.fSkin) then begin
-    fSkins[Node.fSkin.Index].Used:=true;
+    for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+     InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index]+InstanceNode.fOverwriteWeightsAdditiveSum[Index];
+    end;
    end;
   end;
-  Dirty:=fUpdateDynamic and (Dirty or (assigned(Node.fSkin) or (Node.fWeights.Count>0)));
-  if aInFlightFrameIndex>=0 then begin
-   if assigned(Node.fLight) then begin
-    LightMatrix:=Matrix*fWorkModelMatrix;
-    InstanceLight:=fLights[Node.fLight.fIndex];
-    if assigned(InstanceNode.fLight) then begin
-     Light:=InstanceNode.fLight;
-     if (not CompareMem(@Light.fMatrix,@LightMatrix,SizeOf(TpvMatrix4x4D))) or
-        (Light.fDataPointer<>InstanceLight.fEffectiveData) or
-        (Light.fGeneration<>InstanceLight.fEffectiveData.fGeneration) then begin
-      fGroup.fSceneInstance.fLightDataLock.Acquire;
-      try
-       Light.fMatrix:=LightMatrix;
-       Light.fDataPointer:=InstanceLight.fEffectiveData;
-       Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
-       Light.fIgnore:=fUseRenderInstances;
-       Light.Update(aInFlightFrameIndex);
-      finally
-       fGroup.fSceneInstance.fLightDataLock.Release;
-      end;
-     end;
-    end else begin
+ end else begin
+  Translation:=Node.fTranslation;
+  Scale:=Node.fScale;
+  WeightedRotation:=Node.fRotation;
+  for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+   InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
+  end;
+ end;
+ Matrix:=TpvMatrix4x4.CreateScale(Scale)*
+         (TpvMatrix4x4.CreateFromQuaternion(WeightedRotation)*
+          TpvMatrix4x4.CreateTranslation(Translation));
+ if assigned(fOnNodeMatrixPre) then begin
+  if fOnNodeMatrixPre(self,Node,InstanceNode,Matrix) then begin
+   Dirty:=true;
+  end;
+ end;
+ Matrix:=Matrix*Node.fMatrix;
+ if assigned(fOnNodeMatrixPost) then begin
+  if fOnNodeMatrixPost(self,Node,InstanceNode,Matrix) then begin
+   Dirty:=true;
+  end;
+ end;
+ Matrix:=Matrix*aMatrix;
+ InstanceNode.fWorkMatrix:=Matrix;
+//InstanceNode.fWorkMatrices[aInFlightFrameIndex]:=Matrix;
+ if assigned(Node.fMesh) then begin
+  if Matrix.Determinant<0.0 then begin
+   Include(InstanceNode.fFlags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
+  end else begin
+   Exclude(InstanceNode.fFlags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
+  end;
+  if {SkinUsed and} assigned(Node.fSkin) then begin
+   fSkins[Node.fSkin.Index].Used:=true;
+  end;
+ end;
+ Dirty:=fUpdateDynamic and (Dirty or (assigned(Node.fSkin) or (Node.fWeights.Count>0)));
+ if aInFlightFrameIndex>=0 then begin
+  if assigned(Node.fLight) then begin
+   LightMatrix:=Matrix*fWorkModelMatrix;
+   InstanceLight:=fLights[Node.fLight.fIndex];
+   if assigned(InstanceNode.fLight) then begin
+    Light:=InstanceNode.fLight;
+    if (not CompareMem(@Light.fMatrix,@LightMatrix,SizeOf(TpvMatrix4x4D))) or
+       (Light.fDataPointer<>InstanceLight.fEffectiveData) or
+       (Light.fGeneration<>InstanceLight.fEffectiveData.fGeneration) then begin
      fGroup.fSceneInstance.fLightDataLock.Acquire;
      try
-      Light:=TpvScene3D.TLight.Create(fSceneInstance,false);
-      try
-       Light.fLight:=Node.fLight;
-       Light.fInstanceLight:=InstanceLight;
-       Light.fData:=Node.fLight.fData;
-       Light.fDataPointer:=InstanceLight.fEffectiveData;
-       Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
-       Light.fMatrix:=LightMatrix;
-       Light.fIgnore:=fUseRenderInstances;
-       Light.Update(aInFlightFrameIndex);
-      finally
-       InstanceNode.fLight:=Light;
-      end;
+      Light.fMatrix:=LightMatrix;
+      Light.fDataPointer:=InstanceLight.fEffectiveData;
+      Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
+      Light.fIgnore:=fUseRenderInstances;
+      Light.Update(aInFlightFrameIndex);
      finally
       fGroup.fSceneInstance.fLightDataLock.Release;
      end;
     end;
-   end;
-  end;
-  if Dirty and (InstanceNode.fCacheVerticesDirtyCounter<2) then begin
-   InstanceNode.fCacheVerticesDirtyCounter:=2;
-  end;
-  for Index:=0 to Node.Children.Count-1 do begin
-   ProcessNode(Node.Children[Index].Index,Matrix,Dirty);
-  end;
- end;
- procedure ProcessSkins;
- var SkinIndex,Index:TpvSizeInt;
-     Skin:TpvScene3D.TGroup.TSkin;
-     InstanceSkin:TpvScene3D.TGroup.TInstance.PSkin;
- begin
-  for SkinIndex:=0 to fGroup.fSkins.Count-1 do begin
-   Skin:=fGroup.fSkins[SkinIndex];
-   InstanceSkin:=@fSkins[SkinIndex];
-   if InstanceSkin^.Used and (Skin.fJoints.Count>0) then begin
-    for Index:=0 to Skin.fJoints.Count-1 do begin
-     Assert(fGroup.fNodes[Skin.fJoints.ItemArray[Index]].Index=Skin.fJoints.ItemArray[Index]);
-     fNodeMatrices[Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.ItemArray[Index]*fNodes[Skin.fJoints.ItemArray[Index]].fWorkMatrix;
-    end;
-   end;
-  end;
- end;
- procedure ProcessBoundingBoxNodeRecursive(const aNodeIndex:TpvSizeInt);
- var Index:TPasGLTFSizeInt;
-     Node:TpvScene3D.TGroup.TNode;
-     InstanceNode,OtherInstanceNode:TpvScene3D.TGroup.TInstance.TNode;
-     AABB,OtherAABB:PpvAABB;
-     Filled:PBoolean;
- begin
-  InstanceNode:=fNodes.RawItems[aNodeIndex];
-  Node:=fGroup.fNodes[aNodeIndex];
-  AABB:=@InstanceNode.fBoundingBoxes[aInFlightFrameIndex];
-  Filled:=@InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex];
-  for Index:=0 to Node.Children.Count-1 do begin
-   ProcessBoundingBoxNodeRecursive(Node.Children[Index].Index);
-   OtherInstanceNode:=fNodes.RawItems[Node.Children[Index].Index];
-   if OtherInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
-    OtherAABB:=@OtherInstanceNode.fBoundingBoxes[aInFlightFrameIndex];
-    if Filled^ then begin
-     AABB^:=AABB^.Combine(OtherAABB^);
-    end else begin
-     Filled^:=true;
-     AABB^:=OtherAABB^;
-    end;
-   end;
-  end;
- end;
- procedure ProcessBoundingSceneBoxNodesWithManualStack(const aScene:TpvScene3D.TGroup.TScene);
- type TStackItem=record
-       NodeIndex:TpvSizeInt;
-       Pass:TpvSizeInt;
-      end;
-      PStackItem=^TStackItem;
-      TStack=TpvDynamicFastStack<TStackItem>;
- var Stack:TStack;
-     StackItem:TStackItem;
-     NewStackItem:PStackItem;
-     Index:TpvSizeInt;
-     Node:TpvScene3D.TGroup.TNode;
-     InstanceNode,OtherInstanceNode:TpvScene3D.TGroup.TInstance.TNode;
-     AABB:PpvAABB;
-     Filled:PBoolean;
- begin
-  if aScene.fNodes.Count>0 then begin
-   Stack.Initialize;
-   try   
-    for Index:=aScene.fNodes.Count-1 downto 0 do begin
-     NewStackItem:=Pointer(Stack.PushIndirect);
-     NewStackItem^.NodeIndex:=aScene.fNodes[Index].Index;
-     NewStackItem^.Pass:=0;
-    end;
-    while Stack.Pop(StackItem) do begin   
-     Node:=fGroup.fNodes[StackItem.NodeIndex];
-     case StackItem.Pass of
-      0:begin
-       if Node.Children.Count>0 then begin 
-        NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.NodeIndex:=StackItem.NodeIndex;
-        NewStackItem^.Pass:=1;
-        for Index:=Node.Children.Count-1 downto 0 do begin
-         NewStackItem:=Pointer(Stack.PushIndirect);
-         NewStackItem^.NodeIndex:=Node.Children[Index].Index;
-         NewStackItem^.Pass:=0;
-        end; 
-       end; 
-      end;  
-      1:begin 
-       InstanceNode:=fNodes.RawItems[StackItem.NodeIndex];
-       AABB:=@InstanceNode.fBoundingBoxes[aInFlightFrameIndex];
-       Filled:=@InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex];
-       for Index:=0 to Node.Children.Count-1 do begin
-        OtherInstanceNode:=fNodes.RawItems[Node.Children[Index].Index];
-        if OtherInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
-         if Filled^ then begin
-          AABB^:=AABB^.Combine(OtherInstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
-         end else begin
-          Filled^:=true;
-          AABB^:=OtherInstanceNode.fBoundingBoxes[aInFlightFrameIndex];
-         end;
-        end;
-       end;
-      end; 
-     end;
-    end; 
-   finally
-    Stack.Finalize;
-   end;
-  end; 
- end;
- procedure ProcessBoundingSceneBoxNodes(const aScene:TpvScene3D.TGroup.TScene);
- var Index:TpvSizeInt;
- begin
-  if fNodes.Count<64 then begin
-   for Index:=0 to aScene.fNodes.Count-1 do begin
-    ProcessBoundingBoxNodeRecursive(aScene.fNodes[Index].Index);
-   end;
-  end else begin
-   ProcessBoundingSceneBoxNodesWithManualStack(aScene);
-  end;
- end;
- procedure ProcessMorphSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode);
- var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex:TpvSizeInt;
-     MorphTargetVertexIndex:TpvUInt32;
-     Mesh:TpvScene3D.TGroup.TMesh;
-     Skin:TpvScene3D.TGroup.TSkin;
-     InverseMatrix,Matrix,ModelNodeMatrix,ModelNodeMatrixEx:TpvMatrix4x4;
-     Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
-     Vertex:TpvScene3D.PVertex;
-     Position:TpvVector3;
-     JointBlock:PJointBlock;
-     DynamicBoundingBox:TpvAABB;
-     MorphTargetVertex:TpvScene3D.PMorphTargetVertex;
-     OK:boolean;
- begin
-  Mesh:=aNode.fMesh;
-  if assigned(Mesh) then begin
-   OK:=false;
-   Skin:=aNode.fSkin;
-   if assigned(Skin) then begin
-    InverseMatrix:=aInstanceNode.fWorkMatrix.Inverse;
    end else begin
-    InverseMatrix:=TpvMatrix4x4.Identity;
-   end;
-   ModelNodeMatrixEx:=aInstanceNode.fWorkMatrix*fWorkModelMatrix;
-   DynamicBoundingBox.Min:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
-   DynamicBoundingBox.Max:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
-   for PrimitiveIndex:=0 to Mesh.fPrimitives.Count-1 do begin
-    Primitive:=Mesh.fPrimitives[PrimitiveIndex];
-    for VertexIndex:=Primitive.fStartBufferVertexOffset to (Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
-     Vertex:=@Group.fVertices.ItemArray[VertexIndex];
-     Position:=Vertex^.Position;
-     MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
-     while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
-      MorphTargetVertex:=@Group.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
-      Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
-      MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+    fGroup.fSceneInstance.fLightDataLock.Acquire;
+    try
+     Light:=TpvScene3D.TLight.Create(fSceneInstance,false);
+     try
+      Light.fLight:=Node.fLight;
+      Light.fInstanceLight:=InstanceLight;
+      Light.fData:=Node.fLight.fData;
+      Light.fDataPointer:=InstanceLight.fEffectiveData;
+      Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
+      Light.fMatrix:=LightMatrix;
+      Light.fIgnore:=fUseRenderInstances;
+      Light.Update(aInFlightFrameIndex);
+     finally
+      InstanceNode.fLight:=Light;
      end;
-     ModelNodeMatrix:=ModelNodeMatrixEx;
-     if Vertex^.CountJointBlocks>0 then begin
-      Matrix:=TpvMatrix4x4.Null;
-      for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
-       JointBlock:=@fGroup.fJointBlocks.ItemArray[JointBlockIndex];
-       for JointIndex:=0 to 3 do begin
-        Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
-       end;
-      end;
-      ModelNodeMatrix:=Matrix*ModelNodeMatrix;
-     end;
-     Position:=ModelNodeMatrix.MulHomogen(Position);
-     DynamicBoundingBox.Min[0]:=Min(DynamicBoundingBox.Min[0],Position[0]);
-     DynamicBoundingBox.Min[1]:=Min(DynamicBoundingBox.Min[1],Position[1]);
-     DynamicBoundingBox.Min[2]:=Min(DynamicBoundingBox.Min[2],Position[2]);
-     DynamicBoundingBox.Max[0]:=Max(DynamicBoundingBox.Max[0],Position[0]);
-     DynamicBoundingBox.Max[1]:=Max(DynamicBoundingBox.Max[1],Position[1]);
-     DynamicBoundingBox.Max[2]:=Max(DynamicBoundingBox.Max[2],Position[2]);
-     OK:=true;
+    finally
+     fGroup.fSceneInstance.fLightDataLock.Release;
     end;
    end;
-   if OK then begin
-    aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=DynamicBoundingBox;
-   end else begin
-    aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Mesh.fBoundingBox.HomogenTransform(aInstanceNode.fWorkMatrix*fWorkModelMatrix);
-   end;
-   aInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
   end;
  end;
- procedure ProcessSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode);
- // This procedure calculates a conservative worst-case bounding box for a node with a skinned animated mesh. It 
- // approximates the bounding box for a given animation state using the mesh bounding box (which includes already
- // conservative morph vertices) and the joints used by the node. This method is not completely accurate but offers a 
- // balance between performance and precision, as it avoids recalculating based on current transformed vertex positions.
- var JointIndex:TpvSizeInt;
-     Mesh:TpvScene3D.TGroup.TMesh;
-     Skin:TpvScene3D.TGroup.TSkin;
-     InverseMatrix:TpvMatrix4x4;
-     UsedJoint:TpvScene3D.TGroup.TNode.PUsedJoint;
-     BoundingBox:TpvAABB;
- begin
-
-  Mesh:=aNode.fMesh;
-  if assigned(Mesh) then begin
-
-   Skin:=aNode.fSkin;
-
-   // Obtain the inverse of the node's world matrix, if it is needed.
-   if assigned(Skin) then begin
-    InverseMatrix:=aInstanceNode.fWorkMatrix.Inverse;
-   end else begin
-    InverseMatrix:=TpvMatrix4x4.Identity;
-   end;
-
-   // Initialize the bounding box with the mesh bounding box, which already includes the worst-case scenario for morph vertices.   
-   BoundingBox:=Mesh.fBoundingBox; 
-
-   // Iterate over all joints used by the current node, considering each joint's largest weight which is used by the mesh vertices of the node.
-   // This aims to be conservative but not necessarily 100% accurate.
-   for JointIndex:=0 to aNode.fUsedJoints.Count-1 do begin
-
-    UsedJoint:=@aNode.fUsedJoints.Items[JointIndex];
-
-    // Update the bounding box by combining it with the transformed by-the-joint-affected-vertices bounding box using the joint matrix.
-    BoundingBox.DirectCombine(UsedJoint^.AABB.HomogenTransform((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight));
-
-   end;
-
-   // Transform the final bounding box using the node and model matrices and store it in the instance node.
-   aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=BoundingBox.HomogenTransform(aInstanceNode.fWorkMatrix*fWorkModelMatrix);
-
-   // Indicate that the bounding box has been calculated for the instance node.
-   aInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
-
-  end;
-
+ if Dirty and (InstanceNode.fCacheVerticesDirtyCounter<2) then begin
+  InstanceNode.fCacheVerticesDirtyCounter:=2;
  end;
- procedure GenerateAABBTreeSkipList;
- type TStackItem=record
-       NodeIndex:TpvSizeInt;
-       Pass:TpvSizeInt;
-       Level:TpvSizeInt;
-       SkipListItemIndex:TpvSizeInt;
-      end;
-      PStackItem=^TStackItem;
-      TStack=TpvDynamicFastStack<TStackItem>;
- var SkipListItemCount,SkipListItemIndex:TpvSizeInt;
-     Stack:TStack;
-     StackItem:TStackItem;
-     NewStackItem:PStackItem;
-     Node:TpvBVHDynamicAABBTree.PTreeNode;
-     SkipList:TpvScene3D.TGroup.TInstance.PAABBTreeSkipList;
-     SkipListItem:TpvScene3D.TGroup.TInstance.PAABBTreeSkipListItem;
- begin
+ for Index:=0 to Node.Children.Count-1 do begin
+  ProcessNode(aInFlightFrameIndex,Node.Children[Index].Index,Matrix,Dirty);
+ end;
+end;
 
+procedure TpvScene3D.TGroup.TInstance.ProcessSkins;
+var SkinIndex,Index:TpvSizeInt;
+    Skin:TpvScene3D.TGroup.TSkin;
+    InstanceSkin:TpvScene3D.TGroup.TInstance.PSkin;
+begin
+ for SkinIndex:=0 to fGroup.fSkins.Count-1 do begin
+  Skin:=fGroup.fSkins[SkinIndex];
+  InstanceSkin:=@fSkins[SkinIndex];
+  if InstanceSkin^.Used and (Skin.fJoints.Count>0) then begin
+   for Index:=0 to Skin.fJoints.Count-1 do begin
+    Assert(fGroup.fNodes[Skin.fJoints.ItemArray[Index]].Index=Skin.fJoints.ItemArray[Index]);
+    fNodeMatrices[Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.ItemArray[Index]*fNodes[Skin.fJoints.ItemArray[Index]].fWorkMatrix;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ProcessBoundingBoxNodeRecursive(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt);
+var Index:TPasGLTFSizeInt;
+    Node:TpvScene3D.TGroup.TNode;
+    InstanceNode,OtherInstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    AABB,OtherAABB:PpvAABB;
+    Filled:PBoolean;
+begin
+ InstanceNode:=fNodes.RawItems[aNodeIndex];
+ Node:=fGroup.fNodes[aNodeIndex];
+ AABB:=@InstanceNode.fBoundingBoxes[aInFlightFrameIndex];
+ Filled:=@InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex];
+ for Index:=0 to Node.Children.Count-1 do begin
+  ProcessBoundingBoxNodeRecursive(aInFlightFrameIndex,Node.Children[Index].Index);
+  OtherInstanceNode:=fNodes.RawItems[Node.Children[Index].Index];
+  if OtherInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
+   OtherAABB:=@OtherInstanceNode.fBoundingBoxes[aInFlightFrameIndex];
+   if Filled^ then begin
+    AABB^:=AABB^.Combine(OtherAABB^);
+   end else begin
+    Filled^:=true;
+    AABB^:=OtherAABB^;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ProcessBoundingSceneBoxNodesWithManualStack(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene);
+type TStackItem=record
+      NodeIndex:TpvSizeInt;
+      Pass:TpvSizeInt;
+     end;
+     PStackItem=^TStackItem;
+     TStack=TpvDynamicFastStack<TStackItem>;
+var Stack:TStack;
+    StackItem:TStackItem;
+    NewStackItem:PStackItem;
+    Index:TpvSizeInt;
+    Node:TpvScene3D.TGroup.TNode;
+    InstanceNode,OtherInstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    AABB:PpvAABB;
+    Filled:PBoolean;
+begin
+ if aScene.fNodes.Count>0 then begin
   Stack.Initialize;
   try
-
-   if fAABBTree.Root>=0 then begin
+   for Index:=aScene.fNodes.Count-1 downto 0 do begin
     NewStackItem:=Pointer(Stack.PushIndirect);
-    NewStackItem^.NodeIndex:=fAABBTree.Root;
+    NewStackItem^.NodeIndex:=aScene.fNodes[Index].Index;
     NewStackItem^.Pass:=0;
-    NewStackItem^.Level:=0;
-    NewStackItem^.SkipListItemIndex:=0;
    end;
-
-   SkipListItemCount:=0;
-
-   SkipList:=@fAABBTreeSkipLists[aInFlightFrameIndex];
-
-   SkipList^.Count:=0;
-
-   try
-
-    while Stack.Pop(StackItem) do begin
-
-     case StackItem.Pass of
-
-      0:begin
-
-       Node:=@fAABBTree.Nodes[StackItem.NodeIndex];
-
-       SkipListItemIndex:=SkipListItemCount;
-       inc(SkipListItemCount);
-
-       if length(SkipList^.Items)<SkipListItemCount then begin
-        SetLength(SkipList^.Items,SkipListItemCount+((SkipListItemCount+1) shr 1));
-       end;
-
-       SkipListItem:=@SkipList^.Items[SkipListItemIndex];
-       SkipListItem^.AABB:=Node.AABB;
-       SkipListItem^.UserData:=TpvPtrUInt(Node.UserData);
-       SkipListItem^.NodeIndex:=StackItem.NodeIndex;
-       SkipListItem^.Level:=StackItem.Level;
-       SkipListItem^.SkipCount:=1;
-
+   while Stack.Pop(StackItem) do begin
+    Node:=fGroup.fNodes[StackItem.NodeIndex];
+    case StackItem.Pass of
+     0:begin
+      if Node.Children.Count>0 then begin
        NewStackItem:=Pointer(Stack.PushIndirect);
        NewStackItem^.NodeIndex:=StackItem.NodeIndex;
        NewStackItem^.Pass:=1;
-       NewStackItem^.Level:=StackItem.Level;
-       NewStackItem^.SkipListItemIndex:=SkipListItemIndex;
-
-       if Node^.Children[1]>=0 then begin
+       for Index:=Node.Children.Count-1 downto 0 do begin
         NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.NodeIndex:=Node^.Children[1];
+        NewStackItem^.NodeIndex:=Node.Children[Index].Index;
         NewStackItem^.Pass:=0;
-        NewStackItem^.Level:=StackItem.Level+1;
-        NewStackItem^.SkipListItemIndex:=0;
        end;
-
-       if Node^.Children[0]>=0 then begin
-        NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.NodeIndex:=Node^.Children[0];
-        NewStackItem^.Pass:=0;
-        NewStackItem^.Level:=StackItem.Level+1;
-        NewStackItem^.SkipListItemIndex:=0;
+      end;
+     end;
+     1:begin
+      InstanceNode:=fNodes.RawItems[StackItem.NodeIndex];
+      AABB:=@InstanceNode.fBoundingBoxes[aInFlightFrameIndex];
+      Filled:=@InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex];
+      for Index:=0 to Node.Children.Count-1 do begin
+       OtherInstanceNode:=fNodes.RawItems[Node.Children[Index].Index];
+       if OtherInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
+        if Filled^ then begin
+         AABB^:=AABB^.Combine(OtherInstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
+        end else begin
+         Filled^:=true;
+         AABB^:=OtherInstanceNode.fBoundingBoxes[aInFlightFrameIndex];
+        end;
        end;
+      end;
+     end;
+    end;
+   end;
+  finally
+   Stack.Finalize;
+  end;
+ end;
+end;
 
+procedure TpvScene3D.TGroup.TInstance.ProcessBoundingSceneBoxNodes(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene);
+var Index:TpvSizeInt;
+begin
+ if fNodes.Count<64 then begin
+  for Index:=0 to aScene.fNodes.Count-1 do begin
+   ProcessBoundingBoxNodeRecursive(aInFlightFrameIndex,aScene.fNodes[Index].Index);
+  end;
+ end else begin
+  ProcessBoundingSceneBoxNodesWithManualStack(aInFlightFrameIndex,aScene);
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ProcessMorphSkinNode(const aInFlightFrameIndex:TpvSizeInt;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode);
+var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex:TpvSizeInt;
+    MorphTargetVertexIndex:TpvUInt32;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    Skin:TpvScene3D.TGroup.TSkin;
+    InverseMatrix,Matrix,ModelNodeMatrix,ModelNodeMatrixEx:TpvMatrix4x4;
+    Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    Vertex:TpvScene3D.PVertex;
+    Position:TpvVector3;
+    JointBlock:PJointBlock;
+    DynamicBoundingBox:TpvAABB;
+    MorphTargetVertex:TpvScene3D.PMorphTargetVertex;
+    OK:boolean;
+begin
+ Mesh:=aNode.fMesh;
+ if assigned(Mesh) then begin
+  OK:=false;
+  Skin:=aNode.fSkin;
+  if assigned(Skin) then begin
+   InverseMatrix:=aInstanceNode.fWorkMatrix.Inverse;
+  end else begin
+   InverseMatrix:=TpvMatrix4x4.Identity;
+  end;
+  ModelNodeMatrixEx:=aInstanceNode.fWorkMatrix*fWorkModelMatrix;
+  DynamicBoundingBox.Min:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
+  DynamicBoundingBox.Max:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
+  for PrimitiveIndex:=0 to Mesh.fPrimitives.Count-1 do begin
+   Primitive:=Mesh.fPrimitives[PrimitiveIndex];
+   for VertexIndex:=Primitive.fStartBufferVertexOffset to (Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
+    Vertex:=@Group.fVertices.ItemArray[VertexIndex];
+    Position:=Vertex^.Position;
+    MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+    while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
+     MorphTargetVertex:=@Group.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
+     Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
+     MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+    end;
+    ModelNodeMatrix:=ModelNodeMatrixEx;
+    if Vertex^.CountJointBlocks>0 then begin
+     Matrix:=TpvMatrix4x4.Null;
+     for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
+      JointBlock:=@fGroup.fJointBlocks.ItemArray[JointBlockIndex];
+      for JointIndex:=0 to 3 do begin
+       Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
+      end;
+     end;
+     ModelNodeMatrix:=Matrix*ModelNodeMatrix;
+    end;
+    Position:=ModelNodeMatrix.MulHomogen(Position);
+    DynamicBoundingBox.Min[0]:=Min(DynamicBoundingBox.Min[0],Position[0]);
+    DynamicBoundingBox.Min[1]:=Min(DynamicBoundingBox.Min[1],Position[1]);
+    DynamicBoundingBox.Min[2]:=Min(DynamicBoundingBox.Min[2],Position[2]);
+    DynamicBoundingBox.Max[0]:=Max(DynamicBoundingBox.Max[0],Position[0]);
+    DynamicBoundingBox.Max[1]:=Max(DynamicBoundingBox.Max[1],Position[1]);
+    DynamicBoundingBox.Max[2]:=Max(DynamicBoundingBox.Max[2],Position[2]);
+    OK:=true;
+   end;
+  end;
+  if OK then begin
+   aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=DynamicBoundingBox;
+  end else begin
+   aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Mesh.fBoundingBox.HomogenTransform(aInstanceNode.fWorkMatrix*fWorkModelMatrix);
+  end;
+  aInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ProcessSkinNode(const aInFlightFrameIndex:TpvSizeInt;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode);
+// This procedure calculates a conservative worst-case bounding box for a node with a skinned animated mesh. It
+// approximates the bounding box for a given animation state using the mesh bounding box (which includes already
+// conservative morph vertices) and the joints used by the node. This method is not completely accurate but offers a
+// balance between performance and precision, as it avoids recalculating based on current transformed vertex positions.
+var JointIndex:TpvSizeInt;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    Skin:TpvScene3D.TGroup.TSkin;
+    InverseMatrix:TpvMatrix4x4;
+    UsedJoint:TpvScene3D.TGroup.TNode.PUsedJoint;
+    BoundingBox:TpvAABB;
+begin
+
+ Mesh:=aNode.fMesh;
+ if assigned(Mesh) then begin
+
+  Skin:=aNode.fSkin;
+
+  // Obtain the inverse of the node's world matrix, if it is needed.
+  if assigned(Skin) then begin
+   InverseMatrix:=aInstanceNode.fWorkMatrix.Inverse;
+  end else begin
+   InverseMatrix:=TpvMatrix4x4.Identity;
+  end;
+
+  // Initialize the bounding box with the mesh bounding box, which already includes the worst-case scenario for morph vertices.
+  BoundingBox:=Mesh.fBoundingBox;
+
+  // Iterate over all joints used by the current node, considering each joint's largest weight which is used by the mesh vertices of the node.
+  // This aims to be conservative but not necessarily 100% accurate.
+  for JointIndex:=0 to aNode.fUsedJoints.Count-1 do begin
+
+   UsedJoint:=@aNode.fUsedJoints.Items[JointIndex];
+
+   // Update the bounding box by combining it with the transformed by-the-joint-affected-vertices bounding box using the joint matrix.
+   BoundingBox.DirectCombine(UsedJoint^.AABB.HomogenTransform((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight));
+
+  end;
+
+  // Transform the final bounding box using the node and model matrices and store it in the instance node.
+  aInstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=BoundingBox.HomogenTransform(aInstanceNode.fWorkMatrix*fWorkModelMatrix);
+
+  // Indicate that the bounding box has been calculated for the instance node.
+  aInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
+
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.GenerateAABBTreeSkipList(const aInFlightFrameIndex:TpvSizeInt);
+type TStackItem=record
+      NodeIndex:TpvSizeInt;
+      Pass:TpvSizeInt;
+      Level:TpvSizeInt;
+      SkipListItemIndex:TpvSizeInt;
+     end;
+     PStackItem=^TStackItem;
+     TStack=TpvDynamicFastStack<TStackItem>;
+var SkipListItemCount,SkipListItemIndex:TpvSizeInt;
+    Stack:TStack;
+    StackItem:TStackItem;
+    NewStackItem:PStackItem;
+    Node:TpvBVHDynamicAABBTree.PTreeNode;
+    SkipList:TpvScene3D.TGroup.TInstance.PAABBTreeSkipList;
+    SkipListItem:TpvScene3D.TGroup.TInstance.PAABBTreeSkipListItem;
+begin
+
+ Stack.Initialize;
+ try
+
+  if fAABBTree.Root>=0 then begin
+   NewStackItem:=Pointer(Stack.PushIndirect);
+   NewStackItem^.NodeIndex:=fAABBTree.Root;
+   NewStackItem^.Pass:=0;
+   NewStackItem^.Level:=0;
+   NewStackItem^.SkipListItemIndex:=0;
+  end;
+
+  SkipListItemCount:=0;
+
+  SkipList:=@fAABBTreeSkipLists[aInFlightFrameIndex];
+
+  SkipList^.Count:=0;
+
+  try
+
+   while Stack.Pop(StackItem) do begin
+
+    case StackItem.Pass of
+
+     0:begin
+
+      Node:=@fAABBTree.Nodes[StackItem.NodeIndex];
+
+      SkipListItemIndex:=SkipListItemCount;
+      inc(SkipListItemCount);
+
+      if length(SkipList^.Items)<SkipListItemCount then begin
+       SetLength(SkipList^.Items,SkipListItemCount+((SkipListItemCount+1) shr 1));
       end;
 
-      1:begin
-       SkipList^.Items[StackItem.SkipListItemIndex].SkipCount:=SkipListItemCount-StackItem.SkipListItemIndex;
+      SkipListItem:=@SkipList^.Items[SkipListItemIndex];
+      SkipListItem^.AABB:=Node.AABB;
+      SkipListItem^.UserData:=TpvPtrUInt(Node.UserData);
+      SkipListItem^.NodeIndex:=StackItem.NodeIndex;
+      SkipListItem^.Level:=StackItem.Level;
+      SkipListItem^.SkipCount:=1;
+
+      NewStackItem:=Pointer(Stack.PushIndirect);
+      NewStackItem^.NodeIndex:=StackItem.NodeIndex;
+      NewStackItem^.Pass:=1;
+      NewStackItem^.Level:=StackItem.Level;
+      NewStackItem^.SkipListItemIndex:=SkipListItemIndex;
+
+      if Node^.Children[1]>=0 then begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.NodeIndex:=Node^.Children[1];
+       NewStackItem^.Pass:=0;
+       NewStackItem^.Level:=StackItem.Level+1;
+       NewStackItem^.SkipListItemIndex:=0;
       end;
 
-      else begin
-       Assert(false);
+      if Node^.Children[0]>=0 then begin
+       NewStackItem:=Pointer(Stack.PushIndirect);
+       NewStackItem^.NodeIndex:=Node^.Children[0];
+       NewStackItem^.Pass:=0;
+       NewStackItem^.Level:=StackItem.Level+1;
+       NewStackItem^.SkipListItemIndex:=0;
       end;
 
      end;
 
+     1:begin
+      SkipList^.Items[StackItem.SkipListItemIndex].SkipCount:=SkipListItemCount-StackItem.SkipListItemIndex;
+     end;
+
+     else begin
+      Assert(false);
+     end;
+
     end;
 
-   finally
-    SkipList^.Count:=SkipListItemCount;
    end;
 
   finally
-   Stack.Finalize;
+   SkipList^.Count:=SkipListItemCount;
   end;
 
+ finally
+  Stack.Finalize;
  end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
 var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     WeightSum,WeightOverFactor:TpvDouble;
     Scene:TpvScene3D.TGroup.TScene;
@@ -27498,10 +27527,10 @@ begin
     end;
    end else begin
     IsActive:=false;
-   end; 
+   end;
   end else begin
    IsActive:=true;
-  end;   
+  end;
  end else begin
   IsActive:=false;
  end;
@@ -27640,7 +27669,7 @@ begin
 
 // StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    for Index:=0 to Scene.fNodes.Count-1 do begin
-    ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity,Dirty);
+    ProcessNode(aInFlightFrameIndex,Scene.fNodes[Index].Index,TpvMatrix4x4.Identity,Dirty);
    end;
 // EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 //   inc(TotalCPUTime,EndCPUTime-StartCPUTime);
@@ -27701,7 +27730,7 @@ begin
        ProcessMorphSkinNode(Node,InstanceNode);
       end else//}
       if assigned(Node.fSkin) then begin
-       ProcessSkinNode(Node,InstanceNode);
+       ProcessSkinNode(aInFlightFrameIndex,Node,InstanceNode);
       end else begin
        InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fNodeMatrices[0]);
        InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
@@ -27715,7 +27744,7 @@ begin
 //  inc(TotalCPUTime,EndCPUTime-StartCPUTime);
 
 //  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-    ProcessBoundingSceneBoxNodes(Scene);
+    ProcessBoundingSceneBoxNodes(aInFlightFrameIndex,Scene);
 //  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 //  inc(TotalCPUTime,EndCPUTime-StartCPUTime);
 
@@ -28012,7 +28041,7 @@ begin
       Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
      end;
      AABBTreeState^.Root:=fAABBTree.Root;}
-     GenerateAABBTreeSkipList;
+     GenerateAABBTreeSkipList(aInFlightFrameIndex);
     end else begin
 //   AABBTreeState^.Root:=-1;
      fAABBTreeSkipLists[aInFlightFrameIndex].Count:=0;
@@ -28609,7 +28638,7 @@ begin
 
  if fMaxRenderInstanceCount<>aCount then begin
   fMaxRenderInstanceCount:=aCount;
-  
+
   // Always free all existing preallocated instances first
   if assigned(fPreallocatedRenderInstances) then begin
    while fPreallocatedRenderInstances.Count>0 do begin
@@ -28618,12 +28647,12 @@ begin
    end;
    FreeAndNil(fPreallocatedRenderInstances);
   end;
-  
+
   if aCount<=0 then begin
    FreeAndNil(fAvailablePreallocatedRenderInstances);
    fVirtualToRenderInstanceMap:=nil;
   end;
-  
+
   // Reallocate if count > 0
   if aCount>0 then begin
    // Fixed pool mode: preallocate render instances for automatic virtual instance assignment
@@ -28632,13 +28661,13 @@ begin
    end else begin
     fPreallocatedRenderInstances:=TpvScene3D.TGroup.TInstance.TRenderInstances.Create(false);
    end;
-   
+
    if assigned(fAvailablePreallocatedRenderInstances) then begin
     fAvailablePreallocatedRenderInstances.Clear;
    end else begin
     fAvailablePreallocatedRenderInstances:=TpvScene3D.TGroup.TInstance.TRenderInstances.Create(false);
    end;
-   
+
    // Create preallocated render instances
    for Index:=0 to aCount-1 do begin
     RenderInstance:=TpvScene3D.TGroup.TInstance.TRenderInstance.Create(self);
@@ -28664,9 +28693,9 @@ var Index:TpvSizeInt;
     LastAnimationState,AnimationState:TpvScene3D.TGroup.TInstance.PAnimationState;
     Time:TpvDouble;
 begin
- 
+
  if fUseAnimationStates then begin
- 
+
   // Clamp alpha
   if aAlpha<0.0 then begin
    Alpha:=0.0;
@@ -28675,26 +28704,26 @@ begin
   end else begin
    Alpha:=aAlpha;
   end;
-  
+
   // Calculate inverse alpha
   InvAlpha:=1.0-Alpha;
-  
+
   // Interpolate all animation states
   for Index:=0 to length(fAnimationStates)-1 do begin
-  
+
    LastAnimationState:=@fLastAnimationStates[Index];
-  
+
    AnimationState:=@fAnimationStates[Index];
-  
+
    // 0 is "No animation" (-1 at group level, since 0 is the first animation in the TGroup instance, thus the -1 offset)
    if Index>0 then begin
     GroupAnimation:=fGroup.fAnimations[Index-1];
    end else begin
     GroupAnimation:=nil;
    end;
-  
+
    GroupInstanceAnimation:=fAnimations[Index];
-  
+
    // Interpolate float values
    GroupInstanceAnimation.fFactor:=(LastAnimationState^.fFactor*InvAlpha)+(AnimationState^.fFactor*Alpha);
    GroupInstanceAnimation.fTime:=(LastAnimationState^.fTime*InvAlpha)+(AnimationState^.fTime*Alpha);
@@ -28721,7 +28750,7 @@ begin
       end;
      end;
      GroupInstanceAnimation.fTime:=Time;
-    end; 
+    end;
 
     Time:=GroupInstanceAnimation.fShadowTime;
     if Time>=0.0 then begin
@@ -28740,11 +28769,11 @@ begin
       end;
      end;
      GroupInstanceAnimation.fShadowTime:=Time;
-    end; 
+    end;
 
    end else begin
 
-    // "No animation" has no animation begin and end times, so just reset the times to zero 
+    // "No animation" has no animation begin and end times, so just reset the times to zero
     GroupInstanceAnimation.fTime:=0.0;
     GroupInstanceAnimation.fShadowTime:=0.0;
 
@@ -29560,7 +29589,7 @@ begin
  fGPUInstanceDataFreeIndexQueue.Initialize;
 
  fGPUInstanceDataIndexCounter:=1;
- 
+
  fGPUInstanceDataIndexLock:=TPasMPSpinLock.Create;
 
  fInstanceDataListLock:=TPasMPSpinLock.Create;
@@ -30017,8 +30046,8 @@ begin
                                                                   TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
    fVulkanDevice.DebugUtils.SetObjectName(fPlanetWaterSimulationCommandPool.Handle,VK_OBJECT_TYPE_COMMAND_POOL,'TpvScene3D.fPlanetWaterSimulationCommandPool');
 
-   for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin                                                          
-   
+   for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+
     fPlanetWaterSimulationCommandBuffers[InFlightFrameIndex]:=TpvVulkanCommandBuffer.Create(fPlanetWaterSimulationCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
     fVulkanDevice.DebugUtils.SetObjectName(fPlanetWaterSimulationCommandBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_COMMAND_BUFFER,'TpvScene3D.fPlanetWaterSimulationCommandBuffers['+IntToStr(InFlightFrameIndex)+']');
 
@@ -30040,7 +30069,7 @@ begin
     fPlanetWaterSimulationCommandBuffers[InFlightFrameIndex]:=nil;
 
     fPlanetWaterSimulationSemaphores[InFlightFrameIndex]:=nil;
-   end; 
+   end;
 
    fPlanetWaterSimulationToSignalSemaphores:=nil;
 
@@ -30080,8 +30109,8 @@ begin
                                                                                       TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
    fVulkanDevice.DebugUtils.SetObjectName(fPlanetAtmospherePrecipitationSimulationCommandPool.Handle,VK_OBJECT_TYPE_COMMAND_POOL,'TpvScene3D.fPlanetAtmospherePrecipitationSimulationCommandPool');
 
-   for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin                                                          
-   
+   for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+
     fPlanetAtmospherePrecipitationSimulationCommandBuffers[InFlightFrameIndex]:=TpvVulkanCommandBuffer.Create(fPlanetAtmospherePrecipitationSimulationCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
     fVulkanDevice.DebugUtils.SetObjectName(fPlanetAtmospherePrecipitationSimulationCommandBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_COMMAND_BUFFER,'TpvScene3D.fPlanetAtmospherePrecipitationSimulationCommandBuffers['+IntToStr(InFlightFrameIndex)+']');
 
@@ -30109,7 +30138,7 @@ begin
 
     fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores[InFlightFrameIndex]:=nil;
 
-   end; 
+   end;
 
    fPlanetAtmospherePrecipitationSimulationToSignalSemaphores:=nil;
 
@@ -30666,7 +30695,7 @@ begin
 
    FreeAndNil(fPlanetWaterSimulationSemaphores[InFlightFrameIndex]);
 
-  end; 
+  end;
 
   fPlanetWaterSimulationToSignalSemaphores:=nil;
 
@@ -30683,7 +30712,7 @@ begin
 
    FreeAndNil(fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores[InFlightFrameIndex]);
 
-  end; 
+  end;
 
   fPlanetAtmospherePrecipitationSimulationToSignalSemaphores:=nil;
 
@@ -30837,7 +30866,7 @@ begin
  end;
 
  fGPUInstanceDataFreeIndexQueue.Finalize;
- 
+
  FreeAndNil(fGPUInstanceDataIndexLock);
 
  for Index:=0 to fCountInFlightFrames-1 do begin
@@ -31029,9 +31058,9 @@ begin
  FreeAndNil(fBlueNoise2DTexture);
 
  FreeAndNil(fRainTexture);
- 
+
  FreeAndNil(fRainNormalTexture);
- 
+
  FreeAndNil(fRainStreaksNormalTexture);
 
  FreeAndNil(fAABBTreeLock);
@@ -31166,20 +31195,20 @@ begin
 
 end;
 
-class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; 
+class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType;
 // Limited to the first 1024 bytes for performance reasons, since critical information for file type detection
-// is usually within the first few bytes. This approach balances efficiency and practicality. 
-// While edge cases (e.g., long comments at the beginning of ASCII files) may exist, they are rare and can be 
+// is usually within the first few bytes. This approach balances efficiency and practicality.
+// While edge cases (e.g., long comments at the beginning of ASCII files) may exist, they are rare and can be
 // ignored for simplicity.
  function IsPVMF(const aMemory:pointer;const aSize:TpvSizeInt):boolean;
  var PVMFHeader:TPVMFHeader;
  begin
-  if assigned(aMemory) and (aSize>=SizeOf(TPVMFHeader)) then begin     
+  if assigned(aMemory) and (aSize>=SizeOf(TPVMFHeader)) then begin
    result:=(PPVMFHeader(aMemory)^.Signature=PVMFSignature) and (PPVMFHeader(aMemory)^.Version=PVMFVersion);
   end else begin
    result:=false;
   end;
- end; 
+ end;
  function IsJSON(const aMemory:pointer;const aSize:TpvSizeInt):boolean;
  var Index:TpvSizeInt;
  begin
@@ -31199,7 +31228,7 @@ class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSi
    end;
   end;
   result:=false;
- end;    
+ end;
  function IsXML(const aMemory:pointer;const aSize:TpvSizeInt):boolean;
  var Index:TpvSizeInt;
  begin
@@ -31232,7 +31261,7 @@ class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSi
  function IsFBX(aMemory:pointer;const aSize:TpvSizeInt):boolean;
  var Index:TpvSizeInt;
  begin
-  if assigned(aMemory) and 
+  if assigned(aMemory) and
      (aSize>=23) and
      (PpvUInt8Array(aMemory)^[0]=ord('K')) and
      (PpvUInt8Array(aMemory)^[1]=ord('a')) and
@@ -31256,11 +31285,11 @@ class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSi
      (PpvUInt8Array(aMemory)^[19]=ord(' ')) and
      (PpvUInt8Array(aMemory)^[20]=$00) and
      (PpvUInt8Array(aMemory)^[21]=$1a) and
-     (PpvUInt8Array(aMemory)^[22]=$00) then begin 
+     (PpvUInt8Array(aMemory)^[22]=$00) then begin
    result:=true; // Binary FBX format
   end else begin
    if assigned(aMemory) then begin
-    // Search for FBXHeaderExtension (18 bytes) for the ASCII version of the FBX format 
+    // Search for FBXHeaderExtension (18 bytes) for the ASCII version of the FBX format
     Index:=0;
     while (Index+18)<aSize do begin
      if (PpvUInt8Array(aMemory)^[Index]=ord('F')) and
@@ -31292,7 +31321,7 @@ class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSi
  end;
  function IsSAM(aMemory:pointer;const aSize:TpvSizeInt):boolean;
  begin
-  if assigned(aMemory) and 
+  if assigned(aMemory) and
      (aSize>=4) and
      ((PpvUInt8Array(aMemory)^[0]=ord('S')) and
       (PpvUInt8Array(aMemory)^[1]=ord('A')) and
@@ -31303,7 +31332,7 @@ class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSi
    result:=false;
   end;
  end;
- function IsMaybeWavefrontOBJ(aMemory:pointer;const aSize:TpvSizeInt):boolean; 
+ function IsMaybeWavefrontOBJ(aMemory:pointer;const aSize:TpvSizeInt):boolean;
  var Index:TpvSizeInt;
      NewLine:boolean;
  begin
@@ -31319,7 +31348,7 @@ class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSi
       NewLine:=true;
      end;
      ord('#'):begin
-      // Skip comments 
+      // Skip comments
       while (Index<aSize) and (PpvUInt8Array(aMemory)^[Index]<>10) and (PpvUInt8Array(aMemory)^[Index]<>13) do begin
        inc(Index);
       end;
@@ -31376,7 +31405,7 @@ class function TpvScene3D.DetectFileType(const aMemory:pointer;const aSize:TpvSi
        end;
       end else begin
        break;
-      end; 
+      end;
      end;
      ord('m'):begin
       if NewLine then begin
@@ -31429,23 +31458,23 @@ var RawBytes:PpvUInt8Array;
 begin
 
  if assigned(aMemory) and (aSize>=2) then begin
- 
+
   RawBytes:=aMemory;
 
   // Limit to the first 1024 bytes for performance reasons, since we only need to check the first few bytes anyway
   // Even if there could be edge cases where for example ASCII FBX, Collada DAE and Wavefront OBJ files could have
   // long comments at the beginning, we can ignore this and similar edge cases for now for simplicity.
-  Size:=Min(aSize,1024); 
+  Size:=Min(aSize,1024);
 
   if (aSize>=SizeOf(TPVMFHeader)) and IsPVMF(aMemory,Size) then begin // PVMF, our own native file format (can be changed every time, so it's only for version-dependent files)
    result:=TpvScene3D.TFileType.PVMF;
- end else if ((aSize>=2) and IsJSON(aMemory,Size)) or // GLTF, which is just JSON with a JSON object at the beginning  
+ end else if ((aSize>=2) and IsJSON(aMemory,Size)) or // GLTF, which is just JSON with a JSON object at the beginning
              ((aSize>=4) and (RawBytes^[0]=ord('g')) and (RawBytes^[1]=ord('l')) and (RawBytes^[2]=ord('T')) and (RawBytes^[3]=ord('F'))) then begin // Binary GLTF
    result:=TpvScene3D.TFileType.GLTF;
-  end else if (aSize>=2) and IsXML(aMemory,Size) then begin // Collada DAE, which is XML 
+  end else if (aSize>=2) and IsXML(aMemory,Size) then begin // Collada DAE, which is XML
    result:=TpvScene3D.TFileType.ColladaDAE;
   end else if (aSize>=23) and IsFBX(aMemory,Size) then begin // FBX, which can be either binary or ASCII
-   result:=TpvScene3D.TFileType.FBX; 
+   result:=TpvScene3D.TFileType.FBX;
   end else if (aSize>=4) and IsSAM(aMemory,Size) then begin // SAM, which is binary
    result:=TpvScene3D.TFileType.SAM;
   end else if (aSize>=2) and IsMaybeWavefrontOBJ(aMemory,Size) then begin // Wavefront OBJ, which is ASCII
@@ -31455,7 +31484,7 @@ begin
   end;
 
  end else begin // Unable to detect
- 
+
   result:=TpvScene3D.TFileType.Unknown;
 
  end;
@@ -31468,7 +31497,7 @@ var Memory:TpvPointer;
 begin
  if assigned(aStream) and (aStream.Size>0) then begin
   if aStream is TMemoryStream then begin
-   // If the stream is already a memory stream, we can directly access the memory 
+   // If the stream is already a memory stream, we can directly access the memory
    result:=DetectFileType(TMemoryStream(aStream).Memory,TMemoryStream(aStream).Size);
   end else begin
    // Otherwise we have to read the stream into a memory block
@@ -31482,7 +31511,7 @@ begin
    finally
     FreeMem(Memory);
    end;
-  end; 
+  end;
  end else begin
   result:=TpvScene3D.TFileType.Unknown;
  end;
@@ -31634,7 +31663,7 @@ begin
   end;
  finally
   fGPUInstanceDataIndexLock.Release;
- end; 
+ end;
 end;
 
 procedure TpvScene3D.ReleaseGPUInstanceDataIndex(const aIndex:TpvUInt32);
@@ -35834,7 +35863,7 @@ begin
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowTiling,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowSpeed,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMin,
-   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax, 
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialHologramGlowMax,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
@@ -36005,7 +36034,7 @@ end;
 
 procedure TpvScene3D.DeleteAllParticles;
 begin
- FillChar(fParticleAliveBitmap,SizeOf(TParticleAliveBitmap),#0); // really so simple as that 
+ FillChar(fParticleAliveBitmap,SizeOf(TParticleAliveBitmap),#0); // really so simple as that
 end;
 
 function TpvScene3D.AddParticle(const aPosition:TpvVector3;
@@ -36329,7 +36358,7 @@ var Index:TpvSizeInt;
     Hash:TpvUInt64;
 begin
  result.SceneIndex:=aInstance.fScene;
- 
+
  // Compute animation state hash
  result.AnimationStateHash:=0;
  if aInstance.fUseAnimationStates and (length(aInstance.fAnimationStates)>0) then begin
@@ -36341,14 +36370,14 @@ begin
    result.AnimationStateHash:=result.AnimationStateHash xor Hash;
   end;
  end;
- 
+
  // Quantize time to 100ms buckets for better grouping
 {if assigned(aInstance.fSceneInstance) then begin
   result.TimeQuantized:=Round(aInstance.fSceneInstance.fTime*10.0);
  end else}begin
   result.TimeQuantized:=0;
  end;
- 
+
  // Compute overall hash
  result.Hash:=result.AnimationStateHash xor TpvUInt64(result.SceneIndex) xor TpvUInt64(result.TimeQuantized);
 end;
@@ -36368,7 +36397,7 @@ var Index:TpvSizeInt;
     Instance:TInstance;
 begin
  inherited Create;
- 
+
  fGroup:=aGroup;
  fSceneInstance:=fGroup.fSceneInstance;
  fMaximumNonVirtualInstances:=aMaximumNonVirtualInstances;
@@ -36378,18 +36407,18 @@ begin
  fDebugEnabled:=false;
  fDebugInfos:=nil;
  fCountDebugInfos:=0;
- 
+
  fLock:=TPasMPSpinLock.Create;
- 
+
  fNonVirtualInstances:=TInstances.Create(false);
  fVirtualInstances:=TInstances.Create(false);
  fRemainingVirtualInstances:=TInstances.Create(false);
  fAvailableNonVirtualInstances:=TInstances.Create(false);
 
  fStateHashMap:=TStateKeyHashMap.Create(nil);
- 
+
  // Link back to self early, so that TInstance.AfterConstruction is aware of it at allocating the
- // non-virtual instances below in this constructor. After it, it would to be late. 
+ // non-virtual instances below in this constructor. After it, it would to be late.
  fGroup.fVirtualInstanceManager:=self;
 
  // Register this group with Scene3D's virtual instance manager list
@@ -36419,7 +36448,7 @@ end;
 
 destructor TpvScene3D.TGroup.TVirtualInstanceManager.Destroy;
 begin
- 
+
  FreeAndNil(fStateHashMap);
 
  FreeAndNil(fAvailableNonVirtualInstances);
@@ -36457,7 +36486,7 @@ begin
 
  // Clear all linked list chains by clearing the hash map
  fStateHashMap.Clear;
- 
+
  // Build new linked lists for each state key
  for Index:=0 to fVirtualInstances.Count-1 do begin
   VirtualInstance:=fVirtualInstances[Index];
@@ -36483,19 +36512,19 @@ var Index:TpvSizeInt;
 begin
 
  result:=0.0;
- 
+
  // Check if both instances are not null
  if not (assigned(aInstanceA) and assigned(aInstanceB)) then begin
   exit;
  end;
- 
+
  // Check scene match
  if aInstanceA.fScene<>aInstanceB.fScene then begin
   exit;
  end;
- 
+
  Similarity:=1.0;
- 
+
  // Compare animation states
  if aInstanceA.fUseAnimationStates and aInstanceB.fUseAnimationStates and
     (length(aInstanceA.fAnimationStates)=length(aInstanceB.fAnimationStates)) then begin
@@ -36504,7 +36533,7 @@ begin
    // Time similarity (within 1 second = similar)
    TimeDifference:=abs(aInstanceA.fAnimationStates[Index].fTime-aInstanceB.fAnimationStates[Index].fTime);
    Similarity:=Similarity*(1.0/(1.0+TimeDifference));
-   
+
    // Factor similarity
    Similarity:=Similarity*(1.0-abs(aInstanceA.fAnimationStates[Index].fFactor-aInstanceB.fAnimationStates[Index].fFactor));
 
@@ -36538,7 +36567,7 @@ begin
  aInstanceIndex:=-1;
 
  BestScore:=-Infinity;
- 
+
  // When preferring dissimilar instances, then candidates are virtual instances
  // otherwise non-virtual instances, keep that in mind while reading this code
 
@@ -36554,13 +36583,13 @@ begin
    end;
   end else begin
    // Candidate is a non-virtual instance in this case, and aInstance a virtual-instance
-   if Candidate.Active then begin 
+   if Candidate.Active then begin
     if Candidate.fMaxRenderInstanceCount>0 then begin
      if assigned(aInstance) and aInstance.fUseRenderInstances then begin
       CountRenderInstances:=aInstance.fCountActiveVirtualRenderInstances;
      end else begin
       CountRenderInstances:=1;
-     end; 
+     end;
      if (CountRenderInstances=0) or (Candidate.fMaxRenderInstanceCount<(Candidate.fPreallocatedRenderInstanceCounter+CountRenderInstances)) then begin
       // Skip non-virtual instances that have reached their maximum render instance count or have no render instances
       continue;
@@ -36569,12 +36598,12 @@ begin
      // Single instance only, already used in Step 1, so skip
      continue;
     end else begin
-     // No limit on render instances, when fMaxRenderInstanceCount<0   
+     // No limit on render instances, when fMaxRenderInstanceCount<0
     end;
    end else begin
     // Skip inactive non-virtual instances to avoid assigning to these invisible instances
     continue;
-   end; 
+   end;
   end;
 
   // Compute similarity score
@@ -36611,10 +36640,10 @@ begin
     end else begin
      Score:=Score-1.0; // Slight penalty for switching assignments
     end;
-   end; 
+   end;
 
   end else begin
-   
+
    // Normal: prefer MORE similar instances
    Score:=(Similarity*10.0)-(DistanceToCamera*0.001);
 
@@ -36623,19 +36652,19 @@ begin
    if assigned(aInstance.fPreviousAssignedNonVirtualInstance) then begin
     if aInstance.fPreviousAssignedNonVirtualInstance=Candidate then begin
      Score:=Score+5.0; // Temporal coherence bonus
-    end else begin     
+    end else begin
      Score:=Score-1.0; // Slight penalty for switching assignments
     end;
    end;
 
   end;
-  
+
   if (not assigned(result)) or (BestScore<Score) then begin
    BestScore:=Score;
    result:=Candidate;
    aInstanceIndex:=Index;
 {  if not assigned(aInstance) then begin
-    // No need to continue searching, as we don't have an instance to compare to as we are just looking for any 
+    // No need to continue searching, as we don't have an instance to compare to as we are just looking for any
     // first candidate and aCandidateOtherInstances is already pre-sorted by distance, so the first virtual
     // instance in aCandidateOtherInstances will always have the best score of 0.0 in that case
     break;
@@ -36681,7 +36710,7 @@ begin
 
   // Update state hash map
   // UpdateStateHashMap; // Not used currently
-  
+
   // Clear debug info
   fCountDebugInfos:=0;
 
@@ -36696,7 +36725,7 @@ begin
     // Reset all non-virtual render instances in preparation for new assignments in an optimized way
     // where we stop resetting as soon as we find an inactive non-virtual render instance since all
     // following ones will also be inactive (due to preallocation order, and delete-with-swap-last
-    // doesn't happen here because we never remove render instances from the preallocated list) 
+    // doesn't happen here because we never remove render instances from the preallocated list)
     for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
      RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
      if RenderInstance.Active then begin
@@ -36777,7 +36806,7 @@ begin
    end;
 
   end;
-  
+
   // Sort visible instances by priority (distance to camera, closer = higher priority)
   if (fRemainingVirtualInstances.Count>0) and fSceneInstance.fUpdateCulling.fActive then begin
 
@@ -36789,7 +36818,7 @@ begin
    for Index:=0 to fRemainingVirtualInstances.Count-1 do begin
     fRemainingVirtualInstances[Index].fUpdateAssignmentDistanceSquared:=(fRemainingVirtualInstances[Index].fModelMatrix.Translation.xyz-CameraPosition).SquaredLength;
    end;
-   
+
    // Fast IndirectIntroSort (O(n log n) average case) - sorts pointers based on distance
    if fRemainingVirtualInstances.Count>1 then begin
     PasVulkan.Utils.IndirectIntroSort(@fRemainingVirtualInstances.RawItems[0],0,fRemainingVirtualInstances.Count-1,CompareInstancesByDistanceSquared);
@@ -36802,18 +36831,18 @@ begin
    CameraPositionPointer:=nil;
 
   end;
-  
+
   // Two-step assignment strategy:
   // Step 1: Assign dissimilar instances to non-virtual instances (need full GPU resources)
   // Step 2: Assign similar instances to render instances (can share GPU resources via instancing)
-  
+
   // Assign virtual instances to non-virtual instances
   if assigned(fCustomAssignmentCallback) then begin
    AssignmentFunction:=fCustomAssignmentCallback;
   end else begin
    AssignmentFunction:=DefaultAssignmentHeuristic;
   end;
-  
+
   AssignedCount:=0;
 
   // Step 1: Inverted loop - iterate over non-virtual instances (much fewer than virtual)
@@ -36839,13 +36868,13 @@ begin
     // Copy state from virtual to non-virtual
     if NonVirtualInstance.fMaxRenderInstanceCount=0 then begin
      NonVirtualInstance.fModelMatrix:=VirtualInstance.fModelMatrix;
-    end else begin 
+    end else begin
      NonVirtualInstance.fModelMatrix:=TpvMatrix4x4.Identity; // Because of render instances
     end;
     NonVirtualInstance.fScene:=VirtualInstance.fScene;
     NonVirtualInstance.fRaytracingMask:=VirtualInstance.fRaytracingMask;
     NonVirtualInstance.Active:=true;
-    
+
     // Copy animation states
     if VirtualInstance.fUseAnimationStates and (length(VirtualInstance.fAnimationStates)>0) then begin
      NonVirtualInstance.fUseAnimationStates:=true;
@@ -36854,7 +36883,7 @@ begin
      end;
      Move(VirtualInstance.fAnimationStates[0],NonVirtualInstance.fAnimationStates[0],SizeOf(TpvScene3D.TGroup.TInstance.TAnimationState)*length(VirtualInstance.fAnimationStates));
     end else begin
-     NonVirtualInstance.fUseAnimationStates:=false; 
+     NonVirtualInstance.fUseAnimationStates:=false;
     end;
 
     // Copy animations
@@ -36876,9 +36905,9 @@ begin
      // The preallocated render instances are already created and will be used automatically
      // during rendering - no manual assignment needed
     end;
-    
+
     inc(AssignedCount);
-    
+
     // Collect debug info
     if fDebugEnabled then begin
      DebugInfoIndex:=fCountDebugInfos;
@@ -36903,22 +36932,22 @@ begin
    end;
 
   end;
-  
+
   // Step 2: Try to assign remaining unassigned virtual instances to render instances
   // This handles similar instances that can share GPU resources via instancing
   for Index:=0 to fRemainingVirtualInstances.Count-1 do begin
 
    VirtualInstance:=fRemainingVirtualInstances[Index];
-   
+
    // Skip if already assigned in Step 1
    if assigned(VirtualInstance.fAssignedNonVirtualInstance) then begin
     continue;
    end;
-   
+
    // Try to find a non-virtual instance with available render instances and matching state
    NonVirtualInstance:=AssignmentFunction(VirtualInstance,nil,fAvailableNonVirtualInstances,aInFlightFrameIndex,CameraPositionPointer,false,InstanceIndex); // false = prefer similar
-   
-   // Assign to render instance of the non-virtual instance, if possible 
+
+   // Assign to render instance of the non-virtual instance, if possible
    if assigned(NonVirtualInstance) and (NonVirtualInstance.fMaxRenderInstanceCount<>0) and
       VirtualInstance.AssignToNonVirtualInstance(NonVirtualInstance) then begin
 
@@ -36951,11 +36980,11 @@ begin
    end;
 
   end;
-  
+
   // Step 3: Handle remaining unassigned virtual instances
   for Index:=0 to fRemainingVirtualInstances.Count-1 do begin
    VirtualInstance:=fRemainingVirtualInstances[Index];
-   
+
    // Skip if assigned
    if assigned(VirtualInstance.fAssignedNonVirtualInstance) then begin
     continue;
@@ -36987,7 +37016,7 @@ begin
   fSceneInstance.InvalidateDirectedAcyclicGraph;
 
   fAssignmentDirty:=false;
-  
+
  finally
   fLock.Release;
  end;
@@ -37020,5 +37049,6 @@ end;
 initialization
  InitializeAnimationChannelTargetOverwriteGroupMap;
 end.
+
 
 
