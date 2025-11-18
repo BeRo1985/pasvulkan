@@ -23097,6 +23097,8 @@ begin
   fSceneInstance.fCullObjectIDLock.Release;
  end;
 
+ fSceneInstance.InvalidateDirectedAcyclicGraph;
+
  fNodeCullObjectIDs:=nil;
 
  inherited Destroy;
