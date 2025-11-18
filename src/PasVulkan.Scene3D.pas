@@ -3205,6 +3205,7 @@ type EpvScene3D=class(Exception);
                      procedure ReallocateData;
                      function GetAnimation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      function GetAnimationState(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.PAnimationState;
+                     procedure SetActive(const aActive:boolean);
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
                      procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4D);
@@ -3301,7 +3302,7 @@ type EpvScene3D=class(Exception);
                      procedure InterpolateAnimationStates(const aAlpha:TpvDouble);
                     published
                      property Group:TGroup read fGroup write fGroup;
-                     property Active:boolean read fActive write fActive;
+                     property Active:boolean read fActive write SetActive;
                      property UpdateDynamic:TPasMPBool32 read fUpdateDynamic write fUpdateDynamic;
                      property Order:TpvInt64 read fOrder write fOrder;
                      property UseRenderInstances:boolean read fUseRenderInstances write fUseRenderInstances;
@@ -4155,6 +4156,8 @@ type EpvScene3D=class(Exception);
        fOriginTransforms:TOriginTransforms;
        fInverseOriginTransforms:TOriginTransforms;
        fUpdateCulling:TpvScene3D.TUpdateCulling;
+       fDirectedAcyclicGraphGeneration:TPasMPUInt32;
+       fLastDirectedAcyclicGraphGeneration:TPasMPUInt32;
       public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -4189,6 +4192,7 @@ type EpvScene3D=class(Exception);
        procedure ParallelGroupInstanceUpdateParallelJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32);
        procedure UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       private
+       procedure InvalidateDirectedAcyclicGraph;
        procedure RebuildDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
       public
        class function DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; overload; static;
@@ -24002,6 +24006,8 @@ begin
     
    end; 
 
+   fSceneInstance.InvalidateDirectedAcyclicGraph;
+
   finally
    fAdded:=true;
   end;
@@ -24618,6 +24624,8 @@ begin
    inc(fSceneInstance.fDrawDataGeneration);
 {$endif}
 
+   fSceneInstance.InvalidateDirectedAcyclicGraph;
+
   finally
    fAdded:=false;
   end;
@@ -24634,6 +24642,14 @@ end;
 function TpvScene3D.TGroup.TInstance.GetAnimationState(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.PAnimationState;
 begin
  result:=@fAnimationStates[aIndex+1];
+end;
+
+procedure TpvScene3D.TGroup.TInstance.SetActive(const aActive:boolean);
+begin
+ if fActive<>aActive then begin
+  fActive:=aActive;
+  fSceneInstance.InvalidateDirectedAcyclicGraph;
+ end;
 end;
 
 procedure TpvScene3D.TGroup.TInstance.SetScene(const aScene:TpvSizeInt);
@@ -24851,6 +24867,7 @@ begin
     finally
      aInstance.fDependencyLock.Release;
     end;
+    fSceneInstance.InvalidateDirectedAcyclicGraph;
     result:=true;
    end;
   finally
@@ -24881,6 +24898,7 @@ begin
    finally
     fSceneInstance.fGroupInstanceListLock.Release;
    end;
+   fSceneInstance.InvalidateDirectedAcyclicGraph;
    result:=true;
   end;
  finally
@@ -24915,6 +24933,7 @@ begin
     finally
      aInstance.fDependencyLock.Release;
     end;
+    fSceneInstance.InvalidateDirectedAcyclicGraph;
     result:=true;
    end;
   finally
@@ -24945,6 +24964,7 @@ begin
    finally
     fSceneInstance.fGroupInstanceListLock.Release;
    end;
+   fSceneInstance.InvalidateDirectedAcyclicGraph;
    result:=true;
   end;
  finally
@@ -24955,6 +24975,7 @@ end;
 function TpvScene3D.TGroup.TInstance.AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4;const aIgnoreScale:Boolean):Boolean;
 var OtherInstance:TpvScene3D.TGroup.TInstance;
 begin
+ result:=false;
  if assigned(aInstance) and (aInstance<>self) and assigned(aNode) then begin
   if fAppendageInstance=aInstance then begin
    fAttachmentAppendageLock.Acquire;
@@ -24967,9 +24988,11 @@ begin
     finally
      aInstance.fAttachmentAppendageLock.Release;
     end;
+    fSceneInstance.InvalidateDirectedAcyclicGraph;
    finally
     fAttachmentAppendageLock.Release;
    end;
+   result:=true;
   end else begin
    fAttachmentAppendageLock.Acquire;
    try
@@ -24995,6 +25018,7 @@ begin
      if not aInstance.fAttachments.Contains(self) then begin
       aInstance.fAttachments.Add(self);
      end;
+     fSceneInstance.InvalidateDirectedAcyclicGraph;
      result:=true;
     finally
      aInstance.fAttachmentAppendageLock.Release;
@@ -25023,6 +25047,7 @@ begin
      finally
       fAppendageInstance:=nil;
      end;
+     fSceneInstance.InvalidateDirectedAcyclicGraph;
      result:=true;
     end else begin
      result:=false;
@@ -29295,6 +29320,10 @@ begin
 
  fDataGeneration:=0;
 
+ fDirectedAcyclicGraphGeneration:=0;
+
+ fLastDirectedAcyclicGraphGeneration:=0;
+
  if assigned(aVulkanDevice) then begin
   fVulkanDevice:=aVulkanDevice;
  end else if assigned(pvApplication) then begin
@@ -32839,6 +32868,11 @@ begin
  end;
 end;
 
+procedure TpvScene3D.InvalidateDirectedAcyclicGraph;
+begin
+ TPasMPInterlocked.Increment(fDirectedAcyclicGraphGeneration);
+end;
+
 procedure TpvScene3D.RebuildDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
 type TGroupInstanceStack=TpvDynamicFastStack<TpvScene3D.TGroup.TInstance>;
 var GroupInstanceIndex,RenderInstanceIndex,AttachmentIndex,OtherGroupInstanceIndex:TpvSizeInt;
@@ -32848,162 +32882,168 @@ var GroupInstanceIndex,RenderInstanceIndex,AttachmentIndex,OtherGroupInstanceInd
     CycleDetected:boolean;
 begin
 
- GroupInstanceStack.Initialize;
- try
+ if fLastDirectedAcyclicGraphGeneration<>fDirectedAcyclicGraphGeneration then begin
 
-  fLeafInstances.ClearNoFree;
+  fLastDirectedAcyclicGraphGeneration:=fDirectedAcyclicGraphGeneration;
 
-  fLinearInstanceChoreography.ClearNoFree;
+  GroupInstanceStack.Initialize;
+  try
 
-  for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
-   GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
-   GroupInstance.fDirectedAcyclicGraphDependencies.ClearNoFree;
-   GroupInstance.fVisitedState[aInFlightFrameIndex]:=0;
-  end;
+   fLeafInstances.ClearNoFree;
 
-  CycleDetected:=false;
+   fLinearInstanceChoreography.ClearNoFree;
 
-  for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
+   for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
+    GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
+    GroupInstance.fDirectedAcyclicGraphDependencies.ClearNoFree;
+    GroupInstance.fVisitedState[aInFlightFrameIndex]:=0;
+   end;
 
-   GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
+   CycleDetected:=false;
 
-   if GroupInstance.fActive and GroupInstance.fGroup.Usable and (GroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
+   for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
 
-    if (assigned(GroupInstance.fGroup.fVirtualInstanceManager) and
-        (GroupInstance.fVirtual or
-         ((not GroupInstance.fVirtual) and
-          (assigned(GroupInstance.fAssignedVirtualInstance) or
-           (GroupInstance.fRenderInstances.Count>0))))) or
-       assigned(GroupInstance.fAppendageInstance) or
-       (GroupInstance.fAttachments.Count>0) or
-       (GroupInstance.fRequiredDependencies.Count>0) or
-       (GroupInstance.fProvidedDependencies.Count>0) then begin
+    GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
 
-     GroupInstanceStack.Push(GroupInstance);
+    if GroupInstance.fActive and GroupInstance.fGroup.Usable and (GroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
 
-     while GroupInstanceStack.Pop(GroupInstance) do begin
+     if (assigned(GroupInstance.fGroup.fVirtualInstanceManager) and
+         (GroupInstance.fVirtual or
+          ((not GroupInstance.fVirtual) and
+           (assigned(GroupInstance.fAssignedVirtualInstance) or
+            (GroupInstance.fRenderInstances.Count>0))))) or
+        assigned(GroupInstance.fAppendageInstance) or
+        (GroupInstance.fAttachments.Count>0) or
+        (GroupInstance.fRequiredDependencies.Count>0) or
+        (GroupInstance.fProvidedDependencies.Count>0) then begin
 
-      case GroupInstance.fVisitedState[aInFlightFrameIndex] of
+      GroupInstanceStack.Push(GroupInstance);
 
-       0:begin
+      while GroupInstanceStack.Pop(GroupInstance) do begin
 
-        GroupInstance.fVisitedState[aInFlightFrameIndex]:=1;
+       case GroupInstance.fVisitedState[aInFlightFrameIndex] of
 
-        GroupInstance.fDirectedAcyclicGraphDependencies.ClearNoFree;
+        0:begin
 
-        if assigned(GroupInstance.fGroup.fVirtualInstanceManager) then begin
-         if not GroupInstance.fVirtual then begin
-          OtherGroupInstance:=GroupInstance.fAssignedVirtualInstance;
-          if assigned(OtherGroupInstance) and OtherGroupInstance.Active then begin
-           if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
-            CycleDetected:=true;
-            pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
-           end else if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
-            GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
-           end;
-          end else begin
-           for RenderInstanceIndex:=0 to GroupInstance.fRenderInstances.Count-1 do begin
-            GroupInstanceRenderInstance:=GroupInstance.fRenderInstances.RawItems[RenderInstanceIndex];
-            OtherGroupInstance:=GroupInstanceRenderInstance.fAssignedVirtualInstance;
-            if assigned(OtherGroupInstance) and OtherGroupInstance.Active then begin
-             if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable then begin
-              if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
-               CycleDetected:=true;
-               pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
-              end else if not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
-               GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+         GroupInstance.fVisitedState[aInFlightFrameIndex]:=1;
+
+         GroupInstance.fDirectedAcyclicGraphDependencies.ClearNoFree;
+
+         if assigned(GroupInstance.fGroup.fVirtualInstanceManager) then begin
+          if not GroupInstance.fVirtual then begin
+           OtherGroupInstance:=GroupInstance.fAssignedVirtualInstance;
+           if assigned(OtherGroupInstance) and OtherGroupInstance.Active then begin
+            if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
+             CycleDetected:=true;
+             pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
+            end else if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
+             GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+            end;
+           end else begin
+            for RenderInstanceIndex:=0 to GroupInstance.fRenderInstances.Count-1 do begin
+             GroupInstanceRenderInstance:=GroupInstance.fRenderInstances.RawItems[RenderInstanceIndex];
+             OtherGroupInstance:=GroupInstanceRenderInstance.fAssignedVirtualInstance;
+             if assigned(OtherGroupInstance) and OtherGroupInstance.Active then begin
+              if OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable then begin
+               if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
+                CycleDetected:=true;
+                pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
+               end else if not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
+                GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+               end;
               end;
+             end else begin
+              break;
              end;
-            end else begin
-             break;
             end;
            end;
           end;
          end;
-        end;
 
-        if GroupInstance.fRequiredDependencies.Count>0 then begin
-         for AttachmentIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
-          OtherGroupInstance:=GroupInstance.fRequiredDependencies.RawItems[AttachmentIndex];
-          if assigned(OtherGroupInstance) and OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable then begin
-           if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
-            CycleDetected:=true;
-            pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
-           end else if not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
-            GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
-           end; 
+         if GroupInstance.fRequiredDependencies.Count>0 then begin
+          for AttachmentIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
+           OtherGroupInstance:=GroupInstance.fRequiredDependencies.RawItems[AttachmentIndex];
+           if assigned(OtherGroupInstance) and OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable then begin
+            if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
+             CycleDetected:=true;
+             pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
+            end else if not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
+             GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+            end;
+           end;
           end;
          end;
-        end;
 
-        OtherGroupInstance:=GroupInstance.fAppendageInstance;
-        if assigned(OtherGroupInstance) and OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable then begin
-         if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
-          CycleDetected:=true;
-          pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
-         end else if not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
-          GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
-         end; 
-        end; 
-
-        GroupInstance.fCountDirectedAcyclicGraphDependencies:=GroupInstance.fDirectedAcyclicGraphDependencies.Count;
-        GroupInstance.fRemainingDirectedAcyclicGraphDependencies:=GroupInstance.fCountDirectedAcyclicGraphDependencies;
-
-        if GroupInstance.fDirectedAcyclicGraphDependencies.Count>0 then begin
-
-         GroupInstanceStack.Push(GroupInstance);
-
-         for OtherGroupInstanceIndex:=0 to GroupInstance.fDirectedAcyclicGraphDependencies.Count-1 do begin
-          GroupInstanceStack.Push(GroupInstance.fDirectedAcyclicGraphDependencies.RawItems[OtherGroupInstanceIndex]);
+         OtherGroupInstance:=GroupInstance.fAppendageInstance;
+         if assigned(OtherGroupInstance) and OtherGroupInstance.fActive and OtherGroupInstance.fGroup.Usable then begin
+          if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
+           CycleDetected:=true;
+           pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
+          end else if not GroupInstance.fDirectedAcyclicGraphDependencies.Contains(OtherGroupInstance) then begin
+           GroupInstance.fDirectedAcyclicGraphDependencies.Add(OtherGroupInstance);
+          end;
          end;
 
-        end else begin
+         GroupInstance.fCountDirectedAcyclicGraphDependencies:=GroupInstance.fDirectedAcyclicGraphDependencies.Count;
+         GroupInstance.fRemainingDirectedAcyclicGraphDependencies:=GroupInstance.fCountDirectedAcyclicGraphDependencies;
+
+         if GroupInstance.fDirectedAcyclicGraphDependencies.Count>0 then begin
+
+          GroupInstanceStack.Push(GroupInstance);
+
+          for OtherGroupInstanceIndex:=0 to GroupInstance.fDirectedAcyclicGraphDependencies.Count-1 do begin
+           GroupInstanceStack.Push(GroupInstance.fDirectedAcyclicGraphDependencies.RawItems[OtherGroupInstanceIndex]);
+          end;
+
+         end else begin
+
+          GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+
+          fLeafInstances.Add(GroupInstance);
+
+          fLinearInstanceChoreography.Add(GroupInstance);
+
+         end;
+
+        end;
+
+        1:begin
 
          GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
-
-         fLeafInstances.Add(GroupInstance);
 
          fLinearInstanceChoreography.Add(GroupInstance);
 
         end;
 
-       end;
+        else begin
+        end;
 
-       1:begin
-
-        GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
-
-        fLinearInstanceChoreography.Add(GroupInstance);
-
-       end;
-
-       else begin
        end;
 
       end;
 
+     end else begin
+
+      GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+
+      fLeafInstances.Add(GroupInstance);
+
+      fLinearInstanceChoreography.Add(GroupInstance);
+
      end;
-
-    end else begin
-
-     GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
-
-     fLeafInstances.Add(GroupInstance);
-
-     fLinearInstanceChoreography.Add(GroupInstance);
 
     end;
 
    end;
 
+   if CycleDetected then begin
+    pvApplication.Log(LOG_DEBUG,'Scene3D','Dependency cycles detected and broken. Some instances may not render in the correct order.');
+   end;
+
+  finally
+   GroupInstanceStack.Finalize;
   end;
 
-  if CycleDetected then begin
-   pvApplication.Log(LOG_DEBUG,'Scene3D','Dependency cycles detected and broken. Some instances may not render in the correct order.');
-  end;
-  
- finally
-  GroupInstanceStack.Finalize;
  end;
 
 end;
@@ -33130,7 +33170,7 @@ begin
    fGroupInstances.Sort;
 
    // (Re-)Build directed acyclic graph
-   //RebuildDirectedAcyclicGraph(aInFlightFrameIndex);
+   RebuildDirectedAcyclicGraph(aInFlightFrameIndex);
 
    if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) then begin
 
