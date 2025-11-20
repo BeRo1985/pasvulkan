@@ -302,7 +302,9 @@ type TpvScene=class;
        fCountToFinishLoadNodes:TPasMPInt32;
        fData:TObject;
        fDirectedAcyclicGraph:TpvSceneDirectedAcyclicGraph;
+       fUseDirectedAcyclicGraph:TPasMPBool32;
        procedure InvalidateDirectedAcyclicGraph; inline;
+       procedure RebuildDirectedAcyclicGraph; inline;
       public
        fStartLoadVisitGeneration:TpvUInt32;
        fBackgroundLoadVisitGeneration:TpvUInt32;
@@ -335,6 +337,7 @@ type TpvScene=class;
        property RootNode:TpvSceneNode read fRootNode;
        property Data:TObject read fData;
        property DirectedAcyclicGraph:TpvSceneDirectedAcyclicGraph read fDirectedAcyclicGraph;
+       property UseDirectedAcyclicGraph:TPasMPBool32 read fUseDirectedAcyclicGraph write fUseDirectedAcyclicGraph;
      end;
 
      { TpvSceneNode3D }
@@ -914,7 +917,7 @@ procedure TpvSceneNode.Check;
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- if fState=TpvSceneNodeState.Loaded then begin
+ if (fState=TpvSceneNodeState.Loaded) and not fScene.fUseDirectedAcyclicGraph then begin
   for ChildNodeIndex:=0 to fChildren.Count-1 do begin
    ChildNode:=fChildren[ChildNodeIndex];
    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
@@ -928,7 +931,7 @@ procedure TpvSceneNode.Store;
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- if fState=TpvSceneNodeState.Loaded then begin
+ if (fState=TpvSceneNodeState.Loaded) and not fScene.fUseDirectedAcyclicGraph then begin
   for ChildNodeIndex:=0 to fChildren.Count-1 do begin
    ChildNode:=fChildren[ChildNodeIndex];
    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
@@ -942,7 +945,7 @@ procedure TpvSceneNode.BeginUpdate(const aDeltaTime:TpvDouble);
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- if fState=TpvSceneNodeState.Loaded then begin
+ if (fState=TpvSceneNodeState.Loaded) and not fScene.fUseDirectedAcyclicGraph then begin
   for ChildNodeIndex:=0 to fChildren.Count-1 do begin
    ChildNode:=fChildren[ChildNodeIndex];
    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
@@ -956,7 +959,7 @@ procedure TpvSceneNode.Update(const aDeltaTime:TpvDouble);
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- if fState=TpvSceneNodeState.Loaded then begin
+ if (fState=TpvSceneNodeState.Loaded) and not fScene.fUseDirectedAcyclicGraph then begin
   for ChildNodeIndex:=0 to fChildren.Count-1 do begin
    ChildNode:=fChildren[ChildNodeIndex];
    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
@@ -970,7 +973,7 @@ procedure TpvSceneNode.EndUpdate(const aDeltaTime:TpvDouble);
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- if fState=TpvSceneNodeState.Loaded then begin
+ if (fState=TpvSceneNodeState.Loaded) and not fScene.fUseDirectedAcyclicGraph then begin
   for ChildNodeIndex:=0 to fChildren.Count-1 do begin
    ChildNode:=fChildren[ChildNodeIndex];
    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
@@ -984,7 +987,7 @@ procedure TpvSceneNode.Interpolate(const aAlpha:TpvDouble);
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- if fState=TpvSceneNodeState.Loaded then begin
+ if (fState=TpvSceneNodeState.Loaded) and not fScene.fUseDirectedAcyclicGraph then begin
   for ChildNodeIndex:=0 to fChildren.Count-1 do begin
    ChildNode:=fChildren[ChildNodeIndex];
    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
@@ -998,7 +1001,7 @@ procedure TpvSceneNode.FrameUpdate;
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- if fState=TpvSceneNodeState.Loaded then begin
+ if (fState=TpvSceneNodeState.Loaded) and not fScene.fUseDirectedAcyclicGraph then begin
   for ChildNodeIndex:=0 to fChildren.Count-1 do begin
    ChildNode:=fChildren[ChildNodeIndex];
    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
@@ -1012,7 +1015,7 @@ procedure TpvSceneNode.Render;
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- if fState=TpvSceneNodeState.Loaded then begin
+ if (fState=TpvSceneNodeState.Loaded) and not fScene.fUseDirectedAcyclicGraph then begin
   for ChildNodeIndex:=0 to fChildren.Count-1 do begin
    ChildNode:=fChildren[ChildNodeIndex];
    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
@@ -1026,7 +1029,7 @@ procedure TpvSceneNode.UpdateAudio;
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- if fState=TpvSceneNodeState.Loaded then begin
+ if (fState=TpvSceneNodeState.Loaded) and not fScene.fUseDirectedAcyclicGraph then begin
   for ChildNodeIndex:=0 to fChildren.Count-1 do begin
    ChildNode:=fChildren[ChildNodeIndex];
    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
@@ -1432,6 +1435,7 @@ end;
 
 constructor TpvScene.Create(const aData:TObject=nil);
 begin
+
  inherited Create;
 
  fAllNodesLock:=TPasMPSlimReaderWriterLock.Create;
@@ -1454,6 +1458,8 @@ begin
  fBackgroundLoadJob:=nil;
 
  fDirectedAcyclicGraph:=TpvSceneDirectedAcyclicGraph.Create(self);
+
+ fUseDirectedAcyclicGraph:=false;
 
 end;
 
@@ -1489,6 +1495,13 @@ procedure TpvScene.InvalidateDirectedAcyclicGraph;
 begin
  if assigned(fDirectedAcyclicGraph) then begin
   fDirectedAcyclicGraph.Invalidate;
+ end;
+end;
+
+procedure TpvScene.RebuildDirectedAcyclicGraph;
+begin
+ if assigned(fDirectedAcyclicGraph) then begin
+  fDirectedAcyclicGraph.Rebuild;
  end;
 end;
 
@@ -1840,47 +1853,83 @@ end;
 
 procedure TpvScene.Check;
 begin
- fRootNode.Check;
+ if fUseDirectedAcyclicGraph then begin
+  RebuildDirectedAcyclicGraph;
+ end else begin
+  fRootNode.Check;
+ end;
 end;
 
 procedure TpvScene.Store;
 begin
- fRootNode.Store;
+ if fUseDirectedAcyclicGraph then begin
+  RebuildDirectedAcyclicGraph;
+ end else begin
+  fRootNode.Store;
+ end;
 end;
 
 procedure TpvScene.BeginUpdate(const aDeltaTime:TpvDouble);
 begin
- fRootNode.BeginUpdate(aDeltaTime);
+ if fUseDirectedAcyclicGraph then begin
+  RebuildDirectedAcyclicGraph;
+ end else begin
+  fRootNode.BeginUpdate(aDeltaTime);
+ end;
 end;
 
 procedure TpvScene.Update(const aDeltaTime:TpvDouble);
 begin
- fRootNode.Update(aDeltaTime);
+ if fUseDirectedAcyclicGraph then begin
+  RebuildDirectedAcyclicGraph;
+ end else begin
+  fRootNode.Update(aDeltaTime);
+ end;
 end;
 
 procedure TpvScene.EndUpdate(const aDeltaTime:TpvDouble);
 begin
- fRootNode.EndUpdate(aDeltaTime);
+ if fUseDirectedAcyclicGraph then begin
+  RebuildDirectedAcyclicGraph;
+ end else begin
+  fRootNode.EndUpdate(aDeltaTime);
+ end;
 end;
 
 procedure TpvScene.Interpolate(const aAlpha:TpvDouble);
 begin
- fRootNode.Interpolate(aAlpha);
+ if fUseDirectedAcyclicGraph then begin
+  RebuildDirectedAcyclicGraph;
+ end else begin
+  fRootNode.Interpolate(aAlpha);
+ end;
 end;
 
 procedure TpvScene.FrameUpdate;
 begin
- fRootNode.FrameUpdate;
+ if fUseDirectedAcyclicGraph then begin
+  RebuildDirectedAcyclicGraph;
+ end else begin
+  fRootNode.FrameUpdate;
+ end;
 end;
 
 procedure TpvScene.Render;
 begin
- fRootNode.Render;
+ if fUseDirectedAcyclicGraph then begin
+  RebuildDirectedAcyclicGraph;
+ end else begin
+  fRootNode.Render;
+ end;
 end;
 
 procedure TpvScene.UpdateAudio;
 begin
- fRootNode.UpdateAudio;
+ if fUseDirectedAcyclicGraph then begin
+  RebuildDirectedAcyclicGraph;
+ end else begin
+  fRootNode.UpdateAudio;
+ end;
 end;
 
 function TpvScene.Serialize:TObject;
