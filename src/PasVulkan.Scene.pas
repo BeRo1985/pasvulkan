@@ -127,6 +127,8 @@ scene graph, for example for saving and loading of a game level, etc.
 And very important, avoid acyclic and circular dependencies as much as possible, because it can lead to deadlocks, etc. and can be very
 difficult to debug. If you have to use them, use them with awareness and be careful with them.
 
+TODO: Add text about the Directed Acyclic Graph (DAG) for scene node dependency management and parallizied execution of scene nodes. 
+
 }
 
 type TpvScene=class;
