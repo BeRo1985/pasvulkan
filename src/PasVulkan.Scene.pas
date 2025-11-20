@@ -169,6 +169,7 @@ type TpvScene=class;
        fData:TObject;
        fIndex:TpvSizeInt;
        fChildren:TpvSceneNodes;
+       fConflictingNodes:TpvSceneNodes;
        fIncomingNodeDependencies:TpvSceneNodes;
        fOutgoingNodeDependencies:TpvSceneNodes;
        fNodeHashMap:TpvSceneNodeHashMap;
@@ -178,6 +179,7 @@ type TpvScene=class;
        fIsCountToStartLoadNodes:boolean;
        fIsCountToBackgroundLoadNodes:boolean;
        fIsCountToFinishLoadNodes:boolean;
+       fParallelExecution:boolean;
        fManualLoad:boolean;
       public
        fStartLoadVisitGeneration:TpvUInt32;
@@ -190,6 +192,9 @@ type TpvScene=class;
        
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+
+       procedure AddConflictingNode(const aNode:TpvSceneNode);
+       procedure RemoveConflictingNode(const aNode:TpvSceneNode);
        
        procedure AddDependency(const aNode:TpvSceneNode);
        procedure RemoveDependency(const aNode:TpvSceneNode);
@@ -240,6 +245,7 @@ type TpvScene=class;
 
       public
        property State:TpvSceneNodeState read fState;
+       property ParallelExecution:boolean read fParallelExecution write fParallelExecution;
        property ManualLoad:boolean read fManualLoad write fManualLoad;
       published
        property Scene:TpvScene read fScene;
@@ -355,6 +361,9 @@ begin
  fChildren:=TpvSceneNodes.Create;
  fChildren.OwnsObjects:=true;
 
+ fConflictingNodes:=TpvSceneNodes.Create;
+ fConflictingNodes.OwnsObjects:=false;
+
  fIncomingNodeDependencies:=TpvSceneNodes.Create;
  fIncomingNodeDependencies.OwnsObjects:=false;
 
@@ -363,7 +372,9 @@ begin
 
  fDestroying:=false;
 
- ManualLoad:=false;
+ fParallelExecution:=true;
+
+ fManualLoad:=false;
 
  fStartLoadVisitGeneration:=0;
  fBackgroundLoadVisitGeneration:=0;
@@ -407,6 +418,8 @@ begin
  FreeAndNil(fOutgoingNodeDependencies);
 
  FreeAndNil(fIncomingNodeDependencies);
+
+ FreeAndNil(fConflictingNodes);
 
  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
   ChildNode:=fChildren[ChildNodeIndex];
@@ -478,6 +491,46 @@ begin
   end;
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvSceneNode.AddConflictingNode(const aNode:TpvSceneNode);
+begin
+
+ if assigned(aNode) then begin
+
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
+  try
+   if assigned(fConflictingNodes) and not fConflictingNodes.Contains(aNode) then begin
+    fConflictingNodes.Add(aNode);
+   end;
+  finally
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+  end;
+
+ end;
+
+end;
+
+procedure TpvSceneNode.RemoveConflictingNode(const aNode:TpvSceneNode);
+var Index:TpvSizeInt;
+begin
+
+ if assigned(aNode) then begin
+
+  if assigned(fConflictingNodes) then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
+   try
+    Index:=fConflictingNodes.IndexOf(aNode);
+    if Index>=0 then begin
+     fConflictingNodes.Delete(Index);
+    end;
+   finally
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+   end;
+  end;
+
+ end;
+
 end;
 
 procedure TpvSceneNode.AddDependency(const aNode:TpvSceneNode);
