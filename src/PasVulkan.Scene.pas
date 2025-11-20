@@ -418,7 +418,11 @@ begin
 
  fDestroying:=false;
 
- fParallelExecution:=true;
+ if assigned(fScene) and assigned(fScene.fDirectedAcyclicGraph) then begin
+  fParallelExecution:=fScene.fDirectedAcyclicGraph.fParallelExecutionDefault;
+ end else begin
+  fParallelExecution:=false;
+ end;
 
  fManualLoad:=false;
 
