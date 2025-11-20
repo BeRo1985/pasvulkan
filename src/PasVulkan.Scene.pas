@@ -127,7 +127,28 @@ scene graph, for example for saving and loading of a game level, etc.
 And very important, avoid acyclic and circular dependencies as much as possible, because it can lead to deadlocks, etc. and can be very
 difficult to debug. If you have to use them, use them with awareness and be careful with them.
 
-TODO: Add text about the Directed Acyclic Graph (DAG) for scene node dependency management and parallizied execution of scene nodes. 
+Directed Acyclic Graph (DAG) for scene node dependency management:
+
+The scene graph includes a powerful DAG system for managing node dependencies and enabling efficient parallel execution. When enabled via
+UseDirectedAcyclicGraph, the scene automatically builds a dependency graph that respects both explicit dependencies and the parent-child
+hierarchy.
+
+Key features:
+- Nodes can declare explicit dependencies via AddDependency/RemoveDependency (a node will execute after its dependencies)
+- Parent-child relationships are implicit dependencies (parents execute before their children)
+- Nodes can declare conflicts via AddConflictingNode (conflicting nodes never execute in parallel)
+- Per-node ParallelExecution flag controls whether a node can run in parallel with others
+- Automatic cycle detection during graph construction
+- Topological sorting ensures correct execution order
+- Execution levels group nodes that can safely run in parallel
+
+The DAG system organizes nodes into execution levels where:
+- All nodes in a level can execute in parallel (if ParallelExecution=true and no conflicts exist)
+- Each level completes before the next level starts
+- Dependencies are always satisfied before a node executes
+- Conflicts are resolved by placing nodes in different levels
+
+This enables efficient parallel processing of Check, Store, Update, Render, and other scene operations while maintaining correctness.
 
 }
 
