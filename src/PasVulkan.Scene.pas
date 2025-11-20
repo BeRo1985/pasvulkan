@@ -163,6 +163,9 @@ or disabled for parallel execution. This allows you to:
 When a stage is not in ParallelStages, it executes sequentially even when UseDirectedAcyclicGraph is enabled. When a stage is in
 ParallelStages, the DAG execution levels are used to run nodes in parallel where dependencies and conflicts allow.
 
+NOTE: Scene methods are assumed to be called from a single thread in a frame-ordered fashion.
+      fDeltaTime and fAlpha are only written by that thread and read by worker threads.
+
 }
 
 type TpvScene=class;
