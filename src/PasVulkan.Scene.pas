@@ -303,8 +303,12 @@ type TpvScene=class;
        fData:TObject;
        fDirectedAcyclicGraph:TpvSceneDirectedAcyclicGraph;
        fUseDirectedAcyclicGraph:TPasMPBool32;
+       fPasMPInstance:TPasMP;
+       fDeltaTime:TpvDouble;
+       fAlpha:TpvDouble;
        procedure InvalidateDirectedAcyclicGraph; inline;
        procedure RebuildDirectedAcyclicGraph; inline;
+       procedure CheckParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
        fStartLoadVisitGeneration:TpvUInt32;
        fBackgroundLoadVisitGeneration:TpvUInt32;
@@ -1438,6 +1442,8 @@ begin
 
  inherited Create;
 
+ fPasMPInstance:=pvApplication.PasMPInstance;
+
  fAllNodesLock:=TPasMPSlimReaderWriterLock.Create;
 
  fAllNodes:=TpvSceneNodes.Create(false);
@@ -1851,10 +1857,52 @@ begin
 
 end;
 
+procedure TpvScene.CheckParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
+begin
+ ExecutionLevelNodes:=aData;
+ for ExecutionLevelNodeIndex:=aFromIndex to aToIndex do begin
+  ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].Check;
+ end;
+end;
+
 procedure TpvScene.Check;
+var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
+  for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
+   ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
+   if ExecutionLevelNodes.Count>0 then begin
+    if ExecutionLevelNodes.Count>1 then begin
+     if assigned(fPasMPInstance) then begin
+      fPasMPInstance.Invoke(
+       fPasMPInstance.ParallelFor(
+        ExecutionLevelNodes,
+        0,
+        ExecutionLevelNodes.Count-1,
+        CheckParallelForJob,
+        1,
+        PasMPDefaultDepth,
+        nil,
+        0,
+        0,
+        0,
+        true
+       )
+      );
+     end else begin
+      for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
+       ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].Check;
+      end;
+     end;
+    end else begin
+     ExecutionLevelNodes[0].Check;
+    end;
+   end;
+  end;
  end else begin
   fRootNode.Check;
  end;
@@ -1873,6 +1921,7 @@ procedure TpvScene.BeginUpdate(const aDeltaTime:TpvDouble);
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
+  fDeltaTime:=aDeltaTime;
  end else begin
   fRootNode.BeginUpdate(aDeltaTime);
  end;
@@ -1882,6 +1931,7 @@ procedure TpvScene.Update(const aDeltaTime:TpvDouble);
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
+  fDeltaTime:=aDeltaTime;
  end else begin
   fRootNode.Update(aDeltaTime);
  end;
@@ -1891,6 +1941,7 @@ procedure TpvScene.EndUpdate(const aDeltaTime:TpvDouble);
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
+  fDeltaTime:=aDeltaTime;
  end else begin
   fRootNode.EndUpdate(aDeltaTime);
  end;
@@ -1900,6 +1951,7 @@ procedure TpvScene.Interpolate(const aAlpha:TpvDouble);
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
+  fAlpha:=aAlpha;
  end else begin
   fRootNode.Interpolate(aAlpha);
  end;
