@@ -162,6 +162,36 @@ type TpvScene=class;
              ManualLoading=TpvSceneNodeState(11);
      end;
 
+     { TpvSceneDirectedAcyclicGraph }
+     // Directed Acyclic Graph (DAG) for scene node dependency management.
+     // Performs cycle detection and topological sorting during graph construction.
+     TpvSceneDirectedAcyclicGraph=class
+      private
+       fScene:TpvScene;
+       fLeafNodes:TpvSceneNodes;
+       fTopologicallySortedNodes:TpvSceneNodes;
+       fExecutionLevels:TpvSceneNodesList;
+       fGeneration:TPasMPUInt32;
+       fLastGeneration:TPasMPUInt32;
+       fValid:boolean;
+       fParallelExecutionDefault:boolean;
+       fLock:TPasMPSlimReaderWriterLock;
+       procedure SetParallelExecutionDefault(const aParallelExecutionDefault:boolean);
+       procedure BuildExecutionLevels;
+      public
+       constructor Create(const aScene:TpvScene); reintroduce;
+       destructor Destroy; override;
+       procedure Invalidate; inline;
+       procedure Rebuild;
+      public
+       property LeafNodes:TpvSceneNodes read fLeafNodes;
+       property TopologicallySortedNodes:TpvSceneNodes read fTopologicallySortedNodes;
+       property ExecutionLevels:TpvSceneNodesList read fExecutionLevels;
+       property Valid:boolean read fValid;
+       property ParallelExecutionDefault:boolean read fParallelExecutionDefault write SetParallelExecutionDefault;
+       property Generation:TPasMPUInt32 read fGeneration;
+     end;
+
      { TpvSceneNode }
      TpvSceneNode=class      
       public
@@ -186,6 +216,8 @@ type TpvScene=class;
        fParallelExecution:boolean;
        fManualLoad:boolean;
        fVisitedState:TpvInt32; // For DAG traversal: 0=unvisited, 1=visiting, 2=visited
+       procedure InvalidateDirectedAcyclicGraph; inline;
+       procedure SetParallelExecution(const aParallelExecution:boolean);
       public
        fStartLoadVisitGeneration:TpvUInt32;
        fBackgroundLoadVisitGeneration:TpvUInt32;
@@ -250,41 +282,13 @@ type TpvScene=class;
 
       public
        property State:TpvSceneNodeState read fState;
-       property ParallelExecution:boolean read fParallelExecution write fParallelExecution;
+       property ParallelExecution:boolean read fParallelExecution write SetParallelExecution;
        property ManualLoad:boolean read fManualLoad write fManualLoad;
       published
        property Scene:TpvScene read fScene;
        property Parent:TpvSceneNode read fParent;
        property Data:TObject read fData;
        property Children:TpvSceneNodes read fChildren;
-     end;
-
-     { TpvSceneDirectedAcyclicGraph }
-     { Directed Acyclic Graph (DAG) for scene node dependency management.
-       Performs cycle detection and topological sorting during graph construction.
-       Based on TpvScene3D.RebuildDirectedAcyclicGraph algorithm. }
-     TpvSceneDirectedAcyclicGraph=class
-      private
-       fScene:TpvScene;
-       fLeafNodes:TpvSceneNodes;
-       fTopologicallySortedNodes:TpvSceneNodes;
-       fExecutionLevels:TpvSceneNodesList;
-       fGeneration:TPasMPUInt32;
-       fLastGeneration:TPasMPUInt32;
-       fValid:boolean;
-       fLock:TPasMPSlimReaderWriterLock;
-       procedure BuildExecutionLevels;
-      public
-       constructor Create(const aScene:TpvScene); reintroduce;
-       destructor Destroy; override;
-       procedure Invalidate;
-       procedure Rebuild;
-      public
-       property LeafNodes:TpvSceneNodes read fLeafNodes;
-       property TopologicallySortedNodes:TpvSceneNodes read fTopologicallySortedNodes;
-       property ExecutionLevels:TpvSceneNodesList read fExecutionLevels;
-       property Valid:boolean read fValid;
-       property Generation:TPasMPUInt32 read fGeneration;
      end;
 
      { TpvScene }
@@ -298,7 +302,8 @@ type TpvScene=class;
        fCountToFinishLoadNodes:TPasMPInt32;
        fData:TObject;
        fDirectedAcyclicGraph:TpvSceneDirectedAcyclicGraph;
-      public 
+       procedure InvalidateDirectedAcyclicGraph; inline;
+      public
        fStartLoadVisitGeneration:TpvUInt32;
        fBackgroundLoadVisitGeneration:TpvUInt32;
        fFinishLoadVisitGeneration:TpvUInt32;
@@ -500,6 +505,7 @@ begin
     fIsCountToStartLoadNodes:=true;
    end;
   end;
+  InvalidateDirectedAcyclicGraph;
  end;
 end;
 
@@ -537,7 +543,23 @@ begin
    RemoveDependency(fIncomingNodeDependencies[Index]);
   end;
  end;
+ InvalidateDirectedAcyclicGraph;
  inherited BeforeDestruction;
+end;
+
+procedure TpvSceneNode.InvalidateDirectedAcyclicGraph;
+begin
+ if assigned(fScene) and assigned(fScene.fDirectedAcyclicGraph) then begin
+  fScene.fDirectedAcyclicGraph.Invalidate;
+ end;
+end;
+
+procedure TpvSceneNode.SetParallelExecution(const aParallelExecution:boolean);
+begin
+ if fParallelExecution<>aParallelExecution then begin
+  fParallelExecution:=aParallelExecution;
+  InvalidateDirectedAcyclicGraph;
+ end;
 end;
 
 procedure TpvSceneNode.AddConflictingNode(const aNode:TpvSceneNode);
@@ -549,6 +571,7 @@ begin
   try
    if assigned(fConflictingNodes) and not fConflictingNodes.Contains(aNode) then begin
     fConflictingNodes.Add(aNode);
+    InvalidateDirectedAcyclicGraph;
    end;
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
@@ -570,6 +593,7 @@ begin
     Index:=fConflictingNodes.IndexOf(aNode);
     if Index>=0 then begin
      fConflictingNodes.Delete(Index);
+     InvalidateDirectedAcyclicGraph;
     end;
    finally
     TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
@@ -581,14 +605,18 @@ begin
 end;
 
 procedure TpvSceneNode.AddDependency(const aNode:TpvSceneNode);
+var ToInvalidate:Boolean;
 begin
 
  if assigned(aNode) then begin
+
+  ToInvalidate:=false;
 
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
   try
    if assigned(fIncomingNodeDependencies) and not fIncomingNodeDependencies.Contains(aNode) then begin
     fIncomingNodeDependencies.Add(aNode);
+    ToInvalidate:=true;
    end;
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
@@ -598,9 +626,14 @@ begin
   try
    if assigned(aNode.fOutgoingNodeDependencies) and not aNode.fOutgoingNodeDependencies.Contains(self) then begin
     aNode.fOutgoingNodeDependencies.Add(self);
+    ToInvalidate:=true;
    end;
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(aNode.fLock);
+  end;
+
+  if ToInvalidate then begin
+   InvalidateDirectedAcyclicGraph;
   end;
 
  end;
@@ -609,9 +642,12 @@ end;
 
 procedure TpvSceneNode.RemoveDependency(const aNode:TpvSceneNode);
 var Index:TpvSizeInt;
+    ToInvalidate:Boolean;
 begin
 
  if assigned(aNode) then begin
+
+  ToInvalidate:=false;
 
   if assigned(fIncomingNodeDependencies) then begin
    TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
@@ -619,6 +655,7 @@ begin
     Index:=fIncomingNodeDependencies.IndexOf(aNode);
     if Index>=0 then begin
      fIncomingNodeDependencies.Delete(Index);
+     ToInvalidate:=true;
     end;
    finally
     TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
@@ -631,10 +668,15 @@ begin
     Index:=aNode.fOutgoingNodeDependencies.IndexOf(self);
     if Index>=0 then begin
      aNode.fOutgoingNodeDependencies.Delete(Index);
+     ToInvalidate:=true;
     end;
    end;
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(aNode.fLock);
+  end;
+
+  if ToInvalidate then begin
+   InvalidateDirectedAcyclicGraph;
   end;
 
  end;
@@ -645,6 +687,7 @@ procedure TpvSceneNode.Add(const aNode:TpvSceneNode);
 var NodeClass:TpvSceneNodeClass;
     Nodes:TpvSceneNodes;
 begin
+
  if assigned(aNode) then begin
 
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
@@ -664,11 +707,14 @@ begin
 
    aNode.fParent:=self;
 
+   InvalidateDirectedAcyclicGraph;
+
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
   end;
 
  end;
+
 end;
 
 procedure TpvSceneNode.Remove(const aNode:TpvSceneNode);
@@ -676,6 +722,7 @@ var Index:TpvSizeInt;
     NodeClass:TpvSceneNodeClass;
     Nodes:TpvSceneNodes;
 begin
+
  if assigned(aNode) and (aNode.fParent=self) and not aNode.fDestroying then begin
 
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
@@ -697,6 +744,8 @@ begin
 
     aNode.Free;
 
+    InvalidateDirectedAcyclicGraph;
+
    end;
 
   finally
@@ -704,6 +753,7 @@ begin
   end;
 
  end;
+
 end;
 
 function TpvSceneNode.GetNodeListOf(const aNodeClass:TpvSceneNodeClass):TpvSceneNodes;
@@ -801,6 +851,7 @@ begin
    if fIsCountToFinishLoadNodes then begin
     fIsCountToFinishLoadNodes:=false;
     TPasMPInterlocked.Decrement(fScene.fCountToFinishLoadNodes);
+    InvalidateDirectedAcyclicGraph;
    end;
   end;
  end;
@@ -834,6 +885,7 @@ begin
    BackgroundLoad;
    FinishLoad;
    TPasMPInterlocked.Write(fState,TpvSceneNodeState.Loaded);
+   InvalidateDirectedAcyclicGraph;
   except
    TPasMPInterlocked.Write(fState,TpvSceneNodeState.Failed);
   end;
@@ -993,18 +1045,29 @@ end;
 
 constructor TpvSceneDirectedAcyclicGraph.Create(const aScene:TpvScene);
 begin
+
  inherited Create;
+
  fScene:=aScene;
+
  fLeafNodes:=TpvSceneNodes.Create;
  fLeafNodes.OwnsObjects:=false;
+
  fTopologicallySortedNodes:=TpvSceneNodes.Create;
  fTopologicallySortedNodes.OwnsObjects:=false;
+
  fExecutionLevels:=TpvSceneNodesList.Create;
  fExecutionLevels.OwnsObjects:=true;
+
  fGeneration:=0;
  fLastGeneration:=0;
+
  fValid:=false;
+
+ ParallelExecutionDefault:=false;
+
  fLock:=TPasMPSlimReaderWriterLock.Create;
+
 end;
 
 destructor TpvSceneDirectedAcyclicGraph.Destroy;
@@ -1021,6 +1084,14 @@ begin
  TPasMPInterlocked.Increment(fGeneration);
 end;
 
+procedure TpvSceneDirectedAcyclicGraph.SetParallelExecutionDefault(const aParallelExecutionDefault:boolean);
+begin
+ if fParallelExecutionDefault<>aParallelExecutionDefault then begin
+  fParallelExecutionDefault:=aParallelExecutionDefault;
+  Invalidate;
+ end;
+end;
+
 procedure TpvSceneDirectedAcyclicGraph.BuildExecutionLevels;
 var NodeIndex,LevelIndex,DependencyIndex,ConflictIndex:TpvSizeInt;
     Node,DependencyNode,ConflictNode:TpvSceneNode;
@@ -1029,160 +1100,155 @@ var NodeIndex,LevelIndex,DependencyIndex,ConflictIndex:TpvSizeInt;
     RemainingDependencies:TpvSizeIntDynamicArray;
     CanAddToLevel:boolean;
 begin
- fLock.Acquire;
+
+ // Clear existing execution levels
+ fExecutionLevels.Clear;
+
+ if not fValid then begin
+  // DAG is not valid (has cycles), cannot build execution levels
+  exit;
+ end;
+
+ ProcessedNodes:=TpvSceneNodes.Create;
+ ProcessedNodes.OwnsObjects:=false;
  try
- 
-  // Clear existing execution levels
-  fExecutionLevels.Clear;
-  
-  if not fValid then begin
-   // DAG is not valid (has cycles), cannot build execution levels
-   exit;
-  end;
-  
-  ProcessedNodes:=TpvSceneNodes.Create;
-  ProcessedNodes.OwnsObjects:=false;
+
+  CurrentLevelCandidates:=TpvSceneNodes.Create;
+  CurrentLevelCandidates.OwnsObjects:=false;
   try
-  
-   CurrentLevelCandidates:=TpvSceneNodes.Create;
-   CurrentLevelCandidates.OwnsObjects:=false;
+
+   NextLevelCandidates:=TpvSceneNodes.Create;
+   NextLevelCandidates.OwnsObjects:=false;
    try
-   
-    NextLevelCandidates:=TpvSceneNodes.Create;
-    NextLevelCandidates.OwnsObjects:=false;
+
+    // Initialize remaining dependencies count for each node
+    fScene.fAllNodesLock.Acquire;
     try
-    
-     // Initialize remaining dependencies count for each node
-     fScene.fAllNodesLock.Acquire;
-     try
-      SetLength(RemainingDependencies,fScene.fAllNodes.Count);
-      for NodeIndex:=0 to fScene.fAllNodes.Count-1 do begin
-       Node:=fScene.fAllNodes[NodeIndex];
-       if assigned(Node) then begin
-        RemainingDependencies[NodeIndex]:=Node.fDirectedAcyclicGraphInputDependencies.Count;
-        // Add nodes with no dependencies to first level candidates
-        if RemainingDependencies[NodeIndex]=0 then begin
-         CurrentLevelCandidates.Add(Node);
-        end;
+     SetLength(RemainingDependencies,fScene.fAllNodes.Count);
+     for NodeIndex:=0 to fScene.fAllNodes.Count-1 do begin
+      Node:=fScene.fAllNodes[NodeIndex];
+      if assigned(Node) then begin
+       RemainingDependencies[NodeIndex]:=Node.fDirectedAcyclicGraphInputDependencies.Count;
+       // Add nodes with no dependencies to first level candidates
+       if RemainingDependencies[NodeIndex]=0 then begin
+        CurrentLevelCandidates.Add(Node);
        end;
       end;
-     finally
-      fScene.fAllNodesLock.Release;
      end;
-     
-     // Build levels
+    finally
+     fScene.fAllNodesLock.Release;
+    end;
+
+    // Build levels
+    while CurrentLevelCandidates.Count>0 do begin
+
+     // Process current level candidates, splitting by conflicts and ParallelExecution
      while CurrentLevelCandidates.Count>0 do begin
-     
-      // Process current level candidates, splitting by conflicts and ParallelExecution
-      while CurrentLevelCandidates.Count>0 do begin
-      
-       CurrentLevel:=TpvSceneNodes.Create;
-       CurrentLevel.OwnsObjects:=false;
-       
-       // Try to add as many non-conflicting nodes as possible to this level
-       NodeIndex:=0;
-       while NodeIndex<CurrentLevelCandidates.Count do begin
-        Node:=CurrentLevelCandidates[NodeIndex];
-        CanAddToLevel:=true;
-        
-        // Check if node can be added to current level
-        if CurrentLevel.Count>0 then begin
-        
-         // If any node in current level has ParallelExecution=false, can't add more
+
+      CurrentLevel:=TpvSceneNodes.Create;
+      CurrentLevel.OwnsObjects:=false;
+
+      // Try to add as many non-conflicting nodes as possible to this level
+      NodeIndex:=0;
+      while NodeIndex<CurrentLevelCandidates.Count do begin
+       Node:=CurrentLevelCandidates[NodeIndex];
+       CanAddToLevel:=true;
+
+       // Check if node can be added to current level
+       if CurrentLevel.Count>0 then begin
+
+        // If any node in current level has ParallelExecution=false, can't add more
+        for LevelIndex:=0 to CurrentLevel.Count-1 do begin
+         if not CurrentLevel[LevelIndex].fParallelExecution then begin
+          CanAddToLevel:=false;
+          break;
+         end;
+        end;
+
+        // If this node has ParallelExecution=false, can't add to non-empty level
+        if CanAddToLevel and (not Node.fParallelExecution) then begin
+         CanAddToLevel:=false;
+        end;
+
+        // Check for conflicts with nodes already in this level
+        if CanAddToLevel then begin
          for LevelIndex:=0 to CurrentLevel.Count-1 do begin
-          if not CurrentLevel[LevelIndex].fParallelExecution then begin
+          // Check if Node conflicts with any node in CurrentLevel
+          if Node.fConflictingNodes.Contains(CurrentLevel[LevelIndex]) then begin
+           CanAddToLevel:=false;
+           break;
+          end;
+          // Also check reverse - if any node in CurrentLevel conflicts with Node
+          if CurrentLevel[LevelIndex].fConflictingNodes.Contains(Node) then begin
            CanAddToLevel:=false;
            break;
           end;
          end;
-         
-         // If this node has ParallelExecution=false, can't add to non-empty level
-         if CanAddToLevel and (not Node.fParallelExecution) then begin
-          CanAddToLevel:=false;
-         end;
-         
-         // Check for conflicts with nodes already in this level
-         if CanAddToLevel then begin
-          for LevelIndex:=0 to CurrentLevel.Count-1 do begin
-           // Check if Node conflicts with any node in CurrentLevel
-           if Node.fConflictingNodes.Contains(CurrentLevel[LevelIndex]) then begin
-            CanAddToLevel:=false;
-            break;
-           end;
-           // Also check reverse - if any node in CurrentLevel conflicts with Node
-           if CurrentLevel[LevelIndex].fConflictingNodes.Contains(Node) then begin
-            CanAddToLevel:=false;
-            break;
-           end;
-          end;
-         end;
-         
         end;
-        
-        if CanAddToLevel then begin
-         // Add node to current level
-         CurrentLevel.Add(Node);
-         ProcessedNodes.Add(Node);
-         CurrentLevelCandidates.Delete(NodeIndex);
-         
-         // Update dependencies for dependent nodes
-         for DependencyIndex:=0 to Node.fDirectedAcyclicGraphOutputDependencies.Count-1 do begin
-          DependencyNode:=Node.fDirectedAcyclicGraphOutputDependencies[DependencyIndex];
-          if assigned(DependencyNode) and (DependencyNode.fIndex>=0) and (DependencyNode.fIndex<Length(RemainingDependencies)) then begin
-           Dec(RemainingDependencies[DependencyNode.fIndex]);
-           if RemainingDependencies[DependencyNode.fIndex]=0 then begin
-            // All dependencies satisfied, add to next level candidates
-            if not NextLevelCandidates.Contains(DependencyNode) then begin
-             NextLevelCandidates.Add(DependencyNode);
-            end;
-           end;
-          end;
-         end;
-         
-         // If node has ParallelExecution=false, finish this level immediately
-         if not Node.fParallelExecution then begin
-          break;
-         end;
-         
-        end else begin
-         // Can't add this node to current level, try next node
-         inc(NodeIndex);
-        end;
-        
+
        end;
-       
-       // Add the completed level to execution levels
-       if CurrentLevel.Count>0 then begin
-        fExecutionLevels.Add(CurrentLevel);
+
+       if CanAddToLevel then begin
+        // Add node to current level
+        CurrentLevel.Add(Node);
+        ProcessedNodes.Add(Node);
+        CurrentLevelCandidates.Delete(NodeIndex);
+
+        // Update dependencies for dependent nodes
+        for DependencyIndex:=0 to Node.fDirectedAcyclicGraphOutputDependencies.Count-1 do begin
+         DependencyNode:=Node.fDirectedAcyclicGraphOutputDependencies[DependencyIndex];
+         if assigned(DependencyNode) and (DependencyNode.fIndex>=0) and (DependencyNode.fIndex<Length(RemainingDependencies)) then begin
+          Dec(RemainingDependencies[DependencyNode.fIndex]);
+          if RemainingDependencies[DependencyNode.fIndex]=0 then begin
+           // All dependencies satisfied, add to next level candidates
+           if not NextLevelCandidates.Contains(DependencyNode) then begin
+            NextLevelCandidates.Add(DependencyNode);
+           end;
+          end;
+         end;
+        end;
+
+        // If node has ParallelExecution=false, finish this level immediately
+        if not Node.fParallelExecution then begin
+         break;
+        end;
+
        end else begin
-        FreeAndNil(CurrentLevel);
+        // Can't add this node to current level, try next node
+        inc(NodeIndex);
        end;
-       
+
       end;
-      
-      // Move to next level
-      TemporaryLevelCandidates:=NextLevelCandidates;
-      NextLevelCandidates:=CurrentLevelCandidates;
-      CurrentLevelCandidates:=TemporaryLevelCandidates;
-      NextLevelCandidates.Clear;
-      
+
+      // Add the completed level to execution levels
+      if CurrentLevel.Count>0 then begin
+       fExecutionLevels.Add(CurrentLevel);
+      end else begin
+       FreeAndNil(CurrentLevel);
+      end;
+
      end;
-     
-    finally
-     FreeAndNil(NextLevelCandidates);
+
+     // Move to next level
+     TemporaryLevelCandidates:=NextLevelCandidates;
+     NextLevelCandidates:=CurrentLevelCandidates;
+     CurrentLevelCandidates:=TemporaryLevelCandidates;
+     NextLevelCandidates.Clear;
+
     end;
-    
+
    finally
-    FreeAndNil(CurrentLevelCandidates);
+    FreeAndNil(NextLevelCandidates);
    end;
-   
+
   finally
-   FreeAndNil(ProcessedNodes);
+   FreeAndNil(CurrentLevelCandidates);
   end;
-  
+
  finally
-  fLock.Release;
+  FreeAndNil(ProcessedNodes);
  end;
+  
 end;
 
 procedure TpvSceneDirectedAcyclicGraph.Rebuild;
@@ -1192,13 +1258,12 @@ var NodeIndex,DependencyIndex:TpvSizeInt;
     NodeStack:TSceneNodeStack;
     CycleDetected:boolean;
 begin
- fLock.Acquire;
- try
+
+ if TPasMPInterlocked.CompareExchange(fLastGeneration,fGeneration,fLastGeneration)<>fGeneration then begin
+
+  fLock.Acquire;
+  try
  
-  if fLastGeneration<>fGeneration then begin
-  
-   fLastGeneration:=fGeneration;
-   
    NodeStack.Initialize;
    try
    
@@ -1351,11 +1416,12 @@ begin
    // Build execution levels after DAG is constructed
    BuildExecutionLevels;
    
+  finally
+   fLock.Release;
   end;
-  
- finally
-  fLock.Release;
+
  end;
+
 end;
 
 { TpvScene }
@@ -1414,6 +1480,13 @@ begin
   end;
  end;
 end; 
+
+procedure TpvScene.InvalidateDirectedAcyclicGraph;
+begin
+ if assigned(fDirectedAcyclicGraph) then begin
+  fDirectedAcyclicGraph.Invalidate;
+ end;
+end;
 
 procedure TpvScene.BackgroundLoadJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
@@ -1689,6 +1762,7 @@ begin
        try
         Node.FinishLoad;
         Node.AfterFinishLoad;
+        InvalidateDirectedAcyclicGraph;
        except
         on e:Exception do begin
          pvApplication.Log(LOG_ERROR,ClassName+'.FinishLoad',DumpExceptionCallStack(e));
