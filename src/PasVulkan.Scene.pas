@@ -458,6 +458,10 @@ begin
   end;
  end;
 
+ FreeAndNil(fDirectedAcyclicGraphInputDependencies);
+ 
+ FreeAndNil(fDirectedAcyclicGraphOutputDependencies);
+
  FreeAndNil(fOutgoingNodeDependencies);
 
  FreeAndNil(fIncomingNodeDependencies);
