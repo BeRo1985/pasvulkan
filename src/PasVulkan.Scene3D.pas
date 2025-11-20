@@ -2542,7 +2542,13 @@ type EpvScene3D=class(Exception);
                            ProcessStateProcessing=TPasMPUInt32(1) shl 30;
                            ProcessStateDone=TPasMPUInt32(1) shl 31;
                     public
-                     type { TAnimation }
+                     type TVisitedState=
+                           (
+                            Unvisited=0,
+                            Visiting=1,
+                            Visited=2
+                           );
+                          { TAnimation }
                           TAnimation=class
                            public
                             type TChannelOverwrite=TpvSizeInt;
@@ -3169,7 +3175,7 @@ type EpvScene3D=class(Exception);
                      fPreparedMeshContentGeneration:TpvUInt64;
                      fFramePreparedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fFrameUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
-                     fVisitedState:array[-1..MaxInFlightFrames-1] of TPasMPInt32;
+                     fVisitedState:array[-1..MaxInFlightFrames-1] of TVisitedState;
                      fModelMatrix:TpvMatrix4x4D;
                      fWorkModelMatrix:TpvMatrix4x4;
 //                   fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
@@ -33025,7 +33031,7 @@ begin
     GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
     GroupInstance.fDirectedAcyclicGraphInputDependencies.ClearNoFree;
     GroupInstance.fDirectedAcyclicGraphOutputDependencies.ClearNoFree;
-    GroupInstance.fVisitedState[aInFlightFrameIndex]:=0;
+    GroupInstance.fVisitedState[aInFlightFrameIndex]:=TpvScene3D.TGroup.TInstance.TVisitedState.Unvisited;
    end;
 
    CycleDetected:=false;
@@ -33034,7 +33040,7 @@ begin
 
     GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
 
-    if GroupInstance.fGroup.Usable and (GroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
+    if GroupInstance.fGroup.Usable and (GroupInstance.fVisitedState[aInFlightFrameIndex]=TpvScene3D.TGroup.TInstance.TVisitedState.Unvisited) then begin
 
      if (assigned(GroupInstance.fGroup.fVirtualInstanceManager) and
          (GroupInstance.fVirtual or
@@ -33052,15 +33058,15 @@ begin
 
        case GroupInstance.fVisitedState[aInFlightFrameIndex] of
 
-        0:begin
+        TpvScene3D.TGroup.TInstance.TVisitedState.Unvisited:begin
 
-         GroupInstance.fVisitedState[aInFlightFrameIndex]:=1;
+         GroupInstance.fVisitedState[aInFlightFrameIndex]:=TpvScene3D.TGroup.TInstance.TVisitedState.Visiting;
 
          if assigned(GroupInstance.fGroup.fVirtualInstanceManager) then begin
           if not GroupInstance.fVirtual then begin
            OtherGroupInstance:=GroupInstance.fAssignedVirtualInstance;
            if assigned(OtherGroupInstance) then begin
-            if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
+            if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=TpvScene3D.TGroup.TInstance.TVisitedState.Visiting then begin
              CycleDetected:=true;
              pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
             end else if OtherGroupInstance.fGroup.Usable and not GroupInstance.fDirectedAcyclicGraphInputDependencies.Contains(OtherGroupInstance) then begin
@@ -33075,7 +33081,7 @@ begin
              OtherGroupInstance:=GroupInstanceRenderInstance.fAssignedVirtualInstance;
              if assigned(OtherGroupInstance) then begin
               if OtherGroupInstance.fGroup.Usable then begin
-               if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
+               if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=TpvScene3D.TGroup.TInstance.TVisitedState.Visiting then begin
                 CycleDetected:=true;
                 pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
                end else if not GroupInstance.fDirectedAcyclicGraphInputDependencies.Contains(OtherGroupInstance) then begin
@@ -33097,7 +33103,7 @@ begin
           for AttachmentIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
            OtherGroupInstance:=GroupInstance.fRequiredDependencies.RawItems[AttachmentIndex];
            if assigned(OtherGroupInstance) and OtherGroupInstance.fGroup.Usable then begin
-            if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
+            if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=TpvScene3D.TGroup.TInstance.TVisitedState.Visiting then begin
              CycleDetected:=true;
              pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
             end else if not GroupInstance.fDirectedAcyclicGraphInputDependencies.Contains(OtherGroupInstance) then begin
@@ -33112,7 +33118,7 @@ begin
 
          OtherGroupInstance:=GroupInstance.fAppendageInstance;
          if assigned(OtherGroupInstance) and OtherGroupInstance.fGroup.Usable then begin
-          if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=1 then begin
+          if OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=TpvScene3D.TGroup.TInstance.TVisitedState.Visiting then begin
            CycleDetected:=true;
            pvApplication.Log(LOG_ERROR,'Scene3D','Cycle detected: Instance "'+GroupInstance.Name+'" depends on "'+OtherGroupInstance.Name+'" which is in its dependency chain');
           end else if not GroupInstance.fDirectedAcyclicGraphInputDependencies.Contains(OtherGroupInstance) then begin
@@ -33133,7 +33139,7 @@ begin
 
          end else begin
 
-          GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+          GroupInstance.fVisitedState[aInFlightFrameIndex]:=TpvScene3D.TGroup.TInstance.TVisitedState.Visited;
 
           fDirectedAcyclicGraphLeafInstances.Add(GroupInstance);
 
@@ -33143,9 +33149,9 @@ begin
 
         end;
 
-        1:begin
+        TpvScene3D.TGroup.TInstance.TVisitedState.Visiting:begin
 
-         GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+         GroupInstance.fVisitedState[aInFlightFrameIndex]:=TpvScene3D.TGroup.TInstance.TVisitedState.Visited;
 
          fDirectedAcyclicGraphLinearInstanceChoreography.Add(GroupInstance);
 
@@ -33160,7 +33166,7 @@ begin
 
      end else begin
 
-      GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+      GroupInstance.fVisitedState[aInFlightFrameIndex]:=TpvScene3D.TGroup.TInstance.TVisitedState.Visited;
 
       fDirectedAcyclicGraphLeafInstances.Add(GroupInstance);
 
