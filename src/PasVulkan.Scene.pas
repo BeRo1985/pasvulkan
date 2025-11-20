@@ -137,6 +137,8 @@ type TpvScene=class;
 
      TpvSceneNodes=TpvObjectGenericList<TpvSceneNode>;
 
+     TpvSceneNodesList=TpvObjectGenericList<TpvSceneNodes>;
+
      TpvSceneNodeStack=TpvDynamicFastStack<TpvSceneNode>;
 
      TpvSceneNodeHashMap=TpvHashMap<TpvSceneNodeClass,TpvSceneNodes>;
@@ -172,6 +174,8 @@ type TpvScene=class;
        fConflictingNodes:TpvSceneNodes;
        fIncomingNodeDependencies:TpvSceneNodes;
        fOutgoingNodeDependencies:TpvSceneNodes;
+       fDirectedAcyclicGraphInputDependencies:TpvSceneNodes;
+       fDirectedAcyclicGraphOutputDependencies:TpvSceneNodes;
        fNodeHashMap:TpvSceneNodeHashMap;
        fLock:TpvInt32;
        fState:TpvSceneNodeState;
@@ -181,6 +185,7 @@ type TpvScene=class;
        fIsCountToFinishLoadNodes:boolean;
        fParallelExecution:boolean;
        fManualLoad:boolean;
+       fVisitedState:TpvInt32; // For DAG traversal: 0=unvisited, 1=visiting, 2=visited
       public
        fStartLoadVisitGeneration:TpvUInt32;
        fBackgroundLoadVisitGeneration:TpvUInt32;
@@ -254,6 +259,34 @@ type TpvScene=class;
        property Children:TpvSceneNodes read fChildren;
      end;
 
+     { TpvSceneDirectedAcyclicGraph }
+     { Directed Acyclic Graph (DAG) for scene node dependency management.
+       Performs cycle detection and topological sorting during graph construction.
+       Based on TpvScene3D.RebuildDirectedAcyclicGraph algorithm. }
+     TpvSceneDirectedAcyclicGraph=class
+      private
+       fScene:TpvScene;
+       fLeafNodes:TpvSceneNodes;
+       fTopologicallySortedNodes:TpvSceneNodes;
+       fExecutionLevels:TpvSceneNodesList;
+       fGeneration:TPasMPUInt32;
+       fLastGeneration:TPasMPUInt32;
+       fValid:boolean;
+       fLock:TPasMPSlimReaderWriterLock;
+       procedure BuildExecutionLevels;
+      public
+       constructor Create(const aScene:TpvScene); reintroduce;
+       destructor Destroy; override;
+       procedure Invalidate;
+       procedure Rebuild;
+      public
+       property LeafNodes:TpvSceneNodes read fLeafNodes;
+       property TopologicallySortedNodes:TpvSceneNodes read fTopologicallySortedNodes;
+       property ExecutionLevels:TpvSceneNodesList read fExecutionLevels;
+       property Valid:boolean read fValid;
+       property Generation:TPasMPUInt32 read fGeneration;
+     end;
+
      { TpvScene }
      TpvScene=class
       private
@@ -264,6 +297,7 @@ type TpvScene=class;
        fCountToBackgroundLoadNodes:TPasMPInt32;
        fCountToFinishLoadNodes:TPasMPInt32;
        fData:TObject;
+       fDirectedAcyclicGraph:TpvSceneDirectedAcyclicGraph;
       public 
        fStartLoadVisitGeneration:TpvUInt32;
        fBackgroundLoadVisitGeneration:TpvUInt32;
@@ -295,6 +329,7 @@ type TpvScene=class;
       published
        property RootNode:TpvSceneNode read fRootNode;
        property Data:TObject read fData;
+       property DirectedAcyclicGraph:TpvSceneDirectedAcyclicGraph read fDirectedAcyclicGraph;
      end;
 
      { TpvSceneNode3D }
@@ -370,11 +405,19 @@ begin
  fOutgoingNodeDependencies:=TpvSceneNodes.Create;
  fOutgoingNodeDependencies.OwnsObjects:=false;
 
+ fDirectedAcyclicGraphInputDependencies:=TpvSceneNodes.Create;
+ fDirectedAcyclicGraphInputDependencies.OwnsObjects:=false;
+
+ fDirectedAcyclicGraphOutputDependencies:=TpvSceneNodes.Create;
+ fDirectedAcyclicGraphOutputDependencies.OwnsObjects:=false;
+
  fDestroying:=false;
 
  fParallelExecution:=true;
 
  fManualLoad:=false;
+
+ fVisitedState:=0;
 
  fStartLoadVisitGeneration:=0;
  fBackgroundLoadVisitGeneration:=0;
@@ -942,6 +985,375 @@ procedure TpvSceneNode.Deserialize(const aData:TObject);
 begin
 end;
 
+{ TpvSceneDirectedAcyclicGraph }
+
+constructor TpvSceneDirectedAcyclicGraph.Create(const aScene:TpvScene);
+begin
+ inherited Create;
+ fScene:=aScene;
+ fLeafNodes:=TpvSceneNodes.Create;
+ fLeafNodes.OwnsObjects:=false;
+ fTopologicallySortedNodes:=TpvSceneNodes.Create;
+ fTopologicallySortedNodes.OwnsObjects:=false;
+ fExecutionLevels:=TpvSceneNodesList.Create;
+ fExecutionLevels.OwnsObjects:=true;
+ fGeneration:=0;
+ fLastGeneration:=0;
+ fValid:=false;
+ fLock:=TPasMPSlimReaderWriterLock.Create;
+end;
+
+destructor TpvSceneDirectedAcyclicGraph.Destroy;
+begin
+ FreeAndNil(fLock);
+ FreeAndNil(fExecutionLevels);
+ FreeAndNil(fTopologicallySortedNodes);
+ FreeAndNil(fLeafNodes);
+ inherited Destroy;
+end;
+
+procedure TpvSceneDirectedAcyclicGraph.Invalidate;
+begin
+ TPasMPInterlocked.Increment(fGeneration);
+end;
+
+procedure TpvSceneDirectedAcyclicGraph.BuildExecutionLevels;
+var NodeIndex,LevelIndex,DependencyIndex,ConflictIndex:TpvSizeInt;
+    Node,DependencyNode,ConflictNode:TpvSceneNode;
+    CurrentLevelCandidates,NextLevelCandidates,CurrentLevel,TemporaryLevelCandidates:TpvSceneNodes;
+    ProcessedNodes:TpvSceneNodes;
+    RemainingDependencies:TpvSizeIntDynamicArray;
+    CanAddToLevel:boolean;
+begin
+ fLock.Acquire;
+ try
+ 
+  // Clear existing execution levels
+  fExecutionLevels.Clear;
+  
+  if not fValid then begin
+   // DAG is not valid (has cycles), cannot build execution levels
+   exit;
+  end;
+  
+  ProcessedNodes:=TpvSceneNodes.Create;
+  ProcessedNodes.OwnsObjects:=false;
+  try
+  
+   CurrentLevelCandidates:=TpvSceneNodes.Create;
+   CurrentLevelCandidates.OwnsObjects:=false;
+   try
+   
+    NextLevelCandidates:=TpvSceneNodes.Create;
+    NextLevelCandidates.OwnsObjects:=false;
+    try
+    
+     // Initialize remaining dependencies count for each node
+     fScene.fAllNodesLock.Acquire;
+     try
+      SetLength(RemainingDependencies,fScene.fAllNodes.Count);
+      for NodeIndex:=0 to fScene.fAllNodes.Count-1 do begin
+       Node:=fScene.fAllNodes[NodeIndex];
+       if assigned(Node) then begin
+        RemainingDependencies[NodeIndex]:=Node.fDirectedAcyclicGraphInputDependencies.Count;
+        // Add nodes with no dependencies to first level candidates
+        if RemainingDependencies[NodeIndex]=0 then begin
+         CurrentLevelCandidates.Add(Node);
+        end;
+       end;
+      end;
+     finally
+      fScene.fAllNodesLock.Release;
+     end;
+     
+     // Build levels
+     while CurrentLevelCandidates.Count>0 do begin
+     
+      // Process current level candidates, splitting by conflicts and ParallelExecution
+      while CurrentLevelCandidates.Count>0 do begin
+      
+       CurrentLevel:=TpvSceneNodes.Create;
+       CurrentLevel.OwnsObjects:=false;
+       
+       // Try to add as many non-conflicting nodes as possible to this level
+       NodeIndex:=0;
+       while NodeIndex<CurrentLevelCandidates.Count do begin
+        Node:=CurrentLevelCandidates[NodeIndex];
+        CanAddToLevel:=true;
+        
+        // Check if node can be added to current level
+        if CurrentLevel.Count>0 then begin
+        
+         // If any node in current level has ParallelExecution=false, can't add more
+         for LevelIndex:=0 to CurrentLevel.Count-1 do begin
+          if not CurrentLevel[LevelIndex].fParallelExecution then begin
+           CanAddToLevel:=false;
+           break;
+          end;
+         end;
+         
+         // If this node has ParallelExecution=false, can't add to non-empty level
+         if CanAddToLevel and (not Node.fParallelExecution) then begin
+          CanAddToLevel:=false;
+         end;
+         
+         // Check for conflicts with nodes already in this level
+         if CanAddToLevel then begin
+          for LevelIndex:=0 to CurrentLevel.Count-1 do begin
+           // Check if Node conflicts with any node in CurrentLevel
+           if Node.fConflictingNodes.Contains(CurrentLevel[LevelIndex]) then begin
+            CanAddToLevel:=false;
+            break;
+           end;
+           // Also check reverse - if any node in CurrentLevel conflicts with Node
+           if CurrentLevel[LevelIndex].fConflictingNodes.Contains(Node) then begin
+            CanAddToLevel:=false;
+            break;
+           end;
+          end;
+         end;
+         
+        end;
+        
+        if CanAddToLevel then begin
+         // Add node to current level
+         CurrentLevel.Add(Node);
+         ProcessedNodes.Add(Node);
+         CurrentLevelCandidates.Delete(NodeIndex);
+         
+         // Update dependencies for dependent nodes
+         for DependencyIndex:=0 to Node.fDirectedAcyclicGraphOutputDependencies.Count-1 do begin
+          DependencyNode:=Node.fDirectedAcyclicGraphOutputDependencies[DependencyIndex];
+          if assigned(DependencyNode) and (DependencyNode.fIndex>=0) and (DependencyNode.fIndex<Length(RemainingDependencies)) then begin
+           Dec(RemainingDependencies[DependencyNode.fIndex]);
+           if RemainingDependencies[DependencyNode.fIndex]=0 then begin
+            // All dependencies satisfied, add to next level candidates
+            if not NextLevelCandidates.Contains(DependencyNode) then begin
+             NextLevelCandidates.Add(DependencyNode);
+            end;
+           end;
+          end;
+         end;
+         
+         // If node has ParallelExecution=false, finish this level immediately
+         if not Node.fParallelExecution then begin
+          break;
+         end;
+         
+        end else begin
+         // Can't add this node to current level, try next node
+         inc(NodeIndex);
+        end;
+        
+       end;
+       
+       // Add the completed level to execution levels
+       if CurrentLevel.Count>0 then begin
+        fExecutionLevels.Add(CurrentLevel);
+       end else begin
+        FreeAndNil(CurrentLevel);
+       end;
+       
+      end;
+      
+      // Move to next level
+      TemporaryLevelCandidates:=NextLevelCandidates;
+      NextLevelCandidates:=CurrentLevelCandidates;
+      CurrentLevelCandidates:=TemporaryLevelCandidates;
+      NextLevelCandidates.Clear;
+      
+     end;
+     
+    finally
+     FreeAndNil(NextLevelCandidates);
+    end;
+    
+   finally
+    FreeAndNil(CurrentLevelCandidates);
+   end;
+   
+  finally
+   FreeAndNil(ProcessedNodes);
+  end;
+  
+ finally
+  fLock.Release;
+ end;
+end;
+
+procedure TpvSceneDirectedAcyclicGraph.Rebuild;
+type TSceneNodeStack=TpvDynamicFastStack<TpvSceneNode>;
+var NodeIndex,DependencyIndex:TpvSizeInt;
+    Node,DependencyNode:TpvSceneNode;
+    NodeStack:TSceneNodeStack;
+    CycleDetected:boolean;
+begin
+ fLock.Acquire;
+ try
+ 
+  if fLastGeneration<>fGeneration then begin
+  
+   fLastGeneration:=fGeneration;
+   
+   NodeStack.Initialize;
+   try
+   
+    fLeafNodes.ClearNoFree;
+    fTopologicallySortedNodes.ClearNoFree;
+    
+    // Reset visited states and clear per-node DAG dependencies
+    fScene.fAllNodesLock.Acquire;
+    try
+     for NodeIndex:=0 to fScene.fAllNodes.Count-1 do begin
+      Node:=fScene.fAllNodes[NodeIndex];
+      if assigned(Node) then begin
+       Node.fDirectedAcyclicGraphInputDependencies.ClearNoFree;
+       Node.fDirectedAcyclicGraphOutputDependencies.ClearNoFree;
+       Node.fVisitedState:=0;
+      end;
+     end;
+    finally
+     fScene.fAllNodesLock.Release;
+    end;
+    
+    CycleDetected:=false;
+    
+    // Build DAG using DFS with cycle detection and topological sorting
+    fScene.fAllNodesLock.Acquire;
+    try
+     for NodeIndex:=0 to fScene.fAllNodes.Count-1 do begin
+      Node:=fScene.fAllNodes[NodeIndex];
+      
+      if assigned(Node) and (Node.fVisitedState=0) then begin
+      
+       // Check if this node has any dependencies, dependents, or children
+       if (Node.fIncomingNodeDependencies.Count>0) or 
+          (Node.fOutgoingNodeDependencies.Count>0) or
+          (Node.fChildren.Count>0) or
+          assigned(Node.fParent) then begin
+          
+        NodeStack.Push(Node);
+        
+        while NodeStack.Pop(Node) do begin
+        
+         case Node.fVisitedState of
+         
+          0:begin
+           // Mark as visiting
+           Node.fVisitedState:=1;
+           
+           // Build DirectedAcyclicGraph dependencies from IncomingNodeDependencies
+           for DependencyIndex:=0 to Node.fIncomingNodeDependencies.Count-1 do begin
+            DependencyNode:=Node.fIncomingNodeDependencies[DependencyIndex];
+            if assigned(DependencyNode) and not Node.fDirectedAcyclicGraphInputDependencies.Contains(DependencyNode) then begin
+             Node.fDirectedAcyclicGraphInputDependencies.Add(DependencyNode);
+             if not DependencyNode.fDirectedAcyclicGraphOutputDependencies.Contains(Node) then begin
+              DependencyNode.fDirectedAcyclicGraphOutputDependencies.Add(Node);
+             end;
+            end;
+           end;
+           
+           // Add implicit parent dependency (parent must execute before child)
+           if assigned(Node.fParent) and not Node.fDirectedAcyclicGraphInputDependencies.Contains(Node.fParent) then begin
+            Node.fDirectedAcyclicGraphInputDependencies.Add(Node.fParent);
+            if not Node.fParent.fDirectedAcyclicGraphOutputDependencies.Contains(Node) then begin
+             Node.fParent.fDirectedAcyclicGraphOutputDependencies.Add(Node);
+            end;
+           end;
+           
+           // Process incoming dependencies for DFS traversal
+           if (Node.fIncomingNodeDependencies.Count>0) or assigned(Node.fParent) then begin
+           
+            // Push this node again to mark as visited after dependencies
+            NodeStack.Push(Node);
+            
+            // Push all dependencies
+            for DependencyIndex:=0 to Node.fIncomingNodeDependencies.Count-1 do begin
+             DependencyNode:=Node.fIncomingNodeDependencies[DependencyIndex];
+             if assigned(DependencyNode) then begin
+              if DependencyNode.fVisitedState=1 then begin
+               // Cycle detected!
+               CycleDetected:=true;
+               pvApplication.Log(LOG_ERROR,'TpvSceneDirectedAcyclicGraph.Rebuild','Cycle detected: Node depends on node which is in its dependency chain');
+              end else if DependencyNode.fVisitedState=0 then begin
+               NodeStack.Push(DependencyNode);
+              end;
+             end;
+            end;
+            
+            // Also push parent as dependency
+            if assigned(Node.fParent) then begin
+             if Node.fParent.fVisitedState=1 then begin
+              // Cycle detected (parent depends on child, should not happen in tree!)
+              CycleDetected:=true;
+              pvApplication.Log(LOG_ERROR,'TpvSceneDirectedAcyclicGraph.Rebuild','Cycle detected: Parent depends on child in tree structure');
+             end else if Node.fParent.fVisitedState=0 then begin
+              NodeStack.Push(Node.fParent);
+             end;
+            end;
+            
+           end else begin
+            // No dependencies, mark as visited and add to sorted lists
+            Node.fVisitedState:=2;
+            fTopologicallySortedNodes.Add(Node);
+            
+            // Check if this is a leaf node (no output dependencies)
+            if Node.fOutgoingNodeDependencies.Count=0 then begin
+             fLeafNodes.Add(Node);
+            end;
+           end;
+           
+          end;
+          
+          1:begin
+           // Coming back after processing dependencies
+           Node.fVisitedState:=2;
+           fTopologicallySortedNodes.Add(Node);
+           
+           // Check if this is a leaf node
+           if Node.fOutgoingNodeDependencies.Count=0 then begin
+            fLeafNodes.Add(Node);
+           end;
+          end;
+          
+         end;
+         
+        end;
+        
+       end else begin
+        // Node with no dependencies or dependents
+        Node.fVisitedState:=2;
+        fLeafNodes.Add(Node);
+        fTopologicallySortedNodes.Add(Node);
+       end;
+       
+      end;
+      
+     end;
+    finally
+     fScene.fAllNodesLock.Release;
+    end;
+    
+    if CycleDetected then begin
+     pvApplication.Log(LOG_ERROR,'TpvSceneDirectedAcyclicGraph.Rebuild','Dependency cycles detected. Some nodes may not process in the correct order.');
+    end;
+    
+    fValid:=not CycleDetected;
+    
+   finally
+    NodeStack.Finalize;
+   end;
+   
+   // Build execution levels after DAG is constructed
+   BuildExecutionLevels;
+   
+  end;
+  
+ finally
+  fLock.Release;
+ end;
+end;
+
 { TpvScene }
 
 constructor TpvScene.Create(const aData:TObject=nil);
@@ -967,12 +1379,16 @@ begin
 
  fBackgroundLoadJob:=nil;
 
+ fDirectedAcyclicGraph:=TpvSceneDirectedAcyclicGraph.Create(self);
+
 end;
 
 destructor TpvScene.Destroy;
 begin
 
  Shutdown;
+
+ FreeAndNil(fDirectedAcyclicGraph);
 
  FreeAndNil(fRootNode);
 
