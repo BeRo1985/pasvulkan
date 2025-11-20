@@ -309,6 +309,14 @@ type TpvScene=class;
        procedure InvalidateDirectedAcyclicGraph; inline;
        procedure RebuildDirectedAcyclicGraph; inline;
        procedure CheckParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure StoreParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure BeginUpdateParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure UpdateParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure EndUpdateParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure InterpolateParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure FrameUpdateParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure RenderParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure UpdateAudioParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
        fStartLoadVisitGeneration:TpvUInt32;
        fBackgroundLoadVisitGeneration:TpvUInt32;
@@ -1908,77 +1916,413 @@ begin
  end;
 end;
 
+procedure TpvScene.StoreParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
+begin
+ ExecutionLevelNodes:=aData;
+ for ExecutionLevelNodeIndex:=aFromIndex to aToIndex do begin
+  ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].Store;
+ end;
+end;
+
 procedure TpvScene.Store;
+var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
+  for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
+   ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
+   if ExecutionLevelNodes.Count>0 then begin
+    if ExecutionLevelNodes.Count>1 then begin
+     if assigned(fPasMPInstance) then begin
+      fPasMPInstance.Invoke(
+       fPasMPInstance.ParallelFor(
+        ExecutionLevelNodes,
+        0,
+        ExecutionLevelNodes.Count-1,
+        StoreParallelForJob,
+        1,
+        PasMPDefaultDepth,
+        nil,
+        0,
+        0,
+        0,
+        true
+       )
+      );
+     end else begin
+      for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
+       ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].Store;
+      end;
+     end;
+    end else begin
+     ExecutionLevelNodes[0].Store;
+    end;
+   end;
+  end;
  end else begin
   fRootNode.Store;
  end;
 end;
 
+procedure TpvScene.BeginUpdateParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
+begin
+ ExecutionLevelNodes:=aData;
+ for ExecutionLevelNodeIndex:=aFromIndex to aToIndex do begin
+  ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].BeginUpdate(fDeltaTime);
+ end;
+end;
+
 procedure TpvScene.BeginUpdate(const aDeltaTime:TpvDouble);
+var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
   fDeltaTime:=aDeltaTime;
+  for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
+   ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
+   if ExecutionLevelNodes.Count>0 then begin
+    if ExecutionLevelNodes.Count>1 then begin
+     if assigned(fPasMPInstance) then begin
+      fPasMPInstance.Invoke(
+       fPasMPInstance.ParallelFor(
+        ExecutionLevelNodes,
+        0,
+        ExecutionLevelNodes.Count-1,
+        BeginUpdateParallelForJob,
+        1,
+        PasMPDefaultDepth,
+        nil,
+        0,
+        0,
+        0,
+        true
+       )
+      );
+     end else begin
+      for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
+       ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].BeginUpdate(aDeltaTime);
+      end;
+     end;
+    end else begin
+     ExecutionLevelNodes[0].BeginUpdate(aDeltaTime);
+    end;
+   end;
+  end;
  end else begin
   fRootNode.BeginUpdate(aDeltaTime);
  end;
 end;
 
+procedure TpvScene.UpdateParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
+begin
+ ExecutionLevelNodes:=aData;
+ for ExecutionLevelNodeIndex:=aFromIndex to aToIndex do begin
+  ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].Update(fDeltaTime);
+ end;
+end;
+
 procedure TpvScene.Update(const aDeltaTime:TpvDouble);
+var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
   fDeltaTime:=aDeltaTime;
+  for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
+   ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
+   if ExecutionLevelNodes.Count>0 then begin
+    if ExecutionLevelNodes.Count>1 then begin
+     if assigned(fPasMPInstance) then begin
+      fPasMPInstance.Invoke(
+       fPasMPInstance.ParallelFor(
+        ExecutionLevelNodes,
+        0,
+        ExecutionLevelNodes.Count-1,
+        UpdateParallelForJob,
+        1,
+        PasMPDefaultDepth,
+        nil,
+        0,
+        0,
+        0,
+        true
+       )
+      );
+     end else begin
+      for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
+       ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].Update(aDeltaTime);
+      end;
+     end;
+    end else begin
+     ExecutionLevelNodes[0].Update(aDeltaTime);
+    end;
+   end;
+  end;
  end else begin
   fRootNode.Update(aDeltaTime);
  end;
 end;
 
+procedure TpvScene.EndUpdateParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
+begin
+ ExecutionLevelNodes:=aData;
+ for ExecutionLevelNodeIndex:=aFromIndex to aToIndex do begin
+  ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].EndUpdate(fDeltaTime);
+ end;
+end;
+
 procedure TpvScene.EndUpdate(const aDeltaTime:TpvDouble);
+var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
   fDeltaTime:=aDeltaTime;
+  for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
+   ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
+   if ExecutionLevelNodes.Count>0 then begin
+    if ExecutionLevelNodes.Count>1 then begin
+     if assigned(fPasMPInstance) then begin
+      fPasMPInstance.Invoke(
+       fPasMPInstance.ParallelFor(
+        ExecutionLevelNodes,
+        0,
+        ExecutionLevelNodes.Count-1,
+        EndUpdateParallelForJob,
+        1,
+        PasMPDefaultDepth,
+        nil,
+        0,
+        0,
+        0,
+        true
+       )
+      );
+     end else begin
+      for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
+       ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].EndUpdate(aDeltaTime);
+      end;
+     end;
+    end else begin
+     ExecutionLevelNodes[0].EndUpdate(aDeltaTime);
+    end;
+   end;
+  end;
  end else begin
   fRootNode.EndUpdate(aDeltaTime);
  end;
 end;
 
+procedure TpvScene.InterpolateParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
+begin
+ ExecutionLevelNodes:=aData;
+ for ExecutionLevelNodeIndex:=aFromIndex to aToIndex do begin
+  ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].Interpolate(fAlpha);
+ end;
+end;
+
 procedure TpvScene.Interpolate(const aAlpha:TpvDouble);
+var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
   fAlpha:=aAlpha;
+  for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
+   ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
+   if ExecutionLevelNodes.Count>0 then begin
+    if ExecutionLevelNodes.Count>1 then begin
+     if assigned(fPasMPInstance) then begin
+      fPasMPInstance.Invoke(
+       fPasMPInstance.ParallelFor(
+        ExecutionLevelNodes,
+        0,
+        ExecutionLevelNodes.Count-1,
+        InterpolateParallelForJob,
+        1,
+        PasMPDefaultDepth,
+        nil,
+        0,
+        0,
+        0,
+        true
+       )
+      );
+     end else begin
+      for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
+       ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].Interpolate(aAlpha);
+      end;
+     end;
+    end else begin
+     ExecutionLevelNodes[0].Interpolate(aAlpha);
+    end;
+   end;
+  end;
  end else begin
   fRootNode.Interpolate(aAlpha);
  end;
 end;
 
+procedure TpvScene.FrameUpdateParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
+begin
+ ExecutionLevelNodes:=aData;
+ for ExecutionLevelNodeIndex:=aFromIndex to aToIndex do begin
+  ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].FrameUpdate;
+ end;
+end;
+
 procedure TpvScene.FrameUpdate;
+var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
+  for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
+   ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
+   if ExecutionLevelNodes.Count>0 then begin
+    if ExecutionLevelNodes.Count>1 then begin
+     if assigned(fPasMPInstance) then begin
+      fPasMPInstance.Invoke(
+       fPasMPInstance.ParallelFor(
+        ExecutionLevelNodes,
+        0,
+        ExecutionLevelNodes.Count-1,
+        FrameUpdateParallelForJob,
+        1,
+        PasMPDefaultDepth,
+        nil,
+        0,
+        0,
+        0,
+        true
+       )
+      );
+     end else begin
+      for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
+       ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].FrameUpdate;
+      end;
+     end;
+    end else begin
+     ExecutionLevelNodes[0].FrameUpdate;
+    end;
+   end;
+  end;
  end else begin
   fRootNode.FrameUpdate;
  end;
 end;
 
+procedure TpvScene.RenderParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
+begin
+ ExecutionLevelNodes:=aData;
+ for ExecutionLevelNodeIndex:=aFromIndex to aToIndex do begin
+  ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].Render;
+ end;
+end;
+
 procedure TpvScene.Render;
+var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
+  for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
+   ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
+   if ExecutionLevelNodes.Count>0 then begin
+    if ExecutionLevelNodes.Count>1 then begin
+     if assigned(fPasMPInstance) then begin
+      fPasMPInstance.Invoke(
+       fPasMPInstance.ParallelFor(
+        ExecutionLevelNodes,
+        0,
+        ExecutionLevelNodes.Count-1,
+        RenderParallelForJob,
+        1,
+        PasMPDefaultDepth,
+        nil,
+        0,
+        0,
+        0,
+        true
+       )
+      );
+     end else begin
+      for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
+       ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].Render;
+      end;
+     end;
+    end else begin
+     ExecutionLevelNodes[0].Render;
+    end;
+   end;
+  end;
  end else begin
   fRootNode.Render;
  end;
 end;
 
+procedure TpvScene.UpdateAudioParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
+begin
+ ExecutionLevelNodes:=aData;
+ for ExecutionLevelNodeIndex:=aFromIndex to aToIndex do begin
+  ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].UpdateAudio;
+ end;
+end;
+
 procedure TpvScene.UpdateAudio;
+var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
 begin
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
+  for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
+   ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
+   if ExecutionLevelNodes.Count>0 then begin
+    if ExecutionLevelNodes.Count>1 then begin
+     if assigned(fPasMPInstance) then begin
+      fPasMPInstance.Invoke(
+       fPasMPInstance.ParallelFor(
+        ExecutionLevelNodes,
+        0,
+        ExecutionLevelNodes.Count-1,
+        UpdateAudioParallelForJob,
+        1,
+        PasMPDefaultDepth,
+        nil,
+        0,
+        0,
+        0,
+        true
+       )
+      );
+     end else begin
+      for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
+       ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].UpdateAudio;
+      end;
+     end;
+    end else begin
+     ExecutionLevelNodes[0].UpdateAudio;
+    end;
+   end;
+  end;
  end else begin
   fRootNode.UpdateAudio;
  end;
