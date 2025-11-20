@@ -607,7 +607,7 @@ end;
 procedure TpvSceneNode.AddConflictingNode(const aNode:TpvSceneNode);
 begin
 
- if assigned(aNode) then begin
+ if assigned(aNode) and (aNode<>self) then begin
 
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
   try
@@ -627,7 +627,7 @@ procedure TpvSceneNode.RemoveConflictingNode(const aNode:TpvSceneNode);
 var Index:TpvSizeInt;
 begin
 
- if assigned(aNode) then begin
+ if assigned(aNode) and (aNode<>self) then begin
 
   if assigned(fConflictingNodes) then begin
    TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
@@ -650,28 +650,34 @@ procedure TpvSceneNode.AddDependency(const aNode:TpvSceneNode);
 var ToInvalidate:Boolean;
 begin
 
- if assigned(aNode) then begin
+ if assigned(aNode) and (aNode<>self) then begin
 
   ToInvalidate:=false;
 
-  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
+  if TpvPtrUInt(self)<TpvPtrUInt(aNode) then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(aNode.fLock);
+  end else begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(aNode.fLock);
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
+  end;
   try
    if assigned(fIncomingNodeDependencies) and not fIncomingNodeDependencies.Contains(aNode) then begin
     fIncomingNodeDependencies.Add(aNode);
     ToInvalidate:=true;
    end;
-  finally
-   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
-  end;
-
-  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(aNode.fLock);
-  try
    if assigned(aNode.fOutgoingNodeDependencies) and not aNode.fOutgoingNodeDependencies.Contains(self) then begin
     aNode.fOutgoingNodeDependencies.Add(self);
     ToInvalidate:=true;
    end;
   finally
-   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(aNode.fLock);
+   if TpvPtrUInt(self)<TpvPtrUInt(aNode) then begin
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(aNode.fLock);
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+   end else begin
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(aNode.fLock);
+   end;
   end;
 
   if ToInvalidate then begin
@@ -687,25 +693,25 @@ var Index:TpvSizeInt;
     ToInvalidate:Boolean;
 begin
 
- if assigned(aNode) then begin
+ if assigned(aNode) and (aNode<>self) then begin
 
   ToInvalidate:=false;
 
-  if assigned(fIncomingNodeDependencies) then begin
+  if TpvPtrUInt(self)<TpvPtrUInt(aNode) then begin
    TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
-   try
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(aNode.fLock);
+  end else begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(aNode.fLock);
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
+  end;
+  try
+   if assigned(fIncomingNodeDependencies) then begin
     Index:=fIncomingNodeDependencies.IndexOf(aNode);
     if Index>=0 then begin
      fIncomingNodeDependencies.Delete(Index);
      ToInvalidate:=true;
     end;
-   finally
-    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
    end;
-  end;
-
-  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(aNode.fLock);
-  try
    if assigned(aNode.fOutgoingNodeDependencies) then begin
     Index:=aNode.fOutgoingNodeDependencies.IndexOf(self);
     if Index>=0 then begin
@@ -714,7 +720,13 @@ begin
     end;
    end;
   finally
-   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(aNode.fLock);
+   if TpvPtrUInt(self)<TpvPtrUInt(aNode) then begin
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(aNode.fLock);
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+   end else begin
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(aNode.fLock);
+   end;
   end;
 
   if ToInvalidate then begin
@@ -730,7 +742,7 @@ var NodeClass:TpvSceneNodeClass;
     Nodes:TpvSceneNodes;
 begin
 
- if assigned(aNode) then begin
+ if assigned(aNode) and (aNode<>self) then begin
 
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
   try
@@ -765,7 +777,7 @@ var Index:TpvSizeInt;
     Nodes:TpvSceneNodes;
 begin
 
- if assigned(aNode) and (aNode.fParent=self) and not aNode.fDestroying then begin
+ if assigned(aNode) and (aNode<>self) and (aNode.fParent=self) and not aNode.fDestroying then begin
 
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
   try
