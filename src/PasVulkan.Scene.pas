@@ -201,6 +201,13 @@ type TpvScene=class;
              ManualLoading=TpvSceneNodeState(11);
      end;
 
+     TpvSceneNodeVisitedState=
+      (
+       Unvisited=0,
+       Visiting=1,
+       Visited=2
+      );
+
      { TpvSceneDirectedAcyclicGraph }
      // Directed Acyclic Graph (DAG) for scene node dependency management.
      // Performs cycle detection and topological sorting during graph construction.
@@ -254,7 +261,7 @@ type TpvScene=class;
        fIsCountToFinishLoadNodes:boolean;
        fParallelExecution:boolean;
        fManualLoad:boolean;
-       fVisitedState:TpvInt32; // For DAG traversal: 0=unvisited, 1=visiting, 2=visited
+       fVisitedState:TpvSceneNodeVisitedState; // For DAG traversal
        procedure InvalidateDirectedAcyclicGraph; inline;
        procedure SetParallelExecution(const aParallelExecution:boolean);
       public
@@ -498,7 +505,7 @@ begin
 
  fManualLoad:=false;
 
- fVisitedState:=0;
+ fVisitedState:=TpvSceneNodeVisitedState.Unvisited;
 
  fStartLoadVisitGeneration:=0;
  fBackgroundLoadVisitGeneration:=0;
@@ -1366,7 +1373,7 @@ begin
       if assigned(Node) then begin
        Node.fDirectedAcyclicGraphInputDependencies.ClearNoFree;
        Node.fDirectedAcyclicGraphOutputDependencies.ClearNoFree;
-       Node.fVisitedState:=0;
+       Node.fVisitedState:=TpvSceneNodeVisitedState.Unvisited;
       end;
      end;
     finally
@@ -1381,7 +1388,7 @@ begin
      for NodeIndex:=0 to fScene.fAllNodes.Count-1 do begin
       Node:=fScene.fAllNodes[NodeIndex];
       
-      if assigned(Node) and (Node.fVisitedState=0) then begin
+      if assigned(Node) and (Node.fVisitedState=TpvSceneNodeVisitedState.Unvisited) then begin
       
        // Check if this node has any dependencies, dependents, or children
        if (Node.fIncomingNodeDependencies.Count>0) or 
@@ -1395,9 +1402,9 @@ begin
         
          case Node.fVisitedState of
          
-          0:begin
+          TpvSceneNodeVisitedState.Unvisited:begin
            // Mark as visiting
-           Node.fVisitedState:=1;
+           Node.fVisitedState:=TpvSceneNodeVisitedState.Visiting;
            
            // Build DirectedAcyclicGraph dependencies from IncomingNodeDependencies
            for DependencyIndex:=0 to Node.fIncomingNodeDependencies.Count-1 do begin
@@ -1428,11 +1435,11 @@ begin
             for DependencyIndex:=0 to Node.fIncomingNodeDependencies.Count-1 do begin
              DependencyNode:=Node.fIncomingNodeDependencies[DependencyIndex];
              if assigned(DependencyNode) then begin
-              if DependencyNode.fVisitedState=1 then begin
+              if DependencyNode.fVisitedState=TpvSceneNodeVisitedState.Visiting then begin
                // Cycle detected!
                CycleDetected:=true;
                pvApplication.Log(LOG_ERROR,'TpvSceneDirectedAcyclicGraph.Rebuild','Cycle detected: Node depends on node which is in its dependency chain');
-              end else if DependencyNode.fVisitedState=0 then begin
+              end else if DependencyNode.fVisitedState=TpvSceneNodeVisitedState.Unvisited then begin
                NodeStack.Push(DependencyNode);
               end;
              end;
@@ -1440,18 +1447,18 @@ begin
             
             // Also push parent as dependency
             if assigned(Node.fParent) then begin
-             if Node.fParent.fVisitedState=1 then begin
+             if Node.fParent.fVisitedState=TpvSceneNodeVisitedState.Visiting then begin
               // Cycle detected (parent depends on child, should not happen in tree!)
               CycleDetected:=true;
               pvApplication.Log(LOG_ERROR,'TpvSceneDirectedAcyclicGraph.Rebuild','Cycle detected: Parent depends on child in tree structure');
-             end else if Node.fParent.fVisitedState=0 then begin
+             end else if Node.fParent.fVisitedState=TpvSceneNodeVisitedState.Unvisited then begin
               NodeStack.Push(Node.fParent);
              end;
             end;
             
            end else begin
             // No dependencies, mark as visited and add to sorted lists
-            Node.fVisitedState:=2;
+            Node.fVisitedState:=TpvSceneNodeVisitedState.Visited;
             fTopologicallySortedNodes.Add(Node);
             
             // Check if this is a leaf node (no output dependencies)
@@ -1462,9 +1469,9 @@ begin
            
           end;
           
-          1:begin
+          TpvSceneNodeVisitedState.Visiting:begin
            // Coming back after processing dependencies
-           Node.fVisitedState:=2;
+           Node.fVisitedState:=TpvSceneNodeVisitedState.Visited;
            fTopologicallySortedNodes.Add(Node);
            
            // Check if this is a leaf node
@@ -1479,7 +1486,7 @@ begin
         
        end else begin
         // Node with no dependencies or dependents
-        Node.fVisitedState:=2;
+        Node.fVisitedState:=TpvSceneNodeVisitedState.Visited;
         fLeafNodes.Add(Node);
         fTopologicallySortedNodes.Add(Node);
        end;
