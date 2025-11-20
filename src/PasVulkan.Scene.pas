@@ -150,6 +150,19 @@ The DAG system organizes nodes into execution levels where:
 
 This enables efficient parallel processing of Check, Store, Update, Render, and other scene operations while maintaining correctness.
 
+Per-stage parallel execution control:
+
+The ParallelStages property (TStageSet) provides fine-grained control over which scene stages use parallel execution within the DAG.
+Each stage (Check, Store, BeginUpdate, Update, EndUpdate, Interpolate, FrameUpdate, Render, UpdateAudio) can be individually enabled
+or disabled for parallel execution. This allows you to:
+- Enable parallelism only for performance-critical stages
+- Disable parallelism for stages with thread-safety concerns
+- Profile and tune parallel execution on a per-stage basis
+- Mix sequential and parallel execution as needed
+
+When a stage is not in ParallelStages, it executes sequentially even when UseDirectedAcyclicGraph is enabled. When a stage is in
+ParallelStages, the DAG execution levels are used to run nodes in parallel where dependencies and conflicts allow.
+
 }
 
 type TpvScene=class;
@@ -316,6 +329,22 @@ type TpvScene=class;
 
      { TpvScene }
      TpvScene=class
+      public
+       type TStage=
+             (
+              Check,
+              Store,  
+              BeginUpdate,
+              Update,
+              EndUpdate,
+              Interpolate,
+              FrameUpdate,
+              Render,
+              UpdateAudio
+             );
+             PStage=^TStage;
+             TStageSet=set of TStage;
+             PStageSet=^TStageSet;
       private
        fRootNode:TpvSceneNode;
        fAllNodesLock:TPasMPSlimReaderWriterLock;
@@ -329,6 +358,7 @@ type TpvScene=class;
        fPasMPInstance:TPasMP;
        fDeltaTime:TpvDouble;
        fAlpha:TpvDouble;
+       fParallelStages:TStageSet;
        procedure InvalidateDirectedAcyclicGraph; inline;
        procedure RebuildDirectedAcyclicGraph; inline;
        procedure CheckParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
@@ -373,6 +403,7 @@ type TpvScene=class;
        property Data:TObject read fData;
        property DirectedAcyclicGraph:TpvSceneDirectedAcyclicGraph read fDirectedAcyclicGraph;
        property UseDirectedAcyclicGraph:TPasMPBool32 read fUseDirectedAcyclicGraph write fUseDirectedAcyclicGraph;
+       property ParallelStages:TStageSet read fParallelStages write fParallelStages;
      end;
 
      { TpvSceneNode3D }
@@ -1510,6 +1541,8 @@ begin
 
  fUseDirectedAcyclicGraph:=false;
 
+ fParallelStages:=[];
+
 end;
 
 destructor TpvScene.Destroy;
@@ -1920,7 +1953,7 @@ begin
    ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
    if ExecutionLevelNodes.Count>0 then begin
     if ExecutionLevelNodes.Count>1 then begin
-     if assigned(fPasMPInstance) then begin
+     if assigned(fPasMPInstance) and (TpvScene.TStage.Check in fParallelStages) then begin
       fPasMPInstance.Invoke(
        fPasMPInstance.ParallelFor(
         ExecutionLevelNodes,
@@ -1971,7 +2004,7 @@ begin
    ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
    if ExecutionLevelNodes.Count>0 then begin
     if ExecutionLevelNodes.Count>1 then begin
-     if assigned(fPasMPInstance) then begin
+     if assigned(fPasMPInstance) and (TpvScene.TStage.Store in fParallelStages) then begin
       fPasMPInstance.Invoke(
        fPasMPInstance.ParallelFor(
         ExecutionLevelNodes,
@@ -2023,7 +2056,7 @@ begin
    ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
    if ExecutionLevelNodes.Count>0 then begin
     if ExecutionLevelNodes.Count>1 then begin
-     if assigned(fPasMPInstance) then begin
+     if assigned(fPasMPInstance) and (TpvScene.TStage.BeginUpdate in fParallelStages) then begin
       fPasMPInstance.Invoke(
        fPasMPInstance.ParallelFor(
         ExecutionLevelNodes,
@@ -2075,7 +2108,7 @@ begin
    ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
    if ExecutionLevelNodes.Count>0 then begin
     if ExecutionLevelNodes.Count>1 then begin
-     if assigned(fPasMPInstance) then begin
+     if assigned(fPasMPInstance) and (TpvScene.TStage.Update in fParallelStages) then begin
       fPasMPInstance.Invoke(
        fPasMPInstance.ParallelFor(
         ExecutionLevelNodes,
@@ -2127,7 +2160,7 @@ begin
    ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
    if ExecutionLevelNodes.Count>0 then begin
     if ExecutionLevelNodes.Count>1 then begin
-     if assigned(fPasMPInstance) then begin
+     if assigned(fPasMPInstance) and (TpvScene.TStage.EndUpdate in fParallelStages) then begin
       fPasMPInstance.Invoke(
        fPasMPInstance.ParallelFor(
         ExecutionLevelNodes,
@@ -2179,7 +2212,7 @@ begin
    ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
    if ExecutionLevelNodes.Count>0 then begin
     if ExecutionLevelNodes.Count>1 then begin
-     if assigned(fPasMPInstance) then begin
+     if assigned(fPasMPInstance) and (TpvScene.TStage.Interpolate in fParallelStages) then begin
       fPasMPInstance.Invoke(
        fPasMPInstance.ParallelFor(
         ExecutionLevelNodes,
@@ -2230,7 +2263,7 @@ begin
    ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
    if ExecutionLevelNodes.Count>0 then begin
     if ExecutionLevelNodes.Count>1 then begin
-     if assigned(fPasMPInstance) then begin
+     if assigned(fPasMPInstance) and (TpvScene.TStage.FrameUpdate in fParallelStages) then begin
       fPasMPInstance.Invoke(
        fPasMPInstance.ParallelFor(
         ExecutionLevelNodes,
@@ -2281,7 +2314,7 @@ begin
    ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
    if ExecutionLevelNodes.Count>0 then begin
     if ExecutionLevelNodes.Count>1 then begin
-     if assigned(fPasMPInstance) then begin
+     if assigned(fPasMPInstance) and (TpvScene.TStage.Render in fParallelStages) then begin
       fPasMPInstance.Invoke(
        fPasMPInstance.ParallelFor(
         ExecutionLevelNodes,
@@ -2332,7 +2365,7 @@ begin
    ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
    if ExecutionLevelNodes.Count>0 then begin
     if ExecutionLevelNodes.Count>1 then begin
-     if assigned(fPasMPInstance) then begin
+     if assigned(fPasMPInstance) and (TpvScene.TStage.UpdateAudio in fParallelStages) then begin
       fPasMPInstance.Invoke(
        fPasMPInstance.ParallelFor(
         ExecutionLevelNodes,
