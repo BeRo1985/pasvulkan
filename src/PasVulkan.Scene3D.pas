@@ -33253,7 +33253,7 @@ begin
 end;
 
 procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceRecursive(const aInstance:TpvScene3D.TGroup.TInstance);
-var InstanceIndex:SizeInt;
+var InstanceIndex:TpvSizeInt;
     OtherInstance:TpvScene3D.TGroup.TInstance;
 begin
  if (not aInstance.ProcessStateIsBitMaskSet(TpvScene3D.TGroup.TInstance.ProcessStateJobAllocated)) and
