@@ -7362,7 +7362,7 @@ begin
        end else begin
 
         BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0];
-        if fGeometryChanged or (BLASInstance.InstanceCustomIndex>=0) or not BLASInstance.AccelerationStructureInstance.CompareTransform(Matrix) then begin
+        if {fGeometryChanged or}(BLASInstance.InstanceCustomIndex>=0) or not BLASInstance.AccelerationStructureInstance.CompareTransform(Matrix) then begin
          BLASInstance.AccelerationStructureInstance.Transform:=Matrix;
          BLASInstance.InstanceCustomIndexEx:=-1;
          BLASInstance.NewGeneration;
