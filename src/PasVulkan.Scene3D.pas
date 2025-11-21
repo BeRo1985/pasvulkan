@@ -35779,6 +35779,9 @@ begin
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  PartCPUTime:=EndCPUTime-BeginCPUTime;
  CPUTimeMS:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0;
+ if CPUTimeMS>0 then begin
+  TPasMP.Yield;
+ end;
 
 end;
 
