@@ -7330,7 +7330,7 @@ begin
          PerInFlightFrameRenderInstance:=@RenderInstanceItems[RendererInstanceIndex];
          
          // Check if RenderInstance changed or generation changed
-         if (BLASInstance.TrackedRenderInstance<>PerInFlightFrameRenderInstance^.RenderInstance) or
+         if (BLASInstance.TrackedObjectInstance<>PerInFlightFrameRenderInstance^.RenderInstance) or
             (BLASInstance.LastSyncedGeneration<>PerInFlightFrameRenderInstance^.Generation) then begin
 
           // Something changed, perform update
@@ -7344,7 +7344,7 @@ begin
 
           BLASInstance.AccelerationStructureInstance.Transform:=InstanceMatrix;
           BLASInstance.InstanceCustomIndexEx:=InstanceCustomIndex;
-          BLASInstance.TrackedRenderInstance:=PerInFlightFrameRenderInstance^.RenderInstance;
+          BLASInstance.TrackedObjectInstance:=PerInFlightFrameRenderInstance^.RenderInstance;
           BLASInstance.LastSyncedGeneration:=PerInFlightFrameRenderInstance^.Generation;
 
           BLASInstance.NewGeneration;
