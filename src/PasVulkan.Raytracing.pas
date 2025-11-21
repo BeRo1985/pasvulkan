@@ -479,6 +479,8 @@ type EpvRaytracing=class(Exception);
                      fAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
                      fGeneration:TpvRaytracingBottomLevelAccelerationStructureInstanceGeneration;
                      fLastGeneration:TpvRaytracingBottomLevelAccelerationStructureInstanceGeneration;
+                     fTrackedRenderInstance:TObject;
+                     fLastSyncedGeneration:TpvUInt64;
                      function GetInstanceCustomIndex:TVkInt32;
                      procedure SetInstanceCustomIndex(const aInstanceCustomIndex:TVkInt32);
                      procedure SetInstanceCustomIndexEx(const aInstanceCustomIndex:TVkInt32);
@@ -503,6 +505,8 @@ type EpvRaytracing=class(Exception);
                      property AccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fAccelerationStructureInstance;
                      property Generation:TpvRaytracingBottomLevelAccelerationStructureInstanceGeneration read fGeneration;
                      property LastGeneration:TpvRaytracingBottomLevelAccelerationStructureInstanceGeneration read fLastGeneration;
+                     property TrackedRenderInstance:TObject read fTrackedRenderInstance write fTrackedRenderInstance;
+                     property LastSyncedGeneration:TpvUInt64 read fLastSyncedGeneration write fLastSyncedGeneration;
                    end;
                    TBottomLevelAccelerationStructureInstanceList=TpvObjectGenericList<TInstance>;
              private
@@ -2111,6 +2115,10 @@ begin
  until fGeneration<>0;
 
  fLastGeneration:=0;
+
+ fTrackedRenderInstance:=nil;
+ 
+ fLastSyncedGeneration:=0;
 
 end;
 

@@ -251,7 +251,7 @@ type { TpvDynamicArray }
      { TpvObjectGenericList }
 
      TpvObjectGenericList<T:class>=class
-      private
+      public
        type TItemArray=array of T;
             TValueEnumerator=record
              private

@@ -3017,6 +3017,7 @@ type EpvScene3D=class(Exception);
                            public
                             type TRenderInstanceMatrixInstances=array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                                  TRenderInstanceDataIndices=array[-1..MaxInFlightFrames-1] of TpvUInt32;
+                                 TRenderInstanceGenerations=array[-1..MaxInFlightFrames-1] of TpvUInt64;
                            private
                             fInstance:TpvScene3D.TGroup.TInstance;
                             fSceneInstance:TpvScene3D;
@@ -3037,6 +3038,7 @@ type EpvScene3D=class(Exception);
                             fApplyCameraRelativeTransform:TPasMPBool32;
                             fInstanceDataIndex:TpvUInt32;
                             fInstanceDataIndices:TRenderInstanceDataIndices;
+                            fGenerations:TRenderInstanceGenerations;
                             fAssignedVirtualInstance:TInstance;
                             fAssignedVirtualInstanceRenderInstance:TRenderInstance;
                             procedure SetActive(const aActive:boolean); inline;
@@ -3068,6 +3070,7 @@ type EpvScene3D=class(Exception);
                            ModelMatrix:TpvMatrix4x4;
                            PreviousModelMatrix:TpvMatrix4x4;
                            InstanceDataIndex:TpvUInt32;
+                           Generation:TpvUInt64;
                           end;
                           PPerInFlightFrameRenderInstance=^TPerInFlightFrameRenderInstance;
                           TPerInFlightFrameRenderInstanceDynamicArray=TpvDynamicArray<TPerInFlightFrameRenderInstance>;
@@ -6899,9 +6902,11 @@ begin
  inherited BeforeDestruction;
 end;
 
+//var fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresCount:TPasMPInt32=0;
+
 function TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
 var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstanceIndex,
-    BLASInstanceIndex,IndexOffset,BLASArrayIndex,GeometryIndex:TpvSizeInt;
+    BLASInstanceIndex,IndexOffset,BLASArrayIndex,GeometryIndex,MaxIterations:TpvSizeInt;
     InstanceCustomIndex:TpvInt32;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
@@ -6921,6 +6926,9 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
     GeometryInfo:PpvRaytracingBLASGeometryInfoBufferItem;
     BLASInstance:TpvRaytracing.TBottomLevelAccelerationStructure.TInstance;
+    InstanceList:TpvRaytracing.TBottomLevelAccelerationStructure.TBottomLevelAccelerationStructureInstanceList;
+    InstanceListRawItems:TpvRaytracing.TBottomLevelAccelerationStructure.TBottomLevelAccelerationStructureInstanceList.TItemArray;
+    RenderInstanceItems:TpvScene3D.TGroup.TInstance.TPerInFlightFrameRenderInstanceDynamicArray.TItemArray;
 begin
 
  result:=false;
@@ -7308,21 +7316,47 @@ begin
 
         BLASInstanceIndex:=0;
 
-        for RendererInstanceIndex:=0 to Min(CountRenderInstances,PerInFlightFrameRenderInstanceDynamicArray^.Count)-1 do begin
-         BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[BLASInstanceIndex];
-         PerInFlightFrameRenderInstance:=@PerInFlightFrameRenderInstanceDynamicArray^.Items[RendererInstanceIndex];
-         InstanceMatrix:=Matrix*PerInFlightFrameRenderInstance^.ModelMatrix;
-         if PerInFlightFrameRenderInstance^.InstanceDataIndex>0 then begin
-          InstanceCustomIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
-         end else begin
-          InstanceCustomIndex:=-1;
-         end;
-         if fGeometryChanged or (BLASInstance.InstanceCustomIndex<>InstanceCustomIndex) or not BLASInstance.AccelerationStructureInstance.CompareTransform(InstanceMatrix) then begin
+        // Cache array access for performance
+        InstanceList:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList;
+        InstanceListRawItems:=InstanceList.RawItems;
+        RenderInstanceItems:=PerInFlightFrameRenderInstanceDynamicArray^.Items;
+        MaxIterations:=Min(CountRenderInstances,PerInFlightFrameRenderInstanceDynamicArray^.Count);
+
+//      TPasMPInterlocked.Add(fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresCount,MaxIterations);
+
+        for RendererInstanceIndex:=0 to MaxIterations-1 do begin
+
+         BLASInstance:=InstanceListRawItems[BLASInstanceIndex];
+         PerInFlightFrameRenderInstance:=@RenderInstanceItems[RendererInstanceIndex];
+         
+         // Check if RenderInstance changed or generation changed
+         if (BLASInstance.TrackedRenderInstance<>PerInFlightFrameRenderInstance^.RenderInstance) or
+            (BLASInstance.LastSyncedGeneration<>PerInFlightFrameRenderInstance^.Generation) then begin
+
+          // Something changed, perform update
+
+          InstanceMatrix:=Matrix*PerInFlightFrameRenderInstance^.ModelMatrix;
+          if PerInFlightFrameRenderInstance^.InstanceDataIndex>0 then begin
+           InstanceCustomIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
+          end else begin
+           InstanceCustomIndex:=-1;
+          end;
+
           BLASInstance.AccelerationStructureInstance.Transform:=InstanceMatrix;
           BLASInstance.InstanceCustomIndexEx:=InstanceCustomIndex;
+          BLASInstance.TrackedRenderInstance:=PerInFlightFrameRenderInstance^.RenderInstance;
+          BLASInstance.LastSyncedGeneration:=PerInFlightFrameRenderInstance^.Generation;
+
           BLASInstance.NewGeneration;
+
+{        end else if fGeometryChanged then begin
+
+          BLASInstance.NewGeneration;}
+
          end;
+         
          inc(BLASInstanceIndex);
+
         end;
 
        end else begin
@@ -23057,6 +23091,7 @@ begin
  for Index:=-1 to MaxInFlightFrames-1 do begin
   fModelMatrices[Index]:=TpvMatrix4x4.Identity;
   fInstanceDataIndices[Index]:=0;
+  fGenerations[Index]:=0;
  end;
 
  fActiveMask:=0;
@@ -27966,10 +28001,18 @@ begin
         if RenderInstance.fFirst then begin
          RenderInstance.fFirst:=false;
          PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
+         RenderInstance.fGenerations[aInFlightFrameIndex]:=0;
         end else begin
          PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
+         // Increment generation if ModelMatrix or InstanceDataIndex changed
+         if (RenderInstance.fWorkModelMatrix<>RenderInstance.fPreviousModelMatrix) or
+            (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) then begin
+          inc(RenderInstance.fGenerations[aInFlightFrameIndex]);
+         end;
         end;
+        PerInFlightFrameRenderInstance^.Generation:=RenderInstance.fGenerations[aInFlightFrameIndex];
         PerInFlightFrameRenderInstance^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
+        RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
         RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
         RenderInstance.UpdateLights(aInFlightFrameIndex);
        end else begin
@@ -35767,10 +35810,12 @@ begin
 
  BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJobInFlightFrameIndex:=fRaytracing.InFlightFrameIndex;
+//fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresCount:=0;
  if fRaytracingGroupInstanceNodeArrayList.Count>0 then begin
-  if assigned(fRaytracingUpdateSimpleParallelJobExecutor) then begin
+{ if assigned(fRaytracingUpdateSimpleParallelJobExecutor) then begin
    fRaytracingUpdateSimpleParallelJobExecutor.ParallelFor(UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresSimpleParallelForJob,self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,1);
-  end else if assigned(fPasMPInstance) then begin
+  end else//}
+  if assigned(fPasMPInstance) then begin
    fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob,1,PasMPDefaultDepth,nil,PasMPAreaMaskRender,PasMPAreaMaskUpdate));
   end else begin
    UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(nil,0,nil,0,fRaytracingGroupInstanceNodeArrayList.Count-1);
@@ -35779,9 +35824,9 @@ begin
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  PartCPUTime:=EndCPUTime-BeginCPUTime;
  CPUTimeMS:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0;
- if CPUTimeMS>0 then begin
+{if CPUTimeMS>0 then begin
   TPasMP.Yield;
- end;
+ end;}
 
 end;
 
