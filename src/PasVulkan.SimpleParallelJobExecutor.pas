@@ -103,6 +103,7 @@ type TpvSimpleParallelJobExecutor=class
       private
        fMaxThreads:TpvSizeInt;
        fWorkerThreads:TWorkerThreads;
+       fCountWorkerThreads:TPasMPInt32;
        fLock:TPasMPSlimReaderWriterLock;
        fJob:TJob;
        fStartedThreads:TPasMPInt32;
@@ -124,6 +125,8 @@ type TpvSimpleParallelJobExecutor=class
        procedure Shutdown;
        procedure Execute(const aJobMethod:TJobMethod;const aData:Pointer);
        procedure ParallelFor(const aMethod:TParallelForJobMethod;const aData:pointer;const aFromIndex,aToIndex:TpvInt32;const aGranularity:TpvInt32=1);
+      public
+       property CountWorkerThreads:TPasMPInt32 read fCountWorkerThreads;
      end;
 
 implementation
@@ -220,6 +223,8 @@ begin
  if aMaxThreads>0 then begin
   CountThreads:=Min(CountThreads,aMaxThreads);
  end;
+
+ fCountWorkerThreads:=CountThreads;
 
  SetLength(fWorkerThreads,CountThreads);
 

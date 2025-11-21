@@ -107,6 +107,7 @@ uses {$ifdef Windows}
      PasVulkan.FileFormats.SAM,
      PasVulkan.FileFormats.IES,
      PasVulkan.Scene3D.Renderer.Globals,
+     PasVulkan.SimpleParallelJobExecutor,
      POCA,
      PasVulkan.POCA;
 
@@ -4192,6 +4193,7 @@ type EpvScene3D=class(Exception);
        fRainStreaksNormalTexture:TpvVulkanTexture;
        fPasMPInstance:TPasMP;
        fUseOwnPasMPInstance:Boolean;
+       fRaytracingUpdateSimpleParallelJobExecutor:TpvSimpleParallelJobExecutor;
        fLoadGLTFTimeDurationLock:TPasMPInt32;
        fLoadGLTFTimeDuration:TpvDouble;
        fDrawDataGeneration:TPasMPUInt64;
@@ -4240,6 +4242,7 @@ type EpvScene3D=class(Exception);
        procedure ProcessFreeQueue;
       private
        procedure UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresSimpleParallelForJob(const aData:pointer;const aFromIndex,aToIndex:TPasMPInt32;const aThreadIndex:TPasMPInt32);
       private
        procedure InvalidateDirectedAcyclicGraph;
        procedure RebuildDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
@@ -29556,6 +29559,12 @@ begin
   fPasMPInstance:=pvApplication.PasMPInstance;
  end;
 
+ if aRaytracing then begin
+  fRaytracingUpdateSimpleParallelJobExecutor:=TpvSimpleParallelJobExecutor.Create;
+ end else begin
+  fRaytracingUpdateSimpleParallelJobExecutor:=nil;
+ end;
+
  fLoadLock:=TPasMPSpinLock.Create;
 
  fLoadGLTFTimeDurationLock:=0;
@@ -30877,6 +30886,11 @@ begin
 
   fPlanetAtmospherePrecipitationSimulationQueue:=nil;
 
+ end;
+
+ if assigned(fRaytracingUpdateSimpleParallelJobExecutor) then begin
+  fRaytracingUpdateSimpleParallelJobExecutor.Shutdown;
+  FreeAndNil(fRaytracingUpdateSimpleParallelJobExecutor);
  end;
 
  FreeAndNil(fMeshCompute);
@@ -35630,6 +35644,11 @@ begin
  end;
 end;
 
+procedure TpvScene3D.UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresSimpleParallelForJob(const aData:pointer;const aFromIndex,aToIndex:TPasMPInt32;const aThreadIndex:TPasMPInt32);
+begin
+ UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(nil,-1,aData,aFromIndex,aToIndex);
+end;
+
 function TpvScene3D.RaytracingOnMustWaitForPreviousFrame(const aSender:TObject):Boolean;
 begin
  result:=not (fRaytracingGroupInstanceNodeAddQueue.IsEmpty and fRaytracingGroupInstanceNodeRemoveQueue.IsEmpty);
@@ -35749,7 +35768,9 @@ begin
  BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJobInFlightFrameIndex:=fRaytracing.InFlightFrameIndex;
  if fRaytracingGroupInstanceNodeArrayList.Count>0 then begin
-  if assigned(fPasMPInstance) then begin
+  if assigned(fRaytracingUpdateSimpleParallelJobExecutor) then begin
+   fRaytracingUpdateSimpleParallelJobExecutor.ParallelFor(UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresSimpleParallelForJob,self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,1);
+  end else if assigned(fPasMPInstance) then begin
    fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob,1,PasMPDefaultDepth,nil,PasMPAreaMaskRender,PasMPAreaMaskUpdate));
   end else begin
    UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(nil,0,nil,0,fRaytracingGroupInstanceNodeArrayList.Count-1);
