@@ -268,6 +268,7 @@ type EpvResource=class(Exception);
            TQueueItemStringMap=class(TpvStringHashMap<TQueueItem>);
       private
        fResourceManager:TpvResourceManager;
+       fPasMPInstance:TPasMP;
        fEvent:TPasMPEvent;
        fLock:TPasMPSpinLock;
        fCountQueueItems:TPasMPInt32;
@@ -293,6 +294,8 @@ type EpvResource=class(Exception);
        constructor Create(const aResourceManager:TpvResourceManager); reintroduce;
        destructor Destroy; override;
        procedure Shutdown;
+      public
+       property PasMPInstance:TPasMP read fPasMPInstance;
      end;
 
      TpvResourceClassType=class
@@ -1099,6 +1102,8 @@ begin
 
  fResourceManager:=aResourceManager;
 
+ fPasMPInstance:=TPasMP.Create(1,-1,-1,0,false,true,true,false,TThreadPriority.tpNormal,0,0);
+
  fEvent:=TPasMPEvent.Create(nil,false,false,'');
 
  fLock:=TPasMPSpinLock.Create;
@@ -1151,6 +1156,8 @@ begin
 
  FreeAndNil(fLock);
 
+ FreeAndNil(fPasMPInstance);
+
  inherited Destroy;
 
 end;
@@ -1159,7 +1166,7 @@ procedure TpvResourceBackgroundLoader.Shutdown;
 begin
  if assigned(fRootJob) then begin
   try
-   pvApplication.PasMPInstance.WaitRelease(fRootJob);
+   fPasMPInstance.WaitRelease(fRootJob);
   finally
    fRootJob:=nil;
   end;
@@ -1274,8 +1281,8 @@ begin
 
        begin
 
-        pvApplication.PasMPInstance.Invoke(
-         pvApplication.PasMPInstance.ParallelFor(
+        fPasMPInstance.Invoke(
+         fPasMPInstance.ParallelFor(
           nil,
           0,
           fToProcessQueueItems.Count-1,
@@ -1436,12 +1443,12 @@ begin
 
  if assigned(fRootJob) then begin
 
-  if pvApplication.PasMPInstance.IsJobValid(fRootJob) then begin
+  if fPasMPInstance.IsJobValid(fRootJob) then begin
    exit;
   end;
 
   try
-   pvApplication.PasMPInstance.WaitRelease(fRootJob);
+   fPasMPInstance.WaitRelease(fRootJob);
   finally
    fRootJob:=nil;
   end;
@@ -1450,8 +1457,8 @@ begin
 
  if TPasMPInterlocked.Read(fCountQueueItems)>0 then begin
 
-  fRootJob:=pvApplication.PasMPInstance.Acquire(RootJobMethod,nil,nil,0,PasMPAreaMaskBackgroundLoading,PasMPAreaMaskUpdate or PasMPAreaMaskRender);
-  pvApplication.PasMPInstance.Run(fRootJob,true);
+  fRootJob:=fPasMPInstance.Acquire(RootJobMethod,nil,nil,0,PasMPAreaMaskBackgroundLoading,PasMPAreaMaskUpdate or PasMPAreaMaskRender,PasMPAffinityMaskBackgroundLoadingAllowMask,PasMPAffinityMaskBackgroundLoadingAvoidMask);
+  fPasMPInstance.Run(fRootJob,true);
 
  end;
 
@@ -1598,7 +1605,7 @@ begin
                                         TpvResource.TAsyncLoadState.Loading]) do begin
     fLock.Release;
     try
-     if not pvApplication.PasMPInstance.StealAndExecuteJob then begin
+     if not fPasMPInstance.StealAndExecuteJob then begin
       TPasMP.Yield;
       Sleep(1);
      end;
@@ -1624,7 +1631,7 @@ begin
     try
      while not (aResource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Fail,
                                               TpvResource.TAsyncLoadState.Done]) do begin
-      if not pvApplication.PasMPInstance.StealAndExecuteJob then begin
+      if not fPasMPInstance.StealAndExecuteJob then begin
        TPasMP.Yield;
        Sleep(1);
       end;
@@ -1750,7 +1757,7 @@ begin
     fQueueItemLock.Release;
    end;
    if OK and ProcessIteration(Start,aTimeout) then begin
-    if not pvApplication.PasMPInstance.StealAndExecuteJob then begin
+    if not fPasMPInstance.StealAndExecuteJob then begin
      TPasMP.Relax;
     end;
    end else begin
