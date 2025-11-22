@@ -77,14 +77,14 @@ const PasMPAreaMaskUpdate=TPasMPUInt32(TPasMPUInt32(1) shl 0);
       PasMPAffinityMaskRender=TPasMPAffinityMask(TPasMPAffinityMask(1) shl 2);
       PasMPAffinityMaskBackgroundLoading=TPasMPAffinityMask(TPasMPAffinityMask(1) shl 3);
 
-      PasMPAffinityMaskRenderAllowMask=PasMPAffinityMaskMain or PasMPAffinityMaskRender;
-      PasMPAffinityMaskRenderAvoidMask=PasMPAffinityMaskUpdate or PasMPAffinityMaskBackgroundLoading;
+      PasMPAffinityMaskRenderAllowMask=PasMPAffinityMaskRender;
+      PasMPAffinityMaskRenderAvoidMask=0;
 
-      PasMPAffinityMaskUpdateAllowMask=PasMPAffinityMaskMain or PasMPAffinityMaskUpdate;
-      PasMPAffinityMaskUpdateAvoidMask=PasMPAffinityMaskRender or PasMPAffinityMaskBackgroundLoading;
+      PasMPAffinityMaskUpdateAllowMask=PasMPAffinityMaskUpdate;
+      PasMPAffinityMaskUpdateAvoidMask=0;
 
-      PasMPAffinityMaskBackgroundLoadingAllowMask=PasMPAffinityMaskMain or PasMPAffinityMaskBackgroundLoading;
-      PasMPAffinityMaskBackgroundLoadingAvoidMask=PasMPAffinityMaskUpdate or PasMPAffinityMaskRender;
+      PasMPAffinityMaskBackgroundLoadingAllowMask=PasMPAffinityMaskBackgroundLoading;
+      PasMPAffinityMaskBackgroundLoadingAvoidMask=0;
 
       PasMPAffinityMaskEverything=PasMPAffinityMaskMain or
                                   PasMPAffinityMaskUpdate or
