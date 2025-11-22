@@ -13275,8 +13275,8 @@ begin
         if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
          fUpdateThread.Invoke;
         end else begin
-         fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction,nil,nil,0,PasMPAreaMaskUpdate,PasMPAreaMaskRender);
-         fPasMPInstance.Run(fUpdateJob);
+         fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction,nil,nil,0,PasMPAreaMaskUpdate,PasMPAreaMaskRender,PasMPAffinityMaskUpdateAllowMask,PasMPAffinityMaskUpdateAvoidMask);
+         fPasMPInstance.Run(fUpdateJob); 
         end;
 
        end else begin
@@ -13406,7 +13406,7 @@ begin
          DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
          fUpdateThread.WaitForDone;
         end else begin
-         fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction,nil,nil,0,PasMPAreaMaskUpdate,PasMPAreaMaskRender);
+         fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction,nil,nil,0,PasMPAreaMaskUpdate,PasMPAreaMaskRender,PasMPAffinityMaskUpdateAllowMask,PasMPAffinityMaskUpdateAvoidMask);
          try
           fPasMPInstance.Run(fUpdateJob);
           CurrentJobWorkerThread:=fPasMPInstance.JobWorkerThread;

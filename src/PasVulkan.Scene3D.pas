@@ -33276,7 +33276,7 @@ end;
 function TpvScene3D.CreateDirectedAcyclicGraphInstanceLeafsToRootJob(const aParentJob:PPasMPJob;const aInstance:TpvScene3D.TGroup.TInstance):PPasMPJob;
 begin
  if aInstance.ProcessStateTestAndSetBitMask(TpvScene3D.TGroup.TInstance.ProcessStateJobAllocated) then begin
-  result:=fPasMPInstance.Acquire(ProcessDirectedAcyclicGraphInstanceLeafsToRootJob,aInstance,{aParentJob}nil,0,PasMPAreaMaskUpdate or TPasMPUInt32($f0000000),PasMPAreaMaskRender);
+  result:=fPasMPInstance.Acquire(ProcessDirectedAcyclicGraphInstanceLeafsToRootJob,aInstance,{aParentJob}nil,0,PasMPAreaMaskUpdate or TPasMPUInt32($f0000000),PasMPAreaMaskRender,PasMPAffinityMaskUpdateAllowMask,PasMPAffinityMaskUpdateAvoidMask);
  end else begin
   result:=nil;
  end;
@@ -33421,7 +33421,9 @@ begin
       0,
       PasMPAreaMaskUpdate,
       PasMPAreaMaskRender,
-      true
+      true,
+      PasMPAffinityMaskUpdateAllowMask,
+      PasMPAffinityMaskUpdateAvoidMask
      ),
      DirectedAcyclicGraphInstanceParallelForJob
     ]
@@ -33543,7 +33545,9 @@ begin
        0,
        PasMPAreaMaskUpdate,
        PasMPAreaMaskRender,
-       true
+       true,
+       PasMPAffinityMaskUpdateAllowMask,
+       PasMPAffinityMaskUpdateAvoidMask
       )
      );
     end else begin
@@ -35816,7 +35820,7 @@ begin
    fRaytracingUpdateSimpleParallelJobExecutor.ParallelFor(UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresSimpleParallelForJob,self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,1);
   end else//}
   if assigned(fPasMPInstance) then begin
-   fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob,1,PasMPDefaultDepth,nil,PasMPAreaMaskRender,PasMPAreaMaskUpdate));
+   fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob,1,PasMPDefaultDepth,nil,0,PasMPAreaMaskRender,PasMPAreaMaskUpdate,true,PasMPAffinityMaskRenderAllowMask,PasMPAffinityMaskRenderAvoidMask));
   end else begin
    UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(nil,0,nil,0,fRaytracingGroupInstanceNodeArrayList.Count-1);
   end;

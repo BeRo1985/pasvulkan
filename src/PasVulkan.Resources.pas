@@ -1286,7 +1286,9 @@ begin
           0,
           PasMPAreaMaskBackgroundLoading,
           PasMPAreaMaskUpdate or PasMPAreaMaskRender,
-          true
+          true,
+          PasMPAffinityMaskBackgroundLoadingAllowMask,
+          PasMPAffinityMaskBackgroundLoadingAvoidMask
          )
         );
 

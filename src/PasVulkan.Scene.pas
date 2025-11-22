@@ -1977,7 +1977,9 @@ begin
         0,
         PasMPAreaMaskUpdate,
         PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
-        true
+        true,
+        PasMPAffinityMaskUpdateAllowMask,
+        PasMPAffinityMaskUpdateAvoidMask
        )
       );
      end else begin
@@ -2028,7 +2030,9 @@ begin
         0,
         PasMPAreaMaskUpdate,
         PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
-        true
+        true,
+        PasMPAffinityMaskUpdateAllowMask,
+        PasMPAffinityMaskUpdateAvoidMask
        )
       );
      end else begin
@@ -2080,7 +2084,9 @@ begin
         0,
         PasMPAreaMaskUpdate,
         PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
-        true
+        true,
+        PasMPAffinityMaskUpdateAllowMask,
+        PasMPAffinityMaskUpdateAvoidMask
        )
       );
      end else begin
@@ -2132,7 +2138,9 @@ begin
         0,
         PasMPAreaMaskUpdate,
         PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
-        true
+        true,
+        PasMPAffinityMaskUpdateAllowMask,
+        PasMPAffinityMaskUpdateAvoidMask
        )
       );
      end else begin
@@ -2184,7 +2192,9 @@ begin
         0,
         PasMPAreaMaskUpdate,
         PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
-        true
+        true,
+        PasMPAffinityMaskUpdateAllowMask,
+        PasMPAffinityMaskUpdateAvoidMask
        )
       );
      end else begin
@@ -2236,7 +2246,9 @@ begin
         0,
         PasMPAreaMaskUpdate,
         PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,
-        true
+        true,
+        PasMPAffinityMaskUpdateAllowMask,
+        PasMPAffinityMaskUpdateAvoidMask
        )
       );
      end else begin
@@ -2287,7 +2299,9 @@ begin
         0,
         PasMPAreaMaskUpdate,
         PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
-        true
+        true,
+        PasMPAffinityMaskUpdateAllowMask,
+        PasMPAffinityMaskUpdateAvoidMask
        )
       );
      end else begin
@@ -2338,7 +2352,9 @@ begin
         0,
         PasMPAreaMaskUpdate,
         PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,
-        true
+        true,
+        PasMPAffinityMaskUpdateAllowMask,
+        PasMPAffinityMaskUpdateAvoidMask
        )
       );
      end else begin
@@ -2389,7 +2405,9 @@ begin
         0,
         PasMPAreaMaskUpdate,
         PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
-        true
+        true,
+        PasMPAffinityMaskUpdateAllowMask,
+        PasMPAffinityMaskUpdateAvoidMask
        )
       );
      end else begin

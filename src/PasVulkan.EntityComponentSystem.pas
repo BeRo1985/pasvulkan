@@ -2347,8 +2347,12 @@ begin
    Data^.System.ProcessEvents(Data^.FirstEventIndex,Data^.LastEventIndex);
   end else begin
    MidEventIndex:=Data^.FirstEventIndex+((Data^.LastEventIndex-Data^.FirstEventIndex) shr 1);
-   fPasMPInstance.Invoke([CreateProcessEventsJob(Data^.System,Data^.FirstEventIndex,MidEventIndex-1,aJob),
-                  CreateProcessEventsJob(Data^.System,MidEventIndex,Data^.LastEventIndex,aJob)]);
+   fPasMPInstance.Invoke(
+    [
+     CreateProcessEventsJob(Data^.System,Data^.FirstEventIndex,MidEventIndex-1,aJob),
+     CreateProcessEventsJob(Data^.System,MidEventIndex,Data^.LastEventIndex,aJob)
+    ]
+   );
   end;
  end;
 end;
@@ -2442,8 +2446,12 @@ begin
    end;
   end else begin
    MidEntityIndex:=Data^.FirstEntityIndex+((Data^.LastEntityIndex-Data^.FirstEntityIndex) shr 1);
-   fPasMPInstance.Invoke([CreateUpdateEntitiesJob(Data^.System,Data^.FirstEntityIndex,MidEntityIndex-1,aJob),
-                  CreateUpdateEntitiesJob(Data^.System,MidEntityIndex,Data^.LastEntityIndex,aJob)]);
+   fPasMPInstance.Invoke(
+    [
+     CreateUpdateEntitiesJob(Data^.System,Data^.FirstEntityIndex,MidEntityIndex-1,aJob),
+     CreateUpdateEntitiesJob(Data^.System,MidEntityIndex,Data^.LastEntityIndex,aJob)
+    ]
+   );
   end;
  end;
 end;
