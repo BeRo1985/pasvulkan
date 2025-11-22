@@ -380,6 +380,7 @@ type TpvScene=class;
        fDeltaTime:TpvDouble;
        fAlpha:TpvDouble;
        fParallelStages:TStageSet;
+       fFirstTimeUpdateInStep:TPasMPBool32;
        procedure InvalidateDirectedAcyclicGraph; inline;
        procedure RebuildDirectedAcyclicGraph; inline;
        procedure CheckParallelForJob(const aJob:PPasMPJob;const ThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
@@ -426,6 +427,7 @@ type TpvScene=class;
        property DirectedAcyclicGraph:TpvSceneDirectedAcyclicGraph read fDirectedAcyclicGraph;
        property UseDirectedAcyclicGraph:TPasMPBool32 read fUseDirectedAcyclicGraph write fUseDirectedAcyclicGraph;
        property ParallelStages:TStageSet read fParallelStages write fParallelStages;
+       property FirstTimeUpdateInStep:TPasMPBool32 read fFirstTimeUpdateInStep write fFirstTimeUpdateInStep;
      end;
 
      { TpvSceneNode3D }
@@ -1019,7 +1021,9 @@ end;
 
 procedure TpvSceneNode.ResetTimeDuration;
 begin
- fTimeDuration:=0;
+ if fScene.fFirstTimeUpdateInStep then begin
+  fTimeDuration:=0;
+ end;
 end;
 
 procedure TpvSceneNode.TimeBlockBegin;
@@ -1599,6 +1603,8 @@ begin
  fDirectedAcyclicGraph:=TpvSceneDirectedAcyclicGraph.Create(self);
 
  fUseDirectedAcyclicGraph:=false;
+
+ fFirstTimeUpdateInStep:=true;
 
  fParallelStages:=[];
 
