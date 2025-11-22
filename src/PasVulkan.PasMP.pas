@@ -71,7 +71,26 @@ uses SysUtils,
 const PasMPAreaMaskUpdate=TPasMPUInt32(TPasMPUInt32(1) shl 0);
       PasMPAreaMaskRender=TPasMPUInt32(TPasMPUInt32(1) shl 1);
       PasMPAreaMaskBackgroundLoading=TPasMPUInt32(TPasMPUInt32(1) shl 2);
-      
+
+      PasMPAffinityMaskMain=TPasMPAffinityMask(TPasMPAffinityMask(1) shl 0);
+      PasMPAffinityMaskUpdate=TPasMPAffinityMask(TPasMPAffinityMask(1) shl 1);
+      PasMPAffinityMaskRender=TPasMPAffinityMask(TPasMPAffinityMask(1) shl 2);
+      PasMPAffinityMaskBackgroundLoading=TPasMPAffinityMask(TPasMPAffinityMask(1) shl 3);
+
+      PasMPAffinityMaskRenderAllowMask=PasMPAffinityMaskMain or PasMPAffinityMaskRender;
+      PasMPAffinityMaskRenderAvoidMask=PasMPAffinityMaskUpdate or PasMPAffinityMaskBackgroundLoading;
+
+      PasMPAffinityMaskUpdateAllowMask=PasMPAffinityMaskMain or PasMPAffinityMaskUpdate;
+      PasMPAffinityMaskUpdateAvoidMask=PasMPAffinityMaskRender or PasMPAffinityMaskBackgroundLoading;
+
+      PasMPAffinityMaskBackgroundLoadingAllowMask=PasMPAffinityMaskMain or PasMPAffinityMaskBackgroundLoading;
+      PasMPAffinityMaskBackgroundLoadingAvoidMask=PasMPAffinityMaskUpdate or PasMPAffinityMaskRender;
+
+      PasMPAffinityMaskEverything=PasMPAffinityMaskMain or
+                                  PasMPAffinityMaskUpdate or
+                                  PasMPAffinityMaskRender or
+                                  PasMPAffinityMaskBackgroundLoading;
+
 implementation
 
 end.
