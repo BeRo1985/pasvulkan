@@ -331,7 +331,9 @@ type TpvScene=class;
        procedure Render; virtual;
        
        procedure UpdateAudio; virtual;
-       
+
+       procedure DumpTimes; virtual;
+
        function Serialize:TObject; virtual;       
        procedure Deserialize(const aData:TObject); virtual;
 
@@ -415,6 +417,7 @@ type TpvScene=class;
        procedure FrameUpdate; virtual;
        procedure Render; virtual;
        procedure UpdateAudio; virtual;
+       procedure DumpTimes; virtual;
        function Serialize:TObject; virtual;
        procedure Deserialize(const aData:TObject); virtual;
       published
@@ -1151,6 +1154,23 @@ begin
    ChildNode:=fChildren[ChildNodeIndex];
    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
     ChildNode.UpdateAudio;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvSceneNode.DumpTimes;
+var ChildNodeIndex:TpvSizeInt;
+    ChildNode:TpvSceneNode;
+begin
+ if (fState=TpvSceneNodeState.Loaded) then begin
+  WriteLn(ClassName,': ',pvApplication.HighResolutionTimer.ToFloatSeconds(fTimeDuration)*1000.0:7:5,' ms');
+  if not fScene.fUseDirectedAcyclicGraph then begin
+   for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+    ChildNode:=fChildren[ChildNodeIndex];
+    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
+     ChildNode.DumpTimes;
+    end;
    end;
   end;
  end;
@@ -2450,6 +2470,23 @@ begin
   end;
  end else begin
   fRootNode.UpdateAudio;
+ end;
+end;
+
+procedure TpvScene.DumpTimes;
+var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
+    ExecutionLevelNodes:TpvSceneNodes;
+begin
+ if fUseDirectedAcyclicGraph then begin
+  RebuildDirectedAcyclicGraph;
+  for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
+   ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
+   for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
+    ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].DumpTimes;
+   end;
+  end;
+ end else begin
+  fRootNode.DumpTimes;
  end;
 end;
 
