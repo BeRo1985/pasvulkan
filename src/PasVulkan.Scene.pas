@@ -263,6 +263,9 @@ type TpvScene=class;
        fParallelExecution:boolean;
        fManualLoad:boolean;
        fVisitedState:TpvSceneNodeVisitedState; // For DAG traversal
+       fBeginTime:TpvHighResolutionTime;
+       fEndTime:TpvHighResolutionTime;
+       fTimeDuration:TpvHighResolutionTime;
        procedure InvalidateDirectedAcyclicGraph; inline;
        procedure SetParallelExecution(const aParallelExecution:boolean);
       public
@@ -307,6 +310,10 @@ type TpvScene=class;
        procedure Load; virtual;
 
        function IsLoaded:boolean; virtual;
+
+       procedure ResetTimeDuration; inline; 
+       procedure TimeBlockBegin; virtual;
+       procedure TimeBlockEnd; virtual;
               
        procedure Check; virtual;
 
@@ -511,6 +518,10 @@ begin
  fStartLoadVisitGeneration:=0;
  fBackgroundLoadVisitGeneration:=0;
  fFinishLoadVisitGeneration:=0;
+
+ fTimeDuration:=0;
+ fBeginTime:=0;
+ fEndTime:=0;
 
  TPasMPInterlocked.Write(fState,TpvSceneNodeState.Unloaded);
 
@@ -1000,6 +1011,22 @@ begin
   end;
  end;
  result:=TPasMPInterlocked.Read(fState)>=TpvSceneNodeState.Loaded;
+end;
+
+procedure TpvSceneNode.ResetTimeDuration;
+begin
+ fTimeDuration:=0;
+end;
+
+procedure TpvSceneNode.TimeBlockBegin;
+begin
+ fBeginTime:=pvApplication.HighResolutionTimer.GetTime;
+end;
+
+procedure TpvSceneNode.TimeBlockEnd;
+begin
+ fEndTime:=pvApplication.HighResolutionTimer.GetTime;
+ inc(fTimeDuration,fEndTime-fBeginTime);
 end;
 
 procedure TpvSceneNode.Check;
