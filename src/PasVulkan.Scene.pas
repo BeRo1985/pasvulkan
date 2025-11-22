@@ -68,6 +68,7 @@ uses Classes,
      PasVulkan.Math,
      PasVulkan.Math.Double,
      PasVulkan.Collections,
+     PasVulkan.PasMP,
      PasVulkan.Scene3D,
      PasVulkan.Utils;
 
@@ -1974,8 +1975,8 @@ begin
         PasMPDefaultDepth,
         nil,
         0,
-        0,
-        0,
+        PasMPAreaMaskUpdate,
+        PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
         true
        )
       );
@@ -2025,8 +2026,8 @@ begin
         PasMPDefaultDepth,
         nil,
         0,
-        0,
-        0,
+        PasMPAreaMaskUpdate,
+        PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
         true
        )
       );
@@ -2077,8 +2078,8 @@ begin
         PasMPDefaultDepth,
         nil,
         0,
-        0,
-        0,
+        PasMPAreaMaskUpdate,
+        PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
         true
        )
       );
@@ -2129,8 +2130,8 @@ begin
         PasMPDefaultDepth,
         nil,
         0,
-        0,
-        0,
+        PasMPAreaMaskUpdate,
+        PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
         true
        )
       );
@@ -2181,8 +2182,8 @@ begin
         PasMPDefaultDepth,
         nil,
         0,
-        0,
-        0,
+        PasMPAreaMaskUpdate,
+        PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
         true
        )
       );
@@ -2233,8 +2234,8 @@ begin
         PasMPDefaultDepth,
         nil,
         0,
-        0,
-        0,
+        PasMPAreaMaskUpdate,
+        PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,
         true
        )
       );
@@ -2284,8 +2285,8 @@ begin
         PasMPDefaultDepth,
         nil,
         0,
-        0,
-        0,
+        PasMPAreaMaskUpdate,
+        PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
         true
        )
       );
@@ -2335,8 +2336,8 @@ begin
         PasMPDefaultDepth,
         nil,
         0,
-        0,
-        0,
+        PasMPAreaMaskUpdate,
+        PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,
         true
        )
       );
@@ -2386,8 +2387,8 @@ begin
         PasMPDefaultDepth,
         nil,
         0,
-        0,
-        0,
+        PasMPAreaMaskUpdate,
+        PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
         true
        )
       );
