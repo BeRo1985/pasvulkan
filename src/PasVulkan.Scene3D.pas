@@ -6407,7 +6407,7 @@ begin
    MutuallyVisible:=NodeA.fAABB.Intersect(NodeB.fAABB);
 
    if not MutuallyVisible then begin
-    fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(@NodeIndexPair,0,TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints*TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints-1,NodePairVisibilityCheckRayParallelForJob,1,PasMPDefaultDepth,nil,0,0,0));
+    fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(@NodeIndexPair,0,TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints*TpvScene3D.TPotentiallyVisibleSet.CountRayCheckTapPoints-1,NodePairVisibilityCheckRayParallelForJob,-4,PasMPDefaultDepth,nil,0,0,0,true));
     MutuallyVisible:=GetNodeVisibility(NodeAIndex,NodeBIndex) or GetNodeVisibility(NodeBIndex,NodeAIndex);
    end;
 
@@ -6663,7 +6663,7 @@ begin
        end;
       end;
       if NodeIndexPairList.Count>0 then begin
-       fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(NodeIndexPairList,0,NodeIndexPairList.Count-1,NodePairVisibilityCheckParallelForJob,1,PasMPDefaultDepth,nil,0,0,0));
+       fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(NodeIndexPairList,0,NodeIndexPairList.Count-1,NodePairVisibilityCheckParallelForJob,-4,PasMPDefaultDepth,nil,0,0,0));
       end;
      finally
       FreeAndNil(NodeIndexPairList);
@@ -33396,13 +33396,13 @@ begin
    0,
    fDirectedAcyclicGraphLeafInstances.Count-1,
    ProcessDirectedAcyclicGraphInstanceParallelForJob,
-   1,
+   -4,
    PasMPDefaultDepth,
    nil,
    0,
    PasMPAreaMaskUpdate,
    PasMPAreaMaskRender,
-   true
+   false
   );
 
   if fGroups.Count>0 then begin
@@ -33415,13 +33415,13 @@ begin
       0,
       fGroups.Count-1,
       TpvScene3D_Update_Groups,
-      1,
+      -4,
       PasMPDefaultDepth,
       nil,
       0,
       PasMPAreaMaskUpdate,
       PasMPAreaMaskRender,
-      true,
+      false,
       PasMPAffinityMaskUpdateAllowMask,
       PasMPAffinityMaskUpdateAvoidMask
      ),
@@ -33539,13 +33539,13 @@ begin
        0,
        fVirtualInstanceManagerGroups.Count-1,
        TpvScene3D_Update_VirtualInstanceManagerGroups,
-       1,
+       -4,
        PasMPDefaultDepth,
        nil,
        0,
        PasMPAreaMaskUpdate,
        PasMPAreaMaskRender,
-       true,
+       false,
        PasMPAffinityMaskUpdateAllowMask,
        PasMPAffinityMaskUpdateAvoidMask
       )
@@ -35820,7 +35820,7 @@ begin
    fRaytracingUpdateSimpleParallelJobExecutor.ParallelFor(UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresSimpleParallelForJob,self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,1);
   end else//}
   if assigned(fPasMPInstance) then begin
-   fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob,1,PasMPDefaultDepth,nil,0,PasMPAreaMaskRender,PasMPAreaMaskUpdate,true,PasMPAffinityMaskRenderAllowMask,PasMPAffinityMaskRenderAvoidMask));
+   fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(self,0,fRaytracingGroupInstanceNodeArrayList.Count-1,UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob,-4,PasMPDefaultDepth,nil,0,PasMPAreaMaskRender,PasMPAreaMaskUpdate,false,PasMPAffinityMaskRenderAllowMask,PasMPAffinityMaskRenderAvoidMask));
   end else begin
    UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJob(nil,0,nil,0,fRaytracingGroupInstanceNodeArrayList.Count-1);
   end;
