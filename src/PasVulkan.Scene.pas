@@ -68,6 +68,7 @@ uses Classes,
      PasVulkan.Math,
      PasVulkan.Math.Double,
      PasVulkan.Collections,
+     PasVulkan.HighResolutionTimer,
      PasVulkan.PasMP,
      PasVulkan.Scene3D,
      PasVulkan.Utils;
