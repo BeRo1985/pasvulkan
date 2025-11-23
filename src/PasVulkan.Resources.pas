@@ -599,8 +599,16 @@ begin
    Node:=fReadyToLoadNodes.Items[Index];
    // Only remove if actually ready
    if TPasMPInterlocked.Read(Node.fRemainingDependencyCount)=0 then begin
-    fReadyToLoadNodes.Delete(Index);
+    // Ready - remove from the list by swapping with last and deleting last
+    if (Index+1)<fReadyToLoadNodes.Count then begin
+     fReadyToLoadNodes.Exchange(Index,fReadyToLoadNodes.Count-1);
+     fReadyToLoadNodes.Delete(fReadyToLoadNodes.Count-1);
+    end else begin
+     fReadyToLoadNodes.Delete(Index);
+    end;
+    // Add to the output list
     aReadyNodes.Add(Node);
+    // Indicate that at least one node was taken
     result:=true;
    end else begin
     // Not ready yet - leave it in the list
