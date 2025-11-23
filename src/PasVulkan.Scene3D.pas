@@ -4383,7 +4383,7 @@ type EpvScene3D=class(Exception);
                             const aColorEnd:TpvVector4;
                             const aLifeTime:TpvScalar;
                             const aTextureID:TpvUInt32;
-                            const aAdditiveBlending:boolean):TpvSizeInt;
+                            const aAdditiveBlending:boolean):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
       public
        function CreateMaterial(const aName:TpvUTF8String):TpvScene3D.TMaterial;
        function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
