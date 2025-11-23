@@ -299,12 +299,11 @@ type EpvResource=class(Exception);
               fResource:TpvResource;
               fSuccess:Boolean;
               fStream:TStream;
-{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
-              fDependencies:TResourcArray;
-              fDependents:TResourcArray;
-{$endif}
 {$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
               fAutoFinalizeAfterLoad:TPasMPBool32;
+{$else}
+              fDependencies:TResourcArray;
+              fDependents:TResourcArray;
 {$endif}
              public
               constructor Create(const aResourceBackgroundLoader:TpvResourceBackgroundLoader;const aResource:TpvResource); reintroduce;
@@ -329,11 +328,13 @@ type EpvResource=class(Exception);
        fDependencyGraph:TpvResourceDependencyDirectedAcyclicGraph;
 {$endif}
       private
-{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
-       procedure HandleToProcessQueueItemsParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-{$endif}
 {$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
        procedure HandleLoadDependencyBatchMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure ProcessLoadingWithDirectedAcyclicGraph;
+       procedure ProcessLoadingWithDirectedAcyclicGraphJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+{$else}
+       procedure HandleToProcessQueueItemsParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure RootJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 {$endif}
        function QueueResource(const aResource:TpvResource;const aParent:TpvResource):boolean;
        procedure FinalizeQueueItem(const aQueueItem:TQueueItem);
@@ -343,20 +344,11 @@ type EpvResource=class(Exception);
        function WaitForResources(const aTimeout:TpvInt64=-1):boolean;
        function GetCountOfQueuedResources:TpvSizeInt;
       private
-{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
-       procedure RootJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
-{$endif}
-{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
-       procedure ProcessLoadingWithDirectedAcyclicGraphJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
-{$endif}
        procedure PasMPProcess;
       public
        constructor Create(const aResourceManager:TpvResourceManager); reintroduce;
        destructor Destroy; override;
        procedure Shutdown;
-{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
-       procedure ProcessLoadingWithDirectedAcyclicGraph;
-{$endif}
       public
        property PasMPInstance:TPasMP read fPasMPInstance;
      end;
