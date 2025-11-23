@@ -67,6 +67,8 @@ unit PasVulkan.Resources;
  {$undef WordReadsAndWritesAreAtomic}
 {$ifend}
 
+{$define UseDirectedAcyclicGraphResourceDependencyResolver}
+
 interface
 
 uses {$ifdef Windows}
@@ -245,6 +247,46 @@ type EpvResource=class(Exception);
        property AssetBasePath:TpvUTF8String read fAssetBasePath;
      end;
 
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+
+     { TpvResourceDependencyNode }
+     TpvResourceDependencyNode=class
+      private
+       fResource:TpvResource;
+       fRemainingDependencyCount:TPasMPInt32;
+       fDependentNodes:TpvDynamicArray<TpvResourceDependencyNode>;
+      public
+       constructor Create(const aResource:TpvResource);
+       destructor Destroy; override;
+       function DecrementDependencyCount:TpvInt32;
+       procedure AddDependent(const aDependentNode:TpvResourceDependencyNode);
+       property Resource:TpvResource read fResource;
+       property RemainingDependencyCount:TPasMPInt32 read fRemainingDependencyCount;
+     end;
+
+     TpvResourceDependencyNodes=TpvDynamicArrayList<TpvResourceDependencyNode>;
+
+     { TpvResourceDependencyDirectedAcyclicGraph }
+     TpvResourceDependencyDirectedAcyclicGraph=class
+      private
+       type TNodesByResourceMap=TpvHashMap<TpvResource,TpvResourceDependencyNode>;
+      private
+       fNodesByResource:TNodesByResourceMap;
+       fNodesByResourceCount:TPasMPInt32;
+       fReadyToLoadNodes:TpvResourceDependencyNodes;
+       fGraphLock:TPasMPMultipleReaderSingleWriterLock;
+       fReadyNodesLock:TPasMPSpinLock;
+      public
+       constructor Create;
+       destructor Destroy; override;
+       function AddNode(const aResource:TpvResource;const aParentResource:TpvResource):TpvResourceDependencyNode;
+       procedure MarkNodeComplete(const aNode:TpvResourceDependencyNode);
+       function PopReadyNode:TpvResourceDependencyNode;
+       function HasPendingNodes:Boolean;
+     end;
+
+{$endif}
+
      { TpvResourceBackgroundLoader }
 
      TpvResourceBackgroundLoader=class
@@ -257,8 +299,13 @@ type EpvResource=class(Exception);
               fResource:TpvResource;
               fSuccess:Boolean;
               fStream:TStream;
+{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
               fDependencies:TResourcArray;
               fDependents:TResourcArray;
+{$endif}
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+              fAutoFinalizeAfterLoad:TPasMPBool32;
+{$endif}
              public
               constructor Create(const aResourceBackgroundLoader:TpvResourceBackgroundLoader;const aResource:TpvResource); reintroduce;
               destructor Destroy; override;
@@ -278,8 +325,16 @@ type EpvResource=class(Exception);
        fQueueItemResourceMapLock:TPasMPSpinLock;
        fToProcessQueueItems:TQueueItems;
        fRootJob:PPasMPJob;
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+       fDependencyGraph:TpvResourceDependencyDirectedAcyclicGraph;
+{$endif}
       private
+{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
        procedure HandleToProcessQueueItemsParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+{$endif}
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+       procedure HandleLoadDependencyBatchMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+{$endif}
        function QueueResource(const aResource:TpvResource;const aParent:TpvResource):boolean;
        procedure FinalizeQueueItem(const aQueueItem:TQueueItem);
        procedure WaitForResource(const aResource:TpvResource;const aWaitForMode:TpvResourceWaitForMode=TpvResourceWaitForMode.Auto);
@@ -288,12 +343,20 @@ type EpvResource=class(Exception);
        function WaitForResources(const aTimeout:TpvInt64=-1):boolean;
        function GetCountOfQueuedResources:TpvSizeInt;
       private
+{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
        procedure RootJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+{$endif}
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+       procedure ProcessLoadingWithDirectedAcyclicGraphJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+{$endif}
        procedure PasMPProcess;
       public
        constructor Create(const aResourceManager:TpvResourceManager); reintroduce;
        destructor Destroy; override;
        procedure Shutdown;
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+       procedure ProcessLoadingWithDirectedAcyclicGraph;
+{$endif}
       public
        property PasMPInstance:TPasMP read fPasMPInstance;
      end;
@@ -393,6 +456,171 @@ procedure DeferredFreeAndNil(var aObject);
 implementation
 
 uses PasVulkan.PasMP,PasVulkan.Application,PasVulkan.Utils;
+
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+
+{ TpvResourceDependencyNode }
+
+constructor TpvResourceDependencyNode.Create(const aResource:TpvResource);
+begin
+ inherited Create;
+ fResource:=aResource;
+ fRemainingDependencyCount:=0;
+ fDependentNodes.Initialize;
+end;
+
+destructor TpvResourceDependencyNode.Destroy;
+begin
+ fDependentNodes.Finalize;
+ inherited Destroy;
+end;
+
+function TpvResourceDependencyNode.DecrementDependencyCount:TpvInt32;
+begin
+ result:=TPasMPInterlocked.Decrement(fRemainingDependencyCount);
+end;
+
+procedure TpvResourceDependencyNode.AddDependent(const aDependentNode:TpvResourceDependencyNode);
+begin
+ fDependentNodes.Add(aDependentNode);
+end;
+
+{ TpvResourceDependencyDirectedAcyclicGraph }
+
+constructor TpvResourceDependencyDirectedAcyclicGraph.Create;
+begin
+ inherited Create;
+ fNodesByResource:=TNodesByResourceMap.Create(nil);
+ fNodesByResourceCount:=0;
+ fReadyToLoadNodes:=TpvResourceDependencyNodes.Create;
+ fGraphLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+ fReadyNodesLock:=TPasMPSpinLock.Create;
+end;
+
+destructor TpvResourceDependencyDirectedAcyclicGraph.Destroy;
+var CurrentNode:TpvResourceDependencyNode;
+begin
+
+ for CurrentNode in fNodesByResource.Values do begin
+  CurrentNode.Free;
+ end;
+
+ FreeAndNil(fNodesByResource);
+ FreeAndNil(fReadyToLoadNodes);
+ FreeAndNil(fReadyNodesLock);
+ FreeAndNil(fGraphLock);
+
+ inherited Destroy;
+
+end;
+
+function TpvResourceDependencyDirectedAcyclicGraph.AddNode(const aResource:TpvResource;const aParentResource:TpvResource):TpvResourceDependencyNode;
+var ParentNode,NewNode:TpvResourceDependencyNode;
+    EnqueueReadyNode:boolean;
+begin
+
+ EnqueueReadyNode:=false;
+
+ fGraphLock.AcquireWrite;
+ try
+
+  if not fNodesByResource.TryGet(aResource,NewNode) then begin
+   NewNode:=TpvResourceDependencyNode.Create(aResource);
+   fNodesByResource.Add(aResource,NewNode);
+   TPasMPInterlocked.Increment(fNodesByResourceCount);
+  end;
+
+  if assigned(aParentResource) then begin
+   if fNodesByResource.TryGet(aParentResource,ParentNode) then begin
+    TPasMPInterlocked.Increment(NewNode.fRemainingDependencyCount);
+    ParentNode.AddDependent(NewNode);
+   end else begin
+    EnqueueReadyNode:=true;
+   end;
+  end else begin
+   EnqueueReadyNode:=true;
+  end;
+
+ finally
+  fGraphLock.ReleaseWrite;
+ end;
+
+ if EnqueueReadyNode then begin
+  fReadyNodesLock.Acquire;
+  try
+   fReadyToLoadNodes.Add(NewNode);
+  finally
+   fReadyNodesLock.Release;
+  end;
+ end;
+
+ result:=NewNode;
+
+end;
+
+procedure TpvResourceDependencyDirectedAcyclicGraph.MarkNodeComplete(const aNode:TpvResourceDependencyNode);
+var DependentIndex:TpvSizeInt;
+    DependentNode:TpvResourceDependencyNode;
+    NewDependencyCount:TpvInt32;
+begin
+
+ for DependentIndex:=0 to aNode.fDependentNodes.Count-1 do begin
+  DependentNode:=aNode.fDependentNodes.Items[DependentIndex];
+  NewDependencyCount:=DependentNode.DecrementDependencyCount;
+  if NewDependencyCount=0 then begin
+   fReadyNodesLock.Acquire;
+   try
+    fReadyToLoadNodes.Add(DependentNode);
+   finally
+    fReadyNodesLock.Release;
+   end;
+  end;
+ end;
+
+ fGraphLock.AcquireWrite;
+ try
+  fNodesByResource.Delete(aNode.fResource);
+  TPasMPInterlocked.Decrement(fNodesByResourceCount);
+ finally
+  fGraphLock.ReleaseWrite;
+ end;
+
+ aNode.Free;
+
+end;
+
+function TpvResourceDependencyDirectedAcyclicGraph.PopReadyNode:TpvResourceDependencyNode;
+begin
+ result:=nil;
+ fReadyNodesLock.Acquire;
+ try
+  if fReadyToLoadNodes.Count>0 then begin
+   result:=fReadyToLoadNodes.Items[fReadyToLoadNodes.Count-1];
+   fReadyToLoadNodes.Delete(fReadyToLoadNodes.Count-1);
+  end;
+ finally
+  fReadyNodesLock.Release;
+ end;
+end;
+
+function TpvResourceDependencyDirectedAcyclicGraph.HasPendingNodes:Boolean;
+var ReadyCount:TpvSizeInt;
+begin
+ fReadyNodesLock.Acquire;
+ try
+  ReadyCount:=fReadyToLoadNodes.Count;
+ finally
+  fReadyNodesLock.Release;
+ end;
+ fGraphLock.AcquireRead;
+ try
+  result:=(TPasMPInterlocked.Read(fNodesByResourceCount)>0) or (ReadyCount>0);
+ finally
+  fGraphLock.ReleaseRead;
+ end;
+end;
+
+{$endif}
 
 { TpvMetaResource }
 
@@ -1039,8 +1267,13 @@ begin
  fResourceBackgroundLoader:=aResourceBackgroundLoader;
  fResource:=aResource;
  fStream:=nil;
+{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
  fDependencies.Initialize;
  fDependents.Initialize;
+{$endif}
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+ fAutoFinalizeAfterLoad:=true;
+{$endif}
  fResourceBackgroundLoader.fQueueItemLock.Acquire;
  try
   fResourceBackgroundLoader.fQueueItems.Add(self);
@@ -1086,8 +1319,10 @@ begin
    end;
   end;
  end;
+{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
  fDependencies.Finalize;
  fDependents.Finalize;
+{$endif}
  FreeAndNil(fStream);
  fResource:=nil;
  inherited Destroy;
@@ -1119,6 +1354,10 @@ begin
  fQueueItemResourceMapLock:=TPasMPSpinLock.Create;
 
  fToProcessQueueItems.Initialize;
+
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+ fDependencyGraph:=TpvResourceDependencyDirectedAcyclicGraph.Create;
+{$endif}
 
  fRootJob:=nil;
 
@@ -1152,6 +1391,10 @@ begin
 
  FreeAndNil(fQueueItemResourceMapLock);
 
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+ FreeAndNil(fDependencyGraph);
+{$endif}
+
  FreeAndNil(fEvent);
 
  FreeAndNil(fLock);
@@ -1173,6 +1416,8 @@ begin
  end;
 end;
 
+{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
+
 procedure TpvResourceBackgroundLoader.HandleToProcessQueueItemsParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var Index:TPasMPNativeInt;
     QueueItem:TQueueItem;
@@ -1192,6 +1437,10 @@ begin
   end;
  end;
 end;
+
+{$endif}
+
+{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
 
 procedure TpvResourceBackgroundLoader.RootJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 var Index,
@@ -1438,8 +1687,35 @@ begin
 
 end;
 
+{$endif}
+
 procedure TpvResourceBackgroundLoader.PasMPProcess;
 begin
+
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+
+ if assigned(fRootJob) then begin
+
+  if fPasMPInstance.IsJobValid(fRootJob) then begin
+   exit;
+  end;
+
+  try
+   fPasMPInstance.WaitRelease(fRootJob);
+  finally
+   fRootJob:=nil;
+  end;
+
+ end;
+
+ if fDependencyGraph.HasPendingNodes or (TPasMPInterlocked.Read(fCountQueueItems)>0) then begin
+
+  fRootJob:=fPasMPInstance.Acquire(ProcessLoadingWithDirectedAcyclicGraphJobMethod,nil,nil,0,PasMPAreaMaskBackgroundLoading,PasMPAreaMaskUpdate or PasMPAreaMaskRender,PasMPAffinityMaskBackgroundLoadingAllowMask,PasMPAffinityMaskBackgroundLoadingAvoidMask);
+  fPasMPInstance.Run(fRootJob,true);
+
+ end;
+
+{$else}
 
  if assigned(fRootJob) then begin
 
@@ -1461,6 +1737,8 @@ begin
   fPasMPInstance.Run(fRootJob,true);
 
  end;
+
+{$endif}
 
 end;
 
@@ -1492,6 +1770,7 @@ begin
 
    QueueItem:=TQueueItem.Create(self,aResource);
 
+{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
    if assigned(aParent) then begin
 
     fQueueItemResourceMapLock.Acquire;
@@ -1528,6 +1807,13 @@ begin
     end;
 
    end;
+{$else}
+   if assigned(aParent) then begin
+    fDependencyGraph.AddNode(aResource.GetResource,aParent.GetResource);
+   end else begin
+    fDependencyGraph.AddNode(aResource.GetResource,nil);
+   end;
+{$endif}
 
    result:=true;
 
@@ -1587,7 +1873,57 @@ end;
 
 procedure TpvResourceBackgroundLoader.WaitForResource(const aResource:TpvResource;const aWaitForMode:TpvResourceWaitForMode=TpvResourceWaitForMode.Auto);
 var QueueItem:TQueueItem;
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+    NeedManualFinalize:boolean;
+{$endif}
 begin
+
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+
+ fQueueItemResourceMapLock.Acquire;
+ try
+  QueueItem:=fQueueItemResourceMap.Values[aResource];
+ finally
+  fQueueItemResourceMapLock.Release;
+ end;
+ 
+ if assigned(QueueItem) then begin
+ 
+  NeedManualFinalize:=(aWaitForMode=TpvResourceWaitForMode.Process) or
+                      ((aWaitForMode=TpvResourceWaitForMode.Auto) and (GetCurrentThreadID=MainThreadID));
+  if NeedManualFinalize then begin
+   // Try to claim finalization responsibility atomically
+   if not TPasMPInterlocked.CompareExchange(QueueItem.fAutoFinalizeAfterLoad,false,true) then begin
+    // Someone else already claimed it or it was already finalized
+    NeedManualFinalize:=false;
+   end;
+  end;
+ 
+  while not (aResource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Success,
+                                           TpvResource.TAsyncLoadState.Fail,
+                                           TpvResource.TAsyncLoadState.Done]) do begin
+   if not fPasMPInstance.StealAndExecuteJob then begin
+    TPasMP.Yield;
+    Sleep(1);
+   end;
+  end;
+  
+  if NeedManualFinalize then begin
+   FinalizeQueueItem(QueueItem);
+   FreeAndNil(QueueItem);
+  end else begin
+   while not (aResource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Fail,
+                                            TpvResource.TAsyncLoadState.Done]) do begin
+    if not fPasMPInstance.StealAndExecuteJob then begin
+     TPasMP.Yield;
+     Sleep(1);
+    end;
+   end;
+  end;
+  
+ end;
+
+{$else}
 
  fLock.Acquire;
  try
@@ -1647,6 +1983,8 @@ begin
   fLock.Release;
  end;
 
+{$endif}
+
 end;
 
 function TpvResourceBackgroundLoader.ProcessIteration(const aStartTime:TpvHighResolutionTime;const aTimeout:TpvInt64):boolean;
@@ -1679,9 +2017,14 @@ begin
   Resource:=QueueItem.fResource;
   try
 
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+   if (Resource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Queued,
+                                    TpvResource.TAsyncLoadState.Loading]) then begin
+{$else}
    if (QueueItem.fDependencies.Count>0) or
       (Resource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Queued,
                                     TpvResource.TAsyncLoadState.Loading]) then begin
+{$endif}
 
     inc(Index);
 
@@ -1689,21 +2032,29 @@ begin
 
     OK:=false;
 
-    fLock.Release;
-    try
-     if fResourceManager.fLoadLock.TryEnter then begin
-      pvApplication.Log(LOG_DEBUG,'TpvResourceBackgroundLoader.ProcessIteration','Processing "'+Resource.fFileName+'" ...');
-      try
-       FinalizeQueueItem(QueueItem);
-       OK:=true;
-      finally
-       fResourceManager.fLoadLock.Leave;
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+    // Try to claim finalization responsibility atomically 
+    if TPasMPInterlocked.CompareExchange(QueueItem.fAutoFinalizeAfterLoad,false,true) then
+{$endif}
+    begin
+
+     fLock.Release;
+     try
+      if fResourceManager.fLoadLock.TryEnter then begin
+       pvApplication.Log(LOG_DEBUG,'TpvResourceBackgroundLoader.ProcessIteration','Processing "'+Resource.fFileName+'" ...');
+       try
+        FinalizeQueueItem(QueueItem);
+        OK:=true;
+       finally
+        fResourceManager.fLoadLock.Leave;
+       end;
+       pvApplication.Log(LOG_DEBUG,'TpvResourceBackgroundLoader.ProcessIteration','Processed "'+Resource.fFileName+'" ...');
       end;
-      pvApplication.Log(LOG_DEBUG,'TpvResourceBackgroundLoader.ProcessIteration','Processed "'+Resource.fFileName+'" ...');
+     finally
+      fLock.Acquire;
      end;
-    finally
-     fLock.Acquire;
-    end;
+
+    end; 
 
     if OK then begin
      FreeAndNil(QueueItem);
@@ -1789,6 +2140,110 @@ begin
   fLock.Release;
  end;
 end;
+
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+
+procedure TpvResourceBackgroundLoader.HandleLoadDependencyBatchMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var Index:TPasMPNativeInt;
+    Node:TpvResourceDependencyNode;
+    Resource:TpvResource;
+    Stream:TStream;
+    Success:Boolean;
+    Batch:TpvResourceDependencyNodes;
+/// QueueItem:TQueueItem;
+begin
+ Batch:=TpvResourceDependencyNodes(aData);
+
+ for Index:=aFromIndex to aToIndex do begin
+
+  Node:=Batch.Items[Index];
+
+  Resource:=Node.Resource;
+  Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Loading;
+
+  Stream:=Resource.GetStreamFromFileName(Resource.fFileName);
+  try
+   if assigned(Stream) then begin
+    Resource.LoadMetaData;
+    Success:=Resource.BeginLoad(Stream);
+    if Success then begin
+     Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Success;
+    end else begin
+     Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
+    end;
+   end else begin
+    Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
+   end;
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  // Not safe here, must be done in the main thread, because finalization may involve GPU operations
+{ fQueueItemResourceMapLock.Acquire;
+  try
+   QueueItem:=fQueueItemResourceMap.Values[Resource];
+  finally
+   fQueueItemResourceMapLock.Release;
+  end;
+
+  if assigned(QueueItem) and TPasMPInterlocked.CompareExchange(QueueItem.fAutoFinalizeAfterLoad,false,true) then begin
+   FinalizeQueueItem(QueueItem);
+   QueueItem.Free;
+  end;}
+
+ end;
+
+end;
+
+procedure TpvResourceBackgroundLoader.ProcessLoadingWithDirectedAcyclicGraphJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+begin
+ ProcessLoadingWithDirectedAcyclicGraph;
+end;
+
+procedure TpvResourceBackgroundLoader.ProcessLoadingWithDirectedAcyclicGraph;
+var Node:TpvResourceDependencyNode;
+    Batch:TpvResourceDependencyNodes;
+    Index:TpvSizeInt;
+begin
+
+ Batch:=TpvResourceDependencyNodes.Create;
+ try
+
+  Node:=fDependencyGraph.PopReadyNode;
+  while assigned(Node) do begin
+   Batch.Add(Node);
+   Node:=fDependencyGraph.PopReadyNode;
+  end;
+
+  if Batch.Count=0 then begin
+   Exit;
+  end;
+
+  fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(Batch,
+                                                     0,
+                                                     Batch.Count-1,
+                                                     HandleLoadDependencyBatchMethod,
+                                                     1,
+                                                     PasMPDefaultDepth,
+                                                     nil,
+                                                     0,
+                                                     PasMPAreaMaskBackgroundLoading,
+                                                     PasMPAreaMaskUpdate or PasMPAreaMaskRender,
+                                                     true,
+                                                     PasMPAffinityMaskBackgroundLoadingAllowMask,
+                                                     PasMPAffinityMaskBackgroundLoadingAvoidMask));
+
+  for Index:=0 to Batch.Count-1 do begin
+   fDependencyGraph.MarkNodeComplete(Batch.Items[Index]);
+  end;
+
+ finally
+  FreeAndNil(Batch);
+ end;
+
+end;
+
+{$endif}
 
 { TpvResourceClassType }
 
