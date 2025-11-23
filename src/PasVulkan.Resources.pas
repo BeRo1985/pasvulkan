@@ -1416,7 +1416,109 @@ begin
  end;
 end;
 
-{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+
+procedure TpvResourceBackgroundLoader.HandleLoadDependencyBatchMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var Index:TPasMPNativeInt;
+    Node:TpvResourceDependencyNode;
+    Resource:TpvResource;
+    Stream:TStream;
+    Success:Boolean;
+    Batch:TpvResourceDependencyNodes;
+/// QueueItem:TQueueItem;
+begin
+ Batch:=TpvResourceDependencyNodes(aData);
+
+ for Index:=aFromIndex to aToIndex do begin
+
+  Node:=Batch.Items[Index];
+
+  Resource:=Node.Resource;
+  Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Loading;
+
+  Stream:=Resource.GetStreamFromFileName(Resource.fFileName);
+  try
+   if assigned(Stream) then begin
+    Resource.LoadMetaData;
+    Success:=Resource.BeginLoad(Stream);
+    if Success then begin
+     Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Success;
+    end else begin
+     Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
+    end;
+   end else begin
+    Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
+   end;
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  // Not safe here, must be done in the main thread, because finalization may involve GPU operations
+{ fQueueItemResourceMapLock.Acquire;
+  try
+   QueueItem:=fQueueItemResourceMap.Values[Resource];
+  finally
+   fQueueItemResourceMapLock.Release;
+  end;
+
+  if assigned(QueueItem) and TPasMPInterlocked.CompareExchange(QueueItem.fAutoFinalizeAfterLoad,false,true) then begin
+   FinalizeQueueItem(QueueItem);
+   QueueItem.Free;
+  end;}
+
+ end;
+
+end;
+
+procedure TpvResourceBackgroundLoader.ProcessLoadingWithDirectedAcyclicGraphJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+begin
+ ProcessLoadingWithDirectedAcyclicGraph;
+end;
+
+procedure TpvResourceBackgroundLoader.ProcessLoadingWithDirectedAcyclicGraph;
+var Node:TpvResourceDependencyNode;
+    Batch:TpvResourceDependencyNodes;
+    Index:TpvSizeInt;
+begin
+
+ Batch:=TpvResourceDependencyNodes.Create;
+ try
+
+  Node:=fDependencyGraph.PopReadyNode;
+  while assigned(Node) do begin
+   Batch.Add(Node);
+   Node:=fDependencyGraph.PopReadyNode;
+  end;
+
+  if Batch.Count>0 then begin
+
+   fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(Batch,
+                                                    0,
+                                                    Batch.Count-1,
+                                                    HandleLoadDependencyBatchMethod,
+                                                    1,
+                                                    PasMPDefaultDepth,
+                                                    nil,
+                                                    0,
+                                                    PasMPAreaMaskBackgroundLoading,
+                                                    PasMPAreaMaskUpdate or PasMPAreaMaskRender,
+                                                    true,
+                                                    PasMPAffinityMaskBackgroundLoadingAllowMask,
+                                                    PasMPAffinityMaskBackgroundLoadingAvoidMask));
+
+   for Index:=0 to Batch.Count-1 do begin
+    fDependencyGraph.MarkNodeComplete(Batch.Items[Index]);
+   end;
+
+  end; 
+
+ finally
+  FreeAndNil(Batch);
+ end;
+
+end;
+
+{$else}
 
 procedure TpvResourceBackgroundLoader.HandleToProcessQueueItemsParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var Index:TPasMPNativeInt;
@@ -1437,10 +1539,6 @@ begin
   end;
  end;
 end;
-
-{$endif}
-
-{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
 
 procedure TpvResourceBackgroundLoader.RootJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 var Index,
@@ -2140,110 +2238,6 @@ begin
   fLock.Release;
  end;
 end;
-
-{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
-
-procedure TpvResourceBackgroundLoader.HandleLoadDependencyBatchMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-var Index:TPasMPNativeInt;
-    Node:TpvResourceDependencyNode;
-    Resource:TpvResource;
-    Stream:TStream;
-    Success:Boolean;
-    Batch:TpvResourceDependencyNodes;
-/// QueueItem:TQueueItem;
-begin
- Batch:=TpvResourceDependencyNodes(aData);
-
- for Index:=aFromIndex to aToIndex do begin
-
-  Node:=Batch.Items[Index];
-
-  Resource:=Node.Resource;
-  Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Loading;
-
-  Stream:=Resource.GetStreamFromFileName(Resource.fFileName);
-  try
-   if assigned(Stream) then begin
-    Resource.LoadMetaData;
-    Success:=Resource.BeginLoad(Stream);
-    if Success then begin
-     Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Success;
-    end else begin
-     Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
-    end;
-   end else begin
-    Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
-   end;
-  finally
-   FreeAndNil(Stream);
-  end;
-
-  // Not safe here, must be done in the main thread, because finalization may involve GPU operations
-{ fQueueItemResourceMapLock.Acquire;
-  try
-   QueueItem:=fQueueItemResourceMap.Values[Resource];
-  finally
-   fQueueItemResourceMapLock.Release;
-  end;
-
-  if assigned(QueueItem) and TPasMPInterlocked.CompareExchange(QueueItem.fAutoFinalizeAfterLoad,false,true) then begin
-   FinalizeQueueItem(QueueItem);
-   QueueItem.Free;
-  end;}
-
- end;
-
-end;
-
-procedure TpvResourceBackgroundLoader.ProcessLoadingWithDirectedAcyclicGraphJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
-begin
- ProcessLoadingWithDirectedAcyclicGraph;
-end;
-
-procedure TpvResourceBackgroundLoader.ProcessLoadingWithDirectedAcyclicGraph;
-var Node:TpvResourceDependencyNode;
-    Batch:TpvResourceDependencyNodes;
-    Index:TpvSizeInt;
-begin
-
- Batch:=TpvResourceDependencyNodes.Create;
- try
-
-  Node:=fDependencyGraph.PopReadyNode;
-  while assigned(Node) do begin
-   Batch.Add(Node);
-   Node:=fDependencyGraph.PopReadyNode;
-  end;
-
-  if Batch.Count>0 then begin
-
-   fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(Batch,
-                                                    0,
-                                                    Batch.Count-1,
-                                                    HandleLoadDependencyBatchMethod,
-                                                    1,
-                                                    PasMPDefaultDepth,
-                                                    nil,
-                                                    0,
-                                                    PasMPAreaMaskBackgroundLoading,
-                                                    PasMPAreaMaskUpdate or PasMPAreaMaskRender,
-                                                    true,
-                                                    PasMPAffinityMaskBackgroundLoadingAllowMask,
-                                                    PasMPAffinityMaskBackgroundLoadingAvoidMask));
-
-   for Index:=0 to Batch.Count-1 do begin
-    fDependencyGraph.MarkNodeComplete(Batch.Items[Index]);
-   end;
-
-  end; 
-
- finally
-  FreeAndNil(Batch);
- end;
-
-end;
-
-{$endif}
 
 { TpvResourceClassType }
 
