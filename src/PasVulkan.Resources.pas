@@ -226,6 +226,7 @@ type EpvResource=class(Exception);
        function EndLoad:boolean; virtual;
        function Load(const aStream:TStream):boolean; virtual;
        function Save:boolean; virtual;
+       procedure MarkAsLoaded; virtual;
        function LoadFromFileName(const aFileName:TpvUTF8String):boolean; virtual;
        function SaveToFileName(const aFileName:TpvUTF8String):boolean; virtual;
       public
@@ -1247,6 +1248,12 @@ begin
  result:=false;
 end;
 
+procedure TpvResource.MarkAsLoaded;
+begin
+ fLoaded:=true;
+ fAsyncLoadState:=TAsyncLoadState.Done;
+end;
+
 function TpvResource.LoadFromFileName(const aFileName:TpvUTF8String):boolean;
 var SanitizedFileName:TpvUTF8String;
     Stream:TStream;
@@ -1870,7 +1877,7 @@ begin
  end else begin
   pvApplication.Log(LOG_DEBUG,'QueueResource','Queueing root='+aResource.fFileName);
  end;
- 
+
  fLock.Acquire;
  try
 

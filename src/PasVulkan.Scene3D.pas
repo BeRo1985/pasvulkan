@@ -29594,6 +29594,8 @@ begin
 
  inherited Create(aResourceManager,aParent,aMetaResource);
 
+ MarkAsLoaded;
+
  fUseOwnPasMPInstance:=aUseOwnPasMPInstance;
 
  if fUseOwnPasMPInstance then begin
