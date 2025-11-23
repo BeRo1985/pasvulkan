@@ -1902,7 +1902,13 @@ begin
 
    QueueItem:=TQueueItem.Create(self,aResource);
 
-{$ifndef UseDirectedAcyclicGraphResourceDependencyResolver}
+{$ifdef UseDirectedAcyclicGraphResourceDependencyResolver}
+   if assigned(aParent) then begin
+    fDependencyGraph.AddNode(aResource.GetResource,aParent.GetResource);
+   end else begin
+    fDependencyGraph.AddNode(aResource.GetResource,nil);
+   end;
+{$else}
    if assigned(aParent) then begin
 
     fQueueItemResourceMapLock.Acquire;
@@ -1938,12 +1944,6 @@ begin
 
     end;
 
-   end;
-{$else}
-   if assigned(aParent) then begin
-    fDependencyGraph.AddNode(aResource.GetResource,aParent.GetResource);
-   end else begin
-    fDependencyGraph.AddNode(aResource.GetResource,nil);
    end;
 {$endif}
 
