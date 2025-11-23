@@ -525,16 +525,22 @@ begin
   end;
 
   if assigned(aParentResource) then begin
-   // Only create dependency if parent already exists in graph
-   if fNodesByResource.TryGet(aParentResource,ParentNode) then begin
-    // Parent exists - link child to parent
-    TPasMPInterlocked.Increment(NewNode.fRemainingDependencyCount);
-    ParentNode.AddDependent(NewNode);
-   end else begin
-    // Parent not in graph - no dependency, child can load immediately
-    // This is expected when application queues resources in wrong order
-    pvApplication.Log(LOG_DEBUG,'TpvResourceDependencyDirectedAcyclicGraph.AddNode','Parent resource not in graph - child will load without waiting for parent');
+   // Check if parent is already loaded - if so, no need to wait
+   if aParentResource.fLoaded then begin
+    // Parent already loaded, child can start immediately
     EnqueueReadyNode:=true;
+   end else begin
+    // Only create dependency if parent already exists in graph
+    if fNodesByResource.TryGet(aParentResource,ParentNode) then begin
+     // Parent exists - link child to parent
+     TPasMPInterlocked.Increment(NewNode.fRemainingDependencyCount);
+     ParentNode.AddDependent(NewNode);
+    end else begin
+     // Parent not in graph - no dependency, child can load immediately
+     // This is expected when application queues resources in wrong order
+     pvApplication.Log(LOG_DEBUG,'TpvResourceDependencyDirectedAcyclicGraph.AddNode','Parent resource not in graph - child will load without waiting for parent');
+     EnqueueReadyNode:=true;
+    end;
    end;
   end else begin
    // No parent = ready to load immediately
