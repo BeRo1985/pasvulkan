@@ -2494,6 +2494,7 @@ begin
  end else begin
   fRootNode.DumpTimes;
  end;
+ WriteLn;
 end;
 
 function TpvScene.Serialize:TObject;
