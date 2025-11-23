@@ -275,7 +275,7 @@ type EpvResource=class(Exception);
        fNodesByResourceCount:TPasMPInt32;
        fReadyToLoadNodes:TpvResourceDependencyNodes;
        fGraphLock:TPasMPMultipleReaderSingleWriterLock;
-       fReadyNodesLock:TPasMPSpinLock;
+       fReadyNodesLock:TPasMPMultipleReaderSingleWriterLock;
       public
        constructor Create;
        destructor Destroy; override;
@@ -486,7 +486,7 @@ begin
  fNodesByResourceCount:=0;
  fReadyToLoadNodes:=TpvResourceDependencyNodes.Create;
  fGraphLock:=TPasMPMultipleReaderSingleWriterLock.Create;
- fReadyNodesLock:=TPasMPSpinLock.Create;
+ fReadyNodesLock:=TPasMPMultipleReaderSingleWriterLock.Create;
 end;
 
 destructor TpvResourceDependencyDirectedAcyclicGraph.Destroy;
@@ -545,11 +545,11 @@ begin
  end;
 
  if EnqueueReadyNode then begin
-  fReadyNodesLock.Acquire;
+  fReadyNodesLock.AcquireWrite;
   try
    fReadyToLoadNodes.Add(NewNode);
   finally
-   fReadyNodesLock.Release;
+   fReadyNodesLock.ReleaseWrite;
   end;
  end;
 
@@ -567,11 +567,11 @@ begin
   DependentNode:=aNode.fDependentNodes.Items[DependentIndex];
   NewDependencyCount:=DependentNode.DecrementDependencyCount;
   if NewDependencyCount=0 then begin
-   fReadyNodesLock.Acquire;
+   fReadyNodesLock.AcquireWrite;
    try
     fReadyToLoadNodes.Add(DependentNode);
    finally
-    fReadyNodesLock.Release;
+    fReadyNodesLock.ReleaseWrite;
    end;
   end;
  end;
@@ -593,7 +593,7 @@ var Index:TpvSizeInt;
     Node:TpvResourceDependencyNode;
 begin
  result:=false;
- fReadyNodesLock.Acquire;
+ fReadyNodesLock.AcquireWrite;
  try
   for Index:=fReadyToLoadNodes.Count-1 downto 0 do begin
    Node:=fReadyToLoadNodes.Items[Index];
@@ -617,7 +617,7 @@ begin
    end;
   end;
  finally
-  fReadyNodesLock.Release;
+  fReadyNodesLock.ReleaseWrite;
  end;
 end;
 
@@ -630,11 +630,11 @@ begin
   fGraphLock.ReleaseRead;
  end;}
  if not result then begin
-  fReadyNodesLock.Acquire;
+  fReadyNodesLock.AcquireRead;
   try
    result:=fReadyToLoadNodes.Count>0;
   finally
-   fReadyNodesLock.Release;
+   fReadyNodesLock.ReleaseRead;
   end;
  end;
 end;
