@@ -622,19 +622,20 @@ begin
 end;
 
 function TpvResourceDependencyDirectedAcyclicGraph.HasPendingNodes:Boolean;
-var ReadyCount:TpvSizeInt;
 begin
- fReadyNodesLock.Acquire;
- try
-  ReadyCount:=fReadyToLoadNodes.Count;
- finally
-  fReadyNodesLock.Release;
- end;
- fGraphLock.AcquireRead;
- try
-  result:=(TPasMPInterlocked.Read(fNodesByResourceCount)>0) or (ReadyCount>0);
- finally
+{fGraphLock.AcquireRead;
+ try}
+  result:=TPasMPInterlocked.Read(fNodesByResourceCount)>0;
+{finally
   fGraphLock.ReleaseRead;
+ end;}
+ if not result then begin
+  fReadyNodesLock.Acquire;
+  try
+   result:=fReadyToLoadNodes.Count>0;
+  finally
+   fReadyNodesLock.Release;
+  end;
  end;
 end;
 
