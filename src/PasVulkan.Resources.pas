@@ -1273,6 +1273,7 @@ begin
 
       // Default case - should not happen, it should just suppress a possible compiler warning            
       else begin
+       pvApplication.Log(LOG_DEBUG,'TakeReadyNodes','Unexpected ParallelLoadable value: '+IntToStr(Ord(FirstResource.fParallelLoadable)));
        CanAddToBatch:=false;
       end;
 
