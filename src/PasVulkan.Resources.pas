@@ -1878,11 +1878,11 @@ begin
 
  result:=false;
 
- if assigned(aParent) then begin
+{if assigned(aParent) then begin
   pvApplication.Log(LOG_DEBUG,'QueueResource','Queueing child='+aResource.fFileName+' parent='+aParent.fFileName);
  end else begin
   pvApplication.Log(LOG_DEBUG,'QueueResource','Queueing root='+aResource.fFileName);
- end;
+ end;}
 
  fLock.Acquire;
  try
