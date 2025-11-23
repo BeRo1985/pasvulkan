@@ -2215,27 +2215,27 @@ begin
    Node:=fDependencyGraph.PopReadyNode;
   end;
 
-  if Batch.Count=0 then begin
-   Exit;
-  end;
+  if Batch.Count>0 then begin
 
-  fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(Batch,
-                                                     0,
-                                                     Batch.Count-1,
-                                                     HandleLoadDependencyBatchMethod,
-                                                     1,
-                                                     PasMPDefaultDepth,
-                                                     nil,
-                                                     0,
-                                                     PasMPAreaMaskBackgroundLoading,
-                                                     PasMPAreaMaskUpdate or PasMPAreaMaskRender,
-                                                     true,
-                                                     PasMPAffinityMaskBackgroundLoadingAllowMask,
-                                                     PasMPAffinityMaskBackgroundLoadingAvoidMask));
+   fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(Batch,
+                                                    0,
+                                                    Batch.Count-1,
+                                                    HandleLoadDependencyBatchMethod,
+                                                    1,
+                                                    PasMPDefaultDepth,
+                                                    nil,
+                                                    0,
+                                                    PasMPAreaMaskBackgroundLoading,
+                                                    PasMPAreaMaskUpdate or PasMPAreaMaskRender,
+                                                    true,
+                                                    PasMPAffinityMaskBackgroundLoadingAllowMask,
+                                                    PasMPAffinityMaskBackgroundLoadingAvoidMask));
 
-  for Index:=0 to Batch.Count-1 do begin
-   fDependencyGraph.MarkNodeComplete(Batch.Items[Index]);
-  end;
+   for Index:=0 to Batch.Count-1 do begin
+    fDependencyGraph.MarkNodeComplete(Batch.Items[Index]);
+   end;
+
+  end; 
 
  finally
   FreeAndNil(Batch);
