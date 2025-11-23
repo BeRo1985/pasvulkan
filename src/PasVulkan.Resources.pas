@@ -281,7 +281,7 @@ type EpvResource=class(Exception);
        destructor Destroy; override;
        function AddNode(const aResource:TpvResource;const aParentResource:TpvResource):TpvResourceDependencyNode;
        procedure MarkNodeComplete(const aNode:TpvResourceDependencyNode);
-       function PopReadyNode:TpvResourceDependencyNode;
+       function TakeReadyNodes(const aReadyNodes:TpvResourceDependencyNodes):boolean;
        function HasPendingNodes:Boolean;
      end;
 
@@ -516,6 +516,7 @@ begin
  fGraphLock.AcquireWrite;
  try
 
+  // Get or create the child node
   if not fNodesByResource.TryGet(aResource,NewNode) then begin
    NewNode:=TpvResourceDependencyNode.Create(aResource);
    fNodesByResource.Add(aResource,NewNode);
@@ -523,13 +524,19 @@ begin
   end;
 
   if assigned(aParentResource) then begin
+   // Only create dependency if parent already exists in graph
    if fNodesByResource.TryGet(aParentResource,ParentNode) then begin
+    // Parent exists - link child to parent
     TPasMPInterlocked.Increment(NewNode.fRemainingDependencyCount);
     ParentNode.AddDependent(NewNode);
    end else begin
+    // Parent not in graph - no dependency, child can load immediately
+    // This is expected when application queues resources in wrong order
+    pvApplication.Log(LOG_DEBUG,'TpvResourceDependencyDirectedAcyclicGraph.AddNode','Parent resource not in graph - child will load without waiting for parent');
     EnqueueReadyNode:=true;
    end;
   end else begin
+   // No parent = ready to load immediately
    EnqueueReadyNode:=true;
   end;
 
@@ -581,14 +588,25 @@ begin
 
 end;
 
-function TpvResourceDependencyDirectedAcyclicGraph.PopReadyNode:TpvResourceDependencyNode;
+function TpvResourceDependencyDirectedAcyclicGraph.TakeReadyNodes(const aReadyNodes:TpvResourceDependencyNodes):boolean;
+var Index:TpvSizeInt;
+    Node:TpvResourceDependencyNode;
 begin
- result:=nil;
+ result:=false;
  fReadyNodesLock.Acquire;
  try
-  if fReadyToLoadNodes.Count>0 then begin
-   result:=fReadyToLoadNodes.Items[fReadyToLoadNodes.Count-1];
-   fReadyToLoadNodes.Delete(fReadyToLoadNodes.Count-1);
+  for Index:=fReadyToLoadNodes.Count-1 downto 0 do begin
+   Node:=fReadyToLoadNodes.Items[Index];
+   // Only remove if actually ready
+   if TPasMPInterlocked.Read(Node.fRemainingDependencyCount)=0 then begin
+    fReadyToLoadNodes.Delete(Index);
+    aReadyNodes.Add(Node);
+    result:=true;
+   end else begin
+    // Not ready yet - leave it in the list
+    // This should never happen if graph logic is correct
+    pvApplication.Log(LOG_DEBUG,'TpvResourceDependencyDirectedAcyclicGraph.TakeReadyNodes','Node $'+IntToHex(TpvPtrUInt(Node))+' in ready queue still has pending dependencies (count='+IntToStr(Node.fRemainingDependencyCount)+')');
+   end;
   end;
  finally
   fReadyNodesLock.Release;
@@ -1476,14 +1494,14 @@ begin
  Batch:=TpvResourceDependencyNodes.Create;
  try
 
-  Node:=fDependencyGraph.PopReadyNode;
-  while assigned(Node) do begin
-   Batch.Add(Node);
-   Node:=fDependencyGraph.PopReadyNode;
+  // Accumulate all currently ready nodes in one batch
+  while fDependencyGraph.TakeReadyNodes(Batch) do begin
   end;
 
+  // Process the batch if any nodes were collected
   if Batch.Count>0 then begin
 
+   // Load all resources in parallel
    fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(Batch,
                                                     0,
                                                     Batch.Count-1,
@@ -1498,6 +1516,7 @@ begin
                                                     PasMPAffinityMaskBackgroundLoadingAllowMask,
                                                     PasMPAffinityMaskBackgroundLoadingAvoidMask));
 
+   // Mark all nodes as complete, which may make their dependents ready
    for Index:=0 to Batch.Count-1 do begin
     fDependencyGraph.MarkNodeComplete(Batch.Items[Index]);
    end;
@@ -1988,7 +2007,10 @@ begin
     NeedManualFinalize:=false;
    end;
   end;
- 
+  
+  // Wait for resource to finish loading
+  // Note: StealAndExecuteJob helps other resources load while waiting,
+  // improving overall parallelism instead of blocking the thread
   while not (aResource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Success,
                                            TpvResource.TAsyncLoadState.Fail,
                                            TpvResource.TAsyncLoadState.Done]) do begin
