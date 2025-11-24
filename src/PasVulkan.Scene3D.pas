@@ -3038,6 +3038,7 @@ type EpvScene3D=class(Exception);
                             fApplyCameraRelativeTransform:TPasMPBool32;
                             fInstanceDataIndex:TpvUInt32;
                             fInstanceDataIndices:TRenderInstanceDataIndices;
+                            fGeneration:TpvUInt64;
                             fGenerations:TRenderInstanceGenerations;
                             fAssignedVirtualInstance:TInstance;
                             fAssignedVirtualInstanceRenderInstance:TRenderInstance;
@@ -23094,6 +23095,8 @@ begin
   fGenerations[Index]:=0;
  end;
 
+ fGeneration:=0;
+
  fActiveMask:=0;
 
  if length(fInstance.fLightNodes)>0 then begin
@@ -28001,15 +28004,16 @@ begin
         if RenderInstance.fFirst then begin
          RenderInstance.fFirst:=false;
          PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
-         RenderInstance.fGenerations[aInFlightFrameIndex]:=0;
+         RenderInstance.fGeneration:=0;
         end else begin
          PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
          // Increment generation if ModelMatrix or InstanceDataIndex changed
          if (RenderInstance.fWorkModelMatrix<>RenderInstance.fPreviousModelMatrix) or
             (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) then begin
-          inc(RenderInstance.fGenerations[aInFlightFrameIndex]);
+          inc(RenderInstance.fGeneration);
          end;
         end;
+        RenderInstance.fGenerations[aInFlightFrameIndex]:=RenderInstance.fGeneration;
         PerInFlightFrameRenderInstance^.Generation:=RenderInstance.fGenerations[aInFlightFrameIndex];
         PerInFlightFrameRenderInstance^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
         RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
