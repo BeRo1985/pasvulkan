@@ -3014,6 +3014,372 @@ begin
  end;
 end;
 
+function POCAQuaternionFunctionCreateFromAngleAxis(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Axis:TpvVector3D;
+    Quaternion:TpvQuaternionD;
+begin
+ if (aCountArguments>=2) then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  if assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+   Axis:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+   Quaternion:=TpvQuaternionD.Create(TpvQuaternion.CreateFromAngleAxis(Angle,TpvVector3(Axis)));
+   result:=POCANewQuaternion(aContext,Quaternion);
+  end else begin
+   result:=POCAValueNull;
+  end;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionCreateFromEuler(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Pitch,Yaw,Roll:TpvDouble;
+    Angles:TpvVector3D;
+    Quaternion:TpvQuaternionD;
+begin
+ if (aCountArguments>=1) and assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
+  // From Vector3
+  Angles:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Quaternion:=TpvQuaternionD.Create(TpvQuaternion.CreateFromEuler(TpvVector3(Angles)));
+  result:=POCANewQuaternion(aContext,Quaternion);
+ end else if aCountArguments>=3 then begin
+  // From three scalars (pitch, yaw, roll)
+  Pitch:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Yaw:=POCAGetNumberValue(aContext,aArguments^[1]);
+  Roll:=POCAGetNumberValue(aContext,aArguments^[2]);
+  Quaternion:=TpvQuaternionD.Create(TpvQuaternion.CreateFromEuler(Pitch,Yaw,Roll));
+  result:=POCANewQuaternion(aContext,Quaternion);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionCreateFromToRotation(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var FromDir,ToDir:TpvVector3D;
+    Quaternion:TpvQuaternionD;
+begin
+ if (aCountArguments>=2) and assigned(POCAVector3GhostPointer) and 
+    (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and
+    (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  FromDir:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  ToDir:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  Quaternion:=TpvQuaternionD.Create(TpvQuaternion.CreateFromToRotation(TpvVector3(FromDir),TpvVector3(ToDir)));
+  result:=POCANewQuaternion(aContext,Quaternion);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionCreateFromLookRotation(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Forward,Up:TpvVector3D;
+    Quaternion:TpvQuaternionD;
+begin
+ if (aCountArguments>=2) and assigned(POCAVector3GhostPointer) and 
+    (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and
+    (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  Forward:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Up:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  Quaternion:=TpvQuaternionD.Create(TpvQuaternion.CreateFromLookRotation(TpvVector3(Forward),TpvVector3(Up)));
+  result:=POCANewQuaternion(aContext,Quaternion);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionCreateFromScaledAngleAxis(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ScaledAxis:TpvVector3D;
+    Quaternion:TpvQuaternionD;
+begin
+ if (aCountArguments>=1) and assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
+  ScaledAxis:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Quaternion:=TpvQuaternionD.Create(TpvQuaternion.CreateFromScaledAngleAxis(TpvVector3(ScaledAxis)));
+  result:=POCANewQuaternion(aContext,Quaternion);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionCreateFromAngularVelocity(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var AngularVelocity:TpvVector3D;
+    Quaternion:TpvQuaternionD;
+begin
+ if (aCountArguments>=1) and assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
+  AngularVelocity:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Quaternion:=TpvQuaternionD.Create(TpvQuaternion.CreateFromAngularVelocity(TpvVector3(AngularVelocity)));
+  result:=POCANewQuaternion(aContext,Quaternion);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionCreateFromCols(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var C0,C1,C2:TpvVector3D;
+    Quaternion:TpvQuaternionD;
+begin
+ if (aCountArguments>=3) and assigned(POCAVector3GhostPointer) and 
+    (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and
+    (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) and
+    (POCAGhostGetType(aArguments^[2])=POCAVector3GhostPointer) then begin
+  C0:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  C1:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  C2:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[2]))^;
+  Quaternion:=TpvQuaternionD.Create(TpvQuaternion.CreateFromCols(TpvVector3(C0),TpvVector3(C1),TpvVector3(C2)));
+  result:=POCANewQuaternion(aContext,Quaternion);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionCreateFromXY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var X,Y:TpvVector3D;
+    Quaternion:TpvQuaternionD;
+begin
+ if (aCountArguments>=2) and assigned(POCAVector3GhostPointer) and 
+    (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and
+    (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  X:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Y:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  Quaternion:=TpvQuaternionD.Create(TpvQuaternion.CreateFromXY(TpvVector3(X),TpvVector3(Y)));
+  result:=POCANewQuaternion(aContext,Quaternion);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionToEuler(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    Euler:TpvVector3D;
+begin
+ if (aCountArguments>=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Euler:=TpvVector3D.Create(TpvQuaternion(Quaternion^).ToEuler);
+  result:=POCANewVector3(aContext,Euler);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionToPitch(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if (aCountArguments>=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewNumber(aContext,TpvQuaternion(Quaternion^).ToPitch);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionToYaw(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if (aCountArguments>=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewNumber(aContext,TpvQuaternion(Quaternion^).ToYaw);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionToRoll(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+begin
+ if (aCountArguments>=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewNumber(aContext,TpvQuaternion(Quaternion^).ToRoll);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionToAngleAxis(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    Angle:TpvScalar;
+    Axis:TpvVector3;
+    ResultHash:TPOCAValue;
+begin
+ if (aCountArguments>=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  TpvQuaternion(Quaternion^).ToAngleAxis(Angle,Axis);
+  // Return as hash with 'angle' and 'axis' keys
+  ResultHash:=POCANewHash(aContext);
+  POCAHashSetString(aContext,ResultHash,'angle',POCANewNumber(aContext,Angle));
+  POCAHashSetString(aContext,ResultHash,'axis',POCANewVector3(aContext,TpvVector3D.Create(Axis)));
+  result:=ResultHash;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionToScaledAngleAxis(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    ScaledAxis:TpvVector3D;
+begin
+ if (aCountArguments>=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  ScaledAxis:=TpvVector3D.Create(TpvQuaternion(Quaternion^).ToScaledAngleAxis);
+  result:=POCANewVector3(aContext,ScaledAxis);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionApproximatedSlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Q1,Q2:PpvQuaternionD;
+    Time:TpvDouble;
+    ResultQuat:TpvQuaternionD;
+begin
+ if (aCountArguments>=3) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and
+    (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Q1:=POCAGhostFastGetPointer(aArguments^[0]);
+  Q2:=POCAGhostFastGetPointer(aArguments^[1]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[2]);
+  ResultQuat:=TpvQuaternionD.Create(TpvQuaternion(Q1^).ApproximatedSlerp(TpvQuaternion(Q2^),Time));
+  result:=POCANewQuaternion(aContext,ResultQuat);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionElerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Q1,Q2:PpvQuaternionD;
+    Time:TpvDouble;
+    ResultQuat:TpvQuaternionD;
+begin
+ if (aCountArguments>=3) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and
+    (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Q1:=POCAGhostFastGetPointer(aArguments^[0]);
+  Q2:=POCAGhostFastGetPointer(aArguments^[1]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[2]);
+  ResultQuat:=TpvQuaternionD.Create(TpvQuaternion(Q1^).Elerp(TpvQuaternion(Q2^),Time));
+  result:=POCANewQuaternion(aContext,ResultQuat);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionUnflippedSlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Q1,Q2:PpvQuaternionD;
+    Time:TpvDouble;
+    ResultQuat:TpvQuaternionD;
+begin
+ if (aCountArguments>=3) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and
+    (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Q1:=POCAGhostFastGetPointer(aArguments^[0]);
+  Q2:=POCAGhostFastGetPointer(aArguments^[1]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[2]);
+  ResultQuat:=TpvQuaternionD.Create(TpvQuaternion(Q1^).UnflippedSlerp(TpvQuaternion(Q2^),Time));
+  result:=POCANewQuaternion(aContext,ResultQuat);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionUnflippedApproximatedSlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Q1,Q2:PpvQuaternionD;
+    Time:TpvDouble;
+    ResultQuat:TpvQuaternionD;
+begin
+ if (aCountArguments>=3) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and
+    (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Q1:=POCAGhostFastGetPointer(aArguments^[0]);
+  Q2:=POCAGhostFastGetPointer(aArguments^[1]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[2]);
+  ResultQuat:=TpvQuaternionD.Create(TpvQuaternion(Q1^).UnflippedApproximatedSlerp(TpvQuaternion(Q2^),Time));
+  result:=POCANewQuaternion(aContext,ResultQuat);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionUnflippedSqlerp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Q1,Q2,Q3,Q4:PpvQuaternionD;
+    Time:TpvDouble;
+    ResultQuat:TpvQuaternionD;
+begin
+ if (aCountArguments>=5) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and
+    (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) and
+    (POCAGhostGetType(aArguments^[2])=@POCAQuaternionGhost) and
+    (POCAGhostGetType(aArguments^[3])=@POCAQuaternionGhost) then begin
+  Q1:=POCAGhostFastGetPointer(aArguments^[0]);
+  Q2:=POCAGhostFastGetPointer(aArguments^[1]);
+  Q3:=POCAGhostFastGetPointer(aArguments^[2]);
+  Q4:=POCAGhostFastGetPointer(aArguments^[3]);
+  Time:=POCAGetNumberValue(aContext,aArguments^[4]);
+  ResultQuat:=TpvQuaternionD.Create(TpvQuaternion(Q1^).UnflippedSqlerp(TpvQuaternion(Q2^),TpvQuaternion(Q3^),TpvQuaternion(Q4^),Time));
+  result:=POCANewQuaternion(aContext,ResultQuat);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionAngleBetween(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Q1,Q2:PpvQuaternionD;
+    Angle:TpvDouble;
+begin
+ if (aCountArguments>=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and
+    (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Q1:=POCAGhostFastGetPointer(aArguments^[0]);
+  Q2:=POCAGhostFastGetPointer(aArguments^[1]);
+  Angle:=TpvQuaternion(Q1^).AngleBetween(TpvQuaternion(Q2^));
+  result:=POCANewNumber(aContext,Angle);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionBetween(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Q1,Q2:PpvQuaternionD;
+    ResultQuat:TpvQuaternionD;
+begin
+ if (aCountArguments>=2) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and
+    (POCAGhostGetType(aArguments^[1])=@POCAQuaternionGhost) then begin
+  Q1:=POCAGhostFastGetPointer(aArguments^[0]);
+  Q2:=POCAGhostFastGetPointer(aArguments^[1]);
+  ResultQuat:=TpvQuaternionD.Create(TpvQuaternion(Q1^).Between(TpvQuaternion(Q2^)));
+  result:=POCANewQuaternion(aContext,ResultQuat);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionIntegrate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    Omega:TpvVector3D;
+    DeltaTime:TpvDouble;
+    ResultQuat:TpvQuaternionD;
+begin
+ if (aCountArguments>=3) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and
+    assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Omega:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  DeltaTime:=POCAGetNumberValue(aContext,aArguments^[2]);
+  ResultQuat:=TpvQuaternionD.Create(TpvQuaternion(Quaternion^).Integrate(TpvVector3(Omega),DeltaTime));
+  result:=POCANewQuaternion(aContext,ResultQuat);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAQuaternionFunctionSpin(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion:PpvQuaternionD;
+    Omega:TpvVector3D;
+    DeltaTime:TpvDouble;
+    ResultQuat:TpvQuaternionD;
+begin
+ if (aCountArguments>=3) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) and
+    assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  Quaternion:=POCAGhostFastGetPointer(aArguments^[0]);
+  Omega:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  DeltaTime:=POCAGetNumberValue(aContext,aArguments^[2]);
+  ResultQuat:=TpvQuaternionD.Create(TpvQuaternion(Quaternion^).Spin(TpvVector3(Omega),DeltaTime));
+  result:=POCANewQuaternion(aContext,ResultQuat);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 procedure POCAInitQuaternionHash(aContext:PPOCAContext);
 var HostData:PPOCAHostData;
 begin
@@ -3068,6 +3434,29 @@ begin
  Hash:=POCANewHash(aContext);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAAddNativeFunction(aContext,Hash,'create',POCAQuaternionFunctionCREATE);
+ POCAAddNativeFunction(aContext,Hash,'createFromAngleAxis',POCAQuaternionFunctionCreateFromAngleAxis);
+ POCAAddNativeFunction(aContext,Hash,'createFromEuler',POCAQuaternionFunctionCreateFromEuler);
+ POCAAddNativeFunction(aContext,Hash,'createFromToRotation',POCAQuaternionFunctionCreateFromToRotation);
+ POCAAddNativeFunction(aContext,Hash,'createFromLookRotation',POCAQuaternionFunctionCreateFromLookRotation);
+ POCAAddNativeFunction(aContext,Hash,'createFromScaledAngleAxis',POCAQuaternionFunctionCreateFromScaledAngleAxis);
+ POCAAddNativeFunction(aContext,Hash,'createFromAngularVelocity',POCAQuaternionFunctionCreateFromAngularVelocity);
+ POCAAddNativeFunction(aContext,Hash,'createFromCols',POCAQuaternionFunctionCreateFromCols);
+ POCAAddNativeFunction(aContext,Hash,'createFromXY',POCAQuaternionFunctionCreateFromXY);
+ POCAAddNativeFunction(aContext,Hash,'toEuler',POCAQuaternionFunctionToEuler);
+ POCAAddNativeFunction(aContext,Hash,'toPitch',POCAQuaternionFunctionToPitch);
+ POCAAddNativeFunction(aContext,Hash,'toYaw',POCAQuaternionFunctionToYaw);
+ POCAAddNativeFunction(aContext,Hash,'toRoll',POCAQuaternionFunctionToRoll);
+ POCAAddNativeFunction(aContext,Hash,'toAngleAxis',POCAQuaternionFunctionToAngleAxis);
+ POCAAddNativeFunction(aContext,Hash,'toScaledAngleAxis',POCAQuaternionFunctionToScaledAngleAxis);
+ POCAAddNativeFunction(aContext,Hash,'approximatedSlerp',POCAQuaternionFunctionApproximatedSlerp);
+ POCAAddNativeFunction(aContext,Hash,'elerp',POCAQuaternionFunctionElerp);
+ POCAAddNativeFunction(aContext,Hash,'unflippedSlerp',POCAQuaternionFunctionUnflippedSlerp);
+ POCAAddNativeFunction(aContext,Hash,'unflippedApproximatedSlerp',POCAQuaternionFunctionUnflippedApproximatedSlerp);
+ POCAAddNativeFunction(aContext,Hash,'unflippedSqlerp',POCAQuaternionFunctionUnflippedSqlerp);
+ POCAAddNativeFunction(aContext,Hash,'angleBetween',POCAQuaternionFunctionAngleBetween);
+ POCAAddNativeFunction(aContext,Hash,'between',POCAQuaternionFunctionBetween);
+ POCAAddNativeFunction(aContext,Hash,'integrate',POCAQuaternionFunctionIntegrate);
+ POCAAddNativeFunction(aContext,Hash,'spin',POCAQuaternionFunctionSpin);
  POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Quaternion',Hash);
 end;
 
@@ -3307,45 +3696,6 @@ begin
  result:=POCANewMatrix3x3(aContext,Matrix3x3);
 end;
 
-function POCAMatrix3x3FunctionEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix3x3,OtherMatrix3x3:PpvMatrix3x3D;
-begin
- if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
-  Matrix3x3:=POCAGhostFastGetPointer(aThis);
-  OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
-  result:=POCANewNumber(aContext,ord(Matrix3x3^=OtherMatrix3x3^) and 1);
- end else begin
-  result:=POCAValueNull;
- end;
-end;
-
-function POCAMatrix3x3FunctionNotEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix3x3,OtherMatrix3x3:PpvMatrix3x3D;
-begin
- if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
-  Matrix3x3:=POCAGhostFastGetPointer(aThis);
-  OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
-  result:=POCANewNumber(aContext,ord(Matrix3x3^<>OtherMatrix3x3^) and 1);
- end else begin
-  result:=POCAValueNull;
- end;
-end;
-
-function POCAMatrix3x3FunctionToString(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix3x3:PpvMatrix3x3D;
-    s:TpvUTF8String;
-begin
- if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
-  Matrix3x3:=POCAGhostFastGetPointer(aThis);
-  s:='[['+ConvertDoubleToString(Matrix3x3^.RawComponents[0,0],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[0,1],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[0,2],omStandard,-1)+'],'+
-      '['+ConvertDoubleToString(Matrix3x3^.RawComponents[1,0],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[1,1],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[1,2],omStandard,-1)+'],'+
-      '['+ConvertDoubleToString(Matrix3x3^.RawComponents[2,0],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[2,1],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[2,2],omStandard,-1)+']]';
-  result:=POCANewString(aContext,s);
- end else begin
-  result:=POCAValueNull;
- end;
-end;
-
 function POCAMatrix3x3FunctionAdd(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix3x3,OtherMatrix3x3:PpvMatrix3x3D;
 begin
@@ -3366,37 +3716,6 @@ begin
   Matrix3x3:=POCAGhostFastGetPointer(aThis);
   OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
   Matrix3x3^:=Matrix3x3^-OtherMatrix3x3^;
-  result:=aThis;
- end else begin
-  result:=POCAValueNull;
- end;
-end;
-
-function POCAMatrix3x3FunctionDiv(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix3x3,OtherMatrix3x3:PpvMatrix3x3D;
-    Factor:TpvDouble;
-begin
- if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) and (POCAGetValueType(aArguments^[0])=pvtNUMBER) then begin
-  Matrix3x3:=POCAGhostFastGetPointer(aThis);
-  Factor:=POCAGetNumberValue(aContext,aArguments^[0]);
-  Matrix3x3^:=Matrix3x3^/Factor;
-  result:=aThis;
- end else if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
-  Matrix3x3:=POCAGhostFastGetPointer(aThis);
-  OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
-  Matrix3x3^:=Matrix3x3^/OtherMatrix3x3^;
-  result:=aThis;
- end else begin
-  result:=POCAValueNull;
- end;
-end;
-
-function POCAMatrix3x3FunctionNeg(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix3x3:PpvMatrix3x3D;
-begin
- if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
-  Matrix3x3:=POCAGhostFastGetPointer(aThis);
-  Matrix3x3^:=-Matrix3x3^;
   result:=aThis;
  end else begin
   result:=POCAValueNull;
@@ -3464,6 +3783,37 @@ begin
   Matrix3x3:=POCAGhostFastGetPointer(aThis);
   OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
   Matrix3x3^:=Matrix3x3^*OtherQuaternion^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionDiv(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix3x3,OtherMatrix3x3:PpvMatrix3x3D;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) and (POCAGetValueType(aArguments^[0])=pvtNUMBER) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix3x3^:=Matrix3x3^/Factor;
+  result:=aThis;
+ end else if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
+  OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
+  Matrix3x3^:=Matrix3x3^/OtherMatrix3x3^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionNeg(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix3x3:PpvMatrix3x3D;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
+  Matrix3x3^:=-Matrix3x3^;
   result:=aThis;
  end else begin
   result:=POCAValueNull;
@@ -3763,6 +4113,300 @@ begin
  end;
 end;
 
+function POCAMatrix3x3FunctionEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix3x3,OtherMatrix3x3:PpvMatrix3x3D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
+  OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewNumber(aContext,ord(Matrix3x3^=OtherMatrix3x3^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionNotEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix3x3,OtherMatrix3x3:PpvMatrix3x3D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
+  OtherMatrix3x3:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewNumber(aContext,ord(Matrix3x3^<>OtherMatrix3x3^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionToString(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix3x3:PpvMatrix3x3D;
+    s:TpvUTF8String;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix3x3Ghost) then begin
+  Matrix3x3:=POCAGhostFastGetPointer(aThis);
+  s:='[['+ConvertDoubleToString(Matrix3x3^.RawComponents[0,0],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[0,1],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[0,2],omStandard,-1)+'],'+
+      '['+ConvertDoubleToString(Matrix3x3^.RawComponents[1,0],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[1,1],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[1,2],omStandard,-1)+'],'+
+      '['+ConvertDoubleToString(Matrix3x3^.RawComponents[2,0],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[2,1],omStandard,-1)+','+ConvertDoubleToString(Matrix3x3^.RawComponents[2,2],omStandard,-1)+']]';
+  result:=POCANewString(aContext,s);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateRotateX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix3x3D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateRotateX(Angle));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateRotateY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix3x3D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateRotateY(Angle));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateRotateZ(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix3x3D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateRotateZ(Angle));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateRotate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Axis:TpvVector3D;
+    Matrix:TpvMatrix3x3D;
+begin
+ if (aCountArguments>=2) and assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Axis:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateRotate(Angle,TpvVector3(Axis)));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateScale(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sx,Sy,Sz:TpvDouble;
+    Scale:TpvVector3D;
+    Matrix:TpvMatrix3x3D;
+begin
+ if (aCountArguments>=1) and assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
+  // From Vector3
+  Scale:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateScale(TpvVector3(Scale)));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else if aCountArguments>=3 then begin
+  // From three scalars
+  Sx:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Sy:=POCAGetNumberValue(aContext,aArguments^[1]);
+  Sz:=POCAGetNumberValue(aContext,aArguments^[2]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateScale(Sx,Sy,Sz));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else if aCountArguments>=2 then begin
+  // From two scalars (for 2D)
+  Sx:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Sy:=POCAGetNumberValue(aContext,aArguments^[1]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateScale(Sx,Sy));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateTranslation(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Tx,Ty:TpvDouble;
+    Translation:TpvVector2D;
+    Matrix:TpvMatrix3x3D;
+begin
+ if (aCountArguments>=1) and assigned(POCAVector2GhostPointer) and (POCAGhostGetType(aArguments^[0])=POCAVector2GhostPointer) then begin
+  // From Vector2
+  Translation:=PpvVector2D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateTranslation(TpvVector2(Translation)));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else if aCountArguments>=2 then begin
+  // From two scalars
+  Tx:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Ty:=POCAGetNumberValue(aContext,aArguments^[1]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateTranslation(Tx,Ty));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateFromQuaternion(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion:TpvQuaternionD;
+    Matrix:TpvMatrix3x3D;
+begin
+ if (aCountArguments>=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=PpvQuaternionD(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateFromQuaternion(TpvQuaternion(Quaternion)));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateFromQTangent(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var QTangent:TpvQuaternionD;
+    Matrix:TpvMatrix3x3D;
+begin
+ if (aCountArguments>=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  QTangent:=PpvQuaternionD(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateFromQTangent(TpvQuaternion(QTangent)));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateFromToRotation(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var FromDir,ToDir:TpvVector3D;
+    Matrix:TpvMatrix3x3D;
+begin
+ if (aCountArguments>=2) and assigned(POCAVector3GhostPointer) and 
+    (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and
+    (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  FromDir:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  ToDir:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateFromToRotation(TpvVector3(FromDir),TpvVector3(ToDir)));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateConstructForwardUp(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Forward,Up:TpvVector3D;
+    Matrix:TpvMatrix3x3D;
+begin
+ if (aCountArguments>=2) and assigned(POCAVector3GhostPointer) and 
+    (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and
+    (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  Forward:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Up:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateConstructForwardUp(TpvVector3(Forward),TpvVector3(Up)));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateOuterProduct(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var U,V:TpvVector3D;
+    Matrix:TpvMatrix3x3D;
+begin
+ if (aCountArguments>=2) and assigned(POCAVector3GhostPointer) and 
+    (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and
+    (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  U:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  V:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateOuterProduct(TpvVector3(U),TpvVector3(V)));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateSkewYX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix3x3D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateSkewYX(Angle));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateSkewZX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix3x3D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateSkewZX(Angle));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateSkewXY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix3x3D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateSkewXY(Angle));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateSkewZY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix3x3D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateSkewZY(Angle));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateSkewXZ(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix3x3D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateSkewXZ(Angle));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix3x3FunctionCreateSkewYZ(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix3x3D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix3x3D.Create(TpvMatrix3x3.CreateSkewYZ(Angle));
+  result:=POCANewMatrix3x3(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 procedure POCAInitMatrix3x3Hash(aContext:PPOCAContext);
 var HostData:PPOCAHostData;
 begin
@@ -3813,6 +4457,23 @@ begin
  Hash:=POCANewHash(aContext);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAAddNativeFunction(aContext,Hash,'create',POCAMatrix3x3FunctionCREATE);
+ POCAAddNativeFunction(aContext,Hash,'createRotateX',POCAMatrix3x3FunctionCreateRotateX);
+ POCAAddNativeFunction(aContext,Hash,'createRotateY',POCAMatrix3x3FunctionCreateRotateY);
+ POCAAddNativeFunction(aContext,Hash,'createRotateZ',POCAMatrix3x3FunctionCreateRotateZ);
+ POCAAddNativeFunction(aContext,Hash,'createRotate',POCAMatrix3x3FunctionCreateRotate);
+ POCAAddNativeFunction(aContext,Hash,'createScale',POCAMatrix3x3FunctionCreateScale);
+ POCAAddNativeFunction(aContext,Hash,'createTranslation',POCAMatrix3x3FunctionCreateTranslation);
+ POCAAddNativeFunction(aContext,Hash,'createFromQuaternion',POCAMatrix3x3FunctionCreateFromQuaternion);
+ POCAAddNativeFunction(aContext,Hash,'createFromQTangent',POCAMatrix3x3FunctionCreateFromQTangent);
+ POCAAddNativeFunction(aContext,Hash,'createFromToRotation',POCAMatrix3x3FunctionCreateFromToRotation);
+ POCAAddNativeFunction(aContext,Hash,'createConstructForwardUp',POCAMatrix3x3FunctionCreateConstructForwardUp);
+ POCAAddNativeFunction(aContext,Hash,'createOuterProduct',POCAMatrix3x3FunctionCreateOuterProduct);
+ POCAAddNativeFunction(aContext,Hash,'createSkewYX',POCAMatrix3x3FunctionCreateSkewYX);
+ POCAAddNativeFunction(aContext,Hash,'createSkewZX',POCAMatrix3x3FunctionCreateSkewZX);
+ POCAAddNativeFunction(aContext,Hash,'createSkewXY',POCAMatrix3x3FunctionCreateSkewXY);
+ POCAAddNativeFunction(aContext,Hash,'createSkewZY',POCAMatrix3x3FunctionCreateSkewZY);
+ POCAAddNativeFunction(aContext,Hash,'createSkewXZ',POCAMatrix3x3FunctionCreateSkewXZ);
+ POCAAddNativeFunction(aContext,Hash,'createSkewYZ',POCAMatrix3x3FunctionCreateSkewYZ);
  POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Matrix3x3',Hash);
 end;
 
@@ -4158,46 +4819,6 @@ begin
  result:=POCANewMatrix4x4(aContext,Matrix4x4);
 end;
 
-function POCAMatrix4x4FunctionEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4D;
-begin
- if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
-  Matrix4x4:=POCAGhostFastGetPointer(aThis);
-  OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
-  result:=POCANewNumber(aContext,ord(Matrix4x4^=OtherMatrix4x4^) and 1);
- end else begin
-  result:=POCAValueNull;
- end;
-end;
-
-function POCAMatrix4x4FunctionNotEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4D;
-begin
- if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
-  Matrix4x4:=POCAGhostFastGetPointer(aThis);
-  OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
-  result:=POCANewNumber(aContext,ord(Matrix4x4^<>OtherMatrix4x4^) and 1);
- end else begin
-  result:=POCAValueNull;
- end;
-end;
-
-function POCAMatrix4x4FunctionToString(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix4x4:PpvMatrix4x4D;
-    s:TpvUTF8String;
-begin
- if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
-  Matrix4x4:=POCAGhostFastGetPointer(aThis);
-  s:='[['+ConvertDoubleToString(Matrix4x4^.RawComponents[0,0],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[0,1],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[0,2],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[0,3],omStandard,-1)+'],'+
-      '['+ConvertDoubleToString(Matrix4x4^.RawComponents[1,0],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[1,1],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[1,2],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[1,3],omStandard,-1)+'],'+
-      '['+ConvertDoubleToString(Matrix4x4^.RawComponents[2,0],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[2,1],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[2,2],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[2,3],omStandard,-1)+'],'+
-      '['+ConvertDoubleToString(Matrix4x4^.RawComponents[3,0],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[3,1],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[3,2],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[3,3],omStandard,-1)+']]';
-  result:=POCANewString(aContext,s);
- end else begin
-  result:=POCAValueNull;
- end;
-end;
-
 function POCAMatrix4x4FunctionAdd(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4D;
 begin
@@ -4218,37 +4839,6 @@ begin
   Matrix4x4:=POCAGhostFastGetPointer(aThis);
   OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
   Matrix4x4^:=Matrix4x4^-OtherMatrix4x4^;
-  result:=aThis;
- end else begin
-  result:=POCAValueNull;
- end;
-end;
-
-function POCAMatrix4x4FunctionDiv(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4D;
-    Factor:TpvDouble;
-begin
- if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGetValueType(aArguments^[0])=pvtNUMBER) then begin
-  Matrix4x4:=POCAGhostFastGetPointer(aThis);
-  Factor:=POCAGetNumberValue(aContext,aArguments^[0]);
-  Matrix4x4^:=Matrix4x4^/Factor;
-  result:=aThis;
- end else if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
-  Matrix4x4:=POCAGhostFastGetPointer(aThis);
-  OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
-  Matrix4x4^:=Matrix4x4^/OtherMatrix4x4^;
-  result:=aThis;
- end else begin
-  result:=POCAValueNull;
- end;
-end;
-
-function POCAMatrix4x4FunctionNeg(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Matrix4x4:PpvMatrix4x4D;
-begin
- if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
-  Matrix4x4:=POCAGhostFastGetPointer(aThis);
-  Matrix4x4^:=-Matrix4x4^;
   result:=aThis;
  end else begin
   result:=POCAValueNull;
@@ -4313,6 +4903,37 @@ begin
   Matrix4x4:=POCAGhostFastGetPointer(aThis);
   OtherQuaternion:=POCAGhostFastGetPointer(aArguments^[0]);
   Matrix4x4^:=Matrix4x4^*OtherQuaternion^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionDiv(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4D;
+    Factor:TpvDouble;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGetValueType(aArguments^[0])=pvtNUMBER) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
+  Factor:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix4x4^:=Matrix4x4^/Factor;
+  result:=aThis;
+ end else if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
+  OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
+  Matrix4x4^:=Matrix4x4^/OtherMatrix4x4^;
+  result:=aThis;
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionNeg(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix4x4:PpvMatrix4x4D;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
+  Matrix4x4^:=-Matrix4x4^;
   result:=aThis;
  end else begin
   result:=POCAValueNull;
@@ -4608,6 +5229,344 @@ begin
  end;
 end;
 
+function POCAMatrix4x4FunctionEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
+  OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewNumber(aContext,ord(Matrix4x4^=OtherMatrix4x4^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionNotEqual(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix4x4,OtherMatrix4x4:PpvMatrix4x4D;
+begin
+ if (aCountArguments=1) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
+  OtherMatrix4x4:=POCAGhostFastGetPointer(aArguments^[0]);
+  result:=POCANewNumber(aContext,ord(Matrix4x4^<>OtherMatrix4x4^) and 1);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionToString(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Matrix4x4:PpvMatrix4x4D;
+    s:TpvUTF8String;
+begin
+ if (aCountArguments=0) and (POCAGhostGetType(aThis)=@POCAMatrix4x4Ghost) then begin
+  Matrix4x4:=POCAGhostFastGetPointer(aThis);
+  s:='[['+ConvertDoubleToString(Matrix4x4^.RawComponents[0,0],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[0,1],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[0,2],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[0,3],omStandard,-1)+'],'+
+      '['+ConvertDoubleToString(Matrix4x4^.RawComponents[1,0],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[1,1],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[1,2],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[1,3],omStandard,-1)+'],'+
+      '['+ConvertDoubleToString(Matrix4x4^.RawComponents[2,0],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[2,1],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[2,2],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[2,3],omStandard,-1)+'],'+
+      '['+ConvertDoubleToString(Matrix4x4^.RawComponents[3,0],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[3,1],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[3,2],omStandard,-1)+','+ConvertDoubleToString(Matrix4x4^.RawComponents[3,3],omStandard,-1)+']]';
+  result:=POCANewString(aContext,s);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateRotateX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix4x4D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateRotateX(Angle));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateRotateY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix4x4D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateRotateY(Angle));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateRotateZ(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix4x4D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateRotateZ(Angle));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateRotate(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Axis:TpvVector3D;
+    Matrix:TpvMatrix4x4D;
+begin
+ if (aCountArguments>=2) and assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Axis:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateRotate(Angle,TpvVector3(Axis)));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateRotation(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var SourceMatrix:PpvMatrix4x4D;
+    Matrix:TpvMatrix4x4D;
+begin
+ if (aCountArguments>=1) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) then begin
+  SourceMatrix:=POCAGhostFastGetPointer(aArguments^[0]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateRotation(TpvMatrix4x4(SourceMatrix^)));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateScale(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sx,Sy,Sz:TpvDouble;
+    Scale:TpvVector3D;
+    Matrix:TpvMatrix4x4D;
+begin
+ if (aCountArguments>=1) and assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
+  // From Vector3
+  Scale:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateScale(TpvVector3(Scale)));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else if aCountArguments>=3 then begin
+  // From three scalars
+  Sx:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Sy:=POCAGetNumberValue(aContext,aArguments^[1]);
+  Sz:=POCAGetNumberValue(aContext,aArguments^[2]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateScale(Sx,Sy,Sz));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else if aCountArguments>=2 then begin
+  // From two scalars
+  Sx:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Sy:=POCAGetNumberValue(aContext,aArguments^[1]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateScale(Sx,Sy));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateTranslation(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Tx,Ty,Tz:TpvDouble;
+    Translation:TpvVector3D;
+    Matrix:TpvMatrix4x4D;
+begin
+ if (aCountArguments>=1) and assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) then begin
+  // From Vector3
+  Translation:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateTranslation(TpvVector3(Translation)));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else if aCountArguments>=3 then begin
+  // From three scalars
+  Tx:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Ty:=POCAGetNumberValue(aContext,aArguments^[1]);
+  Tz:=POCAGetNumberValue(aContext,aArguments^[2]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateTranslation(Tx,Ty,Tz));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else if aCountArguments>=2 then begin
+  // From two scalars
+  Tx:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Ty:=POCAGetNumberValue(aContext,aArguments^[1]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateTranslation(Tx,Ty));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateTranslated(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var SourceMatrix:PpvMatrix4x4D;
+    Translation:TpvVector3D;
+    Matrix:TpvMatrix4x4D;
+begin
+ if (aCountArguments>=2) and (POCAGhostGetType(aArguments^[0])=@POCAMatrix4x4Ghost) and
+    assigned(POCAVector3GhostPointer) and (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  SourceMatrix:=POCAGhostFastGetPointer(aArguments^[0]);
+  Translation:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateTranslated(TpvMatrix4x4(SourceMatrix^),TpvVector3(Translation)));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateFromQuaternion(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Quaternion:TpvQuaternionD;
+    Matrix:TpvMatrix4x4D;
+begin
+ if (aCountArguments>=1) and (POCAGhostGetType(aArguments^[0])=@POCAQuaternionGhost) then begin
+  Quaternion:=PpvQuaternionD(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateFromQuaternion(TpvQuaternion(Quaternion)));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateFromToRotation(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var FromDir,ToDir:TpvVector3D;
+    Matrix:TpvMatrix4x4D;
+begin
+ if (aCountArguments>=2) and assigned(POCAVector3GhostPointer) and 
+    (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and
+    (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) then begin
+  FromDir:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  ToDir:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateFromToRotation(TpvVector3(FromDir),TpvVector3(ToDir)));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateLookAt(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Eye,Center,Up:TpvVector3D;
+    Matrix:TpvMatrix4x4D;
+begin
+ if (aCountArguments>=3) and assigned(POCAVector3GhostPointer) and 
+    (POCAGhostGetType(aArguments^[0])=POCAVector3GhostPointer) and
+    (POCAGhostGetType(aArguments^[1])=POCAVector3GhostPointer) and
+    (POCAGhostGetType(aArguments^[2])=POCAVector3GhostPointer) then begin
+  Eye:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[0]))^;
+  Center:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[1]))^;
+  Up:=PpvVector3D(POCAGhostFastGetPointer(aArguments^[2]))^;
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateLookAt(TpvVector3(Eye),TpvVector3(Center),TpvVector3(Up)));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreatePerspective(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Fovy,Aspect,ZNear,ZFar:TpvDouble;
+    Matrix:TpvMatrix4x4D;
+begin
+ if aCountArguments>=4 then begin
+  Fovy:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Aspect:=POCAGetNumberValue(aContext,aArguments^[1]);
+  ZNear:=POCAGetNumberValue(aContext,aArguments^[2]);
+  ZFar:=POCAGetNumberValue(aContext,aArguments^[3]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreatePerspective(Fovy,Aspect,ZNear,ZFar));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateOrtho(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Left,Right,Bottom,Top,ZNear,ZFar:TpvDouble;
+    Matrix:TpvMatrix4x4D;
+begin
+ if aCountArguments>=6 then begin
+  Left:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Right:=POCAGetNumberValue(aContext,aArguments^[1]);
+  Bottom:=POCAGetNumberValue(aContext,aArguments^[2]);
+  Top:=POCAGetNumberValue(aContext,aArguments^[3]);
+  ZNear:=POCAGetNumberValue(aContext,aArguments^[4]);
+  ZFar:=POCAGetNumberValue(aContext,aArguments^[5]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateOrtho(Left,Right,Bottom,Top,ZNear,ZFar));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateSkewYX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix4x4D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateSkewYX(Angle));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateSkewZX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix4x4D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateSkewZX(Angle));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateSkewXY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix4x4D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateSkewXY(Angle));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateSkewZY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix4x4D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateSkewZY(Angle));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateSkewXZ(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix4x4D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateSkewXZ(Angle));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
+function POCAMatrix4x4FunctionCreateSkewYZ(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Angle:TpvDouble;
+    Matrix:TpvMatrix4x4D;
+begin
+ if aCountArguments>=1 then begin
+  Angle:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Matrix:=TpvMatrix4x4D.Create(TpvMatrix4x4.CreateSkewYZ(Angle));
+  result:=POCANewMatrix4x4(aContext,Matrix);
+ end else begin
+  result:=POCAValueNull;
+ end;
+end;
+
 procedure POCAInitMatrix4x4Hash(aContext:PPOCAContext);
 var HostData:PPOCAHostData;
 begin
@@ -4658,6 +5617,25 @@ begin
  Hash:=POCANewHash(aContext);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAAddNativeFunction(aContext,Hash,'create',POCAMatrix4x4FunctionCREATE);
+ POCAAddNativeFunction(aContext,Hash,'createRotateX',POCAMatrix4x4FunctionCreateRotateX);
+ POCAAddNativeFunction(aContext,Hash,'createRotateY',POCAMatrix4x4FunctionCreateRotateY);
+ POCAAddNativeFunction(aContext,Hash,'createRotateZ',POCAMatrix4x4FunctionCreateRotateZ);
+ POCAAddNativeFunction(aContext,Hash,'createRotate',POCAMatrix4x4FunctionCreateRotate);
+ POCAAddNativeFunction(aContext,Hash,'createRotation',POCAMatrix4x4FunctionCreateRotation);
+ POCAAddNativeFunction(aContext,Hash,'createScale',POCAMatrix4x4FunctionCreateScale);
+ POCAAddNativeFunction(aContext,Hash,'createTranslation',POCAMatrix4x4FunctionCreateTranslation);
+ POCAAddNativeFunction(aContext,Hash,'createTranslated',POCAMatrix4x4FunctionCreateTranslated);
+ POCAAddNativeFunction(aContext,Hash,'createFromQuaternion',POCAMatrix4x4FunctionCreateFromQuaternion);
+ POCAAddNativeFunction(aContext,Hash,'createFromToRotation',POCAMatrix4x4FunctionCreateFromToRotation);
+ POCAAddNativeFunction(aContext,Hash,'createLookAt',POCAMatrix4x4FunctionCreateLookAt);
+ POCAAddNativeFunction(aContext,Hash,'createPerspective',POCAMatrix4x4FunctionCreatePerspective);
+ POCAAddNativeFunction(aContext,Hash,'createOrtho',POCAMatrix4x4FunctionCreateOrtho);
+ POCAAddNativeFunction(aContext,Hash,'createSkewYX',POCAMatrix4x4FunctionCreateSkewYX);
+ POCAAddNativeFunction(aContext,Hash,'createSkewZX',POCAMatrix4x4FunctionCreateSkewZX);
+ POCAAddNativeFunction(aContext,Hash,'createSkewXY',POCAMatrix4x4FunctionCreateSkewXY);
+ POCAAddNativeFunction(aContext,Hash,'createSkewZY',POCAMatrix4x4FunctionCreateSkewZY);
+ POCAAddNativeFunction(aContext,Hash,'createSkewXZ',POCAMatrix4x4FunctionCreateSkewXZ);
+ POCAAddNativeFunction(aContext,Hash,'createSkewYZ',POCAMatrix4x4FunctionCreateSkewYZ);
  POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Matrix4x4',Hash);
 end;
 

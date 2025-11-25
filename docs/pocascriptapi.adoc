@@ -1497,6 +1497,206 @@ let identity = Quaternion.create(); // Identity rotation
 
 '''''
 
+==== Quaternion.createFromAngleAxis()
+
+*Usage:*
+
+[source,js]
+----
+let quat = Quaternion.createFromAngleAxis(angle, axis);
+----
+
+* *Description:* Creates a quaternion from an angle and a rotation axis.
+* *Parameters:*
+** `+angle+` (number): The rotation angle in radians.
+** `+axis+` (Vector3): The axis of rotation (should be normalized).
+* *Return Value:* A new Quaternion representing the rotation.
+* *Example:*
++
+[source,js]
+----
+let axis = Vector3.create(0, 1, 0); // Y-axis
+let quat = Quaternion.createFromAngleAxis(Math.PI / 2, axis); // 90° rotation around Y
+----
+
+'''''
+
+==== Quaternion.createFromEuler()
+
+*Usage:*
+
+[source,js]
+----
+let quat = Quaternion.createFromEuler(pitch, yaw, roll);
+let quat = Quaternion.createFromEuler(eulerAngles);
+----
+
+* *Description:* Creates a quaternion from Euler angles (pitch, yaw, roll).
+* *Parameters:*
+** `+pitch+` (number): Rotation around X-axis in radians.
+** `+yaw+` (number): Rotation around Y-axis in radians.
+** `+roll+` (number): Rotation around Z-axis in radians.
+** `+eulerAngles+` (Vector3): A Vector3 containing (pitch, yaw, roll).
+* *Return Value:* A new Quaternion representing the Euler rotation.
+* *Example:*
++
+[source,js]
+----
+let quat1 = Quaternion.createFromEuler(0, Math.PI / 4, 0); // 45° yaw
+let angles = Vector3.create(0, Math.PI / 4, 0);
+let quat2 = Quaternion.createFromEuler(angles);
+----
+
+'''''
+
+==== Quaternion.createFromToRotation()
+
+*Usage:*
+
+[source,js]
+----
+let quat = Quaternion.createFromToRotation(fromDirection, toDirection);
+----
+
+* *Description:* Creates a quaternion representing the rotation from one direction vector to another.
+* *Parameters:*
+** `+fromDirection+` (Vector3): The starting direction vector.
+** `+toDirection+` (Vector3): The target direction vector.
+* *Return Value:* A new Quaternion representing the rotation between the two directions.
+* *Example:*
++
+[source,js]
+----
+let from = Vector3.create(1, 0, 0); // Forward
+let to = Vector3.create(0, 0, 1);   // Right
+let quat = Quaternion.createFromToRotation(from, to);
+----
+
+'''''
+
+==== Quaternion.createFromLookRotation()
+
+*Usage:*
+
+[source,js]
+----
+let quat = Quaternion.createFromLookRotation(forward, up);
+----
+
+* *Description:* Creates a quaternion that rotates to look in a specific direction with a given up vector.
+* *Parameters:*
+** `+forward+` (Vector3): The forward direction vector.
+** `+up+` (Vector3): The up direction vector.
+* *Return Value:* A new Quaternion representing the look rotation.
+* *Example:*
++
+[source,js]
+----
+let forward = Vector3.create(0, 0, -1);
+let up = Vector3.create(0, 1, 0);
+let quat = Quaternion.createFromLookRotation(forward, up);
+----
+
+'''''
+
+==== Quaternion.createFromScaledAngleAxis()
+
+*Usage:*
+
+[source,js]
+----
+let quat = Quaternion.createFromScaledAngleAxis(scaledAxis);
+----
+
+* *Description:* Creates a quaternion from a scaled angle-axis representation where the magnitude of the vector is the angle.
+* *Parameters:*
+** `+scaledAxis+` (Vector3): A vector whose direction is the axis and magnitude is the angle in radians.
+* *Return Value:* A new Quaternion.
+* *Example:*
++
+[source,js]
+----
+let scaledAxis = Vector3.create(0, Math.PI / 2, 0); // 90° around Y-axis
+let quat = Quaternion.createFromScaledAngleAxis(scaledAxis);
+----
+
+'''''
+
+==== Quaternion.createFromAngularVelocity()
+
+*Usage:*
+
+[source,js]
+----
+let quat = Quaternion.createFromAngularVelocity(angularVelocity);
+----
+
+* *Description:* Creates a quaternion from an angular velocity vector (used in physics simulations).
+* *Parameters:*
+** `+angularVelocity+` (Vector3): The angular velocity vector.
+* *Return Value:* A new Quaternion.
+* *Example:*
++
+[source,js]
+----
+let angVel = Vector3.create(0, 1, 0);
+let quat = Quaternion.createFromAngularVelocity(angVel);
+----
+
+'''''
+
+==== Quaternion.createFromCols()
+
+*Usage:*
+
+[source,js]
+----
+let quat = Quaternion.createFromCols(col0, col1, col2);
+----
+
+* *Description:* Creates a quaternion from three column vectors representing a rotation matrix.
+* *Parameters:*
+** `+col0+` (Vector3): First column of the rotation matrix.
+** `+col1+` (Vector3): Second column of the rotation matrix.
+** `+col2+` (Vector3): Third column of the rotation matrix.
+* *Return Value:* A new Quaternion.
+* *Example:*
++
+[source,js]
+----
+let c0 = Vector3.create(1, 0, 0);
+let c1 = Vector3.create(0, 1, 0);
+let c2 = Vector3.create(0, 0, 1);
+let quat = Quaternion.createFromCols(c0, c1, c2);
+----
+
+'''''
+
+==== Quaternion.createFromXY()
+
+*Usage:*
+
+[source,js]
+----
+let quat = Quaternion.createFromXY(xAxis, yAxis);
+----
+
+* *Description:* Creates a quaternion from X and Y axis vectors.
+* *Parameters:*
+** `+xAxis+` (Vector3): The X-axis direction.
+** `+yAxis+` (Vector3): The Y-axis direction.
+* *Return Value:* A new Quaternion.
+* *Example:*
++
+[source,js]
+----
+let x = Vector3.create(1, 0, 0);
+let y = Vector3.create(0, 1, 0);
+let quat = Quaternion.createFromXY(x, y);
+----
+
+'''''
+
 === Quaternion Properties
 
 * `+x+`: X component
@@ -1837,6 +2037,369 @@ puts(quat.toString()); // Outputs something like "(0, 0, 0, 1)"
 
 '''''
 
+==== toEuler()
+
+*Usage:*
+
+[source,js]
+----
+let eulerAngles = quat.toEuler();
+----
+
+* *Description:* Converts the quaternion to Euler angles (pitch, yaw, roll).
+* *Parameters:* None.
+* *Return Value:* A Vector3 containing the Euler angles in radians (x=pitch, y=yaw, z=roll).
+* *Example:*
++
+[source,js]
+----
+let quat = Quaternion.createFromEuler(0.1, 0.2, 0.3);
+let euler = quat.toEuler();
+puts("Pitch: " + euler.x + ", Yaw: " + euler.y + ", Roll: " + euler.z);
+----
+
+'''''
+
+==== toPitch()
+
+*Usage:*
+
+[source,js]
+----
+let pitch = quat.toPitch();
+----
+
+* *Description:* Extracts the pitch (rotation around X-axis) from the quaternion.
+* *Parameters:* None.
+* *Return Value:* The pitch angle in radians.
+* *Example:*
++
+[source,js]
+----
+let quat = Quaternion.createFromEuler(0.5, 0, 0);
+let pitch = quat.toPitch(); // Returns ~0.5
+----
+
+'''''
+
+==== toYaw()
+
+*Usage:*
+
+[source,js]
+----
+let yaw = quat.toYaw();
+----
+
+* *Description:* Extracts the yaw (rotation around Y-axis) from the quaternion.
+* *Parameters:* None.
+* *Return Value:* The yaw angle in radians.
+* *Example:*
++
+[source,js]
+----
+let quat = Quaternion.createFromEuler(0, 0.5, 0);
+let yaw = quat.toYaw(); // Returns ~0.5
+----
+
+'''''
+
+==== toRoll()
+
+*Usage:*
+
+[source,js]
+----
+let roll = quat.toRoll();
+----
+
+* *Description:* Extracts the roll (rotation around Z-axis) from the quaternion.
+* *Parameters:* None.
+* *Return Value:* The roll angle in radians.
+* *Example:*
++
+[source,js]
+----
+let quat = Quaternion.createFromEuler(0, 0, 0.5);
+let roll = quat.toRoll(); // Returns ~0.5
+----
+
+'''''
+
+==== toAngleAxis()
+
+*Usage:*
+
+[source,js]
+----
+let result = quat.toAngleAxis();
+----
+
+* *Description:* Converts the quaternion to an angle-axis representation.
+* *Parameters:* None.
+* *Return Value:* A hash object with `+angle+` (number) and `+axis+` (Vector3) properties.
+* *Example:*
++
+[source,js]
+----
+let quat = Quaternion.createFromAngleAxis(Math.PI / 2, Vector3.create(0, 1, 0));
+let result = quat.toAngleAxis();
+puts("Angle: " + result.angle + ", Axis: " + result.axis.toString());
+----
+
+'''''
+
+==== toScaledAngleAxis()
+
+*Usage:*
+
+[source,js]
+----
+let scaledAxis = quat.toScaledAngleAxis();
+----
+
+* *Description:* Converts the quaternion to a scaled angle-axis representation where the vector's magnitude is the angle.
+* *Parameters:* None.
+* *Return Value:* A Vector3 whose direction is the axis and magnitude is the angle in radians.
+* *Example:*
++
+[source,js]
+----
+let quat = Quaternion.createFromAngleAxis(Math.PI / 2, Vector3.create(0, 1, 0));
+let scaledAxis = quat.toScaledAngleAxis();
+puts("Scaled axis: " + scaledAxis.toString());
+----
+
+'''''
+
+==== approximatedSlerp()
+
+*Usage:*
+
+[source,js]
+----
+quat.approximatedSlerp(other, t);
+----
+
+* *Description:* Performs a faster approximation of spherical linear interpolation (slerp), modifying this quaternion in place.
+* *Parameters:*
+** `+other+` (Quaternion): The target quaternion.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The quaternion itself (for method chaining).
+* *Example:*
++
+[source,js]
+----
+let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+q1.approximatedSlerp(q2, 0.5); // Fast interpolation
+----
+
+'''''
+
+==== elerp()
+
+*Usage:*
+
+[source,js]
+----
+quat.elerp(other, t);
+----
+
+* *Description:* Performs exponential linear interpolation, modifying this quaternion in place.
+* *Parameters:*
+** `+other+` (Quaternion): The target quaternion.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The quaternion itself (for method chaining).
+* *Example:*
++
+[source,js]
+----
+let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+q1.elerp(q2, 0.5); // Exponential interpolation
+----
+
+'''''
+
+==== unflippedSlerp()
+
+*Usage:*
+
+[source,js]
+----
+quat.unflippedSlerp(other, t);
+----
+
+* *Description:* Performs spherical linear interpolation without quaternion flipping, modifying this quaternion in place.
+* *Parameters:*
+** `+other+` (Quaternion): The target quaternion.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The quaternion itself (for method chaining).
+* *Example:*
++
+[source,js]
+----
+let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+q1.unflippedSlerp(q2, 0.5);
+----
+
+'''''
+
+==== unflippedApproximatedSlerp()
+
+*Usage:*
+
+[source,js]
+----
+quat.unflippedApproximatedSlerp(other, t);
+----
+
+* *Description:* Performs a faster approximation of spherical linear interpolation without quaternion flipping.
+* *Parameters:*
+** `+other+` (Quaternion): The target quaternion.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The quaternion itself (for method chaining).
+* *Example:*
++
+[source,js]
+----
+let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+q1.unflippedApproximatedSlerp(q2, 0.5);
+----
+
+'''''
+
+==== unflippedSqlerp()
+
+*Usage:*
+
+[source,js]
+----
+quat.unflippedSqlerp(q1, q2, q3, t);
+----
+
+* *Description:* Performs spherical quadratic interpolation without quaternion flipping, modifying this quaternion in place.
+* *Parameters:*
+** `+q1+` (Quaternion): First control point.
+** `+q2+` (Quaternion): Second control point.
+** `+q3+` (Quaternion): Third control point.
+** `+t+` (number): The interpolation factor (0.0 to 1.0).
+* *Return Value:* The quaternion itself (for method chaining).
+* *Example:*
++
+[source,js]
+----
+let q0 = Quaternion.create(0, 0, 0, 1);
+let q1 = Quaternion.createFromEuler(0, Math.PI / 4, 0);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+let q3 = Quaternion.createFromEuler(0, Math.PI, 0);
+q0.unflippedSqlerp(q1, q2, q3, 0.5);
+----
+
+'''''
+
+==== angleBetween()
+
+*Usage:*
+
+[source,js]
+----
+let angle = quat.angleBetween(other);
+----
+
+* *Description:* Calculates the angle (in radians) between this quaternion and another.
+* *Parameters:*
+** `+other+` (Quaternion): The other quaternion.
+* *Return Value:* The angle between the two quaternions in radians.
+* *Example:*
++
+[source,js]
+----
+let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+let angle = q1.angleBetween(q2);
+puts("Angle between quaternions: " + angle);
+----
+
+'''''
+
+==== between()
+
+*Usage:*
+
+[source,js]
+----
+quat.between(other);
+----
+
+* *Description:* Calculates the quaternion representing the rotation from this quaternion to another, modifying this quaternion in place.
+* *Parameters:*
+** `+other+` (Quaternion): The target quaternion.
+* *Return Value:* The quaternion itself (for method chaining).
+* *Example:*
++
+[source,js]
+----
+let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+q1.between(q2); // q1 now represents the delta rotation
+----
+
+'''''
+
+==== integrate()
+
+*Usage:*
+
+[source,js]
+----
+quat.integrate(omega, deltaTime);
+----
+
+* *Description:* Integrates angular velocity into the quaternion (for physics simulations), modifying this quaternion in place.
+* *Parameters:*
+** `+omega+` (Vector3): The angular velocity vector.
+** `+deltaTime+` (number): The time step for integration.
+* *Return Value:* The quaternion itself (for method chaining).
+* *Example:*
++
+[source,js]
+----
+let quat = Quaternion.create(0, 0, 0, 1);
+let angularVelocity = Vector3.create(0, 1, 0); // Rotating around Y-axis
+quat.integrate(angularVelocity, 0.016); // One frame at ~60fps
+----
+
+'''''
+
+==== spin()
+
+*Usage:*
+
+[source,js]
+----
+quat.spin(omega, deltaTime);
+----
+
+* *Description:* Applies a spin (continuous rotation) to the quaternion based on angular velocity, modifying this quaternion in place.
+* *Parameters:*
+** `+omega+` (Vector3): The angular velocity vector.
+** `+deltaTime+` (number): The time step for the spin.
+* *Return Value:* The quaternion itself (for method chaining).
+* *Example:*
++
+[source,js]
+----
+let quat = Quaternion.create(0, 0, 0, 1);
+let angularVelocity = Vector3.create(0, 2, 0); // Fast rotation around Y
+quat.spin(angularVelocity, 0.016);
+----
+
+'''''
+
 === Quaternion Operator Overloading
 
 Quaternion supports operator overloading:
@@ -1896,6 +2459,402 @@ let mat = Matrix3x3.create(
 [source,js]
 ----
 let identity = Matrix3x3.create(); // Identity matrix
+----
+
+'''''
+
+==== Matrix3x3.createRotateX()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createRotateX(angle);
+----
+
+* *Description:* Creates a 3x3 rotation matrix around the X-axis.
+* *Parameters:*
+** `+angle+` (number): The rotation angle in radians.
+* *Return Value:* A new Matrix3x3 representing the rotation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix3x3.createRotateX(Math.PI / 2); // 90° rotation around X
+----
+
+'''''
+
+==== Matrix3x3.createRotateY()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createRotateY(angle);
+----
+
+* *Description:* Creates a 3x3 rotation matrix around the Y-axis.
+* *Parameters:*
+** `+angle+` (number): The rotation angle in radians.
+* *Return Value:* A new Matrix3x3 representing the rotation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix3x3.createRotateY(Math.PI / 4); // 45° rotation around Y
+----
+
+'''''
+
+==== Matrix3x3.createRotateZ()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createRotateZ(angle);
+----
+
+* *Description:* Creates a 3x3 rotation matrix around the Z-axis.
+* *Parameters:*
+** `+angle+` (number): The rotation angle in radians.
+* *Return Value:* A new Matrix3x3 representing the rotation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix3x3.createRotateZ(Math.PI); // 180° rotation around Z
+----
+
+'''''
+
+==== Matrix3x3.createRotate()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createRotate(angle, axis);
+----
+
+* *Description:* Creates a 3x3 rotation matrix around an arbitrary axis.
+* *Parameters:*
+** `+angle+` (number): The rotation angle in radians.
+** `+axis+` (Vector3): The axis of rotation (should be normalized).
+* *Return Value:* A new Matrix3x3 representing the rotation.
+* *Example:*
++
+[source,js]
+----
+let axis = Vector3.create(1, 1, 0).normalize();
+let mat = Matrix3x3.createRotate(Math.PI / 3, axis);
+----
+
+'''''
+
+==== Matrix3x3.createScale()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createScale(sx, sy, sz);
+let mat = Matrix3x3.createScale(scaleVec);
+----
+
+* *Description:* Creates a 3x3 scale matrix.
+* *Parameters:*
+** `+sx+` (number): Scale factor for X-axis.
+** `+sy+` (number): Scale factor for Y-axis.
+** `+sz+` (number): Scale factor for Z-axis.
+** `+scaleVec+` (Vector3): A vector containing the scale factors.
+* *Return Value:* A new Matrix3x3 representing the scale transformation.
+* *Example:*
++
+[source,js]
+----
+let mat1 = Matrix3x3.createScale(2, 3, 1); // Non-uniform scale
+let mat2 = Matrix3x3.createScale(Vector3.create(2, 2, 2)); // Uniform scale
+----
+
+'''''
+
+==== Matrix3x3.createTranslation()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createTranslation(tx, ty);
+let mat = Matrix3x3.createTranslation(translationVec);
+----
+
+* *Description:* Creates a 3x3 translation matrix (for 2D transformations).
+* *Parameters:*
+** `+tx+` (number): Translation along X-axis.
+** `+ty+` (number): Translation along Y-axis.
+** `+translationVec+` (Vector2): A vector containing the translation.
+* *Return Value:* A new Matrix3x3 representing the translation.
+* *Example:*
++
+[source,js]
+----
+let mat1 = Matrix3x3.createTranslation(10, 20);
+let mat2 = Matrix3x3.createTranslation(Vector2.create(10, 20));
+----
+
+'''''
+
+==== Matrix3x3.createFromQuaternion()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createFromQuaternion(quat);
+----
+
+* *Description:* Creates a 3x3 rotation matrix from a quaternion.
+* *Parameters:*
+** `+quat+` (Quaternion): The quaternion to convert.
+* *Return Value:* A new Matrix3x3 representing the same rotation.
+* *Example:*
++
+[source,js]
+----
+let quat = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+let mat = Matrix3x3.createFromQuaternion(quat);
+----
+
+'''''
+
+==== Matrix3x3.createFromQTangent()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createFromQTangent(qtangent);
+----
+
+* *Description:* Creates a 3x3 matrix from a QTangent (compressed tangent space quaternion).
+* *Parameters:*
+** `+qtangent+` (Quaternion): The QTangent quaternion.
+* *Return Value:* A new Matrix3x3.
+* *Example:*
++
+[source,js]
+----
+let qt = Quaternion.create(0.5, 0.5, 0.5, 0.5);
+let mat = Matrix3x3.createFromQTangent(qt);
+----
+
+'''''
+
+==== Matrix3x3.createFromToRotation()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createFromToRotation(from, to);
+----
+
+* *Description:* Creates a 3x3 rotation matrix that rotates from one direction to another.
+* *Parameters:*
+** `+from+` (Vector3): The starting direction.
+** `+to+` (Vector3): The target direction.
+* *Return Value:* A new Matrix3x3 representing the rotation.
+* *Example:*
++
+[source,js]
+----
+let from = Vector3.create(1, 0, 0);
+let to = Vector3.create(0, 1, 0);
+let mat = Matrix3x3.createFromToRotation(from, to);
+----
+
+'''''
+
+==== Matrix3x3.createConstructForwardUp()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createConstructForwardUp(forward, up);
+----
+
+* *Description:* Creates a 3x3 orientation matrix from forward and up vectors.
+* *Parameters:*
+** `+forward+` (Vector3): The forward direction.
+** `+up+` (Vector3): The up direction.
+* *Return Value:* A new Matrix3x3 representing the orientation.
+* *Example:*
++
+[source,js]
+----
+let forward = Vector3.create(0, 0, -1);
+let up = Vector3.create(0, 1, 0);
+let mat = Matrix3x3.createConstructForwardUp(forward, up);
+----
+
+'''''
+
+==== Matrix3x3.createOuterProduct()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createOuterProduct(u, v);
+----
+
+* *Description:* Creates a 3x3 matrix from the outer product of two vectors.
+* *Parameters:*
+** `+u+` (Vector3): First vector.
+** `+v+` (Vector3): Second vector.
+* *Return Value:* A new Matrix3x3 representing the outer product (u ⊗ v).
+* *Example:*
++
+[source,js]
+----
+let u = Vector3.create(1, 0, 0);
+let v = Vector3.create(0, 1, 0);
+let mat = Matrix3x3.createOuterProduct(u, v);
+----
+
+'''''
+
+==== Matrix3x3.createSkewYX()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createSkewYX(angle);
+----
+
+* *Description:* Creates a 3x3 skew matrix that shears Y by X.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix3x3 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix3x3.createSkewYX(Math.PI / 6);
+----
+
+'''''
+
+==== Matrix3x3.createSkewZX()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createSkewZX(angle);
+----
+
+* *Description:* Creates a 3x3 skew matrix that shears Z by X.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix3x3 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix3x3.createSkewZX(Math.PI / 6);
+----
+
+'''''
+
+==== Matrix3x3.createSkewXY()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createSkewXY(angle);
+----
+
+* *Description:* Creates a 3x3 skew matrix that shears X by Y.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix3x3 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix3x3.createSkewXY(Math.PI / 6);
+----
+
+'''''
+
+==== Matrix3x3.createSkewZY()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createSkewZY(angle);
+----
+
+* *Description:* Creates a 3x3 skew matrix that shears Z by Y.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix3x3 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix3x3.createSkewZY(Math.PI / 6);
+----
+
+'''''
+
+==== Matrix3x3.createSkewXZ()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createSkewXZ(angle);
+----
+
+* *Description:* Creates a 3x3 skew matrix that shears X by Z.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix3x3 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix3x3.createSkewXZ(Math.PI / 6);
+----
+
+'''''
+
+==== Matrix3x3.createSkewYZ()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix3x3.createSkewYZ(angle);
+----
+
+* *Description:* Creates a 3x3 skew matrix that shears Y by Z.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix3x3 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix3x3.createSkewYZ(Math.PI / 6);
 ----
 
 '''''
@@ -2237,6 +3196,461 @@ let mat = Matrix4x4.create(
 [source,js]
 ----
 let identity = Matrix4x4.create(); // Identity matrix
+----
+
+'''''
+
+==== Matrix4x4.createRotateX()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createRotateX(angle);
+----
+
+* *Description:* Creates a 4x4 rotation matrix around the X-axis.
+* *Parameters:*
+** `+angle+` (number): The rotation angle in radians.
+* *Return Value:* A new Matrix4x4 representing the rotation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix4x4.createRotateX(Math.PI / 2); // 90° rotation around X
+----
+
+'''''
+
+==== Matrix4x4.createRotateY()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createRotateY(angle);
+----
+
+* *Description:* Creates a 4x4 rotation matrix around the Y-axis.
+* *Parameters:*
+** `+angle+` (number): The rotation angle in radians.
+* *Return Value:* A new Matrix4x4 representing the rotation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix4x4.createRotateY(Math.PI / 4); // 45° rotation around Y
+----
+
+'''''
+
+==== Matrix4x4.createRotateZ()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createRotateZ(angle);
+----
+
+* *Description:* Creates a 4x4 rotation matrix around the Z-axis.
+* *Parameters:*
+** `+angle+` (number): The rotation angle in radians.
+* *Return Value:* A new Matrix4x4 representing the rotation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix4x4.createRotateZ(Math.PI); // 180° rotation around Z
+----
+
+'''''
+
+==== Matrix4x4.createRotate()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createRotate(angle, axis);
+----
+
+* *Description:* Creates a 4x4 rotation matrix around an arbitrary axis.
+* *Parameters:*
+** `+angle+` (number): The rotation angle in radians.
+** `+axis+` (Vector3): The axis of rotation (should be normalized).
+* *Return Value:* A new Matrix4x4 representing the rotation.
+* *Example:*
++
+[source,js]
+----
+let axis = Vector3.create(1, 1, 0).normalize();
+let mat = Matrix4x4.createRotate(Math.PI / 3, axis);
+----
+
+'''''
+
+==== Matrix4x4.createRotation()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createRotation(sourceMatrix);
+----
+
+* *Description:* Extracts the rotation part from a 4x4 matrix (removes translation and scale).
+* *Parameters:*
+** `+sourceMatrix+` (Matrix4x4): The source matrix.
+* *Return Value:* A new Matrix4x4 containing only the rotation.
+* *Example:*
++
+[source,js]
+----
+let transform = Matrix4x4.createTranslation(10, 20, 30);
+let rotation = Matrix4x4.createRotation(transform);
+----
+
+'''''
+
+==== Matrix4x4.createScale()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createScale(sx, sy, sz);
+let mat = Matrix4x4.createScale(scaleVec);
+----
+
+* *Description:* Creates a 4x4 scale matrix.
+* *Parameters:*
+** `+sx+` (number): Scale factor for X-axis.
+** `+sy+` (number): Scale factor for Y-axis.
+** `+sz+` (number): Scale factor for Z-axis.
+** `+scaleVec+` (Vector3 or Vector4): A vector containing the scale factors.
+* *Return Value:* A new Matrix4x4 representing the scale transformation.
+* *Example:*
++
+[source,js]
+----
+let mat1 = Matrix4x4.createScale(2, 3, 4); // Non-uniform scale
+let mat2 = Matrix4x4.createScale(Vector3.create(2, 2, 2)); // Uniform scale
+----
+
+'''''
+
+==== Matrix4x4.createTranslation()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createTranslation(tx, ty, tz);
+let mat = Matrix4x4.createTranslation(translationVec);
+----
+
+* *Description:* Creates a 4x4 translation matrix.
+* *Parameters:*
+** `+tx+` (number): Translation along X-axis.
+** `+ty+` (number): Translation along Y-axis.
+** `+tz+` (number): Translation along Z-axis.
+** `+translationVec+` (Vector3): A vector containing the translation.
+* *Return Value:* A new Matrix4x4 representing the translation.
+* *Example:*
++
+[source,js]
+----
+let mat1 = Matrix4x4.createTranslation(10, 20, 30);
+let mat2 = Matrix4x4.createTranslation(Vector3.create(10, 20, 30));
+----
+
+'''''
+
+==== Matrix4x4.createTranslated()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createTranslated(sourceMatrix, translation);
+----
+
+* *Description:* Creates a translated copy of a matrix.
+* *Parameters:*
+** `+sourceMatrix+` (Matrix4x4): The source matrix.
+** `+translation+` (Vector3): The translation to apply.
+* *Return Value:* A new Matrix4x4 with the translation applied.
+* *Example:*
++
+[source,js]
+----
+let original = Matrix4x4.createRotateY(Math.PI / 4);
+let translated = Matrix4x4.createTranslated(original, Vector3.create(5, 10, 15));
+----
+
+'''''
+
+==== Matrix4x4.createFromQuaternion()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createFromQuaternion(quat);
+----
+
+* *Description:* Creates a 4x4 rotation matrix from a quaternion.
+* *Parameters:*
+** `+quat+` (Quaternion): The quaternion to convert.
+* *Return Value:* A new Matrix4x4 representing the same rotation.
+* *Example:*
++
+[source,js]
+----
+let quat = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+let mat = Matrix4x4.createFromQuaternion(quat);
+----
+
+'''''
+
+==== Matrix4x4.createFromToRotation()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createFromToRotation(from, to);
+----
+
+* *Description:* Creates a 4x4 rotation matrix that rotates from one direction to another.
+* *Parameters:*
+** `+from+` (Vector3): The starting direction.
+** `+to+` (Vector3): The target direction.
+* *Return Value:* A new Matrix4x4 representing the rotation.
+* *Example:*
++
+[source,js]
+----
+let from = Vector3.create(1, 0, 0);
+let to = Vector3.create(0, 1, 0);
+let mat = Matrix4x4.createFromToRotation(from, to);
+----
+
+'''''
+
+==== Matrix4x4.createLookAt()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createLookAt(eye, center, up);
+----
+
+* *Description:* Creates a view matrix for a camera looking at a target point.
+* *Parameters:*
+** `+eye+` (Vector3): The camera position.
+** `+center+` (Vector3): The point the camera is looking at.
+** `+up+` (Vector3): The up direction vector.
+* *Return Value:* A new Matrix4x4 view matrix.
+* *Example:*
++
+[source,js]
+----
+let eye = Vector3.create(0, 5, 10);
+let center = Vector3.create(0, 0, 0);
+let up = Vector3.create(0, 1, 0);
+let viewMatrix = Matrix4x4.createLookAt(eye, center, up);
+----
+
+'''''
+
+==== Matrix4x4.createPerspective()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createPerspective(fovy, aspect, znear, zfar);
+----
+
+* *Description:* Creates a perspective projection matrix (for 3D rendering).
+* *Parameters:*
+** `+fovy+` (number): Field of view angle in the Y direction (in radians).
+** `+aspect+` (number): Aspect ratio (width/height).
+** `+znear+` (number): Near clipping plane distance.
+** `+zfar+` (number): Far clipping plane distance.
+* *Return Value:* A new Matrix4x4 perspective projection matrix.
+* *Example:*
++
+[source,js]
+----
+let projMatrix = Matrix4x4.createPerspective(
+    Math.PI / 3,  // 60° field of view
+    16 / 9,       // 16:9 aspect ratio
+    0.1,          // Near plane
+    1000          // Far plane
+);
+----
+
+'''''
+
+==== Matrix4x4.createOrtho()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createOrtho(left, right, bottom, top, znear, zfar);
+----
+
+* *Description:* Creates an orthographic projection matrix (for 2D rendering or isometric 3D).
+* *Parameters:*
+** `+left+` (number): Left edge of the view volume.
+** `+right+` (number): Right edge of the view volume.
+** `+bottom+` (number): Bottom edge of the view volume.
+** `+top+` (number): Top edge of the view volume.
+** `+znear+` (number): Near clipping plane distance.
+** `+zfar+` (number): Far clipping plane distance.
+* *Return Value:* A new Matrix4x4 orthographic projection matrix.
+* *Example:*
++
+[source,js]
+----
+let orthoMatrix = Matrix4x4.createOrtho(-100, 100, -75, 75, 0.1, 100);
+----
+
+'''''
+
+==== Matrix4x4.createSkewYX()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createSkewYX(angle);
+----
+
+* *Description:* Creates a 4x4 skew matrix that shears Y by X.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix4x4 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix4x4.createSkewYX(Math.PI / 6);
+----
+
+'''''
+
+==== Matrix4x4.createSkewZX()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createSkewZX(angle);
+----
+
+* *Description:* Creates a 4x4 skew matrix that shears Z by X.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix4x4 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix4x4.createSkewZX(Math.PI / 6);
+----
+
+'''''
+
+==== Matrix4x4.createSkewXY()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createSkewXY(angle);
+----
+
+* *Description:* Creates a 4x4 skew matrix that shears X by Y.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix4x4 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix4x4.createSkewXY(Math.PI / 6);
+----
+
+'''''
+
+==== Matrix4x4.createSkewZY()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createSkewZY(angle);
+----
+
+* *Description:* Creates a 4x4 skew matrix that shears Z by Y.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix4x4 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix4x4.createSkewZY(Math.PI / 6);
+----
+
+'''''
+
+==== Matrix4x4.createSkewXZ()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createSkewXZ(angle);
+----
+
+* *Description:* Creates a 4x4 skew matrix that shears X by Z.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix4x4 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix4x4.createSkewXZ(Math.PI / 6);
+----
+
+'''''
+
+==== Matrix4x4.createSkewYZ()
+
+*Usage:*
+
+[source,js]
+----
+let mat = Matrix4x4.createSkewYZ(angle);
+----
+
+* *Description:* Creates a 4x4 skew matrix that shears Y by Z.
+* *Parameters:*
+** `+angle+` (number): The skew angle in radians.
+* *Return Value:* A new Matrix4x4 representing the skew transformation.
+* *Example:*
++
+[source,js]
+----
+let mat = Matrix4x4.createSkewYZ(Math.PI / 6);
 ----
 
 '''''

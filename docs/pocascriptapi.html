@@ -570,6 +570,14 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_global_quaternion_object">Global Quaternion Object</a>
 <ul class="sectlevel3">
 <li><a href="#_quaternion_create">Quaternion.create()</a></li>
+<li><a href="#_quaternion_createfromangleaxis">Quaternion.createFromAngleAxis()</a></li>
+<li><a href="#_quaternion_createfromeuler">Quaternion.createFromEuler()</a></li>
+<li><a href="#_quaternion_createfromtorotation">Quaternion.createFromToRotation()</a></li>
+<li><a href="#_quaternion_createfromlookrotation">Quaternion.createFromLookRotation()</a></li>
+<li><a href="#_quaternion_createfromscaledangleaxis">Quaternion.createFromScaledAngleAxis()</a></li>
+<li><a href="#_quaternion_createfromangularvelocity">Quaternion.createFromAngularVelocity()</a></li>
+<li><a href="#_quaternion_createfromcols">Quaternion.createFromCols()</a></li>
+<li><a href="#_quaternion_createfromxy">Quaternion.createFromXY()</a></li>
 </ul>
 </li>
 <li><a href="#_quaternion_properties">Quaternion Properties</a></li>
@@ -593,6 +601,21 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_equal_3">equal()</a></li>
 <li><a href="#_notequal_3">notEqual()</a></li>
 <li><a href="#_tostring_4">toString()</a></li>
+<li><a href="#_toeuler">toEuler()</a></li>
+<li><a href="#_topitch">toPitch()</a></li>
+<li><a href="#_toyaw">toYaw()</a></li>
+<li><a href="#_toroll">toRoll()</a></li>
+<li><a href="#_toangleaxis">toAngleAxis()</a></li>
+<li><a href="#_toscaledangleaxis">toScaledAngleAxis()</a></li>
+<li><a href="#_approximatedslerp">approximatedSlerp()</a></li>
+<li><a href="#_elerp">elerp()</a></li>
+<li><a href="#_unflippedslerp">unflippedSlerp()</a></li>
+<li><a href="#_unflippedapproximatedslerp">unflippedApproximatedSlerp()</a></li>
+<li><a href="#_unflippedsqlerp">unflippedSqlerp()</a></li>
+<li><a href="#_anglebetween">angleBetween()</a></li>
+<li><a href="#_between">between()</a></li>
+<li><a href="#_integrate">integrate()</a></li>
+<li><a href="#_spin">spin()</a></li>
 </ul>
 </li>
 <li><a href="#_quaternion_operator_overloading">Quaternion Operator Overloading</a></li>
@@ -604,6 +627,23 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_global_matrix3x3_object">Global Matrix3x3 Object</a>
 <ul class="sectlevel3">
 <li><a href="#_matrix3x3_create">Matrix3x3.create()</a></li>
+<li><a href="#_matrix3x3_createrotatex">Matrix3x3.createRotateX()</a></li>
+<li><a href="#_matrix3x3_createrotatey">Matrix3x3.createRotateY()</a></li>
+<li><a href="#_matrix3x3_createrotatez">Matrix3x3.createRotateZ()</a></li>
+<li><a href="#_matrix3x3_createrotate">Matrix3x3.createRotate()</a></li>
+<li><a href="#_matrix3x3_createscale">Matrix3x3.createScale()</a></li>
+<li><a href="#_matrix3x3_createtranslation">Matrix3x3.createTranslation()</a></li>
+<li><a href="#_matrix3x3_createfromquaternion">Matrix3x3.createFromQuaternion()</a></li>
+<li><a href="#_matrix3x3_createfromqtangent">Matrix3x3.createFromQTangent()</a></li>
+<li><a href="#_matrix3x3_createfromtorotation">Matrix3x3.createFromToRotation()</a></li>
+<li><a href="#_matrix3x3_createconstructforwardup">Matrix3x3.createConstructForwardUp()</a></li>
+<li><a href="#_matrix3x3_createouterproduct">Matrix3x3.createOuterProduct()</a></li>
+<li><a href="#_matrix3x3_createskewyx">Matrix3x3.createSkewYX()</a></li>
+<li><a href="#_matrix3x3_createskewzx">Matrix3x3.createSkewZX()</a></li>
+<li><a href="#_matrix3x3_createskewxy">Matrix3x3.createSkewXY()</a></li>
+<li><a href="#_matrix3x3_createskewzy">Matrix3x3.createSkewZY()</a></li>
+<li><a href="#_matrix3x3_createskewxz">Matrix3x3.createSkewXZ()</a></li>
+<li><a href="#_matrix3x3_createskewyz">Matrix3x3.createSkewYZ()</a></li>
 </ul>
 </li>
 <li><a href="#_matrix3x3_properties">Matrix3x3 Properties</a></li>
@@ -619,7 +659,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_lerp_4">lerp()</a></li>
 <li><a href="#_nlerp_4">nlerp()</a></li>
 <li><a href="#_slerp_4">slerp()</a></li>
-<li><a href="#_elerp">elerp()</a></li>
+<li><a href="#_elerp_2">elerp()</a></li>
 <li><a href="#_sqlerp_4">sqlerp()</a></li>
 <li><a href="#_equal_4">equal()</a></li>
 <li><a href="#_notequal_4">notEqual()</a></li>
@@ -635,6 +675,25 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_global_matrix4x4_object">Global Matrix4x4 Object</a>
 <ul class="sectlevel3">
 <li><a href="#_matrix4x4_create">Matrix4x4.create()</a></li>
+<li><a href="#_matrix4x4_createrotatex">Matrix4x4.createRotateX()</a></li>
+<li><a href="#_matrix4x4_createrotatey">Matrix4x4.createRotateY()</a></li>
+<li><a href="#_matrix4x4_createrotatez">Matrix4x4.createRotateZ()</a></li>
+<li><a href="#_matrix4x4_createrotate">Matrix4x4.createRotate()</a></li>
+<li><a href="#_matrix4x4_createrotation">Matrix4x4.createRotation()</a></li>
+<li><a href="#_matrix4x4_createscale">Matrix4x4.createScale()</a></li>
+<li><a href="#_matrix4x4_createtranslation">Matrix4x4.createTranslation()</a></li>
+<li><a href="#_matrix4x4_createtranslated">Matrix4x4.createTranslated()</a></li>
+<li><a href="#_matrix4x4_createfromquaternion">Matrix4x4.createFromQuaternion()</a></li>
+<li><a href="#_matrix4x4_createfromtorotation">Matrix4x4.createFromToRotation()</a></li>
+<li><a href="#_matrix4x4_createlookat">Matrix4x4.createLookAt()</a></li>
+<li><a href="#_matrix4x4_createperspective">Matrix4x4.createPerspective()</a></li>
+<li><a href="#_matrix4x4_createortho">Matrix4x4.createOrtho()</a></li>
+<li><a href="#_matrix4x4_createskewyx">Matrix4x4.createSkewYX()</a></li>
+<li><a href="#_matrix4x4_createskewzx">Matrix4x4.createSkewZX()</a></li>
+<li><a href="#_matrix4x4_createskewxy">Matrix4x4.createSkewXY()</a></li>
+<li><a href="#_matrix4x4_createskewzy">Matrix4x4.createSkewZY()</a></li>
+<li><a href="#_matrix4x4_createskewxz">Matrix4x4.createSkewXZ()</a></li>
+<li><a href="#_matrix4x4_createskewyz">Matrix4x4.createSkewYZ()</a></li>
 </ul>
 </li>
 <li><a href="#_matrix4x4_properties">Matrix4x4 Properties</a></li>
@@ -650,7 +709,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_lerp_5">lerp()</a></li>
 <li><a href="#_nlerp_5">nlerp()</a></li>
 <li><a href="#_slerp_5">slerp()</a></li>
-<li><a href="#_elerp_2">elerp()</a></li>
+<li><a href="#_elerp_3">elerp()</a></li>
 <li><a href="#_sqlerp_5">sqlerp()</a></li>
 <li><a href="#_equal_5">equal()</a></li>
 <li><a href="#_notequal_5">notEqual()</a></li>
@@ -3649,6 +3708,368 @@ puts(color.toString()); // Outputs something like "(1, 0, 0, 1)"</code></pre>
 </div>
 <hr>
 </div>
+<div class="sect3">
+<h4 id="_quaternion_createfromangleaxis">Quaternion.createFromAngleAxis()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromAngleAxis(angle, axis);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a quaternion from an angle and a rotation axis.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The rotation angle in radians.</p>
+</li>
+<li>
+<p><code>axis</code> (Vector3): The axis of rotation (should be normalized).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Quaternion representing the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let axis = Vector3.create(0, 1, 0); // Y-axis
+let quat = Quaternion.createFromAngleAxis(Math.PI / 2, axis); // 90° rotation around Y</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_quaternion_createfromeuler">Quaternion.createFromEuler()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromEuler(pitch, yaw, roll);
+let quat = Quaternion.createFromEuler(eulerAngles);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a quaternion from Euler angles (pitch, yaw, roll).</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>pitch</code> (number): Rotation around X-axis in radians.</p>
+</li>
+<li>
+<p><code>yaw</code> (number): Rotation around Y-axis in radians.</p>
+</li>
+<li>
+<p><code>roll</code> (number): Rotation around Z-axis in radians.</p>
+</li>
+<li>
+<p><code>eulerAngles</code> (Vector3): A Vector3 containing (pitch, yaw, roll).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Quaternion representing the Euler rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat1 = Quaternion.createFromEuler(0, Math.PI / 4, 0); // 45° yaw
+let angles = Vector3.create(0, Math.PI / 4, 0);
+let quat2 = Quaternion.createFromEuler(angles);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_quaternion_createfromtorotation">Quaternion.createFromToRotation()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromToRotation(fromDirection, toDirection);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a quaternion representing the rotation from one direction vector to another.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>fromDirection</code> (Vector3): The starting direction vector.</p>
+</li>
+<li>
+<p><code>toDirection</code> (Vector3): The target direction vector.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Quaternion representing the rotation between the two directions.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let from = Vector3.create(1, 0, 0); // Forward
+let to = Vector3.create(0, 0, 1);   // Right
+let quat = Quaternion.createFromToRotation(from, to);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_quaternion_createfromlookrotation">Quaternion.createFromLookRotation()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromLookRotation(forward, up);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a quaternion that rotates to look in a specific direction with a given up vector.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>forward</code> (Vector3): The forward direction vector.</p>
+</li>
+<li>
+<p><code>up</code> (Vector3): The up direction vector.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Quaternion representing the look rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let forward = Vector3.create(0, 0, -1);
+let up = Vector3.create(0, 1, 0);
+let quat = Quaternion.createFromLookRotation(forward, up);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_quaternion_createfromscaledangleaxis">Quaternion.createFromScaledAngleAxis()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromScaledAngleAxis(scaledAxis);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a quaternion from a scaled angle-axis representation where the magnitude of the vector is the angle.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>scaledAxis</code> (Vector3): A vector whose direction is the axis and magnitude is the angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Quaternion.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let scaledAxis = Vector3.create(0, Math.PI / 2, 0); // 90° around Y-axis
+let quat = Quaternion.createFromScaledAngleAxis(scaledAxis);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_quaternion_createfromangularvelocity">Quaternion.createFromAngularVelocity()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromAngularVelocity(angularVelocity);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a quaternion from an angular velocity vector (used in physics simulations).</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angularVelocity</code> (Vector3): The angular velocity vector.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Quaternion.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let angVel = Vector3.create(0, 1, 0);
+let quat = Quaternion.createFromAngularVelocity(angVel);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_quaternion_createfromcols">Quaternion.createFromCols()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromCols(col0, col1, col2);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a quaternion from three column vectors representing a rotation matrix.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>col0</code> (Vector3): First column of the rotation matrix.</p>
+</li>
+<li>
+<p><code>col1</code> (Vector3): Second column of the rotation matrix.</p>
+</li>
+<li>
+<p><code>col2</code> (Vector3): Third column of the rotation matrix.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Quaternion.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let c0 = Vector3.create(1, 0, 0);
+let c1 = Vector3.create(0, 1, 0);
+let c2 = Vector3.create(0, 0, 1);
+let quat = Quaternion.createFromCols(c0, c1, c2);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_quaternion_createfromxy">Quaternion.createFromXY()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromXY(xAxis, yAxis);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a quaternion from X and Y axis vectors.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>xAxis</code> (Vector3): The X-axis direction.</p>
+</li>
+<li>
+<p><code>yAxis</code> (Vector3): The Y-axis direction.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Quaternion.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let x = Vector3.create(1, 0, 0);
+let y = Vector3.create(0, 1, 0);
+let quat = Quaternion.createFromXY(x, y);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_quaternion_properties">Quaternion Properties</h3>
@@ -4275,6 +4696,621 @@ puts(quat.toString()); // Outputs something like "(0, 0, 0, 1)"</code></pre>
 </div>
 <hr>
 </div>
+<div class="sect3">
+<h4 id="_toeuler">toEuler()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let eulerAngles = quat.toEuler();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Converts the quaternion to Euler angles (pitch, yaw, roll).</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> A Vector3 containing the Euler angles in radians (x=pitch, y=yaw, z=roll).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromEuler(0.1, 0.2, 0.3);
+let euler = quat.toEuler();
+puts("Pitch: " + euler.x + ", Yaw: " + euler.y + ", Roll: " + euler.z);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_topitch">toPitch()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let pitch = quat.toPitch();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Extracts the pitch (rotation around X-axis) from the quaternion.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The pitch angle in radians.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromEuler(0.5, 0, 0);
+let pitch = quat.toPitch(); // Returns ~0.5</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_toyaw">toYaw()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let yaw = quat.toYaw();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Extracts the yaw (rotation around Y-axis) from the quaternion.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The yaw angle in radians.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromEuler(0, 0.5, 0);
+let yaw = quat.toYaw(); // Returns ~0.5</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_toroll">toRoll()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let roll = quat.toRoll();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Extracts the roll (rotation around Z-axis) from the quaternion.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> The roll angle in radians.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromEuler(0, 0, 0.5);
+let roll = quat.toRoll(); // Returns ~0.5</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_toangleaxis">toAngleAxis()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let result = quat.toAngleAxis();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Converts the quaternion to an angle-axis representation.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> A hash object with <code>angle</code> (number) and <code>axis</code> (Vector3) properties.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromAngleAxis(Math.PI / 2, Vector3.create(0, 1, 0));
+let result = quat.toAngleAxis();
+puts("Angle: " + result.angle + ", Axis: " + result.axis.toString());</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_toscaledangleaxis">toScaledAngleAxis()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let scaledAxis = quat.toScaledAngleAxis();</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Converts the quaternion to a scaled angle-axis representation where the vector&#8217;s magnitude is the angle.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong> None.</p>
+</li>
+<li>
+<p><strong>Return Value:</strong> A Vector3 whose direction is the axis and magnitude is the angle in radians.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromAngleAxis(Math.PI / 2, Vector3.create(0, 1, 0));
+let scaledAxis = quat.toScaledAngleAxis();
+puts("Scaled axis: " + scaledAxis.toString());</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_approximatedslerp">approximatedSlerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">quat.approximatedSlerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs a faster approximation of spherical linear interpolation (slerp), modifying this quaternion in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Quaternion): The target quaternion.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+q1.approximatedSlerp(q2, 0.5); // Fast interpolation</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_elerp">elerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">quat.elerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs exponential linear interpolation, modifying this quaternion in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Quaternion): The target quaternion.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+q1.elerp(q2, 0.5); // Exponential interpolation</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_unflippedslerp">unflippedSlerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">quat.unflippedSlerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs spherical linear interpolation without quaternion flipping, modifying this quaternion in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Quaternion): The target quaternion.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+q1.unflippedSlerp(q2, 0.5);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_unflippedapproximatedslerp">unflippedApproximatedSlerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">quat.unflippedApproximatedSlerp(other, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs a faster approximation of spherical linear interpolation without quaternion flipping.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Quaternion): The target quaternion.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+q1.unflippedApproximatedSlerp(q2, 0.5);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_unflippedsqlerp">unflippedSqlerp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">quat.unflippedSqlerp(q1, q2, q3, t);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Performs spherical quadratic interpolation without quaternion flipping, modifying this quaternion in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>q1</code> (Quaternion): First control point.</p>
+</li>
+<li>
+<p><code>q2</code> (Quaternion): Second control point.</p>
+</li>
+<li>
+<p><code>q3</code> (Quaternion): Third control point.</p>
+</li>
+<li>
+<p><code>t</code> (number): The interpolation factor (0.0 to 1.0).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let q0 = Quaternion.create(0, 0, 0, 1);
+let q1 = Quaternion.createFromEuler(0, Math.PI / 4, 0);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+let q3 = Quaternion.createFromEuler(0, Math.PI, 0);
+q0.unflippedSqlerp(q1, q2, q3, 0.5);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_anglebetween">angleBetween()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let angle = quat.angleBetween(other);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Calculates the angle (in radians) between this quaternion and another.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Quaternion): The other quaternion.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The angle between the two quaternions in radians.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+let angle = q1.angleBetween(q2);
+puts("Angle between quaternions: " + angle);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_between">between()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">quat.between(other);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Calculates the quaternion representing the rotation from this quaternion to another, modifying this quaternion in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>other</code> (Quaternion): The target quaternion.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let q1 = Quaternion.create(0, 0, 0, 1);
+let q2 = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+q1.between(q2); // q1 now represents the delta rotation</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_integrate">integrate()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">quat.integrate(omega, deltaTime);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Integrates angular velocity into the quaternion (for physics simulations), modifying this quaternion in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>omega</code> (Vector3): The angular velocity vector.</p>
+</li>
+<li>
+<p><code>deltaTime</code> (number): The time step for integration.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.create(0, 0, 0, 1);
+let angularVelocity = Vector3.create(0, 1, 0); // Rotating around Y-axis
+quat.integrate(angularVelocity, 0.016); // One frame at ~60fps</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_spin">spin()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">quat.spin(omega, deltaTime);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Applies a spin (continuous rotation) to the quaternion based on angular velocity, modifying this quaternion in place.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>omega</code> (Vector3): The angular velocity vector.</p>
+</li>
+<li>
+<p><code>deltaTime</code> (number): The time step for the spin.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> The quaternion itself (for method chaining).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.create(0, 0, 0, 1);
+let angularVelocity = Vector3.create(0, 2, 0); // Fast rotation around Y
+quat.spin(angularVelocity, 0.016);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_quaternion_operator_overloading">Quaternion Operator Overloading</h3>
@@ -4375,6 +5411,726 @@ let rotated = q1 * vec; // Returns rotated Vector3</code></pre>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let identity = Matrix3x3.create(); // Identity matrix</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createrotatex">Matrix3x3.createRotateX()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createRotateX(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 rotation matrix around the X-axis.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The rotation angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createRotateX(Math.PI / 2); // 90° rotation around X</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createrotatey">Matrix3x3.createRotateY()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createRotateY(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 rotation matrix around the Y-axis.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The rotation angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createRotateY(Math.PI / 4); // 45° rotation around Y</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createrotatez">Matrix3x3.createRotateZ()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createRotateZ(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 rotation matrix around the Z-axis.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The rotation angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createRotateZ(Math.PI); // 180° rotation around Z</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createrotate">Matrix3x3.createRotate()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createRotate(angle, axis);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 rotation matrix around an arbitrary axis.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The rotation angle in radians.</p>
+</li>
+<li>
+<p><code>axis</code> (Vector3): The axis of rotation (should be normalized).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let axis = Vector3.create(1, 1, 0).normalize();
+let mat = Matrix3x3.createRotate(Math.PI / 3, axis);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createscale">Matrix3x3.createScale()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createScale(sx, sy, sz);
+let mat = Matrix3x3.createScale(scaleVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 scale matrix.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sx</code> (number): Scale factor for X-axis.</p>
+</li>
+<li>
+<p><code>sy</code> (number): Scale factor for Y-axis.</p>
+</li>
+<li>
+<p><code>sz</code> (number): Scale factor for Z-axis.</p>
+</li>
+<li>
+<p><code>scaleVec</code> (Vector3): A vector containing the scale factors.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the scale transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat1 = Matrix3x3.createScale(2, 3, 1); // Non-uniform scale
+let mat2 = Matrix3x3.createScale(Vector3.create(2, 2, 2)); // Uniform scale</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createtranslation">Matrix3x3.createTranslation()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createTranslation(tx, ty);
+let mat = Matrix3x3.createTranslation(translationVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 translation matrix (for 2D transformations).</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>tx</code> (number): Translation along X-axis.</p>
+</li>
+<li>
+<p><code>ty</code> (number): Translation along Y-axis.</p>
+</li>
+<li>
+<p><code>translationVec</code> (Vector2): A vector containing the translation.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the translation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat1 = Matrix3x3.createTranslation(10, 20);
+let mat2 = Matrix3x3.createTranslation(Vector2.create(10, 20));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createfromquaternion">Matrix3x3.createFromQuaternion()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createFromQuaternion(quat);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 rotation matrix from a quaternion.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>quat</code> (Quaternion): The quaternion to convert.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the same rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+let mat = Matrix3x3.createFromQuaternion(quat);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createfromqtangent">Matrix3x3.createFromQTangent()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createFromQTangent(qtangent);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 matrix from a QTangent (compressed tangent space quaternion).</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>qtangent</code> (Quaternion): The QTangent quaternion.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let qt = Quaternion.create(0.5, 0.5, 0.5, 0.5);
+let mat = Matrix3x3.createFromQTangent(qt);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createfromtorotation">Matrix3x3.createFromToRotation()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createFromToRotation(from, to);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 rotation matrix that rotates from one direction to another.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>from</code> (Vector3): The starting direction.</p>
+</li>
+<li>
+<p><code>to</code> (Vector3): The target direction.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let from = Vector3.create(1, 0, 0);
+let to = Vector3.create(0, 1, 0);
+let mat = Matrix3x3.createFromToRotation(from, to);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createconstructforwardup">Matrix3x3.createConstructForwardUp()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createConstructForwardUp(forward, up);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 orientation matrix from forward and up vectors.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>forward</code> (Vector3): The forward direction.</p>
+</li>
+<li>
+<p><code>up</code> (Vector3): The up direction.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the orientation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let forward = Vector3.create(0, 0, -1);
+let up = Vector3.create(0, 1, 0);
+let mat = Matrix3x3.createConstructForwardUp(forward, up);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createouterproduct">Matrix3x3.createOuterProduct()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createOuterProduct(u, v);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 matrix from the outer product of two vectors.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>u</code> (Vector3): First vector.</p>
+</li>
+<li>
+<p><code>v</code> (Vector3): Second vector.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the outer product (u ⊗ v).</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let u = Vector3.create(1, 0, 0);
+let v = Vector3.create(0, 1, 0);
+let mat = Matrix3x3.createOuterProduct(u, v);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createskewyx">Matrix3x3.createSkewYX()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewYX(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 skew matrix that shears Y by X.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewYX(Math.PI / 6);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createskewzx">Matrix3x3.createSkewZX()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewZX(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 skew matrix that shears Z by X.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewZX(Math.PI / 6);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createskewxy">Matrix3x3.createSkewXY()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewXY(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 skew matrix that shears X by Y.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewXY(Math.PI / 6);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createskewzy">Matrix3x3.createSkewZY()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewZY(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 skew matrix that shears Z by Y.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewZY(Math.PI / 6);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createskewxz">Matrix3x3.createSkewXZ()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewXZ(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 skew matrix that shears X by Z.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewXZ(Math.PI / 6);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix3x3_createskewyz">Matrix3x3.createSkewYZ()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewYZ(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 3x3 skew matrix that shears Y by Z.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix3x3 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix3x3.createSkewYZ(Math.PI / 6);</code></pre>
 </div>
 </div>
 </li>
@@ -4747,7 +6503,7 @@ let transformed = mat1.mul(vec); // Returns transformed Vector3</code></pre>
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_elerp">elerp()</h4>
+<h4 id="_elerp_2">elerp()</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
@@ -5013,6 +6769,841 @@ let alsoTransformed = vec * mat; // Also works</code></pre>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-js" data-lang="js">let identity = Matrix4x4.create(); // Identity matrix</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createrotatex">Matrix4x4.createRotateX()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createRotateX(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 rotation matrix around the X-axis.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The rotation angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createRotateX(Math.PI / 2); // 90° rotation around X</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createrotatey">Matrix4x4.createRotateY()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createRotateY(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 rotation matrix around the Y-axis.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The rotation angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createRotateY(Math.PI / 4); // 45° rotation around Y</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createrotatez">Matrix4x4.createRotateZ()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createRotateZ(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 rotation matrix around the Z-axis.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The rotation angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createRotateZ(Math.PI); // 180° rotation around Z</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createrotate">Matrix4x4.createRotate()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createRotate(angle, axis);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 rotation matrix around an arbitrary axis.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The rotation angle in radians.</p>
+</li>
+<li>
+<p><code>axis</code> (Vector3): The axis of rotation (should be normalized).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let axis = Vector3.create(1, 1, 0).normalize();
+let mat = Matrix4x4.createRotate(Math.PI / 3, axis);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createrotation">Matrix4x4.createRotation()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createRotation(sourceMatrix);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Extracts the rotation part from a 4x4 matrix (removes translation and scale).</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sourceMatrix</code> (Matrix4x4): The source matrix.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 containing only the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let transform = Matrix4x4.createTranslation(10, 20, 30);
+let rotation = Matrix4x4.createRotation(transform);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createscale">Matrix4x4.createScale()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createScale(sx, sy, sz);
+let mat = Matrix4x4.createScale(scaleVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 scale matrix.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sx</code> (number): Scale factor for X-axis.</p>
+</li>
+<li>
+<p><code>sy</code> (number): Scale factor for Y-axis.</p>
+</li>
+<li>
+<p><code>sz</code> (number): Scale factor for Z-axis.</p>
+</li>
+<li>
+<p><code>scaleVec</code> (Vector3 or Vector4): A vector containing the scale factors.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the scale transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat1 = Matrix4x4.createScale(2, 3, 4); // Non-uniform scale
+let mat2 = Matrix4x4.createScale(Vector3.create(2, 2, 2)); // Uniform scale</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createtranslation">Matrix4x4.createTranslation()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createTranslation(tx, ty, tz);
+let mat = Matrix4x4.createTranslation(translationVec);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 translation matrix.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>tx</code> (number): Translation along X-axis.</p>
+</li>
+<li>
+<p><code>ty</code> (number): Translation along Y-axis.</p>
+</li>
+<li>
+<p><code>tz</code> (number): Translation along Z-axis.</p>
+</li>
+<li>
+<p><code>translationVec</code> (Vector3): A vector containing the translation.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the translation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat1 = Matrix4x4.createTranslation(10, 20, 30);
+let mat2 = Matrix4x4.createTranslation(Vector3.create(10, 20, 30));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createtranslated">Matrix4x4.createTranslated()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createTranslated(sourceMatrix, translation);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a translated copy of a matrix.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sourceMatrix</code> (Matrix4x4): The source matrix.</p>
+</li>
+<li>
+<p><code>translation</code> (Vector3): The translation to apply.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 with the translation applied.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let original = Matrix4x4.createRotateY(Math.PI / 4);
+let translated = Matrix4x4.createTranslated(original, Vector3.create(5, 10, 15));</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createfromquaternion">Matrix4x4.createFromQuaternion()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createFromQuaternion(quat);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 rotation matrix from a quaternion.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>quat</code> (Quaternion): The quaternion to convert.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the same rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let quat = Quaternion.createFromEuler(0, Math.PI / 2, 0);
+let mat = Matrix4x4.createFromQuaternion(quat);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createfromtorotation">Matrix4x4.createFromToRotation()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createFromToRotation(from, to);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 rotation matrix that rotates from one direction to another.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>from</code> (Vector3): The starting direction.</p>
+</li>
+<li>
+<p><code>to</code> (Vector3): The target direction.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the rotation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let from = Vector3.create(1, 0, 0);
+let to = Vector3.create(0, 1, 0);
+let mat = Matrix4x4.createFromToRotation(from, to);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createlookat">Matrix4x4.createLookAt()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createLookAt(eye, center, up);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a view matrix for a camera looking at a target point.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>eye</code> (Vector3): The camera position.</p>
+</li>
+<li>
+<p><code>center</code> (Vector3): The point the camera is looking at.</p>
+</li>
+<li>
+<p><code>up</code> (Vector3): The up direction vector.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 view matrix.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let eye = Vector3.create(0, 5, 10);
+let center = Vector3.create(0, 0, 0);
+let up = Vector3.create(0, 1, 0);
+let viewMatrix = Matrix4x4.createLookAt(eye, center, up);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createperspective">Matrix4x4.createPerspective()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createPerspective(fovy, aspect, znear, zfar);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a perspective projection matrix (for 3D rendering).</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>fovy</code> (number): Field of view angle in the Y direction (in radians).</p>
+</li>
+<li>
+<p><code>aspect</code> (number): Aspect ratio (width/height).</p>
+</li>
+<li>
+<p><code>znear</code> (number): Near clipping plane distance.</p>
+</li>
+<li>
+<p><code>zfar</code> (number): Far clipping plane distance.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 perspective projection matrix.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let projMatrix = Matrix4x4.createPerspective(
+    Math.PI / 3,  // 60° field of view
+    16 / 9,       // 16:9 aspect ratio
+    0.1,          // Near plane
+    1000          // Far plane
+);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createortho">Matrix4x4.createOrtho()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createOrtho(left, right, bottom, top, znear, zfar);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates an orthographic projection matrix (for 2D rendering or isometric 3D).</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>left</code> (number): Left edge of the view volume.</p>
+</li>
+<li>
+<p><code>right</code> (number): Right edge of the view volume.</p>
+</li>
+<li>
+<p><code>bottom</code> (number): Bottom edge of the view volume.</p>
+</li>
+<li>
+<p><code>top</code> (number): Top edge of the view volume.</p>
+</li>
+<li>
+<p><code>znear</code> (number): Near clipping plane distance.</p>
+</li>
+<li>
+<p><code>zfar</code> (number): Far clipping plane distance.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 orthographic projection matrix.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let orthoMatrix = Matrix4x4.createOrtho(-100, 100, -75, 75, 0.1, 100);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createskewyx">Matrix4x4.createSkewYX()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewYX(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 skew matrix that shears Y by X.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewYX(Math.PI / 6);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createskewzx">Matrix4x4.createSkewZX()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewZX(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 skew matrix that shears Z by X.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewZX(Math.PI / 6);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createskewxy">Matrix4x4.createSkewXY()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewXY(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 skew matrix that shears X by Y.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewXY(Math.PI / 6);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createskewzy">Matrix4x4.createSkewZY()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewZY(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 skew matrix that shears Z by Y.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewZY(Math.PI / 6);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createskewxz">Matrix4x4.createSkewXZ()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewXZ(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 skew matrix that shears X by Z.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewXZ(Math.PI / 6);</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_matrix4x4_createskewyz">Matrix4x4.createSkewYZ()</h4>
+<div class="paragraph">
+<p><strong>Usage:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewYZ(angle);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Description:</strong> Creates a 4x4 skew matrix that shears Y by Z.</p>
+</li>
+<li>
+<p><strong>Parameters:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>angle</code> (number): The skew angle in radians.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Return Value:</strong> A new Matrix4x4 representing the skew transformation.</p>
+</li>
+<li>
+<p><strong>Example:</strong></p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-js" data-lang="js">let mat = Matrix4x4.createSkewYZ(Math.PI / 6);</code></pre>
 </div>
 </div>
 </li>
@@ -5370,7 +7961,7 @@ let transformed = model.mul(position); // Returns transformed Vector3</code></pr
 <hr>
 </div>
 <div class="sect3">
-<h4 id="_elerp_2">elerp()</h4>
+<h4 id="_elerp_3">elerp()</h4>
 <div class="paragraph">
 <p><strong>Usage:</strong></p>
 </div>
@@ -14043,7 +16634,7 @@ MusicManager.clear();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-30 04:57:27 +0100
+Last updated 2025-11-25 10:42:59 +0100
 </div>
 </div>
 </body>
