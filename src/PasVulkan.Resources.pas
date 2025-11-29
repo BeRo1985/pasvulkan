@@ -1483,7 +1483,7 @@ begin
    end else begin
     if TPasMPInterlocked.CompareExchange(fState,StateProcessing,StateReady)=StateReady then begin
      try
-      fBackgroundLoader.Process(5);
+      fBackgroundLoader.Process(pvApplication.BackgroundResourceLoaderFrameTimeout);
      finally
       TPasMPInterlocked.Write(fState,StateIdle);
      end;
