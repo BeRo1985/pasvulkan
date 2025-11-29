@@ -1479,7 +1479,6 @@ begin
  while not Terminated do begin
   if fEvent.WaitFor(1000)=TWaitResult.wrSignaled then begin
    if Terminated then begin
-    TPasMPInterlocked.Write(fState,StateIdle);
     break;
    end else begin
     if TPasMPInterlocked.CompareExchange(fState,StateProcessing,StateReady)=StateReady then begin
@@ -1546,7 +1545,7 @@ begin
     // Otherwise not working and no resources to finish, then the actual game or application logic can continue in this execution frame
 
     // Indicate that it was not working in this execution frame, so that next execution frame it can try to wake up the background
-    // loader thread again to finish resources. JUst ping-ponging where both the application and the background loader thread get
+    // loader thread again to finish resources. Just ping-ponging where both the application and the background loader thread get
     // some time to run.
     fLastWasWorking:=false;
 
