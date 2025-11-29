@@ -1481,7 +1481,7 @@ begin
    if Terminated then begin
     break;
    end else begin
-    if TPasMPInterlocked.CompareExchange(fState,StateReady,StateProcessing)=StateReady then begin
+    if TPasMPInterlocked.CompareExchange(fState,StateProcessing,StateReady)=StateReady then begin
      try
       fBackgroundLoader.Process(5);
      finally

@@ -12354,7 +12354,7 @@ var Index,Counter,Tries:TpvInt32;
  {$ifend}
 {$ifend}
     OK,Found:boolean;
-    ResourceManagerBusying,DoSkipNextFrameForRendering,ReadyForSwapChainLatency:boolean;
+    DoSkipNextFrameForRendering,ReadyForSwapChainLatency:boolean;
     CurrentJobWorkerThread:TPasMPJobWorkerThread;
     LocalNextScreen:TpvApplicationScreen;
     LocalNextScreenClass:TpvApplicationScreenClass;
@@ -12369,8 +12369,6 @@ begin
  ReadyForSwapChainLatency:=DoSkipNextFrameForRendering or WaitForSwapChainLatency;
 
  ProcessRunnables;
-
- ResourceManagerBusying:=false;
 
  fDoUpdateMainJoystick:=false;
 
