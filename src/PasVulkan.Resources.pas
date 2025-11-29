@@ -74,6 +74,7 @@ uses {$ifdef Windows}
      {$endif}
      SysUtils,
      Classes,
+     syncobjs,
      Math,
      PasMP,
      PasJSON,
@@ -109,6 +110,8 @@ type EpvResource=class(Exception);
        Process,
        JustWait
       );
+
+     TpvResourceBackgroundLoader=class;
 
      IpvResource=interface(IpvReferenceCountedObject)['{AD2C0315-C8AF-4D79-876E-1FA42FB869F9}']
       function GetResource:TpvResource;
@@ -282,6 +285,27 @@ type EpvResource=class(Exception);
        function HasPendingNodes:Boolean;
      end;
 
+     { TpvResourceBackgroundLoaderThread }
+     TpvResourceBackgroundLoaderThread=class(TPasMPThread)
+      public 
+       const StateIdle=0;         // Thread is idle
+             StateReady=1;        // Work is ready and waiting to be processed
+             StateProcessing=2;   // Work is processing
+             StateLocked=3;       // Locked by main thread
+      private
+       fEvent:TPasMPEvent;
+       fResourceManager:TpvResourceManager;
+       fBackgroundLoader:TpvResourceBackgroundLoader;
+       fState:TPasMPUInt32;
+      protected
+       procedure Execute; override;
+      public
+       constructor Create(const aBackgroundLoader:TpvResourceBackgroundLoader); reintroduce;
+       destructor Destroy; override;
+       procedure Shutdown;
+       function SynchronizationPoint:Boolean;
+     end;
+
      { TpvResourceBackgroundLoader }
 
      TpvResourceBackgroundLoader=class
@@ -305,6 +329,7 @@ type EpvResource=class(Exception);
       private
        fResourceManager:TpvResourceManager;
        fPasMPInstance:TPasMP;
+       fBackgroundLoaderThread:TpvResourceBackgroundLoaderThread;
        fEvent:TPasMPEvent;
        fLock:TPasMPSpinLock;
        fCountQueueItems:TPasMPInt32;
@@ -323,6 +348,7 @@ type EpvResource=class(Exception);
        procedure FinalizeQueueItem(const aQueueItem:TQueueItem);
        procedure WaitForResource(const aResource:TpvResource;const aWaitForMode:TpvResourceWaitForMode=TpvResourceWaitForMode.Auto);
        function ProcessIteration(const aStartTime:TpvHighResolutionTime;const aTimeout:TpvInt64):boolean;
+       function HasResourcesToFinish:boolean;
        function Process(const aTimeout:TpvInt64=5):boolean;
        function WaitForResources(const aTimeout:TpvInt64=-1):boolean;
        function GetCountOfQueuedResources:TpvSizeInt;
@@ -412,6 +438,11 @@ type EpvResource=class(Exception);
        function LoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aLoadInBackground:boolean=false;const aParent:TpvResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None):TpvResource;
        function GetResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil):TpvResource;
        function BackgroundLoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aParent:TpvResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None):TpvResource;
+       procedure FreeDelayedToFreeResources;
+       function TryAcquireSynchronizationLock:Boolean;
+       procedure AcquireSynchronizationLock;
+       procedure ReleaseSynchronizationLock;
+       function SynchronizationPoint:Boolean;
        function FinishResources(const aTimeout:TpvInt64=1):boolean;
        function WaitForResources(const aTimeout:TpvInt64=-1):boolean;
        function GetNewUUID:TpvUUID;
@@ -1013,10 +1044,15 @@ begin
 end;
 
 function TpvResource.Load(const aStream:TStream):boolean;
+var ThreadID:TThreadID;
 begin
  result:=fLoaded;
  if not result then begin
-  if GetCurrentThreadID=MainThreadID then begin
+  ThreadID:=GetCurrentThreadID;
+  if (ThreadID=MainThreadID) or
+     (assigned(fResourceManager.fBackgroundLoader) and
+      assigned(fResourceManager.fBackgroundLoader.fBackgroundLoaderThread) and
+      (ThreadID=fResourceManager.fBackgroundLoader.fBackgroundLoaderThread.ThreadID)) then begin
    fAsyncLoadState:=TAsyncLoadState.Done;
   end else begin
    fAsyncLoadState:=TAsyncLoadState.Loading;
@@ -1406,6 +1442,109 @@ begin
  inherited Destroy;
 end;
 
+{ TpvResourceBackgroundLoaderThread }
+
+constructor TpvResourceBackgroundLoaderThread.Create(const aBackgroundLoader:TpvResourceBackgroundLoader);
+begin
+ fBackgroundLoader:=aBackgroundLoader;
+ fResourceManager:=fBackgroundLoader.fResourceManager;
+ fEvent:=TPasMPEvent.Create(nil,false,false,'');
+ fState:=StateIdle;
+ inherited Create(false);
+end;
+
+destructor TpvResourceBackgroundLoaderThread.Destroy;
+begin
+ Shutdown;
+ FreeAndNil(fEvent);
+ inherited Destroy;
+end;
+
+procedure TpvResourceBackgroundLoaderThread.Shutdown;
+begin
+ if not Finished then begin
+  Terminate;
+  while fState<>StateIdle do begin
+   Sleep(1);
+  end;
+  fEvent.SetEvent;
+  WaitFor;
+ end;
+end;
+
+procedure TpvResourceBackgroundLoaderThread.Execute;
+begin
+ while not Terminated do begin
+  if fEvent.WaitFor(1000)=TWaitResult.wrSignaled then begin
+   if Terminated then begin
+    break;
+   end else begin
+    if TPasMPInterlocked.CompareExchange(fState,StateReady,StateProcessing)=StateReady then begin
+     try
+      fBackgroundLoader.Process(5);
+     finally
+      TPasMPInterlocked.Write(fState,StateIdle);
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvResourceBackgroundLoaderThread.SynchronizationPoint:Boolean;
+begin
+
+ // Check if it is still processing from previous spawn
+ case TPasMPInterlocked.Read(fState) of
+
+  StateReady,StateProcessing:begin
+  
+   // Still working and indicate that to the caller
+   result:=true;
+
+  end;
+
+  StateLocked:begin
+
+   // Locked by the main thread
+   result:=false;
+
+  end;
+
+  else begin
+
+   fResourceManager.Process;
+
+   fResourceManager.FreeDelayedToFreeResources;
+
+   // Not working, check if there are resources to finish
+   if (not Terminated) and fBackgroundLoader.HasResourcesToFinish then begin
+
+    // When there are resources to finish, then try to wake up the thread, and if successful, indicate that it is now working, so that
+    // the actual game or application logic can wait for it to finish in this execution frame by skipping its own processing for this
+    // execution frame. This ensures that GPU resources are not used from multiple threads simultaneously at uploading the resources
+    // to the GPU, but while the message event loop is still running in the main thread, so that the application does not hang for
+    // the duration of the resource loading from the prespective of the operating system. Not optimal but better than nothing.
+
+    result:=TPasMPInterlocked.CompareExchange(fState,StateReady,StateIdle)=StateIdle;
+    if result then begin
+     fEvent.SetEvent;
+    end;
+
+   end else begin
+
+    // Otherwise not working and no resources to finish, then the actual game or application logic can continue in this execution frame
+
+    result:=false;
+
+   end;
+
+  end;
+
+ end;
+
+end;
+
 { TpvResourceBackgroundLoader }
 
 constructor TpvResourceBackgroundLoader.Create(const aResourceManager:TpvResourceManager);
@@ -1416,6 +1555,8 @@ begin
  fResourceManager:=aResourceManager;
 
  fPasMPInstance:=TPasMP.Create(1,-1,-1,0,false,true,true,false,TThreadPriority.tpNormal,0,0);
+
+ fBackgroundLoaderThread:=TpvResourceBackgroundLoaderThread.Create(self);
 
  fEvent:=TPasMPEvent.Create(nil,false,false,'');
 
@@ -1451,6 +1592,9 @@ begin
    fRootJob:=nil;
   end;
  end;
+
+ fBackgroundLoaderThread.Shutdown;
+ FreeAndNil(fBackgroundLoaderThread); 
 
  fToProcessQueueItems.Finalize;
 
@@ -1713,9 +1857,10 @@ begin
 
 end;
 
-procedure TpvResourceBackgroundLoader.WaitForResource(const aResource:TpvResource;const aWaitForMode:TpvResourceWaitForMode=TpvResourceWaitForMode.Auto);
+procedure TpvResourceBackgroundLoader.WaitForResource(const aResource:TpvResource;const aWaitForMode:TpvResourceWaitForMode);
 var QueueItem:TQueueItem;
     NeedManualFinalize:boolean;
+    ThreadID:TThreadID;
 begin
 
  fQueueItemResourceMapLock.Acquire;
@@ -1727,8 +1872,11 @@ begin
  
  if assigned(QueueItem) then begin
  
+  ThreadID:=GetCurrentThreadID;
+
   NeedManualFinalize:=(aWaitForMode=TpvResourceWaitForMode.Process) or
-                      ((aWaitForMode=TpvResourceWaitForMode.Auto) and (GetCurrentThreadID=MainThreadID));
+                      ((aWaitForMode=TpvResourceWaitForMode.Auto) and ((ThreadID=MainThreadID) or (assigned(fBackgroundLoaderThread) and (ThreadID=fBackgroundLoaderThread.ThreadID))));
+                      
   if NeedManualFinalize then begin
    // Try to claim finalization responsibility atomically
    if not TPasMPInterlocked.CompareExchange(QueueItem.fAutoFinalizeAfterLoad,false,true) then begin
@@ -1845,6 +1993,32 @@ begin
 
  end;
 
+end;
+
+function TpvResourceBackgroundLoader.HasResourcesToFinish:boolean;
+var Index:TpvSizeInt;
+    QueueItem:TQueueItem;
+    Resource:TpvResource;
+begin
+ result:=false;
+ fQueueItemLock.Acquire;
+ try
+  if fQueueItems.Count>0 then begin
+   for Index:=0 to fQueueItems.Count-1 do begin
+    QueueItem:=fQueueItems.Items[Index];
+    if assigned(QueueItem) then begin
+     Resource:=QueueItem.fResource;
+     if not (Resource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Queued,
+                                          TpvResource.TAsyncLoadState.Loading]) then begin
+      result:=true;
+      break;
+     end;
+    end;
+   end;
+  end;
+ finally
+  fQueueItemLock.Release;
+ end;
 end;
 
 function TpvResourceBackgroundLoader.Process(const aTimeout:TpvInt64=5):boolean;
@@ -2431,7 +2605,7 @@ begin
  result:=LoadResource(aResourceClass,aFileName,aOnFinish,true,aParent,aParallelLoadable);
 end;
 
-function TpvResourceManager.FinishResources(const aTimeout:TpvInt64=1):boolean;
+procedure TpvResourceManager.FreeDelayedToFreeResources;
 var Index:TpvSizeInt;
 begin
  if fDelayedToFreeResources.Count>0 then begin
@@ -2447,6 +2621,42 @@ begin
    fDelayedToFreeResourcesLock.Release;
   end;
  end;
+end;
+
+function TpvResourceManager.TryAcquireSynchronizationLock:Boolean;
+begin
+ result:=assigned(fBackgroundLoader) and
+         assigned(fBackgroundLoader.fBackgroundLoaderThread) and
+         (TPasMPInterlocked.CompareExchange(fBackgroundLoader.fBackgroundLoaderThread.fState,TpvResourceBackgroundLoaderThread.StateLocked,TpvResourceBackgroundLoaderThread.StateIdle)=TpvResourceBackgroundLoaderThread.StateIdle);
+end;
+
+procedure TpvResourceManager.AcquireSynchronizationLock;
+begin
+ if assigned(fBackgroundLoader) and assigned(fBackgroundLoader.fBackgroundLoaderThread) then begin
+  while TPasMPInterlocked.CompareExchange(fBackgroundLoader.fBackgroundLoaderThread.fState,TpvResourceBackgroundLoaderThread.StateLocked,TpvResourceBackgroundLoaderThread.StateIdle)<>TpvResourceBackgroundLoaderThread.StateIdle do begin
+   Sleep(1);
+  end;
+ end;
+end;
+
+procedure TpvResourceManager.ReleaseSynchronizationLock;
+begin
+ if assigned(fBackgroundLoader) and assigned(fBackgroundLoader.fBackgroundLoaderThread) then begin
+  TPasMPInterlocked.CompareExchange(fBackgroundLoader.fBackgroundLoaderThread.fState,TpvResourceBackgroundLoaderThread.StateIdle,TpvResourceBackgroundLoaderThread.StateLocked);
+ end;
+end;
+
+function TpvResourceManager.SynchronizationPoint:Boolean;
+begin
+ if assigned(fBackgroundLoader) and assigned(fBackgroundLoader.fBackgroundLoaderThread) then begin
+  result:=fBackgroundLoader.fBackgroundLoaderThread.SynchronizationPoint;
+ end else begin
+  result:=false;
+ end; 
+end;
+
+function TpvResourceManager.FinishResources(const aTimeout:TpvInt64=1):boolean;
+begin
  result:=fBackgroundLoader.Process(aTimeout);
 end;
 
