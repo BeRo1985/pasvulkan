@@ -1479,6 +1479,7 @@ begin
  while not Terminated do begin
   if fEvent.WaitFor(1000)=TWaitResult.wrSignaled then begin
    if Terminated then begin
+    TPasMPInterlocked.Write(fState,StateIdle);
     break;
    end else begin
     if TPasMPInterlocked.CompareExchange(fState,StateProcessing,StateReady)=StateReady then begin
