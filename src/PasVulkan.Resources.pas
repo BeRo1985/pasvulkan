@@ -297,6 +297,7 @@ type EpvResource=class(Exception);
        fResourceManager:TpvResourceManager;
        fBackgroundLoader:TpvResourceBackgroundLoader;
        fState:TPasMPUInt32;
+       fLastWasWorking:TPasMPBool32;
       protected
        procedure Execute; override;
       public
@@ -1450,6 +1451,7 @@ begin
  fResourceManager:=fBackgroundLoader.fResourceManager;
  fEvent:=TPasMPEvent.Create(nil,false,false,'');
  fState:=StateIdle;
+ fLastWasWorking:=false;
  inherited Create(false);
 end;
 
@@ -1518,7 +1520,7 @@ begin
    fResourceManager.FreeDelayedToFreeResources;
 
    // Not working, check if there are resources to finish
-   if (not Terminated) and fBackgroundLoader.HasResourcesToFinish then begin
+   if (not (Terminated or fLastWasWorking)) and fBackgroundLoader.HasResourcesToFinish then begin
 
     // When there are resources to finish, then try to wake up the thread, and if successful, indicate that it is now working, so that
     // the actual game or application logic can wait for it to finish in this execution frame by skipping its own processing for this
@@ -1528,12 +1530,24 @@ begin
 
     result:=TPasMPInterlocked.CompareExchange(fState,StateReady,StateIdle)=StateIdle;
     if result then begin
+     
+     // Wake up the background loader thread to finish resources
      fEvent.SetEvent;
+
+     // Indicate that it was working in this execution frame so that next execution frame it can continue normal processing 
+     // for one execution frame, so that the application does not hang from the perspective of the user visually.
+     fLastWasWorking:=true; 
+
     end;
 
    end else begin
 
     // Otherwise not working and no resources to finish, then the actual game or application logic can continue in this execution frame
+
+    // Indicate that it was not working in this execution frame, so that next execution frame it can try to wake up the background
+    // loader thread again to finish resources. JUst ping-ponging where both the application and the background loader thread get
+    // some time to run.
+    fLastWasWorking:=false;
 
     result:=false;
 
