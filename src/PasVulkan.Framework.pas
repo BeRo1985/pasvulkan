@@ -8791,18 +8791,18 @@ begin
    fFeatures2KHR.pNext:=@fVulkan12Features;
   end else begin
 
-   if AvailableExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>0 then begin
+   if AvailableExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>=0 then begin
     fDescriptorIndexingFeaturesEXT.pNext:=fFeatures2KHR.pNext;
     fFeatures2KHR.pNext:=@fDescriptorIndexingFeaturesEXT;
    end;
 
-   if AvailableExtensionNames.IndexOf(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)>0 then begin
+   if AvailableExtensionNames.IndexOf(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)>=0 then begin
     fBufferDeviceAddressFeaturesKHR.pNext:=fFeatures2KHR.pNext;
     fFeatures2KHR.pNext:=@fBufferDeviceAddressFeaturesKHR;
    end;
 
    begin
-    if AvailableExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>0 then begin
+    if AvailableExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>=0 then begin
      fHostQueryResetFeaturesEXT.pNext:=fFeatures2KHR.pNext;
      fFeatures2KHR.pNext:=@fHostQueryResetFeaturesEXT;
     end;
@@ -8824,7 +8824,7 @@ begin
    fFeatures2KHR.pNext:=@fVulkan13Features;
   end else begin
 
-   if AvailableExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>0 then begin
+   if AvailableExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>=0 then begin
     fShaderDemoteToHelperInvocationFeaturesEXT.pNext:=fFeatures2KHR.pNext;
     fFeatures2KHR.pNext:=@fShaderDemoteToHelperInvocationFeaturesEXT;
    end;
@@ -8836,7 +8836,7 @@ begin
  begin
   FillChar(fPhysicalDeviceAddressBindingReportFeaturesEXT,SizeOf(TVkPhysicalDeviceAddressBindingReportFeaturesEXT),#0);
   fPhysicalDeviceAddressBindingReportFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ADDRESS_BINDING_REPORT_FEATURES_EXT;
-  if AvailableExtensionNames.IndexOf(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME)>0 then begin
+  if AvailableExtensionNames.IndexOf(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME)>=0 then begin
    fPhysicalDeviceAddressBindingReportFeaturesEXT.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fPhysicalDeviceAddressBindingReportFeaturesEXT;
   end;
@@ -8845,7 +8845,7 @@ begin
  begin
   FillChar(fMultiDrawFeaturesEXT,SizeOf(TVkPhysicalDeviceMultiDrawFeaturesEXT),#0);
   fMultiDrawFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT;
-  if AvailableExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>0 then begin
+  if AvailableExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>=0 then begin
    fMultiDrawFeaturesEXT.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fMultiDrawFeaturesEXT;
   end;
@@ -8854,7 +8854,7 @@ begin
  begin
   FillChar(fFragmentShaderInterlockFeaturesEXT,SizeOf(TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT),#0);
   fFragmentShaderInterlockFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
-  if AvailableExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0 then begin
+  if AvailableExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>=0 then begin
    fFragmentShaderInterlockFeaturesEXT.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fFragmentShaderInterlockFeaturesEXT;
   end;
@@ -8863,7 +8863,7 @@ begin
  begin
   FillChar(fFragmentShaderBarycentricFeaturesKHR,SizeOf(TVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR),#0);
   fFragmentShaderBarycentricFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR;
-  if AvailableExtensionNames.IndexOf(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)>0 then begin
+  if AvailableExtensionNames.IndexOf(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)>=0 then begin
    fFragmentShaderBarycentricFeaturesKHR.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fFragmentShaderBarycentricFeaturesKHR;
   end;
@@ -8872,7 +8872,7 @@ begin
  begin
   FillChar(fMeshShaderFeaturesEXT,SizeOf(TVkPhysicalDeviceMeshShaderFeaturesEXT),#0);
   fMeshShaderFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
-  if AvailableExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>0 then begin
+  if AvailableExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>=0 then begin
    fMeshShaderFeaturesEXT.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fMeshShaderFeaturesEXT;
   end;
@@ -8881,7 +8881,7 @@ begin
  begin
   FillChar(fAccelerationStructureFeaturesKHR,SizeOf(TVkPhysicalDeviceAccelerationStructureFeaturesKHR),#0);
   fAccelerationStructureFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-  if AvailableExtensionNames.IndexOf(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)>0 then begin
+  if AvailableExtensionNames.IndexOf(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)>=0 then begin
    fAccelerationStructureFeaturesKHR.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fAccelerationStructureFeaturesKHR;
   end;
@@ -8890,7 +8890,7 @@ begin
  begin
   FillChar(fRayTracingPipelineFeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingPipelineFeaturesKHR),#0);
   fRayTracingPipelineFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-  if AvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>0 then begin
+  if AvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>=0 then begin
    fRayTracingPipelineFeaturesKHR.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fRayTracingPipelineFeaturesKHR;
   end;
@@ -8899,7 +8899,7 @@ begin
  begin
   FillChar(fRayQueryFeaturesKHR,SizeOf(TVkPhysicalDeviceRayQueryFeaturesKHR),#0);
   fRayQueryFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
-  if AvailableExtensionNames.IndexOf(VK_KHR_RAY_QUERY_EXTENSION_NAME)>0 then begin
+  if AvailableExtensionNames.IndexOf(VK_KHR_RAY_QUERY_EXTENSION_NAME)>=0 then begin
    fRayQueryFeaturesKHR.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fRayQueryFeaturesKHR;
   end;
@@ -8908,7 +8908,7 @@ begin
  begin
   FillChar(fRayTracingMaintenance1FeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR),#0);
   fRayTracingMaintenance1FeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MAINTENANCE_1_FEATURES_KHR;
-  if AvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME)>0 then begin
+  if AvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME)>=0 then begin
    fRayTracingMaintenance1FeaturesKHR.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fRayTracingMaintenance1FeaturesKHR;
   end;
@@ -8917,7 +8917,7 @@ begin
  begin
   FillChar(fPresentIDFeatures,SizeOf(TVkPhysicalDevicePresentIdFeaturesKHR),#0);
   fPresentIDFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
-  if AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>0 then begin
+  if AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>=0 then begin
    fPresentIDFeatures.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fPresentIDFeatures;
   end;
@@ -8926,7 +8926,7 @@ begin
  begin
   FillChar(fPresentWaitFeatures,SizeOf(TVkPhysicalDevicePresentIdFeaturesKHR),#0);
   fPresentWaitFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
-  if AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>0 then begin
+  if AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>=0 then begin
    fPresentWaitFeatures.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fPresentWaitFeatures;
   end;
@@ -11006,7 +11006,7 @@ begin
 
     end;
 
-    if (fEnabledExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>0) and
+    if (fEnabledExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>=0) and
        (PhysicalDevice.fHostQueryResetFeaturesEXT.hostQueryReset<>VK_FALSE) then begin
 
      fHostQueryResetFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
@@ -11071,7 +11071,7 @@ begin
 
    FillChar(fFragmentShaderBarycentricFeaturesKHR,SizeOf(TVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR),#0);
    fFragmentShaderBarycentricFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR;
-   if (fEnabledExtensionNames.IndexOf(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)>0) and
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)>=0) and
       (PhysicalDevice.fFragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE) then begin
     fFragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric:=PhysicalDevice.fFragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric;
     fFragmentShaderBarycentricFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
@@ -11080,7 +11080,7 @@ begin
 
    FillChar(fMeshShaderFeaturesEXT,SizeOf(TVkPhysicalDeviceMeshShaderFeaturesEXT),#0);
    fMeshShaderFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
-   if (fEnabledExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>0) and
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>=0) and
       ((PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE) or
        (PhysicalDevice.MeshShaderFeaturesEXT.meshShader<>VK_FALSE)) then begin
     fMeshShaderFeaturesEXT.taskShader:=PhysicalDevice.fMeshShaderFeaturesEXT.taskShader;
@@ -11094,7 +11094,7 @@ begin
 
    FillChar(fAccelerationStructureFeaturesKHR,SizeOf(TVkPhysicalDeviceAccelerationStructureFeaturesKHR),#0);
    fAccelerationStructureFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-   if (fEnabledExtensionNames.IndexOf(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)>0) and
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)>=0) and
       (PhysicalDevice.fAccelerationStructureFeaturesKHR.accelerationStructure<>VK_FALSE) then begin
     fAccelerationStructureFeaturesKHR.accelerationStructure:=PhysicalDevice.fAccelerationStructureFeaturesKHR.accelerationStructure;
     fAccelerationStructureFeaturesKHR.accelerationStructureCaptureReplay:=PhysicalDevice.fAccelerationStructureFeaturesKHR.accelerationStructureCaptureReplay;
@@ -11107,7 +11107,7 @@ begin
 
    FillChar(fRayTracingPipelineFeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingPipelineFeaturesKHR),#0);
    fRayTracingPipelineFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-   if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>0) and
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>=0) and
       (PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) then begin
     fRayTracingPipelineFeaturesKHR.rayTracingPipeline:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipeline;
     fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplay:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplay;
@@ -11120,7 +11120,7 @@ begin
 
    FillChar(fRayQueryFeaturesKHR,SizeOf(TVkPhysicalDeviceRayQueryFeaturesKHR),#0);
    fRayQueryFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
-   if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_QUERY_EXTENSION_NAME)>0) and
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_QUERY_EXTENSION_NAME)>=0) and
       (PhysicalDevice.fRayQueryFeaturesKHR.rayQuery<>VK_FALSE) then begin
     fRayQueryFeaturesKHR.rayQuery:=PhysicalDevice.fRayQueryFeaturesKHR.rayQuery;
     fRayQueryFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
@@ -11129,7 +11129,7 @@ begin
 
    FillChar(fRayTracingMaintenance1FeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR),#0);
    fRayTracingMaintenance1FeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MAINTENANCE_1_FEATURES_KHR;
-   if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME)>0) and
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME)>=0) and
       (PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1<>VK_FALSE) then begin
     fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1:=PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1;
     fRayTracingMaintenance1FeaturesKHR.rayTracingPipelineTraceRaysIndirect2:=PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingPipelineTraceRaysIndirect2;
@@ -11145,7 +11145,7 @@ begin
 
    FillChar(fPresentIDFeatures,SizeOf(TVkPhysicalDevicePresentIDFeaturesKHR),#0);
    fPresentIDFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
-   if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>0) and
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>=0) and
       (PhysicalDevice.fPresentIDFeatures.presentId<>VK_FALSE) then begin
     fPresentIDFeatures.presentId:=PhysicalDevice.fPresentIDFeatures.presentId;
     fPresentIDFeatures.pNext:=DeviceCreateInfo.pNext;
@@ -11154,7 +11154,7 @@ begin
 
    FillChar(fPresentWaitFeatures,SizeOf(TVkPhysicalDevicePresentWaitFeaturesKHR),#0);
    fPresentWaitFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
-   if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>0) and
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>=0) and
       (PhysicalDevice.fPresentWaitFeatures.presentWait<>VK_FALSE) then begin
     fPresentWaitFeatures.presentWait:=PhysicalDevice.fPresentWaitFeatures.presentWait;
     fPresentWaitFeatures.pNext:=DeviceCreateInfo.pNext;
@@ -11173,7 +11173,7 @@ begin
 
   begin
 
-   fFullScreenExclusiveSupport:=fEnabledExtensionNames.IndexOf(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)>0;
+   fFullScreenExclusiveSupport:=fEnabledExtensionNames.IndexOf(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)>=0;
 
    fPresentIDSupport:=fPresentIDFeatures.presentId<>VK_FALSE;
 
