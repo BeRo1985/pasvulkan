@@ -2839,137 +2839,144 @@ begin
 
  result:=false;
 
- ResultItemArray.Initialize;
+ Stack.Initialize;
  try
 
-  NewStackItem:=Pointer(Stack.PushIndirect);
-  NewStackItem^.NodeID:=fRoot;
-  NewStackItem^.Distance:=ClosestPointToAABB(fNodes[fRoot].AABB,aPoint);
+  ResultItemArray.Initialize;
+  try
 
-  while Stack.Pop(StackItem) do begin
+   NewStackItem:=Pointer(Stack.PushIndirect);
+   NewStackItem^.NodeID:=fRoot;
+   NewStackItem^.Distance:=ClosestPointToAABB(fNodes[fRoot].AABB,aPoint);
 
-   // If this subtree is further away than we care about, or if we've already found enough locations, and the furthest one is closer
-   // than this subtree possibly could be, then skip it.
-   if (StackItem.Distance<=aMaxDistance) and
-      (not ((ResultItemArray.Count=aMaxCount) and (ResultItemArray.Items[ResultItemArray.Count-1].Distance<StackItem.Distance))) then begin
+   while Stack.Pop(StackItem) do begin
 
-    Node:=@fNodes[StackItem.NodeID];
-    if Node^.UserData<>0 then begin
+    // If this subtree is further away than we care about, or if we've already found enough locations, and the furthest one is closer
+    // than this subtree possibly could be, then skip it.
+    if (StackItem.Distance<=aMaxDistance) and
+       (not ((ResultItemArray.Count=aMaxCount) and (ResultItemArray.Items[ResultItemArray.Count-1].Distance<StackItem.Distance))) then begin
 
-     // Add the node to the result list in a sorted way
-     ResultItem.Node:=Node;
-     ResultItem.Distance:=aGetDistance(Node,aPoint);
-     if (ResultItem.Distance>=0.0) and (ResultItem.Distance<=aMaxDistance) then begin
-      
-      if ResultItemArray.Count>0 then begin
+     Node:=@fNodes[StackItem.NodeID];
+     if Node^.UserData<>0 then begin
 
-       // Binary insertion into the sorted list
-       LowIndex:=0;
-       HighIndex:=ResultItemArray.Count-1;
-       while LowIndex<=HighIndex do begin
-        MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
-        if ResultItemArray.Items[MidIndex].Distance<ResultItem.Distance then begin
-         LowIndex:=MidIndex+1;
-        end else begin
-         HighIndex:=MidIndex-1;
+      // Add the node to the result list in a sorted way
+      ResultItem.Node:=Node;
+      ResultItem.Distance:=aGetDistance(Node,aPoint);
+      if (ResultItem.Distance>=0.0) and (ResultItem.Distance<=aMaxDistance) then begin
+
+       if ResultItemArray.Count>0 then begin
+
+        // Binary insertion into the sorted list
+        LowIndex:=0;
+        HighIndex:=ResultItemArray.Count-1;
+        while LowIndex<=HighIndex do begin
+         MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+         if ResultItemArray.Items[MidIndex].Distance<ResultItem.Distance then begin
+          LowIndex:=MidIndex+1;
+         end else begin
+          HighIndex:=MidIndex-1;
+         end;
         end;
-       end;
-       if (LowIndex>=0) and (LowIndex<ResultItemArray.Count) then begin
-        ResultItemArray.Insert(LowIndex,ResultItem);
+        if (LowIndex>=0) and (LowIndex<ResultItemArray.Count) then begin
+         ResultItemArray.Insert(LowIndex,ResultItem);
+        end else begin
+         ResultItemArray.Add(ResultItem);
+        end;
+
        end else begin
+
+        // Add the node to the result list directly if the list is empty
         ResultItemArray.Add(ResultItem);
+
        end;
 
-      end else begin
-
-       // Add the node to the result list directly if the list is empty
-       ResultItemArray.Add(ResultItem);
-
-      end;
-
-{     // Sort the list so that the closest is first for just to be sure. It should just a linear search check, when the binary search based
-      // insertion is working correctly
-      Index:=0;
-      while (Index+1)<ResultItemArray.Count do begin
-       if ResultItemArray.Items[Index].Distance>ResultItemArray.Items[Index+1].Distance then begin
-        ResultItemArray.Exchange(Index,Index+1);
-        if Index>0 then begin
-         dec(Index);
+ {     // Sort the list so that the closest is first for just to be sure. It should just a linear search check, when the binary search based
+       // insertion is working correctly
+       Index:=0;
+       while (Index+1)<ResultItemArray.Count do begin
+        if ResultItemArray.Items[Index].Distance>ResultItemArray.Items[Index+1].Distance then begin
+         ResultItemArray.Exchange(Index,Index+1);
+         if Index>0 then begin
+          dec(Index);
+         end else begin
+          inc(Index);
+         end;
         end else begin
          inc(Index);
         end;
-       end else begin
-        inc(Index);
+       end;//}
+
+       // Maintain the sorted list within the max count
+       while ResultItemArray.Count>aMaxCount do begin
+        ResultItemArray.Delete(ResultItemArray.Count-1);
        end;
-      end;//}
 
-      // Maintain the sorted list within the max count
-      while ResultItemArray.Count>aMaxCount do begin
-       ResultItemArray.Delete(ResultItemArray.Count-1);
+       result:=true;
+
       end;
-
-      result:=true;
 
      end;
 
-    end;
-
-    // Add the children to the stack in the order of the closest one first
-    if Node^.Children[0]>=0 then begin
-     DistanceA:=ClosestPointToAABB(fNodes[Node^.Children[0]].AABB,aPoint);
-     if Node^.Children[1]>=0 then begin
-      DistanceB:=ClosestPointToAABB(fNodes[Node^.Children[1]].AABB,aPoint);
-      if DistanceA<DistanceB then begin
-       if DistanceB<=aMaxDistance then begin
-        NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.NodeID:=Node^.Children[1];
-        NewStackItem^.Distance:=DistanceB;
+     // Add the children to the stack in the order of the closest one first
+     if Node^.Children[0]>=0 then begin
+      DistanceA:=ClosestPointToAABB(fNodes[Node^.Children[0]].AABB,aPoint);
+      if Node^.Children[1]>=0 then begin
+       DistanceB:=ClosestPointToAABB(fNodes[Node^.Children[1]].AABB,aPoint);
+       if DistanceA<DistanceB then begin
+        if DistanceB<=aMaxDistance then begin
+         NewStackItem:=Pointer(Stack.PushIndirect);
+         NewStackItem^.NodeID:=Node^.Children[1];
+         NewStackItem^.Distance:=DistanceB;
+        end;
+        if DistanceA<=aMaxDistance then begin
+         NewStackItem:=Pointer(Stack.PushIndirect);
+         NewStackItem^.NodeID:=Node^.Children[0];
+         NewStackItem^.Distance:=DistanceA;
+        end;
+       end else begin
+        if DistanceA<=aMaxDistance then begin
+         NewStackItem:=Pointer(Stack.PushIndirect);
+         NewStackItem^.NodeID:=Node^.Children[0];
+         NewStackItem^.Distance:=DistanceA;
+        end;
+        if DistanceB<=aMaxDistance then begin
+         NewStackItem:=Pointer(Stack.PushIndirect);
+         NewStackItem^.NodeID:=Node^.Children[1];
+         NewStackItem^.Distance:=DistanceB;
+        end;
        end;
-       if DistanceA<=aMaxDistance then begin
-        NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.NodeID:=Node^.Children[0];
-        NewStackItem^.Distance:=DistanceA;
-       end; 
       end else begin
        if DistanceA<=aMaxDistance then begin
         NewStackItem:=Pointer(Stack.PushIndirect);
         NewStackItem^.NodeID:=Node^.Children[0];
         NewStackItem^.Distance:=DistanceA;
-       end; 
-       if DistanceB<=aMaxDistance then begin
-        NewStackItem:=Pointer(Stack.PushIndirect);
-        NewStackItem^.NodeID:=Node^.Children[1];
-        NewStackItem^.Distance:=DistanceB;
        end;
-      end; 
-     end else begin
-      if DistanceA<=aMaxDistance then begin
+      end;
+     end else if Node^.Children[1]>=0 then begin
+      DistanceB:=ClosestPointToAABB(fNodes[Node^.Children[1]].AABB,aPoint);
+      if DistanceB<=aMaxDistance then begin
        NewStackItem:=Pointer(Stack.PushIndirect);
-       NewStackItem^.NodeID:=Node^.Children[0];
-       NewStackItem^.Distance:=DistanceA;
-      end; 
+       NewStackItem^.NodeID:=Node^.Children[1];
+       NewStackItem^.Distance:=DistanceB;
+      end;
      end;
-    end else if Node^.Children[1]>=0 then begin
-     DistanceB:=ClosestPointToAABB(fNodes[Node^.Children[1]].AABB,aPoint);
-     if DistanceB<=aMaxDistance then begin
-      NewStackItem:=Pointer(Stack.PushIndirect);
-      NewStackItem^.NodeID:=Node^.Children[1];
-      NewStackItem^.Distance:=DistanceB;
-     end;
+
     end;
 
    end;
 
-  end;
+   // Copy the result items to the output list
+   aTreeNodeList.Clear;
+   for Index:=0 to ResultItemArray.Count-1 do begin
+    aTreeNodeList.Add(ResultItemArray.Items[Index].Node);
+   end;
 
-  // Copy the result items to the output list
-  aTreeNodeList.Clear;
-  for Index:=0 to ResultItemArray.Count-1 do begin
-   aTreeNodeList.Add(ResultItemArray.Items[Index].Node);
+  finally
+   ResultItemArray.Finalize;
   end;
 
  finally
-  ResultItemArray.Finalize;
+  Stack.Finalize;
  end;
 
  if fThreadSafe then begin
