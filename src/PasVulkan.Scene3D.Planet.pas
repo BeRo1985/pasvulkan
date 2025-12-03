@@ -4570,7 +4570,6 @@ begin
 
  fAtmosphereMiniMapData:=nil;
 
-
  fPrecipitationAtmosphereMapBuffer:=nil;
 
  fPrecipitationSimulationMapBuffers[0]:=nil;
