@@ -98,7 +98,6 @@ type TCPUIDData=record
 
       PCPUIDData=^TCPUIDData;
 
-
 procedure GetCPUID(Value:TpvUInt32;out Data:TCPUIDData); assembler;
 asm
 {$if defined(cpuamd64) or defined(cpux86_64) or defined(cpux64)}
