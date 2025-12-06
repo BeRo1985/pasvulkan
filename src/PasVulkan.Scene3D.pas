@@ -1824,10 +1824,9 @@ type EpvScene3D=class(Exception);
                 ObjectIndex:TpvUInt32;
                 Flags:TpvUInt32;
                 BoundingSphereIndex:TpvUInt32;
-                Padding0:array[0..3] of TpvUInt32;
                );
                1:(
-                Alignment:array[0..47] of TpvUInt8;
+                Alignment:array[0..31] of TpvUInt8;
                );
             end;
             PGPUDrawIndexedIndirectCommand=^TGPUDrawIndexedIndirectCommand;
@@ -32096,6 +32095,15 @@ begin
                                                                              0,
                                                                              0,
                                                                              [TpvVulkanBufferFlag.PersistentMapped],
+{                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                             0,
+                                                                             0,
+                                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                             0,
+                                                                             0,
+                                                                             0,
+                                                                             0,
+                                                                             [TpvVulkanBufferFlag.PreferDedicatedAllocation],}
                                                                              0,
                                                                              pvAllocationGroupIDScene3DDynamic,
                                                                              'TpvScene3D.GlobalBoundingSphereBuffer['+IntToStr(aInFlightFrameIndex)+']'

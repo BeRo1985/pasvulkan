@@ -28,8 +28,7 @@ struct VkDrawIndexedIndirectCommand {
 struct DrawIndexedIndirectCommand {
   uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
   uvec4 cmd1; // firstInstance_objectIndex_flags_instanceDataIndex; // x = firstInstance, y = objectIndex, z = flags, w = boundingSphereIndex
-  vec4 aabb; // 2D AABB in screen space, xy = min, zw = max
-}; // 48 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
+}; // 32 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
 
 #if PASS == 0
 
@@ -272,8 +271,6 @@ void main(){
 
         if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], uView.views[pushConstants.baseViewIndex + viewIndex].projectionMatrix, aabb, true)){
 
-          screenSpaceAABB = aabb;
-
           vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
 
           float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1)); 
@@ -337,7 +334,6 @@ void main(){
     // Copy only the essential command data to conserve memory bandwidth, omitting unnecessary details like bounding spheres.
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
-    outputDrawIndexedIndirectCommands.commands[destinationIndex].aabb = screenSpaceAABB;
 
   }
 
@@ -351,7 +347,6 @@ void main(){
     // Similarly, copy only the necessary command data, excluding non-essential elements like bounding sphere, to save memory bandwidth.
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
-    outputDrawIndexedIndirectCommands.commands[destinationIndex].aabb = screenSpaceAABB;
 
   }
 
