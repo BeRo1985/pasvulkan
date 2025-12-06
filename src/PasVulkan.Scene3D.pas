@@ -2655,7 +2655,7 @@ type EpvScene3D=class(Exception);
                             fBoundingBoxes:array[-1..MaxInFlightFrames-1] of TpvAABB;
                             fBoundingBoxFilled:array[-1..MaxInFlightFrames-1] of boolean;
                             fBoundingSpheres:TInstanceBoundingSpheres;
-                            fBoundingSphereIndices:array[0..MaxInFlightFrames-1] of TpvUInt32;
+                            fBoundingSphereIndex:TpvUInt32;
                             fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             fCacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             fCacheVerticesGeneration:TpvUInt64;
@@ -3969,9 +3969,9 @@ type EpvScene3D=class(Exception);
        fGlobalRenderInstanceCullDataDynamicArrays:TGlobalRenderInstanceCullDataDynamicArrays;
        fGlobalBoundingSphereDynamicArrays:array[0..MaxInFlightFrames-1] of TpvVector4DynamicArray;
        fGlobalBoundingSphereBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-       fGlobalBoundingSphereCounters:array[0..MaxInFlightFrames-1] of TPasMPUInt32;
-       fGlobalBoundingSphereDynamicArrayLengths:array[0..MaxInFlightFrames-1] of TPasMPUInt32;
-       fGlobalBoundingSphereDynamicArrayLock:TPasMPSlimReaderWriterLock;
+       fGlobalBoundingSphereMaxCounts:array[0..MaxInFlightFrames-1] of TpvUInt32;
+       fGlobalBoundingSphereIndexIDManager:TpvIDManager;
+       fGlobalBoundingSphereIndexIDManagerLock:TPasMPSlimReaderWriterLock;
        fGlobalBoundingSphereVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalBoundingSphereVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalBoundingSphereVulkanDescriptorSets:TGlobalBoundingSphereVulkanDescriptorSets;
@@ -4226,8 +4226,8 @@ type EpvScene3D=class(Exception);
       public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
-       procedure ResetBoundingSphereCounters(const aInFlightFrameIndex:TpvSizeInt);
-       function AllocateBoundingSphereIndex(const aInFlightFrameIndex:TpvSizeInt;const aBoundingSphere:TpvVector4):TpvUInt32;
+       procedure PrepareBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
+       procedure SetBoundingSphere(const aInFlightFrameIndex:TpvSizeInt;const aIndex:TpvUInt32;const aBoundingSphere:TpvVector4); inline;
        procedure UploadBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
        procedure UpdateBoundingSphereDescriptorSets(const aInFlightFrameIndex:TpvSizeInt);
       private
@@ -22120,10 +22120,22 @@ begin
  fGroup:=aGroup;
  fGroupNode:=aGroupNode;
  fGroupInstance:=aGroupInstance;
+ fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManagerLock.Acquire;
+ try
+  fBoundingSphereIndex:=fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManager.AllocateID;
+ finally
+  fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManagerLock.Release;
+ end;
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TNode.Destroy;
 begin
+ fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManagerLock.Acquire;
+ try
+  fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManager.FreeID(fBoundingSphereIndex);
+ finally
+  fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManagerLock.Release;
+ end;
  inherited Destroy;
 end;
 
@@ -27969,7 +27981,8 @@ begin
     InstanceNode:=fNodes.RawItems[Node.Index];
     if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(Node.Mesh) then begin
      InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=TpvSphere.CreateFromAABB(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
-     InstanceNode.fBoundingSphereIndices[aInFlightFrameIndex]:=fSceneInstance.AllocateBoundingSphereIndex(aInFlightFrameIndex,InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4);
+//   fSceneInstance.fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][InstanceNode.fBoundingSphereIndex]:=InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4;
+     fSceneInstance.SetBoundingSphere(aInFlightFrameIndex,InstanceNode.fBoundingSphereIndex,InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4);
     end;
    end;
   end;
@@ -29869,12 +29882,12 @@ begin
                                                               );
    fVulkanDevice.DebugUtils.SetObjectName(fGlobalBoundingSphereBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.GlobalBoundingSphereBuffer['+IntToStr(Index)+']');
   end;
-  fGlobalBoundingSphereCounters[Index]:=0;
-  fGlobalBoundingSphereDynamicArrayLengths[Index]:=0;
 
  end;
 
- fGlobalBoundingSphereDynamicArrayLock:=TPasMPSlimReaderWriterLock.Create;
+ FillChar(fGlobalBoundingSphereMaxCounts,SizeOf(fGlobalBoundingSphereMaxCounts),#0);
+ fGlobalBoundingSphereIndexIDManager:=TpvIDManager.Create;
+ fGlobalBoundingSphereIndexIDManagerLock:=TPasMPSlimReaderWriterLock.Create;
 
  fVulkanDynamicVertexBufferData.Initialize;
  fVulkanStaticVertexBufferData.Initialize;
@@ -31286,7 +31299,8 @@ begin
   FreeAndNil(fGlobalBoundingSphereBuffers[Index]);
  end;
 
- FreeAndNil(fGlobalBoundingSphereDynamicArrayLock);
+ FreeAndNil(fGlobalBoundingSphereIndexIDManagerLock);
+ FreeAndNil(fGlobalBoundingSphereIndexIDManager);
 
  fVkMultiDrawIndexedInfoEXTDynamicArray.Finalize;
 
@@ -32029,54 +32043,30 @@ begin
  end;
 end;
 
-procedure TpvScene3D.ResetBoundingSphereCounters(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.PrepareBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
+var RequiredSize:TpvSizeInt;
 begin
- TPasMPInterlocked.Write(fGlobalBoundingSphereCounters[aInFlightFrameIndex],0);
+ fGlobalBoundingSphereIndexIDManagerLock.Acquire;
+ try
+  fGlobalBoundingSphereMaxCounts[aInFlightFrameIndex]:=fGlobalBoundingSphereIndexIDManager.IDCounter+1;
+ finally
+  fGlobalBoundingSphereIndexIDManagerLock.Release;
+ end;
+ RequiredSize:=fGlobalBoundingSphereMaxCounts[aInFlightFrameIndex]*2;
+ if length(fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex])<RequiredSize then begin
+  SetLength(fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex],RequiredSize);
+ end;
 end;
 
-function TpvScene3D.AllocateBoundingSphereIndex(const aInFlightFrameIndex:TpvSizeInt;const aBoundingSphere:TpvVector4):TpvUInt32;
-var Index,CurrentLength,NewLength:TpvUInt32;
+procedure TpvScene3D.SetBoundingSphere(const aInFlightFrameIndex:TpvSizeInt;const aIndex:TpvUInt32;const aBoundingSphere:TpvVector4);
 begin
- // Atomically allocate an index
- Index:=TPasMPInterlocked.Increment(fGlobalBoundingSphereCounters[aInFlightFrameIndex])-1;
- 
- // Check if we need to resize (lock-free pre-check)
- CurrentLength:=TPasMPInterlocked.Read(fGlobalBoundingSphereDynamicArrayLengths[aInFlightFrameIndex]);
- if CurrentLength<=Index then begin
-
-  // Need to resize - acquire lock
-  fGlobalBoundingSphereDynamicArrayLock.Acquire;
-  try
-
-   // Post-check after acquiring lock (another thread may have resized)
-   CurrentLength:=TPasMPInterlocked.Read(fGlobalBoundingSphereDynamicArrayLengths[aInFlightFrameIndex]);
-   if CurrentLength<=Index then begin
-
-    // Still need to resize
-
-    NewLength:=(Index+1)*2;
-    SetLength(fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex],NewLength);
-    TPasMPInterlocked.Write(fGlobalBoundingSphereDynamicArrayLengths[aInFlightFrameIndex],NewLength);
-
-   end;
-
-  finally
-   fGlobalBoundingSphereDynamicArrayLock.Release;
-  end;
-
- end;
- 
- // Write the bounding sphere (safe now since array is large enough)
- fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][Index]:=aBoundingSphere;
-
- result:=Index;
-
+ fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][aIndex]:=aBoundingSphere;
 end;
 
 procedure TpvScene3D.UploadBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
 var Count:TpvSizeInt;
 begin
- Count:=TPasMPInterlocked.Read(fGlobalBoundingSphereCounters[aInFlightFrameIndex]);
+ Count:=fGlobalBoundingSphereMaxCounts[aInFlightFrameIndex];
  if Count>0 then begin
   if (not assigned(fGlobalBoundingSphereBuffers[aInFlightFrameIndex])) or
      (fGlobalBoundingSphereBuffers[aInFlightFrameIndex].Size<TpvSizeInt(Count*SizeOf(TpvVector4))) then begin
@@ -33185,6 +33175,8 @@ var Index:TpvSizeInt;
     Planet:TpvScene3DPlanet;
 begin
 
+ PrepareBoundingSphereBuffer(aInFlightFrameIndex);
+
  Defragment(false);
 
  ProcessFreeQueue;
@@ -33658,8 +33650,6 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     PartStartCPUTime,PartEndCPUTime,PartCPUTime:TpvHighResolutionTime;
     Update_VirtualInstanceManagerGroups_Data:TpvScene3D_Update_VirtualInstanceManagerGroups_Data;
 begin
-
- ResetBoundingSphereCounters(aInFlightFrameIndex);
 
  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 

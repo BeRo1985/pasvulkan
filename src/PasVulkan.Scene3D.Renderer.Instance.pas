@@ -7225,7 +7225,7 @@ begin
 
         NodeIndex:=TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Index;
 
-        BoundingSphereIndex:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).Nodes[NodeIndex].fBoundingSphereIndices[aInFlightFrameIndex];
+        BoundingSphereIndex:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).Nodes[NodeIndex].fBoundingSphereIndex;
 
         if TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).UseRenderInstances then begin
 
