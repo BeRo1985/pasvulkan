@@ -35506,10 +35506,13 @@ begin
   end;
  end;
 
+//a:=pvApplication.HighResolutionTimer.GetTime;
  TpvScene3DRendererInstance(aRendererInstance).PrepareDraw(aInFlightFrameIndex,
                                                            aRenderPass,
                                                            aMaterialAlphaModes,
                                                            aGPUCulling);
+{b:=pvApplication.HighResolutionTimer.GetTime;
+ writeln('a: ',pvApplication.HighResolutionTimer.ToFloatSeconds(b-a)*1000.0:10:8,'ms');}
 
 end;
 
