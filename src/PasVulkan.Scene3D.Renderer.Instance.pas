@@ -7182,7 +7182,7 @@ var DrawChoreographyBatchItemIndex,DrawChoreographyBatchRangeIndex,InstanceIndex
 //  RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     FirstInstanceID:TpvUInt32;
-    BoundingSphere:PpvSphere;
+    BoundingSphereIndex:TpvUInt32;
 begin
 
  fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPass]:=aGPUCulling;
@@ -7225,7 +7225,7 @@ begin
 
         NodeIndex:=TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Index;
 
-        BoundingSphere:=@TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).Nodes[NodeIndex].BoundingSpheres[aInFlightFrameIndex].Vector4;
+        BoundingSphereIndex:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).Nodes[NodeIndex].fBoundingSphereIndices[aInFlightFrameIndex];
 
         if TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).UseRenderInstances then begin
 
@@ -7245,7 +7245,7 @@ begin
           GPUDrawIndexedIndirectCommand^.ObjectIndex:=TpvScene3D.TGroup.TInstance.TRenderInstance(GlobalRenderInstanceCullDataDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex].RenderInstance).NodeCullObjectIDs[NodeIndex];
           GPUDrawIndexedIndirectCommand^.Flags:=0;
 //        GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=GlobalVulkanInstanceDataIndexDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex];
-          GPUDrawIndexedIndirectCommand^.BoundingSphere:=BoundingSphere^.Vector4;
+          GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
          end;
 
         end else begin
@@ -7259,7 +7259,7 @@ begin
          GPUDrawIndexedIndirectCommand^.ObjectIndex:=DrawChoreographyBatchItem.ObjectIndex;
          GPUDrawIndexedIndirectCommand^.Flags:=0;
 //       GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=0;
-         GPUDrawIndexedIndirectCommand^.BoundingSphere:=BoundingSphere^.Vector4;
+         GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
 
         end;
 
