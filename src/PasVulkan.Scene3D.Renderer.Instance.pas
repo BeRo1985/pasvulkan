@@ -7164,7 +7164,8 @@ procedure TpvScene3DRendererInstance.PrepareDraw(const aInFlightFrameIndex:TpvSi
                                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
                                                  const aGPUCulling:boolean);
 var DrawChoreographyBatchItemIndex,DrawChoreographyBatchRangeIndex,InstanceIndex,NodeIndex,
-    CountInstances,FirstCommand,CountCommands,FirstInstanceCommandIndex:TpvSizeInt;
+    CountInstances,FirstCommand,CountCommands,FirstInstanceCommandIndex,Count,
+    TotalCount:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
@@ -7199,6 +7200,10 @@ begin
 
  DrawChoreographyBatchRangeIndexDynamicArray:=@fDrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,aRenderPass];
 
+ Count:=0;
+
+ TotalCount:=0;
+
  for MaterialAlphaMode in aMaterialAlphaModes do begin
 
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
@@ -7219,6 +7224,8 @@ begin
 
       DrawChoreographyBatchItem:=DrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
       if (DrawChoreographyBatchItem.CountIndices>0) and assigned(DrawChoreographyBatchItem.Node) then begin
+
+       inc(Count);
 
        CountInstances:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPass];
        if CountInstances>0 then begin
@@ -7273,6 +7280,8 @@ begin
 
      if CountCommands>0 then begin
 
+      inc(TotalCount,CountCommands);
+
       DrawChoreographyBatchRangeIndex:=DrawChoreographyBatchRangeDynamicArray^.AddNewIndex;
       try
        DrawChoreographyBatchRangeItem:=@DrawChoreographyBatchRangeDynamicArray.Items[DrawChoreographyBatchRangeIndex];
@@ -7295,6 +7304,8 @@ begin
   end;
 
  end;
+
+ //writeln('PrepareDraw Count: ',Count,' - Total Count: ',TotalCount);
 
 end;
 
