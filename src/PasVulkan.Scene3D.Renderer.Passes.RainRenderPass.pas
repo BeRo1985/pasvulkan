@@ -87,6 +87,7 @@ type { TpvScene3DRendererPassesRainRenderPass }
        fVulkanRenderPass:TpvVulkanRenderPass;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceVelocity:TpvFrameGraph.TPass.TUsedImageResource;
        fPlanetRainStreakRenderPass:TpvScene3DPlanet.TRainStreakRenderPass;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
@@ -142,6 +143,17 @@ begin
                                   TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                                 );
 
+  if fInstance.Renderer.VelocityBufferNeeded then begin
+   fResourceVelocity:=AddImageInput('resourcetype_velocity',
+                                    'resource_velocity_data',
+                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                     TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
+                                   );
+  end else begin
+   fResourceVelocity:=nil;
+  end;
+
  end else begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
@@ -157,6 +169,8 @@ begin
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
                                   TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                                 );
+
+  fResourceVelocity:=nil;
 
  end;
 
