@@ -256,6 +256,8 @@ type { TpvScene3DRendererInstance }
             TVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             { TPrepareDrawRenderInstanceFillTask }
             TPrepareDrawRenderInstanceFillTask=record
+             FromIndex:TpvSizeInt;
+             ToIndex:TpvSizeInt;
              FirstInstanceCommandIndex:TpvSizeInt;
              CountInstances:TpvSizeInt;
              FirstInstanceID:TpvUInt32;
@@ -7254,7 +7256,7 @@ procedure TpvScene3DRendererInstance.PrepareDraw(const aInFlightFrameIndex:TpvSi
                                                  const aGPUCulling:boolean);
 var DrawChoreographyBatchItemIndex,DrawChoreographyBatchRangeIndex,InstanceIndex,NodeIndex,
     CountInstances,FirstCommand,CountCommands,FirstInstanceCommandIndex,Count,
-    TotalCount,TaskIndex:TpvSizeInt;
+    TotalCount,TaskIndex,CurrentIndex:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
@@ -7298,6 +7300,8 @@ begin
 
  TotalCount:=0;
 
+ CurrentIndex:=0;
+
  for MaterialAlphaMode in aMaterialAlphaModes do begin
 
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
@@ -7339,6 +7343,9 @@ begin
          // Record task for parallel fill
          TaskIndex:=fPrepareDrawRenderInstanceFillTasks.AddNewIndex;
          Task:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex];
+         Task^.FromIndex:=CurrentIndex;
+         inc(CurrentIndex,CountInstances);
+         Task^.ToIndex:=CurrentIndex-1;
          Task^.FirstInstanceCommandIndex:=FirstInstanceCommandIndex;
          Task^.CountInstances:=CountInstances;
          Task^.FirstInstanceID:=FirstInstanceID;
