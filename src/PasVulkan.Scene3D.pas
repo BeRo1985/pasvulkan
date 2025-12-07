@@ -2682,6 +2682,7 @@ type EpvScene3D=class(Exception);
                             property GroupInstance:TpvScene3D.TGroup.TInstance read fGroupInstance;
                             property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
                             property CastingShadows:Boolean read fCastingShadows write fCastingShadows;
+                            property BoundingSphereIndex:TpvUInt32 read fBoundingSphereIndex write fBoundingSphereIndex;
                            public
                             property WorkMatrix:TpvMatrix4x4 read fWorkMatrix;
                             property BoundingSpheres:TInstanceBoundingSpheres read fBoundingSpheres;

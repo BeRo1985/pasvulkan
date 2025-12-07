@@ -1,4 +1,4 @@
-(******************************************************************************
+﻿(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.Framework.pas                  *
@@ -7361,7 +7361,7 @@ begin
 
         NodeIndex:=TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Index;
 
-        BoundingSphereIndex:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).Nodes[NodeIndex].fBoundingSphereIndex;
+        BoundingSphereIndex:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).Nodes[NodeIndex].BoundingSphereIndex;
 
         if TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).UseRenderInstances then begin
 
