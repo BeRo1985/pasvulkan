@@ -325,7 +325,7 @@ void main(){
   // Mark as visible in any case, independently of being already added in the previous pass 
   atomicOr(outputVisiblityBuffer.bitmap[pushConstants.visibilityBufferOffset + (cmd1.y >> 5u)], 1u << (cmd1.y & 31u)); 
 
-  // Append to the global üart of the output buffer to ensure the forward+ pass renders all visible elements as much as possible, so that false positive 
+  // Append to the global part of the output buffer to ensure the forward+ pass renders all visible elements as much as possible, so that false positive 
   // occlusion culls are avoided as much as possible.
   {
 
