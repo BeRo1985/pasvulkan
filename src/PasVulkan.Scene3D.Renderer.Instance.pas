@@ -7259,9 +7259,9 @@ begin
       GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.vertexOffset:=0;
       GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=FirstInstanceID+InstanceIndex;
       GPUDrawIndexedIndirectCommand^.ObjectIndex:=TpvScene3D.TGroup.TInstance.TRenderInstance(GlobalRenderInstanceCullDataDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex].RenderInstance).NodeCullObjectIDs[NodeIndex];
+      GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
       GPUDrawIndexedIndirectCommand^.Flags:=0;
     //GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=GlobalVulkanInstanceDataIndexDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex];
-      GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
      end;
 
      inc(Index,ToDo);
@@ -7396,9 +7396,9 @@ begin
          GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.vertexOffset:=0;
          GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=0;
          GPUDrawIndexedIndirectCommand^.ObjectIndex:=DrawChoreographyBatchItem.ObjectIndex;
+         GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
          GPUDrawIndexedIndirectCommand^.Flags:=0;
 //       GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=0;
-         GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
 
         end;
 

@@ -27,7 +27,7 @@ struct VkDrawIndexedIndirectCommand {
 
 struct DrawIndexedIndirectCommand {
   uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
-  uvec4 cmd1; // firstInstance_objectIndex_flags_instanceDataIndex; // x = firstInstance, y = objectIndex, z = flags, w = boundingSphereIndex
+  uvec4 cmd1; // firstInstance_objectIndex_flags_instanceDataIndex; // x = firstInstance, y = objectIndex, z = boundingSphereIndex w = flags
 }; // 32 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
 
 #if PASS == 0
@@ -171,13 +171,13 @@ void main(){
     return; 
   }
 
-  if(((cmd1.z & 2u) | cmd0.w) != 0u){
+  if(((cmd1.w & 2u) | cmd0.w) != 0u){
     // It has instance effects, so it is not a candidate for HiZ depth buffer culling, since it can have holes in the depth buffer through the
     // instance effects, so just pass it through to the next pass as non-added, so that the next pass can handle it properly.
     return;
   }
   
-  inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1.z = (cmd1.z |= 1u); // Mark as added
+  inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1.w = (cmd1.w |= 1u); // Mark as added
 
   uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndex], 1u);
   
@@ -235,7 +235,7 @@ void main(){
 
   const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
 
-  vec4 boundingSphere = boundingSphereBuffer.boundingSpheres[cmd1.w];
+  vec4 boundingSphere = boundingSphereBuffer.boundingSpheres[cmd1.z];
 
   vec4 screenSpaceAABB = vec4(-2.0); // out of screen space, so that it is always culled away 
 
@@ -339,7 +339,7 @@ void main(){
 
   // Manage disocclusion in the output buffer. This step helps optimize depth pre-pass by minimizing depth-buffer overdraw and avoiding redundant rendering 
   // in the depth buffer. This is necessary because a complete depth pre-pass is needed for things like e.g. screen space ambient occlusion and the like.
-  if(((cmd1.z & 1u) == 0u) &&                                                             // Just when not already added in the previous pass to the global output buffer part
+  if(((cmd1.w & 1u) == 0u) &&                                                             // Just when not already added in the previous pass to the global output buffer part
      (pushConstants.baseDrawIndexedIndirectCommandIndexForDisocclusions != 0xffffffffu)){ // Just when enabled
 
     uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndexForDisocclusions + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndexForDisocclusions], 1u);

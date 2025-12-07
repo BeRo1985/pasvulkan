@@ -1822,8 +1822,8 @@ type EpvScene3D=class(Exception);
                0:(
                 DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand;
                 ObjectIndex:TpvUInt32;
-                Flags:TpvUInt32;
                 BoundingSphereIndex:TpvUInt32;
+                Flags:TpvUInt32;
                );
                1:(
                 Alignment:array[0..31] of TpvUInt8;
