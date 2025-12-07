@@ -32041,12 +32041,12 @@ begin
  Count:=fGlobalBoundingSphereMaxCounts[aInFlightFrameIndex];
 
  if (not assigned(fGlobalBoundingSphereBuffers[aInFlightFrameIndex])) or
-    (fGlobalBoundingSphereBuffers[aInFlightFrameIndex].Size<TpvSizeInt(Max(1,Count)*SizeOf(TpvVector4))) then begin
+    (fGlobalBoundingSphereBuffers[aInFlightFrameIndex].Size<TpvSizeInt(Max(65536,Count)*SizeOf(TpvVector4))) then begin
 
   FreeAndNil(fGlobalBoundingSphereBuffers[aInFlightFrameIndex]);
 
   fGlobalBoundingSphereBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                            Max(1,Count)*SizeOf(TpvVector4)*2,
+                                                                            Max(65536,Count)*SizeOf(TpvVector4)*2,
                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                             [],
