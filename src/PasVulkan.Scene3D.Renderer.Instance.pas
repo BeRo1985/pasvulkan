@@ -7298,7 +7298,7 @@ begin
    while Index<=aToIndex do begin
 
     ToDo:=0;
-    while TaskIndex<=CountTasks do begin
+    while TaskIndex<CountTasks do begin
      Task:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex];
      if (Task^.FromIndex<=Index) and (Index<=Task^.ToIndex) then begin
       ToDo:=Min(Remain,(Min(Task^.ToIndex,aToIndex)-Index)+1);
