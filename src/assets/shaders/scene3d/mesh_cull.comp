@@ -27,7 +27,7 @@ struct VkDrawIndexedIndirectCommand {
 
 struct DrawIndexedIndirectCommand {
   uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
-  uvec4 cmd1; // firstInstance_objectIndex_flags_instanceDataIndex; // x = firstInstance, y = objectIndex, z = boundingSphereIndex w = flags
+  uvec4 cmd1; // firstInstance_objectIndex_flags_instanceDataIndex; // x = firstInstance, y = objectIndex, z = boundingSphereIndex, w = flags
 }; // 32 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
 
 #if PASS == 0
