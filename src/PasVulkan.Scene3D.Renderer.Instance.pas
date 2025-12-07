@@ -844,8 +844,6 @@ type { TpvScene3DRendererInstance }
        function GetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32):TpvMatrix4x4D; inline;
        procedure SetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32;const aCameraViewMatrix:TpvMatrix4x4D); inline;
       private
-       procedure PrepareDrawRenderInstanceFillTasksLevel2ParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-       procedure PrepareDrawRenderInstanceFillTasksLevel1ParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
        procedure PrepareDrawRenderInstanceFillTasksParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
@@ -7185,72 +7183,6 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.PrepareDrawRenderInstanceFillTasksLevel2ParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-var InstanceIndex,
-    FirstInstanceCommandIndex,CountIndices,FirstIndex,FirstInstanceID,
-    NodeIndex,BoundingSphereIndex:TPasMPNativeInt;
-    Task:PPrepareDrawRenderInstanceFillTask;
-    GPUDrawIndexedIndirectCommand:TpvScene3D.PGPUDrawIndexedIndirectCommand;
-    GPUDrawIndexedIndirectCommandDynamicArray:TpvScene3D.PGPUDrawIndexedIndirectCommandDynamicArray;
-    GlobalRenderInstanceCullDataDynamicArray:TpvScene3D.PGlobalRenderInstanceCullDataDynamicArray;
-//  GlobalVulkanInstanceDataIndexDynamicArray:TpvScene3D.PGlobalVulkanInstanceDataIndexDynamicArray;
-begin
- Task:=PPrepareDrawRenderInstanceFillTask(aData);
- GPUDrawIndexedIndirectCommandDynamicArray:=@fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[fPrepareDrawRenderInstanceFillTasksInFlightFrameIndex];
- GlobalRenderInstanceCullDataDynamicArray:=@fScene3D.GlobalRenderInstanceCullDataDynamicArrays[fPrepareDrawRenderInstanceFillTasksInFlightFrameIndex];
-//GlobalVulkanInstanceDataIndexDynamicArray:=@fScene3D.GlobalVulkanGPUInstanceDataIndexDynamicArrays[fPrepareDrawRenderInstanceFillTasksInFlightFrameIndex];
- FirstInstanceCommandIndex:=Task^.FirstInstanceCommandIndex;
- CountIndices:=Task^.CountIndices;
- FirstIndex:=Task^.FirstIndex;
- FirstInstanceID:=Task^.FirstInstanceID;
- NodeIndex:=Task^.NodeIndex;
- BoundingSphereIndex:=Task^.BoundingSphereIndex;
- for InstanceIndex:=aFromIndex to aToIndex do begin
-  GPUDrawIndexedIndirectCommand:=@GPUDrawIndexedIndirectCommandDynamicArray^.ItemArray[FirstInstanceCommandIndex+InstanceIndex];
-  GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.indexCount:=CountIndices;
-  GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.instanceCount:=1;
-  GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstIndex:=FirstIndex;
-  GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.vertexOffset:=0;
-  GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=FirstInstanceID+InstanceIndex;
-  GPUDrawIndexedIndirectCommand^.ObjectIndex:=TpvScene3D.TGroup.TInstance.TRenderInstance(GlobalRenderInstanceCullDataDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex].RenderInstance).NodeCullObjectIDs[NodeIndex];
-  GPUDrawIndexedIndirectCommand^.Flags:=0;
-//GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=GlobalVulkanInstanceDataIndexDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex];
-  GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
- end;
-end;
-
-procedure TpvScene3DRendererInstance.PrepareDrawRenderInstanceFillTasksLevel1ParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-var TaskIndex:TPasMPNativeInt;
-    Task:PPrepareDrawRenderInstanceFillTask;
-begin
- for TaskIndex:=aFromIndex to aToIndex do begin
-  Task:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex];
-  if Task^.CountInstances>0 then begin
-   if Task^.CountInstances>=16384 then begin
-    fScene3D.PasMPInstance.Invoke(
-     fScene3D.PasMPInstance.ParallelFor(
-      Task,
-      0,
-      Task^.CountInstances-1,
-      PrepareDrawRenderInstanceFillTasksLevel2ParallelForJobFunction,
-      -4,
-      PasMPDefaultDepth,
-      nil,
-      0,
-      PasMPAreaMaskUpdate,
-      PasMPAreaMaskRender,
-      false,
-      PasMPAffinityMaskUpdateAllowMask,
-      PasMPAffinityMaskUpdateAvoidMask
-     )
-    );
-   end else begin
-    PrepareDrawRenderInstanceFillTasksLevel2ParallelForJobFunction(nil,0,Task,0,Task^.CountInstances-1);
-   end;
-  end;
- end;
-end;
-
 procedure TpvScene3DRendererInstance.PrepareDrawRenderInstanceFillTasksParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var TaskIndex,CountTasks,Index,Remain,ToDo,
     LowIndex,HighIndex,MidIndex,
@@ -7529,29 +7461,6 @@ begin
    PrepareDrawRenderInstanceFillTasksParallelForJobFunction(nil,0,nil,0,CountTotalRenderInstances-1);
   end;
  end;
-{if fPrepareDrawRenderInstanceFillTasks.Count>0 then begin
-  if fPrepareDrawRenderInstanceFillTasks.Count>1 then begin
-   fScene3D.PasMPInstance.Invoke(
-    fScene3D.PasMPInstance.ParallelFor(
-     nil,
-     0,
-     fPrepareDrawRenderInstanceFillTasks.Count-1,
-     PrepareDrawRenderInstanceFillTasksLevel1ParallelForJobFunction,
-     -4,
-     PasMPDefaultDepth,
-     nil,
-     0,
-     PasMPAreaMaskUpdate,
-     PasMPAreaMaskRender,
-     false,
-     PasMPAffinityMaskUpdateAllowMask,
-     PasMPAffinityMaskUpdateAvoidMask
-    )
-   );
-  end else begin
-   PrepareDrawRenderInstanceFillTasksLevel1ParallelForJobFunction(nil,0,nil,0,fPrepareDrawRenderInstanceFillTasks.Count-1);
-  end;
- end;}
 
  //writeln('PrepareDraw Count: ',Count,' - Total Count: ',TotalCount);
 
