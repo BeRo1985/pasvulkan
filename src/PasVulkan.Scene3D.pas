@@ -4227,9 +4227,7 @@ type EpvScene3D=class(Exception);
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure PrepareBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
-       procedure SetBoundingSphere(const aInFlightFrameIndex:TpvSizeInt;const aIndex:TpvUInt32;const aBoundingSphere:TpvVector4); inline;
        procedure UploadBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
-       procedure UpdateBoundingSphereDescriptorSets(const aInFlightFrameIndex:TpvSizeInt);
       private
        procedure CollectLights(var aLightItemArray:TpvScene3D.TLightItems;
                                var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
@@ -27981,8 +27979,7 @@ begin
     InstanceNode:=fNodes.RawItems[Node.Index];
     if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(Node.Mesh) then begin
      InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=TpvSphere.CreateFromAABB(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
-//   fSceneInstance.fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][InstanceNode.fBoundingSphereIndex]:=InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4;
-     fSceneInstance.SetBoundingSphere(aInFlightFrameIndex,InstanceNode.fBoundingSphereIndex,InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4);
+     fSceneInstance.fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][InstanceNode.fBoundingSphereIndex]:=InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4;
     end;
    end;
   end;
@@ -29861,27 +29858,6 @@ begin
 
   fGlobalBoundingSphereDynamicArrays[Index]:=nil;
   fGlobalBoundingSphereBuffers[Index]:=nil;
-  if assigned(fVulkanDevice) then begin
-   fGlobalBoundingSphereBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                               1*SizeOf(TpvVector4),
-                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                               [],
-                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                               0,
-                                                               0,
-                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               [],
-                                                               0,
-                                                               pvAllocationGroupIDScene3DDynamic,
-                                                               'TpvScene3D.GlobalBoundingSphereBuffer['+IntToStr(Index)+']'
-                                                              );
-   fVulkanDevice.DebugUtils.SetObjectName(fGlobalBoundingSphereBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.GlobalBoundingSphereBuffer['+IntToStr(Index)+']');
-  end;
 
  end;
 
@@ -32058,74 +32034,71 @@ begin
  end;
 end;
 
-procedure TpvScene3D.SetBoundingSphere(const aInFlightFrameIndex:TpvSizeInt;const aIndex:TpvUInt32;const aBoundingSphere:TpvVector4);
-begin
- fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][aIndex]:=aBoundingSphere;
-end;
-
 procedure TpvScene3D.UploadBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
 var Count:TpvSizeInt;
 begin
- Count:=fGlobalBoundingSphereMaxCounts[aInFlightFrameIndex];
- if Count>0 then begin
-  if (not assigned(fGlobalBoundingSphereBuffers[aInFlightFrameIndex])) or
-     (fGlobalBoundingSphereBuffers[aInFlightFrameIndex].Size<TpvSizeInt(Count*SizeOf(TpvVector4))) then begin
-   FreeAndNil(fGlobalBoundingSphereBuffers[aInFlightFrameIndex]);
-   fGlobalBoundingSphereBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                             Max(1,Count)*SizeOf(TpvVector4),
-                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                             [],
-                                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             [TpvVulkanBufferFlag.PersistentMapped],
-{                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                             0,
-                                                                             0,
-                                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             0,
-                                                                             [TpvVulkanBufferFlag.PreferDedicatedAllocation],}
-                                                                             0,
-                                                                             pvAllocationGroupIDScene3DDynamic,
-                                                                             'TpvScene3D.GlobalBoundingSphereBuffer['+IntToStr(aInFlightFrameIndex)+']'
-                                                                            );
-   fVulkanDevice.DebugUtils.SetObjectName(fGlobalBoundingSphereBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.GlobalBoundingSphereBuffer['+IntToStr(aInFlightFrameIndex)+']');
-  end;
-  if Count>0 then begin
-   fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
-                                      fVulkanStagingCommandBuffer,
-                                      fVulkanStagingFence,
-                                      fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][0],
-                                      fGlobalBoundingSphereBuffers[aInFlightFrameIndex],
-                                      0,
-                                      Count*SizeOf(TpvVector4));
-  end;
- end;
-end;
 
-procedure TpvScene3D.UpdateBoundingSphereDescriptorSets(const aInFlightFrameIndex:TpvSizeInt);
-begin
- if assigned(fGlobalBoundingSphereBuffers[aInFlightFrameIndex]) then begin
-  fGlobalBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(0,
-                                                                                      0,
-                                                                                      1,
-                                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                                      [],
-                                                                                      [fGlobalBoundingSphereBuffers[aInFlightFrameIndex].DescriptorBufferInfo],
-                                                                                      [],
-                                                                                      false
-                                                                                     );
-  fGlobalBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].Flush;
+ Count:=fGlobalBoundingSphereMaxCounts[aInFlightFrameIndex];
+
+ if (not assigned(fGlobalBoundingSphereBuffers[aInFlightFrameIndex])) or
+    (fGlobalBoundingSphereBuffers[aInFlightFrameIndex].Size<TpvSizeInt(Max(1,Count)*SizeOf(TpvVector4))) then begin
+
+  FreeAndNil(fGlobalBoundingSphereBuffers[aInFlightFrameIndex]);
+
+  fGlobalBoundingSphereBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                            Max(1,Count)*SizeOf(TpvVector4)*2,
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                            [],
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            [TpvVulkanBufferFlag.PersistentMapped],
+{                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                            0,
+                                                                            0,
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            [TpvVulkanBufferFlag.PreferDedicatedAllocation],}
+                                                                            0,
+                                                                            pvAllocationGroupIDScene3DDynamic,
+                                                                            'TpvScene3D.GlobalBoundingSphereBuffer['+IntToStr(aInFlightFrameIndex)+']'
+                                                                           );
+  fVulkanDevice.DebugUtils.SetObjectName(fGlobalBoundingSphereBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.GlobalBoundingSphereBuffer['+IntToStr(aInFlightFrameIndex)+']');
+
+  if assigned(fGlobalBoundingSphereBuffers[aInFlightFrameIndex]) then begin
+   fGlobalBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                                       0,
+                                                                                       1,
+                                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                       [],
+                                                                                       [fGlobalBoundingSphereBuffers[aInFlightFrameIndex].DescriptorBufferInfo],
+                                                                                       [],
+                                                                                       false
+                                                                                      );
+   fGlobalBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].Flush;
+  end;
+
  end;
+
+ if Count>0 then begin
+  fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
+                                     fVulkanStagingCommandBuffer,
+                                     fVulkanStagingFence,
+                                     fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][0],
+                                     fGlobalBoundingSphereBuffers[aInFlightFrameIndex],
+                                     0,
+                                     Count*SizeOf(TpvVector4));
+ end;
+
 end;
 
 procedure TpvScene3D.Upload;
@@ -34650,9 +34623,6 @@ begin
   end;
 
   UploadBoundingSphereBuffer(aInFlightFrameIndex);
-
-  // Update bounding sphere descriptor sets
-  UpdateBoundingSphereDescriptorSets(aInFlightFrameIndex);
 
   begin
    fVulkanLongTermStaticBuffers.Update(aInFlightFrameIndex);
