@@ -7252,10 +7252,13 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.PrepareDrawRenderInstanceFillTasksParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-{$undef TpvScene3DRendererInstancePrepareDrawRenderInstanceFillTasksParallelForJobFunctionBinarySearch}
-var TaskIndex,CountTasks,Index,Remain,ToDo,OffsetedIndex,InstanceIndex,
-    FirstInstanceCommandIndex,CountIndices,FirstIndex,FirstInstanceID,
-    NodeIndex,BoundingSphereIndex:TPasMPNativeInt;
+{$define TpvScene3DRendererInstancePrepareDrawRenderInstanceFillTasksParallelForJobFunctionBinarySearch}
+var TaskIndex,CountTasks,Index,Remain,ToDo,
+{$ifdef TpvScene3DRendererInstancePrepareDrawRenderInstanceFillTasksParallelForJobFunctionBinarySearch}
+    LowIndex,HighIndex,MidIndex,
+{$endif}
+    OffsetedIndex,InstanceIndex,FirstInstanceCommandIndex,CountIndices,
+    FirstIndex,FirstInstanceID,NodeIndex,BoundingSphereIndex:TPasMPNativeInt;
     Task,CandidateTask:PPrepareDrawRenderInstanceFillTask;
     GPUDrawIndexedIndirectCommand:TpvScene3D.PGPUDrawIndexedIndirectCommand;
     GPUDrawIndexedIndirectCommandDynamicArray:TpvScene3D.PGPUDrawIndexedIndirectCommandDynamicArray;
@@ -7286,7 +7289,32 @@ begin
      ToDo:=Min(Remain,(Min(Task^.ToIndex,aToIndex)-Index)+1);
     end else begin
      ToDo:=0;
-     // TODO: Binary search
+     if (TaskIndex+1)<CountTasks then begin
+      CandidateTask:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex+1];
+      if (CandidateTask^.FromIndex<=Index) and (Index<=CandidateTask^.ToIndex) then begin
+       inc(TaskIndex);
+       Task:=CandidateTask;
+       ToDo:=Min(Remain,(Min(Task^.ToIndex,aToIndex)-Index)+1);
+      end;
+     end;
+     if ToDo=0 then begin
+      LowIndex:=TaskIndex;
+      HighIndex:=CountTasks-1;
+      while LowIndex<=HighIndex do begin
+       MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+       CandidateTask:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[MidIndex];
+       if Index<CandidateTask^.FromIndex then begin
+        HighIndex:=MidIndex-1;
+       end else if Index>CandidateTask^.ToIndex then begin
+        LowIndex:=MidIndex+1;
+       end else begin
+        TaskIndex:=MidIndex;
+        Task:=CandidateTask;
+        ToDo:=Min(Remain,(Min(Task^.ToIndex,aToIndex)-Index)+1);
+        break;
+       end;
+      end;
+     end;
     end;
 {$else}
     ToDo:=0;
