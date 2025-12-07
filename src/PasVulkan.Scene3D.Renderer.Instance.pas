@@ -7252,14 +7252,11 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.PrepareDrawRenderInstanceFillTasksParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-{$define TpvScene3DRendererInstancePrepareDrawRenderInstanceFillTasksParallelForJobFunctionBinarySearch}
 var TaskIndex,CountTasks,Index,Remain,ToDo,
-{$ifdef TpvScene3DRendererInstancePrepareDrawRenderInstanceFillTasksParallelForJobFunctionBinarySearch}
     LowIndex,HighIndex,MidIndex,
-{$endif}
     OffsetedIndex,InstanceIndex,FirstInstanceCommandIndex,CountIndices,
     FirstIndex,FirstInstanceID,NodeIndex,BoundingSphereIndex:TPasMPNativeInt;
-    Task,CandidateTask:PPrepareDrawRenderInstanceFillTask;
+    Task:PPrepareDrawRenderInstanceFillTask;
     GPUDrawIndexedIndirectCommand:TpvScene3D.PGPUDrawIndexedIndirectCommand;
     GPUDrawIndexedIndirectCommandDynamicArray:TpvScene3D.PGPUDrawIndexedIndirectCommandDynamicArray;
     GlobalRenderInstanceCullDataDynamicArray:TpvScene3D.PGlobalRenderInstanceCullDataDynamicArray;
@@ -7280,55 +7277,36 @@ begin
    Remain:=(aToIndex-aFromIndex)+1;
 
    TaskIndex:=0;
+
+   LowIndex:=TaskIndex;
+   HighIndex:=CountTasks-1;
+   while LowIndex<=HighIndex do begin
+    MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+    Task:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[MidIndex];
+    if Index<Task^.FromIndex then begin
+     HighIndex:=MidIndex-1;
+    end else if Index>Task^.ToIndex then begin
+     LowIndex:=MidIndex+1;
+    end else begin
+     TaskIndex:=MidIndex;
+     break;
+    end;
+   end;
+
    Task:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex];
 
    while Index<=aToIndex do begin
 
-{$ifdef TpvScene3DRendererInstancePrepareDrawRenderInstanceFillTasksParallelForJobFunctionBinarySearch}
-    if (Task^.FromIndex<=Index) and (Index<=Task^.ToIndex) then begin
-     ToDo:=Min(Remain,(Min(Task^.ToIndex,aToIndex)-Index)+1);
-    end else begin
-     ToDo:=0;
-     if (TaskIndex+1)<CountTasks then begin
-      CandidateTask:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex+1];
-      if (CandidateTask^.FromIndex<=Index) and (Index<=CandidateTask^.ToIndex) then begin
-       inc(TaskIndex);
-       Task:=CandidateTask;
-       ToDo:=Min(Remain,(Min(Task^.ToIndex,aToIndex)-Index)+1);
-      end;
-     end;
-     if ToDo=0 then begin
-      LowIndex:=TaskIndex;
-      HighIndex:=CountTasks-1;
-      while LowIndex<=HighIndex do begin
-       MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
-       CandidateTask:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[MidIndex];
-       if Index<CandidateTask^.FromIndex then begin
-        HighIndex:=MidIndex-1;
-       end else if Index>CandidateTask^.ToIndex then begin
-        LowIndex:=MidIndex+1;
-       end else begin
-        TaskIndex:=MidIndex;
-        Task:=CandidateTask;
-        ToDo:=Min(Remain,(Min(Task^.ToIndex,aToIndex)-Index)+1);
-        break;
-       end;
-      end;
-     end;
-    end;
-{$else}
     ToDo:=0;
     while TaskIndex<=CountTasks do begin
-     CandidateTask:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex];
-     if (CandidateTask^.FromIndex<=Index) and (Index<=CandidateTask^.ToIndex) then begin
-      Task:=CandidateTask;
+     Task:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex];
+     if (Task^.FromIndex<=Index) and (Index<=Task^.ToIndex) then begin
       ToDo:=Min(Remain,(Min(Task^.ToIndex,aToIndex)-Index)+1);
       break;
      end else begin
       inc(TaskIndex);
      end;
     end;
-{$endif}
 
     if ToDo>0 then begin
 
