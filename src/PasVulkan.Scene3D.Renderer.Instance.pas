@@ -846,6 +846,7 @@ type { TpvScene3DRendererInstance }
       private
        procedure PrepareDrawRenderInstanceFillTasksLevel2ParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
        procedure PrepareDrawRenderInstanceFillTasksLevel1ParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure PrepareDrawRenderInstanceFillTasksParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
        destructor Destroy; override;
@@ -7250,13 +7251,105 @@ begin
  end;
 end;
 
+procedure TpvScene3DRendererInstance.PrepareDrawRenderInstanceFillTasksParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+{$undef TpvScene3DRendererInstancePrepareDrawRenderInstanceFillTasksParallelForJobFunctionBinarySearch}
+var TaskIndex,CountTasks,Index,Remain,ToDo,OffsetedIndex,InstanceIndex,
+    FirstInstanceCommandIndex,CountIndices,FirstIndex,FirstInstanceID,
+    NodeIndex,BoundingSphereIndex:TPasMPNativeInt;
+    Task,CandidateTask:PPrepareDrawRenderInstanceFillTask;
+    GPUDrawIndexedIndirectCommand:TpvScene3D.PGPUDrawIndexedIndirectCommand;
+    GPUDrawIndexedIndirectCommandDynamicArray:TpvScene3D.PGPUDrawIndexedIndirectCommandDynamicArray;
+    GlobalRenderInstanceCullDataDynamicArray:TpvScene3D.PGlobalRenderInstanceCullDataDynamicArray;
+//  GlobalVulkanInstanceDataIndexDynamicArray:TpvScene3D.PGlobalVulkanInstanceDataIndexDynamicArray;
+begin
+
+ if aFromIndex<=aToIndex then begin
+
+  CountTasks:=fPrepareDrawRenderInstanceFillTasks.Count;
+  if CountTasks>0 then begin
+
+   GPUDrawIndexedIndirectCommandDynamicArray:=@fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[fPrepareDrawRenderInstanceFillTasksInFlightFrameIndex];
+   GlobalRenderInstanceCullDataDynamicArray:=@fScene3D.GlobalRenderInstanceCullDataDynamicArrays[fPrepareDrawRenderInstanceFillTasksInFlightFrameIndex];
+ //GlobalVulkanInstanceDataIndexDynamicArray:=@fScene3D.GlobalVulkanGPUInstanceDataIndexDynamicArrays[fPrepareDrawRenderInstanceFillTasksInFlightFrameIndex];
+
+   Index:=aFromIndex;
+
+   Remain:=(aToIndex-aFromIndex)+1;
+
+   TaskIndex:=0;
+   Task:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex];
+
+   while Index<=aToIndex do begin
+
+{$ifdef TpvScene3DRendererInstancePrepareDrawRenderInstanceFillTasksParallelForJobFunctionBinarySearch}
+    if (Task^.FromIndex<=Index) and (Index<=Task^.ToIndex) then begin
+     ToDo:=Min(Remain,(Min(Task^.ToIndex,aToIndex)-Index)+1);
+    end else begin
+     ToDo:=0;
+     // TODO: Binary search
+    end;
+{$else}
+    ToDo:=0;
+    while TaskIndex<=CountTasks do begin
+     CandidateTask:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex];
+     if (CandidateTask^.FromIndex<=Index) and (Index<=CandidateTask^.ToIndex) then begin
+      Task:=CandidateTask;
+      ToDo:=Min(Remain,(Min(Task^.ToIndex,aToIndex)-Index)+1);
+      break;
+     end else begin
+      inc(TaskIndex);
+     end;
+    end;
+{$endif}
+
+    if ToDo>0 then begin
+
+     OffsetedIndex:=Index-Task^.FromIndex;
+
+     FirstInstanceCommandIndex:=Task^.FirstInstanceCommandIndex;
+     CountIndices:=Task^.CountIndices;
+     FirstIndex:=Task^.FirstIndex;
+     FirstInstanceID:=Task^.FirstInstanceID;
+     NodeIndex:=Task^.NodeIndex;
+     BoundingSphereIndex:=Task^.BoundingSphereIndex;
+
+     for InstanceIndex:=OffsetedIndex to (OffsetedIndex+ToDo)-1 do begin
+      GPUDrawIndexedIndirectCommand:=@GPUDrawIndexedIndirectCommandDynamicArray^.ItemArray[FirstInstanceCommandIndex+InstanceIndex];
+      GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.indexCount:=CountIndices;
+      GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.instanceCount:=1;
+      GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstIndex:=FirstIndex;
+      GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.vertexOffset:=0;
+      GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=FirstInstanceID+InstanceIndex;
+      GPUDrawIndexedIndirectCommand^.ObjectIndex:=TpvScene3D.TGroup.TInstance.TRenderInstance(GlobalRenderInstanceCullDataDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex].RenderInstance).NodeCullObjectIDs[NodeIndex];
+      GPUDrawIndexedIndirectCommand^.Flags:=0;
+    //GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=GlobalVulkanInstanceDataIndexDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex];
+      GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
+     end;
+
+     inc(Index,ToDo);
+     dec(Remain,ToDo);
+
+    end else begin
+
+     break;
+
+    end;
+
+   end;
+
+  end;
+
+ end;
+
+end;
+
 procedure TpvScene3DRendererInstance.PrepareDraw(const aInFlightFrameIndex:TpvSizeInt;
                                                  const aRenderPass:TpvScene3DRendererRenderPass;
                                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
                                                  const aGPUCulling:boolean);
 var DrawChoreographyBatchItemIndex,DrawChoreographyBatchRangeIndex,InstanceIndex,NodeIndex,
     CountInstances,FirstCommand,CountCommands,FirstInstanceCommandIndex,Count,
-    TotalCount,TaskIndex,CurrentIndex:TpvSizeInt;
+    TotalCount,TaskIndex,CountTotalRenderInstances:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
@@ -7300,7 +7393,7 @@ begin
 
  TotalCount:=0;
 
- CurrentIndex:=0;
+ CountTotalRenderInstances:=0;
 
  for MaterialAlphaMode in aMaterialAlphaModes do begin
 
@@ -7343,9 +7436,8 @@ begin
          // Record task for parallel fill
          TaskIndex:=fPrepareDrawRenderInstanceFillTasks.AddNewIndex;
          Task:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex];
-         Task^.FromIndex:=CurrentIndex;
-         inc(CurrentIndex,CountInstances);
-         Task^.ToIndex:=CurrentIndex-1;
+         Task^.FromIndex:=CountTotalRenderInstances;
+         Task^.ToIndex:=(CountTotalRenderInstances+CountInstances)-1;
          Task^.FirstInstanceCommandIndex:=FirstInstanceCommandIndex;
          Task^.CountInstances:=CountInstances;
          Task^.FirstInstanceID:=FirstInstanceID;
@@ -7354,6 +7446,8 @@ begin
          Task^.FirstIndex:=DrawChoreographyBatchItem.StartIndex;
          Task^.BoundingSphereIndex:=BoundingSphereIndex;
          Task^.GroupInstance:=GroupInstance;
+
+         inc(CountTotalRenderInstances,CountInstances);
 
         end else begin
 
@@ -7406,7 +7500,30 @@ begin
  end;
 
  // Fill render instance tasks
- if fPrepareDrawRenderInstanceFillTasks.Count>0 then begin
+ if CountTotalRenderInstances>0 then begin
+  if CountTotalRenderInstances>128 then begin
+   fScene3D.PasMPInstance.Invoke(
+    fScene3D.PasMPInstance.ParallelFor(
+     nil,
+     0,
+     CountTotalRenderInstances-1,
+     PrepareDrawRenderInstanceFillTasksParallelForJobFunction,
+     -4,
+     PasMPDefaultDepth,
+     nil,
+     0,
+     PasMPAreaMaskUpdate,
+     PasMPAreaMaskRender,
+     false,
+     PasMPAffinityMaskUpdateAllowMask,
+     PasMPAffinityMaskUpdateAvoidMask
+    )
+   );
+  end else begin
+   PrepareDrawRenderInstanceFillTasksParallelForJobFunction(nil,0,nil,0,CountTotalRenderInstances-1);
+  end;
+ end;
+{if fPrepareDrawRenderInstanceFillTasks.Count>0 then begin
   if fPrepareDrawRenderInstanceFillTasks.Count>1 then begin
    fScene3D.PasMPInstance.Invoke(
     fScene3D.PasMPInstance.ParallelFor(
@@ -7428,7 +7545,7 @@ begin
   end else begin
    PrepareDrawRenderInstanceFillTasksLevel1ParallelForJobFunction(nil,0,nil,0,fPrepareDrawRenderInstanceFillTasks.Count-1);
   end;
- end;
+ end;}
 
  //writeln('PrepareDraw Count: ',Count,' - Total Count: ',TotalCount);
 
