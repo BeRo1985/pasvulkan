@@ -261,7 +261,7 @@ type { TpvScene3DRendererInstance }
              FirstInstanceID:TpvUInt32;
              NodeIndex:TpvSizeInt;
              CountIndices:TpvSizeInt;
-             StartIndex:TpvSizeInt;
+             FirstIndex:TpvSizeInt;
              BoundingSphereIndex:TpvUInt32;
              GroupInstance:TObject; // TpvScene3D.TGroup.TInstance
             end;
@@ -7183,7 +7183,9 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.PrepareDrawRenderInstanceFillTasksLevel2ParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-var InstanceIndex:TPasMPNativeInt;
+var InstanceIndex,
+    FirstInstanceCommandIndex,CountIndices,FirstIndex,FirstInstanceID,
+    NodeIndex,BoundingSphereIndex:TPasMPNativeInt;
     Task:PPrepareDrawRenderInstanceFillTask;
     GPUDrawIndexedIndirectCommand:TpvScene3D.PGPUDrawIndexedIndirectCommand;
     GPUDrawIndexedIndirectCommandDynamicArray:TpvScene3D.PGPUDrawIndexedIndirectCommandDynamicArray;
@@ -7194,17 +7196,23 @@ begin
  GPUDrawIndexedIndirectCommandDynamicArray:=@fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[fPrepareDrawRenderInstanceFillTasksInFlightFrameIndex];
  GlobalRenderInstanceCullDataDynamicArray:=@fScene3D.GlobalRenderInstanceCullDataDynamicArrays[fPrepareDrawRenderInstanceFillTasksInFlightFrameIndex];
 //GlobalVulkanInstanceDataIndexDynamicArray:=@fScene3D.GlobalVulkanGPUInstanceDataIndexDynamicArrays[fPrepareDrawRenderInstanceFillTasksInFlightFrameIndex];
+ FirstInstanceCommandIndex:=Task^.FirstInstanceCommandIndex;
+ CountIndices:=Task^.CountIndices;
+ FirstIndex:=Task^.FirstIndex;
+ FirstInstanceID:=Task^.FirstInstanceID;
+ NodeIndex:=Task^.NodeIndex;
+ BoundingSphereIndex:=Task^.BoundingSphereIndex;
  for InstanceIndex:=aFromIndex to aToIndex do begin
-  GPUDrawIndexedIndirectCommand:=@GPUDrawIndexedIndirectCommandDynamicArray^.ItemArray[Task^.FirstInstanceCommandIndex+InstanceIndex];
-  GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.indexCount:=Task^.CountIndices;
+  GPUDrawIndexedIndirectCommand:=@GPUDrawIndexedIndirectCommandDynamicArray^.ItemArray[FirstInstanceCommandIndex+InstanceIndex];
+  GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.indexCount:=CountIndices;
   GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.instanceCount:=1;
-  GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstIndex:=Task^.StartIndex;
+  GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstIndex:=FirstIndex;
   GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.vertexOffset:=0;
-  GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=Task^.FirstInstanceID+InstanceIndex;
-  GPUDrawIndexedIndirectCommand^.ObjectIndex:=TpvScene3D.TGroup.TInstance.TRenderInstance(GlobalRenderInstanceCullDataDynamicArray^.ItemArray[Task^.FirstInstanceID+InstanceIndex].RenderInstance).NodeCullObjectIDs[Task^.NodeIndex];
+  GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=FirstInstanceID+InstanceIndex;
+  GPUDrawIndexedIndirectCommand^.ObjectIndex:=TpvScene3D.TGroup.TInstance.TRenderInstance(GlobalRenderInstanceCullDataDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex].RenderInstance).NodeCullObjectIDs[NodeIndex];
   GPUDrawIndexedIndirectCommand^.Flags:=0;
-//GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=GlobalVulkanInstanceDataIndexDynamicArray^.ItemArray[Task^.FirstInstanceID+InstanceIndex];
-  GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=Task^.BoundingSphereIndex;
+//GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=GlobalVulkanInstanceDataIndexDynamicArray^.ItemArray[FirstInstanceID+InstanceIndex];
+  GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
  end;
 end;
 
@@ -7336,7 +7344,7 @@ begin
          Task^.FirstInstanceID:=FirstInstanceID;
          Task^.NodeIndex:=NodeIndex;
          Task^.CountIndices:=DrawChoreographyBatchItem.CountIndices;
-         Task^.StartIndex:=DrawChoreographyBatchItem.StartIndex;
+         Task^.FirstIndex:=DrawChoreographyBatchItem.StartIndex;
          Task^.BoundingSphereIndex:=BoundingSphereIndex;
          Task^.GroupInstance:=GroupInstance;
 
