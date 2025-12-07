@@ -34645,7 +34645,7 @@ begin
    TpvScene3DAtmospheres(fAtmospheres).Lock.ReleaseRead;
   end;
 
- for Group in fGroups do begin
+  for Group in fGroups do begin
    Group.UploadFrame(aInFlightFrameIndex);
   end;
 
