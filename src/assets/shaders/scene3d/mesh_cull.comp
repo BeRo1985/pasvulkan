@@ -331,7 +331,7 @@ void main(){
 
     uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndex], 1u);
     
-    // Copy only the essential command data to conserve memory bandwidth, omitting unnecessary details like bounding spheres.
+    // Copy the command data to the output buffer
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
 
@@ -344,7 +344,7 @@ void main(){
 
     uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndexForDisocclusions + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndexForDisocclusions], 1u);
     
-    // Similarly, copy only the necessary command data, excluding non-essential elements like bounding sphere, to save memory bandwidth.
+    // Copy the command data to the output buffer
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
 
