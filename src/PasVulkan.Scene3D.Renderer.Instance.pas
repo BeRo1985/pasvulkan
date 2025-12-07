@@ -7278,7 +7278,7 @@ begin
 
    TaskIndex:=0;
 
-   LowIndex:=TaskIndex;
+   LowIndex:=0;
    HighIndex:=CountTasks-1;
    while LowIndex<=HighIndex do begin
     MidIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
