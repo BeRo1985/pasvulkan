@@ -7223,7 +7223,7 @@ begin
  for TaskIndex:=aFromIndex to aToIndex do begin
   Task:=@fPrepareDrawRenderInstanceFillTasks.ItemArray[TaskIndex];
   if Task^.CountInstances>0 then begin
-   if Task^.CountInstances>=2048 then begin
+   if Task^.CountInstances>=16384 then begin
     fScene3D.PasMPInstance.Invoke(
      fScene3D.PasMPInstance.ParallelFor(
       Task,
