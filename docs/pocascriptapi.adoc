@@ -706,7 +706,7 @@ let result = vec.cross(other);
 * *Description:* Computes the cross product with another vector, returning a new Vector3 perpendicular to both vectors.
 * *Parameters:*
 ** `+other+` (Vector3): The other vector.
-* *Return Value:* A new Vector3 representing the cross product.
+* *Return Value:* The same Vector3 representing the cross product.
 * *Example:*
 +
 [source,js]
