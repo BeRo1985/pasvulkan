@@ -402,6 +402,82 @@ type { TpvDynamicArray }
      end;
 {$endif}
 
+     { EpvLinkedListObjectListError }
+     EpvLinkedListObjectListError=class(Exception);
+
+     TpvLinkedListObjectList=class;
+
+     { TpvLinkedListObject } 
+     TpvLinkedListObject=class
+      private
+       fOwnerList:TpvLinkedListObjectList;
+       fPrevious:TpvLinkedListObject;
+       fNext:TpvLinkedListObject;
+      public
+       constructor Create; virtual;
+       destructor Destroy; override;
+      public 
+       property OwnerList:TpvLinkedListObjectList read fOwnerList write fOwnerList;
+       property Previous:TpvLinkedListObject read fPrevious write fPrevious;
+       property Next:TpvLinkedListObject read fNext write fNext;
+     end;
+
+     TpvLinkedListObjectClass=class of TpvLinkedListObject;
+
+     { TpvLinkedListObjectList }
+
+     TpvLinkedListObjectList=class
+      private
+       type TEnumerator=record
+             private
+              fLinkedListObjectList:TpvLinkedListObjectList;
+              fCurrent:TpvLinkedListObject;
+             private 
+              function GetCurrent:TpvLinkedListObject; inline;
+             public
+              constructor Create(const aLinkedListObjectList:TpvLinkedListObjectList);
+              function MoveNext:boolean; inline;
+              property Current:TpvLinkedListObject read GetCurrent;
+            end;
+      private
+       fHead:TpvLinkedListObject;
+       fTail:TpvLinkedListObject;
+       fCount:TpvSizeInt;
+       fOwnsObjects:boolean;
+      public
+       constructor Create(const aOwnsObjects:boolean=true); reintroduce;
+       destructor Destroy; override;
+       procedure Clear;
+       procedure AddToHead(const aObject:TpvLinkedListObject);
+       procedure AddToTail(const aObject:TpvLinkedListObject);
+       procedure Add(const aObject:TpvLinkedListObject);
+       procedure Push(const aObject:TpvLinkedListObject);
+       procedure MoveToHead(const aObject:TpvLinkedListObject);
+       procedure MoveToTail(const aObject:TpvLinkedListObject);
+       procedure InsertBefore(const aObject,aBeforeObject:TpvLinkedListObject);
+       procedure InsertAfter(const aObject,aAfterObject:TpvLinkedListObject);
+       function ExtractHead:TpvLinkedListObject;
+       function ExtractTail:TpvLinkedListObject;
+       function PopHead:TpvLinkedListObject;
+       function PopTail:TpvLinkedListObject;
+       function Pop:TpvLinkedListObject;
+       function PeekHead:TpvLinkedListObject;
+       function PeekTail:TpvLinkedListObject; 
+       function Peek:TpvLinkedListObject;
+       function Contains(const aObject:TpvLinkedListObject):boolean;
+       procedure Remove(const aObject:TpvLinkedListObject);
+       procedure Delete(const aObject:TpvLinkedListObject);
+       procedure Extract(const aObject:TpvLinkedListObject);
+       function GetEnumerator:TEnumerator;
+      public 
+       property Head:TpvLinkedListObject read fHead;
+       property Tail:TpvLinkedListObject read fTail;
+       property Count:TpvSizeInt read fCount;
+       property OwnsObjects:boolean read fOwnsObjects write fOwnsObjects;
+     end;
+
+     { EpvHandleMap }
+
      EpvHandleMap=class(Exception);
 
      { TpvCustomHandleMap }
@@ -3163,6 +3239,379 @@ begin
 end;
 {$endif}
 
+{ TpvLinkedListObject }
+
+constructor TpvLinkedListObject.Create;
+begin
+ inherited Create;
+ fOwnerList:=nil;
+ fPrevious:=nil;
+ fNext:=nil;
+end;
+
+destructor TpvLinkedListObject.Destroy;
+begin
+ if assigned(fOwnerList) then begin
+  try
+   fOwnerList.Extract(self);
+  finally
+   fOwnerList:=nil;
+  end; 
+ end;
+ inherited Destroy;
+end;
+
+{ TpvLinkedListObjectList.TEnumerator }
+
+constructor TpvLinkedListObjectList.TEnumerator.Create(const aLinkedListObjectList:TpvLinkedListObjectList);
+begin
+ fLinkedListObjectList:=aLinkedListObjectList;
+ fCurrent:=nil;
+end;
+
+function TpvLinkedListObjectList.TEnumerator.GetCurrent:TpvLinkedListObject;
+begin
+ result:=fCurrent;
+end;
+
+function TpvLinkedListObjectList.TEnumerator.MoveNext:boolean;
+begin
+ if not assigned(fCurrent) then begin
+  fCurrent:=fLinkedListObjectList.fHead;
+ end else begin
+  fCurrent:=fCurrent.fNext;
+ end;
+ result:=assigned(fCurrent);
+end;
+
+{ TpvLinkedListObjectList }
+
+constructor TpvLinkedListObjectList.Create(const aOwnsObjects:boolean);
+begin
+ inherited Create;
+ fHead:=nil;
+ fTail:=nil;
+ fCount:=0;
+ fOwnsObjects:=aOwnsObjects;
+end;
+
+destructor TpvLinkedListObjectList.Destroy;
+begin
+ Clear;
+ inherited Destroy;
+end;
+
+procedure TpvLinkedListObjectList.Clear;
+var Current,Next:TpvLinkedListObject;
+begin
+ Current:=fHead;
+ while assigned(Current) do begin
+  Next:=Current.fNext;
+  Current.fOwnerList:=nil; // Set to nil to avoid recursive calls to Extract in destructor
+  if fOwnsObjects then begin
+   Current.Free;
+  end;
+  Current:=Next;
+ end;
+ fHead:=nil;
+ fTail:=nil;
+ fCount:=0;
+end;
+
+procedure TpvLinkedListObjectList.AddToHead(const aObject:TpvLinkedListObject);
+begin
+ if assigned(aObject.fOwnerList) then begin
+  raise EpvLinkedListObjectListError.Create('Object already belongs to a linked list');
+ end else begin
+  aObject.fOwnerList:=self;
+  aObject.fPrevious:=nil;
+  aObject.fNext:=fHead;
+  if assigned(fHead) then begin
+   fHead.fPrevious:=aObject;
+  end;
+  fHead:=aObject;
+  if not assigned(fTail) then begin
+   fTail:=aObject;
+  end;
+  inc(fCount);
+ end; 
+end;
+
+procedure TpvLinkedListObjectList.AddToTail(const aObject:TpvLinkedListObject);
+begin
+ if assigned(aObject.fOwnerList) then begin
+  raise EpvLinkedListObjectListError.Create('Object already belongs to a linked list');
+ end else begin
+  aObject.fOwnerList:=self;
+  aObject.fNext:=nil;
+  aObject.fPrevious:=fTail;
+  if assigned(fTail) then begin
+   fTail.fNext:=aObject;
+  end;
+  fTail:=aObject;
+  if not assigned(fHead) then begin
+   fHead:=aObject;
+  end;
+  inc(fCount);
+ end; 
+end;
+
+procedure TpvLinkedListObjectList.Add(const aObject:TpvLinkedListObject);
+begin
+ AddToTail(aObject);
+end;
+
+procedure TpvLinkedListObjectList.Push(const aObject:TpvLinkedListObject);
+begin
+ AddToTail(aObject);
+end;
+
+procedure TpvLinkedListObjectList.MoveToHead(const aObject:TpvLinkedListObject);
+begin
+ if aObject.fOwnerList<>self then begin
+  raise EpvLinkedListObjectListError.Create('Object does not belong to this linked list');
+ end else if aObject<>fHead then begin
+  // Remove from current position
+  if assigned(aObject.fPrevious) then begin
+   aObject.fPrevious.fNext:=aObject.fNext;
+  end;
+  if assigned(aObject.fNext) then begin
+   aObject.fNext.fPrevious:=aObject.fPrevious;
+  end;
+  if aObject=fTail then begin
+   fTail:=aObject.fPrevious;
+  end;
+  // Insert at head
+  aObject.fPrevious:=nil;
+  aObject.fNext:=fHead;
+  if assigned(fHead) then begin
+   fHead.fPrevious:=aObject;
+  end;
+  fHead:=aObject;
+  if not assigned(fTail) then begin
+   fTail:=aObject;
+  end;
+ end;
+end;
+
+procedure TpvLinkedListObjectList.MoveToTail(const aObject:TpvLinkedListObject);
+begin
+ if aObject.fOwnerList<>self then begin
+  raise EpvLinkedListObjectListError.Create('Object does not belong to this linked list');
+ end else if aObject<>fTail then begin
+  // Remove from current position
+  if assigned(aObject.fPrevious) then begin
+   aObject.fPrevious.fNext:=aObject.fNext;
+  end;
+  if assigned(aObject.fNext) then begin
+   aObject.fNext.fPrevious:=aObject.fPrevious;
+  end;
+  if aObject=fHead then begin
+   fHead:=aObject.fNext;
+  end;
+  // Insert at tail
+  aObject.fNext:=nil;
+  aObject.fPrevious:=fTail;
+  if assigned(fTail) then begin
+   fTail.fNext:=aObject;
+  end;
+  fTail:=aObject;
+  if not assigned(fHead) then begin
+   fHead:=aObject;
+  end;
+ end;
+end; 
+
+procedure TpvLinkedListObjectList.InsertBefore(const aObject,aBeforeObject:TpvLinkedListObject);
+begin
+ if assigned(aObject.fOwnerList) then begin
+  raise EpvLinkedListObjectListError.Create('Object already belongs to a linked list');
+ end else if aBeforeObject.fOwnerList<>self then begin
+  raise EpvLinkedListObjectListError.Create('Before object does not belong to this linked list');
+ end else begin
+  aObject.fOwnerList:=self;
+  aObject.fNext:=aBeforeObject;
+  aObject.fPrevious:=aBeforeObject.fPrevious;
+  if assigned(aBeforeObject.fPrevious) then begin
+   aBeforeObject.fPrevious.fNext:=aObject;
+  end else begin
+   fHead:=aObject;
+  end;
+  aBeforeObject.fPrevious:=aObject;
+  inc(fCount);
+ end; 
+end;
+
+procedure TpvLinkedListObjectList.InsertAfter(const aObject,aAfterObject:TpvLinkedListObject);
+begin
+ if assigned(aObject.fOwnerList) then begin
+  raise EpvLinkedListObjectListError.Create('Object already belongs to a linked list');
+ end else if aAfterObject.fOwnerList<>self then begin
+  raise EpvLinkedListObjectListError.Create('After object does not belong to this linked list');
+ end else begin
+  aObject.fOwnerList:=self;
+  aObject.fPrevious:=aAfterObject;
+  aObject.fNext:=aAfterObject.fNext;
+  if assigned(aAfterObject.fNext) then begin
+   aAfterObject.fNext.fPrevious:=aObject;
+  end else begin
+   fTail:=aObject;
+  end;
+  aAfterObject.fNext:=aObject;
+  inc(fCount);
+ end; 
+end;
+
+function TpvLinkedListObjectList.ExtractHead:TpvLinkedListObject;
+begin
+ result:=fHead;
+ if assigned(result) then begin
+  result.fOwnerList:=nil;
+  fHead:=result.fNext;
+  if assigned(fHead) then begin
+   fHead.fPrevious:=nil;
+  end else begin
+   fTail:=nil;
+  end;
+  result.fPrevious:=nil;
+  result.fNext:=nil;
+  dec(fCount);
+ end;
+end;
+
+function TpvLinkedListObjectList.ExtractTail:TpvLinkedListObject;
+begin
+ result:=fTail;
+ if assigned(result) then begin
+  result.fOwnerList:=nil;
+  fTail:=result.fPrevious;
+  if assigned(fTail) then begin
+   fTail.fNext:=nil;
+  end else begin
+   fHead:=nil;
+  end;
+  result.fPrevious:=nil;
+  result.fNext:=nil;
+  dec(fCount);
+ end;
+end;
+
+function TpvLinkedListObjectList.PopHead:TpvLinkedListObject;
+begin
+ result:=ExtractHead;
+end;
+
+function TpvLinkedListObjectList.PopTail:TpvLinkedListObject;
+begin
+ result:=ExtractTail;
+end;
+
+function TpvLinkedListObjectList.Pop:TpvLinkedListObject;
+begin
+ result:=ExtractTail;
+end;
+
+function TpvLinkedListObjectList.PeekHead:TpvLinkedListObject;
+begin
+ result:=fHead;
+end;
+
+function TpvLinkedListObjectList.PeekTail:TpvLinkedListObject;
+begin
+ result:=fTail;
+end;
+
+function TpvLinkedListObjectList.Peek:TpvLinkedListObject;
+begin
+ result:=fTail;
+end;
+
+function TpvLinkedListObjectList.Contains(const aObject:TpvLinkedListObject):boolean;
+begin
+ result:=assigned(aObject.fOwnerList) and (aObject.fOwnerList=self); // Faster than traversing the list
+end;
+
+procedure TpvLinkedListObjectList.Remove(const aObject:TpvLinkedListObject);
+begin
+ if aObject.fOwnerList<>self then begin
+  raise EpvLinkedListObjectListError.Create('Object does not belong to this linked list');
+ end else begin
+  // Remove from current position
+  if assigned(aObject.fPrevious) then begin
+   aObject.fPrevious.fNext:=aObject.fNext;
+  end else begin
+   fHead:=aObject.fNext;
+  end;
+  if assigned(aObject.fNext) then begin
+   aObject.fNext.fPrevious:=aObject.fPrevious;
+  end else begin
+   fTail:=aObject.fPrevious;
+  end;
+  aObject.fOwnerList:=nil;
+  aObject.fPrevious:=nil;
+  aObject.fNext:=nil;
+  dec(fCount);
+  if fOwnsObjects then begin
+   aObject.Free;
+  end;
+ end; 
+end;
+
+procedure TpvLinkedListObjectList.Delete(const aObject:TpvLinkedListObject);
+begin
+ if aObject.fOwnerList<>self then begin
+  raise EpvLinkedListObjectListError.Create('Object does not belong to this linked list');
+ end else begin
+  // Remove from current position
+  if assigned(aObject.fPrevious) then begin
+   aObject.fPrevious.fNext:=aObject.fNext;
+  end else begin
+   fHead:=aObject.fNext;
+  end;
+  if assigned(aObject.fNext) then begin
+   aObject.fNext.fPrevious:=aObject.fPrevious;
+  end else begin
+   fTail:=aObject.fPrevious;
+  end;
+  aObject.fOwnerList:=nil;
+  aObject.fPrevious:=nil;
+  aObject.fNext:=nil;
+  dec(fCount);
+  if fOwnsObjects then begin
+   aObject.Free;
+  end;
+ end; 
+end;
+
+procedure TpvLinkedListObjectList.Extract(const aObject:TpvLinkedListObject);
+begin
+ if aObject.fOwnerList<>self then begin
+  raise EpvLinkedListObjectListError.Create('Object does not belong to this linked list');
+ end else begin
+  // Remove from current position
+  if assigned(aObject.fPrevious) then begin
+   aObject.fPrevious.fNext:=aObject.fNext;
+  end else begin
+   fHead:=aObject.fNext;
+  end;
+  if assigned(aObject.fNext) then begin
+   aObject.fNext.fPrevious:=aObject.fPrevious;
+  end else begin
+   fTail:=aObject.fPrevious;
+  end;
+  aObject.fOwnerList:=nil;
+  aObject.fPrevious:=nil;
+  aObject.fNext:=nil;
+  dec(fCount);
+ end; 
+end;
+
+function TpvLinkedListObjectList.GetEnumerator:TpvLinkedListObjectList.TEnumerator;
+begin
+ result:=TEnumerator.Create(self);
+end;
+
+{ TpvCustomHandleMap }
 constructor TpvCustomHandleMap.Create(const pDataSize:TpvSizeUInt);
 begin
  inherited Create;
