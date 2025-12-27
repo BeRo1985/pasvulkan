@@ -16265,9 +16265,14 @@ var Remain,ToDo,Offset:TVkDeviceSize;
     Source:Pointer;
     Destination:PpvUInt8;
     VkBufferCopy:TVkBufferCopy;
+    EnableMemoryMap:boolean;
 begin
+ { Using Move for memory-mapped buffer causes hands at AMD. }
+ EnableMemoryMap:=Device.PhysicalDevice.Properties.vendorID<>
+  TpvUInt32(TpvVulkanVendorID.AMD);
 
- if (TpvVulkanBufferFlag.PersistentMapped in aSourceBuffer.fBufferFlags) and
+ if EnableMemoryMap and
+    (TpvVulkanBufferFlag.PersistentMapped in aSourceBuffer.fBufferFlags) and
     ((aSourceBuffer.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0) then begin
 
   Source:=aSourceBuffer.Memory.MapMemory;
