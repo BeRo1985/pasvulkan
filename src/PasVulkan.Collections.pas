@@ -633,7 +633,7 @@ type { TpvDynamicArray }
 {$ifdef ExtraStringHashMap}
      { TpvStringHashMap<TpvHashMapValue> }
      TpvStringHashMap<TpvHashMapValue>=class
-      private
+      public
        type TpvHashMapKey=RawByteString;
             TEntity=record
              public
