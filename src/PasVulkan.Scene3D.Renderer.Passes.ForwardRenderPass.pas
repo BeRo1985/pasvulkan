@@ -151,6 +151,8 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        procedure ReleaseVolatileResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
+      published
+       property SkyBox:TpvScene3DRendererSkyBox read fSkyBox;
      end;
 
 implementation
@@ -505,7 +507,8 @@ begin
  fSkyBox:=TpvScene3DRendererSkyBox.Create(fInstance.Renderer,
                                           fInstance,
                                           fInstance.Renderer.Scene3D,
-                                          fInstance.Renderer.SkyBoxCubeMap.DescriptorImageInfo);
+                                          fInstance.Renderer.SkyBoxCubeMap.DescriptorImageInfo,
+                                          true);
 
  if fUseDepthPrepass then begin
   if fInstance.Renderer.GPUCulling then begin

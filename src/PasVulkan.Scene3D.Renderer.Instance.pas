@@ -4258,6 +4258,7 @@ begin
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass:=TpvScene3DRendererPassesForwardRenderPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fForwardComputePass.ForwardRenderPass:=TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass;
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass);
  end;

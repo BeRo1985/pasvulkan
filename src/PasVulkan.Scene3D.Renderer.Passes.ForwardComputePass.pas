@@ -76,7 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
-     PasVulkan.Scene3D.Renderer.SkyBox;
+     PasVulkan.Scene3D.Renderer.SkyBox,
+     PasVulkan.Scene3D.Renderer.Passes.ForwardRenderPass;
 
 type { TpvScene3DRendererPassesForwardComputePass }
      TpvScene3DRendererPassesForwardComputePass=class(TpvFrameGraph.TComputePass)
@@ -102,6 +103,7 @@ type { TpvScene3DRendererPassesForwardComputePass }
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
        fPlanetRainStreakComputePass:TpvScene3DPlanet.TRainStreakComputePass;
+       fForwardRenderPass:TpvScene3DRendererPassesForwardRenderPass;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -111,6 +113,8 @@ type { TpvScene3DRendererPassesForwardComputePass }
        procedure ReleaseVolatileResources; override;
        procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
+      published
+       property ForwardRenderPass:TpvScene3DRendererPassesForwardRenderPass read fForwardRenderPass write fForwardRenderPass;
      end;
 
 implementation
@@ -122,6 +126,8 @@ begin
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
+
+ fForwardRenderPass:=nil;
 
  Name:='ForwardComputePass';
 
@@ -300,6 +306,11 @@ begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  InFlightFrameIndex:=aInFlightFrameIndex;
+
+ // Clear skybox history image for cached reprojection (must be done outside render pass)
+ if assigned(fForwardRenderPass) and assigned(fForwardRenderPass.SkyBox) and fForwardRenderPass.SkyBox.Cached then begin
+  fForwardRenderPass.SkyBox.ClearHistoryImage(aInFlightFrameIndex,aCommandBuffer);
+ end;
 
  if fInstance.SpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].Count>0 then begin
 
