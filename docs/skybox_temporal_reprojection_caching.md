@@ -264,4 +264,13 @@ switch(pushConstants.mode){
 
 ## Enabling/Disabling
 
-The caching is enabled by passing `aCached=true` to `TpvScene3DRendererSkyBox.Create()`. This is typically controlled by the renderer configuration and is recommended for scenes with procedural starfield skies.
+The caching is controlled by the `SkyBoxCaching` property on `TpvScene3D`:
+
+```pascal
+Scene3D.SkyBoxCaching := true;  // Enable caching
+Scene3D.SkyBoxCaching := false; // Disable caching (default)
+```
+
+This property is read by `TpvScene3DRendererPassesForwardRenderPass` when creating the skybox renderer and passed to `TpvScene3DRendererSkyBox.Create()` as the `aCached` parameter.
+
+**Note**: The skybox in `PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeRenderPass.pas` always uses non-cached mode for simplicity, as reflection probes are rendered infrequently and at lower resolution.

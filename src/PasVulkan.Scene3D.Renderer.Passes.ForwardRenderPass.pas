@@ -508,7 +508,7 @@ begin
                                           fInstance,
                                           fInstance.Renderer.Scene3D,
                                           fInstance.Renderer.SkyBoxCubeMap.DescriptorImageInfo,
-                                          true);
+                                          fInstance.Renderer.Scene3D.SkyBoxCaching);
 
  if fUseDepthPrepass then begin
   if fInstance.Renderer.GPUCulling then begin
