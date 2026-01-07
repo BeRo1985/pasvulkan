@@ -137,7 +137,7 @@ type { TpvScene3DRendererSkyBox }
 
        procedure ReleaseResources;
 
-       procedure ClearHistoryImage(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+       procedure ClearHistoryImageAndPrepareLayouts(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
  
        procedure Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews,aCountAllViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aOrientation:TpvMatrix4x4);
 
@@ -511,44 +511,52 @@ begin
  end;
 end;
 
-procedure TpvScene3DRendererSkyBox.ClearHistoryImage(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
-var ImageMemoryBarrier:TVkImageMemoryBarrier;
+procedure TpvScene3DRendererSkyBox.ClearHistoryImageAndPrepareLayouts(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
     ClearColorValue:TVkClearColorValue;
     ImageSubresourceRange:TVkImageSubresourceRange;
+    PreviousIndex,FrameBeforePreviousIndex:TpvSizeInt;
+    BarrierCount:TpvInt32;
 begin
 
- // For cached mode: clear current frame's history image to 0 before drawing
- // This allows shader to detect unwritten pixels for hidden pixel rejection
- // - RGBA16F: alpha = 0 means unwritten
- // - RGB9E5: all zeros (pure black) means unwritten (physically impossible for sky)
+ // For cached mode: prepare history images before rendering
+ // 1. Clear current frame's history image to 0 (sentinel for unwritten pixels)
+ // 2. Transition previous frame's history to SHADER_READ_ONLY for reading
+ // 3. Transition frame-before-previous back to GENERAL (was left in SHADER_READ_ONLY)
 
  if fCached and (fWidth>0) and (fHeight>0) and (fCountSurfaceViews>0) and assigned(fHistoryImages[aInFlightFrameIndex]) then begin
 
-  fScene3D.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'SkyBox.ClearHistoryImage',[0.25,0.75,0.75,1.0]);
+  fScene3D.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'SkyBox.ClearHistoryImageAndPrepareLayouts',[0.25,0.75,0.75,1.0]);
 
-  // Transition to TRANSFER_DST for clear
-  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
-  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.image:=fHistoryImages[aInFlightFrameIndex].VulkanImage.Handle;
-  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-  ImageMemoryBarrier.subresourceRange.levelCount:=1;
-  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-  ImageMemoryBarrier.subresourceRange.layerCount:=fCountSurfaceViews;
+  // Calculate previous frame index
+  PreviousIndex:=(aInFlightFrameIndex+fScene3D.CountInFlightFrames-1) mod fScene3D.CountInFlightFrames;
+
+  // Calculate frame-before-previous index
+  FrameBeforePreviousIndex:=(aInFlightFrameIndex+fScene3D.CountInFlightFrames-2) mod fScene3D.CountInFlightFrames;
+
+  // Transition current frame's history to TRANSFER_DST for clear
+  FillChar(ImageMemoryBarriers,SizeOf(ImageMemoryBarriers),#0);
+  ImageMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  ImageMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  ImageMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  ImageMemoryBarriers[0].oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+  ImageMemoryBarriers[0].newLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  ImageMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarriers[0].image:=fHistoryImages[aInFlightFrameIndex].VulkanImage.Handle;
+  ImageMemoryBarriers[0].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ImageMemoryBarriers[0].subresourceRange.baseMipLevel:=0;
+  ImageMemoryBarriers[0].subresourceRange.levelCount:=1;
+  ImageMemoryBarriers[0].subresourceRange.baseArrayLayer:=0;
+  ImageMemoryBarriers[0].subresourceRange.layerCount:=fCountSurfaceViews;
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                     0,
                                     0,nil,
                                     0,nil,
-                                    1,@ImageMemoryBarrier);
+                                    1,@ImageMemoryBarriers[0]);
 
-  // Clear to 0
+  // Clear current frame's history to 0
   FillChar(ClearColorValue,SizeOf(TVkClearColorValue),#0);
   FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
   ImageSubresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
@@ -562,17 +570,73 @@ begin
                                     1,
                                     @ImageSubresourceRange);
 
-  // Transition back to GENERAL for shader write
-  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+  // Batch transitions:
+  // 0: Current frame: TRANSFER_DST -> GENERAL (for shader write)
+  // 1: Previous frame: GENERAL -> SHADER_READ_ONLY (for reading during skybox draw)
+  // 2: Frame-before-previous: SHADER_READ_ONLY -> GENERAL (was left in READ_ONLY from last frame)
+  FillChar(ImageMemoryBarriers,SizeOf(ImageMemoryBarriers),#0);
+  BarrierCount:=0;
+
+  // Current frame: TRANSFER_DST -> GENERAL
+  ImageMemoryBarriers[BarrierCount].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  ImageMemoryBarriers[BarrierCount].srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  ImageMemoryBarriers[BarrierCount].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  ImageMemoryBarriers[BarrierCount].oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  ImageMemoryBarriers[BarrierCount].newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+  ImageMemoryBarriers[BarrierCount].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarriers[BarrierCount].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarriers[BarrierCount].image:=fHistoryImages[aInFlightFrameIndex].VulkanImage.Handle;
+  ImageMemoryBarriers[BarrierCount].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ImageMemoryBarriers[BarrierCount].subresourceRange.baseMipLevel:=0;
+  ImageMemoryBarriers[BarrierCount].subresourceRange.levelCount:=1;
+  ImageMemoryBarriers[BarrierCount].subresourceRange.baseArrayLayer:=0;
+  ImageMemoryBarriers[BarrierCount].subresourceRange.layerCount:=fCountSurfaceViews;
+  Inc(BarrierCount);
+
+  // Previous frame: GENERAL -> SHADER_READ_ONLY (for reading during skybox draw)
+  // Skip if same as current (shouldn't happen, but safety check)
+  if PreviousIndex<>aInFlightFrameIndex then begin
+   ImageMemoryBarriers[BarrierCount].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+   ImageMemoryBarriers[BarrierCount].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   ImageMemoryBarriers[BarrierCount].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+   ImageMemoryBarriers[BarrierCount].oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+   ImageMemoryBarriers[BarrierCount].newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+   ImageMemoryBarriers[BarrierCount].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   ImageMemoryBarriers[BarrierCount].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   ImageMemoryBarriers[BarrierCount].image:=fHistoryImages[PreviousIndex].VulkanImage.Handle;
+   ImageMemoryBarriers[BarrierCount].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+   ImageMemoryBarriers[BarrierCount].subresourceRange.baseMipLevel:=0;
+   ImageMemoryBarriers[BarrierCount].subresourceRange.levelCount:=1;
+   ImageMemoryBarriers[BarrierCount].subresourceRange.baseArrayLayer:=0;
+   ImageMemoryBarriers[BarrierCount].subresourceRange.layerCount:=fCountSurfaceViews;
+   Inc(BarrierCount);
+  end;
+
+  // Frame-before-previous: SHADER_READ_ONLY -> GENERAL (cleanup from last frame)
+  // Skip if same as current or previous
+  if (FrameBeforePreviousIndex<>aInFlightFrameIndex) and (FrameBeforePreviousIndex<>PreviousIndex) then begin
+   ImageMemoryBarriers[BarrierCount].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+   ImageMemoryBarriers[BarrierCount].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+   ImageMemoryBarriers[BarrierCount].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   ImageMemoryBarriers[BarrierCount].oldLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+   ImageMemoryBarriers[BarrierCount].newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+   ImageMemoryBarriers[BarrierCount].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   ImageMemoryBarriers[BarrierCount].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   ImageMemoryBarriers[BarrierCount].image:=fHistoryImages[FrameBeforePreviousIndex].VulkanImage.Handle;
+   ImageMemoryBarriers[BarrierCount].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+   ImageMemoryBarriers[BarrierCount].subresourceRange.baseMipLevel:=0;
+   ImageMemoryBarriers[BarrierCount].subresourceRange.levelCount:=1;
+   ImageMemoryBarriers[BarrierCount].subresourceRange.baseArrayLayer:=0;
+   ImageMemoryBarriers[BarrierCount].subresourceRange.layerCount:=fCountSurfaceViews;
+   Inc(BarrierCount);
+  end;
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                     0,
                                     0,nil,
                                     0,nil,
-                                    1,@ImageMemoryBarrier);
+                                    BarrierCount,@ImageMemoryBarriers[0]);
 
   fScene3D.VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -582,46 +646,9 @@ end;
 
 procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews,aCountAllViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aOrientation:TpvMatrix4x4);
 var PushConstants:TpvScene3DRendererSkyBox.TPushConstants;
-    ImageMemoryBarrier:TVkImageMemoryBarrier;
-    PreviousIndex:TpvSizeInt;
 begin
 
  fScene3D.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Skybox',[0.25,0.75,0.75,1.0]);
-
- PreviousIndex:=(aInFlightFrameIndex-1)+fScene3D.CountInFlightFrames;
- if PreviousIndex>=fScene3D.CountInFlightFrames then begin
-  if (fScene3D.CountInFlightFrames and (fScene3D.CountInFlightFrames-1))=0 then begin
-   PreviousIndex:=PreviousIndex and (fScene3D.CountInFlightFrames-1);
-  end else begin
-   while PreviousIndex>=fScene3D.CountInFlightFrames do begin
-    dec(PreviousIndex,fScene3D.CountInFlightFrames);
-   end;
-  end;
- end;
-
- // Transition previous frame's history image from GENERAL to SHADER_READ_ONLY for reading
- if fCached then begin
-  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
-  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
-  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.image:=fHistoryImages[PreviousIndex].VulkanImage.Handle;
-  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-  ImageMemoryBarrier.subresourceRange.levelCount:=1;
-  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-  ImageMemoryBarrier.subresourceRange.layerCount:=fCountSurfaceViews;
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                    0,
-                                    0,nil,
-                                    0,nil,
-                                    1,@ImageMemoryBarrier);
- end;
 
  PushConstants.PreviousOrientation:=fOrientation;
  fOrientation:=aOrientation.ToQuaternion.Vector;
@@ -672,28 +699,7 @@ begin
 
  aCommandBuffer.CmdDraw(36,1,0,0);
 
- // Transition previous frame's history image back to GENERAL for next time it's written
  if fCached then begin
-  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
-  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
-  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.image:=fHistoryImages[PreviousIndex].VulkanImage.Handle;
-  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-  ImageMemoryBarrier.subresourceRange.levelCount:=1;
-  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-  ImageMemoryBarrier.subresourceRange.layerCount:=fCountSurfaceViews;
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                    0,
-                                    0,nil,
-                                    0,nil,
-                                    1,@ImageMemoryBarrier);
   fHistoryValid[aInFlightFrameIndex]:=true;
   Inc(fFrameIndex);
  end;

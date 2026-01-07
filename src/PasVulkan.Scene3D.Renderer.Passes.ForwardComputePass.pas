@@ -309,7 +309,7 @@ begin
 
  // Clear skybox history image for cached reprojection (must be done outside render pass)
  if assigned(fForwardRenderPass) and assigned(fForwardRenderPass.SkyBox) and fForwardRenderPass.SkyBox.Cached then begin
-  fForwardRenderPass.SkyBox.ClearHistoryImage(aInFlightFrameIndex,aCommandBuffer);
+  fForwardRenderPass.SkyBox.ClearHistoryImageAndPrepareLayouts(aInFlightFrameIndex,aCommandBuffer);
  end;
 
  if fInstance.SpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].Count>0 then begin
