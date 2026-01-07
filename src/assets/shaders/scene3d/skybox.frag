@@ -38,10 +38,10 @@ vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const i
   vec2 previousUV = fma(previousNDC, vec2(0.5), vec2(0.5));
   
   // Check if the previous UV is within valid screen bounds
-  // Using a small margin to avoid edge artifacts
-  const float margin = 0.001;
-  bool isValid = all(greaterThanEqual(previousUV, vec2(margin))) && 
-                 all(lessThanEqual(previousUV, vec2(1.0 - margin)));
+  // Using a 1-pixel margin to avoid edge artifacts
+  vec2 margin = 1.0 / vec2(screenSize);
+  bool isValid = all(greaterThanEqual(previousUV, margin)) && 
+                 all(lessThanEqual(previousUV, vec2(1.0) - margin));
   
   // Also reject if behind camera in previous frame
   isValid = isValid && (previousClip.w > 0.0);
@@ -49,15 +49,36 @@ vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const i
   // Stochastic refresh: periodically recompute some pixels to avoid precision drift
   // Using a simple pattern based on frame index and pixel position
   uvec2 pixelCoord = uvec2(currentUV * vec2(screenSize));
-  uint refreshPattern = (pixelCoord.x ^ pixelCoord.y ^ pushConstants.frameIndex) & 0x3Fu; // Every 64 frames per pixel
+  uint refreshPattern = (pixelCoord.x ^ pixelCoord.y ^ pushConstants.frameIndex) & 0x3fu; // Every 64 frames per pixel
   bool forceRefresh = (refreshPattern == 0u);
   
-  if (isValid && !forceRefresh) {
+  if(isValid && !forceRefresh){
     // Sample from history buffer
     vec3 historyCoord = vec3(previousUV, float(gl_ViewIndex));
-    return texture(uHistoryTexture, historyCoord);
-  } else {
-    // Compute fresh starlight for this pixel
+    vec4 historySample = texture(uHistoryTexture, historyCoord);
+#ifdef SKYBOX_CACHED_REPROJECTION_RGBA16F
+    // For RGBA16F: alpha = 0 means pixel was never written (cleared before draw)
+    // This catches hidden/off-screen pixels from previous frame
+    if(historySample.a < 0.5){
+      // Pixel was not rendered in previous frame, recompute
+      return vec4(clamp(getStarlight(worldDirection) * pushConstants.skyBoxBrightnessFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
+    }else{
+      return historySample;
+    }
+#elif defined(SKYBOX_CACHED_REPROJECTION_RGB9E5)
+    // For RGB9E5: all zeros means pixel was never written (cleared before draw)
+    // Pure black sky is physically impossible, so this is a safe sentinel
+    if(all(equal(historySample.rgb, vec3(0.0)))){
+      // Pixel was not rendered in previous frame, recompute
+      return vec4(clamp(getStarlight(worldDirection) * pushConstants.skyBoxBrightnessFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
+    }else{
+      return historySample;
+    }
+#else    
+    return historySample;
+#endif
+  }else{
+    // Compute fresh starlight for this pixel (alpha = 1.0 marks as valid)
     return vec4(clamp(getStarlight(worldDirection) * pushConstants.skyBoxBrightnessFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
   }
 }
@@ -76,7 +97,9 @@ void main(){
       outFragColor = reprojectStarlight(direction, currentUV, screenSize);
       // Store result to history image for next frame
 #if defined(SKYBOX_CACHED_REPROJECTION_RGB9E5)
-      imageStore(uHistoryImage, ivec3(gl_FragCoord.xy, gl_ViewIndex), uvec4(encodeRGB9E5(outFragColor.rgb)));
+      // Use max() to ensure we never encode to zero (our sentinel for unwritten pixels)
+      const vec3 minRGB9E5 = vec3(6.1e-5); // Minimum non-zero RGB9E5 representable value
+      imageStore(uHistoryImage, ivec3(gl_FragCoord.xy, gl_ViewIndex), uvec4(encodeRGB9E5(max(outFragColor.rgb, minRGB9E5))));
 #elif defined(SKYBOX_CACHED_REPROJECTION_RGBA16F)
       imageStore(uHistoryImage, ivec3(gl_FragCoord.xy, gl_ViewIndex), outFragColor);
 #else
@@ -95,7 +118,9 @@ void main(){
 #ifdef SKYBOX_CACHED_REPROJECTION
       // Also store cube map result to history for consistency
 #if defined(SKYBOX_CACHED_REPROJECTION_RGB9E5)
-      imageStore(uHistoryImage, ivec3(gl_FragCoord.xy, gl_ViewIndex), uvec4(encodeRGB9E5(outFragColor.rgb)));
+      // Use max() to ensure we never encode to zero (our sentinel for unwritten pixels)
+      const vec3 minRGB9E5 = vec3(6.1e-5); // Minimum non-zero RGB9E5 representable value
+      imageStore(uHistoryImage, ivec3(gl_FragCoord.xy, gl_ViewIndex), uvec4(encodeRGB9E5(max(outFragColor.rgb, minRGB9E5))));
 #elif defined(SKYBOX_CACHED_REPROJECTION_RGBA16F)
       imageStore(uHistoryImage, ivec3(gl_FragCoord.xy, gl_ViewIndex), outFragColor);
 #else

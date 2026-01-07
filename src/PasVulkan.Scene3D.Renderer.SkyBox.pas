@@ -193,7 +193,7 @@ begin
   if fUseRGB9E5 then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('skybox_cached_rgb9e5_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('skybox_cached_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('skybox_cached_rgba16f_frag.spv');
   end;
  end else begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('skybox_frag.spv');
@@ -505,6 +505,8 @@ procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex
 var PushConstants:TpvScene3DRendererSkyBox.TPushConstants;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
     PreviousIndex:TpvSizeInt;
+    ClearColorValue:TVkClearColorValue;
+    ImageSubresourceRange:TVkImageSubresourceRange;
 begin
 
  fScene3D.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Skybox',[0.25,0.75,0.75,1.0]);
@@ -584,6 +586,58 @@ begin
                                       @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,
                                       0,
                                       nil);
+
+ // For cached mode: clear current frame's history image to 0 before drawing
+ // This allows shader to detect unwritten pixels for hidden pixel rejection
+ // - RGBA16F: alpha = 0 means unwritten
+ // - RGB9E5: all zeros (pure black) means unwritten (physically impossible for sky)
+ if fCached then begin
+  // Transition to TRANSFER_DST for clear
+  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.image:=fHistoryImages[aInFlightFrameIndex].VulkanImage.Handle;
+  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+  ImageMemoryBarrier.subresourceRange.levelCount:=1;
+  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+  ImageMemoryBarrier.subresourceRange.layerCount:=fCountSurfaceViews;
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);
+  // Clear to 0
+  FillChar(ClearColorValue,SizeOf(TVkClearColorValue),#0);
+  FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
+  ImageSubresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ImageSubresourceRange.baseMipLevel:=0;
+  ImageSubresourceRange.levelCount:=1;
+  ImageSubresourceRange.baseArrayLayer:=0;
+  ImageSubresourceRange.layerCount:=fCountSurfaceViews;
+  aCommandBuffer.CmdClearColorImage(fHistoryImages[aInFlightFrameIndex].VulkanImage.Handle,
+                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                    @ClearColorValue,
+                                    1,
+                                    @ImageSubresourceRange);
+  // Transition back to GENERAL for shader write
+  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);
+ end;
 
  aCommandBuffer.CmdDraw(36,1,0,0);
 
