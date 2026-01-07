@@ -692,7 +692,7 @@ begin
    end;
    TpvScene3DEnvironmentMode.CachedStarlight:begin
     PushConstants.Mode:=0;
-    PushConstants.SkyBoxBrightnessFactor:=1.0;
+    PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
    end;
    else begin
     PushConstants.Mode:=0;
