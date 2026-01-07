@@ -532,7 +532,16 @@ begin
   fScene3D.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'SkyBox.ClearHistoryImageAndPrepareLayouts',[0.25,0.75,0.75,1.0]);
 
   // Calculate previous frame index
-  PreviousIndex:=(aInFlightFrameIndex+fScene3D.CountInFlightFrames-1) mod fScene3D.CountInFlightFrames;
+  PreviousIndex:=(aInFlightFrameIndex-1)+fScene3D.CountInFlightFrames;
+  if PreviousIndex>=fScene3D.CountInFlightFrames then begin
+   if (fScene3D.CountInFlightFrames and (fScene3D.CountInFlightFrames-1))=0 then begin
+    PreviousIndex:=PreviousIndex and (fScene3D.CountInFlightFrames-1);
+   end else begin
+    while PreviousIndex>=fScene3D.CountInFlightFrames do begin
+     dec(PreviousIndex,fScene3D.CountInFlightFrames);
+    end;
+   end;
+  end;
 
   // Transition current frame's history to TRANSFER_DST for clear
   FillChar(ImageMemoryBarriers,SizeOf(ImageMemoryBarriers),#0);
@@ -629,7 +638,7 @@ begin
    ImageMemoryBarriers[BarrierCount].image:=fHistoryImages[PreviousIndex].VulkanImage.Handle;
    ImageMemoryBarriers[BarrierCount].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
    ImageMemoryBarriers[BarrierCount].subresourceRange.baseMipLevel:=0;
-   ImageMemoryBarriers[BarrierCount].subresourceRange.levelCount:=1;
+   ImageMemoryBarriers[BarrierCount].subresourceRan PreviousIndex:=((aInFlightFrameIndex+fScene3D.CountInFlightFrames)-1) mod fScene3D.CountInFlightFrames;  ge.levelCount:=1;
    ImageMemoryBarriers[BarrierCount].subresourceRange.baseArrayLayer:=0;
    ImageMemoryBarriers[BarrierCount].subresourceRange.layerCount:=fCountSurfaceViews;
    fHistoryImageLayouts[PreviousIndex]:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
