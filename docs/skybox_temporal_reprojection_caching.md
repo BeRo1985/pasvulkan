@@ -201,6 +201,31 @@ if(all(equal(historySample.rgb, vec3(0.0)))){
 
 When `SKYBOX_CACHED_REPROJECTION_DEBUG` is defined, cached pixels have their red/green channels zeroed to visualize cache usage (cached pixels appear blue/dark, freshly computed pixels appear normal).
 
+## When Caching Is Effectively Used
+
+**Important**: The temporal reprojection caching is only **effectively active** in **realtime starlight mode** (`pushConstants.mode == 1`).
+
+```glsl
+switch(pushConstants.mode){
+  case 1u:{
+    // Realtime starlight - CACHING IS EFFECTIVE HERE
+    // Uses reprojectStarlight() to reuse previous frame's expensive computation
+    ...
+  }
+  default:{
+    // Cube map mode - CACHING FULLY INACTIVE
+    // Simply reads from cubemap texture (already fast)
+    // No reprojection, no history read/write
+    ...
+  }
+}
+```
+
+### Why?
+
+- **Starlight mode**: The `getStarlight()` function is computationally expensive (procedural star generation, atmospheric scattering, etc.). Caching provides significant speedup.
+- **Cubemap mode**: Reading from a cubemap texture is already very fast. The reprojection overhead would exceed any savings, so caching is completely bypassed.
+
 ## Descriptor Set Bindings (Cached Mode)
 
 | Binding | Type | Content |
@@ -220,12 +245,22 @@ When `SKYBOX_CACHED_REPROJECTION_DEBUG` is defined, cached pixels have their red
 
 ## Files Involved
 
+### Pascal Source
 - `PasVulkan.Scene3D.Renderer.SkyBox.pas` - Main Pascal implementation
-- `skybox.vert` / `skybox_cached_vert.spv` - Vertex shader (with/without reprojection)
-- `skybox.frag` - Fragment shader (handles both modes via preprocessor)
+
+### Shader Sources
+- `skybox.vert` - Vertex shader source (handles both modes via preprocessor)
+- `skybox.frag` - Fragment shader source (handles both modes via preprocessor)
 - `skybox.glsl` - Shared definitions and push constants
-- `skybox_cached_rgba16f_frag.spv` - RGBA16F variant
-- `skybox_cached_rgb9e5_frag.spv` - RGB9E5 variant
+
+### Compiled Shader Variants (Vertex)
+- `skybox_vert.spv` - Standard vertex shader (no reprojection)
+- `skybox_cached_vert.spv` - Cached variant with previous clip-space position output
+
+### Compiled Shader Variants (Fragment)
+- `skybox_frag.spv` - Standard fragment shader (no caching)
+- `skybox_cached_rgba16f_frag.spv` - Cached variant using RGBA16F history buffer
+- `skybox_cached_rgb9e5_frag.spv` - Cached variant using RGB9E5 history buffer
 
 ## Enabling/Disabling
 
