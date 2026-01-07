@@ -285,7 +285,8 @@ begin
  fSkyBox:=TpvScene3DRendererSkyBox.Create(fInstance.Renderer,
                                           fInstance,
                                           fInstance.Renderer.Scene3D,
-                                          fInstance.Renderer.SkyBoxCubeMap.DescriptorImageInfo);
+                                          fInstance.Renderer.SkyBoxCubeMap.DescriptorImageInfo,
+                                          false);
 
 end;
 
@@ -737,6 +738,7 @@ begin
  fSkyBox.AllocateResources(fVulkanRenderPass,
                            fInstance.ReflectionProbeWidth,
                            fInstance.ReflectionProbeHeight,
+                           6,
                            VK_SAMPLE_COUNT_1_BIT);
 
 end;
@@ -809,6 +811,7 @@ begin
 {}fSkyBox.Draw(aInFlightFrameIndex,
                InFlightFrameState^.ReflectionProbeViewIndex,
                InFlightFrameState^.CountReflectionProbeViews,
+               InFlightFrameState^.CountViews,
                aCommandBuffer,
                InFlightFrameState^.SkyBoxOrientation);//{}
 

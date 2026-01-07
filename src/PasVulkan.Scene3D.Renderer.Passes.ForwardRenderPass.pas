@@ -1143,6 +1143,7 @@ begin
  fSkyBox.AllocateResources(fVulkanRenderPass,
                            fInstance.ScaledWidth,
                            fInstance.ScaledHeight,
+                           fInstance.CountSurfaceViews,
                            fInstance.Renderer.SurfaceSampleCountFlagBits);
  
  if fUseDepthPrepass then begin
@@ -1296,7 +1297,9 @@ begin
 {  fSkyBox.Draw(aInFlightFrameIndex,
                 InFlightFrameState^.FinalViewIndex,
                 InFlightFrameState^.CountFinalViews,
-                aCommandBuffer);//}
+                InFlightFrameState^.CountViews,
+                aCommandBuffer,
+                InFlightFrameState.SkyBoxOrientation);//}
 
    if assigned(fVoxelMeshVisualization) then begin
     fVoxelMeshVisualization.Draw(aInFlightFrameIndex,
@@ -1356,6 +1359,7 @@ begin
    fSkyBox.Draw(aInFlightFrameIndex,
                 InFlightFrameState^.FinalUnjitteredViewIndex,
                 InFlightFrameState^.CountFinalViews,
+                InFlightFrameState^.CountViews,
                 aCommandBuffer,
                 InFlightFrameState.SkyBoxOrientation);
 
