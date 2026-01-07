@@ -1467,16 +1467,30 @@ begin
 
  end else begin
 
-  if assigned(fScene3D) and assigned(fScene3D.SkyBoxTextureImage) then begin
-   fScene3D.SkyBoxTextureImage.Upload;
-   SkyBoxTexture:=fScene3D.SkyBoxTextureImage.Texture;
-   IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
-  end else if assigned(fScene3D) and assigned(fScene3D.EnvironmentTextureImage) then begin
-   SkyBoxTexture:=fScene3D.EnvironmentTextureImage.Texture;
-   IntensityFactor:=fScene3D.EnvironmentIntensityFactor;
-  end else begin
-   SkyBoxTexture:=nil;
-   IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
+  case fScene3D.SkyBoxMode of
+   TpvScene3DEnvironmentMode.Texture:begin
+    if assigned(fScene3D) and assigned(fScene3D.SkyBoxTextureImage) then begin
+     fScene3D.SkyBoxTextureImage.Upload;
+     SkyBoxTexture:=fScene3D.SkyBoxTextureImage.Texture;
+     IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
+    end else if assigned(fScene3D) and assigned(fScene3D.EnvironmentTextureImage) then begin
+     SkyBoxTexture:=fScene3D.EnvironmentTextureImage.Texture;
+     IntensityFactor:=fScene3D.EnvironmentIntensityFactor;
+    end else begin
+     SkyBoxTexture:=nil;
+     IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
+    end;
+   end;
+   TpvScene3DEnvironmentMode.Sky,
+   TpvScene3DEnvironmentMode.Starlight,
+   TpvScene3DEnvironmentMode.CachedStarlight:begin
+    SkyBoxTexture:=nil;
+    IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
+   end;
+   else begin
+    SkyBoxTexture:=nil;
+    IntensityFactor:=1.0;
+   end;
   end;
 
   fSkyBoxCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fGeneralSampler,fScene3D.PrimaryLightDirection,IntensityFactor,false,fOptimizedCubeMapFormat,SkyBoxTexture,fScene3D.SkyBoxMode,'TpvScene3DRenderer.fSkyBoxCubeMap');

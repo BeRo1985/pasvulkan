@@ -679,24 +679,18 @@ begin
 
  PushConstants.ViewBaseIndex:=aViewBaseIndex;
  PushConstants.CountViews:=aCountViews;
+ PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
  PushConstants.WidthHeight:=(fWidth and $ffff) or (fHeight shl 16);
 
  if (fScene3D.SkyBoxMode=TpvScene3DEnvironmentMode.Texture) and assigned(fScene3D.SkyBoxTextureImage) then begin
   PushConstants.Mode:=0;
-  PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
  end else begin
   case fScene3D.SkyBoxMode of
    TpvScene3DEnvironmentMode.Starlight:begin
     PushConstants.Mode:=1;
-    PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
-   end;
-   TpvScene3DEnvironmentMode.CachedStarlight:begin
-    PushConstants.Mode:=0;
-    PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
    end;
    else begin
     PushConstants.Mode:=0;
-    PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
    end;
   end;
  end;
