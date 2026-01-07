@@ -6,6 +6,9 @@
 #extension GL_GOOGLE_include_directive : enable
 
 layout(location = 0) in vec3 inPosition;
+#ifdef SKYBOX_CACHED_REPROJECTION
+layout(location = 1) in vec4 inPreviousClipSpacePosition;
+#endif
 
 layout(location = 0) out vec4 outFragColor;
 
@@ -19,19 +22,23 @@ layout (set = 0, binding = 1) uniform samplerCube uTexture;
 #include "rgb9e5.glsl"
 #endif
 
+#undef SKYBOX_CACHED_REPROJECTION_DEBUG       
+
+#ifdef SKYBOX_CACHED_REPROJECTION_DEBUG       
+#define getStarlight getStarlightDebug
+vec3 getStarlightDebug(const vec3 worldDirection){
+  return vec3(fma(vec3(normalize(worldDirection)), vec3(0.5), vec3(0.5))); // Debug: visualize direction as color
+}
+#endif
+
 // Reprojection for cached starlight rendering
-// Projects current pixel's world direction into previous frame's screen space
+// Uses previous clip space position from vertex shader (interpolated)
 vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const ivec2 screenSize) {
   
-  // Get previous frame's view matrices (stored at offset countAllViews, same pattern as mesh.vert velocity)
-  uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
-  View previousView = uView.views[viewIndex + pushConstants.countAllViews];
+  // Previous clip position comes from vertex shader, properly interpolated
+  vec4 previousClip = inPreviousClipSpacePosition;
   
-  // Transform world direction to previous frame's clip space
-  // Since skybox is at infinity, we only need rotation (translation doesn't matter)
-  vec4 previousClip = previousView.projectionMatrix * vec4(mat3(previousView.viewMatrix) * worldDirection, 1.0);
-  
-  // Perspective divide to get NDC
+  // Perspective divide
   vec2 previousNDC = previousClip.xy / previousClip.w;
   
   // Convert to UV [0,1]
@@ -44,7 +51,13 @@ vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const i
                  all(lessThanEqual(previousUV, vec2(1.0) - margin));
   
   // Also reject if behind camera in previous frame
+  // For direction vectors with w=0, clip.w = -viewDir.z, so positive w means forward-facing (viewDir.z < 0)
   isValid = isValid && (previousClip.w > 0.0);
+
+  // Reject if the reprojection moved too far (indicates large rotation or feedback risk)
+  vec2 motionVector = abs(previousUV - currentUV);
+  bool tooMuchMotion = any(greaterThan(motionVector, vec2(0.15))); // 15% of screen max movement
+  isValid = isValid && !tooMuchMotion;
   
   // Stochastic refresh: periodically recompute some pixels to avoid precision drift
   // Using a simple pattern based on frame index and pixel position
@@ -63,6 +76,9 @@ vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const i
       // Pixel was not rendered in previous frame, recompute
       return vec4(clamp(getStarlight(worldDirection) * pushConstants.skyBoxBrightnessFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
     }else{
+#ifdef SKYBOX_CACHED_REPROJECTION_DEBUG       
+      historySample.xy = vec2(0.0); // debug scaling to visualize history usage 
+#endif
       return historySample;
     }
 #elif defined(SKYBOX_CACHED_REPROJECTION_RGB9E5)
@@ -72,6 +88,9 @@ vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const i
       // Pixel was not rendered in previous frame, recompute
       return vec4(clamp(getStarlight(worldDirection) * pushConstants.skyBoxBrightnessFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
     }else{
+#ifdef SKYBOX_CACHED_REPROJECTION_DEBUG       
+      historySample.xy = vec2(0.0); // debug scaling to visualize history usage 
+#endif
       return historySample;
     }
 #else    
@@ -86,7 +105,7 @@ vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const i
 #endif
 
 void main(){
-  const vec3 direction = normalize((pushConstants.orientation * vec4(normalize(inPosition), 0.0)).xyz); 
+  const vec3 direction = normalize(inPosition);
   switch(pushConstants.mode){
     case 1u:{
       // Realtime starlight

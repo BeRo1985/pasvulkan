@@ -3,7 +3,8 @@
 
 layout(push_constant) uniform PushConstants {
 
-  mat4 orientation;
+  vec4 currentOrientation;
+  vec4 previousOrientation;
   
   vec4 lightDirection;
 

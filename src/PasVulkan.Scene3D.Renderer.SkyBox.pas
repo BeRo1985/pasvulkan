@@ -81,7 +81,8 @@ type { TpvScene3DRendererSkyBox }
       public
        type TPushConstants=packed record
 
-             Orientation:TpvMatrix4x4;
+             CurrentOrientation:TpvVector4;
+             PreviousOrientation:TpvVector4;
 
              LightDirection:TpvVector4;
 
@@ -101,6 +102,7 @@ type { TpvScene3DRendererSkyBox }
       private
        fRenderer:TpvScene3DRenderer;
        fRendererInstance:TpvScene3DRendererInstance;
+       fOrientation:TpvVector4;
        fScene3D:TpvScene3D;
        fCached:Boolean;
        fUseRGB9E5:Boolean;
@@ -160,6 +162,8 @@ begin
 
  fRendererInstance:=aRendererInstance;
 
+ fOrientation:=TpvVector4.Null;
+
  fScene3D:=aScene3D;
 
  fCached:=aCached;
@@ -184,7 +188,11 @@ begin
  end;
  fHistorySampler:=nil;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('skybox_vert.spv');
+ if fCached then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('skybox_cached_vert.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('skybox_vert.spv');
+ end;
  try
   fVertexShaderModule:=TpvVulkanShaderModule.Create(fRenderer.VulkanDevice,Stream);
  finally
@@ -615,7 +623,13 @@ begin
                                     1,@ImageMemoryBarrier);
  end;
 
- PushConstants.Orientation:=aOrientation;
+ PushConstants.PreviousOrientation:=fOrientation;
+ fOrientation:=aOrientation.ToQuaternion.Vector;
+ PushConstants.CurrentOrientation:=fOrientation;
+
+ if PushConstants.PreviousOrientation.DistanceTo(fOrientation)>0.1 then begin
+  PushConstants.PreviousOrientation:=fOrientation;
+ end;
 
  PushConstants.LightDirection:=TpvVector4.InlineableCreate(fScene3D.PrimaryLightDirection,0.0);
 

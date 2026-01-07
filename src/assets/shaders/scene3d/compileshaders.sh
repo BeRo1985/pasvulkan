@@ -333,6 +333,7 @@ compileshaderarguments=(
   "-V debug_blit.frag -o ${tempPath}/debug_blit_frag.spv"
   
   "-V skybox.vert -o ${tempPath}/skybox_vert.spv"
+  "-V skybox.vert -DSKYBOX_CACHED_REPROJECTION -DSKYBOX_CACHED_REPROJECTION_RGBA16F -o ${tempPath}/skybox_cached_vert.spv"
   "-V skybox.frag -o ${tempPath}/skybox_frag.spv"
   "-V skybox.frag -DSKYBOX_CACHED_REPROJECTION -DSKYBOX_CACHED_REPROJECTION_RGBA16F -o ${tempPath}/skybox_cached_rgba16f_frag.spv"
   "-V skybox.frag -DSKYBOX_CACHED_REPROJECTION -DSKYBOX_CACHED_REPROJECTION_RGB9E5 -o ${tempPath}/skybox_cached_rgb9e5_frag.spv"
