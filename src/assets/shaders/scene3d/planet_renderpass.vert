@@ -30,11 +30,8 @@ layout(location = 2) out OutBlock {
   vec3 viewSpacePosition;
 //vec3 cameraRelativePosition;
 #ifdef VELOCITY
-  vec4 jitter;
   vec4 previousClipSpace;
   vec4 currentClipSpace;
-#else
-  vec2 jitter;
 #endif  
 } outBlock;
 
@@ -50,11 +47,8 @@ layout(location = 0) out OutBlock {
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
 #ifdef VELOCITY
-  vec4 jitter;
   vec4 previousClipSpace;
   vec4 currentClipSpace;
-#else
-  vec2 jitter;
 #endif  
 } outBlock;
 #endif
@@ -138,11 +132,8 @@ void main(){
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
 #endif
 #ifdef VELOCITY
-  outBlock.jitter = pushConstants.jitter;
   outBlock.currentClipSpace = (projectionMatrix * viewMatrix) * vec4(position, 1.0);
   outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
-#else
-  outBlock.jitter = pushConstants.jitter.xy;
 #endif
 
 #if defined(RAYTRACING)

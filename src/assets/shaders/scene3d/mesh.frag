@@ -109,11 +109,8 @@ layout(location = 11) flat in int inViewIndex;
 layout(location = 12) flat in uint inFrameIndex;
 
 #ifdef VELOCITY
-layout(location = 13) flat in vec4 inJitter;
-layout(location = 14) in vec4 inPreviousClipSpace;
-layout(location = 15) in vec4 inCurrentClipSpace;
-#else
-layout(location = 13) flat in vec2 inJitter;
+layout(location = 13) in vec4 inPreviousClipSpace;
+layout(location = 14) in vec4 inCurrentClipSpace;
 #endif // VELOCITY
 
 #endif // VOXELIZATION
@@ -467,9 +464,9 @@ void main() {
   texCoords_dFdy[0] = dFdyFine(inTexCoord0);
   texCoords_dFdy[1] = dFdyFine(inTexCoord1);
 #if !defined(VOXELIZATION)  
-  /*if(!any(notEqual(inJitter.xy, vec2(0.0))))*/{
-    texCoords[0] -= (texCoords_dFdx[0] * inJitter.x) + (texCoords_dFdy[0] * inJitter.y);
-    texCoords[1] -= (texCoords_dFdx[1] * inJitter.x) + (texCoords_dFdy[1] * inJitter.y);
+  /*if(!any(notEqual(pushConstants.jitter.xy, vec2(0.0))))*/{
+    texCoords[0] -= (texCoords_dFdx[0] * pushConstants.jitter.x) + (texCoords_dFdy[0] * pushConstants.jitter.y);
+    texCoords[1] -= (texCoords_dFdx[1] * pushConstants.jitter.x) + (texCoords_dFdy[1] * pushConstants.jitter.y);
   }  
 #endif
 #endif
@@ -1174,7 +1171,7 @@ void main() {
 
 #if defined(VELOCITY)
 
-  outFragVelocity = (((inCurrentClipSpace.xy / inCurrentClipSpace.w) - inJitter.xy) - ((inPreviousClipSpace.xy / inPreviousClipSpace.w) - inJitter.zw)) * 0.5;
+  outFragVelocity = (((inCurrentClipSpace.xy / inCurrentClipSpace.w) - pushConstants.jitter.xy) - ((inPreviousClipSpace.xy / inPreviousClipSpace.w) - pushConstants.jitter.zw)) * 0.5;
   
 #elif defined(REFLECTIVESHADOWMAPOUTPUT)
 
