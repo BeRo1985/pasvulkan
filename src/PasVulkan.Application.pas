@@ -13154,7 +13154,11 @@ begin
     end;}
     if fUseRealFullScreen then begin
      if (fFullscreenWidth>0) and (fFullscreenHeight>0) then begin
-      if SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0 then begin
+      OK:=SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0;
+      if not OK then begin
+       OK:=SDL_GetCurrentDisplayMode(0,@FullscreenDisplayMode)=0;
+      end;
+      if OK then begin
        FullscreenDisplayMode.w:=fFullscreenWidth;
        FullscreenDisplayMode.h:=fFullscreenHeight;
        SDL_SetWindowSize(fSurfaceWindow,fFullscreenWidth,fFullscreenHeight);
