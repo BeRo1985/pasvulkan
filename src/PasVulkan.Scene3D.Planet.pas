@@ -20566,7 +20566,7 @@ begin
    fGrassVertexShaderModule:=nil;
 
    if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'velocity_task.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'velocity_vectors_task.spv');
    end else begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'task.spv');
    end;
@@ -20579,13 +20579,13 @@ begin
 
    if fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE then begin
     if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'velocity_multiview_mesh.spv');
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'velocity_vectors_multiview_mesh.spv');
     end else begin
      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'multiview_mesh.spv');
     end;
    end else begin
     if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'velocity_mesh.spv');
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'velocity_vectors_mesh.spv');
     end else begin
      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'mesh.spv');
     end;
@@ -20600,7 +20600,7 @@ begin
   end else begin
 
    if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'velocity_vert.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'velocity_vectors_vert.spv');
    end else begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'vert.spv');
    end;
@@ -20664,13 +20664,13 @@ begin
 
     if fVulkanDevice.FragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE then begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'wireframe_velocity_'+Kind+ShadowKind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'wireframe_velocity_vectors_'+Kind+ShadowKind+'frag.spv');
      end else begin
       Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'wireframe_'+Kind+ShadowKind+'frag.spv');
      end;
     end else begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'velocity_'+Kind+ShadowKind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'velocity_vectors_'+Kind+ShadowKind+'frag.spv');
      end else begin
       Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+ShadowKind+'frag.spv');
      end;
@@ -20683,13 +20683,13 @@ begin
 
     if fVulkanDevice.FragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE then begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+'wireframe_velocity_'+Kind+ShadowKind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+'wireframe_velocity_vectors_'+Kind+ShadowKind+'frag.spv');
      end else begin
       Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+'wireframe_'+Kind+ShadowKind+'frag.spv');
      end;
     end else begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+'velocity_'+Kind+ShadowKind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+'velocity_vectors_'+Kind+ShadowKind+'frag.spv');
      end else begin
       Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+ShadowKind+'frag.spv');
      end;
@@ -21167,25 +21167,25 @@ begin
   fPlanetPipeline.ColorBlendState.BlendConstants[2]:=0.0;
   fPlanetPipeline.ColorBlendState.BlendConstants[3]:=0.0;
   fPlanetPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_OP_ADD,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_OP_ADD,
-                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
-                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
-                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_OP_ADD,
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_OP_ADD,
+                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
   if (fMode=TpvScene3DPlanet.TRenderPass.TMode.Opaque) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
    fPlanetPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_OP_ADD,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_OP_ADD,
-                                                          0);
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_OP_ADD,
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_OP_ADD,
+                                                                0);
   end;
 
   fPlanetPipeline.DepthStencilState.DepthTestEnable:=true;
@@ -21250,6 +21250,10 @@ begin
    fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_A2B10G10R10_SNORM_PACK32,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.NormalTexCoordU)));
    fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_A2B10G10R10_SNORM_PACK32,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.TangentSign)));
    fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32_SFLOAT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.TexCoordV)));
+   if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+    fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32_UINT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.BladeIndex)));
+    fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32_UINT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.BladeID)));
+   end;
  //fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32_UINT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.BladeIndex)));
  //fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32_UINT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.BladeID)));
   end;
