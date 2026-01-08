@@ -15874,6 +15874,11 @@ begin
  end; 
 end;
 
+function CompareDisplayModes(const a,b:PpvApplicationDisplayMode):TpvInt32;
+begin
+ result:=(a^.Width*a^.Height)-(b^.Width*b^.Height); 
+end;
+
 function TpvApplication.GetSupportedDisplayModes(const aDisplayIndex:TpvInt32=0):TpvApplicationDisplayModes;
 {$if defined(PasVulkanHeadless)}
 begin
@@ -15915,6 +15920,9 @@ begin
   end;
  end;
  SetLength(result,ResultCount);
+ if length(result)>1 then begin
+  UntypedDirectIntroSort(@result[0],0,length(result)-1,SizeOf(TpvApplicationDisplayMode),@CompareDisplayModes);
+ end;
 end;
 {$elseif defined(Windows)}
 var DevMode:TDeviceMode;
@@ -15951,6 +15959,9 @@ begin
   inc(Index);
  end;
  SetLength(result,ResultCount);
+ if length(result)>1 then begin
+  UntypedDirectIntroSort(@result[0],0,length(result)-1,SizeOf(TpvApplicationDisplayMode),@CompareDisplayModes);
+ end;
 end;
 {$else}
 begin
