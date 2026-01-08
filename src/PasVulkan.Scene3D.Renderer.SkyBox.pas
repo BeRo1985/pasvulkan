@@ -92,10 +92,10 @@ type { TpvScene3DRendererSkyBox }
              WidthHeight:TpvUInt32;
 
              Mode:TpvUInt32;
-
              // Cached reprojection fields (GLSL truncates if not needed)
              CountAllViews:TpvUInt32;
              FrameIndex:TpvUInt32;
+             SkyBoxIntensityFactor:TpvFloat;
 
             end;
             PPushConstants=^TPushConstants;
@@ -697,6 +697,8 @@ begin
 
  PushConstants.CountAllViews:=aCountAllViews;
  PushConstants.FrameIndex:=fFrameIndex;
+
+ PushConstants.SkyBoxIntensityFactor:=fScene3D.SkyBoxIntensityFactor;
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipeline.Handle);
 

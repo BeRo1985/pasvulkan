@@ -17,6 +17,8 @@ layout (set = 0, binding = 1) uniform samplerCube uTexture;
 #include "skybox.glsl"
 #include "env_starlight.glsl"
 
+float skyBoxFactor = pushConstants.skyBoxIntensityFactor * pushConstants.skyBoxBrightnessFactor;
+
 #ifdef SKYBOX_CACHED_REPROJECTION
 #ifdef SKYBOX_CACHED_REPROJECTION_RGB9E5
 #include "rgb9e5.glsl"
@@ -74,7 +76,7 @@ vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const i
     // This catches hidden/off-screen pixels from previous frame
     if(historySample.a < 0.5){
       // Pixel was not rendered in previous frame, recompute
-      return vec4(clamp(getStarlight(worldDirection) * pushConstants.skyBoxBrightnessFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
+      return vec4(clamp(getStarlight(worldDirection) * skyBoxFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
     }else{
 #ifdef SKYBOX_CACHED_REPROJECTION_DEBUG       
       historySample.xy = vec2(0.0); // debug scaling to visualize history usage 
@@ -86,7 +88,7 @@ vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const i
     // Pure black sky is physically impossible, so this is a safe sentinel
     if(all(equal(historySample.rgb, vec3(0.0)))){
       // Pixel was not rendered in previous frame, recompute
-      return vec4(clamp(getStarlight(worldDirection) * pushConstants.skyBoxBrightnessFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
+      return vec4(clamp(getStarlight(worldDirection) * skyBoxFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
     }else{
 #ifdef SKYBOX_CACHED_REPROJECTION_DEBUG       
       historySample.xy = vec2(0.0); // debug scaling to visualize history usage 
@@ -98,7 +100,7 @@ vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const i
 #endif
   }else{
     // Compute fresh starlight for this pixel (alpha = 1.0 marks as valid)
-    return vec4(clamp(getStarlight(worldDirection) * pushConstants.skyBoxBrightnessFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
+    return vec4(clamp(getStarlight(worldDirection) * skyBoxFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
   }
 }
 
@@ -126,13 +128,13 @@ void main(){
 #endif
 #else
       // Full computation every frame
-      outFragColor = vec4(clamp(getStarlight(direction) * pushConstants.skyBoxBrightnessFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
+      outFragColor = vec4(clamp(getStarlight(direction) * skyBoxFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
 #endif
       break;
     }
     default:{
       // Cube map
-      vec4 color = texture(uTexture, direction) * vec2(pushConstants.skyBoxBrightnessFactor, 1.0).xxxy;
+      vec4 color = texture(uTexture, direction) * vec2(pushConstants.skyBoxBrightnessFactor, 1.0).xxxy; // no pre-multiplied skyBoxIntensityFactor here, because it is already baked into the cube map
       outFragColor = vec4(clamp(color.xyz, vec3(-65504.0), vec3(65504.0)), color.w);
 #ifdef SKYBOX_CACHED_REPROJECTION
       // Also store cube map result to history for consistency

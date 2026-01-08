@@ -14,10 +14,10 @@ layout(push_constant) uniform PushConstants {
   uint widthHeight;    // low 16 bits: width, high 16 bits: height
 
   uint mode;           // 0: cube map, 1: realtime starlight
-
   // Cached reprojection fields (always present, GLSL can truncate at pipeline layout level)
   uint countAllViews;  // Total view count, previous views stored at [viewBaseIndex + countAllViews]
   uint frameIndex;     // For stochastic refresh
+  float skyBoxIntensityFactor;
 
 } pushConstants;
 
