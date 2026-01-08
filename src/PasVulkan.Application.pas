@@ -1501,6 +1501,9 @@ type EpvApplication=class(Exception)
        fCurrentWidth:TpvInt32;
        fCurrentHeight:TpvInt32;
        fCurrentFullscreen:TpvInt32;
+       fCurrentRealFullscreen:TpvInt32;
+       fCurrentFullscreenWidth:Int32;
+       fCurrentFullscreenHeight:Int32;
        fCurrentMaximized:TpvInt32;
        fCurrentPresentMode:TpvInt32;
        fCurrentVisibleMouseCursor:TpvInt32;
@@ -8604,6 +8607,9 @@ begin
  fCurrentWidth:=-1;
  fCurrentHeight:=-1;
  fCurrentFullscreen:=-1;
+ fCurrentRealFullscreen:=-1;
+ fCurrentFullscreenWidth:=-1;
+ fCurrentFullscreenHeight:=-1;
  fCurrentMaximized:=-1;
  fCurrentPresentMode:=High(TpvInt32);
  fCurrentVisibleMouseCursor:=-1;
@@ -13118,8 +13124,12 @@ begin
    fOnStep(self);
   end;
 
-  if fCurrentFullScreen<>ord(fFullScreen) then begin
-   fCurrentFullScreen:=ord(fFullScreen);
+  if (fCurrentFullScreen<>ord(fFullScreen)) or
+     (fFullscreen and
+      ((fCurrentRealFullscreen<>ord(fUseRealFullScreen)) or
+       (fUseRealFullScreen and
+        ((fCurrentFullscreenWidth<>fFullscreenWidth) or
+         (fCurrentFullscreenHeight<>fFullscreenHeight))))) then begin
    if (Tries=0) and
       not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                              TAcquireVulkanBackBufferState.RecreateSurface,
@@ -13128,7 +13138,12 @@ begin
     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
    end;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
-   if fFullScreen then begin
+   if fFullScreen or
+      (fFullScreen and
+       ((fCurrentRealFullscreen<>ord(fUseRealFullScreen)) or
+        (fUseRealFullScreen and
+         ((fCurrentFullscreenWidth<>fFullscreenWidth) or
+          (fCurrentFullscreenHeight<>fFullscreenHeight))))) then begin
 {   case fVulkanDevice.PhysicalDevice.Properties.vendorID of
      $00001002:begin // AMD
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
@@ -13146,12 +13161,18 @@ begin
        SDL_SetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode);
       end;
      end;
-     SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
+     if (SDL_GetWindowFlags(fSurfaceWindow) and SDL_WINDOW_FULLSCREEN)=0 then begin
+      SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
+     end;
     end else begin
-     SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
+     if (SDL_GetWindowFlags(fSurfaceWindow) and SDL_WINDOW_FULLSCREEN_DESKTOP)=0 then begin
+      SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
+     end;
     end;
    end else begin
-    SDL_SetWindowFullscreen(fSurfaceWindow,0);
+    if (SDL_GetWindowFlags(fSurfaceWindow) and (SDL_WINDOW_FULLSCREEN or SDL_WINDOW_FULLSCREEN_DESKTOP))<>0 then begin
+     SDL_SetWindowFullscreen(fSurfaceWindow,0);
+    end;
    end;
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
    if fSDLVersionWithVulkanSupport then begin
@@ -13160,7 +13181,35 @@ begin
     SDL_GetWindowSize(fSurfaceWindow,fWidth,fHeight);
    end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
-   if fFullScreen then begin
+   if fFullScreen or
+      (fFullScreen and
+       ((fCurrentRealFullscreen<>ord(fUseRealFullScreen)) or
+        (fUseRealFullScreen and
+         ((fCurrentFullscreenWidth<>fFullscreenWidth) or
+          (fCurrentFullscreenHeight<>fFullscreenHeight))))) then begin
+    if fWin32Fullscreen then begin
+     if fWin32RealFullscreen then begin
+      OK:=ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
+      fWin32RealFullscreen:=false;
+     end else begin
+      OK:=true;
+     end;
+     if OK then begin
+      if fResizable then begin
+       SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
+      end else begin
+       SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_SYSMENU);
+      end;
+      if fAcceptDragDropFiles then begin
+       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
+      end else begin
+       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+      end;
+      SetWindowPos(fWin32Handle,HWND_TOP,fWin32OldLeft,fWin32OldTop,fWin32OldWidth,fWin32OldHeight,SWP_FRAMECHANGED);
+      ShowWindow(fWin32Handle,SW_SHOW);
+      fWin32Fullscreen:=false;
+     end;
+    end;
     FillChar(MonitorInfo,SizeOf(TMonitorInfo),#0);
     MonitorInfo.cbSize:=SizeOf(TMonitorInfo);
     if (not fWin32Fullscreen) and
@@ -13234,6 +13283,10 @@ begin
    end;
 {$else}
 {$ifend}
+   fCurrentFullScreen:=ord(fFullScreen);
+   fCurrentRealFullscreen:=ord(fUseRealFullScreen);
+   fCurrentFullscreenWidth:=fFullscreenWidth;
+   fCurrentFullscreenHeight:=fFullscreenHeight;
    continue;
   end;
 
