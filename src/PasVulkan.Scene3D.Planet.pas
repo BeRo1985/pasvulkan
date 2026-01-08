@@ -1819,7 +1819,9 @@ type TpvScene3DPlanets=class;
                    end;
                    PPlanetPushConstants=^TPlanetPushConstants;
                    TGrassPushConstants=packed record
-                    ModelMatrix:TpvMatrix4x4;
+                    //ModelMatrix:TpvMatrix4x4;
+                    ModelMatrixPositionScale:TpvVector4;
+                    ModelMatrixOrientation:TpvQuaternion;
 
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
@@ -1845,6 +1847,9 @@ type TpvScene3DPlanets=class;
                     MaximumCountVertices:TpvUInt32;
                     MaximumCountIndices:TpvUInt32;
                     InvocationVariants:TpvUInt32;
+
+                    Jitter:TpvVector4;
+
                    end;
                    PGrassPushConstants=^TGrassPushConstants;
               private
@@ -1977,7 +1982,9 @@ type TpvScene3DPlanets=class;
                    end;
                    PPlanetPushConstants=^TPlanetPushConstants;
                    TGrassPushConstants=packed record
-                    ModelMatrix:TpvMatrix4x4;
+                    //ModelMatrix:TpvMatrix4x4;
+                    ModelMatrixPositionScale:TpvVector4;
+                    ModelMatrixOrientation:TpvQuaternion;
 
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
@@ -1991,7 +1998,7 @@ type TpvScene3DPlanets=class;
 
                     TileMapResolution:TpvUInt32;
                     TileResolution:TpvUInt32;
-                    ResolutionXY:TpvUInt32;
+                    LOD:TpvUInt32; // ResolutionXY
                     FrameIndex:TpvUInt32;
 
                     TimeSeconds:TpvUInt32;
@@ -1999,8 +2006,12 @@ type TpvScene3DPlanets=class;
                     PreviousTime:TpvFloat;
                     Unused1:TpvUInt32;
 
-                    Jitter:TpvVector2;
+                    MaximumCountTaskIndices:TpvUInt32;
+                    MaximumCountVertices:TpvUInt32;
+                    MaximumCountIndices:TpvUInt32;
                     InvocationVariants:TpvUInt32;
+
+                    Jitter:TpvVector4;
 
                    end;
                    PGrassPushConstants=^TGrassPushConstants;
@@ -19327,6 +19338,7 @@ var PlanetIndex,BaseViewIndex,CountViews,CountBufferMemoryBarriers:TpvSizeInt;
     BufferMemoryBarriers:array[0..5] of TVkBufferMemoryBarrier;
     DstPipelineStageFlags:TVkPipelineStageFlags;
     BufferCopy:TVkBufferCopy;
+    ModelMatrix:TpvMatrix4x4D;
 begin
 
  PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
@@ -19717,7 +19729,10 @@ begin
            Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPass),
                                                       RendererViewInstance) then begin
 
-         fGrassPushConstants.ModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix,aInFlightFrameIndex,false);
+
+         ModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix,aInFlightFrameIndex,false);
+         fGrassPushConstants.ModelMatrixPositionScale:=TpvVector4.InlineableCreate(ModelMatrix.Translation.xyz,1.0);
+         fGrassPushConstants.ModelMatrixOrientation:=ModelMatrix.ToQuaternionD.ToQuaternion;
          fGrassPushConstants.ViewBaseIndex:=BaseViewIndex;
          fGrassPushConstants.CountViews:=CountViews;
          fGrassPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
@@ -19743,6 +19758,7 @@ begin
          fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
          fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
          fGrassPushConstants.InvocationVariants:=Planet.fGrassInvocationVariants;
+         fGrassPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter;
 
          begin
 
@@ -21386,6 +21402,7 @@ var PlanetIndex,Level:TpvSizeInt;
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
     vkCmdDrawIndexedIndirectCount:TvkCmdDrawIndexedIndirectCount;
+    ModelMatrix:TpvMatrix4x4D;
 begin
 
  TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TRenderPass.Draw',[0.25,0.5,0.75,1.0]);
@@ -21640,7 +21657,9 @@ begin
       InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].InverseViewMatrix;
       ProjectionMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ProjectionMatrix;
 
-      fGrassPushConstants.ModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix,aInFlightFrameIndex,false);
+      ModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix,aInFlightFrameIndex,false);
+      fGrassPushConstants.ModelMatrixPositionScale:=TpvVector4.InlineableCreate(ModelMatrix.Translation.xyz,1.0);
+      fGrassPushConstants.ModelMatrixOrientation:=ModelMatrix.ToQuaternionD.ToQuaternion;
       fGrassPushConstants.ViewBaseIndex:=aViewBaseIndex;
       fGrassPushConstants.CountViews:=aCountViews;
       fGrassPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
@@ -21651,12 +21670,9 @@ begin
       fGrassPushConstants.GrassHeight:=0.125*5.0;//1.25;
       fGrassPushConstants.GrassThickness:=0.01;
       fGrassPushConstants.MaximalCountBladesPerPatch:=8;
-      fGrassPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
-      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
-       fGrassPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
-      end else begin
-       fGrassPushConstants.Jitter:=TpvVector2.Null;
-      end;
+      //fGrassPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
+      fGrassPushConstants.LOD:=Max(0,IntLog2(Planet.fHeightMapResolution)-IntLog2(Planet.fVisualResolution));
+      fGrassPushConstants.FrameIndex:=0;
       fGrassPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
       fGrassPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
       if IsNaN(fPreviousTime) or IsInfinite(fPreviousTime) or (abs(fPreviousTime)>65536.0) or (abs(fPreviousTime-fGrassPushConstants.Time)>10.0) then begin
@@ -21666,8 +21682,15 @@ begin
       end;
       fPreviousTime:=fGrassPushConstants.Time;
       fGrassPushConstants.Unused1:=0;
+      fGrassPushConstants.MaximumCountTaskIndices:=Planet.fVisualResolution*Planet.fVisualResolution;
+      fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
+      fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
       fGrassPushConstants.InvocationVariants:=Planet.fGrassInvocationVariants;
-      fGrassPushConstants.FrameIndex:=aFrameIndex;
+      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
+       fGrassPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter;
+      end else begin
+       fGrassPushConstants.Jitter:=TpvVector4.Null;
+      end;
 {     if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
        fGrassPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
       end else begin

@@ -3,7 +3,9 @@
 
 layout(push_constant) uniform PushConstants {
 
-  mat4 modelMatrix; 
+  vec4 modelMatrixPositionScale; // xyz: position, w: scale
+  
+  vec4 modelMatrixOrientation; // quaternion
 
   uint viewBaseIndex;
   uint countViews;
@@ -25,15 +27,12 @@ layout(push_constant) uniform PushConstants {
   float previousTime; // Previous time - used by VELOCITY to recalculate previous frame's wind/animation state
   uint unused1; // Padding to ensure 16-byte alignment
 
-#if defined(MESH_SHADER_EMULATION)
   uint maximalCountTaskIndices;
   uint maximalCountVertices;
   uint maximalCountIndices;
   uint invocationVariants;
-#else  
-  vec2 jitter;
-  uint invocationVariants;
-#endif
+
+  vec4 jitter;
 
 } pushConstants;
 

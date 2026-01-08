@@ -51,10 +51,12 @@ layout(location = 1) out OutBlock {
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
-  vec2 jitter;
 #ifdef VELOCITY
+  vec4 jitter;
   vec4 previousClipSpace;
   vec4 currentClipSpace;
+#else
+  vec2 jitter;
 #endif  
 } outBlock;
 
@@ -68,10 +70,12 @@ layout(location = 0) out OutBlock {
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
-  vec2 jitter;
 #ifdef VELOCITY
+  vec4 jitter;
   vec4 previousClipSpace;
   vec4 currentClipSpace;
+#else
+  vec2 jitter;
 #endif  
 } outBlock;
 #endif
@@ -100,12 +104,21 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
 
+#include "quaternion.glsl" 
+
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 
 void main(){          
+
+  // Calculate the model matrix from the position/scale and orientation/quaternion push constant values
+  mat4 modelMatrix = mat4(quaternionToMatrix(pushConstants.modelMatrixOrientation));
+  modelMatrix[3].xyz = pushConstants.modelMatrixPositionScale.xyz;
+  modelMatrix[0].xyz *= pushConstants.modelMatrixPositionScale.w;
+  modelMatrix[1].xyz *= pushConstants.modelMatrixPositionScale.w;
+  modelMatrix[2].xyz *= pushConstants.modelMatrixPositionScale.w; 
 
   mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 
@@ -117,8 +130,8 @@ void main(){
   vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
 #endif   
 
-  vec3 position = (pushConstants.modelMatrix * vec4(inPosition, 1.0)).xyz;
-//vec3 position = (pushConstants.modelMatrix * vec4(uintBitsToFloat(inPositionXYZNormalXYZTexCoordU.xyz), 1.0)).xyz;
+  vec3 position = (modelMatrix * vec4(inPosition, 1.0)).xyz;
+//vec3 position = (modelMatrix * vec4(uintBitsToFloat(inPositionXYZNormalXYZTexCoordU.xyz), 1.0)).xyz;
 
 #if defined(VELOCITY)
   vec3 previousPosition = position + vec3(unpackSnorm2x16(inPackedVelocityXY), unpackSnorm2x16(inPackedVelocityZUnused).x);
@@ -142,16 +155,18 @@ void main(){
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
   outBlock.position = position;         
-  outBlock.normal = normalize(adjugate(pushConstants.modelMatrix) * normal);
+  outBlock.normal = normalize(adjugate(modelMatrix) * normal);
   outBlock.tangentSign = tangentSign;
   outBlock.texCoord = texCoordUV;
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
-  outBlock.jitter = pushConstants.jitter;
 #ifdef VELOCITY
+  outBlock.jitter = pushConstants.jitter;
   outBlock.currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
   outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(previousPosition, 1.0);
+#else
+  outBlock.jitter = pushConstants.jitter.xy;  
 #endif
 
 #if defined(RAYTRACING)

@@ -140,10 +140,12 @@ layout(location = 1) out OutBlock {
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
-  vec2 jitter;
 #ifdef VELOCITY
+  vec4 jitter;
   vec4 previousClipSpace;
   vec4 currentClipSpace;
+#else
+  vec2 jitter;  
 #endif  
 } outBlock[];
 
@@ -157,10 +159,12 @@ layout(location = 0) out OutBlock {
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
-  vec2 jitter;
 #ifdef VELOCITY
+  vec4 jitter;
   vec4 previousClipSpace;
   vec4 currentClipSpace;
+#else
+  vec2 jitter;  
 #endif  
 } outBlock[];
 #endif // defined(RAYTRACING)
@@ -212,6 +216,7 @@ mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 
+shared mat4 modelMatrix;
 shared mat4 viewProjectionMatrix;
 shared mat4 inverseModelViewMatrix;
 shared mat3 normalModelMatrix;
@@ -248,6 +253,8 @@ uvec4 getTriangleRawVertex(ivec2 quadXY){
 
 #define FineOffseting
 
+#include "quaternion.glsl"
+
 void main() {
   
   if(gl_LocalInvocationIndex == 0u){
@@ -266,11 +273,18 @@ void main() {
 
     // Stuff that is only needed once per task group for all invocations, to avoid redundant calculations
 
+    // Calculate the model matrix from the position/scale and orientation/quaternion push constant values
+    modelMatrix = mat4(quaternionToMatrix(pushConstants.modelMatrixOrientation));
+    modelMatrix[3].xyz = pushConstants.modelMatrixPositionScale.xyz;
+    modelMatrix[0].xyz *= pushConstants.modelMatrixPositionScale.w;
+    modelMatrix[1].xyz *= pushConstants.modelMatrixPositionScale.w;
+    modelMatrix[2].xyz *= pushConstants.modelMatrixPositionScale.w; 
+    
     viewProjectionMatrix = projectionMatrix * viewMatrix;
     
-    inverseModelViewMatrix = inverse(viewMatrix * pushConstants.modelMatrix);
+    inverseModelViewMatrix = inverse(viewMatrix * modelMatrix);
     
-    normalModelMatrix = adjugate(pushConstants.modelMatrix);
+    normalModelMatrix = adjugate(modelMatrix);
 
 #if 1
     // The actual standard approach
@@ -447,7 +461,7 @@ void main() {
   ////////////////////////////////////////////////////////////////////////////
 
   vec4 boundingSphere = vec4(
-    (pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz,
+    (modelMatrix * vec4(patchPosition, 1.0)).xyz,
     max(max(grassHeight, grassThickness) + grassOffsetRadius, grassOffsetRadius) * 2.0
   );  
 
@@ -521,7 +535,7 @@ void main() {
 
   ////////////////////////////////////////////////////////////////////////////////
 
-  //mat3 planetNormalMatrix = adjugate(pushConstants.modelMatrix);
+  //mat3 planetNormalMatrix = adjugate(modelMatrix);
 
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -543,7 +557,7 @@ void main() {
 #ifndef FineOffseting
   //const vec3 cameraWorldLeft = normalize(transpose(patchTangentSpaceBasis) * (inverseModelViewMatrix * vec4(-1.0, 0.0, 0.0, 0.0)).xyz);
 
-  const vec3 viewDirection = normalize((pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz - cameraPosition);
+  const vec3 viewDirection = normalize((modelMatrix * vec4(patchPosition, 1.0)).xyz - cameraPosition);
   const vec3 viewDirectionXZ = normalize(vec3(viewDirection.x, 0.0, viewDirection.z));
 
   const mat3 modelPatchSpaceBasisMatrix = normalModelMatrix * patchTangentSpaceBasis;
@@ -636,7 +650,7 @@ void main() {
 
       //const vec3 cameraWorldLeft = normalize(transpose(patchTangentSpaceBasis) * (inverseModelViewMatrix * vec4(-1.0, 0.0, 0.0, 0.0)).xyz);
 
-      const vec3 viewDirection = normalize((pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz - cameraPosition);
+      const vec3 viewDirection = normalize((modelMatrix * vec4(patchPosition, 1.0)).xyz - cameraPosition);
       const vec3 viewDirectionXZ = normalize(vec3(viewDirection.x, 0.0, viewDirection.z));
 
       const mat3 modelPatchSpaceBasisMatrix = normalModelMatrix * patchTangentSpaceBasis;
@@ -737,12 +751,12 @@ void main() {
       vec3 localP1 = p1 + (offset * (s * 0.7));
       vec3 localP2 = p2 + (offset * (s * 0.3));    
 
-      vec3 position = (pushConstants.modelMatrix * vec4(patchPosition + (patchTangentSpaceBasis * bezier(localP0, localP1, localP2, t)), 1.0)).xyz;
+      vec3 position = (modelMatrix * vec4(patchPosition + (patchTangentSpaceBasis * bezier(localP0, localP1, localP2, t)), 1.0)).xyz;
 
 #ifdef VELOCITY
       vec3 localPreviousP1 = previousP1 + (offset * (s * 0.7));
       vec3 localPreviousP2 = previousP2 + (offset * (s * 0.3));
-      vec3 previousPosition = (pushConstants.modelMatrix * vec4(patchPosition + (patchTangentSpaceBasis * bezier(localP0, localPreviousP1, localPreviousP2, t)), 1.0)).xyz;
+      vec3 previousPosition = (modelMatrix * vec4(patchPosition + (patchTangentSpaceBasis * bezier(localP0, localPreviousP1, localPreviousP2, t)), 1.0)).xyz;
 #endif
 
   #if defined(BRUTEFORCE_NORMAL_CALCULATION)
@@ -837,10 +851,12 @@ void main() {
       outBlock[vertexID].worldSpacePosition = worldSpacePosition;
       outBlock[vertexID].viewSpacePosition = viewSpacePosition.xyz;  
       outBlock[vertexID].cameraRelativePosition = worldSpacePosition - cameraPosition;
-      outBlock[vertexID].jitter = pushConstants.jitter;
     #ifdef VELOCITY
+      outBlock[vertexID].jitter = pushConstants.jitter;
       outBlock[vertexID].currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
       outBlock[vertexID].previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(previousPosition, 1.0);
+    #else
+      outBlock[vertexID].jitter = pushConstants.jitter.xy;
     #endif
 
     #if defined(RAYTRACING)
