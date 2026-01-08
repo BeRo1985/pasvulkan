@@ -13144,6 +13144,7 @@ begin
         (fUseRealFullScreen and
          ((fCurrentFullscreenWidth<>fFullscreenWidth) or
           (fCurrentFullscreenHeight<>fFullscreenHeight))))) then begin
+
 {   case fVulkanDevice.PhysicalDevice.Properties.vendorID of
      $00001002:begin // AMD
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
@@ -13152,7 +13153,12 @@ begin
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
      end;
     end;}
+    
     if fUseRealFullScreen then begin
+
+     // Enter real fullscreen
+
+     // Set the desired fullscreen display mode 
      if (fFullscreenWidth>0) and (fFullscreenHeight>0) then begin
       OK:=SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0;
       if not OK then begin
@@ -13165,19 +13171,30 @@ begin
        SDL_SetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode);
       end;
      end;
+
+     // Set real fullscreen mode
      if (SDL_GetWindowFlags(fSurfaceWindow) and SDL_WINDOW_FULLSCREEN)=0 then begin
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
      end;
+    
     end else begin
+    
+     // Enter fake fullscreen (borderless window maximized to desktop size)
      if (SDL_GetWindowFlags(fSurfaceWindow) and SDL_WINDOW_FULLSCREEN_DESKTOP)=0 then begin
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
      end;
+
     end;
+
    end else begin
+    
+    // Restore windowed mode
     if (SDL_GetWindowFlags(fSurfaceWindow) and (SDL_WINDOW_FULLSCREEN or SDL_WINDOW_FULLSCREEN_DESKTOP))<>0 then begin
      SDL_SetWindowFullscreen(fSurfaceWindow,0);
     end;
+
    end;
+
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
    if fSDLVersionWithVulkanSupport then begin
     SDL_Vulkan_GetDrawableSize(fSurfaceWindow,@fWidth,@fHeight);
@@ -13185,35 +13202,36 @@ begin
     SDL_GetWindowSize(fSurfaceWindow,fWidth,fHeight);
    end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
-   if fFullScreen or
-      (fFullScreen and
-       ((fCurrentRealFullscreen<>ord(fUseRealFullScreen)) or
-        (fUseRealFullScreen and
-         ((fCurrentFullscreenWidth<>fFullscreenWidth) or
-          (fCurrentFullscreenHeight<>fFullscreenHeight))))) then begin
-    if fWin32Fullscreen then begin
-     if fWin32RealFullscreen then begin
-      OK:=ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
-      fWin32RealFullscreen:=false;
-     end else begin
-      OK:=true;
-     end;
-     if OK then begin
-      if fResizable then begin
-       SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
-      end else begin
-       SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_SYSMENU);
-      end;
-      if fAcceptDragDropFiles then begin
-       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
-      end else begin
-       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
-      end;
-      SetWindowPos(fWin32Handle,HWND_TOP,fWin32OldLeft,fWin32OldTop,fWin32OldWidth,fWin32OldHeight,SWP_FRAMECHANGED);
-      ShowWindow(fWin32Handle,SW_SHOW);
-      fWin32Fullscreen:=false;
-     end;
+  
+   // Always restore the window before changing fullscreen state to avoid issues     
+   if fWin32Fullscreen then begin
+    if fWin32RealFullscreen then begin
+     OK:=ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
+     fWin32RealFullscreen:=false;
+    end else begin
+     OK:=true;
     end;
+    if OK then begin
+     if fResizable then begin
+      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
+     end else begin
+      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_SYSMENU);
+     end;
+     if fAcceptDragDropFiles then begin
+      SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
+     end else begin
+      SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+     end;
+     SetWindowPos(fWin32Handle,HWND_TOP,fWin32OldLeft,fWin32OldTop,fWin32OldWidth,fWin32OldHeight,SWP_FRAMECHANGED);
+     ShowWindow(fWin32Handle,SW_SHOW);
+     fWin32Fullscreen:=false;
+    end else begin
+     fFullscreen:=true;
+    end;
+   end;
+
+   // Now set the new fullscreen state, when requested  
+   if fFullScreen then begin
     FillChar(MonitorInfo,SizeOf(TMonitorInfo),#0);
     MonitorInfo.cbSize:=SizeOf(TMonitorInfo);
     if (not fWin32Fullscreen) and
@@ -13225,7 +13243,7 @@ begin
      end else begin
       fScreenWidth:=MonitorInfo.rcMonitor.Width;
       fScreenHeight:=MonitorInfo.rcMonitor.Height;
-     end;  
+     end;
      fWin32OldLeft:=Rect.Left;
      fWin32OldTop:=Rect.Top;
      fWin32OldWidth:=fWidth;
@@ -13260,31 +13278,9 @@ begin
     end else begin
      fFullscreen:=false;
     end;
-   end else if fWin32Fullscreen then begin
-    if fWin32RealFullscreen then begin
-     OK:=ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
-     fWin32RealFullscreen:=false;
-    end else begin
-     OK:=true; 
-    end;
-    if OK then begin
-     if fResizable then begin
-      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
-     end else begin
-      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_SYSMENU);
-     end;
-     if fAcceptDragDropFiles then begin
-      SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
-     end else begin
-      SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
-     end;
-     SetWindowPos(fWin32Handle,HWND_TOP,fWin32OldLeft,fWin32OldTop,fWin32OldWidth,fWin32OldHeight,SWP_FRAMECHANGED);
-     ShowWindow(fWin32Handle,SW_SHOW);
-     fWin32Fullscreen:=false;
-    end else begin
-     fFullscreen:=true;
-    end;
+
    end;
+
 {$else}
 {$ifend}
    fCurrentFullScreen:=ord(fFullScreen);
