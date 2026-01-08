@@ -1996,7 +1996,7 @@ type TpvScene3DPlanets=class;
 
                     TimeSeconds:TpvUInt32;
                     TimeFractionalSecond:TpvFloat;
-                    Unused0:TpvUInt32;
+                    PreviousTime:TpvFloat;
                     Unused1:TpvUInt32;
 
                     Jitter:TpvVector2;
@@ -2038,6 +2038,7 @@ type TpvScene3DPlanets=class;
               fHeight:TpvInt32;
               fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
               fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
+              fPreviousTime:TpvFloat;
              public
               constructor Create(const aRenderer:TObject;
                                  const aRendererInstance:TObject;
@@ -19723,7 +19724,7 @@ begin
          fGrassPushConstants.FrameIndex:=0;
          fGrassPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
          fGrassPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
-         if IsNaN(fPreviousTime) or IsInfinite(fPreviousTime) or (abs(fPreviousTime)>65536.0) then begin
+         if IsNaN(fPreviousTime) or IsInfinite(fPreviousTime) or (abs(fPreviousTime)>65536.0) or (abs(fPreviousTime-fGrassPushConstants.Time)>10.0) then begin
           fGrassPushConstants.PreviousTime:=fGrassPushConstants.Time;
          end else begin
           fGrassPushConstants.PreviousTime:=fPreviousTime;
@@ -20521,6 +20522,8 @@ begin
  fResourceSSAO:=aResourceSSAO;
 
  fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+
+ fPreviousTime:=Infinity;
 
  if assigned(fVulkanDevice) then begin
 
@@ -21644,7 +21647,12 @@ begin
       end;
       fGrassPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
       fGrassPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
-      fGrassPushConstants.Unused0:=0;
+      if IsNaN(fPreviousTime) or IsInfinite(fPreviousTime) or (abs(fPreviousTime)>65536.0) or (abs(fPreviousTime-fGrassPushConstants.Time)>10.0) then begin
+       fGrassPushConstants.PreviousTime:=fGrassPushConstants.Time;
+      end else begin
+       fGrassPushConstants.PreviousTime:=fPreviousTime;
+      end;
+      fPreviousTime:=fGrassPushConstants.Time;
       fGrassPushConstants.Unused1:=0;
       fGrassPushConstants.InvocationVariants:=Planet.fGrassInvocationVariants;
       fGrassPushConstants.FrameIndex:=aFrameIndex;
