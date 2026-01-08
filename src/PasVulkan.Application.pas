@@ -1861,6 +1861,7 @@ type EpvApplication=class(Exception)
        fWin32OldWidth:TpvInt32;
        fWin32OldHeight:TpvInt32;
        fWin32Fullscreen:Boolean;
+       fWin32RealFullscreen:Boolean;
        fWin32HighSurrogate:TpvUInt32;
        fWin32LowSurrogate:TpvUInt32;
        fWin32TouchActive:Boolean;
@@ -13150,7 +13151,16 @@ begin
      devMode.dmPelsHeight:=fScreenHeight;
      devMode.dmBitsPerPel:=32;
      devMode.dmFields:=DM_BITSPERPEL or DM_PELSWIDTH or DM_PELSHEIGHT;
-     {if ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
+{    devMode.dmDisplayFrequency:=MonitorInfo.dmDisplayFrequency;
+     devMode.dmFields:=devMode.dmFields or DM_DISPLAYFREQUENCY;}
+     if fUseRealFullScreen then begin
+      OK:=ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
+      fWin32RealFullscreen:=OK;
+     end else begin
+      OK:=true;
+      fWin32RealFullscreen:=false;
+     end;
+     if OK then begin
       SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_POPUP or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
       if fAcceptDragDropFiles then begin
        SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
@@ -13160,14 +13170,20 @@ begin
       SetWindowPos(fWin32Handle,HWND_TOP,MonitorInfo.rcMonitor.Left,MonitorInfo.rcMonitor.Top,fScreenWidth,fScreenHeight,SWP_FRAMECHANGED);
       ShowWindow(fWin32Handle,SW_SHOW);
       fWin32Fullscreen:=true;
-{    end else begin
-      fFullscreen:=false;}
+     end else begin
+      fFullscreen:=false;
      end;
     end else begin
      fFullscreen:=false;
     end;
    end else if fWin32Fullscreen then begin
-{   if ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
+    if fWin32RealFullscreen then begin
+     OK:=ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
+     fWin32RealFullscreen:=false;
+    end else begin
+     OK:=true; 
+    end;
+    if OK then begin
      if fResizable then begin
       SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
      end else begin
@@ -13181,8 +13197,8 @@ begin
      SetWindowPos(fWin32Handle,HWND_TOP,fWin32OldLeft,fWin32OldTop,fWin32OldWidth,fWin32OldHeight,SWP_FRAMECHANGED);
      ShowWindow(fWin32Handle,SW_SHOW);
      fWin32Fullscreen:=false;
-{   end else begin
-     fFullscreen:=true;}
+    end else begin
+     fFullscreen:=true;
     end;
    end;
 {$else}
@@ -15207,6 +15223,8 @@ begin
   fWin32HiddenCursor:=CreateCursor(fWin32HInstance,0,0,1,1,@Win32CursorMaskAND,@Win32CursorMaskXOR);
 
   fWin32Fullscreen:=false;
+
+  fWin32RealFullscreen:=false;
 
   if fVisibleMouseCursor then begin
    fWin32Cursor:=LoadCursor(0,IDC_ARROW);
