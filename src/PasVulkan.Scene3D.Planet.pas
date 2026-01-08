@@ -21343,7 +21343,8 @@ begin
                                                                VK_BLEND_FACTOR_ZERO,
                                                                VK_BLEND_FACTOR_ZERO,
                                                                VK_BLEND_OP_ADD,
-                                                               0);
+                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT));
   end;
 
   fGrassPipeline.DepthStencilState.DepthTestEnable:=true;
