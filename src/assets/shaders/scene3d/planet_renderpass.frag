@@ -13,6 +13,8 @@
   #define HAVE_PERVERTEX
 #endif
 
+#define PLANET_RENDERPASS
+
 #define LIGHTS 
 #define SHADOWS
 
