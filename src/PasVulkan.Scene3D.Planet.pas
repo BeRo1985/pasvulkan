@@ -1965,20 +1965,23 @@ type TpvScene3DPlanets=class;
                     );
                    PMode=^TMode;
                    TPlanetPushConstants=packed record
+
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
                     CountQuadPointsInOneDirection:TpvUInt32;
                     CountAllViews:TpvUInt32;
+
                     ResolutionXY:TpvUInt32;
                     TessellationFactor:TpvFloat;
-                    Jitter:TpvVector2;
+                    TimeSeconds:TpvUInt32;
+                    TimeFractionalSecond:TpvFloat;
+
                     FrameIndex:TpvUInt32;
                     Reversed:TpvUInt32;
                     PlanetData:TVkDeviceAddress;
-                    TimeSeconds:TpvUInt32;
-                    TimeFractionalSecond:TpvFloat;
-                    Unused0:TpvUInt32;
-                    Unused1:TpvUInt32;
+
+                    Jitter:TpvVector4;
+
                    end;
                    PPlanetPushConstants=^TPlanetPushConstants;
                    TGrassPushConstants=packed record
@@ -2302,13 +2305,14 @@ type TpvScene3DPlanets=class;
 
                     ResolutionXY:TpvUInt32;
                     TessellationFactor:TpvFloat;
-                    Jitter:TpvVector2;
+                    TileMapResolution:TpvUInt32;
+                    Unused0:TpvUInt32;
 
                     FrameIndex:TpvUInt32;
                     Time:TpvFloat;
                     PlanetData:TVkDeviceAddress;
 
-                    TileMapResolution:TpvUInt32;
+                    Jitter:TpvVector4;
 
                    end;
                    PPushConstants=^TPushConstants;
@@ -21512,21 +21516,19 @@ begin
       fPlanetPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
       fPlanetPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
       fPlanetPushConstants.TessellationFactor:=TessellationFactor;
-      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
-       fPlanetPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
-      end else begin
-       fPlanetPushConstants.Jitter:=TpvVector2.Null;
-      end;
+      fPlanetPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
+      fPlanetPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
       fPlanetPushConstants.FrameIndex:=aFrameIndex;
       if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
        fPlanetPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
       end else begin
        fPlanetPushConstants.PlanetData:=0;
       end;
-      fPlanetPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
-      fPlanetPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
-      fPlanetPushConstants.Unused0:=0;
-      fPlanetPushConstants.Unused1:=0;
+      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
+       fPlanetPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter;
+      end else begin
+       fPlanetPushConstants.Jitter:=TpvVector4.Null;
+      end;
 
       aCommandBuffer.CmdPushConstants(fPlanetPipelineLayout.Handle,
                                       fShaderStageFlags,
@@ -23289,8 +23291,8 @@ begin
 
        fPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
        fPushConstants.TessellationFactor:=1.0/4.0;
- //    fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
-       fPushConstants.Jitter:=TpvVector2.Null;
+       fPushConstants.TileMapResolution:=Planet.TileMapResolution;
+       fPushConstants.Unused0:=0;
 
        fPushConstants.FrameIndex:=aFrameIndex;
        fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
@@ -23300,7 +23302,8 @@ begin
         fPushConstants.PlanetData:=0;
        end;
 
-       fPushConstants.TileMapResolution:=Planet.TileMapResolution;
+       fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter;
+//     fPushConstants.Jitter:=TpvVector4.Null;
 
        aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or

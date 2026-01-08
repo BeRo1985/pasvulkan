@@ -39,7 +39,7 @@ layout(location = 0) in InBlock {
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
-  vec2 jitter;
+//vec4 jitter;
   float mapValue;
   float waterOverSurface;
   float underWater;

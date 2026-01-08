@@ -9,15 +9,19 @@
 #if defined(PLANET_WATER)
 layout(push_constant) uniform PushConstants {
 
+  // First uvec4
   uint viewBaseIndex;
   uint countViews;
   uint countAllViews;
   uint countQuadPointsInOneDirection; 
   
+  // Second uvec4
   uint resolutionXY;  
   float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
-  vec2 jitter;
+  uint tileMapResolution;
+  uint unused0; // Padding to ensure 16-byte alignment
 
+  // Third uvec4
   int frameIndex; 
   float time;
 #if defined(USE_BUFFER_REFERENCE) 
@@ -26,7 +30,8 @@ layout(push_constant) uniform PushConstants {
   uvec2 unusedPlanetData; // Ignored in this case  
 #endif
 
-  uint tileMapResolution;
+  // Fourth uvec4 
+  vec4 jitter;
   
 } pushConstants;
 
@@ -42,7 +47,8 @@ layout(push_constant) uniform PushConstants {
   // Second uvec4
   uint resolutionXY;  
   float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
-  vec2 jitter;
+  uint timeSeconds; // The current time in seconds
+  float timeFractionalSecond; // The current time in fractional seconds
 
   // Third uvec4 
   int frameIndex; 
@@ -53,10 +59,8 @@ layout(push_constant) uniform PushConstants {
   uvec2 unusedPlanetData; // Ignored in this case  
 #endif
 
-  uint timeSeconds; // The current time in seconds
-  float timeFractionalSecond; // The current time in fractional seconds
-  uint unused0; // Padding to ensure 16-byte alignment
-  uint unused1; // Padding to ensure 16-byte alignment
+  // Fourth uvec4
+  vec4 jitter;
 
 } pushConstants;
 #endif // defined(PLANET_WATER)
