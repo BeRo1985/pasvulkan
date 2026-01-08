@@ -28,9 +28,16 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec4 inNormalXYZTexCoordU;
 layout(location = 2) in vec4 inTangentSign;
 layout(location = 3) in float inTexCoordV;
+#if defined(VELOCITY_VECTORS)
+// In this case, blade index and blade ID are not used, so we can repurpose these attributes to store 
+// packed velocity vectors, since blade index and ID are not yet used by the following shader stages.
+// But this can be changed later if needed. But for now, it saves bandwidth and memory.
+layout(location = 4) in uint inPackedVelocityXY;
+layout(location = 5) in uint inPackedVelocityZUnused;
+#else
 // layout(location = 4) in uint inBladeIndex;
 // layout(location = 5) in uint inBladeID;
-
+#endif
 
 #if defined(RAYTRACING)
 
@@ -57,7 +64,8 @@ layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
   vec4 tangentSign;
-  vec2 texCoord;
+  vec2 texCoord;#if defined(VELOCITY_VECTORS)
+
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -112,6 +120,11 @@ void main(){
 
   vec3 position = (pushConstants.modelMatrix * vec4(inPosition, 1.0)).xyz;
 //vec3 position = (pushConstants.modelMatrix * vec4(uintBitsToFloat(inPositionXYZNormalXYZTexCoordU.xyz), 1.0)).xyz;
+#if defined(VELOCITY_VECTORS)
+
+#if defined(VELOCITY_VECTORS)
+  vec3 previousPosition = position - vec3(unpackSnorm2x16(inPackedVelocityXY), unpackSnorm2x16(inPackedVelocityZUnused).x);
+#endif
 
   vec3 worldSpacePosition = position;
 
@@ -140,7 +153,11 @@ void main(){
   outBlock.jitter = pushConstants.jitter;
 #ifdef VELOCITY
   outBlock.currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
-  outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
+  #if defined(VELOCITY_VECTORS)
+    outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(previousPosition, 1.0);
+  #else
+    outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
+  #endif
 #endif
 
 #if defined(RAYTRACING)
