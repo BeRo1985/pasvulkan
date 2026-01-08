@@ -1511,6 +1511,8 @@ type EpvApplication=class(Exception)
 
        fWidth:TpvInt32;
        fHeight:TpvInt32;
+       fFullscreenWidth:TpvInt32;
+       fFullscreenHeight:TpvInt32;
        fUseRealFullScreen:boolean;
        fFullscreen:boolean;
        fMaximized:boolean;
@@ -2112,6 +2114,9 @@ type EpvApplication=class(Exception)
        property Height:TpvInt32 read fHeight write fHeight;
 
        property SkipNextDrawFrame:boolean read fSkipNextDrawFrame write fSkipNextDrawFrame;
+
+       property FullScreenWidth:TpvInt32 read fFullscreenWidth write fFullscreenWidth;
+       property FullScreenHeight:TpvInt32 read fFullscreenHeight write fFullscreenHeight;
 
        property UseRealFullScreen:boolean read fUseRealFullScreen write fUseRealFullScreen;
 
@@ -8607,6 +8612,8 @@ begin
 
  fWidth:=1280;
  fHeight:=720;
+ fFullscreenWidth:=0;
+ fFullscreenHeight:=0;
  fUseRealFullScreen:=false;
  fFullscreen:=false;
  fMaximized:=false;
@@ -12346,6 +12353,7 @@ var Index,Counter,Tries:TpvInt32;
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
     Joystick:TpvApplicationJoystick;
+    FullscreenDisplayMode:TSDL_DisplayMode;
 {$else}
  {$if defined(Windows) and not defined(PasVulkanHeadless)}
     devMode:{$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif};
@@ -13120,6 +13128,14 @@ begin
      end;
     end;}
     if fUseRealFullScreen then begin
+     if (fFullscreenWidth>0) and (fFullscreenHeight>0) then begin
+      if SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0 then begin
+       FullscreenDisplayMode.w:=fFullscreenWidth;
+       FullscreenDisplayMode.h:=fFullscreenHeight;
+       SDL_SetWindowSize(fSurfaceWindow,fFullscreenWidth,fFullscreenHeight);
+       SDL_SetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode);
+      end;
+     end;
      SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
     end else begin
      SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
@@ -13140,8 +13156,13 @@ begin
     if (not fWin32Fullscreen) and
        GetWindowRect(fWin32Handle,Rect) and
        GetMonitorInfo(MonitorFromWindow(fWin32Handle,MONITOR_DEFAULTTONEAREST),@MonitorInfo) then begin
-     fScreenWidth:=MonitorInfo.rcMonitor.Width;
-     fScreenHeight:=MonitorInfo.rcMonitor.Height;
+     if fUseRealFullScreen and (fFullscreenWidth>0) and (fFullscreenHeight>0) then begin
+      fScreenWidth:=fFullscreenWidth;
+      fScreenHeight:=fFullscreenHeight;
+     end else begin
+      fScreenWidth:=MonitorInfo.rcMonitor.Width;
+      fScreenHeight:=MonitorInfo.rcMonitor.Height;
+     end;  
      fWin32OldLeft:=Rect.Left;
      fWin32OldTop:=Rect.Top;
      fWin32OldWidth:=fWidth;
