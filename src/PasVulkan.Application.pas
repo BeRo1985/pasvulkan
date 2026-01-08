@@ -576,6 +576,14 @@ type EpvApplication=class(Exception)
      TpvApplicationDisplayOrientations=set of TpvApplicationDisplayOrientation;
      PpvApplicationDisplayOrientations=^TpvApplicationDisplayOrientations;
 
+     TpvApplicationDisplayMode=record
+      Width:TpvInt32;
+      Height:TpvInt32;
+     end;
+     PpvApplicationDisplayMode=^TpvApplicationDisplayMode;
+
+     TpvApplicationDisplayModes=array of TpvApplicationDisplayMode;
+
      TpvApplicationInputKeyEventType=
       (
        Down,
@@ -2064,6 +2072,8 @@ type EpvApplication=class(Exception)
        procedure UpdateAudio; virtual;
 
        procedure DumpVulkanMemoryManager; virtual;
+
+       function GetSupportedDisplayModes(const aDisplayIndex:TpvInt32=0):TpvApplicationDisplayModes;
 
        class procedure Main; virtual;
 
@@ -15863,6 +15873,91 @@ begin
   end; 
  end; 
 end;
+
+function TpvApplication.GetSupportedDisplayModes(const aDisplayIndex:TpvInt32=0):TpvApplicationDisplayModes;
+{$if defined(PasVulkanHeadless)}
+begin
+ result:=nil;
+end;
+{$elseif defined(PasVulkanUseSDL2)}
+var CountModes,Index,ResultCount:TpvInt32;
+    SDLDisplayMode:TSDL_DisplayMode;
+    DisplayMode:PpvApplicationDisplayMode;
+    Found:Boolean;
+    OtherIndex:TpvInt32;
+begin
+ result:=nil;
+ ResultCount:=0;
+ CountModes:=SDL_GetNumDisplayModes(aDisplayIndex);
+ if CountModes>0 then begin
+  for Index:=0 to CountModes-1 do begin
+   if SDL_GetDisplayMode(aDisplayIndex,Index,@SDLDisplayMode)=0 then begin
+    // Check for duplicates (same width/height, different refresh rate)
+    Found:=false;
+    for OtherIndex:=0 to ResultCount-1 do begin
+     DisplayMode:=@result[OtherIndex];
+     if (DisplayMode^.Width=SDLDisplayMode.w) and
+        (DisplayMode^.Height=SDLDisplayMode.h) then begin
+      Found:=true;
+      break;
+     end;
+    end;
+    if not Found then begin
+     if ResultCount>=length(result) then begin
+      SetLength(result,(ResultCount+1)*2);
+     end;
+     DisplayMode:=@result[ResultCount];
+     inc(ResultCount);
+     DisplayMode^.Width:=SDLDisplayMode.w;
+     DisplayMode^.Height:=SDLDisplayMode.h;
+    end;
+   end;
+  end;
+ end;
+ SetLength(result,ResultCount);
+end;
+{$elseif defined(Windows)}
+var DevMode:TDeviceMode;
+    Index,ResultCount:TpvInt32;
+    DisplayMode:PpvApplicationDisplayMode;
+    Found:Boolean;
+    OtherIndex:TpvInt32;
+begin
+ result:=nil;
+ ResultCount:=0;
+ Index:=0;
+ FillChar(DevMode,SizeOf(TDeviceMode),0);
+ DevMode.dmSize:=SizeOf(TDeviceMode);
+ while EnumDisplaySettings(nil,Index,DevMode) do begin
+  // Check for duplicates (same width/height, different refresh rate/bit depth)
+  Found:=false;
+  for OtherIndex:=0 to ResultCount-1 do begin
+   DisplayMode:=@result[OtherIndex];
+   if (DisplayMode^.Width=TpvInt32(DevMode.dmPelsWidth)) and
+      (DisplayMode^.Height=TpvInt32(DevMode.dmPelsHeight)) then begin
+    Found:=true;
+    break;
+   end;
+  end;
+  if not Found then begin
+   if ResultCount>=length(result) then begin
+    SetLength(result,(ResultCount+1)*2);
+   end;
+   DisplayMode:=@result[ResultCount];
+   inc(ResultCount);
+   DisplayMode^.Width:=DevMode.dmPelsWidth;
+   DisplayMode^.Height:=DevMode.dmPelsHeight;
+  end;
+  inc(Index);
+ end;
+ SetLength(result,ResultCount);
+end;
+{$else}
+begin
+ // Other platforms - return empty array
+ result:=nil;
+end;
+{$ifend}
 
 class procedure TpvApplication.Main;
 begin
