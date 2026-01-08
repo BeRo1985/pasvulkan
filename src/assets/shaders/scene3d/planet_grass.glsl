@@ -22,7 +22,7 @@ layout(push_constant) uniform PushConstants {
 
   uint timeSeconds; // The current time in seconds
   float timeFractionalSecond; // The current time in fractional seconds
-  float previousTime; // Previous time
+  float previousTime; // Previous time - used by VELOCITY_VECTORS to recalculate previous frame's wind/animation state
   uint unused1; // Padding to ensure 16-byte alignment
 
 #if defined(MESH_SHADER_EMULATION)

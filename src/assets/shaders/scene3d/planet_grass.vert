@@ -64,8 +64,7 @@ layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
   vec4 tangentSign;
-  vec2 texCoord;#if defined(VELOCITY_VECTORS)
-
+  vec2 texCoord;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -120,7 +119,6 @@ void main(){
 
   vec3 position = (pushConstants.modelMatrix * vec4(inPosition, 1.0)).xyz;
 //vec3 position = (pushConstants.modelMatrix * vec4(uintBitsToFloat(inPositionXYZNormalXYZTexCoordU.xyz), 1.0)).xyz;
-#if defined(VELOCITY_VECTORS)
 
 #if defined(VELOCITY_VECTORS)
   vec3 previousPosition = position - vec3(unpackSnorm2x16(inPackedVelocityXY), unpackSnorm2x16(inPackedVelocityZUnused).x);
