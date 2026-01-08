@@ -1838,7 +1838,7 @@ type TpvScene3DPlanets=class;
                     
                     TimeSeconds:TpvUInt32;
                     TimeFractionalSecond:TpvFloat;
-                    Unused0:TpvUInt32;
+                    PreviousTime:TpvFloat;
                     Unused1:TpvUInt32;
 
                     MaximumCountTaskIndices:TpvUInt32;
@@ -1870,6 +1870,7 @@ type TpvScene3DPlanets=class;
                fGrassTaskPipeline:TpvVulkanComputePipeline;
                fGrassMeshPipeline:TpvVulkanComputePipeline;
                fGrassPushConstants:TGrassPushConstants;
+               fPreviousTime:TpvFloat;
               public
                constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aCullRenderPass:TpvScene3DRendererCullRenderPass;const aPass:TpvSizeInt); reintroduce;
                destructor Destroy; override;
@@ -19053,6 +19054,8 @@ begin
 
  fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
 
+ fPreviousTime:=Infinity;
+
  if assigned(fVulkanDevice) then begin
 
   case fPass of
@@ -19720,7 +19723,12 @@ begin
          fGrassPushConstants.FrameIndex:=0;
          fGrassPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
          fGrassPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
-         fGrassPushConstants.Unused0:=0;
+         if IsNaN(fPreviousTime) or IsInfinite(fPreviousTime) or (abs(fPreviousTime)>65536.0) then begin
+          fGrassPushConstants.PreviousTime:=fGrassPushConstants.Time;
+         end else begin
+          fGrassPushConstants.PreviousTime:=fPreviousTime;
+         end;
+         fPreviousTime:=fGrassPushConstants.Time;
          fGrassPushConstants.Unused1:=0;
          fGrassPushConstants.MaximumCountTaskIndices:=Planet.fVisualResolution*Planet.fVisualResolution;
          fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
