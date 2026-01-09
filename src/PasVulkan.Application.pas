@@ -13306,7 +13306,8 @@ begin
      devMode.dmPelsWidth:=fScreenWidth;
      devMode.dmPelsHeight:=fScreenHeight;
 //   devMode.dmBitsPerPel:=32;
-     devMode.dmFields:={DM_BITSPERPEL or}DM_PELSWIDTH or DM_PELSHEIGHT;
+     devMode.dmFields:={DM_BITSPERPEL or}DM_PELSWIDTH or DM_PELSHEIGHT; // Don't set bitsperpel to avoid problems with HDR/10b displays and similar situations
+     // Don't set display frequency for now as well, to avoid problems with some systems. But it can be added later if needed as option.  
 {    devMode.dmDisplayFrequency:=MonitorInfo.dmDisplayFrequency;
      devMode.dmFields:=devMode.dmFields or DM_DISPLAYFREQUENCY;}
      if fUseRealFullScreen then begin
