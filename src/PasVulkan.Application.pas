@@ -13155,7 +13155,7 @@ begin
       OK:=SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0;
       if not OK then begin
        DisplayIndex:=SDL_GetWindowDisplayIndex(fSurfaceWindow);
-       OK:=(DisplayIndex>=0) and (SDL_GetCurrentDisplayMode(0,@FullscreenDisplayMode)=0);
+       OK:=(DisplayIndex>=0) and (SDL_GetCurrentDisplayMode(DisplayIndex,@FullscreenDisplayMode)=0);
       end;
       if OK then begin
        FullscreenDisplayMode.w:=fFullScreenWidth;
