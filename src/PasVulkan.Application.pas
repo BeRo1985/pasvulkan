@@ -16060,17 +16060,6 @@ begin
      end;
     end;
     if not Found then begin
-     Found:=false;
-     for OtherIndex:=0 to ResultCount-1 do begin
-      DisplayMode:=@result[OtherIndex];
-      if (DisplayMode^.Width=SDLDisplayMode.w) and
-         (DisplayMode^.Height=SDLDisplayMode.h) then begin
-       Found:=true;
-       break;
-      end;
-     end;
-    end; 
-    if not Found then begin
      if ResultCount>=length(result) then begin
       SetLength(result,(ResultCount+1)*2);
      end;
@@ -16110,17 +16099,6 @@ begin
       (DisplayMode^.RefreshRate=TpvInt32(DevMode.dmDisplayFrequency)) then begin
     Found:=true;
     break;
-   end;
-  end;
-  if not Found then begin
-   Found:=false;
-   for OtherIndex:=0 to ResultCount-1 do begin
-    DisplayMode:=@result[OtherIndex];
-    if (DisplayMode^.Width=TpvInt32(DevMode.dmPelsWidth)) and
-       (DisplayMode^.Height=TpvInt32(DevMode.dmPelsHeight)) then begin
-     Found:=true;
-     break;
-    end;
    end;
   end;
   if not Found then begin
