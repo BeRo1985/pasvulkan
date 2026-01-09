@@ -13144,6 +13144,9 @@ begin
    // transitions internally, avoiding common pitfalls. Any necessary intermediate steps are 
    // managed by SDL itself, which simplifies the following code and improves reliability across platforms.
 
+   // The result codes of the SDL functions are not checked here, as failures are rare and typically non-critical,
+   // and SDL will often revert to a safe state automatically, so adding them would unnecessarily complicate the code. 
+
    if fFullScreen then begin
     
     if fUseRealFullScreen then begin
