@@ -13138,21 +13138,12 @@ begin
     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
    end;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
-   if fFullScreen or
-      (fFullScreen and
-       ((fCurrentRealFullscreen<>ord(fUseRealFullScreen)) or
-        (fUseRealFullScreen and
-         ((fCurrentFullscreenWidth<>fFullscreenWidth) or
-          (fCurrentFullscreenHeight<>fFullscreenHeight))))) then begin
 
-{   case fVulkanDevice.PhysicalDevice.Properties.vendorID of
-     $00001002:begin // AMD
-      SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
-     end;
-     else begin
-      SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
-     end;
-    end;}
+   // For SDL, we can directly set fullscreen modes without restoring first as SDL handles the 
+   // transitions internally, avoiding common pitfalls. Any necessary intermediate steps are 
+   // managed by SDL itself, which simplifies the following code and improves reliability across platforms.
+
+   if fFullScreen then begin
     
     if fUseRealFullScreen then begin
 
@@ -13203,7 +13194,68 @@ begin
    end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
   
-   // Always restore the window before changing fullscreen state to avoid issues     
+   // For Win32, the defensive pattern of always restoring to windowed mode first even
+   // before changing fullscreen state to avoid issues is implemented below.
+   //
+   // This approach mitigates various driver and Windows quirks related to fullscreen transitions.
+   //
+   // Detailed explanation:
+   //
+   // The "always restore to windowed first" approach is a common and valid defensive 
+   // pattern for Windows fullscreen handling. Here's why:
+   // Reasons for this approach:
+   //
+   // 1. Display mode stack issues: ChangeDisplaySettingsW maintains an internal display mode stack. 
+   //     Going directly from one exclusive mode to another can leave stale entries, causing issues 
+   //     when restoring.
+   //
+   // 2. Driver quirks: Some GPU drivers (especially older ones, or certain AMD/Intel integrated 
+   //    graphics) don't handle direct mode-to-mode transitions well. They expect the clean sequence: 
+   //    Exclusive => Desktop => New Exclusive.
+   //
+   // 3. Window style conflicts: Directly changing from real fullscreen (with changed display mode) 
+   //    to fake fullscreen (borderless) while keeping popup styles can cause rendering issues or black
+   //    screens.
+   //
+   // 4. Multi-monitor edge cases: When switching between monitors or when display topology changes, 
+   //    going through windowed mode ensures the window is properly repositioned.
+   //
+   // 5. Alt-Tab / Focus loss recovery: If the app lost focus during a previous fullscreen session, 
+   //     a clean restore ensures predictable state.
+   //
+   // 6. Simplicity and predictability: This pattern simplifies the state management logic, making 
+   //    it easier to reason about the current window state.
+   //
+   // The pattern is used by: 
+   //
+   // - Many game engines (Unity, Unreal do similar)
+   // - SDL internally uses similar logic
+   // - DirectX sample code often recommends this
+   //
+   // Potential downside: 
+   //
+   // - Brief visual flicker during transition (window momentarily visible in windowed state)
+   //
+   // Alternative approaches:
+   //
+   // - Direct mode switching: Attempt to switch directly between exclusive modes. Risky due to 
+   //   driver quirks and display stack issues.
+   //
+   // - Persistent borderless window: Always use fake fullscreen (borderless) to avoid mode 
+   //   switches. Simpler but may not offer the best performance or compatibility for all apps.
+   //   It's also implemented in this code as an option, where fUseRealFullScreen must be false.
+   //
+   // - Some engines track whether they're changing mode type (real<=>fake) vs just resolution and 
+   //   only restore when needed
+   //
+   // - DXGI's SetFullscreenState handles some of this internally for D3D apps
+   //
+   // Conclusion:
+   //
+   // While not strictly required in all cases, restoring to windowed mode first is a robust 
+   // defensive practice that avoids many common pitfalls with Windows fullscreen handling across
+   // different hardware and driver configurations.
+
    if fWin32Fullscreen then begin
     if fWin32RealFullscreen then begin
      OK:=ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
