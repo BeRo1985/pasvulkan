@@ -13155,7 +13155,22 @@ begin
       OK:=SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0;
       if not OK then begin
        DisplayIndex:=SDL_GetWindowDisplayIndex(fSurfaceWindow);
-       OK:=(DisplayIndex>=0) and (SDL_GetCurrentDisplayMode(DisplayIndex,@FullscreenDisplayMode)=0);
+       if DisplayIndex<0 then begin
+        DisplayIndex:=0;
+       end;
+       OK:=SDL_GetCurrentDisplayMode(DisplayIndex,@FullscreenDisplayMode)=0;
+       if not OK then begin
+        OK:=SDL_GetDesktopDisplayMode(DisplayIndex,@FullscreenDisplayMode)=0;
+        if not OK then begin
+         FillChar(FullscreenDisplayMode,SizeOf(TSDL_DisplayMode),#0);
+         FullscreenDisplayMode.format:=SDL_PIXELFORMAT_UNKNOWN;
+         FullscreenDisplayMode.w:=fFullScreenWidth;
+         FullscreenDisplayMode.h:=fFullScreenHeight;
+         FullscreenDisplayMode.refresh_rate:=0;
+         FullscreenDisplayMode.driverdata:=nil;
+         OK:=true;
+        end;
+       end;
       end;
       if OK then begin
        FullscreenDisplayMode.w:=fFullScreenWidth;
