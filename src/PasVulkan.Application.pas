@@ -13125,9 +13125,9 @@ begin
    fOnStep(self);
   end;
 
-  if (fCurrentFullScreen<>ord(fFullScreen)) or
+  if (fCurrentFullScreen<>(ord(fFullScreen) and 1)) or
      (fFullscreen and
-      ((fCurrentRealFullscreen<>ord(fUseRealFullScreen)) or
+      ((fCurrentRealFullscreen<>(ord(fUseRealFullScreen) and 1)) or
        (fUseRealFullScreen and
         ((fCurrentFullscreenWidth<>fFullscreenWidth) or
          (fCurrentFullscreenHeight<>fFullscreenHeight))))) then begin
@@ -13337,8 +13337,8 @@ begin
 
 {$else}
 {$ifend}
-   fCurrentFullScreen:=ord(fFullScreen);
-   fCurrentRealFullscreen:=ord(fUseRealFullScreen);
+   fCurrentFullScreen:=ord(fFullScreen) and 1;
+   fCurrentRealFullscreen:=ord(fUseRealFullScreen) and 1;
    fCurrentFullscreenWidth:=fFullscreenWidth;
    fCurrentFullscreenHeight:=fFullscreenHeight;
    continue;
