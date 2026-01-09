@@ -1501,9 +1501,9 @@ type EpvApplication=class(Exception)
        fCurrentWidth:TpvInt32;
        fCurrentHeight:TpvInt32;
        fCurrentFullscreen:TpvInt32;
-       fCurrentRealFullscreen:TpvInt32;
-       fCurrentFullscreenWidth:Int32;
-       fCurrentFullscreenHeight:Int32;
+       fCurrentRealFullScreen:TpvInt32;
+       fCurrentFullScreenWidth:Int32;
+       fCurrentFullScreenHeight:Int32;
        fCurrentMaximized:TpvInt32;
        fCurrentPresentMode:TpvInt32;
        fCurrentVisibleMouseCursor:TpvInt32;
@@ -1522,10 +1522,10 @@ type EpvApplication=class(Exception)
 
        fWidth:TpvInt32;
        fHeight:TpvInt32;
-       fFullscreenWidth:TpvInt32;
-       fFullscreenHeight:TpvInt32;
+       fFullScreenWidth:TpvInt32;
+       fFullScreenHeight:TpvInt32;
        fUseRealFullScreen:boolean;
-       fFullscreen:boolean;
+       fFullScreen:boolean;
        fMaximized:boolean;
        fPresentMode:TpvApplicationPresentMode;
        fPresentFrameLatency:TpvUInt64;
@@ -1873,8 +1873,8 @@ type EpvApplication=class(Exception)
        fWin32OldTop:TpvInt32;
        fWin32OldWidth:TpvInt32;
        fWin32OldHeight:TpvInt32;
-       fWin32Fullscreen:Boolean;
-       fWin32RealFullscreen:Boolean;
+       fWin32FullScreen:Boolean;
+       fWin32RealFullScreen:Boolean;
        fWin32HighSurrogate:TpvUInt32;
        fWin32LowSurrogate:TpvUInt32;
        fWin32TouchActive:Boolean;
@@ -2128,12 +2128,12 @@ type EpvApplication=class(Exception)
 
        property SkipNextDrawFrame:boolean read fSkipNextDrawFrame write fSkipNextDrawFrame;
 
-       property FullScreenWidth:TpvInt32 read fFullscreenWidth write fFullscreenWidth;
-       property FullScreenHeight:TpvInt32 read fFullscreenHeight write fFullscreenHeight;
+       property FullScreenWidth:TpvInt32 read fFullScreenWidth write fFullScreenWidth;
+       property FullScreenHeight:TpvInt32 read fFullScreenHeight write fFullScreenHeight;
 
        property UseRealFullScreen:boolean read fUseRealFullScreen write fUseRealFullScreen;
 
-       property Fullscreen:boolean read fFullscreen write fFullscreen;
+       property Fullscreen:boolean read fFullScreen write fFullScreen;
 
        property Maximized:boolean read fMaximized write fMaximized;
 
@@ -8607,9 +8607,9 @@ begin
  fCurrentWidth:=-1;
  fCurrentHeight:=-1;
  fCurrentFullscreen:=-1;
- fCurrentRealFullscreen:=-1;
- fCurrentFullscreenWidth:=-1;
- fCurrentFullscreenHeight:=-1;
+ fCurrentRealFullScreen:=-1;
+ fCurrentFullScreenWidth:=-1;
+ fCurrentFullScreenHeight:=-1;
  fCurrentMaximized:=-1;
  fCurrentPresentMode:=High(TpvInt32);
  fCurrentVisibleMouseCursor:=-1;
@@ -8628,10 +8628,10 @@ begin
 
  fWidth:=1280;
  fHeight:=720;
- fFullscreenWidth:=0;
- fFullscreenHeight:=0;
+ fFullScreenWidth:=0;
+ fFullScreenHeight:=0;
  fUseRealFullScreen:=false;
- fFullscreen:=false;
+ fFullScreen:=false;
  fMaximized:=false;
  fExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Default;
  fPresentMode:=TpvApplicationPresentMode.Immediate;
@@ -10034,7 +10034,7 @@ begin
                                              TVkSurfaceTransformFlagsKHR($ffffffff),
                                              fSwapChainColorSpace=TpvApplicationSwapChainColorSpace.SRGB,
                                              fSwapChainHDR,
-                                             fFullscreen,
+                                             fFullScreen,
                                              fExclusiveFullScreenMode,
                                              {$if defined(Windows)}@WindowHandle{$else}nil{$ifend});
 
@@ -12546,7 +12546,7 @@ begin
   fCurrentWidth:=fWidth;
   fCurrentHeight:=fHeight;
   fCurrentPresentMode:=TpvInt32(fPresentMode);
-  if not fFullscreen then begin
+  if not fFullScreen then begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
    SDL_SetWindowSize(fSurfaceWindow,fWidth,fHeight);
 {$else}
@@ -13126,11 +13126,11 @@ begin
   end;
 
   if (fCurrentFullScreen<>(ord(fFullScreen) and 1)) or
-     (fFullscreen and
-      ((fCurrentRealFullscreen<>(ord(fUseRealFullScreen) and 1)) or
+     (fFullScreen and
+      ((fCurrentRealFullScreen<>(ord(fUseRealFullScreen) and 1)) or
        (fUseRealFullScreen and
-        ((fCurrentFullscreenWidth<>fFullscreenWidth) or
-         (fCurrentFullscreenHeight<>fFullscreenHeight))))) then begin
+        ((fCurrentFullScreenWidth<>fFullScreenWidth) or
+         (fCurrentFullScreenHeight<>fFullScreenHeight))))) then begin
    if (Tries=0) and
       not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                              TAcquireVulkanBackBufferState.RecreateSurface,
@@ -13151,16 +13151,16 @@ begin
      // Enter real fullscreen
 
      // Set the desired fullscreen display mode 
-     if (fFullscreenWidth>0) and (fFullscreenHeight>0) then begin
+     if (fFullScreenWidth>0) and (fFullScreenHeight>0) then begin
       DisplayIndex:=SDL_GetWindowDisplayIndex(fSurfaceWindow);
       OK:=(DisplayIndex>=0) and (SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0);
       if not OK then begin
        OK:=SDL_GetCurrentDisplayMode(0,@FullscreenDisplayMode)=0;
       end;
       if OK then begin
-       FullscreenDisplayMode.w:=fFullscreenWidth;
-       FullscreenDisplayMode.h:=fFullscreenHeight;
-       SDL_SetWindowSize(fSurfaceWindow,fFullscreenWidth,fFullscreenHeight);
+       FullscreenDisplayMode.w:=fFullScreenWidth;
+       FullscreenDisplayMode.h:=fFullScreenHeight;
+       SDL_SetWindowSize(fSurfaceWindow,fFullScreenWidth,fFullScreenHeight);
        SDL_SetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode);
       end;
      end;
@@ -13258,10 +13258,10 @@ begin
    // defensive practice that avoids many common pitfalls with Windows fullscreen handling across
    // different hardware and driver configurations.
 
-   if fWin32Fullscreen then begin
-    if fWin32RealFullscreen then begin
+   if fWin32FullScreen then begin
+    if fWin32RealFullScreen then begin
      OK:=ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
-     fWin32RealFullscreen:=false;
+     fWin32RealFullScreen:=false;
     end else begin
      OK:=true;
     end;
@@ -13278,9 +13278,9 @@ begin
      end;
      SetWindowPos(fWin32Handle,HWND_TOP,fWin32OldLeft,fWin32OldTop,fWin32OldWidth,fWin32OldHeight,SWP_FRAMECHANGED);
      ShowWindow(fWin32Handle,SW_SHOW);
-     fWin32Fullscreen:=false;
+     fWin32FullScreen:=false;
     end else begin
-     fFullscreen:=true;
+     fFullScreen:=true;
     end;
    end;
 
@@ -13288,12 +13288,12 @@ begin
    if fFullScreen then begin
     FillChar(MonitorInfo,SizeOf(TMonitorInfo),#0);
     MonitorInfo.cbSize:=SizeOf(TMonitorInfo);
-    if (not fWin32Fullscreen) and
+    if (not fWin32FullScreen) and
        GetWindowRect(fWin32Handle,Rect) and
        GetMonitorInfo(MonitorFromWindow(fWin32Handle,MONITOR_DEFAULTTONEAREST),@MonitorInfo) then begin
-     if fUseRealFullScreen and (fFullscreenWidth>0) and (fFullscreenHeight>0) then begin
-      fScreenWidth:=fFullscreenWidth;
-      fScreenHeight:=fFullscreenHeight;
+     if fUseRealFullScreen and (fFullScreenWidth>0) and (fFullScreenHeight>0) then begin
+      fScreenWidth:=fFullScreenWidth;
+      fScreenHeight:=fFullScreenHeight;
      end else begin
       fScreenWidth:=MonitorInfo.rcMonitor.Width;
       fScreenHeight:=MonitorInfo.rcMonitor.Height;
@@ -13311,10 +13311,10 @@ begin
      devMode.dmFields:=DM_PELSWIDTH or DM_PELSHEIGHT {or DM_BITSPERPEL or DM_DISPLAYFREQUENCY};
      if fUseRealFullScreen then begin
       OK:=ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
-      fWin32RealFullscreen:=OK;
+      fWin32RealFullScreen:=OK;
      end else begin
       OK:=true;
-      fWin32RealFullscreen:=false;
+      fWin32RealFullScreen:=false;
      end;
      if OK then begin
       SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_POPUP or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
@@ -13325,12 +13325,12 @@ begin
       end;
       SetWindowPos(fWin32Handle,HWND_TOP,MonitorInfo.rcMonitor.Left,MonitorInfo.rcMonitor.Top,fScreenWidth,fScreenHeight,SWP_FRAMECHANGED);
       ShowWindow(fWin32Handle,SW_SHOW);
-      fWin32Fullscreen:=true;
+      fWin32FullScreen:=true;
      end else begin
-      fFullscreen:=false;
+      fFullScreen:=false;
      end;
     end else begin
-     fFullscreen:=false;
+     fFullScreen:=false;
     end;
 
    end;
@@ -13338,9 +13338,9 @@ begin
 {$else}
 {$ifend}
    fCurrentFullScreen:=ord(fFullScreen) and 1;
-   fCurrentRealFullscreen:=ord(fUseRealFullScreen) and 1;
-   fCurrentFullscreenWidth:=fFullscreenWidth;
-   fCurrentFullscreenHeight:=fFullscreenHeight;
+   fCurrentRealFullScreen:=ord(fUseRealFullScreen) and 1;
+   fCurrentFullScreenWidth:=fFullScreenWidth;
+   fCurrentFullScreenHeight:=fFullScreenHeight;
    // Continue with a new fresh loop iteration to process possible new events, 
    // like resize events triggered by the fullscreen change, before rendering the next frame
    // with the new settings, for to avoid possible issues.
@@ -15204,7 +15204,7 @@ begin
    fVideoFlags:=fVideoFlags or SDL_WINDOW_VULKAN;
   end;
 {$ifend}
-  if fFullscreen then begin
+  if fFullScreen then begin
 {$ifndef Android}
    if (fWidth=fScreenWidth) and (fHeight=fScreenHeight) then begin
     fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN_DESKTOP;
@@ -15225,7 +15225,7 @@ begin
 
 {$if defined(fpc) and defined(android)}
   fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN or SDL_WINDOW_VULKAN;
-  fFullscreen:=true;
+  fFullScreen:=true;
   fCurrentFullscreen:=ord(true);
   fWidth:=fScreenWidth;
   fHeight:=fScreenHeight;
@@ -15286,7 +15286,7 @@ begin
   end;
 
   fWin32Style:=WS_VISIBLE;
-  if fFullscreen then begin
+  if fFullScreen then begin
    fWin32Style:=fWin32Style or WS_POPUP;
   end else begin
    fWin32Style:=fWin32Style or WS_CAPTION or WS_MINIMIZEBOX or WS_SYSMENU;
@@ -15363,9 +15363,9 @@ begin
 
   fWin32HiddenCursor:=CreateCursor(fWin32HInstance,0,0,1,1,@Win32CursorMaskAND,@Win32CursorMaskXOR);
 
-  fWin32Fullscreen:=false;
+  fWin32FullScreen:=false;
 
-  fWin32RealFullscreen:=false;
+  fWin32RealFullScreen:=false;
 
   if fVisibleMouseCursor then begin
    fWin32Cursor:=LoadCursor(0,IDC_ARROW);
