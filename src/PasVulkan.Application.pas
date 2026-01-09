@@ -13341,6 +13341,9 @@ begin
    fCurrentRealFullscreen:=ord(fUseRealFullScreen) and 1;
    fCurrentFullscreenWidth:=fFullscreenWidth;
    fCurrentFullscreenHeight:=fFullscreenHeight;
+   // Continue with a new fresh loop iteration to process possible new events, 
+   // like resize events triggered by the fullscreen change, before rendering the next frame
+   // with the new settings, for to avoid possible issues.
    continue;
   end;
 
