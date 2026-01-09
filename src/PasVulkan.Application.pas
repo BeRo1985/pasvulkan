@@ -13302,14 +13302,13 @@ begin
      fWin32OldTop:=Rect.Top;
      fWin32OldWidth:=fWidth;
      fWin32OldHeight:=fHeight;
+     FillChar(devMode,SizeOf({$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif}),#0);
      devMode.dmSize:=SizeOf({$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif});
      devMode.dmPelsWidth:=fScreenWidth;
      devMode.dmPelsHeight:=fScreenHeight;
-//   devMode.dmBitsPerPel:=32;
-     devMode.dmFields:={DM_BITSPERPEL or}DM_PELSWIDTH or DM_PELSHEIGHT; // Don't set bitsperpel to avoid problems with HDR/10b displays and similar situations
-     // Don't set display frequency for now as well, to avoid problems with some systems. But it can be added later if needed as option.  
-{    devMode.dmDisplayFrequency:=MonitorInfo.dmDisplayFrequency;
-     devMode.dmFields:=devMode.dmFields or DM_DISPLAYFREQUENCY;}
+//   devMode.dmBitsPerPel:=32; // Don't set bitsperpel to avoid problems with HDR/10b displays and similar situations
+//   devMode.dmDisplayFrequency:=MonitorInfo.dmDisplayFrequency;  // Don't set display frequency for now as well, to avoid problems with some systems. But it can be added later if needed as option.  
+     devMode.dmFields:=DM_PELSWIDTH or DM_PELSHEIGHT {or DM_BITSPERPEL or DM_DISPLAYFREQUENCY};
      if fUseRealFullScreen then begin
       OK:=ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
       fWin32RealFullscreen:=OK;
