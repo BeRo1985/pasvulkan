@@ -13260,7 +13260,7 @@ begin
 
    if fWin32FullScreen then begin
     if fWin32RealFullScreen then begin
-     OK:=ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
+     OK:=ChangeDisplaySettingsW(nil,0)=DISP_CHANGE_SUCCESSFUL;
      fWin32RealFullScreen:=false;
     end else begin
      OK:=true;
