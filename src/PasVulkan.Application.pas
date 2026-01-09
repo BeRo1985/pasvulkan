@@ -1504,6 +1504,7 @@ type EpvApplication=class(Exception)
        fCurrentRealFullScreen:TpvInt32;
        fCurrentFullScreenWidth:Int32;
        fCurrentFullScreenHeight:Int32;
+       fCurrentFullScreenRefreshRate:TpvInt32;
        fCurrentMaximized:TpvInt32;
        fCurrentPresentMode:TpvInt32;
        fCurrentVisibleMouseCursor:TpvInt32;
@@ -1524,6 +1525,7 @@ type EpvApplication=class(Exception)
        fHeight:TpvInt32;
        fFullScreenWidth:TpvInt32;
        fFullScreenHeight:TpvInt32;
+       fFullScreenRefreshRate:TpvInt32;
        fUseRealFullScreen:boolean;
        fFullScreen:boolean;
        fMaximized:boolean;
@@ -2130,6 +2132,7 @@ type EpvApplication=class(Exception)
 
        property FullScreenWidth:TpvInt32 read fFullScreenWidth write fFullScreenWidth;
        property FullScreenHeight:TpvInt32 read fFullScreenHeight write fFullScreenHeight;
+       property FullScreenRefreshRate:TpvInt32 read fFullScreenRefreshRate write fFullScreenRefreshRate;
 
        property UseRealFullScreen:boolean read fUseRealFullScreen write fUseRealFullScreen;
 
@@ -8610,6 +8613,7 @@ begin
  fCurrentRealFullScreen:=-1;
  fCurrentFullScreenWidth:=-1;
  fCurrentFullScreenHeight:=-1;
+ fCurrentFullScreenRefreshRate:=-1;
  fCurrentMaximized:=-1;
  fCurrentPresentMode:=High(TpvInt32);
  fCurrentVisibleMouseCursor:=-1;
@@ -8630,6 +8634,7 @@ begin
  fHeight:=720;
  fFullScreenWidth:=0;
  fFullScreenHeight:=0;
+ fFullScreenRefreshRate:=0;
  fUseRealFullScreen:=false;
  fFullScreen:=false;
  fMaximized:=false;
@@ -13130,7 +13135,8 @@ begin
       ((fCurrentRealFullScreen<>(ord(fUseRealFullScreen) and 1)) or
        (fUseRealFullScreen and
         ((fCurrentFullScreenWidth<>fFullScreenWidth) or
-         (fCurrentFullScreenHeight<>fFullScreenHeight))))) then begin
+         (fCurrentFullScreenHeight<>fFullScreenHeight) or
+         (fCurrentFullScreenRefreshRate<>fFullScreenRefreshRate))))) then begin
    if (Tries=0) and
       not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                              TAcquireVulkanBackBufferState.RecreateSurface,
@@ -13154,7 +13160,7 @@ begin
      // Enter real fullscreen
 
      // Set the desired fullscreen display mode 
-     if (fFullScreenWidth>0) and (fFullScreenHeight>0) then begin
+     if (fFullScreenWidth>0) and (fFullScreenHeight>0) and (fFullScreenRefreshRate>=0) then begin
       OK:=SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0;
       if not OK then begin
        DisplayIndex:=SDL_GetWindowDisplayIndex(fSurfaceWindow);
@@ -13169,7 +13175,11 @@ begin
          FullscreenDisplayMode.format:=SDL_PIXELFORMAT_UNKNOWN;
          FullscreenDisplayMode.w:=fFullScreenWidth;
          FullscreenDisplayMode.h:=fFullScreenHeight;
-         FullscreenDisplayMode.refresh_rate:=0;
+         if fFullScreenRefreshRate>0 then begin
+          FullscreenDisplayMode.refresh_rate:=fFullScreenRefreshRate;
+         end else begin
+          FullscreenDisplayMode.refresh_rate:=0; // Let SDL choose the default refresh rate
+         end;
          FullscreenDisplayMode.driverdata:=nil;
          OK:=true;
         end;
@@ -13178,6 +13188,10 @@ begin
       if OK then begin
        FullscreenDisplayMode.w:=fFullScreenWidth;
        FullscreenDisplayMode.h:=fFullScreenHeight;
+       // Only set the refresh rate if a positive value is specified, otherwise let the previously obtained/default rate remain
+       if fFullScreenRefreshRate>0 then begin
+        FullscreenDisplayMode.refresh_rate:=fFullScreenRefreshRate;
+       end;
        SDL_SetWindowSize(fSurfaceWindow,fFullScreenWidth,fFullScreenHeight);
        SDL_SetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode);
       end;
@@ -13325,8 +13339,12 @@ begin
      devMode.dmPelsWidth:=fScreenWidth;
      devMode.dmPelsHeight:=fScreenHeight;
 //   devMode.dmBitsPerPel:=32; // Don't set bitsperpel to avoid problems with HDR/10b displays and similar situations
-//   devMode.dmDisplayFrequency:=MonitorInfo.dmDisplayFrequency;  // Don't set display frequency for now as well, to avoid problems with some systems. But it can be added later if needed as option.  
-     devMode.dmFields:=DM_PELSWIDTH or DM_PELSHEIGHT {or DM_BITSPERPEL or DM_DISPLAYFREQUENCY};
+     devMode.dmFields:=DM_PELSWIDTH or DM_PELSHEIGHT {or DM_BITSPERPEL};
+     if fFullScreenRefreshRate>0 then begin
+      // When a specific refresh rate is requested, set it
+      devMode.dmDisplayFrequency:=fFullScreenRefreshRate;
+      devMode.dmFields:=devMode.dmFields or DM_DISPLAYFREQUENCY;
+     end;
      if fUseRealFullScreen then begin
       OK:=ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
       fWin32RealFullScreen:=OK;
@@ -13359,6 +13377,7 @@ begin
    fCurrentRealFullScreen:=ord(fUseRealFullScreen) and 1;
    fCurrentFullScreenWidth:=fFullScreenWidth;
    fCurrentFullScreenHeight:=fFullScreenHeight;
+   fCurrentFullScreenRefreshRate:=fFullScreenRefreshRate;
    // Continue with a new fresh loop iteration to process possible new events, 
    // like resize events triggered by the fullscreen change, before rendering the next frame
    // with the new settings, for to avoid possible issues.
