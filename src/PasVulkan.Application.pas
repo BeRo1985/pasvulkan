@@ -579,6 +579,7 @@ type EpvApplication=class(Exception)
      TpvApplicationDisplayMode=record
       Width:TpvInt32;
       Height:TpvInt32;
+      RefreshRate:TpvInt32;
      end;
      PpvApplicationDisplayMode=^TpvApplicationDisplayMode;
 
@@ -16024,6 +16025,9 @@ end;
 function CompareDisplayModes(const a,b:PpvApplicationDisplayMode):TpvInt32;
 begin
  result:=(a^.Width*a^.Height)-(b^.Width*b^.Height); 
+ if result=0 then begin
+  result:=a^.RefreshRate-b^.RefreshRate;
+ end;
 end;
 
 function TpvApplication.GetSupportedDisplayModes(const aDisplayIndex:TpvInt32=0):TpvApplicationDisplayModes;
@@ -16049,11 +16053,23 @@ begin
     for OtherIndex:=0 to ResultCount-1 do begin
      DisplayMode:=@result[OtherIndex];
      if (DisplayMode^.Width=SDLDisplayMode.w) and
-        (DisplayMode^.Height=SDLDisplayMode.h) then begin
+        (DisplayMode^.Height=SDLDisplayMode.h) and
+        (DisplayMode^.RefreshRate=SDLDisplayMode.refresh_rate) then begin
       Found:=true;
       break;
      end;
     end;
+    if not Found then begin
+     Found:=false;
+     for OtherIndex:=0 to ResultCount-1 do begin
+      DisplayMode:=@result[OtherIndex];
+      if (DisplayMode^.Width=SDLDisplayMode.w) and
+         (DisplayMode^.Height=SDLDisplayMode.h) then begin
+       Found:=true;
+       break;
+      end;
+     end;
+    end; 
     if not Found then begin
      if ResultCount>=length(result) then begin
       SetLength(result,(ResultCount+1)*2);
@@ -16062,6 +16078,7 @@ begin
      inc(ResultCount);
      DisplayMode^.Width:=SDLDisplayMode.w;
      DisplayMode^.Height:=SDLDisplayMode.h;
+     DisplayMode^.RefreshRate:=SDLDisplayMode.refresh_rate;
     end;
    end;
   end;
@@ -16089,9 +16106,21 @@ begin
   for OtherIndex:=0 to ResultCount-1 do begin
    DisplayMode:=@result[OtherIndex];
    if (DisplayMode^.Width=TpvInt32(DevMode.dmPelsWidth)) and
-      (DisplayMode^.Height=TpvInt32(DevMode.dmPelsHeight)) then begin
+      (DisplayMode^.Height=TpvInt32(DevMode.dmPelsHeight)) and
+      (DisplayMode^.RefreshRate=TpvInt32(DevMode.dmDisplayFrequency)) then begin
     Found:=true;
     break;
+   end;
+  end;
+  if not Found then begin
+   Found:=false;
+   for OtherIndex:=0 to ResultCount-1 do begin
+    DisplayMode:=@result[OtherIndex];
+    if (DisplayMode^.Width=TpvInt32(DevMode.dmPelsWidth)) and
+       (DisplayMode^.Height=TpvInt32(DevMode.dmPelsHeight)) then begin
+     Found:=true;
+     break;
+    end;
    end;
   end;
   if not Found then begin
@@ -16102,6 +16131,7 @@ begin
    inc(ResultCount);
    DisplayMode^.Width:=DevMode.dmPelsWidth;
    DisplayMode^.Height:=DevMode.dmPelsHeight;
+   DisplayMode^.RefreshRate:=DevMode.dmDisplayFrequency;
   end;
   inc(Index);
  end;
