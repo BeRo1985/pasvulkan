@@ -12370,6 +12370,7 @@ var Index,Counter,Tries:TpvInt32;
     SDLGameController:PSDL_GameController;
     Joystick:TpvApplicationJoystick;
     FullscreenDisplayMode:TSDL_DisplayMode;
+    DisplayIndex:TpvInt32;
 {$else}
  {$if defined(Windows) and not defined(PasVulkanHeadless)}
     devMode:{$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif};
@@ -13151,7 +13152,8 @@ begin
 
      // Set the desired fullscreen display mode 
      if (fFullscreenWidth>0) and (fFullscreenHeight>0) then begin
-      OK:=SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0;
+      DisplayIndex:=SDL_GetWindowDisplayIndex(fSurfaceWindow);
+      OK:=(DisplayIndex>=0) and (SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0);
       if not OK then begin
        OK:=SDL_GetCurrentDisplayMode(0,@FullscreenDisplayMode)=0;
       end;
@@ -13303,8 +13305,8 @@ begin
      devMode.dmSize:=SizeOf({$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif});
      devMode.dmPelsWidth:=fScreenWidth;
      devMode.dmPelsHeight:=fScreenHeight;
-     devMode.dmBitsPerPel:=32;
-     devMode.dmFields:=DM_BITSPERPEL or DM_PELSWIDTH or DM_PELSHEIGHT;
+//   devMode.dmBitsPerPel:=32;
+     devMode.dmFields:={DM_BITSPERPEL or}DM_PELSWIDTH or DM_PELSHEIGHT;
 {    devMode.dmDisplayFrequency:=MonitorInfo.dmDisplayFrequency;
      devMode.dmFields:=devMode.dmFields or DM_DISPLAYFREQUENCY;}
      if fUseRealFullScreen then begin
