@@ -118,13 +118,12 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                  && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)
 #endif
                ){ // && ((lightAttenuation > 0.0) || ((flags & (1u << 11u)) != 0u))) {
-              switch (lightType) {
-#if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if defined(RAYTRACING)
-                case 1u: { // Directional 
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, rayDistance);
-                  break;
-                }
+              float effectiveRayDistance = rayDistance; 
+#endif              
+              switch (lightType) {
+#if defined(RAYTRACING)
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
                 case 2u: {  // Point
                   // Fall-through, because same raytracing attempt as for spot lights. 
                 }
@@ -132,10 +131,50 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   // Fall-through, because same raytracing attempt as for view directional lights.
                 }
                 case 5u: { // View directional
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, min(rayDistance, length(pointToLightVector)));
+                  // Fall-through, because same raytracing attempt as for directional lights, except for the ray distance.
+                  effectiveRayDistance = min(effectiveRayDistance, length(pointToLightVector));
+                }
+                case 1u: { // Directional 
+                  // Fall-through, because same raytracing attempt as for primary directional lights, except lightIntensity handling.
+                }                 
+#endif
+                case 4u: {  // Primary directional
+                  // Recheck light type because of fall-throughs to here, for the shared raytracing shadow code.  
+#if defined(REFLECTIVESHADOWMAPOUTPUT)
+                  // Light intensity handling for primary directional lights 
+                  litIntensity = lightAttenuation;
+#else
+                  if(lightType == 4u){
+                    // Light intensity handling for primary directional lights 
+                    litIntensity = lightAttenuation;
+                  } 
+#endif                  
+#ifdef RAYTRACED_SOFT_SHADOWS
+                  if((pushConstants.raytracingFlags & (1u << 0u)) != 0u){
+                    // Soft shadow
+                    const int countSamples = 8;
+                    vec3 lightNormal = pointToLightDirection;
+                    vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
+                    vec3 lightBitangent = cross(lightNormal, lightTangent);
+                    float shadow = 0.0;
+                    for(int i = 0; i < countSamples; i++){
+                      vec2 sampleXY = (shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y)) & BlueNoise2DDiscMask]) * 1e-2;
+                      vec3 sampleDirection = normalize(lightNormal + (sampleXY.x * lightTangent) + (sampleXY.y * lightBitangent));
+                      shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, effectiveRayDistance);
+                    }
+                    lightAttenuation *= shadow / float(countSamples);                    
+                  }else{
+                    // Hard shadow 
+                    lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, effectiveRayDistance);
+                  }
+#else
+                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, effectiveRayDistance);
+#endif
                   break;
                 }
-#elif 0
+#else // !RAYTRACING
+#if 0
+                // TODO: Implement shadow mapping for other light types than primary directional lights.
                 case 1u: { // Directional 
                   // fall-through
                 }
@@ -156,33 +195,9 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   lightAttenuation *= reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(pointToLightVector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
                   break;
                 }
-#endif
-#endif
+#endif // 0
                 case 4u: {  // Primary directional
                   litIntensity = lightAttenuation;
-#if defined(RAYTRACING)
-#ifdef RAYTRACED_SOFT_SHADOWS
-                  if(true){
-                    // Soft shadow
-                    const int countSamples = 8;
-                    vec3 lightNormal = pointToLightDirection;
-                    vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
-                    vec3 lightBitangent = cross(lightNormal, lightTangent);
-                    float shadow = 0.0;
-                    for(int i = 0; i < countSamples; i++){
-                      vec2 sampleXY = (shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y)) & BlueNoise2DDiscMask]) * 1e-2;
-                      vec3 sampleDirection = normalize(lightNormal + (sampleXY.x * lightTangent) + (sampleXY.y * lightBitangent));
-                      shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayDistance);
-                    }
-                    lightAttenuation *= shadow / float(countSamples);                    
-                  }else{
-                    // Hard shadow 
-                    lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, rayDistance);
-                  }
-#else
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, rayDistance);
-#endif
-#else
                   float viewSpaceDepth = -inViewSpacePosition.z;
 #ifdef UseReceiverPlaneDepthBias
                   // Outside of doCascadedShadowMapShadow as an own loop, for the reason, that the partial derivative based
@@ -238,9 +253,9 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   } 
 
                   lightAttenuation *= clamp(shadow, 0.0, 1.0); // Clamp just for safety, should not be necessary, but don't hurt either.
-#endif // RAYTRACING
                   break;
                 }
+#endif // RAYTRACING
               }
 #if 0              
               if (lightIndex == 0) {

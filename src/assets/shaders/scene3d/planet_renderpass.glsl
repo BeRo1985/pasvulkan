@@ -52,7 +52,7 @@ layout(push_constant) uniform PushConstants {
 
   // Third uvec4 
   int frameIndex; 
-  uint reserved; // 2x 16-bit ray offsets for avoiding artifacts in raytracing mode
+  uint raytracingFlags; // Raytracing flags
 #if defined(USE_BUFFER_REFERENCE) 
   PlanetData planetData;
 #else
