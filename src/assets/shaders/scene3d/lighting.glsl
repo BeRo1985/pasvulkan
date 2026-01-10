@@ -151,6 +151,84 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 #endif                  
 #ifdef RAYTRACED_SOFT_SHADOWS
                   if((pushConstants.raytracingFlags & (1u << 0u)) != 0u){
+#ifdef RAYTRACED_BETTER_SOFT_SHADOWS
+                    // PCSS-style contact-hardening soft shadows with blocker search
+                    // Phase 1: Blocker search - find average blocker distance
+                    const int blockerSearchSamples = 8;
+                    const int shadowSamples = 8;
+                    
+                    // Compute light angular radius based on light type
+                    float lightAngularRadius;
+                    switch(lightType){
+                      case 1u:  // Directional
+                      case 4u:  // Primary directional (sun)
+                        lightAngularRadius = 0.00465; // Sun angular radius in radians (~0.267 degrees)
+                        break;
+                      case 2u:  // Point
+                      case 3u:  // Spot
+                      case 5u:  // View directional
+                      default:{
+                        // For local lights, estimate angular size from light's physical radius and distance
+                        // Use a fraction of the influence radius as the physical emitter size
+                        float lightPhysicalRadius = light.positionRadius.w * 0.02; // 2% of influence radius as emitter size
+                        float distanceToLight = length(pointToLightVector);
+                        lightAngularRadius = clamp(lightPhysicalRadius / max(distanceToLight, 0.001), 0.002, 0.15);
+                        break;
+                      }
+                    }
+                    
+                    vec3 lightNormal = pointToLightDirection;
+                    vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
+                    vec3 lightBitangent = cross(lightNormal, lightTangent);
+                    
+                    // Blocker search with wide initial search radius
+                    float blockerDistanceSum = 0.0;
+                    float blockerCount = 0.0;
+                    const float searchRadius = 0.02; // Initial wide search radius
+                    
+                    for(int i = 0; i < blockerSearchSamples; i++){
+                      vec2 sampleXY = (shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y)) & BlueNoise2DDiscMask]) * searchRadius;
+                      vec3 sampleDirection = normalize(lightNormal + (sampleXY.x * lightTangent) + (sampleXY.y * lightBitangent));
+                      
+                      // Trace ray and get distance to blocker
+                      rayQueryEXT blockerQuery;
+                      rayQueryInitializeEXT(blockerQuery, uRaytracingTopLevelAccelerationStructure, 0u, CULLMASK_SHADOWS, 
+                                            raytracingOffsetRay(rayOrigin, rayNormal, sampleDirection), rayOffset, sampleDirection, effectiveRayDistance);
+                      
+                      float queryResult;
+                      rayProceedEXTAlphaHandlingBasedLoop(blockerQuery, false, queryResult);
+                      
+                      if(rayQueryGetIntersectionTypeEXT(blockerQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT){
+                        float hitDistance = rayQueryGetIntersectionTEXT(blockerQuery, true);
+                        blockerDistanceSum += hitDistance;
+                        blockerCount += 1.0;
+                      }
+                      rayQueryTerminateEXT(blockerQuery);
+                    }
+                    
+                    float shadow = 1.0;
+                    if(blockerCount > 0.0){
+                      // Phase 2: Compute penumbra width based on blocker distance
+                      float avgBlockerDistance = blockerDistanceSum / blockerCount;
+                      // Penumbra width grows with distance from blocker (contact hardening)
+                      // penumbraWidth = lightSize * (receiverDistance - blockerDistance) / blockerDistance
+                      float receiverDistance = effectiveRayDistance; // Approximate receiver as far plane
+                      float penumbraRatio = clamp((receiverDistance - avgBlockerDistance) / max(avgBlockerDistance, 0.001), 0.0, 1.0);
+                      float penumbraRadius = lightAngularRadius * penumbraRatio;
+                      // Clamp penumbra radius to reasonable range
+                      penumbraRadius = clamp(penumbraRadius, 0.001, 0.05);
+                      
+                      // Phase 3: Shadow sampling with adaptive penumbra width
+                      shadow = 0.0;
+                      for(int i = 0; i < shadowSamples; i++){
+                        vec2 sampleXY = (shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.z)) & BlueNoise2DDiscMask]) * penumbraRadius;
+                        vec3 sampleDirection = normalize(lightNormal + (sampleXY.x * lightTangent) + (sampleXY.y * lightBitangent));
+                        shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, effectiveRayDistance);
+                      }
+                      shadow /= float(shadowSamples);
+                    }
+                    lightAttenuation *= shadow;
+#else
                     // Soft shadow
                     const int countSamples = 8;
                     vec3 lightNormal = pointToLightDirection;
@@ -162,7 +240,8 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                       vec3 sampleDirection = normalize(lightNormal + (sampleXY.x * lightTangent) + (sampleXY.y * lightBitangent));
                       shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, effectiveRayDistance);
                     }
-                    lightAttenuation *= shadow / float(countSamples);                    
+                    lightAttenuation *= shadow / float(countSamples);
+#endif
                   }else{
                     // Hard shadow 
                     lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, effectiveRayDistance);
