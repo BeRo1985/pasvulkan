@@ -69,7 +69,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
           Light light = lights[frustumClusterGridIndexList[clusterLightIndex]];
           if(distance(light.positionRadius.xyz, inWorldSpacePosition.xyz) <= light.positionRadius.w){
 #if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS)
-            const int lightJitter = clusterLightIndex;
+            const int lightJitter = int(clusterLightIndex);
 #endif
 #else
       // Light BVH
