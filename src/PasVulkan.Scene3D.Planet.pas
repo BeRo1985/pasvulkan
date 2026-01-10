@@ -19771,7 +19771,7 @@ begin
           fGrassPushConstants.PreviousTime:=fPreviousTime;
          end;
          fPreviousTime:=fGrassPushConstants.Time;
-         fGrassPushConstants.RaytracingFlags:=TpvScene3DRendererInstance(fRendererInstance).RaytracingFlags;
+         fGrassPushConstants.RaytracingFlags:=TpvScene3DRendererInstance(fRendererInstance).RawRaytracingFlags;
          fGrassPushConstants.MaximumCountTaskIndices:=Planet.fVisualResolution*Planet.fVisualResolution;
          fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
          fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
@@ -21535,7 +21535,7 @@ begin
       fPlanetPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
       fPlanetPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
       fPlanetPushConstants.FrameIndex:=aFrameIndex;
-      fPlanetPushConstants.RaytracingFlags:=TpvScene3DRendererInstance(fRendererInstance).RaytracingFlags;
+      fPlanetPushConstants.RaytracingFlags:=TpvScene3DRendererInstance(fRendererInstance).RawRaytracingFlags;
       if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
        fPlanetPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
       end else begin
@@ -21704,7 +21704,7 @@ begin
        fGrassPushConstants.PreviousTime:=fPreviousTime;
       end;
       fPreviousTime:=fGrassPushConstants.Time;
-      fGrassPushConstants.RaytracingFlags:=TpvScene3DRendererInstance(fRendererInstance).RaytracingFlags;
+      fGrassPushConstants.RaytracingFlags:=TpvScene3DRendererInstance(fRendererInstance).RawRaytracingFlags;
       fGrassPushConstants.MaximumCountTaskIndices:=Planet.fVisualResolution*Planet.fVisualResolution;
       fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
       fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
@@ -23313,7 +23313,7 @@ begin
        fPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
        fPushConstants.TessellationFactor:=1.0/4.0;
        fPushConstants.TileMapResolution:=Planet.TileMapResolution;
-       fPushConstants.RaytracingFlags:=TpvScene3DRendererInstance(fRendererInstance).RaytracingFlags;
+       fPushConstants.RaytracingFlags:=TpvScene3DRendererInstance(fRendererInstance).RawRaytracingFlags;
 
        fPushConstants.FrameIndex:=aFrameIndex;
        fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
