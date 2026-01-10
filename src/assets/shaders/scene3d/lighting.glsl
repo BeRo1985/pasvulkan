@@ -54,6 +54,9 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
         for(int lightIndex = 0; lightIndex < 1; lightIndex++){
           {
             Light light = lights[lightIndex];
+#if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS)
+            const int lightJitter = lightIndex;
+#endif
 #elif defined(LIGHTCLUSTERS)
       // Light cluster grid
       uvec3 clusterXYZ = uvec3(uvec2(uvec2(gl_FragCoord.xy) / uFrustumClusterGridGlobals.tileSizeZNearZFar.xy), 
@@ -66,7 +69,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
           Light light = lights[frustumClusterGridIndexList[clusterLightIndex]];
           if(distance(light.positionRadius.xyz, inWorldSpacePosition.xyz) <= light.positionRadius.w){
 #if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS)
-            const int lightJitter = (lightIndex * 73856093) ^ (clusterLightIndex * 2654435761);
+            const int lightJitter = clusterLightIndex;
 #endif
 #else
       // Light BVH
