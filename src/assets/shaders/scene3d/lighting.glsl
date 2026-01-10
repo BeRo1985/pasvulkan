@@ -65,6 +65,9 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
         {
           Light light = lights[frustumClusterGridIndexList[clusterLightIndex]];
           if(distance(light.positionRadius.xyz, inWorldSpacePosition.xyz) <= light.positionRadius.w){
+#if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS)
+            const int lightJitter = (lightIndex * 73856093) ^ (clusterLightIndex * 2654435761);
+#endif
 #else
       // Light BVH
       uint lightTreeNodeIndex = 0;
@@ -76,6 +79,9 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
         if (all(greaterThanEqual(inWorldSpacePosition.xyz, aabbMin)) && all(lessThanEqual(inWorldSpacePosition.xyz, aabbMax))) {
           if (lightTreeNode.aabbMaxUserData.w != 0xffffffffu) {
             Light light = lights[lightTreeNode.aabbMaxUserData.w];
+#if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS)
+            const int lightJitter = (lightTreeNodeIndex * 73856093) ^ (int(lightTreeNode.aabbMaxUserData.w) * 2654435761);
+#endif
 #endif
             const uint lightType = light.metaData.x & 0x0000000fu;
             float lightAttenuation = 1.0;
@@ -178,7 +184,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 
                         for(int i = 0; i < countSamples; i++){
                           // Map blue noise disc to uniform cone sampling (solid angle correct)
-                          vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y)) & BlueNoise2DDiscMask];
+                          vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
                           float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
                           float phi = atan(diskSample.y, diskSample.x);
                           
@@ -219,7 +225,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 
                         for(int i = 0; i < countSamples; i++){
                           // Sample point on disk around light center
-                          vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y)) & BlueNoise2DDiscMask];
+                          vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
                           vec3 lightSamplePoint = light.positionRadius.xyz + (diskTangent * diskSample.x + diskBitangent * diskSample.y) * lightPhysicalRadius;
                           
                           // Direction and distance to sampled point on light
@@ -263,7 +269,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 
                         for(int i = 0; i < countSamples; i++){
                           // Sample point on disk around light center
-                          vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y)) & BlueNoise2DDiscMask];
+                          vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
                           vec3 lightSamplePoint = light.positionRadius.xyz + (diskTangent * diskSample.x + diskBitangent * diskSample.y) * lightPhysicalRadius;
                           
                           // Direction and distance to sampled point on light
