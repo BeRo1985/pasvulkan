@@ -52,7 +52,7 @@ layout(push_constant) uniform PushConstants {
 
   // Third uvec4 
   int frameIndex; 
-  int reversed;
+  uint reserved; // 2x 16-bit ray offsets for avoiding artifacts in raytracing mode
 #if defined(USE_BUFFER_REFERENCE) 
   PlanetData planetData;
 #else
@@ -61,6 +61,9 @@ layout(push_constant) uniform PushConstants {
 
   // Fourth uvec4
   vec4 jitter;
+
+  // Fifth uvec4
+  vec4 raytracingOffsetConstants; // x: origin, y: floatScale, z: intScale, w: directionScale
 
 } pushConstants;
 #endif // defined(PLANET_WATER)

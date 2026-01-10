@@ -1982,6 +1982,12 @@ type TpvScene3DPlanets=class;
 
                     Jitter:TpvVector4;
 
+                    //vec4 raytracingOffsetConstants; // x: origin, y: floatScale, z: intScale, w: directionScale
+                    RaytracingOffsetOrigin:TpvFloat;
+                    RaytracingOffsetFloatScale:TpvFloat;
+                    RaytracingOffsetIntScale:TpvFloat;
+                    RaytracingOffsetDirectionScale:TpvFloat;
+
                    end;
                    PPlanetPushConstants=^TPlanetPushConstants;
                    TGrassPushConstants=packed record
@@ -2513,6 +2519,10 @@ type TpvScene3DPlanets=class;
        fRainStreakOcclusionOBBActive:TPasMPBool32;
        fRainStreakOcclusionOBB:TpvOBB;
        fRainStreakOcclusionOBBFadeFactor:TpvFloat;
+       fRaytracingOffsetOrigin:TpvFloat;
+       fRaytracingOffsetFloatScale:TpvFloat;
+       fRaytracingOffsetIntScale:TpvFloat;
+       fRaytracingOffsetDirectionScale:TpvFloat;
        fPerInFlightFrameRainStreakCounts:array[0..MaxInFlightFrames-1] of TpvInt32;
        fPerInFlightFrameRainStreakSpawnBottomRadii:array[0..MaxInFlightFrames-1] of TpvFloat;
        fPerInFlightFrameRainStreakSpawnTopRadii:array[0..MaxInFlightFrames-1] of TpvFloat;
@@ -2791,6 +2801,10 @@ type TpvScene3DPlanets=class;
        property RainStreakOcclusionOBBActive:TPasMPBool32 read fRainStreakOcclusionOBBActive write fRainStreakOcclusionOBBActive;
        property RainStreakOcclusionOBB:TpvOBB read fRainStreakOcclusionOBB write fRainStreakOcclusionOBB;
        property RainStreakOcclusionOBBFadeFactor:TpvFloat read fRainStreakOcclusionOBBFadeFactor write fRainStreakOcclusionOBBFadeFactor;
+       property RaytracingOffsetOrigin:TpvFloat read fRaytracingOffsetOrigin write fRaytracingOffsetOrigin;
+       property RaytracingOffsetFloatScale:TpvFloat read fRaytracingOffsetFloatScale write fRaytracingOffsetFloatScale;
+       property RaytracingOffsetIntScale:TpvFloat read fRaytracingOffsetIntScale write fRaytracingOffsetIntScale;
+       property RaytracingOffsetDirectionScale:TpvFloat read fRaytracingOffsetDirectionScale write fRaytracingOffsetDirectionScale;
       public      
        property PlanetData:PPlanetData read fPointerToPlanetData;
        property PlanetDataVulkanBuffers:TPlanetDataVulkanBuffers read fPlanetDataVulkanBuffers;
@@ -21531,6 +21545,10 @@ begin
       end else begin
        fPlanetPushConstants.Jitter:=TpvVector4.Null;
       end;
+      fPlanetPushConstants.RaytracingOffsetOrigin:=Planet.fRaytracingOffsetOrigin;
+      fPlanetPushConstants.RaytracingOffsetFloatScale:=Planet.fRaytracingOffsetFloatScale;
+      fPlanetPushConstants.RaytracingOffsetIntScale:=Planet.fRaytracingOffsetIntScale;
+      fPlanetPushConstants.RaytracingOffsetDirectionScale:=Planet.fRaytracingOffsetDirectionScale;
 
       aCommandBuffer.CmdPushConstants(fPlanetPipelineLayout.Handle,
                                       fShaderStageFlags,
@@ -24423,6 +24441,11 @@ begin
  fRainStreakOcclusionOBB.HalfExtents:=TpvVector3.Origin;
 
  fRainStreakOcclusionOBBFadeFactor:=0.03125;
+
+ fRaytracingOffsetOrigin:=1.0/16.0;
+ fRaytracingOffsetFloatScale:=3.0/65536.0;
+ fRaytracingOffsetIntScale:=3.0*256.0;
+ fRaytracingOffsetDirectionScale:=0.0;
 
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
   fPerInFlightFrameRainStreakCounts[InFlightFrameIndex]:=fRainStreakCount;
