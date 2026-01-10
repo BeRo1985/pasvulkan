@@ -612,6 +612,7 @@ type { TpvScene3DRendererInstance }
        fHUDHeight:TpvInt32;
        fScaledWidth:TpvInt32;
        fScaledHeight:TpvInt32;
+       fRaytracingFlags:TpvUInt32;
        fFrustumClusterGridSizeX:TpvInt32;
        fFrustumClusterGridSizeY:TpvInt32;
        fFrustumClusterGridSizeZ:TpvInt32;
@@ -1112,6 +1113,7 @@ type { TpvScene3DRendererInstance }
        property HUDHeight:TpvInt32 read fHUDHeight write fHUDHeight;
        property ScaledWidth:TpvInt32 read fScaledWidth;
        property ScaledHeight:TpvInt32 read fScaledHeight;
+       property RaytracingFlags:TpvUInt32 read fRaytracingFlags write fRaytracingFlags;
        property CountSurfaceViews:TpvInt32 read fCountSurfaceViews write fCountSurfaceViews;
        property SurfaceMultiviewMask:TpvUInt32 read fSurfaceMultiviewMask write fSurfaceMultiviewMask;
        property ZNear:TpvFloat read fZNear write fZNear;
@@ -1902,6 +1904,8 @@ begin
  fUseDebugBlit:=false;
 
  fDebugTAAMode:=0;
+
+ fRaytracingFlags:=0;
 
  fFrustumClusterGridSizeX:=16;
  fFrustumClusterGridSizeY:=16;
@@ -7509,6 +7513,7 @@ begin
   MeshStagePushConstants^.TimeFractionalSecond:=frac(Time);
   MeshStagePushConstants^.Width:=fScaledWidth;
   MeshStagePushConstants^.Height:=fScaledHeight;
+  MeshStagePushConstants^.RaytracingFlags:=fRaytracingFlags;
   
   fSetGlobalResourcesDone[aRenderPass]:=false;
 

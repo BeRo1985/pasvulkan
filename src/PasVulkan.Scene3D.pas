@@ -411,6 +411,11 @@ type EpvScene3D=class(Exception);
              Width:TpvUInt32;
              Height:TpvUInt32;
 
+             RaytracingFlags:TpvUInt32;
+             Unused0:TpvUInt32;
+             Unused1:TpvUInt32;
+             Unused2:TpvUInt32;
+
             end;
             PMeshStagePushConstants=^TMeshStagePushConstants;
             { TVertex }
