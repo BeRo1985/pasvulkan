@@ -152,6 +152,8 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 #ifdef RAYTRACED_SOFT_SHADOWS
                   if((pushConstants.raytracingFlags & (1u << 0u)) != 0u){
 
+                    // Soft shadows with area light sampling
+
                     // True area light sampling with correct contact hardening
                     // No blocker search needed - contact hardening emerges naturally from area light geometry
                     // Contact hardening emerges naturally from area light geometry - no blocker search needed
@@ -291,7 +293,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                     // Hard shadow 
 
                     lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, effectiveRayDistance);
-                    
+
                   }
 #else
                   lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, effectiveRayDistance);
