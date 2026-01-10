@@ -212,7 +212,8 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                         vec3 diskTangent = normalize(cross(diskNormal, getPerpendicularVector(diskNormal)));
                         vec3 diskBitangent = cross(diskNormal, diskTangent);  
 
-                        float weightSum = 0.0;                   
+                        float weightSum = 0.0;      
+                        int acceptedCount = 0;             
 
                         for(int i = 0; i < countSamples; i++){
                           // Sample point on disk around light center
@@ -230,10 +231,11 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           if(weight > 1e-4){
                             shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist) * weight;
                             weightSum += weight;
+                            acceptedCount++;
                           }
                           
                           // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                          if((i == 1) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6)))){
+                          if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6)))){
                             break;                          
                           }
                         }
