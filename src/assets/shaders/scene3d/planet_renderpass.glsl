@@ -19,7 +19,7 @@ layout(push_constant) uniform PushConstants {
   uint resolutionXY;  
   float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
   uint tileMapResolution;
-  uint unused0; // Padding to ensure 16-byte alignment
+  uint raytracingFlags; // Raytracing flags
 
   // Third uvec4
   int frameIndex; 
