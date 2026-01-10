@@ -2,7 +2,7 @@
 #define RAYTRACED_SOFT_SHADOWS
 #endif
 
-#if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS)
+#if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS) && defined(REFLECTIVESHADOWMAPOUTPUT)
 #undef RAYTRACED_SOFT_SHADOWS // Disable soft shadows for RSM output for now, because of performance reasons.             
 #endif
 
