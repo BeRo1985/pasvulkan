@@ -55,7 +55,8 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
           {
             Light light = lights[lightIndex];
 #if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS)
-            const int lightJitter = lightIndex;
+            #undef RAYTRACED_SOFT_SHADOWS // Disable soft shadows for RSM output for now, because of performance reasons.             
+            //const int lightJitter = lightIndex;
 #endif
 #elif defined(LIGHTCLUSTERS)
       // Light cluster grid
