@@ -4,7 +4,7 @@
 layout(push_constant) uniform PushConstants {
 
   vec4 modelMatrixPositionScale; // xyz: position, w: scale
-  
+
   vec4 modelMatrixOrientation; // quaternion
 
   uint viewBaseIndex;
@@ -25,7 +25,7 @@ layout(push_constant) uniform PushConstants {
   uint timeSeconds; // The current time in seconds
   float timeFractionalSecond; // The current time in fractional seconds
   float previousTime; // Previous time - used by VELOCITY to recalculate previous frame's wind/animation state
-  uint unused1; // Padding to ensure 16-byte alignment
+  uint raytracingFlags;
 
   uint maximalCountTaskIndices;
   uint maximalCountVertices;
