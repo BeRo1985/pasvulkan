@@ -194,6 +194,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                         int sampleCount = 0;
 
                         for(int i = 0; i < countSamples; i++){
+                          
                           // Map blue noise disc to uniform cone sampling (solid angle correct)
                           vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
                           float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
