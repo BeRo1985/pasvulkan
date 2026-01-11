@@ -115,7 +115,8 @@ type { TpvScene3DRendererInstance }
              MaxSpaceLines=1 shl 20;
        type TRaytracingFlag=
              (
-              SoftShadows
+              SoftShadows,
+              SphereSolidAngleSampling
              );
             TRaytracingFlags=set of TRaytracingFlag;
             { TInFlightFrameState }
@@ -8377,6 +8378,9 @@ begin
  fRawRaytracingFlags:=(TpvUInt32(Min(Max(fRaytracingSoftShadowSampleCount,4),64)-4) and $3f) shl (32-6);
  if TRaytracingFlag.SoftShadows in fRaytracingFlags then begin
   fRawRaytracingFlags:=fRawRaytracingFlags or (TpvUInt32(1) shl 0);
+ end;
+ if TRaytracingFlag.SphereSolidAngleSampling in fRaytracingFlags then begin
+  fRawRaytracingFlags:=fRawRaytracingFlags or (TpvUInt32(1) shl 1);
  end;
 
  FillChar(fFrustumClusterGridPushConstants,SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants),#0);
