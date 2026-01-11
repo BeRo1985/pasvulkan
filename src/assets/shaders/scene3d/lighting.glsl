@@ -186,6 +186,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                         // Sun angular radius = 0.00465 rad (~0.267 degrees)
                         const float sunAngularRadius = 0.00465;
                         const float cosMax = cos(sunAngularRadius);
+                        const float oneMinusCosMax = 1.0 - cosMax;
 
                         vec3 lightNormal = pointToLightDirection;
                         vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
@@ -198,13 +199,17 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           // Map blue noise disc to uniform cone sampling (solid angle correct)
                           vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
                           float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
-                          float phi = atan(diskSample.y, diskSample.x);
                           
-                          // Uniform cone sampling
-                          float cosTheta = mix(1.0, cosMax, r2);
+                          // Uniform cone sampling: cosTheta = 1 - r2 * (1 - cosMax)
+                          float cosTheta = 1.0 - (r2 * oneMinusCosMax);
                           float sinTheta = sqrt(max(0.0, 1.0 - (cosTheta * cosTheta)));
                           
-                          vec3 sampleDirection = normalize((lightNormal * cosTheta) + (((lightTangent * cos(phi)) + (lightBitangent * sin(phi))) * sinTheta));
+                          // Combined scale factor: sinTheta / sqrt(r2), handles r2->0 gracefully
+                          float scale = sinTheta * inversesqrt(max(r2, 1e-8));
+                          
+                          // Sample direction in world space (no normalize needed - orthonormal basis)
+                          vec3 sampleDirection = (lightNormal * cosTheta) + (((lightTangent * diskSample.x) + (lightBitangent * diskSample.y)) * scale);
+                          
                           shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, effectiveRayDistance);
                           sampleCount++;
                           
