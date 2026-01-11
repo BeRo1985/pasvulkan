@@ -174,7 +174,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                     // True area light sampling with correct contact hardening
                     // No blocker search needed - contact hardening emerges naturally from area light geometry
                     // Contact hardening emerges naturally from area light geometry - no blocker search needed
-                    const int countSamples = 8;
+                    const int countSamples = int(((pushConstants.raytracingFlags >> (32u - 6u)) & 0x3fu) + 4u); // Upper 6 bits for sample count (min 4, max 64) 
                     
                     float shadow = 0.0;
                     

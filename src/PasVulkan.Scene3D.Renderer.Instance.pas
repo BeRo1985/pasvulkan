@@ -618,6 +618,7 @@ type { TpvScene3DRendererInstance }
        fScaledWidth:TpvInt32;
        fScaledHeight:TpvInt32;
        fRawRaytracingFlags:TpvUInt32;
+       fRaytracingSoftShadowSampleCount:TpvUInt32;
        fRaytracingFlags:TRaytracingFlags;
        fFrustumClusterGridSizeX:TpvInt32;
        fFrustumClusterGridSizeY:TpvInt32;
@@ -1121,6 +1122,7 @@ type { TpvScene3DRendererInstance }
        property ScaledWidth:TpvInt32 read fScaledWidth;
        property ScaledHeight:TpvInt32 read fScaledHeight;
        property RawRaytracingFlags:TpvUInt32 read fRawRaytracingFlags;
+       property RaytracingSoftShadowSampleCount:TpvUInt32 read fRaytracingSoftShadowSampleCount write fRaytracingSoftShadowSampleCount;
        property RaytracingFlags:TRaytracingFlags read fRaytracingFlags write SetRaytracingFlags;
        property CountSurfaceViews:TpvInt32 read fCountSurfaceViews write fCountSurfaceViews;
        property SurfaceMultiviewMask:TpvUInt32 read fSurfaceMultiviewMask write fSurfaceMultiviewMask;
@@ -1914,6 +1916,7 @@ begin
  fDebugTAAMode:=0;
 
  fRawRaytracingFlags:=0;
+ fRaytracingSoftShadowSampleCount:=8;
  fRaytracingFlags:=[];
 
  fFrustumClusterGridSizeX:=16;
@@ -2673,10 +2676,6 @@ procedure TpvScene3DRendererInstance.SetRaytracingFlags(const aRaytracingFlags:T
 begin
  if fRaytracingFlags<>aRaytracingFlags then begin
   fRaytracingFlags:=aRaytracingFlags;
-  fRawRaytracingFlags:=0;
-  if TRaytracingFlag.SoftShadows in fRaytracingFlags then begin
-   fRawRaytracingFlags:=fRawRaytracingFlags or (TpvUInt32(1) shl 0);
-  end;
  end;
 end;
 
@@ -8374,6 +8373,11 @@ var t:TpvDouble;
 begin
 
  CameraPreset:=CameraPresets[aInFlightFrameIndex];
+
+ fRawRaytracingFlags:=(TpvUInt32(Min(Max(fRaytracingSoftShadowSampleCount,4),64)-4) and $3f) shl (32-6);
+ if TRaytracingFlag.SoftShadows in fRaytracingFlags then begin
+  fRawRaytracingFlags:=fRawRaytracingFlags or (TpvUInt32(1) shl 0);
+ end;
 
  FillChar(fFrustumClusterGridPushConstants,SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants),#0);
  fFrustumClusterGridPushConstants.TileSizeX:=fFrustumClusterGridTileSizeX;
