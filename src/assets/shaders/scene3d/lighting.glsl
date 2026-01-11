@@ -227,77 +227,102 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 
                         vec3 spotAxis = normalize(light.directionRange.xyz);
 
-#ifdef SPHERE_AREA_LIGHT_SAMPLING
-                        // Sphere solid angle sampling (Shirley 1996)
-                        // Samples directions within cone subtended by sphere, avoids self-shadowing from emitter mesh
-                        
-                        float distanceToLight = length(light.positionRadius.xyz - rayOrigin);
+                        if((pushConstants.raytracingFlags & (1u << 1u)) != 0u){
 
-                        // Build tangent frame around direction to light center
-                        vec3 lightNormal = pointToLightDirection;
-                        vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
-                        vec3 lightBitangent = cross(lightNormal, lightTangent);
-                        
-                        // q = cos(theta_max) where theta_max is the half-angle of the cone subtending the sphere
-                        float sinThetaMax2 = clamp((lightPhysicalRadius * lightPhysicalRadius) / (distanceToLight * distanceToLight), 0.0, 1.0);
-                        float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMax2));
-#else
-                        // Disk area sampling (simpler, but may self-shadow if emitter mesh is in TLAS)
-                        
-                        // For spot lights, orient disk perpendicular to spot axis
-                        vec3 diskNormal = spotAxis; // Spot axis
-                        vec3 diskTangent = normalize(cross(diskNormal, getPerpendicularVector(diskNormal)));
-                        vec3 diskBitangent = cross(diskNormal, diskTangent);  
-#endif
-
-                        float weightSum = 0.0;      
-                        int acceptedCount = 0;             
-
-                        for(int i = 0; i < countSamples; i++){
-
-                          vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
-
-#ifdef SPHERE_AREA_LIGHT_SAMPLING
-                          // Sample within cone using blue noise
-                          float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
-                          float phi = atan(diskSample.y, diskSample.x);
+                          // Sphere solid angle sampling (Shirley 1996)
+                          // Samples directions within cone subtended by sphere, avoids self-shadowing from emitter mesh
                           
-                          // Uniform cone sampling: theta from [0, theta_max]
-                          float cosTheta = mix(1.0, cosThetaMax, r2);
-                          float sinTheta = sqrt(max(0.0, 1.0 - (cosTheta * cosTheta)));
-                          
-                          // Sample direction in world space
-                          vec3 sampleDirection = normalize((lightNormal * cosTheta) + (((lightTangent * cos(phi)) + (lightBitangent * sin(phi))) * sinTheta));
-                          
-                          // Ray distance: stop before hitting emitter mesh
-                          float rayMaxDist = min(distanceToLight - lightPhysicalRadius, effectiveRayDistance);
-#else
-                          // Sample point on disk around light center
-                          vec3 lightSamplePoint = light.positionRadius.xyz + (((diskTangent * diskSample.x) + (diskBitangent * diskSample.y)) * lightPhysicalRadius);
-                          
-                          // Direction and distance to sampled point on light
-                          vec3 toSample = lightSamplePoint - rayOrigin;
-                          float sampleDistance = length(toSample);
-                          vec3 sampleDirection = toSample / max(sampleDistance, 1e-4);
-                          
-                          // Don't trace past the sampled light point, but respect effectiveRayDistance limit
-                          float rayMaxDist = min(sampleDistance, effectiveRayDistance);
-#endif
+                          float distanceToLight = length(light.positionRadius.xyz - rayOrigin);
 
-                          float weight = clamp(fma(dot(spotAxis, -sampleDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
-                          if(weight > 1e-4){
-                            shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist) * weight;
-                            weightSum += weight;
-                            acceptedCount++;
+                          // Build tangent frame around direction to light center
+                          vec3 lightNormal = pointToLightDirection;
+                          vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
+                          vec3 lightBitangent = cross(lightNormal, lightTangent);
+                          
+                          // q = cos(theta_max) where theta_max is the half-angle of the cone subtending the sphere
+                          float sinThetaMax2 = clamp((lightPhysicalRadius * lightPhysicalRadius) / (distanceToLight * distanceToLight), 0.0, 1.0);
+                          float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMax2));
+
+                          float weightSum = 0.0;      
+                          int acceptedCount = 0;             
+
+                          for(int i = 0; i < countSamples; i++){
+
+                            vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
+
+                            // Sample within cone using blue noise
+                            float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
+                            float phi = atan(diskSample.y, diskSample.x);
+                            
+                            // Uniform cone sampling: theta from [0, theta_max]
+                            float cosTheta = mix(1.0, cosThetaMax, r2);
+                            float sinTheta = sqrt(max(0.0, 1.0 - (cosTheta * cosTheta)));
+                            
+                            // Sample direction in world space
+                            vec3 sampleDirection = normalize((lightNormal * cosTheta) + (((lightTangent * cos(phi)) + (lightBitangent * sin(phi))) * sinTheta));
+                            
+                            // Ray distance: stop before hitting emitter mesh
+                            float rayMaxDist = min(distanceToLight - lightPhysicalRadius, effectiveRayDistance);
+
+                            float weight = clamp(fma(dot(spotAxis, -sampleDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
+                            if(weight > 1e-4){
+                              shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist) * weight;
+                              weightSum += weight;
+                              acceptedCount++;
+                            }
+                            
+                            // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
+                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6)))){
+                              break;                          
+                            }
                           }
+
+                          lightAttenuation *= shadow / max(weightSum, 1e-4);
+
+
+                        }else{
+
+                          // Disk area sampling (simpler, but may self-shadow if emitter mesh is in TLAS)
                           
-                          // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                          if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6)))){
-                            break;                          
+                          // For spot lights, orient disk perpendicular to spot axis
+                          vec3 diskNormal = spotAxis; // Spot axis
+                          vec3 diskTangent = normalize(cross(diskNormal, getPerpendicularVector(diskNormal)));
+                          vec3 diskBitangent = cross(diskNormal, diskTangent);  
+
+                          float weightSum = 0.0;      
+                          int acceptedCount = 0;             
+
+                          for(int i = 0; i < countSamples; i++){
+
+                            vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
+
+                            // Sample point on disk around light center
+                            vec3 lightSamplePoint = light.positionRadius.xyz + (((diskTangent * diskSample.x) + (diskBitangent * diskSample.y)) * lightPhysicalRadius);
+                            
+                            // Direction and distance to sampled point on light
+                            vec3 toSample = lightSamplePoint - rayOrigin;
+                            float sampleDistance = length(toSample);
+                            vec3 sampleDirection = toSample / max(sampleDistance, 1e-4);
+                            
+                            // Don't trace past the sampled light point, but respect effectiveRayDistance limit
+                            float rayMaxDist = min(sampleDistance, effectiveRayDistance);
+
+                            float weight = clamp(fma(dot(spotAxis, -sampleDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
+                            if(weight > 1e-4){
+                              shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist) * weight;
+                              weightSum += weight;
+                              acceptedCount++;
+                            }
+                            
+                            // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
+                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6)))){
+                              break;                          
+                            }
                           }
+
+                          lightAttenuation *= shadow / max(weightSum, 1e-4);
+
                         }
-
-                        lightAttenuation *= shadow / max(weightSum, 1e-4);
 
                         break;
                       }
@@ -309,72 +334,92 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                         // Physical emitter radius (fraction of influence radius)
                         float lightPhysicalRadius = light.positionRadius.w * 0.02; // 2% of influence radius
 
-#ifdef SPHERE_AREA_LIGHT_SAMPLING
-                        // Sphere solid angle sampling (Shirley 1996)
-                        // Samples directions within cone subtended by sphere, avoids self-shadowing from emitter mesh
-                        
-                        float distanceToLight = length(light.positionRadius.xyz - rayOrigin);
+                        if((pushConstants.raytracingFlags & (1u << 1u)) != 0u){
 
-                        // Build tangent frame around direction to light center
-                        vec3 lightNormal = pointToLightDirection;
-                        vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
-                        vec3 lightBitangent = cross(lightNormal, lightTangent);
-                        
-                        // q = cos(theta_max) where theta_max is the half-angle of the cone subtending the sphere
-                        float sinThetaMax2 = clamp((lightPhysicalRadius * lightPhysicalRadius) / (distanceToLight * distanceToLight), 0.0, 1.0);
-                        float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMax2));
-#else
-                        // Disk area sampling (simpler, but may self-shadow if emitter mesh is in TLAS)
-                        
-                        // For point lights, use receiver direction
-                        vec3 diskNormal = pointToLightDirection; // Toward receiver
-                        vec3 diskTangent = normalize(cross(diskNormal, getPerpendicularVector(diskNormal)));
-                        vec3 diskBitangent = cross(diskNormal, diskTangent);  
-#endif
+                          // Sphere solid angle sampling (Shirley 1996)
+                          // Samples directions within cone subtended by sphere, avoids self-shadowing from emitter mesh
+                          
+                          float distanceToLight = length(light.positionRadius.xyz - rayOrigin);
 
-                        int sampleCount = 0;                 
+                          // Build tangent frame around direction to light center
+                          vec3 lightNormal = pointToLightDirection;
+                          vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
+                          vec3 lightBitangent = cross(lightNormal, lightTangent);
+                          
+                          // q = cos(theta_max) where theta_max is the half-angle of the cone subtending the sphere
+                          float sinThetaMax2 = clamp((lightPhysicalRadius * lightPhysicalRadius) / (distanceToLight * distanceToLight), 0.0, 1.0);
+                          float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMax2));
 
-                        for(int i = 0; i < countSamples; i++){
+                          int sampleCount = 0;                 
 
-                          vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
+                          for(int i = 0; i < countSamples; i++){
 
-#ifdef SPHERE_AREA_LIGHT_SAMPLING
-                          // Sample within cone using blue noise
-                          float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
-                          float phi = atan(diskSample.y, diskSample.x);
-                          
-                          // Uniform cone sampling: theta from [0, theta_max]
-                          float cosTheta = mix(1.0, cosThetaMax, r2);
-                          float sinTheta = sqrt(max(0.0, 1.0 - (cosTheta * cosTheta)));
-                          
-                          // Sample direction in world space
-                          vec3 sampleDirection = normalize((lightNormal * cosTheta) + (((lightTangent * cos(phi)) + (lightBitangent * sin(phi))) * sinTheta));
-                          
-                          // Ray distance: stop before hitting emitter mesh
-                          float rayMaxDist = min(distanceToLight - lightPhysicalRadius, effectiveRayDistance);
-#else
-                          // Sample point on disk around light center
-                          vec3 lightSamplePoint = light.positionRadius.xyz + (((diskTangent * diskSample.x) + (diskBitangent * diskSample.y)) * lightPhysicalRadius);
-                          
-                          // Direction and distance to sampled point on light
-                          vec3 toSample = lightSamplePoint - rayOrigin;
-                          float sampleDistance = length(toSample);
-                          vec3 sampleDirection = toSample / max(sampleDistance, 1e-4);
-                          
-                          // Don't trace past the sampled light point, but respect effectiveRayDistance limit
-                          float rayMaxDist = min(sampleDistance, effectiveRayDistance);
-#endif
+                            vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
 
-                          shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist);
-                          sampleCount++;
-                          
-                          // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                          if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6)))){
-                            break;                          
+                            // Sample within cone using blue noise
+                            float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
+                            float phi = atan(diskSample.y, diskSample.x);
+                            
+                            // Uniform cone sampling: theta from [0, theta_max]
+                            float cosTheta = mix(1.0, cosThetaMax, r2);
+                            float sinTheta = sqrt(max(0.0, 1.0 - (cosTheta * cosTheta)));
+                            
+                            // Sample direction in world space
+                            vec3 sampleDirection = normalize((lightNormal * cosTheta) + (((lightTangent * cos(phi)) + (lightBitangent * sin(phi))) * sinTheta));
+                            
+                            // Ray distance: stop before hitting emitter mesh
+                            float rayMaxDist = min(distanceToLight - lightPhysicalRadius, effectiveRayDistance);
+
+                            shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist);
+                            sampleCount++;
+                            
+                            // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
+                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6)))){
+                              break;                          
+                            }
                           }
-                        }
 
-                        lightAttenuation *= shadow / max(float(sampleCount), 1e-4);
+                          lightAttenuation *= shadow / max(float(sampleCount), 1e-4);
+
+                        }else{
+
+                          // Disk area sampling (simpler, but may self-shadow if emitter mesh is in TLAS)
+                          
+                          // For point lights, use receiver direction
+                          vec3 diskNormal = pointToLightDirection; // Toward receiver
+                          vec3 diskTangent = normalize(cross(diskNormal, getPerpendicularVector(diskNormal)));
+                          vec3 diskBitangent = cross(diskNormal, diskTangent);  
+
+                          int sampleCount = 0;                 
+
+                          for(int i = 0; i < countSamples; i++){
+
+                            vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
+
+                            // Sample point on disk around light center
+                            vec3 lightSamplePoint = light.positionRadius.xyz + (((diskTangent * diskSample.x) + (diskBitangent * diskSample.y)) * lightPhysicalRadius);
+                            
+                            // Direction and distance to sampled point on light
+                            vec3 toSample = lightSamplePoint - rayOrigin;
+                            float sampleDistance = length(toSample);
+                            vec3 sampleDirection = toSample / max(sampleDistance, 1e-4);
+                            
+                            // Don't trace past the sampled light point, but respect effectiveRayDistance limit
+                            float rayMaxDist = min(sampleDistance, effectiveRayDistance);
+
+                            shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist);
+                            sampleCount++;
+                            
+                            // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
+                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6)))){
+                              break;                          
+                            }
+                          }
+
+                          lightAttenuation *= shadow / max(float(sampleCount), 1e-4);
+
+
+                        }  
 
                       }
 
