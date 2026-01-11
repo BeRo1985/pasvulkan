@@ -190,7 +190,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 
                         vec3 lightNormal = pointToLightDirection;
                         vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
-                        vec3 lightBitangent = cross(lightNormal, lightTangent);
+                        vec3 lightBitangent = normalize(cross(lightNormal, lightTangent));
                         
                         int sampleCount = 0;
 
@@ -243,7 +243,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           // Build tangent frame around direction to light center
                           vec3 lightNormal = pointToLightDirection;
                           vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
-                          vec3 lightBitangent = cross(lightNormal, lightTangent);
+                          vec3 lightBitangent = normalize(cross(lightNormal, lightTangent));
                           
                           // q = cos(theta_max) where theta_max is the half-angle of the cone subtending the sphere
                           float sinThetaMax2 = clamp((lightPhysicalRadius * lightPhysicalRadius) / (distanceToLight * distanceToLight), 0.0, 1.0);
@@ -277,7 +277,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             float tCenter = distanceToLight * cosAngle;
                             float discriminant = (lightPhysicalRadius * lightPhysicalRadius) - (distanceToLight * distanceToLight * sinAngle2);
                             float tHalf = sqrt(max(0.0, discriminant));
-                            float rayMaxDist = min(max(tCenter - tHalf, 0.0), effectiveRayDistance);
+                            float rayMaxDist = min(max((tCenter - tHalf) - 1e-4, 0.0), effectiveRayDistance);
 
                             float weight = clamp(fma(dot(spotAxis, -sampleDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
                             if(weight > 1e-4){
@@ -302,7 +302,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           // For spot lights, orient disk perpendicular to spot axis
                           vec3 diskNormal = spotAxis; // Spot axis
                           vec3 diskTangent = normalize(cross(diskNormal, getPerpendicularVector(diskNormal)));
-                          vec3 diskBitangent = cross(diskNormal, diskTangent);  
+                          vec3 diskBitangent = normalize(cross(diskNormal, diskTangent));
 
                           float weightSum = 0.0;      
                           int acceptedCount = 0;             
@@ -359,7 +359,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           // Build tangent frame around direction to light center
                           vec3 lightNormal = pointToLightDirection;
                           vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
-                          vec3 lightBitangent = cross(lightNormal, lightTangent);
+                          vec3 lightBitangent = normalize(cross(lightNormal, lightTangent));
                           
                           // q = cos(theta_max) where theta_max is the half-angle of the cone subtending the sphere
                           float sinThetaMax2 = clamp((lightPhysicalRadius * lightPhysicalRadius) / (distanceToLight * distanceToLight), 0.0, 1.0);
@@ -392,7 +392,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             float tCenter = distanceToLight * cosAngle;
                             float discriminant = (lightPhysicalRadius * lightPhysicalRadius) - (distanceToLight * distanceToLight * sinAngle2);
                             float tHalf = sqrt(max(0.0, discriminant));
-                            float rayMaxDist = min(max(tCenter - tHalf, 0.0), effectiveRayDistance);
+                            float rayMaxDist = min(max((tCenter - tHalf) - 1e-4, 0.0), effectiveRayDistance);
 
                             shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist);
                             sampleCount++;
@@ -412,7 +412,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           // For point lights, use receiver direction
                           vec3 diskNormal = pointToLightDirection; // Toward receiver
                           vec3 diskTangent = normalize(cross(diskNormal, getPerpendicularVector(diskNormal)));
-                          vec3 diskBitangent = cross(diskNormal, diskTangent);  
+                          vec3 diskBitangent = normalize(cross(diskNormal, diskTangent));
 
                           int sampleCount = 0;                 
 
