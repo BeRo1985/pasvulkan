@@ -201,9 +201,9 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           
                           // Uniform cone sampling
                           float cosTheta = mix(1.0, cosMax, r2);
-                          float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
+                          float sinTheta = sqrt(max(0.0, 1.0 - (cosTheta * cosTheta)));
                           
-                          vec3 sampleDirection = normalize(lightNormal * cosTheta + (lightTangent * cos(phi) + lightBitangent * sin(phi)) * sinTheta);
+                          vec3 sampleDirection = normalize((lightNormal * cosTheta) + (((lightTangent * cos(phi)) + (lightBitangent * sin(phi))) * sinTheta));
                           shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, effectiveRayDistance);
                           sampleCount++;
                           
@@ -237,7 +237,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                         for(int i = 0; i < countSamples; i++){
                           // Sample point on disk around light center
                           vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
-                          vec3 lightSamplePoint = light.positionRadius.xyz + (diskTangent * diskSample.x + diskBitangent * diskSample.y) * lightPhysicalRadius;
+                          vec3 lightSamplePoint = light.positionRadius.xyz + (((diskTangent * diskSample.x) + (diskBitangent * diskSample.y)) * lightPhysicalRadius);
                           
                           // Direction and distance to sampled point on light
                           vec3 toSample = lightSamplePoint - rayOrigin;
@@ -281,7 +281,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                         for(int i = 0; i < countSamples; i++){
                           // Sample point on disk around light center
                           vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
-                          vec3 lightSamplePoint = light.positionRadius.xyz + (diskTangent * diskSample.x + diskBitangent * diskSample.y) * lightPhysicalRadius;
+                          vec3 lightSamplePoint = light.positionRadius.xyz + (((diskTangent * diskSample.x) + (diskBitangent * diskSample.y)) * lightPhysicalRadius);
                           
                           // Direction and distance to sampled point on light
                           vec3 toSample = lightSamplePoint - rayOrigin;
