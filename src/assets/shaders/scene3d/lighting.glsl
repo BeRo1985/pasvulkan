@@ -214,7 +214,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           sampleCount++;
                           
                           // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                          if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 3u)) != 0u)){
+                          if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 2u)) != 0u)){
                             break;                          
                           }
                         }
@@ -287,7 +287,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             }
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 3u)) != 0u)){
+                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 2u)) != 0u)){
                               break;                          
                             }
                           }
@@ -330,7 +330,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             }
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 3u)) != 0u)){
+                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 2u)) != 0u)){
                               break;                          
                             }
                           }
@@ -398,7 +398,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             sampleCount++;
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 3u)) != 0u)){
+                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 2u)) != 0u)){
                               break;                          
                             }
                           }
@@ -435,7 +435,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             sampleCount++;
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 3u)) != 0u)){
+                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 2u)) != 0u)){
                               break;                          
                             }
                           }
