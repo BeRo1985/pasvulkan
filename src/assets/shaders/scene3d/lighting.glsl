@@ -267,7 +267,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             // Ray-sphere intersection for correct ray max distance
                             // t = d*cos(angle) - sqrt(R² - d²*sin²(angle))
                             float cosAngle = cosTheta; // dot(sampleDirection, lightNormal) == cosTheta since sampleDirection is in our basis
-                            float sinAngle2 = max(0.0, 1.0 - cosAngle * cosAngle);
+                            float sinAngle2 = max(0.0, 1.0 - (cosAngle * cosAngle));
                             float tCenter = distanceToLight * cosAngle;
                             float discriminant = (lightPhysicalRadius * lightPhysicalRadius) - (distanceToLight * distanceToLight * sinAngle2);
                             float tHalf = sqrt(max(0.0, discriminant));
@@ -382,7 +382,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             // Ray-sphere intersection for correct ray max distance
                             // t = d*cos(angle) - sqrt(R² - d²*sin²(angle))
                             float cosAngle = cosTheta; // dot(sampleDirection, lightNormal) == cosTheta since sampleDirection is in our basis
-                            float sinAngle2 = max(0.0, 1.0 - cosAngle * cosAngle);
+                            float sinAngle2 = max(0.0, 1.0 - (cosAngle * cosAngle));
                             float tCenter = distanceToLight * cosAngle;
                             float discriminant = (lightPhysicalRadius * lightPhysicalRadius) - (distanceToLight * distanceToLight * sinAngle2);
                             float tHalf = sqrt(max(0.0, discriminant));
