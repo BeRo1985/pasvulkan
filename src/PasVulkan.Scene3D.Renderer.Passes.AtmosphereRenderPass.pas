@@ -277,7 +277,7 @@ begin
  if fInstance.Renderer.RaytracingActive then begin
   ShadowType:='shadows_raytracing_';
  end else begin
-  case fInstance.Renderer.ShadowMode of
+ {case fInstance.Renderer.ShadowMode of
    TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
     ShadowType:='shadows_pcfpcss_';
    end;
@@ -287,7 +287,8 @@ begin
    else begin
     ShadowType:='';
    end;
-  end;
+  end;}
+  ShadowType:='shadows_';
  end;
 
  if fDualBlendSupport then begin

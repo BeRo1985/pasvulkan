@@ -20571,7 +20571,7 @@ begin
 
   Kind:='';
 
-  case TpvScene3DRenderer(fRenderer).ShadowMode of
+{ case TpvScene3DRenderer(fRenderer).ShadowMode of
    TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.PCSS:begin
     ShadowKind:='pcfpcss_';
    end;
@@ -20581,7 +20581,8 @@ begin
    else begin
     ShadowKind:='';
    end;
-  end;
+  end;}
+  ShadowKind:='';
 
   if TpvScene3D(fScene3D).RaytracingActive then begin
    TopLevelKind:='raytracing_';
@@ -22973,7 +22974,7 @@ begin
   ShaderFileName:=ShaderFileName+'_raytracing';
  end;
 
- ShaderFileName:=ShaderFileName+'_'+TpvScene3DRenderer(aRenderer).MeshFragShadowTypeName; // pcfpcss or msm
+ //ShaderFileName:=ShaderFileName+'_'+TpvScene3DRenderer(aRenderer).MeshFragShadowTypeName; // pcfpcss or msm
 
  if TpvScene3DRendererInstance(aRendererInstance).ZFar<0.0 then begin
   ShaderFileName:=ShaderFileName+'_reversedz';

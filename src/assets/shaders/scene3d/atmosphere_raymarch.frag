@@ -67,13 +67,8 @@ layout(set = 2, binding = 9, std140) uniform uboCascadedShadowMaps {
 } uCascadedShadowMaps;
 
 layout(set = 2, binding = 10) uniform sampler2DArray uCascadedShadowMapTexture;
-
-#ifdef PCFPCSS
-
-// Yay! Binding Aliasing! :-)
 layout(set = 2, binding = 10) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
 
-#endif // PCFPCSS
 #endif // !RAYTRACING 
 
 vec3 inWorldSpacePosition, workNormal;
