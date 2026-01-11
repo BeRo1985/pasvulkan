@@ -242,6 +242,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           // q = cos(theta_max) where theta_max is the half-angle of the cone subtending the sphere
                           float sinThetaMax2 = clamp((lightPhysicalRadius * lightPhysicalRadius) / (distanceToLight * distanceToLight), 0.0, 1.0);
                           float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMax2));
+                          float oneMinusCosThetaMax = 1.0 - cosThetaMax;
 
                           float weightSum = 0.0;      
                           int acceptedCount = 0;             
@@ -252,17 +253,25 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 
                             // Sample within cone using blue noise
                             float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
-                            float phi = atan(diskSample.y, diskSample.x);
                             
-                            // Uniform cone sampling: theta from [0, theta_max]
-                            float cosTheta = mix(1.0, cosThetaMax, r2);
+                            // Uniform cone sampling: cosTheta = 1 - r2 * (1 - cosThetaMax)
+                            float cosTheta = 1.0 - (r2 * oneMinusCosThetaMax);
                             float sinTheta = sqrt(max(0.0, 1.0 - (cosTheta * cosTheta)));
                             
-                            // Sample direction in world space
-                            vec3 sampleDirection = normalize((lightNormal * cosTheta) + (((lightTangent * cos(phi)) + (lightBitangent * sin(phi))) * sinTheta));
+                            // Combined scale factor: sinTheta / sqrt(r2), handles r2->0 gracefully
+                            float scale = sinTheta * inversesqrt(max(r2, 1e-8));
                             
-                            // Ray distance: stop before hitting emitter mesh
-                            float rayMaxDist = min(distanceToLight - lightPhysicalRadius, effectiveRayDistance);
+                            // Sample direction in world space (no normalize needed - orthonormal basis)
+                            vec3 sampleDirection = (lightNormal * cosTheta) + (((lightTangent * diskSample.x) + (lightBitangent * diskSample.y)) * scale);
+                            
+                            // Ray-sphere intersection for correct ray max distance
+                            // t = d*cos(angle) - sqrt(R² - d²*sin²(angle))
+                            float cosAngle = cosTheta; // dot(sampleDirection, lightNormal) == cosTheta since sampleDirection is in our basis
+                            float sinAngle2 = max(0.0, 1.0 - cosAngle * cosAngle);
+                            float tCenter = distanceToLight * cosAngle;
+                            float discriminant = (lightPhysicalRadius * lightPhysicalRadius) - (distanceToLight * distanceToLight * sinAngle2);
+                            float tHalf = sqrt(max(0.0, discriminant));
+                            float rayMaxDist = min(max(tCenter - tHalf, 0.0), effectiveRayDistance);
 
                             float weight = clamp(fma(dot(spotAxis, -sampleDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
                             if(weight > 1e-4){
@@ -349,6 +358,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           // q = cos(theta_max) where theta_max is the half-angle of the cone subtending the sphere
                           float sinThetaMax2 = clamp((lightPhysicalRadius * lightPhysicalRadius) / (distanceToLight * distanceToLight), 0.0, 1.0);
                           float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMax2));
+                          float oneMinusCosThetaMax = 1.0 - cosThetaMax;
 
                           int sampleCount = 0;                 
 
@@ -358,17 +368,25 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 
                             // Sample within cone using blue noise
                             float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
-                            float phi = atan(diskSample.y, diskSample.x);
                             
-                            // Uniform cone sampling: theta from [0, theta_max]
-                            float cosTheta = mix(1.0, cosThetaMax, r2);
+                            // Uniform cone sampling: cosTheta = 1 - r2 * (1 - cosThetaMax)
+                            float cosTheta = 1.0 - (r2 * oneMinusCosThetaMax);
                             float sinTheta = sqrt(max(0.0, 1.0 - (cosTheta * cosTheta)));
                             
-                            // Sample direction in world space
-                            vec3 sampleDirection = normalize((lightNormal * cosTheta) + (((lightTangent * cos(phi)) + (lightBitangent * sin(phi))) * sinTheta));
+                            // Combined scale factor: sinTheta / sqrt(r2), handles r2->0 gracefully
+                            float scale = sinTheta * inversesqrt(max(r2, 1e-8));
                             
-                            // Ray distance: stop before hitting emitter mesh
-                            float rayMaxDist = min(distanceToLight - lightPhysicalRadius, effectiveRayDistance);
+                            // Sample direction in world space (no normalize needed - orthonormal basis)
+                            vec3 sampleDirection = (lightNormal * cosTheta) + (((lightTangent * diskSample.x) + (lightBitangent * diskSample.y)) * scale);
+                            
+                            // Ray-sphere intersection for correct ray max distance
+                            // t = d*cos(angle) - sqrt(R² - d²*sin²(angle))
+                            float cosAngle = cosTheta; // dot(sampleDirection, lightNormal) == cosTheta since sampleDirection is in our basis
+                            float sinAngle2 = max(0.0, 1.0 - cosAngle * cosAngle);
+                            float tCenter = distanceToLight * cosAngle;
+                            float discriminant = (lightPhysicalRadius * lightPhysicalRadius) - (distanceToLight * distanceToLight * sinAngle2);
+                            float tHalf = sqrt(max(0.0, discriminant));
+                            float rayMaxDist = min(max(tCenter - tHalf, 0.0), effectiveRayDistance);
 
                             shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist);
                             sampleCount++;
