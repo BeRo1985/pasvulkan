@@ -167,7 +167,10 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   } 
 #endif                  
 #ifdef RAYTRACED_SOFT_SHADOWS
-                  if((pushConstants.raytracingFlags & (1u << 0u)) != 0u){
+                  const uint raytracingSoftShadowFlag = 1u << 0u;
+                  const uint raytracingSphereSolidAngleSamplingFlag = 1u << 1u;
+                  const uint raytracingEarlyOutSamplingFlag = 1u << 2u; 
+                  if((pushConstants.raytracingFlags & raytracingSoftShadowFlag) != 0u){
 
                     // Soft shadows with area light sampling
 
@@ -214,7 +217,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           sampleCount++;
                           
                           // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                          if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 2u)) != 0u)){
+                          if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
                             break;                          
                           }
                         }
@@ -233,7 +236,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 
                         vec3 spotAxis = normalize(light.directionRange.xyz);
 
-                        if((pushConstants.raytracingFlags & (1u << 1u)) != 0u){
+                        if((pushConstants.raytracingFlags & raytracingSphereSolidAngleSamplingFlag) != 0u){
 
                           // Sphere solid angle sampling (Shirley 1996)
                           // Samples directions within cone subtended by sphere, avoids self-shadowing from emitter mesh
@@ -287,7 +290,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             }
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 2u)) != 0u)){
+                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
                               break;                          
                             }
                           }
@@ -330,7 +333,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             }
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 2u)) != 0u)){
+                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
                               break;                          
                             }
                           }
@@ -349,7 +352,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                         // Physical emitter radius (fraction of influence radius)
                         float lightPhysicalRadius = light.positionRadius.w * 0.02; // 2% of influence radius
 
-                        if((pushConstants.raytracingFlags & (1u << 1u)) != 0u){
+                        if((pushConstants.raytracingFlags & raytracingSphereSolidAngleSamplingFlag) != 0u){
 
                           // Sphere solid angle sampling (Shirley 1996)
                           // Samples directions within cone subtended by sphere, avoids self-shadowing from emitter mesh
@@ -398,7 +401,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             sampleCount++;
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 2u)) != 0u)){
+                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
                               break;                          
                             }
                           }
@@ -435,7 +438,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             sampleCount++;
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & (1u << 2u)) != 0u)){
+                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
                               break;                          
                             }
                           }
