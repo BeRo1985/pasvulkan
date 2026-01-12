@@ -1511,6 +1511,7 @@ type TpvScene3DPlanets=class;
                     TileMapResolution:TpvUInt32;
                     VisualTileResolution:TpvUInt32;
                     PhysicsTileResolution:TpvUInt32;
+                    HeightMapTileResolution:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -4163,7 +4164,7 @@ begin
                                             fTileExpandedDirtyMapBuffer.Size);
 
    fTileDirtyQueueBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                 ((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+6)*SizeOf(TpvUInt32),
+                                                 ((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+9)*SizeOf(TpvUInt32),
                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
                                                  VK_SHARING_MODE_EXCLUSIVE,
                                                  [],
@@ -16587,6 +16588,7 @@ begin
   fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
   fPushConstants.VisualTileResolution:=fPlanet.fVisualTileResolution;
   fPushConstants.PhysicsTileResolution:=fPlanet.fPhysicsTileResolution;
+  fPushConstants.HeightMapTileResolution:=fPlanet.fTileResolution;
 
  end;
 
@@ -16615,7 +16617,7 @@ end;
 
 procedure TpvScene3DPlanet.TTileDirtyQueueGeneration.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 var BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
-    BufferCopy:TVkBufferCopy;
+    BufferCopies:array[0..1] of TVkBufferCopy;
 begin
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet TileDirtyQueueGeneration',[0.25,0.5,0.25,1.0]);
@@ -16643,11 +16645,11 @@ begin
                                    2,@BufferMemoryBarriers[0],
                                    0,nil);
 
- // Not the whole buffer, but only the first two VkDispatchIndirectCommand's without the payload
- // data after the first two VkDispatchIndirectCommand's
+ // Not the whole buffer, but only the first three VkDispatchIndirectCommand's without the payload
+ // data after the first three VkDispatchIndirectCommand's
  aCommandBuffer.CmdFillBuffer(fPlanet.fData.fTileDirtyQueueBuffer.Handle,
                               0,
-                              SizeOf(TVkDispatchIndirectCommand)*2,
+                              SizeOf(TVkDispatchIndirectCommand)*3,
                               0);
 
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
@@ -16713,11 +16715,13 @@ begin
                               VK_WHOLE_SIZE,
                               0);
 
- BufferCopy:=TVkBufferCopy.Create(SizeOf(TpvUInt32)*1,SizeOf(TpvUInt32)*4,SizeOf(TpvUInt32));
+ // Copy tile count from visual [1] to physics [4] and heightmap/smoothing [7]
+ BufferCopies[0]:=TVkBufferCopy.Create(SizeOf(TpvUInt32)*1,SizeOf(TpvUInt32)*4,SizeOf(TpvUInt32));
+ BufferCopies[1]:=TVkBufferCopy.Create(SizeOf(TpvUInt32)*1,SizeOf(TpvUInt32)*7,SizeOf(TpvUInt32));
 
  aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fTileDirtyQueueBuffer.Handle,
                               fPlanet.fData.fTileDirtyQueueBuffer.Handle,
-                              1,@BufferCopy);
+                              2,@BufferCopies[0]);
 
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -16870,7 +16874,7 @@ begin
   fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
   fPushConstants.TopRadius:=fPlanet.fTopRadius;
   fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
-  fPushConstants.TileResolution:=fPlanet.fVisualTileResolution;
+  fPushConstants.TileResolution:=fPlanet.fTileResolution;
   fPushConstants.LOD:=0;
   fPushConstants.SigmaRangeMeters:=2.0;
   fPushConstants.MinimalStepMeters:=0.02;
@@ -16975,12 +16979,12 @@ begin
 
  if fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
   if fPlanet.fData.fCountDirtyTiles>0 then begin
-   aCommandBuffer.CmdDispatch(((fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)+255) shr 8,
+   aCommandBuffer.CmdDispatch(((fPlanet.fTileResolution*fPlanet.fTileResolution)+255) shr 8,
                               fPlanet.fData.fCountDirtyTiles,
                               1);
   end;
  end else begin
-  aCommandBuffer.CmdDispatchIndirect(fPlanet.fData.fTileDirtyQueueBuffer.Handle,0);
+  aCommandBuffer.CmdDispatchIndirect(fPlanet.fData.fTileDirtyQueueBuffer.Handle,SizeOf(TVkDispatchIndirectCommand)*2);
  end;
 
  // Transition smoothed image back to SHADER_READ_ONLY for consumers

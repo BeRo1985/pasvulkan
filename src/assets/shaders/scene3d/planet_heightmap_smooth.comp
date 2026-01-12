@@ -28,7 +28,7 @@
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) buffer QueuedTiles {
-  uint data[]; // same layout you already use (6-based)
+  uint data[]; // 9-based, because three VkDispatchIndirectCommand structs are stored in the same buffer at the beginning
 } queuedTiles;
 
 layout(set = 0, binding = 1) uniform texture2D uHeightTruth; // r32f
@@ -129,7 +129,7 @@ void main(){
 
   if((queuedTileIndex < tileMapSize) && (queuedTileIndex < queuedTiles.data[1u])){
 
-    uint tileMapIndex = queuedTiles.data[queuedTileIndex + 6u];
+    uint tileMapIndex = queuedTiles.data[queuedTileIndex + 9u];
 
     if(tileMapIndex < tileMapSize){
 
