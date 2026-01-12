@@ -1550,6 +1550,8 @@ type TpvScene3DPlanets=class;
                     SimpleGaussianBlurFactor:TpvFloat;
                     KernelRadius:TpvInt32;
                     SigmaSpatial:TpvFloat;
+                    AdaptiveGatingFactor:TpvFloat;
+                    SmoothingFactor:TpvFloat;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -16875,6 +16877,8 @@ begin
   fPushConstants.SimpleGaussianBlurFactor:=1.0;
   fPushConstants.KernelRadius:=8;
   fPushConstants.SigmaSpatial:=4.0;
+  fPushConstants.AdaptiveGatingFactor:=1.0;
+  fPushConstants.SmoothingFactor:=1.0;
 
  end;
 

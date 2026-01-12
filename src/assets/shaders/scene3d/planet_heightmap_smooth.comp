@@ -46,6 +46,8 @@ layout(push_constant) uniform PushConstants {
   float simpleGaussianBlurFactor;
   int kernelRadius;        // e.g. 8 for 17x17
   float sigmaSpatial;      // e.g. 4.0 texels
+  float adaptiveGatingFactor; // 0.0 = always smooth, 1.0 = full adaptive gating
+  float smoothingFactor;   // 0.0 = no smoothing, 1.0 = full smoothing
 } pushConstants;
 
 #include "octahedral.glsl"
@@ -111,7 +113,10 @@ float filteredHeight(ivec2 texelPosition){
   float filteredHeight = clamp((filteredRadius - pushConstants.bottomRadius) / (pushConstants.topRadius - pushConstants.bottomRadius), 0.0, 1.0);
 
   // Adaptive blend to avoid unnecessary softening
-  return mix(centerHeight, filteredHeight, alpha);
+  // adaptiveGatingFactor: 0.0 = always smooth (alpha=1), 1.0 = full adaptive gating
+  // smoothingFactor: 0.0 = no smoothing at all, 1.0 = full smoothing
+  float finalAlpha = mix(1.0, alpha, pushConstants.adaptiveGatingFactor);
+  return mix(centerHeight, filteredHeight, mix(0.0, finalAlpha, pushConstants.smoothingFactor));
 }
 
 void main(){
