@@ -16875,10 +16875,10 @@ begin
   fPushConstants.MinimalStepMeters:=0.02;
   fPushConstants.MaximalStepMeters:=0.15;
   fPushConstants.SimpleGaussianBlurFactor:=1.0;
-  fPushConstants.KernelRadius:=8;
-  fPushConstants.SigmaSpatial:=4.0;
-  fPushConstants.AdaptiveGatingFactor:=1.0;
-  fPushConstants.SmoothingFactor:=1.0;
+  fPushConstants.KernelRadius:=4;
+  fPushConstants.SigmaSpatial:=2.5;
+  fPushConstants.AdaptiveGatingFactor:=0.0;
+  fPushConstants.SmoothingFactor:=0.0;
 
  end;
 
