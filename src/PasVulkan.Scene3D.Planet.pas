@@ -16864,9 +16864,9 @@ begin
   fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
   fPushConstants.TileResolution:=fPlanet.fVisualTileResolution;
   fPushConstants.LOD:=0;
-  fPushConstants.SigmaRangeMeters:=0.25;
-  fPushConstants.MinimalStepMeters:=0.10;
-  fPushConstants.MaximalStepMeters:=0.30;
+  fPushConstants.SigmaRangeMeters:=2.0;
+  fPushConstants.MinimalStepMeters:=0.02;
+  fPushConstants.MaximalStepMeters:=0.15;
 
  end;
 

@@ -75,10 +75,10 @@ float filteredHeight(ivec2 texelPosition){
   float maximalStep = max(max(abs(radiusLeft - centerRadius), abs(radiusRight - centerRadius)), max(abs(radiusUp - centerRadius), abs(radiusDown - centerRadius)));
   float alpha = smoothstep(pushConstants.minimalStepMeters, pushConstants.maximalStepMeters, maximalStep);
 
-  // 5x5 bilateral on radius (meters)
-  const int kernelRadius = 2;
+  // 9x9 bilateral on radius (meters)
+  const int kernelRadius = 4;
 
-  float sigmaSpatial = 1.25; // texels
+  float sigmaSpatial = 2.5; // texels
   float invTwoSigmaSpatialSquared = 1.0 / (2.0 * sigmaSpatial * sigmaSpatial);
 
   float sigmaRange = max(pushConstants.sigmaRangeMeters, 1e-6);
