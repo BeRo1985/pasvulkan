@@ -72,11 +72,11 @@ float filteredHeight(ivec2 texelPosition){
   float centerRadius = mix(pushConstants.bottomRadius, pushConstants.topRadius, centerHeight);
 
   // Adaptive gating based on local step energy (in meters)
-  int adaptiveKernelRadius = 1; // 3x3 neighborhood
-  float radiusLeft  = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2(-adaptiveKernelRadius,  0)));
-  float radiusRight = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2( adaptiveKernelRadius,  0)));
-  float radiusUp    = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2( 0, -adaptiveKernelRadius)));
-  float radiusDown  = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2( 0,  adaptiveKernelRadius)));
+  int adaptiveGatingKernelRadius = 1; // 3x3 neighborhood
+  float radiusLeft  = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2(-adaptiveGatingKernelRadius,  0)));
+  float radiusRight = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2( adaptiveGatingKernelRadius,  0)));
+  float radiusUp    = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2( 0, -adaptiveGatingKernelRadius)));
+  float radiusDown  = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2( 0,  adaptiveGatingKernelRadius)));
 
   float maximalStep = max(max(abs(radiusLeft - centerRadius), abs(radiusRight - centerRadius)), max(abs(radiusUp - centerRadius), abs(radiusDown - centerRadius)));
   float alpha = smoothstep(pushConstants.minimalStepMeters, pushConstants.maximalStepMeters, maximalStep);
