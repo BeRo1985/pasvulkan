@@ -1,0 +1,130 @@
+#version 450 core
+#pragma shader_stage(compute)
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) buffer QueuedTiles {
+  uint data[]; // same layout you already use (6-based)
+} queuedTiles;
+
+layout(set = 0, binding = 1) uniform texture2D uHeightTruth; // r32f
+layout(set = 0, binding = 2, r32f) uniform writeonly image2D uHeightSmooth; // r32f
+
+layout(push_constant) uniform PushConstants {
+  float bottomRadius;      // 70
+  float topRadius;         // 100
+  uint tileMapResolution;
+  uint tileResolution;
+  int lod;                 // should be 0 for smoothing base level
+  float sigmaRangeMeters;  // e.g. 0.25
+  float minimalStepMeters; // e.g. 0.10
+  float maximalStepMeters; // e.g. 0.30
+} pushConstants;
+
+#include "octahedral.glsl"
+
+int totalResolution(){
+  return int(pushConstants.tileMapResolution * pushConstants.tileResolution);
+}
+
+ivec2 wrapCoord(ivec2 coordinate){
+  return wrapOctahedralTexelCoordinates(coordinate, ivec2(totalResolution()));
+}
+
+float loadHeight(ivec2 coordinate){
+  return texelFetch(uHeightTruth, wrapCoord(coordinate), 0).x;
+}
+
+float gaussian(float squaredDistance, float invTwoSigmaSquared){
+  return exp(-squaredDistance * invTwoSigmaSquared);
+}
+
+float filteredHeight(ivec2 texelPosition){
+
+  float centerHeight = loadHeight(texelPosition);
+  float centerRadius = mix(pushConstants.bottomRadius, pushConstants.topRadius, centerHeight);
+
+  // Adaptive gating based on local step energy (in meters)
+  float radiusLeft  = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2(-1,  0)));
+  float radiusRight = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2( 1,  0)));
+  float radiusUp    = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2( 0, -1)));
+  float radiusDown  = mix(pushConstants.bottomRadius, pushConstants.topRadius, loadHeight(texelPosition + ivec2( 0,  1)));
+
+  float maximalStep = max(max(abs(radiusLeft - centerRadius), abs(radiusRight - centerRadius)), max(abs(radiusUp - centerRadius), abs(radiusDown - centerRadius)));
+  float alpha = smoothstep(pushConstants.minimalStepMeters, pushConstants.maximalStepMeters, maximalStep);
+
+  // 5x5 bilateral on radius (meters)
+  const int kernelRadius = 2;
+
+  float sigmaSpatial = 1.25; // texels
+  float invTwoSigmaSpatialSquared = 1.0 / (2.0 * sigmaSpatial * sigmaSpatial);
+
+  float sigmaRange = max(pushConstants.sigmaRangeMeters, 1e-6);
+  float invTwoSigmaRangeSquared = 1.0 / (2.0 * sigmaRange * sigmaRange);
+
+  float weightedRadiusSum = 0.0;
+  float totalWeightSum = 0.0;
+
+  for(int offsetY = -kernelRadius; offsetY <= kernelRadius; offsetY++){
+    for(int offsetX = -kernelRadius; offsetX <= kernelRadius; offsetX++){
+
+      float sampleHeight = loadHeight(texelPosition + ivec2(offsetX, offsetY));
+      float sampleRadius = mix(pushConstants.bottomRadius, pushConstants.topRadius, sampleHeight);
+
+      float radiusDelta = sampleRadius - centerRadius;
+
+      float spatialWeight = gaussian(float(offsetX * offsetX + offsetY * offsetY), invTwoSigmaSpatialSquared);
+      float rangeWeight = gaussian(radiusDelta * radiusDelta, invTwoSigmaRangeSquared);
+      float weight = spatialWeight * rangeWeight;
+
+      weightedRadiusSum += weight * sampleRadius;
+      totalWeightSum += weight;
+    }
+  }
+
+  float filteredRadius = weightedRadiusSum / max(totalWeightSum, 1e-8);
+  float filteredHeight = clamp((filteredRadius - pushConstants.bottomRadius) / (pushConstants.topRadius - pushConstants.bottomRadius), 0.0, 1.0);
+
+  // Adaptive blend to avoid unnecessary softening
+  return mix(centerHeight, filteredHeight, alpha);
+}
+
+void main(){
+
+  uint queuedTileIndex = uint(gl_GlobalInvocationID.y);
+
+  uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
+
+  if((queuedTileIndex < tileMapSize) && (queuedTileIndex < queuedTiles.data[1u])){
+
+    uint tileMapIndex = queuedTiles.data[queuedTileIndex + 6u];
+
+    if(tileMapIndex < tileMapSize){
+
+      uvec2 tileMapXY;
+      tileMapXY.y = tileMapIndex / pushConstants.tileMapResolution;
+      tileMapXY.x = tileMapIndex - (tileMapXY.y * pushConstants.tileMapResolution);
+
+      uint tileTexelSize = pushConstants.tileResolution * pushConstants.tileResolution;
+      uint tileTexelIndex = uint(gl_GlobalInvocationID.x);
+
+      if(tileTexelIndex < tileTexelSize){
+
+        uvec2 tileTexelXY;
+        tileTexelXY.y = tileTexelIndex / pushConstants.tileResolution;
+        tileTexelXY.x = tileTexelIndex - (tileTexelXY.y * pushConstants.tileResolution);
+
+        ivec2 p = ivec2((tileMapXY * pushConstants.tileResolution) + tileTexelXY);
+
+        float outputHeight = filteredHeight(p);
+
+        imageStore(uHeightSmooth, wrapCoord(p), vec4(outputHeight, 0.0, 0.0, 0.0));
+      }
+    }
+  }
+}

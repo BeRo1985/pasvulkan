@@ -334,6 +334,7 @@ type TpvScene3DPlanets=class;
               fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
 //            fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
               fHeightMapImage:TpvScene3DRendererMipmapImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
+              fHeightMapSmoothedImage:TpvScene3DRendererMipmapImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
               fHeightMapBuffer:TpvVulkanBuffer;
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // A2B10G10R10_UNORM_PACK32
               fBlendMapImage:TpvScene3DRendererArray2DImage; // R8G8B8A8_UNORM
@@ -497,6 +498,7 @@ type TpvScene3DPlanets=class;
               property InFlightFrameIndex:TpvInt32 read fInFlightFrameIndex;
 //            property HeightMap:THeightMap read fHeightMap;
               property HeightMapImage:TpvScene3DRendererMipmapImage2D read fHeightMapImage;
+              property HeightMapSmoothedImage:TpvScene3DRendererMipmapImage2D read fHeightMapSmoothedImage;
               property HeightMapBuffer:TpvVulkanBuffer read fHeightMapBuffer;
               property NormalMapImage:TpvScene3DRendererMipmapImage2D read fNormalMapImage;
               property BlendMapImage:TpvScene3DRendererArray2DImage read fBlendMapImage;
@@ -3395,6 +3397,8 @@ begin
 
  fHeightMapImage:=nil;
 
+ fHeightMapSmoothedImage:=nil;
+
  fHeightMapBuffer:=nil;
 
  fNormalMapImage:=nil;
@@ -3559,6 +3563,20 @@ begin
                                                            'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.ImageView');
+
+   fHeightMapSmoothedImage:=TpvScene3DRendererMipmapImage2D.Create(fPlanet.fVulkanDevice,
+                                                                   fPlanet.fHeightMapResolution,
+                                                                   fPlanet.fHeightMapResolution,
+                                                                   VK_FORMAT_R32_SFLOAT,
+                                                                   true,
+                                                                   VK_SAMPLE_COUNT_1_BIT,
+                                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                   ImageSharingMode,
+                                                                   ImageQueueFamilyIndices,
+                                                                   pvAllocationGroupIDScene3DPlanetStatic,
+                                                                   'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmoothedImage');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapSmoothedImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmoothedImage.Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapSmoothedImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmoothedImage.ImageView');
 
    if (fInFlightFrameIndex<0) and fPlanet.fUsePlanetHeightMapBuffer then begin
     fHeightMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
@@ -3798,6 +3816,7 @@ begin
   end else if (fInFlightFrameIndex>=0) and TpvScene3D(fPlanet.fScene3D).PlanetSingleBuffers then begin
 
    fHeightMapImage:=fPlanet.fData.fHeightMapImage;
+   fHeightMapSmoothedImage:=fPlanet.fData.fHeightMapSmoothedImage;
    fHeightMapBuffer:=fPlanet.fData.fHeightMapBuffer;
    fNormalMapImage:=fPlanet.fData.fNormalMapImage;
    fBlendMapImage:=fPlanet.fData.fBlendMapImage;
@@ -4492,6 +4511,8 @@ begin
 
   FreeAndNil(fHeightMapImage);
 
+  FreeAndNil(fHeightMapSmoothedImage);
+
   FreeAndNil(fHeightMapBuffer);
 
   FreeAndNil(fNormalMapImage);
@@ -4523,6 +4544,8 @@ begin
  end else begin
 
   fHeightMapImage:=nil;
+
+  fHeightMapSmoothedImage:=nil;
 
   fHeightMapBuffer:=nil;
 
