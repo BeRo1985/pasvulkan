@@ -1,3 +1,21 @@
+// Edge-preserving bilateral filter for planet heightmap smoothing
+//
+// Problem: User-generated terraforming creates stepped/terraced geometry in the heightmap
+// because brush strokes are discrete and grid-aligned. At grazing light angles, these
+// coherent steps produce visible stripe/banding shadow artifacts on the rendered terrain.
+//
+// Solution: Apply a 5x5 bilateral filter that smooths the height data while preserving
+// intentional sharp features like cliffs and crater rims. The filter operates on radius
+// in meters (not normalized height) for stable, physically meaningful parameters.
+//
+// Adaptive gating: Smoothing is only applied where local step energy exceeds a threshold,
+// leaving already-smooth areas untouched to avoid unnecessary softening.
+//
+// The authoritative heightmap (uHeightTruth) remains unchanged for gameplay and save/load.
+// This shader produces a derived smoothed version (uHeightSmooth) used ONLY for rendering,
+// BLAS mesh generation, and water simulation (as ground heightmap) to avoid visual artifacts.
+// Updates are tile-based and incremental after terraforming.
+
 #version 450 core
 #pragma shader_stage(compute)
 
