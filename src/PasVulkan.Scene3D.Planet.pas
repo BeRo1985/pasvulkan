@@ -26702,6 +26702,7 @@ var QueueTileIndex,Steps:TpvSizeInt;
     CurrentRaytracingTileQueue:TRaytracingTiles;
     GrassMapModificationItem:TGrassMapModificationItem;
     NowTime:TpvHighResolutionTime;
+    BufferMemoryBarrier:TVkBufferMemoryBarrier;
 begin
 
  fData.fCountDirtyTiles:=0;
@@ -27033,6 +27034,32 @@ begin
     if fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration then begin
 
      fData.fHeightMapProcessedGeneration:=fData.fHeightMapGeneration;
+
+     // When forcing all tiles dirty (e.g., after parameter change), fill the dirty map
+     // with all 1s so fTileDirtyQueueGeneration finds all tiles
+     if fData.fForceAllTilesDirty then begin
+
+      fVulkanUpdateCommandBuffer.CmdFillBuffer(fData.fTileDirtyMapBuffer.Handle,
+                                               0,
+                                               fData.fTileDirtyMapBuffer.Size,
+                                               $ffffffff);
+
+      BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fData.fTileDirtyMapBuffer.Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+                                                         
+      fVulkanUpdateCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                    0,
+                                                    0,nil,
+                                                    1,@BufferMemoryBarrier,
+                                                    0,nil);
+
+     end;
 
      fTileDirtyExpansion.Execute(fVulkanUpdateCommandBuffer);
 
