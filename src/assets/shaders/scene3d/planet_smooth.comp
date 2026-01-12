@@ -32,12 +32,12 @@ int totalResolution(){
   return int(pushConstants.tileMapResolution * pushConstants.tileResolution);
 }
 
-ivec2 wrapCoord(ivec2 coordinate){
+ivec2 wrapCoordinate(ivec2 coordinate){
   return wrapOctahedralTexelCoordinates(coordinate, ivec2(totalResolution()));
 }
 
 float loadHeight(ivec2 coordinate){
-  return texelFetch(uHeightTruth, wrapCoord(coordinate), 0).x;
+  return texelFetch(uHeightTruth, wrapCoordinate(coordinate), 0).x;
 }
 
 float gaussian(float squaredDistance, float invTwoSigmaSquared){
@@ -119,11 +119,11 @@ void main(){
         tileTexelXY.y = tileTexelIndex / pushConstants.tileResolution;
         tileTexelXY.x = tileTexelIndex - (tileTexelXY.y * pushConstants.tileResolution);
 
-        ivec2 p = ivec2((tileMapXY * pushConstants.tileResolution) + tileTexelXY);
+        ivec2 texelPosition = ivec2((tileMapXY * pushConstants.tileResolution) + tileTexelXY);
 
-        float outputHeight = filteredHeight(p);
+        float outputHeight = filteredHeight(texelPosition);
 
-        imageStore(uHeightSmooth, wrapCoord(p), vec4(outputHeight, 0.0, 0.0, 0.0));
+        imageStore(uHeightSmooth, wrapCoordinate(texelPosition), vec4(outputHeight, 0.0, 0.0, 0.0));
       }
     }
   }
