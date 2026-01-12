@@ -1548,6 +1548,8 @@ type TpvScene3DPlanets=class;
                     MinimalStepMeters:TpvFloat;
                     MaximalStepMeters:TpvFloat;
                     SimpleGaussianBlurFactor:TpvFloat;
+                    KernelRadius:TpvInt32;
+                    SigmaSpatial:TpvFloat;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -16871,6 +16873,8 @@ begin
   fPushConstants.MinimalStepMeters:=0.02;
   fPushConstants.MaximalStepMeters:=0.15;
   fPushConstants.SimpleGaussianBlurFactor:=1.0;
+  fPushConstants.KernelRadius:=8;
+  fPushConstants.SigmaSpatial:=4.0;
 
  end;
 
@@ -27051,7 +27055,7 @@ begin
                                                          fData.fTileDirtyMapBuffer.Handle,
                                                          0,
                                                          VK_WHOLE_SIZE);
-                                                         
+
       fVulkanUpdateCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                                     0,

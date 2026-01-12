@@ -44,6 +44,8 @@ layout(push_constant) uniform PushConstants {
   float minimalStepMeters; // e.g. 0.10
   float maximalStepMeters; // e.g. 0.30
   float simpleGaussianBlurFactor;
+  int kernelRadius;        // e.g. 8 for 17x17
+  float sigmaSpatial;      // e.g. 4.0 texels
 } pushConstants;
 
 #include "octahedral.glsl"
@@ -76,10 +78,10 @@ float filteredHeight(ivec2 texelPosition){
   float maximalStep = max(max(abs(radiusLeft - centerRadius), abs(radiusRight - centerRadius)), max(abs(radiusUp - centerRadius), abs(radiusDown - centerRadius)));
   float alpha = smoothstep(pushConstants.minimalStepMeters, pushConstants.maximalStepMeters, maximalStep);
 
-  // 9x9 bilateral on radius (meters)
-  const int kernelRadius = 4;
+  // Bilateral filter on radius (meters)
+  int kernelRadius = pushConstants.kernelRadius;
 
-  float sigmaSpatial = 2.5; // texels
+  float sigmaSpatial = pushConstants.sigmaSpatial; // texels
   float invTwoSigmaSpatialSquared = 1.0 / (2.0 * sigmaSpatial * sigmaSpatial);
 
   float sigmaRange = max(pushConstants.sigmaRangeMeters, 1e-6);
