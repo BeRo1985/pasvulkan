@@ -496,6 +496,8 @@ compileshaderarguments=(
 
   "-V planet_heightmap_modification.comp -o ${tempPath}/planet_heightmap_modification_comp.spv"
 
+  "-V planet_heightmap_smooth.comp -o ${tempPath}/planet_heightmap_smooth_comp.spv"
+
   "-V planet_normalmap_generation.comp -o ${tempPath}/planet_normalmap_generation_comp.spv"
 
   "-V planet_tiled_mesh_index_generation.comp -o ${tempPath}/planet_tiled_mesh_index_generation_comp.spv"

@@ -28,12 +28,10 @@ layout(push_constant) uniform PushConstants {
 
 #include "octahedral.glsl"
 
-int totalResolution(){
-  return int(pushConstants.tileMapResolution * pushConstants.tileResolution);
-}
+int totalResolution = int(pushConstants.tileMapResolution * pushConstants.tileResolution);
 
 ivec2 wrapCoordinate(ivec2 coordinate){
-  return wrapOctahedralTexelCoordinates(coordinate, ivec2(totalResolution()));
+  return wrapOctahedralTexelCoordinates(coordinate, ivec2(totalResolution));
 }
 
 float loadHeight(ivec2 coordinate){
@@ -65,7 +63,7 @@ float filteredHeight(ivec2 texelPosition){
   float invTwoSigmaSpatialSquared = 1.0 / (2.0 * sigmaSpatial * sigmaSpatial);
 
   float sigmaRange = max(pushConstants.sigmaRangeMeters, 1e-6);
-  float invTwoSigmaRangeSquared = 1.0 / (2.0 * sigmaRange * sigmaRange);
+  float invTwoSigmaRangeSquared = 1.0 / (2.0 * (sigmaRange * sigmaRange));
 
   float weightedRadiusSum = 0.0;
   float totalWeightSum = 0.0;
