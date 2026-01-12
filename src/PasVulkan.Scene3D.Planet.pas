@@ -27047,7 +27047,7 @@ begin
 
      // When forcing all tiles dirty (e.g., after parameter change), fill the dirty map
      // with all 1s so fTileDirtyQueueGeneration finds all tiles
-     if fData.fForceAllTilesDirty then begin
+     if fData.fForceAllTilesDirty and fUseHeightMapSmoothing then begin
 
       fVulkanUpdateCommandBuffer.CmdFillBuffer(fData.fTileDirtyMapBuffer.Handle,
                                                0,
