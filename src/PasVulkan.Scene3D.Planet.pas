@@ -1531,6 +1531,42 @@ type TpvScene3DPlanets=class;
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
+            { THeightMapSmooth }
+            // Edge-preserving bilateral filter for heightmap smoothing to eliminate
+            // terraforming-induced stripe/terracing shadow artifacts. The smoothed
+            // output is used ONLY for rendering, BLAS mesh generation, and water
+            // simulation - the authoritative heightmap remains unchanged.
+            THeightMapSmooth=class
+             public
+              type TPushConstants=packed record
+                    BottomRadius:TpvFloat;
+                    TopRadius:TpvFloat;
+                    TileMapResolution:TpvUInt32;
+                    TileResolution:TpvUInt32;
+                    LOD:TpvInt32;
+                    SigmaRangeMeters:TpvFloat;
+                    MinimalStepMeters:TpvFloat;
+                    MaximalStepMeters:TpvFloat;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
             { TNormalMapGeneration }
             TNormalMapGeneration=class
              public
@@ -2583,6 +2619,7 @@ type TpvScene3DPlanets=class;
        fTiledMeshBoundingVolumesGeneration:TTiledMeshBoundingVolumesGeneration;
        fTileDirtyExpansion:TTileDirtyExpansion;
        fTileDirtyQueueGeneration:TTileDirtyQueueGeneration;
+       fHeightMapSmooth:THeightMapSmooth;
        fPerInFlightFrameTileLODLevels:TPerInFlightFrameTileLODLevels;
        fNormalMapGeneration:TNormalMapGeneration;
        fHeightMapMipMapGeneration:THeightMapMipMapGeneration;
@@ -2639,6 +2676,7 @@ type TpvScene3DPlanets=class;
        fBrushesTexture:TpvVulkanTexture;
        fUsePlanetHeightMapBuffer:Boolean;
        fUse16Bit:Boolean;
+       fUseHeightMapSmoothing:Boolean;
        fUseConcurrentWaterHeightMapImage:Boolean;
        fMustTransferWaterHeightMapImageOwnership:Boolean;
        fMustTransferAtmospherePrecipitationImageOwnership:Boolean;
@@ -2679,7 +2717,8 @@ type TpvScene3DPlanets=class;
                           const aWaterMiniMapResolutionShift:TpvSizeInt=4;
                           const aBlendMiniMapResolutionShift:TpvSizeInt=4;
                           const aAtmosphereMiniMapResolutionShift:TpvSizeInt=2;
-                          const aPrecipitationMiniMapResolutionShift:TpvSizeInt=2); reintroduce;
+                          const aPrecipitationMiniMapResolutionShift:TpvSizeInt=2;
+                          const aUseHeightMapSmoothing:Boolean=true); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -2785,6 +2824,7 @@ type TpvScene3DPlanets=class;
        property CountPhysicsMeshLODLevels:TpvSizeInt read fCountPhysicsMeshLODLevels;
        property BottomRadius:TpvFloat read fBottomRadius;
        property TopRadius:TpvFloat read fTopRadius;
+       property UseHeightMapSmoothing:Boolean read fUseHeightMapSmoothing;
        property Ready:TPasMPBool32 read fReady;
        property Data:TData read fData;
        property InFlightFrameDataList:TInFlightFrameDataList read fInFlightFrameDataList;
@@ -3564,19 +3604,21 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.ImageView');
 
-   fHeightMapSmoothedImage:=TpvScene3DRendererMipmapImage2D.Create(fPlanet.fVulkanDevice,
-                                                                   fPlanet.fHeightMapResolution,
-                                                                   fPlanet.fHeightMapResolution,
-                                                                   VK_FORMAT_R32_SFLOAT,
-                                                                   true,
-                                                                   VK_SAMPLE_COUNT_1_BIT,
-                                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                                   ImageSharingMode,
-                                                                   ImageQueueFamilyIndices,
-                                                                   pvAllocationGroupIDScene3DPlanetStatic,
-                                                                   'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmoothedImage');
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapSmoothedImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmoothedImage.Image');
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapSmoothedImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmoothedImage.ImageView');
+   if fPlanet.fUseHeightMapSmoothing then begin
+    fHeightMapSmoothedImage:=TpvScene3DRendererMipmapImage2D.Create(fPlanet.fVulkanDevice,
+                                                                    fPlanet.fHeightMapResolution,
+                                                                    fPlanet.fHeightMapResolution,
+                                                                    VK_FORMAT_R32_SFLOAT,
+                                                                    true,
+                                                                    VK_SAMPLE_COUNT_1_BIT,
+                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                    ImageSharingMode,
+                                                                    ImageQueueFamilyIndices,
+                                                                    pvAllocationGroupIDScene3DPlanetStatic,
+                                                                    'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmoothedImage');
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapSmoothedImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmoothedImage.Image');
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapSmoothedImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmoothedImage.ImageView');
+   end;
 
    if (fInFlightFrameIndex<0) and fPlanet.fUsePlanetHeightMapBuffer then begin
     fHeightMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
@@ -13686,6 +13728,7 @@ end;
 constructor TpvScene3DPlanet.TWaterSimulation.Create(const aPlanet:TpvScene3DPlanet);
 var Index:TpvSizeInt;
     Stream:TStream;
+    HeightMapImageView:TVkImageView;
 begin
 
  inherited Create;
@@ -13938,12 +13981,17 @@ begin
                                                      [],
                                                      false);
    end else begin
+    if fPlanet.fUseHeightMapSmoothing and assigned(fPlanet.fData.fHeightMapSmoothedImage) then begin
+     HeightMapImageView:=fPlanet.fData.fHeightMapSmoothedImage.VulkanImageView.Handle;
+    end else begin
+     HeightMapImageView:=fPlanet.fData.fHeightMapImage.VulkanImageView.Handle;
+    end;
     fWaterDescriptorSets[Index].WriteToDescriptorSet(0, // uPlanetHeightmap
                                                      0,
                                                      1,
                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                                    fPlanet.fData.fHeightMapImage.VulkanImageView.Handle,
+                                                                                    HeightMapImageView,
                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                      [],
                                                      [],
@@ -16711,6 +16759,241 @@ begin
 
 end;
 
+{ TpvScene3DPlanet.THeightMapSmooth }
+
+constructor TpvScene3DPlanet.THeightMapSmooth.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_heightmap_smooth_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.THeightMapSmooth.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0, // QueuedTiles buffer
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(1, // uHeightTruth (sampled image)
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(2, // uHeightSmooth (storage image)
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                  1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
+  fDescriptorPool.Initialize;
+
+  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+  fDescriptorSet.WriteToDescriptorSet(0,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                      [],
+                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fTileDirtyQueueBuffer.Handle,
+                                                                      0,
+                                                                      VK_WHOLE_SIZE)],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(1,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fHeightMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(2,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fHeightMapSmoothedImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.Flush;
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+  fPushConstants.BottomRadius:=fPlanet.fBottomRadius;
+  fPushConstants.TopRadius:=fPlanet.fTopRadius;
+  fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
+  fPushConstants.TileResolution:=fPlanet.fVisualTileResolution;
+  fPushConstants.LOD:=0;
+  fPushConstants.SigmaRangeMeters:=0.25;
+  fPushConstants.MinimalStepMeters:=0.10;
+  fPushConstants.MaximalStepMeters:=0.30;
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.THeightMapSmooth.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fDescriptorSet);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.THeightMapSmooth.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+begin
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet HeightMapSmooth',[0.5,0.75,0.25,1.0]);
+
+ // Transition smoothed image to GENERAL for writing
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fHeightMapSmoothedImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      fPlanet.fData.fHeightMapSmoothedImage.MipMapLevels,
+                                                                                      0,
+                                                                                      1));
+
+ // Ensure truth heightmap is ready for reading
+ ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      fPlanet.fData.fHeightMapImage.MipMapLevels,
+                                                                                      0,
+                                                                                      1));
+
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fPlanet.fData.fTileDirtyQueueBuffer.Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE);
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   1,@BufferMemoryBarrier,
+                                   2,@ImageMemoryBarriers[0]);
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fDescriptorSet.Handle,
+                                      0,
+                                      nil);
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);
+
+ if fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
+  if fPlanet.fData.fCountDirtyTiles>0 then begin
+   aCommandBuffer.CmdDispatch(((fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)+255) shr 8,
+                              fPlanet.fData.fCountDirtyTiles,
+                              1);
+  end;
+ end else begin
+  aCommandBuffer.CmdDispatchIndirect(fPlanet.fData.fTileDirtyQueueBuffer.Handle,0);
+ end;
+
+ // Transition smoothed image back to SHADER_READ_ONLY for consumers
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fHeightMapSmoothedImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      fPlanet.fData.fHeightMapSmoothedImage.MipMapLevels,
+                                                                                      0,
+                                                                                      1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarriers[0]);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
 { TpvScene3DPlanet.TNormalMapGeneration }
 
 constructor TpvScene3DPlanet.TNormalMapGeneration.Create(const aPlanet:TpvScene3DPlanet);
@@ -17577,6 +17860,7 @@ end;
 constructor TpvScene3DPlanet.TMeshVertexGeneration.Create(const aPlanet:TpvScene3DPlanet;const aPhysics:Boolean);
 var Index:TpvInt32;
     Stream:TStream;
+    HeightMapImageView:TVkImageView;
 begin
 
  inherited Create;
@@ -17677,12 +17961,17 @@ begin
                                                                                 VK_WHOLE_SIZE)],
                                                 [],
                                                 false);
+    if fPlanet.fUseHeightMapSmoothing and assigned(fPlanet.fData.fHeightMapSmoothedImage) then begin
+     HeightMapImageView:=fPlanet.fData.fHeightMapSmoothedImage.VulkanImageView.Handle;
+    end else begin
+     HeightMapImageView:=fPlanet.fData.fHeightMapImage.VulkanImageView.Handle;
+    end;
     fDescriptorSets[Index].WriteToDescriptorSet(2,
                                                 0,
                                                 1,
                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,//TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                               fPlanet.fData.fHeightMapImage.VulkanImageView.Handle,
+                                                                               HeightMapImageView,
                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                 [],
                                                 [],
@@ -24229,7 +24518,8 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aWaterMiniMapResolutionShift:TpvSizeInt;
                                     const aBlendMiniMapResolutionShift:TpvSizeInt;
                                     const aAtmosphereMiniMapResolutionShift:TpvSizeInt;
-                                    const aPrecipitationMiniMapResolutionShift:TpvSizeInt);
+                                    const aPrecipitationMiniMapResolutionShift:TpvSizeInt;
+                                    const aUseHeightMapSmoothing:Boolean);
 var InFlightFrameIndex,Index,Resolution:TpvSizeInt;
 //  ta,tb:TpvHighResolutionTime;
     TileLODLevels:TTileLODLevels;
@@ -24478,6 +24768,8 @@ begin
 
  fUse16Bit:=false;
 
+ fUseHeightMapSmoothing:=aUseHeightMapSmoothing;
+
  fUseConcurrentWaterHeightMapImage:=false;
 
  fMustTransferWaterHeightMapImageOwnership:=false;
@@ -24714,6 +25006,12 @@ begin
  fTileDirtyExpansion:=TTileDirtyExpansion.Create(self);
 
  fTileDirtyQueueGeneration:=TTileDirtyQueueGeneration.Create(self);
+
+ if fUseHeightMapSmoothing then begin
+  fHeightMapSmooth:=THeightMapSmooth.Create(self);
+ end else begin
+  fHeightMapSmooth:=nil;
+ end;
 
  fNormalMapGeneration:=TNormalMapGeneration.Create(self);
 
@@ -25027,6 +25325,8 @@ begin
  FreeAndNil(fTileDirtyExpansion);
 
  FreeAndNil(fTileDirtyQueueGeneration);
+
+ FreeAndNil(fHeightMapSmooth);
 
  FreeAndNil(fHeightMapFlatten);
 
@@ -26300,6 +26600,12 @@ begin
 
   fData.fInitialized:=true;
 
+  // Force all tiles dirty on initialization when heightmap smoothing is enabled,
+  // so the smoothed heightmap gets fully populated from the truth heightmap
+  if fUseHeightMapSmoothing and assigned(fData.fHeightMapSmoothedImage) then begin
+   fData.fForceAllTilesDirty:=true;
+  end;
+
  end;
 
 end;
@@ -26749,6 +27055,10 @@ begin
 
       fData.fCountDirtyTiles:=0;
 
+     end;
+
+     if fUseHeightMapSmoothing and assigned(fHeightMapSmooth) then begin
+      fHeightMapSmooth.Execute(fVulkanUpdateCommandBuffer);
      end;
 
      fHeightMapMipMapGeneration.Execute(fVulkanUpdateCommandBuffer);
