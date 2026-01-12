@@ -24,7 +24,7 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_samplerless_texture_functions : enable
 
-layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) buffer QueuedTiles {
   uint data[]; // same layout you already use (6-based)
@@ -112,7 +112,7 @@ float filteredHeight(ivec2 texelPosition){
 
 void main(){
 
-  uint queuedTileIndex = uint(gl_GlobalInvocationID.y);
+  uint queuedTileIndex = uint(gl_GlobalInvocationID.z);
 
   uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
 
@@ -126,14 +126,9 @@ void main(){
       tileMapXY.y = tileMapIndex / pushConstants.tileMapResolution;
       tileMapXY.x = tileMapIndex - (tileMapXY.y * pushConstants.tileMapResolution);
 
-      uint tileTexelSize = pushConstants.tileResolution * pushConstants.tileResolution;
-      uint tileTexelIndex = uint(gl_GlobalInvocationID.x);
+      uvec2 tileTexelXY = uvec2(gl_GlobalInvocationID.xy);
 
-      if(tileTexelIndex < tileTexelSize){
-
-        uvec2 tileTexelXY;
-        tileTexelXY.y = tileTexelIndex / pushConstants.tileResolution;
-        tileTexelXY.x = tileTexelIndex - (tileTexelXY.y * pushConstants.tileResolution);
+      if((tileTexelXY.x < pushConstants.tileResolution) && (tileTexelXY.y < pushConstants.tileResolution)){
 
         ivec2 texelPosition = ivec2((tileMapXY * pushConstants.tileResolution) + tileTexelXY);
 
@@ -143,4 +138,5 @@ void main(){
       }
     }
   }
+
 }
