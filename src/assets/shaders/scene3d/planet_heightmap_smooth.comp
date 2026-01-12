@@ -43,6 +43,7 @@ layout(push_constant) uniform PushConstants {
   float sigmaRangeMeters;  // e.g. 0.25
   float minimalStepMeters; // e.g. 0.10
   float maximalStepMeters; // e.g. 0.30
+  float simpleGaussianBlurFactor;
 } pushConstants;
 
 #include "octahedral.glsl"
@@ -96,7 +97,7 @@ float filteredHeight(ivec2 texelPosition){
       float radiusDelta = sampleRadius - centerRadius;
 
       float spatialWeight = gaussian(float(offsetX * offsetX + offsetY * offsetY), invTwoSigmaSpatialSquared);
-      float rangeWeight = gaussian(radiusDelta * radiusDelta, invTwoSigmaRangeSquared);
+      float rangeWeight = mix(gaussian(radiusDelta * radiusDelta, invTwoSigmaRangeSquared), 1.0, pushConstants.simpleGaussianBlurFactor);
       float weight = spatialWeight * rangeWeight;
 
       weightedRadiusSum += weight * sampleRadius;

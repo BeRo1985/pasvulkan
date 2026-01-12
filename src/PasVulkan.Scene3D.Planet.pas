@@ -1547,6 +1547,7 @@ type TpvScene3DPlanets=class;
                     SigmaRangeMeters:TpvFloat;
                     MinimalStepMeters:TpvFloat;
                     MaximalStepMeters:TpvFloat;
+                    SimpleGaussianBlurFactor:TpvFloat;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -16867,6 +16868,7 @@ begin
   fPushConstants.SigmaRangeMeters:=2.0;
   fPushConstants.MinimalStepMeters:=0.02;
   fPushConstants.MaximalStepMeters:=0.15;
+  fPushConstants.SimpleGaussianBlurFactor:=1.0;
 
  end;
 
