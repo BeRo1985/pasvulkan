@@ -2758,6 +2758,7 @@ type TpvScene3DPlanets=class;
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
+       procedure MarkAllTilesDirty;
        procedure EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
        procedure EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aOnlyIfEmpty:Boolean=false);
        procedure EnqueuePrecipitationMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
@@ -2848,6 +2849,7 @@ type TpvScene3DPlanets=class;
        property RaytracingOffsetFloatScale:TpvFloat read fRaytracingOffsetFloatScale write fRaytracingOffsetFloatScale;
        property RaytracingOffsetIntScale:TpvFloat read fRaytracingOffsetIntScale write fRaytracingOffsetIntScale;
        property RaytracingOffsetDirectionScale:TpvFloat read fRaytracingOffsetDirectionScale write fRaytracingOffsetDirectionScale;
+       property HeightMapSmooth:THeightMapSmooth read fHeightMapSmooth;
       public      
        property PlanetData:PPlanetData read fPointerToPlanetData;
        property PlanetDataVulkanBuffers:TPlanetDataVulkanBuffers read fPlanetDataVulkanBuffers;
@@ -27638,6 +27640,11 @@ begin
   HeightMapFlattenItem^.BrushIndex:=aBrushIndex;
   HeightMapFlattenItem^.BrushRotation:=aBrushRotation;
  end;
+end;
+
+procedure TpvScene3DPlanet.MarkAllTilesDirty;
+begin
+ fData.fForceAllTilesDirty:=true;
 end;
 
 procedure TpvScene3DPlanet.EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
