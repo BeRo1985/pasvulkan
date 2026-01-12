@@ -13,8 +13,9 @@
 //
 // The authoritative heightmap (uHeightTruth) remains unchanged for gameplay and save/load.
 // This shader produces a derived smoothed version (uHeightSmooth) used ONLY for rendering,
-// BLAS mesh generation, and water simulation (as ground heightmap) to avoid visual artifacts.
-// Updates are tile-based and incremental after terraforming.
+// BLAS mesh generation, physics mesh generation, and water simulation (as ground heightmap) 
+// to avoid visual artifacts. Updates are tile-based and incremental after terraforming and
+// once after loading a saved game.
 
 #version 450 core
 #pragma shader_stage(compute)
@@ -136,7 +137,9 @@ void main(){
 
         imageStore(uHeightSmooth, wrapCoordinate(texelPosition), vec4(outputHeight, 0.0, 0.0, 0.0));
       }
+
     }
+
   }
 
 }
