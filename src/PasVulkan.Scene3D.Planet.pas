@@ -27681,8 +27681,10 @@ end;
 
 procedure TpvScene3DPlanet.MarkAllTilesDirty;
 begin
- fData.fForceAllTilesDirty:=true;
- inc(fData.fHeightMapGeneration); // Force re-processing of heightmap pipeline including smoothing
+ if fUseHeightMapSmoothing then begin
+  fData.fForceAllTilesDirty:=true;
+  inc(fData.fHeightMapGeneration); // Force re-processing of heightmap pipeline including smoothing
+ end;
 end;
 
 procedure TpvScene3DPlanet.EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
