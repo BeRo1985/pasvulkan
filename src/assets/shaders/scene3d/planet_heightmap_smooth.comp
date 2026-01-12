@@ -135,7 +135,7 @@ void main(){
 
         float outputHeight = filteredHeight(texelPosition);
 
-        imageStore(uHeightSmooth, wrapCoordinate(texelPosition), vec4(outputHeight, 0.0, 0.0, 0.0));
+        imageStore(uHeightSmooth, wrapCoordinate(texelPosition), vec4(outputHeight));
       }
 
     }
