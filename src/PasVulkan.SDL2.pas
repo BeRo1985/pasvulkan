@@ -2014,7 +2014,7 @@ type PSDLInt8=^TSDLInt8;
       format:TSDLUInt32;
       w:TSDLInt32;
       h:TSDLInt32;
-      refrsh_rate:TSDLInt32;
+      refresh_rate:TSDLInt32;
       driverdata:pointer;
      end;
 

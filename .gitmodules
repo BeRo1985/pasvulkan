@@ -31,3 +31,9 @@
 [submodule "externals/pasriscv"]
 	path = externals/pasriscv
 	url = https://github.com/BeRo1985/pasriscv.git
+[submodule "externals/pasllm"]
+	path = externals/pasllm
+	url = https://github.com/BeRo1985/pasllm.git
+[submodule "externals/pinja"]
+	path = externals/pinja
+	url = https://github.com/BeRo1985/pinja.git

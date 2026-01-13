@@ -576,6 +576,15 @@ type EpvApplication=class(Exception)
      TpvApplicationDisplayOrientations=set of TpvApplicationDisplayOrientation;
      PpvApplicationDisplayOrientations=^TpvApplicationDisplayOrientations;
 
+     TpvApplicationDisplayMode=record
+      Width:TpvInt32;
+      Height:TpvInt32;
+      RefreshRate:TpvInt32;
+     end;
+     PpvApplicationDisplayMode=^TpvApplicationDisplayMode;
+
+     TpvApplicationDisplayModes=array of TpvApplicationDisplayMode;
+
      TpvApplicationInputKeyEventType=
       (
        Down,
@@ -1493,6 +1502,10 @@ type EpvApplication=class(Exception)
        fCurrentWidth:TpvInt32;
        fCurrentHeight:TpvInt32;
        fCurrentFullscreen:TpvInt32;
+       fCurrentRealFullScreen:TpvInt32;
+       fCurrentFullScreenWidth:Int32;
+       fCurrentFullScreenHeight:Int32;
+       fCurrentFullScreenRefreshRate:TpvInt32;
        fCurrentMaximized:TpvInt32;
        fCurrentPresentMode:TpvInt32;
        fCurrentVisibleMouseCursor:TpvInt32;
@@ -1511,8 +1524,11 @@ type EpvApplication=class(Exception)
 
        fWidth:TpvInt32;
        fHeight:TpvInt32;
+       fFullScreenWidth:TpvInt32;
+       fFullScreenHeight:TpvInt32;
+       fFullScreenRefreshRate:TpvInt32;
        fUseRealFullScreen:boolean;
-       fFullscreen:boolean;
+       fFullScreen:boolean;
        fMaximized:boolean;
        fPresentMode:TpvApplicationPresentMode;
        fPresentFrameLatency:TpvUInt64;
@@ -1860,7 +1876,8 @@ type EpvApplication=class(Exception)
        fWin32OldTop:TpvInt32;
        fWin32OldWidth:TpvInt32;
        fWin32OldHeight:TpvInt32;
-       fWin32Fullscreen:Boolean;
+       fWin32FullScreen:Boolean;
+       fWin32RealFullScreen:Boolean;
        fWin32HighSurrogate:TpvUInt32;
        fWin32LowSurrogate:TpvUInt32;
        fWin32TouchActive:Boolean;
@@ -2062,6 +2079,8 @@ type EpvApplication=class(Exception)
 
        procedure DumpVulkanMemoryManager; virtual;
 
+       function GetSupportedDisplayModes(const aDisplayIndex:TpvInt32=0):TpvApplicationDisplayModes;
+
        class procedure Main; virtual;
 
        property VulkanFrameBuffers:TpvVulkanSwapChainSimpleDirectRenderTargetFrameBuffers read fVulkanFrameBuffers;
@@ -2112,9 +2131,13 @@ type EpvApplication=class(Exception)
 
        property SkipNextDrawFrame:boolean read fSkipNextDrawFrame write fSkipNextDrawFrame;
 
+       property FullScreenWidth:TpvInt32 read fFullScreenWidth write fFullScreenWidth;
+       property FullScreenHeight:TpvInt32 read fFullScreenHeight write fFullScreenHeight;
+       property FullScreenRefreshRate:TpvInt32 read fFullScreenRefreshRate write fFullScreenRefreshRate;
+
        property UseRealFullScreen:boolean read fUseRealFullScreen write fUseRealFullScreen;
 
-       property Fullscreen:boolean read fFullscreen write fFullscreen;
+       property Fullscreen:boolean read fFullScreen write fFullScreen;
 
        property Maximized:boolean read fMaximized write fMaximized;
 
@@ -8588,6 +8611,10 @@ begin
  fCurrentWidth:=-1;
  fCurrentHeight:=-1;
  fCurrentFullscreen:=-1;
+ fCurrentRealFullScreen:=-1;
+ fCurrentFullScreenWidth:=-1;
+ fCurrentFullScreenHeight:=-1;
+ fCurrentFullScreenRefreshRate:=-1;
  fCurrentMaximized:=-1;
  fCurrentPresentMode:=High(TpvInt32);
  fCurrentVisibleMouseCursor:=-1;
@@ -8606,8 +8633,11 @@ begin
 
  fWidth:=1280;
  fHeight:=720;
+ fFullScreenWidth:=0;
+ fFullScreenHeight:=0;
+ fFullScreenRefreshRate:=0;
  fUseRealFullScreen:=false;
- fFullscreen:=false;
+ fFullScreen:=false;
  fMaximized:=false;
  fExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Default;
  fPresentMode:=TpvApplicationPresentMode.Immediate;
@@ -10010,7 +10040,7 @@ begin
                                              TVkSurfaceTransformFlagsKHR($ffffffff),
                                              fSwapChainColorSpace=TpvApplicationSwapChainColorSpace.SRGB,
                                              fSwapChainHDR,
-                                             fFullscreen,
+                                             fFullScreen,
                                              fExclusiveFullScreenMode,
                                              {$if defined(Windows)}@WindowHandle{$else}nil{$ifend});
 
@@ -12345,6 +12375,8 @@ var Index,Counter,Tries:TpvInt32;
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
     Joystick:TpvApplicationJoystick;
+    FullscreenDisplayMode:TSDL_DisplayMode;
+    DisplayIndex:TpvInt32;
 {$else}
  {$if defined(Windows) and not defined(PasVulkanHeadless)}
     devMode:{$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif};
@@ -12520,7 +12552,7 @@ begin
   fCurrentWidth:=fWidth;
   fCurrentHeight:=fHeight;
   fCurrentPresentMode:=TpvInt32(fPresentMode);
-  if not fFullscreen then begin
+  if not fFullScreen then begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
    SDL_SetWindowSize(fSurfaceWindow,fWidth,fHeight);
 {$else}
@@ -13099,8 +13131,13 @@ begin
    fOnStep(self);
   end;
 
-  if fCurrentFullScreen<>ord(fFullScreen) then begin
-   fCurrentFullScreen:=ord(fFullScreen);
+  if (fCurrentFullScreen<>(ord(fFullScreen) and 1)) or
+     (fFullScreen and
+      ((fCurrentRealFullScreen<>(ord(fUseRealFullScreen) and 1)) or
+       (fUseRealFullScreen and
+        ((fCurrentFullScreenWidth<>fFullScreenWidth) or
+         (fCurrentFullScreenHeight<>fFullScreenHeight) or
+         (fCurrentFullScreenRefreshRate<>fFullScreenRefreshRate))))) then begin
    if (Tries=0) and
       not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                              TAcquireVulkanBackBufferState.RecreateSurface,
@@ -13109,23 +13146,81 @@ begin
     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
    end;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+
+   // For SDL, we can directly set fullscreen modes without restoring first as SDL handles the 
+   // transitions internally, avoiding common pitfalls. Any necessary intermediate steps are 
+   // managed by SDL itself, which simplifies the following code and improves reliability across platforms.
+
+   // The result codes of the SDL functions are not checked here, as failures are rare and typically non-critical,
+   // and SDL will often revert to a safe state automatically, so adding them would unnecessarily complicate the code. 
+
    if fFullScreen then begin
-{   case fVulkanDevice.PhysicalDevice.Properties.vendorID of
-     $00001002:begin // AMD
+    
+    if fUseRealFullScreen then begin
+
+     // Enter real fullscreen
+
+     // Set the desired fullscreen display mode 
+     if (fFullScreenWidth>0) and (fFullScreenHeight>0) and (fFullScreenRefreshRate>=0) then begin
+      OK:=SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0;
+      if not OK then begin
+       DisplayIndex:=SDL_GetWindowDisplayIndex(fSurfaceWindow);
+       if DisplayIndex<0 then begin
+        DisplayIndex:=0;
+       end;
+       OK:=SDL_GetCurrentDisplayMode(DisplayIndex,@FullscreenDisplayMode)=0;
+       if not OK then begin
+        OK:=SDL_GetDesktopDisplayMode(DisplayIndex,@FullscreenDisplayMode)=0;
+        if not OK then begin
+         FillChar(FullscreenDisplayMode,SizeOf(TSDL_DisplayMode),#0);
+         FullscreenDisplayMode.format:=SDL_PIXELFORMAT_UNKNOWN;
+         FullscreenDisplayMode.w:=fFullScreenWidth;
+         FullscreenDisplayMode.h:=fFullScreenHeight;
+         if fFullScreenRefreshRate>0 then begin
+          FullscreenDisplayMode.refresh_rate:=fFullScreenRefreshRate;
+         end else begin
+          FullscreenDisplayMode.refresh_rate:=0; // Let SDL choose the default refresh rate
+         end;
+         FullscreenDisplayMode.driverdata:=nil;
+         OK:=true;
+        end;
+       end;
+      end;
+      if OK then begin
+       FullscreenDisplayMode.w:=fFullScreenWidth;
+       FullscreenDisplayMode.h:=fFullScreenHeight;
+       // Only set the refresh rate if a positive value is specified, otherwise let the previously obtained/default rate remain
+       if fFullScreenRefreshRate>0 then begin
+        FullscreenDisplayMode.refresh_rate:=fFullScreenRefreshRate;
+       end;
+       SDL_SetWindowSize(fSurfaceWindow,fFullScreenWidth,fFullScreenHeight);
+       SDL_SetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode);
+      end;
+     end;
+
+     // Set real fullscreen mode
+     if (SDL_GetWindowFlags(fSurfaceWindow) and SDL_WINDOW_FULLSCREEN)=0 then begin
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
      end;
-     else begin
+    
+    end else begin
+    
+     // Enter fake fullscreen (borderless window maximized to desktop size)
+     if (SDL_GetWindowFlags(fSurfaceWindow) and SDL_WINDOW_FULLSCREEN_DESKTOP)=0 then begin
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
      end;
-    end;}
-    if fUseRealFullScreen then begin
-     SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
-    end else begin
-     SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
+
     end;
+
    end else begin
-    SDL_SetWindowFullscreen(fSurfaceWindow,0);
+    
+    // Restore windowed mode
+    if (SDL_GetWindowFlags(fSurfaceWindow) and (SDL_WINDOW_FULLSCREEN or SDL_WINDOW_FULLSCREEN_DESKTOP))<>0 then begin
+     SDL_SetWindowFullscreen(fSurfaceWindow,0);
+    end;
+
    end;
+
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
    if fSDLVersionWithVulkanSupport then begin
     SDL_Vulkan_GetDrawableSize(fSurfaceWindow,@fWidth,@fHeight);
@@ -13133,41 +13228,77 @@ begin
     SDL_GetWindowSize(fSurfaceWindow,fWidth,fHeight);
    end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
-   if fFullScreen then begin
-    FillChar(MonitorInfo,SizeOf(TMonitorInfo),#0);
-    MonitorInfo.cbSize:=SizeOf(TMonitorInfo);
-    if (not fWin32Fullscreen) and
-       GetWindowRect(fWin32Handle,Rect) and
-       GetMonitorInfo(MonitorFromWindow(fWin32Handle,MONITOR_DEFAULTTONEAREST),@MonitorInfo) then begin
-     fScreenWidth:=MonitorInfo.rcMonitor.Width;
-     fScreenHeight:=MonitorInfo.rcMonitor.Height;
-     fWin32OldLeft:=Rect.Left;
-     fWin32OldTop:=Rect.Top;
-     fWin32OldWidth:=fWidth;
-     fWin32OldHeight:=fHeight;
-     devMode.dmSize:=SizeOf({$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif});
-     devMode.dmPelsWidth:=fScreenWidth;
-     devMode.dmPelsHeight:=fScreenHeight;
-     devMode.dmBitsPerPel:=32;
-     devMode.dmFields:=DM_BITSPERPEL or DM_PELSWIDTH or DM_PELSHEIGHT;
-     {if ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
-      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_POPUP or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
-      if fAcceptDragDropFiles then begin
-       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
-      end else begin
-       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
-      end;
-      SetWindowPos(fWin32Handle,HWND_TOP,MonitorInfo.rcMonitor.Left,MonitorInfo.rcMonitor.Top,fScreenWidth,fScreenHeight,SWP_FRAMECHANGED);
-      ShowWindow(fWin32Handle,SW_SHOW);
-      fWin32Fullscreen:=true;
-{    end else begin
-      fFullscreen:=false;}
-     end;
+  
+   // For Win32, the defensive pattern of always restoring to windowed mode first even
+   // before changing fullscreen state to avoid issues is implemented below.
+   //
+   // This approach mitigates various driver and Windows quirks related to fullscreen transitions.
+   //
+   // Detailed explanation:
+   //
+   // The "always restore to windowed first" approach is a common and valid defensive 
+   // pattern for Windows fullscreen handling. Here's why:
+   // Reasons for this approach:
+   //
+   // 1. Display mode stack issues: ChangeDisplaySettingsW maintains an internal display mode stack. 
+   //     Going directly from one exclusive mode to another can leave stale entries, causing issues 
+   //     when restoring.
+   //
+   // 2. Driver quirks: Some GPU drivers (especially older ones, or certain AMD/Intel integrated 
+   //    graphics) don't handle direct mode-to-mode transitions well. They expect the clean sequence: 
+   //    Exclusive => Desktop => New Exclusive.
+   //
+   // 3. Window style conflicts: Directly changing from real fullscreen (with changed display mode) 
+   //    to fake fullscreen (borderless) while keeping popup styles can cause rendering issues or black
+   //    screens.
+   //
+   // 4. Multi-monitor edge cases: When switching between monitors or when display topology changes, 
+   //    going through windowed mode ensures the window is properly repositioned.
+   //
+   // 5. Alt-Tab / Focus loss recovery: If the app lost focus during a previous fullscreen session, 
+   //     a clean restore ensures predictable state.
+   //
+   // 6. Simplicity and predictability: This pattern simplifies the state management logic, making 
+   //    it easier to reason about the current window state.
+   //
+   // The pattern is used by: 
+   //
+   // - Many game engines (Unity, Unreal do similar)
+   // - SDL internally uses similar logic
+   // - DirectX sample code often recommends this
+   //
+   // Potential downside: 
+   //
+   // - Brief visual flicker during transition (window momentarily visible in windowed state)
+   //
+   // Alternative approaches:
+   //
+   // - Direct mode switching: Attempt to switch directly between exclusive modes. Risky due to 
+   //   driver quirks and display stack issues.
+   //
+   // - Persistent borderless window: Always use fake fullscreen (borderless) to avoid mode 
+   //   switches. Simpler but may not offer the best performance or compatibility for all apps.
+   //   It's also implemented in this code as an option, where fUseRealFullScreen must be false.
+   //
+   // - Some engines track whether they're changing mode type (real<=>fake) vs just resolution and 
+   //   only restore when needed
+   //
+   // - DXGI's SetFullscreenState handles some of this internally for D3D apps
+   //
+   // Conclusion:
+   //
+   // While not strictly required in all cases, restoring to windowed mode first is a robust 
+   // defensive practice that avoids many common pitfalls with Windows fullscreen handling across
+   // different hardware and driver configurations.
+
+   if fWin32FullScreen then begin
+    if fWin32RealFullScreen then begin
+     OK:=ChangeDisplaySettingsW(nil,0)=DISP_CHANGE_SUCCESSFUL;
+     fWin32RealFullScreen:=false;
     end else begin
-     fFullscreen:=false;
+     OK:=true;
     end;
-   end else if fWin32Fullscreen then begin
-{   if ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
+    if OK then begin
      if fResizable then begin
       SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
      end else begin
@@ -13180,13 +13311,77 @@ begin
      end;
      SetWindowPos(fWin32Handle,HWND_TOP,fWin32OldLeft,fWin32OldTop,fWin32OldWidth,fWin32OldHeight,SWP_FRAMECHANGED);
      ShowWindow(fWin32Handle,SW_SHOW);
-     fWin32Fullscreen:=false;
-{   end else begin
-     fFullscreen:=true;}
+     fWin32FullScreen:=false;
+    end else begin
+     fFullScreen:=true;
     end;
    end;
+
+   // Now set the new fullscreen state, when requested  
+   if fFullScreen then begin
+    FillChar(MonitorInfo,SizeOf(TMonitorInfo),#0);
+    MonitorInfo.cbSize:=SizeOf(TMonitorInfo);
+    if (not fWin32FullScreen) and
+       GetWindowRect(fWin32Handle,Rect) and
+       GetMonitorInfo(MonitorFromWindow(fWin32Handle,MONITOR_DEFAULTTONEAREST),@MonitorInfo) then begin
+     if fUseRealFullScreen and (fFullScreenWidth>0) and (fFullScreenHeight>0) then begin
+      fScreenWidth:=fFullScreenWidth;
+      fScreenHeight:=fFullScreenHeight;
+     end else begin
+      fScreenWidth:=MonitorInfo.rcMonitor.Width;
+      fScreenHeight:=MonitorInfo.rcMonitor.Height;
+     end;
+     fWin32OldLeft:=Rect.Left;
+     fWin32OldTop:=Rect.Top;
+     fWin32OldWidth:=fWidth;
+     fWin32OldHeight:=fHeight;
+     FillChar(devMode,SizeOf({$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif}),#0);
+     devMode.dmSize:=SizeOf({$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif});
+     devMode.dmPelsWidth:=fScreenWidth;
+     devMode.dmPelsHeight:=fScreenHeight;
+//   devMode.dmBitsPerPel:=32; // Don't set bitsperpel to avoid problems with HDR/10b displays and similar situations
+     devMode.dmFields:=DM_PELSWIDTH or DM_PELSHEIGHT {or DM_BITSPERPEL};
+     if fFullScreenRefreshRate>0 then begin
+      // When a specific refresh rate is requested, set it
+      devMode.dmDisplayFrequency:=fFullScreenRefreshRate;
+      devMode.dmFields:=devMode.dmFields or DM_DISPLAYFREQUENCY;
+     end;
+     if fUseRealFullScreen then begin
+      OK:=ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
+      fWin32RealFullScreen:=OK;
+     end else begin
+      OK:=true;
+      fWin32RealFullScreen:=false;
+     end;
+     if OK then begin
+      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_POPUP or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
+      if fAcceptDragDropFiles then begin
+       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
+      end else begin
+       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+      end;
+      SetWindowPos(fWin32Handle,HWND_TOP,MonitorInfo.rcMonitor.Left,MonitorInfo.rcMonitor.Top,fScreenWidth,fScreenHeight,SWP_FRAMECHANGED);
+      ShowWindow(fWin32Handle,SW_SHOW);
+      fWin32FullScreen:=true;
+     end else begin
+      fFullScreen:=false;
+     end;
+    end else begin
+     fFullScreen:=false;
+    end;
+
+   end;
+
 {$else}
 {$ifend}
+   fCurrentFullScreen:=ord(fFullScreen) and 1;
+   fCurrentRealFullScreen:=ord(fUseRealFullScreen) and 1;
+   fCurrentFullScreenWidth:=fFullScreenWidth;
+   fCurrentFullScreenHeight:=fFullScreenHeight;
+   fCurrentFullScreenRefreshRate:=fFullScreenRefreshRate;
+   // Continue with a new fresh loop iteration to process possible new events, 
+   // like resize events triggered by the fullscreen change, before rendering the next frame
+   // with the new settings, for to avoid possible issues.
    continue;
   end;
 
@@ -15047,7 +15242,7 @@ begin
    fVideoFlags:=fVideoFlags or SDL_WINDOW_VULKAN;
   end;
 {$ifend}
-  if fFullscreen then begin
+  if fFullScreen then begin
 {$ifndef Android}
    if (fWidth=fScreenWidth) and (fHeight=fScreenHeight) then begin
     fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN_DESKTOP;
@@ -15068,7 +15263,7 @@ begin
 
 {$if defined(fpc) and defined(android)}
   fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN or SDL_WINDOW_VULKAN;
-  fFullscreen:=true;
+  fFullScreen:=true;
   fCurrentFullscreen:=ord(true);
   fWidth:=fScreenWidth;
   fHeight:=fScreenHeight;
@@ -15129,7 +15324,7 @@ begin
   end;
 
   fWin32Style:=WS_VISIBLE;
-  if fFullscreen then begin
+  if fFullScreen then begin
    fWin32Style:=fWin32Style or WS_POPUP;
   end else begin
    fWin32Style:=fWin32Style or WS_CAPTION or WS_MINIMIZEBOX or WS_SYSMENU;
@@ -15206,7 +15401,9 @@ begin
 
   fWin32HiddenCursor:=CreateCursor(fWin32HInstance,0,0,1,1,@Win32CursorMaskAND,@Win32CursorMaskXOR);
 
-  fWin32Fullscreen:=false;
+  fWin32FullScreen:=false;
+
+  fWin32RealFullScreen:=false;
 
   if fVisibleMouseCursor then begin
    fWin32Cursor:=LoadCursor(0,IDC_ARROW);
@@ -15824,6 +16021,109 @@ begin
   end; 
  end; 
 end;
+
+function CompareDisplayModes(const a,b:PpvApplicationDisplayMode):TpvInt32;
+begin
+ result:=(a^.Width*a^.Height)-(b^.Width*b^.Height); 
+ if result=0 then begin
+  result:=a^.RefreshRate-b^.RefreshRate;
+ end;
+end;
+
+function TpvApplication.GetSupportedDisplayModes(const aDisplayIndex:TpvInt32=0):TpvApplicationDisplayModes;
+{$if defined(PasVulkanHeadless)}
+begin
+ result:=nil;
+end;
+{$elseif defined(PasVulkanUseSDL2)}
+var CountModes,Index,ResultCount:TpvInt32;
+    SDLDisplayMode:TSDL_DisplayMode;
+    DisplayMode:PpvApplicationDisplayMode;
+    Found:Boolean;
+    OtherIndex:TpvInt32;
+begin
+ result:=nil;
+ ResultCount:=0;
+ CountModes:=SDL_GetNumDisplayModes(aDisplayIndex);
+ if CountModes>0 then begin
+  for Index:=0 to CountModes-1 do begin
+   if SDL_GetDisplayMode(aDisplayIndex,Index,@SDLDisplayMode)=0 then begin
+    // Check for duplicates (same width/height, different refresh rate)
+    Found:=false;
+    for OtherIndex:=0 to ResultCount-1 do begin
+     DisplayMode:=@result[OtherIndex];
+     if (DisplayMode^.Width=SDLDisplayMode.w) and
+        (DisplayMode^.Height=SDLDisplayMode.h) and
+        (DisplayMode^.RefreshRate=SDLDisplayMode.refresh_rate) then begin
+      Found:=true;
+      break;
+     end;
+    end;
+    if not Found then begin
+     if ResultCount>=length(result) then begin
+      SetLength(result,(ResultCount+1)*2);
+     end;
+     DisplayMode:=@result[ResultCount];
+     inc(ResultCount);
+     DisplayMode^.Width:=SDLDisplayMode.w;
+     DisplayMode^.Height:=SDLDisplayMode.h;
+     DisplayMode^.RefreshRate:=SDLDisplayMode.refresh_rate;
+    end;
+   end;
+  end;
+ end;
+ SetLength(result,ResultCount);
+ if length(result)>1 then begin
+  UntypedDirectIntroSort(@result[0],0,length(result)-1,SizeOf(TpvApplicationDisplayMode),@CompareDisplayModes);
+ end;
+end;
+{$elseif defined(Windows)}
+var DevMode:TDeviceMode;
+    Index,ResultCount:TpvInt32;
+    DisplayMode:PpvApplicationDisplayMode;
+    Found:Boolean;
+    OtherIndex:TpvInt32;
+begin
+ result:=nil;
+ ResultCount:=0;
+ Index:=0;
+ FillChar(DevMode,SizeOf(TDeviceMode),0);
+ DevMode.dmSize:=SizeOf(TDeviceMode);
+ while EnumDisplaySettings(nil,Index,DevMode) do begin
+  // Check for duplicates (same width/height, different refresh rate/bit depth)
+  Found:=false;
+  for OtherIndex:=0 to ResultCount-1 do begin
+   DisplayMode:=@result[OtherIndex];
+   if (DisplayMode^.Width=TpvInt32(DevMode.dmPelsWidth)) and
+      (DisplayMode^.Height=TpvInt32(DevMode.dmPelsHeight)) and
+      (DisplayMode^.RefreshRate=TpvInt32(DevMode.dmDisplayFrequency)) then begin
+    Found:=true;
+    break;
+   end;
+  end;
+  if not Found then begin
+   if ResultCount>=length(result) then begin
+    SetLength(result,(ResultCount+1)*2);
+   end;
+   DisplayMode:=@result[ResultCount];
+   inc(ResultCount);
+   DisplayMode^.Width:=DevMode.dmPelsWidth;
+   DisplayMode^.Height:=DevMode.dmPelsHeight;
+   DisplayMode^.RefreshRate:=DevMode.dmDisplayFrequency;
+  end;
+  inc(Index);
+ end;
+ SetLength(result,ResultCount);
+ if length(result)>1 then begin
+  UntypedDirectIntroSort(@result[0],0,length(result)-1,SizeOf(TpvApplicationDisplayMode),@CompareDisplayModes);
+ end;
+end;
+{$else}
+begin
+ // Other platforms - return empty array
+ result:=nil;
+end;
+{$ifend}
 
 class procedure TpvApplication.Main;
 begin

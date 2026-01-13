@@ -31,7 +31,7 @@ layout(location = 0) out OutBlock {
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
-  vec2 jitter;
+//vec4 jitter;
   float mapValue;
   float waterOverSurface;
   float underWater;
@@ -154,7 +154,7 @@ void main(){
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
-  outBlock.jitter = pushConstants.jitter;
+//outBlock.jitter = pushConstants.jitter;
   outBlock.mapValue = mapHeight(localPosition, sphereHeight);
   outBlock.waterOverSurface = (sphereHeightData.y > 1e-6) ? 1.0 : 0.0;
   outBlock.underWater = ((inBlocks[0].flags & (1u << 0u)) != 0u) ? 1.0 : 0.0;

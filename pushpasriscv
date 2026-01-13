@@ -22,25 +22,26 @@ fi
 # Save the current directory in a variable
 OLD_DIR="$(pwd)" 
 
-# Copy modified files from the pasriscv submodule to the real directory of the pasriscv GIT repository
-cp -f externals/pasriscv/README.md ../pasriscv/README.md
-cp -f externals/pasriscv/docs/documentation.md ../pasriscv/docs/documentation.md
-cp -f externals/pasriscv/src/PasRISCV.pas ../pasriscv/src/PasRISCV.pas
+# Copy modified files from the pasllm submodule to the real directory of the pasllm GIT repository on my private Forgejo GIT server
+cp -f externals/pasllm/README.md ../../GIT/pasllm/README.md
+cp -f externals/pasllm/src/PasLLM.pas ../../GIT/pasllm/src/PasLLM.pas
+cp -f externals/pasllm/src/PasLLMChatControl.pas ../../GIT/pasllm/src/PasLLMChatControl.pas
 
-# Clean the pasriscv submodule from the local changes 
-cd externals/pasriscv
+# Clean the pasllm submodule from the local changes 
+cd externals/pasllm
 git stash # Stash the local changes
 git stash drop # Drop the stashed local changes
-git pull origin master # For ensuring that the local pasriscv submodule is on the right branch
+git pull origin master # For ensuring that the local pasllm submodule is on the right branch
 cd "${OLD_DIR}"
 
-# Commit the changes in the pasriscv GIT repository
-cd ../pasriscv
+# Commit the changes in the pasllm GIT repository
+cd ../../GIT/pasllm
 git commit -a -m "$commit_message"
 git push
+./githubsync # Sync to GitHub repository which is also the submodule URL source for PasVulkan
 cd "${OLD_DIR}"
 
-# Update all submodules including the pasriscv submodule for the lastest versions
+# Update all submodules including the pasllm submodule for the lastest versions
 git submodule update --remote --recursive
 
 # Commit the changes in the main PasVulkan GIT repository

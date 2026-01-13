@@ -13,6 +13,8 @@
   #define HAVE_PERVERTEX
 #endif
 
+#define PLANET_RENDERPASS
+
 #define LIGHTS 
 #define SHADOWS
 
@@ -42,7 +44,6 @@ layout(location = 2) in InBlock {
 //vec3 worldSpacePosition;
   vec3 viewSpacePosition;
 //vec3 cameraRelativePosition;
-  vec2 jitter;
 #ifdef VELOCITY
   vec4 previousClipSpace;
   vec4 currentClipSpace;
@@ -72,7 +73,6 @@ layout(location = 0) in InBlock {
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
-  vec2 jitter;
 #ifdef VELOCITY
   vec4 previousClipSpace;
   vec4 currentClipSpace;
@@ -598,7 +598,7 @@ void main(){
   outFragColor = vec4(clamp(c.xyz, vec3(-65504.0), vec3(65504.0)), c.w);
 
 #if defined(VELOCITY)
-  outVelocity = (inBlock.currentClipSpace.xy / inBlock.currentClipSpace.w) - (inBlock.previousClipSpace.xy / inBlock.previousClipSpace.w);
+  outVelocity = (((inBlock.currentClipSpace.xy / inBlock.currentClipSpace.w) - pushConstants.jitter.xy) - ((inBlock.previousClipSpace.xy / inBlock.previousClipSpace.w) - pushConstants.jitter.zw)) * 0.5;
 #elif defined(REFLECTIVESHADOWMAPOUTPUT)
   outFragNormalUsed = vec4(vec3(fma(normalize(workNormal), vec3(0.5), vec3(0.5))), 1.0);  
 #endif

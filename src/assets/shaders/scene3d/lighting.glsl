@@ -1,3 +1,11 @@
+#ifdef RAYTRACING
+#define RAYTRACED_SOFT_SHADOWS
+#endif
+
+#if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS) && defined(REFLECTIVESHADOWMAPOUTPUT)
+#undef RAYTRACED_SOFT_SHADOWS // Disable soft shadows for RSM output for now, because of performance reasons.             
+#endif
+
 #if defined(LIGHTING_GLOBALS)
 
 #ifdef RAYTRACING
@@ -54,6 +62,9 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
         for(int lightIndex = 0; lightIndex < 1; lightIndex++){
           {
             Light light = lights[lightIndex];
+#if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS)
+            const int lightJitter = lightIndex;
+#endif
 #elif defined(LIGHTCLUSTERS)
       // Light cluster grid
       uvec3 clusterXYZ = uvec3(uvec2(uvec2(gl_FragCoord.xy) / uFrustumClusterGridGlobals.tileSizeZNearZFar.xy), 
@@ -65,6 +76,9 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
         {
           Light light = lights[frustumClusterGridIndexList[clusterLightIndex]];
           if(distance(light.positionRadius.xyz, inWorldSpacePosition.xyz) <= light.positionRadius.w){
+#if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS)
+            const int lightJitter = int(clusterLightIndex);
+#endif
 #else
       // Light BVH
       uint lightTreeNodeIndex = 0;
@@ -76,6 +90,9 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
         if (all(greaterThanEqual(inWorldSpacePosition.xyz, aabbMin)) && all(lessThanEqual(inWorldSpacePosition.xyz, aabbMax))) {
           if (lightTreeNode.aabbMaxUserData.w != 0xffffffffu) {
             Light light = lights[lightTreeNode.aabbMaxUserData.w];
+#if defined(RAYTRACING) && defined(RAYTRACED_SOFT_SHADOWS)
+            const int lightJitter = (lightTreeNodeIndex * 73856093) ^ (int(lightTreeNode.aabbMaxUserData.w) * 2654435761);
+#endif
 #endif
             const uint lightType = light.metaData.x & 0x0000000fu;
             float lightAttenuation = 1.0;
@@ -118,13 +135,12 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                  && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)
 #endif
                ){ // && ((lightAttenuation > 0.0) || ((flags & (1u << 11u)) != 0u))) {
-              switch (lightType) {
-#if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if defined(RAYTRACING)
-                case 1u: { // Directional 
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, rayDistance);
-                  break;
-                }
+              float effectiveRayDistance = rayDistance; 
+#endif              
+              switch (lightType) {
+#if defined(RAYTRACING)
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
                 case 2u: {  // Point
                   // Fall-through, because same raytracing attempt as for spot lights. 
                 }
@@ -132,10 +148,325 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   // Fall-through, because same raytracing attempt as for view directional lights.
                 }
                 case 5u: { // View directional
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, min(rayDistance, length(pointToLightVector)));
+                  // Fall-through, because same raytracing attempt as for directional lights, except for the ray distance.
+                  effectiveRayDistance = min(effectiveRayDistance, length(pointToLightVector));
+                }
+                case 1u: { // Directional 
+                  // Fall-through, because same raytracing attempt as for primary directional lights, except lightIntensity handling.
+                }                 
+#endif
+                case 4u: {  // Primary directional
+                  // Recheck light type because of fall-throughs to here, for the shared raytracing shadow code.  
+#if defined(REFLECTIVESHADOWMAPOUTPUT)
+                  // Light intensity handling for primary directional lights 
+                  litIntensity = lightAttenuation;
+#else
+                  if(lightType == 4u){
+                    // Light intensity handling for primary directional lights 
+                    litIntensity = lightAttenuation;
+                  } 
+#endif                  
+#ifdef RAYTRACED_SOFT_SHADOWS
+                  const uint raytracingSoftShadowFlag = 1u << 0u;
+                  const uint raytracingSphereSolidAngleSamplingFlag = 1u << 1u;
+                  const uint raytracingEarlyOutSamplingFlag = 1u << 2u; 
+                  if((pushConstants.raytracingFlags & raytracingSoftShadowFlag) != 0u){
+
+                    // Soft shadows with area light sampling
+
+                    // True area light sampling with correct contact hardening
+                    // No blocker search needed - contact hardening emerges naturally from area light geometry
+                    // Contact hardening emerges naturally from area light geometry - no blocker search needed
+                    const int countSamples = int(((pushConstants.raytracingFlags >> (32u - 6u)) & 0x3fu) + 4u); // Upper 6 bits for sample count (min 4, max 64) 
+                    
+                    float shadow = 0.0;
+                    
+                    switch(lightType){
+                      case 1u:
+                      case 4u: {
+
+                        // Directional/Sun: Sample directions in a cone of fixed angular radius
+                        // Sun angular radius = 0.00465 rad (~0.267 degrees)
+                        const float sunAngularRadius = 0.00465;
+                        const float cosMax = cos(sunAngularRadius);
+                        const float oneMinusCosMax = 1.0 - cosMax;
+
+                        vec3 lightNormal = pointToLightDirection;
+                        vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
+                        vec3 lightBitangent = normalize(cross(lightNormal, lightTangent));
+                        
+                        int sampleCount = 0;
+
+                        for(int i = 0; i < countSamples; i++){
+                          
+                          // Map blue noise disc to uniform cone sampling (solid angle correct)
+                          vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
+                          float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
+                          
+                          // Uniform cone sampling: cosTheta = 1 - r2 * (1 - cosMax)
+                          float cosTheta = 1.0 - (r2 * oneMinusCosMax);
+                          float sinTheta = sqrt(max(0.0, 1.0 - (cosTheta * cosTheta)));
+                          
+                          // Combined scale factor: sinTheta / sqrt(r2), handles r2->0 gracefully
+                          float scale = sinTheta * inversesqrt(max(r2, 1e-8));
+                          
+                          // Sample direction in world space (no normalize needed - orthonormal basis)
+                          vec3 sampleDirection = (lightNormal * cosTheta) + (((lightTangent * diskSample.x) + (lightBitangent * diskSample.y)) * scale);
+                          
+                          shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, effectiveRayDistance);
+                          sampleCount++;
+                          
+                          // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
+                          if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
+                            break;                          
+                          }
+                        }
+
+                        lightAttenuation *= shadow / max(float(sampleCount), 1e-4);
+
+                        break;
+                      }
+
+                      case 3u:{
+                        
+                        // Spot: Sample emitter area in world space
+
+                        // Physical emitter radius (fraction of influence radius)
+                        float lightPhysicalRadius = light.positionRadius.w * 0.02; // 2% of influence radius
+
+                        vec3 spotAxis = normalize(light.directionRange.xyz);
+
+                        if((pushConstants.raytracingFlags & raytracingSphereSolidAngleSamplingFlag) != 0u){
+
+                          // Sphere solid angle sampling (Shirley 1996)
+                          // Samples directions within cone subtended by sphere, avoids self-shadowing from emitter mesh
+                          
+                          float distanceToLight = length(light.positionRadius.xyz - rayOrigin);
+
+                          // Build tangent frame around direction to light center
+                          vec3 lightNormal = pointToLightDirection;
+                          vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
+                          vec3 lightBitangent = normalize(cross(lightNormal, lightTangent));
+                          
+                          // q = cos(theta_max) where theta_max is the half-angle of the cone subtending the sphere
+                          float sinThetaMax2 = clamp((lightPhysicalRadius * lightPhysicalRadius) / (distanceToLight * distanceToLight), 0.0, 1.0);
+                          float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMax2));
+                          float oneMinusCosThetaMax = 1.0 - cosThetaMax;
+
+                          float weightSum = 0.0;      
+                          int acceptedCount = 0;             
+
+                          for(int i = 0; i < countSamples; i++){
+
+                            vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
+
+                            // Sample within cone using blue noise
+                            float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
+                            
+                            // Uniform cone sampling: cosTheta = 1 - r2 * (1 - cosThetaMax)
+                            float cosTheta = 1.0 - (r2 * oneMinusCosThetaMax);
+                            float sinTheta = sqrt(max(0.0, 1.0 - (cosTheta * cosTheta)));
+                            
+                            // Combined scale factor: sinTheta / sqrt(r2), handles r2->0 gracefully
+                            float scale = sinTheta * inversesqrt(max(r2, 1e-8));
+                            
+                            // Sample direction in world space (no normalize needed - orthonormal basis)
+                            vec3 sampleDirection = (lightNormal * cosTheta) + (((lightTangent * diskSample.x) + (lightBitangent * diskSample.y)) * scale);
+                            
+                            // Ray-sphere intersection for correct ray max distance
+                            // t = d*cos(angle) - sqrt(R² - d²*sin²(angle))
+                            float cosAngle = cosTheta; // dot(sampleDirection, lightNormal) == cosTheta since sampleDirection is in our basis
+                            float sinAngle2 = max(0.0, 1.0 - (cosAngle * cosAngle));
+                            float tCenter = distanceToLight * cosAngle;
+                            float discriminant = (lightPhysicalRadius * lightPhysicalRadius) - (distanceToLight * distanceToLight * sinAngle2);
+                            float tHalf = sqrt(max(0.0, discriminant));
+                            float rayMaxDist = min(max((tCenter - tHalf) - 1e-4, 0.0), effectiveRayDistance);
+
+                            float weight = clamp(fma(dot(spotAxis, -sampleDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
+                            if(weight > 1e-4){
+                              shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist) * weight;
+                              weightSum += weight;
+                              acceptedCount++;
+                            }
+                            
+                            // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
+                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
+                              break;                          
+                            }
+                          }
+
+                          lightAttenuation *= shadow / max(weightSum, 1e-4);
+
+
+                        }else{
+
+                          // Disk area sampling (simpler, but may self-shadow if emitter mesh is in TLAS)
+                          
+                          // For spot lights, orient disk perpendicular to spot axis
+                          vec3 diskNormal = spotAxis; // Spot axis
+                          vec3 diskTangent = normalize(cross(diskNormal, getPerpendicularVector(diskNormal)));
+                          vec3 diskBitangent = normalize(cross(diskNormal, diskTangent));
+
+                          float weightSum = 0.0;      
+                          int acceptedCount = 0;             
+
+                          for(int i = 0; i < countSamples; i++){
+
+                            vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
+
+                            // Sample point on disk around light center
+                            vec3 lightSamplePoint = light.positionRadius.xyz + (((diskTangent * diskSample.x) + (diskBitangent * diskSample.y)) * lightPhysicalRadius);
+                            
+                            // Direction and distance to sampled point on light
+                            vec3 toSample = lightSamplePoint - rayOrigin;
+                            float sampleDistance = length(toSample);
+                            vec3 sampleDirection = toSample / max(sampleDistance, 1e-4);
+                            
+                            // Don't trace past the sampled light point, but respect effectiveRayDistance limit
+                            float rayMaxDist = min(sampleDistance, effectiveRayDistance);
+
+                            float weight = clamp(fma(dot(spotAxis, -sampleDirection), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
+                            if(weight > 1e-4){
+                              shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist) * weight;
+                              weightSum += weight;
+                              acceptedCount++;
+                            }
+                            
+                            // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
+                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
+                              break;                          
+                            }
+                          }
+
+                          lightAttenuation *= shadow / max(weightSum, 1e-4);
+
+                        }
+
+                        break;
+                      }
+
+                      default:{
+
+                        // Point/Local lights: Sample emitter area in world space
+
+                        // Physical emitter radius (fraction of influence radius)
+                        float lightPhysicalRadius = light.positionRadius.w * 0.02; // 2% of influence radius
+
+                        if((pushConstants.raytracingFlags & raytracingSphereSolidAngleSamplingFlag) != 0u){
+
+                          // Sphere solid angle sampling (Shirley 1996)
+                          // Samples directions within cone subtended by sphere, avoids self-shadowing from emitter mesh
+                          
+                          float distanceToLight = length(light.positionRadius.xyz - rayOrigin);
+
+                          // Build tangent frame around direction to light center
+                          vec3 lightNormal = pointToLightDirection;
+                          vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
+                          vec3 lightBitangent = normalize(cross(lightNormal, lightTangent));
+                          
+                          // q = cos(theta_max) where theta_max is the half-angle of the cone subtending the sphere
+                          float sinThetaMax2 = clamp((lightPhysicalRadius * lightPhysicalRadius) / (distanceToLight * distanceToLight), 0.0, 1.0);
+                          float cosThetaMax = sqrt(max(0.0, 1.0 - sinThetaMax2));
+                          float oneMinusCosThetaMax = 1.0 - cosThetaMax;
+
+                          int sampleCount = 0;                 
+
+                          for(int i = 0; i < countSamples; i++){
+
+                            vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
+
+                            // Sample within cone using blue noise
+                            float r2 = clamp(dot(diskSample, diskSample), 0.0, 1.0);
+                            
+                            // Uniform cone sampling: cosTheta = 1 - r2 * (1 - cosThetaMax)
+                            float cosTheta = 1.0 - (r2 * oneMinusCosThetaMax);
+                            float sinTheta = sqrt(max(0.0, 1.0 - (cosTheta * cosTheta)));
+                            
+                            // Combined scale factor: sinTheta / sqrt(r2), handles r2->0 gracefully
+                            float scale = sinTheta * inversesqrt(max(r2, 1e-8));
+                            
+                            // Sample direction in world space (no normalize needed - orthonormal basis)
+                            vec3 sampleDirection = (lightNormal * cosTheta) + (((lightTangent * diskSample.x) + (lightBitangent * diskSample.y)) * scale);
+                            
+                            // Ray-sphere intersection for correct ray max distance
+                            // t = d*cos(angle) - sqrt(R² - d²*sin²(angle))
+                            float cosAngle = cosTheta; // dot(sampleDirection, lightNormal) == cosTheta since sampleDirection is in our basis
+                            float sinAngle2 = max(0.0, 1.0 - (cosAngle * cosAngle));
+                            float tCenter = distanceToLight * cosAngle;
+                            float discriminant = (lightPhysicalRadius * lightPhysicalRadius) - (distanceToLight * distanceToLight * sinAngle2);
+                            float tHalf = sqrt(max(0.0, discriminant));
+                            float rayMaxDist = min(max((tCenter - tHalf) - 1e-4, 0.0), effectiveRayDistance);
+
+                            shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist);
+                            sampleCount++;
+                            
+                            // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
+                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
+                              break;                          
+                            }
+                          }
+
+                          lightAttenuation *= shadow / max(float(sampleCount), 1e-4);
+
+                        }else{
+
+                          // Disk area sampling (simpler, but may self-shadow if emitter mesh is in TLAS)
+                          
+                          // For point lights, use receiver direction
+                          vec3 diskNormal = pointToLightDirection; // Toward receiver
+                          vec3 diskTangent = normalize(cross(diskNormal, getPerpendicularVector(diskNormal)));
+                          vec3 diskBitangent = normalize(cross(diskNormal, diskTangent));
+
+                          int sampleCount = 0;                 
+
+                          for(int i = 0; i < countSamples; i++){
+
+                            vec2 diskSample = shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y) + lightJitter) & BlueNoise2DDiscMask];
+
+                            // Sample point on disk around light center
+                            vec3 lightSamplePoint = light.positionRadius.xyz + (((diskTangent * diskSample.x) + (diskBitangent * diskSample.y)) * lightPhysicalRadius);
+                            
+                            // Direction and distance to sampled point on light
+                            vec3 toSample = lightSamplePoint - rayOrigin;
+                            float sampleDistance = length(toSample);
+                            vec3 sampleDirection = toSample / max(sampleDistance, 1e-4);
+                            
+                            // Don't trace past the sampled light point, but respect effectiveRayDistance limit
+                            float rayMaxDist = min(sampleDistance, effectiveRayDistance);
+
+                            shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayMaxDist);
+                            sampleCount++;
+                            
+                            // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
+                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
+                              break;                          
+                            }
+                          }
+
+                          lightAttenuation *= shadow / max(float(sampleCount), 1e-4);
+
+
+                        }  
+
+                      }
+
+                    }                                        
+
+                  }else{
+
+                    // Hard shadow 
+
+                    lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, effectiveRayDistance);
+
+                  }
+#else
+                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, effectiveRayDistance);
+#endif
                   break;
                 }
-#elif 0
+#else // !RAYTRACING
+#if 0
+                // TODO: Implement shadow mapping for other light types than primary directional lights.
                 case 1u: { // Directional 
                   // fall-through
                 }
@@ -156,33 +487,9 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   lightAttenuation *= reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(pointToLightVector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
                   break;
                 }
-#endif
-#endif
+#endif // 0
                 case 4u: {  // Primary directional
                   litIntensity = lightAttenuation;
-#if defined(RAYTRACING)
-#ifdef RAYTRACED_SOFT_SHADOWS
-                  if(true){
-                    // Soft shadow
-                    const int countSamples = 8;
-                    vec3 lightNormal = pointToLightDirection;
-                    vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
-                    vec3 lightBitangent = cross(lightNormal, lightTangent);
-                    float shadow = 0.0;
-                    for(int i = 0; i < countSamples; i++){
-                      vec2 sampleXY = (shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y)) & BlueNoise2DDiscMask]) * 1e-2;
-                      vec3 sampleDirection = normalize(lightNormal + (sampleXY.x * lightTangent) + (sampleXY.y * lightBitangent));
-                      shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, rayDistance);
-                    }
-                    lightAttenuation *= shadow / float(countSamples);                    
-                  }else{
-                    // Hard shadow 
-                    lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, rayDistance);
-                  }
-#else
-                  lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, rayDistance);
-#endif
-#else
                   float viewSpaceDepth = -inViewSpacePosition.z;
 #ifdef UseReceiverPlaneDepthBias
                   // Outside of doCascadedShadowMapShadow as an own loop, for the reason, that the partial derivative based
@@ -238,9 +545,9 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   } 
 
                   lightAttenuation *= clamp(shadow, 0.0, 1.0); // Clamp just for safety, should not be necessary, but don't hurt either.
-#endif // RAYTRACING
                   break;
                 }
+#endif // RAYTRACING
               }
 #if 0              
               if (lightIndex == 0) {

@@ -687,14 +687,26 @@ end;
 
 procedure TpvConsole.WriteLine(const aString:TpvUTF8String);
 var i,j,k,l,x:TPUCUInt32;
-    OneLine:TpvUTF8String;
-    c:TPUCUUInt32;
+    OneLine,LastColorEscape:TpvUTF8String;
+    c,ColorCode:TPUCUUInt32;
+    OverwriteLine:Boolean;
+ procedure AddLine(const aLine:TpvUTF8String);
+ begin
+  if OverwriteLine and (fLines.Count>0) then begin
+   fLines[fLines.Count-1]:=aLine;
+  end else begin
+   fLines.Add(aLine);
+  end;
+  OverwriteLine:=false;
+ end;
 begin
  i:=1;
  l:=length(aString);
  j:=0;
  x:=0;
  OneLine:='';
+ LastColorEscape:='';
+ OverwriteLine:=false;
  while (i<=l) do begin
   c:=PUCUUTF8CodeUnitGetCharAndIncFallback(aString,i);
   case c of
@@ -702,7 +714,9 @@ begin
     // Color escape
     OneLine:=OneLine+#0;
     if i<=l then begin
-     OneLine:=OneLine+PUCUUTF32CharToUTF8(PUCUUTF8CodeUnitGetCharAndIncFallback(aString,i));
+     ColorCode:=PUCUUTF8CodeUnitGetCharAndIncFallback(aString,i);
+     OneLine:=OneLine+PUCUUTF32CharToUTF8(ColorCode);
+     LastColorEscape:=#0+PUCUUTF32CharToUTF8(ColorCode);
     end;
    end;
    9:begin
@@ -720,28 +734,33 @@ begin
     end;
    end;
    10:begin
-    fLines.Add(OneLine);
+    AddLine(OneLine);
     OneLine:='';
+    LastColorEscape:='';
     j:=0;
     x:=0;
    end;
    13:begin
-    // Ignore
+    OneLine:=LastColorEscape;
+    j:=0;
+    x:=0;
+    OverwriteLine:=true;
    end;
    else begin
     OneLine:=OneLine+PUCUUTF32CharToUTF8(c);
     inc(j);
     inc(x);
     if j>=fColumns then begin
-     fLines.Add(OneLine);
+     AddLine(OneLine);
      OneLine:='';
+     LastColorEscape:='';
      j:=0;
      x:=0;
     end;
    end;
   end;
  end;
- fLines.Add(OneLine);
+ AddLine(OneLine);
 end;
 
 procedure TpvConsole.SetTextColor(const aForegroundColor,aBackgroundColor:TpvSizeInt;const aBlink:Boolean);

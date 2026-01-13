@@ -333,7 +333,10 @@ compileshaderarguments=(
   "-V debug_blit.frag -o ${tempPath}/debug_blit_frag.spv"
   
   "-V skybox.vert -o ${tempPath}/skybox_vert.spv"
+  "-V skybox.vert -DSKYBOX_CACHED_REPROJECTION -DSKYBOX_CACHED_REPROJECTION_RGBA16F -o ${tempPath}/skybox_cached_vert.spv"
   "-V skybox.frag -o ${tempPath}/skybox_frag.spv"
+  "-V skybox.frag -DSKYBOX_CACHED_REPROJECTION -DSKYBOX_CACHED_REPROJECTION_RGBA16F -o ${tempPath}/skybox_cached_rgba16f_frag.spv"
+  "-V skybox.frag -DSKYBOX_CACHED_REPROJECTION -DSKYBOX_CACHED_REPROJECTION_RGB9E5 -o ${tempPath}/skybox_cached_rgb9e5_frag.spv"
   
   "-V skybox_realtime.frag -o ${tempPath}/skybox_realtime_frag.spv"
   
@@ -493,6 +496,8 @@ compileshaderarguments=(
 
   "-V planet_heightmap_modification.comp -o ${tempPath}/planet_heightmap_modification_comp.spv"
 
+  "-V planet_heightmap_smooth.comp -o ${tempPath}/planet_heightmap_smooth_comp.spv"
+
   "-V planet_normalmap_generation.comp -o ${tempPath}/planet_normalmap_generation_comp.spv"
 
   "-V planet_tiled_mesh_index_generation.comp -o ${tempPath}/planet_tiled_mesh_index_generation_comp.spv"
@@ -588,58 +593,6 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_rsm_frag.spv"
    
-  # MSM
-  "-V planet_renderpass.frag -DMSM -o ${tempPath}/planet_renderpass_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DWIREFRAME -o ${tempPath}/planet_renderpass_wireframe_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_wireframe_velocity_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_renderpass_bufref_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_renderpass_bufref_velocity_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_renderpass_bufref_wireframe_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DRAYTRACING -o ${tempPath}/planet_renderpass_raytracing_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_msm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_renderpass_msm_rsm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_msm_rsm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_renderpass_wireframe_msm_rsm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_wireframe_velocity_msm_rsm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_renderpass_bufref_msm_rsm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_renderpass_bufref_velocity_msm_rsm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_renderpass_bufref_wireframe_msm_rsm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_msm_rsm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -o ${tempPath}/planet_renderpass_raytracing_msm_rsm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_msm_rsm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_msm_rsm_frag.spv"
-  "-V planet_renderpass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_msm_rsm_frag.spv"
-  
-  # PCFPCSS
-  "-V planet_renderpass.frag -DPCFPCSS -o ${tempPath}/planet_renderpass_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DWIREFRAME -o ${tempPath}/planet_renderpass_wireframe_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_wireframe_velocity_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_renderpass_bufref_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_renderpass_bufref_velocity_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_renderpass_bufref_wireframe_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DRAYTRACING -o ${tempPath}/planet_renderpass_raytracing_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_pcfpcss_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_renderpass_pcfpcss_rsm_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_pcfpcss_rsm_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_renderpass_wireframe_pcfpcss_rsm_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_wireframe_velocity_pcfpcss_rsm_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_renderpass_bufref_pcfpcss_rsm_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_renderpass_bufref_velocity_pcfpcss_rsm_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_renderpass_bufref_wireframe_pcfpcss_rsm_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_pcfpcss_rsm_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -o ${tempPath}/planet_renderpass_raytracing_pcfpcss_rsm_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_pcfpcss_rsm_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_pcfpcss_rsm_frag.spv"
-  "-V planet_renderpass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_pcfpcss_rsm_frag.spv"
-
   # Grass on planets
   
   #"-V planet_grass_cull_and_mesh_generation.comp -o ${tempPath}/planet_grass_cull_and_mesh_generation_comp.spv"
@@ -670,13 +623,16 @@ compileshaderarguments=(
   "-V planet_grass.task -DMESH_SHADER_EMULATION --target-env vulkan1.2 -S comp -o ${tempPath}/planet_grass_task_comp.spv"
   "-V planet_grass.mesh -DMESH_SHADER_EMULATION --target-env vulkan1.2 -S comp -o ${tempPath}/planet_grass_mesh_comp.spv"
 
+  "-V planet_grass.task -DMESH_SHADER_EMULATION -DVELOCITY --target-env vulkan1.2 -S comp -o ${tempPath}/planet_grass_velocity_task_comp.spv"
+  "-V planet_grass.mesh -DMESH_SHADER_EMULATION -DVELOCITY --target-env vulkan1.2 -S comp -o ${tempPath}/planet_grass_velocity_mesh_comp.spv"
+
   "-V planet_grass.vert -o ${tempPath}/planet_grass_vert.spv"
   "-V planet_grass.vert -DVELOCITY -o ${tempPath}/planet_grass_velocity_vert.spv"
   "-V planet_grass.vert -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_vert.spv"
   "-V planet_grass.vert -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_vert.spv"
   "-V planet_grass.vert -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_vert.spv"
   "-V planet_grass.vert -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_vert.spv"
-
+    
   "-V planet_grass.frag -o ${tempPath}/planet_grass_frag.spv"
   "-V planet_grass.frag -DVELOCITY -o ${tempPath}/planet_grass_velocity_frag.spv"
   "-V planet_grass.frag -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_frag.spv"
@@ -702,58 +658,6 @@ compileshaderarguments=(
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_rsm_frag.spv"
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_rsm_frag.spv"
 
-  # MSM
-  "-V planet_grass.frag -DMSM -o ${tempPath}/planet_grass_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DVELOCITY -o ${tempPath}/planet_grass_velocity_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_grass_bufref_wireframe_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_bufref_wireframe_velocity_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_msm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_grass_msm_rsm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_grass_velocity_msm_rsm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_msm_rsm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_msm_rsm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_msm_rsm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_msm_rsm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_grass_bufref_wireframe_msm_rsm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_bufref_wireframe_velocity_msm_rsm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_msm_rsm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_msm_rsm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_msm_rsm_frag.spv"
-  "-V planet_grass.frag -DMSM -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_msm_rsm_frag.spv"
-
-  # PCFPCSS
-  "-V planet_grass.frag -DPCFPCSS -o ${tempPath}/planet_grass_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DVELOCITY -o ${tempPath}/planet_grass_velocity_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_grass_bufref_wireframe_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_bufref_wireframe_velocity_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_pcfpcss_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_grass_pcfpcss_rsm_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_grass_velocity_pcfpcss_rsm_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_pcfpcss_rsm_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_pcfpcss_rsm_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_pcfpcss_rsm_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_pcfpcss_rsm_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_grass_bufref_wireframe_pcfpcss_rsm_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_bufref_wireframe_velocity_pcfpcss_rsm_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_pcfpcss_rsm_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_pcfpcss_rsm_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_pcfpcss_rsm_frag.spv"
-  "-V planet_grass.frag -DPCFPCSS -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_pcfpcss_rsm_frag.spv"
-
   # Atmosphere
   "-V atmosphere_map_scan.comp -o ${tempPath}/atmosphere_map_scan_comp.spv"
   "-V atmosphere_transmittancelut.comp -o ${tempPath}/atmosphere_transmittancelut_comp.spv"
@@ -774,14 +678,14 @@ compileshaderarguments=(
   "-V atmosphere_raymarch.frag -DDUALBLEND -DMSAA -o ${tempPath}/atmosphere_raymarch_dualblend_msaa_frag.spv"
   "-V atmosphere_raymarch.frag -DDUALBLEND -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_dualblend_multiview_frag.spv"
   "-V atmosphere_raymarch.frag -DDUALBLEND -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_dualblend_multiview_msaa_frag.spv"
-  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -o ${tempPath}/atmosphere_raymarch_shadows_msm_frag.spv"
-  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_msm_msaa_frag.spv"
-  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_msm_multiview_frag.spv"
-  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_msm_multiview_msaa_frag.spv"
-  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DDUALBLEND -o ${tempPath}/atmosphere_raymarch_shadows_msm_dualblend_frag.spv"
-  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DDUALBLEND -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_msm_dualblend_msaa_frag.spv"
-  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DDUALBLEND -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_msm_dualblend_multiview_frag.spv"
-  "-V atmosphere_raymarch.frag -DSHADOWS -DMSM -DDUALBLEND -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_msm_dualblend_multiview_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -o ${tempPath}/atmosphere_raymarch_shadows_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_multiview_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_multiview_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DDUALBLEND -o ${tempPath}/atmosphere_raymarch_shadows_dualblend_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DDUALBLEND -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_dualblend_msaa_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DDUALBLEND -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_dualblend_multiview_frag.spv"
+  "-V atmosphere_raymarch.frag -DSHADOWS -DDUALBLEND -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_dualblend_multiview_msaa_frag.spv"
   "-V atmosphere_raymarch.frag -DSHADOWS -DPCFPCSS -o ${tempPath}/atmosphere_raymarch_shadows_pcfpcss_frag.spv"
   "-V atmosphere_raymarch.frag -DSHADOWS -DPCFPCSS -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_pcfpcss_msaa_frag.spv"
   "-V atmosphere_raymarch.frag -DSHADOWS -DPCFPCSS -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_pcfpcss_multiview_frag.spv"
@@ -812,10 +716,10 @@ compileshaderarguments=(
   "-V atmosphere_clouds_raymarch.frag -DMSAA -o ${tempPath}/atmosphere_clouds_raymarch_msaa_frag.spv"
   "-V atmosphere_clouds_raymarch.frag -DMULTIVIEW -o ${tempPath}/atmosphere_clouds_raymarch_multiview_frag.spv"
   "-V atmosphere_clouds_raymarch.frag -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_clouds_raymarch_multiview_msaa_frag.spv"
-  "-V atmosphere_clouds_raymarch.frag -DSHADOWS -DMSM -o ${tempPath}/atmosphere_clouds_raymarch_shadows_msm_frag.spv"
-  "-V atmosphere_clouds_raymarch.frag -DSHADOWS -DMSM -DMSAA -o ${tempPath}/atmosphere_clouds_raymarch_shadows_msm_msaa_frag.spv"
-  "-V atmosphere_clouds_raymarch.frag -DSHADOWS -DMSM -DMULTIVIEW -o ${tempPath}/atmosphere_clouds_raymarch_shadows_msm_multiview_frag.spv"
-  "-V atmosphere_clouds_raymarch.frag -DSHADOWS -DMSM -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_clouds_raymarch_shadows_msm_multiview_msaa_frag.spv"
+  "-V atmosphere_clouds_raymarch.frag -DSHADOWS -o ${tempPath}/atmosphere_clouds_raymarch_shadows_frag.spv"
+  "-V atmosphere_clouds_raymarch.frag -DSHADOWS -DMSAA -o ${tempPath}/atmosphere_clouds_raymarch_shadows_msaa_frag.spv"
+  "-V atmosphere_clouds_raymarch.frag -DSHADOWS -DMULTIVIEW -o ${tempPath}/atmosphere_clouds_raymarch_shadows_multiview_frag.spv"
+  "-V atmosphere_clouds_raymarch.frag -DSHADOWS -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_clouds_raymarch_shadows_multiview_msaa_frag.spv"
   "-V atmosphere_clouds_raymarch.frag -DSHADOWS -DPCFPCSS -o ${tempPath}/atmosphere_clouds_raymarch_shadows_pcfpcss_frag.spv"
   "-V atmosphere_clouds_raymarch.frag -DSHADOWS -DPCFPCSS -DMSAA -o ${tempPath}/atmosphere_clouds_raymarch_shadows_pcfpcss_msaa_frag.spv"
   "-V atmosphere_clouds_raymarch.frag -DSHADOWS -DPCFPCSS -DMULTIVIEW -o ${tempPath}/atmosphere_clouds_raymarch_shadows_pcfpcss_multiview_frag.spv"
@@ -967,14 +871,9 @@ addPlanetWaterFragmentZVariants(){
 # Add planet water fragment shader variants with different shadow techniques (if any)
 addPlanetWaterFragmentShadingShadowVariants(){
 
-  # No shadows
+  # Shadows
   addPlanetWaterFragmentZVariants "${1}" "$2"
 
-  # MSM (Moment shadow mapping)
-  addPlanetWaterFragmentZVariants "${1}_msm" "$2 -DMSM"
-
-  # PCF (Percentage closer filtering) / PCSS (Percentage closer soft shadows) / DPCF (a PCF variant)
-  addPlanetWaterFragmentZVariants "${1}_pcfpcss" "$2 -DPCFPCSS"
 }
 
 # Add planet water fragment shader variants with different techniques (if any)
@@ -1053,14 +952,9 @@ addMeshFragmentShadingTransparencyVariants(){
 # Add mesh fragment shader variants with different shadow techniques (if any)
 addMeshFragmentShadingShadowVariants(){
 
-  # No shadows
-  #addMeshFragmentShadingTransparencyVariants "${1}" "$2"
+  # Shadows
+  addMeshFragmentShadingTransparencyVariants "${1}" "$2"
 
-  # MSM (Moment shadow mapping)
-  addMeshFragmentShadingTransparencyVariants "${1}_msm" "$2 -DMSM"
-
-  # PCF (Percentage closer filtering) / PCSS (Percentage closer soft shadows) / DPCF (a PCF variant)
-  addMeshFragmentShadingTransparencyVariants "${1}_pcfpcss" "$2 -DPCFPCSS"
 }
 
 # Add mesh fragment shader variants either with or without wetness map usage

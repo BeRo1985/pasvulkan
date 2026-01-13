@@ -45,11 +45,8 @@ layout(location = 10) flat out uint outInstanceDataIndex;
 layout(location = 11) flat out int outViewIndex;
 layout(location = 12) flat out uint outFrameIndex;
 #ifdef VELOCITY
-layout(location = 13) flat out vec4 outJitter;
-layout(location = 14) out vec4 outPreviousClipSpace;
-layout(location = 15) out vec4 outCurrentClipSpace;
-#else
-layout(location = 13) flat out vec2 outJitter;
+layout(location = 13) out vec4 outPreviousClipSpace;
+layout(location = 14) out vec4 outCurrentClipSpace;
 #endif // VELOCITY
 #endif // VOXELIZATION
 
@@ -249,12 +246,6 @@ void main() {
 
   outPreviousClipSpace = previousClipSpacePosition;
   
-  outJitter = pushConstants.jitter;
-
-#else
-  
-  outJitter = pushConstants.jitter.xy;
-
 #endif
 
   gl_Position = clipSpacePosition;

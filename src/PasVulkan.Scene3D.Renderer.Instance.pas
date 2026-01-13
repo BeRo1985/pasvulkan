@@ -113,7 +113,14 @@ type { TpvScene3DRendererInstance }
              MaxSolidPrimitives=1 shl 20;
              InitialCountSpaceLines=1 shl 10;
              MaxSpaceLines=1 shl 20;
-       type { TInFlightFrameState }
+       type TRaytracingFlag=
+             (
+              SoftShadows,
+              SphereSolidAngleSampling,
+              EarlyOutSampling
+             );
+            TRaytracingFlags=set of TRaytracingFlag;
+            { TInFlightFrameState }
             TInFlightFrameState=record
 
              Ready:TPasMPBool32;
@@ -612,6 +619,9 @@ type { TpvScene3DRendererInstance }
        fHUDHeight:TpvInt32;
        fScaledWidth:TpvInt32;
        fScaledHeight:TpvInt32;
+       fRawRaytracingFlags:TpvUInt32;
+       fRaytracingSoftShadowSampleCount:TpvUInt32;
+       fRaytracingFlags:TRaytracingFlags;
        fFrustumClusterGridSizeX:TpvInt32;
        fFrustumClusterGridSizeY:TpvInt32;
        fFrustumClusterGridSizeZ:TpvInt32;
@@ -827,6 +837,7 @@ type { TpvScene3DRendererInstance }
       private
        function GetPixelAmountFactor:TpvDouble;
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
+       procedure SetRaytracingFlags(const aRaytracingFlags:TRaytracingFlags);
       private
        procedure CalculateSceneBounds(const aInFlightFrameIndex:TpvInt32);
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
@@ -1112,6 +1123,9 @@ type { TpvScene3DRendererInstance }
        property HUDHeight:TpvInt32 read fHUDHeight write fHUDHeight;
        property ScaledWidth:TpvInt32 read fScaledWidth;
        property ScaledHeight:TpvInt32 read fScaledHeight;
+       property RawRaytracingFlags:TpvUInt32 read fRawRaytracingFlags;
+       property RaytracingSoftShadowSampleCount:TpvUInt32 read fRaytracingSoftShadowSampleCount write fRaytracingSoftShadowSampleCount;
+       property RaytracingFlags:TRaytracingFlags read fRaytracingFlags write SetRaytracingFlags;
        property CountSurfaceViews:TpvInt32 read fCountSurfaceViews write fCountSurfaceViews;
        property SurfaceMultiviewMask:TpvUInt32 read fSurfaceMultiviewMask write fSurfaceMultiviewMask;
        property ZNear:TpvFloat read fZNear write fZNear;
@@ -1903,6 +1917,10 @@ begin
 
  fDebugTAAMode:=0;
 
+ fRawRaytracingFlags:=0;
+ fRaytracingSoftShadowSampleCount:=8;
+ fRaytracingFlags:=[];
+
  fFrustumClusterGridSizeX:=16;
  fFrustumClusterGridSizeY:=16;
  fFrustumClusterGridSizeZ:=16;
@@ -2654,6 +2672,13 @@ end;
 procedure TpvScene3DRendererInstance.SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
 begin
  fSizeFactor:=sqrt(aPixelAmountFactor);
+end;
+
+procedure TpvScene3DRendererInstance.SetRaytracingFlags(const aRaytracingFlags:TRaytracingFlags);
+begin
+ if fRaytracingFlags<>aRaytracingFlags then begin
+  fRaytracingFlags:=aRaytracingFlags;
+ end;
 end;
 
 procedure TpvScene3DRendererInstance.CheckSolidPrimitives(const aInFlightFrameIndex:TpvInt32);
@@ -4258,6 +4283,7 @@ begin
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass:=TpvScene3DRendererPassesForwardRenderPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fForwardComputePass.ForwardRenderPass:=TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass;
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWetnessMapComputePass);
  end;
@@ -7508,6 +7534,7 @@ begin
   MeshStagePushConstants^.TimeFractionalSecond:=frac(Time);
   MeshStagePushConstants^.Width:=fScaledWidth;
   MeshStagePushConstants^.Height:=fScaledHeight;
+  MeshStagePushConstants^.RaytracingFlags:=fRawRaytracingFlags;
   
   fSetGlobalResourcesDone[aRenderPass]:=false;
 
@@ -8348,6 +8375,17 @@ var t:TpvDouble;
 begin
 
  CameraPreset:=CameraPresets[aInFlightFrameIndex];
+
+ fRawRaytracingFlags:=(TpvUInt32(Min(Max(fRaytracingSoftShadowSampleCount,4),64)-4) and $3f) shl (32-6);
+ if TRaytracingFlag.SoftShadows in fRaytracingFlags then begin
+  fRawRaytracingFlags:=fRawRaytracingFlags or (TpvUInt32(1) shl 0);
+ end;
+ if TRaytracingFlag.SphereSolidAngleSampling in fRaytracingFlags then begin
+  fRawRaytracingFlags:=fRawRaytracingFlags or (TpvUInt32(1) shl 1);
+ end;
+ if TRaytracingFlag.EarlyOutSampling in fRaytracingFlags then begin
+  fRawRaytracingFlags:=fRawRaytracingFlags or (TpvUInt32(1) shl 2);
+ end;
 
  FillChar(fFrustumClusterGridPushConstants,SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants),#0);
  fFrustumClusterGridPushConstants.TileSizeX:=fFrustumClusterGridTileSizeX;

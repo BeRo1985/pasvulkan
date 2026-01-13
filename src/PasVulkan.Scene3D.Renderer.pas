@@ -157,7 +157,6 @@ type TpvScene3DRenderer=class;
        fRaytracingActive:boolean;
        fMeshFragTypeName:TpvUTF8String;
        fMeshFragGlobalIlluminationTypeName:TpvUTF8String;
-       fMeshFragShadowTypeName:TpvUTF8String;
 //     fOptimizedNonAlphaFormat:TVkFormat;
        fOptimizedCubeMapFormat:TVkFormat;
        fFastSky:boolean;
@@ -250,7 +249,6 @@ type TpvScene3DRenderer=class;
        property RaytracingActive:boolean read fRaytracingActive;
        property MeshFragTypeName:TpvUTF8String read fMeshFragTypeName;
        property MeshFragGlobalIlluminationTypeName:TpvUTF8String read fMeshFragGlobalIlluminationTypeName;
-       property MeshFragShadowTypeName:TpvUTF8String read fMeshFragShadowTypeName;
 //     property OptimizedNonAlphaFormat:TVkFormat read fOptimizedNonAlphaFormat;
        property OptimizedCubeMapFormat:TVkFormat read fOptimizedCubeMapFormat;
        property FastSky:boolean read fFastSky write fFastSky;
@@ -680,12 +678,12 @@ begin
 
  if fBufferDeviceAddress then begin
   if fRaytracingActive then begin
-   fMeshFragTypeName:='matbufref_raytracing';
+   fMeshFragTypeName:='matbufref_raytracing_';
   end else begin
-   fMeshFragTypeName:='matbufref';
+   fMeshFragTypeName:='matbufref_';
   end;
  end else begin
-  fMeshFragTypeName:='matssbo';
+  fMeshFragTypeName:='matssbo_';
  end;
 
 {FormatProperties:=fVulkanDevice.PhysicalDevice.GetFormatProperties(VK_FORMAT_B10G11R11_UFLOAT_PACK32);
@@ -896,12 +894,6 @@ begin
 
  if fShadowMode=TpvScene3DRendererShadowMode.Auto then begin
   fShadowMode:=TpvScene3DRendererShadowMode.PCF;
- end;
-
- if fShadowMode in [TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS] then begin
-  fMeshFragShadowTypeName:='pcfpcss';
- end else begin
-  fMeshFragShadowTypeName:='msm';
  end;
 
  if fShadowMode=TpvScene3DRendererShadowMode.MSM then begin
@@ -1467,16 +1459,30 @@ begin
 
  end else begin
 
-  if assigned(fScene3D) and assigned(fScene3D.SkyBoxTextureImage) then begin
-   fScene3D.SkyBoxTextureImage.Upload;
-   SkyBoxTexture:=fScene3D.SkyBoxTextureImage.Texture;
-   IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
-  end else if assigned(fScene3D) and assigned(fScene3D.EnvironmentTextureImage) then begin
-   SkyBoxTexture:=fScene3D.EnvironmentTextureImage.Texture;
-   IntensityFactor:=fScene3D.EnvironmentIntensityFactor;
-  end else begin
-   SkyBoxTexture:=nil;
-   IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
+  case fScene3D.SkyBoxMode of
+   TpvScene3DEnvironmentMode.Texture:begin
+    if assigned(fScene3D) and assigned(fScene3D.SkyBoxTextureImage) then begin
+     fScene3D.SkyBoxTextureImage.Upload;
+     SkyBoxTexture:=fScene3D.SkyBoxTextureImage.Texture;
+     IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
+    end else if assigned(fScene3D) and assigned(fScene3D.EnvironmentTextureImage) then begin
+     SkyBoxTexture:=fScene3D.EnvironmentTextureImage.Texture;
+     IntensityFactor:=fScene3D.EnvironmentIntensityFactor;
+    end else begin
+     SkyBoxTexture:=nil;
+     IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
+    end;
+   end;
+   TpvScene3DEnvironmentMode.Sky,
+   TpvScene3DEnvironmentMode.Starlight,
+   TpvScene3DEnvironmentMode.CachedStarlight:begin
+    SkyBoxTexture:=nil;
+    IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
+   end;
+   else begin
+    SkyBoxTexture:=nil;
+    IntensityFactor:=1.0;
+   end;
   end;
 
   fSkyBoxCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fGeneralSampler,fScene3D.PrimaryLightDirection,IntensityFactor,false,fOptimizedCubeMapFormat,SkyBoxTexture,fScene3D.SkyBoxMode,'TpvScene3DRenderer.fSkyBoxCubeMap');

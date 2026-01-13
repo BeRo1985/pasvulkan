@@ -411,6 +411,11 @@ type EpvScene3D=class(Exception);
              Width:TpvUInt32;
              Height:TpvUInt32;
 
+             RaytracingFlags:TpvUInt32;
+             Unused0:TpvUInt32;
+             Unused1:TpvUInt32;
+             Unused2:TpvUInt32;
+
             end;
             PMeshStagePushConstants=^TMeshStagePushConstants;
             { TVertex }
@@ -4087,6 +4092,7 @@ type EpvScene3D=class(Exception);
        fCountInFlightFrameParticleVertices:array[0..MaxInFlightFrames-1] of TpvUInt32;
        fVulkanParticleVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fSkyBoxBrightnessFactor:TpvScalar;
+       fSkyBoxCaching:Boolean;
        fLightIntensityFactor:TpvScalar;
        fEmissiveIntensityFactor:TpvScalar;
        fGPUInstanceDataDynamicArray:TGPUInstanceDataDynamicArray;
@@ -4421,6 +4427,7 @@ type EpvScene3D=class(Exception);
        property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
        property Particles:PParticles read fPointerToParticles;
        property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
+       property SkyBoxCaching:Boolean read fSkyBoxCaching write fSkyBoxCaching;
        property LightIntensityFactor:TpvScalar read fLightIntensityFactor write fLightIntensityFactor;
        property EmissiveIntensityFactor:TpvScalar read fEmissiveIntensityFactor write fEmissiveIntensityFactor;
       public
@@ -29933,6 +29940,8 @@ begin
  FillChar(fCountInFlightFrameParticleVertices,SizeOf(fCountInFlightFrameParticleVertices),#0);
 
  fSkyBoxBrightnessFactor:=1.0;
+
+ fSkyBoxCaching:=false;
 
  fLightIntensityFactor:=1.0;
 
