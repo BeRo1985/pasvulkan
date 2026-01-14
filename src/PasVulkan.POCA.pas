@@ -6532,6 +6532,7 @@ var HostData:PPOCAHostData;
 begin
  HostData:=POCAGetHostData(aContext);
  HostData^.CanvasShapeHash:=POCANewHash(aContext);
+ POCAAddNativeFunction(aContext,HostData^.CanvasShapeHash,'destroy',POCACanvasShapeFunctionDESTROY);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.CanvasShapeHash);
 end;
 
