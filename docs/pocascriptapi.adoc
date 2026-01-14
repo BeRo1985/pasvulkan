@@ -4011,6 +4011,136 @@ See the Canvas API documentation for full details on these methods.
 
 '''''
 
+=== Sprite Methods
+
+==== getWidth()
+
+*Usage:*
+
+[source,js]
+----
+let width = sprite.getWidth();
+----
+
+* *Description:* Returns the width of the sprite in pixels.
+* *Parameters:* None.
+* *Return Value:* The sprite width as a number.
+
+'''''
+
+==== getHeight()
+
+*Usage:*
+
+[source,js]
+----
+let height = sprite.getHeight();
+----
+
+* *Description:* Returns the height of the sprite in pixels.
+* *Parameters:* None.
+* *Return Value:* The sprite height as a number.
+
+'''''
+
+==== getName()
+
+*Usage:*
+
+[source,js]
+----
+let name = sprite.getName();
+----
+
+* *Description:* Returns the name of the sprite as specified when loading.
+* *Parameters:* None.
+* *Return Value:* The sprite name as a string.
+
+'''''
+
+==== getTrimmedWidth()
+
+*Usage:*
+
+[source,js]
+----
+let width = sprite.getTrimmedWidth();
+----
+
+* *Description:* Returns the trimmed width of the sprite (after transparent pixel trimming).
+* *Parameters:* None.
+* *Return Value:* The trimmed sprite width as a number.
+
+'''''
+
+==== getTrimmedHeight()
+
+*Usage:*
+
+[source,js]
+----
+let height = sprite.getTrimmedHeight();
+----
+
+* *Description:* Returns the trimmed height of the sprite (after transparent pixel trimming).
+* *Parameters:* None.
+* *Return Value:* The trimmed sprite height as a number.
+
+'''''
+
+==== getOffsetX()
+
+*Usage:*
+
+[source,js]
+----
+let offsetX = sprite.getOffsetX();
+----
+
+* *Description:* Returns the X offset of the trimmed sprite region from the original.
+* *Parameters:* None.
+* *Return Value:* The X offset as a number.
+
+'''''
+
+==== getOffsetY()
+
+*Usage:*
+
+[source,js]
+----
+let offsetY = sprite.getOffsetY();
+----
+
+* *Description:* Returns the Y offset of the trimmed sprite region from the original.
+* *Parameters:* None.
+* *Return Value:* The Y offset as a number.
+
+'''''
+
+==== getTrimOffset()
+
+*Usage:*
+
+[source,js]
+----
+let offset = sprite.getTrimOffset();
+----
+
+* *Description:* Returns the trim offset as a Vector2.
+* *Parameters:* None.
+* *Return Value:* A Vector2 with x and y offset values.
+* *Example:*
++
+[source,js]
+----
+let offset = sprite.getTrimOffset();
+let x = offset.x;
+let y = offset.y;
+----
+
+'''''
+
 == SpriteAtlas
 
 === Overview
