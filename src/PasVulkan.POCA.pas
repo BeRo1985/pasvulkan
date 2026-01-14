@@ -13767,5 +13767,6 @@ initialization
  POCATextureGhostPointer:=@POCATextureGhost;
  POCAFontGhostPointer:=@POCAFontGhost;
  POCACanvasFontGhostPointer:=@POCACanvasFontGhost;
+ POCACanvasShapeGhostPointer:=@POCACanvasShapeGhost;
  POCACanvasGhostPointer:=@POCACanvasGhost;
 end.
