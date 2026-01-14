@@ -1239,6 +1239,7 @@ type PpvScalar=^TpvScalar;
        function ScissorRect(out Scissor:TpvFloatClipRect;const mvp:TpvMatrix4x4;const vp:TpvFloatClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function MovingTest(const aAABBTo,bAABBFrom,bAABBTo:TpvAABB;var t:TpvScalar):boolean;
        function SweepTest(const bAABB:TpvAABB;const aV,bV:TpvVector3;var FirstTime,LastTime:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function ProjectToViewport(const aViewProjectionMatrix:TpvMatrix4x4;const aViewportWidth,aViewportHeight:TpvScalar):TpvAABB2D;
        case boolean of
         false:(
          Min,Max:TpvVector3;
@@ -16659,6 +16660,39 @@ begin
   FirstTime:=Math.Max(Math.Max(tMin.x,tMin.y),tMin.z);
   LastTime:=Math.Min(Math.Min(tMax.x,tMax.y),tMax.z);
   result:=(LastTime>=0.0) and (FirstTime<=1.0) and (FirstTime<=LastTime);
+ end;
+end;
+
+function TpvAABB.ProjectToViewport(const aViewProjectionMatrix:TpvMatrix4x4;const aViewportWidth,aViewportHeight:TpvScalar):TpvAABB2D;
+const Half:TpvVector2=(x:0.5;y:0.5);
+var i:TpvInt32;
+    v:TpvVector4;
+    p:TpvVector2;
+    First:Boolean;
+begin
+ result.Min:=TpvVector2.Origin;
+ result.Max:=TpvVector2.Origin;
+ First:=true;
+ for i:=0 to 7 do begin
+  v:=aViewProjectionMatrix*TpvVector4.Create(MinMax[(i shr 0) and 1].x,
+                                             MinMax[(i shr 1) and 1].y,
+                                             MinMax[(i shr 2) and 1].z,
+                                             1.0);
+  v:=v/v.w;
+  // Include only visible vertices, and ignore vertices behind the camera
+  if v.z>=0.0 then begin
+   p:=((v.xy*0.5)+Half)*TpvVector2.InlineableCreate(aViewportWidth,aViewportHeight);                                           
+   if First then begin
+    result.Min:=p;
+    result.Max:=p;
+    First:=false;
+   end else begin
+    result.Min.x:=Min(result.Min.x,p.x);
+    result.Min.y:=Min(result.Min.y,p.y);
+    result.Max.x:=Max(result.Max.x,p.x);
+    result.Max.y:=Max(result.Max.y,p.y);
+   end;
+  end; 
  end;
 end;
 
