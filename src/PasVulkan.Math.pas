@@ -1190,6 +1190,87 @@ type PpvScalar=^TpvScalar;
      PpvOBBs=^TpvOBBs;
      TpvOBBs=array[0..65535] of TpvOBB;
 
+
+     PpvRect=^TpvRect;
+     TpvRect=packed record
+      private
+       function GetWidth:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetWidth(const aWidth:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetHeight:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetHeight(const aHeight:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetSize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetSize(const aSize:TpvVector2); {$ifdef CAN_INLINE}inline;{$endif}
+      public
+       constructor CreateFromVkRect2D(const aFrom:TVkRect2D); overload;
+       constructor CreateAbsolute(const aLeft,aTop,aRight,aBottom:TpvFloat); overload;
+       constructor CreateAbsolute(const aLeftTop,aRightBottom:TpvVector2); overload;
+       constructor CreateRelative(const aLeft,aTop,aWidth,aHeight:TpvFloat); overload;
+       constructor CreateRelative(const aLeftTop,aSize:TpvVector2); overload;
+       class operator Implicit(const a:TVkRect2D):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TVkRect2D):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Implicit(const a:TpvRect):TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvRect):TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToVkRect2D:TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
+       function Cost:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Area:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Center:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Combine(const aWithRect:TpvRect):TpvRect; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Combine(const aWithPoint:TpvVector2):TpvRect; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure DirectCombine(const aWithRect:TpvRect); overload; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure DirectCombine(const aWithPoint:TpvVector2); overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
+       function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
+       function Touched(const aPosition:TpvVector2;Threshold:TpvScalar=EPSILON):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       property Width:TpvFloat read GetWidth write SetWidth;
+       property Height:TpvFloat read GetHeight write SetHeight;
+       property Size:TpvVector2 read GetSize write SetSize;
+      public
+       case TpvInt32 of
+        0:(
+         Left:TpvFloat;
+         Top:TpvFloat;
+         Right:TpvFloat;
+         Bottom:TpvFloat;
+        );
+        1:(
+         MinX:TpvFloat;
+         MinY:TpvFloat;
+         MaxX:TpvFloat;
+         MaxY:TpvFloat;
+        );
+        2:(
+         LeftTop:TpvVector2;
+         RightBottom:TpvVector2;
+        );
+        3:(
+         Min:TpvVector2;
+         Max:TpvVector2;
+        );
+        4:(
+         Offset:TpvVector2;
+        );
+        5:(
+         Vector4:TpvVector4;
+        );
+        6:(
+         AxisComponents:array[0..1,0..1] of TpvFloat;
+        );
+        7:(
+         Components:array[0..3] of TpvFloat;
+        );
+        8:(
+         MinMax:array[0..1] of TpvVector2;
+        );
+     end;
+
+     TpvRectArray=array of TpvRect;
+
+     PpvAABB2D=^TpvAABB2D;
+     TpvAABB2D=TpvRect;
+
      PpvAABB=^TpvAABB;
      TpvAABB=record
       public
@@ -1321,86 +1402,6 @@ type PpvScalar=^TpvScalar;
        constructor CreateFromCartesianVector(const v:TpvVector4); overload;
        function ToCartesianVector:TpvVector3;
      end;
-
-     PpvRect=^TpvRect;
-     TpvRect=packed record
-      private
-       function GetWidth:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetWidth(const aWidth:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetHeight:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetHeight(const aHeight:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetSize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetSize(const aSize:TpvVector2); {$ifdef CAN_INLINE}inline;{$endif}
-      public
-       constructor CreateFromVkRect2D(const aFrom:TVkRect2D); overload;
-       constructor CreateAbsolute(const aLeft,aTop,aRight,aBottom:TpvFloat); overload;
-       constructor CreateAbsolute(const aLeftTop,aRightBottom:TpvVector2); overload;
-       constructor CreateRelative(const aLeft,aTop,aWidth,aHeight:TpvFloat); overload;
-       constructor CreateRelative(const aLeftTop,aSize:TpvVector2); overload;
-       class operator Implicit(const a:TVkRect2D):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TVkRect2D):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Implicit(const a:TpvRect):TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TpvRect):TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function ToVkRect2D:TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
-       function Cost:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Area:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Center:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function Combine(const aWithRect:TpvRect):TpvRect; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Combine(const aWithPoint:TpvVector2):TpvRect; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure DirectCombine(const aWithRect:TpvRect); overload; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure DirectCombine(const aWithPoint:TpvVector2); overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
-       function Contains(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
-       function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
-       function Touched(const aPosition:TpvVector2;Threshold:TpvScalar=EPSILON):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       property Width:TpvFloat read GetWidth write SetWidth;
-       property Height:TpvFloat read GetHeight write SetHeight;
-       property Size:TpvVector2 read GetSize write SetSize;
-      public
-       case TpvInt32 of
-        0:(
-         Left:TpvFloat;
-         Top:TpvFloat;
-         Right:TpvFloat;
-         Bottom:TpvFloat;
-        );
-        1:(
-         MinX:TpvFloat;
-         MinY:TpvFloat;
-         MaxX:TpvFloat;
-         MaxY:TpvFloat;
-        );
-        2:(
-         LeftTop:TpvVector2;
-         RightBottom:TpvVector2;
-        );
-        3:(
-         Min:TpvVector2;
-         Max:TpvVector2;
-        );
-        4:(
-         Offset:TpvVector2;
-        );
-        5:(
-         Vector4:TpvVector4;
-        );
-        6:(
-         AxisComponents:array[0..1,0..1] of TpvFloat;
-        );
-        7:(
-         Components:array[0..3] of TpvFloat;
-        );
-        8:(
-         MinMax:array[0..1] of TpvVector2;
-        );
-     end;
-
-     TpvRectArray=array of TpvRect;
-
-     PpvAABB2D=^TpvAABB2D;
-     TpvAABB2D=TpvRect;
 
      Vec2=TpvVector2;
 
@@ -16687,10 +16688,10 @@ begin
     result.Max:=p;
     First:=false;
    end else begin
-    result.Min.x:=Min(result.Min.x,p.x);
-    result.Min.y:=Min(result.Min.y,p.y);
-    result.Max.x:=Max(result.Max.x,p.x);
-    result.Max.y:=Max(result.Max.y,p.y);
+    result.Min.x:=Math.Min(result.Min.x,p.x);
+    result.Min.y:=Math.Min(result.Min.y,p.y);
+    result.Max.x:=Math.Max(result.Max.x,p.x);
+    result.Max.y:=Math.Max(result.Max.y,p.y);
    end;
   end; 
  end;
