@@ -6255,62 +6255,64 @@ var CachePartIndex,VertexIndex,IndexIndex:TpvInt32;
     ModelMatrixIsIdentity:boolean;
     OffsetMatrix:TpvMatrix3x3;
 begin
- SetGUIElementMode(false);
- SetAtlasTexture(nil);
- fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
- VertexColor.r:=fState.fColor.r;
- VertexColor.g:=fState.fColor.g;
- VertexColor.b:=fState.fColor.b;
- VertexColor.a:=fState.fColor.a;
- VertexState:=GetVertexState;
- ModelMatrixIsIdentity:=fState.fModelMatrix=TpvMatrix4x4.Identity;
- OffsetMatrix:=fState.fModelMatrix.ToMatrix3x3;
- for CachePartIndex:=0 to aShape.fCountCacheParts-1 do begin
-  CachePart:=@aShape.fCacheParts[CachePartIndex];
-  EnsureSufficientReserveUsableSpace(CachePart^.CountVertices,CachePart^.CountIndices);
-  if ModelMatrixIsIdentity then begin
-   for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
-    CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
-    CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+VertexIndex];
-    CanvasVertex^.OriginalPosition:=CacheVertex^.Position+CacheVertex^.Offset;
-    CanvasVertex^.Position:=TpvVector3.InlineableCreate(CanvasVertex^.OriginalPosition,fState.fZPosition);
-    CanvasVertex^.Color:=VertexColor;
-    CanvasVertex^.TextureCoord:=TpvVector3.Null;
-    CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl pvcvsObjectModeShift);
-    CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
-    CanvasVertex^.MetaInfo:=CacheVertex^.MetaInfo;
-    CanvasVertex^.MetaInfo2:=CacheVertex^.MetaInfo2;
-   end;
-  end else begin
-   for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
-    CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
-    CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+VertexIndex];
-    CanvasVertex^.OriginalPosition:=CacheVertex^.Position;
-    CanvasVertex^.Position:=TpvVector3.InlineableCreate((fState.fModelMatrix*CacheVertex^.Position)+
-                                                        (OffsetMatrix*CacheVertex^.Offset),
-                                                        fState.fZPosition);
-    CanvasVertex^.Color:=VertexColor;
-    CanvasVertex^.TextureCoord:=TpvVector3.Null;
-    CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl pvcvsObjectModeShift);
-    CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
-    CanvasVertex^.MetaInfo:=CacheVertex^.MetaInfo;
-    CanvasVertex^.MetaInfo2:=CacheVertex^.MetaInfo2;
-    case CacheVertex^.ObjectMode of
-     pcvvaomRoundLineCapCircle:begin
-      CanvasVertex^.MetaInfo.xy:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.xy;
-     end;
-     pcvvaomRoundLine:begin
-      CanvasVertex^.MetaInfo.xy:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.xy;
-      CanvasVertex^.MetaInfo.zw:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.zw;
+ if assigned(aShape) then begin
+  SetGUIElementMode(false);
+  SetAtlasTexture(nil);
+  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
+  VertexColor.r:=fState.fColor.r;
+  VertexColor.g:=fState.fColor.g;
+  VertexColor.b:=fState.fColor.b;
+  VertexColor.a:=fState.fColor.a;
+  VertexState:=GetVertexState;
+  ModelMatrixIsIdentity:=fState.fModelMatrix=TpvMatrix4x4.Identity;
+  OffsetMatrix:=fState.fModelMatrix.ToMatrix3x3;
+  for CachePartIndex:=0 to aShape.fCountCacheParts-1 do begin
+   CachePart:=@aShape.fCacheParts[CachePartIndex];
+   EnsureSufficientReserveUsableSpace(CachePart^.CountVertices,CachePart^.CountIndices);
+   if ModelMatrixIsIdentity then begin
+    for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
+     CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
+     CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+VertexIndex];
+     CanvasVertex^.OriginalPosition:=CacheVertex^.Position+CacheVertex^.Offset;
+     CanvasVertex^.Position:=TpvVector3.InlineableCreate(CanvasVertex^.OriginalPosition,fState.fZPosition);
+     CanvasVertex^.Color:=VertexColor;
+     CanvasVertex^.TextureCoord:=TpvVector3.Null;
+     CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl pvcvsObjectModeShift);
+     CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+     CanvasVertex^.MetaInfo:=CacheVertex^.MetaInfo;
+     CanvasVertex^.MetaInfo2:=CacheVertex^.MetaInfo2;
+    end;
+   end else begin
+    for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
+     CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
+     CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+VertexIndex];
+     CanvasVertex^.OriginalPosition:=CacheVertex^.Position;
+     CanvasVertex^.Position:=TpvVector3.InlineableCreate((fState.fModelMatrix*CacheVertex^.Position)+
+                                                         (OffsetMatrix*CacheVertex^.Offset),
+                                                         fState.fZPosition);
+     CanvasVertex^.Color:=VertexColor;
+     CanvasVertex^.TextureCoord:=TpvVector3.Null;
+     CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl pvcvsObjectModeShift);
+     CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+     CanvasVertex^.MetaInfo:=CacheVertex^.MetaInfo;
+     CanvasVertex^.MetaInfo2:=CacheVertex^.MetaInfo2;
+     case CacheVertex^.ObjectMode of
+      pcvvaomRoundLineCapCircle:begin
+       CanvasVertex^.MetaInfo.xy:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.xy;
+      end;
+      pcvvaomRoundLine:begin
+       CanvasVertex^.MetaInfo.xy:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.xy;
+       CanvasVertex^.MetaInfo.zw:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.zw;
+      end;
      end;
     end;
    end;
+   for IndexIndex:=0 to CachePart^.CountIndices-1 do begin
+    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+IndexIndex]:=(aShape.fCacheIndices[CachePart^.BaseIndexIndex+IndexIndex]-CachePart^.BaseVertexIndex)+fCurrentCountVertices;
+   end;
+   inc(fCurrentCountVertices,CachePart^.CountVertices);
+   inc(fCurrentCountIndices,CachePart^.CountIndices);
   end;
-  for IndexIndex:=0 to CachePart^.CountIndices-1 do begin
-   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+IndexIndex]:=(aShape.fCacheIndices[CachePart^.BaseIndexIndex+IndexIndex]-CachePart^.BaseVertexIndex)+fCurrentCountVertices;
-  end;
-  inc(fCurrentCountVertices,CachePart^.CountVertices);
-  inc(fCurrentCountIndices,CachePart^.CountIndices);
  end;
  result:=self;
 end;
