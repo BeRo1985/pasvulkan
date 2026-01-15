@@ -5689,6 +5689,7 @@ var Index,StartVertexIndex,TextureMode:TpvInt32;
     OldScissor:TVkRect2D;
     TransformMatrix,FillMatrix,MaskMatrix:TpvMatrix4x4;
     ForceUpdate,ForceUpdatePushConstants,h:boolean;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
 //  DynamicOffset:TVkDeviceSize;
 begin
 
@@ -5891,6 +5892,31 @@ begin
 
       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
 
+      if assigned(fCoverageBufferImage) then begin
+       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+       ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       ImageMemoryBarrier.pNext:=nil;
+       ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+       ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+       ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+       ImageMemoryBarrier.subresourceRange.levelCount:=1;
+       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+       ImageMemoryBarrier.subresourceRange.layerCount:=1;
+       aVulkanCommandBuffer.CmdPipelineBarrier(
+        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+        0,
+        0,nil,
+        0,nil,
+        1,@ImageMemoryBarrier);
+      end;
+
       ForceUpdate:=true;
       ForceUpdatePushConstants:=false;
      end;
@@ -5973,15 +5999,32 @@ begin
      end;
 
      TpvCanvasQueueItemKind.TransparentShapeCoverageBarrier:begin
-      // Memory barrier between mask and cover passes
-      // Ensures all mask pass writes to coverage buffer are visible to cover pass reads
-      aVulkanCommandBuffer.CmdPipelineBarrier(
-       TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-       TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-       0,
-       0,nil,
-       0,nil,
-       0,nil);
+     // Memory barrier between mask and cover passes
+     // Ensures all mask pass writes to coverage buffer are visible to cover pass reads
+      if assigned(fCoverageBufferImage) then begin
+       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+       ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       ImageMemoryBarrier.pNext:=nil;
+       ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+       ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+       ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+       ImageMemoryBarrier.subresourceRange.levelCount:=1;
+       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+       ImageMemoryBarrier.subresourceRange.layerCount:=1;
+       aVulkanCommandBuffer.CmdPipelineBarrier(
+        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+        0,
+        0,nil,
+        0,nil,
+        1,@ImageMemoryBarrier);
+      end;
       ForceUpdate:=true;
      end;
 
