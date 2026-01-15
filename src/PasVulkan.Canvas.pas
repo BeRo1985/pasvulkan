@@ -688,6 +688,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCoverageBufferNeedsReset:boolean;
        fCoverageResetPass:boolean;
        fShapeStamp:TpvUInt32;
+       fTransparentShapes:Boolean;
        fTransparentShapeActive:Boolean;
        fTransparentShapeCoverPass:Boolean;
        fTransparentShapeBoundingBoxMinX:TpvFloat;
@@ -758,7 +759,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aPipelineCache:TpvVulkanPipelineCache;
-                          const aCountProcessingBuffers:TpvInt32=4); reintroduce;
+                          const aCountProcessingBuffers:TpvInt32=4;
+                          const aTransparentShapes:Boolean=false); reintroduce;
        destructor Destroy; override;
        procedure Resize(const aWidth,aHeight:TpvInt32);
        procedure Start(const aBufferIndex:TpvInt32);
@@ -3682,7 +3684,8 @@ end;
 
 constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
                              const aPipelineCache:TpvVulkanPipelineCache;
-                             const aCountProcessingBuffers:TpvInt32);
+                             const aCountProcessingBuffers:TpvInt32;
+                             const aTransparentShapes:Boolean);
 var Index,TextureModeIndex:TpvInt32;
     RenderingModeIndex:TpvCanvasRenderingMode;
     BlendingModeIndex:TpvCanvasBlendingMode;
@@ -3818,6 +3821,7 @@ begin
  fCoverageBufferNeedsReset:=false;
  fCoverageResetPass:=false;
  fShapeStamp:=0;
+ fTransparentShapes:=aTransparentShapes;
  fTransparentShapeActive:=false;
  fTransparentShapeCoverPass:=false;
  fTransparentShapeBoundingBoxMinX:=0.0;
@@ -3828,7 +3832,7 @@ begin
  fTransparentShapeStartIndexIndex:=0;
 
  // Create initial coverage buffer if feature is supported
- if fCanvasCommon.fFragmentStoresAndAtomicsSupported then begin
+ if fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported then begin
   Resize(fWidth,fHeight);
  end;
 
@@ -3894,12 +3898,13 @@ var ImageMemoryRequirements:TVkMemoryRequirements;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
 begin
+
  // Update dimensions
  fWidth:=aWidth;
  fHeight:=aHeight;
 
  // Only create coverage buffer if feature is supported
- if not fCanvasCommon.fFragmentStoresAndAtomicsSupported then begin
+ if not (fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported) then begin
   exit;
  end;
 
@@ -4090,7 +4095,8 @@ procedure TpvCanvas.QueueCoverageReset;
 var v0,v1,v2,v3:TpvInt32;
     Left,Top,Right,Bottom:TpvFloat;
 begin
- if (not fCanvasCommon.fFragmentStoresAndAtomicsSupported) or
+ if (not fTransparentShapes) or
+    (not fCanvasCommon.fFragmentStoresAndAtomicsSupported) or
     (not fCoverageBufferNeedsReset) or
     (not assigned(fCoverageBufferImage)) or
     (not assigned(fCurrentFillBuffer)) then begin
@@ -4373,7 +4379,8 @@ begin
    end;
 
    // Create coverage mask and cover pipelines if feature is supported
-   if fCanvasCommon.fFragmentStoresAndAtomicsSupported and
+   if fTransparentShapes and
+      fCanvasCommon.fFragmentStoresAndAtomicsSupported and
       assigned(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageMask) and
       assigned(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageCover) and
       assigned(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentCoverageReset) then begin
@@ -5427,7 +5434,8 @@ var Index:TpvInt32;
     VulkanBuffer:TpvVulkanBuffer;
 begin
  // Ensure coverage buffer matches current dimensions
- if fCanvasCommon.fFragmentStoresAndAtomicsSupported and
+ if fTransparentShapes and
+    fCanvasCommon.fFragmentStoresAndAtomicsSupported and
     ((fCoverageBufferWidth<>fWidth) or (fCoverageBufferHeight<>fHeight)) then begin
   Resize(fWidth,fHeight);
  end;
@@ -5583,7 +5591,7 @@ procedure TpvCanvas.BeginTransparentShape;
 const MaxShapeStamp=TVkUInt32($00ffffff);
 begin
  
- if fCanvasCommon.fFragmentStoresAndAtomicsSupported then begin
+ if fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported then begin
   
   // If already in a transparent shape, implicitly end it first
   if fTransparentShapeActive then begin
@@ -5630,7 +5638,7 @@ var QueueItemIndex:TpvInt32;
     v0,v1,v2,v3:TpvInt32;
     BoundingBoxMinX,BoundingBoxMinY,BoundingBoxMaxX,BoundingBoxMaxY:TpvFloat;
 begin
- if fCanvasCommon.fFragmentStoresAndAtomicsSupported and fTransparentShapeActive then begin
+ if fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported and fTransparentShapeActive then begin
   // Flush the mask pass geometry
   Flush;
   // Mark transparent shape as no longer active
@@ -5694,7 +5702,8 @@ var Index,StartVertexIndex,TextureMode:TpvInt32;
 begin
 
  // Ensure coverage buffer matches current dimensions
- if fCanvasCommon.fFragmentStoresAndAtomicsSupported and
+ if fTransparentShapes and
+    fCanvasCommon.fFragmentStoresAndAtomicsSupported and
     ((fCoverageBufferWidth<>fWidth) or (fCoverageBufferHeight<>fHeight)) then begin
   Resize(fWidth,fHeight);
  end;
