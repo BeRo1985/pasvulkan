@@ -3287,9 +3287,9 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_hud_depth',
                                   false,
-                                  VK_FORMAT_D32_SFLOAT_S8_UINT{pvApplication.VulkanDepthImageFormat},
+                                  VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat},
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                  TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT_S8_UINT{pvApplication.VulkanDepthImageFormat}),
+                                  TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat}),
                                   fHUDSize,
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1
