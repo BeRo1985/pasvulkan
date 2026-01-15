@@ -3865,6 +3865,10 @@ var ImageMemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
+    UniversalQueue:TpvVulkanQueue;
+    UniversalCommandPool:TpvVulkanCommandPool;
+    UniversalCommandBuffer:TpvVulkanCommandBuffer;
+    UniversalFence:TpvVulkanFence;
 begin
  // Update dimensions
  fWidth:=aWidth;
@@ -3997,36 +4001,61 @@ begin
   fCoverageBufferHeight:=0;
  end;
 
- // TODO: Do the transition here with a temporary command buffer pool, command buffer, etc. on the universal queue
-{
  // Transition coverage buffer layout if needed
- if assigned(aVulkanCommandBuffer) and fCoverageBufferNeedsLayoutTransition and assigned(fCoverageBufferImage) and (fCoverageBufferImageLayout<>VK_IMAGE_LAYOUT_GENERAL) then begin
-  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  ImageMemoryBarrier.pNext:=nil;
-  ImageMemoryBarrier.srcAccessMask:=0;
-  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  ImageMemoryBarrier.oldLayout:=fCoverageBufferImageLayout;
-  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
-  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
-  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-  ImageMemoryBarrier.subresourceRange.levelCount:=1;
-  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-  ImageMemoryBarrier.subresourceRange.layerCount:=1;
-  aVulkanCommandBuffer.CmdPipelineBarrier(
-   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-   TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-   TVkDependencyFlags(VK_DEPENDENCY_VIEW_LOCAL_BIT),
-   0,nil,
-   0,nil,
-   1,@ImageMemoryBarrier);
-  fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_GENERAL;
-  fCoverageBufferNeedsLayoutTransition:=false;
+ if fCoverageBufferNeedsLayoutTransition and assigned(fCoverageBufferImage) and (fCoverageBufferImageLayout<>VK_IMAGE_LAYOUT_GENERAL) then begin
+  UniversalQueue:=fDevice.UniversalQueue;
+  UniversalCommandPool:=TpvVulkanCommandPool.Create(fDevice,
+                                                    fDevice.UniversalQueueFamilyIndex,
+                                                    TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+  try
+   UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                         VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   try
+    UniversalFence:=TpvVulkanFence.Create(fDevice);
+    try
+     UniversalCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+     UniversalCommandBuffer.BeginRecording;
+     FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+     ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+     ImageMemoryBarrier.pNext:=nil;
+     ImageMemoryBarrier.srcAccessMask:=0;
+     ImageMemoryBarrier.dstAccessMask:=0;
+     ImageMemoryBarrier.oldLayout:=fCoverageBufferImageLayout;
+     ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+     ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+     ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+     ImageMemoryBarrier.subresourceRange.levelCount:=1;
+     ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+     ImageMemoryBarrier.subresourceRange.layerCount:=1;
+     UniversalCommandBuffer.CmdPipelineBarrier(
+      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+      0,
+      0,nil,
+      0,nil,
+      1,@ImageMemoryBarrier);
+     UniversalCommandBuffer.EndRecording;
+     UniversalCommandBuffer.Execute(UniversalQueue,
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                    nil,
+                                    nil,
+                                    UniversalFence,
+                                    true);
+     fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_GENERAL;
+     fCoverageBufferNeedsLayoutTransition:=false;
+    finally
+     FreeAndNil(UniversalFence);
+    end;
+   finally
+    FreeAndNil(UniversalCommandBuffer);
+   end;
+  finally
+   FreeAndNil(UniversalCommandPool);
+  end;
  end;
-}
 
 end;
 
