@@ -1645,6 +1645,8 @@ void main(void){
   }
 #endif  
 #endif  
-  outFragColor = color;
+  // Pre-multiply RGB by alpha for correct premultiplied alpha blending
+  // This prevents overdraw artifacts with transparent overlapping geometry
+  outFragColor = vec4(color.rgb * color.a, color.a);
 }
 #endif
