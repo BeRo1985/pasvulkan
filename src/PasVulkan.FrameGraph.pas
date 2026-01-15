@@ -1,4 +1,4 @@
-﻿(******************************************************************************
+(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.FrameFrame.pas                 *
@@ -1217,6 +1217,7 @@ type EpvFrameGraph=class(Exception);
             TRenderPass=class(TPass)
              private
               fMultiviewMask:TpvUInt32;
+              fSelfDependency:Boolean;
               fSize:TImageSize;
               fPhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass;
               function GetPhysicalRenderPass:TPhysicalRenderPass; inline;
@@ -1229,6 +1230,7 @@ type EpvFrameGraph=class(Exception);
               property Size:TImageSize read fSize write fSize;
              published
               property MultiviewMask:TpvUInt32 read fMultiviewMask write fMultiviewMask;
+              property SelfDependency:Boolean read fSelfDependency write fSelfDependency;
               property PhysicalRenderPass:TPhysicalRenderPass read GetPhysicalRenderPass;
               property PhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass read fPhysicalRenderPassSubpass;
               property VulkanRenderPass:TpvVulkanRenderPass read GetVulkanRenderPass;
@@ -3554,6 +3556,7 @@ constructor TpvFrameGraph.TRenderPass.Create(const aFrameGraph:TpvFrameGraph);
 begin
  inherited Create(aFrameGraph);
  fPhysicalRenderPassSubpass:=nil;
+ fSelfDependency:=false;
 end;
 
 destructor TpvFrameGraph.TRenderPass.Destroy;
@@ -6158,6 +6161,21 @@ type TEventBeforeAfter=(Event,Before,After);
        end;
       end;
      end;
+    end;
+
+    if (Pass is TRenderPass) and
+       TRenderPass(Pass).SelfDependency and
+       (Pass.fPhysicalPass is TPhysicalRenderPass) and
+       assigned(TRenderPass(Pass).fPhysicalRenderPassSubpass) then begin
+     SubpassDependency.SrcSubpass:=TRenderPass(Pass).fPhysicalRenderPassSubpass;
+     SubpassDependency.DstSubpass:=TRenderPass(Pass).fPhysicalRenderPassSubpass;
+     SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+     SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+     SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+     SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
+                                      TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+     SubpassDependency.DependencyFlags:=0;
+     AddSubpassDependency(TPhysicalRenderPass(Pass.fPhysicalPass).fSubpassDependencies,SubpassDependency);
     end;
 
     // Then add the remaining Subpass dependencies
