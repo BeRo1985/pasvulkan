@@ -6174,7 +6174,7 @@ type TEventBeforeAfter=(Event,Before,After);
      SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
      SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
                                       TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-     SubpassDependency.DependencyFlags:=0;
+     SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
      AddSubpassDependency(TPhysicalRenderPass(Pass.fPhysicalPass).fSubpassDependencies,SubpassDependency);
     end;
 
