@@ -5580,36 +5580,48 @@ begin
 end;
 
 procedure TpvCanvas.BeginTransparentShape;
-const MaxShapeStamp=$00ffffff;
+const MaxShapeStamp=TVkUInt32($00ffffff);
 begin
+ 
  if fCanvasCommon.fFragmentStoresAndAtomicsSupported then begin
+  
   // If already in a transparent shape, implicitly end it first
   if fTransparentShapeActive then begin
    EndTransparentShape;
   end;
+
   // Flush any pending geometry before starting transparent shape
   Flush;
-  if fCoverageBufferNeedsReset then begin
-   QueueCoverageReset;
-  end;
+
+  // Increment shape stamp for this new transparent shape
+  inc(fShapeStamp);
+
+  // Wrap shape stamp and mark coverage buffer for reset if maximum reached
   if fShapeStamp>=MaxShapeStamp then begin
    fShapeStamp:=0;
    fCoverageBufferNeedsReset:=true;
+  end;
+
+  // If coverage buffer needs reset, queue a reset
+  if fCoverageBufferNeedsReset then begin
    QueueCoverageReset;
   end;
-  // Increment shape stamp for this new transparent shape
-  inc(fShapeStamp);
+
   // Mark transparent shape as active
   fTransparentShapeActive:=true;
+  
   // Initialize bounding box to empty (will be expanded as vertices are added)
   fTransparentShapeBBoxMinX:=Infinity;
   fTransparentShapeBBoxMinY:=Infinity;
   fTransparentShapeBBoxMaxX:=-Infinity;
   fTransparentShapeBBoxMaxY:=-Infinity;
+  
   // Remember current vertex/index positions
   fTransparentShapeStartVertexIndex:=fCurrentCountVertices;
   fTransparentShapeStartIndexIndex:=fCurrentCountIndices;
+
  end;
+
 end;
 
 procedure TpvCanvas.EndTransparentShape;
