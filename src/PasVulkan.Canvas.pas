@@ -5234,7 +5234,7 @@ begin
  end;
 
  // Transition coverage buffer layout if needed
- if fCoverageBufferNeedsLayoutTransition and assigned(fCoverageBufferImage) and (fCoverageBufferImageLayout<>VK_IMAGE_LAYOUT_GENERAL) then begin
+{if fCoverageBufferNeedsLayoutTransition and assigned(fCoverageBufferImage) and (fCoverageBufferImageLayout<>VK_IMAGE_LAYOUT_GENERAL) then begin
   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   ImageMemoryBarrier.pNext:=nil;
@@ -5259,7 +5259,7 @@ begin
    1,@ImageMemoryBarrier);
   fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_GENERAL;
   fCoverageBufferNeedsLayoutTransition:=false;
- end;
+ end;}
 
  if (aBufferIndex>=0) and (aBufferIndex<fCountBuffers) then begin
   CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
