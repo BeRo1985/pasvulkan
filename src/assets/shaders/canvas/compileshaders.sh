@@ -55,6 +55,9 @@ glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYP
 glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -DCOVERAGE_COVER_PASS -o canvas_frag_no_texture_coverage_cover.spv canvas.frag
 glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=$FILLTYPE_NO_TEXTURE -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -DCOVERAGE_COVER_PASS -o canvas_frag_no_texture_coverage_cover_clip_distance.spv canvas.frag
 
+# Coverage reset shader (clear coverage buffer via imageStore inside a render pass)
+glslc -x glsl -g --target-env=vulkan -fshader-stage=fragment -o coveragereset_frag.spv coveragereset.frag
+
 #!/bin/bash
 
 # Loop over *.spv files

@@ -188,6 +188,7 @@ begin
   ConvertFile('shaders/canvas/canvas_frag_no_texture_coverage_mask_clip_distance.spv','CanvasFragmentNoTextureCoverageMaskClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_no_texture_coverage_cover.spv','CanvasFragmentNoTextureCoverageCoverSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_no_texture_coverage_cover_clip_distance.spv','CanvasFragmentNoTextureCoverageCoverClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/coveragereset_frag.spv','CanvasFragmentCoverageResetSPIRV');
   ConvertFile('shaders/canvas/canvas_vert.spv','CanvasVertexSPIRV');
   ConvertFile('shaders/canvas/canvas_vert_clip_distance.spv','CanvasVertexClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_no_texture_vert.spv','CanvasNoTextureVertexSPIRV');

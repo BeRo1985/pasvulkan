@@ -57,6 +57,9 @@ rem Coverage cover pass shaders (for transparent shape rendering with coverage b
 "%VULKAN_SDK%/Bin/glslc.exe" -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=%FILLTYPE_NO_TEXTURE% -DBLENDING=1 -DUSECLIPDISTANCE=0 -DUSENODISCARD=1 -DCOVERAGE_COVER_PASS -o canvas_frag_no_texture_coverage_cover.spv canvas.frag
 "%VULKAN_SDK%/Bin/glslc.exe" -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=%FILLTYPE_NO_TEXTURE% -DBLENDING=1 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -DCOVERAGE_COVER_PASS -o canvas_frag_no_texture_coverage_cover_clip_distance.spv canvas.frag
 
+rem Coverage reset shader (clear coverage buffer via imageStore inside a render pass)
+"%VULKAN_SDK%/Bin/glslc.exe" -x glsl --target-env=vulkan -fshader-stage=fragment -o coveragereset_frag.spv coveragereset.frag
+
 for %%f in (*.spv) do (
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const %%f -o %%f
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --strength-reduction --simplify-instructions --remove-duplicates --redundancy-elimination --eliminate-dead-code-aggressive --eliminate-dead-branches --eliminate-dead-const %%f -o %%f
@@ -123,7 +126,6 @@ exit /b 1
 :Done
 
 exit /b 0
-
 
 
 
