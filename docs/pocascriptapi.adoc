@@ -5805,6 +5805,65 @@ canvas.pop();
 
 '''''
 
+==== beginTransparentShape()
+
+*Usage:*
+
+[source,js]
+----
+canvas.beginTransparentShape();
+----
+
+* *Description:* Begins a transparent shape rendering block. All subsequent drawing operations until `endTransparentShape()` are rendered as a single transparent shape with correct alpha blending, eliminating overdraw artifacts from overlapping transparent geometry.
+* *Parameters:* None.
+* *Return Value:* The canvas itself.
+* *Notes:*
+** This feature requires `fragmentStoresAndAtomics` device support
+** Automatically ends any previous transparent shape if called while one is active
+** Use for complex transparent shapes with overlapping geometry
+* *Example:*
++
+[source,js]
+----
+// Draw overlapping transparent circles as one shape
+canvas.setColor(Vector4.create(1, 0, 0, 0.5)); // Semi-transparent red
+canvas.beginTransparentShape();
+canvas.drawFilledCircle(Vector2.create(100, 100), 50);
+canvas.drawFilledCircle(Vector2.create(120, 100), 50); // Overlaps first circle
+canvas.drawFilledCircle(Vector2.create(110, 120), 50); // Overlaps both
+canvas.endTransparentShape();
+// Result: One transparent shape without overdraw darkening
+----
+
+'''''
+
+==== endTransparentShape()
+
+*Usage:*
+
+[source,js]
+----
+canvas.endTransparentShape();
+----
+
+* *Description:* Ends the current transparent shape rendering block and composites the accumulated coverage to the framebuffer.
+* *Parameters:* None.
+* *Return Value:* The canvas itself.
+* *Notes:*
+** Must be called after `beginTransparentShape()` to complete the shape
+** Only executes if a transparent shape is currently active
+** Automatically flushes pending geometry
+* *Example:*
++
+[source,js]
+----
+canvas.beginTransparentShape();
+// ... draw multiple overlapping transparent elements ...
+canvas.endTransparentShape();
+----
+
+'''''
+
 ==== flush()
 
 *Usage:*
