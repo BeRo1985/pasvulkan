@@ -1,4 +1,4 @@
-﻿(******************************************************************************
+(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.Framework.pas                  *
@@ -690,10 +690,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fShapeStamp:TpvUInt32;
        fTransparentShapeActive:Boolean;
        fTransparentShapeCoverPass:Boolean;
-       fTransparentShapeBBoxMinX:TpvFloat;
-       fTransparentShapeBBoxMinY:TpvFloat;
-       fTransparentShapeBBoxMaxX:TpvFloat;
-       fTransparentShapeBBoxMaxY:TpvFloat;
+       fTransparentShapeBoundingBoxMinX:TpvFloat;
+       fTransparentShapeBoundingBoxMinY:TpvFloat;
+       fTransparentShapeBoundingBoxMaxX:TpvFloat;
+       fTransparentShapeBoundingBoxMaxY:TpvFloat;
        fTransparentShapeStartVertexIndex:TpvInt32;
        fTransparentShapeStartIndexIndex:TpvInt32;
        procedure SetVulkanRenderPass(const aVulkanRenderPass:TpvVulkanRenderPass);
@@ -3820,10 +3820,10 @@ begin
  fShapeStamp:=0;
  fTransparentShapeActive:=false;
  fTransparentShapeCoverPass:=false;
- fTransparentShapeBBoxMinX:=0.0;
- fTransparentShapeBBoxMinY:=0.0;
- fTransparentShapeBBoxMaxX:=0.0;
- fTransparentShapeBBoxMaxY:=0.0;
+ fTransparentShapeBoundingBoxMinX:=0.0;
+ fTransparentShapeBoundingBoxMinY:=0.0;
+ fTransparentShapeBoundingBoxMaxX:=0.0;
+ fTransparentShapeBoundingBoxMaxY:=0.0;
  fTransparentShapeStartVertexIndex:=0;
  fTransparentShapeStartIndexIndex:=0;
 
@@ -5390,17 +5390,17 @@ begin
  Vertex^.ClipRect:=fState.fClipRect;
  // Track bounding box for transparent shape
  if fTransparentShapeActive then begin
-  if TransformedPos.x<fTransparentShapeBBoxMinX then begin
-   fTransparentShapeBBoxMinX:=TransformedPos.x;
+  if fTransparentShapeBoundingBoxMinX>TransformedPos.x then begin
+   fTransparentShapeBoundingBoxMinX:=TransformedPos.x;
   end;
-  if TransformedPos.y<fTransparentShapeBBoxMinY then begin
-   fTransparentShapeBBoxMinY:=TransformedPos.y;
+  if fTransparentShapeBoundingBoxMinY>TransformedPos.y then begin
+   fTransparentShapeBoundingBoxMinY:=TransformedPos.y;
   end;
-  if TransformedPos.x>fTransparentShapeBBoxMaxX then begin
-   fTransparentShapeBBoxMaxX:=TransformedPos.x;
+  if fTransparentShapeBoundingBoxMaxX<TransformedPos.x then begin
+   fTransparentShapeBoundingBoxMaxX:=TransformedPos.x;
   end;
-  if TransformedPos.y>fTransparentShapeBBoxMaxY then begin
-   fTransparentShapeBBoxMaxY:=TransformedPos.y;
+  if fTransparentShapeBoundingBoxMaxY<TransformedPos.y then begin
+   fTransparentShapeBoundingBoxMaxY:=TransformedPos.y;
   end;
  end;
 end;
@@ -5611,10 +5611,10 @@ begin
   fTransparentShapeActive:=true;
   
   // Initialize bounding box to empty (will be expanded as vertices are added)
-  fTransparentShapeBBoxMinX:=Infinity;
-  fTransparentShapeBBoxMinY:=Infinity;
-  fTransparentShapeBBoxMaxX:=-Infinity;
-  fTransparentShapeBBoxMaxY:=-Infinity;
+  fTransparentShapeBoundingBoxMinX:=Infinity;
+  fTransparentShapeBoundingBoxMinY:=Infinity;
+  fTransparentShapeBoundingBoxMaxX:=-Infinity;
+  fTransparentShapeBoundingBoxMaxY:=-Infinity;
   
   // Remember current vertex/index positions
   fTransparentShapeStartVertexIndex:=fCurrentCountVertices;
@@ -5628,7 +5628,7 @@ procedure TpvCanvas.EndTransparentShape;
 var QueueItemIndex:TpvInt32;
     QueueItem:PpvCanvasQueueItem;
     v0,v1,v2,v3:TpvInt32;
-    BBoxMinX,BBoxMinY,BBoxMaxX,BBoxMaxY:TpvFloat;
+    BoundingBoxMinX,BoundingBoxMinY,BoundingBoxMaxX,BoundingBoxMaxY:TpvFloat;
 begin
  if fCanvasCommon.fFragmentStoresAndAtomicsSupported and fTransparentShapeActive then begin
   // Flush the mask pass geometry
@@ -5637,8 +5637,8 @@ begin
   fTransparentShapeActive:=false;
   
   // Check if we have a valid bounding box
-  if (fTransparentShapeBBoxMinX<fTransparentShapeBBoxMaxX) and
-     (fTransparentShapeBBoxMinY<fTransparentShapeBBoxMaxY) then begin
+  if (fTransparentShapeBoundingBoxMinX<=fTransparentShapeBoundingBoxMaxX) and
+     (fTransparentShapeBoundingBoxMinY<=fTransparentShapeBoundingBoxMaxY) then begin
    
    // Add barrier queue item between mask and cover passes
    QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
@@ -5650,17 +5650,17 @@ begin
    QueueItem^.Kind:=TpvCanvasQueueItemKind.TransparentShapeCoverageBarrier;
    
    // Expand bbox slightly to ensure coverage
-   BBoxMinX:=fTransparentShapeBBoxMinX-1.0;
-   BBoxMinY:=fTransparentShapeBBoxMinY-1.0;
-   BBoxMaxX:=fTransparentShapeBBoxMaxX+1.0;
-   BBoxMaxY:=fTransparentShapeBBoxMaxY+1.0;
+   BoundingBoxMinX:=fTransparentShapeBoundingBoxMinX-1.0;
+   BoundingBoxMinY:=fTransparentShapeBoundingBoxMinY-1.0;
+   BoundingBoxMaxX:=fTransparentShapeBoundingBoxMaxX+1.0;
+   BoundingBoxMaxY:=fTransparentShapeBoundingBoxMaxY+1.0;
    
    // Generate cover quad vertices (using current state color)
    EnsureSufficientReserveUsableSpace(4,6);
-   v0:=AddVertex(TpvVector2.InlineableCreate(BBoxMinX,BBoxMinY),TpvVector3.Null,fState.fColor);
-   v1:=AddVertex(TpvVector2.InlineableCreate(BBoxMaxX,BBoxMinY),TpvVector3.Null,fState.fColor);
-   v2:=AddVertex(TpvVector2.InlineableCreate(BBoxMaxX,BBoxMaxY),TpvVector3.Null,fState.fColor);
-   v3:=AddVertex(TpvVector2.InlineableCreate(BBoxMinX,BBoxMaxY),TpvVector3.Null,fState.fColor);
+   v0:=AddVertex(TpvVector2.InlineableCreate(BoundingBoxMinX,BoundingBoxMinY),TpvVector3.Null,fState.fColor);
+   v1:=AddVertex(TpvVector2.InlineableCreate(BoundingBoxMaxX,BoundingBoxMinY),TpvVector3.Null,fState.fColor);
+   v2:=AddVertex(TpvVector2.InlineableCreate(BoundingBoxMaxX,BoundingBoxMaxY),TpvVector3.Null,fState.fColor);
+   v3:=AddVertex(TpvVector2.InlineableCreate(BoundingBoxMinX,BoundingBoxMaxY),TpvVector3.Null,fState.fColor);
    AddIndex(v0);
    AddIndex(v1);
    AddIndex(v2);
@@ -7242,6 +7242,8 @@ var CachePartIndex,VertexIndex,IndexIndex:TpvInt32;
     VertexState:TpvUInt32;
     ModelMatrixIsIdentity:boolean;
     OffsetMatrix:TpvMatrix3x3;
+    TrackBoundingBox:boolean;
+    BoundingBoxMinX,BoundingBoxMinY,BoundingBoxMaxX,BoundingBoxMaxY:TpvFloat;
 begin
  if assigned(aShape) then begin
   SetGUIElementMode(false);
@@ -7254,6 +7256,13 @@ begin
   VertexState:=GetVertexState;
   ModelMatrixIsIdentity:=fState.fModelMatrix=TpvMatrix4x4.Identity;
   OffsetMatrix:=fState.fModelMatrix.ToMatrix3x3;
+  TrackBoundingBox:=fTransparentShapeActive;
+  if TrackBoundingBox then begin
+   BoundingBoxMinX:=Infinity;
+   BoundingBoxMinY:=Infinity;
+   BoundingBoxMaxX:=-Infinity;
+   BoundingBoxMaxY:=-Infinity;
+  end;
   for CachePartIndex:=0 to aShape.fCountCacheParts-1 do begin
    CachePart:=@aShape.fCacheParts[CachePartIndex];
    EnsureSufficientReserveUsableSpace(CachePart^.CountVertices,CachePart^.CountIndices);
@@ -7269,6 +7278,20 @@ begin
      CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
      CanvasVertex^.MetaInfo:=CacheVertex^.MetaInfo;
      CanvasVertex^.MetaInfo2:=CacheVertex^.MetaInfo2;
+     if TrackBoundingBox then begin
+      if BoundingBoxMinX>CanvasVertex^.Position.x then begin
+       BoundingBoxMinX:=CanvasVertex^.Position.x;
+      end;
+      if BoundingBoxMinY>CanvasVertex^.Position.y then begin
+       BoundingBoxMinY:=CanvasVertex^.Position.y;
+      end;
+      if BoundingBoxMaxX<CanvasVertex^.Position.x then begin
+       BoundingBoxMaxX:=CanvasVertex^.Position.x;
+      end;
+      if BoundingBoxMaxY<CanvasVertex^.Position.y then begin
+       BoundingBoxMaxY:=CanvasVertex^.Position.y;
+      end;
+     end;
     end;
    end else begin
     for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
@@ -7293,6 +7316,20 @@ begin
        CanvasVertex^.MetaInfo.zw:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.zw;
       end;
      end;
+     if TrackBoundingBox then begin
+      if BoundingBoxMinX>CanvasVertex^.Position.x then begin
+       BoundingBoxMinX:=CanvasVertex^.Position.x;
+      end;
+      if BoundingBoxMinY>CanvasVertex^.Position.y then begin
+       BoundingBoxMinY:=CanvasVertex^.Position.y;
+      end;
+      if BoundingBoxMaxX<CanvasVertex^.Position.x then begin
+       BoundingBoxMaxX:=CanvasVertex^.Position.x;
+      end;
+      if BoundingBoxMaxY<CanvasVertex^.Position.y then begin
+       BoundingBoxMaxY:=CanvasVertex^.Position.y;
+      end;
+     end;
     end;
    end;
    for IndexIndex:=0 to CachePart^.CountIndices-1 do begin
@@ -7300,6 +7337,20 @@ begin
    end;
    inc(fCurrentCountVertices,CachePart^.CountVertices);
    inc(fCurrentCountIndices,CachePart^.CountIndices);
+  end;
+  if TrackBoundingBox and (BoundingBoxMinX<=BoundingBoxMaxX) and (BoundingBoxMinY<=BoundingBoxMaxY) then begin
+   if fTransparentShapeBoundingBoxMinX>BoundingBoxMinX then begin
+    fTransparentShapeBoundingBoxMinX:=BoundingBoxMinX;
+   end;
+   if fTransparentShapeBoundingBoxMinY>BoundingBoxMinY then begin
+    fTransparentShapeBoundingBoxMinY:=BoundingBoxMinY;
+   end;
+   if fTransparentShapeBoundingBoxMaxX<BoundingBoxMaxX then begin
+    fTransparentShapeBoundingBoxMaxX:=BoundingBoxMaxX;
+   end;
+   if fTransparentShapeBoundingBoxMaxY<BoundingBoxMaxY then begin
+    fTransparentShapeBoundingBoxMaxY:=BoundingBoxMaxY;
+   end;
   end;
  end;
  result:=self;
