@@ -676,8 +676,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCoverageBufferImage:TpvVulkanImage;
        fCoverageBufferMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fCoverageBufferImageView:TpvVulkanImageView;
+       fCoverageBufferImageLayout:TVkImageLayout;
        fCoverageBufferWidth:TpvInt32;
        fCoverageBufferHeight:TpvInt32;
+       fCoverageBufferNeedsLayoutTransition:boolean;
        fShapeStamp:TpvUInt32;
        fTransparentShapeActive:Boolean;
        fTransparentShapeCoverPass:Boolean;
@@ -3787,8 +3789,10 @@ begin
  fCoverageBufferImage:=nil;
  fCoverageBufferMemoryBlock:=nil;
  fCoverageBufferImageView:=nil;
+ fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
  fCoverageBufferWidth:=0;
  fCoverageBufferHeight:=0;
+ fCoverageBufferNeedsLayoutTransition:=false;
  fShapeStamp:=0;
  fTransparentShapeActive:=false;
  fTransparentShapeCoverPass:=false;
@@ -3826,6 +3830,7 @@ begin
   fCoverageBufferMemoryBlock:=nil;
  end;
  FreeAndNil(fCoverageBufferImage);
+ fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
 
  SetCountBuffers(0);
 
@@ -3882,6 +3887,7 @@ begin
   fCoverageBufferMemoryBlock:=nil;
  end;
  FreeAndNil(fCoverageBufferImage);
+ fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
 
  // Create new coverage buffer image (R32_UINT for packed stamp+coverage)
  if (aWidth>0) and (aHeight>0) then begin
@@ -3953,6 +3959,7 @@ begin
 
   fCoverageBufferWidth:=aWidth;
   fCoverageBufferHeight:=aHeight;
+  fCoverageBufferNeedsLayoutTransition:=true; // Mark that layout transition is needed
 
   // Update or create coverage buffer descriptor set
   if assigned(fVulkanDescriptorSetCoverageBufferLayout) then begin
@@ -5218,11 +5225,40 @@ procedure TpvCanvas.ExecuteUpload(const aVulkanTransferQueue:TpvVulkanQueue;cons
 var Index:TpvInt32;
     CurrentBuffer:PpvCanvasBuffer;
     VulkanBuffer:TpvVulkanBuffer;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
  // Ensure coverage buffer matches current dimensions
  if fCanvasCommon.fFragmentStoresAndAtomicsSupported and
     ((fCoverageBufferWidth<>fWidth) or (fCoverageBufferHeight<>fHeight)) then begin
   Resize(fWidth,fHeight);
+ end;
+
+ // Transition coverage buffer layout if needed
+ if fCoverageBufferNeedsLayoutTransition and assigned(fCoverageBufferImage) and (fCoverageBufferImageLayout<>VK_IMAGE_LAYOUT_GENERAL) then begin
+  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  ImageMemoryBarrier.pNext:=nil;
+  ImageMemoryBarrier.srcAccessMask:=0;
+  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  ImageMemoryBarrier.oldLayout:=fCoverageBufferImageLayout;
+  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+  ImageMemoryBarrier.subresourceRange.levelCount:=1;
+  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+  ImageMemoryBarrier.subresourceRange.layerCount:=1;
+  aVulkanTransferCommandBuffer.CmdPipelineBarrier(
+   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+   TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+   0,
+   0,nil,
+   0,nil,
+   1,@ImageMemoryBarrier);
+  fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_GENERAL;
+  fCoverageBufferNeedsLayoutTransition:=false;
  end;
 
  if (aBufferIndex>=0) and (aBufferIndex<fCountBuffers) then begin
