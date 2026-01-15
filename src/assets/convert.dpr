@@ -184,6 +184,10 @@ begin
   ConvertFile('shaders/canvas/canvas_frag_texture_no_blending_clip_distance_no_discard.spv','CanvasFragmentTextureNoBlendingClipDistanceNoDiscardSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture_no_blending_clip_distance_no_discard.spv','CanvasFragmentAtlasTextureNoBlendingClipDistanceNoDiscardSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_vectorpath_no_blending_clip_distance_no_discard.spv','CanvasFragmentVectorPathNoBlendingClipDistanceNoDiscardSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_no_texture_coverage_mask.spv','CanvasFragmentNoTextureCoverageMaskSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_no_texture_coverage_mask_clip_distance.spv','CanvasFragmentNoTextureCoverageMaskClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_no_texture_coverage_cover.spv','CanvasFragmentNoTextureCoverageCoverSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_no_texture_coverage_cover_clip_distance.spv','CanvasFragmentNoTextureCoverageCoverClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_vert.spv','CanvasVertexSPIRV');
   ConvertFile('shaders/canvas/canvas_vert_clip_distance.spv','CanvasVertexClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_no_texture_vert.spv','CanvasNoTextureVertexSPIRV');
