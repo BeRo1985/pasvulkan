@@ -5710,6 +5710,40 @@ var Index,StartVertexIndex,TextureMode:TpvInt32;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ClearColorValue:TVkClearColorValue;
 //  DynamicOffset:TVkDeviceSize;
+ procedure ResetState;
+ begin
+
+  OldScissor.offset.x:=-$7fffffff;
+  OldScissor.offset.y:=-$7fffffff;
+  OldScissor.extent.Width:=$7fffffff;
+  OldScissor.extent.Height:=$7fffffff;
+
+  Descriptor:=nil;
+
+  TransformMatrix:=TpvMatrix4x4.Null;
+
+  FillMatrix:=TpvMatrix4x4.Null;
+
+  MaskMatrix:=TpvMatrix4x4.Null;
+
+  OldQueueItemKind:=TpvCanvasQueueItemKind.None;
+
+  ForceUpdate:=true;
+
+  ForceUpdatePushConstants:=true;
+
+  MaskingMode:=false;
+
+  BlendingMode:=TpvCanvasBlendingMode.AdditiveBlending;
+
+  TextureMode:=-1;
+
+  OldVulkanVertexBuffer:=nil;
+
+  OldVulkanIndexBuffer:=nil;
+
+ end;
+
 begin
 
  // Ensure coverage buffer matches current dimensions
@@ -5734,34 +5768,7 @@ begin
   CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
   if assigned(CurrentBuffer) and (CurrentBuffer^.fCountQueueItems>0) then begin
 
-   OldScissor.offset.x:=-$7fffffff;
-   OldScissor.offset.y:=-$7fffffff;
-   OldScissor.extent.Width:=$7fffffff;
-   OldScissor.extent.Height:=$7fffffff;
-
-   Descriptor:=nil;
-
-   TransformMatrix:=TpvMatrix4x4.Null;
-
-   FillMatrix:=TpvMatrix4x4.Null;
-
-   MaskMatrix:=TpvMatrix4x4.Null;
-
-   OldQueueItemKind:=TpvCanvasQueueItemKind.None;
-
-   ForceUpdate:=true;
-
-   ForceUpdatePushConstants:=true;
-
-   MaskingMode:=false;
-
-   BlendingMode:=TpvCanvasBlendingMode.AdditiveBlending;
-
-   TextureMode:=-1;
-
-   OldVulkanVertexBuffer:=nil;
-
-   OldVulkanIndexBuffer:=nil;
+   ResetState;
 
    for Index:=0 to CurrentBuffer^.fCountQueueItems-1 do begin
 
@@ -5946,6 +5953,7 @@ begin
         if assigned(fOnResumeRenderPass) then begin
          fOnResumeRenderPass(self);
         end;
+        ResetState;
         RenderPassActive:=true;
        end;
 
@@ -6035,6 +6043,8 @@ begin
       ForceUpdate:=true;
       ForceUpdatePushConstants:=false;
 
+      ResetState;
+
      end;
 
      TpvCanvasQueueItemKind.TransparentShapeMask:begin
@@ -6047,6 +6057,7 @@ begin
         fOnResumeRenderPass(self);
        end;
        RenderPassActive:=true;
+       ResetState;
       end;
       
       VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
@@ -6121,6 +6132,9 @@ begin
       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
 
       ForceUpdate:=true; // Force update after mask pass to rebind normal pipeline
+
+      ResetState;
+
      end;
 
      TpvCanvasQueueItemKind.TransparentShapeCoverageBarrier:begin
@@ -6164,6 +6178,8 @@ begin
 
       ForceUpdate:=true;
 
+      ResetState;
+
      end;
 
      TpvCanvasQueueItemKind.TransparentShapeCover:begin
@@ -6176,6 +6192,7 @@ begin
         fOnResumeRenderPass(self);
        end;
        RenderPassActive:=true;
+       ResetState;
       end;
       
       VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
@@ -6250,6 +6267,9 @@ begin
       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
 
       ForceUpdate:=true; // Force update after cover pass to rebind normal pipeline
+
+      ResetState;
+
      end;
 
      else {TpvCanvasQueueItemKind.None:}begin
