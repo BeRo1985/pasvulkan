@@ -5681,12 +5681,140 @@ begin
  result.CastedUInt64:=POCAValueNullCastedUInt64; 
 end;
 
+function POCASpriteFunctionGETWIDTH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sprite:TpvSprite;
+begin
+ if POCAGhostGetType(aThis)=@POCASpriteGhost then begin
+  Sprite:=TpvSprite(POCAGhostFastGetPointer(aThis));
+  if assigned(Sprite) then begin
+   result.Num:=Sprite.Width;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCASpriteFunctionGETHEIGHT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sprite:TpvSprite;
+begin
+ if POCAGhostGetType(aThis)=@POCASpriteGhost then begin
+  Sprite:=TpvSprite(POCAGhostFastGetPointer(aThis));
+  if assigned(Sprite) then begin
+   result.Num:=Sprite.Height;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCASpriteFunctionGETNAME(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sprite:TpvSprite;
+begin
+ if POCAGhostGetType(aThis)=@POCASpriteGhost then begin
+  Sprite:=TpvSprite(POCAGhostFastGetPointer(aThis));
+  if assigned(Sprite) then begin
+   result:=POCANewString(aContext,Sprite.Name);
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCASpriteFunctionGETTRIMMEDWIDTH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sprite:TpvSprite;
+begin
+ if POCAGhostGetType(aThis)=@POCASpriteGhost then begin
+  Sprite:=TpvSprite(POCAGhostFastGetPointer(aThis));
+  if assigned(Sprite) then begin
+   result.Num:=Sprite.TrimmedWidth;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCASpriteFunctionGETTRIMMEDHEIGHT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sprite:TpvSprite;
+begin
+ if POCAGhostGetType(aThis)=@POCASpriteGhost then begin
+  Sprite:=TpvSprite(POCAGhostFastGetPointer(aThis));
+  if assigned(Sprite) then begin
+   result.Num:=Sprite.TrimmedHeight;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCASpriteFunctionGETOFFSETX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sprite:TpvSprite;
+begin
+ if POCAGhostGetType(aThis)=@POCASpriteGhost then begin
+  Sprite:=TpvSprite(POCAGhostFastGetPointer(aThis));
+  if assigned(Sprite) then begin
+   result.Num:=Sprite.TrimmedOffset.x;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCASpriteFunctionGETOFFSETY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sprite:TpvSprite;
+begin
+ if POCAGhostGetType(aThis)=@POCASpriteGhost then begin
+  Sprite:=TpvSprite(POCAGhostFastGetPointer(aThis));
+  if assigned(Sprite) then begin
+   result.Num:=Sprite.TrimmedOffset.y;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCASpriteFunctionGETTRIMOFFSET(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sprite:TpvSprite;
+begin
+ if POCAGhostGetType(aThis)=@POCASpriteGhost then begin
+  Sprite:=TpvSprite(POCAGhostFastGetPointer(aThis));
+  if assigned(Sprite) then begin
+   result:=POCANewVector2(aContext,Sprite.TrimmedOffset);
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
 procedure POCAInitSpriteHash(aContext:PPOCAContext);
 var HostData:PPOCAHostData;
 begin
  HostData:=POCAGetHostData(aContext);
  HostData^.SpriteHash:=POCANewHash(aContext);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.SpriteHash);
+ POCAAddNativeFunction(aContext,HostData^.SpriteHash,'getWidth',POCASpriteFunctionGETWIDTH);
+ POCAAddNativeFunction(aContext,HostData^.SpriteHash,'getHeight',POCASpriteFunctionGETHEIGHT);
+ POCAAddNativeFunction(aContext,HostData^.SpriteHash,'getName',POCASpriteFunctionGETNAME);
+ POCAAddNativeFunction(aContext,HostData^.SpriteHash,'getTrimmedWidth',POCASpriteFunctionGETTRIMMEDWIDTH);
+ POCAAddNativeFunction(aContext,HostData^.SpriteHash,'getTrimmedHeight',POCASpriteFunctionGETTRIMMEDHEIGHT);
+ POCAAddNativeFunction(aContext,HostData^.SpriteHash,'getOffsetX',POCASpriteFunctionGETOFFSETX);
+ POCAAddNativeFunction(aContext,HostData^.SpriteHash,'getOffsetY',POCASpriteFunctionGETOFFSETY);
+ POCAAddNativeFunction(aContext,HostData^.SpriteHash,'getTrimOffset',POCASpriteFunctionGETTRIMOFFSET);
 end;
 
 procedure POCAInitSpriteNamespace(aContext:PPOCAContext);
@@ -6404,6 +6532,7 @@ var HostData:PPOCAHostData;
 begin
  HostData:=POCAGetHostData(aContext);
  HostData^.CanvasShapeHash:=POCANewHash(aContext);
+ POCAAddNativeFunction(aContext,HostData^.CanvasShapeHash,'destroy',POCACanvasShapeFunctionDESTROY);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.CanvasShapeHash);
 end;
 
@@ -8822,6 +8951,52 @@ begin
 
 end;
 
+function POCACanvasFunctionBEGINTRANSPARENTSHAPE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas.BeginTransparentShape;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionENDTRANSPARENTSHAPE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas.EndTransparentShape;
+
+ result:=aThis;
+
+end;
+
 function POCACanvasFunctionFLUSH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Canvas:TpvCanvas;
 begin
@@ -10709,6 +10884,8 @@ begin
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'fill',POCACanvasFunctionFILL);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'push',POCACanvasFunctionPUSH);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'pop',POCACanvasFunctionPOP);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'beginTransparentShape',POCACanvasFunctionBEGINTRANSPARENTSHAPE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'endTransparentShape',POCACanvasFunctionENDTRANSPARENTSHAPE);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'flush',POCACanvasFunctionFLUSH);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getClipRect',POCACanvasFunctionGETCLIPRECT);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setClipRect',POCACanvasFunctionSETCLIPRECT);
@@ -13638,5 +13815,6 @@ initialization
  POCATextureGhostPointer:=@POCATextureGhost;
  POCAFontGhostPointer:=@POCAFontGhost;
  POCACanvasFontGhostPointer:=@POCACanvasFontGhost;
+ POCACanvasShapeGhostPointer:=@POCACanvasShapeGhost;
  POCACanvasGhostPointer:=@POCACanvasGhost;
 end.

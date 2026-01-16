@@ -4011,6 +4011,136 @@ See the Canvas API documentation for full details on these methods.
 
 '''''
 
+=== Sprite Methods
+
+==== getWidth()
+
+*Usage:*
+
+[source,js]
+----
+let width = sprite.getWidth();
+----
+
+* *Description:* Returns the width of the sprite in pixels.
+* *Parameters:* None.
+* *Return Value:* The sprite width as a number.
+
+'''''
+
+==== getHeight()
+
+*Usage:*
+
+[source,js]
+----
+let height = sprite.getHeight();
+----
+
+* *Description:* Returns the height of the sprite in pixels.
+* *Parameters:* None.
+* *Return Value:* The sprite height as a number.
+
+'''''
+
+==== getName()
+
+*Usage:*
+
+[source,js]
+----
+let name = sprite.getName();
+----
+
+* *Description:* Returns the name of the sprite as specified when loading.
+* *Parameters:* None.
+* *Return Value:* The sprite name as a string.
+
+'''''
+
+==== getTrimmedWidth()
+
+*Usage:*
+
+[source,js]
+----
+let width = sprite.getTrimmedWidth();
+----
+
+* *Description:* Returns the trimmed width of the sprite (after transparent pixel trimming).
+* *Parameters:* None.
+* *Return Value:* The trimmed sprite width as a number.
+
+'''''
+
+==== getTrimmedHeight()
+
+*Usage:*
+
+[source,js]
+----
+let height = sprite.getTrimmedHeight();
+----
+
+* *Description:* Returns the trimmed height of the sprite (after transparent pixel trimming).
+* *Parameters:* None.
+* *Return Value:* The trimmed sprite height as a number.
+
+'''''
+
+==== getOffsetX()
+
+*Usage:*
+
+[source,js]
+----
+let offsetX = sprite.getOffsetX();
+----
+
+* *Description:* Returns the X offset of the trimmed sprite region from the original.
+* *Parameters:* None.
+* *Return Value:* The X offset as a number.
+
+'''''
+
+==== getOffsetY()
+
+*Usage:*
+
+[source,js]
+----
+let offsetY = sprite.getOffsetY();
+----
+
+* *Description:* Returns the Y offset of the trimmed sprite region from the original.
+* *Parameters:* None.
+* *Return Value:* The Y offset as a number.
+
+'''''
+
+==== getTrimOffset()
+
+*Usage:*
+
+[source,js]
+----
+let offset = sprite.getTrimOffset();
+----
+
+* *Description:* Returns the trim offset as a Vector2.
+* *Parameters:* None.
+* *Return Value:* A Vector2 with x and y offset values.
+* *Example:*
++
+[source,js]
+----
+let offset = sprite.getTrimOffset();
+let x = offset.x;
+let y = offset.y;
+----
+
+'''''
+
 == SpriteAtlas
 
 === Overview
@@ -5672,6 +5802,65 @@ canvas.pop();
 * *Description:* Restores the canvas state from the stack.
 * *Parameters:* None.
 * *Return Value:* The canvas itself.
+
+'''''
+
+==== beginTransparentShape()
+
+*Usage:*
+
+[source,js]
+----
+canvas.beginTransparentShape();
+----
+
+* *Description:* Begins a transparent shape rendering block. All subsequent drawing operations until `endTransparentShape()` are rendered as a single transparent shape with correct alpha blending, eliminating overdraw artifacts from overlapping transparent geometry.
+* *Parameters:* None.
+* *Return Value:* The canvas itself.
+* *Notes:*
+** This feature requires `fragmentStoresAndAtomics` device support
+** Automatically ends any previous transparent shape if called while one is active
+** Use for complex transparent shapes with overlapping geometry
+* *Example:*
++
+[source,js]
+----
+// Draw overlapping transparent circles as one shape
+canvas.setColor(Vector4.create(1, 0, 0, 0.5)); // Semi-transparent red
+canvas.beginTransparentShape();
+canvas.drawFilledCircle(Vector2.create(100, 100), 50);
+canvas.drawFilledCircle(Vector2.create(120, 100), 50); // Overlaps first circle
+canvas.drawFilledCircle(Vector2.create(110, 120), 50); // Overlaps both
+canvas.endTransparentShape();
+// Result: One transparent shape without overdraw darkening
+----
+
+'''''
+
+==== endTransparentShape()
+
+*Usage:*
+
+[source,js]
+----
+canvas.endTransparentShape();
+----
+
+* *Description:* Ends the current transparent shape rendering block and composites the accumulated coverage to the framebuffer.
+* *Parameters:* None.
+* *Return Value:* The canvas itself.
+* *Notes:*
+** Must be called after `beginTransparentShape()` to complete the shape
+** Only executes if a transparent shape is currently active
+** Automatically flushes pending geometry
+* *Example:*
++
+[source,js]
+----
+canvas.beginTransparentShape();
+// ... draw multiple overlapping transparent elements ...
+canvas.endTransparentShape();
+----
 
 '''''
 

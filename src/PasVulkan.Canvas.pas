@@ -1,4 +1,4 @@
-﻿(******************************************************************************
+(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.Framework.pas                  *
@@ -472,7 +472,11 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       (
        None,
        Normal,
-       Hook
+       Hook,
+       CoverageReset,
+       TransparentShapeMask,
+       TransparentShapeCoverageBarrier,
+       TransparentShapeCover
       );
 
      PpvCanvasPushConstants=^TpvCanvasPushConstants;
@@ -581,6 +585,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCanvasFragmentTextureNoBlendingNoDiscardShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentAtlasTextureNoBlendingNoDiscardShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentVectorPathNoBlendingNoDiscardShaderModule:TpvVulkanShaderModule;
+       fCanvasFragmentNoTextureCoverageMaskShaderModule:TpvVulkanShaderModule;
+       fCanvasFragmentNoTextureCoverageCoverShaderModule:TpvVulkanShaderModule;
+       fCanvasFragmentCoverageResetShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineCanvasShaderStageVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageVertexNoTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentGUINoTexture:TpvVulkanPipelineShaderStage;
@@ -598,11 +605,16 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fVulkanPipelineCanvasShaderStageFragmentTextureNoBlendingNoDiscard:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentAtlasTextureNoBlendingNoDiscard:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentVectorPathNoBlendingNoDiscard:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageMask:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageCover:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageFragmentCoverageReset:TpvVulkanPipelineShaderStage;
+       fFragmentStoresAndAtomicsSupported:Boolean;
       public
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
        class function Acquire(const aDevice:TpvVulkanDevice):TpvCanvasCommon;
        class procedure Release(const aDevice:TpvVulkanDevice);
+       property FragmentStoresAndAtomicsSupported:Boolean read fFragmentStoresAndAtomicsSupported;
      end;
 
      TpvCanvasVulkanPipelineLayouts=array[TpvCanvasBlendingMode,0..3] of TpvVulkanPipelineLayout;
@@ -623,6 +635,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property VulkanFont:TpvFont read fVulkanFont write fVulkanFont;
      end;
 
+     TpvCanvasOnSuspendResumeRenderPassEvent=procedure(const aCanvas:TpvCanvas) of object;
+
      TpvCanvas=class
       private
        fDevice:TpvVulkanDevice;
@@ -631,11 +645,20 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fVulkanDescriptors:TpvCanvasVulkanDescriptorLinkedListNode;
        fVulkanDescriptorSetTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetVectorPathLayout:TpvVulkanDescriptorSetLayout;
+       fVulkanDescriptorSetCoverageBufferLayout:TpvVulkanDescriptorSetLayout;
+       fVulkanCoverageBufferDescriptorPool:TpvVulkanDescriptorPool;
+       fVulkanCoverageBufferDescriptorSet:TpvVulkanDescriptorSet;
        fCountVulkanDescriptors:TpvInt32;
        fVulkanTextureDescriptorSetHashMap:TpvCanvasTextureDescriptorSetHashMap;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanPipelineLayouts:TpvCanvasVulkanPipelineLayouts;
        fVulkanGraphicsPipelines:TpvCanvasVulkanGraphicsPipelines;
+       fVulkanCoverageMaskPipelineLayout:TpvVulkanPipelineLayout;
+       fVulkanCoverageMaskPipeline:TpvVulkanGraphicsPipeline;
+       fVulkanCoverageCoverPipelineLayout:TpvVulkanPipelineLayout;
+       fVulkanCoverageCoverPipeline:TpvVulkanGraphicsPipeline;
+       fVulkanCoverageResetPipelineLayout:TpvVulkanPipelineLayout;
+       fVulkanCoverageResetPipeline:TpvVulkanGraphicsPipeline;
        fVulkanCanvasBuffers:TpvCanvasBuffers;
        fCountBuffers:TpvInt32;
        fCurrentFillBuffer:PpvCanvasBuffer;
@@ -657,7 +680,29 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fShape:TpvCanvasShape;
        fState:TpvCanvasState;
        fStateStack:TpvCanvasStateStack;
+       fCoverageBufferImage:TpvVulkanImage;
+       fCoverageBufferMemoryBlock:TpvVulkanDeviceMemoryBlock;
+       fCoverageBufferImageView:TpvVulkanImageView;
+       fCoverageBufferImageLayout:TVkImageLayout;
+       fCoverageBufferWidth:TpvInt32;
+       fCoverageBufferHeight:TpvInt32;
+       fCoverageBufferNeedsLayoutTransition:boolean;
+       fCoverageBufferNeedsReset:boolean;
+       fCoverageResetPass:boolean;
+       fShapeStamp:TpvUInt32;
+       fTransparentShapes:Boolean;
+       fTransparentShapeActive:Boolean;
+       fTransparentShapeCoverPass:Boolean;
+       fTransparentShapeBoundingBoxMinX:TpvFloat;
+       fTransparentShapeBoundingBoxMinY:TpvFloat;
+       fTransparentShapeBoundingBoxMaxX:TpvFloat;
+       fTransparentShapeBoundingBoxMaxY:TpvFloat;
+       fTransparentShapeStartVertexIndex:TpvInt32;
+       fTransparentShapeStartIndexIndex:TpvInt32;
+       fOnSuspendRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent;
+       fOnResumeRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent;
        procedure SetVulkanRenderPass(const aVulkanRenderPass:TpvVulkanRenderPass);
+       procedure QueueCoverageReset;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
        function GetTexture:TObject; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetTexture(const aTexture:TObject);
@@ -718,8 +763,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aPipelineCache:TpvVulkanPipelineCache;
-                          const aCountProcessingBuffers:TpvInt32=4); reintroduce;
+                          const aCountProcessingBuffers:TpvInt32=4;
+                          const aTransparentShapes:Boolean=false); reintroduce;
        destructor Destroy; override;
+       procedure Resize(const aWidth,aHeight:TpvInt32);
        procedure Start(const aBufferIndex:TpvInt32);
        procedure Stop;
        procedure DeleteFromCachedDescriptors(const aKey:TpvCanvasTextureDescriptorSetHashMapKey);
@@ -733,10 +780,14 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       public
        procedure EnsureSufficientReserveUsableSpace(const aCountVertices,aCountIndices:TpvInt32);
        function AddVertex(const aPosition:TpvVector2;const aTexCoord:TpvVector3;const aColor:TpvVector4):TpvInt32;
+       function AddVertexWithClipRect(const aPosition:TpvVector2;const aTexCoord:TpvVector3;const aColor:TpvVector4;const aClipRect:TpvRect):TpvInt32;
        function AddIndex(const aVertexIndex:TpvInt32):TpvInt32; {$ifdef CAN_INLINE}inline;{$endif}
       public
        procedure ExecuteUpload(const aVulkanTransferQueue:TpvVulkanQueue;const aVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;const aVulkanTransferCommandBufferFence:TpvVulkanFence;const aBufferIndex:TpvInt32);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
+      public
+       procedure BeginTransparentShape;
+       procedure EndTransparentShape;
       public
        function Push:TpvCanvas;
        function Pop:TpvCanvas;
@@ -860,6 +911,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property Texture:TObject read GetTexture write SetTexture;
        property MaskTexture:TObject read GetMaskTexture write SetMaskTexture;
        property State:TpvCanvasState read fState;
+       property OnSuspendRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnSuspendRenderPass write fOnSuspendRenderPass;
+       property OnResumeRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnResumeRenderPass write fOnResumeRenderPass;
      end;
 
 implementation
@@ -3186,6 +3239,11 @@ begin
 
  fReferenceCounter:=0;
 
+ fFragmentStoresAndAtomicsSupported:=fDevice.PhysicalDevice.Features.fragmentStoresAndAtomics<>0;
+ if not fFragmentStoresAndAtomicsSupported then begin
+  pvApplication.Log(LOG_INFO,'TpvCanvas','fragmentStoresAndAtomics not supported - transparent shape coverage buffer disabled');
+ end;
+
  UniversalQueue:=fDevice.UniversalQueue;
  try
   UniversalCommandPool:=TpvVulkanCommandPool.Create(fDevice,
@@ -3451,6 +3509,48 @@ begin
 
  fVulkanPipelineCanvasShaderStageFragmentVectorPathNoBlendingNoDiscard:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentVectorPathNoBlendingNoDiscardShaderModule,'main');
 
+ // Coverage mask and cover shaders (only if fragmentStoresAndAtomics is supported)
+ fCanvasFragmentNoTextureCoverageMaskShaderModule:=nil;
+ fCanvasFragmentNoTextureCoverageCoverShaderModule:=nil;
+ fCanvasFragmentCoverageResetShaderModule:=nil;
+ fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageMask:=nil;
+ fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageCover:=nil;
+ fVulkanPipelineCanvasShaderStageFragmentCoverageReset:=nil;
+ if fFragmentStoresAndAtomicsSupported then begin
+  if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+   Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureCoverageMaskClipDistanceSPIRVData,CanvasFragmentNoTextureCoverageMaskClipDistanceSPIRVDataSize);
+  end else begin
+   Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureCoverageMaskSPIRVData,CanvasFragmentNoTextureCoverageMaskSPIRVDataSize);
+  end;
+  try
+   fCanvasFragmentNoTextureCoverageMaskShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+   Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureCoverageCoverClipDistanceSPIRVData,CanvasFragmentNoTextureCoverageCoverClipDistanceSPIRVDataSize);
+  end else begin
+   Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureCoverageCoverSPIRVData,CanvasFragmentNoTextureCoverageCoverSPIRVDataSize);
+  end;
+  try
+   fCanvasFragmentNoTextureCoverageCoverShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  Stream:=TpvDataStream.Create(@CanvasFragmentCoverageResetSPIRVData,CanvasFragmentCoverageResetSPIRVDataSize);
+  try
+   fCanvasFragmentCoverageResetShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageMask:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentNoTextureCoverageMaskShaderModule,'main');
+  fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageCover:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentNoTextureCoverageCoverShaderModule,'main');
+  fVulkanPipelineCanvasShaderStageFragmentCoverageReset:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentCoverageResetShaderModule,'main');
+ end;
+
 end;
 
 destructor TpvCanvasCommon.Destroy;
@@ -3474,6 +3574,9 @@ begin
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentTextureNoBlendingNoDiscard);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentAtlasTextureNoBlendingNoDiscard);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentVectorPathNoBlendingNoDiscard);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageMask);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageCover);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentCoverageReset);
  FreeAndNil(fCanvasVertexShaderModule);
  FreeAndNil(fCanvasVertexNoTextureShaderModule);
  FreeAndNil(fCanvasFragmentGUINoTextureShaderModule);
@@ -3491,6 +3594,9 @@ begin
  FreeAndNil(fCanvasFragmentTextureNoBlendingNoDiscardShaderModule);
  FreeAndNil(fCanvasFragmentAtlasTextureNoBlendingNoDiscardShaderModule);
  FreeAndNil(fCanvasFragmentVectorPathNoBlendingNoDiscardShaderModule);
+ FreeAndNil(fCanvasFragmentNoTextureCoverageMaskShaderModule);
+ FreeAndNil(fCanvasFragmentNoTextureCoverageCoverShaderModule);
+ FreeAndNil(fCanvasFragmentCoverageResetShaderModule);
  inherited Destroy;
 end;
 
@@ -3585,7 +3691,8 @@ end;
 
 constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
                              const aPipelineCache:TpvVulkanPipelineCache;
-                             const aCountProcessingBuffers:TpvInt32);
+                             const aCountProcessingBuffers:TpvInt32;
+                             const aTransparentShapes:Boolean);
 var Index,TextureModeIndex:TpvInt32;
     RenderingModeIndex:TpvCanvasRenderingMode;
     BlendingModeIndex:TpvCanvasBlendingMode;
@@ -3638,6 +3745,20 @@ begin
                                               []);
  fVulkanDescriptorSetTextureLayout.Initialize;
 
+ // Coverage buffer descriptor set layout (set = 1) - only created if feature supported
+ fVulkanDescriptorSetCoverageBufferLayout:=nil;
+ fVulkanCoverageBufferDescriptorPool:=nil;
+ fVulkanCoverageBufferDescriptorSet:=nil;
+ if fCanvasCommon.FragmentStoresAndAtomicsSupported then begin
+  fVulkanDescriptorSetCoverageBufferLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
+  fVulkanDescriptorSetCoverageBufferLayout.AddBinding(0,
+                                                      VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                                      1,
+                                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                      []);
+  fVulkanDescriptorSetCoverageBufferLayout.Initialize;
+ end;
+
  fVulkanDescriptorSetVectorPathLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
  fVulkanDescriptorSetVectorPathLayout.AddBinding(0,
                                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -3686,9 +3807,44 @@ begin
   end;
  end;
 
+ fVulkanCoverageMaskPipelineLayout:=nil;
+ fVulkanCoverageMaskPipeline:=nil;
+ fVulkanCoverageCoverPipelineLayout:=nil;
+ fVulkanCoverageCoverPipeline:=nil;
+ fVulkanCoverageResetPipelineLayout:=nil;
+ fVulkanCoverageResetPipeline:=nil;
+
  SetCountBuffers(1);
 
  fCurrentFrameNumber:=0;
+
+ fCoverageBufferImage:=nil;
+ fCoverageBufferMemoryBlock:=nil;
+ fCoverageBufferImageView:=nil;
+ fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+ fCoverageBufferWidth:=0;
+ fCoverageBufferHeight:=0;
+ fCoverageBufferNeedsLayoutTransition:=false;
+ fCoverageBufferNeedsReset:=false;
+ fCoverageResetPass:=false;
+ fShapeStamp:=0;
+ fTransparentShapes:=aTransparentShapes;
+ fTransparentShapeActive:=false;
+ fTransparentShapeCoverPass:=false;
+ fTransparentShapeBoundingBoxMinX:=0.0;
+ fTransparentShapeBoundingBoxMinY:=0.0;
+ fTransparentShapeBoundingBoxMaxX:=0.0;
+ fTransparentShapeBoundingBoxMaxY:=0.0;
+ fTransparentShapeStartVertexIndex:=0;
+ fTransparentShapeStartIndexIndex:=0;
+
+ fOnSuspendRenderPass:=nil;
+ fOnResumeRenderPass:=nil;
+
+ // Create initial coverage buffer if feature is supported
+ if fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported then begin
+  Resize(fWidth,fHeight);
+ end;
 
 end;
 
@@ -3705,6 +3861,15 @@ begin
 
  FreeAndNil(fShape);
 
+ // Free coverage buffer resources
+ FreeAndNil(fCoverageBufferImageView);
+ if assigned(fCoverageBufferMemoryBlock) then begin
+  fDevice.MemoryManager.FreeMemoryBlock(fCoverageBufferMemoryBlock);
+  fCoverageBufferMemoryBlock:=nil;
+ end;
+ FreeAndNil(fCoverageBufferImage);
+ fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+
  SetCountBuffers(0);
 
  SetVulkanRenderPass(nil);
@@ -3716,6 +3881,9 @@ begin
  FreeAndNil(fVulkanDescriptors);
 
  FreeAndNil(fVulkanDescriptorSetVectorPathLayout);
+ FreeAndNil(fVulkanCoverageBufferDescriptorSet);
+ FreeAndNil(fVulkanCoverageBufferDescriptorPool);
+ FreeAndNil(fVulkanDescriptorSetCoverageBufferLayout);
  FreeAndNil(fVulkanDescriptorSetTextureLayout);
 
  FreeAndNil(fVulkanTextureDescriptorSetHashMap);
@@ -3728,6 +3896,249 @@ begin
  TpvCanvasCommon.Release(fDevice);
 
  inherited Destroy;
+end;
+
+procedure TpvCanvas.Resize(const aWidth,aHeight:TpvInt32);
+var ImageMemoryRequirements:TVkMemoryRequirements;
+    RequiresDedicatedAllocation,PrefersDedicatedAllocation:boolean;
+    MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
+    UniversalQueue:TpvVulkanQueue;
+    UniversalCommandPool:TpvVulkanCommandPool;
+    UniversalCommandBuffer:TpvVulkanCommandBuffer;
+    UniversalFence:TpvVulkanFence;
+begin
+
+ // Update dimensions
+ fWidth:=aWidth;
+ fHeight:=aHeight;
+
+ // Only create coverage buffer if feature is supported
+ if not (fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported) then begin
+  exit;
+ end;
+
+ // Check if resize is actually needed
+ if (fCoverageBufferWidth=aWidth) and (fCoverageBufferHeight=aHeight) and
+    assigned(fCoverageBufferImage) and assigned(fCoverageBufferImageView) then begin
+  exit;
+ end;
+
+ // Free old resources
+ FreeAndNil(fCoverageBufferImageView);
+ if assigned(fCoverageBufferMemoryBlock) then begin
+  fDevice.MemoryManager.FreeMemoryBlock(fCoverageBufferMemoryBlock);
+  fCoverageBufferMemoryBlock:=nil;
+ end;
+ FreeAndNil(fCoverageBufferImage);
+
+ // Create new coverage buffer image (R32_UINT for packed stamp+coverage)
+ if (aWidth>0) and (aHeight>0) then begin
+
+  fCoverageBufferImage:=TpvVulkanImage.Create(fDevice,
+                                              0, // flags
+                                              VK_IMAGE_TYPE_2D,
+                                              VK_FORMAT_R32_UINT,
+                                              aWidth,
+                                              aHeight,
+                                              1, // depth
+                                              1, // mip levels
+                                              1, // array layers
+                                              VK_SAMPLE_COUNT_1_BIT,
+                                              VK_IMAGE_TILING_OPTIMAL,
+                                              TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or
+                                              TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
+                                              VK_SHARING_MODE_EXCLUSIVE,
+                                              [],
+                                              VK_IMAGE_LAYOUT_UNDEFINED);
+
+  // Allocate and bind memory for the image
+  ImageMemoryRequirements:=fDevice.MemoryManager.GetImageMemoryRequirements(fCoverageBufferImage.Handle,
+                                                                            RequiresDedicatedAllocation,
+                                                                            PrefersDedicatedAllocation);
+  MemoryBlockFlags:=[];
+  if RequiresDedicatedAllocation then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+  end else if PrefersDedicatedAllocation then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation);
+  end;
+  fCoverageBufferMemoryBlock:=fDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
+                                                                        ImageMemoryRequirements.size,
+                                                                        ImageMemoryRequirements.alignment,
+                                                                        ImageMemoryRequirements.memoryTypeBits,
+                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                        0,
+                                                                        0,
+                                                                        0,
+                                                                        0,
+                                                                        0,
+                                                                        0,
+                                                                        0,
+                                                                        TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
+                                                                        @fCoverageBufferImage.Handle,
+                                                                        pvAllocationGroupIDCanvas);
+  if not assigned(fCoverageBufferMemoryBlock) then begin
+   FreeAndNil(fCoverageBufferImage);
+   raise EpvVulkanMemoryAllocationException.Create('Memory for coverage buffer couldn''t be allocated!');
+  end;
+  VulkanCheckResult(fDevice.Commands.BindImageMemory(fDevice.Handle,
+                                                     fCoverageBufferImage.Handle,
+                                                     fCoverageBufferMemoryBlock.MemoryChunk.Handle,
+                                                     fCoverageBufferMemoryBlock.Offset));
+
+ fCoverageBufferImageView:=TpvVulkanImageView.Create(fDevice,
+                                                      fCoverageBufferImage,
+                                                      VK_IMAGE_VIEW_TYPE_2D,
+                                                      VK_FORMAT_R32_UINT,
+                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                      TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                      0, // base mip level
+                                                      1, // level count
+                                                      0, // base array layer
+                                                      1); // layer count
+
+  fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+  fCoverageBufferWidth:=aWidth;
+  fCoverageBufferHeight:=aHeight;
+  fCoverageBufferNeedsLayoutTransition:=true; // Mark that layout transition is needed
+  fCoverageBufferNeedsReset:=true;
+
+  // Update or create coverage buffer descriptor set
+  if assigned(fVulkanDescriptorSetCoverageBufferLayout) then begin
+   // Free old descriptor set (pool will be reused)
+   FreeAndNil(fVulkanCoverageBufferDescriptorSet);
+   
+   // Create descriptor pool if needed
+   if not assigned(fVulkanCoverageBufferDescriptorPool) then begin
+    fVulkanCoverageBufferDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
+                                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                        1);
+    fVulkanCoverageBufferDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1);
+    fVulkanCoverageBufferDescriptorPool.Initialize;
+   end;
+   
+   // Create new descriptor set
+   fVulkanCoverageBufferDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanCoverageBufferDescriptorPool,
+                                                                     fVulkanDescriptorSetCoverageBufferLayout);
+   // Write the coverage buffer image to the descriptor set
+   fVulkanCoverageBufferDescriptorSet.WriteToDescriptorSet(0,
+                                                           0,
+                                                           1,
+                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                           [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                          fCoverageBufferImageView.Handle,
+                                                                                          VK_IMAGE_LAYOUT_GENERAL)],
+                                                           [],
+                                                           [],
+                                                           false);
+   fVulkanCoverageBufferDescriptorSet.Flush;
+  end;
+
+ end else begin
+  fCoverageBufferWidth:=0;
+  fCoverageBufferHeight:=0;
+  fCoverageBufferNeedsReset:=false;
+ end;
+
+ // Transition coverage buffer layout if needed
+ if fCoverageBufferNeedsLayoutTransition and assigned(fCoverageBufferImage) and (fCoverageBufferImageLayout<>VK_IMAGE_LAYOUT_GENERAL) then begin
+  UniversalQueue:=fDevice.UniversalQueue;
+  UniversalCommandPool:=TpvVulkanCommandPool.Create(fDevice,
+                                                    fDevice.UniversalQueueFamilyIndex,
+                                                    TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+  try
+   UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                         VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   try
+    UniversalFence:=TpvVulkanFence.Create(fDevice);
+    try
+     UniversalCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+     UniversalCommandBuffer.BeginRecording;
+     FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+     ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+     ImageMemoryBarrier.pNext:=nil;
+     ImageMemoryBarrier.srcAccessMask:=0;
+     ImageMemoryBarrier.dstAccessMask:=0;
+     ImageMemoryBarrier.oldLayout:=fCoverageBufferImageLayout;
+     ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+     ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+     ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+     ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+     ImageMemoryBarrier.subresourceRange.levelCount:=1;
+     ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+     ImageMemoryBarrier.subresourceRange.layerCount:=1;
+     UniversalCommandBuffer.CmdPipelineBarrier(
+      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+      0,
+      0,nil,
+      0,nil,
+      1,@ImageMemoryBarrier);
+     UniversalCommandBuffer.EndRecording;
+     UniversalCommandBuffer.Execute(UniversalQueue,
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                    nil,
+                                    nil,
+                                    UniversalFence,
+                                    true);
+     fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_GENERAL;
+     fCoverageBufferNeedsLayoutTransition:=false;
+    finally
+     FreeAndNil(UniversalFence);
+    end;
+   finally
+    FreeAndNil(UniversalCommandBuffer);
+   end;
+  finally
+   FreeAndNil(UniversalCommandPool);
+  end;
+ end;
+
+end;
+
+procedure TpvCanvas.QueueCoverageReset;
+var v0,v1,v2,v3:TpvInt32;
+    Left,Top,Right,Bottom:TpvFloat;
+begin
+ if (not fTransparentShapes) or
+    (not fCanvasCommon.fFragmentStoresAndAtomicsSupported) or
+    (not fCoverageBufferNeedsReset) or
+    (not assigned(fCoverageBufferImage)) or
+    (not assigned(fCurrentFillBuffer)) then begin
+  exit;
+ end;
+
+ if fCurrentCountVertices>0 then begin
+  Flush;
+ end;
+
+ fCoverageResetPass:=true;
+
+ Left:=fState.fClipRect.LeftTop.x;
+ Top:=fState.fClipRect.LeftTop.y;
+ Right:=fState.fClipRect.RightBottom.x;
+ Bottom:=fState.fClipRect.RightBottom.y;
+
+ EnsureSufficientReserveUsableSpace(4,6);
+ v0:=AddVertex(TpvVector2.InlineableCreate(Left,Top),TpvVector3.Null,fState.fColor);
+ v1:=AddVertex(TpvVector2.InlineableCreate(Right,Top),TpvVector3.Null,fState.fColor);
+ v2:=AddVertex(TpvVector2.InlineableCreate(Right,Bottom),TpvVector3.Null,fState.fColor);
+ v3:=AddVertex(TpvVector2.InlineableCreate(Left,Bottom),TpvVector3.Null,fState.fColor);
+ AddIndex(v0);
+ AddIndex(v1);
+ AddIndex(v2);
+ AddIndex(v0);
+ AddIndex(v2);
+ AddIndex(v3);
+
+ Flush;
+
+ fCoverageBufferNeedsReset:=false;
 end;
 
 procedure TpvCanvas.SetVulkanRenderPass(const aVulkanRenderPass:TpvVulkanRenderPass);
@@ -3745,6 +4156,12 @@ begin
     FreeAndNil(fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]);
    end;
   end;
+  FreeAndNil(fVulkanCoverageMaskPipeline);
+  FreeAndNil(fVulkanCoverageMaskPipelineLayout);
+  FreeAndNil(fVulkanCoverageCoverPipeline);
+  FreeAndNil(fVulkanCoverageCoverPipelineLayout);
+  FreeAndNil(fVulkanCoverageResetPipeline);
+  FreeAndNil(fVulkanCoverageResetPipelineLayout);
 
   fVulkanRenderPass:=aVulkanRenderPass;
 
@@ -3756,8 +4173,11 @@ begin
 
      VulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
      fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]:=VulkanPipelineLayout;
-     VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout);
-//   VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetVectorPathLayout);
+     VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout); // set = 0
+     if assigned(fVulkanDescriptorSetCoverageBufferLayout) then begin
+      VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetCoverageBufferLayout); // set = 1
+     end;
+//   VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetVectorPathLayout); // set = 2
      VulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                0,
@@ -3895,8 +4315,9 @@ begin
                                                                            TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
       end;
       TpvCanvasBlendingMode.AlphaBlending:begin
+       // Using premultiplied alpha blending to avoid overdraw artifacts with transparent shapes
        VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
-                                                                           VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                           VK_BLEND_FACTOR_ONE,
                                                                            VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
                                                                            VK_BLEND_OP_ADD,
                                                                            VK_BLEND_FACTOR_ONE,
@@ -3932,11 +4353,26 @@ begin
       end;
      end;
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
-     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;//BlendingModeIndex in [TpvCanvasBlendingMode.None];
-     if BlendingModeIndex=TpvCanvasBlendingMode.OnlyDepth then begin
-      VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
+     if TextureModeIndex=3 then begin
+      // GUI mode: original code
+      VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;//BlendingModeIndex in [TpvCanvasBlendingMode.None];
+      if BlendingModeIndex=TpvCanvasBlendingMode.OnlyDepth then begin
+       VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
+      end else begin
+       VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+      end;
      end else begin
-      VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+      // Vector graphics mode
+      VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;//BlendingModeIndex in [TpvCanvasBlendingMode.None];
+      if BlendingModeIndex=TpvCanvasBlendingMode.OnlyDepth then begin
+       VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
+     {end else if BlendingModeIndex=TpvCanvasBlendingMode.AlphaBlending then begin
+       // Use strict LESS to prevent overdraw of fragments at same Z depth (within same shape)
+       // This avoids color accumulation artifacts with transparent overlapping geometry
+       VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS;}
+      end else begin
+       VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+      end;
      end;
      VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
      VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
@@ -3950,6 +4386,218 @@ begin
 
     end;
 
+   end;
+
+   // Create coverage mask and cover pipelines if feature is supported
+   if fTransparentShapes and
+      fCanvasCommon.fFragmentStoresAndAtomicsSupported and
+      assigned(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageMask) and
+      assigned(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageCover) and
+      assigned(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentCoverageReset) then begin
+    
+    // Coverage reset pipeline layout (set = 0)
+    fVulkanCoverageResetPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
+    fVulkanCoverageResetPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetCoverageBufferLayout); // set = 0
+    fVulkanCoverageResetPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                            0,
+                                                            SizeOf(TpvCanvasPushConstants));
+    fVulkanCoverageResetPipelineLayout.Initialize;
+
+    // Coverage reset pipeline
+    fVulkanCoverageResetPipeline:=TpvVulkanGraphicsPipeline.Create(fDevice,
+                                                                   fPipelineCache,
+                                                                   0,
+                                                                   [],
+                                                                   fVulkanCoverageResetPipelineLayout,
+                                                                   fVulkanRenderPass,
+                                                                   0,
+                                                                   nil,
+                                                                   0);
+    fVulkanCoverageResetPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageVertexNoTexture);
+    fVulkanCoverageResetPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentCoverageReset);
+    fVulkanCoverageResetPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    fVulkanCoverageResetPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+    fVulkanCoverageResetPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvCanvasVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+    fVulkanCoverageResetPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.OriginalPosition)));
+    fVulkanCoverageResetPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Position)));
+    fVulkanCoverageResetPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Color)));
+    // location 3 not used (USETEXTURE=0)
+    fVulkanCoverageResetPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32_UINT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.State)));
+    fVulkanCoverageResetPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.ClipRect)));
+    fVulkanCoverageResetPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.MetaInfo)));
+    fVulkanCoverageResetPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.MetaInfo2)));
+    fVulkanCoverageResetPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
+    fVulkanCoverageResetPipeline.ViewPortState.AddScissor(0,0,fWidth,fHeight);
+    fVulkanCoverageResetPipeline.RasterizationState.DepthClampEnable:=false;
+    fVulkanCoverageResetPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+    fVulkanCoverageResetPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+    fVulkanCoverageResetPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+    fVulkanCoverageResetPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    fVulkanCoverageResetPipeline.RasterizationState.DepthBiasEnable:=false;
+    fVulkanCoverageResetPipeline.RasterizationState.LineWidth:=1.0;
+    fVulkanCoverageResetPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+    fVulkanCoverageResetPipeline.MultisampleState.SampleShadingEnable:=false;
+    fVulkanCoverageResetPipeline.MultisampleState.MinSampleShading:=0.0;
+    fVulkanCoverageResetPipeline.MultisampleState.CountSampleMasks:=0;
+    fVulkanCoverageResetPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+    fVulkanCoverageResetPipeline.MultisampleState.AlphaToOneEnable:=false;
+    fVulkanCoverageResetPipeline.ColorBlendState.LogicOpEnable:=false;
+    fVulkanCoverageResetPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+    // Reset pass: no color output (writing to coverage buffer only)
+    fVulkanCoverageResetPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                              VK_BLEND_FACTOR_ZERO,
+                                                                              VK_BLEND_FACTOR_ZERO,
+                                                                              VK_BLEND_OP_ADD,
+                                                                              VK_BLEND_FACTOR_ZERO,
+                                                                              VK_BLEND_FACTOR_ZERO,
+                                                                              VK_BLEND_OP_ADD,
+                                                                              0);
+    fVulkanCoverageResetPipeline.DepthStencilState.DepthTestEnable:=false;
+    fVulkanCoverageResetPipeline.DepthStencilState.DepthWriteEnable:=false;
+    fVulkanCoverageResetPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+    fVulkanCoverageResetPipeline.DepthStencilState.StencilTestEnable:=false;
+    fVulkanCoverageResetPipeline.DynamicState.AddDynamicStates([VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR]);
+    fVulkanCoverageResetPipeline.Initialize;
+    fVulkanCoverageResetPipeline.FreeMemory;
+
+    // Coverage mask pipeline layout
+    fVulkanCoverageMaskPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
+    fVulkanCoverageMaskPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout); // set = 0
+    fVulkanCoverageMaskPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetCoverageBufferLayout); // set = 1
+    fVulkanCoverageMaskPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                                           TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                           0,
+                                                           SizeOf(TpvCanvasPushConstants));
+    fVulkanCoverageMaskPipelineLayout.Initialize;
+
+    // Coverage mask pipeline
+    fVulkanCoverageMaskPipeline:=TpvVulkanGraphicsPipeline.Create(fDevice,
+                                                                  fPipelineCache,
+                                                                  0,
+                                                                  [],
+                                                                  fVulkanCoverageMaskPipelineLayout,
+                                                                  fVulkanRenderPass,
+                                                                  0,
+                                                                  nil,
+                                                                  0);
+    fVulkanCoverageMaskPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageVertexNoTexture);
+    fVulkanCoverageMaskPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageMask);
+    fVulkanCoverageMaskPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    fVulkanCoverageMaskPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+    fVulkanCoverageMaskPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvCanvasVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+    fVulkanCoverageMaskPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.OriginalPosition)));
+    fVulkanCoverageMaskPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Position)));
+    fVulkanCoverageMaskPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Color)));
+    // location 3 not used (USETEXTURE=0)
+    fVulkanCoverageMaskPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32_UINT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.State)));
+    fVulkanCoverageMaskPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.ClipRect)));
+    fVulkanCoverageMaskPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.MetaInfo)));
+    fVulkanCoverageMaskPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.MetaInfo2)));
+    fVulkanCoverageMaskPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
+    fVulkanCoverageMaskPipeline.ViewPortState.AddScissor(0,0,fWidth,fHeight);
+    fVulkanCoverageMaskPipeline.RasterizationState.DepthClampEnable:=false;
+    fVulkanCoverageMaskPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+    fVulkanCoverageMaskPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+    fVulkanCoverageMaskPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+    fVulkanCoverageMaskPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    fVulkanCoverageMaskPipeline.RasterizationState.DepthBiasEnable:=false;
+    fVulkanCoverageMaskPipeline.RasterizationState.LineWidth:=1.0;
+    fVulkanCoverageMaskPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+    fVulkanCoverageMaskPipeline.MultisampleState.SampleShadingEnable:=false;
+    fVulkanCoverageMaskPipeline.MultisampleState.MinSampleShading:=0.0;
+    fVulkanCoverageMaskPipeline.MultisampleState.CountSampleMasks:=0;
+    fVulkanCoverageMaskPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+    fVulkanCoverageMaskPipeline.MultisampleState.AlphaToOneEnable:=false;
+    fVulkanCoverageMaskPipeline.ColorBlendState.LogicOpEnable:=false;
+    fVulkanCoverageMaskPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+    // Mask pass: no color output (writing to coverage buffer only)
+    fVulkanCoverageMaskPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                             VK_BLEND_FACTOR_ZERO,
+                                                                             VK_BLEND_FACTOR_ZERO,
+                                                                             VK_BLEND_OP_ADD,
+                                                                             VK_BLEND_FACTOR_ZERO,
+                                                                             VK_BLEND_FACTOR_ZERO,
+                                                                             VK_BLEND_OP_ADD,
+                                                                             0); // No color write mask
+    fVulkanCoverageMaskPipeline.DepthStencilState.DepthTestEnable:=false;
+    fVulkanCoverageMaskPipeline.DepthStencilState.DepthWriteEnable:=false;
+    fVulkanCoverageMaskPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+    fVulkanCoverageMaskPipeline.DepthStencilState.StencilTestEnable:=false;
+    fVulkanCoverageMaskPipeline.DynamicState.AddDynamicStates([VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR]);
+    fVulkanCoverageMaskPipeline.Initialize;
+    fVulkanCoverageMaskPipeline.FreeMemory;
+
+    // Coverage cover pipeline layout
+    fVulkanCoverageCoverPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
+    fVulkanCoverageCoverPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout); // set = 0
+    fVulkanCoverageCoverPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetCoverageBufferLayout); // set = 1
+    fVulkanCoverageCoverPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                            0,
+                                                            SizeOf(TpvCanvasPushConstants));
+    fVulkanCoverageCoverPipelineLayout.Initialize;
+
+    // Coverage cover pipeline
+    fVulkanCoverageCoverPipeline:=TpvVulkanGraphicsPipeline.Create(fDevice,
+                                                                   fPipelineCache,
+                                                                   0,
+                                                                   [],
+                                                                   fVulkanCoverageCoverPipelineLayout,
+                                                                   fVulkanRenderPass,
+                                                                   0,
+                                                                   nil,
+                                                                   0);
+    fVulkanCoverageCoverPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageVertexNoTexture);
+    fVulkanCoverageCoverPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTextureCoverageCover);
+    fVulkanCoverageCoverPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    fVulkanCoverageCoverPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+    fVulkanCoverageCoverPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvCanvasVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+    fVulkanCoverageCoverPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.OriginalPosition)));
+    fVulkanCoverageCoverPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Position)));
+    fVulkanCoverageCoverPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Color)));
+    // location 3 not used (USETEXTURE=0)
+    fVulkanCoverageCoverPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32_UINT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.State)));
+    fVulkanCoverageCoverPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.ClipRect)));
+    fVulkanCoverageCoverPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.MetaInfo)));
+    fVulkanCoverageCoverPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.MetaInfo2)));
+    fVulkanCoverageCoverPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
+    fVulkanCoverageCoverPipeline.ViewPortState.AddScissor(0,0,fWidth,fHeight);
+    fVulkanCoverageCoverPipeline.RasterizationState.DepthClampEnable:=false;
+    fVulkanCoverageCoverPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+    fVulkanCoverageCoverPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+    fVulkanCoverageCoverPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+    fVulkanCoverageCoverPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    fVulkanCoverageCoverPipeline.RasterizationState.DepthBiasEnable:=false;
+    fVulkanCoverageCoverPipeline.RasterizationState.LineWidth:=1.0;
+    fVulkanCoverageCoverPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+    fVulkanCoverageCoverPipeline.MultisampleState.SampleShadingEnable:=false;
+    fVulkanCoverageCoverPipeline.MultisampleState.MinSampleShading:=0.0;
+    fVulkanCoverageCoverPipeline.MultisampleState.CountSampleMasks:=0;
+    fVulkanCoverageCoverPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+    fVulkanCoverageCoverPipeline.MultisampleState.AlphaToOneEnable:=false;
+    fVulkanCoverageCoverPipeline.ColorBlendState.LogicOpEnable:=false;
+    fVulkanCoverageCoverPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+    // Cover pass: premultiplied alpha blending
+    fVulkanCoverageCoverPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                                              VK_BLEND_FACTOR_ONE,
+                                                                              VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                              VK_BLEND_OP_ADD,
+                                                                              VK_BLEND_FACTOR_ONE,
+                                                                              VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                              VK_BLEND_OP_ADD,
+                                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+    fVulkanCoverageCoverPipeline.DepthStencilState.DepthTestEnable:=true;
+    fVulkanCoverageCoverPipeline.DepthStencilState.DepthWriteEnable:=true;
+    fVulkanCoverageCoverPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+    fVulkanCoverageCoverPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+    fVulkanCoverageCoverPipeline.DepthStencilState.StencilTestEnable:=false;
+    fVulkanCoverageCoverPipeline.DynamicState.AddDynamicStates([VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR]);
+    fVulkanCoverageCoverPipeline.Initialize;
+    fVulkanCoverageCoverPipeline.FreeMemory;
    end;
 
   end;
@@ -4426,7 +5074,11 @@ begin
  fCurrentVulkanVertexBufferOffset:=0;
  fCurrentVulkanIndexBufferOffset:=0;
 
+ fShapeStamp:=0;
+
  GetNextDestinationVertexBuffer;
+
+ QueueCoverageReset;
 
 end;
 
@@ -4601,7 +5253,17 @@ begin
     SetLength(fCurrentFillBuffer^.fQueueItems,fCurrentFillBuffer^.fCountQueueItems*2);
    end;
    QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
-   QueueItem^.Kind:=TpvCanvasQueueItemKind.Normal;
+   if fCoverageResetPass then begin
+    QueueItem^.Kind:=TpvCanvasQueueItemKind.CoverageReset;
+    fCoverageResetPass:=false;
+   end else if fTransparentShapeActive then begin
+    QueueItem^.Kind:=TpvCanvasQueueItemKind.TransparentShapeMask;
+   end else if fTransparentShapeCoverPass then begin
+    QueueItem^.Kind:=TpvCanvasQueueItemKind.TransparentShapeCover;
+    fTransparentShapeCoverPass:=false; // Reset after use
+   end else begin
+    QueueItem^.Kind:=TpvCanvasQueueItemKind.Normal;
+   end;
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
    QueueItem^.Descriptor:=Descriptor;
    QueueItem^.MaskingMode:=assigned(CurrentMaskTexture);
@@ -4658,11 +5320,14 @@ begin
    QueueItem^.PushConstants.Data[6].z:=QueueItem^.MaskMatrix.RawComponents[1,1];
    QueueItem^.PushConstants.Data[6].w:=QueueItem^.MaskMatrix.RawComponents[3,0];
    QueueItem^.PushConstants.Data[7].x:=QueueItem^.MaskMatrix.RawComponents[3,1];
-   QueueItem^.PushConstants.Data[7].y:=0.0;
+   PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].y))^:=fShapeStamp;
    QueueItem^.PushConstants.Data[7].z:=0.0;
    PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=0;
    if QueueItem^.MaskingMode then begin
     PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^ or (TpvUInt32(1) shl 0);
+   end;
+   if assigned(fState.fAtlasTexture) and TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).PremultipliedAlpha then begin
+    PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^ or (TpvUInt32(1) shl 1);
    end;
   finally
    TPasMPInterlocked.Exchange(fCurrentFillBuffer^.fSpinLock,0);
@@ -4728,12 +5393,14 @@ end;
 
 function TpvCanvas.AddVertex(const aPosition:TpvVector2;const aTexCoord:TpvVector3;const aColor:TpvVector4):TpvInt32;
 var Vertex:PpvCanvasVertex;
+    TransformedPos:TpvVector2;
 begin
  result:=fCurrentCountVertices;
  Vertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices];
  inc(fCurrentCountVertices);
  Vertex^.OriginalPosition:=aPosition;
- Vertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*aPosition,fState.fZPosition);
+ TransformedPos:=fState.fModelMatrix*aPosition;
+ Vertex^.Position:=TpvVector3.InlineableCreate(TransformedPos,fState.fZPosition);
  Vertex^.TextureCoord:=aTexCoord;
  Vertex^.Color.r:=aColor.r;
  Vertex^.Color.g:=aColor.g;
@@ -4741,6 +5408,41 @@ begin
  Vertex^.Color.a:=aColor.a;
  Vertex^.State:=GetVertexState;
  Vertex^.ClipRect:=fState.fClipRect;
+ // Track bounding box for transparent shape
+ if fTransparentShapeActive then begin
+  if fTransparentShapeBoundingBoxMinX>TransformedPos.x then begin
+   fTransparentShapeBoundingBoxMinX:=TransformedPos.x;
+  end;
+  if fTransparentShapeBoundingBoxMinY>TransformedPos.y then begin
+   fTransparentShapeBoundingBoxMinY:=TransformedPos.y;
+  end;
+  if fTransparentShapeBoundingBoxMaxX<TransformedPos.x then begin
+   fTransparentShapeBoundingBoxMaxX:=TransformedPos.x;
+  end;
+  if fTransparentShapeBoundingBoxMaxY<TransformedPos.y then begin
+   fTransparentShapeBoundingBoxMaxY:=TransformedPos.y;
+  end;
+ end;
+end;
+
+function TpvCanvas.AddVertexWithClipRect(const aPosition:TpvVector2;const aTexCoord:TpvVector3;const aColor:TpvVector4;const aClipRect:TpvRect):TpvInt32;
+var Vertex:PpvCanvasVertex;
+    TransformedPos:TpvVector2;
+begin
+ result:=fCurrentCountVertices;
+ Vertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices];
+ inc(fCurrentCountVertices);
+ Vertex^.OriginalPosition:=aPosition;
+ TransformedPos:=fState.fModelMatrix*aPosition;
+ Vertex^.Position:=TpvVector3.InlineableCreate(TransformedPos,fState.fZPosition);
+ Vertex^.TextureCoord:=aTexCoord;
+ Vertex^.Color.r:=aColor.r;
+ Vertex^.Color.g:=aColor.g;
+ Vertex^.Color.b:=aColor.b;
+ Vertex^.Color.a:=aColor.a;
+ Vertex^.State:=GetVertexState;
+ Vertex^.ClipRect:=aClipRect; // Use provided ClipRect instead of fState.fClipRect
+ // Don't track bounding box for cover quad vertices
 end;
 
 function TpvCanvas.AddIndex(const aVertexIndex:TpvInt32):TpvInt32;
@@ -4764,6 +5466,13 @@ var Index:TpvInt32;
     CurrentBuffer:PpvCanvasBuffer;
     VulkanBuffer:TpvVulkanBuffer;
 begin
+ // Ensure coverage buffer matches current dimensions
+ if fTransparentShapes and
+    fCanvasCommon.fFragmentStoresAndAtomicsSupported and
+    ((fCoverageBufferWidth<>fWidth) or (fCoverageBufferHeight<>fHeight)) then begin
+  Resize(fWidth,fHeight);
+ end;
+
  if (aBufferIndex>=0) and (aBufferIndex<fCountBuffers) then begin
   CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
   if assigned(CurrentBuffer) and (CurrentBuffer^.fCountUsedBuffers>0) then begin
@@ -4911,6 +5620,110 @@ begin
  end;
 end;
 
+procedure TpvCanvas.BeginTransparentShape;
+const MaxShapeStamp=TVkUInt32($00ffffff);
+begin
+ 
+ if fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported then begin
+  
+  // If already in a transparent shape, implicitly end it first
+  if fTransparentShapeActive then begin
+   EndTransparentShape;
+  end;
+
+  // Flush any pending geometry before starting transparent shape
+  Flush;
+
+  // Increment shape stamp for this new transparent shape
+  inc(fShapeStamp);
+
+  // Wrap shape stamp and mark coverage buffer for reset if maximum reached
+  if fShapeStamp>=MaxShapeStamp then begin
+   fShapeStamp:=0;
+   fCoverageBufferNeedsReset:=true;
+  end;
+
+  // If coverage buffer needs reset, queue a reset
+  if fCoverageBufferNeedsReset then begin
+   QueueCoverageReset;
+  end;
+
+  // Mark transparent shape as active
+  fTransparentShapeActive:=true;
+  
+  // Initialize bounding box to empty (will be expanded as vertices are added)
+  fTransparentShapeBoundingBoxMinX:=Infinity;
+  fTransparentShapeBoundingBoxMinY:=Infinity;
+  fTransparentShapeBoundingBoxMaxX:=-Infinity;
+  fTransparentShapeBoundingBoxMaxY:=-Infinity;
+  
+  // Remember current vertex/index positions
+  fTransparentShapeStartVertexIndex:=fCurrentCountVertices;
+  fTransparentShapeStartIndexIndex:=fCurrentCountIndices;
+
+ end;
+
+end;
+
+procedure TpvCanvas.EndTransparentShape;
+const Add:TpvVector2=(x:-1.0;y:-1.0);
+var QueueItemIndex:TpvInt32;
+    QueueItem:PpvCanvasQueueItem;
+    v0,v1,v2,v3:TpvInt32;
+    BoundingBoxMinX,BoundingBoxMinY,BoundingBoxMaxX,BoundingBoxMaxY:TpvFloat;
+    ClipRect:TpvRect;
+    Mul:TpvVector2;
+begin
+ if fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported and fTransparentShapeActive then begin
+  // Flush the mask pass geometry
+  Flush;
+  // Mark transparent shape as no longer active
+  fTransparentShapeActive:=false;
+  
+  // Check if we have a valid bounding box
+  if (fTransparentShapeBoundingBoxMinX<=fTransparentShapeBoundingBoxMaxX) and
+     (fTransparentShapeBoundingBoxMinY<=fTransparentShapeBoundingBoxMaxY) then begin
+   
+   // Add barrier queue item between mask and cover passes
+   QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
+   inc(fCurrentFillBuffer^.fCountQueueItems);
+   if length(fCurrentFillBuffer^.fQueueItems)<fCurrentFillBuffer^.fCountQueueItems then begin
+    SetLength(fCurrentFillBuffer^.fQueueItems,fCurrentFillBuffer^.fCountQueueItems*2);
+   end;
+   QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
+   QueueItem^.Kind:=TpvCanvasQueueItemKind.TransparentShapeCoverageBarrier;
+   
+   // Expand bbox slightly to ensure coverage
+   BoundingBoxMinX:=fTransparentShapeBoundingBoxMinX-1.0;
+   BoundingBoxMinY:=fTransparentShapeBoundingBoxMinY-1.0;
+   BoundingBoxMaxX:=fTransparentShapeBoundingBoxMaxX+1.0;
+   BoundingBoxMaxY:=fTransparentShapeBoundingBoxMaxY+1.0;
+   
+   // Create ClipRect in clip space that matches the bounding box to prevent fragment clipping
+   Mul:=TpvVector2.InlineableCreate(2.0/fWidth,2.0/fHeight);
+   ClipRect.Min:=(TpvVector2.InlineableCreate(BoundingBoxMinX,BoundingBoxMinY)*Mul)+Add;
+   ClipRect.Max:=(TpvVector2.InlineableCreate(BoundingBoxMaxX,BoundingBoxMaxY)*Mul)+Add;
+   
+   // Generate cover quad vertices with explicit ClipRect
+   EnsureSufficientReserveUsableSpace(4,6);
+   v0:=AddVertexWithClipRect(TpvVector2.InlineableCreate(BoundingBoxMinX,BoundingBoxMinY),TpvVector3.Null,fState.fColor,ClipRect);
+   v1:=AddVertexWithClipRect(TpvVector2.InlineableCreate(BoundingBoxMaxX,BoundingBoxMinY),TpvVector3.Null,fState.fColor,ClipRect);
+   v2:=AddVertexWithClipRect(TpvVector2.InlineableCreate(BoundingBoxMaxX,BoundingBoxMaxY),TpvVector3.Null,fState.fColor,ClipRect);
+   v3:=AddVertexWithClipRect(TpvVector2.InlineableCreate(BoundingBoxMinX,BoundingBoxMaxY),TpvVector3.Null,fState.fColor,ClipRect);
+   AddIndex(v0);
+   AddIndex(v1);
+   AddIndex(v2);
+   AddIndex(v0);
+   AddIndex(v2);
+   AddIndex(v3);
+   
+   // Mark next flush as cover pass and flush the cover quad geometry
+   fTransparentShapeCoverPass:=true;
+   Flush;
+  end;
+ end;
+end;
+
 procedure TpvCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
 {$undef PasVulkanCanvasDoNotTrustGPUDriverAtDynamicStates}
 const Offsets:array[0..0] of TVkDeviceSize=(0);
@@ -4924,10 +5737,60 @@ var Index,StartVertexIndex,TextureMode:TpvInt32;
     VulkanVertexBuffer,VulkanIndexBuffer,OldVulkanVertexBuffer,OldVulkanIndexBuffer:TpvVulkanBuffer;
     OldScissor:TVkRect2D;
     TransformMatrix,FillMatrix,MaskMatrix:TpvMatrix4x4;
-    ForceUpdate,ForceUpdatePushConstants,h:boolean;
+    ForceUpdate,ForceUpdatePushConstants,h,RenderPassActive:boolean;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
+    ImageSubresourceRange:TVkImageSubresourceRange;
+    ClearColorValue:TVkClearColorValue;
 //  DynamicOffset:TVkDeviceSize;
+ procedure ResetState;
+ begin
+
+  OldScissor.offset.x:=-$7fffffff;
+  OldScissor.offset.y:=-$7fffffff;
+  OldScissor.extent.Width:=$7fffffff;
+  OldScissor.extent.Height:=$7fffffff;
+
+  Descriptor:=nil;
+
+  TransformMatrix:=TpvMatrix4x4.Null;
+
+  FillMatrix:=TpvMatrix4x4.Null;
+
+  MaskMatrix:=TpvMatrix4x4.Null;
+
+  OldQueueItemKind:=TpvCanvasQueueItemKind.None;
+
+  ForceUpdate:=true;
+
+  ForceUpdatePushConstants:=true;
+
+  MaskingMode:=false;
+
+  BlendingMode:=TpvCanvasBlendingMode.AdditiveBlending;
+
+  TextureMode:=-1;
+
+  OldVulkanVertexBuffer:=nil;
+
+  OldVulkanIndexBuffer:=nil;
+
+ end;
+
 begin
 
+ // Ensure coverage buffer matches current dimensions
+ if fTransparentShapes and
+    fCanvasCommon.fFragmentStoresAndAtomicsSupported and
+    ((fCoverageBufferWidth<>fWidth) or (fCoverageBufferHeight<>fHeight)) then begin
+  if assigned(fOnSuspendRenderPass) then begin
+   fOnSuspendRenderPass(self);
+  end;   
+  Resize(fWidth,fHeight);
+  RenderPassActive:=false;
+ end else begin
+  RenderPassActive:=true;
+ end;
+ 
  h:=true;
 
  if assigned(fVulkanRenderPass) and
@@ -4937,34 +5800,7 @@ begin
   CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
   if assigned(CurrentBuffer) and (CurrentBuffer^.fCountQueueItems>0) then begin
 
-   OldScissor.offset.x:=-$7fffffff;
-   OldScissor.offset.y:=-$7fffffff;
-   OldScissor.extent.Width:=$7fffffff;
-   OldScissor.extent.Height:=$7fffffff;
-
-   Descriptor:=nil;
-
-   TransformMatrix:=TpvMatrix4x4.Null;
-
-   FillMatrix:=TpvMatrix4x4.Null;
-
-   MaskMatrix:=TpvMatrix4x4.Null;
-
-   OldQueueItemKind:=TpvCanvasQueueItemKind.None;
-
-   ForceUpdate:=true;
-
-   ForceUpdatePushConstants:=true;
-
-   MaskingMode:=false;
-
-   BlendingMode:=TpvCanvasBlendingMode.AdditiveBlending;
-
-   TextureMode:=-1;
-
-   OldVulkanVertexBuffer:=nil;
-
-   OldVulkanIndexBuffer:=nil;
+   ResetState;
 
    for Index:=0 to CurrentBuffer^.fCountQueueItems-1 do begin
 
@@ -4978,6 +5814,16 @@ begin
     case QueueItem^.Kind of
 
      TpvCanvasQueueItemKind.Normal:begin
+
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Normal Draw',[0.5,0.5,0.5,1.0]);
+
+      // Resume render pass if not active      
+      if not RenderPassActive then begin
+       if assigned(fOnResumeRenderPass) then begin
+        fOnResumeRenderPass(self);
+       end;
+       RenderPassActive:=true;
+      end;
 
       VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
 
@@ -5065,13 +5911,419 @@ begin
 
       ForceUpdatePushConstants:=false;
 
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
+
      end;
 
      TpvCanvasQueueItemKind.Hook:begin
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Hook',[0.7,0.7,0.0,1.0]);
       if assigned(QueueItem^.Hook) then begin
        QueueItem^.Hook(QueueItem^.HookData,aVulkanCommandBuffer,aBufferIndex);
       end;
       ForceUpdate:=true;
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
+     end;
+
+     TpvCanvasQueueItemKind.CoverageReset:begin
+
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Coverage Reset',[1.0,0.0,0.0,1.0]);
+
+      if true then begin
+
+       // Coverage buffer clear path with vkCmdClearColorImage
+
+       if assigned(fCoverageBufferImage) then begin
+        
+        // Suspend render pass if active      
+        if RenderPassActive then begin
+         if assigned(fOnSuspendRenderPass) then begin
+          fOnSuspendRenderPass(self);
+         end;
+         RenderPassActive:=false;
+        end;      
+
+        // Clear coverage buffer to zero
+        FillChar(ClearColorValue,SizeOf(TVkClearColorValue),#0);
+        FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
+        ImageSubresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+        ImageSubresourceRange.baseMipLevel:=0;
+        ImageSubresourceRange.levelCount:=1;
+        ImageSubresourceRange.baseArrayLayer:=0;
+        ImageSubresourceRange.layerCount:=1;
+        aVulkanCommandBuffer.CmdClearColorImage(fCoverageBufferImage.Handle,
+                                                VK_IMAGE_LAYOUT_GENERAL,
+                                                @ClearColorValue,
+                                                1,
+                                                @ImageSubresourceRange);
+
+        // Memory barrier to ensure clear is complete before shader reads
+        FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+        ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        ImageMemoryBarrier.pNext:=nil;
+        ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+        ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+        ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+        ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+        ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+        ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+        ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+        ImageMemoryBarrier.subresourceRange.levelCount:=1;
+        ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+        ImageMemoryBarrier.subresourceRange.layerCount:=1;
+        aVulkanCommandBuffer.CmdPipelineBarrier(
+         TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+         0,
+         0,nil,
+         0,nil,
+         1,@ImageMemoryBarrier);
+
+       end;
+
+      end else begin
+
+       // Coverage buffer clear path with a fragment shader with imageStore
+       // Draws a full screen quad to reset the coverage buffer as fallback if vkCmdClearColorImage is not usable in
+       // a valid way.
+
+       // Resume render pass if not active      
+       if not RenderPassActive then begin
+        if assigned(fOnResumeRenderPass) then begin
+         fOnResumeRenderPass(self);
+        end;
+        ResetState;
+        RenderPassActive:=true;
+       end;
+
+       VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
+       VulkanIndexBuffer:=CurrentBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
+
+       if ForceUpdate then begin
+        aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
+       end;
+
+       if assigned(fVulkanCoverageResetPipeline) then begin
+        aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipeline.Handle);
+        if assigned(fVulkanCoverageBufferDescriptorSet) then begin
+         aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipelineLayout.Handle,0,1,@fVulkanCoverageBufferDescriptorSet.Handle,0,nil);
+        end;
+        aVulkanCommandBuffer.CmdPushConstants(fVulkanCoverageResetPipelineLayout.Handle,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              0,
+                                              SizeOf(TpvCanvasPushConstants),
+                                              @QueueItem^.PushConstants);
+       end else begin
+        ForceUpdate:=true;
+        break;
+       end;
+
+       if ForceUpdate or
+          (OldScissor.offset.x<>QueueItem^.Scissor.offset.x) or
+          (OldScissor.offset.y<>QueueItem^.Scissor.offset.y) or
+          (OldScissor.extent.Width<>QueueItem^.Scissor.extent.Width) or
+          (OldScissor.extent.Height<>QueueItem^.Scissor.extent.Height) then begin
+        OldScissor:=QueueItem^.Scissor;
+        aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
+       end;
+
+       if ForceUpdate or
+          (OldVulkanVertexBuffer<>VulkanVertexBuffer) then begin
+        OldVulkanVertexBuffer:=VulkanVertexBuffer;
+        aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+       end;
+
+       if ForceUpdate or
+          (OldVulkanIndexBuffer<>VulkanIndexBuffer) then begin
+        OldVulkanIndexBuffer:=VulkanIndexBuffer;
+        aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+       end;
+
+       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
+
+       if assigned(fCoverageBufferImage) then begin
+        
+        // Suspend render pass if active      
+        if RenderPassActive then begin
+         if assigned(fOnSuspendRenderPass) then begin
+          fOnSuspendRenderPass(self);
+         end;
+         RenderPassActive:=false;
+        end;      
+
+        FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+        ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        ImageMemoryBarrier.pNext:=nil;
+        ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+        ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+        ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+        ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+        ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+        ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+        ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+        ImageMemoryBarrier.subresourceRange.levelCount:=1;
+        ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+        ImageMemoryBarrier.subresourceRange.layerCount:=1;
+        aVulkanCommandBuffer.CmdPipelineBarrier(
+         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+         0,
+         0,nil,
+         0,nil,
+         1,@ImageMemoryBarrier);
+
+       end;
+
+      end; 
+
+      ForceUpdate:=true;
+      ForceUpdatePushConstants:=false;
+
+      ResetState;
+
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
+
+     end;
+
+     TpvCanvasQueueItemKind.TransparentShapeMask:begin
+
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Transparent Shape Mask',[0.25,1.0,0.5,1.0]);
+
+      // Transparent shape mask pass - renders geometry to coverage buffer
+
+      // Resume render pass if not active      
+      if not RenderPassActive then begin
+       if assigned(fOnResumeRenderPass) then begin
+        fOnResumeRenderPass(self);
+       end;
+       RenderPassActive:=true;
+       ResetState;
+      end;
+      
+      VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
+      VulkanIndexBuffer:=CurrentBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
+
+      if ForceUpdate then begin
+       aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
+      end;
+
+      // Bind coverage mask pipeline
+      if assigned(fVulkanCoverageMaskPipeline) then begin
+       aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageMaskPipeline.Handle);
+       // Bind texture descriptor set (set = 0)
+       if ForceUpdate or (Descriptor<>QueueItem^.Descriptor) then begin
+        Descriptor:=QueueItem^.Descriptor;
+        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageMaskPipelineLayout.Handle,0,1,@Descriptor.fDescriptorSet.Handle,0,nil);
+       end;
+       // Bind coverage buffer descriptor set (set = 1)
+       if assigned(fVulkanCoverageBufferDescriptorSet) then begin
+        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageMaskPipelineLayout.Handle,1,1,@fVulkanCoverageBufferDescriptorSet.Handle,0,nil);
+       end;
+      end else begin
+       // Fallback to normal pipeline if mask pipeline not available
+       MaskingMode:=QueueItem^.MaskingMode;
+       BlendingMode:=QueueItem^.BlendingMode;
+       TextureMode:=QueueItem^.TextureMode;
+       aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.BlendingMode,QueueItem^.TextureMode].Handle);
+       if ForceUpdate or (Descriptor<>QueueItem^.Descriptor) then begin
+        Descriptor:=QueueItem^.Descriptor;
+        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayouts[QueueItem^.BlendingMode,QueueItem^.TextureMode].Handle,0,1,@Descriptor.fDescriptorSet.Handle,0,nil);
+       end;
+      end;
+
+      // Push constants - use mask pipeline layout if available
+      if assigned(fVulkanCoverageMaskPipelineLayout) then begin
+       aVulkanCommandBuffer.CmdPushConstants(fVulkanCoverageMaskPipelineLayout.Handle,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             0,
+                                             SizeOf(TpvCanvasPushConstants),
+                                             @QueueItem^.PushConstants);
+      end else begin
+       aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayouts[BlendingMode,TextureMode].Handle,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             0,
+                                             SizeOf(TpvCanvasPushConstants),
+                                             @QueueItem^.PushConstants);
+      end;
+
+      if ForceUpdate or
+         (OldScissor.offset.x<>QueueItem^.Scissor.offset.x) or
+         (OldScissor.offset.y<>QueueItem^.Scissor.offset.y) or
+         (OldScissor.extent.Width<>QueueItem^.Scissor.extent.Width) or
+         (OldScissor.extent.Height<>QueueItem^.Scissor.extent.Height) then begin
+       OldScissor:=QueueItem^.Scissor;
+       aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
+      end;
+
+      if ForceUpdate or
+         (OldVulkanVertexBuffer<>VulkanVertexBuffer) then begin
+       OldVulkanVertexBuffer:=VulkanVertexBuffer;
+       aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+      end;
+
+      if ForceUpdate or
+         (OldVulkanIndexBuffer<>VulkanIndexBuffer) then begin
+       OldVulkanIndexBuffer:=VulkanIndexBuffer;
+       aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+      end;
+
+      aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
+
+      ForceUpdate:=true; // Force update after mask pass to rebind normal pipeline
+
+      ResetState;
+
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
+
+     end;
+
+     TpvCanvasQueueItemKind.TransparentShapeCoverageBarrier:begin
+
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Transparent Shape Coverage Barrier',[1.0,0.5,0.0,1.0]);
+
+     // Memory barrier between mask and cover passes
+     // Ensures all mask pass writes to coverage buffer are visible to cover pass reads
+      if assigned(fCoverageBufferImage) then begin
+
+       // Suspend render pass if active      
+       if RenderPassActive then begin
+        if assigned(fOnSuspendRenderPass) then begin
+         fOnSuspendRenderPass(self);
+        end;
+        RenderPassActive:=false;
+       end;      
+
+       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+       ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       ImageMemoryBarrier.pNext:=nil;
+       ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+       ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+       ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+       ImageMemoryBarrier.subresourceRange.levelCount:=1;
+       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+       ImageMemoryBarrier.subresourceRange.layerCount:=1;
+       aVulkanCommandBuffer.CmdPipelineBarrier(
+        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+        0,
+        0,nil,
+        0,nil,
+        1,@ImageMemoryBarrier);
+
+      end;
+
+      ForceUpdate:=true;
+
+      ResetState;
+
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
+
+     end;
+
+     TpvCanvasQueueItemKind.TransparentShapeCover:begin
+
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Transparent Shape Cover',[0.5,1.0,1.0,1.0]);
+
+      // Transparent shape cover pass - reads from coverage buffer and outputs final color
+
+      // Resume render pass if not active      
+      if not RenderPassActive then begin
+       if assigned(fOnResumeRenderPass) then begin
+        fOnResumeRenderPass(self);
+       end;
+       RenderPassActive:=true;
+       ResetState;
+      end;
+      
+      VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
+      VulkanIndexBuffer:=CurrentBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
+
+      if ForceUpdate then begin
+       aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
+      end;
+
+      // Bind coverage cover pipeline
+      if assigned(fVulkanCoverageCoverPipeline) then begin
+       aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageCoverPipeline.Handle);
+       // Bind texture descriptor set (set = 0)
+       if ForceUpdate or (Descriptor<>QueueItem^.Descriptor) then begin
+        Descriptor:=QueueItem^.Descriptor;
+        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageCoverPipelineLayout.Handle,0,1,@Descriptor.fDescriptorSet.Handle,0,nil);
+       end;
+       // Bind coverage buffer descriptor set (set = 1)
+       if assigned(fVulkanCoverageBufferDescriptorSet) then begin
+        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageCoverPipelineLayout.Handle,1,1,@fVulkanCoverageBufferDescriptorSet.Handle,0,nil);
+       end;
+      end else begin
+       // Fallback to normal pipeline if cover pipeline not available
+       MaskingMode:=QueueItem^.MaskingMode;
+       BlendingMode:=QueueItem^.BlendingMode;
+       TextureMode:=QueueItem^.TextureMode;
+       aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.BlendingMode,QueueItem^.TextureMode].Handle);
+       if ForceUpdate or (Descriptor<>QueueItem^.Descriptor) then begin
+        Descriptor:=QueueItem^.Descriptor;
+        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayouts[QueueItem^.BlendingMode,QueueItem^.TextureMode].Handle,0,1,@Descriptor.fDescriptorSet.Handle,0,nil);
+       end;
+      end;
+
+      // Push constants - use cover pipeline layout if available
+      if assigned(fVulkanCoverageCoverPipelineLayout) then begin
+       aVulkanCommandBuffer.CmdPushConstants(fVulkanCoverageCoverPipelineLayout.Handle,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             0,
+                                             SizeOf(TpvCanvasPushConstants),
+                                             @QueueItem^.PushConstants);
+      end else begin
+       aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayouts[BlendingMode,TextureMode].Handle,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             0,
+                                             SizeOf(TpvCanvasPushConstants),
+                                             @QueueItem^.PushConstants);
+      end;
+
+      if ForceUpdate or
+         (OldScissor.offset.x<>QueueItem^.Scissor.offset.x) or
+         (OldScissor.offset.y<>QueueItem^.Scissor.offset.y) or
+         (OldScissor.extent.Width<>QueueItem^.Scissor.extent.Width) or
+         (OldScissor.extent.Height<>QueueItem^.Scissor.extent.Height) then begin
+       OldScissor:=QueueItem^.Scissor;
+       aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
+      end;
+
+      if ForceUpdate or
+         (OldVulkanVertexBuffer<>VulkanVertexBuffer) then begin
+       OldVulkanVertexBuffer:=VulkanVertexBuffer;
+       aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+      end;
+
+      if ForceUpdate or
+         (OldVulkanIndexBuffer<>VulkanIndexBuffer) then begin
+       OldVulkanIndexBuffer:=VulkanIndexBuffer;
+       aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+      end;
+
+      aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
+
+      ForceUpdate:=true; // Force update after cover pass to rebind normal pipeline
+
+      ResetState;
+
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
+
      end;
 
      else {TpvCanvasQueueItemKind.None:}begin
@@ -5087,6 +6339,11 @@ begin
 
   end;
 
+ end;
+
+ // Resume render pass before leaving, if not active again, for to avoid issues  
+ if (not RenderPassActive) and assigned(fOnResumeRenderPass) then begin
+  fOnResumeRenderPass(self);
  end;
 
 end;
@@ -6254,63 +7511,116 @@ var CachePartIndex,VertexIndex,IndexIndex:TpvInt32;
     VertexState:TpvUInt32;
     ModelMatrixIsIdentity:boolean;
     OffsetMatrix:TpvMatrix3x3;
+    TrackBoundingBox:boolean;
+    BoundingBoxMinX,BoundingBoxMinY,BoundingBoxMaxX,BoundingBoxMaxY:TpvFloat;
 begin
- SetGUIElementMode(false);
- SetAtlasTexture(nil);
- fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
- VertexColor.r:=fState.fColor.r;
- VertexColor.g:=fState.fColor.g;
- VertexColor.b:=fState.fColor.b;
- VertexColor.a:=fState.fColor.a;
- VertexState:=GetVertexState;
- ModelMatrixIsIdentity:=fState.fModelMatrix=TpvMatrix4x4.Identity;
- OffsetMatrix:=fState.fModelMatrix.ToMatrix3x3;
- for CachePartIndex:=0 to aShape.fCountCacheParts-1 do begin
-  CachePart:=@aShape.fCacheParts[CachePartIndex];
-  EnsureSufficientReserveUsableSpace(CachePart^.CountVertices,CachePart^.CountIndices);
-  if ModelMatrixIsIdentity then begin
-   for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
-    CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
-    CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+VertexIndex];
-    CanvasVertex^.OriginalPosition:=CacheVertex^.Position+CacheVertex^.Offset;
-    CanvasVertex^.Position:=TpvVector3.InlineableCreate(CanvasVertex^.OriginalPosition,fState.fZPosition);
-    CanvasVertex^.Color:=VertexColor;
-    CanvasVertex^.TextureCoord:=TpvVector3.Null;
-    CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl pvcvsObjectModeShift);
-    CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
-    CanvasVertex^.MetaInfo:=CacheVertex^.MetaInfo;
-    CanvasVertex^.MetaInfo2:=CacheVertex^.MetaInfo2;
-   end;
-  end else begin
-   for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
-    CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
-    CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+VertexIndex];
-    CanvasVertex^.OriginalPosition:=CacheVertex^.Position;
-    CanvasVertex^.Position:=TpvVector3.InlineableCreate((fState.fModelMatrix*CacheVertex^.Position)+
-                                                        (OffsetMatrix*CacheVertex^.Offset),
-                                                        fState.fZPosition);
-    CanvasVertex^.Color:=VertexColor;
-    CanvasVertex^.TextureCoord:=TpvVector3.Null;
-    CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl pvcvsObjectModeShift);
-    CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
-    CanvasVertex^.MetaInfo:=CacheVertex^.MetaInfo;
-    CanvasVertex^.MetaInfo2:=CacheVertex^.MetaInfo2;
-    case CacheVertex^.ObjectMode of
-     pcvvaomRoundLineCapCircle:begin
-      CanvasVertex^.MetaInfo.xy:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.xy;
+ if assigned(aShape) then begin
+  SetGUIElementMode(false);
+  SetAtlasTexture(nil);
+  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
+  VertexColor.r:=fState.fColor.r;
+  VertexColor.g:=fState.fColor.g;
+  VertexColor.b:=fState.fColor.b;
+  VertexColor.a:=fState.fColor.a;
+  VertexState:=GetVertexState;
+  ModelMatrixIsIdentity:=fState.fModelMatrix=TpvMatrix4x4.Identity;
+  OffsetMatrix:=fState.fModelMatrix.ToMatrix3x3;
+  TrackBoundingBox:=fTransparentShapeActive;
+  if TrackBoundingBox then begin
+   BoundingBoxMinX:=Infinity;
+   BoundingBoxMinY:=Infinity;
+   BoundingBoxMaxX:=-Infinity;
+   BoundingBoxMaxY:=-Infinity;
+  end;
+  for CachePartIndex:=0 to aShape.fCountCacheParts-1 do begin
+   CachePart:=@aShape.fCacheParts[CachePartIndex];
+   EnsureSufficientReserveUsableSpace(CachePart^.CountVertices,CachePart^.CountIndices);
+   if ModelMatrixIsIdentity then begin
+    for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
+     CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
+     CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+VertexIndex];
+     CanvasVertex^.OriginalPosition:=CacheVertex^.Position+CacheVertex^.Offset;
+     CanvasVertex^.Position:=TpvVector3.InlineableCreate(CanvasVertex^.OriginalPosition,fState.fZPosition);
+     CanvasVertex^.Color:=VertexColor;
+     CanvasVertex^.TextureCoord:=TpvVector3.Null;
+     CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl pvcvsObjectModeShift);
+     CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+     CanvasVertex^.MetaInfo:=CacheVertex^.MetaInfo;
+     CanvasVertex^.MetaInfo2:=CacheVertex^.MetaInfo2;
+     if TrackBoundingBox then begin
+      if BoundingBoxMinX>CanvasVertex^.Position.x then begin
+       BoundingBoxMinX:=CanvasVertex^.Position.x;
+      end;
+      if BoundingBoxMinY>CanvasVertex^.Position.y then begin
+       BoundingBoxMinY:=CanvasVertex^.Position.y;
+      end;
+      if BoundingBoxMaxX<CanvasVertex^.Position.x then begin
+       BoundingBoxMaxX:=CanvasVertex^.Position.x;
+      end;
+      if BoundingBoxMaxY<CanvasVertex^.Position.y then begin
+       BoundingBoxMaxY:=CanvasVertex^.Position.y;
+      end;
      end;
-     pcvvaomRoundLine:begin
-      CanvasVertex^.MetaInfo.xy:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.xy;
-      CanvasVertex^.MetaInfo.zw:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.zw;
+    end;
+   end else begin
+    for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
+     CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
+     CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+VertexIndex];
+     CanvasVertex^.OriginalPosition:=CacheVertex^.Position;
+     CanvasVertex^.Position:=TpvVector3.InlineableCreate((fState.fModelMatrix*CacheVertex^.Position)+
+                                                         (OffsetMatrix*CacheVertex^.Offset),
+                                                         fState.fZPosition);
+     CanvasVertex^.Color:=VertexColor;
+     CanvasVertex^.TextureCoord:=TpvVector3.Null;
+     CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl pvcvsObjectModeShift);
+     CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+     CanvasVertex^.MetaInfo:=CacheVertex^.MetaInfo;
+     CanvasVertex^.MetaInfo2:=CacheVertex^.MetaInfo2;
+     case CacheVertex^.ObjectMode of
+      pcvvaomRoundLineCapCircle:begin
+       CanvasVertex^.MetaInfo.xy:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.xy;
+      end;
+      pcvvaomRoundLine:begin
+       CanvasVertex^.MetaInfo.xy:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.xy;
+       CanvasVertex^.MetaInfo.zw:={fState.fModelMatrix*}CanvasVertex^.MetaInfo.zw;
+      end;
+     end;
+     if TrackBoundingBox then begin
+      if BoundingBoxMinX>CanvasVertex^.Position.x then begin
+       BoundingBoxMinX:=CanvasVertex^.Position.x;
+      end;
+      if BoundingBoxMinY>CanvasVertex^.Position.y then begin
+       BoundingBoxMinY:=CanvasVertex^.Position.y;
+      end;
+      if BoundingBoxMaxX<CanvasVertex^.Position.x then begin
+       BoundingBoxMaxX:=CanvasVertex^.Position.x;
+      end;
+      if BoundingBoxMaxY<CanvasVertex^.Position.y then begin
+       BoundingBoxMaxY:=CanvasVertex^.Position.y;
+      end;
      end;
     end;
    end;
+   for IndexIndex:=0 to CachePart^.CountIndices-1 do begin
+    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+IndexIndex]:=(aShape.fCacheIndices[CachePart^.BaseIndexIndex+IndexIndex]-CachePart^.BaseVertexIndex)+fCurrentCountVertices;
+   end;
+   inc(fCurrentCountVertices,CachePart^.CountVertices);
+   inc(fCurrentCountIndices,CachePart^.CountIndices);
   end;
-  for IndexIndex:=0 to CachePart^.CountIndices-1 do begin
-   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+IndexIndex]:=(aShape.fCacheIndices[CachePart^.BaseIndexIndex+IndexIndex]-CachePart^.BaseVertexIndex)+fCurrentCountVertices;
+  if TrackBoundingBox and (BoundingBoxMinX<=BoundingBoxMaxX) and (BoundingBoxMinY<=BoundingBoxMaxY) then begin
+   if fTransparentShapeBoundingBoxMinX>BoundingBoxMinX then begin
+    fTransparentShapeBoundingBoxMinX:=BoundingBoxMinX;
+   end;
+   if fTransparentShapeBoundingBoxMinY>BoundingBoxMinY then begin
+    fTransparentShapeBoundingBoxMinY:=BoundingBoxMinY;
+   end;
+   if fTransparentShapeBoundingBoxMaxX<BoundingBoxMaxX then begin
+    fTransparentShapeBoundingBoxMaxX:=BoundingBoxMaxX;
+   end;
+   if fTransparentShapeBoundingBoxMaxY<BoundingBoxMaxY then begin
+    fTransparentShapeBoundingBoxMaxY:=BoundingBoxMaxY;
+   end;
   end;
-  inc(fCurrentCountVertices,CachePart^.CountVertices);
-  inc(fCurrentCountIndices,CachePart^.CountIndices);
  end;
  result:=self;
 end;

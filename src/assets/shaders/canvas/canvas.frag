@@ -49,6 +49,12 @@ layout(set = 0, binding = 0) uniform sampler2D uTexture;
 layout(set = 0, binding = 1) uniform sampler2D uTextureMask;
 #endif
 
+#if defined(COVERAGE_MASK_PASS) || defined(COVERAGE_COVER_PASS)
+// Coverage buffer for transparent shape rendering (set = 1, binding = 0)
+// Uses R32_UINT format with packed stamp (24 bits) + coverage (8 bits)
+layout(set = 1, binding = 0, r32ui) uniform uimage2D uCoverageBuffer;
+#endif
+
 #if FILLTYPE == FILLTYPE_VECTOR_PATH
 
 struct VectorPathGPUSegment {
@@ -65,19 +71,19 @@ struct VectorPathGPUShape {
   uvec4 flagsStartGridCellIndexGridSize;
 };
 
-layout(std430, set = 1, binding = 0) buffer VectorPathGPUSegments {
+layout(std430, set = 2, binding = 0) buffer VectorPathGPUSegments {
   VectorPathGPUSegment vectorPathGPUSegments[];
 };
 
-layout(std430, set = 1, binding = 1) buffer VectorPathGPUIndirectSegments {
+layout(std430, set = 2, binding = 1) buffer VectorPathGPUIndirectSegments {
   VectorPathGPUIndirectSegment vectorPathGPUIndirectSegments[];
 };
 
-layout(std430, set = 1, binding = 2) buffer VectorPathGPUGridCells {
+layout(std430, set = 2, binding = 2) buffer VectorPathGPUGridCells {
   VectorPathGPUGridCell vectorPathGPUGridCells[];
 };
 
-layout(std430, set = 1, binding = 3) buffer VectorPathGPUShapes {
+layout(std430, set = 2, binding = 3) buffer VectorPathGPUShapes {
   VectorPathGPUShape vectorPathGPUShapes[];
 };
 
@@ -451,13 +457,13 @@ float multiSampleSDF(const in TVEC texCoord){
   vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
 #endif
   vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
-  return  clamp((linearstep(width.x, width.y, center) + 
-          dot(linearstep(width.xxxx, 
-                         width.yyyy,
-                         vec4(textureLod(uTexture, ADJUST_TEXCOORD(buv.xy), 0.0).w,
-                              textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0).w,
-                              textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0).w,
-                              textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0);
+  return clamp((linearstep(width.x, width.y, center) + 
+         dot(linearstep(width.xxxx, 
+                        width.yyyy,
+                        vec4(textureLod(uTexture, ADJUST_TEXCOORD(buv.xy), 0.0).w,
+                             textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0).w,
+                             textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0).w,
+                             textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0);
 }
 
 // 4x multisampled 4-rook/RGSS SDF with a single texture lookup of four SDF values in the RGBA color channels 
@@ -1645,6 +1651,55 @@ void main(void){
   }
 #endif  
 #endif  
-  outFragColor = color;
+
+#ifdef COVERAGE_MASK_PASS
+  // Coverage mask pass: write packed stamp+coverage to coverage buffer via atomicMax
+  // Packed format: upper 24 bits = shape stamp, lower 8 bits = coverage (alpha * 255)
+  uint shapeStamp = pushConstants.data[7].y;
+  uint coverage8 = uint((clamp(color.a, 0.0, 1.0) * 255.0) + 0.5);
+  uint packed = (shapeStamp << 8) | coverage8;
+  ivec2 pixelPosition = ivec2(gl_FragCoord.xy);
+  imageAtomicMax(uCoverageBuffer, pixelPosition, packed);
+  // No color output in mask pass
+  outFragColor = vec4(0.0);
+#elif defined(COVERAGE_COVER_PASS)
+  // Coverage cover pass: read from coverage buffer and output final color
+  // Only output if stamp matches current shape and pixel has coverage
+  uint shapeStamp = pushConstants.data[7].y;
+  ivec2 pixelPosition = ivec2(gl_FragCoord.xy);
+  uint packed = imageLoad(uCoverageBuffer, pixelPosition).r;
+  uint storedStamp = packed >> 8;
+  uint storedCoverage8 = packed & 0xFFu;
+  if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
+    float coverage = float(storedCoverage8) / 255.0;
+    // Clear the pixel in coverage buffer after reading (for next shape)
+    imageStore(uCoverageBuffer, pixelPosition, uvec4(0u));
+    // Check if texture is already premultiplied (bit 1 of flags)
+    bool isTexturePremultiplied = (pushConstants.data[7].w & (1u << 1)) != 0u;
+    if (isTexturePremultiplied) {
+      // Texture already premultiplied: de-premultiply, apply coverage, re-premultiply
+      // Avoid division by zero
+      vec3 unpremultiplied = (color.w > 1e-4) ? (color.xyz / color.w) : color.xyz;
+      outFragColor = vec4(unpremultiplied * coverage, coverage);
+    } else {
+      // Non-premultiplied texture: apply coverage directly (premultiplies in the process)
+      outFragColor = vec4(color.xyz * coverage, coverage);
+    }
+  } else {
+    discard;
+  }
+#else
+  // Pre-multiply RGB by alpha for correct premultiplied alpha blending
+  // This prevents overdraw artifacts with transparent overlapping geometry
+  // Check if texture is already premultiplied (bit 1 of flags)
+  bool isTexturePremultiplied = (pushConstants.data[7].w & (1u << 1)) != 0u;
+  if (isTexturePremultiplied) {
+    // Texture already premultiplied, output as-is to avoid double-multiplication
+    outFragColor = color;
+  } else {
+    // Non-premultiplied texture, premultiply now
+    outFragColor = vec4(color.xyz * color.w, color.w);
+  }
+#endif
 }
 #endif
