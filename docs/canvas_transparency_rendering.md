@@ -18,7 +18,7 @@ The table below compares the core mechanisms of TpvCanvas against other mainstre
 | **Atomic Operations** | **Yes (imageAtomicCompSwap)** | No (Based on Pre-sorting) | **Yes (In Compute Shader)** | No (Based on Pre-sorting or Blending) | **No (Based on Pass Sorting)** |
 | **Antialiasing** | **Analytical/SDF** (High Quality) | **Analytical/SDF** | **Analytical/SDF** | **MSAA** (Optional) | **Analytical/MSAA** |
 | **Render Passes** | **1 Pass Interrupt + Restart** (For Barrier) | **1 Pass** (Or a few) | **1 Pass** (Compute Shader Main) | **2 Passes** (Geometry + Composite) | **Multiple Passes** (Depth Peeling) |
-| **Shape ID Management** | **24-bit, Periodic Buffer Reset** | Depth Value replaces ID | **Local ID within Tile/Warp** | No Direct ID Management | No Direct ID Management |
+| **Shape ID Management** | **24-bit, Periodic Buffer Reset at overflows** | Depth Value replaces ID | **Local ID within Tile/Warp** | No Direct ID Management | No Direct ID Management |
 | **Dependencies** | `fragmentStoresAndAtomics` | Basic Vulkan | `VK_KHR_shader_subgroup` | Basic Vulkan | Basic Vulkan |
 | **Main Advantage** | **Simple Impl, Single Write** | **Order Independent, High Quality** | **Extreme Parallelism, No Global Atomics** | **Good Compatibility, Traditional Pipeline** | **High Quality, Mature Engine** |
 | **Main Challenge** | **Shape ID Reset Overhead** | **CPU Sorting Overhead** | **High Complexity, New Hardware Needed** | **Potentially High Fill Rate** | **High Pass Count, Overhead** |
