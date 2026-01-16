@@ -185,7 +185,79 @@ Mobile GPUs (e.g., Mali, Adreno) are typically **Tile-Based Deferred Rendering (
 
 ---
 
-## 🎯 5. Conclusions and Recommendations
+## 🎨 5. GLSL Code
+
+Here is the GLSL fragment shader code snippet for TpvCanvas's Coverage-Mask-Then-Cover technique, illustrating the core logic for both the mask and cover passes, as well as premultiplied alpha handling.
+
+```glsl
+#version 450
+
+// ...
+
+#if defined(COVERAGE_MASK_PASS) || defined(COVERAGE_COVER_PASS)
+// Coverage buffer for transparent shape rendering (set = 1, binding = 0)
+// Uses R32_UINT format with packed stamp (24 bits) + coverage (8 bits)
+layout(set = 1, binding = 0, r32ui) uniform uimage2D uCoverageBuffer;
+#endif
+
+// ...
+
+void main() {
+  // ...
+#ifdef COVERAGE_MASK_PASS
+  // Coverage mask pass: write packed stamp+coverage to coverage buffer via atomicMax
+  // Packed format: upper 24 bits = shape stamp, lower 8 bits = coverage (alpha * 255)
+  uint shapeStamp = pushConstants.data[7].y;
+  uint coverage8 = uint((clamp(color.a, 0.0, 1.0) * 255.0) + 0.5);
+  uint packed = (shapeStamp << 8) | coverage8;
+  ivec2 pixelPosition = ivec2(gl_FragCoord.xy);
+  imageAtomicMax(uCoverageBuffer, pixelPosition, packed);
+  // No color output in mask pass
+  outFragColor = vec4(0.0);
+#elif defined(COVERAGE_COVER_PASS)
+  // Coverage cover pass: read from coverage buffer and output final color
+  // Only output if stamp matches current shape and pixel has coverage
+  uint shapeStamp = pushConstants.data[7].y;
+  ivec2 pixelPosition = ivec2(gl_FragCoord.xy);
+  uint packed = imageLoad(uCoverageBuffer, pixelPosition).r;
+  uint storedStamp = packed >> 8;
+  uint storedCoverage8 = packed & 0xFFu;
+  if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
+    float coverage = float(storedCoverage8) / 255.0;
+    // Clear the pixel in coverage buffer after reading (for next shape)
+    imageStore(uCoverageBuffer, pixelPosition, uvec4(0u));
+    // Check if texture is already premultiplied (bit 1 of flags)
+    bool isTexturePremultiplied = (pushConstants.data[7].w & (1u << 1)) != 0u;
+    if (isTexturePremultiplied) {
+      // Texture already premultiplied: de-premultiply, apply coverage, re-premultiply
+      // Avoid division by zero
+      vec3 unpremultiplied = (color.w > 1e-4) ? (color.xyz / color.w) : color.xyz;
+      outFragColor = vec4(unpremultiplied * coverage, coverage);
+    } else {
+      // Non-premultiplied texture: apply coverage directly (premultiplies in the process)
+      outFragColor = vec4(color.xyz * coverage, coverage);
+    }
+  } else {
+    discard;
+  }
+#else
+  // Pre-multiply RGB by alpha for correct premultiplied alpha blending
+  // This prevents overdraw artifacts with transparent overlapping geometry
+  // Check if texture is already premultiplied (bit 1 of flags)
+  bool isTexturePremultiplied = (pushConstants.data[7].w & (1u << 1)) != 0u;
+  if (isTexturePremultiplied) {
+    // Texture already premultiplied, output as-is to avoid double-multiplication
+    outFragColor = color;
+  } else {
+    // Non-premultiplied texture, premultiply now
+    outFragColor = vec4(color.xyz * color.w, color.w);
+  }
+#endif
+  // ...
+}
+```
+
+## 🎯 6. Conclusions and Recommendations
 
 1.  **TpvCanvas's Coverage-Mask-Then-Cover is an extremely efficient, practical, and high-quality solution**. By combining **atomic operations + SDF-AA**, it achieves a **near-perfect balance between performance, memory footprint, implementation complexity, and visual quality**. It is particularly suitable for **User Interfaces, text rendering, and 2D games** where high frame rates are required.
 
