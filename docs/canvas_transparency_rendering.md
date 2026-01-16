@@ -30,14 +30,14 @@ The table below compares the core mechanisms of TpvCanvas against other mainstre
 flowchart LR
     A[Submit Shape Geometry] --> B[Pass 1: Coverage Mask<br>Atomic Write ShapeID/StampID+Coverage<br>Highest Value Wins]
     B --> C[EndRenderPass<br>PipelineBarrier<br>Sync Storage Image Writes]
-    C --> D[Pass 2: Coverage Cover<br>Fullscreen Quad/BBox<br>Read ShapeID/StampID & Match<br>Output Color]
+    C --> D[Pass 2: Coverage Cover<br>Bounding-box Quad per Shape<br>Read ShapeID/StampID & Match<br>Output Color]
     D --> E[Composite Final Image]
 
     style B fill:#e3f2fd,stroke:#2196f3,color:#0d47a1
     style D fill:#bbdefb,stroke:#2196f3,color:#0d47a1
 ```
 
--   **Method**: In the first pass, each fragment attempts to write its shape ID / stamp ID and coverage to a storage image using `imageAtomicCompSwap`. The fragment with the highest UINT32 value (24-bit stamp + 8-bit coverage) to write "wins" for that pixel. In the second pass, a fullscreen quad reads the coverage buffer, retrieves the shape ID / stamp ID, and outputs the corresponding color with antialiased coverage.
+-   **Method**: In the first pass, each fragment attempts to write its shape ID / stamp ID and coverage to a storage image using `imageAtomicCompSwap`. The fragment with the highest UINT32 value (24-bit stamp + 8-bit coverage) to write "wins" for that pixel. In the second pass, a bounding-box quad for each shape reads the coverage buffer, retrieves the shape ID / stamp ID, and outputs the corresponding color with antialiased coverage.
 -   **Core of Atomic Operations**: `imageAtomicCompSwap` ensures **O(1)** time complexity to determine the "owner" of each pixel, avoiding O(N) depth sorting. This fits scenarios where many shapes (dense text, complex paths) might overlap a single pixel.
 -   **Advantage of SDF-AA**: Calculating **Signed Distance Field (SDF)** in the fragment shader and converting it to coverage (0-255) provides **extremely smooth, high-quality edges** without the overhead of MSAA multi-sampling. This is crucial for text rendering.
 -   **Inevitability of Pass Interruption**: As noted, `vkCmdPipelineBarrier` is necessary because **Vulkan specs have strict restrictions on read/write synchronization of storage images inside traditional render passes**. Interrupting the pass and inserting a memory barrier is the **standard and safest way** to ensure all fragment shader writes are visible to subsequent reads. The overhead is usually **lower** than the potential performance loss of using `VK_EXT_fragment_shader_interlock` on some hardware, and compatibility is better.
@@ -147,7 +147,7 @@ The following table summarizes the key trade-offs of these solutions.
 ### 1. Performance Characteristics
 | Solution | Fill Rate Pressure | Geometry Complexity Pressure | Memory Bandwidth Pressure | Compute Pressure | **Best Scenario** |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **TpvCanvas** | **Low** (Cover pass is fullscreen quad, but early culling works) | **Low** (Geometry only once) | **Medium** (Read/Write coverage image) | **Low** (Simple atomics/SDF calc) | **General 2D UI/Text**, **High FPS** |
+| **TpvCanvas** | **Low** (Cover pass is bounding-box quad per shape with ClipRect culling) | **Low** (Geometry only once) | **Medium** (Read/Write coverage image) | **Low** (Simple atomics/SDF calc) | **General 2D UI/Text**, **High FPS** |
 | **Pathfinder** | **Low** (Ordered rendering) | **High** (Decompose geometry) | **Low** (Read mostly) | **Medium** (Sorting/Analytical AA) | **Static or Semi-dynamic Content**, **High Visual Quality** |
 | **piet-gpu/vello** | **Very Low** (Compute shader parallel) | **Very Low** (Geometry handled in compute) | **Very Low** (Local access) | **High** (Parallel compute) | **Dynamic Content**, **Massive Parallelism**, **New Hardware** |
 | **A-Buffer** | **High** (List node writes) | **Medium** | **Extremely High** (List R/W) | **High** (List traversal/sort) | **Offline Rendering**, **Unlimited Overlap** |
