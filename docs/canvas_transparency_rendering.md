@@ -13,7 +13,7 @@ The table below compares the core mechanisms of TpvCanvas against other mainstre
 
 | Feature Dimension | TpvCanvas (PasVulkan) | Pathfinder | piet-gpu / vello | NanoVG (Vulkan) | Skia Ganesh (Vulkan) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Core Idea** | **Atomic Ops + First Writer Wins** | **Geometry Decomposition + Depth Sorting** | **Tile/Warp Parallel + Local Atomics** | **Two-Pass Rendering (Geometry+Composite)** | **Multi-pass Depth Peeling Variant** |
+| **Core Idea** | **Atomic Ops + Highest Stamp+Coverage Wins** | **Geometry Decomposition + Depth Sorting** | **Tile/Warp Parallel + Local Atomics** | **Two-Pass Rendering (Geometry+Composite)** | **Multi-pass Depth Peeling Variant** |
 | **Coverage Data** | **32-bit Atomic: ShapeID(24b) + Coverage(8b)** | **Coverage Buffer** (Count or Depth) | **Tile/Warp Local Buffer** | **Intermediate Color Buffer** | **Depth Buffer + Color Buffer** |
 | **Atomic Operations** | **Yes (imageAtomicCompSwap)** | No (Based on Pre-sorting) | **Yes (In Compute Shader)** | No (Based on Pre-sorting or Blending) | **No (Based on Pass Sorting)** |
 | **Antialiasing** | **SDF-Antialiasing** (High Quality) | **Analytical/SDF** | **Analytical/SDF** | **MSAA** (Optional) | **Analytical/MSAA** |
@@ -28,7 +28,7 @@ The table below compares the core mechanisms of TpvCanvas against other mainstre
 #### **TpvCanvas: Coverage-Mask-Then-Cover**
 ```mermaid
 flowchart LR
-    A[Submit Shape Geometry] --> B[Pass 1: Coverage Mask<br>Atomic Write ShapeID+Coverage<br>First Owner Wins]
+    A[Submit Shape Geometry] --> B[Pass 1: Coverage Mask<br>Atomic Write ShapeID+Coverage<br>Highest Value Wins]
     B --> C[EndRenderPass<br>PipelineBarrier<br>Sync Storage Image Writes]
     C --> D[Pass 2: Coverage Cover<br>Fullscreen Quad/BBox<br>Read ShapeID & Match<br>Output Color]
     D --> E[Composite Final Image]
@@ -37,8 +37,6 @@ flowchart LR
     style D fill:#bbdefb,stroke:#2196f3,color:#0d47a1
 ```
 
-
-[TpvCanvas's Coverage-Mask-Then-Cover Flowchart](canvas_transparency_rendering_diagram.svg)
 -   **Mechanism**: In the first pass, each fragment attempts to write its shape ID and coverage to a storage image using `imageAtomicCompSwap`. The fragment with the highest UINT32 value (24-bit stamp + 8-bit coverage) to write "wins" for that pixel. In the second pass, a fullscreen quad reads the coverage buffer, retrieves the shape ID, and outputs the corresponding color with antialiased coverage.
 -   **Core of Atomic Operations**: `imageAtomicCompSwap` ensures **O(1)** time complexity to determine the "owner" of each pixel, avoiding O(N) depth sorting. This fits scenarios where many shapes (dense text, complex paths) might overlap a single pixel.
 -   **Advantage of SDF-AA**: Calculating **Signed Distance Field (SDF)** in the fragment shader and converting it to coverage (0-255) provides **extremely smooth, high-quality edges** without the overhead of MSAA multi-sampling. This is crucial for text rendering.
@@ -124,7 +122,7 @@ The following table summarizes the key trade-offs of these solutions.
 -   **Amortizing Overhead**: The key is **batching**. Do not interrupt the pass for every shape. **Accumulate a batch of shapes** (e.g., all transparent shapes in a frame), then execute the **Mask -> Barrier -> Cover** flow once. This way, the pass interruption overhead is amortized over thousands of shapes, becoming negligible.
 -   **Alternative with `VK_EXT_fragment_shader_interlock`**: This extension allows fragment shaders to synchronize on a pixel region, theoretically avoiding pass interruption. However:
     -   **Hardware Support**: Not all GPUs support this, especially mobile GPUs.
-    -   **Performance Not Necessarily Better**: Interlocking itself can introduce serialization and stalling; its benefit is highly hardware/workload dependent. For a simple "first writer wins" mode, **global atomic operations (like TpvCanvas) are usually more efficient and simpler** than fine-grained interlocking.
+    -   **Performance Not Necessarily Better**: Interlocking itself can introduce serialization and stalling; its benefit is highly hardware/workload dependent. For a simple "highest value wins" mode, **global atomic operations (like TpvCanvas) are usually more efficient and simpler** than fine-grained interlocking.
     -   **Complexity**: Using extensions adds code complexity and compatibility testing burden.
     -   **Conclusion**: For the specific algorithm of TpvCanvas, **the current Pass Interruption + Barrier approach is the more pragmatic, efficient, and compatible choice**.
 
