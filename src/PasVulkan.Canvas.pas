@@ -5879,97 +5879,145 @@ begin
 
      TpvCanvasQueueItemKind.CoverageReset:begin
 
-      // Resume render pass if not active      
-      if not RenderPassActive then begin
-       if assigned(fOnResumeRenderPass) then begin
-        fOnResumeRenderPass(self);
+      if true then begin
+
+       // Clear image path
+
+       if assigned(fCoverageBufferImage) then begin
+        
+        // Suspend render pass if active      
+        if RenderPassActive then begin
+         if assigned(fOnSuspendRenderPass) then begin
+          fOnSuspendRenderPass(self);
+         end;
+         RenderPassActive:=false;
+        end;      
+
+        // TODO: Add here vkCmdClearColorImage, and adjust the following image memory barrier
+
+        FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+        ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        ImageMemoryBarrier.pNext:=nil;
+        ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+        ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+        ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+        ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+        ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+        ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+        ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+        ImageMemoryBarrier.subresourceRange.levelCount:=1;
+        ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+        ImageMemoryBarrier.subresourceRange.layerCount:=1;
+        aVulkanCommandBuffer.CmdPipelineBarrier(
+         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+         0,
+         0,nil,
+         0,nil,
+         1,@ImageMemoryBarrier);
+
        end;
-       RenderPassActive:=true;
-      end;
 
-      VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
-      VulkanIndexBuffer:=CurrentBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
-
-      if ForceUpdate then begin
-       aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
-      end;
-
-      if assigned(fVulkanCoverageResetPipeline) then begin
-       aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipeline.Handle);
-       if assigned(fVulkanCoverageBufferDescriptorSet) then begin
-        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipelineLayout.Handle,0,1,@fVulkanCoverageBufferDescriptorSet.Handle,0,nil);
-       end;
-       aVulkanCommandBuffer.CmdPushConstants(fVulkanCoverageResetPipelineLayout.Handle,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             0,
-                                             SizeOf(TpvCanvasPushConstants),
-                                             @QueueItem^.PushConstants);
       end else begin
-       ForceUpdate:=true;
-       break;
-      end;
 
-      if ForceUpdate or
-         (OldScissor.offset.x<>QueueItem^.Scissor.offset.x) or
-         (OldScissor.offset.y<>QueueItem^.Scissor.offset.y) or
-         (OldScissor.extent.Width<>QueueItem^.Scissor.extent.Width) or
-         (OldScissor.extent.Height<>QueueItem^.Scissor.extent.Height) then begin
-       OldScissor:=QueueItem^.Scissor;
-       aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
-      end;
+       // Shader clear path 
 
-      if ForceUpdate or
-         (OldVulkanVertexBuffer<>VulkanVertexBuffer) then begin
-       OldVulkanVertexBuffer:=VulkanVertexBuffer;
-       aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
-      end;
-
-      if ForceUpdate or
-         (OldVulkanIndexBuffer<>VulkanIndexBuffer) then begin
-       OldVulkanIndexBuffer:=VulkanIndexBuffer;
-       aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-      end;
-
-      aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
-
-      if assigned(fCoverageBufferImage) then begin
-       
-       // Suspend render pass if active      
-       if RenderPassActive then begin
-        if assigned(fOnSuspendRenderPass) then begin
-         fOnSuspendRenderPass(self);
+       // Resume render pass if not active      
+       if not RenderPassActive then begin
+        if assigned(fOnResumeRenderPass) then begin
+         fOnResumeRenderPass(self);
         end;
-        RenderPassActive:=false;
-       end;      
+        RenderPassActive:=true;
+       end;
 
-       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-       ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-       ImageMemoryBarrier.pNext:=nil;
-       ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-       ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-       ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
-       ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
-       ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-       ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-       ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
-       ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-       ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-       ImageMemoryBarrier.subresourceRange.levelCount:=1;
-       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-       ImageMemoryBarrier.subresourceRange.layerCount:=1;
-       aVulkanCommandBuffer.CmdPipelineBarrier(
-        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-        0,
-        0,nil,
-        0,nil,
-        1,@ImageMemoryBarrier);
+       VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
+       VulkanIndexBuffer:=CurrentBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
 
-      end;
+       if ForceUpdate then begin
+        aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
+       end;
+
+       if assigned(fVulkanCoverageResetPipeline) then begin
+        aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipeline.Handle);
+        if assigned(fVulkanCoverageBufferDescriptorSet) then begin
+         aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipelineLayout.Handle,0,1,@fVulkanCoverageBufferDescriptorSet.Handle,0,nil);
+        end;
+        aVulkanCommandBuffer.CmdPushConstants(fVulkanCoverageResetPipelineLayout.Handle,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              0,
+                                              SizeOf(TpvCanvasPushConstants),
+                                              @QueueItem^.PushConstants);
+       end else begin
+        ForceUpdate:=true;
+        break;
+       end;
+
+       if ForceUpdate or
+          (OldScissor.offset.x<>QueueItem^.Scissor.offset.x) or
+          (OldScissor.offset.y<>QueueItem^.Scissor.offset.y) or
+          (OldScissor.extent.Width<>QueueItem^.Scissor.extent.Width) or
+          (OldScissor.extent.Height<>QueueItem^.Scissor.extent.Height) then begin
+        OldScissor:=QueueItem^.Scissor;
+        aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
+       end;
+
+       if ForceUpdate or
+          (OldVulkanVertexBuffer<>VulkanVertexBuffer) then begin
+        OldVulkanVertexBuffer:=VulkanVertexBuffer;
+        aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+       end;
+
+       if ForceUpdate or
+          (OldVulkanIndexBuffer<>VulkanIndexBuffer) then begin
+        OldVulkanIndexBuffer:=VulkanIndexBuffer;
+        aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+       end;
+
+       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
+
+       if assigned(fCoverageBufferImage) then begin
+        
+        // Suspend render pass if active      
+        if RenderPassActive then begin
+         if assigned(fOnSuspendRenderPass) then begin
+          fOnSuspendRenderPass(self);
+         end;
+         RenderPassActive:=false;
+        end;      
+
+        FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+        ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        ImageMemoryBarrier.pNext:=nil;
+        ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+        ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+        ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+        ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+        ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+        ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+        ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+        ImageMemoryBarrier.subresourceRange.levelCount:=1;
+        ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+        ImageMemoryBarrier.subresourceRange.layerCount:=1;
+        aVulkanCommandBuffer.CmdPipelineBarrier(
+         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+         0,
+         0,nil,
+         0,nil,
+         1,@ImageMemoryBarrier);
+
+       end;
+
+      end; 
 
       ForceUpdate:=true;
       ForceUpdatePushConstants:=false;
+
      end;
 
      TpvCanvasQueueItemKind.TransparentShapeMask:begin
