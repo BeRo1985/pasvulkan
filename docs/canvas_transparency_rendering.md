@@ -14,7 +14,7 @@ The table below compares the core mechanisms of TpvCanvas against other mainstre
 | Feature Dimension | TpvCanvas (PasVulkan) | Pathfinder | piet-gpu / vello | NanoVG (Vulkan) | Skia Ganesh (Vulkan) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Core Idea** | **Atomic Ops + Highest Stamp+Coverage Wins** | **Geometry Decomposition + Depth Sorting** | **Tile/Warp Parallel + Local Atomics** | **Two-Pass Rendering (Geometry+Composite)** | **Multi-pass Depth Peeling Variant** |
-| **Coverage Data** | **32-bit Atomic: ShapeID(24b) + Coverage(8b)** | **Coverage Buffer** (Count or Depth) | **Tile/Warp Local Buffer** | **Intermediate Color Buffer** | **Depth Buffer + Color Buffer** |
+| **Coverage Data** | **32-bit Atomic: ShapeID/StampID(24b) + Coverage(8b)** | **Coverage Buffer** (Count or Depth) | **Tile/Warp Local Buffer** | **Intermediate Color Buffer** | **Depth Buffer + Color Buffer** |
 | **Atomic Operations** | **Yes (imageAtomicCompSwap)** | No (Based on Pre-sorting) | **Yes (In Compute Shader)** | No (Based on Pre-sorting or Blending) | **No (Based on Pass Sorting)** |
 | **Antialiasing** | **Analytical/SDF** (High Quality) | **Analytical/SDF** | **Analytical/SDF** | **MSAA** (Optional) | **Analytical/MSAA** |
 | **Render Passes** | **1 Pass Interrupt + Restart** (For Barrier) | **1 Pass** (Or a few) | **1 Pass** (Compute Shader Main) | **2 Passes** (Geometry + Composite) | **Multiple Passes** (Depth Peeling) |
