@@ -5707,6 +5707,8 @@ var Index,StartVertexIndex,TextureMode:TpvInt32;
     TransformMatrix,FillMatrix,MaskMatrix:TpvMatrix4x4;
     ForceUpdate,ForceUpdatePushConstants,h,RenderPassActive:boolean;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
+    ImageSubresourceRange:TVkImageSubresourceRange;
+    ClearColorValue:TVkClearColorValue;
 //  DynamicOffset:TVkDeviceSize;
 begin
 
@@ -5893,12 +5895,25 @@ begin
          RenderPassActive:=false;
         end;      
 
-        // TODO: Add here vkCmdClearColorImage, and adjust the following image memory barrier
+        // Clear coverage buffer to zero
+        FillChar(ClearColorValue,SizeOf(TVkClearColorValue),#0);
+        FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
+        ImageSubresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+        ImageSubresourceRange.baseMipLevel:=0;
+        ImageSubresourceRange.levelCount:=1;
+        ImageSubresourceRange.baseArrayLayer:=0;
+        ImageSubresourceRange.layerCount:=1;
+        aVulkanCommandBuffer.CmdClearColorImage(fCoverageBufferImage.Handle,
+                                                VK_IMAGE_LAYOUT_GENERAL,
+                                                @ClearColorValue,
+                                                1,
+                                                @ImageSubresourceRange);
 
+        // Memory barrier to ensure clear is complete before shader reads
         FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
         ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         ImageMemoryBarrier.pNext:=nil;
-        ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+        ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
         ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
         ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
         ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
@@ -5911,7 +5926,7 @@ begin
         ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
         ImageMemoryBarrier.subresourceRange.layerCount:=1;
         aVulkanCommandBuffer.CmdPipelineBarrier(
-         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+         TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
          TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
          0,
          0,nil,
