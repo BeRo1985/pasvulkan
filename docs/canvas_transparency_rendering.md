@@ -1,5 +1,5 @@
 
-This document provides a comprehensive technical analysis and comparison of the **Coverage-Mask-Then-Cover** technique used in TpvCanvas for rendering transparent shapes, against other mainstream approaches in the field of 2D graphics rendering. It also explores alternative solutions for handling complex transparency scenarios, delves into specific technical questions, and presents a trade-off analysis to guide implementation decisions.
+This document provides a comprehensive technical analysis and comparison of the **Coverage-Mask-Then-Cover** technique used in TpvCanvas in PasVulkan for rendering transparent shapes, against other mainstream approaches in the field of 2D graphics rendering. It also explores alternative solutions for handling complex transparency scenarios, delves into specific technical questions, and presents a trade-off analysis to guide implementation decisions.
 
 ---
 
