@@ -16,7 +16,7 @@ The table below compares the core mechanisms of TpvCanvas against other mainstre
 | **Core Idea** | **Atomic Ops + Highest Stamp+Coverage Wins** | **Geometry Decomposition + Depth Sorting** | **Tile/Warp Parallel + Local Atomics** | **Two-Pass Rendering (Geometry+Composite)** | **Multi-pass Depth Peeling Variant** |
 | **Coverage Data** | **32-bit Atomic: ShapeID(24b) + Coverage(8b)** | **Coverage Buffer** (Count or Depth) | **Tile/Warp Local Buffer** | **Intermediate Color Buffer** | **Depth Buffer + Color Buffer** |
 | **Atomic Operations** | **Yes (imageAtomicCompSwap)** | No (Based on Pre-sorting) | **Yes (In Compute Shader)** | No (Based on Pre-sorting or Blending) | **No (Based on Pass Sorting)** |
-| **Antialiasing** | **SDF-Antialiasing** (High Quality) | **Analytical/SDF** | **Analytical/SDF** | **MSAA** (Optional) | **Analytical/MSAA** |
+| **Antialiasing** | **Analytical/SDF** (High Quality) | **Analytical/SDF** | **Analytical/SDF** | **MSAA** (Optional) | **Analytical/MSAA** |
 | **Render Passes** | **1 Pass Interrupt + Restart** (For Barrier) | **1 Pass** (Or a few) | **1 Pass** (Compute Shader Main) | **2 Passes** (Geometry + Composite) | **Multiple Passes** (Depth Peeling) |
 | **Shape ID Management** | **24-bit, Periodic Buffer Reset** | Depth Value replaces ID | **Local ID within Tile/Warp** | No Direct ID Management | No Direct ID Management |
 | **Dependencies** | `fragmentStoresAndAtomics` | Basic Vulkan | `VK_KHR_shader_subgroup` | Basic Vulkan | Basic Vulkan |
