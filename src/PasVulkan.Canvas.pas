@@ -5937,7 +5937,9 @@ begin
 
       end else begin
 
-        // Coverage buffer clear path with a fragment shader with imageStore
+       // Coverage buffer clear path with a fragment shader with imageStore
+       // Draws a full screen quad to reset the coverage buffer as fallback if vkCmdClearColorImage is not usable in
+       // a valid way.
 
        // Resume render pass if not active      
        if not RenderPassActive then begin
