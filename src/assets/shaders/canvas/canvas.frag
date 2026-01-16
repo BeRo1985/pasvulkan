@@ -457,13 +457,13 @@ float multiSampleSDF(const in TVEC texCoord){
   vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
 #endif
   vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
-  return  clamp((linearstep(width.x, width.y, center) + 
-          dot(linearstep(width.xxxx, 
-                         width.yyyy,
-                         vec4(textureLod(uTexture, ADJUST_TEXCOORD(buv.xy), 0.0).w,
-                              textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0).w,
-                              textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0).w,
-                              textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0);
+  return clamp((linearstep(width.x, width.y, center) + 
+         dot(linearstep(width.xxxx, 
+                        width.yyyy,
+                        vec4(textureLod(uTexture, ADJUST_TEXCOORD(buv.xy), 0.0).w,
+                             textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0).w,
+                             textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0).w,
+                             textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0);
 }
 
 // 4x multisampled 4-rook/RGSS SDF with a single texture lookup of four SDF values in the RGBA color channels 
