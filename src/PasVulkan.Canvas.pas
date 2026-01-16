@@ -635,6 +635,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property VulkanFont:TpvFont read fVulkanFont write fVulkanFont;
      end;
 
+     TpvCanvasOnSuspendResumeRenderPassEvent=procedure(const aCanvas:TpvCanvas) of object;
+
      TpvCanvas=class
       private
        fDevice:TpvVulkanDevice;
@@ -697,6 +699,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fTransparentShapeBoundingBoxMaxY:TpvFloat;
        fTransparentShapeStartVertexIndex:TpvInt32;
        fTransparentShapeStartIndexIndex:TpvInt32;
+       fOnSuspendRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent;
+       fOnResumeRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent;
        procedure SetVulkanRenderPass(const aVulkanRenderPass:TpvVulkanRenderPass);
        procedure QueueCoverageReset;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
@@ -906,6 +910,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property Texture:TObject read GetTexture write SetTexture;
        property MaskTexture:TObject read GetMaskTexture write SetMaskTexture;
        property State:TpvCanvasState read fState;
+       property OnSuspendRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnSuspendRenderPass write fOnSuspendRenderPass;
+       property OnResumeRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnResumeRenderPass write fOnResumeRenderPass;
      end;
 
 implementation
@@ -3831,6 +3837,9 @@ begin
  fTransparentShapeStartVertexIndex:=0;
  fTransparentShapeStartIndexIndex:=0;
 
+ fOnSuspendRenderPass:=nil;
+ fOnResumeRenderPass:=nil;
+
  // Create initial coverage buffer if feature is supported
  if fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported then begin
   Resize(fWidth,fHeight);
@@ -5696,8 +5705,8 @@ var Index,StartVertexIndex,TextureMode:TpvInt32;
     VulkanVertexBuffer,VulkanIndexBuffer,OldVulkanVertexBuffer,OldVulkanIndexBuffer:TpvVulkanBuffer;
     OldScissor:TVkRect2D;
     TransformMatrix,FillMatrix,MaskMatrix:TpvMatrix4x4;
-    ForceUpdate,ForceUpdatePushConstants,h:boolean;
-    MemoryBarrier:TVkMemoryBarrier;
+    ForceUpdate,ForceUpdatePushConstants,h,RenderPassActive:boolean;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
 //  DynamicOffset:TVkDeviceSize;
 begin
 
@@ -5705,7 +5714,13 @@ begin
  if fTransparentShapes and
     fCanvasCommon.fFragmentStoresAndAtomicsSupported and
     ((fCoverageBufferWidth<>fWidth) or (fCoverageBufferHeight<>fHeight)) then begin
+  if assigned(fOnSuspendRenderPass) then begin
+   fOnSuspendRenderPass(self);
+  end;   
   Resize(fWidth,fHeight);
+  RenderPassActive:=false;
+ end else begin
+  RenderPassActive:=true;
  end;
  
  h:=true;
@@ -5758,6 +5773,14 @@ begin
     case QueueItem^.Kind of
 
      TpvCanvasQueueItemKind.Normal:begin
+
+      // Resume render pass if not active      
+      if not RenderPassActive then begin
+       if assigned(fOnResumeRenderPass) then begin
+        fOnResumeRenderPass(self);
+       end;
+       RenderPassActive:=true;
+      end;
 
       VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
 
@@ -5855,6 +5878,15 @@ begin
      end;
 
      TpvCanvasQueueItemKind.CoverageReset:begin
+
+      // Resume render pass if not active      
+      if not RenderPassActive then begin
+       if assigned(fOnResumeRenderPass) then begin
+        fOnResumeRenderPass(self);
+       end;
+       RenderPassActive:=true;
+      end;
+
       VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
       VulkanIndexBuffer:=CurrentBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
 
@@ -5902,18 +5934,38 @@ begin
       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
 
       if assigned(fCoverageBufferImage) then begin
-       FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
-       MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-       MemoryBarrier.pNext:=nil;
-       MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-       MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       
+       // Suspend render pass if active      
+       if RenderPassActive then begin
+        if assigned(fOnSuspendRenderPass) then begin
+         fOnSuspendRenderPass(self);
+        end;
+        RenderPassActive:=false;
+       end;      
+
+       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+       ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       ImageMemoryBarrier.pNext:=nil;
+       ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+       ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+       ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+       ImageMemoryBarrier.subresourceRange.levelCount:=1;
+       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+       ImageMemoryBarrier.subresourceRange.layerCount:=1;
        aVulkanCommandBuffer.CmdPipelineBarrier(
         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
         0,
-        1,@MemoryBarrier,
         0,nil,
-        0,nil);
+        0,nil,
+        1,@ImageMemoryBarrier);
+
       end;
 
       ForceUpdate:=true;
@@ -5921,7 +5973,16 @@ begin
      end;
 
      TpvCanvasQueueItemKind.TransparentShapeMask:begin
+
       // Transparent shape mask pass - renders geometry to coverage buffer
+
+      // Resume render pass if not active      
+      if not RenderPassActive then begin
+       if assigned(fOnResumeRenderPass) then begin
+        fOnResumeRenderPass(self);
+       end;
+       RenderPassActive:=true;
+      end;
       
       VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
       VulkanIndexBuffer:=CurrentBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
@@ -5998,27 +6059,59 @@ begin
      end;
 
      TpvCanvasQueueItemKind.TransparentShapeCoverageBarrier:begin
+
      // Memory barrier between mask and cover passes
      // Ensures all mask pass writes to coverage buffer are visible to cover pass reads
       if assigned(fCoverageBufferImage) then begin
-       FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
-       MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-       MemoryBarrier.pNext:=nil;
-       MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-       MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+
+       // Suspend render pass if active      
+       if RenderPassActive then begin
+        if assigned(fOnSuspendRenderPass) then begin
+         fOnSuspendRenderPass(self);
+        end;
+        RenderPassActive:=false;
+       end;      
+
+       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+       ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       ImageMemoryBarrier.pNext:=nil;
+       ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+       ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+       ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+       ImageMemoryBarrier.subresourceRange.levelCount:=1;
+       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+       ImageMemoryBarrier.subresourceRange.layerCount:=1;
        aVulkanCommandBuffer.CmdPipelineBarrier(
         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
         TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
         0,
-        1,@MemoryBarrier,
         0,nil,
-        0,nil);
+        0,nil,
+        1,@ImageMemoryBarrier);
+
       end;
+
       ForceUpdate:=true;
+
      end;
 
      TpvCanvasQueueItemKind.TransparentShapeCover:begin
+
       // Transparent shape cover pass - reads from coverage buffer and outputs final color
+
+      // Resume render pass if not active      
+      if not RenderPassActive then begin
+       if assigned(fOnResumeRenderPass) then begin
+        fOnResumeRenderPass(self);
+       end;
+       RenderPassActive:=true;
+      end;
       
       VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
       VulkanIndexBuffer:=CurrentBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
@@ -6107,6 +6200,11 @@ begin
 
   end;
 
+ end;
+
+ // Resume render pass before leaving, if not active again, for to avoid issues  
+ if (not RenderPassActive) and assigned(fOnResumeRenderPass) then begin
+  fOnResumeRenderPass(self);
  end;
 
 end;

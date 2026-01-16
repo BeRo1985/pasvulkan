@@ -980,7 +980,7 @@ type EpvFrameGraph=class(Exception);
               procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer); override;
               procedure SuspendRenderPass;
-              procedure ContinueRenderPass;
+              procedure ResumeRenderPass;
              public
               property Size:TImageSize read fSize write fSize;
              published
@@ -1237,7 +1237,7 @@ type EpvFrameGraph=class(Exception);
              constructor Create(const aFrameGraph:TpvFrameGraph); override;
              destructor Destroy; override;
              procedure SuspendRenderPass;
-             procedure ContinueRenderPass;
+             procedure ResumeRenderPass;
              public
               property Size:TImageSize read fSize write fSize;
              published
@@ -3617,7 +3617,7 @@ begin
  PhysicalRenderPass.SuspendRenderPass;
 end;
 
-procedure TpvFrameGraph.TRenderPass.ContinueRenderPass;
+procedure TpvFrameGraph.TRenderPass.ResumeRenderPass;
 var PhysicalRenderPass:TPhysicalRenderPass;
 begin
  if not fAllowRenderPassRestart then begin
@@ -3630,7 +3630,7 @@ begin
  if PhysicalRenderPass.fSubpasses.Count<>1 then begin
   raise EpvFrameGraph.Create('Render pass restart requires a single-subpass physical render pass for "'+String(fName)+'"');
  end;
- PhysicalRenderPass.ContinueRenderPass;
+ PhysicalRenderPass.ResumeRenderPass;
 end;
 
 { TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup }
@@ -4706,7 +4706,7 @@ begin
  fActiveRenderPass:=nil;
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.ContinueRenderPass;
+procedure TpvFrameGraph.TPhysicalRenderPass.ResumeRenderPass;
 begin
  if assigned(fActiveRenderPass) then begin
   raise EpvFrameGraph.Create('Render pass is already active');
