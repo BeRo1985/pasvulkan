@@ -969,6 +969,7 @@ type EpvFrameGraph=class(Exception);
               fActiveRenderAreaHeight:TpvSizeInt;
               fActiveSubpassContents:TVkSubpassContents;
               fActiveRenderPass:TpvVulkanRenderPass;
+              fActiveCommandBuffer:TpvVulkanCommandBuffer;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); override;
               destructor Destroy; override;
@@ -978,8 +979,8 @@ type EpvFrameGraph=class(Exception);
               procedure ReleaseVolatileResources; override;
               procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer); override;
-              procedure SuspendRenderPass(const aCommandBuffer:TpvVulkanCommandBuffer);
-              procedure ContinueRenderPass(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure SuspendRenderPass;
+              procedure ContinueRenderPass;
              public
               property Size:TImageSize read fSize write fSize;
              published
@@ -1233,10 +1234,10 @@ type EpvFrameGraph=class(Exception);
               function GetVulkanRenderPass:TpvVulkanRenderPass; inline;
               function GetVulkanRenderPassSubpassIndex:TpvSizeInt; inline;
              public
-              constructor Create(const aFrameGraph:TpvFrameGraph); override;
-              destructor Destroy; override;
-              procedure SuspendRenderPass(const aCommandBuffer:TpvVulkanCommandBuffer);
-              procedure ContinueRenderPass(const aCommandBuffer:TpvVulkanCommandBuffer);
+             constructor Create(const aFrameGraph:TpvFrameGraph); override;
+             destructor Destroy; override;
+             procedure SuspendRenderPass;
+             procedure ContinueRenderPass;
              public
               property Size:TImageSize read fSize write fSize;
              published
@@ -3600,7 +3601,7 @@ begin
  end;
 end;
 
-procedure TpvFrameGraph.TRenderPass.SuspendRenderPass(const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvFrameGraph.TRenderPass.SuspendRenderPass;
 var PhysicalRenderPass:TPhysicalRenderPass;
 begin
  if not fAllowRenderPassRestart then begin
@@ -3613,10 +3614,10 @@ begin
  if PhysicalRenderPass.fSubpasses.Count<>1 then begin
   raise EpvFrameGraph.Create('Render pass restart requires a single-subpass physical render pass for "'+String(fName)+'"');
  end;
- PhysicalRenderPass.SuspendRenderPass(aCommandBuffer);
+ PhysicalRenderPass.SuspendRenderPass;
 end;
 
-procedure TpvFrameGraph.TRenderPass.ContinueRenderPass(const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvFrameGraph.TRenderPass.ContinueRenderPass;
 var PhysicalRenderPass:TPhysicalRenderPass;
 begin
  if not fAllowRenderPassRestart then begin
@@ -3629,7 +3630,7 @@ begin
  if PhysicalRenderPass.fSubpasses.Count<>1 then begin
   raise EpvFrameGraph.Create('Render pass restart requires a single-subpass physical render pass for "'+String(fName)+'"');
  end;
- PhysicalRenderPass.ContinueRenderPass(aCommandBuffer);
+ PhysicalRenderPass.ContinueRenderPass;
 end;
 
 { TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup }
@@ -4219,6 +4220,7 @@ begin
  fActiveRenderAreaHeight:=0;
  fActiveSubpassContents:=VK_SUBPASS_CONTENTS_INLINE;
  fActiveRenderPass:=nil;
+ fActiveCommandBuffer:=nil;
  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
   for SurfaceIndex:=0 to length(fVulkanSurfaceFrameBuffers[InFlightFrameIndex])-1 do begin
    fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex]:=nil;
@@ -4470,9 +4472,9 @@ begin
 //fFrameGraph.fVulkanDevice.DebugMarker.SetObjectName(fVulkanRenderPass.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT,fSubpasses[0].fRenderPass.Name);
 
  if fSubpasses.Count>0 then begin
-  fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanRenderPass.Handle,TVkObjectType.VK_OBJECT_TYPE_RENDER_PASS,fSubpasses[0].fRenderPass.Name);
+  fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanRenderPass.Handle,TVkObjectType.VK_OBJECT_TYPE_RENDER_PASS,fSubpasses[0].fRenderPass.fName);
   if assigned(fVulkanLoadRenderPass) then begin
-   fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanLoadRenderPass.Handle,TVkObjectType.VK_OBJECT_TYPE_RENDER_PASS,fSubpasses[0].fRenderPass.Name+'.LoadRenderPass');
+   fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanLoadRenderPass.Handle,TVkObjectType.VK_OBJECT_TYPE_RENDER_PASS,fSubpasses[0].fRenderPass.fName+'.LoadRenderPass');
   end;
  end;
 
@@ -4527,7 +4529,7 @@ begin
     end;
     fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex].Initialize;
     if fSubpasses.Count>0 then begin
-     fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_FRAMEBUFFER,fSubpasses[0].fRenderPass.Name+'.SurfaceFrameBuffer['+IntToStr(InFlightFrameIndex)+','+IntToStr(SurfaceIndex)+']');
+     fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_FRAMEBUFFER,fSubpasses[0].fRenderPass.fName+'.SurfaceFrameBuffer['+IntToStr(InFlightFrameIndex)+','+IntToStr(SurfaceIndex)+']');
     end;
    end;
   end;
@@ -4553,7 +4555,7 @@ begin
    end;
    fVulkanFrameBuffers[InFlightFrameIndex].Initialize;
    if fSubpasses.Count>0 then begin
-    fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanFrameBuffers[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_FRAMEBUFFER,fSubpasses[0].fRenderPass.Name+'.FrameBuffer['+IntToStr(InFlightFrameIndex)+']');
+    fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanFrameBuffers[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_FRAMEBUFFER,fSubpasses[0].fRenderPass.fName+'.FrameBuffer['+IntToStr(InFlightFrameIndex)+']');
    end;
   end;
 
@@ -4592,6 +4594,7 @@ begin
  fActiveFrameBuffer:=nil;
  fActiveRenderAreaWidth:=0;
  fActiveRenderAreaHeight:=0;
+ fActiveCommandBuffer:=nil;
 
  fHasVulkanSurfaceFrameBuffers:=false;
 
@@ -4623,6 +4626,7 @@ begin
  fActiveFrameBuffer:=nil;
  fActiveRenderAreaWidth:=0;
  fActiveRenderAreaHeight:=0;
+ fActiveCommandBuffer:=aCommandBuffer;
  if fHasSecondaryBuffers then begin
   SubpassContents:=VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS;
  end else begin
@@ -4681,9 +4685,10 @@ begin
  if SingleSubpassDebug then begin
   fSubpasses[0].fRenderPass.AddEndMarker(fQueue,aCommandBuffer);
  end;
+ fActiveCommandBuffer:=nil;
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.SuspendRenderPass(const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvFrameGraph.TPhysicalRenderPass.SuspendRenderPass;
 begin
  if not assigned(fActiveRenderPass) then begin
   raise EpvFrameGraph.Create('Render pass is not active');
@@ -4694,11 +4699,14 @@ begin
  if not assigned(fVulkanLoadRenderPass) then begin
   raise EpvFrameGraph.Create('Render pass restart is not enabled for this physical render pass');
  end;
- fActiveRenderPass.EndRenderPass(aCommandBuffer);
+ if not assigned(fActiveCommandBuffer) then begin
+  raise EpvFrameGraph.Create('Render pass restart has no active command buffer');
+ end;
+ fActiveRenderPass.EndRenderPass(fActiveCommandBuffer);
  fActiveRenderPass:=nil;
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.ContinueRenderPass(const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvFrameGraph.TPhysicalRenderPass.ContinueRenderPass;
 begin
  if assigned(fActiveRenderPass) then begin
   raise EpvFrameGraph.Create('Render pass is already active');
@@ -4712,7 +4720,10 @@ begin
  if not assigned(fActiveFrameBuffer) then begin
   raise EpvFrameGraph.Create('Render pass restart has no active framebuffer');
  end;
- fVulkanLoadRenderPass.BeginRenderPass(aCommandBuffer,
+ if not assigned(fActiveCommandBuffer) then begin
+  raise EpvFrameGraph.Create('Render pass restart has no active command buffer');
+ end;
+ fVulkanLoadRenderPass.BeginRenderPass(fActiveCommandBuffer,
                                        fActiveFrameBuffer,
                                        fActiveSubpassContents,
                                        0,
@@ -5673,7 +5684,7 @@ type TEventBeforeAfter=(Event,Before,After);
     if PhysicalRenderPass.fSubpasses.Count>1 then begin
      for Subpass in PhysicalRenderPass.fSubpasses do begin
       if Subpass.fRenderPass.fAllowRenderPassRestart then begin
-       raise EpvFrameGraph.Create('Render pass restart requires a single-subpass physical render pass for "'+String(Subpass.fRenderPass.Name)+'"');
+       raise EpvFrameGraph.Create('Render pass restart requires a single-subpass physical render pass for "'+String(Subpass.fRenderPass.fName)+'"');
       end;
      end;
     end;
@@ -6342,7 +6353,7 @@ type TEventBeforeAfter=(Event,Before,After);
     end;
 
     if (Pass is TRenderPass) and
-       TRenderPass(Pass).SelfDependency and
+       TRenderPass(Pass).fSelfDependency and
        (Pass.fPhysicalPass is TPhysicalRenderPass) and
        assigned(TRenderPass(Pass).fPhysicalRenderPassSubpass) then begin
      SubpassDependency.SrcSubpass:=TRenderPass(Pass).fPhysicalRenderPassSubpass;
