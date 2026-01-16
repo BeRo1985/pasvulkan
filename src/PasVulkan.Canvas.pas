@@ -5786,6 +5786,8 @@ begin
 
      TpvCanvasQueueItemKind.Normal:begin
 
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Normal Draw',[0.5,0.5,0.5,1.0]);
+
       // Resume render pass if not active      
       if not RenderPassActive then begin
        if assigned(fOnResumeRenderPass) then begin
@@ -5880,16 +5882,22 @@ begin
 
       ForceUpdatePushConstants:=false;
 
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
+
      end;
 
      TpvCanvasQueueItemKind.Hook:begin
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Hook',[0.7,0.7,0.0,1.0]);
       if assigned(QueueItem^.Hook) then begin
        QueueItem^.Hook(QueueItem^.HookData,aVulkanCommandBuffer,aBufferIndex);
       end;
       ForceUpdate:=true;
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
      end;
 
      TpvCanvasQueueItemKind.CoverageReset:begin
+
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Coverage Reset',[1.0,0.0,0.0,1.0]);
 
       if true then begin
 
@@ -6048,9 +6056,13 @@ begin
 
       ResetState;
 
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
+
      end;
 
      TpvCanvasQueueItemKind.TransparentShapeMask:begin
+
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Transparent Shape Mask',[0.25,1.0,0.5,1.0]);
 
       // Transparent shape mask pass - renders geometry to coverage buffer
 
@@ -6138,9 +6150,13 @@ begin
 
       ResetState;
 
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
+
      end;
 
      TpvCanvasQueueItemKind.TransparentShapeCoverageBarrier:begin
+
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Transparent Shape Coverage Barrier',[1.0,0.5,0.0,1.0]);
 
      // Memory barrier between mask and cover passes
      // Ensures all mask pass writes to coverage buffer are visible to cover pass reads
@@ -6183,9 +6199,13 @@ begin
 
       ResetState;
 
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
+
      end;
 
      TpvCanvasQueueItemKind.TransparentShapeCover:begin
+
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Transparent Shape Cover',[0.5,1.0,1.0,1.0]);
 
       // Transparent shape cover pass - reads from coverage buffer and outputs final color
 
@@ -6272,6 +6292,8 @@ begin
       ForceUpdate:=true; // Force update after cover pass to rebind normal pipeline
 
       ResetState;
+
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
 
      end;
 
