@@ -5,7 +5,7 @@ This document provides a comprehensive technical analysis and comparison of the 
 
 ## 🆚 1. Coverage Buffer Technique Comparison
 
-The TpvCanvas method **Coverage-Mask-Then-Cover** is essentially a **Coverage-based Depth Sorting Alternative**. Its core idea is: **The shape with the highest 32-bit stamp+coverage value to "own" a pixel determines that pixel's final color**, thereby avoiding complex depth sorting or depth peeling. Many modern engines use similar ideas, but implementation details vary.
+The TpvCanvas method **Coverage-Mask-Then-Cover** is essentially a **Coverage-based Depth Sorting Alternative**. Its core idea is: **The shape with the highest 32-bit stamp+coverage value to "own" a pixel determines that pixel's final color**, thereby avoiding complex depth sorting or depth peeling. Many modern engines use similar ideas, but implementation details vary. In the following text, TpvCanvas's stamp ID is referred to as "Shape ID / Stamp ID" for clarity to those familiar with other engines.
 
 ### 1. Technical Implementation Comparison
 
