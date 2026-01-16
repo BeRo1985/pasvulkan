@@ -780,6 +780,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       public
        procedure EnsureSufficientReserveUsableSpace(const aCountVertices,aCountIndices:TpvInt32);
        function AddVertex(const aPosition:TpvVector2;const aTexCoord:TpvVector3;const aColor:TpvVector4):TpvInt32;
+       function AddVertexWithClipRect(const aPosition:TpvVector2;const aTexCoord:TpvVector3;const aColor:TpvVector4;const aClipRect:TpvRect):TpvInt32;
        function AddIndex(const aVertexIndex:TpvInt32):TpvInt32; {$ifdef CAN_INLINE}inline;{$endif}
       public
        procedure ExecuteUpload(const aVulkanTransferQueue:TpvVulkanQueue;const aVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;const aVulkanTransferCommandBufferFence:TpvVulkanFence;const aBufferIndex:TpvInt32);
@@ -5424,6 +5425,26 @@ begin
  end;
 end;
 
+function TpvCanvas.AddVertexWithClipRect(const aPosition:TpvVector2;const aTexCoord:TpvVector3;const aColor:TpvVector4;const aClipRect:TpvRect):TpvInt32;
+var Vertex:PpvCanvasVertex;
+    TransformedPos:TpvVector2;
+begin
+ result:=fCurrentCountVertices;
+ Vertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices];
+ inc(fCurrentCountVertices);
+ Vertex^.OriginalPosition:=aPosition;
+ TransformedPos:=fState.fModelMatrix*aPosition;
+ Vertex^.Position:=TpvVector3.InlineableCreate(TransformedPos,fState.fZPosition);
+ Vertex^.TextureCoord:=aTexCoord;
+ Vertex^.Color.r:=aColor.r;
+ Vertex^.Color.g:=aColor.g;
+ Vertex^.Color.b:=aColor.b;
+ Vertex^.Color.a:=aColor.a;
+ Vertex^.State:=GetVertexState;
+ Vertex^.ClipRect:=aClipRect; // Use provided ClipRect instead of fState.fClipRect
+ // Don't track bounding box for cover quad vertices
+end;
+
 function TpvCanvas.AddIndex(const aVertexIndex:TpvInt32):TpvInt32;
 begin
  result:=fCurrentCountIndices;
@@ -5645,10 +5666,13 @@ begin
 end;
 
 procedure TpvCanvas.EndTransparentShape;
+const Add:TpvVector2=(x:-1.0;y:-1.0);
 var QueueItemIndex:TpvInt32;
     QueueItem:PpvCanvasQueueItem;
     v0,v1,v2,v3:TpvInt32;
     BoundingBoxMinX,BoundingBoxMinY,BoundingBoxMaxX,BoundingBoxMaxY:TpvFloat;
+    ClipRect:TpvRect;
+    Mul:TpvVector2;
 begin
  if fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported and fTransparentShapeActive then begin
   // Flush the mask pass geometry
@@ -5675,12 +5699,17 @@ begin
    BoundingBoxMaxX:=fTransparentShapeBoundingBoxMaxX+1.0;
    BoundingBoxMaxY:=fTransparentShapeBoundingBoxMaxY+1.0;
    
-   // Generate cover quad vertices (using current state color)
+   // Create ClipRect in clip space that matches the bounding box to prevent fragment clipping
+   Mul:=TpvVector2.InlineableCreate(2.0/fWidth,2.0/fHeight);
+   ClipRect.Min:=(TpvVector2.InlineableCreate(BoundingBoxMinX,BoundingBoxMinY)*Mul)+Add;
+   ClipRect.Max:=(TpvVector2.InlineableCreate(BoundingBoxMaxX,BoundingBoxMaxY)*Mul)+Add;
+   
+   // Generate cover quad vertices with explicit ClipRect
    EnsureSufficientReserveUsableSpace(4,6);
-   v0:=AddVertex(TpvVector2.InlineableCreate(BoundingBoxMinX,BoundingBoxMinY),TpvVector3.Null,fState.fColor);
-   v1:=AddVertex(TpvVector2.InlineableCreate(BoundingBoxMaxX,BoundingBoxMinY),TpvVector3.Null,fState.fColor);
-   v2:=AddVertex(TpvVector2.InlineableCreate(BoundingBoxMaxX,BoundingBoxMaxY),TpvVector3.Null,fState.fColor);
-   v3:=AddVertex(TpvVector2.InlineableCreate(BoundingBoxMinX,BoundingBoxMaxY),TpvVector3.Null,fState.fColor);
+   v0:=AddVertexWithClipRect(TpvVector2.InlineableCreate(BoundingBoxMinX,BoundingBoxMinY),TpvVector3.Null,fState.fColor,ClipRect);
+   v1:=AddVertexWithClipRect(TpvVector2.InlineableCreate(BoundingBoxMaxX,BoundingBoxMinY),TpvVector3.Null,fState.fColor,ClipRect);
+   v2:=AddVertexWithClipRect(TpvVector2.InlineableCreate(BoundingBoxMaxX,BoundingBoxMaxY),TpvVector3.Null,fState.fColor,ClipRect);
+   v3:=AddVertexWithClipRect(TpvVector2.InlineableCreate(BoundingBoxMinX,BoundingBoxMaxY),TpvVector3.Null,fState.fColor,ClipRect);
    AddIndex(v0);
    AddIndex(v1);
    AddIndex(v2);
