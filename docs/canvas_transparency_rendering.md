@@ -21,7 +21,7 @@ The table below compares the core mechanisms of TpvCanvas against other mainstre
 | **Shape ID Management** | **24-bit, Periodic Buffer Reset at overflows** | Depth Value replaces ID | **Local ID within Tile/Warp** | No Direct ID Management | No Direct ID Management |
 | **Dependencies** | `fragmentStoresAndAtomics` | Basic Vulkan | `VK_KHR_shader_subgroup` | Basic Vulkan | Basic Vulkan |
 | **Main Advantage** | **Simple Implementation, Single Write** | **Order Independent, High Quality** | **Extreme Parallelism, No Global Atomics** | **Good Compatibility, Traditional Pipeline** | **High Quality, Mature Engine** |
-| **Main Challenge** | **Shape ID Reset Overhead** | **CPU Sorting Overhead** | **High Complexity, New Hardware Needed** | **Potentially High Fill Rate** | **High Pass Count, Overhead** |
+| **Main Challenge** | **Shape ID Reset Overhead, Intra Render Pass Barriers with Render Pass Restart** | **CPU Sorting Overhead** | **High Complexity, New Hardware Needed** | **Potentially High Fill Rate** | **High Pass Count, Overhead** |
 
 ### 2. Detailed Implementation Comparison
 
