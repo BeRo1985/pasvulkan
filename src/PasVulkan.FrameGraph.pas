@@ -4588,6 +4588,10 @@ begin
 
  FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fVulkanLoadRenderPass);
+ fActiveRenderPass:=nil;
+ fActiveFrameBuffer:=nil;
+ fActiveRenderAreaWidth:=0;
+ fActiveRenderAreaHeight:=0;
 
  fHasVulkanSurfaceFrameBuffers:=false;
 
