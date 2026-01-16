@@ -5325,6 +5325,9 @@ begin
    if QueueItem^.MaskingMode then begin
     PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^ or (TpvUInt32(1) shl 0);
    end;
+   if assigned(fState.fAtlasTexture) and TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).PremultipliedAlpha then begin
+    PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^ or (TpvUInt32(1) shl 1);
+   end;
   finally
    TPasMPInterlocked.Exchange(fCurrentFillBuffer^.fSpinLock,0);
   end;

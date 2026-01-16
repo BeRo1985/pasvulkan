@@ -1674,15 +1674,32 @@ void main(void){
     float coverage = float(storedCoverage8) / 255.0;
     // Clear the pixel in coverage buffer after reading (for next shape)
     imageStore(uCoverageBuffer, pixelPosition, uvec4(0u));
-    // Output premultiplied color with coverage
-    outFragColor = vec4(color.rgb * coverage, coverage);
+    // Check if texture is already premultiplied (bit 1 of flags)
+    bool isTexturePremultiplied = (pushConstants.data[7].w & (1u << 1)) != 0u;
+    if (isTexturePremultiplied) {
+      // Texture already premultiplied: de-premultiply, apply coverage, re-premultiply
+      // Avoid division by zero
+      vec3 unpremultiplied = (color.w > 1e-4) ? (color.xyz / color.w) : color.xyz;
+      outFragColor = vec4(unpremultiplied * coverage, coverage);
+    } else {
+      // Non-premultiplied texture: apply coverage directly (premultiplies in the process)
+      outFragColor = vec4(color.xyz * coverage, coverage);
+    }
   } else {
     discard;
   }
 #else
   // Pre-multiply RGB by alpha for correct premultiplied alpha blending
   // This prevents overdraw artifacts with transparent overlapping geometry
-  outFragColor = vec4(color.rgb * color.a, color.a);
+  // Check if texture is already premultiplied (bit 1 of flags)
+  bool isTexturePremultiplied = (pushConstants.data[7].w & (1u << 1)) != 0u;
+  if (isTexturePremultiplied) {
+    // Texture already premultiplied, output as-is to avoid double-multiplication
+    outFragColor = color;
+  } else {
+    // Non-premultiplied texture, premultiply now
+    outFragColor = vec4(color.xyz * color.w, color.w);
+  }
 #endif
 }
 #endif
