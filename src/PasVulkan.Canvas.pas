@@ -5881,7 +5881,7 @@ begin
 
       if true then begin
 
-       // Clear image path
+       // Coverage buffer clear path with vkCmdClearColorImage
 
        if assigned(fCoverageBufferImage) then begin
         
@@ -5922,7 +5922,7 @@ begin
 
       end else begin
 
-       // Shader clear path 
+        // Coverage buffer clear path with a fragment shader with imageStore
 
        // Resume render pass if not active      
        if not RenderPassActive then begin
