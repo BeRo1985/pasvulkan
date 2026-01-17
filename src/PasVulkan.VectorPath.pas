@@ -508,8 +508,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function QuadraticCurveTo(const aControlPoint,aAnchorPoint:TpvVectorPathVector):TpvVectorPath; overload;
        function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble):TpvVectorPath; overload;
        function CubicCurveTo(const aControlPoint0,aControlPoint1,aAnchorPoint:TpvVectorPathVector):TpvVectorPath; overload;
-       function ArcTo(const aOrigin,aRadius:TpvVectorPathVector;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath; overload;
-       function ArcTo(const aOriginX,aOriginY,aRadiusX,aRadiusY:TpvDouble;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath; overload;
+       function ArcTo(const aOrigin,aRadius:TpvVectorPathVector;const aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean;const aRotation:TpvDouble):TpvVectorPath; overload;
+       function ArcTo(const aOriginX,aOriginY,aRadiusX,aRadiusY:TpvDouble;const aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean;const aRotation:TpvDouble):TpvVectorPath; overload;
        function Close:TpvVectorPath;
        function GetShape:TpvVectorPathShape;
       published
@@ -4828,7 +4828,7 @@ begin
  result:=self;
 end;
 
-function TpvVectorPath.ArcTo(const aOriginX,aOriginY,aRadiusX,aRadiusY:TpvDouble;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath;
+function TpvVectorPath.ArcTo(const aOriginX,aOriginY,aRadiusX,aRadiusY:TpvDouble;const aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean;const aRotation:TpvDouble):TpvVectorPath;
 type TMatrix=array[0..5] of TpvFloat;
 var SweepDirection:TpvInt32;    
     ArcSweepLeft,StartAngle,CurrentStartAngle,CurrentEndAngle:TpvFloat;
@@ -4915,7 +4915,7 @@ begin
 
 end;
 
-function TpvVectorPath.ArcTo(const aOrigin,aRadius:TpvVectorPathVector;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath;
+function TpvVectorPath.ArcTo(const aOrigin,aRadius:TpvVectorPathVector;const aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean;const aRotation:TpvDouble):TpvVectorPath;
 type TMatrix=array[0..5] of TpvFloat;
 var SweepDirection:TpvInt32;    
     ArcSweepLeft,StartAngle,CurrentStartAngle,CurrentEndAngle:TpvFloat;
