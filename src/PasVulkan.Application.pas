@@ -8046,11 +8046,14 @@ end;
 {$else}
 var Stream:TStream;
 begin
- Stream:=TFileStream.Create(String(CorrectFileName(aFileName)),fmOpenRead or fmShareDenyWrite);
- try
-  result:=Stream.Size;
- finally
-  Stream.Free;
+ result:=FileSize(String(CorrectFileName(aFileName)));
+ if result=0 then begin
+  Stream:=TFileStream.Create(String(CorrectFileName(aFileName)),fmOpenRead or fmShareDenyWrite);
+  try
+   result:=Stream.Size;
+  finally
+   Stream.Free;
+  end;
  end;
 end;
 {$endif}
