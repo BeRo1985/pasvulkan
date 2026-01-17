@@ -520,8 +520,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function Rectangle(const aCenter,aBounds:TpvVectorPathVector):TpvVectorPath; overload;
        function RoundedRectangle(const aCenterX,aCenterY,aBoundsX,aBoundsY,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvDouble):TpvVectorPath; overload;
        function RoundedRectangle(const aCenter,aBounds:TpvVectorPathVector;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvDouble):TpvVectorPath; overload;
-       function RoundedRectangleUniform(const aCenterX,aCenterY,aBoundsX,aBoundsY,aRadius:TpvDouble):TpvVectorPath; overload;
-       function RoundedRectangleUniform(const aCenter,aBounds:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath; overload;
+       function RoundedRectangle(const aCenterX,aCenterY,aBoundsX,aBoundsY,aRadius:TpvDouble):TpvVectorPath; overload;
+       function RoundedRectangle(const aCenter,aBounds:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath; overload;
        function Close:TpvVectorPath;
        function GetShape:TpvVectorPathShape;
       published
@@ -5180,12 +5180,12 @@ begin
  result:=self;
 end;
 
-function TpvVectorPath.RoundedRectangleUniform(const aCenterX,aCenterY,aBoundsX,aBoundsY,aRadius:TpvDouble):TpvVectorPath;
+function TpvVectorPath.RoundedRectangle(const aCenterX,aCenterY,aBoundsX,aBoundsY,aRadius:TpvDouble):TpvVectorPath;
 begin
  result:=RoundedRectangle(aCenterX,aCenterY,aBoundsX,aBoundsY,aRadius,aRadius,aRadius,aRadius);
 end;
 
-function TpvVectorPath.RoundedRectangleUniform(const aCenter,aBounds:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath;
+function TpvVectorPath.RoundedRectangle(const aCenter,aBounds:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath;
 begin
  result:=RoundedRectangle(aCenter,aBounds,aRadius,aRadius,aRadius,aRadius);
 end;
