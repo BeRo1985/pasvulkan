@@ -561,7 +561,7 @@ Fragment Shader:
 - [ ] Transform caching
 - [ ] Multi-shape batching
 - [ ] LOD (Level of Detail) system
-- [ ] Cubic curve support (direct, without conversion)
+- [ ] Cubic curve support (direct, without conversion, but quadratic is sufficient for most cases, even with from-cubic-to-quadratic conversion)
 - [ ] GPU-side shape preprocessing (compute shaders)
 - [ ] Tessellation shader alternative approach
 
