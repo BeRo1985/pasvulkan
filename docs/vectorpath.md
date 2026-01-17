@@ -133,37 +133,6 @@ CPU tessellation:
 DrawShape() → GPU rendering with SDF anti-aliasing
 ```
 
-**Shape Caching for Performance:**
-
-To avoid CPU tessellation/triangulation overhead on repeated rendering, shapes can be pre-tessellated and cached:
-
-```pascal
-// Cache the tessellated shape once
-var CachedFillShape:TpvCanvasShape;
-begin
- CachedFillShape:=Canvas.GetFillShape;  // Tessellate once
- try
-  // Render multiple times without re-tessellation
-  Canvas.DrawShape(CachedFillShape);
-  // ... change transforms, colors, etc.
-  Canvas.DrawShape(CachedFillShape);
- finally
-  CachedFillShape.Free;
- end;
-end;
-```
-
-**Shape Caching Methods:**
-- `GetFillShape()` - Returns cached tessellation of current path as filled shape
-- `GetStrokeShape()` - Returns cached tessellation of current path as stroked shape
-- `DrawShape(aShape)` - Renders a pre-tessellated shape directly
-
-**Benefits:**
-- Amortize tessellation cost across multiple frames
-- Render same shape with different transforms/colors efficiently
-- Useful for animated or repeatedly drawn elements
-- No re-tessellation when only visual properties change
-
 **Fragment Shader Distance Functions:**
 - `pcvvaomLineEdge` (0x01) - Line segments with thickness (stroking)
 - `pcvvaomRoundLineCapCircle` (0x02) - Rounded line caps
@@ -202,6 +171,37 @@ Canvas supports a specialized GUI element rendering mode via `DrawGUIElement()` 
 - `sdTabButton()` - Chrome-style angled tab shape
 - `sdTriangle()` - Triangle distance with barycentric coords
 - Color space conversions (RGB↔HSV) for dynamic theming
+
+**Shape Caching for Performance:**
+
+To avoid CPU tessellation/triangulation overhead on repeated rendering, shapes can be pre-tessellated and cached:
+
+```pascal
+// Cache the tessellated shape once
+var CachedFillShape:TpvCanvasShape;
+begin
+ CachedFillShape:=Canvas.GetFillShape;  // Tessellate once
+ try
+  // Render multiple times without re-tessellation
+  Canvas.DrawShape(CachedFillShape);
+  // ... change transforms, colors, etc.
+  Canvas.DrawShape(CachedFillShape);
+ finally
+  CachedFillShape.Free;
+ end;
+end;
+```
+
+**Shape Caching Methods:**
+- `GetFillShape()` - Returns cached tessellation of current path as filled shape
+- `GetStrokeShape()` - Returns cached tessellation of current path as stroked shape
+- `DrawShape(aShape)` - Renders a pre-tessellated shape directly
+
+**Benefits:**
+- Amortize tessellation cost across multiple frames
+- Render same shape with different transforms/colors efficiently
+- Useful for animated or repeatedly drawn elements
+- No re-tessellation when only visual properties change
 
 **Advantages:**
 - Supports arbitrary vector paths (full SVG-like path API)
