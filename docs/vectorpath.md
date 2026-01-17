@@ -8,7 +8,7 @@ This document provides technical documentation for PasVulkan's vector path rende
 PasVulkan provides multiple rendering algorithms for vector graphics:
 
 1. **SDF-Based Rendering** (Current, Production) - Using `TpvSignedDistanceField2D` for font rendering and pre-rasterized vector shapes
-2. **Naive Direct Rendering** (Current, Production) - Basic fragment shader evaluation of vector paths of CPU-prepared shapes, good for non-transparent shapes, where overdraw is minimal and artifacts are not noticeable
+2. **CPU-Tessellated Direct Rendering** (Current, Production) - CPU tessellates vector paths into triangles with SDF-based edge anti-aliasing in fragment shader, optimized for opaque shapes where overdraw is minimal
 3. **Coverage-Mask-then-Cover Approach** (Current, Production) - Two-pass transparent shape rendering (three passes including barrier) using a coverage buffer to handle overlapping transparent shapes correctly
 4. **Direct Spatial Grid GPU Vector Rendering** (WIP) - Direct GPU-based vector path rasterization using `TpvVectorPathGPUShape`
 
@@ -102,7 +102,7 @@ struct VectorPathGPUShape {
 - Memory overhead for texture storage
 - Limited resolution scalability
 
-### 2.2 Naive Direct Rendering (Production)
+### 2.2 CPU-Tessellated Direct Rendering (Production)
 
 **Used by:** Default Canvas path rendering (when Coverage mode is disabled, fTransparentShapes=false) in `TpvCanvas`
 
@@ -272,11 +272,11 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
 }
 ```
 
-with a quad covering the transparent shape's bounding box (not the entire viewport), reading the coverage buffer and compositing the color based on coverage. 
+with a quad covering the transparent shape's bounding box (not the entire viewport!), reading the coverage buffer and compositing the color based on coverage. **Note:** No per-pixel clearing is performed—the coverage buffer retains previous shape data until stamp exhaustion forces a full clear. 
 
 **Algorithm Repeatability and Stamp Management:**
 
-- **Shape Stamping:** Each transparent shape group receives a unique 24-bit stamp ID, enabling correct order-independent rendering of overlapping transparent shapes
+- **Shape Stamping:** Each transparent shape group receives a unique 24-bit stamp ID, enabling correct order-independent rendering of overlapping transparent shapes, group order still defines compositing order
 - **Three-Pass Cycle:** The algorithm repeats (Mask → Barrier → Cover) for each shape group with incrementing stamp IDs until the 24-bit stamp space (16,777,216 unique IDs) is exhausted, at which point the coverage buffer is cleared and stamps wrap back to zero
 - **Deferred Buffer Clearing:** Coverage buffer is not cleared between shape groups to maximize performance; clearing only occurs on stamp exhaustion
 - **Renderpass Restart Requirement:** Due to Vulkan renderpass barrier limitations, each Mask → Barrier → Cover cycle requires a renderpass restart, which is architecturally necessary but impacts performance on TBDR mobile GPUs
@@ -284,7 +284,7 @@ with a quad covering the transparent shape's bounding box (not the entire viewpo
   - **TBDR Impact:** Tile-Based Deferred Rendering architectures suffer performance degradation from renderpass interruptions because they must flush on-chip tile memory to main memory when the renderpass is suspended, then reload it on restart—this defeats the core TBDR optimization of keeping tile data on-chip throughout the renderpass
 
 **Advantages:**
-- Order-independent transparency
+- Order-independent transparency, group order still defines compositing order
 - Handles overlapping transparent shapes correctly
 - Analytical SDF anti-aliasing (high quality)
 - No geometry sorting required
@@ -777,7 +777,7 @@ Fragment Shader:
 ### 6.4 Why Multiple Rendering Modes?
 
 - **SDF:** Best for small, repeated shapes (fonts, icons)
-- **Naive Direct Rendering:** Best for opaque shapes with full path support, where artifacts from overdraw are minimal or almost non-existent, and for sprite rendering and similar use cases.
+- **CPU-Tessellated Direct Rendering:** Best for opaque shapes with full path support, where artifacts from overdraw are minimal or almost non-existent, and for sprite rendering and similar use cases
 - **Coverage:** Best for transparent, order-dependent scenes
 - **Direct Spatial Grid GPU vector rendering:** Best for dynamic, high-resolution, memory-constrained scenarios
 - No single approach is optimal for all use cases
