@@ -821,7 +821,7 @@ Fragment Shader:
 
 ### 8.3 Slug Library
 
-- **Project:** Slug (Jukka Jylänki)
+- **Project:** Slug (Eric Lengyel)
 - **Approach:** Analytical fragment shader evaluation
 - **Similarity:** Direct evaluation without tessellation
 
