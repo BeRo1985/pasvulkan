@@ -8190,8 +8190,8 @@ begin
 end;
 {$else}
 begin
- if not {$if declared(FileAgeUTC)}FileAgeUTC{$else}FileAgc{$ifend}(String(CorrectFileName(aFileName)),result) then begin
-  result:=FileDateToDateTime(FileAge(String(CorrectFileName(aFileName))));
+ if not FileAgeUTC(String(CorrectFileName(aFileName)),result) then begin
+  result:=0.0;
  end;
 end;
 {$endif}
