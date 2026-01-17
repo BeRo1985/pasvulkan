@@ -274,13 +274,13 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
 
 with a quad covering the transparent shape's bounding box (not the entire viewport), reading the coverage buffer and compositing the color based on coverage. 
 
-**Repeatable nature:** 
+**Algorithm Repeatability and Stamp Management:**
 
-- Each transparent shape group is rendered with its own unique shape stamp, allowing multiple overlapping transparent shapes to be rendered correctly in any order.
-- Each transparent shape group requires three passes (Mask, Barrier, Cover), over and over, with unique incrementing  stamp ID, until 24-bit stamp space is exhausted, where it wraps around (16 million unique shape groups), a reset will be executed to clear the coverage buffer. 
-- No clearing of the coverage buffer is done between shape groups to keep performance high, until the stamp space is exhausted.
-- Mask => Barrier => Cover requires renderpass restart for each transparent shape group, which is a limitation of Vulkan renderpasses and can be problematic for TBDR mobile GPUs in terms of performance, but is necessary for correct operation.
-  - TBDR GPUs have difficulty with renderpass interruptions, as they rely on tile-based rendering and may need to flush tiles when the renderpass is suspended, since they have limited on-chip memory for tile storage, where these would need to be written out to main memory on renderpass restarts, which can lead to performance degradation.
+- **Shape Stamping:** Each transparent shape group receives a unique 24-bit stamp ID, enabling correct order-independent rendering of overlapping transparent shapes
+- **Three-Pass Cycle:** The algorithm repeats (Mask → Barrier → Cover) for each shape group with incrementing stamp IDs until the 24-bit stamp space (16,777,216 unique IDs) is exhausted, at which point the coverage buffer is cleared and stamps wrap back to zero
+- **Deferred Buffer Clearing:** Coverage buffer is not cleared between shape groups to maximize performance; clearing only occurs on stamp exhaustion
+- **Renderpass Restart Requirement:** Due to Vulkan renderpass barrier limitations, each Mask → Barrier → Cover cycle requires a renderpass restart, which is architecturally necessary but impacts performance on TBDR mobile GPUs
+  - **TBDR Impact:** Tile-Based Deferred Rendering architectures suffer performance degradation from renderpass interruptions because they must flush on-chip tile memory to main memory when the renderpass is suspended, then reload it on restart—this defeats the core TBDR optimization of keeping tile data on-chip throughout the renderpass
 
 **Advantages:**
 - Order-independent transparency
