@@ -37,7 +37,7 @@ These algorithms are **complementary** rendering modes, allowing users to choose
 **Shape Representation:**
 - `TpvVectorPathContour` - Collection of connected segments (open or closed)
 - `TpvVectorPathShape` - Collection of contours with fill rule (`EvenOdd` or `NonZero`)
-- `TpvVectorPath` - Command-based path builder (SVG-like interface)
+- `TpvVectorPath` - Command-based path builder (SVG-like interface with all SVG path commands)
 
 **GPU Shape Acceleration:**
 - `TpvVectorPathGPUShape` - Main GPU-accelerated shape container
