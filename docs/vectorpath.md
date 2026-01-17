@@ -133,6 +133,37 @@ CPU tessellation:
 DrawShape() → GPU rendering with SDF anti-aliasing
 ```
 
+**Shape Caching for Performance:**
+
+To avoid CPU tessellation/triangulation overhead on repeated rendering, shapes can be pre-tessellated and cached:
+
+```pascal
+// Cache the tessellated shape once
+var CachedFillShape:TpvCanvasShape;
+begin
+ CachedFillShape:=Canvas.GetFillShape;  // Tessellate once
+ try
+  // Render multiple times without re-tessellation
+  Canvas.DrawShape(CachedFillShape);
+  // ... change transforms, colors, etc.
+  Canvas.DrawShape(CachedFillShape);
+ finally
+  CachedFillShape.Free;
+ end;
+end;
+```
+
+**Shape Caching Methods:**
+- `GetFillShape()` - Returns cached tessellation of current path as filled shape
+- `GetStrokeShape()` - Returns cached tessellation of current path as stroked shape
+- `DrawShape(aShape)` - Renders a pre-tessellated shape directly
+
+**Benefits:**
+- Amortize tessellation cost across multiple frames
+- Render same shape with different transforms/colors efficiently
+- Useful for animated or repeatedly drawn elements
+- No re-tessellation when only visual properties change
+
 **Fragment Shader Distance Functions:**
 - `pcvvaomLineEdge` (0x01) - Line segments with thickness (stroking)
 - `pcvvaomRoundLineCapCircle` (0x02) - Rounded line caps
@@ -143,6 +174,35 @@ DrawShape() → GPU rendering with SDF anti-aliasing
 - `pcvvaomRoundedRectangle` (0x07) - Rounded rectangles
 - `pcvvaomCircleArcRingSegment` (0x08) - Arc ring segments
 
+**GUI Element Mode:**
+
+Canvas supports a specialized GUI element rendering mode via `DrawGUIElement()` with shader define `GUI_ELEMENTS`:
+
+- Theme-aware procedural UI elements (windows, buttons, panels, etc.)
+- Focused/unfocused state visualization
+- Complex SDF combinations (rounded rectangles, drop shadows, gradients)
+- Configurable via uniform buffer colors and parameters
+- Supports both opaque and transparent rendering
+
+**GUI Element Types:**
+- `GUI_ELEMENT_WINDOW_HEADER` - Window title bars with gradients
+- `GUI_ELEMENT_WINDOW_FILL` - Window body backgrounds
+- `GUI_ELEMENT_WINDOW_DROPSHADOW` - Drop shadow effects
+- `GUI_ELEMENT_BUTTON_*` - Buttons (unfocused, focused, pushed, disabled states)
+- `GUI_ELEMENT_PANEL_*` - Various panel types
+- `GUI_ELEMENT_CHECKBOX_*` - Checkboxes and radio buttons
+- `GUI_ELEMENT_SCROLLBAR_*` - Scrollbar components
+- `GUI_ELEMENT_TAB_BUTTON_*` - Chrome-style tab buttons
+- `GUI_ELEMENT_SLIDER_*` - Slider tracks and knobs
+- `GUI_ELEMENT_PROGRESSBAR_*` - Progress bar components
+- And many more specialized UI elements
+
+**GUI SDF Helper Functions:**
+- `sdRoundedRect()` - Rounded rectangle distance
+- `sdTabButton()` - Chrome-style angled tab shape
+- `sdTriangle()` - Triangle distance with barycentric coords
+- Color space conversions (RGB↔HSV) for dynamic theming
+
 **Advantages:**
 - Supports arbitrary vector paths (full SVG-like path API)
 - CPU tessellation handles complex fill rules correctly
@@ -150,6 +210,8 @@ DrawShape() → GPU rendering with SDF anti-aliasing
 - SDF-based anti-aliasing provides smooth edges
 - No buffer uploads beyond standard vertex/index data
 - Works with standard blending
+- Shape caching eliminates re-tessellation overhead for repeated rendering
+- Efficient rendering of same shape with different transforms/colors via cached shapes
 
 **Disadvantages:**
 - Overdraw artifacts with transparent overlapping shapes (alpha blending issues)
