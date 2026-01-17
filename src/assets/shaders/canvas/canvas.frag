@@ -789,8 +789,8 @@ float sampleVectorPathShape(const vec3 shapeCoord){
     uint countIndirectSegments = vectorPathGPUGridCell.y;
     if(countIndirectSegments > 0u){
       int winding = 0;
-      for(uint indirectSegmentIndex = vectorPathGPUGridCell.x, untilIndirectSegmentIndex = vectorPathGPUGridCell.x + (countIndirectSegments - 1u);
-          indirectSegmentIndex < untilIndirectSegmentIndex; 
+      for(uint indirectSegmentIndex = vectorPathGPUGridCell.x, untilIndirectSegmentIndex = vectorPathGPUGridCell.x + countIndirectSegments;
+          indirectSegmentIndex < untilIndirectSegmentIndex;
           indirectSegmentIndex++){
         VectorPathGPUSegment vectorPathGPUSegment = vectorPathGPUSegments[vectorPathGPUIndirectSegments[indirectSegmentIndex]];
         switch(vectorPathGPUSegment.typeWindingPoint0.x){
