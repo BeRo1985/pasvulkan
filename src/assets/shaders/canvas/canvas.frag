@@ -605,7 +605,7 @@ float cross2(vec2 lhs, vec2 rhs){
 
 bool lineHorziontalLineIntersect(vec2 p0, vec2 p1, float y0, float y1) {
   if(p0.x == p1.x ){  // Line is vertical
-    return y0 <= max(p0.y, p1.y) && y1 >= min(p0.y, p1.y);   
+    return (y0 <= max(p0.y, p1.y)) && (y1 >= min(p0.y, p1.y));   
   }else if (p0.y == p1.y) {  // line is not vertical and lines are parallel
     return false;
   }else{ // Line is not vertical
