@@ -809,7 +809,7 @@ Fragment Shader:
 
 ### 8.1 Pathfinder
 
-- **Project:** [Pathfinder](https://github.com/servo/pathfinder) by Patrick Walton
+- **Project:** [Pathfinder](https://github.com/servo/pathfinder) 
 - **Papers:** "Fast GPU-Based Vector Graphics" (2017)
 - **Approach:** Similar grid-based rasterization with compute shaders
 
@@ -821,7 +821,7 @@ Fragment Shader:
 
 ### 8.3 Slug Library
 
-- **Project:** Slug (Eric Lengyel)
+- **Project:** [Slug](https://www.sluglibrary.com)
 - **Approach:** Analytical fragment shader evaluation
 - **Similarity:** Direct evaluation without tessellation
 
