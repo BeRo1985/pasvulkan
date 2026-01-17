@@ -23,7 +23,7 @@ These algorithms are **complementary** rendering modes, allowing users to choose
 #### Host-Side (Pascal)
 
 **Basic Vector Types:**
-- `TpvVectorPathVector` - 2D vector with double precision (x, y)
+- `TpvVectorPathVector` - 2D vector with double precision (x, y) - with automatic implicit and explicit conversion to/from `TpvVector2` (single precision) and `TpvVector2D` (double precision)
 - `TpvVectorPathVectors` - Dynamic array of vectors
 - `TpvVectorPathBoundingBox` - AABB with MinMax[0..1] structure
 
