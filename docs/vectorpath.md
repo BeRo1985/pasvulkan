@@ -10,7 +10,7 @@ PasVulkan provides multiple rendering algorithms for vector graphics:
 1. **SDF-Based Rendering** (Current, Production) - Using `TpvSignedDistanceField2D` for font rendering and pre-rasterized vector shapes
 2. **Naive Direct Rendering** (Current, Production) - Basic fragment shader evaluation of vector paths of CPU-prepared shapes, good for non-transparent shapes, where overdraw is minimal and artifacts are not noticeable
 3. **Coverage-Mask-then-Cover Approach** (Current, Production) - Two-pass transparent shape rendering
-4. **Pathfinder-like On-GPU Rendering** (WIP) - Direct GPU-based vector path rasterization using `TpvVectorPathGPUShape`
+4. **Direct Spatial Grid GPU Vector Rendering** (WIP) - Direct GPU-based vector path rasterization using `TpvVectorPathGPUShape`
 
 These algorithms are **complementary** rendering modes, allowing users to choose the best approach for their specific use case.
 
@@ -228,7 +228,7 @@ end;
 
 **When to Avoid:**
 - Complex transparent overlapping shapes → Use Coverage-Mask-then-Cover
-- Very large, complex paths requiring spatial optimization → Use Pathfinder-like
+- Very large, complex paths requiring spatial optimization → Use Direct Spatial Grid GPU Vector Rendering
 - Scenes with many small, repeated shapes → Use SDF pre-baking
 
 ### 2.3 Coverage-Mask-then-Cover (Production)
@@ -281,7 +281,7 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
    - Subpasses with internal dependencies cannot be used due to the repeatable nature of the algorithm here
 - Problematic for TBDR (Tile-Based Deferred Rendering) mobile GPUs due to renderpass interruption
 
-### 2.4 Pathfinder-like On-GPU Rendering (WIP)
+### 2.4 Direct Spatial Grid GPU Vector Rendering (WIP)
 
 **Used by:** Direct vector path rendering (planned)
 
@@ -537,7 +537,7 @@ Fragment Shader:
 
 ---
 
-## 5. TODO: Completion Steps for Pathfinder-like Rendering
+## 5. TODO: Completion Steps for Direct Spatial Grid GPU Vector Rendering
 
 ### Phase 1: Buffer Management and Upload
 
@@ -612,7 +612,7 @@ Fragment Shader:
   
   function FillPath(const aPath:TpvVectorPath;
                     const aRenderMode:TpvCanvasVectorPathRenderMode):TpvCanvas;
-  // aRenderMode: Direct (Pathfinder-like), Coverage, SDF
+  // aRenderMode: DirectSpatialGridGPU, Coverage, SDF
   ```
   
 - [ ] **TODO-4.2:** Implement render mode selection
@@ -735,7 +735,7 @@ Fragment Shader:
 
 - **SDF:** Best for small, repeated shapes (fonts, icons)
 - **Coverage:** Best for transparent, order-dependent scenes
-- **Direct (Pathfinder):** Best for dynamic, high-resolution, memory-constrained scenarios
+- **Direct Spatial Grid GPU vector rendering:** Best for dynamic, high-resolution, memory-constrained scenarios
 - No single approach is optimal for all use cases
 
 ---
@@ -867,8 +867,8 @@ Canvas.FillPath(IconPath,TpvCanvasVectorPathRenderMode.SDF);
 // Mode 2: Coverage (for transparent overlapping shapes)
 Canvas.FillPath(TransparentShape,TpvCanvasVectorPathRenderMode.Coverage);
 
-// Mode 3: Direct (for dynamic high-resolution rendering)
-Canvas.FillPath(DynamicPath,TpvCanvasVectorPathRenderMode.Direct);
+// Mode 3: Direct Spatial Grid GPU vector rendering (for dynamic high-resolution rendering)
+Canvas.FillPath(DynamicPath,TpvCanvasVectorPathRenderMode.DirectSpatialGridGPU);
 ```
 
 ---
