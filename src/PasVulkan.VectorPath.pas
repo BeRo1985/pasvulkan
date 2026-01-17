@@ -74,7 +74,8 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Utils,
      PasVulkan.Collections,
-     PasVulkan.Math;
+     PasVulkan.Math,
+     PasVulkan.Math.Double;
 
 type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      TpvVectorPathCommandType=
@@ -491,6 +492,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       private
        fCommands:TpvVectorPathCommandList;
        fFillRule:TpvVectorPathFillRule;
+       fStartPointSeen:Boolean;
       public
        constructor Create; reintroduce;
        constructor CreateFromSVGPath(const aCommands:TpvRawByteString);
@@ -498,11 +500,14 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        destructor Destroy; override;
        procedure Assign(const aFrom:TpvVectorPath); overload;
        procedure Assign(const aShape:TpvVectorPathShape); overload;
-       procedure MoveTo(const aX,aY:TpvDouble);
-       procedure LineTo(const aX,aY:TpvDouble);
-       procedure QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble);
-       procedure CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble);
-       procedure Close;
+       function MoveTo(const aX,aY:TpvDouble):TpvVectorPath; overload;
+       function MoveTo(const aPosition:TpvVectorPathVector):TpvVectorPath; overload;
+       function LineTo(const aX,aY:TpvDouble):TpvVectorPath; overload;
+       function LineTo(const aPosition:TpvVectorPathVector):TpvVectorPath; overload;
+       function QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble):TpvVectorPath;
+       function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble):TpvVectorPath;
+       function ArcTo(const aOrigin,aRadius:TpvVector2;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath;
+       function Close:TpvVectorPath;
        function GetShape:TpvVectorPathShape;
       published
        property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
@@ -4287,6 +4292,8 @@ begin
  inherited Create;
  fCommands:=TpvVectorPathCommandList.Create(true);
  fFillRule:=TpvVectorPathFillRule.EvenOdd;
+ fStartPointSeen:=false;
+
 end;
 
 constructor TpvVectorPath.CreateFromSVGPath(const aCommands:TpvRawByteString);
@@ -4683,6 +4690,7 @@ begin
   fCommands.Add(TpvVectorPathCommand.Create(SrcCmd.fCommandType,SrcCmd.fX0,SrcCmd.fY0,SrcCmd.fX1,SrcCmd.fY1,SrcCmd.fX2,SrcCmd.fY2));
  end;
  fFillRule:=aFrom.fFillRule;
+ fStartPointSeen:=Index>0;
 end;
 
 procedure TpvVectorPath.Assign(const aShape:TpvVectorPathShape);
@@ -4692,6 +4700,7 @@ var Contour:TpvVectorPathContour;
     Last,Start:TpvVectorPathVector;
 begin
  fCommands.Clear;
+ fStartPointSeen:=false;
  if assigned(aShape) then begin
   fFillRule:=aShape.fFillRule;
   First:=true;
@@ -4751,6 +4760,7 @@ begin
      else begin
      end;
     end;
+    fStartPointSeen:=true;
    end;
    if (not First) and Contour.fClosed then begin
     fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.Close));
@@ -4759,29 +4769,139 @@ begin
  end;
 end;
 
-procedure TpvVectorPath.MoveTo(const aX,aY:TpvDouble);
+function TpvVectorPath.MoveTo(const aX,aY:TpvDouble):TpvVectorPath;
 begin
  fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.MoveTo,aX,aY));
+ fStartPointSeen:=true;
+ result:=self;
 end;
 
-procedure TpvVectorPath.LineTo(const aX,aY:TpvDouble);
+function TpvVectorPath.MoveTo(const aPosition:TpvVectorPathVector):TpvVectorPath;
+begin
+ fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.MoveTo,aPosition.x,aPosition.y));
+ fStartPointSeen:=true;
+ result:=self;
+end;
+
+function TpvVectorPath.LineTo(const aX,aY:TpvDouble):TpvVectorPath;
 begin
  fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.LineTo,aX,aY));
+ fStartPointSeen:=true;
+ result:=self;
 end;
 
-procedure TpvVectorPath.QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble);
+function TpvVectorPath.LineTo(const aPosition:TpvVectorPathVector):TpvVectorPath;
+begin
+ fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.LineTo,aPosition.x,aPosition.y));
+ fStartPointSeen:=true;
+ result:=self;
+end;
+
+function TpvVectorPath.QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble):TpvVectorPath;
 begin
  fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.QuadraticCurveTo,aCX,aCY,aAX,aAY));
+ fStartPointSeen:=true;
+ result:=self;
 end;
 
-procedure TpvVectorPath.CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble);
+function TpvVectorPath.CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble):TpvVectorPath;
 begin
  fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.CubicCurveTo,aC0X,aC0Y,aC1X,aC1Y,aAX,aAY));
+ fStartPointSeen:=true;
+ result:=self;
 end;
 
-procedure TpvVectorPath.Close;
+function TpvVectorPath.ArcTo(const aOrigin,aRadius:TpvVector2;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath;
+type TMatrix=array[0..5] of TpvFloat;
+var SweepDirection:TpvInt32;    
+    ArcSweepLeft,StartAngle,CurrentStartAngle,CurrentEndAngle:TpvFloat;
+    CurrentStartOffset,CurrentEndOffset,cp0,cp1,RotationSinCos:TpvVector2;
+    KappaFactor:TpvFloat;
+    Matrix:TMatrix;
+begin
+ 
+ // Calculate the sweep direction
+ if aCounterClockwise then begin
+  SweepDirection:=-1;
+ end else begin
+  SweepDirection:=1;
+ end;
+
+ // Calculate the total arc we're going to sweep
+ ArcSweepLeft:=(aEndAngle-aStartAngle)*SweepDirection;
+
+ // Ensure the sweep is positive, and normalize it
+ if ArcSweepLeft<0.0 then begin
+  ArcSweepLeft:=TwoPI+(ArcSweepLeft-(Floor(ArcSweepLeft/TwoPI)*TwoPI));
+  StartAngle:=aEndAngle-(ArcSweepLeft*SweepDirection);
+ end else if ArcSweepLeft>TwoPI then begin
+  ArcSweepLeft:=TwoPI;
+  StartAngle:=aStartAngle;
+ end else begin
+  StartAngle:=aStartAngle;
+ end;
+
+ // Create transformation matrix from scratch at once
+ SinCos(aRotation,RotationSinCos.x,RotationSinCos.y);
+
+ Matrix[0]:=aRadius.x*RotationSinCos.y;
+ Matrix[1]:=aRadius.y*RotationSinCos.x;
+ Matrix[2]:=-aRadius.x*RotationSinCos.x;
+ Matrix[3]:=aRadius.y*RotationSinCos.y;
+ Matrix[4]:=aOrigin.x;
+ Matrix[5]:=aOrigin.y;
+
+ // Current start angle and offset (unit circle)
+ CurrentStartAngle:=StartAngle;
+ SinCos(StartAngle,CurrentStartOffset.y,CurrentStartOffset.x);
+
+ // Move to the start point (transformed) 
+ if fStartPointSeen then begin
+  LineTo((CurrentStartOffset.x*Matrix[0])+(CurrentStartOffset.y*Matrix[2])+Matrix[4],
+         (CurrentStartOffset.x*Matrix[1])+(CurrentStartOffset.y*Matrix[3])+Matrix[5]);
+ end else begin
+  MoveTo((CurrentStartOffset.x*Matrix[0])+(CurrentStartOffset.y*Matrix[2])+Matrix[4],
+         (CurrentStartOffset.x*Matrix[1])+(CurrentStartOffset.y*Matrix[3])+Matrix[5]);
+ end;
+
+ while ArcSweepLeft>0.0 do begin
+
+  // Calculate the end angle and offset (unit circle)
+  CurrentEndAngle:=CurrentStartAngle+(Min(ArcSweepLeft,HalfPI)*SweepDirection);
+  SinCos(CurrentEndAngle,CurrentEndOffset.y,CurrentEndOffset.x);
+
+  // Calculate the kappa factor
+  KappaFactor:=(4.0/3.0)*tan((CurrentEndAngle-CurrentStartAngle)*0.25);
+
+  // Calculate the control points
+  cp0:=TpvVector2.InlineableCreate(CurrentStartOffset.x-(CurrentStartOffset.y*KappaFactor),
+                                   CurrentStartOffset.y+(CurrentStartOffset.x*KappaFactor));
+  cp1:=TpvVector2.InlineableCreate(CurrentEndOffset.x+(CurrentEndOffset.y*KappaFactor),
+                                   CurrentEndOffset.y-(CurrentEndOffset.x*KappaFactor));
+
+  // Draw the current arc segment as a Bezier curve (using baked coordinates)
+  CubicCurveTo((cp0.x*Matrix[0])+(cp0.y*Matrix[2])+Matrix[4],
+               (cp0.x*Matrix[1])+(cp0.y*Matrix[3])+Matrix[5],
+               (cp1.x*Matrix[0])+(cp1.y*Matrix[2])+Matrix[4],
+               (cp1.x*Matrix[1])+(cp1.y*Matrix[3])+Matrix[5],
+               (CurrentEndOffset.x*Matrix[0])+(CurrentEndOffset.y*Matrix[2])+Matrix[4],
+               (CurrentEndOffset.x*Matrix[1])+(CurrentEndOffset.y*Matrix[3])+Matrix[5]);
+
+  // Move to the next segment 
+  ArcSweepLeft:=ArcSweepLeft-HalfPI;
+  CurrentStartAngle:=CurrentEndAngle;
+  CurrentStartOffset:=CurrentEndOffset;
+
+ end;
+
+ result:=self;
+
+end;
+
+function TpvVectorPath.Close:TpvVectorPath;
 begin
  fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.Close));
+ result:=self;
 end;
 
 function TpvVectorPath.GetShape:TpvVectorPathShape;
