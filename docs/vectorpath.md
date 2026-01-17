@@ -104,7 +104,7 @@ struct VectorPathGPUShape {
 
 ### 2.2 Naive Direct Rendering (Production)
 
-**Used by:** Default Canvas path rendering (when Coverage mode is disabled)
+**Used by:** Default Canvas path rendering (when Coverage mode is disabled, fTransparentShapes=false)
 
 **Location:** `PasVulkan.Canvas.pas` (`TpvCanvasShape`, `TpvCanvasPath`)
 
