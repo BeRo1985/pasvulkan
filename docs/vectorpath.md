@@ -9,7 +9,7 @@ PasVulkan provides multiple rendering algorithms for vector graphics:
 
 1. **SDF-Based Rendering** (Current, Production) - Using `TpvSignedDistanceField2D` for font rendering and pre-rasterized vector shapes
 2. **Naive Direct Rendering** (Current, Production) - Basic fragment shader evaluation of vector paths of CPU-prepared shapes, good for non-transparent shapes, where overdraw is minimal and artifacts are not noticeable
-3. **Coverage-Mask-then-Cover Approach** (Current, Production) - Two-pass transparent shape rendering
+3. **Coverage-Mask-then-Cover Approach** (Current, Production) - Two-pass transparent shape rendering (three passes including barrier) using a coverage buffer to handle overlapping transparent shapes correctly
 4. **Direct Spatial Grid GPU Vector Rendering** (WIP) - Direct GPU-based vector path rasterization using `TpvVectorPathGPUShape`
 
 These algorithms are **complementary** rendering modes, allowing users to choose the best approach for their specific use case.
@@ -104,7 +104,7 @@ struct VectorPathGPUShape {
 
 ### 2.2 Naive Direct Rendering (Production)
 
-**Used by:** Default Canvas path rendering (when Coverage mode is disabled, fTransparentShapes=false)
+**Used by:** Default Canvas path rendering (when Coverage mode is disabled, fTransparentShapes=false) in `TpvCanvas`
 
 **Location:** `PasVulkan.Canvas.pas` (`TpvCanvasShape`, `TpvCanvasPath`)
 
@@ -245,7 +245,7 @@ end;
 - Coverage buffer: `R32_UINT` format image (set 1, binding 0)
 - Format: `[24-bit stamp | 8-bit coverage]`
 
-**Two-Pass Algorithm:**
+**Three-Pass Algorithm:**
 
 **Pass 1 - Mask (Coverage Writing):**
 ```glsl
@@ -255,7 +255,11 @@ uint packed = (shapeStamp << 8) | coverage8;
 imageAtomicMax(uCoverageBuffer, pixelPosition, packed);
 ```
 
-**Pass 2 - Cover (Compositing):**
+**Pass 2 - Barrier:**
+
+- Memory barrier to ensure writes are visible to subsequent reads between passes
+
+**Pass 3 - Cover (Compositing):**
 ```glsl
 uint packed = imageLoad(uCoverageBuffer, pixelPosition).r;
 uint storedStamp = packed >> 8;
@@ -273,7 +277,7 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
 - Memory efficient compared to alternatives: R32_UINT per pixel (4 bytes) vs MSAA (16-32 bytes/pixel), A-Buffer (variable/large), or Depth Peeling (multiple full buffers)
 
 **Disadvantages:**
-- Two rendering passes per shape
+- Three passes per transparent shape group with two rendering passes and one barrier pass per shape
 - Coverage buffer memory overhead (requires additional R32_UINT image)
 - Atomic operations may have performance cost
 - Requires renderpass suspend/resume (restart) due to barrier limitations inside renderpasses
