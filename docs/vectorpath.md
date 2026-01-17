@@ -90,7 +90,7 @@ struct VectorPathGPUShape {
 - Pre-compute signed distance field textures from vector shapes
 - Supports SDF, SSAASDF (4x multisampled 4-rook/RGSS SDF with 4 samples per pixel per RGBA channel), MSDF (Multi-channel SDF), and MTSDF variants
 - GPU fragment shader samples pre-computed texture
-- Uses `linearstep()` for smooth anti-aliasing, not smoothstep, needed for correct SDF evaluation on a linear sRGB color space
+- Uses `linearstep()` for smooth anti-aliasing, not smoothstep, needed for correct SDF evaluation on a linear color space (not gamma-corrected one!)
 
 **Advantages:**
 - Very fast at runtime (single texture lookup)
