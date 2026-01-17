@@ -31,7 +31,7 @@ These algorithms are **complementary** rendering modes, allowing users to choose
 - `TpvVectorPathSegment` (abstract base class)
 - `TpvVectorPathSegmentLine` - Linear segments
 - `TpvVectorPathSegmentQuadraticCurve` - Quadratic Bézier curves
-- `TpvVectorPathSegmentCubicCurve` - Cubic Bézier curves (converted to quadratic)
+- `TpvVectorPathSegmentCubicCurve` - Cubic Bézier curves (converted to quadratic for GPU rendering to keep complexity manageable)
 - `TpvVectorPathSegmentMetaWindingSettingLine` - Special winding control segments
 
 **Shape Representation:**
