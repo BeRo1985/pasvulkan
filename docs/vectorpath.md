@@ -8,8 +8,9 @@ This document provides technical documentation for PasVulkan's vector path rende
 PasVulkan provides multiple rendering algorithms for vector graphics:
 
 1. **SDF-Based Rendering** (Current, Production) - Using `TpvSignedDistanceField2D` for font rendering and pre-rasterized vector shapes
-2. **Coverage-Mask-then-Cover Approach** (Current, Production) - Two-pass transparent shape rendering
-3. **Pathfinder-like On-GPU Rendering** (WIP) - Direct GPU-based vector path rasterization using `TpvVectorPathGPUShape`
+2. **Naive Direct Rendering** (Current, Production) - Basic fragment shader evaluation of vector paths of CPU-prepared shapes, good for non-transparent shapes, where overdraw is minimal and artifacts are not noticeable
+3. **Coverage-Mask-then-Cover Approach** (Current, Production) - Two-pass transparent shape rendering
+4. **Pathfinder-like On-GPU Rendering** (WIP) - Direct GPU-based vector path rasterization using `TpvVectorPathGPUShape`
 
 These algorithms are **complementary** rendering modes, allowing users to choose the best approach for their specific use case.
 
@@ -101,7 +102,74 @@ struct VectorPathGPUShape {
 - Memory overhead for texture storage
 - Limited resolution scalability
 
-### 2.2 Coverage-Mask-then-Cover (Production)
+### 2.2 Naive Direct Rendering (Production)
+
+**Used by:** Default Canvas path rendering (when Coverage mode is disabled)
+
+**Location:** `PasVulkan.Canvas.pas` (`TpvCanvasShape`, `TpvCanvasPath`)
+
+**Approach:**
+- CPU tessellates arbitrary vector paths into triangles (`TpvCanvasShape.FillFromPath` / `StrokeFromPath`)
+- CPU-side triangulation supports full fill rules (Non-Zero, Even-Odd)
+- Curves are adaptively flattened to line segments based on tessellation tolerance
+- Resulting triangles encode signed distance field evaluation in vertex metadata
+- Fragment shader evaluates analytical SDFs for smooth anti-aliasing at triangle edges
+- Single-pass rendering with standard alpha blending
+- Automatic batching of geometry into indexed triangle lists
+
+**Path Processing Flow:**
+```
+TpvCanvasPath (MoveTo, LineTo, Curves, etc.)
+       ↓
+TpvCanvasShape.FillFromPath() / StrokeFromPath()
+       ↓
+CPU tessellation:
+  ├─ Flatten curves to line segments (adaptive tolerance)
+  ├─ Build segment list with BVH for intersection tests
+  ├─ Triangulate using scanline algorithm
+  ├─ Encode SDF parameters in vertex MetaInfo
+  └─ Generate indexed triangle mesh
+       ↓
+DrawShape() → GPU rendering with SDF anti-aliasing
+```
+
+**Fragment Shader Distance Functions:**
+- `pcvvaomLineEdge` (0x01) - Line segments with thickness (stroking)
+- `pcvvaomRoundLineCapCircle` (0x02) - Rounded line caps
+- `pcvvaomRoundLine` (0x03) - Rounded lines (polygon edges)
+- `pcvvaomCircle` (0x04) - Circles (filled primitives)
+- `pcvvaomEllipse` (0x05) - Ellipses
+- `pcvvaomRectangle` (0x06) - Axis-aligned rectangles
+- `pcvvaomRoundedRectangle` (0x07) - Rounded rectangles
+- `pcvvaomCircleArcRingSegment` (0x08) - Arc ring segments
+
+**Advantages:**
+- Supports arbitrary vector paths (full SVG-like path API)
+- CPU tessellation handles complex fill rules correctly
+- Automatic batching reduces draw calls
+- SDF-based anti-aliasing provides smooth edges
+- No buffer uploads beyond standard vertex/index data
+- Works with standard blending
+
+**Disadvantages:**
+- Overdraw artifacts with transparent overlapping shapes (alpha blending issues)
+- CPU tessellation cost for complex paths
+- Manual Z-ordering required for proper transparency
+- Tessellation granularity affects quality vs performance
+- Higher vertex count for curved paths
+
+**Best Use Cases:**
+- Opaque vector graphics (UI elements, diagrams)
+- Simple to moderately complex paths without heavy overlap
+- Scenarios where CPU tessellation cost is acceptable
+- Applications needing full path API support
+
+**When to Avoid:**
+- Complex transparent overlapping shapes → Use Coverage-Mask-then-Cover
+- Very large, complex paths requiring spatial optimization → Use Pathfinder-like
+- Scenes with many small, repeated shapes → Use SDF pre-baking
+
+### 2.3 Coverage-Mask-then-Cover (Production)
 
 **Used by:** Transparent shape rendering in Canvas
 
@@ -146,7 +214,7 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
 - Coverage buffer memory overhead
 - Atomic operations may have performance cost
 
-### 2.3 Pathfinder-like On-GPU Rendering (WIP)
+### 2.4 Pathfinder-like On-GPU Rendering (WIP)
 
 **Used by:** Direct vector path rendering (planned)
 
