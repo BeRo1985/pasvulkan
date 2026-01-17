@@ -553,7 +553,7 @@ Fragment Shader:
 - [ ] Performance profiling and optimization
 - [ ] Memory management for large shape sets
 
-### 4.3 Planned Enhancements
+### 4.3 Planned Enhancements in Future
 
 - [ ] Stroke rendering support
 - [ ] Gradient fills integration
