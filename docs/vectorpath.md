@@ -270,10 +270,11 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
 - Order-independent transparency
 - Handles overlapping transparent shapes correctly
 - No geometry sorting required
+- Memory efficient compared to alternatives: R32_UINT per pixel (4 bytes) vs MSAA (16-32 bytes/pixel), A-Buffer (variable/large), or Depth Peeling (multiple full buffers)
 
 **Disadvantages:**
 - Two rendering passes per shape
-- Coverage buffer memory overhead (R32_UINT per pixel), though significantly lower than alternatives like MSAA (16-32 bytes/pixel), A-Buffer (variable/large), or Depth Peeling (multiple full buffers)
+- Coverage buffer memory overhead (requires additional R32_UINT image)
 - Atomic operations may have performance cost
 - Requires renderpass suspend/resume (restart) due to barrier limitations inside renderpasses
    - Mask => Barrier => Cover requires renderpass restart for each transparent shape group
