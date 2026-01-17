@@ -255,6 +255,8 @@ uint packed = (shapeStamp << 8) | coverage8;
 imageAtomicMax(uCoverageBuffer, pixelPosition, packed);
 ```
 
+where the highest 24 bits are the shape stamp (unique per shape group) and the lowest 8 bits are the coverage value (0-255), and where the highest value wins (atomic max) for the current pixel.
+
 **Pass 2 - Barrier:**
 
 - Memory barrier to ensure writes are visible to subsequent reads between passes
@@ -269,6 +271,16 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
   outFragColor = vec4(color.xyz * coverage, coverage);
 }
 ```
+
+with a quad covering the transparent shape's bounding box (not the entire viewport), reading the coverage buffer and compositing the color based on coverage. 
+
+**Repeatable nature:** 
+
+- Each transparent shape group is rendered with its own unique shape stamp, allowing multiple overlapping transparent shapes to be rendered correctly in any order.
+- Each transparent shape group requires three passes (Mask, Barrier, Cover), over and over, with unique incrementing  stamp ID, until 24-bit stamp space is exhausted, where it wraps around (16 million unique shape groups), a reset will be executed to clear the coverage buffer. 
+- No clearing of the coverage buffer is done between shape groups to keep performance high, until the stamp space is exhausted.
+- Mask => Barrier => Cover requires renderpass restart for each transparent shape group, which is a limitation of Vulkan renderpasses and can be problematic for TBDR mobile GPUs in terms of performance, but is necessary for correct operation.
+  - TBDR GPUs have difficulty with renderpass interruptions, as they rely on tile-based rendering and may need to flush tiles when the renderpass is suspended, since they have limited on-chip memory for tile storage, where these would need to be written out to main memory on renderpass restarts, which can lead to performance degradation.
 
 **Advantages:**
 - Order-independent transparency
