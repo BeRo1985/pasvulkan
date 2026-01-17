@@ -5065,7 +5065,7 @@ end;
 
 function TpvVectorPath.Circle(const aCenter:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath;
 begin
- result:=Ellipse(aCenter,aRadius);
+ result:=Ellipse(aCenter.x,aCenter.y,aRadius,aRadius);
 end;
 
 function TpvVectorPath.Close:TpvVectorPath;
