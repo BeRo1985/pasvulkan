@@ -510,6 +510,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function CubicCurveTo(const aControlPoint0,aControlPoint1,aAnchorPoint:TpvVectorPathVector):TpvVectorPath; overload;
        function ArcTo(const aOrigin,aRadius:TpvVectorPathVector;const aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean;const aRotation:TpvDouble):TpvVectorPath; overload;
        function ArcTo(const aOriginX,aOriginY,aRadiusX,aRadiusY:TpvDouble;const aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean;const aRotation:TpvDouble):TpvVectorPath; overload;
+       function Arc(const aCenterX,aCenterY,aRadius,aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean):TpvVectorPath; overload;
+       function Arc(const aCenter:TpvVectorPathVector;const aRadius,aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean):TpvVectorPath; overload;
        function Close:TpvVectorPath;
        function GetShape:TpvVectorPathShape;
       published
@@ -5000,6 +5002,16 @@ begin
 
  result:=self;
 
+end;
+
+function TpvVectorPath.Arc(const aCenterX,aCenterY,aRadius,aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean):TpvVectorPath;
+begin
+ result:=ArcTo(aCenterX,aCenterY,aRadius,aRadius,aStartAngle,aEndAngle,aCounterClockwise,0.0);
+end;
+
+function TpvVectorPath.Arc(const aCenter:TpvVectorPathVector;const aRadius,aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean):TpvVectorPath;
+begin
+ result:=ArcTo(aCenter.X,aCenter.Y,aRadius,aRadius,aStartAngle,aEndAngle,aCounterClockwise,0.0);
 end;
 
 function TpvVectorPath.Close:TpvVectorPath;
