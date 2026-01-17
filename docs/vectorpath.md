@@ -764,6 +764,7 @@ Fragment Shader:
 ### 6.4 Why Multiple Rendering Modes?
 
 - **SDF:** Best for small, repeated shapes (fonts, icons)
+- **Naive Direct Rendering:** Best for opaque shapes with full path support, where artifacts from overdraw are minimal or almost non-existent, and for sprite rendering and similar use cases.
 - **Coverage:** Best for transparent, order-dependent scenes
 - **Direct Spatial Grid GPU vector rendering:** Best for dynamic, high-resolution, memory-constrained scenarios
 - No single approach is optimal for all use cases
