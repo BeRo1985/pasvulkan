@@ -8046,14 +8046,11 @@ end;
 {$else}
 var Stream:TStream;
 begin
- result:=FileSize(String(CorrectFileName(aFileName)));
- if result=0 then begin
-  Stream:=TFileStream.Create(String(CorrectFileName(aFileName)),fmOpenRead or fmShareDenyWrite);
-  try
-   result:=Stream.Size;
-  finally
-   Stream.Free;
-  end;
+ Stream:=TFileStream.Create(String(CorrectFileName(aFileName)),fmOpenRead or fmShareDenyWrite);
+ try
+  result:=Stream.Size;
+ finally
+  FreeAndNil(Stream);
  end;
 end;
 {$endif}
@@ -8085,7 +8082,15 @@ begin
 end;
 {$else}
 begin
- result:=FileDateToDateTime(FileAge(String(CorrectFileName(aFileName))));
+{$if declared(FileAgeUTC)}
+ if not FileAgeUTC(String(CorrectFileName(aFileName)),result) then begin
+  result:=FileDateToDateTime(FileAge(String(CorrectFileName(aFileName))));
+ end;
+{$else}
+ if not FileAge(String(CorrectFileName(aFileName)),result) then begin
+  result:=FileDateToDateTime(FileAge(String(CorrectFileName(aFileName))));
+ end;
+{$ifend}
 end;
 {$endif}
 
