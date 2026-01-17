@@ -831,6 +831,16 @@ Fragment Shader:
 - **Approach:** GPU-accelerated vector rendering with prefix sums
 - **Difference:** Uses prefix sum algorithms
 
+## 8.5 Skia
+
+- **Project:** [Skia Graphics Library](https://skia.org/)
+- **Approach:** Multiple rendering backends (Ganesh/Graphite GPU backends, CPU rasterization)
+  - Tessellation-based path rendering
+  - Stencil-then-cover approach (based on NV_path_rendering)
+  - MSAA and MSAA-based anti-aliasing
+  - Distance fields for text rendering only
+- **Difference:** Uses tessellation and stencil approaches rather than per-pixel analytical evaluation; no analytical SDF evaluation for general vector paths (only for text)
+
 ---
 
 ## 9. Known Issues and Limitations (WIP Status)
