@@ -516,6 +516,12 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function Ellipse(const aCenter,aRadius:TpvVectorPathVector):TpvVectorPath; overload;
        function Circle(const aCenterX,aCenterY,aRadius:TpvDouble):TpvVectorPath; overload;
        function Circle(const aCenter:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath; overload;
+       function Rectangle(const aCenterX,aCenterY,aBoundsX,aBoundsY:TpvDouble):TpvVectorPath; overload;
+       function Rectangle(const aCenter,aBounds:TpvVectorPathVector):TpvVectorPath; overload;
+       function RoundedRectangle(const aCenterX,aCenterY,aBoundsX,aBoundsY,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvDouble):TpvVectorPath; overload;
+       function RoundedRectangle(const aCenter,aBounds:TpvVectorPathVector;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvDouble):TpvVectorPath; overload;
+       function RoundedRectangleUniform(const aCenterX,aCenterY,aBoundsX,aBoundsY,aRadius:TpvDouble):TpvVectorPath; overload;
+       function RoundedRectangleUniform(const aCenter,aBounds:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath; overload;
        function Close:TpvVectorPath;
        function GetShape:TpvVectorPathShape;
       published
@@ -5066,6 +5072,122 @@ end;
 function TpvVectorPath.Circle(const aCenter:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath;
 begin
  result:=Ellipse(aCenter.x,aCenter.y,aRadius,aRadius);
+end;
+
+function TpvVectorPath.Rectangle(const aCenterX,aCenterY,aBoundsX,aBoundsY:TpvDouble):TpvVectorPath;
+begin
+ MoveTo(aCenterX-aBoundsX,aCenterY-aBoundsY);
+ LineTo(aCenterX+aBoundsX,aCenterY-aBoundsY);
+ LineTo(aCenterX+aBoundsX,aCenterY+aBoundsY);
+ LineTo(aCenterX-aBoundsX,aCenterY+aBoundsY);
+ Close;
+ result:=self;
+end;
+
+function TpvVectorPath.Rectangle(const aCenter,aBounds:TpvVectorPathVector):TpvVectorPath;
+begin
+ MoveTo(aCenter.x-aBounds.x,aCenter.y-aBounds.y);
+ LineTo(aCenter.x+aBounds.x,aCenter.y-aBounds.y);
+ LineTo(aCenter.x+aBounds.x,aCenter.y+aBounds.y);
+ LineTo(aCenter.x-aBounds.x,aCenter.y+aBounds.y);
+ Close;
+ result:=self;
+end;
+
+function TpvVectorPath.RoundedRectangle(const aCenterX,aCenterY,aBoundsX,aBoundsY,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvDouble):TpvVectorPath;
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45�)/sin 45� = 4/3 * (sqrt(2) - 1)
+var OffsetX,OffsetY,SizeX,SizeY,TopLeftX,TopLeftY,TopRightX,TopRightY,BottomLeftX,BottomLeftY,BottomRightX,BottomRightY:TpvDouble;
+begin
+ if IsZero(aRadiusTopLeft) and
+    IsZero(aRadiusTopRight) and
+    IsZero(aRadiusBottomLeft) and
+    IsZero(aRadiusBottomRight) then begin
+  Rectangle(aCenterX,aCenterY,aBoundsX,aBoundsY);
+ end else begin
+  OffsetX:=aCenterX-aBoundsX;
+  OffsetY:=aCenterY-aBoundsY;
+  SizeX:=aBoundsX*2.0;
+  SizeY:=aBoundsY*2.0;
+  TopLeftX:=Min(aBoundsX,aRadiusTopLeft)*Sign(SizeX);
+  TopLeftY:=Min(aBoundsY,aRadiusTopLeft)*Sign(SizeY);
+  TopRightX:=Min(aBoundsX,aRadiusTopRight)*Sign(SizeX);
+  TopRightY:=Min(aBoundsY,aRadiusTopRight)*Sign(SizeY);
+  BottomLeftX:=Min(aBoundsX,aRadiusBottomLeft)*Sign(SizeX);
+  BottomLeftY:=Min(aBoundsY,aRadiusBottomLeft)*Sign(SizeY);
+  BottomRightX:=Min(aBoundsX,aRadiusBottomRight)*Sign(SizeX);
+  BottomRightY:=Min(aBoundsY,aRadiusBottomRight)*Sign(SizeY);
+  MoveTo(OffsetX,OffsetY+TopLeftY);
+  LineTo(OffsetX,OffsetY+SizeY-BottomLeftY);
+  CubicCurveTo(OffsetX,OffsetY+SizeY-(BottomLeftY*(1.0-ARC_MAGIC)),
+               OffsetX+BottomLeftX*(1.0-ARC_MAGIC),OffsetY+SizeY,
+               OffsetX+BottomLeftX,OffsetY+SizeY);
+  LineTo(OffsetX+SizeX-BottomRightX,OffsetY+SizeY);
+  CubicCurveTo(OffsetX+SizeX-(BottomRightX*(1.0-ARC_MAGIC)),OffsetY+SizeY,
+               OffsetX+SizeX,OffsetY+SizeY-(BottomRightY*(1.0-ARC_MAGIC)),
+               OffsetX+SizeX,OffsetY+SizeY-BottomRightY);
+  LineTo(OffsetX+SizeX,OffsetY+TopRightY);
+  CubicCurveTo(OffsetX+SizeX,OffsetY+TopRightY*(1.0-ARC_MAGIC),
+               OffsetX+SizeX-(TopRightX*(1.0-ARC_MAGIC)),OffsetY,
+               OffsetX+SizeX-TopRightX,OffsetY);
+  LineTo(OffsetX+TopLeftX,OffsetY);
+  CubicCurveTo(OffsetX+TopLeftX*(1.0-ARC_MAGIC),OffsetY,
+               OffsetX,OffsetY+TopLeftY*(1.0-ARC_MAGIC),
+               OffsetX,OffsetY+TopLeftY);
+  Close;
+ end;
+ result:=self;
+end;
+
+function TpvVectorPath.RoundedRectangle(const aCenter,aBounds:TpvVectorPathVector;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvDouble):TpvVectorPath;
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45�)/sin 45� = 4/3 * (sqrt(2) - 1)
+var Offset,Size,TopLeft,TopRight,BottomLeft,BottomRight:TpvVectorPathVector;
+begin
+ if IsZero(aRadiusTopLeft) and
+    IsZero(aRadiusTopRight) and
+    IsZero(aRadiusBottomLeft) and
+    IsZero(aRadiusBottomRight) then begin
+  Rectangle(aCenter,aBounds);
+ end else begin
+  Offset:=aCenter-aBounds;
+  Size:=aBounds*2.0;
+  TopLeft:=TpvVectorPathVector.Create(Min(aBounds.x,aRadiusTopLeft)*Sign(Size.x),
+                                      Min(aBounds.y,aRadiusTopLeft)*Sign(Size.y));
+  TopRight:=TpvVectorPathVector.Create(Min(aBounds.x,aRadiusTopRight)*Sign(Size.x),
+                                       Min(aBounds.y,aRadiusTopRight)*Sign(Size.y));
+  BottomLeft:=TpvVectorPathVector.Create(Min(aBounds.x,aRadiusBottomLeft)*Sign(Size.x),
+                                         Min(aBounds.y,aRadiusBottomLeft)*Sign(Size.y));
+  BottomRight:=TpvVectorPathVector.Create(Min(aBounds.x,aRadiusBottomRight)*Sign(Size.x),
+                                          Min(aBounds.y,aRadiusBottomRight)*Sign(Size.y));
+  MoveTo(Offset.x,Offset.y+TopLeft.y);
+  LineTo(Offset.x,Offset.y+Size.y-BottomLeft.y);
+  CubicCurveTo(Offset.x,Offset.y+Size.y-(BottomLeft.y*(1.0-ARC_MAGIC)),
+               Offset.x+BottomLeft.x*(1.0-ARC_MAGIC),Offset.y+Size.y,
+               Offset.x+BottomLeft.x,Offset.y+Size.y);
+  LineTo(Offset.x+Size.x-BottomRight.x,Offset.y+Size.y);
+  CubicCurveTo(Offset.x+Size.x-(BottomRight.x*(1.0-ARC_MAGIC)),Offset.y+Size.y,
+               Offset.x+Size.x,Offset.y+Size.y-(BottomRight.y*(1.0-ARC_MAGIC)),
+               Offset.x+Size.x,Offset.y+Size.y-BottomRight.y);
+  LineTo(Offset.x+Size.x,Offset.y+TopRight.y);
+  CubicCurveTo(Offset.x+Size.x,Offset.y+TopRight.y*(1.0-ARC_MAGIC),
+               Offset.x+Size.x-(TopRight.x*(1.0-ARC_MAGIC)),Offset.y,
+               Offset.x+Size.x-TopRight.x,Offset.y);
+  LineTo(Offset.x+TopLeft.x,Offset.y);
+  CubicCurveTo(Offset.x+TopLeft.x*(1.0-ARC_MAGIC),Offset.y,
+               Offset.x,Offset.y+TopLeft.y*(1.0-ARC_MAGIC),
+               Offset.x,Offset.y+TopLeft.y);
+  Close;
+ end;
+ result:=self;
+end;
+
+function TpvVectorPath.RoundedRectangleUniform(const aCenterX,aCenterY,aBoundsX,aBoundsY,aRadius:TpvDouble):TpvVectorPath;
+begin
+ result:=RoundedRectangle(aCenterX,aCenterY,aBoundsX,aBoundsY,aRadius,aRadius,aRadius,aRadius);
+end;
+
+function TpvVectorPath.RoundedRectangleUniform(const aCenter,aBounds:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath;
+begin
+ result:=RoundedRectangle(aCenter,aBounds,aRadius,aRadius,aRadius,aRadius);
 end;
 
 function TpvVectorPath.Close:TpvVectorPath;
