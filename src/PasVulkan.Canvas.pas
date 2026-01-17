@@ -1390,7 +1390,7 @@ end;
 {$endif}
 
 function TpvCanvasPath.Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
-const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45�)/sin 45� = 4/3 * (sqrt(2) - 1)
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45°)/sin 45° = 4/3 * (sqrt(2) - 1)
 begin
  MoveTo(TpvVector2.InlineableCreate(aCenter.x+aRadius.x,aCenter.y));
  CubicCurveTo(TpvVector2.InlineableCreate(aCenter.x+aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC)),
@@ -1425,7 +1425,7 @@ begin
 end;
 
 function TpvCanvasPath.RoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvasPath;
-const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45�)/sin 45� = 4/3 * (sqrt(2) - 1)
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45°)/sin 45° = 4/3 * (sqrt(2) - 1)
 var Offset,Size,TopLeft,TopRight,BottomLeft,BottomRight:TpvVector2;
 begin
  if IsZero(aRadiusTopLeft) and

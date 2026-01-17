@@ -5025,7 +5025,7 @@ begin
 end;
 
 function TpvVectorPath.Ellipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvDouble):TpvVectorPath;
-const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45�)/sin 45� = 4/3 * (sqrt(2) - 1)
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45°)/sin 45° = 4/3 * (sqrt(2) - 1)
 begin
  MoveTo(aCenterX+aRadiusX,aCenterY);
  CubicCurveTo(aCenterX+aRadiusX,aCenterY-(aRadiusY*ARC_MAGIC),
@@ -5045,7 +5045,7 @@ begin
 end;
 
 function TpvVectorPath.Ellipse(const aCenter,aRadius:TpvVectorPathVector):TpvVectorPath;
-const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45�)/sin 45� = 4/3 * (sqrt(2) - 1)
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45°)/sin 45° = 4/3 * (sqrt(2) - 1)
 begin
  MoveTo(aCenter.x+aRadius.x,aCenter.y);
  CubicCurveTo(aCenter.x+aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC),
@@ -5095,7 +5095,7 @@ begin
 end;
 
 function TpvVectorPath.RoundedRectangle(const aCenterX,aCenterY,aBoundsX,aBoundsY,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvDouble):TpvVectorPath;
-const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45�)/sin 45� = 4/3 * (sqrt(2) - 1)
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45°)/sin 45° = 4/3 * (sqrt(2) - 1)
 var OffsetX,OffsetY,SizeX,SizeY,TopLeftX,TopLeftY,TopRightX,TopRightY,BottomLeftX,BottomLeftY,BottomRightX,BottomRightY:TpvDouble;
 begin
  if IsZero(aRadiusTopLeft) and
@@ -5139,7 +5139,7 @@ begin
 end;
 
 function TpvVectorPath.RoundedRectangle(const aCenter,aBounds:TpvVectorPathVector;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvDouble):TpvVectorPath;
-const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45�)/sin 45� = 4/3 * (sqrt(2) - 1)
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45°)/sin 45° = 4/3 * (sqrt(2) - 1)
 var Offset,Size,TopLeft,TopRight,BottomLeft,BottomRight:TpvVectorPathVector;
 begin
  if IsZero(aRadiusTopLeft) and
