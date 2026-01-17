@@ -412,12 +412,24 @@ float sampleVectorPathShape(const vec3 shapeCoord) {
 
 **Meta Winding Lines:**
 
-Meta winding lines are inserted between Y-bands in each grid cell to initialize the winding number for scanline evaluation. They ensure correct winding calculation even when segments do not intersect the pixel's horizontal ray directly. Other most approaches either:
+Meta winding lines are virtual segments inserted between Y-coordinate bands within each grid cell to initialize the winding number for scanline-based evaluation. They solve a fundamental challenge: when a fragment shader evaluates a pixel, it needs to know the correct winding number, but the pixel's horizontal ray may not intersect any actual path segments (e.g., when the pixel is deep inside a closed shape).
 
-- Use prefix sums (complex, GPU-unfriendly for random access)
-- Recompute winding from scratch per pixel (expensive)
+**Why Meta Winding Lines?**
 
-So this meta winding line approach combined with scanline-based initialization is a nice middle ground.
+Without proper initialization, pixels in grid cells that don't contain segment intersections would have incorrect winding values. Alternative approaches have significant drawbacks:
+
+- **Prefix sums:** Precompute winding for every cell, but this is complex to implement and requires global dependencies, making random access inefficient on GPUs
+- **Per-pixel full traversal:** Trace from negative infinity to every pixel, but this is prohibitively expensive for complex shapes with many segments
+- **Stencil-based methods:** Require additional passes and stencil buffer manipulation
+
+**How Meta Winding Lines Work:**
+
+1. During preprocessing, identify Y-coordinate bands where path segments intersect grid cell boundaries
+2. Insert meta winding lines at these boundaries, encoding the cumulative winding contribution from segments below
+3. At runtime, the fragment shader reads the meta winding line for the pixel's Y-coordinate to get the base winding value
+4. Then incrementally update winding as it processes actual segments in the cell
+
+This approach provides **efficient random access** (any pixel can query its grid cell independently) while maintaining **correct winding semantics** with minimal computational overhead.
 
 **Winding Number Calculation:**
 
