@@ -107,6 +107,14 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function Lerp(const b:TpvVectorPathVector;const t:TpvDouble):TpvVectorPathVector;
        function ClampedLerp(const b:TpvVectorPathVector;const t:TpvDouble):TpvVectorPathVector;
        class function IsLeft(const a,b,c:TpvVectorPathVector):TpvDouble; static;
+       class operator Implicit(const a:TpvVector2):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
+       class operator Implicit(const a:TpvVectorPathVector):TpvVector2; {$ifdef CANINLINE}inline;{$endif}
+       class operator Implicit(const a:TpvVector2D):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
+       class operator Implicit(const a:TpvVectorPathVector):TpvVector2D; {$ifdef CANINLINE}inline;{$endif}
+       class operator Explicit(const a:TpvVectorPathVector):TpvVector2; {$ifdef CANINLINE}inline;{$endif}
+       class operator Explicit(const a:TpvVector2):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
+       class operator Explicit(const a:TpvVectorPathVector):TpvVector2D; {$ifdef CANINLINE}inline;{$endif}
+       class operator Explicit(const a:TpvVector2D):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
        class operator Equal(const a,b:TpvVectorPathVector):boolean; {$ifdef CANINLINE}inline;{$endif}
        class operator NotEqual(const a,b:TpvVectorPathVector):boolean; {$ifdef CANINLINE}inline;{$endif}
        class operator Add(const a,b:TpvVectorPathVector):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
@@ -734,6 +742,54 @@ end;
 class function TpvVectorPathVector.IsLeft(const a,b,c:TpvVectorPathVector):TpvDouble;
 begin
  result:=((b.x*a.x)*(c.y*a.y))-((c.x*a.x)*(b.y*a.y));
+end;
+
+class operator TpvVectorPathVector.Implicit(const a:TpvVector2):TpvVectorPathVector;
+begin
+ result.x:=a.x;
+ result.y:=a.y;
+end;
+
+class operator TpvVectorPathVector.Implicit(const a:TpvVectorPathVector):TpvVector2;
+begin
+ result.x:=a.x;
+ result.y:=a.y;
+end;
+
+class operator TpvVectorPathVector.Implicit(const a:TpvVector2D):TpvVectorPathVector;
+begin
+ result.x:=a.x;
+ result.y:=a.y;
+end;
+
+class operator TpvVectorPathVector.Implicit(const a:TpvVectorPathVector):TpvVector2D;
+begin
+ result.x:=a.x;
+ result.y:=a.y;
+end;
+
+class operator TpvVectorPathVector.Explicit(const a:TpvVectorPathVector):TpvVector2;
+begin
+ result.x:=a.x;
+ result.y:=a.y;
+end;
+
+class operator TpvVectorPathVector.Explicit(const a:TpvVector2):TpvVectorPathVector;
+begin
+ result.x:=a.x;
+ result.y:=a.y;
+end;
+
+class operator TpvVectorPathVector.Explicit(const a:TpvVectorPathVector):TpvVector2D;
+begin
+ result.x:=a.x;
+ result.y:=a.y;
+end;
+
+class operator TpvVectorPathVector.Explicit(const a:TpvVector2D):TpvVectorPathVector;
+begin
+ result.x:=a.x;
+ result.y:=a.y;
 end;
 
 class operator TpvVectorPathVector.Equal(const a,b:TpvVectorPathVector):boolean;
