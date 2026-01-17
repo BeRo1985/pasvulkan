@@ -506,7 +506,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function LineTo(const aPosition:TpvVectorPathVector):TpvVectorPath; overload;
        function QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble):TpvVectorPath;
        function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble):TpvVectorPath;
-       function ArcTo(const aOrigin,aRadius:TpvVector2;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath;
+       function ArcTo(const aOrigin,aRadius:TpvVectorPathVector;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath;
        function Close:TpvVectorPath;
        function GetShape:TpvVectorPathShape;
       published
@@ -4811,11 +4811,11 @@ begin
  result:=self;
 end;
 
-function TpvVectorPath.ArcTo(const aOrigin,aRadius:TpvVector2;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath;
+function TpvVectorPath.ArcTo(const aOrigin,aRadius:TpvVectorPathVector;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath;
 type TMatrix=array[0..5] of TpvFloat;
 var SweepDirection:TpvInt32;    
     ArcSweepLeft,StartAngle,CurrentStartAngle,CurrentEndAngle:TpvFloat;
-    CurrentStartOffset,CurrentEndOffset,cp0,cp1,RotationSinCos:TpvVector2;
+    CurrentStartOffset,CurrentEndOffset,cp0,cp1,RotationSinCos:TpvVectorPathVector;
     KappaFactor:TpvFloat;
     Matrix:TMatrix;
 begin
@@ -4874,10 +4874,10 @@ begin
   KappaFactor:=(4.0/3.0)*tan((CurrentEndAngle-CurrentStartAngle)*0.25);
 
   // Calculate the control points
-  cp0:=TpvVector2.InlineableCreate(CurrentStartOffset.x-(CurrentStartOffset.y*KappaFactor),
-                                   CurrentStartOffset.y+(CurrentStartOffset.x*KappaFactor));
-  cp1:=TpvVector2.InlineableCreate(CurrentEndOffset.x+(CurrentEndOffset.y*KappaFactor),
-                                   CurrentEndOffset.y-(CurrentEndOffset.x*KappaFactor));
+  cp0:=TpvVectorPathVector.Create(CurrentStartOffset.x-(CurrentStartOffset.y*KappaFactor),
+                                  CurrentStartOffset.y+(CurrentStartOffset.x*KappaFactor));
+  cp1:=TpvVectorPathVector.Create(CurrentEndOffset.x+(CurrentEndOffset.y*KappaFactor),
+                                  CurrentEndOffset.y-(CurrentEndOffset.x*KappaFactor));
 
   // Draw the current arc segment as a Bezier curve (using baked coordinates)
   CubicCurveTo((cp0.x*Matrix[0])+(cp0.y*Matrix[2])+Matrix[4],
