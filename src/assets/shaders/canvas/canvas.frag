@@ -599,6 +599,10 @@ float multiSampleMSDF(const in TVEC texCoord){
 
 #if FILLTYPE == FILLTYPE_VECTOR_PATH
 
+float cross2(vec2 lhs, vec2 rhs){
+  return (lhs.x * rhs.y) - (lhs.y * rhs.x);
+}
+
 bool lineHorziontalLineIntersect(vec2 p0, vec2 p1, float y0, float y1) {
   if(p0.x == p1.x ){  // Line is vertical
     return y0 <= max(p0.y, p1.y) && y1 >= min(p0.y, p1.y);   
@@ -607,7 +611,7 @@ bool lineHorziontalLineIntersect(vec2 p0, vec2 p1, float y0, float y1) {
   }else{ // Line is not vertical
     // Calculate intersection point
     float x = (((y1 - y0) * (p1.x - p0.x)) / (p1.y - p0.y)) + p0.x;
-    return (x >= min(p0.x, p1.x)) &&  (x <= max(p0.x, p1.x)) && (y0 <= max(p0.y, p1.y)) && (y1 >= min(p0.y, p1.y));
+    return (x >= min(p0.x, p1.x)) && (x <= max(p0.x, p1.x)) && (y0 <= max(p0.y, p1.y)) && (y1 >= min(p0.y, p1.y));
   }
 }
 
@@ -638,6 +642,9 @@ float getLineDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 B, inout i
   vec2 nearestPoint = mix(A, B, clamp(dot(pSubA, lineSegment) / squaredLineLength, 0.0, 1.0));
   vec2 nearestVector = nearestPoint - pos; 
   return length(nearestVector); 
+
+  // Alternative with sign based on which side of the line the point is located:
+  // return length(nearestVector) * sign(-cross2(nearestVector, lineSegment)); 
 
 }
 
@@ -713,7 +720,10 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
 
     vec2 uv = sign(x) * pow(abs(x), vec2(1.0/3.0));
     float t = clamp(uv.x + uv.y - kx, 0.0, 1.0);
-    return length(d + (c + b * t) * t);
+    vec2 q = d + (c + b * t) * t;
+    return length(q);
+    // Alternative with sign based on which side of the curve the point is located
+    // return length(q) * sign(cross2(c + (2.0 * b * t), q)); 
   } else { // 3 roots
     float z = sqrt(-p);
     float v = acos(q / (p * z * 2.0)) / 3.0;
@@ -723,6 +733,10 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
     vec2 qx = d + (c + b * t.x) * t.x;
     vec2 qy = d + (c + b * t.y) * t.y;
     return sqrt(min(dot(qx, qx), dot(qy, qy)));    
+    // Alternative with sign based on which side of the curve the point is located
+/*  float sx = cross2(c + (2.0 * b * t.x), qx);
+    float sy = cross2(c + (2.0 * b * t.y), qy);
+    return (dot(qx, qx) < dot(qy, qy)) ? (length(qx) * sign(sx)) : (length(qy) * sign(sy));*/
   }
 
 } 
