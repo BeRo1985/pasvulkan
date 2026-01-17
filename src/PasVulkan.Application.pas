@@ -1305,6 +1305,7 @@ type EpvApplication=class(Exception)
        function ExistAsset(const aFileName:TpvUTF8String):boolean;
        function GetAssetStream(const aFileName:TpvUTF8String):TStream;
        function GetAssetSize(const aFileName:TpvUTF8String):TpvUInt64;
+       function GetAssetDateTime(const aFileName:TpvUTF8String):TDateTime;
        function GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDirectory:boolean=false):TFileNameList;
        property BasePath:TpvUTF8String read fBasePath;
      end;
@@ -8051,6 +8052,37 @@ begin
  finally
   Stream.Free;
  end;
+end;
+{$endif}
+
+function TpvApplicationAssets.GetAssetDateTime(const aFileName:TpvUTF8String):TDateTime;
+{$ifdef Android}
+var Asset:PAAsset;
+    FileDescriptor:TpvInt32;
+    Stat:TStat;
+begin
+ result:=0;
+ if assigned(AndroidAssetManager) then begin
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(TpvApplicationRawByteString(CorrectFileName(aFileName))),AASSET_MODE_UNKNOWN);
+  if assigned(Asset) then begin
+   try
+    FileDescriptor:=AAsset_openFileDescriptor(Asset,nil,nil);
+    if fpFStat(FileDescriptor,Stat)=0 then begin
+     result:=FileDateToDateTime(Stat.st_mtime);
+    end;
+   finally
+     AAsset_close(Asset);
+   end;
+  end else begin
+   raise Exception.Create('Asset "'+aFileName+'" not found');
+  end;
+ end else begin
+  raise Exception.Create('Asset manager is null');
+ end;
+end;
+{$else}
+begin
+ result:=FileDateToDateTime(FileAge(String(CorrectFileName(aFileName))));
 end;
 {$endif}
 
