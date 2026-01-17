@@ -825,6 +825,12 @@ Fragment Shader:
 - **Approach:** Analytical fragment shader evaluation
 - **Similarity:** Direct evaluation without tessellation
 
+## 8.4 Vello (piet-gpu)
+
+- **Project:** [Vello](https://github.com/linebender/vello)
+- **Approach:** GPU-accelerated vector rendering with prefix sums
+- **Difference:** Uses prefix sum algorithms
+
 ---
 
 ## 9. Known Issues and Limitations (WIP Status)
