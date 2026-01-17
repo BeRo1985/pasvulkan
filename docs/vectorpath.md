@@ -273,6 +273,7 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
 **Advantages:**
 - Order-independent transparency
 - Handles overlapping transparent shapes correctly
+- Analytical SDF anti-aliasing (high quality)
 - No geometry sorting required
 - Memory efficient compared to alternatives: R32_UINT per pixel (4 bytes) vs MSAA (16-32 bytes/pixel), A-Buffer (variable/large), or Depth Peeling (multiple full buffers)
 
@@ -368,21 +369,23 @@ float sampleVectorPathShape(const vec3 shapeCoord) {
       VectorPathGPUSegment seg = vectorPathGPUSegments[vectorPathGPUIndirectSegments[i]];
       
       switch (seg.typeWindingPoint0.x) {
-        case 1u:  // Line
+        case 1u:{ // Line
           signedDistance = min(signedDistance, 
             getLineDistanceAndUpdateWinding(shapeCoord.xy, 
               uintBitsToFloat(seg.typeWindingPoint0.zw), 
               seg.point1Point2.xy, winding));
           break;
+        }
           
-        case 2u:  // Quadratic curve
+        case 2u:{  // Quadratic curve
           signedDistance = min(signedDistance, 
             getQuadraticCurveDistanceAndUpdateWinding(shapeCoord.xy, 
               uintBitsToFloat(seg.typeWindingPoint0.zw), 
               seg.point1Point2.xy, seg.point1Point2.zw, winding));
           break;
+        }
           
-        case 3u:  // Meta winding line
+        case 3u:{  // Meta winding line
           vec2 p0 = uintBitsToFloat(seg.typeWindingPoint0.zw);
           vec2 p1 = seg.point1Point2.xy;
           if ((shapeCoord.y >= min(p0.y, p1.y)) && 
@@ -390,6 +393,8 @@ float sampleVectorPathShape(const vec3 shapeCoord) {
             winding += int(seg.typeWindingPoint0.y);
           }
           break;
+        }
+
       }
     }
     
@@ -404,6 +409,15 @@ float sampleVectorPathShape(const vec3 shapeCoord) {
   return linearstep(-d, d, signedDistance);
 }
 ```
+
+**Meta Winding Lines:**
+
+Meta winding lines are inserted between Y-bands in each grid cell to initialize the winding number for scanline evaluation. They ensure correct winding calculation even when segments do not intersect the pixel's horizontal ray directly. Other most approaches either:
+
+- Use prefix sums (complex, GPU-unfriendly for random access)
+- Recompute winding from scratch per pixel (expensive)
+
+So this meta winding line approach combined with scanline-based initialization is a nice middle ground.
 
 **Winding Number Calculation:**
 
