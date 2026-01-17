@@ -245,7 +245,7 @@ end;
 - Coverage buffer: `R32_UINT` format image (set 1, binding 0)
 - Format: `[24-bit stamp | 8-bit coverage]`
 
-**Note on Terminology:** In this context, "pass" refers to a logical stage of the algorithm. The barrier stage is a synchronization point between render passes, not a rendering pass itself.
+**Note on Terminology:** In this context, "pass" refers to a logical stage of the algorithm. The barrier stage is a synchronization point between render passes, not a rendering pass itself. Two-pass rendering (Mask + Cover) with a synchronization barrier in between, so three logical stages total, hence "Three-Pass Algorithm".
 
 **Three-Pass Algorithm:**
 
