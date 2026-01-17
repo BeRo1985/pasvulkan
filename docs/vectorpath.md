@@ -275,6 +275,8 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
 - Two rendering passes per shape
 - Coverage buffer memory overhead
 - Atomic operations may have performance cost
+- Requires renderpass suspend/resume (restart) due to barrier limitations inside renderpasses
+- Problematic for TBDR (Tile-Based Deferred Rendering) mobile GPUs due to renderpass interruption
 
 ### 2.4 Pathfinder-like On-GPU Rendering (WIP)
 
