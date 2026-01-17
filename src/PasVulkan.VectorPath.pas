@@ -512,6 +512,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function ArcTo(const aOriginX,aOriginY,aRadiusX,aRadiusY:TpvDouble;const aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean;const aRotation:TpvDouble):TpvVectorPath; overload;
        function Arc(const aCenterX,aCenterY,aRadius,aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean):TpvVectorPath; overload;
        function Arc(const aCenter:TpvVectorPathVector;const aRadius,aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean):TpvVectorPath; overload;
+       function Ellipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvDouble):TpvVectorPath; overload;
+       function Ellipse(const aCenter,aRadius:TpvVectorPathVector):TpvVectorPath; overload;
        function Close:TpvVectorPath;
        function GetShape:TpvVectorPathShape;
       published
@@ -5012,6 +5014,46 @@ end;
 function TpvVectorPath.Arc(const aCenter:TpvVectorPathVector;const aRadius,aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean):TpvVectorPath;
 begin
  result:=ArcTo(aCenter.X,aCenter.Y,aRadius,aRadius,aStartAngle,aEndAngle,aCounterClockwise,0.0);
+end;
+
+function TpvVectorPath.Ellipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvDouble):TpvVectorPath;
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45�)/sin 45� = 4/3 * (sqrt(2) - 1)
+begin
+ MoveTo(aCenterX+aRadiusX,aCenterY);
+ CubicCurveTo(aCenterX+aRadiusX,aCenterY-(aRadiusY*ARC_MAGIC),
+              aCenterX+(aRadiusX*ARC_MAGIC),aCenterY-aRadiusY,
+              aCenterX,aCenterY-aRadiusY);
+ CubicCurveTo(aCenterX-(aRadiusX*ARC_MAGIC),aCenterY-aRadiusY,
+              aCenterX-aRadiusX,aCenterY-(aRadiusY*ARC_MAGIC),
+              aCenterX-aRadiusX,aCenterY);
+ CubicCurveTo(aCenterX-aRadiusX,aCenterY+(aRadiusY*ARC_MAGIC),
+              aCenterX-(aRadiusX*ARC_MAGIC),aCenterY+aRadiusY,
+              aCenterX,aCenterY+aRadiusY);
+ CubicCurveTo(aCenterX+(aRadiusX*ARC_MAGIC),aCenterY+aRadiusY,
+              aCenterX+aRadiusX,aCenterY+(aRadiusY*ARC_MAGIC),
+              aCenterX+aRadiusX,aCenterY);
+ Close;
+ result:=self;
+end;
+
+function TpvVectorPath.Ellipse(const aCenter,aRadius:TpvVectorPathVector):TpvVectorPath;
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45�)/sin 45� = 4/3 * (sqrt(2) - 1)
+begin
+ MoveTo(aCenter.x+aRadius.x,aCenter.y);
+ CubicCurveTo(aCenter.x+aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC),
+              aCenter.x+(aRadius.x*ARC_MAGIC),aCenter.y-aRadius.y,
+              aCenter.x,aCenter.y-aRadius.y);
+ CubicCurveTo(aCenter.x-(aRadius.x*ARC_MAGIC),aCenter.y-aRadius.y,
+              aCenter.x-aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC),
+              aCenter.x-aRadius.x,aCenter.y);
+ CubicCurveTo(aCenter.x-aRadius.x,aCenter.y+(aRadius.y*ARC_MAGIC),
+              aCenter.x-(aRadius.x*ARC_MAGIC),aCenter.y+aRadius.y,
+              aCenter.x,aCenter.y+aRadius.y);
+ CubicCurveTo(aCenter.x+(aRadius.x*ARC_MAGIC),aCenter.y+aRadius.y,
+              aCenter.x+aRadius.x,aCenter.y+(aRadius.y*ARC_MAGIC),
+              aCenter.x+aRadius.x,aCenter.y);
+ Close;
+ result:=self;
 end;
 
 function TpvVectorPath.Close:TpvVectorPath;
