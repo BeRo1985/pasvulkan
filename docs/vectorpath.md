@@ -847,8 +847,8 @@ Fragment Shader:
 
 ### 9.1 Current Limitations
 
-- No stroke support yet
-- Cubic curves must be converted to quadratic
+- Stroke rendering not yet implemented - will be emulated by converting strokes to filled outline shapes (simplifies implementation and leverages existing fill infrastructure)
+- Cubic Bézier curves converted to quadratic curves during preprocessing (quadratic approximation is sufficient for visual quality at typical resolutions, with lower computational cost than direct cubic evaluation)
 - Grid resolution is fixed per shape (no adaptive subdivision)
 - No GPU-side preprocessing
 
