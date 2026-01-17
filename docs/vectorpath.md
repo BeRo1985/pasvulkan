@@ -276,6 +276,7 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
 - Coverage buffer memory overhead
 - Atomic operations may have performance cost
 - Requires renderpass suspend/resume (restart) due to barrier limitations inside renderpasses
+   - Cover => Barrier => Mask requires renderpass restart for each transparent shape group
 - Problematic for TBDR (Tile-Based Deferred Rendering) mobile GPUs due to renderpass interruption
 
 ### 2.4 Pathfinder-like On-GPU Rendering (WIP)
