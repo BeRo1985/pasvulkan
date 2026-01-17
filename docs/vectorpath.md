@@ -280,6 +280,7 @@ with a quad covering the transparent shape's bounding box (not the entire viewpo
 - **Three-Pass Cycle:** The algorithm repeats (Mask → Barrier → Cover) for each shape group with incrementing stamp IDs until the 24-bit stamp space (16,777,216 unique IDs) is exhausted, at which point the coverage buffer is cleared and stamps wrap back to zero
 - **Deferred Buffer Clearing:** Coverage buffer is not cleared between shape groups to maximize performance; clearing only occurs on stamp exhaustion
 - **Renderpass Restart Requirement:** Due to Vulkan renderpass barrier limitations, each Mask → Barrier → Cover cycle requires a renderpass restart, which is architecturally necessary but impacts performance on TBDR mobile GPUs
+  - **Subpass Limitation:** Vulkan subpasses with internal dependencies cannot be used here due to the repeatable nature of the algorithm—subpasses are designed for linear sequencing (subpass 0 → 1 → 2), but this algorithm requires a cyclical pattern (Mask → Cover → Mask → Cover...) that necessitates full renderpass restarts
   - **TBDR Impact:** Tile-Based Deferred Rendering architectures suffer performance degradation from renderpass interruptions because they must flush on-chip tile memory to main memory when the renderpass is suspended, then reload it on restart—this defeats the core TBDR optimization of keeping tile data on-chip throughout the renderpass
 
 **Advantages:**
