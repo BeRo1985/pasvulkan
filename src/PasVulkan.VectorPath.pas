@@ -504,9 +504,12 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function MoveTo(const aPosition:TpvVectorPathVector):TpvVectorPath; overload;
        function LineTo(const aX,aY:TpvDouble):TpvVectorPath; overload;
        function LineTo(const aPosition:TpvVectorPathVector):TpvVectorPath; overload;
-       function QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble):TpvVectorPath;
-       function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble):TpvVectorPath;
-       function ArcTo(const aOrigin,aRadius:TpvVectorPathVector;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath;
+       function QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble):TpvVectorPath; overload;
+       function QuadraticCurveTo(const aControlPoint,aAnchorPoint:TpvVectorPathVector):TpvVectorPath; overload;
+       function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble):TpvVectorPath; overload;
+       function CubicCurveTo(const aControlPoint0,aControlPoint1,aAnchorPoint:TpvVectorPathVector):TpvVectorPath; overload;
+       function ArcTo(const aOrigin,aRadius:TpvVectorPathVector;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath; overload;
+       function ArcTo(const aOriginX,aOriginY,aRadiusX,aRadiusY:TpvDouble;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath; overload;
        function Close:TpvVectorPath;
        function GetShape:TpvVectorPathShape;
       published
@@ -4804,11 +4807,112 @@ begin
  result:=self;
 end;
 
+function TpvVectorPath.QuadraticCurveTo(const aControlPoint,aAnchorPoint:TpvVectorPathVector):TpvVectorPath;
+begin
+ fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.QuadraticCurveTo,aControlPoint.x,aControlPoint.y,aAnchorPoint.x,aAnchorPoint.y));
+ fStartPointSeen:=true;
+ result:=self;
+end;
+
 function TpvVectorPath.CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble):TpvVectorPath;
 begin
  fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.CubicCurveTo,aC0X,aC0Y,aC1X,aC1Y,aAX,aAY));
  fStartPointSeen:=true;
  result:=self;
+end;
+
+function TpvVectorPath.CubicCurveTo(const aControlPoint0,aControlPoint1,aAnchorPoint:TpvVectorPathVector):TpvVectorPath;
+begin
+ fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.CubicCurveTo,aControlPoint0.x,aControlPoint0.y,aControlPoint1.x,aControlPoint1.y,aAnchorPoint.x,aAnchorPoint.y));
+ fStartPointSeen:=true;
+ result:=self;
+end;
+
+function TpvVectorPath.ArcTo(const aOriginX,aOriginY,aRadiusX,aRadiusY:TpvDouble;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath;
+type TMatrix=array[0..5] of TpvFloat;
+var SweepDirection:TpvInt32;    
+    ArcSweepLeft,StartAngle,CurrentStartAngle,CurrentEndAngle:TpvFloat;
+    CurrentStartOffset,CurrentEndOffset,cp0,cp1,RotationSinCos:TpvVectorPathVector;
+    KappaFactor:TpvFloat;
+    Matrix:TMatrix;
+begin
+ 
+ // Calculate the sweep direction
+ if aCounterClockwise then begin
+  SweepDirection:=-1;
+ end else begin
+  SweepDirection:=1;
+ end;
+
+ // Calculate the total arc we're going to sweep
+ ArcSweepLeft:=(aEndAngle-aStartAngle)*SweepDirection;
+
+ // Ensure the sweep is positive, and normalize it
+ if ArcSweepLeft<0.0 then begin
+  ArcSweepLeft:=TwoPI+(ArcSweepLeft-(Floor(ArcSweepLeft/TwoPI)*TwoPI));
+  StartAngle:=aEndAngle-(ArcSweepLeft*SweepDirection);
+ end else if ArcSweepLeft>TwoPI then begin
+  ArcSweepLeft:=TwoPI;
+  StartAngle:=aStartAngle;
+ end else begin
+  StartAngle:=aStartAngle;
+ end;
+
+ // Create transformation matrix from scratch at once
+ SinCos(aRotation,RotationSinCos.x,RotationSinCos.y);
+
+ Matrix[0]:=aRadiusX*RotationSinCos.y;
+ Matrix[1]:=aRadiusY*RotationSinCos.x;
+ Matrix[2]:=-aRadiusX*RotationSinCos.x;
+ Matrix[3]:=aRadiusY*RotationSinCos.y;
+ Matrix[4]:=aOriginX;
+ Matrix[5]:=aOriginY;
+
+ // Current start angle and offset (unit circle)
+ CurrentStartAngle:=StartAngle;
+ SinCos(StartAngle,CurrentStartOffset.y,CurrentStartOffset.x);
+
+ // Move to the start point (transformed) 
+ if fStartPointSeen then begin
+  LineTo((CurrentStartOffset.x*Matrix[0])+(CurrentStartOffset.y*Matrix[2])+Matrix[4],
+         (CurrentStartOffset.x*Matrix[1])+(CurrentStartOffset.y*Matrix[3])+Matrix[5]);
+ end else begin
+  MoveTo((CurrentStartOffset.x*Matrix[0])+(CurrentStartOffset.y*Matrix[2])+Matrix[4],
+         (CurrentStartOffset.x*Matrix[1])+(CurrentStartOffset.y*Matrix[3])+Matrix[5]);
+ end;
+
+ while ArcSweepLeft>0.0 do begin
+
+  // Calculate the end angle and offset (unit circle)
+  CurrentEndAngle:=CurrentStartAngle+(Min(ArcSweepLeft,HalfPI)*SweepDirection);
+  SinCos(CurrentEndAngle,CurrentEndOffset.y,CurrentEndOffset.x);
+
+  // Calculate the kappa factor
+  KappaFactor:=(4.0/3.0)*tan((CurrentEndAngle-CurrentStartAngle)*0.25);
+
+  // Calculate the control points
+  cp0:=TpvVectorPathVector.Create(CurrentStartOffset.x-(CurrentStartOffset.y*KappaFactor),
+                                  CurrentStartOffset.y+(CurrentStartOffset.x*KappaFactor));
+  cp1:=TpvVectorPathVector.Create(CurrentEndOffset.x+(CurrentEndOffset.y*KappaFactor),
+                                  CurrentEndOffset.y-(CurrentEndOffset.x*KappaFactor));
+
+  // Draw the current arc segment as a Bezier curve (using baked coordinates)
+  CubicCurveTo((cp0.x*Matrix[0])+(cp0.y*Matrix[2])+Matrix[4],
+               (cp0.x*Matrix[1])+(cp0.y*Matrix[3])+Matrix[5],
+               (cp1.x*Matrix[0])+(cp1.y*Matrix[2])+Matrix[4],
+               (cp1.x*Matrix[1])+(cp1.y*Matrix[3])+Matrix[5],
+               (CurrentEndOffset.x*Matrix[0])+(CurrentEndOffset.y*Matrix[2])+Matrix[4],
+               (CurrentEndOffset.x*Matrix[1])+(CurrentEndOffset.y*Matrix[3])+Matrix[5]);
+
+  // Move to the next segment 
+  ArcSweepLeft:=ArcSweepLeft-HalfPI;
+  CurrentStartAngle:=CurrentEndAngle;
+  CurrentStartOffset:=CurrentEndOffset;
+
+ end;
+
+ result:=self;
+
 end;
 
 function TpvVectorPath.ArcTo(const aOrigin,aRadius:TpvVectorPathVector;const aStartAngle,aEndAngle:TpvFloat;const aCounterClockwise:boolean;const aRotation:TpvFloat):TpvVectorPath;
