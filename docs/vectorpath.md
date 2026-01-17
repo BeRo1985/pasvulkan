@@ -273,7 +273,7 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
 
 **Disadvantages:**
 - Two rendering passes per shape
-- Coverage buffer memory overhead
+- Coverage buffer memory overhead (R32_UINT per pixel), though significantly lower than alternatives like MSAA (16-32 bytes/pixel), A-Buffer (variable/large), or Depth Peeling (multiple full buffers)
 - Atomic operations may have performance cost
 - Requires renderpass suspend/resume (restart) due to barrier limitations inside renderpasses
    - Mask => Barrier => Cover requires renderpass restart for each transparent shape group
