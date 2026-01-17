@@ -514,6 +514,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function Arc(const aCenter:TpvVectorPathVector;const aRadius,aStartAngle,aEndAngle:TpvDouble;const aCounterClockwise:boolean):TpvVectorPath; overload;
        function Ellipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvDouble):TpvVectorPath; overload;
        function Ellipse(const aCenter,aRadius:TpvVectorPathVector):TpvVectorPath; overload;
+       function Circle(const aCenterX,aCenterY,aRadius:TpvDouble):TpvVectorPath; overload;
+       function Circle(const aCenter:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath; overload;
        function Close:TpvVectorPath;
        function GetShape:TpvVectorPathShape;
       published
@@ -5054,6 +5056,16 @@ begin
               aCenter.x+aRadius.x,aCenter.y);
  Close;
  result:=self;
+end;
+
+function TpvVectorPath.Circle(const aCenterX,aCenterY,aRadius:TpvDouble):TpvVectorPath;
+begin
+ result:=Ellipse(aCenterX,aCenterY,aRadius,aRadius);
+end;
+
+function TpvVectorPath.Circle(const aCenter:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath;
+begin
+ result:=Ellipse(aCenter,aRadius);
 end;
 
 function TpvVectorPath.Close:TpvVectorPath;
