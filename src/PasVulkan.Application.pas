@@ -2727,6 +2727,114 @@ const DPI_AWARENESS_CONTEXT_UNAWARE=TDPI_AWARENESS_CONTEXT(-1);
 //function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
 {$ifend}
 
+function GetDateTimeUTCOffset(const aWhen:TDateTime):TDateTime;
+{$if defined(fpc) and declared(GetLocalTimeOffset)}
+begin
+ result:=GetLocalTimeOffset/1440.0;
+end;
+{$elseif defined(DelphiXE2AndUp) and declared(TTimeZone)}
+begin
+ result:=0.0;
+ result:=result+TTimeZone.Local.GetUtcOffset(aWhen);
+end;
+{$else}
+var SystemTimes:array[0..1] of TSystemTime;
+    DateTimes:array[0..1] of TDateTime;
+begin
+{$if declared(GetUniversalTime)}
+ GetUniversalTime(SystemTimes[0]);
+{$else}
+ GetSystemTime(SystemTimes[0]);
+{$ifend}
+ GetLocalTime(SystemTimes[1]);
+ DateTimes[0]:=SystemTimeToDateTime(SystemTimes[0]);
+ DateTimes[1]:=SystemTimeToDateTime(SystemTimes[1]);
+ result:=MinutesBetween(DateTimes[0],DateTimes[1])/1440.0;
+end;
+{$ifend}
+
+function DateTimeFromLocalTimeToUniversalTime(const aDateTime:TDateTime):TDateTime;
+{$if defined(fpc) and declared(LocalTimeToUniversal)}
+begin
+ result:=LocalTimeToUniversal(aDateTime);
+end;
+{$elseif defined(DelphiXE2AndUp) and declared(TTimeZone)}
+begin
+ result:=TTimeZone.Local.ToUniversalTime(aDateTime);
+end;
+{$else}
+begin
+ result:=aDateTime+GetDateTimeUTCOffset(aDataTime);
+end;
+{$ifend}
+
+function DateTimeFromUniversalTimeToLocalTime(const aDateTime:TDateTime):TDateTime;
+{$if defined(fpc) and declared(LocalTimeToUniversal)}
+begin
+ result:=UniversalTimeToLocal(aDateTime);
+end;
+{$elseif defined(DelphiXE2AndUp) and declared(TTimeZone)}
+begin
+ result:=TTimeZone.Local.ToLocalTime(aDateTime);
+end;
+{$else}
+begin
+ result:=aDateTime-GetDateTimeUTCOffset(aDateTime);
+end;
+{$ifend}
+
+{$if not declared(NowUTC)}
+function NowUTC:TDateTime;
+{$if defined(DelphiXE2AndUp)}
+begin
+ result:=TDateTime.NowUTC;
+end;
+{$else}
+begin
+ result:=DateTimeFromLocalTimeToUniversalTime(Now);
+end;
+{$ifend}
+{$ifend}
+
+{$if not declared(FileAgeUTC)}
+function FileAgeUTC(const FileName:String;out FileDateTimeUTC:TDateTime;FollowLink:Boolean=True):Boolean;
+begin
+{$if defined(DelphiXE2AndUp)}
+ result:=FileExists(FileName);
+ if result then begin
+  FileDateTimeUTC:=TFile.GetLastWriteTimeUtc(FileName);
+ end;
+{$else}
+ result:=FileAge(FileName,FileDateTimeUTC{$ifdef fpc},FollowLink{$endif});
+ if result then begin
+  FileDateTimeUTC:=DateTimeFromLocalTimeToUniversalTime(FileDateTimeUTC);
+ end;
+{$ifend}
+end;
+{$ifend}
+
+function DateTimeFromUnixTime(const aUnixTime:TpvInt64):TDateTime;
+{$if declared(UnixToDateTime)}
+begin
+ result:=UnixToDateTime(aUnixTime);
+end;
+{$else}
+begin
+ result:=(TDateTime(aUnixTime)/86400.0)+25569.0;
+end;
+{$ifend}
+
+function DateTimeToUnixTime(const aDateTime:TDateTime):TpvInt64;
+{$if declared(DateTimeToUnix)}
+begin
+ result:=DateTimeToUnix(aDateTime);
+end;
+{$else}
+begin
+ result:=Trunc((aDateTime-25569.0)*86400.0);
+end;
+{$ifend}
+                                                             
 {$if defined(fpc)}
 function DumpExceptionCallStack(e:Exception;aAddr:Pointer;aFrameCount:Longint;aFrames:PPointer):string;
 var i:int32;
