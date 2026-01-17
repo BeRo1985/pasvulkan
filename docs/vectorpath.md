@@ -82,7 +82,7 @@ struct VectorPathGPUShape {
 
 ### 2.1 SDF-Based Rendering (Production)
 
-**Used by:** Font rendering (`TpvFont`), pre-processed shapes
+**Used by:** Font rendering (`TpvFont`, and `TpvFont` is used by `TpvTrueTypeFont` as well for vector glyph rendering of TrueType and OpenType fonts), pre-processed shapes
 
 **Location:** `PasVulkan.SignedDistanceField2D.pas`, `PasVulkan.Font.pas`
 
