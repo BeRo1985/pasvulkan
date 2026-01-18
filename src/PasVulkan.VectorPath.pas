@@ -477,6 +477,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       private
        fFillRule:TpvVectorPathFillRule;
        fContours:TpvVectorPathContours;
+       fResolution:TpvInt32;
+       fBoundingBoxExtent:TpvDouble;
       public
        constructor Create; reintroduce; overload;
        constructor Create(const aVectorPathShape:TpvVectorPathShape); reintroduce; overload;
@@ -494,6 +496,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       published
        property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
        property Contours:TpvVectorPathContours read fContours;
+       property Resolution:TpvInt32 read fResolution write fResolution;
+       property BoundingBoxExtent:TpvDouble read fBoundingBoxExtent write fBoundingBoxExtent;
      end;
 
      { TpvVectorPath }
@@ -629,7 +633,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
        fGridCells:TGridCells;
       public
-       constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
+       constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
      end;
 
@@ -685,7 +689,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // The device this buffer pool is created for
        fDevice:TpvVulkanDevice;
 
-       // Array of GPU shapes, shape index / ID wise 
+       // Array of GPU shapes, shape index / ID wise
        fGPUShapes:TpvVectorPathGPUShapes;
 
        // Hash map for mapping TpvVectorPathShape to shape index / shape ID
@@ -699,7 +703,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
        // States with double-buffering for uploads and rendering for synchronization avoidance at cost of double memory usage
        fStates:TStates;
-       fActiveStateIndex:TpvSizeInt;
+       fActiveStateIndex:TPasMPInt32;
 
        // The segment buffer holds all segments for all shapes
        fSegments:TpvVectorPathGPUSegmentDataArray;
@@ -728,6 +732,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
+
+       procedure Update;
 
        function GetOrCreateShape(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
        procedure RemoveShape(const aShape:TpvVectorPathShape);
@@ -3731,6 +3737,8 @@ begin
  inherited Create;
  fContours:=TpvVectorPathContours.Create;
  fContours.OwnsObjects:=true;
+ fResolution:=32;
+ fBoundingBoxExtent:=4.0;
 end;
 
 constructor TpvVectorPathShape.Create(const aVectorPathShape:TpvVectorPathShape);
@@ -3769,6 +3777,8 @@ begin
    end;
   end;
  end;
+ fResolution:=aVectorPathShape.fResolution;
+ fBoundingBoxExtent:=aVectorPathShape.fBoundingBoxExtent;
 end;
 
 procedure TpvVectorPathShape.Assign(const aVectorPath:TpvVectorPath);
@@ -5679,6 +5689,16 @@ end;
 procedure TpvVectorPathGPUBufferPool.TState.Update;
 begin
 
+ if fGeneration<>fBufferPool.fGeneration then begin
+
+  try
+
+  finally
+   fGeneration:=fBufferPool.fGeneration;
+  end;
+
+ end;
+
 end;
 
 { TpvVectorPathGPUBufferPool }
@@ -5688,6 +5708,10 @@ var Index:TpvSizeInt;
 begin
 
  inherited Create;
+
+ fGPUShapes:=nil;
+
+ fShapeIndexHashMap:=TpvVectorPathIndexHashMap.Create(-1);
 
  fGeneration:=0;
 
@@ -5757,10 +5781,27 @@ begin
  fShapes:=nil;
  fFreeShapeIndices.Finalize;
 
+ FreeAndNil(fShapeIndexHashMap);
+
+ fGPUShapes:=nil;
+
  inherited Destroy;
 end;
 
-function TpvVectorPathGPUBufferPool.GetActiveState:TState;
+procedure TpvVectorPathGPUBufferPool.Update;
+var CurrentStateIndex,NextStateIndex:TPasMPInt32;
+    CurrentState:TpvVectorPathGPUBufferPool.TState;
+begin
+ CurrentStateIndex:=TPasMPInterlocked.Read(fActiveStateIndex);
+ CurrentState:=fStates[CurrentStateIndex and 1];
+ if CurrentState.fGeneration<>fGeneration then begin
+  NextStateIndex:=(CurrentStateIndex+1) and 1;
+  fStates[NextStateIndex].Update;
+  TPasMPInterlocked.Write(fActiveStateIndex,NextStateIndex);
+ end;
+end;
+
+function TpvVectorPathGPUBufferPool.GetActiveState:TpvVectorPathGPUBufferPool.TState;
 begin
  result:=fStates[fActiveStateIndex and 1];
 end;
@@ -5771,13 +5812,43 @@ begin
 end;
 
 function TpvVectorPathGPUBufferPool.GetOrCreateShape(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
+var ShapeIndex,OldCount:TpvInt32;
 begin
- result:=nil;
+ if fShapeIndexHashMap.TryGet(aShape,ShapeIndex) then begin
+  result:=fGPUShapes[ShapeIndex];
+ end else begin
+  if not fFreeShapeIndices.Pop(ShapeIndex) then begin
+   ShapeIndex:=fShapeIndexCounter;
+   inc(fShapeIndexCounter);
+  end;
+  if ShapeIndex>=0 then begin
+   OldCount:=length(fGPUShapes);
+   if OldCount<=ShapeIndex then begin
+    SetLength(fGPUShapes,(ShapeIndex+1)*2);
+    FillChar(fGPUShapes[OldCount],(length(fGPUShapes)-OldCount)*SizeOf(TpvVectorPathGPUShape),#0);
+   end;
+   result:=TpvVectorPathGPUShape.Create(aShape,aShape.fResolution,aShape.fBoundingBoxExtent);
+   fGPUShapes[ShapeIndex]:=result;
+  end else begin
+   result:=nil;
+  end;
+ end;
 end;
 
 procedure TpvVectorPathGPUBufferPool.RemoveShape(const aShape:TpvVectorPathShape);
+var ShapeIndex:TpvInt32;
 begin
-
+ if fShapeIndexHashMap.TryGet(aShape,ShapeIndex) and (ShapeIndex>=0) and (ShapeIndex<length(fGPUShapes)) then begin
+  try
+   FreeAndNil(fGPUShapes[ShapeIndex]);
+  finally
+   try
+    fShapeIndexHashMap.Delete(aShape);
+   finally
+    fFreeShapeIndices.Push(ShapeIndex);
+   end;
+  end;
+ end;
 end;
 
 end.
