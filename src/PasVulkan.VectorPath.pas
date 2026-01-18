@@ -5607,10 +5607,66 @@ begin
 
  fDevice:=fBufferPool.fDevice;
 
+ fSegmentsBuffer:=nil;
+ fIndirectSegmentsBuffer:=nil;
+ fGridCellsBuffer:=nil;
+ fShapesBuffer:=nil;
+
+ // Create descriptor pool
+ fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
+                                                 TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                 1); // Max sets
+ fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,4); // 4 SSBOs
+ fDescriptorPool.Initialize;
+
+ // Create descriptor set
+ fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fBufferPool.fDescriptorSetLayout);
+{fDescriptorSet.WriteToDescriptorSet(0,
+                                     0,
+                                     1,
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                     [],
+                                     [fSegmentsBuffer.DescriptorBufferInfo],
+                                     [],
+                                     false);
+ fDescriptorSet.WriteToDescriptorSet(1,
+                                     0,
+                                     1,
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                     [],
+                                     [fIndirectSegmentsBuffer.DescriptorBufferInfo],
+                                     [],
+                                     false);
+ fDescriptorSet.WriteToDescriptorSet(2,
+                                     0,
+                                     1,
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                     [],
+                                     [fGridCellsBuffer.DescriptorBufferInfo],
+                                     [],
+                                     false);
+ fDescriptorSet.WriteToDescriptorSet(3,
+                                     0,
+                                     1,
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                     [],
+                                     [fShapesBuffer.DescriptorBufferInfo],
+                                     [],
+                                     false);
+ fDescriptorSet.Flush;}
+
 end;
 
 destructor TpvVectorPathGPUBufferPool.TState.Destroy;
 begin
+
+ // Free Vulkan resources
+ FreeAndNil(fDescriptorSet);
+ FreeAndNil(fDescriptorPool);
+ FreeAndNil(fShapesBuffer);
+ FreeAndNil(fGridCellsBuffer);
+ FreeAndNil(fIndirectSegmentsBuffer); 
+ FreeAndNil(fSegmentsBuffer);
 
  inherited Destroy;
 
@@ -5626,7 +5682,32 @@ end;
 constructor TpvVectorPathGPUBufferPool.Create(const aDevice:TpvVulkanDevice);
 var Index:TpvSizeInt;
 begin
+
  inherited Create;
+
+ // Create descriptor set layout
+ fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
+ fDescriptorSetLayout.AddBinding(0,
+                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                 1,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                 []); // Segments SSBO
+ fDescriptorSetLayout.AddBinding(1,
+                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                 1,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                 []); // Indirect segments SSBO
+ fDescriptorSetLayout.AddBinding(2,
+                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                 1,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                 []); // Grid cells SSBO
+ fDescriptorSetLayout.AddBinding(3,
+                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                 1,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                 []); // Shapes metadata SSBO
+ fDescriptorSetLayout.Initialize;
 
  for Index:=0 to 1 do begin
   fStates[Index]:=TState.Create(self);
@@ -5641,6 +5722,7 @@ begin
  for Index:=0 to 1 do begin
   FreeAndNil(fStates[Index]);
  end;
+ FreeAndNil(fDescriptorSetLayout);
  inherited Destroy;
 end;
 
