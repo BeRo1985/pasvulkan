@@ -5818,6 +5818,7 @@ var ShapeIndex:TpvInt32;
     SegmentData:PpvVectorPathGPUSegmentData;
     GridCell:TpvVectorPathGPUShape.TGridCell;
     GridCellData:PpvVectorPathGPUGridCellData;
+    ShapeData:PpvVectorPathGPUShapeData;
 begin
 
  if fGeneration<>fBufferPool.fGeneration then begin
@@ -5954,7 +5955,22 @@ begin
      end;
 
      // Update GPU shape data in fBufferPool.fShapes
-     // ...
+     OldCount:=length(fBufferPool.fShapes);
+     if OldCount<=ShapeIndex then begin
+      SetLength(fBufferPool.fShapes,(ShapeIndex+1)*2);
+      FillChar(fBufferPool.fShapes[OldCount],(length(fBufferPool.fShapes)-OldCount)*SizeOf(TpvVectorPathGPUShapeData),#0);
+     end;
+     ShapeData:=@fBufferPool.fShapes[ShapeIndex];
+     ShapeData^.Min:=GPUShape.fBoundingBox.Min;
+     ShapeData^.Max:=GPUShape.fBoundingBox.Max;
+     ShapeData^.Flags:=0;
+     if GPUShape.fVectorPathShape.fFillRule=TpvVectorPathFillRule.EvenOdd then begin
+      ShapeData^.Flags:=ShapeData^.Flags or 1;
+     end;
+     ShapeData^.StartGridCellIndex:=GPUShape.fGridCellBufferRange.Offset;
+     ShapeData^.GridSizeX:=GPUShape.fResolution;
+     ShapeData^.GridSizeY:=GPUShape.fResolution;
+     ShapesDirty:=true;
 
      // Update shape reference
      OldCount:=length(fShapes);
