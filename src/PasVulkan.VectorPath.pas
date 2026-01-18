@@ -363,6 +363,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fCachedBoundingBox:TpvVectorPathBoundingBox;
        fHasCachedBoundingBox:TPasMPBool32;
        fCachedBoundingBoxLock:TPasMPInt32;
+       fIndex:TPasMPInt32;
       protected
        procedure GetIntersectionPointsWithLineSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
        procedure GetIntersectionPointsWithQuadraticCurveSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
@@ -3174,6 +3175,7 @@ begin
  inherited Create;
  fHasCachedBoundingBox:=false;
  fCachedBoundingBoxLock:=0;
+ fIndex:=0;
 end;
 
 destructor TpvVectorPathSegment.Destroy;
@@ -5601,6 +5603,7 @@ begin
    for Segment in Contour.fSegments do begin
     NewSegment:=Segment.Clone;
     try
+     NewSegment.fIndex:=fSegments.Count;
      fSegmentDynamicAABBTree.CreateProxy(NewSegment.GetBoundingBox,TpvPtrInt(TpvPointer(NewSegment)));
     finally
      fSegments.Add(NewSegment);
@@ -5819,6 +5822,8 @@ var ShapeIndex:TpvInt32;
     Size:TVkDeviceSize;
     Segment:TpvVectorPathSegment;
     SegmentData:PpvVectorPathGPUSegmentData;
+    GridCell:TpvVectorPathGPUShape.TGridCell;
+    GridCellData:PpvVectorPathGPUGridCellData;
 begin
 
  if fGeneration<>fBufferPool.fGeneration then begin
@@ -5847,7 +5852,7 @@ begin
      if GPUShape.fSegmentBufferRange.Size<GPUShape.fSegments.Count then begin
       fBufferPool.fSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fSegmentBufferRange);
      end;
-     if GPUShape.fSegmentBufferRange.Offset<0 then begin
+     if (GPUShape.fSegments.Count>0) and (GPUShape.fSegmentBufferRange.Offset<0) then begin
       GPUShape.fSegmentBufferRange:=fBufferPool.fSegmentsAllocator.AllocateBufferRange(GPUShape.fSegments.Count);
      end;
      if GPUShape.fSegmentBufferRange.Size>0 then begin
@@ -5895,11 +5900,18 @@ begin
      end;
      
      // Update indirect segments in fBufferPool.fIndirectSegments
-     if GPUShape.fIndirectSegmentBufferRange.Size<GPUShape.fGridCells.Count then begin
+     // First count total indirect segments needed
+     NewCount:=0;
+     for Index:=0 to GPUShape.fGridCells.Count-1 do begin
+      GridCell:=GPUShape.fGridCells[Index];
+      inc(NewCount,GridCell.fSegments.Count);
+     end;
+     
+     if GPUShape.fIndirectSegmentBufferRange.Size<NewCount then begin
       fBufferPool.fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fIndirectSegmentBufferRange);
      end;
-     if GPUShape.fIndirectSegmentBufferRange.Offset<0 then begin
-      GPUShape.fIndirectSegmentBufferRange:=fBufferPool.fIndirectSegmentsAllocator.AllocateBufferRange(GPUShape.fGridCells.Count);
+     if (NewCount>0) and (GPUShape.fIndirectSegmentBufferRange.Offset<0) then begin
+      GPUShape.fIndirectSegmentBufferRange:=fBufferPool.fIndirectSegmentsAllocator.AllocateBufferRange(NewCount);
      end;
      if GPUShape.fIndirectSegmentBufferRange.Size>0 then begin
       OldCount:=length(fBufferPool.fIndirectSegments);
@@ -5909,13 +5921,43 @@ begin
        SetLength(fBufferPool.fIndirectSegments,NewCount);
        FillChar(fBufferPool.fIndirectSegments[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUIndirectSegmentData),#0);
       end;
+      // Build indirect segments data from grid cells with rebasing
+      NewCount:=0;
       for Index:=0 to GPUShape.fGridCells.Count-1 do begin
-       fBufferPool.fIndirectSegments[GPUShape.fIndirectSegmentBufferRange.Offset+Index]:=GPUShape.fSegmentBufferRange.Offset+Index;
+       GridCell:=GPUShape.fGridCells[Index];
+       for OldCount:=0 to GridCell.fSegments.Count-1 do begin
+        Segment:=GridCell.fSegments[OldCount];        
+        fBufferPool.fIndirectSegments[GPUShape.fIndirectSegmentBufferRange.Offset+NewCount]:=GPUShape.fSegmentBufferRange.Offset+Segment.fIndex;
+        inc(NewCount);
+       end;
       end;
      end;
 
      // Update grid cells in fBufferPool.fGridCells
-     // ...
+     if GPUShape.fGridCellBufferRange.Size<GPUShape.fGridCells.Count then begin
+      fBufferPool.fGridCellsAllocator.ReleaseBufferRangeAndNil(GPUShape.fGridCellBufferRange);
+     end;
+     if (GPUShape.fGridCells.Count>0) and (GPUShape.fGridCellBufferRange.Offset<0) then begin
+      GPUShape.fGridCellBufferRange:=fBufferPool.fGridCellsAllocator.AllocateBufferRange(GPUShape.fGridCells.Count);
+     end;
+     if GPUShape.fGridCellBufferRange.Size>0 then begin
+      OldCount:=length(fBufferPool.fGridCells);
+      NewCount:=GPUShape.fGridCellBufferRange.Offset+GPUShape.fGridCellBufferRange.Size;
+      if OldCount<NewCount then begin
+       inc(NewCount,NewCount);
+       SetLength(fBufferPool.fGridCells,NewCount);
+       FillChar(fBufferPool.fGridCells[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUGridCellData),#0);
+      end;
+      // Fill grid cell data with rebased indirect segment indices      
+      NewCount:=0; // Track current position in indirect segments array
+      for Index:=0 to GPUShape.fGridCells.Count-1 do begin
+       GridCell:=GPUShape.fGridCells[Index];
+       GridCellData:=@fBufferPool.fGridCells[GPUShape.fGridCellBufferRange.Offset+Index];
+       GridCellData^.StartIndirectSegmentIndex:=GPUShape.fIndirectSegmentBufferRange.Offset+NewCount;
+       GridCellData^.CountIndirectSegments:=GridCell.fSegments.Count;
+       inc(NewCount,GridCell.fSegments.Count);
+      end;
+     end;
 
      // Update GPU shape data in fBufferPool.fShapes
      // ...
