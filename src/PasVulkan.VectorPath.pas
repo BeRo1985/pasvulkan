@@ -5786,7 +5786,10 @@ begin
 
     GPUShape:=fBufferPool.fGPUShapes[ShapeIndex];
    
-    if assigned(GPUShape) and ((length(fShapeGenerations)<=ShapeIndex) or ((ShapeIndex<length(fShapeGenerations)) and (fShapeGenerations[ShapeIndex]<>GPUShape.fGeneration))) then begin
+    if assigned(GPUShape) and 
+       ((length(fShapeGenerations)<=ShapeIndex) or 
+        ((ShapeIndex<length(fShapeGenerations)) and 
+         (fShapeGenerations[ShapeIndex]<>GPUShape.fGeneration))) then begin
       
      // Update segments in fSegmentsBuffer
      // ...
