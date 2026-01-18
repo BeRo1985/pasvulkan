@@ -5774,11 +5774,43 @@ begin
 end;
 
 procedure TpvVectorPathGPUBufferPool.TState.Update;
+var ShapeIndex,OldCount:TpvInt32;
+    GPUShape:TpvVectorPathGPUShape;
 begin
 
  if fGeneration<>fBufferPool.fGeneration then begin
 
   try
+
+   for ShapeIndex:=0 to length(fBufferPool.fGPUShapes)-1 do begin
+
+    GPUShape:=fBufferPool.fGPUShapes[ShapeIndex];
+   
+    if assigned(GPUShape) and ((length(fShapeGenerations)<=ShapeIndex) or ((ShapeIndex<length(fShapeGenerations)) and (fShapeGenerations[ShapeIndex]<>GPUShape.fGeneration))) then begin
+      
+     // Update segments in fSegmentsBuffer
+     // ...
+
+     // Update indirect segments in fIndirectSegmentsBuffer
+     // ...
+
+     // Update grid cells in fGridCellsBuffer
+     // ...
+
+     // Update GPU shape data in fShapesBuffer
+     // ...
+
+     // Update shape generation     
+     OldCount:=length(fShapeGenerations);
+     if OldCount<=ShapeIndex then begin
+      SetLength(fShapeGenerations,(ShapeIndex+1)*2);
+      FillChar(fShapeGenerations[OldCount],(length(fShapeGenerations)-OldCount)*SizeOf(TpvUInt64),#0);
+     end;
+     fShapeGenerations[ShapeIndex]:=GPUShape.fGeneration;
+
+    end;
+
+   end;
 
   finally
    fGeneration:=fBufferPool.fGeneration;
