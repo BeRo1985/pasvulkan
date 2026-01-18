@@ -5628,10 +5628,86 @@ begin
 
  fGeneration:=High(TpvUInt64);
 
- fSegmentsBuffer:=nil;
- fIndirectSegmentsBuffer:=nil;
- fGridCellsBuffer:=nil;
- fShapesBuffer:=nil;
+ // Create buffers with initial size of few elements
+ fSegmentsBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                         65536*SizeOf(TpvVectorPathGPUSegmentData),
+                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                         [],
+                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         [],
+                                         0,
+                                         pvAllocationGroupIDCanvas,
+                                         'VectorPathSegments');
+
+ fIndirectSegmentsBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                                  65536*SizeOf(TpvVectorPathGPUIndirectSegmentData),
+                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                  [],
+                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  [],
+                                                  0,
+                                                  pvAllocationGroupIDCanvas,
+                                                  'VectorPathIndirectSegments');
+
+ fGridCellsBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                          65536*SizeOf(TpvVectorPathGPUGridCellData),
+                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                          [],
+                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          [],
+                                          0,
+                                          pvAllocationGroupIDCanvas,
+                                          'VectorPathGridCells');
+
+ fShapesBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                       65536*SizeOf(TpvVectorPathGPUShapeData),
+                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                       [],
+                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       [],
+                                       0,
+                                       pvAllocationGroupIDCanvas,
+                                       'VectorPathShapes');
 
  fShapeGenerations:=nil;
 
