@@ -735,6 +735,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       published
 
        property DescriptorSet:TpvVulkanDescriptorSet read GetDescriptorSet;
+       
+       property DescriptorSetLayout:TpvVulkanDescriptorSetLayout read fDescriptorSetLayout;
 
      end;  
 
