@@ -632,6 +632,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fIndirectSegments:TpvVectorPathGPUIndirectSegmentDataArray;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
        fGridCells:TGridCells;
+       fGeneration:TPasMPUInt64;
       public
        constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
@@ -658,7 +659,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
               fDevice:TpvVulkanDevice; 
 
               // Generation of this state for tracking updates
-              fGeneration:TpvUInt64;
+              fGeneration:TPasMPUInt64;
 
               // Buffers (have size properties, no extra size variables needed)
               fSegmentsBuffer:TpvVulkanBuffer;
@@ -696,7 +697,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fShapeIndexHashMap:TpvVectorPathIndexHashMap;
 
        // Generation for tracking updates 
-       fGeneration:TpvUInt64;
+       fGeneration:TPasMPUInt64;
 
        // Descriptor set layout for the 4 shared buffers
        fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -737,6 +738,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
        function GetOrCreateShape(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
        procedure RemoveShape(const aShape:TpvVectorPathShape);
+       procedure UpdateShape(const aShape:TpvVectorPathShape);
 
       published
 
@@ -5596,6 +5598,8 @@ begin
  fIndirectSegments:=nil;
  SetLength(fIndirectSegments,0);
 
+ fGeneration:=0;
+
 end;
 
 destructor TpvVectorPathGPUShape.Destroy;
@@ -5829,6 +5833,7 @@ begin
    end;
    result:=TpvVectorPathGPUShape.Create(aShape,aShape.fResolution,aShape.fBoundingBoxExtent);
    fGPUShapes[ShapeIndex]:=result;
+   TPasMPInterlocked.Increment(fGeneration);
   end else begin
    result:=nil;
   end;
@@ -5847,6 +5852,19 @@ begin
    finally
     fFreeShapeIndices.Push(ShapeIndex);
    end;
+  end;
+ end;
+end;
+
+procedure TpvVectorPathGPUBufferPool.UpdateShape(const aShape:TpvVectorPathShape);
+var ShapeIndex:TpvInt32;
+    GPUShape:TpvVectorPathGPUShape;
+begin
+ if fShapeIndexHashMap.TryGet(aShape,ShapeIndex) and (ShapeIndex>=0) and (ShapeIndex<length(fGPUShapes)) then begin
+  GPUShape:=fGPUShapes[ShapeIndex];
+  if assigned(GPUShape) then begin
+   TPasMPInterlocked.Increment(GPUShape.fGeneration);
+   TPasMPInterlocked.Increment(fGeneration);
   end;
  end;
 end;
