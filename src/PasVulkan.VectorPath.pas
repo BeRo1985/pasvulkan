@@ -634,7 +634,6 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fBoundingBox:TpvVectorPathBoundingBox;
        fResolution:TpvInt32;
        fSegments:TpvVectorPathSegments;
-       fIndirectSegments:TpvVectorPathGPUIndirectSegmentDataArray;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
        fGridCells:TGridCells;
        fGeneration:TPasMPUInt64;
@@ -5631,10 +5630,6 @@ begin
   end;
  end;
 
- // Build indirect segments array from grid cells
- fIndirectSegments:=nil;
- SetLength(fIndirectSegments,0);
-
  fGeneration:=1;
 
  fSegmentBufferRange.Clear;
@@ -5646,7 +5641,6 @@ end;
 
 destructor TpvVectorPathGPUShape.Destroy;
 begin
- fIndirectSegments:=nil;
  FreeAndNil(fGridCells);
  FreeAndNil(fSegmentDynamicAABBTree);
  FreeAndNil(fSegments);
