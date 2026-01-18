@@ -6332,6 +6332,7 @@ begin
    result:=TpvVectorPathGPUShape.Create(aShape,aShape.fResolution,aShape.fBoundingBoxExtent);
    fGPUShapes[ShapeIndex]:=result;
    UpdateGPUShape(result);
+   TPasMPInterlocked.Increment(result.fGeneration);
    TPasMPInterlocked.Increment(fGeneration);
   end else begin
    result:=nil;
@@ -6362,9 +6363,9 @@ begin
  if fShapeIndexHashMap.TryGet(aShape,ShapeIndex) and (ShapeIndex>=0) and (ShapeIndex<length(fGPUShapes)) then begin
   GPUShape:=fGPUShapes[ShapeIndex];
   if assigned(GPUShape) then begin
+   UpdateGPUShape(GPUShape);
    TPasMPInterlocked.Increment(GPUShape.fGeneration);
    TPasMPInterlocked.Increment(fGeneration);
-   UpdateGPUShape(GPUShape);
   end;
  end;
 end;
