@@ -677,8 +677,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
 
-{      function GetOrCreate(const aShape:TpvVectorPath):TpvVectorPathGPUShape;
-       procedure Remove(const aShape:TpvVectorPath);}
+       function GetOrCreateShape(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
+       procedure RemoveShape(const aShape:TpvVectorPathShape);
 
       published
 
@@ -5554,6 +5554,16 @@ end;
 destructor TpvVectorPathGPUBufferPool.Destroy;
 begin
  inherited Destroy;
+end;
+
+function TpvVectorPathGPUBufferPool.GetOrCreateShape(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
+begin
+ result:=nil;
+end;
+
+procedure TpvVectorPathGPUBufferPool.RemoveShape(const aShape:TpvVectorPathShape);
+begin
+
 end;
 
 end.
