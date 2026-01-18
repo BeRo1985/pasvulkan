@@ -667,6 +667,9 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
               fGridCellsBuffer:TpvVulkanBuffer;
               fShapesBuffer:TpvVulkanBuffer;
 
+              // Shape generation buffer
+              fShapeGenerations:TpvUInt64DynamicArray;
+
               // Descriptor set for the 4 shared buffers
               fDescriptorPool:TpvVulkanDescriptorPool;
               fDescriptorSet:TpvVulkanDescriptorSet;
@@ -5630,6 +5633,8 @@ begin
  fGridCellsBuffer:=nil;
  fShapesBuffer:=nil;
 
+ fShapeGenerations:=nil;
+
  // Create descriptor pool
  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -5677,6 +5682,8 @@ end;
 
 destructor TpvVectorPathGPUBufferPool.TState.Destroy;
 begin
+
+ fShapeGenerations:=nil;
 
  // Free Vulkan resources
  FreeAndNil(fDescriptorSet);
