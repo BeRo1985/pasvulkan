@@ -5720,7 +5720,7 @@ begin
 
  // Create descriptor set
  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fBufferPool.fDescriptorSetLayout);
-{fDescriptorSet.WriteToDescriptorSet(0,
+ fDescriptorSet.WriteToDescriptorSet(0,
                                      0,
                                      1,
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -5752,7 +5752,7 @@ begin
                                      [fShapesBuffer.DescriptorBufferInfo],
                                      [],
                                      false);
- fDescriptorSet.Flush;}
+ fDescriptorSet.Flush;
 
 end;
 
