@@ -746,6 +746,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
        function GetDescriptorSet:TpvVulkanDescriptorSet;
 
+       procedure UpdateGPUShape(const aGPUShape:TpvVectorPathGPUShape);
+
       public 
 
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
@@ -6299,6 +6301,11 @@ begin
  result:=GetActiveState.fDescriptorSet;
 end;
 
+procedure TpvVectorPathGPUBufferPool.UpdateGPUShape(const aGPUShape:TpvVectorPathGPUShape);
+begin
+
+end;
+
 function TpvVectorPathGPUBufferPool.GetOrCreateShape(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
 var ShapeIndex,OldCount:TpvInt32;
 begin
@@ -6317,6 +6324,7 @@ begin
    end;
    result:=TpvVectorPathGPUShape.Create(aShape,aShape.fResolution,aShape.fBoundingBoxExtent);
    fGPUShapes[ShapeIndex]:=result;
+   UpdateGPUShape(result);
    TPasMPInterlocked.Increment(fGeneration);
   end else begin
    result:=nil;
@@ -6349,6 +6357,7 @@ begin
   if assigned(GPUShape) then begin
    TPasMPInterlocked.Increment(GPUShape.fGeneration);
    TPasMPInterlocked.Increment(fGeneration);
+   UpdateGPUShape(GPUShape);
   end;
  end;
 end;
