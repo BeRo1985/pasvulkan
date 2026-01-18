@@ -560,11 +560,13 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathGPUSegmentData=^TpvVectorPathGPUSegmentData;
 
+     TpvVectorPathGPUSegmentDataArray=array of TpvVectorPathGPUSegmentData;
+
      TpvVectorPathGPUIndirectSegmentData=TpvUInt32; // 4 bytes per indirect segment
 
      PpvVectorPathGPUIndirectSegmentData=^TpvVectorPathGPUIndirectSegmentData;
 
-     TpvVectorPathGPUIndirectSegments=array of TpvVectorPathGPUIndirectSegmentData;
+     TpvVectorPathGPUIndirectSegmentDataArray=array of TpvVectorPathGPUIndirectSegmentData;
 
      TpvVectorPathGPUGridCellData=packed record // 8 bytes per grid cell
       // uvec2 Begin
@@ -574,6 +576,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      end;
 
      PpvVectorPathGPUGridCellData=^TpvVectorPathGPUGridCellData;
+
+     TpvVectorPathGPUGridCellDataArray=array of TpvVectorPathGPUGridCellData;
 
      TpvVectorPathGPUShapeData=packed record // 32 bytes per segment
       // vec4 minMax - Begin
@@ -589,6 +593,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      end;
 
      PpvVectorPathGPUShapeData=^TpvVectorPathGPUShapeData;
+
+     TpvVectorPathGPUShapeDataArray=array of TpvVectorPathGPUShapeData;
 
      { TpvVectorPathGPUShape }
 
@@ -619,7 +625,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fBoundingBox:TpvVectorPathBoundingBox;
        fResolution:TpvInt32;
        fSegments:TpvVectorPathSegments;
-       fIndirectSegments:TpvVectorPathGPUIndirectSegments;
+       fIndirectSegments:TpvVectorPathGPUIndirectSegmentDataArray;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
        fGridCells:TGridCells;
       public
@@ -636,41 +642,87 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      { TpvVectorPathGPUBufferPool }
 
      TpvVectorPathGPUBufferPool=class     
+      public
+       type { TState }
+            TState=class
+             private
+
+              // The buffer pool this state belongs to
+              fBufferPool:TpvVectorPathGPUBufferPool;
+
+              // The device this state is created for
+              fDevice:TpvVulkanDevice; 
+
+              // Generation of this state for tracking updates
+              fGeneration:TpvUInt64;
+
+              // Buffers (have size properties, no extra size variables needed)
+              fSegmentsBuffer:TpvVulkanBuffer;
+              fIndirectSegmentsBuffer:TpvVulkanBuffer;
+              fGridCellsBuffer:TpvVulkanBuffer;
+              fShapesBuffer:TpvVulkanBuffer;
+
+              // Descriptor set for the 4 shared buffers
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+
+             public
+              constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool); reintroduce;
+              destructor Destroy; override;
+              procedure Update;
+             published
+              property SegmentsBuffer:TpvVulkanBuffer read fSegmentsBuffer;
+              property IndirectSegmentsBuffer:TpvVulkanBuffer read fIndirectSegmentsBuffer;
+              property GridCellsBuffer:TpvVulkanBuffer read fGridCellsBuffer;
+              property ShapesBuffer:TpvVulkanBuffer read fShapesBuffer;
+              property DescriptorSet:TpvVulkanDescriptorSet read fDescriptorSet;
+            end;
+            TStates=array[0..1] of TState; // Double-buffered upload-wise, but single-buffered in terms of actual data,
+                                           // so that only one state is active at a time and so that no synchronization is 
+                                           // needed in order to read from the buffers while uploading new data to the other buffers  
       private
 
+       // The device this buffer pool is created for
        fDevice:TpvVulkanDevice;
 
-       fGPUShapes:TpvVectorPathGPUShapes; // owned GPU shapes, index = shape index / shape ID
+       // Array of GPU shapes, shape index / ID wise 
+       fGPUShapes:TpvVectorPathGPUShapes;
 
-       fShapeIndexHashMap:TpvVectorPathIndexHashMap; // maps TpvVectorPathShape to shape index / shape ID
+       // Hash map for mapping TpvVectorPathShape to shape index / shape ID
+       fShapeIndexHashMap:TpvVectorPathIndexHashMap;
+
+       // Generation for tracking updates 
+       fGeneration:TpvUInt64;
+
+       // States with double-buffering for uploads and rendering for synchronization avoidance at cost of double memory usage
+       fStates:TStates;
+       fActiveStateIndex:TpvSizeInt;
 
        // The segment buffer holds all segments for all shapes
-       fSegmentsBuffer:TpvVulkanBuffer;
-       fSegmentsBufferSize:TpvSizeUInt;
+       fSegments:TpvVectorPathGPUSegmentDataArray;
        fSegmentsAllocator:TpvBufferRangeAllocator;
 
        // The indirect segments buffer holds all indirect segment indices for all shapes
-       fIndirectSegmentsBuffer:TpvVulkanBuffer;
-       fIndirectSegmentsBufferSize:TpvSizeUInt;
+       fIndirectSegments:TpvVectorPathGPUIndirectSegmentDataArray;
        fIndirectSegmentsAllocator:TpvBufferRangeAllocator;
 
        // The grid cells buffer holds all grid cells for all shapes
-       fGridCellsBuffer:TpvVulkanBuffer;
-       fGridCellsBufferSize:TpvSizeUInt;
+       fGridCells:TpvVectorPathGPUGridCellDataArray;
        fGridCellsAllocator:TpvBufferRangeAllocator;
        
        // The shapes buffer holds all shape metadata
-       fShapesBuffer:TpvVulkanBuffer;
-       fShapesBufferSize:TpvSizeUInt;
+       fShapes:TpvVectorPathGPUShapeDataArray;
        fFreeShapeIndices:TpvVectorPathGPUBufferPoolShapeFreeList;
        fNextShapeIndex:TpvInt32;
        // Note: Shape metadata uses fGPUShapes array (direct indexing, no allocator needed), instead 
        // a free list is used for reusing shape indices
 
-       // Descriptor set for the 4 shared buffers
-       fDescriptorPool:TpvVulkanDescriptorPool;
-       fDescriptorSet:TpvVulkanDescriptorSet;
+       // Descriptor set layout for the 4 shared buffers
        fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+
+       function GetActiveState:TpvVectorPathGPUBufferPool.TState;
+
+       function GetDescriptorSet:TpvVulkanDescriptorSet;
 
       public 
 
@@ -682,7 +734,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
       published
 
-       property DescriptorSet:TpvVulkanDescriptorSet read fDescriptorSet;
+       property DescriptorSet:TpvVulkanDescriptorSet read GetDescriptorSet;
 
      end;  
 
@@ -5544,16 +5596,62 @@ begin
  inherited Destroy;
 end;
 
+{ TpvVectorPathGPUBufferPool.TState } 
+
+constructor TpvVectorPathGPUBufferPool.TState.Create(const aBufferPool:TpvVectorPathGPUBufferPool);
+begin
+
+ inherited Create;
+
+ fBufferPool:=aBufferPool;
+
+ fDevice:=fBufferPool.fDevice;
+
+end;
+
+destructor TpvVectorPathGPUBufferPool.TState.Destroy;
+begin
+
+ inherited Destroy;
+
+end;
+
+procedure TpvVectorPathGPUBufferPool.TState.Update;
+begin
+
+end;
+
 { TpvVectorPathGPUBufferPool }
 
 constructor TpvVectorPathGPUBufferPool.Create(const aDevice:TpvVulkanDevice);
+var Index:TpvSizeInt;
 begin
  inherited Create;
+
+ for Index:=0 to 1 do begin
+  fStates[Index]:=TState.Create(self);
+ end;
+ fActiveStateIndex:=0;
+
 end;
 
 destructor TpvVectorPathGPUBufferPool.Destroy;
+var Index:TpvSizeInt;
 begin
+ for Index:=0 to 1 do begin
+  FreeAndNil(fStates[Index]);
+ end;
  inherited Destroy;
+end;
+
+function TpvVectorPathGPUBufferPool.GetActiveState:TState;
+begin
+ result:=fStates[fActiveStateIndex and 1];
+end;
+
+function TpvVectorPathGPUBufferPool.GetDescriptorSet:TpvVulkanDescriptorSet;
+begin
+ result:=GetActiveState.fDescriptorSet;
 end;
 
 function TpvVectorPathGPUBufferPool.GetOrCreateShape(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
