@@ -728,6 +728,11 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // Note: Shape metadata uses fGPUShapes array (direct indexing, no allocator needed), instead 
        // a free list is used for reusing shape indices
 
+       fTransferQueue:TpvVulkanQueue;
+       fTransferCommandPool:TpvVulkanCommandPool;
+       fTransferCommandBuffer:TpvVulkanCommandBuffer;
+       fTransferFence:TpvVulkanFence;
+
        function GetActiveState:TpvVectorPathGPUBufferPool.TState;
 
        function GetDescriptorSet:TpvVulkanDescriptorSet;
@@ -5776,11 +5781,19 @@ end;
 procedure TpvVectorPathGPUBufferPool.TState.Update;
 var ShapeIndex,OldCount:TpvInt32;
     GPUShape:TpvVectorPathGPUShape;
+    SegmentsDirty,IndirectSegmentsDirty,GridCellsDirty,ShapesDirty,DescriptorSetDirty:boolean;
+    Size:TVkDeviceSize;
 begin
 
  if fGeneration<>fBufferPool.fGeneration then begin
 
   try
+
+   SegmentsDirty:=false;
+   IndirectSegmentsDirty:=false;
+   GridCellsDirty:=false;
+   ShapesDirty:=false;
+   DescriptorSetDirty:=false;
 
    for ShapeIndex:=0 to length(fBufferPool.fGPUShapes)-1 do begin
 
@@ -5813,6 +5826,182 @@ begin
 
     end;
 
+   end;
+
+   if SegmentsDirty then begin
+    Size:=length(fBufferPool.fSegments)*SizeOf(TpvVectorPathGPUSegmentData);
+    if fSegmentsBuffer.Size<Size then begin
+     FreeAndNil(fSegmentsBuffer);
+     fSegmentsBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                             Size*2, // Allocate double size to avoid frequent reallocations
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                             [],
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             0,
+                                             [],
+                                             0,
+                                             pvAllocationGroupIDCanvas,
+                                             'VectorPathSegments');
+     fDescriptorSet.WriteToDescriptorSet(0,
+                                         0,
+                                         1,
+                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                         [],
+                                         [fSegmentsBuffer.DescriptorBufferInfo],
+                                         [],
+                                         false);
+     DescriptorSetDirty:=true;
+    end;
+    fSegmentsBuffer.UploadData(fBufferPool.fTransferQueue,
+                               fBufferPool.fTransferCommandBuffer,
+                               fBufferPool.fTransferFence,
+                               fBufferPool.fSegments[0],
+                               0,
+                               Size,
+                               TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
+                               false);
+   end;
+
+   if IndirectSegmentsDirty then begin
+    Size:=length(fBufferPool.fIndirectSegments)*SizeOf(TpvVectorPathGPUIndirectSegmentData);
+    if fIndirectSegmentsBuffer.Size<Size then begin
+     FreeAndNil(fIndirectSegmentsBuffer);
+     fIndirectSegmentsBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                                     Size*2, // Allocate double size to avoid frequent reallocations
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [],
+                                                     0,
+                                                     pvAllocationGroupIDCanvas,
+                                                     'VectorPathIndirectSegments');
+     fDescriptorSet.WriteToDescriptorSet(1,
+                                         0,
+                                         1,
+                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                         [],
+                                         [fIndirectSegmentsBuffer.DescriptorBufferInfo],
+                                         [],
+                                         false);
+     DescriptorSetDirty:=true;
+    end;
+    fIndirectSegmentsBuffer.UploadData(fBufferPool.fTransferQueue,
+                                       fBufferPool.fTransferCommandBuffer,
+                                       fBufferPool.fTransferFence,
+                                       fBufferPool.fIndirectSegments[0],
+                                       0,
+                                       Size,
+                                       TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
+                                       false);
+   end;
+
+   if GridCellsDirty then begin
+    Size:=length(fBufferPool.fGPUShapes)*SizeOf(TpvVectorPathGPUGridCellData);
+    if fGridCellsBuffer.Size<Size then begin
+     FreeAndNil(fGridCellsBuffer);
+     fGridCellsBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                              Size*2, // Allocate double size to avoid frequent reallocations
+                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                              [],
+                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                              0,
+                                              0,
+                                              0,
+                                              0,
+                                              0,
+                                              0,
+                                              0,
+                                              [],
+                                              0,
+                                              pvAllocationGroupIDCanvas,
+                                              'VectorPathGridCells');
+     fDescriptorSet.WriteToDescriptorSet(2,
+                                         0,
+                                         1,
+                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                         [],
+                                         [fGridCellsBuffer.DescriptorBufferInfo],
+                                         [],
+                                         false);
+     DescriptorSetDirty:=true;
+    end;
+    fGridCellsBuffer.UploadData(fBufferPool.fTransferQueue,
+                                fBufferPool.fTransferCommandBuffer,
+                                fBufferPool.fTransferFence,
+                                fBufferPool.fGPUShapes[0],
+                                0,
+                                Size,
+                                TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
+                                false);
+   end;
+
+   if ShapesDirty then begin
+    Size:=length(fBufferPool.fGPUShapes)*SizeOf(TpvVectorPathGPUShapeData);
+    if fShapesBuffer.Size<Size then begin
+     FreeAndNil(fShapesBuffer);
+     fShapesBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                           Size*2, // Allocate double size to avoid frequent reallocations
+                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                           [],
+                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                           0,
+                                           0,
+                                           0,
+                                           0,
+                                           0,
+                                           0,
+                                           0,
+                                           [],
+                                           0,
+                                           pvAllocationGroupIDCanvas,
+                                           'VectorPathShapes');
+     fDescriptorSet.WriteToDescriptorSet(3,
+                                         0,
+                                         1,
+                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                         [],
+                                         [fShapesBuffer.DescriptorBufferInfo],
+                                         [],
+                                         false);
+     DescriptorSetDirty:=true;
+    end;
+    fShapesBuffer.UploadData(fBufferPool.fTransferQueue,
+                             fBufferPool.fTransferCommandBuffer,
+                             fBufferPool.fTransferFence,
+                             fBufferPool.fGPUShapes[0],
+                             0,
+                             Size,
+                             TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
+                             false);
+   end;
+
+   if DescriptorSetDirty then begin
+    fDescriptorSet.Flush;
    end;
 
   finally
@@ -5879,6 +6068,14 @@ begin
  fFreeShapeIndices.Initialize;
  fShapeIndexCounter:=0;
 
+ fTransferQueue:=fDevice.TransferQueue;
+
+ fTransferCommandPool:=TpvVulkanCommandPool.Create(fDevice,fTransferQueue.QueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+ fTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(fTransferCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+ fTransferFence:=TpvVulkanFence.Create(fDevice);
+
 end;
 
 destructor TpvVectorPathGPUBufferPool.Destroy;
@@ -5888,6 +6085,11 @@ begin
  for Index:=0 to 1 do begin
   FreeAndNil(fStates[Index]);
  end;
+
+ FreeAndNil(fTransferFence);
+ FreeAndNil(fTransferCommandBuffer);
+ FreeAndNil(fTransferCommandPool);
+ fTransferQueue:=nil;
 
  FreeAndNil(fDescriptorSetLayout);
 
