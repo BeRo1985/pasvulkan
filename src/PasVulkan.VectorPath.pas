@@ -72,8 +72,10 @@ uses SysUtils,
      PasDblStrUtils,
      PasMP,
      PasVulkan.Types,
+     PasVulkan.Framework,
      PasVulkan.Utils,
      PasVulkan.Collections,
+     PasVulkan.BufferRangeAllocator,
      PasVulkan.Math,
      PasVulkan.Math.Double;
 
@@ -498,6 +500,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPath=class
       private
+       fShape:TpvVectorPathShape;
        fCommands:TpvVectorPathCommandList;
        fFillRule:TpvVectorPathFillRule;
        fStartPointSeen:Boolean;
@@ -561,6 +564,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathGPUIndirectSegmentData=^TpvVectorPathGPUIndirectSegmentData;
 
+     TpvVectorPathGPUIndirectSegments=array of TpvVectorPathGPUIndirectSegmentData;
+
      TpvVectorPathGPUGridCellData=packed record // 8 bytes per grid cell
       // uvec2 Begin
       StartIndirectSegmentIndex:TpvUInt32;
@@ -614,12 +619,72 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fBoundingBox:TpvVectorPathBoundingBox;
        fResolution:TpvInt32;
        fSegments:TpvVectorPathSegments;
+       fIndirectSegments:TpvVectorPathGPUIndirectSegments;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
        fGridCells:TGridCells;
       public
        constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
      end;
+
+     TpvVectorPathGPUShapes=array of TpvVectorPathGPUShape;
+
+     TpvVectorPathIndexHashMap=TpvHashMap<TpvVectorPathShape,TpvInt32>;
+
+     TpvVectorPathGPUBufferPoolShapeFreeList=TpvDynamicStack<TpvInt32>;
+
+     { TpvVectorPathGPUBufferPool }
+
+     TpvVectorPathGPUBufferPool=class     
+      private
+
+       fDevice:TpvVulkanDevice;
+
+       fGPUShapes:TpvVectorPathGPUShapes; // owned GPU shapes, index = shape index / shape ID
+
+       fShapeIndexHashMap:TpvVectorPathIndexHashMap; // maps TpvVectorPathShape to shape index / shape ID
+
+       // The segment buffer holds all segments for all shapes
+       fSegmentsBuffer:TpvVulkanBuffer;
+       fSegmentsBufferSize:TpvSizeUInt;
+       fSegmentsAllocator:TpvBufferRangeAllocator;
+
+       // The indirect segments buffer holds all indirect segment indices for all shapes
+       fIndirectSegmentsBuffer:TpvVulkanBuffer;
+       fIndirectSegmentsBufferSize:TpvSizeUInt;
+       fIndirectSegmentsAllocator:TpvBufferRangeAllocator;
+
+       // The grid cells buffer holds all grid cells for all shapes
+       fGridCellsBuffer:TpvVulkanBuffer;
+       fGridCellsBufferSize:TpvSizeUInt;
+       fGridCellsAllocator:TpvBufferRangeAllocator;
+       
+       // The shapes buffer holds all shape metadata
+       fShapesBuffer:TpvVulkanBuffer;
+       fShapesBufferSize:TpvSizeUInt;
+       fFreeShapeIndices:TpvVectorPathGPUBufferPoolShapeFreeList;
+       fNextShapeIndex:TpvInt32;
+       // Note: Shape metadata uses fGPUShapes array (direct indexing, no allocator needed), instead 
+       // a free list is used for reusing shape indices
+
+       // Descriptor set for the 4 shared buffers
+       fDescriptorPool:TpvVulkanDescriptorPool;
+       fDescriptorSet:TpvVulkanDescriptorSet;
+       fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+
+      public 
+
+       constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
+       destructor Destroy; override;
+
+{      function GetOrCreate(const aShape:TpvVectorPath):TpvVectorPathGPUShape;
+       procedure Remove(const aShape:TpvVectorPath);}
+
+      published
+
+       property DescriptorSet:TpvVulkanDescriptorSet read fDescriptorSet;
+
+     end;  
 
 implementation
 
@@ -4361,10 +4426,10 @@ end;
 constructor TpvVectorPath.Create;
 begin
  inherited Create;
+ fShape:=nil;
  fCommands:=TpvVectorPathCommandList.Create(true);
  fFillRule:=TpvVectorPathFillRule.EvenOdd;
  fStartPointSeen:=false;
-
 end;
 
 constructor TpvVectorPath.CreateFromSVGPath(const aCommands:TpvRawByteString);
@@ -4748,6 +4813,7 @@ end;
 destructor TpvVectorPath.Destroy;
 begin
  FreeAndNil(fCommands);
+ FreeAndNil(fShape);
  inherited Destroy;
 end;
 
@@ -5254,7 +5320,12 @@ end;
 
 function TpvVectorPath.GetShape:TpvVectorPathShape;
 begin
- result:=TpvVectorPathShape.Create(self);
+ if assigned(fShape) then begin
+  fShape.Assign(self);
+ end else begin
+  fShape:=TpvVectorPathShape.Create(self);
+ end;
+ result:=fShape;
 end;
 
 { TpvVectorPathGPUShape.TGridCell }
@@ -5457,14 +5528,31 @@ begin
   end;
  end;
 
+ // Build indirect segments array from grid cells
+ fIndirectSegments:=nil;
+ SetLength(fIndirectSegments,0);
+
 end;
 
 destructor TpvVectorPathGPUShape.Destroy;
 begin
+ fIndirectSegments:=nil;
  FreeAndNil(fGridCells);
  FreeAndNil(fSegmentDynamicAABBTree);
  FreeAndNil(fSegments);
  FreeAndNil(fVectorPathShape);
+ inherited Destroy;
+end;
+
+{ TpvVectorPathGPUBufferPool }
+
+constructor TpvVectorPathGPUBufferPool.Create(const aDevice:TpvVulkanDevice);
+begin
+ inherited Create;
+end;
+
+destructor TpvVectorPathGPUBufferPool.Destroy;
+begin
  inherited Destroy;
 end;
 
