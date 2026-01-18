@@ -694,6 +694,9 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // Generation for tracking updates 
        fGeneration:TpvUInt64;
 
+       // Descriptor set layout for the 4 shared buffers
+       fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+
        // States with double-buffering for uploads and rendering for synchronization avoidance at cost of double memory usage
        fStates:TStates;
        fActiveStateIndex:TpvSizeInt;
@@ -713,12 +716,9 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // The shapes buffer holds all shape metadata
        fShapes:TpvVectorPathGPUShapeDataArray;
        fFreeShapeIndices:TpvVectorPathGPUBufferPoolShapeFreeList;
-       fNextShapeIndex:TpvInt32;
+       fShapeIndexCounter:TpvInt32;
        // Note: Shape metadata uses fGPUShapes array (direct indexing, no allocator needed), instead 
        // a free list is used for reusing shape indices
-
-       // Descriptor set layout for the 4 shared buffers
-       fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
 
        function GetActiveState:TpvVectorPathGPUBufferPool.TState;
 
@@ -5609,6 +5609,8 @@ begin
 
  fDevice:=fBufferPool.fDevice;
 
+ fGeneration:=High(TpvUInt64);
+
  fSegmentsBuffer:=nil;
  fIndirectSegmentsBuffer:=nil;
  fGridCellsBuffer:=nil;
@@ -5687,6 +5689,8 @@ begin
 
  inherited Create;
 
+ fGeneration:=0;
+
  // Create descriptor set layout
  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
  fDescriptorSetLayout.AddBinding(0,
@@ -5716,15 +5720,43 @@ begin
  end;
  fActiveStateIndex:=0;
 
+ fSegments:=nil;
+ fSegmentsAllocator:=TpvBufferRangeAllocator.Create(0);
+
+ fIndirectSegments:=nil;
+ fIndirectSegmentsAllocator:=TpvBufferRangeAllocator.Create(0);
+
+ fGridCells:=nil;
+ fGridCellsAllocator:=TpvBufferRangeAllocator.Create(0);
+
+ fShapes:=nil;
+ fFreeShapeIndices.Initialize;
+ fShapeIndexCounter:=0;
+
 end;
 
 destructor TpvVectorPathGPUBufferPool.Destroy;
 var Index:TpvSizeInt;
 begin
+
  for Index:=0 to 1 do begin
   FreeAndNil(fStates[Index]);
  end;
+
  FreeAndNil(fDescriptorSetLayout);
+
+ fSegments:=nil;
+ FreeAndNil(fSegmentsAllocator);
+
+ fIndirectSegments:=nil;
+ FreeAndNil(fIndirectSegmentsAllocator);
+
+ fGridCells:=nil;
+ FreeAndNil(fGridCellsAllocator);
+
+ fShapes:=nil;
+ fFreeShapeIndices.Finalize;
+
  inherited Destroy;
 end;
 
