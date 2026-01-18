@@ -5895,7 +5895,24 @@ begin
      end;
      
      // Update indirect segments in fBufferPool.fIndirectSegments
-     // ...
+     if GPUShape.fIndirectSegmentBufferRange.Size<GPUShape.fGridCells.Count then begin
+      fBufferPool.fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fIndirectSegmentBufferRange);
+     end;
+     if GPUShape.fIndirectSegmentBufferRange.Offset<0 then begin
+      GPUShape.fIndirectSegmentBufferRange:=fBufferPool.fIndirectSegmentsAllocator.AllocateBufferRange(GPUShape.fGridCells.Count);
+     end;
+     if GPUShape.fIndirectSegmentBufferRange.Size>0 then begin
+      OldCount:=length(fBufferPool.fIndirectSegments);
+      NewCount:=GPUShape.fIndirectSegmentBufferRange.Offset+GPUShape.fIndirectSegmentBufferRange.Size;
+      if OldCount<NewCount then begin
+       inc(NewCount,NewCount);
+       SetLength(fBufferPool.fIndirectSegments,NewCount);
+       FillChar(fBufferPool.fIndirectSegments[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUIndirectSegmentData),#0);
+      end;
+      for Index:=0 to GPUShape.fGridCells.Count-1 do begin
+       fBufferPool.fIndirectSegments[GPUShape.fIndirectSegmentBufferRange.Offset+Index]:=GPUShape.fSegmentBufferRange.Offset+Index;
+      end;
+     end;
 
      // Update grid cells in fBufferPool.fGridCells
      // ...
