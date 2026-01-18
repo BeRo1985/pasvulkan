@@ -5814,7 +5814,11 @@ procedure TpvVectorPathGPUBufferPool.TState.Update;
 var ShapeIndex:TpvInt32;
     OldCount:TpvSizeInt;
     GPUShape:TpvVectorPathGPUShape;
-    SegmentsDirty,IndirectSegmentsDirty,GridCellsDirty,ShapesDirty,DescriptorSetDirty:boolean;
+    SegmentsMinIndex,SegmentsMaxIndex:TpvSizeInt;
+    IndirectSegmentsMinIndex,IndirectSegmentsMaxIndex:TpvSizeInt;
+    GridCellsMinIndex,GridCellsMaxIndex:TpvSizeInt;
+    ShapesMinIndex,ShapesMaxIndex:TpvSizeInt;
+    DescriptorSetDirty:boolean;
     Size:TVkDeviceSize;
 begin
 
@@ -5822,10 +5826,18 @@ begin
 
   try
 
-   SegmentsDirty:=false;
-   IndirectSegmentsDirty:=false;
-   GridCellsDirty:=false;
-   ShapesDirty:=false;
+   SegmentsMinIndex:=$7fffffff;
+   SegmentsMaxIndex:=0;
+
+   IndirectSegmentsMinIndex:=$7fffffff;
+   IndirectSegmentsMaxIndex:=0;
+
+   GridCellsMinIndex:=$7fffffff;
+   GridCellsMaxIndex:=0;
+
+   ShapesMinIndex:=$7fffffff;
+   ShapesMaxIndex:=0;
+
    DescriptorSetDirty:=false;
 
    for ShapeIndex:=0 to length(fBufferPool.fGPUShapes)-1 do begin
@@ -5840,10 +5852,42 @@ begin
          ((ShapeIndex<length(fShapeGenerations)) and 
           (fShapeGenerations[ShapeIndex]<>GPUShape.fGeneration)))) then begin
 
-     SegmentsDirty:=true;
-     IndirectSegmentsDirty:=true;
-     GridCellsDirty:=true;
-     ShapesDirty:=true;
+     // Track dirty ranges for all buffers affected by this shape
+     if GPUShape.fSegmentBufferRange.Size>0 then begin
+      if SegmentsMinIndex>GPUShape.fSegmentBufferRange.Offset then begin
+       SegmentsMinIndex:=GPUShape.fSegmentBufferRange.Offset;
+      end;
+      if SegmentsMaxIndex<=(GPUShape.fSegmentBufferRange.Offset+GPUShape.fSegmentBufferRange.Size)-1 then begin
+       SegmentsMaxIndex:=(GPUShape.fSegmentBufferRange.Offset+GPUShape.fSegmentBufferRange.Size)-1;
+      end;
+     end;
+     
+     if GPUShape.fIndirectSegmentBufferRange.Size>0 then begin
+      if IndirectSegmentsMinIndex>GPUShape.fIndirectSegmentBufferRange.Offset then begin
+       IndirectSegmentsMinIndex:=GPUShape.fIndirectSegmentBufferRange.Offset;
+      end;
+      if IndirectSegmentsMaxIndex<=(GPUShape.fIndirectSegmentBufferRange.Offset+GPUShape.fIndirectSegmentBufferRange.Size)-1 then begin
+       IndirectSegmentsMaxIndex:=(GPUShape.fIndirectSegmentBufferRange.Offset+GPUShape.fIndirectSegmentBufferRange.Size)-1;
+      end;
+     end;
+     
+     if GPUShape.fGridCellBufferRange.Size>0 then begin
+      if GridCellsMinIndex>GPUShape.fGridCellBufferRange.Offset then begin
+       GridCellsMinIndex:=GPUShape.fGridCellBufferRange.Offset;
+      end;
+      if GridCellsMaxIndex<=(GPUShape.fGridCellBufferRange.Offset+GPUShape.fGridCellBufferRange.Size)-1 then begin
+       GridCellsMaxIndex:=(GPUShape.fGridCellBufferRange.Offset+GPUShape.fGridCellBufferRange.Size)-1;
+      end;
+     end;
+     
+     if GPUShape.fShapeIndex>=0 then begin
+      if ShapesMinIndex>GPUShape.fShapeIndex then begin
+       ShapesMinIndex:=GPUShape.fShapeIndex;
+      end;
+      if ShapesMaxIndex<=GPUShape.fShapeIndex then begin
+       ShapesMaxIndex:=GPUShape.fShapeIndex;
+      end;
+     end;
 
      // Update shape reference
      OldCount:=length(fShapes);
@@ -5865,7 +5909,7 @@ begin
 
    end;
 
-   if SegmentsDirty then begin
+   if SegmentsMinIndex<=SegmentsMaxIndex then begin
     Size:=length(fBufferPool.fSegments)*SizeOf(TpvVectorPathGPUSegmentData);
     if fSegmentsBuffer.Size<Size then begin
      FreeAndNil(fSegmentsBuffer);
@@ -5897,18 +5941,20 @@ begin
                                          [],
                                          false);
      DescriptorSetDirty:=true;
+     SegmentsMinIndex:=0;
+     SegmentsMaxIndex:=length(fBufferPool.fSegments);
     end;
     fSegmentsBuffer.UploadData(fBufferPool.fTransferQueue,
                                fBufferPool.fTransferCommandBuffer,
                                fBufferPool.fTransferFence,
-                               fBufferPool.fSegments[0],
-                               0,
-                               Size,
+                               fBufferPool.fSegments[SegmentsMinIndex],
+                               SegmentsMinIndex*SizeOf(TpvVectorPathGPUSegmentData),
+                               ((SegmentsMaxIndex-SegmentsMinIndex)+1)*SizeOf(TpvVectorPathGPUSegmentData),
                                TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
                                false);
    end;
 
-   if IndirectSegmentsDirty then begin
+   if IndirectSegmentsMinIndex<=IndirectSegmentsMaxIndex then begin
     Size:=length(fBufferPool.fIndirectSegments)*SizeOf(TpvVectorPathGPUIndirectSegmentData);
     if fIndirectSegmentsBuffer.Size<Size then begin
      FreeAndNil(fIndirectSegmentsBuffer);
@@ -5940,19 +5986,21 @@ begin
                                          [],
                                          false);
      DescriptorSetDirty:=true;
+     IndirectSegmentsMinIndex:=0;
+     IndirectSegmentsMaxIndex:=length(fBufferPool.fIndirectSegments);
     end;
     fIndirectSegmentsBuffer.UploadData(fBufferPool.fTransferQueue,
                                        fBufferPool.fTransferCommandBuffer,
                                        fBufferPool.fTransferFence,
-                                       fBufferPool.fIndirectSegments[0],
-                                       0,
-                                       Size,
+                                       fBufferPool.fIndirectSegments[IndirectSegmentsMinIndex],
+                                       IndirectSegmentsMinIndex*SizeOf(TpvVectorPathGPUIndirectSegmentData),
+                                       ((IndirectSegmentsMaxIndex-IndirectSegmentsMinIndex)+1)*SizeOf(TpvVectorPathGPUIndirectSegmentData),
                                        TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
                                        false);
    end;
 
-   if GridCellsDirty then begin
-    Size:=length(fBufferPool.fGPUShapes)*SizeOf(TpvVectorPathGPUGridCellData);
+   if GridCellsMinIndex<=GridCellsMaxIndex then begin
+    Size:=length(fBufferPool.fGridCells)*SizeOf(TpvVectorPathGPUGridCellData);
     if fGridCellsBuffer.Size<Size then begin
      FreeAndNil(fGridCellsBuffer);
      fGridCellsBuffer:=TpvVulkanBuffer.Create(fDevice,
@@ -5983,19 +6031,21 @@ begin
                                          [],
                                          false);
      DescriptorSetDirty:=true;
+     GridCellsMinIndex:=0;
+     GridCellsMaxIndex:=length(fBufferPool.fGridCells);
     end;
     fGridCellsBuffer.UploadData(fBufferPool.fTransferQueue,
                                 fBufferPool.fTransferCommandBuffer,
                                 fBufferPool.fTransferFence,
-                                fBufferPool.fGPUShapes[0],
-                                0,
-                                Size,
+                                fBufferPool.fGridCells[GridCellsMinIndex],
+                                GridCellsMinIndex*SizeOf(TpvVectorPathGPUGridCellData),
+                                ((GridCellsMaxIndex-GridCellsMinIndex)+1)*SizeOf(TpvVectorPathGPUGridCellData),
                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
                                 false);
    end;
 
-   if ShapesDirty then begin
-    Size:=length(fBufferPool.fGPUShapes)*SizeOf(TpvVectorPathGPUShapeData);
+   if ShapesMinIndex<=ShapesMaxIndex then begin
+    Size:=length(fBufferPool.fShapes)*SizeOf(TpvVectorPathGPUShapeData);
     if fShapesBuffer.Size<Size then begin
      FreeAndNil(fShapesBuffer);
      fShapesBuffer:=TpvVulkanBuffer.Create(fDevice,
@@ -6026,13 +6076,15 @@ begin
                                          [],
                                          false);
      DescriptorSetDirty:=true;
+     ShapesMinIndex:=0;
+     ShapesMaxIndex:=length(fBufferPool.fShapes);
     end;
     fShapesBuffer.UploadData(fBufferPool.fTransferQueue,
                              fBufferPool.fTransferCommandBuffer,
                              fBufferPool.fTransferFence,
-                             fBufferPool.fGPUShapes[0],
-                             0,
-                             Size,
+                             fBufferPool.fShapes[ShapesMinIndex],
+                             ShapesMinIndex*SizeOf(TpvVectorPathGPUShapeData),
+                             ((ShapesMaxIndex-ShapesMinIndex)+1)*SizeOf(TpvVectorPathGPUShapeData),
                              TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic,
                              false);
    end;
