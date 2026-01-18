@@ -5844,134 +5844,10 @@ begin
         ((length(fShapeGenerations)<=ShapeIndex) or 
          ((ShapeIndex<length(fShapeGenerations)) and 
           (fShapeGenerations[ShapeIndex]<>GPUShape.fGeneration)))) then begin
-      
-     // Update segments in fBufferPool.fSegments
-     if GPUShape.fSegmentBufferRange.Size<GPUShape.fSegments.Count then begin
-      fBufferPool.fSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fSegmentBufferRange);
-     end;
-     if (GPUShape.fSegments.Count>0) and (GPUShape.fSegmentBufferRange.Offset<0) then begin
-      GPUShape.fSegmentBufferRange:=fBufferPool.fSegmentsAllocator.AllocateBufferRange(GPUShape.fSegments.Count);
-     end;
-     if GPUShape.fSegmentBufferRange.Size>0 then begin
-      OldCount:=length(fBufferPool.fSegments);
-      NewCount:=GPUShape.fSegmentBufferRange.Offset+GPUShape.fSegmentBufferRange.Size;
-      if OldCount<NewCount then begin
-       inc(NewCount,NewCount);
-       SetLength(fBufferPool.fSegments,NewCount);
-       FillChar(fBufferPool.fSegments[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUSegmentData),#0);
-      end;
-      for Index:=0 to GPUShape.fSegments.Count-1 do begin
-       Segment:=GPUShape.fSegments[Index];
-       SegmentData:=@fBufferPool.fSegments[GPUShape.fSegmentBufferRange.Offset+Index];
-       case Segment.Type_ of
-        TpvVectorPathSegmentType.Line:begin
-         SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeLine;
-         SegmentData^.Winding:=0;
-         SegmentData^.Point0:=TpvVectorPathSegmentLine(Segment).Points[0];
-         SegmentData^.Point1:=TpvVectorPathSegmentLine(Segment).Points[1];
-         SegmentData^.Point2:=TpvVector2.Null;
-        end;
-        TpvVectorPathSegmentType.QuadraticCurve:begin
-         SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeQuadraticCurve;
-         SegmentData^.Winding:=0;
-         SegmentData^.Point0:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[0];
-         SegmentData^.Point1:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[1];
-         SegmentData^.Point2:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[2];
-        end;
-        TpvVectorPathSegmentType.MetaWindingSettingLine:begin
-         SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeMetaWindingSettingLine;
-         SegmentData^.Winding:=TpvVectorPathSegmentMetaWindingSettingLine(Segment).Winding;
-         SegmentData^.Point0:=TpvVectorPathSegmentMetaWindingSettingLine(Segment).Points[0];
-         SegmentData^.Point1:=TpvVectorPathSegmentMetaWindingSettingLine(Segment).Points[1];
-         SegmentData^.Point2:=TpvVector2.Null;
-        end;
-        else begin
-         SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeUnknown;
-         SegmentData^.Winding:=0;
-         SegmentData^.Point0:=TpvVector2.Null;
-         SegmentData^.Point1:=TpvVector2.Null;
-         SegmentData^.Point2:=TpvVector2.Null;
-        end;
-       end;
-      end;
-     end;
-     
-     // Update indirect segments in fBufferPool.fIndirectSegments
-     // First count total indirect segments needed
-     NewCount:=0;
-     for Index:=0 to GPUShape.fGridCells.Count-1 do begin
-      GridCell:=GPUShape.fGridCells[Index];
-      inc(NewCount,GridCell.fSegments.Count);
-     end;
-     
-     if GPUShape.fIndirectSegmentBufferRange.Size<NewCount then begin
-      fBufferPool.fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fIndirectSegmentBufferRange);
-     end;
-     if (NewCount>0) and (GPUShape.fIndirectSegmentBufferRange.Offset<0) then begin
-      GPUShape.fIndirectSegmentBufferRange:=fBufferPool.fIndirectSegmentsAllocator.AllocateBufferRange(NewCount);
-     end;
-     if GPUShape.fIndirectSegmentBufferRange.Size>0 then begin
-      OldCount:=length(fBufferPool.fIndirectSegments);
-      NewCount:=GPUShape.fIndirectSegmentBufferRange.Offset+GPUShape.fIndirectSegmentBufferRange.Size;
-      if OldCount<NewCount then begin
-       inc(NewCount,NewCount);
-       SetLength(fBufferPool.fIndirectSegments,NewCount);
-       FillChar(fBufferPool.fIndirectSegments[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUIndirectSegmentData),#0);
-      end;
-      // Build indirect segments data from grid cells with rebasing
-      NewCount:=0;
-      for Index:=0 to GPUShape.fGridCells.Count-1 do begin
-       GridCell:=GPUShape.fGridCells[Index];
-       for OldCount:=0 to GridCell.fSegments.Count-1 do begin
-        Segment:=GridCell.fSegments[OldCount];        
-        fBufferPool.fIndirectSegments[GPUShape.fIndirectSegmentBufferRange.Offset+NewCount]:=GPUShape.fSegmentBufferRange.Offset+Segment.fIndex;
-        inc(NewCount);
-       end;
-      end;
-     end;
 
-     // Update grid cells in fBufferPool.fGridCells
-     if GPUShape.fGridCellBufferRange.Size<GPUShape.fGridCells.Count then begin
-      fBufferPool.fGridCellsAllocator.ReleaseBufferRangeAndNil(GPUShape.fGridCellBufferRange);
-     end;
-     if (GPUShape.fGridCells.Count>0) and (GPUShape.fGridCellBufferRange.Offset<0) then begin
-      GPUShape.fGridCellBufferRange:=fBufferPool.fGridCellsAllocator.AllocateBufferRange(GPUShape.fGridCells.Count);
-     end;
-     if GPUShape.fGridCellBufferRange.Size>0 then begin
-      OldCount:=length(fBufferPool.fGridCells);
-      NewCount:=GPUShape.fGridCellBufferRange.Offset+GPUShape.fGridCellBufferRange.Size;
-      if OldCount<NewCount then begin
-       inc(NewCount,NewCount);
-       SetLength(fBufferPool.fGridCells,NewCount);
-       FillChar(fBufferPool.fGridCells[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUGridCellData),#0);
-      end;
-      // Fill grid cell data with rebased indirect segment indices      
-      NewCount:=0; // Track current position in indirect segments array
-      for Index:=0 to GPUShape.fGridCells.Count-1 do begin
-       GridCell:=GPUShape.fGridCells[Index];
-       GridCellData:=@fBufferPool.fGridCells[GPUShape.fGridCellBufferRange.Offset+Index];
-       GridCellData^.StartIndirectSegmentIndex:=GPUShape.fIndirectSegmentBufferRange.Offset+NewCount;
-       GridCellData^.CountIndirectSegments:=GridCell.fSegments.Count;
-       inc(NewCount,GridCell.fSegments.Count);
-      end;
-     end;
-
-     // Update GPU shape data in fBufferPool.fShapes
-     OldCount:=length(fBufferPool.fShapes);
-     if OldCount<=ShapeIndex then begin
-      SetLength(fBufferPool.fShapes,(ShapeIndex+1)*2);
-      FillChar(fBufferPool.fShapes[OldCount],(length(fBufferPool.fShapes)-OldCount)*SizeOf(TpvVectorPathGPUShapeData),#0);
-     end;
-     ShapeData:=@fBufferPool.fShapes[ShapeIndex];
-     ShapeData^.Min:=GPUShape.fBoundingBox.Min;
-     ShapeData^.Max:=GPUShape.fBoundingBox.Max;
-     ShapeData^.Flags:=0;
-     if GPUShape.fVectorPathShape.fFillRule=TpvVectorPathFillRule.EvenOdd then begin
-      ShapeData^.Flags:=ShapeData^.Flags or 1;
-     end;
-     ShapeData^.StartGridCellIndex:=GPUShape.fGridCellBufferRange.Offset;
-     ShapeData^.GridSizeX:=GPUShape.fResolution;
-     ShapeData^.GridSizeY:=GPUShape.fResolution;
+     SegmentsDirty:=true;
+     IndirectSegmentsDirty:=true;
+     GridCellsDirty:=true;
      ShapesDirty:=true;
 
      // Update shape reference
@@ -6302,7 +6178,138 @@ begin
 end;
 
 procedure TpvVectorPathGPUBufferPool.UpdateGPUShape(const aGPUShape:TpvVectorPathGPUShape);
+var OldCount,NewCount,Index:TpvSizeInt;
+    Segment:TpvVectorPathSegment;
+    SegmentData:PpvVectorPathGPUSegmentData;
+    GridCell:TpvVectorPathGPUShape.TGridCell;
+    GridCellData:PpvVectorPathGPUGridCellData;
+    ShapeData:PpvVectorPathGPUShapeData;
 begin
+
+ // Update segments
+ if aGPUShape.fSegmentBufferRange.Size<aGPUShape.fSegments.Count then begin
+  fSegmentsAllocator.ReleaseBufferRangeAndNil(aGPUShape.fSegmentBufferRange);
+ end;
+ if aGPUShape.fSegmentBufferRange.Offset<0 then begin
+  aGPUShape.fSegmentBufferRange:=fSegmentsAllocator.AllocateBufferRange(aGPUShape.fSegments.Count);
+ end;
+ if aGPUShape.fSegmentBufferRange.Size>0 then begin
+  OldCount:=length(fSegments);
+  NewCount:=aGPUShape.fSegmentBufferRange.Offset+aGPUShape.fSegmentBufferRange.Size;
+  if OldCount<NewCount then begin
+   inc(NewCount,NewCount);
+   SetLength(fSegments,NewCount);
+   FillChar(fSegments[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUSegmentData),#0);
+  end;
+  for Index:=0 to aGPUShape.fSegments.Count-1 do begin
+   Segment:=aGPUShape.fSegments[Index];
+   SegmentData:=@fSegments[aGPUShape.fSegmentBufferRange.Offset+Index];
+   case Segment.Type_ of
+    TpvVectorPathSegmentType.Line:begin
+     SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeLine;
+     SegmentData^.Winding:=0;
+     SegmentData^.Point0:=TpvVectorPathSegmentLine(Segment).Points[0];
+     SegmentData^.Point1:=TpvVectorPathSegmentLine(Segment).Points[1];
+     SegmentData^.Point2:=TpvVector2.Null;
+    end;
+    TpvVectorPathSegmentType.QuadraticCurve:begin
+     SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeQuadraticCurve;
+     SegmentData^.Winding:=0;
+     SegmentData^.Point0:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[0];
+     SegmentData^.Point1:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[1];
+     SegmentData^.Point2:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[2];
+    end;
+    TpvVectorPathSegmentType.MetaWindingSettingLine:begin
+     SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeMetaWindingSettingLine;
+     SegmentData^.Winding:=TpvVectorPathSegmentMetaWindingSettingLine(Segment).Winding;
+     SegmentData^.Point0:=TpvVectorPathSegmentMetaWindingSettingLine(Segment).Points[0];
+     SegmentData^.Point1:=TpvVectorPathSegmentMetaWindingSettingLine(Segment).Points[1];
+     SegmentData^.Point2:=TpvVector2.Null;
+    end;
+    else begin
+     SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeUnknown;
+     SegmentData^.Winding:=0;
+     SegmentData^.Point0:=TpvVector2.Null;
+     SegmentData^.Point1:=TpvVector2.Null;
+     SegmentData^.Point2:=TpvVector2.Null;
+    end;
+   end;
+  end;
+ end;
+
+ // Update indirect segments
+ NewCount:=0;
+ for Index:=0 to aGPUShape.fGridCells.Count-1 do begin
+  GridCell:=aGPUShape.fGridCells[Index];
+  inc(NewCount,GridCell.fSegments.Count);
+ end;
+
+ if aGPUShape.fIndirectSegmentBufferRange.Size<NewCount then begin
+  fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(aGPUShape.fIndirectSegmentBufferRange);
+ end;
+ if aGPUShape.fIndirectSegmentBufferRange.Offset<0 then begin
+  aGPUShape.fIndirectSegmentBufferRange:=fIndirectSegmentsAllocator.AllocateBufferRange(NewCount);
+ end;
+ if aGPUShape.fIndirectSegmentBufferRange.Size>0 then begin
+  OldCount:=length(fIndirectSegments);
+  NewCount:=aGPUShape.fIndirectSegmentBufferRange.Offset+aGPUShape.fIndirectSegmentBufferRange.Size;
+  if OldCount<NewCount then begin
+   inc(NewCount,NewCount);
+   SetLength(fIndirectSegments,NewCount);
+   FillChar(fIndirectSegments[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUIndirectSegmentData),#0);
+  end;
+  NewCount:=0;
+  for Index:=0 to aGPUShape.fGridCells.Count-1 do begin
+   GridCell:=aGPUShape.fGridCells[Index];
+   for OldCount:=0 to GridCell.fSegments.Count-1 do begin
+    Segment:=GridCell.fSegments[OldCount];
+    fIndirectSegments[aGPUShape.fIndirectSegmentBufferRange.Offset+NewCount]:=aGPUShape.fSegmentBufferRange.Offset+Segment.fIndex;
+    inc(NewCount);
+   end;
+  end;
+ end;
+
+ // Update grid cells
+ if aGPUShape.fGridCellBufferRange.Size<aGPUShape.fGridCells.Count then begin
+  fGridCellsAllocator.ReleaseBufferRangeAndNil(aGPUShape.fGridCellBufferRange);
+ end;
+ if aGPUShape.fGridCellBufferRange.Offset<0 then begin
+  aGPUShape.fGridCellBufferRange:=fGridCellsAllocator.AllocateBufferRange(aGPUShape.fGridCells.Count);
+ end;
+ if aGPUShape.fGridCellBufferRange.Size>0 then begin
+  OldCount:=length(fGridCells);
+  NewCount:=aGPUShape.fGridCellBufferRange.Offset+aGPUShape.fGridCellBufferRange.Size;
+  if OldCount<NewCount then begin
+   inc(NewCount,NewCount);
+   SetLength(fGridCells,NewCount);
+   FillChar(fGridCells[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUGridCellData),#0);
+  end;
+  NewCount:=0;
+  for Index:=0 to aGPUShape.fGridCells.Count-1 do begin
+   GridCell:=aGPUShape.fGridCells[Index];
+   GridCellData:=@fGridCells[aGPUShape.fGridCellBufferRange.Offset+Index];
+   GridCellData^.StartIndirectSegmentIndex:=aGPUShape.fIndirectSegmentBufferRange.Offset+NewCount;
+   GridCellData^.CountIndirectSegments:=GridCell.fSegments.Count;
+   inc(NewCount,GridCell.fSegments.Count);
+  end;
+ end;
+
+ // Update shape data
+ OldCount:=length(fShapes);
+ if OldCount<=aGPUShape.fShapeIndex then begin
+  SetLength(fShapes,(aGPUShape.fShapeIndex+1)*2);
+  FillChar(fShapes[OldCount],(length(fShapes)-OldCount)*SizeOf(TpvVectorPathGPUShapeData),#0);
+ end;
+ ShapeData:=@fShapes[aGPUShape.fShapeIndex];
+ ShapeData^.Min:=aGPUShape.fBoundingBox.Min;
+ ShapeData^.Max:=aGPUShape.fBoundingBox.Max;
+ ShapeData^.Flags:=0;
+ if aGPUShape.fVectorPathShape.fFillRule=TpvVectorPathFillRule.EvenOdd then begin
+  ShapeData^.Flags:=ShapeData^.Flags or 1;
+ end;
+ ShapeData^.StartGridCellIndex:=aGPUShape.fGridCellBufferRange.Offset;
+ ShapeData^.GridSizeX:=aGPUShape.fResolution;
+ ShapeData^.GridSizeY:=aGPUShape.fResolution;
 
 end;
 
