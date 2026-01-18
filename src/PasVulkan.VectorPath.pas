@@ -349,7 +349,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       (
        Line=0,
        QuadraticCurve,
-       CubicCurve
+       CubicCurve,
+       MetaWindingSettingLine
       );
 
      PpvVectorPathSegmentType=^TpvVectorPathSegmentType;
@@ -402,6 +403,9 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      TpvVectorPathSegmentMetaWindingSettingLine=class(TpvVectorPathSegmentLine)
       private
        fWinding:TpvInt32;
+      public
+       constructor Create; overload; override;
+       constructor Create(const aP0,aP1:TpvVectorPathVector;const aWinding:TpvInt32); reintroduce; overload;
       published
        property Winding:TpvInt32 read fWinding write fWinding;
      end;
@@ -3304,6 +3308,23 @@ begin
  end;
 end;
 
+{ TpvVectorPathSegmentMetaWindingSettingLine }
+
+constructor TpvVectorPathSegmentMetaWindingSettingLine.Create;
+begin
+ inherited Create;
+ fType:=TpvVectorPathSegmentType.MetaWindingSettingLine;
+ fWinding:=0;
+end;
+
+constructor TpvVectorPathSegmentMetaWindingSettingLine.Create(const aP0,aP1:TpvVectorPathVector;const aWinding:TpvInt32);
+begin
+ Create;
+ Points[0]:=aP0;
+ Points[1]:=aP1;
+ fWinding:=aWinding;
+end;
+
 { TpvVectorPathSegmentQuadraticCurve }
 
 constructor TpvVectorPathSegmentQuadraticCurve.Create;
@@ -5791,10 +5812,13 @@ begin
 end;
 
 procedure TpvVectorPathGPUBufferPool.TState.Update;
-var ShapeIndex,OldCount:TpvInt32;
+var ShapeIndex:TpvInt32;
+    OldCount,NewCount,Index:TpvSizeInt;
     GPUShape:TpvVectorPathGPUShape;
     SegmentsDirty,IndirectSegmentsDirty,GridCellsDirty,ShapesDirty,DescriptorSetDirty:boolean;
     Size:TVkDeviceSize;
+    Segment:TpvVectorPathSegment;
+    SegmentData:PpvVectorPathGPUSegmentData;
 begin
 
  if fGeneration<>fBufferPool.fGeneration then begin
@@ -5820,8 +5844,56 @@ begin
           (fShapeGenerations[ShapeIndex]<>GPUShape.fGeneration)))) then begin
       
      // Update segments in fBufferPool.fSegments
-     // ...
-
+     if GPUShape.fSegmentBufferRange.Size<GPUShape.fSegments.Count then begin
+      fBufferPool.fSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fSegmentBufferRange);
+     end;
+     if GPUShape.fSegmentBufferRange.Offset<0 then begin
+      GPUShape.fSegmentBufferRange:=fBufferPool.fSegmentsAllocator.AllocateBufferRange(GPUShape.fSegments.Count);
+     end;
+     if GPUShape.fSegmentBufferRange.Size>0 then begin
+      OldCount:=length(fBufferPool.fSegments);
+      NewCount:=GPUShape.fSegmentBufferRange.Offset+GPUShape.fSegmentBufferRange.Size;
+      if OldCount<NewCount then begin
+       inc(NewCount,NewCount);
+       SetLength(fBufferPool.fSegments,NewCount);
+       FillChar(fBufferPool.fSegments[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUSegmentData),#0);
+      end;
+      for Index:=0 to GPUShape.fSegments.Count-1 do begin
+       Segment:=GPUShape.fSegments[Index];
+       SegmentData:=@fBufferPool.fSegments[GPUShape.fSegmentBufferRange.Offset+Index];
+       case Segment.Type_ of
+        TpvVectorPathSegmentType.Line:begin
+         SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeLine;
+         SegmentData^.Winding:=0;
+         SegmentData^.Point0:=TpvVectorPathSegmentLine(Segment).Points[0];
+         SegmentData^.Point1:=TpvVectorPathSegmentLine(Segment).Points[1];
+         SegmentData^.Point2:=TpvVector2.Null;
+        end;
+        TpvVectorPathSegmentType.QuadraticCurve:begin
+         SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeQuadraticCurve;
+         SegmentData^.Winding:=0;
+         SegmentData^.Point0:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[0];
+         SegmentData^.Point1:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[1];
+         SegmentData^.Point2:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[2];
+        end;
+        TpvVectorPathSegmentType.MetaWindingSettingLine:begin
+         SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeMetaWindingSettingLine;
+         SegmentData^.Winding:=TpvVectorPathSegmentMetaWindingSettingLine(Segment).Winding;
+         SegmentData^.Point0:=TpvVectorPathSegmentMetaWindingSettingLine(Segment).Points[0];
+         SegmentData^.Point1:=TpvVectorPathSegmentMetaWindingSettingLine(Segment).Points[1];
+         SegmentData^.Point2:=TpvVector2.Null;
+        end;
+        else begin
+         SegmentData^.Type_:=TpvVectorPathGPUSegmentData.TypeUnknown;
+         SegmentData^.Winding:=0;
+         SegmentData^.Point0:=TpvVector2.Null;
+         SegmentData^.Point1:=TpvVector2.Null;
+         SegmentData^.Point2:=TpvVector2.Null;
+        end;
+       end;
+      end;
+     end;
+     
      // Update indirect segments in fBufferPool.fIndirectSegments
      // ...
 
