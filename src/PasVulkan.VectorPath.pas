@@ -633,6 +633,10 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
        fGridCells:TGridCells;
        fGeneration:TPasMPUInt64;
+       fSegmentBufferRange:TpvBufferRangeAllocator.TBufferRange;
+       fIndirectSegmentBufferRange:TpvBufferRangeAllocator.TBufferRange;
+       fGridCellBufferRange:TpvBufferRangeAllocator.TBufferRange;
+       fShapeIndex:TpvInt32;
       public
        constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
@@ -668,6 +672,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
               fShapesBuffer:TpvVulkanBuffer;
 
               // Shape generation buffer
+              fShapes:TpvVectorPathGPUShapes;
               fShapeGenerations:TpvUInt64DynamicArray;
 
               // Descriptor set for the 4 shared buffers
@@ -5606,7 +5611,12 @@ begin
  fIndirectSegments:=nil;
  SetLength(fIndirectSegments,0);
 
- fGeneration:=0;
+ fGeneration:=1;
+
+ fSegmentBufferRange.Clear;
+ fIndirectSegmentBufferRange.Clear;
+ fGridCellBufferRange.Clear;
+ fShapeIndex:=-1;       
 
 end;
 
@@ -5714,6 +5724,7 @@ begin
                                        pvAllocationGroupIDCanvas,
                                        'VectorPathShapes');
 
+ fShapes:=nil;
  fShapeGenerations:=nil;
 
  // Create descriptor pool
@@ -5764,6 +5775,7 @@ end;
 destructor TpvVectorPathGPUBufferPool.TState.Destroy;
 begin
 
+ fShapes:=nil;
  fShapeGenerations:=nil;
 
  // Free Vulkan resources
@@ -5800,22 +5812,33 @@ begin
     GPUShape:=fBufferPool.fGPUShapes[ShapeIndex];
    
     if assigned(GPUShape) and 
-       ((length(fShapeGenerations)<=ShapeIndex) or 
-        ((ShapeIndex<length(fShapeGenerations)) and 
-         (fShapeGenerations[ShapeIndex]<>GPUShape.fGeneration))) then begin
+       (((length(fShapes)<=ShapeIndex) or 
+         ((ShapeIndex<length(fShapes)) and 
+          (fShapes[ShapeIndex]<>GPUShape))) or
+        ((length(fShapeGenerations)<=ShapeIndex) or 
+         ((ShapeIndex<length(fShapeGenerations)) and 
+          (fShapeGenerations[ShapeIndex]<>GPUShape.fGeneration)))) then begin
       
-     // Update segments in fSegmentsBuffer
+     // Update segments in fBufferPool.fSegments
      // ...
 
-     // Update indirect segments in fIndirectSegmentsBuffer
+     // Update indirect segments in fBufferPool.fIndirectSegments
      // ...
 
-     // Update grid cells in fGridCellsBuffer
+     // Update grid cells in fBufferPool.fGridCells
      // ...
 
-     // Update GPU shape data in fShapesBuffer
+     // Update GPU shape data in fBufferPool.fShapes
      // ...
 
+     // Update shape reference
+     OldCount:=length(fShapes);
+     if OldCount<=ShapeIndex then begin
+      SetLength(fShapes,(ShapeIndex+1)*2);
+      FillChar(fShapes[OldCount],(length(fShapes)-OldCount)*SizeOf(TpvVectorPathGPUShape),#0);
+     end;
+     fShapes[ShapeIndex]:=GPUShape;
+     
      // Update shape generation     
      OldCount:=length(fShapeGenerations);
      if OldCount<=ShapeIndex then begin
