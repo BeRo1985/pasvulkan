@@ -5812,15 +5812,10 @@ end;
 
 procedure TpvVectorPathGPUBufferPool.TState.Update;
 var ShapeIndex:TpvInt32;
-    OldCount,NewCount,Index:TpvSizeInt;
+    OldCount:TpvSizeInt;
     GPUShape:TpvVectorPathGPUShape;
     SegmentsDirty,IndirectSegmentsDirty,GridCellsDirty,ShapesDirty,DescriptorSetDirty:boolean;
     Size:TVkDeviceSize;
-    Segment:TpvVectorPathSegment;
-    SegmentData:PpvVectorPathGPUSegmentData;
-    GridCell:TpvVectorPathGPUShape.TGridCell;
-    GridCellData:PpvVectorPathGPUGridCellData;
-    ShapeData:PpvVectorPathGPUShapeData;
 begin
 
  if fGeneration<>fBufferPool.fGeneration then begin
