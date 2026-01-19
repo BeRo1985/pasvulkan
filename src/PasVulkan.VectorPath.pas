@@ -6393,21 +6393,21 @@ var ShapeIndex:TpvInt32;
     GPUShape:TpvVectorPathGPUShape; 
 begin
  if fShapeIndexHashMap.TryGet(aShape,ShapeIndex) and (ShapeIndex>=0) and (ShapeIndex<length(fGPUShapes)) then begin
-  try
-   GPUShape:=fGPUShapes[ShapeIndex];
-   if assigned(GPUShape) then begin
+  GPUShape:=fGPUShapes[ShapeIndex];
+  if assigned(GPUShape) then begin
+   try
     fSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fSegmentBufferRange);
     fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fIndirectSegmentBufferRange);
     fGridCellsAllocator.ReleaseBufferRangeAndNil(GPUShape.fGridCellBufferRange);
-   end;
-  finally
-   try
-   FreeAndNil(fGPUShapes[ShapeIndex]);
    finally
     try
-     fShapeIndexHashMap.Delete(aShape);
+     FreeAndNil(fGPUShapes[ShapeIndex]);
     finally
-     fFreeShapeIndices.Push(ShapeIndex);
+     try
+      fShapeIndexHashMap.Delete(aShape);
+     finally
+      fFreeShapeIndices.Push(ShapeIndex);
+     end;
     end;
    end;
   end;
