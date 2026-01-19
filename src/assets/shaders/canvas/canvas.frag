@@ -671,17 +671,28 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
   { 
     float a = (A.y - (2.0 * B.y)) + C.y;
     float b = (-2.0 * A.y) + (2.0 * B.y);
-    float d = (b * b) - (4.0 * a * (A.y - pos.y));
-    if (d > 0.0) {
-      vec2 t = (vec2(-b) + (vec2(-1.0, 1.0) * sqrt(d))) / (2.0 * a);
-      vec2 h = mix(mix(A.xx, B.xx, t), mix(B.xx, C.xx, t), t);  
-      winding += (((t.x >= 0.0) && (t.x <= 1.0)) && (h.x <= pos.x)) ?
-                   (((mix(B.y, C.y, t.x) - mix(A.y, B.y, t.x)) < 0.0) ? -1 : 1) : 
-                   0;
-      winding += (((t.y >= 0.0) && (t.y <= 1.0)) && (h.y <= pos.x)) ? 
-                   (((mix(B.y, C.y, t.y) - mix(A.y, B.y, t.y)) < 0.0) ? -1 : 1) : 
-                   0;
-    }          
+    float c = A.y - pos.y;
+    if (abs(a) > 1e-8) {
+      // Quadratic case 
+      float d = (b * b) - (4.0 * a * c);
+      if (d > 0.0) {
+        vec2 t = (vec2(-b) + (vec2(-1.0, 1.0) * sqrt(d))) / (2.0 * a);
+        vec2 h = mix(mix(A.xx, B.xx, t), mix(B.xx, C.xx, t), t);  
+        winding += (((t.x >= 0.0) && (t.x <= 1.0)) && (h.x <= pos.x)) ?
+                    (((mix(B.y, C.y, t.x) - mix(A.y, B.y, t.x)) < 0.0) ? -1 : 1) : 
+                    0;
+        winding += (((t.y >= 0.0) && (t.y <= 1.0)) && (h.y <= pos.x)) ? 
+                    (((mix(B.y, C.y, t.y) - mix(A.y, B.y, t.y)) < 0.0) ? -1 : 1) : 
+                    0;
+      }          
+    } else if (abs(b) > 1e-8) {
+      // Linear case
+      float t = -c / b;
+      float h = mix(mix(A.x, B.x, t), mix(B.x, C.x, t), t);  
+      winding += ((t >= 0.0) && (t <= 1.0) && (h <= pos.x)) ? 
+                  (((mix(B.y, C.y, t) - mix(A.y, B.y, t)) < 0.0) ? -1 : 1) : 
+                  0;
+    }
   } 
 
   // Distance
@@ -813,7 +824,7 @@ float sampleVectorPathShape(const vec3 shapeCoord){
             vec2 p0 = uintBitsToFloat(vectorPathGPUSegment.typeWindingPoint0.zw);
             vec2 p1 = vectorPathGPUSegment.point1Point2.xy;
             if((shapeCoord.y >= min(p0.y, p1.y)) && (shapeCoord.y < max(p0.y, p1.y))){
-              winding += int(vectorPathGPUSegment.typeWindingPoint0.y); // <= GLSL: int(uint) preserves bit pattern             
+              winding += int(vectorPathGPUSegment.typeWindingPoint0.y); // <= GLSL: int(uint) preserves bit pattern
             }
             break;
           }
