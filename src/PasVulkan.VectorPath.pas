@@ -6390,15 +6390,25 @@ end;
 
 procedure TpvVectorPathGPUBufferPool.RemoveShape(const aShape:TpvVectorPathShape);
 var ShapeIndex:TpvInt32;
+    GPUShape:TpvVectorPathGPUShape; 
 begin
  if fShapeIndexHashMap.TryGet(aShape,ShapeIndex) and (ShapeIndex>=0) and (ShapeIndex<length(fGPUShapes)) then begin
   try
-   FreeAndNil(fGPUShapes[ShapeIndex]);
+   GPUShape:=fGPUShapes[ShapeIndex];
+   if assigned(GPUShape) then begin
+    fSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fSegmentBufferRange);
+    fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fIndirectSegmentBufferRange);
+    fGridCellsAllocator.ReleaseBufferRangeAndNil(GPUShape.fGridCellBufferRange);
+   end;
   finally
    try
-    fShapeIndexHashMap.Delete(aShape);
+   FreeAndNil(fGPUShapes[ShapeIndex]);
    finally
-    fFreeShapeIndices.Push(ShapeIndex);
+    try
+     fShapeIndexHashMap.Delete(aShape);
+    finally
+     fFreeShapeIndices.Push(ShapeIndex);
+    end;
    end;
   end;
  end;
