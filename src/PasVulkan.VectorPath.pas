@@ -6109,6 +6109,8 @@ begin
 
  inherited Create;
 
+ fDevice:=aDevice;
+
  fGPUShapes:=nil;
 
  fShapeIndexHashMap:=TpvVectorPathIndexHashMap.Create(-1);
