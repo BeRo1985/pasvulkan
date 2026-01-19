@@ -691,7 +691,17 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
       float h = mix(mix(A.x, B.x, t), mix(B.x, C.x, t), t);  
       winding += ((t >= 0.0) && (t <= 1.0) && (h <= pos.x)) ? 
                   (((mix(B.y, C.y, t) - mix(A.y, B.y, t)) < 0.0) ? -1 : 1) : 
-                  0;
+                   0;
+    } else {
+      // Otherwise treat as a horizontal line segment
+      float dy = C.y - A.y;
+      if (abs(dy) > 1e-8) {
+        float t = (pos.y - A.y) / dy;
+        float h = mix(A.x, C.x, t);  
+        winding += ((t >= 0.0) && (t <= 1.0) && (h <= pos.x)) ? 
+                    ((dy < 0.0) ? -1 : 1) : 
+                    0;                    
+      }
     }
   } 
 
