@@ -5668,6 +5668,8 @@ begin
 
  fVectorPathShape:=TpvVectorPathShape.Create(fSourceVectorPathShape);
 
+ fVectorPathShape.ConvertCubicCurvesToQuadraticCurves(1.0);
+
  fBoundingBox:=fVectorPathShape.GetBoundingBox;
  fBoundingBox.MinMax[0]:=fBoundingBox.MinMax[0]-TpvVectorPathVector.Create(fBoundingBoxExtent,fBoundingBoxExtent);
  fBoundingBox.MinMax[1]:=fBoundingBox.MinMax[1]+TpvVectorPathVector.Create(fBoundingBoxExtent,fBoundingBoxExtent);
