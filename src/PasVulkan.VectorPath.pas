@@ -5702,10 +5702,10 @@ begin
    tx0:=IndexX/fResolution;
    tx1:=(IndexX+1)/fResolution;
    fGridCells.Add(TGridCell.Create(self,
-                                   TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*tx0)+(fBoundingBox.MinMax[1].x*(1.0-tx0)),
-                                                                                              (fBoundingBox.MinMax[0].y*ty0)+(fBoundingBox.MinMax[1].y*(1.0-ty0))),
-                                                                   TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*tx1)+(fBoundingBox.MinMax[1].x*(1.0-tx1)),
-                                                                                              (fBoundingBox.MinMax[0].y*ty1)+(fBoundingBox.MinMax[1].y*(1.0-ty1))))));
+                                   TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*(1.0-tx0))+(fBoundingBox.MinMax[1].x*tx0),
+                                                                                              (fBoundingBox.MinMax[0].y*(1.0-ty0))+(fBoundingBox.MinMax[1].y*ty0))),
+                                                                   TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*(1.0-tx1))+(fBoundingBox.MinMax[1].x*tx1),
+                                                                                              (fBoundingBox.MinMax[0].y*(1.0-ty1))+(fBoundingBox.MinMax[1].y*ty1))));
   end;
  end;
 
