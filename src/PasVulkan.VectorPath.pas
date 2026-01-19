@@ -6377,6 +6377,8 @@ begin
     FillChar(fGPUShapes[OldCount],(length(fGPUShapes)-OldCount)*SizeOf(TpvVectorPathGPUShape),#0);
    end;
    result:=TpvVectorPathGPUShape.Create(aShape,aShape.fResolution,aShape.fBoundingBoxExtent);
+   result.fShapeIndex:=ShapeIndex;
+   fShapeIndexHashMap.Add(aShape,ShapeIndex);
    fGPUShapes[ShapeIndex]:=result;
    UpdateGPUShape(result);
    result.fGeneration:=TPasMPInterlocked.Increment(fGeneration);
