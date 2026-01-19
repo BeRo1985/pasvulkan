@@ -5507,7 +5507,7 @@ begin
    try
 
     for SegmentIndex:=0 to IntersectionSegments.Count-1 do begin
-     Segment:=fSegments[SegmentIndex];
+     Segment:=IntersectionSegments[SegmentIndex];
      Segment.GetIntersectionPointsWithSegment(DummyGridCellLeftSplitSegmentLine,IntersectionPoints);
      for OtherSegmentIndex:=SegmentIndex+1 to IntersectionSegments.Count-1 do begin
       Segment.GetIntersectionPointsWithSegment(IntersectionSegments[OtherSegmentIndex],IntersectionPoints);
