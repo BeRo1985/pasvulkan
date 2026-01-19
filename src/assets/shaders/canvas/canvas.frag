@@ -813,7 +813,7 @@ float sampleVectorPathShape(const vec3 shapeCoord){
             vec2 p0 = uintBitsToFloat(vectorPathGPUSegment.typeWindingPoint0.zw);
             vec2 p1 = vectorPathGPUSegment.point1Point2.xy;
             if((shapeCoord.y >= min(p0.y, p1.y)) && (shapeCoord.y < max(p0.y, p1.y))){
-              winding += int(vectorPathGPUSegment.typeWindingPoint0.y);              
+              winding += int(vectorPathGPUSegment.typeWindingPoint0.y); // <= GLSL: int(uint) preserves bit pattern             
             }
             break;
           }
