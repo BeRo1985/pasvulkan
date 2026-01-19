@@ -644,6 +644,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fIndirectSegmentBufferRange:TpvBufferRangeAllocator.TBufferRange;
        fGridCellBufferRange:TpvBufferRangeAllocator.TBufferRange;
        fShapeIndex:TpvInt32;
+       procedure ClearAndInvalidateBufferRanges; 
        procedure UpdateBufferPool;
       public
        constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
@@ -760,6 +761,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function GetOrCreateShape(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
        procedure RemoveShape(const aShape:TpvVectorPathShape);
        procedure UpdateShape(const aShape:TpvVectorPathShape);
+
+       procedure Defragment;
 
       published
 
@@ -5663,6 +5666,15 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvVectorPathGPUShape.ClearAndInvalidateBufferRanges;
+begin
+ if assigned(fBufferPool) then begin
+  fBufferPool.fSegmentsAllocator.ReleaseBufferRangeAndNil(fSegmentBufferRange);
+  fBufferPool.fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(fIndirectSegmentBufferRange);
+  fBufferPool.fGridCellsAllocator.ReleaseBufferRangeAndNil(fGridCellBufferRange);
+ end;
+end;
+
 procedure TpvVectorPathGPUShape.UpdateBufferPool;
 var OldCount,NewCount,Index:TpvSizeInt;
     Segment:TpvVectorPathSegment;
@@ -6442,6 +6454,29 @@ begin
    GPUShape.fGeneration:=TPasMPInterlocked.Increment(fGeneration);
   end;
  end;
+end;
+
+procedure TpvVectorPathGPUBufferPool.Defragment;
+var Index:TpvSizeInt;
+    GPUShape:TpvVectorPathGPUShape;
+    Generation:TPasMPUInt64;
+begin
+ 
+ // Increment generation to force buffer updates
+ Generation:=TPasMPInterlocked.Increment(fGeneration);
+
+ // Pass 1: Clear and invalidate all buffer ranges
+ for Index:=0 to length(fGPUShapes)-1 do begin
+  fGPUShapes[Index].ClearAndInvalidateBufferRanges;
+ end;
+
+ // Pass 2: Reallocate all buffer ranges by re-updating each shape
+ for Index:=0 to length(fGPUShapes)-1 do begin
+  GPUShape:=fGPUShapes[Index];
+  GPUShape.UpdateBufferPool;
+  GPUShape.fGeneration:=Generation; // Set generation to the current generation
+ end; 
+ 
 end;
 
 end.
