@@ -649,7 +649,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       private
        procedure ClearAndInvalidateBufferRanges; 
        procedure UpdateBufferPool;
-       function ComputeWindingAtPosition(const aSegments:TpvVectorPathSegments;const aX,aY:TpvDouble):TpvInt32;
+       class function ComputeWindingAtPosition(const aSegments:TpvVectorPathSegments;const aX,aY:TpvDouble):TpvInt32; static;
       public
        constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
@@ -5564,7 +5564,7 @@ begin
      if not SameValue(CurrentY,LastY) then begin
       SegmentMetaWindingSettingLine:=TpvVectorPathSegmentMetaWindingSettingLine.Create(TpvVectorPathVector.Create(-Infinity,LastY),
                                                                                        TpvVectorPathVector.Create(-Infinity,CurrentY),
-                                                                                       fVectorPathGPUShape.ComputeWindingAtPosition(IntersectionSegments,fBoundingBox.MinMax[0].x+EPSILON,LastY+((CurrentY-LastY)*0.5)));
+                                                                                       TpvVectorPathGPUShape.ComputeWindingAtPosition(IntersectionSegments,fBoundingBox.MinMax[0].x+EPSILON,LastY+((CurrentY-LastY)*0.5)));
       try
        fSegments.Add(SegmentMetaWindingSettingLine);
       finally
@@ -5856,7 +5856,7 @@ begin
 
 end;
 
-function TpvVectorPathGPUShape.ComputeWindingAtPosition(const aSegments:TpvVectorPathSegments;const aX,aY:TpvDouble):TpvInt32;
+class function TpvVectorPathGPUShape.ComputeWindingAtPosition(const aSegments:TpvVectorPathSegments;const aX,aY:TpvDouble):TpvInt32;
 const Epsilon=1e-8;
 var SegmentIndex,RootIndex:TpvSizeInt;
     Segment:TpvVectorPathSegment;
