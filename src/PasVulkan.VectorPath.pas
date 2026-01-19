@@ -5668,7 +5668,9 @@ begin
 
  fVectorPathShape:=TpvVectorPathShape.Create(fSourceVectorPathShape);
 
- fVectorPathShape.ConvertCubicCurvesToQuadraticCurves(1.0);
+ // Convert cubic Bezier curves to quadratic Bezier curves with a maximum error of 1.0 units
+ // so that the GPU shader can handle them more easily just using quadratic curves
+ fVectorPathShape.ConvertCubicCurvesToQuadraticCurves(1.0); 
 
  fBoundingBox:=fVectorPathShape.GetBoundingBox;
  fBoundingBox.MinMax[0]:=fBoundingBox.MinMax[0]-TpvVectorPathVector.Create(fBoundingBoxExtent,fBoundingBoxExtent);
