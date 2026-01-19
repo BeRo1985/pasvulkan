@@ -5942,7 +5942,7 @@ begin
                                          false);
      DescriptorSetDirty:=true;
      SegmentsMinIndex:=0;
-     SegmentsMaxIndex:=length(fBufferPool.fSegments);
+     SegmentsMaxIndex:=length(fBufferPool.fSegments)-1;
     end;
     fSegmentsBuffer.UploadData(fBufferPool.fTransferQueue,
                                fBufferPool.fTransferCommandBuffer,
@@ -5987,7 +5987,7 @@ begin
                                          false);
      DescriptorSetDirty:=true;
      IndirectSegmentsMinIndex:=0;
-     IndirectSegmentsMaxIndex:=length(fBufferPool.fIndirectSegments);
+     IndirectSegmentsMaxIndex:=length(fBufferPool.fIndirectSegments)-1;
     end;
     fIndirectSegmentsBuffer.UploadData(fBufferPool.fTransferQueue,
                                        fBufferPool.fTransferCommandBuffer,
@@ -6032,7 +6032,7 @@ begin
                                          false);
      DescriptorSetDirty:=true;
      GridCellsMinIndex:=0;
-     GridCellsMaxIndex:=length(fBufferPool.fGridCells);
+     GridCellsMaxIndex:=length(fBufferPool.fGridCells)-1;
     end;
     fGridCellsBuffer.UploadData(fBufferPool.fTransferQueue,
                                 fBufferPool.fTransferCommandBuffer,
@@ -6077,7 +6077,7 @@ begin
                                          false);
      DescriptorSetDirty:=true;
      ShapesMinIndex:=0;
-     ShapesMaxIndex:=length(fBufferPool.fShapes);
+     ShapesMaxIndex:=length(fBufferPool.fShapes)-1;
     end;
     fShapesBuffer.UploadData(fBufferPool.fTransferQueue,
                              fBufferPool.fTransferCommandBuffer,
