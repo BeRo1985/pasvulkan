@@ -636,7 +636,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fSegments:TpvVectorPathSegments;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
        fGridCells:TGridCells;
-       fGeneration:TPasMPUInt64;
+       fGeneration:TPasMPUInt64; // gets the lastest generation from the buffer pool when created or updated, since simple self-increment is not sufficient, when a new TpvVectorPathGPUShape gets the same pointer as a previously removed shape
        fSegmentBufferRange:TpvBufferRangeAllocator.TBufferRange;
        fIndirectSegmentBufferRange:TpvBufferRangeAllocator.TBufferRange;
        fGridCellBufferRange:TpvBufferRangeAllocator.TBufferRange;
