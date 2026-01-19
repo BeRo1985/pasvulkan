@@ -633,6 +633,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
             TGridCells=TpvObjectGenericList<TGridCell>;
       private
        fBufferPool:TpvVectorPathGPUBufferPool;
+       fSourceVectorPathShape:TpvVectorPathShape;
        fVectorPathShape:TpvVectorPathShape;
        fBoundingBox:TpvVectorPathBoundingBox;
        fResolution:TpvInt32;
@@ -651,7 +652,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       public
        constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
-       procedure Update(const aVectorPathShape:TpvVectorPathShape);
+       procedure Update;
      end;
 
      TpvVectorPathGPUShapes=array of TpvVectorPathGPUShape;
@@ -5613,9 +5614,11 @@ begin
  fSegments:=nil;
  fVectorPathShape:=nil;       
 
+ fSourceVectorPathShape:=aVectorPathShape;
+
  fBoundingBoxExtent:=aBoundingBoxExtent;
 
- Update(aVectorPathShape);
+ Update;
 
 end;
 
@@ -5637,7 +5640,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvVectorPathGPUShape.Update(const aVectorPathShape:TpvVectorPathShape);
+procedure TpvVectorPathGPUShape.Update;
 var Contour:TpvVectorPathContour;
     Segment,NewSegment:TpvVectorPathSegment;
     IndexX,IndexY:TpvSizeInt;
@@ -5655,7 +5658,7 @@ begin
  FreeAndNil(fSegments);
  FreeAndNil(fVectorPathShape);
 
- fVectorPathShape:=TpvVectorPathShape.Create(aVectorPathShape);
+ fVectorPathShape:=TpvVectorPathShape.Create(fSourceVectorPathShape);
 
  fBoundingBox:=fVectorPathShape.GetBoundingBox;
  fBoundingBox.MinMax[0]:=fBoundingBox.MinMax[0]-TpvVectorPathVector.Create(fBoundingBoxExtent,fBoundingBoxExtent);
