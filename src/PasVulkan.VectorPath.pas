@@ -5992,6 +5992,23 @@ begin
 
      end;
 
+    end else if abs(QuadB)>EPSILON then begin
+
+     // Linear in y: single root t = (aY - P0.y) / QuadB
+     ParamT:=(aY-P0.y)/QuadB;
+     if (ParamT>=0.0) and (ParamT<=1.0) then begin
+      ParamX:=(P0.x*sqr(1.0-ParamT))+
+              (P1.x*2.0*(1.0-ParamT)*ParamT)+
+              (P2.x*sqr(ParamT));
+      if ParamX<=aX then begin
+       if QuadB<0.0 then begin
+        dec(result);
+       end else begin
+        inc(result);
+       end;
+      end;
+     end; 
+
     end else begin
 
      // Degenerate quadratic -> treat as line P0..P2
