@@ -649,6 +649,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       private
        procedure ClearAndInvalidateBufferRanges; 
        procedure UpdateBufferPool;
+       function ComputeWindingAtPosition(const aX,aY:TpvDouble):TpvInt32;
       public
        constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
@@ -5565,7 +5566,9 @@ begin
      CurrentY:=fExtendedBoundingBox.MinMax[1].y;
     end;
     if not SameValue(CurrentY,LastY) then begin
-     SegmentMetaWindingSettingLine:=TpvVectorPathSegmentMetaWindingSettingLine.Create(TpvVectorPathVector.Create(-Infinity,LastY),TpvVectorPathVector.Create(-Infinity,CurrentY),0);
+     SegmentMetaWindingSettingLine:=TpvVectorPathSegmentMetaWindingSettingLine.Create(TpvVectorPathVector.Create(-Infinity,LastY),
+                                                                                      TpvVectorPathVector.Create(-Infinity,CurrentY),
+                                                                                      fVectorPathGPUShape.ComputeWindingAtPosition(fBoundingBox.MinMax[0].x+EPSILON,LastY+((CurrentY-LastY)*0.5)));
      try
       fSegments.Add(SegmentMetaWindingSettingLine);
      finally
@@ -5848,6 +5851,150 @@ begin
   ShapeData^.StartGridCellIndex:=fGridCellBufferRange.Offset;
   ShapeData^.GridSizeX:=fResolution;
   ShapeData^.GridSizeY:=fResolution;
+
+ end;
+
+end;
+
+function TpvVectorPathGPUShape.ComputeWindingAtPosition(const aX,aY:TpvDouble):TpvInt32;
+const Epsilon=1e-8;
+var SegmentIndex,RootIndex:TpvSizeInt;
+    Segment:TpvVectorPathSegment;
+    P0,P1,P2,P3:TpvVectorPathVector;
+    LineDY,ParamT,ParamX:TpvDouble;
+    QuadA,QuadB,QuadDisc:TpvDouble;
+    ParamT0,ParamT1,ParamX0,ParamX1,QuadDY0,QuadDY1:TpvDouble;
+    CubicCoef0,CubicCoef1,CubicCoef2,CubicCoef3:TpvVectorPathVector;
+    CubicDY:TpvDouble;
+    Roots:TpvDoubleDynamicArray;
+begin
+
+ result:=0;
+
+ for SegmentIndex:=0 to fSegments.Count-1 do begin
+
+  Segment:=fSegments[SegmentIndex];
+  case Segment.Type_ of
+
+   TpvVectorPathSegmentType.Line:begin
+
+    P0:=TpvVectorPathSegmentLine(Segment).Points[0];
+    P1:=TpvVectorPathSegmentLine(Segment).Points[1];
+
+    LineDY:=P1.y-P0.y;
+    if abs(LineDY)>Epsilon then begin
+
+     ParamT:=(aY-P0.y)/LineDY;
+     if (ParamT>=0.0) and (ParamT<=1.0) then begin
+
+      ParamX:=P0.x+((P1.x-P0.x)*ParamT);
+      if ParamX<=aLeftX then begin
+
+       if P1.y<P0.y then begin
+        dec(result);
+       end else begin
+        inc(result);
+       end;
+
+      end;
+
+     end;
+
+    end;
+
+   end;
+
+   TpvVectorPathSegmentType.QuadraticCurve:begin
+
+    P0:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[0];
+    P1:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[1];
+    P2:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[2];
+
+    QuadA:=(P0.y-(2.0*P1.y))+P2.y;
+    QuadB:=(-2.0*P0.y)+(2.0*P1.y);
+    QuadDisc:=(QuadB*QuadB)-(4.0*QuadA*(P0.y-aY));
+
+    if abs(QuadA)>Epsilon then begin
+
+     if QuadDisc>0.0 then begin
+      QuadDisc:=sqrt(QuadDisc);
+      ParamT0:=(-QuadB-QuadDisc)/(2.0*QuadA);
+      ParamT1:=(-QuadB+QuadDisc)/(2.0*QuadA);
+
+      if (ParamT0>=0.0) and (ParamT0<=1.0) then begin
+       ParamX0:=(P0.x*((1.0-ParamT0)*(1.0-ParamT0)))+
+               (P1.x*2.0*(1.0-ParamT0)*ParamT0)+
+               (P2.x*(ParamT0*ParamT0));
+       if ParamX0<=aLeftX then begin
+        QuadDY0:=((P1.y*(1.0-ParamT0))+(P2.y*ParamT0))-
+                 ((P0.y*(1.0-ParamT0))+(P1.y*ParamT0));
+        if QuadDY0<0.0 then begin
+         dec(result);
+        end else begin
+         inc(result);
+        end;
+       end;
+      end;
+
+      if (ParamT1>=0.0) and (ParamT1<=1.0) then begin
+       ParamX1:=(P0.x*((1.0-ParamT1)*(1.0-ParamT1)))+
+               (P1.x*2.0*(1.0-ParamT1)*ParamT1)+
+               (P2.x*(ParamT1*ParamT1));
+       if ParamX1<=aLeftX then begin
+        QuadDY1:=((P1.y*(1.0-ParamT1))+(P2.y*ParamT1))-
+                 ((P0.y*(1.0-ParamT1))+(P1.y*ParamT1));
+        if QuadDY1<0.0 then begin
+         dec(result);
+        end else begin
+         inc(result);
+        end;
+       end;
+      end;
+
+     end;
+
+    end;
+
+   end;
+
+   TpvVectorPathSegmentType.CubicCurve:begin
+
+    P0:=TpvVectorPathSegmentCubicCurve(Segment).Points[0];
+    P1:=TpvVectorPathSegmentCubicCurve(Segment).Points[1];
+    P2:=TpvVectorPathSegmentCubicCurve(Segment).Points[2];
+    P3:=TpvVectorPathSegmentCubicCurve(Segment).Points[3];
+
+    CubicCoef0:=P0;
+    CubicCoef1:=(P0*(-3.0))+(P1*3.0);
+    CubicCoef2:=(P0*3.0)+((P1*(-6.0))+(P2*3.0));
+    CubicCoef3:=(P0*(-1.0))+((P1*3.0)+((P2*(-3.0))+P3));
+
+    Roots:=TpvPolynomial.Create([CubicCoef3.y,CubicCoef2.y,CubicCoef1.y,CubicCoef0.y-aY]).GetRoots;
+    try
+     for RootIndex:=0 to length(Roots)-1 do begin
+      ParamT:=Roots[RootIndex];
+      if (ParamT>=0.0) and (ParamT<=1.0) then begin
+       ParamX:=(((CubicCoef3.x*ParamT)+CubicCoef2.x)*ParamT+CubicCoef1.x)*ParamT+CubicCoef0.x;
+       if ParamX<=aLeftX then begin
+        CubicDY:=(3.0*CubicCoef3.y*ParamT*ParamT)+(2.0*CubicCoef2.y*ParamT)+CubicCoef1.y;
+        if CubicDY<0.0 then begin
+         dec(result);
+        end else begin
+         inc(result);
+        end;
+       end;
+      end;
+     end;
+    finally
+     Roots:=nil;
+    end;
+
+   end;
+
+   else begin
+   end;
+
+  end;
 
  end;
 
