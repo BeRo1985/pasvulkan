@@ -605,6 +605,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathGPUShapeDataArray=array of TpvVectorPathGPUShapeData;
 
+     TpvVectorPathGPUBufferPool=class;
+
      { TpvVectorPathGPUShape }
 
      TpvVectorPathGPUShape=class
@@ -630,6 +632,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
             end;
             TGridCells=TpvObjectGenericList<TGridCell>;
       private
+       fBufferPool:TpvVectorPathGPUBufferPool;
        fVectorPathShape:TpvVectorPathShape;
        fBoundingBox:TpvVectorPathBoundingBox;
        fResolution:TpvInt32;
@@ -642,7 +645,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fGridCellBufferRange:TpvBufferRangeAllocator.TBufferRange;
        fShapeIndex:TpvInt32;
       public
-       constructor Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
+       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
      end;
 
@@ -5578,7 +5581,7 @@ end;
 
 { TpvVectorPathGPUShape }
 
-constructor TpvVectorPathGPUShape.Create(const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble);
+constructor TpvVectorPathGPUShape.Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble);
 var Contour:TpvVectorPathContour;
     Segment,NewSegment:TpvVectorPathSegment;
     IndexX,IndexY:TpvSizeInt;
@@ -5586,6 +5589,8 @@ var Contour:TpvVectorPathContour;
 begin
 
  inherited Create;
+
+ fBufferPool:=aBufferPool;
 
  fVectorPathShape:=TpvVectorPathShape.Create(aVectorPathShape);
 
@@ -5643,10 +5648,19 @@ end;
 
 destructor TpvVectorPathGPUShape.Destroy;
 begin
+
+ if assigned(fBufferPool) then begin
+  fBufferPool.fSegmentsAllocator.ReleaseBufferRangeAndNil(fSegmentBufferRange);
+  fBufferPool.fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(fIndirectSegmentBufferRange);
+  fBufferPool.fGridCellsAllocator.ReleaseBufferRangeAndNil(fGridCellBufferRange);
+  fBufferPool:=nil;
+ end;
+
  FreeAndNil(fGridCells);
  FreeAndNil(fSegmentDynamicAABBTree);
  FreeAndNil(fSegments);
  FreeAndNil(fVectorPathShape);
+
  inherited Destroy;
 end;
 
@@ -6398,18 +6412,12 @@ begin
   GPUShape:=fGPUShapes[ShapeIndex];
   if assigned(GPUShape) then begin
    try
-    fSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fSegmentBufferRange);
-    fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(GPUShape.fIndirectSegmentBufferRange);
-    fGridCellsAllocator.ReleaseBufferRangeAndNil(GPUShape.fGridCellBufferRange);
+    FreeAndNil(fGPUShapes[ShapeIndex]);
    finally
     try
-     FreeAndNil(fGPUShapes[ShapeIndex]);
+     fShapeIndexHashMap.Delete(aShape);
     finally
-     try
-      fShapeIndexHashMap.Delete(aShape);
-     finally
-      fFreeShapeIndices.Push(ShapeIndex);
-     end;
+     fFreeShapeIndices.Push(ShapeIndex);
     end;
    end;
   end;
