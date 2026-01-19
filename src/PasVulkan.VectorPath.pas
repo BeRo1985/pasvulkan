@@ -644,11 +644,14 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fIndirectSegmentBufferRange:TpvBufferRangeAllocator.TBufferRange;
        fGridCellBufferRange:TpvBufferRangeAllocator.TBufferRange;
        fShapeIndex:TpvInt32;
+       fBoundingBoxExtent:TpvDouble;
+      private
        procedure ClearAndInvalidateBufferRanges; 
        procedure UpdateBufferPool;
       public
        constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
+       procedure Update(const aVectorPathShape:TpvVectorPathShape);
      end;
 
      TpvVectorPathGPUShapes=array of TpvVectorPathGPUShape;
@@ -5590,23 +5593,73 @@ end;
 { TpvVectorPathGPUShape }
 
 constructor TpvVectorPathGPUShape.Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble);
-var Contour:TpvVectorPathContour;
-    Segment,NewSegment:TpvVectorPathSegment;
-    IndexX,IndexY:TpvSizeInt;
-    tx0,tx1,ty0,ty1:TpvDouble;
 begin
 
  inherited Create;
 
  fBufferPool:=aBufferPool;
 
+ fResolution:=aResolution;
+
+ fGeneration:=1;
+
+ fSegmentBufferRange.Clear;
+ fIndirectSegmentBufferRange.Clear;
+ fGridCellBufferRange.Clear;
+ fShapeIndex:=-1; 
+
+ fGridCells:=nil;
+ fSegmentDynamicAABBTree:=nil;
+ fSegments:=nil;
+ fVectorPathShape:=nil;       
+
+ fBoundingBoxExtent:=aBoundingBoxExtent;
+
+ Update(aVectorPathShape);
+
+end;
+
+destructor TpvVectorPathGPUShape.Destroy;
+begin
+
+ if assigned(fBufferPool) then begin
+  fBufferPool.fSegmentsAllocator.ReleaseBufferRangeAndNil(fSegmentBufferRange);
+  fBufferPool.fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(fIndirectSegmentBufferRange);
+  fBufferPool.fGridCellsAllocator.ReleaseBufferRangeAndNil(fGridCellBufferRange);
+  fBufferPool:=nil;
+ end;
+
+ FreeAndNil(fGridCells);
+ FreeAndNil(fSegmentDynamicAABBTree);
+ FreeAndNil(fSegments);
+ FreeAndNil(fVectorPathShape);
+
+ inherited Destroy;
+end;
+
+procedure TpvVectorPathGPUShape.Update(const aVectorPathShape:TpvVectorPathShape);
+var Contour:TpvVectorPathContour;
+    Segment,NewSegment:TpvVectorPathSegment;
+    IndexX,IndexY:TpvSizeInt;
+    tx0,tx1,ty0,ty1:TpvDouble;
+begin
+
+ if assigned(fBufferPool) then begin
+  fBufferPool.fSegmentsAllocator.ReleaseBufferRangeAndNil(fSegmentBufferRange);
+  fBufferPool.fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(fIndirectSegmentBufferRange);
+  fBufferPool.fGridCellsAllocator.ReleaseBufferRangeAndNil(fGridCellBufferRange);
+ end;
+
+ FreeAndNil(fGridCells);
+ FreeAndNil(fSegmentDynamicAABBTree);
+ FreeAndNil(fSegments);
+ FreeAndNil(fVectorPathShape);
+
  fVectorPathShape:=TpvVectorPathShape.Create(aVectorPathShape);
 
  fBoundingBox:=fVectorPathShape.GetBoundingBox;
- fBoundingBox.MinMax[0]:=fBoundingBox.MinMax[0]-TpvVectorPathVector.Create(aBoundingBoxExtent,aBoundingBoxExtent);
- fBoundingBox.MinMax[1]:=fBoundingBox.MinMax[1]+TpvVectorPathVector.Create(aBoundingBoxExtent,aBoundingBoxExtent);
-
- fResolution:=aResolution;
+ fBoundingBox.MinMax[0]:=fBoundingBox.MinMax[0]-TpvVectorPathVector.Create(fBoundingBoxExtent,fBoundingBoxExtent);
+ fBoundingBox.MinMax[1]:=fBoundingBox.MinMax[1]+TpvVectorPathVector.Create(fBoundingBoxExtent,fBoundingBoxExtent);
 
  fSegments:=TpvVectorPathSegments.Create;
  fSegments.OwnsObjects:=true;
@@ -5645,31 +5698,6 @@ begin
   end;
  end;
 
- fGeneration:=1;
-
- fSegmentBufferRange.Clear;
- fIndirectSegmentBufferRange.Clear;
- fGridCellBufferRange.Clear;
- fShapeIndex:=-1;       
-
-end;
-
-destructor TpvVectorPathGPUShape.Destroy;
-begin
-
- if assigned(fBufferPool) then begin
-  fBufferPool.fSegmentsAllocator.ReleaseBufferRangeAndNil(fSegmentBufferRange);
-  fBufferPool.fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(fIndirectSegmentBufferRange);
-  fBufferPool.fGridCellsAllocator.ReleaseBufferRangeAndNil(fGridCellBufferRange);
-  fBufferPool:=nil;
- end;
-
- FreeAndNil(fGridCells);
- FreeAndNil(fSegmentDynamicAABBTree);
- FreeAndNil(fSegments);
- FreeAndNil(fVectorPathShape);
-
- inherited Destroy;
 end;
 
 procedure TpvVectorPathGPUShape.ClearAndInvalidateBufferRanges;
