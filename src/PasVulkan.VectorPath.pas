@@ -6397,11 +6397,14 @@ begin
     FillChar(fGPUShapes[OldCount],(length(fGPUShapes)-OldCount)*SizeOf(TpvVectorPathGPUShape),#0);
    end;
    result:=TpvVectorPathGPUShape.Create(self,aShape,aShape.fResolution,aShape.fBoundingBoxExtent);
-   result.fShapeIndex:=ShapeIndex;
-   result.fGeneration:=TPasMPInterlocked.Increment(fGeneration);
-   result.UpdateBufferPool;
-   fShapeIndexHashMap.Add(aShape,ShapeIndex);
-   fGPUShapes[ShapeIndex]:=result;
+   try
+    result.fShapeIndex:=ShapeIndex;
+    result.UpdateBufferPool;
+    result.fGeneration:=TPasMPInterlocked.Increment(fGeneration);
+    fShapeIndexHashMap.Add(aShape,ShapeIndex);
+   finally
+    fGPUShapes[ShapeIndex]:=result;
+   end;
   end else begin
    result:=nil;
   end;
@@ -6435,8 +6438,8 @@ begin
  if fShapeIndexHashMap.TryGet(aShape,ShapeIndex) and (ShapeIndex>=0) and (ShapeIndex<length(fGPUShapes)) then begin
   GPUShape:=fGPUShapes[ShapeIndex];
   if assigned(GPUShape) then begin
-   GPUShape.fGeneration:=TPasMPInterlocked.Increment(fGeneration);
    GPUShape.UpdateBufferPool;
+   GPUShape.fGeneration:=TPasMPInterlocked.Increment(fGeneration);
   end;
  end;
 end;
