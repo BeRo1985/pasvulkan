@@ -783,7 +783,7 @@ float sampleVectorPathShape(const vec3 shapeCoord){
   float signedDistance = 1e+32; 
   VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[int(shapeCoord.z + 0.5)];
   uvec2 gridCellDims = uvec2(vectorPathGPUShape.flagsStartGridCellIndexGridSize.zw);
-  uvec2 gridCellIndices = uvec2(ivec2(floor(vec2(((shapeCoord.xy - vectorPathGPUShape.minMax.xy) * vec2(ivec2(gridCellDims))) / vectorPathGPUShape.minMax.zw))));
+  uvec2 gridCellIndices = uvec2(ivec2(floor(vec2(((shapeCoord.xy - vectorPathGPUShape.minMax.xy) * vec2(ivec2(gridCellDims))) / (vectorPathGPUShape.minMax.zw - vectorPathGPUShape.minMax.xy)))));
   if(all(greaterThanEqual(gridCellIndices, uvec2(0))) && all(lessThan(gridCellIndices, uvec2(gridCellDims)))){
     VectorPathGPUGridCell vectorPathGPUGridCell = vectorPathGPUGridCells[vectorPathGPUShape.flagsStartGridCellIndexGridSize.y + ((gridCellIndices.y * gridCellDims.x) + gridCellIndices.x)];
     uint countIndirectSegments = vectorPathGPUGridCell.y;

@@ -6008,7 +6008,7 @@ begin
    end;
 
    TpvVectorPathSegmentType.CubicCurve:begin
-   
+
     // Cubic Bézier curve: solve cubic equation for y intersections using polynomial root finding
 
     P0:=TpvVectorPathSegmentCubicCurve(Segment).Points[0];
@@ -6700,6 +6700,7 @@ begin
  if fShapeIndexHashMap.TryGet(aShape,ShapeIndex) and (ShapeIndex>=0) and (ShapeIndex<length(fGPUShapes)) then begin
   GPUShape:=fGPUShapes[ShapeIndex];
   if assigned(GPUShape) then begin
+   GPUShape.Update;
    GPUShape.UpdateBufferPool;
    GPUShape.fGeneration:=TPasMPInterlocked.Increment(fGeneration);
   end;
