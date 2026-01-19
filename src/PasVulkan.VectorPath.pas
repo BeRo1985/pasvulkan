@@ -6392,7 +6392,7 @@ begin
     SetLength(fGPUShapes,(ShapeIndex+1)*2);
     FillChar(fGPUShapes[OldCount],(length(fGPUShapes)-OldCount)*SizeOf(TpvVectorPathGPUShape),#0);
    end;
-   result:=TpvVectorPathGPUShape.Create(aShape,aShape.fResolution,aShape.fBoundingBoxExtent);
+   result:=TpvVectorPathGPUShape.Create(self,aShape,aShape.fResolution,aShape.fBoundingBoxExtent);
    result.fShapeIndex:=ShapeIndex;
    fShapeIndexHashMap.Add(aShape,ShapeIndex);
    fGPUShapes[ShapeIndex]:=result;
