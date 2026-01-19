@@ -5565,7 +5565,7 @@ begin
      CurrentY:=fExtendedBoundingBox.MinMax[1].y;
     end;
     if not SameValue(CurrentY,LastY) then begin
-     SegmentMetaWindingSettingLine:=TpvVectorPathSegmentMetaWindingSettingLine.Create(TpvVectorPathVector.Create(-Infinity,LastY),TpvVectorPathVector.Create(-Infinity,CurrentY));
+     SegmentMetaWindingSettingLine:=TpvVectorPathSegmentMetaWindingSettingLine.Create(TpvVectorPathVector.Create(-Infinity,LastY),TpvVectorPathVector.Create(-Infinity,CurrentY),0);
      try
       fSegments.Add(SegmentMetaWindingSettingLine);
      finally
