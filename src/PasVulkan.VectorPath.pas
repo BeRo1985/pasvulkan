@@ -5860,6 +5860,11 @@ begin
 end;
 
 class function TpvVectorPathGPUShape.ComputeWindingAtPosition(const aSegments:TpvVectorPathSegments;const aX,aY:TpvDouble):TpvInt32;
+// Computes the winding number at position (aX, aY) using ray casting algorithm.
+// Cast a horizontal ray from (aX, aY) to the left (-infinity) and count intersections:
+// - Increment winding for upward-crossing segments (dy > 0)
+// - Decrement winding for downward-crossing segments (dy < 0)
+// The winding number indicates how many times the path winds around the point.
 const EPSILON=1e-8;
 var SegmentIndex,RootIndex:TpvSizeInt;
     Segment:TpvVectorPathSegment;
@@ -5881,22 +5886,27 @@ begin
 
    TpvVectorPathSegmentType.Line:begin
 
+    // Linear segment: check if horizontal ray at aY intersects the line segment
+
     P0:=TpvVectorPathSegmentLine(Segment).Points[0];
     P1:=TpvVectorPathSegmentLine(Segment).Points[1];
 
     LineDY:=P1.y-P0.y;
     if abs(LineDY)>EPSILON then begin
 
+     // Line is not horizontal, compute intersection parameter t
      ParamT:=(aY-P0.y)/LineDY;
      if (ParamT>=0.0) and (ParamT<=1.0) then begin
 
+      // Intersection is within line segment bounds
       ParamX:=P0.x+((P1.x-P0.x)*ParamT);
       if ParamX<=aX then begin
 
+       // Intersection is to the left of test point
        if P1.y<P0.y then begin
-        dec(result);
+        dec(result); // Downward crossing
        end else begin
-        inc(result);
+        inc(result); // Upward crossing
        end;
 
       end;
@@ -5909,10 +5919,13 @@ begin
 
    TpvVectorPathSegmentType.QuadraticCurve:begin
 
+    // Quadratic Bézier curve: solve quadratic equation for y intersections
+
     P0:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[0];
     P1:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[1];
     P2:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[2];
 
+    // Quadratic equation: At² + Bt + C = 0, where curve(t).y = aY
     QuadA:=(P0.y-(2.0*P1.y))+P2.y;
     QuadB:=(-2.0*P0.y)+(2.0*P1.y);
     QuadDisc:=(QuadB*QuadB)-(4.0*QuadA*(P0.y-aY));
@@ -5920,38 +5933,54 @@ begin
     if abs(QuadA)>EPSILON then begin
 
      if QuadDisc>0.0 then begin
+
+      // Two real roots exist
       QuadDisc:=sqrt(QuadDisc);
       ParamT0:=(-QuadB-QuadDisc)/(2.0*QuadA);
       ParamT1:=(-QuadB+QuadDisc)/(2.0*QuadA);
 
+      // Check first root
       if (ParamT0>=0.0) and (ParamT0<=1.0) then begin
+
+       // Evaluate curve x-coordinate at this y-intersection
        ParamX0:=(P0.x*((1.0-ParamT0)*(1.0-ParamT0)))+
                 (P1.x*2.0*(1.0-ParamT0)*ParamT0)+
                 (P2.x*(ParamT0*ParamT0));
        if ParamX0<=aX then begin
+
+        // Intersection is to the left, compute derivative to determine direction
         QuadDY0:=((P1.y*(1.0-ParamT0))+(P2.y*ParamT0))-
                  ((P0.y*(1.0-ParamT0))+(P1.y*ParamT0));
         if QuadDY0<0.0 then begin
-         dec(result);
+         dec(result); // Downward crossing
         end else begin
-         inc(result);
+         inc(result); // Upward crossing
         end;
+
        end;
+
       end;
 
+      // Check second root
       if (ParamT1>=0.0) and (ParamT1<=1.0) then begin
+
+       // Evaluate curve x-coordinate at this y-intersection
        ParamX1:=(P0.x*((1.0-ParamT1)*(1.0-ParamT1)))+
-               (P1.x*2.0*(1.0-ParamT1)*ParamT1)+
-               (P2.x*(ParamT1*ParamT1));
+                (P1.x*2.0*(1.0-ParamT1)*ParamT1)+
+                (P2.x*(ParamT1*ParamT1));
        if ParamX1<=aX then begin
+
+        // Intersection is to the left, compute derivative to determine direction
         QuadDY1:=((P1.y*(1.0-ParamT1))+(P2.y*ParamT1))-
                  ((P0.y*(1.0-ParamT1))+(P1.y*ParamT1));
         if QuadDY1<0.0 then begin
-         dec(result);
+         dec(result); // Downward crossing
         end else begin
-         inc(result);
+         inc(result); // Upward crossing
         end;
+
        end;
+
       end;
 
      end;
@@ -5979,33 +6008,47 @@ begin
    end;
 
    TpvVectorPathSegmentType.CubicCurve:begin
+   
+    // Cubic Bézier curve: solve cubic equation for y intersections using polynomial root finding
 
     P0:=TpvVectorPathSegmentCubicCurve(Segment).Points[0];
     P1:=TpvVectorPathSegmentCubicCurve(Segment).Points[1];
     P2:=TpvVectorPathSegmentCubicCurve(Segment).Points[2];
     P3:=TpvVectorPathSegmentCubicCurve(Segment).Points[3];
 
+    // Convert to polynomial form: cubic(t) = c0 + c1*t + c2*t² + c3*t³
     CubicCoef0:=P0;
     CubicCoef1:=(P0*(-3.0))+(P1*3.0);
     CubicCoef2:=(P0*3.0)+((P1*(-6.0))+(P2*3.0));
     CubicCoef3:=(P0*(-1.0))+((P1*3.0)+((P2*(-3.0))+P3));
 
+    // Find all real roots where curve.y = aY
     Roots:=TpvPolynomial.Create([CubicCoef3.y,CubicCoef2.y,CubicCoef1.y,CubicCoef0.y-aY]).GetRoots;
     try
+
      for RootIndex:=0 to length(Roots)-1 do begin
+
       ParamT:=Roots[RootIndex];
       if (ParamT>=0.0) and (ParamT<=1.0) then begin
+
+       // Root is within curve bounds, evaluate x-coordinate
        ParamX:=(((CubicCoef3.x*ParamT)+CubicCoef2.x)*ParamT+CubicCoef1.x)*ParamT+CubicCoef0.x;
        if ParamX<=aX then begin
+
+        // Intersection is to the left, compute derivative (dy/dt) to determine direction
         CubicDY:=(3.0*CubicCoef3.y*ParamT*ParamT)+(2.0*CubicCoef2.y*ParamT)+CubicCoef1.y;
         if CubicDY<0.0 then begin
-         dec(result);
+         dec(result); // Downward crossing
         end else begin
-         inc(result);
+         inc(result); // Upward crossing
         end;
+
        end;
+
       end;
+
      end;
+
     finally
      Roots:=nil;
     end;
