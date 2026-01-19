@@ -6479,6 +6479,11 @@ begin
  
  if aForce or (CalculateFragmentationFactor>fFragmentationFactorThreshold) then begin
 
+  // The TpvBufferRangeAllocator own defragmentation isn't used here because
+  // we need to update all shapes to use new buffer ranges in a single operation
+  // instead of just moving data around in the buffers. So, it is simpler to
+  // just clear all buffer ranges and reallocate them by updating each shape.
+
   // Increment generation to force buffer updates
   Generation:=TPasMPInterlocked.Increment(fGeneration);
 
