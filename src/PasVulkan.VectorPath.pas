@@ -5455,6 +5455,7 @@ begin
 end;
 
 constructor TpvVectorPathGPUShape.TGridCell.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aBoundingBox:TpvVectorPathBoundingBox);
+const EPSILON=1e-8;
 type TYCoordinateHashMap=TpvHashMap<TpvDouble,Boolean>;
 var Segment:TpvVectorPathSegment;
     IntersectionSegments:TpvVectorPathSegments;
@@ -5564,7 +5565,9 @@ begin
      if not SameValue(CurrentY,LastY) then begin
       SegmentMetaWindingSettingLine:=TpvVectorPathSegmentMetaWindingSettingLine.Create(TpvVectorPathVector.Create(-Infinity,LastY),
                                                                                        TpvVectorPathVector.Create(-Infinity,CurrentY),
-                                                                                       TpvVectorPathGPUShape.ComputeWindingAtPosition(IntersectionSegments,fBoundingBox.MinMax[0].x+EPSILON,LastY+((CurrentY-LastY)*0.5)));
+                                                                                       TpvVectorPathGPUShape.ComputeWindingAtPosition(IntersectionSegments,
+                                                                                                                                      fBoundingBox.MinMax[0].x+EPSILON,
+                                                                                                                                      LastY+((CurrentY-LastY)*0.5)));
       try
        fSegments.Add(SegmentMetaWindingSettingLine);
       finally
@@ -5857,7 +5860,7 @@ begin
 end;
 
 class function TpvVectorPathGPUShape.ComputeWindingAtPosition(const aSegments:TpvVectorPathSegments;const aX,aY:TpvDouble):TpvInt32;
-const Epsilon=1e-8;
+const EPSILON=1e-8;
 var SegmentIndex,RootIndex:TpvSizeInt;
     Segment:TpvVectorPathSegment;
     P0,P1,P2,P3:TpvVectorPathVector;
@@ -5882,7 +5885,7 @@ begin
     P1:=TpvVectorPathSegmentLine(Segment).Points[1];
 
     LineDY:=P1.y-P0.y;
-    if abs(LineDY)>Epsilon then begin
+    if abs(LineDY)>EPSILON then begin
 
      ParamT:=(aY-P0.y)/LineDY;
      if (ParamT>=0.0) and (ParamT<=1.0) then begin
@@ -5914,7 +5917,7 @@ begin
     QuadB:=(-2.0*P0.y)+(2.0*P1.y);
     QuadDisc:=(QuadB*QuadB)-(4.0*QuadA*(P0.y-aY));
 
-    if abs(QuadA)>Epsilon then begin
+    if abs(QuadA)>EPSILON then begin
 
      if QuadDisc>0.0 then begin
       QuadDisc:=sqrt(QuadDisc);
