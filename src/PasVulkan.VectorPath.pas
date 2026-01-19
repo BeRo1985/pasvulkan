@@ -6489,14 +6489,19 @@ begin
 
   // Pass 1: Clear and invalidate all buffer ranges
   for Index:=0 to length(fGPUShapes)-1 do begin
-   fGPUShapes[Index].ClearAndInvalidateBufferRanges;
+   GPUShape:=fGPUShapes[Index];
+   if assigned(GPUShape) then begin
+    GPUShape.ClearAndInvalidateBufferRanges;
+   end; 
   end;
 
   // Pass 2: Reallocate all buffer ranges by re-updating each shape
   for Index:=0 to length(fGPUShapes)-1 do begin
    GPUShape:=fGPUShapes[Index];
-   GPUShape.UpdateBufferPool;
-   GPUShape.fGeneration:=Generation; // Set generation to the current generation
+   if assigned(GPUShape) then begin
+    GPUShape.UpdateBufferPool;
+    GPUShape.fGeneration:=Generation; // Set generation to the current generation
+   end; 
   end; 
 
  end; 
