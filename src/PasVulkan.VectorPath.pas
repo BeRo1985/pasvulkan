@@ -5749,6 +5749,7 @@ begin
    end;
    for Index:=0 to fSegments.Count-1 do begin
     Segment:=fSegments[Index];
+    Segment.fIndex:=Index; // Ensure the segment index is correct
     SegmentData:=@fBufferPool.fSegments[fSegmentBufferRange.Offset+Index];
     case Segment.Type_ of
      TpvVectorPathSegmentType.Line:begin
