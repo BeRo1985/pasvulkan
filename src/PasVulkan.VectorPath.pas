@@ -649,7 +649,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       private
        procedure ClearAndInvalidateBufferRanges; 
        procedure UpdateBufferPool;
-       function ComputeWindingAtPosition(const aX,aY:TpvDouble):TpvInt32;
+       function ComputeWindingAtPosition(const aSegments:TpvVectorPathSegments;const aX,aY:TpvDouble):TpvInt32;
       public
        constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
@@ -5528,58 +5528,58 @@ begin
     end;
    end;
 
-  finally
-   FreeAndNil(IntersectionSegments);
-  end;
-
-  YCoordinates.Initialize;
-  try
-
-   YCoordinateHashMap:=TYCoordinateHashMap.Create(false);
+   YCoordinates.Initialize;
    try
-    for Vector in IntersectionPoints do begin
-     //if (Vector.x-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].x+TpvVectorPathBoundingBox.EPSILON) then begin
-     if Vector.x<fExtendedBoundingBox.MinMax[0].x then begin
-      CurrentY:=Vector.y;
-      if not YCoordinateHashMap.ExistKey(CurrentY) then begin
-       YCoordinateHashMap.Add(CurrentY,true);
-       YCoordinates.Add(CurrentY);
+
+    YCoordinateHashMap:=TYCoordinateHashMap.Create(false);
+    try
+     for Vector in IntersectionPoints do begin
+      //if (Vector.x-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].x+TpvVectorPathBoundingBox.EPSILON) then begin
+      if Vector.x<fExtendedBoundingBox.MinMax[0].x then begin
+       CurrentY:=Vector.y;
+       if not YCoordinateHashMap.ExistKey(CurrentY) then begin
+        YCoordinateHashMap.Add(CurrentY,true);
+        YCoordinates.Add(CurrentY);
+       end;
       end;
      end;
+    finally
+     FreeAndNil(YCoordinateHashMap);
     end;
+
+    if YCoordinates.Count>=2 then begin
+     TpvTypedSort<TpvDouble>.IntroSort(@YCoordinates.Items[0],0,YCoordinates.Count-1,TpvVectorPathGPUShape_TGridCell_YCoordinatesSortFunc);
+    end;
+
+    LastY:=fExtendedBoundingBox.MinMax[0].y;
+    for YCoordinateIndex:=0 to YCoordinates.Count do begin
+     if YCoordinateIndex<YCoordinates.Count then begin
+      CurrentY:=YCoordinates.Items[YCoordinateIndex];
+      if (CurrentY<fExtendedBoundingBox.MinMax[0].y) or (CurrentY>fExtendedBoundingBox.MinMax[1].y) then begin
+       continue;
+      end;
+     end else begin
+      CurrentY:=fExtendedBoundingBox.MinMax[1].y;
+     end;
+     if not SameValue(CurrentY,LastY) then begin
+      SegmentMetaWindingSettingLine:=TpvVectorPathSegmentMetaWindingSettingLine.Create(TpvVectorPathVector.Create(-Infinity,LastY),
+                                                                                       TpvVectorPathVector.Create(-Infinity,CurrentY),
+                                                                                       fVectorPathGPUShape.ComputeWindingAtPosition(IntersectionSegments,fBoundingBox.MinMax[0].x+EPSILON,LastY+((CurrentY-LastY)*0.5)));
+      try
+       fSegments.Add(SegmentMetaWindingSettingLine);
+      finally
+       fVectorPathGPUShape.fSegments.Add(SegmentMetaWindingSettingLine);
+      end;
+     end;
+     LastY:=CurrentY;
+    end;
+
    finally
-    FreeAndNil(YCoordinateHashMap);
-   end;
-
-   if YCoordinates.Count>=2 then begin
-    TpvTypedSort<TpvDouble>.IntroSort(@YCoordinates.Items[0],0,YCoordinates.Count-1,TpvVectorPathGPUShape_TGridCell_YCoordinatesSortFunc);
-   end;
-
-   LastY:=fExtendedBoundingBox.MinMax[0].y;
-   for YCoordinateIndex:=0 to YCoordinates.Count do begin
-    if YCoordinateIndex<YCoordinates.Count then begin
-     CurrentY:=YCoordinates.Items[YCoordinateIndex];
-     if (CurrentY<fExtendedBoundingBox.MinMax[0].y) or (CurrentY>fExtendedBoundingBox.MinMax[1].y) then begin
-      continue;
-     end;
-    end else begin
-     CurrentY:=fExtendedBoundingBox.MinMax[1].y;
-    end;
-    if not SameValue(CurrentY,LastY) then begin
-     SegmentMetaWindingSettingLine:=TpvVectorPathSegmentMetaWindingSettingLine.Create(TpvVectorPathVector.Create(-Infinity,LastY),
-                                                                                      TpvVectorPathVector.Create(-Infinity,CurrentY),
-                                                                                      fVectorPathGPUShape.ComputeWindingAtPosition(fBoundingBox.MinMax[0].x+EPSILON,LastY+((CurrentY-LastY)*0.5)));
-     try
-      fSegments.Add(SegmentMetaWindingSettingLine);
-     finally
-      fVectorPathGPUShape.fSegments.Add(SegmentMetaWindingSettingLine);
-     end;
-    end;
-    LastY:=CurrentY;
+    YCoordinates.Finalize;
    end;
 
   finally
-   YCoordinates.Finalize;
+   FreeAndNil(IntersectionSegments);
   end;
 
  finally
@@ -5856,7 +5856,7 @@ begin
 
 end;
 
-function TpvVectorPathGPUShape.ComputeWindingAtPosition(const aX,aY:TpvDouble):TpvInt32;
+function TpvVectorPathGPUShape.ComputeWindingAtPosition(const aSegments:TpvVectorPathSegments;const aX,aY:TpvDouble):TpvInt32;
 const Epsilon=1e-8;
 var SegmentIndex,RootIndex:TpvSizeInt;
     Segment:TpvVectorPathSegment;
@@ -5871,9 +5871,9 @@ begin
 
  result:=0;
 
- for SegmentIndex:=0 to fSegments.Count-1 do begin
+ for SegmentIndex:=0 to aSegments.Count-1 do begin
 
-  Segment:=fSegments[SegmentIndex];
+  Segment:=aSegments[SegmentIndex];
   case Segment.Type_ of
 
    TpvVectorPathSegmentType.Line:begin
@@ -5888,7 +5888,7 @@ begin
      if (ParamT>=0.0) and (ParamT<=1.0) then begin
 
       ParamX:=P0.x+((P1.x-P0.x)*ParamT);
-      if ParamX<=aLeftX then begin
+      if ParamX<=aX then begin
 
        if P1.y<P0.y then begin
         dec(result);
@@ -5925,7 +5925,7 @@ begin
        ParamX0:=(P0.x*((1.0-ParamT0)*(1.0-ParamT0)))+
                (P1.x*2.0*(1.0-ParamT0)*ParamT0)+
                (P2.x*(ParamT0*ParamT0));
-       if ParamX0<=aLeftX then begin
+       if ParamX0<=aX then begin
         QuadDY0:=((P1.y*(1.0-ParamT0))+(P2.y*ParamT0))-
                  ((P0.y*(1.0-ParamT0))+(P1.y*ParamT0));
         if QuadDY0<0.0 then begin
@@ -5940,7 +5940,7 @@ begin
        ParamX1:=(P0.x*((1.0-ParamT1)*(1.0-ParamT1)))+
                (P1.x*2.0*(1.0-ParamT1)*ParamT1)+
                (P2.x*(ParamT1*ParamT1));
-       if ParamX1<=aLeftX then begin
+       if ParamX1<=aX then begin
         QuadDY1:=((P1.y*(1.0-ParamT1))+(P2.y*ParamT1))-
                  ((P0.y*(1.0-ParamT1))+(P1.y*ParamT1));
         if QuadDY1<0.0 then begin
@@ -5975,7 +5975,7 @@ begin
       ParamT:=Roots[RootIndex];
       if (ParamT>=0.0) and (ParamT<=1.0) then begin
        ParamX:=(((CubicCoef3.x*ParamT)+CubicCoef2.x)*ParamT+CubicCoef1.x)*ParamT+CubicCoef0.x;
-       if ParamX<=aLeftX then begin
+       if ParamX<=aX then begin
         CubicDY:=(3.0*CubicCoef3.y*ParamT*ParamT)+(2.0*CubicCoef2.y*ParamT)+CubicCoef1.y;
         if CubicDY<0.0 then begin
          dec(result);
