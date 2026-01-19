@@ -850,7 +850,7 @@ float sampleVectorPathShape(const vec3 shapeCoord){
     }       
   }
   float d = fwidth(signedDistance);
-  return linearstep(-d, d, signedDistance);
+  return linearstep(d, 0.0, signedDistance);
 }
 #endif
 
