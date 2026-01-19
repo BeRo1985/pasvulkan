@@ -747,10 +747,14 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fTransferCommandBuffer:TpvVulkanCommandBuffer;
        fTransferFence:TpvVulkanFence;
 
+       fFragmentationFactorThreshold:TpvDouble;
+
        function GetActiveState:TpvVectorPathGPUBufferPool.TState;
 
        function GetDescriptorSet:TpvVulkanDescriptorSet;
 
+       function CalculateFragmentationFactor:TpvDouble;
+       
       public
 
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
@@ -762,13 +766,15 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure RemoveShape(const aShape:TpvVectorPathShape);
        procedure UpdateShape(const aShape:TpvVectorPathShape);
 
-       procedure Defragment;
+       procedure Defragment(const aForce:boolean=false);
 
       published
 
        property DescriptorSet:TpvVulkanDescriptorSet read GetDescriptorSet;
        
        property DescriptorSetLayout:TpvVulkanDescriptorSetLayout read fDescriptorSetLayout;
+
+       property FragmentationFactorThreshold:TpvDouble read fFragmentationFactorThreshold write fFragmentationFactorThreshold;
 
      end;  
 
@@ -6333,6 +6339,8 @@ begin
 
  fTransferFence:=TpvVulkanFence.Create(fDevice);
 
+ fFragmentationFactorThreshold:=0.75; 
+
 end;
 
 destructor TpvVectorPathGPUBufferPool.Destroy;
@@ -6456,27 +6464,38 @@ begin
  end;
 end;
 
-procedure TpvVectorPathGPUBufferPool.Defragment;
+function TpvVectorPathGPUBufferPool.CalculateFragmentationFactor:TpvDouble;
+begin
+ result:=Max(fSegmentsAllocator.CalculateFragmentationFactor,
+             Max(fIndirectSegmentsAllocator.CalculateFragmentationFactor,
+                 fGridCellsAllocator.CalculateFragmentationFactor)); 
+end;
+
+procedure TpvVectorPathGPUBufferPool.Defragment(const aForce:boolean);
 var Index:TpvSizeInt;
     GPUShape:TpvVectorPathGPUShape;
     Generation:TPasMPUInt64;
 begin
  
- // Increment generation to force buffer updates
- Generation:=TPasMPInterlocked.Increment(fGeneration);
+ if aForce or (CalculateFragmentationFactor>fFragmentationFactorThreshold) then begin
 
- // Pass 1: Clear and invalidate all buffer ranges
- for Index:=0 to length(fGPUShapes)-1 do begin
-  fGPUShapes[Index].ClearAndInvalidateBufferRanges;
- end;
+  // Increment generation to force buffer updates
+  Generation:=TPasMPInterlocked.Increment(fGeneration);
 
- // Pass 2: Reallocate all buffer ranges by re-updating each shape
- for Index:=0 to length(fGPUShapes)-1 do begin
-  GPUShape:=fGPUShapes[Index];
-  GPUShape.UpdateBufferPool;
-  GPUShape.fGeneration:=Generation; // Set generation to the current generation
+  // Pass 1: Clear and invalidate all buffer ranges
+  for Index:=0 to length(fGPUShapes)-1 do begin
+   fGPUShapes[Index].ClearAndInvalidateBufferRanges;
+  end;
+
+  // Pass 2: Reallocate all buffer ranges by re-updating each shape
+  for Index:=0 to length(fGPUShapes)-1 do begin
+   GPUShape:=fGPUShapes[Index];
+   GPUShape.UpdateBufferPool;
+   GPUShape.fGeneration:=Generation; // Set generation to the current generation
+  end; 
+
  end; 
- 
+
 end;
 
 end.
