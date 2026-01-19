@@ -5491,13 +5491,15 @@ begin
 
    for Segment in fVectorPathGPUShape.fSegments do begin
     BoundingBox:=Segment.GetBoundingBox;
-    if fExtendedBoundingBox.Intersect(BoundingBox) then begin
-     fSegments.Add(Segment);
-    end;
-    if ((BoundingBox.MinMax[0].x-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[0].x+TpvVectorPathBoundingBox.EPSILON)) and
-       ((BoundingBox.MinMax[0].y-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].y+TpvVectorPathBoundingBox.EPSILON)) and
-       ((fExtendedBoundingBox.MinMax[0].y-TpvVectorPathBoundingBox.EPSILON)<=(BoundingBox.MinMax[1].y+TpvVectorPathBoundingBox.EPSILON)) then begin
-     IntersectionSegments.Add(Segment);
+    if Segment.Type_<>TpvVectorPathSegmentType.MetaWindingSettingLine then begin
+     if fExtendedBoundingBox.Intersect(BoundingBox) then begin
+      fSegments.Add(Segment);
+     end;
+     if ((BoundingBox.MinMax[0].x-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[0].x+TpvVectorPathBoundingBox.EPSILON)) and
+        ((BoundingBox.MinMax[0].y-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].y+TpvVectorPathBoundingBox.EPSILON)) and
+        ((fExtendedBoundingBox.MinMax[0].y-TpvVectorPathBoundingBox.EPSILON)<=(BoundingBox.MinMax[1].y+TpvVectorPathBoundingBox.EPSILON)) then begin
+      IntersectionSegments.Add(Segment);
+     end;
     end;
    end;
 
