@@ -5926,8 +5926,8 @@ begin
 
       if (ParamT0>=0.0) and (ParamT0<=1.0) then begin
        ParamX0:=(P0.x*((1.0-ParamT0)*(1.0-ParamT0)))+
-               (P1.x*2.0*(1.0-ParamT0)*ParamT0)+
-               (P2.x*(ParamT0*ParamT0));
+                (P1.x*2.0*(1.0-ParamT0)*ParamT0)+
+                (P2.x*(ParamT0*ParamT0));
        if ParamX0<=aX then begin
         QuadDY0:=((P1.y*(1.0-ParamT0))+(P2.y*ParamT0))-
                  ((P0.y*(1.0-ParamT0))+(P1.y*ParamT0));
@@ -5954,6 +5954,24 @@ begin
        end;
       end;
 
+     end;
+
+    end else begin
+
+     // Degenerate quadratic -> treat as line P0..P2
+     LineDY:=P2.y-P0.y;
+     if abs(LineDY)>EPSILON then begin
+      ParamT:=(aY-P0.y)/LineDY;
+      if (ParamT>=0.0) and (ParamT<=1.0) then begin
+       ParamX:=P0.x+((P2.x-P0.x)*ParamT);
+       if ParamX<=aX then begin
+        if P2.y<P0.y then begin
+         dec(result);
+        end else begin
+         inc(result);
+        end;
+       end;
+      end;
      end;
 
     end;
