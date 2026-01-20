@@ -599,15 +599,19 @@ float multiSampleMSDF(const in TVEC texCoord){
 
 #if FILLTYPE == FILLTYPE_VECTOR_PATH
 
+float cross2(vec2 lhs, vec2 rhs){
+  return (lhs.x * rhs.y) - (lhs.y * rhs.x);
+}
+
 bool lineHorziontalLineIntersect(vec2 p0, vec2 p1, float y0, float y1) {
   if(p0.x == p1.x ){  // Line is vertical
-    return y0 <= max(p0.y, p1.y) && y1 >= min(p0.y, p1.y);   
+    return (y0 <= max(p0.y, p1.y)) && (y1 >= min(p0.y, p1.y));   
   }else if (p0.y == p1.y) {  // line is not vertical and lines are parallel
     return false;
   }else{ // Line is not vertical
     // Calculate intersection point
     float x = (((y1 - y0) * (p1.x - p0.x)) / (p1.y - p0.y)) + p0.x;
-    return (x >= min(p0.x, p1.x)) &&  (x <= max(p0.x, p1.x)) && (y0 <= max(p0.y, p1.y)) && (y1 >= min(p0.y, p1.y));
+    return (x >= min(p0.x, p1.x)) && (x <= max(p0.x, p1.x)) && (y0 <= max(p0.y, p1.y)) && (y1 >= min(p0.y, p1.y));
   }
 }
 
@@ -639,6 +643,9 @@ float getLineDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 B, inout i
   vec2 nearestVector = nearestPoint - pos; 
   return length(nearestVector); 
 
+  // Alternative with sign based on which side of the line the point is located:
+  // return length(nearestVector) * sign(-cross2(nearestVector, lineSegment)); 
+
 }
 
 float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 B, in vec2 C, inout int winding){
@@ -664,65 +671,121 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
   { 
     float a = (A.y - (2.0 * B.y)) + C.y;
     float b = (-2.0 * A.y) + (2.0 * B.y);
-    float d = (b * b) - (4.0 * a * (A.y - pos.y));
-    if (d > 0.0) {
-      vec2 t = (vec2(-b) + (vec2(-1.0, 1.0) * sqrt(d))) / (2.0 * a);
-      vec2 h = mix(mix(A.xx, B.xx, t), mix(B.xx, C.xx, t), t);  
-      winding += (((t.x >= 0.0) && (t.x <= 1.0)) && (h.x <= pos.x)) ?
-                   (((mix(B.y, C.y, t.x) - mix(A.y, B.y, t.x)) < 0.0) ? -1 : 1) : 
+    float c = A.y - pos.y;
+    if (abs(a) > 1e-8) {
+      // Quadratic case 
+      float d = (b * b) - (4.0 * a * c);
+      if (d > 0.0) {
+        vec2 t = (vec2(-b) + (vec2(-1.0, 1.0) * sqrt(d))) / (2.0 * a);
+        vec2 h = mix(mix(A.xx, B.xx, t), mix(B.xx, C.xx, t), t);  
+        winding += (((t.x >= 0.0) && (t.x <= 1.0)) && (h.x <= pos.x)) ?
+                    (((mix(B.y, C.y, t.x) - mix(A.y, B.y, t.x)) < 0.0) ? -1 : 1) : 
+                    0;
+        winding += (((t.y >= 0.0) && (t.y <= 1.0)) && (h.y <= pos.x)) ? 
+                    (((mix(B.y, C.y, t.y) - mix(A.y, B.y, t.y)) < 0.0) ? -1 : 1) : 
+                    0;
+      }          
+    } else if (abs(b) > 1e-8) {
+      // One root case
+      float t = -c / b;
+      float h = mix(mix(A.x, B.x, t), mix(B.x, C.x, t), t);  
+      winding += ((t >= 0.0) && (t <= 1.0) && (h <= pos.x)) ? 
+                  (((mix(B.y, C.y, t) - mix(A.y, B.y, t)) < 0.0) ? -1 : 1) : 
                    0;
-      winding += (((t.y >= 0.0) && (t.y <= 1.0)) && (h.y <= pos.x)) ? 
-                   (((mix(B.y, C.y, t.y) - mix(A.y, B.y, t.y)) < 0.0) ? -1 : 1) : 
-                   0;
-    }          
+    } else {
+      // Otherwise treat as a horizontal line segment
+      float dy = C.y - A.y;
+      if (abs(dy) > 1e-8) {
+        float t = (pos.y - A.y) / dy;
+        float h = mix(A.x, C.x, t);  
+        winding += ((t >= 0.0) && (t <= 1.0) && (h <= pos.x)) ? 
+                    ((dy < 0.0) ? -1 : 1) : 
+                    0;                    
+      }
+    }
   } 
 
   // Distance
   vec2 a = B - A;
-  vec2 b = A - 2.0 * B + C;
+  vec2 b = (A - (2.0 * B)) + C;
   vec2 c = a * 2.0;
   vec2 d = A - pos;
 
-  float kk = 1.0 / dot(b, b);
-  float kx = kk * dot(a, b);
-  float ky = kk * (2.0 * dot(a, a) + dot(d, b)) / 3.0;
-  float kz = kk * dot(d, a);
+  float bb = dot(b, b);
+  if(abs(bb) < 1e-8){ 
+    
+    // Linear case
+    
+    float aa = dot(a, a);
+    if(abs(aa) < 1e-8){
+      
+      // Degenerate case: A, B and C are the same point
+      return length(d);
 
-  float result = 0.0;
-  
-  float p  = ky - kx * kx;
-  float q  = kx * (2.0 * kx * kx - 3.0 * ky) + kz;
-  float p3 = p * p * p;
-  float q2 = q * q;
-  float h  = q2 + 4.0 * p3;
+    }else{
 
-  if(h >= 0.0) { // 1 root
-    h = sqrt(h);
-    vec2 x = (vec2(h, -h) - q) / 2.0;
+      float t = clamp(-dot(a, d) / aa, 0.0, 1.0);
+      vec2 q = d + (c * t);
+      return length(q);
+      
+      // Alternative with sign based on which side of the line the point is located:
+      // return length(q) * sign(cross2(c, q)); 
 
-    // When p≈0 and p<0, h - q has catastrophic cancelation. So, we do
-    // h=√(q² + 4p³)=q·√(1 + 4p³/q²)=q·√(1 + w) instead. Now we approximate
-    // √ by a linear Taylor expansion into h≈q(1 + ½w) so that the q's
-    // cancel each other in h - q. Expanding and simplifying further we
-    // get x=vec2(p³/q, -p³/q - q). And using a second degree Taylor
-    // expansion instead: x=vec2(k, -k - q) with k=(1 - p³/q²)·p³/q
-    if(abs(abs(h/q) - 1.0) < 0.0001) {
-      float k = (1.0 - p3 / q2) * p3 / q;  // quadratic approx
-      x = vec2(k, -k - q);
     }
 
-    vec2 uv = sign(x) * pow(abs(x), vec2(1.0/3.0));
-    float t = clamp(uv.x + uv.y - kx, 0.0, 1.0);
-    return length(d + (c + b * t) * t);
-  } else { // 3 roots
-    float z = sqrt(-p);
-    float v = acos(q / (p * z * 2.0)) / 3.0;
-    float m = cos(v);
-    float n = sin(v) * 1.732050808;
-    vec3 t = clamp(vec3(m + m, -n - m, n - m) * z - kx, 0.0, 1.0);
-    vec2 qx = d + (c + b * t.x) * t.x;
-    vec2 qy = d + (c + b * t.y) * t.y;
-    return sqrt(min(dot(qx, qx), dot(qy, qy)));    
+  }else{
+
+    // Quadratic case
+
+    float kk = 1.0 / bb;
+    float kx = kk * dot(a, b);
+    float ky = kk * (2.0 * dot(a, a) + dot(d, b)) / 3.0;
+    float kz = kk * dot(d, a);
+
+    float result = 0.0;
+    
+    float p  = ky - kx * kx;
+    float q  = kx * (2.0 * kx * kx - 3.0 * ky) + kz;
+    float p3 = p * p * p;
+    float q2 = q * q;
+    float h  = q2 + 4.0 * p3;
+
+    if(h >= 0.0) { // 1 root
+      h = sqrt(h);
+      vec2 x = (vec2(h, -h) - q) / 2.0;
+
+      // When p≈0 and p<0, h - q has catastrophic cancelation. So, we do
+      // h=√(q² + 4p³)=q·√(1 + 4p³/q²)=q·√(1 + w) instead. Now we approximate
+      // √ by a linear Taylor expansion into h≈q(1 + ½w) so that the q's
+      // cancel each other in h - q. Expanding and simplifying further we
+      // get x=vec2(p³/q, -p³/q - q). And using a second degree Taylor
+      // expansion instead: x=vec2(k, -k - q) with k=(1 - p³/q²)·p³/q
+      if(abs(abs(h/q) - 1.0) < 0.0001) {
+        float k = (1.0 - p3 / q2) * p3 / q;  // quadratic approx
+        x = vec2(k, -k - q);
+      }
+
+      vec2 uv = sign(x) * pow(abs(x), vec2(1.0/3.0));
+      float t = clamp(uv.x + uv.y - kx, 0.0, 1.0);
+      vec2 q = d + (c + b * t) * t;
+      return length(q);
+      // Alternative with sign based on which side of the curve the point is located
+      // return length(q) * sign(cross2(c + (2.0 * b * t), q)); 
+    } else { // 3 roots
+      float z = sqrt(-p);
+      float v = acos(q / (p * z * 2.0)) / 3.0;
+      float m = cos(v);
+      float n = sin(v) * 1.732050808;
+      vec3 t = clamp(vec3(m + m, -n - m, n - m) * z - kx, 0.0, 1.0);
+      vec2 qx = d + (c + b * t.x) * t.x;
+      vec2 qy = d + (c + b * t.y) * t.y;
+      return sqrt(min(dot(qx, qx), dot(qy, qy)));    
+      // Alternative with sign based on which side of the curve the point is located
+  /*  float sx = cross2(c + (2.0 * b * t.x), qx);
+      float sy = cross2(c + (2.0 * b * t.y), qy);
+      return (dot(qx, qx) < dot(qy, qy)) ? (length(qx) * sign(sx)) : (length(qy) * sign(sy));*/
+    }
+
   }
 
 } 
@@ -769,14 +832,14 @@ float sampleVectorPathShape(const vec3 shapeCoord){
   float signedDistance = 1e+32; 
   VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[int(shapeCoord.z + 0.5)];
   uvec2 gridCellDims = uvec2(vectorPathGPUShape.flagsStartGridCellIndexGridSize.zw);
-  uvec2 gridCellIndices = uvec2(ivec2(floor(vec2(((shapeCoord.xy - vectorPathGPUShape.minMax.xy) * vec2(ivec2(gridCellDims))) / vectorPathGPUShape.minMax.zw))));
+  uvec2 gridCellIndices = uvec2(ivec2(floor(vec2(((shapeCoord.xy - vectorPathGPUShape.minMax.xy) * vec2(ivec2(gridCellDims))) / (vectorPathGPUShape.minMax.zw - vectorPathGPUShape.minMax.xy)))));
   if(all(greaterThanEqual(gridCellIndices, uvec2(0))) && all(lessThan(gridCellIndices, uvec2(gridCellDims)))){
     VectorPathGPUGridCell vectorPathGPUGridCell = vectorPathGPUGridCells[vectorPathGPUShape.flagsStartGridCellIndexGridSize.y + ((gridCellIndices.y * gridCellDims.x) + gridCellIndices.x)];
     uint countIndirectSegments = vectorPathGPUGridCell.y;
     if(countIndirectSegments > 0u){
       int winding = 0;
-      for(uint indirectSegmentIndex = vectorPathGPUGridCell.x, untilIndirectSegmentIndex = vectorPathGPUGridCell.x + (countIndirectSegments - 1u);
-          indirectSegmentIndex < untilIndirectSegmentIndex; 
+      for(uint indirectSegmentIndex = vectorPathGPUGridCell.x, untilIndirectSegmentIndex = vectorPathGPUGridCell.x + countIndirectSegments;
+          indirectSegmentIndex < untilIndirectSegmentIndex;
           indirectSegmentIndex++){
         VectorPathGPUSegment vectorPathGPUSegment = vectorPathGPUSegments[vectorPathGPUIndirectSegments[indirectSegmentIndex]];
         switch(vectorPathGPUSegment.typeWindingPoint0.x){
@@ -799,7 +862,7 @@ float sampleVectorPathShape(const vec3 shapeCoord){
             vec2 p0 = uintBitsToFloat(vectorPathGPUSegment.typeWindingPoint0.zw);
             vec2 p1 = vectorPathGPUSegment.point1Point2.xy;
             if((shapeCoord.y >= min(p0.y, p1.y)) && (shapeCoord.y < max(p0.y, p1.y))){
-              winding += int(vectorPathGPUSegment.typeWindingPoint0.y);              
+              winding += int(vectorPathGPUSegment.typeWindingPoint0.y); // <= GLSL: int(uint) preserves bit pattern
             }
             break;
           }
@@ -815,9 +878,9 @@ float sampleVectorPathShape(const vec3 shapeCoord){
     }       
   }
   float d = fwidth(signedDistance);
-  return linearstep(-d, d, signedDistance);
+  return linearstep(d, 0.0, signedDistance);
 }
-#endif
+#endif 
 
 void main(void){
   vec4 color;

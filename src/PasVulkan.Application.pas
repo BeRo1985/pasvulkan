@@ -1305,6 +1305,7 @@ type EpvApplication=class(Exception)
        function ExistAsset(const aFileName:TpvUTF8String):boolean;
        function GetAssetStream(const aFileName:TpvUTF8String):TStream;
        function GetAssetSize(const aFileName:TpvUTF8String):TpvUInt64;
+       function GetAssetDateTime(const aFileName:TpvUTF8String):TDateTime;
        function GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDirectory:boolean=false):TFileNameList;
        property BasePath:TpvUTF8String read fBasePath;
      end;
@@ -2726,6 +2727,114 @@ const DPI_AWARENESS_CONTEXT_UNAWARE=TDPI_AWARENESS_CONTEXT(-1);
 //function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
 {$ifend}
 
+function GetDateTimeUTCOffset(const aWhen:TDateTime):TDateTime;
+{$if defined(fpc) and declared(GetLocalTimeOffset)}
+begin
+ result:=GetLocalTimeOffset/1440.0;
+end;
+{$elseif defined(DelphiXE2AndUp) and declared(TTimeZone)}
+begin
+ result:=0.0;
+ result:=result+TTimeZone.Local.GetUtcOffset(aWhen);
+end;
+{$else}
+var SystemTimes:array[0..1] of TSystemTime;
+    DateTimes:array[0..1] of TDateTime;
+begin
+{$if declared(GetUniversalTime)}
+ GetUniversalTime(SystemTimes[0]);
+{$else}
+ GetSystemTime(SystemTimes[0]);
+{$ifend}
+ GetLocalTime(SystemTimes[1]);
+ DateTimes[0]:=SystemTimeToDateTime(SystemTimes[0]);
+ DateTimes[1]:=SystemTimeToDateTime(SystemTimes[1]);
+ result:=MinutesBetween(DateTimes[0],DateTimes[1])/1440.0;
+end;
+{$ifend}
+
+function DateTimeFromLocalTimeToUniversalTime(const aDateTime:TDateTime):TDateTime;
+{$if defined(fpc) and declared(LocalTimeToUniversal)}
+begin
+ result:=LocalTimeToUniversal(aDateTime);
+end;
+{$elseif defined(DelphiXE2AndUp) and declared(TTimeZone)}
+begin
+ result:=TTimeZone.Local.ToUniversalTime(aDateTime);
+end;
+{$else}
+begin
+ result:=aDateTime+GetDateTimeUTCOffset(aDataTime);
+end;
+{$ifend}
+
+function DateTimeFromUniversalTimeToLocalTime(const aDateTime:TDateTime):TDateTime;
+{$if defined(fpc) and declared(LocalTimeToUniversal)}
+begin
+ result:=UniversalTimeToLocal(aDateTime);
+end;
+{$elseif defined(DelphiXE2AndUp) and declared(TTimeZone)}
+begin
+ result:=TTimeZone.Local.ToLocalTime(aDateTime);
+end;
+{$else}
+begin
+ result:=aDateTime-GetDateTimeUTCOffset(aDateTime);
+end;
+{$ifend}
+
+{$if not declared(NowUTC)}
+function NowUTC:TDateTime;
+{$if defined(DelphiXE2AndUp)}
+begin
+ result:=TDateTime.NowUTC;
+end;
+{$else}
+begin
+ result:=DateTimeFromLocalTimeToUniversalTime(Now);
+end;
+{$ifend}
+{$ifend}
+
+{$if not declared(FileAgeUTC)}
+function FileAgeUTC(const FileName:String;out FileDateTimeUTC:TDateTime;FollowLink:Boolean=True):Boolean;
+begin
+{$if defined(DelphiXE2AndUp)}
+ result:=FileExists(FileName);
+ if result then begin
+  FileDateTimeUTC:=TFile.GetLastWriteTimeUtc(FileName);
+ end;
+{$else}
+ result:=FileAge(FileName,FileDateTimeUTC{$ifdef fpc},FollowLink{$endif});
+ if result then begin
+  FileDateTimeUTC:=DateTimeFromLocalTimeToUniversalTime(FileDateTimeUTC);
+ end;
+{$ifend}
+end;
+{$ifend}
+
+function DateTimeFromUnixTime(const aUnixTime:TpvInt64):TDateTime;
+{$if declared(UnixToDateTime)}
+begin
+ result:=UnixToDateTime(aUnixTime);
+end;
+{$else}
+begin
+ result:=(TDateTime(aUnixTime)/86400.0)+25569.0;
+end;
+{$ifend}
+
+function DateTimeToUnixTime(const aDateTime:TDateTime):TpvInt64;
+{$if declared(DateTimeToUnix)}
+begin
+ result:=DateTimeToUnix(aDateTime);
+end;
+{$else}
+begin
+ result:=Trunc((aDateTime-25569.0)*86400.0);
+end;
+{$ifend}
+                                                             
 {$if defined(fpc)}
 function DumpExceptionCallStack(e:Exception;aAddr:Pointer;aFrameCount:Longint;aFrames:PPointer):string;
 var i:int32;
@@ -8049,7 +8158,40 @@ begin
  try
   result:=Stream.Size;
  finally
-  Stream.Free;
+  FreeAndNil(Stream);
+ end;
+end;
+{$endif}
+
+function TpvApplicationAssets.GetAssetDateTime(const aFileName:TpvUTF8String):TDateTime;
+{$ifdef Android}
+var Asset:PAAsset;
+    FileDescriptor:TpvInt32;
+    Stat:TStat;
+begin
+ result:=0;
+ if assigned(AndroidAssetManager) then begin
+  Asset:=AAssetManager_open(AndroidAssetManager,pansichar(TpvApplicationRawByteString(CorrectFileName(aFileName))),AASSET_MODE_UNKNOWN);
+  if assigned(Asset) then begin
+   try
+    FileDescriptor:=AAsset_openFileDescriptor(Asset,nil,nil);
+    if fpFStat(FileDescriptor,Stat)=0 then begin
+     result:=FileDateToDateTime(Stat.st_mtime);
+    end;
+   finally
+     AAsset_close(Asset);
+   end;
+  end else begin
+   raise Exception.Create('Asset "'+aFileName+'" not found');
+  end;
+ end else begin
+  raise Exception.Create('Asset manager is null');
+ end;
+end;
+{$else}
+begin
+ if not FileAgeUTC(String(CorrectFileName(aFileName)),result) then begin
+  result:=0.0;
  end;
 end;
 {$endif}

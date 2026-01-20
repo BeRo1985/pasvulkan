@@ -196,6 +196,33 @@ type PpvScalar=^TpvScalar;
        x,y:TpvInt32;
      end;
 
+     PPpvUInt32Vector2=^PpvUInt32Vector2;
+     PpvUInt32Vector2=^TpvUInt32Vector2;
+     TpvUInt32Vector2=packed record
+      public
+       constructor Create(const aX:TpvUInt32); overload;
+       constructor Create(const aX,aY:TpvUInt32); overload;
+       class function InlineableCreate(const aX:TpvUInt32):TpvUInt32Vector2; overload; inline; static;
+       class function InlineableCreate(const aX,aY:TpvUInt32):TpvUInt32Vector2; overload; inline; static;
+       class operator Implicit(const aScalar:TpvUInt32):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const aScalar:TpvUInt32):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const aLeft,aRight:TpvUInt32Vector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const aLeft,aRight:TpvUInt32Vector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Add(const a,b:TpvUInt32Vector2):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Subtract(const a,b:TpvUInt32Vector2):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const aLeft,aRight:TpvUInt32Vector2):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const aLeft:TpvUInt32Vector2;const aRight:TpvUInt32):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const aLeft:TpvUInt32;const aRight:TpvUInt32Vector2):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const aLeft,aRight:TpvUInt32Vector2):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const aLeft:TpvUInt32Vector2;const aRight:TpvUInt32):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Divide(const aLeft:TpvUInt32;const aRight:TpvUInt32Vector2):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative(const aValue:TpvUInt32Vector2):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Positive(const aValue:TpvUInt32Vector2):TpvUInt32Vector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Length:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+      public
+       x,y:TpvUInt32;
+     end;
+
      PpvVector2=^TpvVector2;
      TpvVector2=record
       public
@@ -2584,7 +2611,7 @@ begin
  end;
 end;
 
-{ TpvIntVector2 }
+{ TpvInt32Vector2 }
 
 constructor TpvInt32Vector2.Create(const aX:TpvInt32);
 begin
@@ -2714,6 +2741,140 @@ begin
 end;
 
 function TpvInt32Vector2.Length:TpvScalar;
+begin
+ result:=sqrt(sqr(x)+sqr(y));
+end;
+
+{ TpvUInt32Vector2 }
+
+constructor TpvUInt32Vector2.Create(const aX:TpvUInt32);
+begin
+ x:=aX;
+ y:=aX;
+end;
+
+constructor TpvUInt32Vector2.Create(const aX,aY:TpvUInt32);
+begin
+ x:=aX;
+ y:=aY;
+end;
+
+class function TpvUInt32Vector2.InlineableCreate(const aX:TpvUInt32):TpvUInt32Vector2;
+begin
+ result.x:=aX;
+ result.y:=aX;
+end;
+
+class function TpvUInt32Vector2.InlineableCreate(const aX,aY:TpvUInt32):TpvUInt32Vector2;
+begin
+ result.x:=aX;
+ result.y:=aY;
+end;
+
+class operator TpvUInt32Vector2.Implicit(const aScalar:TpvUInt32):TpvUInt32Vector2;
+begin
+ result.x:=aScalar;
+ result.y:=aScalar;
+end;
+
+class operator TpvUInt32Vector2.Explicit(const aScalar:TpvUInt32):TpvUInt32Vector2;
+begin
+ result.x:=aScalar;
+ result.y:=aScalar;
+end;
+
+class operator TpvUInt32Vector2.Equal(const aLeft,aRight:TpvUInt32Vector2):boolean;
+begin
+ result:=(aLeft.x=aRight.x) and (aLeft.y=aRight.y);
+end;
+
+class operator TpvUInt32Vector2.NotEqual(const aLeft,aRight:TpvUInt32Vector2):boolean;
+begin
+ result:=(aLeft.x<>aRight.x) or (aLeft.y<>aRight.y);
+end;
+
+class operator TpvUInt32Vector2.Add(const a,b:TpvUInt32Vector2):TpvUInt32Vector2;
+begin
+ result.x:=a.x+b.x;
+ result.y:=a.y+b.y;
+end;
+
+class operator TpvUInt32Vector2.Subtract(const a,b:TpvUInt32Vector2):TpvUInt32Vector2;
+begin
+ result.x:=a.x-b.x;
+ result.y:=a.y-b.y;
+end;
+
+class operator TpvUInt32Vector2.Negative(const aValue:TpvUInt32Vector2):TpvUInt32Vector2;
+begin
+ result.x:=-aValue.x;
+ result.y:=-aValue.y;
+end;
+
+class operator TpvUInt32Vector2.Positive(const aValue:TpvUInt32Vector2):TpvUInt32Vector2;
+begin
+ result.x:=aValue.x;
+ result.y:=aValue.y;
+end;
+
+class operator TpvUInt32Vector2.Multiply(const aLeft,aRight:TpvUInt32Vector2):TpvUInt32Vector2;
+begin
+ result.x:=aLeft.x*aRight.x;
+ result.y:=aLeft.y*aRight.y;
+end;
+
+class operator TpvUInt32Vector2.Multiply(const aLeft:TpvUInt32Vector2;const aRight:TpvUInt32):TpvUInt32Vector2;
+begin
+ result.x:=aLeft.x*aRight;
+ result.y:=aLeft.y*aRight;
+end;
+
+class operator TpvUInt32Vector2.Multiply(const aLeft:TpvUInt32;const aRight:TpvUInt32Vector2):TpvUInt32Vector2;
+begin
+ result.x:=aLeft*aRight.x;
+ result.y:=aLeft*aRight.y;
+end;
+
+class operator TpvUInt32Vector2.Divide(const aLeft,aRight:TpvUInt32Vector2):TpvUInt32Vector2;
+begin
+ if aRight.x<>0 then begin
+  result.x:=aLeft.x div aRight.x;
+ end else begin
+  result.x:=0;
+ end;
+ if aRight.y<>0 then begin
+  result.y:=aLeft.y div aRight.y;
+ end else begin
+  result.y:=0;
+ end;
+end;
+
+class operator TpvUInt32Vector2.Divide(const aLeft:TpvUInt32Vector2;const aRight:TpvUInt32):TpvUInt32Vector2;
+begin
+ if aRight<>0 then begin
+  result.x:=aLeft.x div aRight;
+  result.y:=aLeft.y div aRight;
+ end else begin
+  result.x:=0;
+  result.y:=0;
+ end;
+end;
+
+class operator TpvUInt32Vector2.Divide(const aLeft:TpvUInt32;const aRight:TpvUInt32Vector2):TpvUInt32Vector2;
+begin
+ if aRight.x<>0 then begin
+  result.x:=aLeft div aRight.x;
+ end else begin
+  result.x:=0;
+ end;
+ if aRight.y<>0 then begin
+  result.y:=aLeft div aRight.y;
+ end else begin
+  result.y:=0;
+ end;
+end;
+
+function TpvUInt32Vector2.Length:TpvScalar;
 begin
  result:=sqrt(sqr(x)+sqr(y));
 end;
