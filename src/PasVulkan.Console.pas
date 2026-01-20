@@ -161,6 +161,7 @@ type { TpvConsole }
        fForcedRedraw:Boolean;
        fUploaded:Boolean;
        fOverwrite:Boolean;
+       fIgnoreDuplicateHistoryEntries:Boolean;
        fWindMin:TpvUInt32;
        fWindMax:TpvUInt32;
        fCursor:TCursorInfo;
@@ -249,6 +250,7 @@ type { TpvConsole }
        property ForcedRedraw:Boolean read fForcedRedraw write fForcedRedraw;
        property Uploaded:Boolean read fUploaded write fUploaded;
        property Overwrite:Boolean read fOverwrite write fOverwrite;
+       property IgnoreDuplicateHistoryEntries:Boolean read fIgnoreDuplicateHistoryEntries write fIgnoreDuplicateHistoryEntries;
        property WindMin:TpvUInt32 read fWindMin write fWindMin;
        property WindMax:TpvUInt32 read fWindMax write fWindMax;
        property Lines:TUTF8StringList read fLines;
@@ -286,6 +288,8 @@ begin
  fWrapBottom:=0;
 
  fTabWidth:=2;
+
+ fIgnoreDuplicateHistoryEntries:=false;
 
  SetChrDim(80,25);
  CLRSCR(7);
@@ -922,10 +926,15 @@ var OK:boolean;
 begin
  OK:=length(trim(fLine))>0;
  if OK then begin
-  fHistory.Add(fLine);
-  fHistoryIndex:=fHistory.Count;
-  if length(fHistoryFileName)>0 then begin
-   AppendToHistoryFileName(fHistoryFileName,fLine);
+  if fIgnoreDuplicateHistoryEntries and (fHistory.Count>0) and (fHistory.Items[fHistory.Count-1]=fLine) then begin
+   OK:=false;
+  end;
+  if OK then begin
+   fHistory.Add(fLine);
+   fHistoryIndex:=fHistory.Count;
+   if length(fHistoryFileName)>0 then begin
+    AppendToHistoryFileName(fHistoryFileName,fLine);
+   end; 
   end;
  end;
  WriteLine(#0#15+'>'+fLine);
