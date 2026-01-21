@@ -9,7 +9,7 @@ PasVulkan provides multiple rendering algorithms for vector graphics:
 
 1. **SDF-Based Rendering** (Current, Production) - Using `TpvSignedDistanceField2D` for font rendering and pre-rasterized vector shapes
 2. **CPU-Tessellated Direct Rendering** (Current, Production) - CPU tessellates vector paths into triangles with SDF-based edge anti-aliasing in fragment shader, optimized for opaque shapes where overdraw is minimal
-3. **Coverage-Mask-then-Cover Approach** (Current, Production) - Two-pass transparent shape rendering (three passes including barrier) using a coverage buffer to handle overlapping transparent shapes correctly
+3. **Coverage-Mask-then-Cover Approach** (Current, Production) - Two-pass transparent shape rendering (four passes including barriers) using a coverage buffer to handle overlapping transparent shapes correctly
 4. **Direct Spatial Grid GPU Vector Rendering** (WIP) - Direct GPU-based vector path rasterization using `TpvVectorPathGPUShape`
 
 These algorithms are **complementary** rendering modes, allowing users to choose the best approach for their specific use case.
@@ -245,9 +245,9 @@ end;
 - Coverage buffer: `R32_UINT` format image (set 1, binding 0)
 - Format: `[24-bit stamp | 8-bit coverage]`
 
-**Note on Terminology:** In this context, "pass" refers to a logical stage of the algorithm. The barrier stage is a synchronization point between render passes, not a rendering pass itself. Two-pass rendering (Mask + Cover) with a synchronization barrier in between, so three logical stages total, hence "Three-Pass Algorithm".
+**Note on Terminology:** In this context, "pass" refers to a logical stage of the algorithm. The barrier stages are synchronization points between render passes, not rendering passes themselves. Two-pass rendering (Mask + Cover) with two synchronization barriers (one after mask, one after cover), so four logical stages total, hence "Four-Pass Algorithm".
 
-**Three-Pass Algorithm:**
+**Four-Pass Algorithm:**
 
 **Pass 1 - Mask (Coverage Writing):**
 ```glsl
@@ -259,9 +259,9 @@ imageAtomicMax(uCoverageBuffer, pixelPosition, packed);
 
 where the highest 24 bits are the shape stamp (unique per shape group) and the lowest 8 bits are the coverage value (0-255), and where the highest value wins (atomic max) for the current pixel.
 
-**Pass 2 - Barrier:**
+**Pass 2 - MaskBarrier:**
 
-- Memory barrier to ensure writes are visible to subsequent reads between passes
+- Memory barrier to ensure mask pass writes are visible to cover pass reads
 
 **Pass 3 - Cover (Compositing):**
 ```glsl
@@ -276,13 +276,18 @@ if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
 
 with a quad covering the transparent shape's bounding box (not the entire viewport!), reading the coverage buffer and compositing the color based on coverage. **Note:** No per-pixel clearing is performed—the coverage buffer retains previous shape data until stamp exhaustion forces a full clear. 
 
+**Pass 4 - CoverBarrier:**
+
+- Memory barrier after cover pass to avoid race conditions on overlapped shapes
+- Ensures all cover pass writes to framebuffer are visible before next shape's operations
+
 **Algorithm Repeatability and Stamp Management:**
 
 - **Shape Stamping:** Each transparent shape group receives a unique 24-bit stamp ID, enabling correct order-independent rendering of overlapping transparent shapes, group order still defines compositing order
-- **Three-Pass Cycle:** The algorithm repeats (Mask → Barrier → Cover) for each shape group with incrementing stamp IDs until the 24-bit stamp space (16,777,216 unique IDs) is exhausted, at which point the coverage buffer is cleared and stamps wrap back to zero
+- **Four-Pass Cycle:** The algorithm repeats (Mask → MaskBarrier → Cover → CoverBarrier) for each shape group with incrementing stamp IDs until the 24-bit stamp space (16,777,216 unique IDs) is exhausted, at which point the coverage buffer is cleared and stamps wrap back to zero
 - **Deferred Buffer Clearing:** Coverage buffer is not cleared between shape groups to maximize performance; clearing only occurs on stamp exhaustion
-- **Renderpass Restart Requirement:** Due to Vulkan renderpass barrier limitations, each Mask → Barrier → Cover cycle requires a renderpass restart, which is architecturally necessary but impacts performance on TBDR mobile GPUs
-  - **Subpass Limitation:** Vulkan subpasses with internal dependencies cannot be used here due to the repeatable nature of the algorithm—subpasses are designed for linear sequencing (subpass 0 → 1 → 2), but this algorithm requires a cyclical pattern (Mask → Cover → Mask → Cover...) that necessitates full renderpass restarts
+- **Renderpass Restart Requirement:** Due to Vulkan renderpass barrier limitations, each Mask → MaskBarrier → Cover → CoverBarrier cycle requires renderpass restarts, which is architecturally necessary but impacts performance on TBDR mobile GPUs
+  - **Subpass Limitation:** Vulkan subpasses with internal dependencies cannot be used here due to the repeatable nature of the algorithm—subpasses are designed for linear sequencing (subpass 0 → 1 → 2 → 3), but this algorithm requires a cyclical pattern (Mask → MaskBarrier → Cover → CoverBarrier → Mask → MaskBarrier → Cover → CoverBarrier...) that necessitates full renderpass restarts
   - **TBDR Impact:** Tile-Based Deferred Rendering architectures suffer performance degradation from renderpass interruptions because they must flush on-chip tile memory to main memory when the renderpass is suspended, then reload it on restart—this defeats the core TBDR optimization of keeping tile data on-chip throughout the renderpass
 
 **Advantages:**
@@ -293,13 +298,13 @@ with a quad covering the transparent shape's bounding box (not the entire viewpo
 - Memory efficient compared to alternatives: R32_UINT per pixel (4 bytes) vs MSAA (16-32 bytes/pixel), A-Buffer (variable/large), or Depth Peeling (multiple full buffers)
 
 **Disadvantages:**
-- Three passes per transparent shape group with two rendering passes and one barrier pass per shape
+- Four passes per transparent shape group with two rendering passes and two barrier passes per shape
 - Coverage buffer memory overhead (requires additional R32_UINT image)
 - Atomic operations may have performance cost
 - Requires renderpass suspend/resume (restart) due to barrier limitations inside renderpasses
-   - Mask => Barrier => Cover requires renderpass restart for each transparent shape group
+   - Mask => MaskBarrier => Cover => CoverBarrier requires renderpass restarts for each transparent shape group
    - Subpasses with internal dependencies cannot be used due to the repeatable nature of the algorithm here
-- Problematic for TBDR (Tile-Based Deferred Rendering) mobile GPUs due to renderpass interruption
+- Problematic for TBDR (Tile-Based Deferred Rendering) mobile GPUs due to renderpass interruptions
 
 ### 2.4 Direct Spatial Grid GPU Vector Rendering (WIP)
 
