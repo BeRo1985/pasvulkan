@@ -669,6 +669,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fHeight:TpvInt32;
        fViewPort:TVkViewport;
        fPointerToViewport:PVkViewport;
+       fFrameBufferWidth:TpvInt32;
+       fFrameBufferHeight:TpvInt32;
        fCurrentVulkanBufferIndex:TpvInt32;
        fCurrentVulkanVertexBufferOffset:TpvInt32;
        fCurrentVulkanIndexBufferOffset:TpvInt32;
@@ -761,6 +763,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
        function GetVertexState:TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
        procedure GarbageCollectDescriptors;
+       function GetFrameBufferWidth:TpvInt32;
+       function GetFrameBufferHeight:TpvInt32;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aPipelineCache:TpvVulkanPipelineCache;
@@ -900,6 +904,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property CountBuffers:TpvInt32 read fCountBuffers write SetCountBuffers;
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
+       property FrameBufferWidth:TpvInt32 read fFrameBufferWidth write fFrameBufferWidth;
+       property FrameBufferHeight:TpvInt32 read fFrameBufferHeight write fFrameBufferHeight;
        property BlendingMode:TpvCanvasBlendingMode read GetBlendingMode write SetBlendingMode;
        property ZPosition:TpvFloat read GetZPosition write SetZPosition;
        property LineWidth:TpvFloat read GetLineWidth write SetLineWidth;
@@ -3733,6 +3739,9 @@ begin
 
  fPointerToViewport:=@fViewport;
 
+ fFrameBufferWidth:=0;
+ fFrameBufferHeight:=0;
+
  fVulkanDescriptorSetTextureLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
  fVulkanDescriptorSetTextureLayout.AddBinding(0,
                                               VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -3844,7 +3853,7 @@ begin
 
  // Create initial coverage buffer if feature is supported
  if fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported then begin
-  Resize(fWidth,fHeight);
+  Resize(GetFrameBufferWidth,GetFrameBufferHeight);
  end;
 
 end;
@@ -5049,6 +5058,24 @@ begin
  end;
 end;
 
+function TpvCanvas.GetFrameBufferWidth:TpvInt32;
+begin
+ if fFrameBufferWidth>0 then begin
+  result:=fFrameBufferWidth;
+ end else begin
+  result:=ceil(fViewPort.x+fViewPort.width);
+ end;
+end;
+
+function TpvCanvas.GetFrameBufferHeight:TpvInt32;
+begin
+ if fFrameBufferHeight>0 then begin
+  result:=fFrameBufferHeight;
+ end else begin
+  result:=ceil(fViewPort.y+fViewPort.height);
+ end;
+end;
+
 procedure TpvCanvas.Start(const aBufferIndex:TpvInt32);
 begin
 
@@ -5472,8 +5499,8 @@ begin
  // Ensure coverage buffer matches current dimensions
  if fTransparentShapes and
     fCanvasCommon.fFragmentStoresAndAtomicsSupported and
-    ((fCoverageBufferWidth<>fWidth) or (fCoverageBufferHeight<>fHeight)) then begin
-  Resize(fWidth,fHeight);
+    ((fCoverageBufferWidth<>GetFrameBufferWidth) or (fCoverageBufferHeight<>GetFrameBufferHeight)) then begin
+  Resize(GetFrameBufferWidth,GetFrameBufferHeight);
  end;
 
  if (aBufferIndex>=0) and (aBufferIndex<fCountBuffers) then begin
@@ -5794,11 +5821,11 @@ begin
  // Ensure coverage buffer matches current dimensions
  if fTransparentShapes and
     fCanvasCommon.fFragmentStoresAndAtomicsSupported and
-    ((fCoverageBufferWidth<>fWidth) or (fCoverageBufferHeight<>fHeight)) then begin
+    ((fCoverageBufferWidth<>GetFrameBufferWidth) or (fCoverageBufferHeight<>GetFrameBufferHeight)) then begin
   if assigned(fOnSuspendRenderPass) then begin
    fOnSuspendRenderPass(self);
   end;   
-  Resize(fWidth,fHeight);
+  Resize(GetFrameBufferWidth,GetFrameBufferHeight);
   RenderPassActive:=false;
  end else begin
   RenderPassActive:=true;
