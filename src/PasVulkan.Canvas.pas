@@ -475,8 +475,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        Hook,
        CoverageReset,
        TransparentShapeMask,
-       TransparentShapeCoverageBarrier,
-       TransparentShapeCover
+       TransparentShapeMaskBarrier,
+       TransparentShapeCover,
+       TransparentShapeCoverBarrier
       );
 
      PpvCanvasPushConstants=^TpvCanvasPushConstants;
@@ -5079,7 +5080,7 @@ begin
  GetNextDestinationVertexBuffer;
 
  fCoverageBufferNeedsReset:=true;
- 
+
 //QueueCoverageReset;
 
 end;
@@ -5693,7 +5694,7 @@ begin
     SetLength(fCurrentFillBuffer^.fQueueItems,fCurrentFillBuffer^.fCountQueueItems*2);
    end;
    QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
-   QueueItem^.Kind:=TpvCanvasQueueItemKind.TransparentShapeCoverageBarrier;
+   QueueItem^.Kind:=TpvCanvasQueueItemKind.TransparentShapeMaskBarrier;
    
    // Expand bbox slightly to ensure coverage
    BoundingBoxMinX:=fTransparentShapeBoundingBoxMinX-1.0;
@@ -5722,6 +5723,16 @@ begin
    // Mark next flush as cover pass and flush the cover quad geometry
    fTransparentShapeCoverPass:=true;
    Flush;
+   
+   // Add second barrier after cover pass to avoid race conditions on overlapped shapes
+   QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
+   inc(fCurrentFillBuffer^.fCountQueueItems);
+   if length(fCurrentFillBuffer^.fQueueItems)<fCurrentFillBuffer^.fCountQueueItems then begin
+    SetLength(fCurrentFillBuffer^.fQueueItems,fCurrentFillBuffer^.fCountQueueItems*2);
+   end;
+   QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
+   QueueItem^.Kind:=TpvCanvasQueueItemKind.TransparentShapeCoverBarrier;
+
   end;
  end;
 end;
@@ -6185,9 +6196,9 @@ begin
 
      end;
 
-     TpvCanvasQueueItemKind.TransparentShapeCoverageBarrier:begin
+     TpvCanvasQueueItemKind.TransparentShapeMaskBarrier:begin
 
-      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Transparent Shape Coverage Barrier',[1.0,0.5,0.0,1.0]);
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Transparent Shape Mask Barrier',[1.0,0.5,0.0,1.0]);
 
      // Memory barrier between mask and cover passes
      // Ensures all mask pass writes to coverage buffer are visible to cover pass reads
@@ -6321,6 +6332,55 @@ begin
       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
 
       ForceUpdate:=true; // Force update after cover pass to rebind normal pipeline
+
+      ResetState;
+
+      fDevice.DebugUtils.CmdBufLabelEnd(aVulkanCommandBuffer);
+
+     end;
+
+     TpvCanvasQueueItemKind.TransparentShapeCoverBarrier:begin
+
+      fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Transparent Shape Cover Barrier',[1.0,0.5,0.25,1.0]);
+
+     // Memory barrier after cover pass to avoid race conditions on overlapped shapes
+     // Ensures all cover pass writes to framebuffer are visible before next operations
+      if assigned(fCoverageBufferImage) then begin
+
+       // Suspend render pass if active      
+       if RenderPassActive then begin
+        if assigned(fOnSuspendRenderPass) then begin
+         fOnSuspendRenderPass(self);
+        end;
+        RenderPassActive:=false;
+       end;      
+
+       FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+       ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+       ImageMemoryBarrier.pNext:=nil;
+       ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+       ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+       ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+       ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+       ImageMemoryBarrier.subresourceRange.levelCount:=1;
+       ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+       ImageMemoryBarrier.subresourceRange.layerCount:=1;
+       aVulkanCommandBuffer.CmdPipelineBarrier(
+        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+        0,
+        0,nil,
+        0,nil,
+        1,@ImageMemoryBarrier);
+
+      end;
+
+      ForceUpdate:=true;
 
       ResetState;
 
