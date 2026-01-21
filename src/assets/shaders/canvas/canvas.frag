@@ -1736,7 +1736,7 @@ void main(void){
   if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
     float coverage = float(storedCoverage8) / 255.0;
     // Clear the pixel in coverage buffer after reading (for next shape)
-    imageStore(uCoverageBuffer, pixelPosition, uvec4(0u));
+    // imageStore(uCoverageBuffer, pixelPosition, uvec4(0u)); // Commenting out because of race conditions in overlapping shapes
     // Check if texture is already premultiplied (bit 1 of flags)
     bool isTexturePremultiplied = (pushConstants.data[7].w & (1u << 1)) != 0u;
     if (isTexturePremultiplied) {

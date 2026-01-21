@@ -5078,7 +5078,9 @@ begin
 
  GetNextDestinationVertexBuffer;
 
- QueueCoverageReset;
+ fCoverageBufferNeedsReset:=true;
+ 
+//QueueCoverageReset;
 
 end;
 
