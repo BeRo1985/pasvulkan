@@ -936,6 +936,7 @@ begin
     AppendToHistoryFileName(fHistoryFileName,fLine);
    end; 
   end;
+  OK:=true;
  end;
  WriteLine(#0#15+'>'+fLine);
  if OK and assigned(fOnExecute) then begin
