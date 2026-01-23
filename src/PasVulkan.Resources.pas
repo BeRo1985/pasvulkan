@@ -1717,7 +1717,7 @@ begin
 
  repeat
   MaximumParallelLoadCount:=fResourceManager.fMaximumParallelLoadCount;
-  NewMaximumParallelLoadCount:=Max(MaximumParallelLoadCount,fResourceManager.fMaximumParallelLoadCount);
+  NewMaximumParallelLoadCount:=Max(MaximumParallelLoadCount,ParallelLoadCount);
   if TPasMPInterlocked.CompareExchange(fResourceManager.fMaximumParallelLoadCount,NewMaximumParallelLoadCount,MaximumParallelLoadCount)=MaximumParallelLoadCount then begin
    break;
   end else begin
