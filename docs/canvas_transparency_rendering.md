@@ -29,18 +29,19 @@ The table below compares the core mechanisms of TpvCanvas against other mainstre
 ```mermaid
 flowchart LR
     A[Submit Shape Geometry] --> B[Pass 1: Coverage Mask<br>Atomic Write ShapeID/StampID+Coverage<br>Highest Value Wins]
-    B --> C[EndRenderPass<br>PipelineBarrier<br>Sync Storage Image Writes]
-    C --> D[Pass 2: Coverage Cover<br>Bounding-box Quad per Shape<br>Read ShapeID/StampID & Match<br>Output Color]
-    D --> E[Composite Final Image]
+    B --> C[Pass 2: MaskBarrier<br>EndRenderPass<br>PipelineBarrier<br>Sync Storage Image Writes]
+    C --> D[Pass 3: Coverage Cover<br>Bounding-box Quad per Shape<br>Read ShapeID/StampID & Match<br>Output Color]
+    D --> E[Pass 4: CoverBarrier<br>EndRenderPass<br>PipelineBarrier<br>Sync Framebuffer Writes]
+    E --> F[Composite Final Image]
 
     style B fill:#e3f2fd,stroke:#2196f3,color:#0d47a1
     style D fill:#bbdefb,stroke:#2196f3,color:#0d47a1
 ```
 
--   **Method**: In the first pass, each fragment attempts to write its shape ID / stamp ID and coverage to a storage image using `imageAtomicCompSwap`. The fragment with the highest UINT32 value (24-bit stamp + 8-bit coverage) to write "wins" for that pixel. In the second pass, a bounding-box quad for each shape reads the coverage buffer, retrieves the shape ID / stamp ID, and outputs the corresponding color with antialiased coverage.
+-   **Method**: In the first pass (Mask), each fragment attempts to write its shape ID / stamp ID and coverage to a storage image using `imageAtomicCompSwap`. The fragment with the highest UINT32 value (24-bit stamp + 8-bit coverage) to write "wins" for that pixel. After a memory barrier (MaskBarrier) to sync writes, the third pass (Cover) renders a bounding-box quad for each shape that reads the coverage buffer, retrieves the shape ID / stamp ID, and outputs the corresponding color with antialiased coverage. A final barrier (CoverBarrier) ensures all framebuffer writes complete before the next shape's operations, preventing race conditions on overlapped shapes.
 -   **Core of Atomic Operations**: `imageAtomicCompSwap` ensures **O(1)** time complexity to determine the "owner" of each pixel, avoiding O(N) depth sorting. This fits scenarios where many shapes (dense text, complex paths) might overlap a single pixel.
 -   **Advantage of SDF-AA**: Calculating **Signed Distance Field (SDF)** in the fragment shader and converting it to coverage (0-255) provides **extremely smooth, high-quality edges** without the overhead of MSAA multi-sampling. This is crucial for text rendering.
--   **Inevitability of Pass Interruption**: As noted, `vkCmdPipelineBarrier` is necessary because **Vulkan specs have strict restrictions on read/write synchronization of storage images inside traditional render passes**. Interrupting the pass and inserting a memory barrier is the **standard and safest way** to ensure all fragment shader writes are visible to subsequent reads. The overhead is usually **lower** than the potential performance loss of using `VK_EXT_fragment_shader_interlock` on some hardware, and compatibility is better.
+-   **Inevitability of Pass Interruptions**: As noted, `vkCmdPipelineBarrier` is necessary because **Vulkan specs have strict restrictions on read/write synchronization of storage images inside traditional render passes**. Interrupting the pass and inserting memory barriers is the **standard and safest way** to ensure all fragment shader writes are visible to subsequent reads, and to prevent race conditions on overlapped shapes. The overhead is usually **lower** than the potential performance loss of using `VK_EXT_fragment_shader_interlock` on some hardware, and compatibility is better. Two barriers are now used: one after the Mask pass (MaskBarrier) and one after the Cover pass (CoverBarrier).
 -   **Shape ID / Stamp ID and Reset**: The 24-bit ID (~16.7 million) is sufficient for most scenes. When approaching the limit, **clearing the entire coverage buffer** is necessary. This overhead can be amortized by **batch processing shapes** (i.e., accumulating a large number of shapes until a reset is needed).
 -   **Coverage**: Coverage Image Buffer is a single 32-bit unsigned integer per pixel, leading to a **fixed memory footprint** (e.g., ~4MB for 1080p). This is **extremely memory efficient** compared to A-Buffer or depth peeling methods. The 8-bit coverage from the lower bits of the 32-bit value alongside the 24-bit stamp allows for **256 levels of antialiased coverage**, which is generally sufficient for high-quality rendering.
 -   **Advantage**: **Simplicity, Efficiency, and Quality**. The method is easy to implement, has low computational overhead (single atomic write/read), and provides high-quality antialiased results suitable for UI and text rendering.
@@ -225,7 +226,7 @@ void main() {
   if ((storedStamp == shapeStamp) && (storedCoverage8 > 0u)) {
     float coverage = float(storedCoverage8) / 255.0;
     // Clear the pixel in coverage buffer after reading (for next shape)
-    imageStore(uCoverageBuffer, pixelPosition, uvec4(0u));
+    // imageStore(uCoverageBuffer, pixelPosition, uvec4(0u)); // not active because of potential race conditions
     // Check if texture is already premultiplied (bit 1 of flags)
     bool isTexturePremultiplied = (pushConstants.data[7].w & (1u << 1)) != 0u;
     if (isTexturePremultiplied) {

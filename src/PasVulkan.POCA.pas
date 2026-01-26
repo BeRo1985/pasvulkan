@@ -5903,7 +5903,11 @@ begin
  if POCAGhostGetType(aThis)=@POCASpriteAtlasGhost then begin
   SpriteAtlas:=TpvSpriteAtlas(POCAGhostFastGetPointer(aThis));
   if assigned(SpriteAtlas) then begin
-   SpriteAtlas.Free;
+   if assigned(pvApplication) then begin
+    pvApplication.DelayFreeObjectInstance(SpriteAtlas,MaxInFlightFrames);
+   end else begin
+    SpriteAtlas.Free;
+   end;
    PPOCAGhost(POCAGetValueReferencePointer(aThis))^.Ptr:=nil; // For to avoid double free
   end;
  end;

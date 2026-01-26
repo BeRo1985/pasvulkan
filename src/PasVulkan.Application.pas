@@ -1410,6 +1410,14 @@ type EpvApplication=class(Exception)
        property Invoked:TPasMPBool32 read fInvoked;
      end;
 
+     TpvApplicationDelayedObjectInstanceToFree=record
+      ObjectInstance:TObject;
+      IterationsLeft:TpvSizeInt;
+     end;
+     PpvApplicationDelayedObjectInstanceToFree=^TpvApplicationDelayedObjectInstanceToFree;
+
+     TpvApplicationDelayedObjectInstanceToFreeArray=TpvDynamicArray<TpvApplicationDelayedObjectInstanceToFree>;
+
      { TpvApplication }
 
      TpvApplication=class
@@ -1847,6 +1855,9 @@ type EpvApplication=class(Exception)
        fInUpdateJobFunction:TPasMPBool32;
 
        fUpdateJob:PPasMPJob;
+       
+       fDelayedObjectInstanceToFreeArray:TpvApplicationDelayedObjectInstanceToFreeArray;
+       fDelayedObjectInstanceToFreeArrayLock:TPasMPCriticalSection;
 
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
        fNativeEventQueue:TpvApplicationNativeEventQueue;
@@ -1987,12 +1998,18 @@ type EpvApplication=class(Exception)
 
        procedure DrawBlackScreen(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
+       procedure ClearDelayedObjectsToFree;
+
+       procedure ClearDelayedObjectsToFreeIteration;
+
       public
 
        constructor Create; reintroduce; virtual;
        destructor Destroy; override;
 
        class procedure Log(const aLevel:TpvInt32;const aWhere,aWhat:TpvUTF8String); static;
+
+       procedure DelayFreeObjectInstance(const aObjectInstance:TObject;const aIterationsDelay:TpvInt32);
 
        procedure AddQueues; virtual;
 
@@ -8714,6 +8731,10 @@ begin
 
  fFrameLimiterHighResolutionTimerSleepWithDriftCompensation:=TpvHighResolutionTimerSleepWithDriftCompensation.Create(fHighResolutionTimer);
 
+ fDelayedObjectInstanceToFreeArray.Initialize;
+
+ fDelayedObjectInstanceToFreeArrayLock:=TPasMPCriticalSection.Create;
+
  fAssets:=TpvApplicationAssets.Create(self);
 
  fFiles:=TpvApplicationFiles.Create(self);
@@ -8968,6 +8989,8 @@ end;
 
 destructor TpvApplication.Destroy;
 begin
+  
+ ClearDelayedObjectsToFree;
 
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
  fNativeEventLocalQueue.Finalize;
@@ -8995,6 +9018,9 @@ begin
  FreeAndNil(fFiles);
 
  FreeAndNil(fAssets);
+
+ FreeAndNil(fDelayedObjectInstanceToFreeArrayLock);
+ fDelayedObjectInstanceToFreeArray.Finalize;
 
  FreeAndNil(fFrameLimiterHighResolutionTimerSleepWithDriftCompensation);
 
@@ -9101,6 +9127,55 @@ begin
    end;
   end;
 {$ifend}
+ end;
+end;
+
+procedure TpvApplication.ClearDelayedObjectsToFree;
+var Index:TpvSizeInt;
+begin
+ fDelayedObjectInstanceToFreeArrayLock.Acquire;
+ try
+  for Index:=0 to fDelayedObjectInstanceToFreeArray.Count-1 do begin
+   FreeAndNil(fDelayedObjectInstanceToFreeArray.Items[Index].ObjectInstance);
+  end;
+  fDelayedObjectInstanceToFreeArray.Clear;
+ finally
+  fDelayedObjectInstanceToFreeArrayLock.Release;
+ end;
+end;
+
+procedure TpvApplication.ClearDelayedObjectsToFreeIteration;
+var Index:TpvSizeInt; 
+    Item:PpvApplicationDelayedObjectInstanceToFree;
+begin
+ fDelayedObjectInstanceToFreeArrayLock.Acquire;
+ try
+  Index:=0;
+  while Index<fDelayedObjectInstanceToFreeArray.Count do begin
+   Item:=@fDelayedObjectInstanceToFreeArray.Items[Index];
+   if Item^.IterationsLeft<=0 then begin
+    FreeAndNil(Item^.ObjectInstance);
+    fDelayedObjectInstanceToFreeArray.Delete(Index);
+   end else begin
+    dec(Item^.IterationsLeft);
+    inc(Index);
+   end;
+  end;
+ finally
+  fDelayedObjectInstanceToFreeArrayLock.Release;
+ end;
+end;
+
+procedure TpvApplication.DelayFreeObjectInstance(const aObjectInstance:TObject;const aIterationsDelay:TpvInt32);
+var Item:PpvApplicationDelayedObjectInstanceToFree;
+begin
+ fDelayedObjectInstanceToFreeArrayLock.Acquire;
+ try
+  Item:=pointer(fDelayedObjectInstanceToFreeArray.AddNew);
+  Item^.ObjectInstance:=aObjectInstance;
+  Item^.IterationsLeft:=aIterationsDelay;
+ finally
+  fDelayedObjectInstanceToFreeArrayLock.Release;
  end;
 end;
 
@@ -12542,6 +12617,8 @@ begin
 
  ReadyForSwapChainLatency:=DoSkipNextFrameForRendering or WaitForSwapChainLatency;
 
+ ClearDelayedObjectsToFreeIteration;
+
  ProcessRunnables;
 
  fDoUpdateMainJoystick:=false;
@@ -15781,7 +15858,19 @@ begin
 
          VulkanWaitIdle;
 
-         Unload;
+         try
+
+          ClearDelayedObjectsToFree;
+
+         finally
+
+          VulkanWaitIdle;
+
+          Unload;
+
+          ClearDelayedObjectsToFree;
+
+         end;
 
         end;
 

@@ -424,6 +424,8 @@ type EpvResource=class(Exception);
        fDelayedToFreeResources:TResourceList;
        fBackgroundLoader:TpvResourceBackgroundLoader;
        fBaseDataPath:TpvUTF8String;
+       fParallelLoadCount:TPasMPInt32;
+       fMaximumParallelLoadCount:TPasMPInt32;
        function GetMetaResourceByUUID(const pUUID:TpvUUID):TpvMetaResource;
        function GetMetaResourceByFileName(const pFileName:TpvUTF8String):TpvMetaResource;
        function GetMetaResourceByAssetName(const pAssetName:TpvUTF8String):TpvMetaResource;
@@ -454,6 +456,8 @@ type EpvResource=class(Exception);
        property MetaResourceByUUID[const pUUID:TpvUUID]:TpvMetaResource read GetMetaResourceByUUID;
        property MetaResourceByFileName[const pFileName:TpvUTF8String]:TpvMetaResource read GetMetaResourceByFileName;
        property MetaResourceByAssetName[const pAssetName:TpvUTF8String]:TpvMetaResource read GetMetaResourceByAssetName;
+       property ParallelLoadCount:TPasMPInt32 read fParallelLoadCount write fParallelLoadCount;
+       property MaximumParallelLoadCount:TPasMPInt32 read fMaximumParallelLoadCount write fMaximumParallelLoadCount;
      end;
 
 var AllowExternalResources:boolean=false;
@@ -1654,6 +1658,7 @@ end;
 
 procedure TpvResourceBackgroundLoader.HandleLoadDependencyBatchMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var Index:TPasMPNativeInt;
+    ParallelLoadCount,MaximumParallelLoadCount,NewMaximumParallelLoadCount:TPasMPInt32;
     Node:TpvResourceDependencyNode;
     Resource:TpvResource;
     Stream:TStream;
@@ -1661,46 +1666,64 @@ var Index:TPasMPNativeInt;
     Batch:TpvResourceDependencyNodes;
 /// QueueItem:TQueueItem;
 begin
- Batch:=TpvResourceDependencyNodes(aData);
 
- for Index:=aFromIndex to aToIndex do begin
+ ParallelLoadCount:=TPasMPInterlocked.Increment(fResourceManager.fParallelLoadCount);
+ try
 
-  Node:=Batch.Items[Index];
+  Batch:=TpvResourceDependencyNodes(aData);
 
-  Resource:=Node.Resource;
-  Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Loading;
+  for Index:=aFromIndex to aToIndex do begin
 
-  Stream:=Resource.GetStreamFromFileName(Resource.fFileName);
-  try
-   if assigned(Stream) then begin
-    Resource.LoadMetaData;
-    Success:=Resource.BeginLoad(Stream);
-    if Success then begin
-     Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Success;
+   Node:=Batch.Items[Index];
+
+   Resource:=Node.Resource;
+   Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Loading;
+
+   Stream:=Resource.GetStreamFromFileName(Resource.fFileName);
+   try
+    if assigned(Stream) then begin
+     Resource.LoadMetaData;
+     Success:=Resource.BeginLoad(Stream);
+     if Success then begin
+      Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Success;
+     end else begin
+      Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
+     end;
     end else begin
      Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
     end;
-   end else begin
-    Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
+   finally
+    FreeAndNil(Stream);
    end;
-  finally
-   FreeAndNil(Stream);
+
+   // Not safe here, must be done in the main thread, because finalization may involve GPU operations
+ { fQueueItemResourceMapLock.Acquire;
+   try
+    QueueItem:=fQueueItemResourceMap.Values[Resource];
+   finally
+    fQueueItemResourceMapLock.Release;
+   end;
+
+   if assigned(QueueItem) and TPasMPInterlocked.CompareExchange(QueueItem.fAutoFinalizeAfterLoad,false,true) then begin
+    FinalizeQueueItem(QueueItem);
+    QueueItem.Free;
+   end;}
+
   end;
 
-  // Not safe here, must be done in the main thread, because finalization may involve GPU operations
-{ fQueueItemResourceMapLock.Acquire;
-  try
-   QueueItem:=fQueueItemResourceMap.Values[Resource];
-  finally
-   fQueueItemResourceMapLock.Release;
-  end;
-
-  if assigned(QueueItem) and TPasMPInterlocked.CompareExchange(QueueItem.fAutoFinalizeAfterLoad,false,true) then begin
-   FinalizeQueueItem(QueueItem);
-   QueueItem.Free;
-  end;}
-
+ finally
+  TPasMPInterlocked.Decrement(fResourceManager.fParallelLoadCount);
  end;
+
+ repeat
+  MaximumParallelLoadCount:=fResourceManager.fMaximumParallelLoadCount;
+  NewMaximumParallelLoadCount:=Max(MaximumParallelLoadCount,ParallelLoadCount);
+  if TPasMPInterlocked.CompareExchange(fResourceManager.fMaximumParallelLoadCount,NewMaximumParallelLoadCount,MaximumParallelLoadCount)=MaximumParallelLoadCount then begin
+   break;
+  end else begin
+   Sleep(0);
+  end;
+ until false;
 
 end;
 
@@ -2204,6 +2227,9 @@ begin
  fBackgroundLoader:=TpvResourceBackgroundLoader.Create(self);
 
  fActive:=true;
+
+ fParallelLoadCount:=0;
+ fMaximumParallelLoadCount:=0;
 
 end;
 
