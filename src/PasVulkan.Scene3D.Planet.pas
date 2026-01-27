@@ -27161,7 +27161,7 @@ begin
                                           fVulkanUpdateCommandBuffer,
                                           fVulkanUpdateFence,
                                           fData.fTileDirtyQueueBuffer,
-                                          SizeOf(TVkUInt32)*6,
+                                          SizeOf(TVkUInt32)*9,
                                           fData.fTileDirtyQueueItems.ItemArray[0],
                                           fData.fCountDirtyTiles*SizeOf(TVkUInt32));
 
