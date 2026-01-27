@@ -4902,18 +4902,61 @@ canvas.drawFilledRoundedRectangleCenter(200, 150, 100, 80, 10);
 
 '''''
 
-==== drawStrokeRoundedRectangle(center, bounds, radius, strokeWidth)
+==== drawStrokeRoundedRectangle(topLeft, size, radius, strokeWidth)
 
 *Usage:*
 
 [source,js]
 ----
-canvas.drawStrokeRoundedRectangle(center, bounds, radius, strokeWidth);
+canvas.drawStrokeRoundedRectangle(topLeft, size, radius, strokeWidth);
 // or
-canvas.drawStrokeRoundedRectangle(centerX, centerY, boundsX, boundsY, radius, strokeWidth);
+canvas.drawStrokeRoundedRectangle(x, y, width, height, radius, strokeWidth);
 ----
 
 * *Description:* Draws a stroked rounded rectangle outline.
+* *Parameters:*
+** *Option A:*
+*** `+topLeft+` (Vector2): The top-left corner position.
+*** `+size+` (Vector2): The width and height.
+*** `+radius+` (number): The corner radius for all corners.
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+** or *Option B:*
+*** `+x+` (number): The left X coordinate.
+*** `+y+` (number): The top Y coordinate.
+*** `+width+` (number): The rectangle width.
+*** `+height+` (number): The rectangle height.
+*** `+radius+` (number): The corner radius for all corners.
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Vector2:
+canvas.drawStrokeRoundedRectangle(
+  Vector2.create(50, 50),
+  Vector2.create(200, 100),
+  15, 2.5
+);
+
+// or using individual numbers:
+canvas.drawStrokeRoundedRectangle(50, 50, 200, 100, 15, 2.5);
+----
+
+'''''
+
+==== drawStrokeRoundedRectangleCenter(center, bounds, radius, strokeWidth)
+
+*Usage:*
+
+[source,js]
+----
+canvas.drawStrokeRoundedRectangleCenter(center, bounds, radius, strokeWidth);
+// or
+canvas.drawStrokeRoundedRectangleCenter(centerX, centerY, boundsX, boundsY, radius, strokeWidth);
+----
+
+* *Description:* Draws a stroked rounded rectangle outline centered at the specified position.
 * *Parameters:*
 ** *Option A:*
 *** `+center+` (Vector2): The center position.
@@ -4933,10 +4976,10 @@ canvas.drawStrokeRoundedRectangle(centerX, centerY, boundsX, boundsY, radius, st
 [source,js]
 ----
 // Using Vector2:
-canvas.drawStrokeRoundedRectangle(Vector2.create(200, 150), Vector2.create(50, 40), 10, 2.5);
+canvas.drawStrokeRoundedRectangleCenter(Vector2.create(200, 150), Vector2.create(50, 40), 10, 2.5);
 
 // or using individual numbers:
-canvas.drawStrokeRoundedRectangle(200, 150, 50, 40, 10, 2.5);
+canvas.drawStrokeRoundedRectangleCenter(200, 150, 50, 40, 10, 2.5);
 ----
 
 '''''

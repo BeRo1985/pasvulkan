@@ -7372,6 +7372,90 @@ end;
 function POCACanvasFunctionDRAWSTROKEROUNDEDRECTANGLE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var ArgumentIndex:TPOCAInt32;
     Canvas:TpvCanvas;
+    LeftTop:TpvVector2;
+    WidthHeight:TpvVector2;
+    Radius:TpvFloat;
+    StrokeWidth:TpvFloat;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for LeftTop
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  LeftTop:=POCAGetVector2Value(aArguments^[0]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   LeftTop.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   LeftTop.y:=0.0;
+  end;
+ end;
+
+ // Check for WidthHeight
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   WidthHeight.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   WidthHeight.y:=0.0;
+  end;
+ end;
+
+ // Check for Radius
+ if ArgumentIndex<aCountArguments then begin
+  Radius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  Radius:=0.0;
+ end;
+
+ // Check for StrokeWidth
+ if ArgumentIndex<aCountArguments then begin
+  StrokeWidth:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  StrokeWidth:=1.0;
+ end;
+
+ Canvas.DrawStrokeRoundedRectangle(TpvRect.CreateRelative(LeftTop,WidthHeight),Radius,StrokeWidth);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWSTROKEROUNDEDRECTANGLECENTER(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
     Center:TpvVector2;
     Bounds:TpvVector2;
     Radius:TpvFloat;
@@ -11259,6 +11343,7 @@ begin
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledRoundedRectangle',POCACanvasFunctionDRAWFILLEDROUNDEDRECTANGLE);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledRoundedRectangleCenter',POCACanvasFunctionDRAWFILLEDROUNDEDRECTANGLECENTER);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawStrokeRoundedRectangle',POCACanvasFunctionDRAWSTROKEROUNDEDRECTANGLE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawStrokeRoundedRectangleCenter',POCACanvasFunctionDRAWSTROKEROUNDEDRECTANGLECENTER);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledCircleArcRingSegment',POCACanvasFunctionDRAWFILLEDCIRCLEARCRINGSEGMENT);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawStrokeCircleArcRingSegment',POCACanvasFunctionDRAWSTROKECIRCLEARCRINGSEGMENT);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawTexturedRectangle',POCACanvasFunctionDRAWTEXTUREDRECTANGLE);
