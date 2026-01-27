@@ -4598,6 +4598,50 @@ canvas.drawFilledCircle(100, 100, 50);
 
 '''''
 
+==== drawStrokeCircle(center, radius, strokeWidth)
+
+*Usage:*
+
+[source,js]
+----
+canvas.drawStrokeCircle(center, radius, strokeWidth);
+// or
+canvas.drawStrokeCircle(centerX, centerY, radius, strokeWidth);
+----
+
+* *Description:* Draws a stroked circle outline.
+* *Parameters:*
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+radius+` (number): The circle radius.
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+radius+` (number): The circle radius.
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.setColor(Vector4.create(0, 1, 0, 1)); // Green
+
+// Using Vector2:
+canvas.drawStrokeCircle(Vector2.create(100, 100), 50, 3.0);
+
+// or using individual numbers:
+canvas.drawStrokeCircle(100, 100, 50, 3.0);
+
+// Compare filled vs stroked:
+canvas.setColor(1, 0, 0, 1); // Red
+canvas.drawFilledCircle(100, 100, 50);
+canvas.setColor(0, 1, 0, 1); // Green outline
+canvas.drawStrokeCircle(100, 100, 50, 2.0);
+----
+
+'''''
+
 ==== drawFilledEllipse(center, radius)
 
 *Usage:*
@@ -4629,6 +4673,43 @@ canvas.drawFilledEllipse(Vector2.create(100, 100), Vector2.create(80, 40));
 
 // or using individual numbers:
 canvas.drawFilledEllipse(100, 100, 80, 40);
+----
+
+'''''
+
+==== drawStrokeEllipse(center, radius, strokeWidth)
+
+*Usage:*
+
+[source,js]
+----
+canvas.drawStrokeEllipse(center, radius, strokeWidth);
+// or
+canvas.drawStrokeEllipse(centerX, centerY, radiusX, radiusY, strokeWidth);
+----
+
+* *Description:* Draws a stroked ellipse outline.
+* *Parameters:*
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+radius+` (Vector2): The x and y radii.
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+radiusX+` (number): The X radius.
+*** `+radiusY+` (number): The Y radius.
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Vector2:
+canvas.drawStrokeEllipse(Vector2.create(100, 100), Vector2.create(80, 40), 2.5);
+
+// or using individual numbers:
+canvas.drawStrokeEllipse(100, 100, 80, 40, 2.5);
 ----
 
 '''''
@@ -4702,6 +4783,43 @@ canvas.drawFilledRectangleCenter(Vector2.create(200, 150), Vector2.create(100, 8
 
 // or using individual numbers:
 canvas.drawFilledRectangleCenter(200, 150, 100, 80);
+----
+
+'''''
+
+==== drawStrokeRectangle(center, bounds, strokeWidth)
+
+*Usage:*
+
+[source,js]
+----
+canvas.drawStrokeRectangle(center, bounds, strokeWidth);
+// or
+canvas.drawStrokeRectangle(centerX, centerY, boundsX, boundsY, strokeWidth);
+----
+
+* *Description:* Draws a stroked rectangle outline.
+* *Parameters:*
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+bounds+` (Vector2): Half-width and half-height from center.
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+boundsX+` (number): Half-width from center.
+*** `+boundsY+` (number): Half-height from center.
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Vector2:
+canvas.drawStrokeRectangle(Vector2.create(200, 150), Vector2.create(50, 40), 2.0);
+
+// or using individual numbers:
+canvas.drawStrokeRectangle(200, 150, 50, 40, 2.0);
 ----
 
 '''''
@@ -4780,6 +4898,45 @@ canvas.drawFilledRoundedRectangleCenter(Vector2.create(200, 150), Vector2.create
 
 // or using individual numbers:
 canvas.drawFilledRoundedRectangleCenter(200, 150, 100, 80, 10);
+----
+
+'''''
+
+==== drawStrokeRoundedRectangle(center, bounds, radius, strokeWidth)
+
+*Usage:*
+
+[source,js]
+----
+canvas.drawStrokeRoundedRectangle(center, bounds, radius, strokeWidth);
+// or
+canvas.drawStrokeRoundedRectangle(centerX, centerY, boundsX, boundsY, radius, strokeWidth);
+----
+
+* *Description:* Draws a stroked rounded rectangle outline.
+* *Parameters:*
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+bounds+` (Vector2): Half-width and half-height from center.
+*** `+radius+` (number): The corner radius for all corners.
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+boundsX+` (number): Half-width from center.
+*** `+boundsY+` (number): Half-height from center.
+*** `+radius+` (number): The corner radius for all corners.
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Using Vector2:
+canvas.drawStrokeRoundedRectangle(Vector2.create(200, 150), Vector2.create(50, 40), 10, 2.5);
+
+// or using individual numbers:
+canvas.drawStrokeRoundedRectangle(200, 150, 50, 40, 10, 2.5);
 ----
 
 '''''
