@@ -1034,6 +1034,21 @@ void main(void){
         color.a *= linearstep(0.0, -threshold, d);        
         break;      
       } 
+      case 0x09:{
+        // Distance to stroke circle arc ring segment
+        float innerDistance = sdCircleArcRingSegment(
+          inOriginalPosition.xy - inMetaInfo.xy, // p
+          inMetaInfo.z, // innerRadius 
+          inMetaInfo.w, // outerRadius
+          inMetaInfo2.x, // startAngle
+          inMetaInfo2.y, // endAngle
+          inMetaInfo2.z  // gapThickness
+        );
+        float strokeWidth = inMetaInfo2.w;
+        float d = abs(innerDistance) - (strokeWidth * 0.5);
+        color.a *= linearstep(0.0, -threshold, d);        
+        break;      
+      } 
     }
   }
 #endif

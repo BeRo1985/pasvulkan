@@ -7246,6 +7246,106 @@ begin
 
 end;
 
+function POCACanvasFunctionDRAWSTROKECIRCLEARCRINGSEGMENT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    Center:TpvVector2;
+    InnerRadius:TpvFloat;
+    OuterRadius:TpvFloat;
+    StartAngle:TpvFloat;
+    EndAngle:TpvFloat;
+    GapThickness:TpvFloat;
+    StrokeWidth:TpvFloat;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+ 
+ // Check for Center
+ if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
+  Center:=POCAGetVector2Value(aArguments^[0]);
+  inc(ArgumentIndex);
+ end else begin
+  if ArgumentIndex<aCountArguments then begin
+   Center.x:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.x:=0.0;
+  end;
+  if ArgumentIndex<aCountArguments then begin
+   Center.y:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+   inc(ArgumentIndex);
+  end else begin
+   Center.y:=0.0;
+  end;
+ end;
+
+ // Check for InnerRadius
+ if ArgumentIndex<aCountArguments then begin
+  InnerRadius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  InnerRadius:=0.0;
+ end;
+
+ // Check for OuterRadius
+ if ArgumentIndex<aCountArguments then begin
+  OuterRadius:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  OuterRadius:=0.0;
+ end;
+
+ // Check for StartAngle
+ if ArgumentIndex<aCountArguments then begin
+  StartAngle:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  StartAngle:=0.0;
+ end;
+
+ // Check for EndAngle
+ if ArgumentIndex<aCountArguments then begin
+  EndAngle:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  EndAngle:=0.0;
+ end;
+
+ // Check for GapThickness
+ if ArgumentIndex<aCountArguments then begin
+  GapThickness:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  GapThickness:=0.0;
+ end;
+
+ // Check for StrokeWidth
+ if ArgumentIndex<aCountArguments then begin
+  StrokeWidth:=POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]);
+  inc(ArgumentIndex);
+ end else begin
+  StrokeWidth:=1.0;
+ end;
+
+ Canvas.DrawStrokeCircleArcRingSegment(Center,InnerRadius,OuterRadius,StartAngle,EndAngle,GapThickness,StrokeWidth);
+
+ result:=aThis;
+
+end;
+
 function POCACanvasFunctionDRAWTEXTUREDRECTANGLE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var ArgumentIndex:TPOCAInt32;
     Canvas:TpvCanvas;
@@ -10858,6 +10958,7 @@ begin
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledRoundedRectangle',POCACanvasFunctionDRAWFILLEDROUNDEDRECTANGLE);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledRoundedRectangleCenter',POCACanvasFunctionDRAWFILLEDROUNDEDRECTANGLECENTER);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawFilledCircleArcRingSegment',POCACanvasFunctionDRAWFILLEDCIRCLEARCRINGSEGMENT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawStrokeCircleArcRingSegment',POCACanvasFunctionDRAWSTROKECIRCLEARCRINGSEGMENT);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawTexturedRectangle',POCACanvasFunctionDRAWTEXTUREDRECTANGLE);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawTexturedRectangleCenter',POCACanvasFunctionDRAWTEXTUREDRECTANGLECENTER);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawSprite',POCACanvasFunctionDRAWSPRITE);

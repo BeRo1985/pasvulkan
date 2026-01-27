@@ -4831,6 +4831,61 @@ canvas.drawFilledCircleArcRingSegment(200, 200, 30, 50, 0, Math.PI / 2, 0);
 
 '''''
 
+==== drawStrokeCircleArcRingSegment(center, innerRadius, outerRadius, startAngle, endAngle, gapThickness, strokeWidth)
+
+*Usage:*
+
+[source,js]
+----
+canvas.drawStrokeCircleArcRingSegment(center, innerRadius, outerRadius, startAngle, endAngle, gapThickness, strokeWidth);
+// or
+canvas.drawStrokeCircleArcRingSegment(centerX, centerY, innerRadius, outerRadius, startAngle, endAngle, gapThickness, strokeWidth);
+----
+
+* *Description:* Draws a stroked outline of a circular arc ring segment (like the outline of a pie slice).
+* *Parameters:*
+** *Option A:*
+*** `+center+` (Vector2): The center position.
+*** `+innerRadius+` (number): The inner radius.
+*** `+outerRadius+` (number): The outer radius.
+*** `+startAngle+` (number): The start angle in radians.
+*** `+endAngle+` (number): The end angle in radians.
+*** `+gapThickness+` (number): Gap thickness (default: 0.0).
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+** or *Option B:*
+*** `+centerX+` (number): The center X coordinate.
+*** `+centerY+` (number): The center Y coordinate.
+*** `+innerRadius+` (number): The inner radius.
+*** `+outerRadius+` (number): The outer radius.
+*** `+startAngle+` (number): The start angle in radians.
+*** `+endAngle+` (number): The end angle in radians.
+*** `+gapThickness+` (number): Gap thickness (default: 0.0).
+*** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+// Draw a quarter-circle ring outline using Vector2:
+canvas.drawStrokeCircleArcRingSegment(
+  Vector2.create(200, 200), 
+  30, 50, 
+  0, Math.PI / 2, 
+  0, 2.0
+);
+
+// or using individual numbers:
+canvas.drawStrokeCircleArcRingSegment(200, 200, 30, 50, 0, Math.PI / 2, 0, 2.0);
+
+// Compare filled vs stroked:
+canvas.setColor(1, 0, 0, 1);
+canvas.drawFilledCircleArcRingSegment(100, 100, 30, 50, 0, Math.PI, 0);
+canvas.setColor(0, 1, 0, 1);
+canvas.drawStrokeCircleArcRingSegment(300, 100, 30, 50, 0, Math.PI, 0, 3.0);
+----
+
+'''''
+
 ==== drawTexturedRectangle(texture, topLeft, size, rotationAngle, textureArrayLayer)
 
 *Usage:*
