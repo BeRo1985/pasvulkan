@@ -4497,7 +4497,7 @@ begin
   fPhysicsMeshSlopes.Resize(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution);
 
   fTileDirtyQueueItems:=TTileDirtyQueueItems.Create;
-  fTileDirtyQueueItems.Resize((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+6);
+  fTileDirtyQueueItems.Resize((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+9);
 
   fTileGenerations:=nil;
   SetLength(fTileGenerations,fPlanet.fTileMapResolution*fPlanet.fTileMapResolution);
