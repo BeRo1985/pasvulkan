@@ -226,7 +226,12 @@ begin
   fScene3D.EnvironmentTextureImage.IncRef;
   fScene3D.EnvironmentTextureImage.Upload;
 
-  fScene3D.SkyBoxMode:=TpvScene3DEnvironmentMode.Texture;
+
+  if Application.TransparentColorKey then begin
+   fScene3D.SkyBoxMode:=TpvScene3DEnvironmentMode.TransparentColorKey;
+  end else begin
+   fScene3D.SkyBoxMode:=TpvScene3DEnvironmentMode.Texture;
+  end;
 
   if pvApplication.Assets.ExistAsset('skybox.hdr') then begin
    fScene3D.SkyBoxTextureImage:=TpvScene3D.TImage.Create(pvApplication.ResourceManager,fScene3D);
