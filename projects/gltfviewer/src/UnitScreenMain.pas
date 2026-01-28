@@ -247,6 +247,10 @@ begin
 
  end;
 
+ if Application.TransparentColorKey then begin
+  fScene3D.SkyBoxMode:=TpvScene3DEnvironmentMode.TransparentColorKey;
+ end;
+
  fPrimaryDirectionalLight:=TpvScene3D.TLight.Create(fScene3D);
  fPrimaryDirectionalLight.Type_:=TpvScene3D.TLightData.TType.PrimaryDirectional;
  fPrimaryDirectionalLight.Color:=TpvVector3.InlineableCreate(1.7,1.15,0.70);
@@ -265,6 +269,7 @@ begin
  fRenderer.ShadowMode:=UnitApplication.Application.ShadowMode;
  fRenderer.TransparencyMode:=UnitApplication.Application.TransparencyMode;
  fRenderer.DepthOfFieldMode:=UnitApplication.Application.DepthOfFieldMode;
+ fRenderer.LensMode:=UnitApplication.Application.LensMode;
  fRenderer.MaxMSAA:=UnitApplication.Application.MaxMSAA;
  fRenderer.MaxShadowMSAA:=UnitApplication.Application.MaxShadowMSAA;
  fRenderer.ShadowMapSize:=UnitApplication.Application.ShadowMapSize;
@@ -431,7 +436,7 @@ begin
  if fLoadDelay>0 then begin
   dec(fLoadDelay);
   if fLoadDelay=0 then begin
-// pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,fLoadedFileName,OnFinish,fScene3D);
+   pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,fLoadedFileName,OnFinish,fScene3D);
   end;
  end;
  fScene3D.Check(pvApplication.UpdateInFlightFrameIndex);
@@ -1061,7 +1066,7 @@ begin
  fLoadedFileName:=aFileName;
  fLoadDelay:=(pvApplication.CountInFlightFrames*2)+1;
 
- pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,fLoadedFileName,OnFinish,fScene3D);
+ //pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,fLoadedFileName,OnFinish,fScene3D);
 
  pvApplication.SetFocus;
 

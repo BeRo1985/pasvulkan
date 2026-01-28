@@ -827,16 +827,28 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       public
        function DrawFilledEllipse(const aCenter,aRadius:TpvVector2):TpvCanvas; overload;
        function DrawFilledEllipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawStrokeEllipse(const aCenter,aRadius:TpvVector2;const aStrokeWidth:TpvFloat):TpvCanvas; overload;
+       function DrawStrokeEllipse(const aCenterX,aCenterY,aRadiusX,aRadiusY,aStrokeWidth:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawFilledCircle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload;
        function DrawFilledCircle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawStrokeCircle(const aCenter:TpvVector2;const aRadius,aStrokeWidth:TpvFloat):TpvCanvas; overload;
+       function DrawStrokeCircle(const aCenterX,aCenterY,aRadius,aStrokeWidth:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawFilledRectangle(const aCenter,aBounds:TpvVector2):TpvCanvas; overload;
        function DrawFilledRectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawFilledRectangle(const aRect:TpvRect):TpvCanvas; overload;
+       function DrawStrokeRectangle(const aCenter,aBounds:TpvVector2;const aStrokeWidth:TpvFloat):TpvCanvas; overload;
+       function DrawStrokeRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aStrokeWidth:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawStrokeRectangle(const aRect:TpvRect;const aStrokeWidth:TpvFloat):TpvCanvas; overload;
        function DrawFilledRoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload;
        function DrawFilledRoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawFilledRoundedRectangle(const aRect:TpvRect;const aRadius:TpvFloat):TpvCanvas; overload;
+       function DrawStrokeRoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadius,aStrokeWidth:TpvFloat):TpvCanvas; overload;
+       function DrawStrokeRoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadius,aStrokeWidth:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawStrokeRoundedRectangle(const aRect:TpvRect;const aRadius,aStrokeWidth:TpvFloat):TpvCanvas; overload;
        function DrawFilledCircleArcRingSegment(const aCenter:TpvVector2;const aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness:TpvFloat):TpvCanvas; overload;
        function DrawFilledCircleArcRingSegment(const aCenterX,aCenterY,aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness:TpvFloat):TpvCanvas; overload;
+       function DrawStrokeCircleArcRingSegment(const aCenter:TpvVector2;const aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness,aStrokeWidth:TpvFloat):TpvCanvas; overload;
+       function DrawStrokeCircleArcRingSegment(const aCenterX,aCenterY,aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness,aStrokeWidth:TpvFloat):TpvCanvas; overload;
       public
        function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenter,aBounds:TpvVector2;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas; overload;
        function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -939,6 +951,11 @@ const pcvvaomSolid=0;
       pcvvaomRectangle=6;
       pcvvaomRoundedRectangle=7;
       pcvvaomCircleArcRingSegment=8;
+      pcvvaomStrokeCircleArcRingSegment=9;
+      pcvvaomStrokeCircle=10;
+      pcvvaomStrokeEllipse=11;
+      pcvvaomStrokeRectangle=12;
+      pcvvaomStrokeRoundedRectangle=13;
 
       CurveRecursionLimit=16;
 
@@ -7049,6 +7066,81 @@ begin
  result:=DrawFilledEllipse(TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aRadiusX,aRadiusY));
 end;
 
+function TpvCanvas.DrawStrokeEllipse(const aCenter,aRadius:TpvVector2;const aStrokeWidth:TpvFloat):TpvCanvas;
+var MetaInfo,MetaInfo2:TpvVector4;
+    VertexColor:TpvHalfFloatVector4;
+    VertexState:TpvUInt32;
+    CanvasVertex:PpvCanvasVertex;
+    ExtendedRadius:TpvVector2;
+begin
+ SetGUIElementMode(false);
+ SetAtlasTexture(nil);
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
+ VertexColor.r:=fState.fColor.r;
+ VertexColor.g:=fState.fColor.g;
+ VertexColor.b:=fState.fColor.b;
+ VertexColor.a:=fState.fColor.a;
+ MetaInfo.xy:=aCenter;
+ MetaInfo.zw:=aRadius;
+ MetaInfo2.x:=aStrokeWidth;
+ MetaInfo2.y:=0.0;
+ MetaInfo2.z:=0.0;
+ MetaInfo2.w:=0.0;
+ ExtendedRadius:=aRadius+TpvVector2.InlineableCreate(aStrokeWidth*0.5,aStrokeWidth*0.5);
+ VertexState:=GetVertexState;
+ EnsureSufficientReserveUsableSpace(4,6);
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(-ExtendedRadius.x,-ExtendedRadius.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeEllipse and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(ExtendedRadius.x,-ExtendedRadius.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeEllipse and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(ExtendedRadius.x,ExtendedRadius.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeEllipse and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(-ExtendedRadius.x,ExtendedRadius.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeEllipse and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+3]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+3;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+0;
+ inc(fCurrentCountVertices,4);
+ inc(fCurrentCountIndices,6);
+ result:=self;
+end;
+
+function TpvCanvas.DrawStrokeEllipse(const aCenterX,aCenterY,aRadiusX,aRadiusY,aStrokeWidth:TpvFloat):TpvCanvas;
+begin
+ result:=DrawStrokeEllipse(TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aRadiusX,aRadiusY),aStrokeWidth);
+end;
+
 function TpvCanvas.DrawFilledCircle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvas;
 var MetaInfo:TpvVector4;
     VertexColor:TpvHalfFloatVector4;
@@ -7117,6 +7209,82 @@ end;
 function TpvCanvas.DrawFilledCircle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas;
 begin
  result:=DrawFilledCircle(TpvVector2.InlineableCreate(aCenterX,aCenterY),aRadius);
+end;
+
+function TpvCanvas.DrawStrokeCircle(const aCenter:TpvVector2;const aRadius,aStrokeWidth:TpvFloat):TpvCanvas;
+var MetaInfo,MetaInfo2:TpvVector4;
+    VertexColor:TpvHalfFloatVector4;
+    VertexState:TpvUInt32;
+    CanvasVertex:PpvCanvasVertex;
+    ExtendedRadius:TpvFloat;
+begin
+ SetGUIElementMode(false);
+ SetAtlasTexture(nil);
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
+ VertexColor.r:=fState.fColor.r;
+ VertexColor.g:=fState.fColor.g;
+ VertexColor.b:=fState.fColor.b;
+ VertexColor.a:=fState.fColor.a;
+ MetaInfo.xy:=aCenter;
+ MetaInfo.z:=aRadius;
+ MetaInfo.w:=0.0;
+ MetaInfo2.x:=aStrokeWidth;
+ MetaInfo2.y:=0.0;
+ MetaInfo2.z:=0.0;
+ MetaInfo2.w:=0.0;
+ ExtendedRadius:=aRadius+(aStrokeWidth*0.5);
+ VertexState:=GetVertexState;
+ EnsureSufficientReserveUsableSpace(4,6);
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(-ExtendedRadius,-ExtendedRadius);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeCircle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(ExtendedRadius,-ExtendedRadius);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeCircle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(ExtendedRadius,ExtendedRadius);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeCircle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(-ExtendedRadius,ExtendedRadius);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeCircle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+3]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+3;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+0;
+ inc(fCurrentCountVertices,4);
+ inc(fCurrentCountIndices,6);
+ result:=self;
+end;
+
+function TpvCanvas.DrawStrokeCircle(const aCenterX,aCenterY,aRadius,aStrokeWidth:TpvFloat):TpvCanvas;
+begin
+ result:=DrawStrokeCircle(TpvVector2.InlineableCreate(aCenterX,aCenterY),aRadius,aStrokeWidth);
 end;
 
 function TpvCanvas.DrawFilledRectangle(const aCenter,aBounds:TpvVector2):TpvCanvas;
@@ -7252,6 +7420,86 @@ begin
  result:=self;
 end;
 
+function TpvCanvas.DrawStrokeRectangle(const aCenter,aBounds:TpvVector2;const aStrokeWidth:TpvFloat):TpvCanvas;
+var MetaInfo,MetaInfo2:TpvVector4;
+    VertexColor:TpvHalfFloatVector4;
+    VertexState:TpvUInt32;
+    CanvasVertex:PpvCanvasVertex;
+    ExtendedBounds:TpvVector2;
+begin
+ SetGUIElementMode(false);
+ SetAtlasTexture(nil);
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
+ VertexColor.r:=fState.fColor.r;
+ VertexColor.g:=fState.fColor.g;
+ VertexColor.b:=fState.fColor.b;
+ VertexColor.a:=fState.fColor.a;
+ MetaInfo.xy:=aCenter;
+ MetaInfo.zw:=aBounds;
+ MetaInfo2.x:=aStrokeWidth;
+ MetaInfo2.y:=0.0;
+ MetaInfo2.z:=0.0;
+ MetaInfo2.w:=0.0;
+ ExtendedBounds:=aBounds+TpvVector2.InlineableCreate(aStrokeWidth*0.5,aStrokeWidth*0.5);
+ VertexState:=GetVertexState;
+ EnsureSufficientReserveUsableSpace(4,6);
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(-ExtendedBounds.x,-ExtendedBounds.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(ExtendedBounds.x,-ExtendedBounds.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(ExtendedBounds.x,ExtendedBounds.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(-ExtendedBounds.x,ExtendedBounds.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+3]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+3;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+0;
+ inc(fCurrentCountVertices,4);
+ inc(fCurrentCountIndices,6);
+ result:=self;
+end;
+
+function TpvCanvas.DrawStrokeRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aStrokeWidth:TpvFloat):TpvCanvas;
+begin
+ result:=DrawStrokeRectangle(TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aBoundX,aBoundY),aStrokeWidth);
+end;
+
+function TpvCanvas.DrawStrokeRectangle(const aRect:TpvRect;const aStrokeWidth:TpvFloat):TpvCanvas;
+begin
+ result:=DrawStrokeRectangle(aRect.Center,aRect.Size*0.5,aStrokeWidth);
+end;
+
 function TpvCanvas.DrawFilledRoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadius:TpvFloat):TpvCanvas;
 var MetaInfo:TpvVector4;
     MetaInfo2:TpvVector4;
@@ -7326,6 +7574,86 @@ end;
 function TpvCanvas.DrawFilledRoundedRectangle(const aRect:TpvRect;const aRadius:TpvFloat):TpvCanvas;
 begin
  result:=DrawFilledRoundedRectangle(aRect.Center,aRect.Size*0.5,aRadius);
+end;
+
+function TpvCanvas.DrawStrokeRoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadius,aStrokeWidth:TpvFloat):TpvCanvas;
+var MetaInfo,MetaInfo2:TpvVector4;
+    VertexColor:TpvHalfFloatVector4;
+    VertexState:TpvUInt32;
+    CanvasVertex:PpvCanvasVertex;
+    ExtendedBounds:TpvVector2;
+begin
+ SetGUIElementMode(false);
+ SetAtlasTexture(nil);
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
+ VertexColor.r:=fState.fColor.r;
+ VertexColor.g:=fState.fColor.g;
+ VertexColor.b:=fState.fColor.b;
+ VertexColor.a:=fState.fColor.a;
+ MetaInfo.xy:=aCenter;
+ MetaInfo.zw:=aBounds-TpvVector2.InlineableCreate(aRadius,aRadius);
+ MetaInfo2.x:=aRadius;
+ MetaInfo2.y:=aStrokeWidth;
+ MetaInfo2.z:=0.0;
+ MetaInfo2.w:=0.0;
+ ExtendedBounds:=aBounds+TpvVector2.InlineableCreate(aStrokeWidth*0.5,aStrokeWidth*0.5);
+ VertexState:=GetVertexState;
+ EnsureSufficientReserveUsableSpace(4,6);
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(-ExtendedBounds.x,-ExtendedBounds.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeRoundedRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(ExtendedBounds.x,-ExtendedBounds.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeRoundedRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(ExtendedBounds.x,ExtendedBounds.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeRoundedRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
+ CanvasVertex^.OriginalPosition:=aCenter+TpvVector2.InlineableCreate(-ExtendedBounds.x,ExtendedBounds.y);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeRoundedRectangle and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+3]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+3;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+0;
+ inc(fCurrentCountVertices,4);
+ inc(fCurrentCountIndices,6);
+ result:=self;
+end;
+
+function TpvCanvas.DrawStrokeRoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadius,aStrokeWidth:TpvFloat):TpvCanvas;
+begin
+ result:=DrawStrokeRoundedRectangle(TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aBoundX,aBoundY),aRadius,aStrokeWidth);
+end;
+
+function TpvCanvas.DrawStrokeRoundedRectangle(const aRect:TpvRect;const aRadius,aStrokeWidth:TpvFloat):TpvCanvas;
+begin
+ result:=DrawStrokeRoundedRectangle(aRect.Center,aRect.Size*0.5,aRadius,aStrokeWidth);
 end;
 
 function TpvCanvas.DrawFilledCircleArcRingSegment(const aCenter:TpvVector2;const aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness:TpvFloat):TpvCanvas;
@@ -7422,6 +7750,103 @@ end;
 function TpvCanvas.DrawFilledCircleArcRingSegment(const aCenterX,aCenterY,aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness:TpvFloat):TpvCanvas;
 begin
  result:=DrawFilledCircleArcRingSegment(TpvVector2.InlineableCreate(aCenterX,aCenterY),aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness);
+end;
+
+function TpvCanvas.DrawStrokeCircleArcRingSegment(const aCenter:TpvVector2;const aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness,aStrokeWidth:TpvFloat):TpvCanvas;
+var Index,Count:TpvSizeInt;
+    MetaInfo,MetaInfo2:TpvVector4;
+    VertexColor:TpvHalfFloatVector4;
+    VertexState:TpvUInt32;
+    CanvasVertex:PpvCanvasVertex;
+    MinRadius,MaxRadius:TpvFloat;
+    AABB:TpvAABB2D;
+    CosSinValues:TpvVector2;
+begin
+ SetGUIElementMode(false);
+ SetAtlasTexture(nil);
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
+ VertexColor.r:=fState.fColor.r;
+ VertexColor.g:=fState.fColor.g;
+ VertexColor.b:=fState.fColor.b;
+ VertexColor.a:=fState.fColor.a;
+ MetaInfo.xy:=aCenter;
+ MetaInfo.z:=aInnerRadius;
+ MetaInfo.w:=aOuterRadius;
+ MetaInfo2.x:=aStartAngle;
+ MetaInfo2.y:=aEndAngle;
+ MetaInfo2.z:=aGapThickness;
+ MetaInfo2.w:=aStrokeWidth;
+ MinRadius:=Max(0.0,Min(Min(aInnerRadius,aOuterRadius)*0.98725,Min(aInnerRadius,aOuterRadius)-(abs(aOuterRadius-aInnerRadius)*0.125)))-(aStrokeWidth*0.5);
+ MaxRadius:=Max(Max(aInnerRadius,aOuterRadius)*1.015625,Max(aInnerRadius,aOuterRadius)+(abs(aOuterRadius-aInnerRadius)*0.125))+(aStrokeWidth*0.5);
+ begin
+  if abs(aEndAngle-aStartAngle)>=pi then begin
+   AABB.Min:=aCenter+TpvVector2.InlineableCreate(-MaxRadius,-MaxRadius);
+   AABB.Max:=aCenter+TpvVector2.InlineableCreate(MaxRadius,MaxRadius);
+  end else begin
+   AABB.Min:=TpvVector2.InlineableCreate(Infinity,Infinity);
+   AABB.Max:=TpvVector2.InlineableCreate(-Infinity,-Infinity);
+   Count:=Min(Max(ceil(abs(aEndAngle-aStartAngle)/(pi*0.125)),8),16);
+   for Index:=0 to Count do begin
+    SinCos(FloatLerp(aStartAngle-(pi*0.015625),aEndAngle+(pi*0.015625),Index/Count),CosSinValues.y,CosSinValues.x);
+    AABB.DirectCombine(aCenter+(CosSinValues*MinRadius));
+    AABB.DirectCombine(aCenter+(CosSinValues*MaxRadius));
+   end;
+   AABB.Min:=AABB.Min-TpvVector2.InlineableCreate(1.0,1.0);
+   AABB.Max:=AABB.Max+TpvVector2.InlineableCreate(1.0,1.0);
+  end;
+ end;
+ VertexState:=GetVertexState;
+ EnsureSufficientReserveUsableSpace(4,6);
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(AABB.Left,AABB.Top);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeCircleArcRingSegment and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(AABB.Right,AABB.Top);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeCircleArcRingSegment and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(AABB.Right,AABB.Bottom);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeCircleArcRingSegment and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(AABB.Left,AABB.Bottom);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState or ((pcvvaomStrokeCircleArcRingSegment and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex^.MetaInfo2:=MetaInfo2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+3]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+3;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+0;
+ inc(fCurrentCountVertices,4);
+ inc(fCurrentCountIndices,6);
+ result:=self;
+end;
+
+function TpvCanvas.DrawStrokeCircleArcRingSegment(const aCenterX,aCenterY,aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness,aStrokeWidth:TpvFloat):TpvCanvas;
+begin
+ result:=DrawStrokeCircleArcRingSegment(TpvVector2.InlineableCreate(aCenterX,aCenterY),aInnerRadius,aOuterRadius,aStartAngle,aEndAngle,aGapThickness,aStrokeWidth);
 end;
 
 function TpvCanvas.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenter,aBounds:TpvVector2;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas;

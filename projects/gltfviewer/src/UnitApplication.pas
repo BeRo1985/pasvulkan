@@ -48,6 +48,7 @@ type TApplication=class(TpvApplication)
        fDepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode;
        fShadowMode:TpvScene3DRendererShadowMode;
        fLensMode:TpvScene3DRendererLensMode;
+       fTransparentColorKey:boolean;
        fMakeScreenshotJPEG:boolean;
        fMakeScreenshotPNG:boolean;
        fMakeScreenshotQOI:boolean;
@@ -83,6 +84,7 @@ type TApplication=class(TpvApplication)
        property DepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode read fDepthOfFieldMode;
        property ShadowMode:TpvScene3DRendererShadowMode read fShadowMode;
        property LensMode:TpvScene3DRendererLensMode read fLensMode;
+       property TransparentColorKey:boolean read fTransparentColorKey;
      end;
 
 var Application:TApplication=nil;
@@ -120,6 +122,7 @@ begin
  fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.None;
  fShadowMode:=TpvScene3DRendererShadowMode.Auto;
  fLensMode:=TpvScene3DRendererLensMode.Auto;
+ fTransparentColorKey:=false;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
  AcceptDragDropFiles:=true;
 {$if not (defined(Android) or defined(iOS))}
@@ -269,6 +272,9 @@ begin
      fLensMode:=TpvScene3DRendererLensMode.Auto;
     end;
    end;
+  end else if (Parameter='--transparent-color-key') or
+              (Parameter='/transparent-color-key') then begin
+   fTransparentColorKey:=true;
   end else begin
    GLTFFileName:=OriginalParameter;
   end;
