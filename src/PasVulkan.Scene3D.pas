@@ -2661,6 +2661,7 @@ type EpvScene3D=class(Exception);
                             fBoundingBoxFilled:array[-1..MaxInFlightFrames-1] of boolean;
                             fBoundingSpheres:TInstanceBoundingSpheres;
                             fBoundingSphereIndex:TpvUInt32;
+                            fBoundingSphereID:TpvID;
                             fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             fCacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             fCacheVerticesGeneration:TpvUInt64;
@@ -2688,6 +2689,7 @@ type EpvScene3D=class(Exception);
                             property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
                             property CastingShadows:Boolean read fCastingShadows write fCastingShadows;
                             property BoundingSphereIndex:TpvUInt32 read fBoundingSphereIndex write fBoundingSphereIndex;
+                            property BoundingSphereID:TpvID read fBoundingSphereID write fBoundingSphereID;
                            public
                             property WorkMatrix:TpvMatrix4x4 read fWorkMatrix;
                             property BoundingSpheres:TInstanceBoundingSpheres read fBoundingSpheres;
@@ -22128,7 +22130,8 @@ begin
  fGroupInstance:=aGroupInstance;
  fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManagerLock.Acquire;
  try
-  fBoundingSphereIndex:=fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManager.AllocateID;
+  fBoundingSphereID:=fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManager.AllocateID;
+  fBoundingSphereIndex:=TpvUInt32(fBoundingSphereID) and TpvUInt32($ffffffff);
  finally
   fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManagerLock.Release;
  end;
@@ -22138,7 +22141,7 @@ destructor TpvScene3D.TGroup.TInstance.TNode.Destroy;
 begin
  fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManagerLock.Acquire;
  try
-  fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManager.FreeID(fBoundingSphereIndex);
+  fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManager.FreeID(fBoundingSphereID);
  finally
   fGroup.fSceneInstance.fGlobalBoundingSphereIndexIDManagerLock.Release;
  end;
