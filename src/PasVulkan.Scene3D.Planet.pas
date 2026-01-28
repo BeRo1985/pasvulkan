@@ -24594,7 +24594,7 @@ begin
  for Index:=Low(TBrushes) to High(TBrushes) do begin
   for y:=0 to 255 do begin
    for x:=0 to 255 do begin
-    fRGBABrushes[Index,y,x]:=TpvUInt32(fBrushes[Index,y,x]) shl 24;
+    fRGBABrushes[Index,y,x]:=(TpvUInt32(fBrushes[Index,y,x]) shl 24) or TpvUInt32($00ffffff);
    end;
   end; 
  end;
@@ -25004,6 +25004,7 @@ begin
                                                          false,
                                                          false,
                                                          0);
+  fRGBABrushesTexture.UpdateSampler;
   fVulkanDevice.DebugUtils.SetObjectName(fRGBABrushesTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fRGBABrushesTexture.Image');
   fVulkanDevice.DebugUtils.SetObjectName(fRGBABrushesTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fRGBABrushesTexture.ImageView');
 
