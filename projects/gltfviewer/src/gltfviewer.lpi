@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="--antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers --transparent-color-key"/>
+        <CommandLineParams Value="--antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers --transparent-color-key --lens-mode none --depth-of-field-mode none"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="--antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers --transparent-color-key"/>
+            <CommandLineParams Value="--antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers --transparent-color-key --lens-mode none --depth-of-field-mode none"/>
           </local>
         </Mode0>
       </Modes>
