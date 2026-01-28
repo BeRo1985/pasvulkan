@@ -24993,7 +24993,7 @@ begin
                                                          0,
                                                          256,
                                                          1,
-                                                         0,
+                                                         1,
                                                          [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
                                                          @fRGBABrushes,
                                                          SizeOf(TpvScene3DPlanet.TRGBABrushes),
