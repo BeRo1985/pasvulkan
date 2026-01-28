@@ -431,7 +431,7 @@ begin
  if fLoadDelay>0 then begin
   dec(fLoadDelay);
   if fLoadDelay=0 then begin
-// pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,fLoadedFileName,OnFinish,fScene3D);
+   pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,fLoadedFileName,OnFinish,fScene3D);
   end;
  end;
  fScene3D.Check(pvApplication.UpdateInFlightFrameIndex);
@@ -1061,7 +1061,7 @@ begin
  fLoadedFileName:=aFileName;
  fLoadDelay:=(pvApplication.CountInFlightFrames*2)+1;
 
- pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,fLoadedFileName,OnFinish,fScene3D);
+ //pvApplication.ResourceManager.BackgroundLoadResource(TpvScene3D.TGroup,fLoadedFileName,OnFinish,fScene3D);
 
  pvApplication.SetFocus;
 
