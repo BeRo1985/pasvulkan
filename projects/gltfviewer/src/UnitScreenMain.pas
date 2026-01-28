@@ -226,12 +226,7 @@ begin
   fScene3D.EnvironmentTextureImage.IncRef;
   fScene3D.EnvironmentTextureImage.Upload;
 
-
-  if Application.TransparentColorKey then begin
-   fScene3D.SkyBoxMode:=TpvScene3DEnvironmentMode.TransparentColorKey;
-  end else begin
-   fScene3D.SkyBoxMode:=TpvScene3DEnvironmentMode.Texture;
-  end;
+  fScene3D.SkyBoxMode:=TpvScene3DEnvironmentMode.Texture;
 
   if pvApplication.Assets.ExistAsset('skybox.hdr') then begin
    fScene3D.SkyBoxTextureImage:=TpvScene3D.TImage.Create(pvApplication.ResourceManager,fScene3D);
@@ -250,6 +245,10 @@ begin
    fScene3D.SkyBoxTextureImage.Upload;
   end;
 
+ end;
+
+ if Application.TransparentColorKey then begin
+  fScene3D.SkyBoxMode:=TpvScene3DEnvironmentMode.TransparentColorKey;
  end;
 
  fPrimaryDirectionalLight:=TpvScene3D.TLight.Create(fScene3D);
