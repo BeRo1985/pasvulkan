@@ -132,6 +132,11 @@ void main(){
 #endif
       break;
     }
+    case 2u:{
+      // Transparent color key magenta 
+      outFragColor = vec4(1.0, 0.0, 1.0, 1.0);
+      break;
+    }
     default:{
       // Cube map
       vec4 color = texture(uTexture, direction) * vec2(pushConstants.skyBoxBrightnessFactor, 1.0).xxxy; // no pre-multiplied skyBoxIntensityFactor here, because it is already baked into the cube map

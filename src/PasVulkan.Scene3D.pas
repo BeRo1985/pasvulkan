@@ -118,7 +118,8 @@ type EpvScene3D=class(Exception);
        Texture,
        Sky,
        Starlight,
-       CachedStarlight
+       CachedStarlight,
+       TransparentColorKey
       );
      PpvScene3DEnvironmentMode=^TpvScene3DEnvironmentMode;
 

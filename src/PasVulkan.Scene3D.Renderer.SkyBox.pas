@@ -689,6 +689,9 @@ begin
    TpvScene3DEnvironmentMode.Starlight:begin
     PushConstants.Mode:=1;
    end;
+   TpvScene3DEnvironmentMode.TransparentColorKey:begin
+    PushConstants.Mode:=2;
+   end;
    else begin
     PushConstants.Mode:=0;
    end;
