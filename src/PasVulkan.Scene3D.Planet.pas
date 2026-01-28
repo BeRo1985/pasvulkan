@@ -296,6 +296,10 @@ type TpvScene3DPlanets=class;
             PBrush=^TBrush;
             TBrushes=array[0..255] of TBrush;
             PBrushes=^TBrushes;
+            TRGBABrush=array[0..255,0..255] of TpvUInt32;
+            PRGBABrush=^TRGBABrush;
+            TRGBABrushes=array[0..255] of TRGBABrush;
+            PRGBABrushes=^TRGBABrushes;
             TUsedBrushes=array[0..255] of Boolean;
             PUsedBrushes=^TUsedBrushes;
             { TData }
@@ -2680,7 +2684,9 @@ type TpvScene3DPlanets=class;
        fImageRowBufferCopy:array[0..8192-1] of TVkBufferImageCopy; // 16k / 2, since contiguous rows are merged into one copy operation
        fAtmosphere:TObject;
        fBrushes:TpvScene3DPlanet.TBrushes; 
-       fBrushesTexture:TpvVulkanTexture;
+       fBrushesTexture:TpvVulkanTexture;       
+       fRGBABrushes:TpvScene3DPlanet.TRGBABrushes; 
+       fRGBABrushesTexture:TpvVulkanTexture;
        fUsePlanetHeightMapBuffer:Boolean;
        fUse16Bit:Boolean;
        fUseHeightMapSmoothing:Boolean;
@@ -2875,6 +2881,7 @@ type TpvScene3DPlanets=class;
        property RaytracingTileQueues:TRaytracingTileQueues read fRaytracingTileQueues;
        property RaytracingTileQueueUpdateIndex:TPasMPUInt32 read fRaytracingTileQueueUpdateIndex;
        property BrushesTexture:TpvVulkanTexture read fBrushesTexture;
+       property RGBABrushesTexture:TpvVulkanTexture read fRGBABrushesTexture;
        property AtmosphereAdditionTextureImageView:TVkImageView read fAtmosphereAdditionTextureImageView write fAtmosphereAdditionTextureImageView;
        property AtmosphereUpdateTimeAccumulator:TpvDouble read fAtmosphereUpdateTimeAccumulator write fAtmosphereUpdateTimeAccumulator;
        property AtmosphereUpdateTimeInterval:TpvDouble read fAtmosphereUpdateTimeInterval write fAtmosphereUpdateTimeInterval;
@@ -24538,7 +24545,7 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aAtmosphereMiniMapResolutionShift:TpvSizeInt;
                                     const aPrecipitationMiniMapResolutionShift:TpvSizeInt;
                                     const aUseHeightMapSmoothing:Boolean);
-var InFlightFrameIndex,Index,Resolution:TpvSizeInt;
+var InFlightFrameIndex,Index,Resolution,x,y:TpvSizeInt;
 //  ta,tb:TpvHighResolutionTime;
     TileLODLevels:TTileLODLevels;
 begin
@@ -24583,6 +24590,14 @@ begin
  fQueuedDownloadLastTime:=0;
 
  fBrushes:=aBrushes;
+
+ for Index:=Low(TBrushes) to High(TBrushes) do begin
+  for y:=0 to 255 do begin
+   for x:=0 to 255 do begin
+    fRGBABrushes[Index,y,x]:=TpvUInt32(fBrushes[Index,y,x]) shl 24;
+   end;
+  end; 
+ end;
 
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
 
@@ -24964,9 +24979,38 @@ begin
   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fBrushesTexture.Image');
   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fBrushesTexture.ImageView');
 
+  fRGBABrushesTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                         fVulkanUniversalQueue,
+                                                         fVulkanUniversalCommandBuffer,
+                                                         fVulkanUniversalFence,
+                                                         fVulkanUniversalQueue,
+                                                         fVulkanUniversalCommandBuffer,
+                                                         fVulkanUniversalFence,
+                                                         VK_FORMAT_R8G8B8A8_UNORM,
+                                                         VK_SAMPLE_COUNT_1_BIT,
+                                                         256,
+                                                         256,
+                                                         0,
+                                                         256,
+                                                         1,
+                                                         1,
+                                                         [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
+                                                         @fRGBABrushes,
+                                                         SizeOf(TpvScene3DPlanet.TRGBABrushes),
+                                                         false,
+                                                         false,
+                                                         0,
+                                                         true,
+                                                         false,
+                                                         false,
+                                                         0);
+  fVulkanDevice.DebugUtils.SetObjectName(fRGBABrushesTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fRGBABrushesTexture.Image');
+  fVulkanDevice.DebugUtils.SetObjectName(fRGBABrushesTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fRGBABrushesTexture.ImageView');
+
  end else begin
 
   fBrushesTexture:=nil;
+  fRGBABrushesTexture:=nil;
 
  end;
 
@@ -25233,6 +25277,8 @@ var InFlightFrameIndex,Index:TpvSizeInt;
 begin
 
  FreeAndNil(fBrushesTexture);
+
+ FreeAndNil(fRGBABrushesTexture);
  
  if assigned(fRaytracingTiles) then begin
   try
