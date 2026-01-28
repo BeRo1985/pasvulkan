@@ -269,6 +269,7 @@ begin
  fRenderer.ShadowMode:=UnitApplication.Application.ShadowMode;
  fRenderer.TransparencyMode:=UnitApplication.Application.TransparencyMode;
  fRenderer.DepthOfFieldMode:=UnitApplication.Application.DepthOfFieldMode;
+ fRenderer.LensMode:=UnitApplication.Application.LensMode;
  fRenderer.MaxMSAA:=UnitApplication.Application.MaxMSAA;
  fRenderer.MaxShadowMSAA:=UnitApplication.Application.MaxShadowMSAA;
  fRenderer.ShadowMapSize:=UnitApplication.Application.ShadowMapSize;
