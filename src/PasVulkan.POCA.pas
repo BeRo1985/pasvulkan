@@ -403,7 +403,8 @@ end;
 procedure POCAVector2GhostDestroy(const aGhost:PPOCAGhost);
 begin
  if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  FreeMem(aGhost^.Ptr);
+  POCADataPoolReleaseElement(POCADataPoolVector2,aGhost^.Ptr);
+//FreeMem(aGhost^.Ptr);
  end;
 end;
 
@@ -492,8 +493,9 @@ const POCAVector2Ghost:TPOCAGhostType=
 function POCANewVector2(const aContext:PPOCAContext;const aVector2:TpvVector2D):TPOCAValue; overload;
 var Vector2:PpvVector2D;
 begin
- Vector2:=nil;
- GetMem(Vector2,SizeOf(TpvVector2D));
+{Vector2:=nil;
+ GetMem(Vector2,SizeOf(TpvVector2D));}
+ Vector2:=POCADataPoolAllocateElement(POCADataPoolVector2);
  Vector2^:=aVector2;
  result:=POCANewGhost(aContext,@POCAVector2Ghost,Vector2,nil,pgptRAW);
  POCATemporarySave(aContext,result);
@@ -1037,7 +1039,8 @@ end;
 procedure POCAVector3GhostDestroy(const aGhost:PPOCAGhost);
 begin
  if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  FreeMem(aGhost^.Ptr);
+  POCADataPoolReleaseElement(POCADataPoolVector3,aGhost^.Ptr);
+//FreeMem(aGhost^.Ptr);
  end;
 end;
 
@@ -1137,8 +1140,9 @@ const POCAVector3Ghost:TPOCAGhostType=
 function POCANewVector3(const aContext:PPOCAContext;const aVector3:TpvVector3D):TPOCAValue; overload;
 var Vector3:PpvVector3D;
 begin
- Vector3:=nil;
- GetMem(Vector3,SizeOf(TpvVector3D));
+{Vector3:=nil;
+ GetMem(Vector3,SizeOf(TpvVector3D));}
+ Vector3:=POCADataPoolAllocateElement(POCADataPoolVector3);
  Vector3^:=aVector3;
  result:=POCANewGhost(aContext,@POCAVector3Ghost,Vector3,nil,pgptRAW);
  POCATemporarySave(aContext,result);
@@ -1706,7 +1710,8 @@ end;
 procedure POCAVector4GhostDestroy(const aGhost:PPOCAGhost);
 begin
  if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  FreeMem(aGhost^.Ptr);
+  POCADataPoolReleaseElement(POCADataPoolVector4,aGhost^.Ptr);
+//FreeMem(aGhost^.Ptr);
  end;
 end;
 
@@ -1817,8 +1822,9 @@ const POCAVector4Ghost:TPOCAGhostType=
 function POCANewVector4(const aContext:PPOCAContext;const aVector4:TpvVector4D):TPOCAValue; overload;
 var Vector4:PpvVector4D;
 begin
- Vector4:=nil;
- GetMem(Vector4,SizeOf(TpvVector4D));
+{Vector4:=nil;
+ GetMem(Vector4,SizeOf(TpvVector4D));}
+ Vector4:=POCADataPoolAllocateElement(POCADataPoolVector4);
  Vector4^:=aVector4;
  result:=POCANewGhost(aContext,@POCAVector4Ghost,Vector4,nil,pgptRAW);
  POCATemporarySave(aContext,result);
@@ -2402,7 +2408,8 @@ end;
 procedure POCAQuaternionGhostDestroy(const aGhost:PPOCAGhost);
 begin
  if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  FreeMem(aGhost^.Ptr);
+  POCADataPoolReleaseElement(POCADataPoolQuaternion,aGhost^.Ptr);
+//FreeMem(aGhost^.Ptr);
  end;
 end;
 
@@ -2513,8 +2520,9 @@ const POCAQuaternionGhost:TPOCAGhostType=
 function POCANewQuaternion(const aContext:PPOCAContext;const aQuaternion:TpvQuaternionD):TPOCAValue; overload;
 var Quaternion:PpvQuaternionD;
 begin
- Quaternion:=nil;
- GetMem(Quaternion,SizeOf(TpvQuaternionD));
+{Quaternion:=nil;
+ GetMem(Quaternion,SizeOf(TpvQuaternionD));}
+ Quaternion:=POCADataPoolAllocateElement(POCADataPoolQuaternion);
  Quaternion^:=aQuaternion;
  result:=POCANewGhost(aContext,@POCAQuaternionGhost,Quaternion,nil,pgptRAW);
  POCATemporarySave(aContext,result);
@@ -3504,7 +3512,8 @@ end;
 procedure POCAMatrix3x3GhostDestroy(const aGhost:PPOCAGhost);
 begin
  if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  FreeMem(aGhost^.Ptr);
+  POCADataPoolReleaseElement(POCADataPoolMatrix3x3,aGhost^.Ptr);
+//FreeMem(aGhost^.Ptr);
  end;
 end;
 
@@ -3625,7 +3634,9 @@ const POCAMatrix3x3Ghost:TPOCAGhostType=
 function POCANewMatrix3x3(const aContext:PPOCAContext;const aMatrix3x3:TpvMatrix3x3D):TPOCAValue;
 var Matrix3x3:PpvMatrix3x3D;
 begin
- GetMem(Matrix3x3,SizeOf(TpvMatrix3x3D));
+{Matrix3x3:=nil;
+ GetMem(Matrix3x3,SizeOf(TpvMatrix3x3D));}
+ Matrix3x3:=POCADataPoolAllocateElement(POCADataPoolMatrix3x3);
  Matrix3x3^:=aMatrix3x3;
  result:=POCANewGhost(aContext,@POCAMatrix3x3Ghost,Matrix3x3,nil,pgptRAW);
  POCATemporarySave(aContext,result);
@@ -4522,7 +4533,8 @@ end;
 procedure POCAMatrix4x4GhostDestroy(const aGhost:PPOCAGhost);
 begin
  if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  FreeMem(aGhost^.Ptr);
+  POCADataPoolReleaseElement(POCADataPoolMatrix4x4,aGhost^.Ptr);
+//FreeMem(aGhost^.Ptr);
  end;
 end;
 
@@ -4699,7 +4711,9 @@ const POCAMatrix4x4Ghost:TPOCAGhostType=
 function POCANewMatrix4x4(const aContext:PPOCAContext;const aMatrix4x4:TpvMatrix4x4D):TPOCAValue;
 var Matrix4x4:PpvMatrix4x4D;
 begin
- GetMem(Matrix4x4,SizeOf(TpvMatrix4x4D));
+{Matrix4x4:=nil;
+ GetMemMatrix4x4,SizeOf(TpvMatrix4x4D));}
+ Matrix4x4:=POCADataPoolAllocateElement(POCADataPoolMatrix4x4);
  Matrix4x4^:=aMatrix4x4;
  result:=POCANewGhost(aContext,@POCAMatrix4x4Ghost,Matrix4x4,nil,pgptRAW);
  POCATemporarySave(aContext,result);
