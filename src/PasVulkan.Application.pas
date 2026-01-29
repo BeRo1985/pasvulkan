@@ -91,6 +91,10 @@ uses {$if defined(Unix)}
       JclDebug,
      {$ifend}
      SysUtils,
+     {$ifndef fpc}
+     DateUtils,
+     IOUtils,
+     {$endif}
      Classes,
      SyncObjs,
      Math,
