@@ -352,6 +352,37 @@ procedure FinalizeForPOCAContext(const aContext:PPOCAContext);
 implementation
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Data pools
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var POCADataPoolVector2:PPOCADataPool=nil;
+    POCADataPoolVector3:PPOCADataPool=nil;
+    POCADataPoolVector4:PPOCADataPool=nil;
+    POCADataPoolMatrix3x3:PPOCADataPool=nil;
+    POCADataPoolMatrix4x4:PPOCADataPool=nil;
+    POCADataPoolQuaternion:PPOCADataPool=nil;
+
+procedure InitializePOCADataPools;
+begin
+ POCADataPoolVector2:=POCADataPoolCreate(SizeOf(TpvVector2D));
+ POCADataPoolVector3:=POCADataPoolCreate(SizeOf(TpvVector3D));
+ POCADataPoolVector4:=POCADataPoolCreate(SizeOf(TpvVector4D));
+ POCADataPoolMatrix3x3:=POCADataPoolCreate(SizeOf(TpvMatrix3x3D));
+ POCADataPoolMatrix4x4:=POCADataPoolCreate(SizeOf(TpvMatrix4x4D));
+ POCADataPoolQuaternion:=POCADataPoolCreate(SizeOf(TpvQuaternionD));
+end;
+
+procedure FinalizePOCADataPools;
+begin
+ POCADataPoolFree(POCADataPoolVector2);
+ POCADataPoolFree(POCADataPoolVector3);
+ POCADataPoolFree(POCADataPoolVector4);
+ POCADataPoolFree(POCADataPoolMatrix3x3);
+ POCADataPoolFree(POCADataPoolMatrix4x4);
+ POCADataPoolFree(POCADataPoolQuaternion);
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Host data
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -14309,4 +14340,7 @@ initialization
  POCACanvasFontGhostPointer:=@POCACanvasFontGhost;
  POCACanvasShapeGhostPointer:=@POCACanvasShapeGhost;
  POCACanvasGhostPointer:=@POCACanvasGhost;
+ InitializePOCADataPools;
+finalization
+ FinalizePOCADataPools;
 end.
