@@ -129,6 +129,7 @@ type EpvScene3D=class(Exception);
       public
        const MaxRendererInstances=32;
              MaxVisibleLights=65536;
+             MaxVisibleDecals=2048;  // Maximum number of decals in frustum cluster grid
              InitialCountDebugPrimitiveVertices=1 shl 8;
              MaxDebugPrimitiveVertices=1 shl 20;
              MaxParticles=65536; // <= Must be power of two
@@ -1678,7 +1679,9 @@ type EpvScene3D=class(Exception);
              public
               property LightItems:TLightItems read fLightItems;
               property LightMetaInfoVulkanBuffer:TpvVulkanBuffer read fLightMetaInfoVulkanBuffer;
+              property LightItemsVulkanBuffer:TpvVulkanBuffer read fLightItemsVulkanBuffer;
             end;
+            PLightBuffer=^TLightBuffer;
             TLightBuffers=array[0..MaxInFlightFrames-1] of TLightBuffer;
             { TLight }
             TLight=class
@@ -1735,6 +1738,100 @@ type EpvScene3D=class(Exception);
               property ViewSpacePosition:TpvVector3 read fViewSpacePosition write fViewSpacePosition;
             end;
             TLights=TpvObjectGenericList<TpvScene3D.TLight>;
+            { TDecal }
+            TDecal=class
+             private
+              fSceneInstance:TpvScene3D;
+              fIndex:TpvSizeInt;
+              fVisible:boolean;
+              fWorldToDecalMatrix:TpvMatrix4x4;
+              fSize:TpvVector3;
+              fUVScaleOffset:TpvVector4;
+              fBlendParams:TpvUInt32Vector4;
+              fTextureIndices:TpvUInt32Vector4;
+              fTextureIndices2:TpvUInt32Vector4;
+              fDecalForward:TpvVector4;
+              fMetaData:TpvUInt32Vector4;
+              fBoundingBox:TpvAABB;
+              fAABBTreeProxy:TpvSizeInt;
+              fDecalItemIndex:TpvSizeInt;
+              function GetOpacity:TpvFloat;
+              procedure SetOpacity(const aValue:TpvFloat);
+              function GetAngleFade:TpvFloat;
+              procedure SetAngleFade(const aValue:TpvFloat);
+              function GetEdgeFade:TpvFloat;
+              procedure SetEdgeFade(const aValue:TpvFloat);
+              function GetBlendMode:TpvUInt32;
+              procedure SetBlendMode(const aValue:TpvUInt32);
+             public
+              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+              procedure Update;
+             public
+              property Visible:boolean read fVisible write fVisible;
+              property WorldToDecalMatrix:TpvMatrix4x4 read fWorldToDecalMatrix write fWorldToDecalMatrix;
+              property Size:TpvVector3 read fSize write fSize;
+              property UVScaleOffset:TpvVector4 read fUVScaleOffset write fUVScaleOffset;
+              property Opacity:TpvFloat read GetOpacity write SetOpacity;
+              property AngleFade:TpvFloat read GetAngleFade write SetAngleFade;
+              property EdgeFade:TpvFloat read GetEdgeFade write SetEdgeFade;
+              property BlendMode:TpvUInt32 read GetBlendMode write SetBlendMode;
+              property TextureIndices:TpvUInt32Vector4 read fTextureIndices write fTextureIndices;
+              property TextureIndices2:TpvUInt32Vector4 read fTextureIndices2 write fTextureIndices2;
+              property DecalForward:TpvVector4 read fDecalForward write fDecalForward;
+              property MetaData:TpvUInt32Vector4 read fMetaData write fMetaData;
+              property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
+            end;
+            TDecals=TpvObjectGenericList<TpvScene3D.TDecal>;
+            { TDecalItem }
+            TDecalItem=packed record
+             WorldToDecalMatrix:TpvMatrix4x4;  // Transform world space to decal OBB space
+             UVScaleOffset:TpvVector4;         // xy=scale, zw=offset
+             BlendParams:TpvUInt32Vector4;     // x=opacity(float as bits), y=angleFade(float as bits), z=edgeFade(float as bits), w=blendMode(uint)
+             TextureIndices:TpvUInt32Vector4;  // albedo, normal, ORM, specular texture indices
+             TextureIndices2:TpvUInt32Vector4; // emissive, unused, unused, unused
+             DecalForward:TpvVector4;          // xyz=forward direction for angle fade, w=unused
+             MetaData:TpvUInt32Vector4;        // Type, flags, layer, priority
+            end;
+            PDecalItem=^TDecalItem;
+            TDecalItems=TpvDynamicArray<TDecalItem>;
+            TDecalMetaInfo=packed record
+             MinBounds:TpvVector4; // xyz = min OBB pos, w = decal type (0=none, 1=standard, etc.)
+             MaxBounds:TpvVector4; // xyz = max OBB pos, w = radius/extent
+            end;
+            PDecalMetaInfo=^TDecalMetaInfo;
+            TDecalMetaInfos=array[0..MaxVisibleDecals-1] of TDecalMetaInfo;
+            PDecalMetaInfos=^TDecalMetaInfos;
+            { TDecalBuffer }
+            TDecalBuffer=class
+             private
+              fSceneInstance:TpvScene3D;
+              fInFlightFrameIndex:TpvSizeInt;
+              fUploaded:TPasMPBool32;
+              fDecalItems:TDecalItems;
+              fDecalAABBTreeGeneration:TpvUInt64;
+              fNewDecalAABBTreeGeneration:TpvUInt64;
+              fDecalTree:TpvBVHDynamicAABBTree.TSkipListNodeArray;
+              fDecalMetaInfos:TDecalMetaInfos;
+              fDecalItemsVulkanBuffer:TpvVulkanBuffer;
+              fDecalTreeVulkanBuffer:TpvVulkanBuffer;
+              fDecalMetaInfoVulkanBuffer:TpvVulkanBuffer;
+             public
+              constructor Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt); reintroduce;
+              destructor Destroy; override;
+              procedure Upload;
+              procedure Unload;
+              procedure PrepareFrame;
+              procedure UploadFrame;
+             public
+              property DecalItems:TDecalItems read fDecalItems;
+              property DecalMetaInfoVulkanBuffer:TpvVulkanBuffer read fDecalMetaInfoVulkanBuffer;
+              property DecalItemsVulkanBuffer:TpvVulkanBuffer read fDecalItemsVulkanBuffer;
+            end;
+            PDecalBuffer=^TDecalBuffer;
+            TDecalBuffers=array[0..MaxInFlightFrames-1] of TDecalBuffer;
             TVertexDynamicArray=TpvDynamicArray<TVertex>;
             TGPUDynamicVertexDynamicArray=TpvDynamicArray<TGPUDynamicVertex>;
             TGPUStaticVertexDynamicArray=TpvDynamicArray<TGPUStaticVertex>;
@@ -4064,6 +4161,14 @@ type EpvScene3D=class(Exception);
        fLights:TpvScene3D.TLights;
        fLightsLock:TPasMPSlimReaderWriterLock;
        fManualLights:TpvScene3D.TLights;
+       fDecals:TpvScene3D.TDecals;
+       fDecalsLock:TPasMPSlimReaderWriterLock;
+       fDecalAABBTree:TpvBVHDynamicAABBTree;
+       fDecalAABBTreeGeneration:TpvUInt64;
+       fDecalAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
+       fDecalAABBTreeStateGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
+       fDecalBuffers:TpvScene3D.TDecalBuffers;
+       fDecalDataLock:TPasMPSlimReaderWriterLock;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeLock:TPasMPSlimReaderWriterLock;
        fAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
@@ -4241,6 +4346,8 @@ type EpvScene3D=class(Exception);
       private
        procedure CollectLights(var aLightItemArray:TpvScene3D.TLightItems;
                                var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
+       procedure CollectDecals(var aDecalItemArray:TpvScene3D.TDecalItems;
+                               var aDecalMetaInfoArray:TpvScene3D.TDecalMetaInfos);
        procedure CullAndPrepareGroupInstances(const aInFlightFrameIndex:TpvSizeInt;
                                               const aRendererInstance:TObject;
                                               const aRenderPass:TpvScene3DRendererRenderPass;
@@ -4255,6 +4362,7 @@ type EpvScene3D=class(Exception);
                                               const aRoot:TpvSizeInt;
                                               const aShadowPass:boolean);
        function GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
+       function GetDecalUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
       public
        procedure SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                     const aPipelineLayout:TpvVulkanPipelineLayout;
@@ -4427,6 +4535,7 @@ type EpvScene3D=class(Exception);
        property PrimaryShadowMapLightDirection:TpvVector3 read fPrimaryShadowMapLightDirection write fPrimaryShadowMapLightDirection;
        property PrimaryShadowMapLightDirections:TInFlightFrameVector3s read fPrimaryShadowMapLightDirections;
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
+       property DecalBuffers:TpvScene3D.TDecalBuffers read fDecalBuffers;
        property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
        property Particles:PParticles read fPointerToParticles;
        property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
@@ -11855,6 +11964,436 @@ begin
                                                          fLightMetaInfoVulkanBuffer,
                                                          0,
                                                          Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightMetaInfo));
+      end;
+     end;
+
+     else begin
+      Assert(false);
+     end;
+
+    end;
+
+   end;
+
+  end;
+
+ end;
+end;
+
+{ TpvScene3D.TDecal }
+
+constructor TpvScene3D.TDecal.Create(const aSceneInstance:TpvScene3D);
+begin
+ inherited Create;
+ fSceneInstance:=aSceneInstance;
+ fIndex:=-1;
+ fAABBTreeProxy:=-1;
+ fVisible:=true;
+ fDecalItemIndex:=-1;
+ fSize:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
+end;
+
+destructor TpvScene3D.TDecal.Destroy;
+begin
+ if fAABBTreeProxy>=0 then begin
+  try
+   if assigned(fSceneInstance) then begin
+    if assigned(fSceneInstance.fDecalAABBTree) then begin
+     fSceneInstance.fDecalAABBTree.DestroyProxy(fAABBTreeProxy);
+    end;
+    TPasMPInterlocked.Increment(fSceneInstance.fDecalAABBTreeGeneration);
+   end;
+  finally
+   fAABBTreeProxy:=-1;
+  end;
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TDecal.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ if assigned(fSceneInstance) and assigned(fSceneInstance.fDecalsLock) then begin
+  fSceneInstance.fDecalsLock.Acquire;
+  try
+   fIndex:=fSceneInstance.fDecals.Add(self);
+  finally
+   fSceneInstance.fDecalsLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TDecal.BeforeDestruction;
+var OtherDecal:TpvScene3D.TDecal;
+begin
+ if assigned(fSceneInstance) and assigned(fSceneInstance.fDecalsLock) then begin
+  fSceneInstance.fDecalsLock.Acquire;
+  try
+   if fIndex>=0 then begin
+    try
+     if (fIndex+1)<fSceneInstance.fDecals.Count then begin
+      OtherDecal:=fSceneInstance.fDecals[fSceneInstance.fDecals.Count-1];
+      OtherDecal.fIndex:=fIndex;
+      fSceneInstance.fDecals[fIndex]:=OtherDecal;
+      fIndex:=fSceneInstance.fDecals.Count-1;
+     end;
+     fSceneInstance.fDecals.Extract(fIndex);
+    finally
+     fIndex:=-1;
+    end;
+   end;
+  finally
+   fSceneInstance.fDecalsLock.Release;
+  end;
+ end;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TDecal.Update;
+var OBB:TpvOBB;
+    AABB:TpvAABB;
+begin
+
+ if fVisible then begin
+
+  // Compute OBB from world-to-decal matrix (inverse gives us the decal-to-world transform)
+  OBB.Center:=fWorldToDecalMatrix.Inverse.MulHomogen(TpvVector3.Origin);
+  OBB.HalfExtents:=fSize*0.5;
+  OBB.Matrix:=fWorldToDecalMatrix.Inverse.ToMatrix3x3;
+
+  // Convert OBB to AABB
+  AABB:=TpvAABB.CreateFromOBB(OBB);
+  fBoundingBox:=AABB;
+
+  if assigned(fSceneInstance) and assigned(fSceneInstance.fDecalAABBTree) then begin
+   if fAABBTreeProxy<0 then begin
+    // Create new proxy
+    fAABBTreeProxy:=fSceneInstance.fDecalAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(TpvPointer(self)));
+   end else begin
+    // Update existing proxy
+    fSceneInstance.fDecalAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis,true);
+   end;
+   TPasMPInterlocked.Increment(fSceneInstance.fDecalAABBTreeGeneration);
+  end;
+
+ end else begin
+
+  // If not visible, remove from AABB tree
+  if fAABBTreeProxy>=0 then begin
+   if assigned(fSceneInstance) and assigned(fSceneInstance.fDecalAABBTree) then begin
+    fSceneInstance.fDecalAABBTree.DestroyProxy(fAABBTreeProxy);
+    TPasMPInterlocked.Increment(fSceneInstance.fDecalAABBTreeGeneration);
+   end;
+   fAABBTreeProxy:=-1;
+  end;
+
+ end;
+
+end;
+
+function TpvScene3D.TDecal.GetOpacity:TpvFloat;
+begin
+ result:=PSingle(@fBlendParams.x)^;
+end;
+
+procedure TpvScene3D.TDecal.SetOpacity(const aValue:TpvFloat);
+begin
+ PSingle(@fBlendParams.x)^:=aValue;
+end;
+
+function TpvScene3D.TDecal.GetAngleFade:TpvFloat;
+begin
+ result:=PSingle(@fBlendParams.y)^;
+end;
+
+procedure TpvScene3D.TDecal.SetAngleFade(const aValue:TpvFloat);
+begin
+ PSingle(@fBlendParams.y)^:=aValue;
+end;
+
+function TpvScene3D.TDecal.GetEdgeFade:TpvFloat;
+begin
+ result:=PSingle(@fBlendParams.z)^;
+end;
+
+procedure TpvScene3D.TDecal.SetEdgeFade(const aValue:TpvFloat);
+begin
+ PSingle(@fBlendParams.z)^:=aValue;
+end;
+
+function TpvScene3D.TDecal.GetBlendMode:TpvUInt32;
+begin
+ result:=fBlendParams.w;
+end;
+
+procedure TpvScene3D.TDecal.SetBlendMode(const aValue:TpvUInt32);
+begin
+ fBlendParams.w:=aValue;
+end;
+
+{ TpvScene3D.TDecalBuffer }
+
+constructor TpvScene3D.TDecalBuffer.Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt);
+begin
+ inherited Create;
+ fSceneInstance:=aSceneInstance;
+ fInFlightFrameIndex:=aInFlightFrameIndex;
+ fUploaded:=false;
+ fDecalTree.Initialize;
+ fDecalAABBTreeGeneration:=fSceneInstance.fDecalAABBTreeGeneration-3;
+ fNewDecalAABBTreeGeneration:=fSceneInstance.fDecalAABBTreeGeneration-2;
+end;
+
+destructor TpvScene3D.TDecalBuffer.Destroy;
+begin
+ Unload;
+ fDecalTree.Finalize;
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TDecalBuffer.Upload;
+begin
+ if not fUploaded then begin
+  try
+
+   FreeAndNil(fDecalItemsVulkanBuffer);
+
+   FreeAndNil(fDecalTreeVulkanBuffer);
+
+   if assigned(fSceneInstance.fVulkanDevice) then begin
+
+    case fSceneInstance.fBufferStreamingMode of
+
+     TBufferStreamingMode.Direct:begin
+
+      fDecalItemsVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                      MaxVisibleDecals*SizeOf(TpvScene3D.TDecalItem),
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                      [],
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      [TpvVulkanBufferFlag.PersistentMapped],
+                                                      0,
+                                                      pvAllocationGroupIDScene3DDynamic,
+                                                      'TpvScene3D.fDecalItemsVulkanBuffer'
+                                                     );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalItemsVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalItemsVulkanBuffer');
+
+      fDecalTreeVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                     (MaxVisibleDecals*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [TpvVulkanBufferFlag.PersistentMapped],
+                                                     0,
+                                                     pvAllocationGroupIDScene3DDynamic,
+                                                     'TpvScene3D.fDecalTreeVulkanBuffer'
+                                                    );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalTreeVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalTreeVulkanBuffer');
+
+      fDecalMetaInfoVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                         MaxVisibleDecals*SizeOf(TpvScene3D.TDecalMetaInfo),
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                         [],
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         [TpvVulkanBufferFlag.PersistentMapped],
+                                                         0,
+                                                         pvAllocationGroupIDScene3DDynamic,
+                                                         'TpvScene3D.fDecalMetaInfoVulkanBuffer'
+                                                        );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalMetaInfoVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalMetaInfoVulkanBuffer');
+
+     end;
+
+     TBufferStreamingMode.Staging:begin
+
+      fDecalItemsVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                      MaxVisibleDecals*SizeOf(TpvScene3D.TDecalItem),
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                      [],
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                      0,
+                                                      0,
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      [],
+                                                      0,
+                                                      pvAllocationGroupIDScene3DDynamic,
+                                                      'TpvScene3D.fDecalItemsVulkanBuffer'
+                                                     );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalItemsVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalItemsVulkanBuffer');
+
+      fDecalTreeVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                     (MaxVisibleDecals*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                     0,
+                                                     0,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [],
+                                                     0,
+                                                     pvAllocationGroupIDScene3DDynamic,
+                                                     'TpvScene3D.fDecalTreeVulkanBuffer'
+                                                    );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalTreeVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalTreeVulkanBuffer');
+
+      fDecalMetaInfoVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                         MaxVisibleDecals*SizeOf(TpvScene3D.TDecalMetaInfo),
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                         [],
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                         0,
+                                                         0,
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         [],
+                                                         0,
+                                                         pvAllocationGroupIDScene3DDynamic,
+                                                         'TpvScene3D.fDecalMetaInfoVulkanBuffer'
+                                                        );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalMetaInfoVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalMetaInfoVulkanBuffer');
+
+     end;
+
+     else begin
+      Assert(false);
+     end;
+
+    end;
+
+   end;
+
+  finally
+   fUploaded:=true;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TDecalBuffer.Unload;
+begin
+ if fUploaded then begin
+  FreeAndNil(fDecalItemsVulkanBuffer);
+  FreeAndNil(fDecalTreeVulkanBuffer);
+  FreeAndNil(fDecalMetaInfoVulkanBuffer);
+  fUploaded:=false;
+ end;
+end;
+
+procedure TpvScene3D.TDecalBuffer.PrepareFrame;
+begin
+{fNewDecalAABBTreeGeneration:=fSceneInstance.fDecalAABBTreeGeneration;
+ if fDecalAABBTreeGeneration<>fNewDecalAABBTreeGeneration then begin
+  fSceneInstance.fDecalAABBTree.GetSkipListNodes(fDecalTree,fSceneInstance.fDecalAABBTreeStates[fInFlightFrameIndex]);
+  fSceneInstance.fDecalAABBTreeStateGenerations[fInFlightFrameIndex]:=fSceneInstance.fDecalAABBTreeGeneration;
+ end;}
+end;
+
+procedure TpvScene3D.TDecalBuffer.UploadFrame;
+const EmptyGPUSkipListNode:TpvBVHDynamicAABBTree.TSkipListNode=
+       (AABBMin:(x:0.0;y:0.0;z:0.0);
+        SkipCount:0;
+        AABBMax:(x:0.0;y:0.0;z:0.0);
+        UserData:TpvUInt32($ffffffff)
+       );
+begin
+ if fUploaded then begin
+
+  if fDecalAABBTreeGeneration<>fNewDecalAABBTreeGeneration then begin
+
+   fDecalAABBTreeGeneration:=fNewDecalAABBTreeGeneration;
+
+   if assigned(fSceneInstance.fVulkanDevice) then begin
+
+    case fSceneInstance.fBufferStreamingMode of
+
+     TBufferStreamingMode.Direct:begin
+
+      if fDecalItems.Count>0 then begin
+       fDecalItemsVulkanBuffer.UpdateData(fDecalItems.Items[0],0,Min(fDecalItems.Count,MaxVisibleDecals)*SizeOf(TpvScene3D.TDecalItem),FlushUpdateData);
+      end;
+      if fDecalTree.Count>0 then begin
+       fDecalTreeVulkanBuffer.UpdateData(fDecalTree.Items[0],0,Min(fDecalTree.Count,MaxVisibleDecals*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),FlushUpdateData);
+      end else begin
+       fDecalTreeVulkanBuffer.UpdateData(EmptyGPUSkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),FlushUpdateData);
+      end;
+      if fDecalItems.Count>0 then begin
+       fDecalMetaInfoVulkanBuffer.UpdateData(fDecalMetaInfos[0],0,Min(fDecalItems.Count,MaxVisibleDecals)*SizeOf(TpvScene3D.TDecalMetaInfo),FlushUpdateData);
+      end;
+
+     end;
+
+     TBufferStreamingMode.Staging:begin
+      if fDecalItems.Count>0 then begin
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         fDecalItems.Items[0],
+                                                         fDecalItemsVulkanBuffer,
+                                                         0,
+                                                         Min(fDecalItems.Count,MaxVisibleDecals)*SizeOf(TpvScene3D.TDecalItem));
+      end;
+      if fDecalTree.Count>0 then begin
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         fDecalTree.Items[0],
+                                                         fDecalTreeVulkanBuffer,
+                                                         0,
+                                                         Min(fDecalTree.Count,MaxVisibleDecals*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+      end else begin
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         EmptyGPUSkipListNode,
+                                                         fDecalTreeVulkanBuffer,
+                                                         0,
+                                                         SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+      end;
+      if fDecalItems.Count>0 then begin
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         fDecalMetaInfos[0],
+                                                         fDecalMetaInfoVulkanBuffer,
+                                                         0,
+                                                         Min(fDecalItems.Count,MaxVisibleDecals)*SizeOf(TpvScene3D.TDecalMetaInfo));
       end;
      end;
 
@@ -30643,6 +31182,30 @@ begin
 
  fManualLights:=TpvScene3D.TLights.Create(false);
 
+ fDecals:=TpvScene3D.TDecals.Create(false);
+
+ fDecalsLock:=TPasMPSlimReaderWriterLock.Create;
+
+ fDecalAABBTree:=TpvBVHDynamicAABBTree.Create;
+
+ fDecalAABBTreeGeneration:=0;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fDecalAABBTreeStates[Index].TreeNodes:=nil;
+  fDecalAABBTreeStates[Index].Root:=-1;
+  fDecalAABBTreeStates[Index].Generation:=High(TpvUInt64);
+ end;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fDecalAABBTreeStateGenerations[Index]:=fDecalAABBTreeGeneration-1;
+ end;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fDecalBuffers[Index]:=TpvScene3D.TDecalBuffer.Create(self,Index);
+ end;
+
+ fDecalDataLock:=TPasMPSlimReaderWriterLock.Create;
+
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
 
  fAABBTreeLock:=TPasMPSlimReaderWriterLock.Create;
@@ -31074,6 +31637,18 @@ begin
  FreeAndNil(fLightAABBTree);
 
  for Index:=0 to fCountInFlightFrames-1 do begin
+  fDecalAABBTreeStates[Index].TreeNodes:=nil;
+  fDecalAABBTreeStates[Index].Root:=-1;
+  fDecalAABBTreeStates[Index].Generation:=High(TpvUInt64);
+ end;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  FreeAndNil(fDecalBuffers[Index]);
+ end;
+
+ FreeAndNil(fDecalAABBTree);
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fGPURaytracingDataVulkanBuffers[Index]);
  end;
 
@@ -31376,6 +31951,15 @@ begin
  FreeAndNil(fLightsLock);
 
  FreeAndNil(fLightDataLock);
+
+ while fDecals.Count>0 do begin
+  fDecals[fDecals.Count-1].Free;
+ end;
+ FreeAndNil(fDecals);
+
+ FreeAndNil(fDecalsLock);
+
+ FreeAndNil(fDecalDataLock);
 
  fLastProcessFrameTimerQueryResults:=nil;
 
@@ -33121,6 +33705,12 @@ begin
  result:=TpvScene3D.TLight(Pointer(aUserData)).fLightItemIndex;
 end;
 
+function TpvScene3D.GetDecalUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
+begin
+ // TODO: Implement decal system - for now return 0
+ result:=0;
+end;
+
 procedure TpvScene3D.ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
 var GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
     GlobalVulkanInstanceDataIndexDynamicArray:PGlobalVulkanInstanceDataIndexDynamicArray;
@@ -33958,12 +34548,43 @@ begin
  end;
 end;
 
+procedure TpvScene3D.CollectDecals(var aDecalItemArray:TpvScene3D.TDecalItems;
+                                   var aDecalMetaInfoArray:TpvScene3D.TDecalMetaInfos);
+var DecalIndex:TpvSizeInt;
+    Decal:TpvScene3D.TDecal;
+    DecalItem:TpvScene3D.PDecalItem;
+    DecalMetaInfo:TpvScene3D.PDecalMetaInfo;
+begin
+ aDecalItemArray.ClearNoFree;
+ for DecalIndex:=0 to fDecals.Count-1 do begin
+  Decal:=fDecals[DecalIndex];
+  if (aDecalItemArray.Count<MaxVisibleDecals) and Decal.fVisible then begin
+   Decal.fDecalItemIndex:=aDecalItemArray.AddNewIndex;
+   DecalItem:=@aDecalItemArray.Items[Decal.fDecalItemIndex];
+   DecalItem^.WorldToDecalMatrix:=Decal.fWorldToDecalMatrix;
+   DecalItem^.UVScaleOffset:=Decal.fUVScaleOffset;
+   DecalItem^.BlendParams:=Decal.fBlendParams;
+   DecalItem^.TextureIndices:=Decal.fTextureIndices;
+   DecalItem^.TextureIndices2:=Decal.fTextureIndices2;
+   DecalItem^.DecalForward:=Decal.fDecalForward;
+   DecalItem^.MetaData:=Decal.fMetaData;
+   DecalMetaInfo:=@aDecalMetaInfoArray[Decal.fDecalItemIndex];
+   DecalMetaInfo^.MinBounds:=TpvVector4.Create(Decal.fBoundingBox.Min,0.0);
+   DecalMetaInfo^.MaxBounds:=TpvVector4.Create(Decal.fBoundingBox.Max,Decal.fBoundingBox.Radius);
+  end else begin
+   Decal.fDecalItemIndex:=-1;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
 var Index,ItemID:TpvSizeInt;
     OldGeneration,NewGeneration:TpvUInt64;
     DirtyBits:TPasMPUInt32;
     LightBuffer:TpvScene3D.TLightBuffer;
     LightAABBTreeState:TpvBVHDynamicAABBTree.PState;
+    DecalBuffer:TpvScene3D.TDecalBuffer;
+    DecalAABBTreeState:TpvBVHDynamicAABBTree.PState;
     Group:TpvScene3D.TGroup;
     Texture:TpvScene3D.TTexture;
     Material:TpvScene3D.TMaterial;
@@ -34101,6 +34722,40 @@ begin
    CollectLights(LightBuffer.fLightItems,LightBuffer.fLightMetaInfos);
    fLightAABBTree.GetSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
    LightBuffer.fNewLightAABBTreeGeneration:=fLightAABBTreeGeneration;
+
+  end;
+
+ end;
+
+ // Decals
+ if assigned(fDecalAABBTree) then begin
+
+  OldGeneration:=fDecalAABBTreeStateGenerations[aInFlightFrameIndex];
+  NewGeneration:=fDecalAABBTreeGeneration;
+  if (OldGeneration<>NewGeneration) and
+     (TPasMPInterlocked.CompareExchange(fDecalAABBTreeStateGenerations[aInFlightFrameIndex],NewGeneration,OldGeneration)=OldGeneration) then begin
+
+   DecalAABBTreeState:=@fDecalAABBTreeStates[aInFlightFrameIndex];
+// fDecalAABBTree.Rebuild(false);
+   fDecalAABBTree.UpdateGeneration;
+   if DecalAABBTreeState^.Generation<>fDecalAABBTree.Generation then begin
+    DecalAABBTreeState^.Generation:=fDecalAABBTree.Generation;
+    if (length(fDecalAABBTree.Nodes)>0) and (fDecalAABBTree.Root>=0) then begin
+     if length(DecalAABBTreeState^.TreeNodes)<length(fDecalAABBTree.Nodes) then begin
+      DecalAABBTreeState^.TreeNodes:=copy(fDecalAABBTree.Nodes);
+     end else begin
+      Move(fDecalAABBTree.Nodes[0],DecalAABBTreeState^.TreeNodes[0],length(fDecalAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+     end;
+     DecalAABBTreeState^.Root:=fDecalAABBTree.Root;
+    end else begin
+     DecalAABBTreeState^.Root:=-1;
+    end;
+   end;
+
+   DecalBuffer:=fDecalBuffers[aInFlightFrameIndex];
+   CollectDecals(DecalBuffer.fDecalItems,DecalBuffer.fDecalMetaInfos);
+   fDecalAABBTree.GetSkipListNodes(DecalBuffer.fDecalTree,GetDecalUserDataIndex);
+   DecalBuffer.fNewDecalAABBTreeGeneration:=fDecalAABBTreeGeneration;
 
   end;
 
@@ -34792,6 +35447,8 @@ begin
   end;
 
   LightBuffers[aInFlightFrameIndex].UploadFrame;
+
+  DecalBuffers[aInFlightFrameIndex].UploadFrame;
 
   if fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].Count>0 then begin
 
