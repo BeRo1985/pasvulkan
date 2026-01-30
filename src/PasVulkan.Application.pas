@@ -8847,6 +8847,8 @@ begin
 
  fSkipNextDrawFrame:=false;
 
+ fStayActiveRegardlessOfVisibility:=false;
+
  fVulkanRecreateSwapChainOnSuboptimalSurface:=false;
 
  fVulkanDebugging:=false;
@@ -13612,7 +13614,7 @@ begin
 
  end;
 
- if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
+ if fGraphicsReady then begin
 
   if fReinitializeGraphics then begin
    try
@@ -13633,69 +13635,193 @@ begin
 
   if not fResourceManager.SynchronizationPoint then begin
 
-   if ShouldSkipNextFrameForRendering then begin
+   if fStayActiveRegardlessOfVisibility or IsVisibleToUser then begin
 
-    fSkipNextDrawFrame:=false;
+    if ShouldSkipNextFrameForRendering then begin
 
-    fNowTime:=fHighResolutionTimer.GetTime;
-    if fHasLastTime then begin
-     fDeltaTime:=fNowTime-fLastTime;
-    end else begin
-     fDeltaTime:=0;
-    end;
-    fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
-    fLastTime:=fNowTime;
-    fHasLastTime:=true;
+     fSkipNextDrawFrame:=false;
 
-    UpdateFrameTimesHistory;
+     fNowTime:=fHighResolutionTimer.GetTime;
+     if fHasLastTime then begin
+      fDeltaTime:=fNowTime-fLastTime;
+     end else begin
+      fDeltaTime:=0;
+     end;
+     fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
+     fLastTime:=fNowTime;
+     fHasLastTime:=true;
 
-    fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
+     UpdateFrameTimesHistory;
 
-    fUpdateFrameCounter:=fFrameCounter;
-    fDrawFrameCounter:=fFrameCounter;
+     fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
 
-    fPreviousInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+     fUpdateFrameCounter:=fFrameCounter;
+     fDrawFrameCounter:=fFrameCounter;
 
-    fCurrentInFlightFrameIndex:=fNextInFlightFrameIndex;
+     fPreviousInFlightFrameIndex:=fCurrentInFlightFrameIndex;
 
-    fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
-    if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
-     fNextInFlightFrameIndex:=0;
-    end;
+     fCurrentInFlightFrameIndex:=fNextInFlightFrameIndex;
 
-    fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
-    fUpdateInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+     fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+     if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+      fNextInFlightFrameIndex:=0;
+     end;
 
-    Check(fUpdateDeltaTime);
+     fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+     fUpdateInFlightFrameIndex:=fCurrentInFlightFrameIndex;
 
-    if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-     fUpdateThread.Invoke;
-     fUpdateThread.WaitForDone;
-    end else begin
-     UpdateJobFunction(nil,0);
-    end;
+     Check(fUpdateDeltaTime);
 
-    inc(fFrameCounter);
+     if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
+      fUpdateThread.Invoke;
+      fUpdateThread.WaitForDone;
+     end else begin
+      UpdateJobFunction(nil,0);
+     end;
 
-    FrameRateLimiter;
+     inc(fFrameCounter);
 
-    inc(fSwapChainImageCounterIndex);
-    if fSwapChainImageCounterIndex>=fCountSwapChainImages then begin
-     dec(fSwapChainImageCounterIndex,fCountSwapChainImages);
-    end;
+     FrameRateLimiter;
 
-    VulkanWaitIdle;
+     inc(fSwapChainImageCounterIndex);
+     if fSwapChainImageCounterIndex>=fCountSwapChainImages then begin
+      dec(fSwapChainImageCounterIndex,fCountSwapChainImages);
+     end;
 
-   end else if ReadyForSwapChainLatency then begin
+     VulkanWaitIdle;
 
-    case fProcessingMode of
+    end else if ReadyForSwapChainLatency then begin
 
-     TpvApplicationProcessingMode.Flexible:begin
+     case fProcessingMode of
 
-      fUpdateJob:=nil;
-      try
+      TpvApplicationProcessingMode.Flexible:begin
 
-       if fVulkanBackBufferState=TVulkanBackBufferState.Acquire then begin
+       fUpdateJob:=nil;
+       try
+
+        if fVulkanBackBufferState=TVulkanBackBufferState.Acquire then begin
+
+         fNowTime:=fHighResolutionTimer.GetTime;
+         if fHasLastTime then begin
+          fDeltaTime:=fNowTime-fLastTime;
+         end else begin
+          fDeltaTime:=0;
+         end;
+         fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
+         fLastTime:=fNowTime;
+         fHasLastTime:=true;
+
+         UpdateFrameTimesHistory;
+
+         fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
+
+         if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
+
+          fDrawFrameCounter:=fFrameCounter-1;
+
+          fUpdateFrameCounter:=fFrameCounter;
+
+          fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+
+          fUpdateInFlightFrameIndex:=fNextInFlightFrameIndex;
+
+          Check(fUpdateDeltaTime);
+
+          if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
+           fUpdateThread.Invoke;
+          end else begin
+           fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction,nil,nil,0,PasMPAreaMaskUpdate,PasMPAreaMaskRender,PasMPAffinityMaskUpdateAllowMask,PasMPAffinityMaskUpdateAvoidMask);
+           fPasMPInstance.Run(fUpdateJob);
+          end;
+
+         end else begin
+
+          fUpdateFrameCounter:=fFrameCounter;
+
+          fDrawFrameCounter:=fFrameCounter;
+
+          fDrawInFlightFrameIndex:=fNextInFlightFrameIndex;
+
+          fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
+
+          Check(fUpdateDeltaTime);
+
+          if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
+           fUpdateThread.Invoke;
+           fUpdateThread.WaitForDone;
+          end else begin
+           UpdateJobFunction(nil,0);
+          end;
+
+         end;
+
+         if assigned(fVulkanDevice) then begin
+          while not AcquireVulkanBackBuffer do begin
+           TPasMP.Yield;
+          end;
+         end;
+
+        end;
+
+        if fVulkanBackBufferState=TVulkanBackBufferState.Present then begin
+         try
+          CurrentJobWorkerThread:=fPasMPInstance.JobWorkerThread;
+          if assigned(CurrentJobWorkerThread) then begin
+           CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask or PasMPAreaMaskRender;
+          end;
+          BeginFrame(fUpdateDeltaTime);
+          DrawJobFunction(nil,0);
+          FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+          if assigned(CurrentJobWorkerThread) then begin
+           CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask and not PasMPAreaMaskRender;
+          end;
+         finally
+          if assigned(fVulkanDevice) then begin
+           try
+            if fUpdateWaitsForGPU then begin
+             if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
+              fUpdateThread.WaitForDone;
+             end else begin
+              if assigned(fUpdateJob) then begin
+               try
+                fPasMPInstance.WaitRelease(fUpdateJob);
+               finally
+                fUpdateJob:=nil;
+               end;
+              end;
+              while TPasMPInterlocked.Read(fInUpdateJobFunction) do begin
+               TPasMP.Yield;
+              end;
+             end;
+            end;
+           finally
+            try
+             PresentVulkanBackBuffer;
+            finally
+             PostPresent(fSwapChainImageIndex);
+            end;
+           end;
+          end;
+         end;
+         inc(fFrameCounter);
+         FrameRateLimiter;
+        end;
+
+       finally
+        if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
+         fUpdateThread.WaitForDone;
+        end else begin
+         if assigned(fUpdateJob) then begin
+          fPasMPInstance.WaitRelease(fUpdateJob);
+         end;
+        end;
+       end;
+
+      end;
+
+      else {TpvApplicationProcessingMode.Strict:}begin
+
+       if (not assigned(fVulkanDevice)) or AcquireVulkanBackBuffer then begin
 
         fNowTime:=fHighResolutionTimer.GetTime;
         if fHasLastTime then begin
@@ -13711,210 +13837,90 @@ begin
 
         fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
 
-        if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
-
-         fDrawFrameCounter:=fFrameCounter-1;
-
-         fUpdateFrameCounter:=fFrameCounter;
-
-         fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
-
-         fUpdateInFlightFrameIndex:=fNextInFlightFrameIndex;
-
-         Check(fUpdateDeltaTime);
-
-         if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-          fUpdateThread.Invoke;
-         end else begin
-          fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction,nil,nil,0,PasMPAreaMaskUpdate,PasMPAreaMaskRender,PasMPAffinityMaskUpdateAllowMask,PasMPAffinityMaskUpdateAvoidMask);
-          fPasMPInstance.Run(fUpdateJob);
-         end;
-
-        end else begin
-
-         fUpdateFrameCounter:=fFrameCounter;
-
-         fDrawFrameCounter:=fFrameCounter;
-
-         fDrawInFlightFrameIndex:=fNextInFlightFrameIndex;
-
-         fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
-
-         Check(fUpdateDeltaTime);
-
-         if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-          fUpdateThread.Invoke;
-          fUpdateThread.WaitForDone;
-         end else begin
-          UpdateJobFunction(nil,0);
-         end;
-
-        end;
-
-        if assigned(fVulkanDevice) then begin
-         while not AcquireVulkanBackBuffer do begin
-          TPasMP.Yield;
-         end;
-        end;
-
-       end;
-
-       if fVulkanBackBufferState=TVulkanBackBufferState.Present then begin
         try
-         CurrentJobWorkerThread:=fPasMPInstance.JobWorkerThread;
-         if assigned(CurrentJobWorkerThread) then begin
-          CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask or PasMPAreaMaskRender;
+
+         if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
+
+          fDrawFrameCounter:=fFrameCounter-1;
+
+          fUpdateFrameCounter:=fFrameCounter;
+
+          fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex-1;
+          if fDrawInFlightFrameIndex<0 then begin
+           inc(fDrawInFlightFrameIndex,fCountInFlightFrames);
+          end;
+
+          fUpdateInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+
+          Check(fUpdateDeltaTime);
+
+          BeginFrame(fUpdateDeltaTime);
+
+          if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
+           fUpdateThread.Invoke;
+           DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
+           fUpdateThread.WaitForDone;
+          end else begin
+           fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction,nil,nil,0,PasMPAreaMaskUpdate,PasMPAreaMaskRender,PasMPAffinityMaskUpdateAllowMask,PasMPAffinityMaskUpdateAvoidMask);
+           try
+            fPasMPInstance.Run(fUpdateJob);
+            CurrentJobWorkerThread:=fPasMPInstance.JobWorkerThread;
+            if assigned(CurrentJobWorkerThread) then begin
+             CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask or PasMPAreaMaskRender;
+            end;
+            DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
+            if assigned(CurrentJobWorkerThread) then begin
+             CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask and not PasMPAreaMaskRender;
+            end;
+           finally
+            fPasMPInstance.WaitRelease(fUpdateJob);
+           end;
+          end;
+
+          FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+
+         end else begin
+
+          fUpdateFrameCounter:=fFrameCounter;
+
+          fDrawFrameCounter:=fFrameCounter;
+
+          fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+
+          fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
+
+          Check(fUpdateDeltaTime);
+
+          if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
+           fUpdateThread.Invoke;
+           fUpdateThread.WaitForDone;
+          end else begin
+           UpdateJobFunction(nil,0);
+          end;
+
+          BeginFrame(fUpdateDeltaTime);
+
+          DrawJobFunction(nil,0);
+
+          FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+
          end;
-         BeginFrame(fUpdateDeltaTime);
-         DrawJobFunction(nil,0);
-         FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
-         if assigned(CurrentJobWorkerThread) then begin
-          CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask and not PasMPAreaMaskRender;
-         end;
+
         finally
          if assigned(fVulkanDevice) then begin
           try
-           if fUpdateWaitsForGPU then begin
-            if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-             fUpdateThread.WaitForDone;
-            end else begin
-             if assigned(fUpdateJob) then begin
-              try
-               fPasMPInstance.WaitRelease(fUpdateJob);
-              finally
-               fUpdateJob:=nil;
-              end;
-             end;
-             while TPasMPInterlocked.Read(fInUpdateJobFunction) do begin
-              TPasMP.Yield;
-             end;
-            end;
-           end;
+           PresentVulkanBackBuffer;
           finally
-           try
-            PresentVulkanBackBuffer;
-           finally
-            PostPresent(fSwapChainImageIndex);
-           end;
+           PostPresent(fSwapChainImageIndex);
           end;
          end;
         end;
+
         inc(fFrameCounter);
+
         FrameRateLimiter;
+
        end;
-
-      finally
-       if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-        fUpdateThread.WaitForDone;
-       end else begin
-        if assigned(fUpdateJob) then begin
-         fPasMPInstance.WaitRelease(fUpdateJob);
-        end;
-       end;
-      end;
-
-     end;
-
-     else {TpvApplicationProcessingMode.Strict:}begin
-
-      if (not assigned(fVulkanDevice)) or AcquireVulkanBackBuffer then begin
-
-       fNowTime:=fHighResolutionTimer.GetTime;
-       if fHasLastTime then begin
-        fDeltaTime:=fNowTime-fLastTime;
-       end else begin
-        fDeltaTime:=0;
-       end;
-       fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
-       fLastTime:=fNowTime;
-       fHasLastTime:=true;
-
-       UpdateFrameTimesHistory;
-
-       fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
-
-       try
-
-        if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
-
-         fDrawFrameCounter:=fFrameCounter-1;
-
-         fUpdateFrameCounter:=fFrameCounter;
-
-         fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex-1;
-         if fDrawInFlightFrameIndex<0 then begin
-          inc(fDrawInFlightFrameIndex,fCountInFlightFrames);
-         end;
-
-         fUpdateInFlightFrameIndex:=fCurrentInFlightFrameIndex;
-
-         Check(fUpdateDeltaTime);
-
-         BeginFrame(fUpdateDeltaTime);
-
-         if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-          fUpdateThread.Invoke;
-          DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
-          fUpdateThread.WaitForDone;
-         end else begin
-          fUpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction,nil,nil,0,PasMPAreaMaskUpdate,PasMPAreaMaskRender,PasMPAffinityMaskUpdateAllowMask,PasMPAffinityMaskUpdateAvoidMask);
-          try
-           fPasMPInstance.Run(fUpdateJob);
-           CurrentJobWorkerThread:=fPasMPInstance.JobWorkerThread;
-           if assigned(CurrentJobWorkerThread) then begin
-            CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask or PasMPAreaMaskRender;
-           end;
-           DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
-           if assigned(CurrentJobWorkerThread) then begin
-            CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask and not PasMPAreaMaskRender;
-           end;
-          finally
-           fPasMPInstance.WaitRelease(fUpdateJob);
-          end;
-         end;
-
-         FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
-
-        end else begin
-
-         fUpdateFrameCounter:=fFrameCounter;
-
-         fDrawFrameCounter:=fFrameCounter;
-
-         fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
-
-         fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
-
-         Check(fUpdateDeltaTime);
-
-         if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-          fUpdateThread.Invoke;
-          fUpdateThread.WaitForDone;
-         end else begin
-          UpdateJobFunction(nil,0);
-         end;
-
-         BeginFrame(fUpdateDeltaTime);
-
-         DrawJobFunction(nil,0);
-
-         FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
-
-        end;
-
-       finally
-        if assigned(fVulkanDevice) then begin
-         try
-          PresentVulkanBackBuffer;
-         finally
-          PostPresent(fSwapChainImageIndex);
-         end;
-        end;
-       end;
-
-       inc(fFrameCounter);
-
-       FrameRateLimiter;
 
       end;
 
@@ -13922,14 +13928,16 @@ begin
 
     end;
 
+   end else begin
+    fDeltaTime:=0;
    end;
 
+  end else begin
+   fDeltaTime:=0;
   end;
 
  end else begin
-
   fDeltaTime:=0;
-
  end;
 
  if assigned(fPasMPInstance.Profiler) then begin
