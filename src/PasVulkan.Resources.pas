@@ -1576,7 +1576,7 @@ begin
 
  fResourceManager:=aResourceManager;
 
- fPasMPInstance:=TPasMP.Create(1,-1,-1,0,false,true,true,false,TThreadPriority.tpNormal,0,0);
+ fPasMPInstance:=TPasMP.Create(-1,-1,-1,0,false,true,true,false,TThreadPriority.tpNormal,0,0);
 
  fBackgroundLoaderThread:=TpvResourceBackgroundLoaderThread.Create(self);
 
@@ -1658,7 +1658,7 @@ end;
 
 procedure TpvResourceBackgroundLoader.HandleLoadDependencyBatchMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 var Index:TPasMPNativeInt;
-    ParallelLoadCount,MaximumParallelLoadCount,NewMaximumParallelLoadCount:TPasMPInt32;
+    ParallelLoadCount,MaximumParallelLoadCount:TPasMPInt32;
     Node:TpvResourceDependencyNode;
     Resource:TpvResource;
     Stream:TStream;
@@ -1717,11 +1717,14 @@ begin
 
  repeat
   MaximumParallelLoadCount:=fResourceManager.fMaximumParallelLoadCount;
-  NewMaximumParallelLoadCount:=Max(MaximumParallelLoadCount,ParallelLoadCount);
-  if TPasMPInterlocked.CompareExchange(fResourceManager.fMaximumParallelLoadCount,NewMaximumParallelLoadCount,MaximumParallelLoadCount)=MaximumParallelLoadCount then begin
-   break;
+  if MaximumParallelLoadCount<ParallelLoadCount then begin
+   if TPasMPInterlocked.CompareExchange(fResourceManager.fMaximumParallelLoadCount,ParallelLoadCount,MaximumParallelLoadCount)=MaximumParallelLoadCount then begin
+    break;
+   end else begin
+    Sleep(0);
+   end;
   end else begin
-   Sleep(0);
+   break;
   end;
  until false;
 
@@ -1759,7 +1762,7 @@ begin
                                                     0,
                                                     PasMPAreaMaskBackgroundLoading,
                                                     PasMPAreaMaskUpdate or PasMPAreaMaskRender,
-                                                    true,
+                                                    false,
                                                     PasMPAffinityMaskBackgroundLoadingAllowMask,
                                                     PasMPAffinityMaskBackgroundLoadingAvoidMask));
 
