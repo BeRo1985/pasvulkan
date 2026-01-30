@@ -1578,7 +1578,7 @@ begin
 
  AvailableCPUCores:=nil;
  try
-  fPasMPInstance:=TPasMP.Create(TPasMP.GetCountOfPhysicalCores(AvailableCPUCores),-1,-1,0,false,true,true,false,TThreadPriority.tpNormal,0,0);
+  fPasMPInstance:=TPasMP.Create(TPasMP.GetCountOfPhysicalCores(AvailableCPUCores)*4,-1,-1,0,false,true,true,false,TThreadPriority.tpNormal,0,0);
  finally
   AvailableCPUCores:=nil;
  end;
