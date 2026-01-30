@@ -13932,8 +13932,6 @@ begin
     fDeltaTime:=0;
    end;
 
-  end else begin
-   fDeltaTime:=0;
   end;
 
  end else begin
