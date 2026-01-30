@@ -1576,7 +1576,12 @@ begin
 
  fResourceManager:=aResourceManager;
 
- fPasMPInstance:=TPasMP.Create(-1,-1,-1,0,false,true,true,false,TThreadPriority.tpNormal,0,0);
+ AvailableCPUCores:=nil;
+ try
+  fPasMPInstance:=TPasMP.Create(TPasMP.GetCountOfPhysicalCores(AvailableCPUCores),-1,-1,0,false,true,true,false,TThreadPriority.tpNormal,0,0);
+ finally
+  AvailableCPUCores:=nil;
+ end;
 
  fBackgroundLoaderThread:=TpvResourceBackgroundLoaderThread.Create(self);
 
