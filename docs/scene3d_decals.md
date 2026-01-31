@@ -145,14 +145,14 @@ function SpawnDecal(
 - `aPosition` - World-space position (64-bit precision)
 - `aNormal` - Surface normal vector (used to orient the decal)
 - `aSize` - Width and height in world units (depth is automatically 0.5)
-- `aAlbedoTexture` - Texture index for base color (0 = white/none)
-- `aNormalTexture` - Texture index for normal map (0 = flat)
-- `aORMTexture` - Texture index for ORM map (0 = defaults)
+- `aAlbedoTexture` - Texture index for base color (-1 = white/none)
+- `aNormalTexture` - Texture index for normal map (-1 = flat)
+- `aORMTexture` - Texture index for ORM map (-1 = defaults)
   - R channel: Occlusion
   - G channel: Roughness
   - B channel: Metallic
-- `aSpecularTexture` - Texture index for specular properties (0 = defaults)
-- `aEmissiveTexture` - Texture index for emissive glow (0 = none)
+- `aSpecularTexture` - Texture index for specular properties (-1 = defaults)
+- `aEmissiveTexture` - Texture index for emissive glow (-1 = none)
 - `aBlendMode` - How decal blends with surface material
   - `AlphaBlend` - Standard alpha blending (default)
   - `Multiply` - Darkens surface (dirt, grime, shadows)
