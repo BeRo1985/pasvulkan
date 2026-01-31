@@ -1738,13 +1738,21 @@ type EpvScene3D=class(Exception);
               property ViewSpacePosition:TpvVector3 read fViewSpacePosition write fViewSpacePosition;
             end;
             TLights=TpvObjectGenericList<TpvScene3D.TLight>;
+            TDecalBlendMode=
+             (
+              AlphaBlend=0,  // Standard alpha blending
+              Multiply=1,    // Multiply (dirt/grime)
+              Overlay=2,     // Overlay (painted markings)
+              Additive=3     // Additive (glowing effects)
+             );
             { TDecal }
             TDecal=class
              private
               fSceneInstance:TpvScene3D;
               fIndex:TpvSizeInt;
               fVisible:boolean;
-              fWorldToDecalMatrix:TpvMatrix4x4;
+              fWorldToDecalMatrix:TpvMatrix4x4D;
+              fWorldToDecalMatrix32:TpvMatrix4x4; // Origin-offset 32-bit version for GPU
               fSize:TpvVector3;
               fUVScaleOffset:TpvVector4;
               fBlendParams:TpvUInt32Vector4;
@@ -1761,23 +1769,23 @@ type EpvScene3D=class(Exception);
               procedure SetAngleFade(const aValue:TpvFloat);
               function GetEdgeFade:TpvFloat;
               procedure SetEdgeFade(const aValue:TpvFloat);
-              function GetBlendMode:TpvUInt32;
-              procedure SetBlendMode(const aValue:TpvUInt32);
+              function GetBlendMode:TpvScene3D.TDecalBlendMode;
+              procedure SetBlendMode(const aValue:TpvScene3D.TDecalBlendMode);
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
-              procedure Update;
+              procedure Update(const aInFlightFrameIndex:TpvSizeInt=-1);
              public
               property Visible:boolean read fVisible write fVisible;
-              property WorldToDecalMatrix:TpvMatrix4x4 read fWorldToDecalMatrix write fWorldToDecalMatrix;
+              property WorldToDecalMatrix:TpvMatrix4x4D read fWorldToDecalMatrix write fWorldToDecalMatrix;
               property Size:TpvVector3 read fSize write fSize;
               property UVScaleOffset:TpvVector4 read fUVScaleOffset write fUVScaleOffset;
               property Opacity:TpvFloat read GetOpacity write SetOpacity;
               property AngleFade:TpvFloat read GetAngleFade write SetAngleFade;
               property EdgeFade:TpvFloat read GetEdgeFade write SetEdgeFade;
-              property BlendMode:TpvUInt32 read GetBlendMode write SetBlendMode;
+              property BlendMode:TpvScene3D.TDecalBlendMode read GetBlendMode write SetBlendMode;
               property TextureIndices:TpvUInt32Vector4 read fTextureIndices write fTextureIndices;
               property TextureIndices2:TpvUInt32Vector4 read fTextureIndices2 write fTextureIndices2;
               property DecalForward:TpvVector4 read fDecalForward write fDecalForward;
@@ -12049,17 +12057,28 @@ begin
  inherited BeforeDestruction;
 end;
 
-procedure TpvScene3D.TDecal.Update;
+procedure TpvScene3D.TDecal.Update(const aInFlightFrameIndex:TpvSizeInt);
 var OBB:TpvOBB;
     AABB:TpvAABB;
+    Matrix64:TpvMatrix4x4D;
+    Matrix32:TpvMatrix4x4;
 begin
 
  if fVisible then begin
 
-  // Compute OBB from world-to-decal matrix (inverse gives us the decal-to-world transform)
-  OBB.Center:=fWorldToDecalMatrix.Inverse.MulHomogen(TpvVector3.Origin);
+  // Apply origin-offset transform (64-bit to 32-bit), same pattern as TLight.Update
+  if aInFlightFrameIndex>=0 then begin
+   Matrix64:=fSceneInstance.TransformOrigin(fWorldToDecalMatrix,aInFlightFrameIndex,false);
+   Matrix32:=Matrix64;
+  end else begin
+   Matrix32:=fWorldToDecalMatrix;
+  end;
+  fWorldToDecalMatrix32:=Matrix32;
+
+  // Compute OBB from origin-offset 32-bit matrix (inverse gives us the decal-to-world transform)
+  OBB.Center:=Matrix32.Inverse.MulHomogen(TpvVector3.Origin);
   OBB.HalfExtents:=fSize*0.5;
-  OBB.Matrix:=fWorldToDecalMatrix.Inverse.ToMatrix3x3;
+  OBB.Matrix:=Matrix32.Inverse.ToMatrix3x3;
 
   // Convert OBB to AABB
   AABB:=TpvAABB.CreateFromOBB(OBB);
@@ -12121,14 +12140,14 @@ begin
  PSingle(@fBlendParams.z)^:=aValue;
 end;
 
-function TpvScene3D.TDecal.GetBlendMode:TpvUInt32;
+function TpvScene3D.TDecal.GetBlendMode:TpvScene3D.TDecalBlendMode;
 begin
- result:=fBlendParams.w;
+ result:=TpvScene3D.TDecalBlendMode(fBlendParams.w);
 end;
 
-procedure TpvScene3D.TDecal.SetBlendMode(const aValue:TpvUInt32);
+procedure TpvScene3D.TDecal.SetBlendMode(const aValue:TpvScene3D.TDecalBlendMode);
 begin
- fBlendParams.w:=aValue;
+ fBlendParams.w:=TpvUInt32(aValue);
 end;
 
 { TpvScene3D.TDecalBuffer }
@@ -34601,7 +34620,7 @@ begin
   if (aDecalItemArray.Count<MaxVisibleDecals) and Decal.fVisible then begin
    Decal.fDecalItemIndex:=aDecalItemArray.AddNewIndex;
    DecalItem:=@aDecalItemArray.Items[Decal.fDecalItemIndex];
-   DecalItem^.WorldToDecalMatrix:=Decal.fWorldToDecalMatrix;
+   DecalItem^.WorldToDecalMatrix:=Decal.fWorldToDecalMatrix32; // Use origin-offset 32-bit matrix
    DecalItem^.UVScaleOffset:=Decal.fUVScaleOffset;
    DecalItem^.BlendParams:=Decal.fBlendParams;
    DecalItem^.TextureIndices:=Decal.fTextureIndices;
@@ -34793,6 +34812,12 @@ begin
    end;
 
    DecalBuffer:=fDecalBuffers[aInFlightFrameIndex];
+
+   // Update all decals with origin-offset (64-bit to 32-bit transform)
+   for Index:=0 to fDecals.Count-1 do begin
+    fDecals[Index].Update(aInFlightFrameIndex);
+   end;
+
    CollectDecals(DecalBuffer.fDecalItems,DecalBuffer.fDecalMetaInfos);
    fDecalAABBTree.GetSkipListNodes(DecalBuffer.fDecalTree,GetDecalUserDataIndex);
    DecalBuffer.fNewDecalAABBTreeGeneration:=fDecalAABBTreeGeneration;
