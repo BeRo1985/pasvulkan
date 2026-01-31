@@ -31039,35 +31039,50 @@ begin
                                               1,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                               []);
+  // Decal buffers (bindings 3-4)
+  fGlobalVulkanDescriptorSetLayout.AddBinding(3,
+                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              []);
+  fGlobalVulkanDescriptorSetLayout.AddBinding(4,
+                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              []);
+  // Materials (binding 5)
   if fUseBufferDeviceAddress then begin
-   fGlobalVulkanDescriptorSetLayout.AddBinding(3,
+   fGlobalVulkanDescriptorSetLayout.AddBinding(5,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                1,
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                []);
   end else begin
-   fGlobalVulkanDescriptorSetLayout.AddBinding(3,
+   fGlobalVulkanDescriptorSetLayout.AddBinding(5,
                                                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                1,
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                []);
   end;
-  fGlobalVulkanDescriptorSetLayout.AddBinding(4,
+  // InstanceDataBuffer (binding 6)
+  fGlobalVulkanDescriptorSetLayout.AddBinding(6,
                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               1,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                               []);
-  fGlobalVulkanDescriptorSetLayout.AddBinding(5,
+  // InstanceDataIndexBuffer (binding 7)
+  fGlobalVulkanDescriptorSetLayout.AddBinding(7,
                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               1,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                               []);
+  // Raytracing (bindings 8-9 if active)
   if fRaytracingActive then begin
-   fGlobalVulkanDescriptorSetLayout.AddBinding(6,
+   fGlobalVulkanDescriptorSetLayout.AddBinding(8,
                                                VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
                                                1,
                                               {TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
@@ -31077,7 +31092,7 @@ begin
                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                [],
                                                0{TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT)});
-   fGlobalVulkanDescriptorSetLayout.AddBinding(7,
+   fGlobalVulkanDescriptorSetLayout.AddBinding(9,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                1,
                                               {TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
@@ -31087,9 +31102,9 @@ begin
                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                [],
                                                0{TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT)});
-   fGlobalVulkanDescriptorSetTextureBindingIndex:=8;
+   fGlobalVulkanDescriptorSetTextureBindingIndex:=10;
   end else begin
-   fGlobalVulkanDescriptorSetTextureBindingIndex:=6;
+   fGlobalVulkanDescriptorSetTextureBindingIndex:=8;
   end;
   fGlobalVulkanDescriptorSetLayout.AddBinding(fGlobalVulkanDescriptorSetTextureBindingIndex,
                                               VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -32999,15 +33014,19 @@ begin
          fLightBuffers[Index].Upload;
         end;
 
+        for Index:=0 to fCountInFlightFrames-1 do begin
+         fDecalBuffers[Index].Upload;
+        end;
+
         fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
-                                                                    length(fImageInfos)*length(fGlobalVulkanDescriptorSets));
+                                                                    (length(fImageInfos)+4+9)*length(fGlobalVulkanDescriptorSets));
         if fRaytracingActive then begin
          fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,length(fGlobalVulkanDescriptorSets)*1);
         end;
         fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fGlobalVulkanDescriptorSets)*IfThen(fRaytracingActive,4,3));
-        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*7);
+        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*9); // +2 for decal buffers
         fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,length(fGlobalVulkanDescriptorSets)*length(fImageInfos));
         fGlobalVulkanDescriptorPool.Initialize;
 
@@ -33459,8 +33478,26 @@ begin
                                                                  [fLightBuffers[Index].fLightTreeVulkanBuffer.DescriptorBufferInfo],
                                                                  [],
                                                                  false);
+         // Decal buffers
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                 [],
+                                                                 [fDecalBuffers[Index].fDecalItemsVulkanBuffer.DescriptorBufferInfo],
+                                                                 [],
+                                                                 false);
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                 [],
+                                                                 [fDecalBuffers[Index].fDecalTreeVulkanBuffer.DescriptorBufferInfo],
+                                                                 [],
+                                                                 false);
+         // Materials
          if fUseBufferDeviceAddress then begin
-          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
+          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
                                                                   0,
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
@@ -33469,7 +33506,7 @@ begin
                                                                   [],
                                                                   false);
          end else begin
-          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
+          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
                                                                   0,
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -33478,7 +33515,8 @@ begin
                                                                   [],
                                                                   false);
          end;
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
+         // InstanceDataBuffer
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(6,
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -33486,7 +33524,8 @@ begin
                                                                  [fVulkanGPUInstanceDataBuffers[Index].DescriptorBufferInfo],
                                                                  [],
                                                                  false);
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
+         // InstanceDataIndexBuffer (shifted from 5 to 7)
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(7,
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -33494,9 +33533,10 @@ begin
                                                                  [fGlobalVulkanInstanceDataIndexBuffers[Index].DescriptorBufferInfo],
                                                                  [],
                                                                  false);
+         // Raytracing
          if fRaytracingActive then begin
           if assigned(fRaytracing.TopLevelAccelerationStructure) then begin
-           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(6,
+           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(8,
                                                                    0,
                                                                    1,
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR),
@@ -33507,7 +33547,7 @@ begin
                                                                    false);
           end;
           if assigned(fGPURaytracingDataVulkanBuffers[Index]) then begin
-           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(7,
+           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(9,
                                                                    0,
                                                                    1,
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
@@ -35070,7 +35110,7 @@ begin
         (fRaytracing.TopLevelAccelerationStructureGenerations[aInFlightFrameIndex]<>fRaytracing.TopLevelAccelerationStructure.Generation)) then begin
      fRaytracing.TopLevelAccelerationStructures[aInFlightFrameIndex]:=fRaytracing.TopLevelAccelerationStructure.AccelerationStructure;
      fRaytracing.TopLevelAccelerationStructureGenerations[aInFlightFrameIndex]:=fRaytracing.TopLevelAccelerationStructure.Generation;
-     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(6,
+     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(8,
                                                                            0,
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR),
@@ -35513,7 +35553,7 @@ begin
 
      end;
 
-     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(4,
+     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(6,
                                                                            0,
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -35621,7 +35661,7 @@ begin
 
      end;
 
-     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(5,
+     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(7,
                                                                            0,
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
