@@ -125,11 +125,11 @@ function SpawnDecal(
   const aPosition:TpvVector3D;
   const aNormal:TpvVector3D;
   const aSize:TpvVector2;
-  const aAlbedoTexture:TpvUInt32=0;
-  const aNormalTexture:TpvUInt32=0;
-  const aORMTexture:TpvUInt32=0;
-  const aSpecularTexture:TpvUInt32=0;
-  const aEmissiveTexture:TpvUInt32=0;
+  const aAlbedoTexture:TpvInt32=-1;
+  const aNormalTexture:TpvInt32=-1;
+  const aORMTexture:TpvInt32=-1;
+  const aSpecularTexture:TpvInt32=-1;
+  const aEmissiveTexture:TpvInt32=-1;
   const aBlendMode:TDecalBlendMode=TDecalBlendMode.AlphaBlend;
   const aOpacity:TpvFloat=1.0;
   const aAngleFade:TpvFloat=1.0;
