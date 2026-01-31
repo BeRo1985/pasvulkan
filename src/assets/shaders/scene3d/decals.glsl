@@ -3,6 +3,21 @@
 
 #ifdef LIGHTS
 
+const uint DECAL_FLAG_PASS_MESH = 1u << 0;
+const uint DECAL_FLAG_PASS_PLANET = 1u << 1;
+const uint DECAL_FLAG_PASS_GRASS = 1u << 2;
+
+#if defined(MESH_PASS) || defined(MESH_FRAGMENT_SHADER)
+const uint DECAL_FLAG_PASS = DECAL_FLAG_PASS_MESH;
+#elif defined(PLANET_PASS) || defined(PLANET_RENDERPASS_FRAGMENT_SHADER)
+const uint DECAL_FLAG_PASS = DECAL_FLAG_PASS_PLANET;
+#elif defined(GRASS_PASS) || defined(PLANET_GRASS_FRAGMENT_SHADER)
+const uint DECAL_FLAG_PASS = DECAL_FLAG_PASS_GRASS;
+#else
+// Just match all in this case when no specific pass is defined
+const uint DECAL_FLAG_PASS = DECAL_FLAG_PASS_MESH | DECAL_FLAG_PASS_PLANET | DECAL_FLAG_PASS_GRASS;
+#endif
+
 #include "blendnormals.glsl"
 
 // Overlay blend mode
@@ -59,101 +74,109 @@ void applyDecals(
         Decal decal = decals[decalTreeNode.aabbMaxUserData.w];
 #endif
         
-        // Project world position into decal OBB space
-        vec3 decalSpacePos = (decal.worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
-        
-        // Check if fragment is inside decal box (OBB bounds: -0.5 to 0.5)
-        if(all(greaterThan(decalSpacePos + 0.5, vec3(0.0))) && 
-           all(lessThan(decalSpacePos, vec3(0.5)))) {
+        // Get decal flags for this rendering pass
+        const uint decalFlags = decal.decalForwardFlags.w;
+
+        // Check if decal applies to this rendering pass
+        if ((decalFlags & DECAL_FLAG_PASS) != 0u) {          
           
-          // Calculate UVs [0,1]
-          vec2 decalUV = decalSpacePos.xy + 0.5;
-          decalUV = decalUV * decal.uvScaleOffset.xy + decal.uvScaleOffset.zw;
+          // Project world position into decal OBB space
+          vec3 decalSpacePos = (decal.worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
           
-          // Edge fade (soft edges at decal boundaries)
-          vec2 edgeDist = min(decalUV, 1.0 - decalUV) * 2.0;
-          float edgeFade = smoothstep(0.0, uintBitsToFloat(decal.blendParams.z), min(edgeDist.x, edgeDist.y));
-          
-          // Angle fade (fade based on surface orientation vs decal forward)
-          float angleFade = clamp(dot(normalize(worldNormal), normalize(decal.decalForward.xyz)), 0.0, 1.0);
-          angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
-          
-          // Sample decal textures from unified u2DTextures array
-          vec4 decalAlbedo = (decal.textureIndices.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.x & 0x3fff) << 1) | 1], decalUV) : vec4(1.0);
-          vec3 decalNormalTangentSpace = (decal.textureIndices.y >= 0) ? (texture(u2DTextures[nonuniformEXT((decal.textureIndices.y & 0x3fff) << 1)], decalUV).xyz * 2.0 - 1.0) : vec3(0.0, 0.0, 1.0);
-          vec3 decalORM = (decal.textureIndices.z >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.z & 0x3fff) << 1)], decalUV).xyz : vec3(1.0);
-          vec4 decalSpecular = (decal.textureIndices.w >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.w & 0x3fff) << 1)], decalUV) : vec4(1.0, 1.0, 1.0, 1.0);
-          vec3 decalEmissive = (decal.textureIndices2.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices2.x & 0x3fff) << 1) | 1], decalUV).xyz : vec3(0.0);
-          
-          // Extract ORM components
-          float decalOcclusion = decalORM.x;
-          float decalRoughness = decalORM.y;
-          float decalMetallic = decalORM.z;
-          
-          // Extract specular components
-          vec3 decalSpecularColorFactor = decalSpecular.xyz;
-          float decalSpecularWeight = decalSpecular.w;
-          
-          // Calculate decal's Fresnel properties
-          vec3 decalF0Dielectric = min(baseIORF0Dielectric * decalSpecularColorFactor, vec3(1.0));
-          vec3 decalF90Dielectric = vec3(decalSpecularWeight);
-          
-          // Combined blend factor
-          float blend = decalAlbedo.a * uintBitsToFloat(decal.blendParams.x) * angleFade * edgeFade;
-          
-          // Apply blend mode
-          uint blendMode = decal.blendParams.w;
-          switch(blendMode) {
-            case 0u: {  // Alpha blend (standard)
-              baseColor.xyz = mix(baseColor.xyz, decalAlbedo.xyz, blend);
-              metallic = mix(metallic, decalMetallic, blend);
-              perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend);
-              occlusion = mix(occlusion, decalOcclusion, blend);
-              F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend);
-              F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend);
-              specularWeight = mix(specularWeight, decalSpecularWeight, blend);
-              break;
+          // Check if fragment is inside decal box (OBB bounds: -0.5 to 0.5)
+          if(all(greaterThan(decalSpacePos + 0.5, vec3(0.0))) && 
+            all(lessThan(decalSpacePos, vec3(0.5)))) {
+            
+            // Calculate UVs [0,1]
+            vec2 decalUV = decalSpacePos.xy + 0.5;
+            decalUV = decalUV * decal.uvScaleOffset.xy + decal.uvScaleOffset.zw;
+            
+            // Edge fade (soft edges at decal boundaries)
+            vec2 edgeDist = min(decalUV, 1.0 - decalUV) * 2.0;
+            float edgeFade = smoothstep(0.0, uintBitsToFloat(decal.blendParams.z), min(edgeDist.x, edgeDist.y));
+            
+            // Angle fade (fade based on surface orientation vs decal forward)
+            float angleFade = clamp(dot(normalize(worldNormal), normalize(uintBitsToFloat(decal.decalForwardFlags.xyz))), 0.0, 1.0);
+            angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
+            
+            // Sample decal textures from unified u2DTextures array
+            vec4 decalAlbedo = (decal.textureIndices.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.x & 0x3fff) << 1) | 1], decalUV) : vec4(1.0); // sRGB
+            vec3 decalNormalTangentSpace = (decal.textureIndices.y >= 0) ? (texture(u2DTextures[nonuniformEXT((decal.textureIndices.y & 0x3fff) << 1)], decalUV).xyz * 2.0 - 1.0) : vec3(0.0, 0.0, 1.0); // linear
+            vec3 decalORM = (decal.textureIndices.z >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.z & 0x3fff) << 1)], decalUV).xyz : vec3(1.0); // linear
+            vec4 decalSpecular = (decal.textureIndices.w >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.w & 0x3fff) << 1)], decalUV) : vec4(1.0, 1.0, 1.0, 1.0); // linear
+            vec3 decalEmissive = (decal.textureIndices2.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices2.x & 0x3fff) << 1) | 1], decalUV).xyz : vec3(0.0); // sRGB
+            
+            // Extract ORM components
+            float decalOcclusion = decalORM.x;
+            float decalRoughness = decalORM.y;
+            float decalMetallic = decalORM.z;
+            
+            // Extract specular components
+            vec3 decalSpecularColorFactor = decalSpecular.xyz;
+            float decalSpecularWeight = decalSpecular.w;
+            
+            // Calculate decal's Fresnel properties
+            vec3 decalF0Dielectric = min(baseIORF0Dielectric * decalSpecularColorFactor, vec3(1.0));
+            vec3 decalF90Dielectric = vec3(decalSpecularWeight);
+            
+            // Combined blend factor
+            float blend = decalAlbedo.a * uintBitsToFloat(decal.blendParams.x) * angleFade * edgeFade;
+            
+            // Apply blend mode
+            uint blendMode = decal.blendParams.w;
+            switch(blendMode) {
+              case 0u: {  // Alpha blend (standard)
+                baseColor.xyz = mix(baseColor.xyz, decalAlbedo.xyz, blend);
+                metallic = mix(metallic, decalMetallic, blend);
+                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend);
+                occlusion = mix(occlusion, decalOcclusion, blend);
+                F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend);
+                F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend);
+                specularWeight = mix(specularWeight, decalSpecularWeight, blend);
+                break;
+              }
+              case 1u: {  // Multiply (dirt/grime/darkening)
+                baseColor.xyz *= mix(vec3(1.0), decalAlbedo.xyz, blend);
+                // Less influence on material properties for multiply
+                metallic = mix(metallic, decalMetallic, blend * 0.5);
+                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * 0.5);
+                occlusion = mix(occlusion, decalOcclusion, blend);
+                // Don't modify specular for multiply mode
+                break;
+              }
+              case 2u: {  // Overlay (painted markings)
+                baseColor.xyz = mix(baseColor.xyz, decalOverlayBlend(baseColor.xyz, decalAlbedo.xyz), blend);
+                metallic = mix(metallic, decalMetallic, blend);
+                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend);
+                occlusion = mix(occlusion, decalOcclusion, blend);
+                F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend);
+                F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend);
+                specularWeight = mix(specularWeight, decalSpecularWeight, blend);
+                break;
+              }
+              case 3u: {  // Additive (glowing effects)
+                baseColor.xyz += decalAlbedo.xyz * blend;
+                // Don't modify material properties for additive
+                break;
+              }
+              default: {
+                // Alpha blend as fallback
+                baseColor.xyz = mix(baseColor.xyz, decalAlbedo.xyz, blend);
+                metallic = mix(metallic, decalMetallic, blend);
+                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend);
+                occlusion = mix(occlusion, decalOcclusion, blend);
+                F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend);
+                F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend);
+                specularWeight = mix(specularWeight, decalSpecularWeight, blend);
+                break;
+              }
             }
-            case 1u: {  // Multiply (dirt/grime/darkening)
-              baseColor.xyz *= mix(vec3(1.0), decalAlbedo.xyz, blend);
-              // Less influence on material properties for multiply
-              metallic = mix(metallic, decalMetallic, blend * 0.5);
-              perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * 0.5);
-              occlusion = mix(occlusion, decalOcclusion, blend);
-              // Don't modify specular for multiply mode
-              break;
-            }
-            case 2u: {  // Overlay (painted markings)
-              baseColor.xyz = mix(baseColor.xyz, decalOverlayBlend(baseColor.xyz, decalAlbedo.xyz), blend);
-              metallic = mix(metallic, decalMetallic, blend);
-              perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend);
-              occlusion = mix(occlusion, decalOcclusion, blend);
-              F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend);
-              F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend);
-              specularWeight = mix(specularWeight, decalSpecularWeight, blend);
-              break;
-            }
-            case 3u: {  // Additive (glowing effects)
-              baseColor.xyz += decalAlbedo.xyz * blend;
-              // Don't modify material properties for additive
-              break;
-            }
-            default: {
-              // Alpha blend as fallback
-              baseColor.xyz = mix(baseColor.xyz, decalAlbedo.xyz, blend);
-              metallic = mix(metallic, decalMetallic, blend);
-              perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend);
-              occlusion = mix(occlusion, decalOcclusion, blend);
-              F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend);
-              F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend);
-              specularWeight = mix(specularWeight, decalSpecularWeight, blend);
-              break;
-            }
+            
+            // Accumulate decal normal contribution
+            decalNormal = blendNormals(decalNormal, decalNormalTangentSpace, blend);
+            decalNormalBlend = 1.0 - ((1.0 - decalNormalBlend) * (1.0 - blend));
+
           }
-          
-          // Accumulate decal normal contribution
-          decalNormal = blendNormals(decalNormal, decalNormalTangentSpace, blend);
-          decalNormalBlend = 1.0 - ((1.0 - decalNormalBlend) * (1.0 - blend));
 #if defined(LIGHTCLUSTERS)
         }
       }
@@ -202,56 +225,65 @@ void applyDecalsUnlit(
         Decal decal = decals[decalTreeNode.aabbMaxUserData.w];
 #endif
     
-        // Project world position into decal OBB space
-        vec3 decalSpacePos = (decal.worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
-        
-        // Check if fragment is inside decal box
-        if(all(greaterThan(decalSpacePos + 0.5, vec3(0.0))) && 
-           all(lessThan(decalSpacePos, vec3(0.5)))) {
+        // Get decal flags for this rendering pass
+        const uint decalFlags = decal.decalForwardFlags.w;
+
+        // Check if decal applies to this rendering pass
+        if ((decalFlags & DECAL_FLAG_PASS) != 0u) {          
+
+          // Project world position into decal OBB space
+          vec3 decalSpacePos = (decal.worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
           
-          // Calculate UVs
-          vec2 decalUV = decalSpacePos.xy + 0.5;
-          decalUV = decalUV * decal.uvScaleOffset.xy + decal.uvScaleOffset.zw;
-          
-          // Edge fade
-          vec2 edgeDist = min(decalUV, 1.0 - decalUV) * 2.0;
-          float edgeFade = smoothstep(0.0, uintBitsToFloat(decal.blendParams.z), min(edgeDist.x, edgeDist.y));
-          
-          // Angle fade
-          float angleFade = clamp(dot(normalize(worldNormal), normalize(decal.decalForward.xyz)), 0.0, 1.0);
-          angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
-          
-          // Sample only albedo texture for unlit
-          vec4 decalAlbedo = (decal.textureIndices.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.x & 0x3fff) << 1) | 1], decalUV) : vec4(1.0);
-          
-          // Combined blend factor
-          float blend = decalAlbedo.w * uintBitsToFloat(decal.blendParams.x) * angleFade * edgeFade;
-          
-          // Apply blend mode (only color, no material properties)
-          uint blendMode = decal.blendParams.w;
-          switch(blendMode) {
-            case 0u: {  // Alpha blend
-              color = mix(color, decalAlbedo.xyz, blend);
-              break;
-            }
-            case 1u: {  // Multiply
-              color *= mix(vec3(1.0), decalAlbedo.xyz, blend);
-              break;
-            }
-            case 2u: {  // Overlay
-              color = mix(color, decalOverlayBlend(color, decalAlbedo.xyz), blend);
-              break;
-            }
-            case 3u: {  // Additive
-              color += decalAlbedo.xyz * blend;
-              break;
-            }
-            default: {
-              color = mix(color, decalAlbedo.xyz, blend);
-              break;
+          // Check if fragment is inside decal box
+          if(all(greaterThan(decalSpacePos + 0.5, vec3(0.0))) && 
+            all(lessThan(decalSpacePos, vec3(0.5)))) {
+            
+            // Calculate UVs
+            vec2 decalUV = decalSpacePos.xy + 0.5;
+            decalUV = decalUV * decal.uvScaleOffset.xy + decal.uvScaleOffset.zw;
+            
+            // Edge fade
+            vec2 edgeDist = min(decalUV, 1.0 - decalUV) * 2.0;
+            float edgeFade = smoothstep(0.0, uintBitsToFloat(decal.blendParams.z), min(edgeDist.x, edgeDist.y));
+            
+            // Angle fade
+            float angleFade = clamp(dot(normalize(worldNormal), normalize(uintBitsToFloat(decal.decalForwardFlags.xyz))), 0.0, 1.0);
+            angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
+            
+            // Sample only albedo texture for unlit (sRGB)
+            vec4 decalAlbedo = (decal.textureIndices.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.x & 0x3fff) << 1) | 1], decalUV) : vec4(1.0);
+            
+            // Combined blend factor
+            float blend = decalAlbedo.w * uintBitsToFloat(decal.blendParams.x) * angleFade * edgeFade;
+            
+            // Apply blend mode (only color, no material properties)
+            uint blendMode = decal.blendParams.w;
+            switch(blendMode) {
+              case 0u: {  // Alpha blend
+                color = mix(color, decalAlbedo.xyz, blend);
+                break;
+              }
+              case 1u: {  // Multiply
+                color *= mix(vec3(1.0), decalAlbedo.xyz, blend);
+                break;
+              }
+              case 2u: {  // Overlay
+                color = mix(color, decalOverlayBlend(color, decalAlbedo.xyz), blend);
+                break;
+              }
+              case 3u: {  // Additive
+                color += decalAlbedo.xyz * blend;
+                break;
+              }
+              default: {
+                color = mix(color, decalAlbedo.xyz, blend);
+                break;
+              }
             }
           }
+        
         }
+
 #if defined(LIGHTCLUSTERS)        
       }
     }

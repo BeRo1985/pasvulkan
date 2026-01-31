@@ -1738,6 +1738,7 @@ type EpvScene3D=class(Exception);
               property ViewSpacePosition:TpvVector3 read fViewSpacePosition write fViewSpacePosition;
             end;
             TLights=TpvObjectGenericList<TpvScene3D.TLight>;
+            TMatrix4x3=array[0..2,0..3] of TpvFloat;  // 3 rows × 4 columns = column-major, 16-byte aligned rows
             TDecalBlendMode=
              (
               AlphaBlend=0,  // Standard alpha blending
@@ -1745,22 +1746,34 @@ type EpvScene3D=class(Exception);
               Overlay=2,     // Overlay (painted markings)
               Additive=3     // Additive (glowing effects)
              );
+            TDecalPass=
+             (
+              Mesh=0,           // Decal applied to meshes
+              Planet=1,         // Decal applied to planets
+              Grass=2           // Decal applied to grass
+             ); 
+            TDecalPasses=set of TDecalPass; 
             { TDecal }
             TDecal=class
+             public
+              const DECAL_FLAG_PASS_MESH=TpvUInt32(1 shl 0);
+                    DECAL_FLAG_PASS_PLANET=TpvUInt32(1 shl 1);
+                    DECAL_FLAG_PASS_GRASS=TpvUInt32(1 shl 2);
              private
               fSceneInstance:TpvScene3D;
               fIndex:TpvSizeInt;
               fVisible:boolean;
+              fPasses:TDecalPasses;
               fDecalToWorldMatrix:TpvMatrix4x4D;  // Non-inverted decal-to-world transform (64-bit, API-side)
               fWorldToDecalMatrix:TpvMatrix4x4D;  // Inverted world-to-decal transform (64-bit, derived from fDecalToWorldMatrix)
-              fWorldToDecalMatrix32:TpvMatrix4x4; // Origin-offset 32-bit version for GPU
+              fWorldToDecalMatrix32:TMatrix4x3;   // Origin-offset 32-bit version for GPU (transposed column-major layout to avoid padding alignment and for better cache locality)
               fSize:TpvVector3;
               fUVScaleOffset:TpvVector4;
               fBlendParams:TpvUInt32Vector4;
               fTextureIndices:TpvUInt32Vector4;
               fTextureIndices2:TpvUInt32Vector4;
-              fDecalForward:TpvVector4;
-              fMetaData:TpvUInt32Vector4;
+              fDecalForward:TpvVector3;
+              fFlags:TpvUInt32;
               fBoundingBox:TpvAABB;
               fAABBTreeProxy:TpvSizeInt;
               fDecalItemIndex:TpvSizeInt;
@@ -1782,6 +1795,7 @@ type EpvScene3D=class(Exception);
               procedure Update(const aInFlightFrameIndex:TpvSizeInt=-1);
              public
               property Visible:boolean read fVisible write fVisible;
+              property Passes:TDecalPasses read fPasses write fPasses;
               property DecalToWorldMatrix:TpvMatrix4x4D read fDecalToWorldMatrix write fDecalToWorldMatrix;
               property Size:TpvVector3 read fSize write fSize;
               property UVScaleOffset:TpvVector4 read fUVScaleOffset write fUVScaleOffset;
@@ -1791,7 +1805,7 @@ type EpvScene3D=class(Exception);
               property BlendMode:TpvScene3D.TDecalBlendMode read GetBlendMode write SetBlendMode;
               property TextureIndices:TpvUInt32Vector4 read fTextureIndices write fTextureIndices;
               property TextureIndices2:TpvUInt32Vector4 read fTextureIndices2 write fTextureIndices2;
-              property MetaData:TpvUInt32Vector4 read fMetaData write fMetaData;
+              property Flags:TpvUInt32 read fFlags write fFlags;
               property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
               property Lifetime:TpvDouble read fLifetime write fLifetime;
               property Age:TpvDouble read fAge write fAge;
@@ -1800,14 +1814,22 @@ type EpvScene3D=class(Exception);
             TDecalsHashMap=TpvHashMap<TpvScene3D.TDecal,TpvSizeInt>;
             { TDecalItem }
             TDecalItem=packed record
-             WorldToDecalMatrix:TpvMatrix4x4;  // Transform world space to decal OBB space
+
+             // Transform world space to decal OBB space
+             WorldToDecalMatrix:TMatrix4x3;
+
              UVScaleOffset:TpvVector4;         // xy=scale, zw=offset
+
              BlendParams:TpvUInt32Vector4;     // x=opacity(float as bits), y=angleFade(float as bits), z=edgeFade(float as bits), w=blendMode(uint)
+
              TextureIndices:TpvUInt32Vector4;  // albedo, normal, ORM, specular texture indices
+
              TextureIndices2:TpvUInt32Vector4; // emissive, unused, unused, unused
-             DecalForward:TpvVector4;          // xyz=forward direction for angle fade, w=unused
-             MetaData:TpvUInt32Vector4;        // Type, flags, layer, priority
-            end;
+
+             DecalForward:TpvVector3;          // forward direction for angle fade
+             Flags:TpvUInt32;
+
+            end; // 128 bytes
             PDecalItem=^TDecalItem;
             TDecalItems=TpvDynamicArray<TDecalItem>;
             TDecalMetaInfo=packed record
@@ -4540,7 +4562,8 @@ type EpvScene3D=class(Exception);
                            const aOpacity:TpvFloat=1.0;
                            const aAngleFade:TpvFloat=1.0;
                            const aEdgeFade:TpvFloat=0.1;
-                           const aLifetime:TpvDouble=-1.0):TpvScene3D.TDecal;
+                           const aLifetime:TpvDouble=-1.0;
+                           const aPasses:TpvScene3D.TDecalPasses=[TpvScene3D.TDecalPass.Mesh,TpvScene3D.TDecalPass.Planet,TpvScene3D.TDecalPass.Grass]):TpvScene3D.TDecal;
        procedure UpdateDecals(const aDeltaTime:TpvDouble);
       public
        function CreateMaterial(const aName:TpvUTF8String):TpvScene3D.TMaterial;
@@ -12017,11 +12040,13 @@ begin
  fSceneInstance:=aSceneInstance;
  fIndex:=-1;
  fAABBTreeProxy:=-1;
+ fPasses:=[TpvScene3D.TDecalPass.Mesh,TpvScene3D.TDecalPass.Planet,TpvScene3D.TDecalPass.Grass];
  fVisible:=true;
  fDecalItemIndex:=-1;
  fSize:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
  fLifetime:=-1.0; // Infinite lifetime by default
  fAge:=0.0;
+ fFlags:=0;
 end;
 
 destructor TpvScene3D.TDecal.Destroy;
@@ -12088,9 +12113,22 @@ var OBB:TpvOBB;
     AABB:TpvAABB;
     Matrix64,ScaledMatrix64:TpvMatrix4x4D;
     Matrix32:TpvMatrix4x4;
+    Flags:TpvUInt32;
 begin
 
  if fVisible then begin
+
+  Flags:=fFlags and not (DECAL_FLAG_PASS_MESH or DECAL_FLAG_PASS_PLANET or DECAL_FLAG_PASS_GRASS);
+  if TpvScene3D.TDecalPass.Mesh in fPasses then begin
+   Flags:=Flags or DECAL_FLAG_PASS_MESH;
+  end;
+  if TpvScene3D.TDecalPass.Planet in fPasses then begin
+   Flags:=Flags or DECAL_FLAG_PASS_PLANET;
+  end;
+  if TpvScene3D.TDecalPass.Grass in fPasses then begin
+   Flags:=Flags or DECAL_FLAG_PASS_GRASS;
+  end;
+  fFlags:=Flags;
 
   // Calculate world-to-decal matrix (inverse of decal-to-world)
   fWorldToDecalMatrix:=fDecalToWorldMatrix.Inverse;
@@ -12108,10 +12146,23 @@ begin
   end else begin
    Matrix32:=ScaledMatrix64;
   end;
-  fWorldToDecalMatrix32:=Matrix32;
+
+  // Transpose to column-major TMatrix4x3 format to avoid padding alignment and for better cache locality
+  fWorldToDecalMatrix32[0,0]:=Matrix32.RawComponents[0,0];
+  fWorldToDecalMatrix32[0,1]:=Matrix32.RawComponents[1,0];
+  fWorldToDecalMatrix32[0,2]:=Matrix32.RawComponents[2,0];
+  fWorldToDecalMatrix32[0,3]:=Matrix32.RawComponents[3,0];
+  fWorldToDecalMatrix32[1,0]:=Matrix32.RawComponents[0,1];
+  fWorldToDecalMatrix32[1,1]:=Matrix32.RawComponents[1,1];
+  fWorldToDecalMatrix32[1,2]:=Matrix32.RawComponents[2,1];
+  fWorldToDecalMatrix32[1,3]:=Matrix32.RawComponents[3,1];
+  fWorldToDecalMatrix32[2,0]:=Matrix32.RawComponents[0,2];
+  fWorldToDecalMatrix32[2,1]:=Matrix32.RawComponents[1,2];
+  fWorldToDecalMatrix32[2,2]:=Matrix32.RawComponents[2,2];
+  fWorldToDecalMatrix32[2,3]:=Matrix32.RawComponents[3,2];
 
   // DecalForward is the Z-axis (Forwards) of the decal-to-world transform
-  fDecalForward:=TpvVector4.InlineableCreate(fDecalToWorldMatrix.Forwards.xyz.Normalize,0.0);
+  fDecalForward:=fDecalToWorldMatrix.Forwards.xyz.Normalize;
 
   // Compute OBB from origin-offset 32-bit matrix (inverse gives us the decal-to-world transform)
   OBB.Center:=Matrix32.Inverse.MulHomogen(TpvVector3.Origin);
@@ -34656,26 +34707,43 @@ var DecalIndex:TpvSizeInt;
     DecalItem:TpvScene3D.PDecalItem;
     DecalMetaInfo:TpvScene3D.PDecalMetaInfo;
 begin
+ 
  aDecalItemArray.ClearNoFree;
+ 
  for DecalIndex:=0 to fDecals.Count-1 do begin
+ 
   Decal:=fDecals[DecalIndex];
+
   if (aDecalItemArray.Count<MaxVisibleDecals) and Decal.fVisible then begin  
+   
    Decal.fDecalItemIndex:=aDecalItemArray.AddNewIndex;
+   
    DecalItem:=@aDecalItemArray.Items[Decal.fDecalItemIndex];
-   DecalItem^.WorldToDecalMatrix:=Decal.fWorldToDecalMatrix32; // Use origin-offset 32-bit matrix
+   
+   // Use origin-offset 32-bit matrix (transposed for column-major layout to avoid padding alignment and for better cache locality)
+   DecalItem^.WorldToDecalMatrix:=Decal.fWorldToDecalMatrix32;
+
    DecalItem^.UVScaleOffset:=Decal.fUVScaleOffset;
+   
    DecalItem^.BlendParams:=Decal.fBlendParams;
+   
    DecalItem^.TextureIndices:=Decal.fTextureIndices;
+   
    DecalItem^.TextureIndices2:=Decal.fTextureIndices2;
+   
    DecalItem^.DecalForward:=Decal.fDecalForward;
-   DecalItem^.MetaData:=Decal.fMetaData;
+   DecalItem^.Flags:=Decal.fFlags;
+   
    DecalMetaInfo:=@aDecalMetaInfoArray[Decal.fDecalItemIndex];
    DecalMetaInfo^.MinBounds:=TpvVector4.Create(Decal.fBoundingBox.Min,0.0);
    DecalMetaInfo^.MaxBounds:=TpvVector4.Create(Decal.fBoundingBox.Max,Decal.fBoundingBox.Radius);
+
   end else begin
    Decal.fDecalItemIndex:=-1;
   end;
+
  end;
+
 end;
 
 procedure TpvScene3D.PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
@@ -37318,7 +37386,8 @@ function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
                                const aOpacity:TpvFloat;
                                const aAngleFade:TpvFloat;
                                const aEdgeFade:TpvFloat;
-                               const aLifetime:TpvDouble):TpvScene3D.TDecal;
+                               const aLifetime:TpvDouble;
+                               const aPasses:TpvScene3D.TDecalPasses):TpvScene3D.TDecal;
 var Up,Right,Forward:TpvVector3D;
     DecalToWorld:TpvMatrix4x4D;
 begin
@@ -37352,10 +37421,7 @@ begin
  result.fTextureIndices2.y:=0;
  result.fTextureIndices2.z:=0;
  result.fTextureIndices2.w:=0;
- result.fMetaData.x:=1;
- result.fMetaData.y:=0;
- result.fMetaData.z:=0;
- result.fMetaData.w:=0;
+ result.fFlags:=0;
  result.Opacity:=aOpacity;
  result.AngleFade:=aAngleFade;
  result.EdgeFade:=aEdgeFade;
@@ -37363,7 +37429,9 @@ begin
  result.fLifetime:=aLifetime;
  result.fAge:=0.0;
  result.fVisible:=true;
+ result.fPasses:=aPasses;
  result.Update(-1); // Initial update without origin transform
+ 
 end;
 
 procedure TpvScene3D.UpdateDecals(const aDeltaTime:TpvDouble);

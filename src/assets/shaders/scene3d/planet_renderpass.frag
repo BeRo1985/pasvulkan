@@ -15,6 +15,8 @@
 
 #define PLANET_RENDERPASS
 
+#define PLANET_RENDERPASS_FRAGMENT_SHADER
+
 #define LIGHTS 
 #define SHADOWS
 
