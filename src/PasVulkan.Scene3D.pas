@@ -37332,20 +37332,15 @@ var Index:TpvSizeInt;
     Decal:TpvScene3D.TDecal;
 begin
  // Update decal ages and remove expired decals
- Index:=0;
- while Index<fDecals.Count do begin
+ for Index:=fDecals.Count-1 downto 0 do begin
   Decal:=fDecals[Index];
   if Decal.fLifetime>=0.0 then begin
    Decal.fAge:=Decal.fAge+aDeltaTime;
    if Decal.fAge>=Decal.fLifetime then begin
     // Decal has expired, remove it
     FreeAndNil(Decal);
-    // fDecals list removes itself via BeforeDestruction
-    // Don't increment Index since list shifts down together with exchanging the last item into the freed slot 
-    continue;
    end;
   end;
-  inc(Index);
  end;
 end;
 
