@@ -37341,7 +37341,7 @@ begin
     // Decal has expired, remove it
     FreeAndNil(Decal);
     // fDecals list removes itself via BeforeDestruction
-    // Don't increment Index since list shifts down
+    // Don't increment Index since list shifts down together with exchanging the last item into the freed slot 
     continue;
    end;
   end;
