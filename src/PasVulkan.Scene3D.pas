@@ -12083,7 +12083,7 @@ begin
 end;
 
 procedure TpvScene3D.TDecal.BeforeDestruction;
-var OtherDecal:TpvScene3D.TDecal;
+//var OtherDecal:TpvScene3D.TDecal;
 begin
  if assigned(fSceneInstance) and assigned(fSceneInstance.fDecalsLock) then begin
   fSceneInstance.fDecalsLock.Acquire;
