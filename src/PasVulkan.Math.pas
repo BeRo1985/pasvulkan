@@ -543,6 +543,29 @@ type PpvScalar=^TpvScalar;
         6:(Vector3:TpvUInt32Vector3);
      end;
 
+     PpvInt32Vector3=^TpvInt32Vector3;
+     TpvInt32Vector3=packed record
+      public
+       case TpvUInt8 of
+        0:(RawComponents:array[0..2] of TpvInt32);
+        1:(x,y,z:TpvInt32);
+        2:(r,g,b:TpvInt32);
+        3:(s,t,p:TpvInt32);
+        5:(Vector2:TpvInt32Vector2);
+     end;
+
+     PpvInt32Vector4=^TpvInt32Vector4;
+     TpvInt32Vector4=packed record
+      public
+       case TpvUInt8 of
+        0:(RawComponents:array[0..3] of TpvInt32);
+        1:(x,y,z,w:TpvInt32);
+        2:(r,g,b,a:TpvInt32);
+        3:(s,t,p,q:TpvInt32);
+        5:(Vector2:TpvInt32Vector2);
+        6:(Vector3:TpvInt32Vector3);
+     end;
+
      PpvInt8PackedTangentSpace=^TpvInt8PackedTangentSpace;
      TpvInt8PackedTangentSpace=record
       x,y,z,w:TpvInt8;

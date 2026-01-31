@@ -1769,24 +1769,23 @@ type EpvScene3D=class(Exception);
               fWorldToDecalMatrix32:TMatrix4x3;   // Origin-offset 32-bit version for GPU (transposed column-major layout to avoid padding alignment and for better cache locality)
               fSize:TpvVector3;
               fUVScaleOffset:TpvVector4;
-              fBlendParams:TpvUInt32Vector4;
-              fTextureIndices:TpvUInt32Vector4;
-              fTextureIndices2:TpvUInt32Vector4;
+              fOpacity:TpvFloat;
+              fAngleFade:TpvFloat;
+              fEdgeFade:TpvFloat;
+              fBlendMode:TpvScene3D.TDecalBlendMode;
+              fAlbedoTexture:TpvInt32;
+              fNormalTexture:TpvInt32;
+              fORMTexture:TpvInt32;
+              fSpecularTexture:TpvInt32;
+              fEmissiveTexture:TpvInt32;
               fDecalForward:TpvVector3;
               fFlags:TpvUInt32;
               fBoundingBox:TpvAABB;
               fAABBTreeProxy:TpvSizeInt;
               fDecalItemIndex:TpvSizeInt;
               fLifetime:TpvDouble;     // Remaining lifetime in seconds, <0 means infinite
+              fFadeOutTime:TpvDouble;  // Duration of fade-out before expiration (0 = instant removal)
               fAge:TpvDouble;          // Age in seconds since creation
-              function GetOpacity:TpvFloat;
-              procedure SetOpacity(const aValue:TpvFloat);
-              function GetAngleFade:TpvFloat;
-              procedure SetAngleFade(const aValue:TpvFloat);
-              function GetEdgeFade:TpvFloat;
-              procedure SetEdgeFade(const aValue:TpvFloat);
-              function GetBlendMode:TpvScene3D.TDecalBlendMode;
-              procedure SetBlendMode(const aValue:TpvScene3D.TDecalBlendMode);
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
@@ -1799,15 +1798,19 @@ type EpvScene3D=class(Exception);
               property DecalToWorldMatrix:TpvMatrix4x4D read fDecalToWorldMatrix write fDecalToWorldMatrix;
               property Size:TpvVector3 read fSize write fSize;
               property UVScaleOffset:TpvVector4 read fUVScaleOffset write fUVScaleOffset;
-              property Opacity:TpvFloat read GetOpacity write SetOpacity;
-              property AngleFade:TpvFloat read GetAngleFade write SetAngleFade;
-              property EdgeFade:TpvFloat read GetEdgeFade write SetEdgeFade;
-              property BlendMode:TpvScene3D.TDecalBlendMode read GetBlendMode write SetBlendMode;
-              property TextureIndices:TpvUInt32Vector4 read fTextureIndices write fTextureIndices;
-              property TextureIndices2:TpvUInt32Vector4 read fTextureIndices2 write fTextureIndices2;
+              property Opacity:TpvFloat read fOpacity write fOpacity;
+              property AngleFade:TpvFloat read fAngleFade write fAngleFade;
+              property EdgeFade:TpvFloat read fEdgeFade write fEdgeFade;
+              property BlendMode:TDecalBlendMode read fBlendMode write fBlendMode;
+              property AlbedoTexture:TpvInt32 read fAlbedoTexture write fAlbedoTexture;
+              property NormalTexture:TpvInt32 read fNormalTexture write fNormalTexture;
+              property ORMTexture:TpvInt32 read fORMTexture write fORMTexture;
+              property SpecularTexture:TpvInt32 read fSpecularTexture write fSpecularTexture;
+              property EmissiveTexture:TpvInt32 read fEmissiveTexture write fEmissiveTexture;
               property Flags:TpvUInt32 read fFlags write fFlags;
               property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
               property Lifetime:TpvDouble read fLifetime write fLifetime;
+              property FadeOutTime:TpvDouble read fFadeOutTime write fFadeOutTime;
               property Age:TpvDouble read fAge write fAge;
             end;
             TDecals=TpvObjectGenericList<TpvScene3D.TDecal>;
@@ -1822,9 +1825,9 @@ type EpvScene3D=class(Exception);
 
              BlendParams:TpvUInt32Vector4;     // x=opacity(float as bits), y=angleFade(float as bits), z=edgeFade(float as bits), w=blendMode(uint)
 
-             TextureIndices:TpvUInt32Vector4;  // albedo, normal, ORM, specular texture indices
+             TextureIndices:TpvInt32Vector4;   // albedo, normal, ORM, specular texture indices
 
-             TextureIndices2:TpvUInt32Vector4; // emissive, unused, unused, unused
+             TextureIndices2:TpvInt32Vector4;  // emissive, unused, unused, unused
 
              DecalForward:TpvVector3;          // forward direction for angle fade
              Flags:TpvUInt32;
@@ -4565,6 +4568,7 @@ type EpvScene3D=class(Exception);
                            const aAngleFade:TpvFloat=1.0;
                            const aEdgeFade:TpvFloat=0.1;
                            const aLifetime:TpvDouble=-1.0;
+                           const aFadeOutTime:TpvDouble=0.0;
                            const aPasses:TpvScene3D.TDecalPasses=[TpvScene3D.TDecalPass.Mesh,TpvScene3D.TDecalPass.Planet,TpvScene3D.TDecalPass.Grass]):TpvScene3D.TDecal;
        procedure UpdateDecals(const aDeltaTime:TpvDouble);
       public
@@ -12046,7 +12050,18 @@ begin
  fVisible:=true;
  fDecalItemIndex:=-1;
  fSize:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
+ fUVScaleOffset:=TpvVector4.InlineableCreate(1.0,1.0,0.0,0.0);
+ fOpacity:=1.0;
+ fAngleFade:=1.0;
+ fEdgeFade:=0.1;
+ fBlendMode:=TpvScene3D.TDecalBlendMode.AlphaBlend;
+ fAlbedoTexture:=-1;
+ fNormalTexture:=-1;
+ fORMTexture:=-1;
+ fSpecularTexture:=-1;
+ fEmissiveTexture:=-1;
  fLifetime:=-1.0; // Infinite lifetime by default
+ fFadeOutTime:=0.0;
  fAge:=0.0;
  fFlags:=0;
 end;
@@ -12200,46 +12215,6 @@ begin
 
  end;
 
-end;
-
-function TpvScene3D.TDecal.GetOpacity:TpvFloat;
-begin
- result:=PSingle(@fBlendParams.x)^;
-end;
-
-procedure TpvScene3D.TDecal.SetOpacity(const aValue:TpvFloat);
-begin
- PSingle(@fBlendParams.x)^:=aValue;
-end;
-
-function TpvScene3D.TDecal.GetAngleFade:TpvFloat;
-begin
- result:=PSingle(@fBlendParams.y)^;
-end;
-
-procedure TpvScene3D.TDecal.SetAngleFade(const aValue:TpvFloat);
-begin
- PSingle(@fBlendParams.y)^:=aValue;
-end;
-
-function TpvScene3D.TDecal.GetEdgeFade:TpvFloat;
-begin
- result:=PSingle(@fBlendParams.z)^;
-end;
-
-procedure TpvScene3D.TDecal.SetEdgeFade(const aValue:TpvFloat);
-begin
- PSingle(@fBlendParams.z)^:=aValue;
-end;
-
-function TpvScene3D.TDecal.GetBlendMode:TpvScene3D.TDecalBlendMode;
-begin
- result:=TpvScene3D.TDecalBlendMode(fBlendParams.w);
-end;
-
-procedure TpvScene3D.TDecal.SetBlendMode(const aValue:TpvScene3D.TDecalBlendMode);
-begin
- fBlendParams.w:=TpvUInt32(aValue);
 end;
 
 { TpvScene3D.TDecalBuffer }
@@ -34741,6 +34716,7 @@ var DecalIndex:TpvSizeInt;
     Decal:TpvScene3D.TDecal;
     DecalItem:TpvScene3D.PDecalItem;
     DecalMetaInfo:TpvScene3D.PDecalMetaInfo;
+    RemainingLife,FadeFactor,EffectiveOpacity:TpvDouble;
 begin
  
  aDecalItemArray.ClearNoFree;
@@ -34762,11 +34738,30 @@ begin
 
     DecalItem^.UVScaleOffset:=Decal.fUVScaleOffset;
 
-    DecalItem^.BlendParams:=Decal.fBlendParams;
+    // Pack blend params and calculate effective opacity with fadeout
+    EffectiveOpacity:=Decal.fOpacity;
+    if (Decal.fLifetime>=0.0) and (Decal.fFadeOutTime>0.0) then begin
+     RemainingLife:=Decal.fLifetime-Decal.fAge;
+     if RemainingLife<=Decal.fFadeOutTime then begin
+      FadeFactor:=RemainingLife/Decal.fFadeOutTime;
+      EffectiveOpacity:=EffectiveOpacity*FadeFactor;
+     end;
+    end;
+    PpvFloat(@DecalItem^.BlendParams.x)^:=EffectiveOpacity;
+    PpvFloat(@DecalItem^.BlendParams.y)^:=Decal.fAngleFade;
+    PpvFloat(@DecalItem^.BlendParams.z)^:=Decal.fEdgeFade;
+    DecalItem^.BlendParams.w:=TpvUInt32(Decal.fBlendMode);
 
-    DecalItem^.TextureIndices:=Decal.fTextureIndices;
-
-    DecalItem^.TextureIndices2:=Decal.fTextureIndices2;
+    // Pack texture indices
+    DecalItem^.TextureIndices.x:=Decal.fAlbedoTexture;
+    DecalItem^.TextureIndices.y:=Decal.fNormalTexture;
+    DecalItem^.TextureIndices.z:=Decal.fORMTexture;
+    DecalItem^.TextureIndices.w:=Decal.fSpecularTexture;
+    
+    DecalItem^.TextureIndices2.x:=Decal.fEmissiveTexture;
+    DecalItem^.TextureIndices2.y:=-1;
+    DecalItem^.TextureIndices2.z:=-1;
+    DecalItem^.TextureIndices2.w:=-1;
 
     DecalItem^.DecalForward:=Decal.fDecalForward;
     DecalItem^.Flags:=Decal.fFlags;
@@ -37432,6 +37427,7 @@ function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
                                const aAngleFade:TpvFloat;
                                const aEdgeFade:TpvFloat;
                                const aLifetime:TpvDouble;
+                               const aFadeOutTime:TpvDouble;
                                const aPasses:TpvScene3D.TDecalPasses):TpvScene3D.TDecal;
 var Up,Right,Forward:TpvVector3D;
     DecalToWorld:TpvMatrix4x4D;
@@ -37458,20 +37454,18 @@ begin
  result.fDecalToWorldMatrix:=DecalToWorld;
  result.fSize:=TpvVector3.InlineableCreate(aSize.x,aSize.y,0.5);
  result.fUVScaleOffset:=TpvVector4.InlineableCreate(1.0,1.0,0.0,0.0); // Default UV: no scale/offset
- result.fTextureIndices.x:=aAlbedoTexture;
- result.fTextureIndices.y:=aNormalTexture;
- result.fTextureIndices.z:=aORMTexture;
- result.fTextureIndices.w:=aSpecularTexture;
- result.fTextureIndices2.x:=aEmissiveTexture;
- result.fTextureIndices2.y:=0;
- result.fTextureIndices2.z:=0;
- result.fTextureIndices2.w:=0;
+ result.fAlbedoTexture:=aAlbedoTexture;
+ result.fNormalTexture:=aNormalTexture;
+ result.fORMTexture:=aORMTexture;
+ result.fSpecularTexture:=aSpecularTexture;
+ result.fEmissiveTexture:=aEmissiveTexture;
  result.fFlags:=0;
- result.Opacity:=aOpacity;
- result.AngleFade:=aAngleFade;
- result.EdgeFade:=aEdgeFade;
- result.BlendMode:=aBlendMode;
+ result.fOpacity:=aOpacity;
+ result.fAngleFade:=aAngleFade;
+ result.fEdgeFade:=aEdgeFade;
+ result.fBlendMode:=aBlendMode;
  result.fLifetime:=aLifetime;
+ result.fFadeOutTime:=aFadeOutTime;
  result.fAge:=0.0;
  result.fVisible:=true;
  result.fPasses:=aPasses;
