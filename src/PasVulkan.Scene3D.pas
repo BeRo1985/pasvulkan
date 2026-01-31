@@ -4518,7 +4518,7 @@ type EpvScene3D=class(Exception);
                             const aSizeEnd:TpvVector2;
                             const aColorStart:TpvVector4;
                             const aColorEnd:TpvVector4;
-                            const aLifeTime:TpvScalar;
+                            const aLifeTime:TpvDouble;
                             const aTextureID:TpvUInt32;
                             const aAdditiveBlending:boolean):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
       public
@@ -37223,7 +37223,7 @@ function TpvScene3D.AddParticle(const aPosition:TpvVector3;
                                 const aSizeEnd:TpvVector2;
                                 const aColorStart:TpvVector4;
                                 const aColorEnd:TpvVector4;
-                                const aLifeTime:TpvScalar;
+                                const aLifeTime:TpvDouble;
                                 const aTextureID:TpvUInt32;
                                 const aAdditiveBlending:boolean):TpvSizeInt;
 var Particle:PParticle;
