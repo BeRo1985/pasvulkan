@@ -8,6 +8,8 @@
 - [Performance Considerations](#performance-considerations)
 - [Technical Architecture](#technical-architecture)
 - [Deep Technical Details](#deep-technical-details)
+- [Comparison with Other Decal Implementation Concepts/Designs](#comparison-with-other-decal-implementation-conceptsdesigns)
+- [Appendix: Shader Code Reference](#appendix-shader-code-reference)
 
 ---
 
@@ -836,110 +838,7 @@ At 60 FPS: 9.6 MB/s upload bandwidth (negligible on modern GPUs)
 
 ---
 
-## Appendix: Shader Code Reference
-
-### Complete applyDecals() Implementation
-
-```glsl
-void applyDecals(
-  inout vec4 baseColor,
-  inout float metallic,
-  inout float perceptualRoughness,
-  inout float occlusion,
-  inout vec3 F0Dielectric,
-  inout vec3 F90Dielectric,
-  inout float specularWeight,
-  inout vec3 decalNormal,
-  inout float decalNormalBlend,
-  in vec3 worldPosition,
-  in vec3 worldNormal,
-  in vec3 viewSpacePosition,
-  in vec3 baseIORF0Dielectric
-) {
-  // Initialize accumulation
-  decalNormal = vec3(0.0, 0.0, 1.0);
-  decalNormalBlend = 0.0;
-  
-  #if defined(LIGHTCLUSTERS)
-    // Cluster-based lookup
-    uvec3 clusterXYZ = calculateClusterXYZ(gl_FragCoord.xy, viewSpacePosition.z);
-    uint clusterIndex = flattenClusterXYZ(clusterXYZ);
-    uvec2 clusterDecalData = frustumClusterGridData[clusterIndex].zw;
-    
-    for (uint i = 0; i < clusterDecalData.y; i++) {
-      uint decalIndex = frustumClusterGridIndexList[clusterDecalData.x + i];
-      Decal decal = decals[decalIndex];
-  #else
-    // BVH skip-tree lookup
-    uint nodeIndex = 0;
-    uint nodeCount = decalTreeNodes[0].aabbMinSkipCount.w;
-    
-    while (nodeIndex < nodeCount) {
-      DecalTreeNode node = decalTreeNodes[nodeIndex];
-      if (testAABB(worldPosition, node)) {
-        if (node.aabbMaxUserData.w != 0xFFFFFFFF) {
-          Decal decal = decals[node.aabbMaxUserData.w];
-  #endif
-  
-      // Check pass flags
-      if ((decal.decalForwardFlags.w & DECAL_FLAG_PASS) != 0u) {
-        // Transform to decal space
-        vec3 decalSpacePos = (decal.worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
-        
-        // OBB test
-        if (all(greaterThan(decalSpacePos + 0.5, vec3(0.0))) && 
-            all(lessThan(decalSpacePos, vec3(0.5)))) {
-          
-          // Calculate UVs
-          vec2 decalUV = decalSpacePos.xy + 0.5;
-          decalUV = decalUV * decal.uvScaleOffset.xy + decal.uvScaleOffset.zw;
-          
-          // Fade calculations
-          vec2 edgeDist = min(decalUV, 1.0 - decalUV) * 2.0;
-          float edgeFade = smoothstep(0.0, uintBitsToFloat(decal.blendParams.z), 
-                                      min(edgeDist.x, edgeDist.y));
-          
-          float angleFade = clamp(dot(normalize(worldNormal), 
-                                      normalize(uintBitsToFloat(decal.decalForwardFlags.xyz))), 
-                                 0.0, 1.0);
-          angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
-          
-          // Sample textures
-          vec4 decalAlbedo = sampleDecalTexture(decal.textureIndices.x, decalUV);
-          vec3 decalNormalTS = sampleDecalNormal(decal.textureIndices.y, decalUV);
-          vec3 decalORM = sampleDecalTexture(decal.textureIndices.z, decalUV).xyz;
-          vec4 decalSpecular = sampleDecalTexture(decal.textureIndices.w, decalUV);
-          
-          // Calculate blend
-          float blend = decalAlbedo.a * uintBitsToFloat(decal.blendParams.x) * 
-                       angleFade * edgeFade;
-          
-          // Apply based on blend mode
-          applyBlendMode(decal.blendParams.w, blend, 
-                        baseColor, metallic, perceptualRoughness, occlusion,
-                        F0Dielectric, F90Dielectric, specularWeight,
-                        decalAlbedo, decalORM, decalSpecular);
-          
-          // Accumulate normals
-          decalNormal = blendNormals(decalNormal, decalNormalTS, blend);
-          decalNormalBlend = 1.0 - ((1.0 - decalNormalBlend) * (1.0 - blend));
-        }
-      }
-      
-  #if defined(LIGHTCLUSTERS)
-    }
-  #else
-        }
-        nodeIndex++;
-      } else {
-        nodeIndex += max(1u, node.aabbMinSkipCount.w);
-      }
-    }
-  #endif
-}
-```
-
-### Comparison with Other Decal Implementation Concepts/Designs
+## Comparison with Other Decal Implementation Concepts/Designs
 
 #### 1. Screen-Space Decals (Deferred Decals)
 
@@ -1157,5 +1056,105 @@ PasVulkan implements both approaches for different use cases:
 
 This dual approach ensures optimal performance across both current (rasterization) and future (raytracing) rendering pipelines.
 
+## Appendix: Shader Code Reference
 
+### Complete applyDecals() Implementation
 
+```glsl
+void applyDecals(
+  inout vec4 baseColor,
+  inout float metallic,
+  inout float perceptualRoughness,
+  inout float occlusion,
+  inout vec3 F0Dielectric,
+  inout vec3 F90Dielectric,
+  inout float specularWeight,
+  inout vec3 decalNormal,
+  inout float decalNormalBlend,
+  in vec3 worldPosition,
+  in vec3 worldNormal,
+  in vec3 viewSpacePosition,
+  in vec3 baseIORF0Dielectric
+) {
+  // Initialize accumulation
+  decalNormal = vec3(0.0, 0.0, 1.0);
+  decalNormalBlend = 0.0;
+  
+  #if defined(LIGHTCLUSTERS)
+    // Cluster-based lookup
+    uvec3 clusterXYZ = calculateClusterXYZ(gl_FragCoord.xy, viewSpacePosition.z);
+    uint clusterIndex = flattenClusterXYZ(clusterXYZ);
+    uvec2 clusterDecalData = frustumClusterGridData[clusterIndex].zw;
+    
+    for (uint i = 0; i < clusterDecalData.y; i++) {
+      uint decalIndex = frustumClusterGridIndexList[clusterDecalData.x + i];
+      Decal decal = decals[decalIndex];
+  #else
+    // BVH skip-tree lookup
+    uint nodeIndex = 0;
+    uint nodeCount = decalTreeNodes[0].aabbMinSkipCount.w;
+    
+    while (nodeIndex < nodeCount) {
+      DecalTreeNode node = decalTreeNodes[nodeIndex];
+      if (testAABB(worldPosition, node)) {
+        if (node.aabbMaxUserData.w != 0xFFFFFFFF) {
+          Decal decal = decals[node.aabbMaxUserData.w];
+  #endif
+  
+      // Check pass flags
+      if ((decal.decalForwardFlags.w & DECAL_FLAG_PASS) != 0u) {
+        // Transform to decal space
+        vec3 decalSpacePos = (decal.worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
+        
+        // OBB test
+        if (all(greaterThan(decalSpacePos + 0.5, vec3(0.0))) && 
+            all(lessThan(decalSpacePos, vec3(0.5)))) {
+          
+          // Calculate UVs
+          vec2 decalUV = decalSpacePos.xy + 0.5;
+          decalUV = decalUV * decal.uvScaleOffset.xy + decal.uvScaleOffset.zw;
+          
+          // Fade calculations
+          vec2 edgeDist = min(decalUV, 1.0 - decalUV) * 2.0;
+          float edgeFade = smoothstep(0.0, uintBitsToFloat(decal.blendParams.z), 
+                                      min(edgeDist.x, edgeDist.y));
+          
+          float angleFade = clamp(dot(normalize(worldNormal), 
+                                      normalize(uintBitsToFloat(decal.decalForwardFlags.xyz))), 
+                                 0.0, 1.0);
+          angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
+          
+          // Sample textures
+          vec4 decalAlbedo = sampleDecalTexture(decal.textureIndices.x, decalUV);
+          vec3 decalNormalTS = sampleDecalNormal(decal.textureIndices.y, decalUV);
+          vec3 decalORM = sampleDecalTexture(decal.textureIndices.z, decalUV).xyz;
+          vec4 decalSpecular = sampleDecalTexture(decal.textureIndices.w, decalUV);
+          
+          // Calculate blend
+          float blend = decalAlbedo.a * uintBitsToFloat(decal.blendParams.x) * 
+                       angleFade * edgeFade;
+          
+          // Apply based on blend mode
+          applyBlendMode(decal.blendParams.w, blend, 
+                        baseColor, metallic, perceptualRoughness, occlusion,
+                        F0Dielectric, F90Dielectric, specularWeight,
+                        decalAlbedo, decalORM, decalSpecular);
+          
+          // Accumulate normals
+          decalNormal = blendNormals(decalNormal, decalNormalTS, blend);
+          decalNormalBlend = 1.0 - ((1.0 - decalNormalBlend) * (1.0 - blend));
+        }
+      }
+      
+  #if defined(LIGHTCLUSTERS)
+    }
+  #else
+        }
+        nodeIndex++;
+      } else {
+        nodeIndex += max(1u, node.aabbMinSkipCount.w);
+      }
+    }
+  #endif
+}
+```
