@@ -938,3 +938,224 @@ void applyDecals(
   #endif
 }
 ```
+
+### Comparison with Other Decal Implementation Concepts/Designs
+
+#### 1. Screen-Space Decals (Deferred Decals)
+
+**Concept**: Decals are rendered as screen-aligned quads in a deferred pass, projecting onto the G-Buffer.
+
+**How it works**:
+- Render decal bounding volumes (OBB) as geometry
+- Sample depth buffer to reconstruct world position
+- Project into decal space and apply texture
+- Write to G-Buffer (albedo, normal, material properties)
+
+**Pros**:
+- ✅ Clean separation from geometry rendering
+- ✅ Works well with deferred renderers
+- ✅ No per-fragment overhead when decals not visible
+- ✅ Easy depth testing (uses depth buffer)
+
+**Cons**:
+- ❌ Requires deferred rendering pipeline
+- ❌ Extra geometry rendering pass (decal volumes)
+- ❌ G-Buffer modifications can be complex
+- ❌ Doesn't work with forward rendering
+- ❌ Reconstruction artifacts on edges
+- ❌ Poor performance with many overlapping decals
+
+**Use case**: Deferred renderers with moderate decal counts
+
+---
+
+#### 2. Mesh Decals (Geometry Decals)
+
+**Concept**: Generate actual mesh geometry that conforms to the surface, textured with decal.
+
+**How it works**:
+- Cast rays/project decal volume onto surface
+- Clip underlying geometry to decal bounds
+- Generate new mesh vertices on surface
+- Render as regular geometry with decal texture
+
+**Pros**:
+- ✅ Perfect depth integration
+- ✅ Works with any rendering pipeline
+- ✅ No shader complexity
+- ✅ Can cast shadows
+- ✅ Supports all lighting models naturally
+
+**Cons**:
+- ❌ Expensive mesh generation (CPU or GPU compute)
+- ❌ Increased draw calls and geometry
+- ❌ Memory overhead per decal
+- ❌ Complex clipping algorithms
+- ❌ Difficult to update/remove dynamically
+- ❌ Z-fighting issues on coplanar surfaces
+
+**Use case**: Static, high-quality decals (graffiti, signs) where geometry cost is acceptable
+
+---
+
+#### 3. Textured Mesh Projectors
+
+**Concept**: Render decal as a projective texture from a virtual camera/projector.
+
+**How it works**:
+- Define decal as a frustum projector
+- Compute projection matrix from decal to world
+- During geometry rendering, check if in projector frustum
+- Sample decal texture using projected UVs
+- Blend with surface material
+
+**Pros**:
+- ✅ Simple projection math
+- ✅ Natural perspective-correct projection
+- ✅ Easy to animate/move projectors
+- ✅ Good for dynamic effects (shadows, lights)
+
+**Cons**:
+- ❌ Every object must check all projectors (bruteforce)
+- ❌ High shader overhead with many decals
+- ❌ No spatial culling by default
+- ❌ Difficult to limit to specific surfaces
+- ❌ Overlapping projectors multiply shader cost
+
+**Use case**: Few dynamic projectors (spotlight cookies, shadows)
+
+---
+
+#### 4. Clustered Decals (PasVulkan Default)
+
+**Concept**: Pre-assign decals to 3D frustum clusters in a compute shader, then fragment shaders only iterate decals in their cluster.
+
+**How it works**:
+- Divide view frustum into 3D grid (e.g., 64×64 pixel tiles × 16 depth slices)
+- Compute shader tests each decal AABB against each cluster
+- Build per-cluster index lists of visible decals
+- Fragment shader looks up its cluster and iterates only relevant decals
+- Transform to decal space, test OBB, sample textures, blend
+
+**Pros**:
+- ✅ O(D) fragment cost where D = decals per cluster (typically 1-5)
+- ✅ Excellent spatial culling
+- ✅ Scales well with many decals (100s-1000s)
+- ✅ Works with forward rendering
+- ✅ Predictable performance
+- ✅ GPU-friendly (coherent memory access within clusters)
+- ✅ Shared infrastructure with clustered lighting
+
+**Cons**:
+- ❌ Compute shader overhead per frame
+- ❌ Requires cluster grid setup
+- ❌ Some memory overhead for index lists
+- ❌ Can have load imbalance (many decals in one cluster)
+- ❌ Worst case: all decals in few clusters
+
+**Use case**: Forward rendering with many decals, modern AAA game engines
+
+**PasVulkan implementation**: Default mode with `#define LIGHTCLUSTERS`
+
+---
+
+#### 5. BVH Decals (PasVulkan Optional)
+
+**Concept**: Fragment shaders traverse a BVH (Bounding Volume Hierarchy) skip-tree to find relevant decals.
+
+**How it works**:
+- Build BVH tree of decal AABBs on CPU
+- Flatten to GPU-friendly skip-list structure
+- Fragment shader traverses tree:
+  - Test world position against node AABB
+  - If outside: skip entire subtree (using skip count)
+  - If inside: descend to children or test leaf decal
+- Apply decals found during traversal
+
+**Pros**:
+- ✅ O(log N) fragment cost for well-distributed decals
+- ✅ No compute shader overhead
+- ✅ Works with any rendering pipeline
+- ✅ Excellent for sparse decal distributions
+- ✅ Coherent ray traversal for pathtracing/raytracing
+- ✅ Lower memory than clustering (no per-cluster lists)
+
+**Cons**:
+- ❌ Worst case O(N) for overlapping decals at same position
+- ❌ Divergent fragment shader execution (bad for rasterization)
+- ❌ BVH rebuild cost when decals change
+- ❌ Less predictable performance than clustering
+- ❌ Poor cache coherency for scattered fragments
+
+**Use case**: Raytracing/pathtracing, sparse decal distributions, < 100 decals
+
+**PasVulkan implementation**: Optional mode when `LIGHTCLUSTERS` not defined, optimized for future pathtracing
+
+---
+
+#### 6. Bruteforce Inline Fragment Shader Decals
+
+**Concept**: Fragment shader tests against all decals every frame with no culling.
+
+**How it works**:
+- Upload all decals to uniform buffer or SSBO
+- Fragment shader loops through entire decal array
+- Test world position against each decal OBB
+- Sample and blend all matching decals
+- No spatial acceleration structure
+
+**Pros**:
+- ✅ Extremely simple implementation
+- ✅ No compute shader needed
+- ✅ No BVH or clustering setup
+- ✅ Easy to debug
+
+**Cons**:
+- ❌ O(N) fragment cost where N = total decal count
+- ❌ Catastrophic performance with many decals
+- ❌ Massive shader divergence
+- ❌ No spatial culling whatsoever
+- ❌ Uniform buffer size limits (typically < 100 decals)
+- ❌ Every fragment tests every decal (even off-screen)
+
+**Use case**: Prototyping, extremely simple scenes with < 10 decals
+
+**Not recommended for production**
+
+---
+
+## Performance Comparison
+
+| Method                    | Decal Count | Fragment Cost | Memory      | Setup Cost | Best For                  |
+|---------------------------|-------------|---------------|-------------|------------|---------------------------|
+| Screen-Space              | Medium      | Low           | Medium      | Medium     | Deferred renderers        |
+| Mesh Decals               | Low         | Zero¹         | High        | Very High  | Static quality decals     |
+| Projectors                | Low         | O(N)          | Low         | Zero       | Dynamic projectors        |
+| **Clustered** (PasVulkan) | **High**    | **O(D)**      | **Medium**  | **Medium** | **Forward + many decals** |
+| **BVH** (PasVulkan)       | **Medium**  | **O(log N)**  | **Low**     | **Low**    | **Pathtracing/sparse**    |
+| Bruteforce                | Very Low    | O(N)          | Low         | Zero       | Prototypes only           |
+
+¹ *Mesh decals have zero per-fragment cost but high vertex/geometry cost*
+
+---
+
+## Why PasVulkan Uses Dual-Mode (Clustered + BVH)
+
+PasVulkan implements both approaches for different use cases:
+
+### Clustered Mode (Default)
+- **Primary use**: Forward rasterization rendering
+- **Optimized for**: Many decals (100s-1000s), high fragment throughput
+- **Performance**: Predictable O(D) where D ≈ 1-5 decals per cluster
+- **Trade-off**: Compute shader overhead, memory for index lists
+
+### BVH Mode (Optional)
+- **Primary use**: Future pathtracing/raytracing rendering
+- **Optimized for**: Coherent ray traversal, sparse distributions
+- **Performance**: O(log N) for well-distributed decals
+- **Trade-off**: Divergent execution in rasterization, best for tracing
+
+This dual approach ensures optimal performance across both current (rasterization) and future (raytracing) rendering pipelines.
+
+
+
