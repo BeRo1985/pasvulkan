@@ -1783,7 +1783,6 @@ type EpvScene3D=class(Exception);
              public
               property Visible:boolean read fVisible write fVisible;
               property DecalToWorldMatrix:TpvMatrix4x4D read fDecalToWorldMatrix write fDecalToWorldMatrix;
-              property WorldToDecalMatrix:TpvMatrix4x4D read fWorldToDecalMatrix write fWorldToDecalMatrix;
               property Size:TpvVector3 read fSize write fSize;
               property UVScaleOffset:TpvVector4 read fUVScaleOffset write fUVScaleOffset;
               property Opacity:TpvFloat read GetOpacity write SetOpacity;
@@ -1792,7 +1791,6 @@ type EpvScene3D=class(Exception);
               property BlendMode:TpvScene3D.TDecalBlendMode read GetBlendMode write SetBlendMode;
               property TextureIndices:TpvUInt32Vector4 read fTextureIndices write fTextureIndices;
               property TextureIndices2:TpvUInt32Vector4 read fTextureIndices2 write fTextureIndices2;
-              property DecalForward:TpvVector4 read fDecalForward write fDecalForward;
               property MetaData:TpvUInt32Vector4 read fMetaData write fMetaData;
               property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
               property Lifetime:TpvDouble read fLifetime write fLifetime;
@@ -12088,20 +12086,32 @@ end;
 procedure TpvScene3D.TDecal.Update(const aInFlightFrameIndex:TpvSizeInt);
 var OBB:TpvOBB;
     AABB:TpvAABB;
-    Matrix64:TpvMatrix4x4D;
+    Matrix64,ScaledMatrix64:TpvMatrix4x4D;
     Matrix32:TpvMatrix4x4;
 begin
 
  if fVisible then begin
 
+  // Calculate world-to-decal matrix (inverse of decal-to-world)
+  fWorldToDecalMatrix:=fDecalToWorldMatrix.Inverse;
+
+  // Apply size scaling to world-to-decal matrix
+  ScaledMatrix64:=fWorldToDecalMatrix;
+  ScaledMatrix64.Right.xyz:=ScaledMatrix64.Right.xyz*fSize.x;
+  ScaledMatrix64.Up.xyz:=ScaledMatrix64.Up.xyz*fSize.y;
+  ScaledMatrix64.Forwards.xyz:=ScaledMatrix64.Forwards.xyz*fSize.z;
+
   // Apply origin-offset transform (64-bit to 32-bit), same pattern as TLight.Update
   if aInFlightFrameIndex>=0 then begin
-   Matrix64:=fSceneInstance.TransformOrigin(fWorldToDecalMatrix,aInFlightFrameIndex,false);
+   Matrix64:=fSceneInstance.TransformOrigin(ScaledMatrix64,aInFlightFrameIndex,false);
    Matrix32:=Matrix64;
   end else begin
-   Matrix32:=fWorldToDecalMatrix;
+   Matrix32:=ScaledMatrix64;
   end;
   fWorldToDecalMatrix32:=Matrix32;
+
+  // DecalForward is the Z-axis (Forwards) of the decal-to-world transform
+  fDecalForward:=TpvVector4.InlineableCreate(fDecalToWorldMatrix.Forwards.xyz.Normalize,0.0);
 
   // Compute OBB from origin-offset 32-bit matrix (inverse gives us the decal-to-world transform)
   OBB.Center:=Matrix32.Inverse.MulHomogen(TpvVector3.Origin);
@@ -34649,7 +34659,7 @@ begin
  aDecalItemArray.ClearNoFree;
  for DecalIndex:=0 to fDecals.Count-1 do begin
   Decal:=fDecals[DecalIndex];
-  if (aDecalItemArray.Count<MaxVisibleDecals) and Decal.fVisible then begin
+  if (aDecalItemArray.Count<MaxVisibleDecals) and Decal.fVisible then begin  
    Decal.fDecalItemIndex:=aDecalItemArray.AddNewIndex;
    DecalItem:=@aDecalItemArray.Items[Decal.fDecalItemIndex];
    DecalItem^.WorldToDecalMatrix:=Decal.fWorldToDecalMatrix32; // Use origin-offset 32-bit matrix
@@ -37319,12 +37329,12 @@ begin
  Right:=Forward.Cross(Up).Normalize;
  Up:=Right.Cross(Forward).Normalize;
 
- // Create decal-to-world matrix
- DecalToWorld.Right.xyz:=Right*aSize.x;
+ // Create decal-to-world matrix (unit vectors, size will be applied in Update)
+ DecalToWorld.Right.xyz:=Right;
  DecalToWorld.Right.w:=0.0;
- DecalToWorld.Up.xyz:=Up*aSize.y;
+ DecalToWorld.Up.xyz:=Up;
  DecalToWorld.Up.w:=0.0;
- DecalToWorld.Forwards.xyz:=Forward*0.5;  // Projection depth
+ DecalToWorld.Forwards.xyz:=Forward;
  DecalToWorld.Forwards.w:=0.0;
  DecalToWorld.Translation.xyz:=aPosition;
  DecalToWorld.Translation.w:=1.0;
@@ -37332,7 +37342,6 @@ begin
  // Create the decal
  result:=TpvScene3D.TDecal.Create(self);
  result.fDecalToWorldMatrix:=DecalToWorld;
- result.fWorldToDecalMatrix:=DecalToWorld.Inverse; // Store world-to-decal (inverse of decal-to-world)
  result.fSize:=TpvVector3.InlineableCreate(aSize.x,aSize.y,0.5);
  result.fUVScaleOffset:=TpvVector4.InlineableCreate(1.0,1.0,0.0,0.0); // Default UV: no scale/offset
  result.fTextureIndices.x:=aAlbedoTexture;
@@ -37343,7 +37352,6 @@ begin
  result.fTextureIndices2.y:=0;
  result.fTextureIndices2.z:=0;
  result.fTextureIndices2.w:=0;
- result.fDecalForward:=TpvVector4.InlineableCreate(Forward,0.0);
  result.fMetaData.x:=1;
  result.fMetaData.y:=0;
  result.fMetaData.z:=0;
