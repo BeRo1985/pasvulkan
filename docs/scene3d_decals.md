@@ -23,7 +23,7 @@ The Scene3D decal system provides a high-performance, order-stable solution for 
 ### Key Features
 
 - ✅ **Forward-rendered integration** - No extra geometry or render passes
-- ✅ **Dual-mode rendering** - Frustum cluster grid (for rasterization) and BVH skip-tree (for pathtracing/raytracing and similar random-access uses)
+- ✅ **Dual-mode rendering** - Frustum cluster grid (for rasterization) and BVH skip-tree (for pathtracing/raytracing and similar uses)
 - ✅ **Full PBR workflow** - Modifies albedo, normals, metallic, roughness, occlusion, and specular
 - ✅ **Order-stable rendering** - Consistent overlap ordering, no flickering
 - ✅ **Four blend modes** - AlphaBlend, Multiply, Overlay, Additive
