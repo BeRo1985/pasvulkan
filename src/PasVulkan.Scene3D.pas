@@ -1811,7 +1811,7 @@ type EpvScene3D=class(Exception);
               property Age:TpvDouble read fAge write fAge;
             end;
             TDecals=TpvObjectGenericList<TpvScene3D.TDecal>;
-            TDecalsHashMap=TpvHashMap<TpvScene3D.TDecal,TpvSizeInt>;
+            TDecalsHashMap=TpvHashMap<TpvScene3D.TDecal,Boolean>;
             { TDecalItem }
             TDecalItem=packed record
 
@@ -4205,6 +4205,7 @@ type EpvScene3D=class(Exception);
        fDecalAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
        fDecalAABBTreeStateGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
        fDecalBuffers:TpvScene3D.TDecalBuffers;
+       fDecalNeedsCompaction:TPasMPBool32;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeLock:TPasMPSlimReaderWriterLock;
        fAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
@@ -4382,6 +4383,7 @@ type EpvScene3D=class(Exception);
       private
        procedure CollectLights(var aLightItemArray:TpvScene3D.TLightItems;
                                var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
+       procedure CompactDecals;
        procedure CollectDecals(var aDecalItemArray:TpvScene3D.TDecalItems;
                                var aDecalMetaInfoArray:TpvScene3D.TDecalMetaInfos);
        procedure CullAndPrepareGroupInstances(const aInFlightFrameIndex:TpvSizeInt;
@@ -12073,7 +12075,7 @@ begin
   fSceneInstance.fDecalsLock.Acquire;
   try
    fIndex:=fSceneInstance.fDecals.Add(self);
-   fSceneInstance.fDecalsHashMap.Add(self,fIndex);
+   fSceneInstance.fDecalsHashMap.Add(self,true);
   finally
    fSceneInstance.fDecalsLock.Release;
   end;
@@ -12089,14 +12091,15 @@ begin
    if fIndex>=0 then begin
     try
      fSceneInstance.fDecalsHashMap.Delete(self);
-     if (fIndex+1)<fSceneInstance.fDecals.Count then begin
+{    if (fIndex+1)<fSceneInstance.fDecals.Count then begin
       OtherDecal:=fSceneInstance.fDecals[fSceneInstance.fDecals.Count-1];
       OtherDecal.fIndex:=fIndex;
-      fSceneInstance.fDecalsHashMap[OtherDecal]:=fIndex;
       fSceneInstance.fDecals[fIndex]:=OtherDecal;
       fIndex:=fSceneInstance.fDecals.Count-1;
      end;
-     fSceneInstance.fDecals.Extract(fIndex);
+     fSceneInstance.fDecals.Extract(fIndex);}
+     fSceneInstance.fDecals.Items[fIndex]:=nil;
+     fSceneInstance.fDecalNeedsCompaction:=true;
     finally
      fIndex:=-1;
     end;
@@ -31307,7 +31310,7 @@ begin
 
  fDecals:=TpvScene3D.TDecals.Create(false);
 
- fDecalsHashMap:=TpvScene3D.TDecalsHashMap.Create(-1);
+ fDecalsHashMap:=TpvScene3D.TDecalsHashMap.Create(false);
 
  fDecalAABBTree:=TpvBVHDynamicAABBTree.Create;
 
@@ -31330,6 +31333,8 @@ begin
  fDecalDataLock:=TPasMPSlimReaderWriterLock.Create;
 
  fDecalsLock:=TPasMPSlimReaderWriterLock.Create;
+
+ fDecalNeedsCompaction:=false;
 
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
 
@@ -31656,6 +31661,7 @@ var Index,InFlightFrameIndex:TpvSizeInt;
     PrimitiveTopology:TPrimitiveTopology;
     FaceCullingMode:TFaceCullingMode;
     CurrentObject:TObject;
+    Decal:TDecal;
 begin
 
  if assigned(fVulkanDevice) then begin
@@ -32077,8 +32083,15 @@ begin
 
  FreeAndNil(fLightDataLock);
 
- while fDecals.Count>0 do begin
-  fDecals[fDecals.Count-1].Free;
+ for Index:=fDecals.Count-1 downto 0 do begin
+  Decal:=fDecals[Index];
+  if assigned(Decal) then begin
+   try
+    Decal.Free;
+   finally
+    fDecals[Index]:=nil;
+   end;
+  end;
  end;
  FreeAndNil(fDecals);
 
@@ -34700,6 +34713,28 @@ begin
  end;
 end;
 
+// Compact the decal list using two-index approach
+// This maintains order and is O(n) without Delete() overhead
+procedure TpvScene3D.CompactDecals;
+var ReadIndex,WriteIndex:TpvSizeInt;
+    Decal:TpvScene3D.TDecal;
+begin
+ if fDecalNeedsCompaction then begin
+  fDecalNeedsCompaction:=false;
+  WriteIndex:=0;
+  for ReadIndex:=0 to fDecals.Count-1 do begin
+   Decal:=fDecals[ReadIndex];
+   if assigned(Decal) then begin
+    if WriteIndex<>ReadIndex then begin
+     fDecals[WriteIndex]:=Decal;
+    end;
+    inc(WriteIndex);
+   end;
+  end;
+  fDecals.Count:=WriteIndex;
+ end; 
+end;
+
 procedure TpvScene3D.CollectDecals(var aDecalItemArray:TpvScene3D.TDecalItems;
                                    var aDecalMetaInfoArray:TpvScene3D.TDecalMetaInfos);
 var DecalIndex:TpvSizeInt;
@@ -34714,32 +34749,36 @@ begin
  
   Decal:=fDecals[DecalIndex];
 
-  if (aDecalItemArray.Count<MaxVisibleDecals) and Decal.fVisible then begin  
-   
-   Decal.fDecalItemIndex:=aDecalItemArray.AddNewIndex;
-   
-   DecalItem:=@aDecalItemArray.Items[Decal.fDecalItemIndex];
-   
-   // Use origin-offset 32-bit matrix (transposed for column-major layout to avoid padding alignment and for better cache locality)
-   DecalItem^.WorldToDecalMatrix:=Decal.fWorldToDecalMatrix32;
+  if assigned(Decal) then begin
 
-   DecalItem^.UVScaleOffset:=Decal.fUVScaleOffset;
-   
-   DecalItem^.BlendParams:=Decal.fBlendParams;
-   
-   DecalItem^.TextureIndices:=Decal.fTextureIndices;
-   
-   DecalItem^.TextureIndices2:=Decal.fTextureIndices2;
-   
-   DecalItem^.DecalForward:=Decal.fDecalForward;
-   DecalItem^.Flags:=Decal.fFlags;
-   
-   DecalMetaInfo:=@aDecalMetaInfoArray[Decal.fDecalItemIndex];
-   DecalMetaInfo^.MinBounds:=TpvVector4.Create(Decal.fBoundingBox.Min,0.0);
-   DecalMetaInfo^.MaxBounds:=TpvVector4.Create(Decal.fBoundingBox.Max,Decal.fBoundingBox.Radius);
+   if (aDecalItemArray.Count<MaxVisibleDecals) and Decal.fVisible then begin
 
-  end else begin
-   Decal.fDecalItemIndex:=-1;
+    Decal.fDecalItemIndex:=aDecalItemArray.AddNewIndex;
+
+    DecalItem:=@aDecalItemArray.Items[Decal.fDecalItemIndex];
+
+    // Use origin-offset 32-bit matrix (transposed for column-major layout to avoid padding alignment and for better cache locality)
+    DecalItem^.WorldToDecalMatrix:=Decal.fWorldToDecalMatrix32;
+
+    DecalItem^.UVScaleOffset:=Decal.fUVScaleOffset;
+
+    DecalItem^.BlendParams:=Decal.fBlendParams;
+
+    DecalItem^.TextureIndices:=Decal.fTextureIndices;
+
+    DecalItem^.TextureIndices2:=Decal.fTextureIndices2;
+
+    DecalItem^.DecalForward:=Decal.fDecalForward;
+    DecalItem^.Flags:=Decal.fFlags;
+
+    DecalMetaInfo:=@aDecalMetaInfoArray[Decal.fDecalItemIndex];
+    DecalMetaInfo^.MinBounds:=TpvVector4.Create(Decal.fBoundingBox.Min,0.0);
+    DecalMetaInfo^.MaxBounds:=TpvVector4.Create(Decal.fBoundingBox.Max,Decal.fBoundingBox.Radius);
+
+   end else begin
+    Decal.fDecalItemIndex:=-1;
+   end;
+
   end;
 
  end;
@@ -34761,6 +34800,7 @@ var Index,ItemID:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     DebugPrimitiveVertexDynamicArray:TpvScene3D.TDebugPrimitiveVertexDynamicArray;
     Matrix:TpvMatrix4x4D;
+    Decal:TDecal;
 begin
 
  fPrimaryLightDirections[aInFlightFrameIndex]:=fPrimaryLightDirection;
@@ -34899,6 +34939,8 @@ begin
  // Decals
  if assigned(fDecalAABBTree) then begin
 
+  CompactDecals;
+
   OldGeneration:=fDecalAABBTreeStateGenerations[aInFlightFrameIndex];
   NewGeneration:=fDecalAABBTreeGeneration;
   if (OldGeneration<>NewGeneration) and
@@ -34925,7 +34967,10 @@ begin
 
    // Update all decals with origin-offset (64-bit to 32-bit transform)
    for Index:=0 to fDecals.Count-1 do begin
-    fDecals[Index].Update(aInFlightFrameIndex);
+    Decal:=fDecals[Index];
+    if assigned(Decal) then begin
+     Decal.Update(aInFlightFrameIndex);
+    end;
    end;
 
    CollectDecals(DecalBuffer.fDecalItems,DecalBuffer.fDecalMetaInfos);
@@ -37368,7 +37413,7 @@ function TpvScene3D.ValidDecal(const aDecal:TpvScene3D.TDecal):Boolean;
 begin
  fDecalsLock.Acquire;
  try
-  result:=fDecalsHashMap[aDecal]>=0;
+  result:=fDecalsHashMap[aDecal];
  finally
   fDecalsLock.Release;
  end;
@@ -37441,11 +37486,13 @@ begin
  // Update decal ages and remove expired decals
  for Index:=fDecals.Count-1 downto 0 do begin
   Decal:=fDecals[Index];
-  if Decal.fLifetime>=0.0 then begin
-   Decal.fAge:=Decal.fAge+aDeltaTime;
-   if Decal.fAge>=Decal.fLifetime then begin
-    // Decal has expired, remove it
-    FreeAndNil(Decal);
+  if assigned(Decal) then begin
+   if Decal.fLifetime>=0.0 then begin
+    Decal.fAge:=Decal.fAge+aDeltaTime;
+    if Decal.fAge>=Decal.fLifetime then begin
+     // Decal has expired, remove it
+     FreeAndNil(Decal);
+    end;
    end;
   end;
  end;
