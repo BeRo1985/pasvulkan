@@ -1751,7 +1751,8 @@ type EpvScene3D=class(Exception);
               fSceneInstance:TpvScene3D;
               fIndex:TpvSizeInt;
               fVisible:boolean;
-              fWorldToDecalMatrix:TpvMatrix4x4D;
+              fDecalToWorldMatrix:TpvMatrix4x4D;  // Non-inverted decal-to-world transform (64-bit, API-side)
+              fWorldToDecalMatrix:TpvMatrix4x4D;  // Inverted world-to-decal transform (64-bit, derived from fDecalToWorldMatrix)
               fWorldToDecalMatrix32:TpvMatrix4x4; // Origin-offset 32-bit version for GPU
               fSize:TpvVector3;
               fUVScaleOffset:TpvVector4;
@@ -1763,6 +1764,8 @@ type EpvScene3D=class(Exception);
               fBoundingBox:TpvAABB;
               fAABBTreeProxy:TpvSizeInt;
               fDecalItemIndex:TpvSizeInt;
+              fLifetime:TpvDouble;     // Remaining lifetime in seconds, <0 means infinite
+              fAge:TpvDouble;          // Age in seconds since creation
               function GetOpacity:TpvFloat;
               procedure SetOpacity(const aValue:TpvFloat);
               function GetAngleFade:TpvFloat;
@@ -1779,6 +1782,7 @@ type EpvScene3D=class(Exception);
               procedure Update(const aInFlightFrameIndex:TpvSizeInt=-1);
              public
               property Visible:boolean read fVisible write fVisible;
+              property DecalToWorldMatrix:TpvMatrix4x4D read fDecalToWorldMatrix write fDecalToWorldMatrix;
               property WorldToDecalMatrix:TpvMatrix4x4D read fWorldToDecalMatrix write fWorldToDecalMatrix;
               property Size:TpvVector3 read fSize write fSize;
               property UVScaleOffset:TpvVector4 read fUVScaleOffset write fUVScaleOffset;
@@ -1791,6 +1795,8 @@ type EpvScene3D=class(Exception);
               property DecalForward:TpvVector4 read fDecalForward write fDecalForward;
               property MetaData:TpvUInt32Vector4 read fMetaData write fMetaData;
               property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
+              property Lifetime:TpvDouble read fLifetime write fLifetime;
+              property Age:TpvDouble read fAge write fAge;
             end;
             TDecals=TpvObjectGenericList<TpvScene3D.TDecal>;
             { TDecalItem }
@@ -4521,6 +4527,16 @@ type EpvScene3D=class(Exception);
                             const aLifeTime:TpvDouble;
                             const aTextureID:TpvUInt32;
                             const aAdditiveBlending:boolean):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
+       function SpawnDecal(const aPosition:TpvVector3D;
+                           const aNormal:TpvVector3D;
+                           const aSize:TpvVector2;
+                           const aTextureIndices:TpvUInt32Vector4;
+                           const aBlendMode:TpvScene3D.TDecalBlendMode=TpvScene3D.TDecalBlendMode.AlphaBlend;
+                           const aOpacity:TpvFloat=1.0;
+                           const aAngleFade:TpvFloat=1.0;
+                           const aEdgeFade:TpvFloat=0.1;
+                           const aLifetime:TpvDouble=-1.0):TpvScene3D.TDecal;
+       procedure UpdateDecals(const aDeltaTime:TpvDouble);
       public
        function CreateMaterial(const aName:TpvUTF8String):TpvScene3D.TMaterial;
        function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
@@ -11999,6 +12015,8 @@ begin
  fVisible:=true;
  fDecalItemIndex:=-1;
  fSize:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
+ fLifetime:=-1.0; // Infinite lifetime by default
+ fAge:=0.0;
 end;
 
 destructor TpvScene3D.TDecal.Destroy;
@@ -37251,6 +37269,83 @@ begin
   Particle^.TextureID:=aTextureID or TpvUInt32($80000000);
  end else begin
   Particle^.TextureID:=aTextureID;
+ end;
+end;
+
+function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
+                               const aNormal:TpvVector3D;
+                               const aSize:TpvVector2;
+                               const aTextureIndices:TpvUInt32Vector4;
+                               const aBlendMode:TpvScene3D.TDecalBlendMode;
+                               const aOpacity:TpvFloat;
+                               const aAngleFade:TpvFloat;
+                               const aEdgeFade:TpvFloat;
+                               const aLifetime:TpvDouble):TpvScene3D.TDecal;
+var Up,Right,Forward:TpvVector3D;
+    DecalToWorld:TpvMatrix4x4D;
+begin
+
+ // Calculate decal-to-world transform from position and normal (64-bit)
+ Forward:=aNormal.Normalize;
+ Up:=Forward.Perpendicular;
+ Right:=Forward.Cross(Up).Normalize;
+ Up:=Right.Cross(Forward).Normalize;
+
+ // Create decal-to-world matrix
+ DecalToWorld.Right.xyz:=Right*aSize.x;
+ DecalToWorld.Right.w:=0.0;
+ DecalToWorld.Up.xyz:=Up*aSize.y;
+ DecalToWorld.Up.w:=0.0;
+ DecalToWorld.Forwards.xyz:=Forward*0.5;  // Projection depth
+ DecalToWorld.Forwards.w:=0.0;
+ DecalToWorld.Translation.xyz:=aPosition;
+ DecalToWorld.Translation.w:=1.0;
+
+ // Create the decal
+ result:=TpvScene3D.TDecal.Create(self);
+ result.fDecalToWorldMatrix:=DecalToWorld;
+ result.fWorldToDecalMatrix:=DecalToWorld.Inverse; // Store world-to-decal (inverse of decal-to-world)
+ result.fSize:=TpvVector3.InlineableCreate(aSize.x,aSize.y,0.5);
+ result.fUVScaleOffset:=TpvVector4.InlineableCreate(1.0,1.0,0.0,0.0); // Default UV: no scale/offset
+ result.fTextureIndices:=aTextureIndices;
+ result.fTextureIndices2.x:=0;
+ result.fTextureIndices2.y:=0;
+ result.fTextureIndices2.z:=0;
+ result.fTextureIndices2.w:=0;
+ result.fDecalForward:=TpvVector4.InlineableCreate(Forward,0.0);
+ result.fMetaData.x:=1;
+ result.fMetaData.y:=0;
+ result.fMetaData.z:=0;
+ result.fMetaData.w:=0;
+ result.Opacity:=aOpacity;
+ result.AngleFade:=aAngleFade;
+ result.EdgeFade:=aEdgeFade;
+ result.BlendMode:=aBlendMode;
+ result.fLifetime:=aLifetime;
+ result.fAge:=0.0;
+ result.fVisible:=true;
+ result.Update(-1); // Initial update without origin transform
+end;
+
+procedure TpvScene3D.UpdateDecals(const aDeltaTime:TpvDouble);
+var Index:TpvSizeInt;
+    Decal:TpvScene3D.TDecal;
+begin
+ // Update decal ages and remove expired decals
+ Index:=0;
+ while Index<fDecals.Count do begin
+  Decal:=fDecals[Index];
+  if Decal.fLifetime>=0.0 then begin
+   Decal.fAge:=Decal.fAge+aDeltaTime;
+   if Decal.fAge>=Decal.fLifetime then begin
+    // Decal has expired, remove it
+    FreeAndNil(Decal);
+    // fDecals list removes itself via BeforeDestruction
+    // Don't increment Index since list shifts down
+    continue;
+   end;
+  end;
+  inc(Index);
  end;
 end;
 
