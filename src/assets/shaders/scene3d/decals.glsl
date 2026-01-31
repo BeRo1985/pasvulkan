@@ -158,7 +158,6 @@ void applyDecals(
     }
   }
 #else
-        }
       }
       decalTreeNodeIndex++;
     } else {
@@ -250,13 +249,12 @@ void applyDecalsUnlit(
               break;
             }
           }
-#if defined(LIGHTCLUSTERS)
         }
+#if defined(LIGHTCLUSTERS)        
       }
     }
   }
-#else
-        }
+#else      
       }
       decalTreeNodeIndex++;
     } else {
