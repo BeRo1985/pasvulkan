@@ -1799,6 +1799,7 @@ type EpvScene3D=class(Exception);
               property Age:TpvDouble read fAge write fAge;
             end;
             TDecals=TpvObjectGenericList<TpvScene3D.TDecal>;
+            TDecalsHashMap=TpvHashMap<TpvScene3D.TDecal,TpvSizeInt>;
             { TDecalItem }
             TDecalItem=packed record
              WorldToDecalMatrix:TpvMatrix4x4;  // Transform world space to decal OBB space
@@ -4176,13 +4177,14 @@ type EpvScene3D=class(Exception);
        fLightsLock:TPasMPSlimReaderWriterLock;
        fManualLights:TpvScene3D.TLights;
        fDecals:TpvScene3D.TDecals;
+       fDecalsHashMap:TpvScene3D.TDecalsHashMap;
+       fDecalDataLock:TPasMPSlimReaderWriterLock;
        fDecalsLock:TPasMPSlimReaderWriterLock;
        fDecalAABBTree:TpvBVHDynamicAABBTree;
        fDecalAABBTreeGeneration:TpvUInt64;
        fDecalAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
        fDecalAABBTreeStateGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
        fDecalBuffers:TpvScene3D.TDecalBuffers;
-       fDecalDataLock:TPasMPSlimReaderWriterLock;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeLock:TPasMPSlimReaderWriterLock;
        fAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
@@ -4527,6 +4529,7 @@ type EpvScene3D=class(Exception);
                             const aLifeTime:TpvDouble;
                             const aTextureID:TpvUInt32;
                             const aAdditiveBlending:boolean):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
+       function ValidDecal(const aDecal:TpvScene3D.TDecal):Boolean;
        function SpawnDecal(const aPosition:TpvVector3D;
                            const aNormal:TpvVector3D;
                            const aSize:TpvVector2;
@@ -12043,6 +12046,7 @@ begin
   fSceneInstance.fDecalsLock.Acquire;
   try
    fIndex:=fSceneInstance.fDecals.Add(self);
+   fSceneInstance.fDecalsHashMap.Add(self,fIndex);
   finally
    fSceneInstance.fDecalsLock.Release;
   end;
@@ -12057,9 +12061,11 @@ begin
   try
    if fIndex>=0 then begin
     try
+     fSceneInstance.fDecalsHashMap.Delete(self);
      if (fIndex+1)<fSceneInstance.fDecals.Count then begin
       OtherDecal:=fSceneInstance.fDecals[fSceneInstance.fDecals.Count-1];
       OtherDecal.fIndex:=fIndex;
+      fSceneInstance.fDecalsHashMap[OtherDecal]:=fIndex;
       fSceneInstance.fDecals[fIndex]:=OtherDecal;
       fIndex:=fSceneInstance.fDecals.Count-1;
      end;
@@ -31236,7 +31242,7 @@ begin
 
  fDecals:=TpvScene3D.TDecals.Create(false);
 
- fDecalsLock:=TPasMPSlimReaderWriterLock.Create;
+ fDecalsHashMap:=TpvScene3D.TDecalsHashMap.Create(-1);
 
  fDecalAABBTree:=TpvBVHDynamicAABBTree.Create;
 
@@ -31257,6 +31263,8 @@ begin
  end;
 
  fDecalDataLock:=TPasMPSlimReaderWriterLock.Create;
+
+ fDecalsLock:=TPasMPSlimReaderWriterLock.Create;
 
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
 
@@ -32008,6 +32016,8 @@ begin
   fDecals[fDecals.Count-1].Free;
  end;
  FreeAndNil(fDecals);
+
+ FreeAndNil(fDecalsHashMap);
 
  FreeAndNil(fDecalsLock);
 
@@ -37269,6 +37279,16 @@ begin
   Particle^.TextureID:=aTextureID or TpvUInt32($80000000);
  end else begin
   Particle^.TextureID:=aTextureID;
+ end;
+end;
+
+function TpvScene3D.ValidDecal(const aDecal:TpvScene3D.TDecal):Boolean;
+begin
+ fDecalsLock.Acquire;
+ try
+  result:=fDecalsHashMap[aDecal]>=0;
+ finally
+  fDecalsLock.Release;
  end;
 end;
 
