@@ -269,6 +269,7 @@ vec3 workNormal;
 #undef ENABLE_ANISOTROPIC
 #include "pbr.glsl"
 #include "blendnormals.glsl"
+#include "decals.glsl"
 
 void main(){
 
@@ -413,6 +414,32 @@ void main(){
 
   albedo.xyz *= mix(planetData.minMaxHeightFactor.y, planetData.minMaxHeightFactor.w, pow(clamp((surfaceHeight - planetData.minMaxHeightFactor.x) / (planetData.minMaxHeightFactor.z - planetData.minMaxHeightFactor.x), 0.0, 1.0), planetData.heightFactorExponent));
 
+  //vec3 F0Dielectric = mix(vec3(0.04), albedo.xyz, metallicRoughness.x);
+  vec3 F0Dielectric = vec3(0.04);
+  vec3 F90 = vec3(1.0);
+  vec3 F90Dielectric = vec3(1.0);
+  float specularWeight = 1.0;
+
+  // Apply decals BEFORE wetness
+  vec3 decalNormal = vec3(0.0, 0.0, 1.0);
+  float decalNormalBlend = 0.0;
+  
+  applyDecals(
+    albedo,
+    occlusionRoughnessMetallic.z,
+    occlusionRoughnessMetallic.y,
+    occlusionRoughnessMetallic.x,
+    F0Dielectric,
+    F90Dielectric,
+    specularWeight,
+    decalNormal,
+    decalNormalBlend,
+    inWorldSpacePosition,
+    workNormal,
+    inViewSpacePosition,
+    vec3(0.04)  // Base IOR F0 for dielectrics
+  );
+
   vec4 wetnessNormal = vec4(0.0);
   const float rainTime = float(uint(pushConstants.timeSeconds & 4095u)) + pushConstants.timeFractionalSecond;         
   applyPBRWetness(
@@ -432,7 +459,11 @@ void main(){
     true // Extended effect, which includes the rain streaks and puddles
   );
 
-  vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * blendNormals(normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))), wetnessNormal.xyz, wetnessNormal.w));
+  vec3 normal = normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0)));
+  if(decalNormalBlend > 0.0){
+    normal = blendNormals(normal, decalNormal, decalNormalBlend);
+  }
+  normal = normalize(mat3(workTangent, workBitangent, workNormal) * blendNormals(normal, wetnessNormal.xyz, wetnessNormal.w));
 
   float NdotV;
   normal = getViewClampedNormal(normal, viewDirection, NdotV);
@@ -447,12 +478,6 @@ void main(){
   float metallic = metallicRoughness.x;
 
   vec4 diffuseColorAlpha = vec4(max(vec3(0.0), albedo.xyz * (1.0 - metallicRoughness.x)), albedo.w);
-
-  //vec3 F0Dielectric = mix(vec3(0.04), albedo.xyz, metallicRoughness.x);
-  vec3 F0Dielectric = vec3(0.04);
-
-  vec3 F90 = vec3(1.0);
-  vec3 F90Dielectric = vec3(1.0);
 
   float transparency = 0.0;
 
@@ -490,8 +515,6 @@ void main(){
   const float clearcoatRoughness = 1.0;
 
   float litIntensity = 1.0;
-
-  const float specularWeight = 1.0;
  
   const float iblWeight = 1.0;
 

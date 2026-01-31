@@ -307,6 +307,8 @@ float diffuseTransmissionThickness = 1.0;
 #include "lighting.glsl"
 #undef LIGHTING_GLOBALS
 
+#include "decals.glsl"
+
 #endif // !defined(DEPTHONLY) || defined(VOXELIZATION) 
 
 #if defined(USE_MATERIAL_BUFFER_REFERENCE)
@@ -522,13 +524,14 @@ void main() {
    color = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
 #else
   float litIntensity = 1.0;
+  vec3 baseIORF0Dielectric, F0Dielectric;
   switch (shadingModel) {
     case smPBRMetallicRoughness:
     case smPBRSpecularGlossiness: {
       vec4 baseColor = vec4(1.0);
       float metallic;
       float ior = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.x;
-      vec3 F0Dielectric = vec3((abs(ior - 1.5) < 1e-6) ? 0.04 : pow((ior - 1.0) / (ior + 1.0), 2.0));
+      baseIORF0Dielectric = vec3((abs(ior - 1.5) < 1e-6) ? 0.04 : pow((ior - 1.0) / (ior + 1.0), 2.0));
       vec3 F90 = vec3(1.0);
       vec3 F90Dielectric = vec3(1.0);
       float perceptualRoughness = 1.0;
@@ -548,7 +551,7 @@ void main() {
             specularWeight *= textureFetch(10, vec4(1.0), false).w;
             specularColorFactor *= textureFetch(11, vec4(1.0), true).xyz;
           }
-          F0Dielectric = min(F0Dielectric * specularColorFactor, vec3(1.0));
+          F0Dielectric = min(baseIORF0Dielectric * specularColorFactor, vec3(1.0));
           F90Dielectric = vec3(specularWeight);
           break;
         }
@@ -561,7 +564,8 @@ void main() {
             applyMaterialInstanceDataEffect(uint(inInstanceDataIndex), baseColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false);
           }         
           perceptualRoughness = clamp(1.0 - specularGlossiness.w, 1e-3, 1.0);
-          F0Dielectric = min(specularGlossiness.xyz * material.specularFactor.xyz, vec3(1.0));
+          baseIORF0Dielectric = specularGlossiness.xyz;
+          F0Dielectric = min(baseIORF0Dielectric * material.specularFactor.xyz, vec3(1.0));
           break;
         }
       }
@@ -569,6 +573,26 @@ void main() {
       vec4 occlusionTexture = textureFetch(3, vec4(1.0), false);
 
       float occlusion = clamp(mix(1.0, occlusionTexture.x, material.metallicRoughnessNormalScaleOcclusionStrengthFactor.w), 0.0, 1.0);
+
+      // Apply decals BEFORE wetness and normal mapping
+      // Decals modify material properties (albedo, metallic, roughness, etc.)
+      vec3 decalNormal = vec3(0.0, 0.0, 1.0); // Will be blended with material normal later
+      float decalNormalBlend = 0.0;
+      applyDecals(
+        baseColor,
+        metallic,
+        perceptualRoughness,
+        occlusion,
+        F0Dielectric,
+        F90Dielectric,
+        specularWeight,
+        decalNormal,
+        decalNormalBlend,
+        inWorldSpacePosition,
+        workNormal,
+        inViewSpacePosition,
+        baseIORF0Dielectric
+      );
 
 #ifdef WETNESS
       vec4 wetnessNormal = vec4(0.0); 
@@ -595,7 +619,7 @@ void main() {
 #endif
 
       vec3 normal;
-      if (((textureFlags.x & (1 << 2)) != 0) 
+      if (((textureFlags.x & (1 << 2)) != 0) || (decalNormalBlend > 0.0)
 #ifdef WETNESS
           || (wetnessNormal.w > 0.0)
 #endif
@@ -605,7 +629,10 @@ void main() {
 #else
         const vec4 normalTexture = textureFetch(2, vec2(0.0, 1.0).xxyx, false);
 #endif
-        const vec3 normalToApply = normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0));
+        vec3 normalToApply = normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0));
+        if(decalNormalBlend > 0.0){
+          normalToApply = blendNormals(normalToApply, decalNormal, decalNormalBlend);
+        } 
         normal = normalize(                                                                                                                      //
             mat3(normalize(workTangent), normalize(workBitangent), normalize(workNormal)) *      
 #ifdef WETNESS

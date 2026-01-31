@@ -7,7 +7,7 @@
 
 // Overlay blend mode
 vec3 decalOverlayBlend(vec3 base, vec3 blend) {
-  return mix(2.0 * base * blend, 1.0 - (2.0 * ((1.0 - base) * (1.0 - blend)), step(0.5, base));
+  return mix(2.0 * base * blend, 1.0 - (2.0 * ((1.0 - base) * (1.0 - blend))), step(0.5, base));
 }
 
 // Apply decals to material properties - Full PBR workflow
@@ -19,11 +19,12 @@ void applyDecals(
   inout vec3 F0Dielectric,        // Base reflectance for dielectrics
   inout vec3 F90Dielectric,       // Grazing angle reflectance
   inout float specularWeight,     // Specular intensity
-  inout vec3 normalTangentSpace,  // Tangent space normal
+  inout vec3 decalNormal,           // Output: accumulated decal normal in tangent space
+  inout float decalNormalBlend,     // Output: blend factor for decal normal (0 = no decal normals)
   in vec3 worldPosition,
   in vec3 worldNormal,
   in vec3 viewSpacePosition,
-  in vec3 baseIOR_F0Dielectric    // Base IOR-derived F0 for neutral specular calculation
+  in vec3 baseIORF0Dielectric    // Base IOR-derived F0 for neutral specular calculation
 ) {
   
 #if defined(LIGHTCLUSTERS)
@@ -74,7 +75,7 @@ void applyDecals(
           float edgeFade = smoothstep(0.0, uintBitsToFloat(decal.blendParams.z), min(edgeDist.x, edgeDist.y));
           
           // Angle fade (fade based on surface orientation vs decal forward)
-          float angleFade = saturate(dot(normalize(worldNormal), normalize(decal.decalForward.xyz)));
+          float angleFade = clamp(dot(normalize(worldNormal), normalize(decal.decalForward.xyz)), 0.0, 1.0);
           angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
           
           // Sample decal textures from unified u2DTextures array
@@ -94,7 +95,7 @@ void applyDecals(
           float decalSpecularWeight = decalSpecular.w;
           
           // Calculate decal's Fresnel properties
-          vec3 decalF0Dielectric = min(baseIOR_F0Dielectric * decalSpecularColorFactor, vec3(1.0));
+          vec3 decalF0Dielectric = min(baseIORF0Dielectric * decalSpecularColorFactor, vec3(1.0));
           vec3 decalF90Dielectric = vec3(decalSpecularWeight);
           
           // Combined blend factor
@@ -150,8 +151,9 @@ void applyDecals(
             }
           }
           
-          // Blend normals
-          normalTangentSpace = blendNormals(normalTangentSpace, decalNormalTangentSpace, blend);
+          // Accumulate decal normal contribution
+          decalNormal = blendNormals(decalNormal, decalNormalTangentSpace, blend);
+          decalNormalBlend = 1.0 - ((1.0 - decalNormalBlend) * (1.0 - blend));
 #if defined(LIGHTCLUSTERS)
         }
       }
@@ -216,7 +218,7 @@ void applyDecalsUnlit(
           float edgeFade = smoothstep(0.0, uintBitsToFloat(decal.blendParams.z), min(edgeDist.x, edgeDist.y));
           
           // Angle fade
-          float angleFade = saturate(dot(normalize(worldNormal), normalize(decal.decalForward.xyz)));
+          float angleFade = clamp(dot(normalize(worldNormal), normalize(decal.decalForward.xyz)), 0.0, 1.0);
           angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
           
           // Sample only albedo texture for unlit
