@@ -29422,7 +29422,7 @@ begin
    fAssignedNonVirtualInstance:=aNonVirtualInstance;
 
    // Check when the non-virtual instance isn't allowed to have render instances
-   if aNonVirtualInstance.fMaxRenderInstanceCount=0 then begin
+   if (aNonVirtualInstance.fMaxRenderInstanceCount=0) or not assigned(aNonVirtualInstance.fPreallocatedRenderInstances) then begin
 
     // No render instance
     fAssignedNonVirtualInstanceRenderInstance:=nil;
@@ -29438,6 +29438,7 @@ begin
     Index:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter;
     inc(aNonVirtualInstance.fPreallocatedRenderInstanceCounter,CountRenderInstances);
     if (aNonVirtualInstance.fMaxRenderInstanceCount<0) and
+       assigned(aNonVirtualInstance.fPreallocatedRenderInstances) and
        (aNonVirtualInstance.fPreallocatedRenderInstances.Count<aNonVirtualInstance.fPreallocatedRenderInstanceCounter) then begin
      // Dynamic pool mode: create new render instances as needed, growing the pool by 50% each time
      Count:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter+((aNonVirtualInstance.fPreallocatedRenderInstanceCounter+1) shr 1);
@@ -38151,14 +38152,16 @@ begin
     // where we stop resetting as soon as we find an inactive non-virtual render instance since all
     // following ones will also be inactive (due to preallocation order, and delete-with-swap-last
     // doesn't happen here because we never remove render instances from the preallocated list)
-    for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
-     RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
-     if RenderInstance.Active then begin
-      RenderInstance.Active:=false;
-      RenderInstance.fAssignedVirtualInstance:=nil;
-      RenderInstance.fAssignedVirtualInstanceRenderInstance:=nil;
-     end else begin
-      break;
+    if assigned(NonVirtualInstance.fPreallocatedRenderInstances) then begin
+     for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
+      RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
+      if RenderInstance.Active then begin
+       RenderInstance.Active:=false;
+       RenderInstance.fAssignedVirtualInstance:=nil;
+       RenderInstance.fAssignedVirtualInstanceRenderInstance:=nil;
+      end else begin
+       break;
+      end;
      end;
     end;
     NonVirtualInstance.fPreallocatedRenderInstanceCounter:=0;
