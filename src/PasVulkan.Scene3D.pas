@@ -3439,7 +3439,7 @@ type EpvScene3D=class(Exception);
                      procedure ResetNodes(const aResetOverwrites:Boolean);
                      procedure ProcessBaseOverwrite(const aFactor:TPasGLTFFloat);
                      procedure ProcessAnimation(const aAnimationIndex:TpvSizeInt;const aAnimationTime:TpvDouble;const aFactor:TpvFloat);
-                     procedure ProcessNode(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty:boolean);
+                     procedure ProcessNode(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty,aMatrixDirty:boolean);
                      procedure ProcessSkins;
                      procedure ProcessBoundingBoxNodeRecursive(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt);
                      procedure ProcessBoundingSceneBoxNodesWithManualStack(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene);
@@ -7542,7 +7542,7 @@ begin
          PerInFlightFrameRenderInstance:=@RenderInstanceItems[RendererInstanceIndex];
          
          // Check if RenderInstance changed or generation changed
-         if //true or //(TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in fNode.fFlags) or
+         if fMatrixChanged or
             (BLASInstance.TrackedObjectInstance<>PerInFlightFrameRenderInstance^.RenderInstance) or
             (BLASInstance.LastSyncedGeneration<>PerInFlightFrameRenderInstance^.Generation) then begin
 
@@ -7575,7 +7575,7 @@ begin
        end else begin
 
         BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0];
-        if {fGeometryChanged or}(BLASInstance.InstanceCustomIndex>=0) or not BLASInstance.AccelerationStructureInstance.CompareTransform(Matrix) then begin
+        if fMatrixChanged or (BLASInstance.InstanceCustomIndex>=0) or not BLASInstance.AccelerationStructureInstance.CompareTransform(Matrix) then begin
          BLASInstance.AccelerationStructureInstance.Transform:=Matrix;
          BLASInstance.InstanceCustomIndexEx:=-1;
          BLASInstance.NewGeneration;
@@ -27629,7 +27629,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TInstance.ProcessNode(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty:boolean);
+procedure TpvScene3D.TGroup.TInstance.ProcessNode(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty,aMatrixDirty:boolean);
 var Index,OtherIndex,RotationCounter:TpvSizeInt;
     Matrix:TpvMatrix4x4;
     LightMatrix:TpvMatrix4x4D;
@@ -27642,7 +27642,7 @@ var Index,OtherIndex,RotationCounter:TpvSizeInt;
     WeightedRotationFactorSum,
     WeightsFactorSum:TpvDouble;
     Overwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
-    FirstWeights,SkinUsed,Dirty,Additive,HasAdditiveRotation:boolean;
+    FirstWeights,SkinUsed,Dirty,MatrixDirty,Additive,HasAdditiveRotation:boolean;
     Light:TpvScene3D.TLight;
     InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
  procedure AddRotation(const aRotation:TpvQuaternion;const aFactor:TpvDouble;const aAdditive:Boolean);
@@ -27689,6 +27689,7 @@ begin
  Node:=fGroup.fNodes[aNodeIndex];
  InstanceNode.fProcessed:=true;
  Dirty:=aDirty;
+ MatrixDirty:=aMatrixDirty;
  if (InstanceNode.fCountOverwrites>0) and (Node.Flags<>[]) then begin
   Dirty:=true;
   SkinUsed:=true;
@@ -27838,7 +27839,10 @@ begin
   end;
  end;
  Matrix:=Matrix*aMatrix;
- InstanceNode.fWorkMatrix:=Matrix;
+ if InstanceNode.fWorkMatrix<>Matrix then begin
+  MatrixDirty:=true;
+  InstanceNode.fWorkMatrix:=Matrix;
+ end;
 //InstanceNode.fWorkMatrices[aInFlightFrameIndex]:=Matrix;
  if assigned(Node.fMesh) then begin
   if Matrix.Determinant<0.0 then begin
@@ -27897,7 +27901,7 @@ begin
   InstanceNode.fCacheVerticesDirtyCounter:=2;
  end;
  for Index:=0 to Node.Children.Count-1 do begin
-  ProcessNode(aInFlightFrameIndex,Node.Children[Index].Index,Matrix,Dirty);
+  ProcessNode(aInFlightFrameIndex,Node.Children[Index].Index,Matrix,Dirty,MatrixDirty);
  end;
 end;
 
@@ -28494,7 +28498,7 @@ begin
    StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
    for Index:=0 to Scene.fNodes.Count-1 do begin
-    ProcessNode(aInFlightFrameIndex,Scene.fNodes[Index].Index,TpvMatrix4x4.Identity,Dirty);
+    ProcessNode(aInFlightFrameIndex,Scene.fNodes[Index].Index,TpvMatrix4x4.Identity,Dirty,Dirty);
    end;
 {$ifdef UpdateProfilingTimes}
    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
