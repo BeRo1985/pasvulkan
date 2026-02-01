@@ -2802,6 +2802,8 @@ type EpvScene3D=class(Exception);
                             fCacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             fCacheVerticesGeneration:TpvUInt64;
                             fCacheVerticesDirtyCounter:TpvUInt32;
+                            fCacheMatrixGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+                            fCacheMatrixGeneration:TpvUInt64;
                             fAABBTreeProxy:TpvSizeInt;
                             fParents:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                             fCullVisibleIDs:array[0..MaxInFlightFrames-1] of TpvSizeInt;
@@ -2817,6 +2819,7 @@ type EpvScene3D=class(Exception);
                                                const aGroupInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
                             function InverseFrontFaces:boolean; inline;
+                            procedure IncrementCacheMatrixGeneration;
                             procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                            published
                             property Group:TpvScene3D.TGroup read fGroup;
@@ -3933,9 +3936,11 @@ type EpvScene3D=class(Exception);
               fInstanceNode:TpvScene3D.TGroup.TInstance.TNode;
               fBLASGroups:TBLASGroups;
               fCacheVerticesGeneration:TpvUInt64;
+              fCacheMatrixGeneration:TpvUInt64;
               fVulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
               fDynamicGeometry:Boolean;
               fGeometryChanged:Boolean;
+              fMatrixChanged:Boolean;
               fDirty:TPasMPBool32;
               fUpdateCounter:TpvUInt64;
               fUpdateDirty:TPasMPBool32;
@@ -3962,6 +3967,7 @@ type EpvScene3D=class(Exception);
               property InstanceNode:TpvScene3D.TGroup.TInstance.TNode read fInstanceNode;
              published
               property CacheVerticesGeneration:TpvUInt64 read fCacheVerticesGeneration;
+              property CacheMatrixGeneration:TpvUInt64 read fCacheMatrixGeneration;
               property DynamicGeometry:Boolean read fDynamicGeometry;
               property Dirty:TPasMPBool32 read fDirty;
               property UpdateDirty:TPasMPBool32 read fUpdateDirty;
@@ -7036,6 +7042,8 @@ begin
 
  fCacheVerticesGeneration:=High(TpvUInt64);
 
+ fCacheMatrixGeneration:=High(TpvUInt64);
+
  fVulkanLongTermStaticBufferData:=nil;
 
  fDirty:=false;
@@ -7197,6 +7205,13 @@ begin
  if fCastingShadows<>(ord(NodeCastingShadows) and 1) then begin
   fCastingShadows:=ord(NodeCastingShadows) and 1;
   fGeometryChanged:=true;
+ end;
+
+ if fCacheMatrixGeneration<>fInstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex] then begin
+  fCacheMatrixGeneration:=fInstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex];
+  fMatrixChanged:=true;
+ end else begin
+  fMatrixChanged:=false;
  end;
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
@@ -22786,6 +22801,25 @@ begin
  result:=TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces in fFlags;
 end;
 
+procedure TpvScene3D.TGroup.TInstance.TNode.IncrementCacheMatrixGeneration;
+var InFlightFrameIndex:TpvSizeInt;
+begin
+
+ inc(fCacheVerticesGeneration);
+
+ if fCacheVerticesGeneration=0 then begin
+
+  // Handle generation value overflow
+  fCacheVerticesGeneration:=1;
+
+  for InFlightFrameIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+   fCacheVerticesGenerations[InFlightFrameIndex]:=0;
+  end;
+
+ end;
+
+end;
+
 procedure TpvScene3D.TGroup.TInstance.TNode.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
  fInFlightFrameRaytracingMasks[aInFlightFrameIndex]:=fGroup.fRaytracingMask and
@@ -24406,6 +24440,7 @@ begin
    end;
    InstanceNode.fCacheVerticesGeneration:=1;
    InstanceNode.fCacheVerticesDirtyCounter:=1;
+   InstanceNode.fCacheMatrixGeneration:=1;
    InstanceNode.fAABBTreeProxy:=-1;
    InstanceNode.fRaytracingGroupInstanceNodeID:=0;
    InstanceNode.fRaytracingMask:=$ff;
@@ -30155,7 +30190,7 @@ begin
       InstanceNode.fCacheVerticesGeneration:=1;
 
       for InFlightFrameIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-       InstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]:=0;
+       InstanceNode.fCacheVerticesGenerations[InFlightFrameIndex]:=0;
       end;
 
      end;
