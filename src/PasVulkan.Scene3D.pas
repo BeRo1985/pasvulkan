@@ -7527,7 +7527,8 @@ begin
          PerInFlightFrameRenderInstance:=@RenderInstanceItems[RendererInstanceIndex];
          
          // Check if RenderInstance changed or generation changed
-         if (BLASInstance.TrackedObjectInstance<>PerInFlightFrameRenderInstance^.RenderInstance) or
+         if //true or //(TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in fNode.fFlags) or
+            (BLASInstance.TrackedObjectInstance<>PerInFlightFrameRenderInstance^.RenderInstance) or
             (BLASInstance.LastSyncedGeneration<>PerInFlightFrameRenderInstance^.Generation) then begin
 
           // Something changed, perform update
