@@ -22805,15 +22805,15 @@ procedure TpvScene3D.TGroup.TInstance.TNode.IncrementCacheMatrixGeneration;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
- inc(fCacheVerticesGeneration);
+ inc(fCacheMatrixGeneration);
 
- if fCacheVerticesGeneration=0 then begin
+ if fCacheMatrixGeneration=0 then begin
 
   // Handle generation value overflow
-  fCacheVerticesGeneration:=1;
+  fCacheMatrixGeneration:=1;
 
-  for InFlightFrameIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-   fCacheVerticesGenerations[InFlightFrameIndex]:=0;
+  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+   fCacheMatrixGenerations[InFlightFrameIndex]:=0;
   end;
 
  end;
@@ -30193,7 +30193,7 @@ begin
       // Handle generation value overflow
       InstanceNode.fCacheVerticesGeneration:=1;
 
-      for InFlightFrameIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+      for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
        InstanceNode.fCacheVerticesGenerations[InFlightFrameIndex]:=0;
       end;
 
