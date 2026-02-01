@@ -3185,6 +3185,7 @@ type EpvScene3D=class(Exception);
                             fGenerations:TRenderInstanceGenerations;
                             fAssignedVirtualInstance:TInstance;
                             fAssignedVirtualInstanceRenderInstance:TRenderInstance;
+                            fTag:TpvUInt64;
                             procedure SetActive(const aActive:boolean); inline;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
@@ -3202,6 +3203,8 @@ type EpvScene3D=class(Exception);
                            public
                             property InstanceDataIndex:TpvUInt32 read fInstanceDataIndex write fInstanceDataIndex;
                             property InstanceDataIndices:TRenderInstanceDataIndices read fInstanceDataIndices;
+                           public
+                            property Tag:TpvUInt64 read fTag write fTag;
                            published
                             property Active:Boolean read fActive write SetActive;
                             property ActiveMask:TPasMPUInt32 read fActiveMask write fActiveMask;
@@ -3360,6 +3363,7 @@ type EpvScene3D=class(Exception);
                      fCastingShadows:Boolean;
                      fApplyCameraRelativeTransform:TPasMPBool32;
                      fProcessState:TPasMPUInt32;
+                     fTag:TpvUInt64;
                      procedure ConstructData(const aLock:boolean);
                      procedure AllocateData;
                      procedure ReleaseData;
@@ -3495,6 +3499,7 @@ type EpvScene3D=class(Exception);
                      property Lights:TpvScene3D.TGroup.TInstance.TLights read fLights;
                      property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
                      property CastingShadows:Boolean read fCastingShadows write fCastingShadows;
+                     property Tag:TpvUInt64 read fTag write fTag;
                     public
                      property Nodes:TpvScene3D.TGroup.TInstance.TNodes read fNodes;
                      property Skins:TpvScene3D.TGroup.TInstance.TSkins read fSkins;
@@ -7159,7 +7164,8 @@ begin
  UsePretransformedVerticesForRaytracing:=false;
 
  // Check if we have dynamic geometry, which means that we have to update the bottom level acceleration structure if the geometry has changed.
- fDynamicGeometry:=(TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in fNode.fFlags) or
+ fDynamicGeometry:=//(TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in fNode.fFlags) or
+                   (TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in fNode.fFlags) or
                    (TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in fNode.fFlags);
 
  fGeometryChanged:=false;
@@ -23808,6 +23814,8 @@ begin
 
  fSceneInstance.InvalidateDirectedAcyclicGraph;
 
+ fTag:=0;
+
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TRenderInstance.Destroy;
@@ -24150,6 +24158,8 @@ var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex,CountLightNodes:TpvSi
     SrcJointBlock,DstJointBlock:PJointBlock;
 begin
  inherited Create(aResourceManager,aParent,aMetaResource);
+
+ fTag:=0;
 
  if aParent is TGroup then begin
 
