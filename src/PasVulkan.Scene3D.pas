@@ -3361,7 +3361,8 @@ type EpvScene3D=class(Exception);
                      fAABBTreeSkipLists:array[-1..MaxInFlightFrames-1] of TAABBTreeSkipList;
                      fBufferRanges:TBufferRanges;
                      fPointerToBufferRanges:PBufferRanges;
-                     fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
+                     fCacheVerticesNodeDirtyBitmap:TpvUInt32DynamicArray;
+                     //fCacheMatrixNodeDirtyBitmap:TpvUInt32DynamicArray;
                      fRaytracingMask:TpvUInt8;
                      fCastingShadows:Boolean;
                      fApplyCameraRelativeTransform:TPasMPBool32;
@@ -24437,6 +24438,7 @@ begin
    for OtherIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
     InstanceNode.fPotentiallyVisibleSetNodeIndices[OtherIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
     InstanceNode.fCacheVerticesGenerations[OtherIndex]:=0;
+    InstanceNode.fCacheMatrixGenerations[OtherIndex]:=0;
    end;
    InstanceNode.fCacheVerticesGeneration:=1;
    InstanceNode.fCacheVerticesDirtyCounter:=1;
@@ -24536,6 +24538,8 @@ begin
  fAABBTreeProxy:=-1;
 
  SetLength(fCacheVerticesNodeDirtyBitmap,((fNodes.Count+31) shr 5)+1);
+
+//SetLength(fCacheMatrixNodeDirtyBitmap,((fNodes.Count+31) shr 5)+1);
 
  fOnNodeFilter:=nil;
 
@@ -24685,6 +24689,8 @@ begin
  FreeAndNil(fMaterials);
 
  fCacheVerticesNodeDirtyBitmap:=nil;
+
+//fCacheMatrixNodeDirtyBitmap:=nil;
 
  if assigned(fDuplicatedMaterials) then begin
   for Index:=0 to fDuplicatedMaterials.Count-1 do begin
@@ -30207,6 +30213,11 @@ begin
     if InstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]<>InstanceNode.fCacheVerticesGeneration then begin
      InstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]:=InstanceNode.fCacheVerticesGeneration;
      fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5]:=fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] or (TpvUInt32(1) shl (NodeIndex and 31));
+    end;
+
+    if InstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex]<>InstanceNode.fCacheMatrixGeneration then begin
+     InstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex]:=InstanceNode.fCacheMatrixGeneration;
+//   fCacheMatrixNodeDirtyBitmap[NodeIndex shr 5]:=fCacheMatrixNodeDirtyBitmap[NodeIndex shr 5] or (TpvUInt32(1) shl (NodeIndex and 31));
     end;
 
    end;
