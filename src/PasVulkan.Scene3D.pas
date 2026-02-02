@@ -129,6 +129,7 @@ type EpvScene3D=class(Exception);
       public
        const MaxRendererInstances=32;
              MaxVisibleLights=65536;
+             MaxVisibleDecals=2048;  // Maximum number of decals in frustum cluster grid
              InitialCountDebugPrimitiveVertices=1 shl 8;
              MaxDebugPrimitiveVertices=1 shl 20;
              MaxParticles=65536; // <= Must be power of two
@@ -1678,7 +1679,9 @@ type EpvScene3D=class(Exception);
              public
               property LightItems:TLightItems read fLightItems;
               property LightMetaInfoVulkanBuffer:TpvVulkanBuffer read fLightMetaInfoVulkanBuffer;
+              property LightItemsVulkanBuffer:TpvVulkanBuffer read fLightItemsVulkanBuffer;
             end;
+            PLightBuffer=^TLightBuffer;
             TLightBuffers=array[0..MaxInFlightFrames-1] of TLightBuffer;
             { TLight }
             TLight=class
@@ -1735,6 +1738,138 @@ type EpvScene3D=class(Exception);
               property ViewSpacePosition:TpvVector3 read fViewSpacePosition write fViewSpacePosition;
             end;
             TLights=TpvObjectGenericList<TpvScene3D.TLight>;
+            TMatrix4x3=array[0..2,0..3] of TpvFloat;  // 3 rows × 4 columns = column-major, 16-byte aligned rows
+            TDecalBlendMode=
+             (
+              AlphaBlend=0,  // Standard alpha blending
+              Multiply=1,    // Multiply (dirt/grime)
+              Overlay=2,     // Overlay (painted markings)
+              Additive=3     // Additive (glowing effects)
+             );
+            TDecalPass=
+             (
+              Mesh=0,           // Decal applied to meshes
+              Planet=1,         // Decal applied to planets
+              Grass=2           // Decal applied to grass
+             ); 
+            TDecalPasses=set of TDecalPass; 
+            { TDecal }
+            TDecal=class
+             public
+              const DECAL_FLAG_PASS_MESH=TpvUInt32(1 shl 0);
+                    DECAL_FLAG_PASS_PLANET=TpvUInt32(1 shl 1);
+                    DECAL_FLAG_PASS_GRASS=TpvUInt32(1 shl 2);
+             private
+              fSceneInstance:TpvScene3D;
+              fIndex:TpvSizeInt;
+              fVisible:boolean;
+              fPasses:TDecalPasses;
+              fDecalToWorldMatrix:TpvMatrix4x4D;  // Non-inverted decal-to-world transform (64-bit, API-side)
+              fWorldToDecalMatrix:TpvMatrix4x4D;  // Inverted world-to-decal transform (64-bit, derived from fDecalToWorldMatrix)
+              fWorldToDecalMatrix32:TMatrix4x3;   // Origin-offset 32-bit version for GPU (transposed column-major layout to avoid padding alignment and for better cache locality)
+              fSize:TpvVector3;
+              fUVScaleOffset:TpvVector4;
+              fOpacity:TpvFloat;
+              fAngleFade:TpvFloat;
+              fEdgeFade:TpvFloat;
+              fBlendMode:TpvScene3D.TDecalBlendMode;
+              fAlbedoTexture:TpvInt32;
+              fNormalTexture:TpvInt32;
+              fORMTexture:TpvInt32;
+              fSpecularTexture:TpvInt32;
+              fEmissiveTexture:TpvInt32;
+              fDecalForward:TpvVector3;
+              fFlags:TpvUInt32;
+              fBoundingBox:TpvAABB;
+              fAABBTreeProxy:TpvSizeInt;
+              fDecalItemIndex:TpvSizeInt;
+              fLifetime:TpvDouble;     // Remaining lifetime in seconds, <0 means infinite
+              fFadeOutTime:TpvDouble;  // Duration of fade-out before expiration (0 = instant removal)
+              fAge:TpvDouble;          // Age in seconds since creation
+             public
+              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+              procedure Update(const aInFlightFrameIndex:TpvSizeInt=-1);
+             public
+              property Visible:boolean read fVisible write fVisible;
+              property Passes:TDecalPasses read fPasses write fPasses;
+              property DecalToWorldMatrix:TpvMatrix4x4D read fDecalToWorldMatrix write fDecalToWorldMatrix;
+              property Size:TpvVector3 read fSize write fSize;
+              property UVScaleOffset:TpvVector4 read fUVScaleOffset write fUVScaleOffset;
+              property Opacity:TpvFloat read fOpacity write fOpacity;
+              property AngleFade:TpvFloat read fAngleFade write fAngleFade;
+              property EdgeFade:TpvFloat read fEdgeFade write fEdgeFade;
+              property BlendMode:TDecalBlendMode read fBlendMode write fBlendMode;
+              property AlbedoTexture:TpvInt32 read fAlbedoTexture write fAlbedoTexture;
+              property NormalTexture:TpvInt32 read fNormalTexture write fNormalTexture;
+              property ORMTexture:TpvInt32 read fORMTexture write fORMTexture;
+              property SpecularTexture:TpvInt32 read fSpecularTexture write fSpecularTexture;
+              property EmissiveTexture:TpvInt32 read fEmissiveTexture write fEmissiveTexture;
+              property Flags:TpvUInt32 read fFlags write fFlags;
+              property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
+              property Lifetime:TpvDouble read fLifetime write fLifetime;
+              property FadeOutTime:TpvDouble read fFadeOutTime write fFadeOutTime;
+              property Age:TpvDouble read fAge write fAge;
+            end;
+            TDecals=TpvObjectGenericList<TpvScene3D.TDecal>;
+            TDecalsHashMap=TpvHashMap<TpvScene3D.TDecal,Boolean>;
+            { TDecalItem }
+            TDecalItem=packed record
+
+             // Transform world space to decal OBB space
+             WorldToDecalMatrix:TMatrix4x3;
+
+             UVScaleOffset:TpvVector4;         // xy=scale, zw=offset
+
+             BlendParams:TpvUInt32Vector4;     // x=opacity(float as bits), y=angleFade(float as bits), z=edgeFade(float as bits), w=blendMode(uint)
+
+             TextureIndices:TpvInt32Vector4;   // albedo, normal, ORM, specular texture indices
+
+             TextureIndices2:TpvInt32Vector4;  // emissive, unused, unused, unused
+
+             DecalForward:TpvVector3;          // forward direction for angle fade
+             Flags:TpvUInt32;
+
+            end; // 128 bytes
+            PDecalItem=^TDecalItem;
+            TDecalItems=TpvDynamicArray<TDecalItem>;
+            TDecalMetaInfo=packed record
+             MinBounds:TpvVector4; // xyz = min OBB pos, w = decal type (0=none, 1=standard, etc.)
+             MaxBounds:TpvVector4; // xyz = max OBB pos, w = radius/extent
+            end;
+            PDecalMetaInfo=^TDecalMetaInfo;
+            TDecalMetaInfos=array[0..MaxVisibleDecals-1] of TDecalMetaInfo;
+            PDecalMetaInfos=^TDecalMetaInfos;
+            { TDecalBuffer }
+            TDecalBuffer=class
+             private
+              fSceneInstance:TpvScene3D;
+              fInFlightFrameIndex:TpvSizeInt;
+              fUploaded:TPasMPBool32;
+              fDecalItems:TDecalItems;
+              fDecalAABBTreeGeneration:TpvUInt64;
+              fNewDecalAABBTreeGeneration:TpvUInt64;
+              fDecalTree:TpvBVHDynamicAABBTree.TSkipListNodeArray;
+              fDecalMetaInfos:TDecalMetaInfos;
+              fDecalItemsVulkanBuffer:TpvVulkanBuffer;
+              fDecalTreeVulkanBuffer:TpvVulkanBuffer;
+              fDecalMetaInfoVulkanBuffer:TpvVulkanBuffer;
+             public
+              constructor Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt); reintroduce;
+              destructor Destroy; override;
+              procedure Upload;
+              procedure Unload;
+              procedure PrepareFrame;
+              procedure UploadFrame;
+             public
+              property DecalItems:TDecalItems read fDecalItems;
+              property DecalMetaInfoVulkanBuffer:TpvVulkanBuffer read fDecalMetaInfoVulkanBuffer;
+              property DecalItemsVulkanBuffer:TpvVulkanBuffer read fDecalItemsVulkanBuffer;
+            end;
+            PDecalBuffer=^TDecalBuffer;
+            TDecalBuffers=array[0..MaxInFlightFrames-1] of TDecalBuffer;
             TVertexDynamicArray=TpvDynamicArray<TVertex>;
             TGPUDynamicVertexDynamicArray=TpvDynamicArray<TGPUDynamicVertex>;
             TGPUStaticVertexDynamicArray=TpvDynamicArray<TGPUStaticVertex>;
@@ -2667,6 +2802,8 @@ type EpvScene3D=class(Exception);
                             fCacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             fCacheVerticesGeneration:TpvUInt64;
                             fCacheVerticesDirtyCounter:TpvUInt32;
+                            fCacheMatrixGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+                            fCacheMatrixGeneration:TpvUInt64;
                             fAABBTreeProxy:TpvSizeInt;
                             fParents:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                             fCullVisibleIDs:array[0..MaxInFlightFrames-1] of TpvSizeInt;
@@ -2682,6 +2819,7 @@ type EpvScene3D=class(Exception);
                                                const aGroupInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
                             function InverseFrontFaces:boolean; inline;
+                            procedure NewCacheMatrixGeneration(const aInFlightFrameIndex:TpvSizeInt);
                             procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                            published
                             property Group:TpvScene3D.TGroup read fGroup;
@@ -3050,6 +3188,7 @@ type EpvScene3D=class(Exception);
                             fGenerations:TRenderInstanceGenerations;
                             fAssignedVirtualInstance:TInstance;
                             fAssignedVirtualInstanceRenderInstance:TRenderInstance;
+                            fTag:TpvUInt64;
                             procedure SetActive(const aActive:boolean); inline;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
@@ -3067,6 +3206,8 @@ type EpvScene3D=class(Exception);
                            public
                             property InstanceDataIndex:TpvUInt32 read fInstanceDataIndex write fInstanceDataIndex;
                             property InstanceDataIndices:TRenderInstanceDataIndices read fInstanceDataIndices;
+                           public
+                            property Tag:TpvUInt64 read fTag write fTag;
                            published
                             property Active:Boolean read fActive write SetActive;
                             property ActiveMask:TPasMPUInt32 read fActiveMask write fActiveMask;
@@ -3220,11 +3361,12 @@ type EpvScene3D=class(Exception);
                      fAABBTreeSkipLists:array[-1..MaxInFlightFrames-1] of TAABBTreeSkipList;
                      fBufferRanges:TBufferRanges;
                      fPointerToBufferRanges:PBufferRanges;
-                     fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
+                     fCacheVerticesNodeDirtyBitmap:TpvUInt32DynamicArray;
                      fRaytracingMask:TpvUInt8;
                      fCastingShadows:Boolean;
                      fApplyCameraRelativeTransform:TPasMPBool32;
                      fProcessState:TPasMPUInt32;
+                     fTag:TpvUInt64;
                      procedure ConstructData(const aLock:boolean);
                      procedure AllocateData;
                      procedure ReleaseData;
@@ -3297,7 +3439,7 @@ type EpvScene3D=class(Exception);
                      procedure ResetNodes(const aResetOverwrites:Boolean);
                      procedure ProcessBaseOverwrite(const aFactor:TPasGLTFFloat);
                      procedure ProcessAnimation(const aAnimationIndex:TpvSizeInt;const aAnimationTime:TpvDouble;const aFactor:TpvFloat);
-                     procedure ProcessNode(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty:boolean);
+                     procedure ProcessNode(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty,aMatrixDirty:boolean);
                      procedure ProcessSkins;
                      procedure ProcessBoundingBoxNodeRecursive(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt);
                      procedure ProcessBoundingSceneBoxNodesWithManualStack(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene);
@@ -3360,6 +3502,7 @@ type EpvScene3D=class(Exception);
                      property Lights:TpvScene3D.TGroup.TInstance.TLights read fLights;
                      property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
                      property CastingShadows:Boolean read fCastingShadows write fCastingShadows;
+                     property Tag:TpvUInt64 read fTag write fTag;
                     public
                      property Nodes:TpvScene3D.TGroup.TInstance.TNodes read fNodes;
                      property Skins:TpvScene3D.TGroup.TInstance.TSkins read fSkins;
@@ -3793,9 +3936,11 @@ type EpvScene3D=class(Exception);
               fInstanceNode:TpvScene3D.TGroup.TInstance.TNode;
               fBLASGroups:TBLASGroups;
               fCacheVerticesGeneration:TpvUInt64;
+              fCacheMatrixGeneration:TpvUInt64;
               fVulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
               fDynamicGeometry:Boolean;
               fGeometryChanged:Boolean;
+              fMatrixChanged:Boolean;
               fDirty:TPasMPBool32;
               fUpdateCounter:TpvUInt64;
               fUpdateDirty:TPasMPBool32;
@@ -3822,6 +3967,7 @@ type EpvScene3D=class(Exception);
               property InstanceNode:TpvScene3D.TGroup.TInstance.TNode read fInstanceNode;
              published
               property CacheVerticesGeneration:TpvUInt64 read fCacheVerticesGeneration;
+              property CacheMatrixGeneration:TpvUInt64 read fCacheMatrixGeneration;
               property DynamicGeometry:Boolean read fDynamicGeometry;
               property Dirty:TPasMPBool32 read fDirty;
               property UpdateDirty:TPasMPBool32 read fUpdateDirty;
@@ -4064,6 +4210,16 @@ type EpvScene3D=class(Exception);
        fLights:TpvScene3D.TLights;
        fLightsLock:TPasMPSlimReaderWriterLock;
        fManualLights:TpvScene3D.TLights;
+       fDecals:TpvScene3D.TDecals;
+       fDecalsHashMap:TpvScene3D.TDecalsHashMap;
+       fDecalDataLock:TPasMPSlimReaderWriterLock;
+       fDecalsLock:TPasMPSlimReaderWriterLock;
+       fDecalAABBTree:TpvBVHDynamicAABBTree;
+       fDecalAABBTreeGeneration:TpvUInt64;
+       fDecalAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
+       fDecalAABBTreeStateGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
+       fDecalBuffers:TpvScene3D.TDecalBuffers;
+       fDecalNeedsCompaction:TPasMPBool32;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeLock:TPasMPSlimReaderWriterLock;
        fAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
@@ -4241,6 +4397,9 @@ type EpvScene3D=class(Exception);
       private
        procedure CollectLights(var aLightItemArray:TpvScene3D.TLightItems;
                                var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
+       procedure CompactDecals;
+       procedure CollectDecals(var aDecalItemArray:TpvScene3D.TDecalItems;
+                               var aDecalMetaInfoArray:TpvScene3D.TDecalMetaInfos);
        procedure CullAndPrepareGroupInstances(const aInFlightFrameIndex:TpvSizeInt;
                                               const aRendererInstance:TObject;
                                               const aRenderPass:TpvScene3DRendererRenderPass;
@@ -4255,6 +4414,7 @@ type EpvScene3D=class(Exception);
                                               const aRoot:TpvSizeInt;
                                               const aShadowPass:boolean);
        function GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
+       function GetDecalUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
       public
        procedure SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                     const aPipelineLayout:TpvVulkanPipelineLayout;
@@ -4402,9 +4562,26 @@ type EpvScene3D=class(Exception);
                             const aSizeEnd:TpvVector2;
                             const aColorStart:TpvVector4;
                             const aColorEnd:TpvVector4;
-                            const aLifeTime:TpvScalar;
+                            const aLifeTime:TpvDouble;
                             const aTextureID:TpvUInt32;
                             const aAdditiveBlending:boolean):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
+       function ValidDecal(const aDecal:TpvScene3D.TDecal):Boolean;
+       function SpawnDecal(const aPosition:TpvVector3D;
+                           const aNormal:TpvVector3D;
+                           const aSize:TpvVector2;
+                           const aAlbedoTexture:TpvInt32=-1;
+                           const aNormalTexture:TpvInt32=-1;
+                           const aORMTexture:TpvInt32=-1;
+                           const aSpecularTexture:TpvInt32=-1;
+                           const aEmissiveTexture:TpvInt32=-1;
+                           const aBlendMode:TpvScene3D.TDecalBlendMode=TpvScene3D.TDecalBlendMode.AlphaBlend;
+                           const aOpacity:TpvFloat=1.0;
+                           const aAngleFade:TpvFloat=1.0;
+                           const aEdgeFade:TpvFloat=0.1;
+                           const aLifetime:TpvDouble=-1.0;
+                           const aFadeOutTime:TpvDouble=0.0;
+                           const aPasses:TpvScene3D.TDecalPasses=[TpvScene3D.TDecalPass.Mesh,TpvScene3D.TDecalPass.Planet,TpvScene3D.TDecalPass.Grass]):TpvScene3D.TDecal;
+       procedure UpdateDecals(const aDeltaTime:TpvDouble);
       public
        function CreateMaterial(const aName:TpvUTF8String):TpvScene3D.TMaterial;
        function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
@@ -4427,6 +4604,7 @@ type EpvScene3D=class(Exception);
        property PrimaryShadowMapLightDirection:TpvVector3 read fPrimaryShadowMapLightDirection write fPrimaryShadowMapLightDirection;
        property PrimaryShadowMapLightDirections:TInFlightFrameVector3s read fPrimaryShadowMapLightDirections;
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
+       property DecalBuffers:TpvScene3D.TDecalBuffers read fDecalBuffers;
        property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
        property Particles:PParticles read fPointerToParticles;
        property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
@@ -6864,6 +7042,8 @@ begin
 
  fCacheVerticesGeneration:=High(TpvUInt64);
 
+ fCacheMatrixGeneration:=High(TpvUInt64);
+
  fVulkanLongTermStaticBufferData:=nil;
 
  fDirty:=false;
@@ -6992,7 +7172,8 @@ begin
  UsePretransformedVerticesForRaytracing:=false;
 
  // Check if we have dynamic geometry, which means that we have to update the bottom level acceleration structure if the geometry has changed.
- fDynamicGeometry:=(TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in fNode.fFlags) or
+ fDynamicGeometry:=//(TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in fNode.fFlags) or
+                   (TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in fNode.fFlags) or
                    (TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in fNode.fFlags);
 
  fGeometryChanged:=false;
@@ -7024,6 +7205,13 @@ begin
  if fCastingShadows<>(ord(NodeCastingShadows) and 1) then begin
   fCastingShadows:=ord(NodeCastingShadows) and 1;
   fGeometryChanged:=true;
+ end;
+
+ if fCacheMatrixGeneration<>fInstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex] then begin
+  fCacheMatrixGeneration:=fInstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex];
+  fMatrixChanged:=true;
+ end else begin
+  fMatrixChanged:=false;
  end;
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
@@ -7354,7 +7542,8 @@ begin
          PerInFlightFrameRenderInstance:=@RenderInstanceItems[RendererInstanceIndex];
          
          // Check if RenderInstance changed or generation changed
-         if (BLASInstance.TrackedObjectInstance<>PerInFlightFrameRenderInstance^.RenderInstance) or
+         if fMatrixChanged or
+            (BLASInstance.TrackedObjectInstance<>PerInFlightFrameRenderInstance^.RenderInstance) or
             (BLASInstance.LastSyncedGeneration<>PerInFlightFrameRenderInstance^.Generation) then begin
 
           // Something changed, perform update
@@ -7386,7 +7575,7 @@ begin
        end else begin
 
         BLASInstance:=BLASGroup^.fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0];
-        if {fGeometryChanged or}(BLASInstance.InstanceCustomIndex>=0) or not BLASInstance.AccelerationStructureInstance.CompareTransform(Matrix) then begin
+        if fMatrixChanged or (BLASInstance.InstanceCustomIndex>=0) or not BLASInstance.AccelerationStructureInstance.CompareTransform(Matrix) then begin
          BLASInstance.AccelerationStructureInstance.Transform:=Matrix;
          BLASInstance.InstanceCustomIndexEx:=-1;
          BLASInstance.NewGeneration;
@@ -11855,6 +12044,464 @@ begin
                                                          fLightMetaInfoVulkanBuffer,
                                                          0,
                                                          Min(fLightItems.Count,MaxVisibleLights)*SizeOf(TpvScene3D.TLightMetaInfo));
+      end;
+     end;
+
+     else begin
+      Assert(false);
+     end;
+
+    end;
+
+   end;
+
+  end;
+
+ end;
+end;
+
+{ TpvScene3D.TDecal }
+
+constructor TpvScene3D.TDecal.Create(const aSceneInstance:TpvScene3D);
+begin
+ inherited Create;
+ fSceneInstance:=aSceneInstance;
+ fIndex:=-1;
+ fAABBTreeProxy:=-1;
+ fPasses:=[TpvScene3D.TDecalPass.Mesh,TpvScene3D.TDecalPass.Planet,TpvScene3D.TDecalPass.Grass];
+ fVisible:=true;
+ fDecalItemIndex:=-1;
+ fSize:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
+ fUVScaleOffset:=TpvVector4.InlineableCreate(1.0,1.0,0.0,0.0);
+ fOpacity:=1.0;
+ fAngleFade:=1.0;
+ fEdgeFade:=0.1;
+ fBlendMode:=TpvScene3D.TDecalBlendMode.AlphaBlend;
+ fAlbedoTexture:=-1;
+ fNormalTexture:=-1;
+ fORMTexture:=-1;
+ fSpecularTexture:=-1;
+ fEmissiveTexture:=-1;
+ fLifetime:=-1.0; // Infinite lifetime by default
+ fFadeOutTime:=0.0;
+ fAge:=0.0;
+ fFlags:=0;
+end;
+
+destructor TpvScene3D.TDecal.Destroy;
+begin
+ if fAABBTreeProxy>=0 then begin
+  try
+   if assigned(fSceneInstance) then begin
+    if assigned(fSceneInstance.fDecalAABBTree) then begin
+     fSceneInstance.fDecalAABBTree.DestroyProxy(fAABBTreeProxy);
+    end;
+    TPasMPInterlocked.Increment(fSceneInstance.fDecalAABBTreeGeneration);
+   end;
+  finally
+   fAABBTreeProxy:=-1;
+  end;
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TDecal.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ if assigned(fSceneInstance) and assigned(fSceneInstance.fDecalsLock) then begin
+  fSceneInstance.fDecalsLock.Acquire;
+  try
+   fIndex:=fSceneInstance.fDecals.Add(self);
+   fSceneInstance.fDecalsHashMap.Add(self,true);
+  finally
+   fSceneInstance.fDecalsLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TDecal.BeforeDestruction;
+//var OtherDecal:TpvScene3D.TDecal;
+begin
+ if assigned(fSceneInstance) and assigned(fSceneInstance.fDecalsLock) then begin
+  fSceneInstance.fDecalsLock.Acquire;
+  try
+   if fIndex>=0 then begin
+    try
+     fSceneInstance.fDecalsHashMap.Delete(self);
+{    if (fIndex+1)<fSceneInstance.fDecals.Count then begin
+      OtherDecal:=fSceneInstance.fDecals[fSceneInstance.fDecals.Count-1];
+      OtherDecal.fIndex:=fIndex;
+      fSceneInstance.fDecals[fIndex]:=OtherDecal;
+      fIndex:=fSceneInstance.fDecals.Count-1;
+     end;
+     fSceneInstance.fDecals.Extract(fIndex);}
+     fSceneInstance.fDecals.Items[fIndex]:=nil;
+     fSceneInstance.fDecalNeedsCompaction:=true;
+    finally
+     fIndex:=-1;
+    end;
+   end;
+  finally
+   fSceneInstance.fDecalsLock.Release;
+  end;
+ end;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TDecal.Update(const aInFlightFrameIndex:TpvSizeInt);
+var OBB:TpvOBB;
+    AABB:TpvAABB;
+    Matrix64,ScaledMatrix64:TpvMatrix4x4D;
+    Matrix32:TpvMatrix4x4;
+    Flags:TpvUInt32;
+begin
+
+ if fVisible then begin
+
+  Flags:=fFlags and not (DECAL_FLAG_PASS_MESH or DECAL_FLAG_PASS_PLANET or DECAL_FLAG_PASS_GRASS);
+  if TpvScene3D.TDecalPass.Mesh in fPasses then begin
+   Flags:=Flags or DECAL_FLAG_PASS_MESH;
+  end;
+  if TpvScene3D.TDecalPass.Planet in fPasses then begin
+   Flags:=Flags or DECAL_FLAG_PASS_PLANET;
+  end;
+  if TpvScene3D.TDecalPass.Grass in fPasses then begin
+   Flags:=Flags or DECAL_FLAG_PASS_GRASS;
+  end;
+  fFlags:=Flags;
+
+  // Calculate world-to-decal matrix (inverse of decal-to-world)
+  fWorldToDecalMatrix:=fDecalToWorldMatrix.Inverse;
+
+  // Apply size scaling to world-to-decal matrix
+  ScaledMatrix64:=fWorldToDecalMatrix;
+  ScaledMatrix64.Right.xyz:=ScaledMatrix64.Right.xyz*fSize.x;
+  ScaledMatrix64.Up.xyz:=ScaledMatrix64.Up.xyz*fSize.y;
+  ScaledMatrix64.Forwards.xyz:=ScaledMatrix64.Forwards.xyz*fSize.z;
+
+  // Apply origin-offset transform (64-bit to 32-bit), same pattern as TLight.Update
+  if aInFlightFrameIndex>=0 then begin
+   Matrix64:=fSceneInstance.TransformOrigin(ScaledMatrix64,aInFlightFrameIndex,false);
+   Matrix32:=Matrix64;
+  end else begin
+   Matrix32:=ScaledMatrix64;
+  end;
+
+  // Transpose to column-major TMatrix4x3 format to avoid padding alignment and for better cache locality
+  fWorldToDecalMatrix32[0,0]:=Matrix32.RawComponents[0,0];
+  fWorldToDecalMatrix32[0,1]:=Matrix32.RawComponents[1,0];
+  fWorldToDecalMatrix32[0,2]:=Matrix32.RawComponents[2,0];
+  fWorldToDecalMatrix32[0,3]:=Matrix32.RawComponents[3,0];
+  fWorldToDecalMatrix32[1,0]:=Matrix32.RawComponents[0,1];
+  fWorldToDecalMatrix32[1,1]:=Matrix32.RawComponents[1,1];
+  fWorldToDecalMatrix32[1,2]:=Matrix32.RawComponents[2,1];
+  fWorldToDecalMatrix32[1,3]:=Matrix32.RawComponents[3,1];
+  fWorldToDecalMatrix32[2,0]:=Matrix32.RawComponents[0,2];
+  fWorldToDecalMatrix32[2,1]:=Matrix32.RawComponents[1,2];
+  fWorldToDecalMatrix32[2,2]:=Matrix32.RawComponents[2,2];
+  fWorldToDecalMatrix32[2,3]:=Matrix32.RawComponents[3,2];
+
+  // DecalForward is the Z-axis (Forwards) of the decal-to-world transform
+  fDecalForward:=fDecalToWorldMatrix.Forwards.xyz.Normalize;
+
+  // Compute OBB from origin-offset 32-bit matrix (inverse gives us the decal-to-world transform)
+  OBB.Center:=Matrix32.Inverse.MulHomogen(TpvVector3.Origin);
+  OBB.HalfExtents:=fSize*0.5;
+  OBB.Matrix:=Matrix32.Inverse.ToMatrix3x3;
+
+  // Convert OBB to AABB
+  AABB:=TpvAABB.CreateFromOBB(OBB);
+  fBoundingBox:=AABB;
+
+  if assigned(fSceneInstance) and assigned(fSceneInstance.fDecalAABBTree) then begin
+   if fAABBTreeProxy<0 then begin
+    // Create new proxy
+    fAABBTreeProxy:=fSceneInstance.fDecalAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(TpvPointer(self)));
+   end else begin
+    // Update existing proxy
+    fSceneInstance.fDecalAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis,true);
+   end;
+   TPasMPInterlocked.Increment(fSceneInstance.fDecalAABBTreeGeneration);
+  end;
+
+ end else begin
+
+  // If not visible, remove from AABB tree
+  if fAABBTreeProxy>=0 then begin
+   if assigned(fSceneInstance) and assigned(fSceneInstance.fDecalAABBTree) then begin
+    fSceneInstance.fDecalAABBTree.DestroyProxy(fAABBTreeProxy);
+    TPasMPInterlocked.Increment(fSceneInstance.fDecalAABBTreeGeneration);
+   end;
+   fAABBTreeProxy:=-1;
+  end;
+
+ end;
+
+end;
+
+{ TpvScene3D.TDecalBuffer }
+
+constructor TpvScene3D.TDecalBuffer.Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt);
+begin
+ inherited Create;
+ fSceneInstance:=aSceneInstance;
+ fInFlightFrameIndex:=aInFlightFrameIndex;
+ fUploaded:=false;
+ fDecalTree.Initialize;
+ fDecalAABBTreeGeneration:=fSceneInstance.fDecalAABBTreeGeneration-3;
+ fNewDecalAABBTreeGeneration:=fSceneInstance.fDecalAABBTreeGeneration-2;
+end;
+
+destructor TpvScene3D.TDecalBuffer.Destroy;
+begin
+ Unload;
+ fDecalTree.Finalize;
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TDecalBuffer.Upload;
+begin
+ if not fUploaded then begin
+  try
+
+   FreeAndNil(fDecalItemsVulkanBuffer);
+
+   FreeAndNil(fDecalTreeVulkanBuffer);
+
+   if assigned(fSceneInstance.fVulkanDevice) then begin
+
+    case fSceneInstance.fBufferStreamingMode of
+
+     TBufferStreamingMode.Direct:begin
+
+      fDecalItemsVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                      MaxVisibleDecals*SizeOf(TpvScene3D.TDecalItem),
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                      [],
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      [TpvVulkanBufferFlag.PersistentMapped],
+                                                      0,
+                                                      pvAllocationGroupIDScene3DDynamic,
+                                                      'TpvScene3D.fDecalItemsVulkanBuffer'
+                                                     );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalItemsVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalItemsVulkanBuffer');
+
+      fDecalTreeVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                     (MaxVisibleDecals*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [TpvVulkanBufferFlag.PersistentMapped],
+                                                     0,
+                                                     pvAllocationGroupIDScene3DDynamic,
+                                                     'TpvScene3D.fDecalTreeVulkanBuffer'
+                                                    );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalTreeVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalTreeVulkanBuffer');
+
+      fDecalMetaInfoVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                         MaxVisibleDecals*SizeOf(TpvScene3D.TDecalMetaInfo),
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                         [],
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         [TpvVulkanBufferFlag.PersistentMapped],
+                                                         0,
+                                                         pvAllocationGroupIDScene3DDynamic,
+                                                         'TpvScene3D.fDecalMetaInfoVulkanBuffer'
+                                                        );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalMetaInfoVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalMetaInfoVulkanBuffer');
+
+     end;
+
+     TBufferStreamingMode.Staging:begin
+
+      fDecalItemsVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                      MaxVisibleDecals*SizeOf(TpvScene3D.TDecalItem),
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                      [],
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                      0,
+                                                      0,
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      [],
+                                                      0,
+                                                      pvAllocationGroupIDScene3DDynamic,
+                                                      'TpvScene3D.fDecalItemsVulkanBuffer'
+                                                     );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalItemsVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalItemsVulkanBuffer');
+
+      fDecalTreeVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                     (MaxVisibleDecals*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                     0,
+                                                     0,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [],
+                                                     0,
+                                                     pvAllocationGroupIDScene3DDynamic,
+                                                     'TpvScene3D.fDecalTreeVulkanBuffer'
+                                                    );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalTreeVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalTreeVulkanBuffer');
+
+      fDecalMetaInfoVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                         MaxVisibleDecals*SizeOf(TpvScene3D.TDecalMetaInfo),
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                         [],
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                         0,
+                                                         0,
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         [],
+                                                         0,
+                                                         pvAllocationGroupIDScene3DDynamic,
+                                                         'TpvScene3D.fDecalMetaInfoVulkanBuffer'
+                                                        );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fDecalMetaInfoVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fDecalMetaInfoVulkanBuffer');
+
+     end;
+
+     else begin
+      Assert(false);
+     end;
+
+    end;
+
+   end;
+
+  finally
+   fUploaded:=true;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TDecalBuffer.Unload;
+begin
+ if fUploaded then begin
+  FreeAndNil(fDecalItemsVulkanBuffer);
+  FreeAndNil(fDecalTreeVulkanBuffer);
+  FreeAndNil(fDecalMetaInfoVulkanBuffer);
+  fUploaded:=false;
+ end;
+end;
+
+procedure TpvScene3D.TDecalBuffer.PrepareFrame;
+begin
+{fNewDecalAABBTreeGeneration:=fSceneInstance.fDecalAABBTreeGeneration;
+ if fDecalAABBTreeGeneration<>fNewDecalAABBTreeGeneration then begin
+  fSceneInstance.fDecalAABBTree.GetSkipListNodes(fDecalTree,fSceneInstance.fDecalAABBTreeStates[fInFlightFrameIndex]);
+  fSceneInstance.fDecalAABBTreeStateGenerations[fInFlightFrameIndex]:=fSceneInstance.fDecalAABBTreeGeneration;
+ end;}
+end;
+
+procedure TpvScene3D.TDecalBuffer.UploadFrame;
+const EmptyGPUSkipListNode:TpvBVHDynamicAABBTree.TSkipListNode=
+       (AABBMin:(x:0.0;y:0.0;z:0.0);
+        SkipCount:0;
+        AABBMax:(x:0.0;y:0.0;z:0.0);
+        UserData:TpvUInt32($ffffffff)
+       );
+begin
+ if fUploaded then begin
+
+  if fDecalAABBTreeGeneration<>fNewDecalAABBTreeGeneration then begin
+
+   fDecalAABBTreeGeneration:=fNewDecalAABBTreeGeneration;
+
+   if assigned(fSceneInstance.fVulkanDevice) then begin
+
+    case fSceneInstance.fBufferStreamingMode of
+
+     TBufferStreamingMode.Direct:begin
+
+      if fDecalItems.Count>0 then begin
+       fDecalItemsVulkanBuffer.UpdateData(fDecalItems.Items[0],0,Min(fDecalItems.Count,MaxVisibleDecals)*SizeOf(TpvScene3D.TDecalItem),FlushUpdateData);
+      end;
+      if fDecalTree.Count>0 then begin
+       fDecalTreeVulkanBuffer.UpdateData(fDecalTree.Items[0],0,Min(fDecalTree.Count,MaxVisibleDecals*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),FlushUpdateData);
+      end else begin
+       fDecalTreeVulkanBuffer.UpdateData(EmptyGPUSkipListNode,0,SizeOf(TpvBVHDynamicAABBTree.TSkipListNode),FlushUpdateData);
+      end;
+      if fDecalItems.Count>0 then begin
+       fDecalMetaInfoVulkanBuffer.UpdateData(fDecalMetaInfos[0],0,Min(fDecalItems.Count,MaxVisibleDecals)*SizeOf(TpvScene3D.TDecalMetaInfo),FlushUpdateData);
+      end;
+
+     end;
+
+     TBufferStreamingMode.Staging:begin
+      if fDecalItems.Count>0 then begin
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         fDecalItems.Items[0],
+                                                         fDecalItemsVulkanBuffer,
+                                                         0,
+                                                         Min(fDecalItems.Count,MaxVisibleDecals)*SizeOf(TpvScene3D.TDecalItem));
+      end;
+      if fDecalTree.Count>0 then begin
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         fDecalTree.Items[0],
+                                                         fDecalTreeVulkanBuffer,
+                                                         0,
+                                                         Min(fDecalTree.Count,MaxVisibleDecals*4)*SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+      end else begin
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         EmptyGPUSkipListNode,
+                                                         fDecalTreeVulkanBuffer,
+                                                         0,
+                                                         SizeOf(TpvBVHDynamicAABBTree.TSkipListNode));
+      end;
+      if fDecalItems.Count>0 then begin
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         fDecalMetaInfos[0],
+                                                         fDecalMetaInfoVulkanBuffer,
+                                                         0,
+                                                         Min(fDecalItems.Count,MaxVisibleDecals)*SizeOf(TpvScene3D.TDecalMetaInfo));
       end;
      end;
 
@@ -22154,6 +22801,29 @@ begin
  result:=TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces in fFlags;
 end;
 
+procedure TpvScene3D.TGroup.TInstance.TNode.NewCacheMatrixGeneration(const aInFlightFrameIndex:TpvSizeInt);
+var InFlightFrameIndex:TpvSizeInt;
+begin
+
+ inc(fCacheMatrixGeneration);
+
+ if fCacheMatrixGeneration=0 then begin
+
+  // Handle generation value overflow
+  fCacheMatrixGeneration:=1;
+
+  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+   fCacheMatrixGenerations[InFlightFrameIndex]:=0;
+  end;
+
+ end;
+
+ if aInFlightFrameIndex>=0 then begin
+  fCacheMatrixGenerations[aInFlightFrameIndex]:=fCacheMatrixGeneration;
+ end;
+
+end;
+
 procedure TpvScene3D.TGroup.TInstance.TNode.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
  fInFlightFrameRaytracingMasks[aInFlightFrameIndex]:=fGroup.fRaytracingMask and
@@ -23183,6 +23853,8 @@ begin
 
  fSceneInstance.InvalidateDirectedAcyclicGraph;
 
+ fTag:=0;
+
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TRenderInstance.Destroy;
@@ -23526,6 +24198,8 @@ var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex,CountLightNodes:TpvSi
 begin
  inherited Create(aResourceManager,aParent,aMetaResource);
 
+ fTag:=0;
+
  if aParent is TGroup then begin
 
   fGroup:=TpvScene3D.TGroup(aParent);
@@ -23767,9 +24441,11 @@ begin
    for OtherIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
     InstanceNode.fPotentiallyVisibleSetNodeIndices[OtherIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
     InstanceNode.fCacheVerticesGenerations[OtherIndex]:=0;
+    InstanceNode.fCacheMatrixGenerations[OtherIndex]:=0;
    end;
    InstanceNode.fCacheVerticesGeneration:=1;
    InstanceNode.fCacheVerticesDirtyCounter:=1;
+   InstanceNode.fCacheMatrixGeneration:=1;
    InstanceNode.fAABBTreeProxy:=-1;
    InstanceNode.fRaytracingGroupInstanceNodeID:=0;
    InstanceNode.fRaytracingMask:=$ff;
@@ -26958,7 +27634,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TInstance.ProcessNode(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty:boolean);
+procedure TpvScene3D.TGroup.TInstance.ProcessNode(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty,aMatrixDirty:boolean);
 var Index,OtherIndex,RotationCounter:TpvSizeInt;
     Matrix:TpvMatrix4x4;
     LightMatrix:TpvMatrix4x4D;
@@ -26971,7 +27647,7 @@ var Index,OtherIndex,RotationCounter:TpvSizeInt;
     WeightedRotationFactorSum,
     WeightsFactorSum:TpvDouble;
     Overwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
-    FirstWeights,SkinUsed,Dirty,Additive,HasAdditiveRotation:boolean;
+    FirstWeights,SkinUsed,Dirty,MatrixDirty,Additive,HasAdditiveRotation:boolean;
     Light:TpvScene3D.TLight;
     InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
  procedure AddRotation(const aRotation:TpvQuaternion;const aFactor:TpvDouble;const aAdditive:Boolean);
@@ -27018,6 +27694,7 @@ begin
  Node:=fGroup.fNodes[aNodeIndex];
  InstanceNode.fProcessed:=true;
  Dirty:=aDirty;
+ MatrixDirty:=aMatrixDirty;
  if (InstanceNode.fCountOverwrites>0) and (Node.Flags<>[]) then begin
   Dirty:=true;
   SkinUsed:=true;
@@ -27167,7 +27844,10 @@ begin
   end;
  end;
  Matrix:=Matrix*aMatrix;
- InstanceNode.fWorkMatrix:=Matrix;
+ if InstanceNode.fWorkMatrix.NotEquals(Matrix) then begin
+  MatrixDirty:=true;
+  InstanceNode.fWorkMatrix:=Matrix;
+ end;
 //InstanceNode.fWorkMatrices[aInFlightFrameIndex]:=Matrix;
  if assigned(Node.fMesh) then begin
   if Matrix.Determinant<0.0 then begin
@@ -27225,8 +27905,11 @@ begin
  if Dirty and (InstanceNode.fCacheVerticesDirtyCounter<2) then begin
   InstanceNode.fCacheVerticesDirtyCounter:=2;
  end;
+ if MatrixDirty then begin
+  InstanceNode.NewCacheMatrixGeneration(aInFlightFrameIndex);
+ end;
  for Index:=0 to Node.Children.Count-1 do begin
-  ProcessNode(aInFlightFrameIndex,Node.Children[Index].Index,Matrix,Dirty);
+  ProcessNode(aInFlightFrameIndex,Node.Children[Index].Index,Matrix,Dirty,MatrixDirty);
  end;
 end;
 
@@ -27823,7 +28506,7 @@ begin
    StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
    for Index:=0 to Scene.fNodes.Count-1 do begin
-    ProcessNode(aInFlightFrameIndex,Scene.fNodes[Index].Index,TpvMatrix4x4.Identity,Dirty);
+    ProcessNode(aInFlightFrameIndex,Scene.fNodes[Index].Index,TpvMatrix4x4.Identity,Dirty,Dirty);
    end;
 {$ifdef UpdateProfilingTimes}
    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -28787,7 +29470,7 @@ begin
    fAssignedNonVirtualInstance:=aNonVirtualInstance;
 
    // Check when the non-virtual instance isn't allowed to have render instances
-   if aNonVirtualInstance.fMaxRenderInstanceCount=0 then begin
+   if (aNonVirtualInstance.fMaxRenderInstanceCount=0) or not assigned(aNonVirtualInstance.fPreallocatedRenderInstances) then begin
 
     // No render instance
     fAssignedNonVirtualInstanceRenderInstance:=nil;
@@ -28803,6 +29486,7 @@ begin
     Index:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter;
     inc(aNonVirtualInstance.fPreallocatedRenderInstanceCounter,CountRenderInstances);
     if (aNonVirtualInstance.fMaxRenderInstanceCount<0) and
+       assigned(aNonVirtualInstance.fPreallocatedRenderInstances) and
        (aNonVirtualInstance.fPreallocatedRenderInstances.Count<aNonVirtualInstance.fPreallocatedRenderInstanceCounter) then begin
      // Dynamic pool mode: create new render instances as needed, growing the pool by 50% each time
      Count:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter+((aNonVirtualInstance.fPreallocatedRenderInstanceCounter+1) shr 1);
@@ -29517,8 +30201,8 @@ begin
       // Handle generation value overflow
       InstanceNode.fCacheVerticesGeneration:=1;
 
-      for InFlightFrameIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-       InstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]:=0;
+      for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+       InstanceNode.fCacheVerticesGenerations[InFlightFrameIndex]:=0;
       end;
 
      end;
@@ -30500,35 +31184,50 @@ begin
                                               1,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                               []);
+  // Decal buffers (bindings 3-4)
+  fGlobalVulkanDescriptorSetLayout.AddBinding(3,
+                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              []);
+  fGlobalVulkanDescriptorSetLayout.AddBinding(4,
+                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              []);
+  // Materials (binding 5)
   if fUseBufferDeviceAddress then begin
-   fGlobalVulkanDescriptorSetLayout.AddBinding(3,
+   fGlobalVulkanDescriptorSetLayout.AddBinding(5,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                1,
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                []);
   end else begin
-   fGlobalVulkanDescriptorSetLayout.AddBinding(3,
+   fGlobalVulkanDescriptorSetLayout.AddBinding(5,
                                                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                1,
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                []);
   end;
-  fGlobalVulkanDescriptorSetLayout.AddBinding(4,
+  // InstanceDataBuffer (binding 6)
+  fGlobalVulkanDescriptorSetLayout.AddBinding(6,
                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               1,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                               []);
-  fGlobalVulkanDescriptorSetLayout.AddBinding(5,
+  // InstanceDataIndexBuffer (binding 7)
+  fGlobalVulkanDescriptorSetLayout.AddBinding(7,
                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               1,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                               []);
+  // Raytracing (bindings 8-9 if active)
   if fRaytracingActive then begin
-   fGlobalVulkanDescriptorSetLayout.AddBinding(6,
+   fGlobalVulkanDescriptorSetLayout.AddBinding(8,
                                                VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
                                                1,
                                               {TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
@@ -30538,7 +31237,7 @@ begin
                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                [],
                                                0{TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT)});
-   fGlobalVulkanDescriptorSetLayout.AddBinding(7,
+   fGlobalVulkanDescriptorSetLayout.AddBinding(9,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                1,
                                               {TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
@@ -30548,9 +31247,9 @@ begin
                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                [],
                                                0{TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT)});
-   fGlobalVulkanDescriptorSetTextureBindingIndex:=8;
+   fGlobalVulkanDescriptorSetTextureBindingIndex:=10;
   end else begin
-   fGlobalVulkanDescriptorSetTextureBindingIndex:=6;
+   fGlobalVulkanDescriptorSetTextureBindingIndex:=8;
   end;
   fGlobalVulkanDescriptorSetLayout.AddBinding(fGlobalVulkanDescriptorSetTextureBindingIndex,
                                               VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -30642,6 +31341,34 @@ begin
  fLights:=TpvScene3D.TLights.Create(false);
 
  fManualLights:=TpvScene3D.TLights.Create(false);
+
+ fDecals:=TpvScene3D.TDecals.Create(false);
+
+ fDecalsHashMap:=TpvScene3D.TDecalsHashMap.Create(false);
+
+ fDecalAABBTree:=TpvBVHDynamicAABBTree.Create;
+
+ fDecalAABBTreeGeneration:=0;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fDecalAABBTreeStates[Index].TreeNodes:=nil;
+  fDecalAABBTreeStates[Index].Root:=-1;
+  fDecalAABBTreeStates[Index].Generation:=High(TpvUInt64);
+ end;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fDecalAABBTreeStateGenerations[Index]:=fDecalAABBTreeGeneration-1;
+ end;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fDecalBuffers[Index]:=TpvScene3D.TDecalBuffer.Create(self,Index);
+ end;
+
+ fDecalDataLock:=TPasMPSlimReaderWriterLock.Create;
+
+ fDecalsLock:=TPasMPSlimReaderWriterLock.Create;
+
+ fDecalNeedsCompaction:=false;
 
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
 
@@ -30968,6 +31695,7 @@ var Index,InFlightFrameIndex:TpvSizeInt;
     PrimitiveTopology:TPrimitiveTopology;
     FaceCullingMode:TFaceCullingMode;
     CurrentObject:TObject;
+    Decal:TDecal;
 begin
 
  if assigned(fVulkanDevice) then begin
@@ -31072,6 +31800,18 @@ begin
  end;
 
  FreeAndNil(fLightAABBTree);
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fDecalAABBTreeStates[Index].TreeNodes:=nil;
+  fDecalAABBTreeStates[Index].Root:=-1;
+  fDecalAABBTreeStates[Index].Generation:=High(TpvUInt64);
+ end;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  FreeAndNil(fDecalBuffers[Index]);
+ end;
+
+ FreeAndNil(fDecalAABBTree);
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fGPURaytracingDataVulkanBuffers[Index]);
@@ -31376,6 +32116,24 @@ begin
  FreeAndNil(fLightsLock);
 
  FreeAndNil(fLightDataLock);
+
+ for Index:=fDecals.Count-1 downto 0 do begin
+  Decal:=fDecals[Index];
+  if assigned(Decal) then begin
+   try
+    Decal.Free;
+   finally
+    fDecals[Index]:=nil;
+   end;
+  end;
+ end;
+ FreeAndNil(fDecals);
+
+ FreeAndNil(fDecalsHashMap);
+
+ FreeAndNil(fDecalsLock);
+
+ FreeAndNil(fDecalDataLock);
 
  fLastProcessFrameTimerQueryResults:=nil;
 
@@ -32415,15 +33173,19 @@ begin
          fLightBuffers[Index].Upload;
         end;
 
+        for Index:=0 to fCountInFlightFrames-1 do begin
+         fDecalBuffers[Index].Upload;
+        end;
+
         fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
-                                                                    length(fImageInfos)*length(fGlobalVulkanDescriptorSets));
+                                                                    (length(fImageInfos)+4+9)*length(fGlobalVulkanDescriptorSets));
         if fRaytracingActive then begin
          fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,length(fGlobalVulkanDescriptorSets)*1);
         end;
         fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fGlobalVulkanDescriptorSets)*IfThen(fRaytracingActive,4,3));
-        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*7);
+        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*9); // +2 for decal buffers
         fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,length(fGlobalVulkanDescriptorSets)*length(fImageInfos));
         fGlobalVulkanDescriptorPool.Initialize;
 
@@ -32875,8 +33637,26 @@ begin
                                                                  [fLightBuffers[Index].fLightTreeVulkanBuffer.DescriptorBufferInfo],
                                                                  [],
                                                                  false);
+         // Decal buffers
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                 [],
+                                                                 [fDecalBuffers[Index].fDecalItemsVulkanBuffer.DescriptorBufferInfo],
+                                                                 [],
+                                                                 false);
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                 [],
+                                                                 [fDecalBuffers[Index].fDecalTreeVulkanBuffer.DescriptorBufferInfo],
+                                                                 [],
+                                                                 false);
+         // Materials
          if fUseBufferDeviceAddress then begin
-          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
+          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
                                                                   0,
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
@@ -32885,7 +33665,7 @@ begin
                                                                   [],
                                                                   false);
          end else begin
-          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
+          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
                                                                   0,
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -32894,7 +33674,8 @@ begin
                                                                   [],
                                                                   false);
          end;
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
+         // InstanceDataBuffer
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(6,
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -32902,7 +33683,8 @@ begin
                                                                  [fVulkanGPUInstanceDataBuffers[Index].DescriptorBufferInfo],
                                                                  [],
                                                                  false);
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
+         // InstanceDataIndexBuffer (shifted from 5 to 7)
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(7,
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -32910,9 +33692,10 @@ begin
                                                                  [fGlobalVulkanInstanceDataIndexBuffers[Index].DescriptorBufferInfo],
                                                                  [],
                                                                  false);
+         // Raytracing
          if fRaytracingActive then begin
           if assigned(fRaytracing.TopLevelAccelerationStructure) then begin
-           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(6,
+           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(8,
                                                                    0,
                                                                    1,
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR),
@@ -32923,7 +33706,7 @@ begin
                                                                    false);
           end;
           if assigned(fGPURaytracingDataVulkanBuffers[Index]) then begin
-           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(7,
+           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(9,
                                                                    0,
                                                                    1,
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
@@ -33119,6 +33902,12 @@ end;
 function TpvScene3D.GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
 begin
  result:=TpvScene3D.TLight(Pointer(aUserData)).fLightItemIndex;
+end;
+
+function TpvScene3D.GetDecalUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
+begin
+ // TODO: Implement decal system - for now return 0
+ result:=0;
 end;
 
 procedure TpvScene3D.ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
@@ -33958,12 +34747,106 @@ begin
  end;
 end;
 
+// Compact the decal list using two-index approach
+// This maintains order and is O(n) without Delete() overhead
+procedure TpvScene3D.CompactDecals;
+var ReadIndex,WriteIndex:TpvSizeInt;
+    Decal:TpvScene3D.TDecal;
+begin
+ if fDecalNeedsCompaction then begin
+  fDecalNeedsCompaction:=false;
+  WriteIndex:=0;
+  for ReadIndex:=0 to fDecals.Count-1 do begin
+   Decal:=fDecals[ReadIndex];
+   if assigned(Decal) then begin
+    if WriteIndex<>ReadIndex then begin
+     fDecals[WriteIndex]:=Decal;
+    end;
+    inc(WriteIndex);
+   end;
+  end;
+  fDecals.Count:=WriteIndex;
+ end; 
+end;
+
+procedure TpvScene3D.CollectDecals(var aDecalItemArray:TpvScene3D.TDecalItems;
+                                   var aDecalMetaInfoArray:TpvScene3D.TDecalMetaInfos);
+var DecalIndex:TpvSizeInt;
+    Decal:TpvScene3D.TDecal;
+    DecalItem:TpvScene3D.PDecalItem;
+    DecalMetaInfo:TpvScene3D.PDecalMetaInfo;
+    RemainingLife,FadeFactor,EffectiveOpacity:TpvDouble;
+begin
+ 
+ aDecalItemArray.ClearNoFree;
+ 
+ for DecalIndex:=0 to fDecals.Count-1 do begin
+ 
+  Decal:=fDecals[DecalIndex];
+
+  if assigned(Decal) then begin
+
+   if (aDecalItemArray.Count<MaxVisibleDecals) and Decal.fVisible then begin
+
+    Decal.fDecalItemIndex:=aDecalItemArray.AddNewIndex;
+
+    DecalItem:=@aDecalItemArray.Items[Decal.fDecalItemIndex];
+
+    // Use origin-offset 32-bit matrix (transposed for column-major layout to avoid padding alignment and for better cache locality)
+    DecalItem^.WorldToDecalMatrix:=Decal.fWorldToDecalMatrix32;
+
+    DecalItem^.UVScaleOffset:=Decal.fUVScaleOffset;
+
+    // Pack blend params and calculate effective opacity with fadeout
+    EffectiveOpacity:=Decal.fOpacity;
+    if (Decal.fLifetime>=0.0) and (Decal.fFadeOutTime>0.0) then begin
+     RemainingLife:=Decal.fLifetime-Decal.fAge;
+     if RemainingLife<=Decal.fFadeOutTime then begin
+      FadeFactor:=RemainingLife/Decal.fFadeOutTime;
+      EffectiveOpacity:=EffectiveOpacity*FadeFactor;
+     end;
+    end;
+    PpvFloat(@DecalItem^.BlendParams.x)^:=EffectiveOpacity;
+    PpvFloat(@DecalItem^.BlendParams.y)^:=Decal.fAngleFade;
+    PpvFloat(@DecalItem^.BlendParams.z)^:=Decal.fEdgeFade;
+    DecalItem^.BlendParams.w:=TpvUInt32(Decal.fBlendMode);
+
+    // Pack texture indices
+    DecalItem^.TextureIndices.x:=Decal.fAlbedoTexture;
+    DecalItem^.TextureIndices.y:=Decal.fNormalTexture;
+    DecalItem^.TextureIndices.z:=Decal.fORMTexture;
+    DecalItem^.TextureIndices.w:=Decal.fSpecularTexture;
+    
+    DecalItem^.TextureIndices2.x:=Decal.fEmissiveTexture;
+    DecalItem^.TextureIndices2.y:=-1;
+    DecalItem^.TextureIndices2.z:=-1;
+    DecalItem^.TextureIndices2.w:=-1;
+
+    DecalItem^.DecalForward:=Decal.fDecalForward;
+    DecalItem^.Flags:=Decal.fFlags;
+
+    DecalMetaInfo:=@aDecalMetaInfoArray[Decal.fDecalItemIndex];
+    DecalMetaInfo^.MinBounds:=TpvVector4.Create(Decal.fBoundingBox.Min,0.0);
+    DecalMetaInfo^.MaxBounds:=TpvVector4.Create(Decal.fBoundingBox.Max,Decal.fBoundingBox.Radius);
+
+   end else begin
+    Decal.fDecalItemIndex:=-1;
+   end;
+
+  end;
+
+ end;
+
+end;
+
 procedure TpvScene3D.PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
 var Index,ItemID:TpvSizeInt;
     OldGeneration,NewGeneration:TpvUInt64;
     DirtyBits:TPasMPUInt32;
     LightBuffer:TpvScene3D.TLightBuffer;
     LightAABBTreeState:TpvBVHDynamicAABBTree.PState;
+    DecalBuffer:TpvScene3D.TDecalBuffer;
+    DecalAABBTreeState:TpvBVHDynamicAABBTree.PState;
     Group:TpvScene3D.TGroup;
     Texture:TpvScene3D.TTexture;
     Material:TpvScene3D.TMaterial;
@@ -33971,6 +34854,7 @@ var Index,ItemID:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     DebugPrimitiveVertexDynamicArray:TpvScene3D.TDebugPrimitiveVertexDynamicArray;
     Matrix:TpvMatrix4x4D;
+    Decal:TDecal;
 begin
 
  fPrimaryLightDirections[aInFlightFrameIndex]:=fPrimaryLightDirection;
@@ -34101,6 +34985,51 @@ begin
    CollectLights(LightBuffer.fLightItems,LightBuffer.fLightMetaInfos);
    fLightAABBTree.GetSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
    LightBuffer.fNewLightAABBTreeGeneration:=fLightAABBTreeGeneration;
+
+  end;
+
+ end;
+
+ // Decals
+ if assigned(fDecalAABBTree) then begin
+
+  CompactDecals;
+
+  OldGeneration:=fDecalAABBTreeStateGenerations[aInFlightFrameIndex];
+  NewGeneration:=fDecalAABBTreeGeneration;
+  if (OldGeneration<>NewGeneration) and
+     (TPasMPInterlocked.CompareExchange(fDecalAABBTreeStateGenerations[aInFlightFrameIndex],NewGeneration,OldGeneration)=OldGeneration) then begin
+
+   DecalAABBTreeState:=@fDecalAABBTreeStates[aInFlightFrameIndex];
+// fDecalAABBTree.Rebuild(false);
+   fDecalAABBTree.UpdateGeneration;
+   if DecalAABBTreeState^.Generation<>fDecalAABBTree.Generation then begin
+    DecalAABBTreeState^.Generation:=fDecalAABBTree.Generation;
+    if (length(fDecalAABBTree.Nodes)>0) and (fDecalAABBTree.Root>=0) then begin
+     if length(DecalAABBTreeState^.TreeNodes)<length(fDecalAABBTree.Nodes) then begin
+      DecalAABBTreeState^.TreeNodes:=copy(fDecalAABBTree.Nodes);
+     end else begin
+      Move(fDecalAABBTree.Nodes[0],DecalAABBTreeState^.TreeNodes[0],length(fDecalAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+     end;
+     DecalAABBTreeState^.Root:=fDecalAABBTree.Root;
+    end else begin
+     DecalAABBTreeState^.Root:=-1;
+    end;
+   end;
+
+   DecalBuffer:=fDecalBuffers[aInFlightFrameIndex];
+
+   // Update all decals with origin-offset (64-bit to 32-bit transform)
+   for Index:=0 to fDecals.Count-1 do begin
+    Decal:=fDecals[Index];
+    if assigned(Decal) then begin
+     Decal.Update(aInFlightFrameIndex);
+    end;
+   end;
+
+   CollectDecals(DecalBuffer.fDecalItems,DecalBuffer.fDecalMetaInfos);
+   fDecalAABBTree.GetSkipListNodes(DecalBuffer.fDecalTree,GetDecalUserDataIndex);
+   DecalBuffer.fNewDecalAABBTreeGeneration:=fDecalAABBTreeGeneration;
 
   end;
 
@@ -34415,7 +35344,7 @@ begin
         (fRaytracing.TopLevelAccelerationStructureGenerations[aInFlightFrameIndex]<>fRaytracing.TopLevelAccelerationStructure.Generation)) then begin
      fRaytracing.TopLevelAccelerationStructures[aInFlightFrameIndex]:=fRaytracing.TopLevelAccelerationStructure.AccelerationStructure;
      fRaytracing.TopLevelAccelerationStructureGenerations[aInFlightFrameIndex]:=fRaytracing.TopLevelAccelerationStructure.Generation;
-     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(6,
+     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(8,
                                                                            0,
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR),
@@ -34793,6 +35722,8 @@ begin
 
   LightBuffers[aInFlightFrameIndex].UploadFrame;
 
+  DecalBuffers[aInFlightFrameIndex].UploadFrame;
+
   if fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].Count>0 then begin
 
    if assigned(fVulkanGPUInstanceDataBuffers[aInFlightFrameIndex]) then begin
@@ -34856,7 +35787,7 @@ begin
 
      end;
 
-     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(4,
+     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(6,
                                                                            0,
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -34964,7 +35895,7 @@ begin
 
      end;
 
-     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(5,
+     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(7,
                                                                            0,
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -36501,7 +37432,7 @@ function TpvScene3D.AddParticle(const aPosition:TpvVector3;
                                 const aSizeEnd:TpvVector2;
                                 const aColorStart:TpvVector4;
                                 const aColorEnd:TpvVector4;
-                                const aLifeTime:TpvScalar;
+                                const aLifeTime:TpvDouble;
                                 const aTextureID:TpvUInt32;
                                 const aAdditiveBlending:boolean):TpvSizeInt;
 var Particle:PParticle;
@@ -36529,6 +37460,94 @@ begin
   Particle^.TextureID:=aTextureID or TpvUInt32($80000000);
  end else begin
   Particle^.TextureID:=aTextureID;
+ end;
+end;
+
+function TpvScene3D.ValidDecal(const aDecal:TpvScene3D.TDecal):Boolean;
+begin
+ fDecalsLock.Acquire;
+ try
+  result:=fDecalsHashMap[aDecal];
+ finally
+  fDecalsLock.Release;
+ end;
+end;
+
+function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
+                               const aNormal:TpvVector3D;
+                               const aSize:TpvVector2;
+                               const aAlbedoTexture:TpvInt32;
+                               const aNormalTexture:TpvInt32;
+                               const aORMTexture:TpvInt32;
+                               const aSpecularTexture:TpvInt32;
+                               const aEmissiveTexture:TpvInt32;
+                               const aBlendMode:TpvScene3D.TDecalBlendMode;
+                               const aOpacity:TpvFloat;
+                               const aAngleFade:TpvFloat;
+                               const aEdgeFade:TpvFloat;
+                               const aLifetime:TpvDouble;
+                               const aFadeOutTime:TpvDouble;
+                               const aPasses:TpvScene3D.TDecalPasses):TpvScene3D.TDecal;
+var Up,Right,Forward:TpvVector3D;
+    DecalToWorld:TpvMatrix4x4D;
+begin
+
+ // Calculate decal-to-world transform from position and normal (64-bit)
+ Forward:=aNormal.Normalize;
+ Up:=Forward.Perpendicular;
+ Right:=Forward.Cross(Up).Normalize;
+ Up:=Right.Cross(Forward).Normalize;
+
+ // Create decal-to-world matrix (unit vectors, size will be applied in Update)
+ DecalToWorld.Right.xyz:=Right;
+ DecalToWorld.Right.w:=0.0;
+ DecalToWorld.Up.xyz:=Up;
+ DecalToWorld.Up.w:=0.0;
+ DecalToWorld.Forwards.xyz:=Forward;
+ DecalToWorld.Forwards.w:=0.0;
+ DecalToWorld.Translation.xyz:=aPosition;
+ DecalToWorld.Translation.w:=1.0;
+
+ // Create the decal
+ result:=TpvScene3D.TDecal.Create(self);
+ result.fDecalToWorldMatrix:=DecalToWorld;
+ result.fSize:=TpvVector3.InlineableCreate(aSize.x,aSize.y,0.5);
+ result.fUVScaleOffset:=TpvVector4.InlineableCreate(1.0,1.0,0.0,0.0); // Default UV: no scale/offset
+ result.fAlbedoTexture:=aAlbedoTexture;
+ result.fNormalTexture:=aNormalTexture;
+ result.fORMTexture:=aORMTexture;
+ result.fSpecularTexture:=aSpecularTexture;
+ result.fEmissiveTexture:=aEmissiveTexture;
+ result.fFlags:=0;
+ result.fOpacity:=aOpacity;
+ result.fAngleFade:=aAngleFade;
+ result.fEdgeFade:=aEdgeFade;
+ result.fBlendMode:=aBlendMode;
+ result.fLifetime:=aLifetime;
+ result.fFadeOutTime:=aFadeOutTime;
+ result.fAge:=0.0;
+ result.fVisible:=true;
+ result.fPasses:=aPasses;
+ result.Update(-1); // Initial update without origin transform
+ 
+end;
+
+procedure TpvScene3D.UpdateDecals(const aDeltaTime:TpvDouble);
+var Index:TpvSizeInt;
+    Decal:TpvScene3D.TDecal;
+begin
+ // Update decal ages and remove expired decals
+ for Index:=fDecals.Count-1 downto 0 do begin
+  Decal:=fDecals[Index];
+  if assigned(Decal) then begin
+   if Decal.fLifetime>=0.0 then begin
+    Decal.fAge:=Decal.fAge+aDeltaTime;
+    if Decal.fAge>=Decal.fLifetime then begin
+     // Decal has expired, remove it
+     FreeAndNil(Decal);
+    end;
+   end;
+  end;
  end;
 end;
 
@@ -37181,14 +38200,16 @@ begin
     // where we stop resetting as soon as we find an inactive non-virtual render instance since all
     // following ones will also be inactive (due to preallocation order, and delete-with-swap-last
     // doesn't happen here because we never remove render instances from the preallocated list)
-    for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
-     RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
-     if RenderInstance.Active then begin
-      RenderInstance.Active:=false;
-      RenderInstance.fAssignedVirtualInstance:=nil;
-      RenderInstance.fAssignedVirtualInstanceRenderInstance:=nil;
-     end else begin
-      break;
+    if assigned(NonVirtualInstance.fPreallocatedRenderInstances) then begin
+     for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
+      RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
+      if RenderInstance.Active then begin
+       RenderInstance.Active:=false;
+       RenderInstance.fAssignedVirtualInstance:=nil;
+       RenderInstance.fAssignedVirtualInstanceRenderInstance:=nil;
+      end else begin
+       break;
+      end;
      end;
     end;
     NonVirtualInstance.fPreallocatedRenderInstanceCounter:=0;

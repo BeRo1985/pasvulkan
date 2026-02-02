@@ -520,6 +520,52 @@ type PpvScalar=^TpvScalar;
         7:(RawIntComponents:array[0..3] of TpvUInt16);
      end;
 
+     PpvUInt32Vector3=^TpvUInt32Vector3;
+     TpvUInt32Vector3=packed record
+      public
+       case TpvUInt8 of
+        0:(RawComponents:array[0..2] of TpvUInt32);
+        1:(x,y,z:TpvUInt32);
+        2:(r,g,b:TpvUInt32);
+        3:(s,t,p:TpvUInt32);
+        5:(Vector2:TpvUInt32Vector2);
+     end;
+
+     PpvUInt32Vector4=^TpvUInt32Vector4;
+     TpvUInt32Vector4=packed record
+      public
+       case TpvUInt8 of
+        0:(RawComponents:array[0..3] of TpvUInt32);
+        1:(x,y,z,w:TpvUInt32);
+        2:(r,g,b,a:TpvUInt32);
+        3:(s,t,p,q:TpvUInt32);
+        5:(Vector2:TpvUInt32Vector2);
+        6:(Vector3:TpvUInt32Vector3);
+     end;
+
+     PpvInt32Vector3=^TpvInt32Vector3;
+     TpvInt32Vector3=packed record
+      public
+       case TpvUInt8 of
+        0:(RawComponents:array[0..2] of TpvInt32);
+        1:(x,y,z:TpvInt32);
+        2:(r,g,b:TpvInt32);
+        3:(s,t,p:TpvInt32);
+        5:(Vector2:TpvInt32Vector2);
+     end;
+
+     PpvInt32Vector4=^TpvInt32Vector4;
+     TpvInt32Vector4=packed record
+      public
+       case TpvUInt8 of
+        0:(RawComponents:array[0..3] of TpvInt32);
+        1:(x,y,z,w:TpvInt32);
+        2:(r,g,b,a:TpvInt32);
+        3:(s,t,p,q:TpvInt32);
+        5:(Vector2:TpvInt32Vector2);
+        6:(Vector3:TpvInt32Vector3);
+     end;
+
      PpvInt8PackedTangentSpace=^TpvInt8PackedTangentSpace;
      TpvInt8PackedTangentSpace=record
       x,y,z,w:TpvInt8;
@@ -1048,6 +1094,8 @@ type PpvScalar=^TpvScalar;
        function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; overload; //{$ifdef CAN_INLINE}inline;{$endif}
        function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; //{$ifdef CAN_INLINE}inline;{$endif}
+       function Equals({$ifdef fpc}constref{$else}const{$endif} WithMatrix:TpvMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function NotEquals({$ifdef fpc}constref{$else}const{$endif} WithMatrix:TpvMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function Decompose:TpvDecomposedMatrix4x4;
        property Components[const pIndexA,pIndexB:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
        property Columns[const pIndex:TpvInt32]:TpvVector4 read GetColumn write SetColumn;
@@ -13561,6 +13609,46 @@ function TpvMatrix4x4.MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvV
 begin
  result:=self*a;
  result:=result/result.w;
+end;
+
+function TpvMatrix4x4.Equals({$ifdef fpc}constref{$else}const{$endif} WithMatrix:TpvMatrix4x4):boolean;
+begin
+ result:=(RawComponents[0,0]=WithMatrix.RawComponents[0,0]) and
+         (RawComponents[0,1]=WithMatrix.RawComponents[0,1]) and
+         (RawComponents[0,2]=WithMatrix.RawComponents[0,2]) and
+         (RawComponents[0,3]=WithMatrix.RawComponents[0,3]) and
+         (RawComponents[1,0]=WithMatrix.RawComponents[1,0]) and
+         (RawComponents[1,1]=WithMatrix.RawComponents[1,1]) and
+         (RawComponents[1,2]=WithMatrix.RawComponents[1,2]) and
+         (RawComponents[1,3]=WithMatrix.RawComponents[1,3]) and
+         (RawComponents[2,0]=WithMatrix.RawComponents[2,0]) and
+         (RawComponents[2,1]=WithMatrix.RawComponents[2,1]) and
+         (RawComponents[2,2]=WithMatrix.RawComponents[2,2]) and
+         (RawComponents[2,3]=WithMatrix.RawComponents[2,3]) and
+         (RawComponents[3,0]=WithMatrix.RawComponents[3,0]) and
+         (RawComponents[3,1]=WithMatrix.RawComponents[3,1]) and
+         (RawComponents[3,2]=WithMatrix.RawComponents[3,2]) and
+         (RawComponents[3,3]=WithMatrix.RawComponents[3,3]);
+end;
+
+function TpvMatrix4x4.NotEquals({$ifdef fpc}constref{$else}const{$endif} WithMatrix:TpvMatrix4x4):boolean;
+begin
+ result:=(RawComponents[0,0]<>WithMatrix.RawComponents[0,0]) or
+         (RawComponents[0,1]<>WithMatrix.RawComponents[0,1]) or
+         (RawComponents[0,2]<>WithMatrix.RawComponents[0,2]) or
+         (RawComponents[0,3]<>WithMatrix.RawComponents[0,3]) or
+         (RawComponents[1,0]<>WithMatrix.RawComponents[1,0]) or
+         (RawComponents[1,1]<>WithMatrix.RawComponents[1,1]) or
+         (RawComponents[1,2]<>WithMatrix.RawComponents[1,2]) or
+         (RawComponents[1,3]<>WithMatrix.RawComponents[1,3]) or
+         (RawComponents[2,0]<>WithMatrix.RawComponents[2,0]) or
+         (RawComponents[2,1]<>WithMatrix.RawComponents[2,1]) or
+         (RawComponents[2,2]<>WithMatrix.RawComponents[2,2]) or
+         (RawComponents[2,3]<>WithMatrix.RawComponents[2,3]) or
+         (RawComponents[3,0]<>WithMatrix.RawComponents[3,0]) or
+         (RawComponents[3,1]<>WithMatrix.RawComponents[3,1]) or
+         (RawComponents[3,2]<>WithMatrix.RawComponents[3,2]) or
+         (RawComponents[3,3]<>WithMatrix.RawComponents[3,3]);
 end;
 
 function TpvMatrix4x4.Decompose:TpvDecomposedMatrix4x4;

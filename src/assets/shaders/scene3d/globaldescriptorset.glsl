@@ -58,6 +58,28 @@ layout(set = 0, binding = 2, std430) readonly buffer LightTreeNodeData {
   LightTreeNode lightTreeNodes[];
 };
 
+struct Decal {
+  mat4x3 worldToDecalMatrix;   // World to decal OBB transform (3x4 matrix) - 48 bytes
+  vec4 uvScaleOffset;          // xy=scale, zw=offset - 16 bytes
+  uvec4 blendParams;           // x=opacity(float bits), y=angleFade(float bits), z=edgeFade(float bits), w=blendMode - 16 bytes
+  ivec4 textureIndices;        // albedo, normal, ORM, specular texture indices (-1 = none) - 16 bytes
+  ivec4 textureIndices2;       // emissive, unused, unused, unused - 16 bytes
+  uvec4 decalForwardFlags;     // xyz=forward direction for angle fade(float bits), w=flags(uint bits) - 16 bytes
+};                             // Total: 128 bytes
+
+layout(set = 0, binding = 3, std430, column_major) readonly buffer DecalItemData {
+  Decal decals[];
+};
+
+struct DecalTreeNode {
+  uvec4 aabbMinSkipCount;
+  uvec4 aabbMaxUserData;
+};
+
+layout(set = 0, binding = 4, std430) readonly buffer DecalTreeNodeData {
+  DecalTreeNode decalTreeNodes[];
+};
+
 #endif // LIGHTS
 
 //#ifdef MESHS
@@ -83,13 +105,13 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
   mat3x2 textureTransforms[20];
 };
 
-layout(set = 0, binding = 3, std140) uniform Materials {
+layout(set = 0, binding = 5, std140) uniform Materials {
   Material materials;
 } uMaterials;
 
 #else
 
-layout(set = 0, binding = 3, std430) readonly buffer Materials {
+layout(set = 0, binding = 5, std430) readonly buffer Materials {
   Material materials[];
 };
 #endif // defined(USE_MATERIAL_BUFFER_REFERENCE)
@@ -117,11 +139,11 @@ struct InstanceData {
   uvec4 unused1;
 };
 
-layout(set = 0, binding = 4, std430) readonly buffer InstanceDataBuffer {
+layout(set = 0, binding = 6, std430) readonly buffer InstanceDataBuffer {
   InstanceData instanceDataItems[];
 };
 
-layout(set = 0, binding = 5, std430) readonly buffer InstanceDataIndexBuffer {
+layout(set = 0, binding = 7, std430) readonly buffer InstanceDataIndexBuffer {
   uint instanceDataIndices[];
 };
 
@@ -188,9 +210,9 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Ray
   uint planetIndices[];
 };
 
-layout(set = 0, binding = 6) uniform accelerationStructureEXT uRaytracingTopLevelAccelerationStructure;
+layout(set = 0, binding = 8) uniform accelerationStructureEXT uRaytracingTopLevelAccelerationStructure;
 
-layout(set = 0, binding = 7, std140) uniform RaytracingData {
+layout(set = 0, binding = 9, std140) uniform RaytracingData {
   RaytracingGeometryInstanceOffsets geometryInstanceOffsets;
   RaytracingGeometryItems geometryItems;
   RaytracingMeshStaticVertices meshStaticVertices;
@@ -200,19 +222,19 @@ layout(set = 0, binding = 7, std140) uniform RaytracingData {
   ReferencedPlanetDataArray referencedPlanetDataArray;
 } uRaytracingData;
 
+layout(set = 0, binding = 10) uniform sampler2D u2DTextures[];
+
+layout(set = 0, binding = 10) uniform sampler3D u3DTextures[];
+
+layout(set = 0, binding = 10) uniform samplerCube uCubeTextures[];
+
+#else
+
 layout(set = 0, binding = 8) uniform sampler2D u2DTextures[];
 
 layout(set = 0, binding = 8) uniform sampler3D u3DTextures[];
 
 layout(set = 0, binding = 8) uniform samplerCube uCubeTextures[];
-
-#else
-
-layout(set = 0, binding = 6) uniform sampler2D u2DTextures[];
-
-layout(set = 0, binding = 6) uniform sampler3D u3DTextures[];
-
-layout(set = 0, binding = 6) uniform samplerCube uCubeTextures[];
 
 #endif // RAYTRACING
 

@@ -211,6 +211,11 @@ type { TpvScene3DRendererInstance }
               ZBias:TpvFloat;
               ZMax:TpvFloat;
               Reversed1:TpvUInt32;
+              //
+              CountDecals:TpvUInt32;
+              DecalReserved0:TpvUInt32;
+              DecalReserved1:TpvUInt32;
+              DecalReserved2:TpvUInt32;
             end;
             PFrustumClusterGridPushConstants=^TFrustumClusterGridPushConstants;
             { TCascadedShadowMap }
@@ -8402,6 +8407,7 @@ begin
  fFrustumClusterGridPushConstants.ZScale:=fFrustumClusterGridSizeZ/Log2(fFrustumClusterGridPushConstants.ZFar/fFrustumClusterGridPushConstants.ZNear);
  fFrustumClusterGridPushConstants.ZBias:=-((fFrustumClusterGridSizeZ*Log2(fFrustumClusterGridPushConstants.ZNear))/Log2(fFrustumClusterGridPushConstants.ZFar/fFrustumClusterGridPushConstants.ZNear));
  fFrustumClusterGridPushConstants.ZMax:=fFrustumClusterGridSizeZ-1;
+ fFrustumClusterGridPushConstants.CountDecals:=fScene3D.DecalBuffers[aInFlightFrameIndex].DecalItems.Count;
 
  Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
                                             fScene3D.VulkanStagingCommandBuffer,

@@ -83,7 +83,7 @@ layout(set = 0, binding = 0, std430) readonly buffer InstanceMatrices {
   mat4 instanceMatrices[]; // pair-wise: 0 = base, 1 = previous (for velocity)
 };
 
-layout(set = 0, binding = 5, std430) readonly buffer InstanceDataIndexBuffer {
+layout(set = 0, binding = 7, std430) readonly buffer InstanceDataIndexBuffer {
   uint instanceDataIndices[];
 };
 
