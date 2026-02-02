@@ -2804,6 +2804,7 @@ type EpvScene3D=class(Exception);
                             fCacheVerticesDirtyCounter:TpvUInt32;
                             fCacheMatrixGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             fCacheMatrixGeneration:TpvUInt64;
+                            fCacheMatrixDirtyCounter:TpvUInt32;
                             fAABBTreeProxy:TpvSizeInt;
                             fParents:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                             fCullVisibleIDs:array[0..MaxInFlightFrames-1] of TpvSizeInt;
@@ -24443,6 +24444,7 @@ begin
    InstanceNode.fCacheVerticesGeneration:=1;
    InstanceNode.fCacheVerticesDirtyCounter:=1;
    InstanceNode.fCacheMatrixGeneration:=1;
+   InstanceNode.fCacheMatrixDirtyCounter:=1;
    InstanceNode.fAABBTreeProxy:=-1;
    InstanceNode.fRaytracingGroupInstanceNodeID:=0;
    InstanceNode.fRaytracingMask:=$ff;
@@ -27906,7 +27908,11 @@ begin
  if Dirty and (InstanceNode.fCacheVerticesDirtyCounter<2) then begin
   InstanceNode.fCacheVerticesDirtyCounter:=2;
  end;
- if MatrixDirty then begin
+ if MatrixDirty and (InstanceNode.fCacheMatrixDirtyCounter<2) then begin
+  InstanceNode.fCacheMatrixDirtyCounter:=2;
+  InstanceNode.NewCacheMatrixGeneration;
+ end else if InstanceNode.fCacheMatrixDirtyCounter>0 then begin
+  dec(InstanceNode.fCacheMatrixDirtyCounter);
   InstanceNode.NewCacheMatrixGeneration;
  end;
  for Index:=0 to Node.Children.Count-1 do begin
