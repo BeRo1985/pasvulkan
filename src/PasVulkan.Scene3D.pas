@@ -27845,7 +27845,7 @@ begin
   end;
  end;
  Matrix:=Matrix*aMatrix;
- if InstanceNode.fWorkMatrix<>Matrix then begin
+ if InstanceNode.fWorkMatrix.NotEquals(Matrix) then begin
   MatrixDirty:=true;
   InstanceNode.fWorkMatrix:=Matrix;
  end;
