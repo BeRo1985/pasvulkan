@@ -2819,7 +2819,7 @@ type EpvScene3D=class(Exception);
                                                const aGroupInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
                             function InverseFrontFaces:boolean; inline;
-                            procedure IncrementCacheMatrixGeneration;
+                            procedure NewCacheMatrixGeneration;
                             procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                            published
                             property Group:TpvScene3D.TGroup read fGroup;
@@ -22801,7 +22801,7 @@ begin
  result:=TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces in fFlags;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.TNode.IncrementCacheMatrixGeneration;
+procedure TpvScene3D.TGroup.TInstance.TNode.NewCacheMatrixGeneration;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -27899,6 +27899,9 @@ begin
  end;
  if Dirty and (InstanceNode.fCacheVerticesDirtyCounter<2) then begin
   InstanceNode.fCacheVerticesDirtyCounter:=2;
+ end;
+ if MatrixDirty then begin
+  InstanceNode.NewCacheMatrixGeneration;
  end;
  for Index:=0 to Node.Children.Count-1 do begin
   ProcessNode(aInFlightFrameIndex,Node.Children[Index].Index,Matrix,Dirty,MatrixDirty);
