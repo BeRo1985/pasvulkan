@@ -2820,7 +2820,7 @@ type EpvScene3D=class(Exception);
                                                const aGroupInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
                             function InverseFrontFaces:boolean; inline;
-                            procedure NewCacheMatrixGeneration;
+                            procedure NewCacheMatrixGeneration(const aInFlightFrameIndex:TpvSizeInt);
                             procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                            published
                             property Group:TpvScene3D.TGroup read fGroup;
@@ -22803,7 +22803,7 @@ begin
  result:=TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces in fFlags;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.TNode.NewCacheMatrixGeneration;
+procedure TpvScene3D.TGroup.TInstance.TNode.NewCacheMatrixGeneration(const aInFlightFrameIndex:TpvSizeInt);
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -22818,6 +22818,10 @@ begin
    fCacheMatrixGenerations[InFlightFrameIndex]:=0;
   end;
 
+ end;
+
+ if aInFlightFrameIndex>=0 then begin
+  fCacheMatrixGenerations[aInFlightFrameIndex]:=fCacheMatrixGeneration;
  end;
 
 end;
@@ -27908,12 +27912,8 @@ begin
  if Dirty and (InstanceNode.fCacheVerticesDirtyCounter<2) then begin
   InstanceNode.fCacheVerticesDirtyCounter:=2;
  end;
- if MatrixDirty and (InstanceNode.fCacheMatrixDirtyCounter<2) then begin
-  InstanceNode.fCacheMatrixDirtyCounter:=2;
-  InstanceNode.NewCacheMatrixGeneration;
- end else if InstanceNode.fCacheMatrixDirtyCounter>0 then begin
-  dec(InstanceNode.fCacheMatrixDirtyCounter);
-  InstanceNode.NewCacheMatrixGeneration;
+ if MatrixDirty then begin
+  InstanceNode.NewCacheMatrixGeneration(aInFlightFrameIndex);
  end;
  for Index:=0 to Node.Children.Count-1 do begin
   ProcessNode(aInFlightFrameIndex,Node.Children[Index].Index,Matrix,Dirty,MatrixDirty);
@@ -30219,11 +30219,6 @@ begin
     if InstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]<>InstanceNode.fCacheVerticesGeneration then begin
      InstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]:=InstanceNode.fCacheVerticesGeneration;
      fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5]:=fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] or (TpvUInt32(1) shl (NodeIndex and 31));
-    end;
-
-    if InstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex]<>InstanceNode.fCacheMatrixGeneration then begin
-     InstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex]:=InstanceNode.fCacheMatrixGeneration;
-//   fCacheMatrixNodeDirtyBitmap[NodeIndex shr 5]:=fCacheMatrixNodeDirtyBitmap[NodeIndex shr 5] or (TpvUInt32(1) shl (NodeIndex and 31));
     end;
 
    end;
