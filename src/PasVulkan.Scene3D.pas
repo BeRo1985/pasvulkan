@@ -2804,7 +2804,6 @@ type EpvScene3D=class(Exception);
                             fCacheVerticesDirtyCounter:TpvUInt32;
                             fCacheMatrixGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             fCacheMatrixGeneration:TpvUInt64;
-                            fCacheMatrixDirtyCounter:TpvUInt32;
                             fAABBTreeProxy:TpvSizeInt;
                             fParents:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                             fCullVisibleIDs:array[0..MaxInFlightFrames-1] of TpvSizeInt;
@@ -3363,7 +3362,6 @@ type EpvScene3D=class(Exception);
                      fBufferRanges:TBufferRanges;
                      fPointerToBufferRanges:PBufferRanges;
                      fCacheVerticesNodeDirtyBitmap:TpvUInt32DynamicArray;
-                     //fCacheMatrixNodeDirtyBitmap:TpvUInt32DynamicArray;
                      fRaytracingMask:TpvUInt8;
                      fCastingShadows:Boolean;
                      fApplyCameraRelativeTransform:TPasMPBool32;
@@ -24448,7 +24446,6 @@ begin
    InstanceNode.fCacheVerticesGeneration:=1;
    InstanceNode.fCacheVerticesDirtyCounter:=1;
    InstanceNode.fCacheMatrixGeneration:=1;
-   InstanceNode.fCacheMatrixDirtyCounter:=1;
    InstanceNode.fAABBTreeProxy:=-1;
    InstanceNode.fRaytracingGroupInstanceNodeID:=0;
    InstanceNode.fRaytracingMask:=$ff;
@@ -24544,8 +24541,6 @@ begin
  fAABBTreeProxy:=-1;
 
  SetLength(fCacheVerticesNodeDirtyBitmap,((fNodes.Count+31) shr 5)+1);
-
-//SetLength(fCacheMatrixNodeDirtyBitmap,((fNodes.Count+31) shr 5)+1);
 
  fOnNodeFilter:=nil;
 
@@ -24695,8 +24690,6 @@ begin
  FreeAndNil(fMaterials);
 
  fCacheVerticesNodeDirtyBitmap:=nil;
-
-//fCacheMatrixNodeDirtyBitmap:=nil;
 
  if assigned(fDuplicatedMaterials) then begin
   for Index:=0 to fDuplicatedMaterials.Count-1 do begin
