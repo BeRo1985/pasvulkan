@@ -2892,6 +2892,7 @@ type TpvScene3DPlanets=class;
        property WaterRainSettings:TpvScene3DPlanet.TWaterRainSettings read fWaterRainSettings;
        property PrecipitationSimulationSettings:TpvScene3DPlanet.TPrecipitationSimulationSettings read fPrecipitationSimulationSettings;
        property SimulationActive:TPasMPBool32 read fSimulationActive write fSimulationActive;
+       property WaterMiniMapResolution:TpvSizeInt read fWaterMiniMapResolution;
      end;
 
      { TpvScene3DPlanets }
