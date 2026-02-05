@@ -294,6 +294,8 @@ type TpvScene3DPlanets=class;
             TWaterModificationItems=array[0..MaxInFlightFrames-1] of TWaterModificationItem;
             TBrush=array[0..255,0..255] of TpvUInt8;
             PBrush=^TBrush;
+            TFloatBrush=array[0..255,0..255] of TpvFloat;
+            PFloatBrush=^TFloatBrush;
             TBrushes=array[0..255] of TBrush;
             PBrushes=^TBrushes;
             TSmoothedBrushes=array[0..15] of TBrushes;
@@ -25656,17 +25658,20 @@ end;
 
 procedure TpvScene3DPlanetSmoothBrushesParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 const StartRadius=4.0;
-      RadiusDelta=1.5787528837; // Calculated to reach effective 64px after 15 progressive steps
-var SmoothLevel,BrushIndex,x,y,kx,ky:TpvInt32;
-    Radius,Sigma,Sum,Weight:TpvFloat;
-    TempBrush,SourceBrush,TargetBrush:TpvScene3DPlanet.PBrush;
+      RadiusDelta=1.5787528837; // Calculated to reach effective 64px after 15 progressive steps  #
+      OneOver255=1.0/255.0;
+var SmoothLevel,BrushIndex,x,y,kx,ky,Index:TpvInt32;
+    Radius,Sigma,Sum,SumWeight,Weight:TpvFloat;
+    TempBrush:TpvScene3DPlanet.PFloatBrush;
+    SourceBrush,TargetBrush:TpvScene3DPlanet.PBrush;
     KernelRadius:TpvInt32;
     SmoothedBrushes:TpvScene3DPlanet.PSmoothedBrushes;
+    Kernel:array[0..31] of TpvFloat;
 begin
 
  SmoothedBrushes:=aData;
 
- GetMem(TempBrush,SizeOf(TpvScene3DPlanet.TBrush));
+ GetMem(TempBrush,SizeOf(TpvScene3DPlanet.TFloatBrush));
  try
 
   // Progressive blur: each level applies blur to the previous level
@@ -25685,19 +25690,24 @@ begin
     SourceBrush:=@SmoothedBrushes^[SmoothLevel-1,BrushIndex];
     TargetBrush:=@SmoothedBrushes^[SmoothLevel,BrushIndex];
 
+    for Index:=0 to KernelRadius do begin
+     Kernel[Index]:=Exp(-Sqr(Index)/(2.0*Sqr(Sigma)));
+    end;
+
     // First pass: horizontal blur into temp buffer from previous smooth level
     for y:=0 to 255 do begin
      for x:=0 to 255 do begin
       Sum:=0.0;
-      Weight:=0.0;
+      SumWeight:=0.0;
       for kx:=-KernelRadius to KernelRadius do begin
+       Weight:=Kernel[abs(kx)];
        if ((x+kx)>=0) and ((x+kx)<=255) then begin
-        Weight:=Weight+Exp(-Sqr(kx)/(2.0*Sqr(Sigma)));
-        Sum:=Sum+(SourceBrush^[y,x+kx]*Exp(-Sqr(kx)/(2.0*Sqr(Sigma))));
+        Sum:=Sum+((SourceBrush^[y,x+kx]*OneOver255)*Weight);
        end;
+       SumWeight:=SumWeight+Weight;
       end;
-      if Weight>0.0 then begin
-       TempBrush^[y,x]:=Min(Max(Round(Sum/Weight),0),255);
+      if SumWeight>0.0 then begin
+       TempBrush^[y,x]:=Min(Max(Sum/SumWeight,0.0),1.0);
       end else begin
        TempBrush^[y,x]:=SourceBrush^[y,x];
       end;
@@ -25708,17 +25718,18 @@ begin
     for y:=0 to 255 do begin
      for x:=0 to 255 do begin
       Sum:=0.0;
-      Weight:=0.0;
+      SumWeight:=0.0;
       for ky:=-KernelRadius to KernelRadius do begin
+       Weight:=Kernel[abs(ky)];
        if ((y+ky)>=0) and ((y+ky)<=255) then begin
-        Weight:=Weight+Exp(-Sqr(ky)/(2.0*Sqr(Sigma)));
-        Sum:=Sum+(TempBrush^[y+ky,x]*Exp(-Sqr(ky)/(2.0*Sqr(Sigma))));
+        Sum:=Sum+(TempBrush^[y+ky,x]*Weight);
        end;
+       SumWeight:=SumWeight+Weight;
       end;
-      if Weight>0.0 then begin
-       TargetBrush^[y,x]:=Min(Max(Round(Sum/Weight),0),255);
+      if SumWeight>0.0 then begin
+       TargetBrush^[y,x]:=Min(Max(Round((Sum/SumWeight)*255.0),0),255);
       end else begin
-       TargetBrush^[y,x]:=TempBrush^[y,x];
+       TargetBrush^[y,x]:=Min(Max(Round(TempBrush^[y,x]*255.0),0),255);
       end;
      end;
     end;
