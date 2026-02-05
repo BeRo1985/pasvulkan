@@ -2688,6 +2688,8 @@ type TpvScene3DPlanets=class;
        fBrushes:TpvScene3DPlanet.TBrushes;
        fSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes;
        fBrushesTexture:TpvVulkanTexture;       
+       fBrushesTextures:array[0..15] of TpvVulkanTexture;
+       fBrushesTexturesDescriptorImageInfos:TVkDescriptorImageInfoArray;
        fRGBABrushes:TpvScene3DPlanet.TRGBABrushes; 
        fRGBABrushesTexture:TpvVulkanTexture;
        fUsePlanetHeightMapBuffer:Boolean;
@@ -2721,11 +2723,10 @@ type TpvScene3DPlanets=class;
                                      out aCountMeshLODLevels:TpvSizeInt;
                                      out aMeshLODOffsets:TpvScene3DPlanet.TSizeIntArray;
                                      out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
-       procedure SmoothBrushesParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-       procedure SmoothBrushes;
       public
        constructor Create(const aScene3D:TObject;
-                          const aBrushes:TpvScene3DPlanet.TBrushes; 
+                          const aBrushes:TpvScene3DPlanet.TBrushes;
+                          const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes;
                           const aHeightMapResolution:TpvInt32=4096;
                           const aVisualResolution:TpvSizeInt=4096;
                           const aPhysicsResolution:TpvSizeInt=1024;
@@ -2742,6 +2743,7 @@ type TpvScene3DPlanets=class;
        procedure BeforeDestruction; override;
        procedure Release;
        function HandleRelease:boolean;
+       class procedure SmoothBrushes(out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes;const aBrushes:TpvScene3DPlanet.TBrushes); static;
        class function CreatePlanetDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice;const aMeshShaders:Boolean):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetCullDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
@@ -2807,6 +2809,7 @@ type TpvScene3DPlanets=class;
        function GetPosition(const aNormal:TpvVector3):TpvVector3; overload;
        procedure GetPositionAndNormal(const aUV:TpvVector2;out aOutPosition,aOutNormal:TpvVector3); overload;
        procedure GetPositionAndNormal(const aNormal:TpvVector3;out aOutPosition,aOutNormal:TpvVector3); overload;
+       function GetBrushesTexturesDescriptorImageInfos:TVkDescriptorImageInfoArray;
        function GetGrass(const aUV:TpvVector2):TpvScalar; overload;
        function GetGrass(const aNormal:TpvVector3):TpvScalar; overload;
        function GetPrecipitation(const aUV:TpvVector2):TpvScalar; overload;
@@ -2935,6 +2938,12 @@ function LoadBrushesFromAsset(const aAssetPath:TpvUTF8String;out aBrushes:TpvSce
 
 procedure SaveBrushesToStream(const aStream:TStream;const aBrushes:TpvScene3DPlanet.TBrushes);
 procedure SaveBrushesToAsset(const aAssetPath:TpvUTF8String;const aBrushes:TpvScene3DPlanet.TBrushes);
+
+function LoadSmoothedBrushesFromStream(const aStream:TStream;out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes):boolean;
+function LoadSmoothedBrushesFromAsset(const aAssetPath:TpvUTF8String;out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes):boolean;
+
+procedure SaveSmoothedBrushesToStream(const aStream:TStream;const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes);
+procedure SaveSmoothedBrushesToAsset(const aAssetPath:TpvUTF8String;const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes);
 
 procedure BrushesToUsedBrushes(const aBrushes:TpvScene3DPlanet.TBrushes;out aUsedBrushes:TpvScene3DPlanet.TUsedBrushes);
 
@@ -3236,6 +3245,76 @@ begin
  Stream:=TMemoryStream.Create;
  try
   SaveBrushesToStream(Stream,aBrushes);
+  Stream.SaveToFile(RealFilePath);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+function LoadSmoothedBrushesFromStream(const aStream:TStream;out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes):boolean;
+var OutStream:TMemoryStream;
+begin
+ OutStream:=TMemoryStream.Create;
+ try
+  if DecompressStream(aStream,OutStream) then begin
+   if OutStream.Size=SizeOf(TpvScene3DPlanet.TSmoothedBrushes) then begin
+    OutStream.Seek(0,soBeginning);
+    OutStream.Read(aSmoothedBrushes,SizeOf(TpvScene3DPlanet.TSmoothedBrushes));
+    result:=true;
+   end else begin
+    FillChar(aSmoothedBrushes,SizeOf(TpvScene3DPlanet.TSmoothedBrushes),#0);
+    result:=false;
+   end;
+  end else begin
+   FillChar(aSmoothedBrushes,SizeOf(TpvScene3DPlanet.TSmoothedBrushes),#0);
+   result:=false;
+  end;
+ finally
+  FreeAndNil(OutStream);
+ end;
+end;
+
+function LoadSmoothedBrushesFromAsset(const aAssetPath:TpvUTF8String;out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes):boolean;
+var Stream:TStream;
+begin
+ if pvApplication.Assets.ExistAsset(aAssetPath) then begin
+  Stream:=pvApplication.Assets.GetAssetStream(aAssetPath);
+  try
+   result:=LoadSmoothedBrushesFromStream(Stream,aSmoothedBrushes);
+  finally
+   FreeAndNil(Stream);
+  end;
+ end else begin
+  FillChar(aSmoothedBrushes,SizeOf(TpvScene3DPlanet.TSmoothedBrushes),#0);
+  result:=false;
+ end;
+end;
+
+procedure SaveSmoothedBrushesToStream(const aStream:TStream;const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes);
+var OutStream:TMemoryStream;
+begin
+ OutStream:=TMemoryStream.Create;
+ try
+  OutStream.Write(aSmoothedBrushes,SizeOf(TpvScene3DPlanet.TSmoothedBrushes));
+  OutStream.Seek(0,soBeginning);
+  if not CompressStream(OutStream,aStream,TpvCompressionMethod.LZBRRC,5,0) then begin
+   if not CompressStream(OutStream,aStream,TpvCompressionMethod.None,5,0) then begin
+    Assert(false);
+   end;
+  end;
+ finally
+  FreeAndNil(OutStream);
+ end;
+end;
+
+procedure SaveSmoothedBrushesToAsset(const aAssetPath:TpvUTF8String;const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes);
+var RealFilePath:TpvUTF8String;
+    Stream:TMemoryStream;
+begin
+ RealFilePath:=IncludeTrailingPathDelimiter(pvApplication.Assets.BasePath)+aAssetPath;
+ Stream:=TMemoryStream.Create;
+ try
+  SaveSmoothedBrushesToStream(Stream,aSmoothedBrushes);
   Stream.SaveToFile(RealFilePath);
  finally
   FreeAndNil(Stream);
@@ -10708,7 +10787,7 @@ begin
                                   0);
   fDescriptorSetLayout.AddBinding(1,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                  1,
+                                  16,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
@@ -10725,7 +10804,7 @@ begin
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                   1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
   fDescriptorPool.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TBlendMapModification.fDescriptorPool');
@@ -10743,11 +10822,9 @@ begin
                                       false);
   fDescriptorSet.WriteToDescriptorSet(1,
                                       0,
-                                      1,
+                                      16,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      fPlanet.GetBrushesTexturesDescriptorImageInfos,
                                       [],
                                       [],
                                       false);
@@ -11816,7 +11893,7 @@ begin
                                   0);
   fDescriptorSetLayout.AddBinding(1,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                  1,
+                                  16,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
@@ -11833,7 +11910,7 @@ begin
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                   1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
   fDescriptorPool.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TGrassMapModification.fDescriptorPool');
@@ -11851,11 +11928,9 @@ begin
                                       false);
   fDescriptorSet.WriteToDescriptorSet(1,
                                       0,
-                                      1,
+                                      16,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      fPlanet.GetBrushesTexturesDescriptorImageInfos,
                                       [],
                                       [],
                                       false);
@@ -12183,7 +12258,7 @@ begin
                                   0);
   fDescriptorSetLayout.AddBinding(1,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                  1,
+                                  16,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
@@ -12200,7 +12275,7 @@ begin
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                   1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
   fDescriptorPool.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TPrecipitationMapModification.fDescriptorPool');
@@ -12218,11 +12293,9 @@ begin
                                       false);
   fDescriptorSet.WriteToDescriptorSet(1,
                                       0,
-                                      1,
+                                      16,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      fPlanet.GetBrushesTexturesDescriptorImageInfos,
                                       [],
                                       [],
                                       false);
@@ -13158,7 +13231,7 @@ begin
                                   0);
   fDescriptorSetLayout.AddBinding(1,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                  1,
+                                  16,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
@@ -13175,7 +13248,7 @@ begin
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                   1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
   fDescriptorPool.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TAtmosphereMapModification.fDescriptorPool');
@@ -13193,11 +13266,9 @@ begin
                                       false);
   fDescriptorSet.WriteToDescriptorSet(1,
                                       0,
-                                      1,
+                                      16,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      fPlanet.GetBrushesTexturesDescriptorImageInfos,
                                       [],
                                       [],
                                       false);
@@ -15624,7 +15695,7 @@ begin
                                   0);
   fDescriptorSetLayout.AddBinding(2,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                  1,
+                                  16,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
@@ -15642,7 +15713,7 @@ begin
                                                   1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
   fDescriptorPool.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.THeightMapModification.fDescriptorPool');
 
@@ -15669,11 +15740,9 @@ begin
                                       false);
   fDescriptorSet.WriteToDescriptorSet(2,
                                       0,
-                                      1,
+                                      16,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      fPlanet.GetBrushesTexturesDescriptorImageInfos,
                                       [],
                                       [],
                                       false);    
@@ -24540,6 +24609,7 @@ end;
 
 constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aBrushes:TpvScene3DPlanet.TBrushes;
+                                    const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes;
                                     const aHeightMapResolution:TpvInt32;
                                     const aVisualResolution:TpvSizeInt;
                                     const aPhysicsResolution:TpvSizeInt;
@@ -24597,14 +24667,12 @@ begin
 
  fBrushes:=aBrushes;
 
- fSmoothedBrushes[0]:=fBrushes;
-
-// SmoothBrushes;
+ fSmoothedBrushes:=aSmoothedBrushes;
 
  for Index:=Low(TBrushes) to High(TBrushes) do begin
   for y:=0 to 255 do begin
    for x:=0 to 255 do begin
-    fRGBABrushes[Index,255-y,x]:=(TpvUInt32(fBrushes[Index,y,x]) shl 24) or TpvUInt32($00ffffff);
+    fRGBABrushes[Index,255-y,x]:=(TpvUInt32(fSmoothedBrushes[0,Index,y,x]) shl 24) or TpvUInt32($00ffffff);
    end;
   end; 
  end;
@@ -24989,6 +25057,39 @@ begin
   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fBrushesTexture.Image');
   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fBrushesTexture.ImageView');
 
+  // Create array of 16 separate textures for smooth levels (for descriptor array)
+  for Index:=0 to 15 do begin
+   fBrushesTextures[Index]:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                              fVulkanUniversalQueue,
+                                                              fVulkanUniversalCommandBuffer,
+                                                              fVulkanUniversalFence,
+                                                              fVulkanUniversalQueue,
+                                                              fVulkanUniversalCommandBuffer,
+                                                              fVulkanUniversalFence,
+                                                              VK_FORMAT_R8_UNORM,
+                                                              VK_SAMPLE_COUNT_1_BIT,
+                                                              256,
+                                                              256,
+                                                              0,
+                                                              256,
+                                                              1,
+                                                              1,
+                                                              [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
+                                                              @fSmoothedBrushes[Index],
+                                                              SizeOf(TpvScene3DPlanet.TBrushes),
+                                                              false,
+                                                              false,
+                                                              0,
+                                                              true,
+                                                              false,
+                                                              false,
+                                                              0);
+   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTextures[Index].Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fBrushesTextures['+IntToStr(Index)+'].Image');
+   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTextures[Index].ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fBrushesTextures['+IntToStr(Index)+'].ImageView');
+  end;
+
+  fBrushesTexturesDescriptorImageInfos:=nil;
+
   fRGBABrushesTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
                                                          fVulkanUniversalQueue,
                                                          fVulkanUniversalCommandBuffer,
@@ -25289,6 +25390,12 @@ destructor TpvScene3DPlanet.Destroy;
 var InFlightFrameIndex,Index:TpvSizeInt;
 begin
 
+ fBrushesTexturesDescriptorImageInfos:=nil;
+
+ for Index:=0 to 15 do begin
+  FreeAndNil(fBrushesTextures[Index]);
+ end;
+
  FreeAndNil(fBrushesTexture);
 
  FreeAndNil(fRGBABrushesTexture);
@@ -25547,16 +25654,19 @@ begin
  end;
 end;
 
-procedure TpvScene3DPlanet.SmoothBrushesParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+procedure TpvScene3DPlanetSmoothBrushesParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
 const StartRadius=4.0;
       RadiusDelta=1.5787528837; // Calculated to reach effective 64px after 15 progressive steps
 var SmoothLevel,BrushIndex,x,y,kx,ky:TpvInt32;
     Radius,Sigma,Sum,Weight:TpvFloat;
-    TempBrush,SourceBrush,TargetBrush:PBrush;
+    TempBrush,SourceBrush,TargetBrush:TpvScene3DPlanet.PBrush;
     KernelRadius:TpvInt32;
+    SmoothedBrushes:TpvScene3DPlanet.PSmoothedBrushes;
 begin
 
- GetMem(TempBrush,SizeOf(TBrush));
+ SmoothedBrushes:=aData;
+
+ GetMem(TempBrush,SizeOf(TpvScene3DPlanet.TBrush));
  try
 
   // Progressive blur: each level applies blur to the previous level
@@ -25572,8 +25682,8 @@ begin
     Sigma:=Radius/3.0; // Standard deviation for Gaussian blur
     KernelRadius:=Ceil(Radius);
 
-    SourceBrush:=@fSmoothedBrushes[SmoothLevel-1,BrushIndex];
-    TargetBrush:=@fSmoothedBrushes[SmoothLevel,BrushIndex];
+    SourceBrush:=@SmoothedBrushes^[SmoothLevel-1,BrushIndex];
+    TargetBrush:=@SmoothedBrushes^[SmoothLevel,BrushIndex];
 
     // First pass: horizontal blur into temp buffer from previous smooth level
     for y:=0 to 255 do begin
@@ -25623,15 +25733,15 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.SmoothBrushes;
+class procedure TpvScene3DPlanet.SmoothBrushes(out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes;const aBrushes:TpvScene3DPlanet.TBrushes);
 begin
- fSmoothedBrushes[0]:=fBrushes;
+ aSmoothedBrushes[0]:=aBrushes;
  pvApplication.PasMPInstance.Invoke(
   pvApplication.PasMPInstance.ParallelFor(
-   nil,
+   @aSmoothedBrushes[0],
    0,
    255,
-   SmoothBrushesParallelForMethod,
+   TpvScene3DPlanetSmoothBrushesParallelForMethod,
    1,
    PasMPDefaultDepth,
    nil,
@@ -28955,6 +29065,20 @@ begin
  finally
   fLock.ReleaseRead;
  end;
+end;
+
+function TpvScene3DPlanet.GetBrushesTexturesDescriptorImageInfos:TVkDescriptorImageInfoArray;
+var Index:TpvSizeInt;
+begin
+ if length(fBrushesTexturesDescriptorImageInfos)=0 then begin
+  SetLength(fBrushesTexturesDescriptorImageInfos,16);
+  for Index:=0 to 15 do begin
+   fBrushesTexturesDescriptorImageInfos[Index]:=TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                              fBrushesTextures[Index].ImageView.Handle,
+                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  end;
+ end;
+ result:=fBrushesTexturesDescriptorImageInfos;
 end;
 
 end.
