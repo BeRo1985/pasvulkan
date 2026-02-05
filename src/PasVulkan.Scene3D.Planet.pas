@@ -24599,7 +24599,7 @@ begin
 
  fSmoothedBrushes[0]:=fBrushes;
 
- SmoothBrushes;
+// SmoothBrushes;
 
  for Index:=Low(TBrushes) to High(TBrushes) do begin
   for y:=0 to 255 do begin
@@ -24973,12 +24973,12 @@ begin
                                                      256,
                                                      256,
                                                      0,
-                                                     256*16,
+                                                     256,
                                                      1,
                                                      1,
                                                      [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
-                                                     @fSmoothedBrushes,
-                                                     SizeOf(TpvScene3DPlanet.TSmoothedBrushes),
+                                                     @fBrushes,
+                                                     SizeOf(TpvScene3DPlanet.TBrushes),
                                                      false,
                                                      false,
                                                      0,
