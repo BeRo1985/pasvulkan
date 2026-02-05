@@ -296,6 +296,8 @@ type TpvScene3DPlanets=class;
             PBrush=^TBrush;
             TBrushes=array[0..255] of TBrush;
             PBrushes=^TBrushes;
+            TSmoothedBrushes=array[0..15] of TBrushes;
+            PSmoothedBrushes=^TSmoothedBrushes;
             TRGBABrush=array[0..255,0..255] of TpvUInt32;
             PRGBABrush=^TRGBABrush;
             TRGBABrushes=array[0..255] of TRGBABrush;
@@ -2683,7 +2685,8 @@ type TpvScene3DPlanets=class;
        fImageRowChanged:array[0..16384-1] of boolean; // 16k is overkill anyway, better too much than too less
        fImageRowBufferCopy:array[0..8192-1] of TVkBufferImageCopy; // 16k / 2, since contiguous rows are merged into one copy operation
        fAtmosphere:TObject;
-       fBrushes:TpvScene3DPlanet.TBrushes; 
+       fBrushes:TpvScene3DPlanet.TBrushes;
+       fSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes;
        fBrushesTexture:TpvVulkanTexture;       
        fRGBABrushes:TpvScene3DPlanet.TRGBABrushes; 
        fRGBABrushesTexture:TpvVulkanTexture;
@@ -2718,6 +2721,8 @@ type TpvScene3DPlanets=class;
                                      out aCountMeshLODLevels:TpvSizeInt;
                                      out aMeshLODOffsets:TpvScene3DPlanet.TSizeIntArray;
                                      out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
+       procedure SmoothBrushesParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure SmoothBrushes;
       public
        constructor Create(const aScene3D:TObject;
                           const aBrushes:TpvScene3DPlanet.TBrushes; 
@@ -24592,6 +24597,10 @@ begin
 
  fBrushes:=aBrushes;
 
+ fSmoothedBrushes[0]:=fBrushes;
+
+ SmoothBrushes;
+
  for Index:=Low(TBrushes) to High(TBrushes) do begin
   for y:=0 to 255 do begin
    for x:=0 to 255 do begin
@@ -24964,12 +24973,12 @@ begin
                                                      256,
                                                      256,
                                                      0,
-                                                     256,
+                                                     256*16,
                                                      1,
                                                      1,
                                                      [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
-                                                     @fBrushes,
-                                                     SizeOf(TpvScene3DPlanet.TBrushes),
+                                                     @fSmoothedBrushes,
+                                                     SizeOf(TpvScene3DPlanet.TSmoothedBrushes),
                                                      false,
                                                      false,
                                                      0,
@@ -25536,6 +25545,104 @@ begin
  end else begin
   result:=false;
  end;
+end;
+
+procedure TpvScene3DPlanet.SmoothBrushesParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+const StartRadius=4.0;
+      RadiusDelta=1.5787528837; // Calculated to reach effective 64px after 15 progressive steps
+var SmoothLevel,BrushIndex,x,y,kx,ky:TpvInt32;
+    Radius,Sigma,Sum,Weight:TpvFloat;
+    TempBrush,SourceBrush,TargetBrush:PBrush;
+    KernelRadius:TpvInt32;
+begin
+
+ GetMem(TempBrush,SizeOf(TBrush));
+ try
+
+  // Progressive blur: each level applies blur to the previous level
+  // Outer loop by brush for parallelization with PasMP
+  for BrushIndex:=aFromIndex to aToIndex do begin
+
+   // Generate 15 smoothed versions (indices 1-15, index 0 is already the original)
+   for SmoothLevel:=1 to 15 do begin
+
+    // Progressive linear radius: 4, 5.58, 7.16, 8.74, 10.31, ... 26.10 pixels
+    // Effective cumulative: 4, 6.87, 9.92, 13.22, ... 64.0 pixels
+    Radius:=StartRadius+((SmoothLevel-1)*RadiusDelta);
+    Sigma:=Radius/3.0; // Standard deviation for Gaussian blur
+    KernelRadius:=Ceil(Radius);
+
+    SourceBrush:=@fSmoothedBrushes[SmoothLevel-1,BrushIndex];
+    TargetBrush:=@fSmoothedBrushes[SmoothLevel,BrushIndex];
+
+    // First pass: horizontal blur into temp buffer from previous smooth level
+    for y:=0 to 255 do begin
+     for x:=0 to 255 do begin
+      Sum:=0.0;
+      Weight:=0.0;
+      for kx:=-KernelRadius to KernelRadius do begin
+       if ((x+kx)>=0) and ((x+kx)<=255) then begin
+        Weight:=Weight+Exp(-Sqr(kx)/(2.0*Sqr(Sigma)));
+        Sum:=Sum+(SourceBrush^[y,x+kx]*Exp(-Sqr(kx)/(2.0*Sqr(Sigma))));
+       end;
+      end;
+      if Weight>0.0 then begin
+       TempBrush^[y,x]:=Min(Max(Round(Sum/Weight),0),255);
+      end else begin
+       TempBrush^[y,x]:=SourceBrush^[y,x];
+      end;
+     end;
+    end;
+
+    // Second pass: vertical blur from temp buffer to final smoothed brush
+    for y:=0 to 255 do begin
+     for x:=0 to 255 do begin
+      Sum:=0.0;
+      Weight:=0.0;
+      for ky:=-KernelRadius to KernelRadius do begin
+       if ((y+ky)>=0) and ((y+ky)<=255) then begin
+        Weight:=Weight+Exp(-Sqr(ky)/(2.0*Sqr(Sigma)));
+        Sum:=Sum+(TempBrush^[y+ky,x]*Exp(-Sqr(ky)/(2.0*Sqr(Sigma))));
+       end;
+      end;
+      if Weight>0.0 then begin
+       TargetBrush^[y,x]:=Min(Max(Round(Sum/Weight),0),255);
+      end else begin
+       TargetBrush^[y,x]:=TempBrush^[y,x];
+      end;
+     end;
+    end;
+
+   end;
+
+  end;
+
+ finally
+  FreeMem(TempBrush);
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.SmoothBrushes;
+begin
+ fSmoothedBrushes[0]:=fBrushes;
+ pvApplication.PasMPInstance.Invoke(
+  pvApplication.PasMPInstance.ParallelFor(
+   nil,
+   0,
+   255,
+   SmoothBrushesParallelForMethod,
+   1,
+   PasMPDefaultDepth,
+   nil,
+   0,
+   0,
+   0,
+   false,
+   PasMPAffinityMaskAll,
+   PasMPAffinityMaskNone
+  )
+ );
 end;
 
 procedure TpvScene3DPlanet.GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
