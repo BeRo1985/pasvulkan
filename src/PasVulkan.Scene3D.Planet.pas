@@ -110,6 +110,9 @@ type TpvScene3DPlanets=class;
        const CountBlendMapLayers=2; // with each four values
              MaximumCountRainDrops=65536; // must be power of two
              DefaultCountRainDrops=4096; // must be power of two
+             CountBrushes=256;
+             BrushSize=256;
+             BrushSmoothLevels=16;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
@@ -292,19 +295,19 @@ type TpvScene3DPlanets=class;
             end;
             PWaterModificationItem=^TWaterModificationItem;
             TWaterModificationItems=array[0..MaxInFlightFrames-1] of TWaterModificationItem;
-            TBrush=array[0..255,0..255] of TpvUInt8;
+            TBrush=array[0..TpvScene3DPlanet.BrushSize-1,0..TpvScene3DPlanet.BrushSize-1] of TpvUInt8;
             PBrush=^TBrush;
-            TFloatBrush=array[0..255,0..255] of TpvFloat;
+            TFloatBrush=array[0..TpvScene3DPlanet.BrushSize-1,0..TpvScene3DPlanet.BrushSize-1] of TpvFloat;
             PFloatBrush=^TFloatBrush;
-            TBrushes=array[0..255] of TBrush;
+            TBrushes=array[0..TpvScene3DPlanet.CountBrushes-1] of TBrush;
             PBrushes=^TBrushes;
-            TSmoothedBrushes=array[0..15] of TBrushes;
+            TSmoothedBrushes=array[0..TpvScene3DPlanet.BrushSmoothLevels-1] of TBrushes;
             PSmoothedBrushes=^TSmoothedBrushes;
-            TRGBABrush=array[0..255,0..255] of TpvUInt32;
+            TRGBABrush=array[0..TpvScene3DPlanet.BrushSize-1,0..TpvScene3DPlanet.BrushSize-1] of TpvUInt32;
             PRGBABrush=^TRGBABrush;
-            TRGBABrushes=array[0..255] of TRGBABrush;
+            TRGBABrushes=array[0..TpvScene3DPlanet.CountBrushes-1] of TRGBABrush;
             PRGBABrushes=^TRGBABrushes;
-            TUsedBrushes=array[0..255] of Boolean;
+            TUsedBrushes=array[0..TpvScene3DPlanet.CountBrushes-1] of Boolean;
             PUsedBrushes=^TUsedBrushes;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
@@ -2966,9 +2969,9 @@ var Index,y:TpvSizeInt;
 begin
  GetMem(NewBrushes,SizeOf(TpvScene3DPlanet.TBrushes));
  try
-  for Index:=0 to 255 do begin
-   for y:=0 to 255 do begin
-    NewBrushes^[Index,y]:=aBrushes[Index,255-y];
+  for Index:=0 to TpvScene3DPlanet.CountBrushes-1 do begin
+   for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+    NewBrushes^[Index,y]:=aBrushes[Index,TpvScene3DPlanet.BrushSize-(y+1)];
    end;
   end;
   aBrushes:=NewBrushes^;
@@ -3024,15 +3027,15 @@ begin
        inc(m8);
       end;
      end;
-     if (PNGWidth<>256) or (PNGHeight<>256) then begin
-      GetMem(p8,256*256);
-      ResizeR8(PixelData,PNGWidth,PNGHeight,p8,256,256);
+     if (PNGWidth<>TpvScene3DPlanet.BrushSize) or (PNGHeight<>TpvScene3DPlanet.BrushSize) then begin
+      GetMem(p8,TpvScene3DPlanet.BrushSize*TpvScene3DPlanet.BrushSize);
+      ResizeR8(PixelData,PNGWidth,PNGHeight,p8,TpvScene3DPlanet.BrushSize,TpvScene3DPlanet.BrushSize);
       FreeMem(PixelData);
       PixelData:=p8;
-      PNGWidth:=256;
-      PNGHeight:=256;
+      PNGWidth:=TpvScene3DPlanet.BrushSize;
+      PNGHeight:=TpvScene3DPlanet.BrushSize;
      end;
-     Move(PixelData^,aBrushes[PNGIndex],256*256);
+     Move(PixelData^,aBrushes[PNGIndex],TpvScene3DPlanet.BrushSize*TpvScene3DPlanet.BrushSize);
     end;    
    finally
     FreeMem(PNGData);
@@ -3121,15 +3124,15 @@ begin
         inc(m8);
        end;
       end;
-      if QOIWidth<>256 then begin
-       GetMem(p8,256*256);
-       ResizeR8(PixelData,QOIWidth,QOIHeight,p8,256,256);
+      if QOIWidth<>TpvScene3DPlanet.BrushSize then begin
+       GetMem(p8,TpvScene3DPlanet.BrushSize*TpvScene3DPlanet.BrushSize);
+       ResizeR8(PixelData,QOIWidth,QOIHeight,p8,TpvScene3DPlanet.BrushSize,TpvScene3DPlanet.BrushSize);
        FreeMem(PixelData);
        PixelData:=p8;
-       QOIWidth:=256;
-       QOIHeight:=256;
+       QOIWidth:=TpvScene3DPlanet.BrushSize;
+       QOIHeight:=TpvScene3DPlanet.BrushSize;
       end;
-      Move(PixelData^,aBrushes[QOIIndex],256*256);
+      Move(PixelData^,aBrushes[QOIIndex],TpvScene3DPlanet.BrushSize*TpvScene3DPlanet.BrushSize);
      end;
     end;
    finally
@@ -3328,11 +3331,11 @@ var Index,x,y:TpvUInt32;
     Used:Boolean;
     Brush:TpvScene3DPlanet.PBrush;
 begin
- for Index:=0 to 255 do begin
+ for Index:=0 to TpvScene3DPlanet.CountBrushes-1 do begin
   Used:=false;
   Brush:=@aBrushes[Index];
-  for y:=0 to 255 do begin
-   for x:=0 to 255 do begin
+  for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+   for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
     if Brush^[y,x]<>0 then begin
      Used:=true;
      break;
@@ -24672,10 +24675,10 @@ begin
 
  fSmoothedBrushes:=aSmoothedBrushes;
 
- for Index:=Low(TBrushes) to High(TBrushes) do begin
-  for y:=0 to 255 do begin
-   for x:=0 to 255 do begin
-    fRGBABrushes[Index,255-y,x]:=(TpvUInt32(fSmoothedBrushes[0,Index,y,x]) shl 24) or TpvUInt32($00ffffff);
+ for Index:=0 to TpvScene3DPlanet.CountBrushes-1 do begin 
+  for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+   for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+    fRGBABrushes[Index,TpvScene3DPlanet.BrushSize-(y+1),x]:=(TpvUInt32(fSmoothedBrushes[0,Index,y,x]) shl 24) or TpvUInt32($00ffffff);
    end;
   end; 
  end;
@@ -25041,10 +25044,10 @@ begin
                                                      fVulkanUniversalFence,
                                                      VK_FORMAT_R8_UNORM,
                                                      VK_SAMPLE_COUNT_1_BIT,
-                                                     256,
-                                                     256,
+                                                     TpvScene3DPlanet.BrushSize,
+                                                     TpvScene3DPlanet.BrushSize,
                                                      0,
-                                                     256,
+                                                     TpvScene3DPlanet.CountBrushes,
                                                      1,
                                                      1,
                                                      [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
@@ -25071,10 +25074,10 @@ begin
                                                               fVulkanUniversalFence,
                                                               VK_FORMAT_R8_UNORM,
                                                               VK_SAMPLE_COUNT_1_BIT,
-                                                              256,
-                                                              256,
+                                                              TpvScene3DPlanet.BrushSize,
+                                                              TpvScene3DPlanet.BrushSize,
                                                               0,
-                                                              256,
+                                                              TpvScene3DPlanet.CountBrushes,
                                                               1,
                                                               1,
                                                               [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
@@ -25102,10 +25105,10 @@ begin
                                                          fVulkanUniversalFence,
                                                          VK_FORMAT_R8G8B8A8_UNORM,
                                                          VK_SAMPLE_COUNT_1_BIT,
-                                                         256,
-                                                         256,
+                                                         TpvScene3DPlanet.BrushSize,
+                                                         TpvScene3DPlanet.BrushSize,
                                                          0,
-                                                         256,
+                                                         TpvScene3DPlanet.CountBrushes,
                                                          1,
                                                          1,
                                                          [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
@@ -25693,14 +25696,14 @@ begin
     // Find the maximum height in the original brush for normalization (optional, can be skipped if not needed)
     MaxHeight:=0.0;
     SourceBrush:=@SmoothedBrushes^[0,BrushIndex];
-    for y:=0 to 255 do begin
-     for x:=0 to 255 do begin
+    for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+     for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
       MaxHeight:=Max(MaxHeight,SourceBrush^[y,x]*OneOver255);
      end;
     end;
     
     // Generate 15 smoothed versions (indices 1-15, index 0 is already the original)
-    for SmoothLevel:=1 to 15 do begin
+    for SmoothLevel:=1 to TpvScene3DPlanet.BrushSmoothLevels-1 do begin
 
      // Progressive linear radius: 4, 5.58, 7.16, 8.74, 10.31, ... 26.10 pixels
      // Effective cumulative: 4, 6.87, 9.92, 13.22, ... 64.0 pixels
@@ -25716,13 +25719,13 @@ begin
      end;
 
      // First pass: horizontal blur into temp buffer from previous smooth level
-     for y:=0 to 255 do begin
-      for x:=0 to 255 do begin
+     for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+      for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
        Sum:=0.0;
        SumWeight:=0.0;
        for kx:=-KernelRadius to KernelRadius do begin
         Weight:=Kernel[abs(kx)];
-        if ((x+kx)>=0) and ((x+kx)<=255) then begin
+        if ((x+kx)>=0) and ((x+kx)<=TpvScene3DPlanet.BrushSize) then begin
          Sum:=Sum+((SourceBrush^[y,x+kx]*OneOver255)*Weight);
         end;
         SumWeight:=SumWeight+Weight;
@@ -25736,13 +25739,13 @@ begin
      end;
 
      // Second pass: vertical blur from temp buffer to final smoothed brush
-     for y:=0 to 255 do begin
-      for x:=0 to 255 do begin
+     for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+      for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
        Sum:=0.0;
        SumWeight:=0.0;
        for ky:=-KernelRadius to KernelRadius do begin
         Weight:=Kernel[abs(ky)];
-        if ((y+ky)>=0) and ((y+ky)<=255) then begin
+        if ((y+ky)>=0) and ((y+ky)<=TpvScene3DPlanet.BrushSize) then begin
          Sum:=Sum+(TempBrush^[y+ky,x]*Weight);
         end;
         SumWeight:=SumWeight+Weight;
@@ -25757,8 +25760,8 @@ begin
 
      // Third pass: Find the maximum height in the smoothed brush for normalization
      LocalMaxHeight:=0.0;
-     for y:=0 to 255 do begin
-      for x:=0 to 255 do begin
+     for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+      for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
        LocalMaxHeight:=Max(LocalMaxHeight,OtherTempBrush^[y,x]); 
       end;
      end;  
@@ -25766,14 +25769,14 @@ begin
      // Fourth pass: Normalize the smoothed brush to the original maximum height
      if LocalMaxHeight>0.0 then begin
       Factor:=MaxHeight/LocalMaxHeight;
-      for y:=0 to 255 do begin
-       for x:=0 to 255 do begin
+      for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+       for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
         TargetBrush^[y,x]:=Min(Max(round((OtherTempBrush^[y,x]*Factor)*255.0),0),255);
        end;
       end;
      end else begin
-      for y:=0 to 255 do begin
-       for x:=0 to 255 do begin
+      for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+       for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
         TargetBrush^[y,x]:=Min(Max(round(OtherTempBrush^[y,x]*255.0),0),255);
        end;
       end;
@@ -25800,7 +25803,7 @@ begin
   pvApplication.PasMPInstance.ParallelFor(
    @aSmoothedBrushes[0],
    0,
-   255,
+   TpvScene3DPlanet.CountBrushes-1,
    TpvScene3DPlanetSmoothBrushesParallelForMethod,
    1,
    PasMPDefaultDepth,
