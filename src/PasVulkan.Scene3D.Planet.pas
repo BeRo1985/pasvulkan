@@ -25661,8 +25661,8 @@ const StartRadius=4.0;
       RadiusDelta=1.5787528837; // Calculated to reach effective 64px after 15 progressive steps  #
       OneOver255=1.0/255.0;
 var SmoothLevel,BrushIndex,x,y,kx,ky,Index:TpvInt32;
-    Radius,Sigma,Sum,SumWeight,Weight:TpvFloat;
-    TempBrush:TpvScene3DPlanet.PFloatBrush;
+    Radius,Sigma,Sum,SumWeight,Weight,MaxHeight,LocalMaxHeight,Factor:TpvFloat;
+    TempBrush,OtherTempBrush:TpvScene3DPlanet.PFloatBrush;
     SourceBrush,TargetBrush:TpvScene3DPlanet.PBrush;
     KernelRadius:TpvInt32;
     SmoothedBrushes:TpvScene3DPlanet.PSmoothedBrushes;
@@ -25674,68 +25674,108 @@ begin
  GetMem(TempBrush,SizeOf(TpvScene3DPlanet.TFloatBrush));
  try
 
-  // Progressive blur: each level applies blur to the previous level
-  // Outer loop by brush for parallelization with PasMP
-  for BrushIndex:=aFromIndex to aToIndex do begin
+  GetMem(OtherTempBrush,SizeOf(TpvScene3DPlanet.TFloatBrush));
+  try
 
-   // Generate 15 smoothed versions (indices 1-15, index 0 is already the original)
-   for SmoothLevel:=1 to 15 do begin
+   // Progressive blur: each level applies blur to the previous level
+   // Outer loop by brush for parallelization with PasMP
+   for BrushIndex:=aFromIndex to aToIndex do begin
 
-    // Progressive linear radius: 4, 5.58, 7.16, 8.74, 10.31, ... 26.10 pixels
-    // Effective cumulative: 4, 6.87, 9.92, 13.22, ... 64.0 pixels
-    Radius:=StartRadius+((SmoothLevel-1)*RadiusDelta);
-    Sigma:=Radius/3.0; // Standard deviation for Gaussian blur
-    KernelRadius:=Ceil(Radius);
-
-    SourceBrush:=@SmoothedBrushes^[SmoothLevel-1,BrushIndex];
-    TargetBrush:=@SmoothedBrushes^[SmoothLevel,BrushIndex];
-
-    for Index:=0 to KernelRadius do begin
-     Kernel[Index]:=Exp(-Sqr(Index)/(2.0*Sqr(Sigma)));
-    end;
-
-    // First pass: horizontal blur into temp buffer from previous smooth level
+    // Find the maximum height in the original brush for normalization (optional, can be skipped if not needed)
+    MaxHeight:=0.0;
+    SourceBrush:=@SmoothedBrushes^[0,BrushIndex];
     for y:=0 to 255 do begin
      for x:=0 to 255 do begin
-      Sum:=0.0;
-      SumWeight:=0.0;
-      for kx:=-KernelRadius to KernelRadius do begin
-       Weight:=Kernel[abs(kx)];
-       if ((x+kx)>=0) and ((x+kx)<=255) then begin
-        Sum:=Sum+((SourceBrush^[y,x+kx]*OneOver255)*Weight);
-       end;
-       SumWeight:=SumWeight+Weight;
-      end;
-      if SumWeight>0.0 then begin
-       TempBrush^[y,x]:=Min(Max(Sum/SumWeight,0.0),1.0);
-      end else begin
-       TempBrush^[y,x]:=SourceBrush^[y,x];
-      end;
+      MaxHeight:=Max(MaxHeight,SourceBrush^[y,x]*OneOver255);
      end;
     end;
+    
+    // Generate 15 smoothed versions (indices 1-15, index 0 is already the original)
+    for SmoothLevel:=1 to 15 do begin
 
-    // Second pass: vertical blur from temp buffer to final smoothed brush
-    for y:=0 to 255 do begin
-     for x:=0 to 255 do begin
-      Sum:=0.0;
-      SumWeight:=0.0;
-      for ky:=-KernelRadius to KernelRadius do begin
-       Weight:=Kernel[abs(ky)];
-       if ((y+ky)>=0) and ((y+ky)<=255) then begin
-        Sum:=Sum+(TempBrush^[y+ky,x]*Weight);
+     // Progressive linear radius: 4, 5.58, 7.16, 8.74, 10.31, ... 26.10 pixels
+     // Effective cumulative: 4, 6.87, 9.92, 13.22, ... 64.0 pixels
+     Radius:=StartRadius+((SmoothLevel-1)*RadiusDelta);
+     Sigma:=Radius/3.0; // Standard deviation for Gaussian blur
+     KernelRadius:=Ceil(Radius);
+
+     SourceBrush:=@SmoothedBrushes^[SmoothLevel-1,BrushIndex];
+     TargetBrush:=@SmoothedBrushes^[SmoothLevel,BrushIndex];
+
+     for Index:=0 to KernelRadius do begin
+      Kernel[Index]:=Exp(-Sqr(Index)/(2.0*Sqr(Sigma)));
+     end;
+
+     // First pass: horizontal blur into temp buffer from previous smooth level
+     for y:=0 to 255 do begin
+      for x:=0 to 255 do begin
+       Sum:=0.0;
+       SumWeight:=0.0;
+       for kx:=-KernelRadius to KernelRadius do begin
+        Weight:=Kernel[abs(kx)];
+        if ((x+kx)>=0) and ((x+kx)<=255) then begin
+         Sum:=Sum+((SourceBrush^[y,x+kx]*OneOver255)*Weight);
+        end;
+        SumWeight:=SumWeight+Weight;
        end;
-       SumWeight:=SumWeight+Weight;
-      end;
-      if SumWeight>0.0 then begin
-       TargetBrush^[y,x]:=Min(Max(Round((Sum/SumWeight)*255.0),0),255);
-      end else begin
-       TargetBrush^[y,x]:=Min(Max(Round(TempBrush^[y,x]*255.0),0),255);
+       if SumWeight>0.0 then begin
+        TempBrush^[y,x]:=Min(Max(Sum/SumWeight,0.0),1.0);
+       end else begin
+        TempBrush^[y,x]:=SourceBrush^[y,x];
+       end;
       end;
      end;
+
+     // Second pass: vertical blur from temp buffer to final smoothed brush
+     for y:=0 to 255 do begin
+      for x:=0 to 255 do begin
+       Sum:=0.0;
+       SumWeight:=0.0;
+       for ky:=-KernelRadius to KernelRadius do begin
+        Weight:=Kernel[abs(ky)];
+        if ((y+ky)>=0) and ((y+ky)<=255) then begin
+         Sum:=Sum+(TempBrush^[y+ky,x]*Weight);
+        end;
+        SumWeight:=SumWeight+Weight;
+       end;
+       if SumWeight>0.0 then begin
+        OtherTempBrush^[y,x]:=Min(Max(Sum/SumWeight,0.0),1.0);
+       end else begin
+        OtherTempBrush^[y,x]:=Min(Max(TempBrush^[y,x],0.0),1.0);
+       end;
+      end;
+     end;
+
+     // Third pass: Find the maximum height in the smoothed brush for normalization
+     LocalMaxHeight:=0.0;
+     for y:=0 to 255 do begin
+      for x:=0 to 255 do begin
+       LocalMaxHeight:=Max(LocalMaxHeight,OtherTempBrush^[y,x]); 
+      end;
+     end;  
+
+     // Fourth pass: Normalize the smoothed brush to the original maximum height
+     if LocalMaxHeight>0.0 then begin
+      Factor:=MaxHeight/LocalMaxHeight;
+      for y:=0 to 255 do begin
+       for x:=0 to 255 do begin
+        TargetBrush^[y,x]:=Min(Max(round((OtherTempBrush^[y,x]*Factor)*255.0),0),255);
+       end;
+      end;
+     end else begin
+      for y:=0 to 255 do begin
+       for x:=0 to 255 do begin
+        TargetBrush^[y,x]:=Min(Max(round(OtherTempBrush^[y,x]*255.0),0),255);
+       end;
+      end;
+     end;
+
     end;
 
    end;
 
+  finally
+   FreeMem(OtherTempBrush);
   end;
 
  finally
