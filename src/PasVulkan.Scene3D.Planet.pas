@@ -2690,9 +2690,7 @@ type TpvScene3DPlanets=class;
        fImageRowChanged:array[0..16384-1] of boolean; // 16k is overkill anyway, better too much than too less
        fImageRowBufferCopy:array[0..8192-1] of TVkBufferImageCopy; // 16k / 2, since contiguous rows are merged into one copy operation
        fAtmosphere:TObject;
-       fBrushes:TpvScene3DPlanet.TBrushes;
-       fSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes;
-       fBrushesTexture:TpvVulkanTexture;       
+       fBrushesTexture:TpvVulkanTexture;
        fBrushesTextures:array[0..15] of TpvVulkanTexture;
        fBrushesTexturesDescriptorImageInfos:TVkDescriptorImageInfoArray;
        fRGBABrushes:TpvScene3DPlanet.TRGBABrushes; 
@@ -24671,14 +24669,10 @@ begin
 
  fQueuedDownloadLastTime:=0;
 
- fBrushes:=aBrushes;
-
- fSmoothedBrushes:=aSmoothedBrushes;
-
- for Index:=0 to TpvScene3DPlanet.CountBrushes-1 do begin 
+ for Index:=0 to TpvScene3DPlanet.CountBrushes-1 do begin
   for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
    for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
-    fRGBABrushes[Index,TpvScene3DPlanet.BrushSize-(y+1),x]:=(TpvUInt32(fSmoothedBrushes[0,Index,y,x]) shl 24) or TpvUInt32($00ffffff);
+    fRGBABrushes[Index,TpvScene3DPlanet.BrushSize-(y+1),x]:=(TpvUInt32(aSmoothedBrushes[0,Index,y,x]) shl 24) or TpvUInt32($00ffffff);
    end;
   end; 
  end;
@@ -25051,7 +25045,7 @@ begin
                                                      1,
                                                      1,
                                                      [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
-                                                     @fBrushes,
+                                                     @aBrushes,
                                                      SizeOf(TpvScene3DPlanet.TBrushes),
                                                      false,
                                                      false,
@@ -25081,7 +25075,7 @@ begin
                                                               1,
                                                               1,
                                                               [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
-                                                              @fSmoothedBrushes[Index],
+                                                              @aSmoothedBrushes[Index],
                                                               SizeOf(TpvScene3DPlanet.TBrushes),
                                                               false,
                                                               false,
