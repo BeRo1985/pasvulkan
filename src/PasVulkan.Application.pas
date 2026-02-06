@@ -1555,6 +1555,7 @@ type EpvApplication=class(Exception)
        fRelativeMouse:boolean;
        fHideSystemBars:boolean;
        fAcceptDragDropFiles:boolean;
+       fUseBreadcrumbs:boolean;
        fAndroidMouseTouchEvents:boolean;
        fAndroidTouchMouseEvents:boolean;
        fAndroidBlockOnPause:boolean;
@@ -2192,6 +2193,8 @@ type EpvApplication=class(Exception)
        property HideSystemBars:boolean read fHideSystemBars write fHideSystemBars;
 
        property AcceptDragDropFiles:boolean read fAcceptDragDropFiles write fAcceptDragDropFiles;
+
+       property UseBreadcrumbs:boolean read fUseBreadcrumbs write fUseBreadcrumbs;
 
        property DisplayOrientations:TpvApplicationDisplayOrientations read fDisplayOrientations write fDisplayOrientations;
 
@@ -8819,6 +8822,7 @@ begin
  fRelativeMouse:=false;
  fHideSystemBars:=false;
  fAcceptDragDropFiles:=false;
+ fUseBreadcrumbs:=false;
  fDisplayOrientations:=[TpvApplicationDisplayOrientation.LandscapeLeft,TpvApplicationDisplayOrientation.LandscapeRight];
  fAndroidMouseTouchEvents:=false;
  fAndroidTouchMouseEvents:=false;
@@ -9507,6 +9511,8 @@ begin
                                         aSurface,
                                         nil,
                                         fVulkanPreferDedicatedGPUs);
+
+  fVulkanDevice.UseBreadcrumbs:=fUseBreadcrumbs;
 
   fVulkanPhysicalDeviceHandle:=fVulkanDevice.PhysicalDevice.Handle;
 
@@ -12737,7 +12743,6 @@ begin
   end;
 {$ifend}
  end;
-
 
  if fCurrentAcceptDragDropFiles<>ord(fAcceptDragDropFiles) then begin
   fCurrentAcceptDragDropFiles:=ord(fAcceptDragDropFiles);
