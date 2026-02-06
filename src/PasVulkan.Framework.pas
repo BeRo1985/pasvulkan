@@ -966,6 +966,7 @@ type EpvVulkanException=class(Exception);
       private
        fDevice:TpvVulkanDevice;
        fTechnique:TpvVulkanBreadcrumbTechnique;
+       fLock:TPasMPCriticalSection;
        fZones:TpvVulkanBreadcrumbZones;
        fZoneCount:TpvInt32;
        fZoneStack:array of TpvInt32;
@@ -988,7 +989,7 @@ type EpvVulkanException=class(Exception);
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aTechnique:TpvVulkanBreadcrumbTechnique); reintroduce;
        destructor Destroy; override;
-       procedure ResetFrame(const aFrameId:TpvUInt64);
+       procedure ResetFrame(const aFrameID:TpvUInt64);
        procedure BeginFrame(const aCommandBuffer:TVkCommandBuffer;const aFrameId:TpvUInt64);
        procedure EndFrame;
        procedure PushZone(const aName:TpvRawByteString);
@@ -10326,6 +10327,8 @@ begin
  fDevice:=aDevice;
  fTechnique:=aTechnique;
 
+ fLock:=TPasMPCriticalSection.Create;
+
  fMaxBreadcrumbCount:=65536;
  fZoneCount:=0;
  fZoneStackCount:=0;
@@ -10401,10 +10404,11 @@ begin
  fZones:=nil;
  fZoneStack:=nil;
  fBreadcrumbs:=nil;
+ FreeAndNil(fLock);
  inherited Destroy;
 end;
 
-procedure TpvVulkanBreadcrumbBuffer.ResetFrame(const aFrameId:TpvUInt64);
+procedure TpvVulkanBreadcrumbBuffer.ResetFrame(const aFrameID:TpvUInt64);
 var MarkerValue:TpvUInt32;
     Index:TpvInt32;
 begin
@@ -10412,19 +10416,26 @@ begin
   exit;
  end;
 
- fZoneCount:=0;
- fBreadcrumbCount:=0;
- fCurrentBreadcrumbIndex:=-1;
- fZoneStackCount:=0;
+ fLock.Acquire;
+ try
 
- fFrameId:=aFrameId;
- fMarkerToken:=TpvUInt16(aFrameId and $ffff);
+  fZoneCount:=0;
+  fBreadcrumbCount:=0;
+  fCurrentBreadcrumbIndex:=-1;
+  fZoneStackCount:=0;
 
- if assigned(fMappedData) then begin
-  MarkerValue:=TpvUInt32(fMarkerToken) shl 16;
-  for Index:=0 to TpvInt32((fMappedDataSize div SizeOf(TpvUInt32))-1) do begin
-   PpvUInt32Array(fMappedData)^[Index]:=MarkerValue;
+  fFrameId:=aFrameId;
+  fMarkerToken:=TpvUInt16(aFrameId and $ffff);
+
+  if assigned(fMappedData) then begin
+   MarkerValue:=TpvUInt32(fMarkerToken) shl 16;
+   for Index:=0 to TpvInt32((fMappedDataSize div SizeOf(TpvUInt32))-1) do begin
+    PpvUInt32Array(fMappedData)^[Index]:=MarkerValue;
+   end;
   end;
+
+ finally
+  fLock.Release;
  end;
 
 end;
@@ -10438,32 +10449,39 @@ begin
   exit;
  end;
 
- fZoneCount:=0;
- fBreadcrumbCount:=0;
- fCurrentBreadcrumbIndex:=-1;
- fZoneStackCount:=0;
+ fLock.Acquire;
+ try
 
- fFrameId:=aFrameId;
- fMarkerToken:=TpvUInt16(aFrameId and $ffff);
+  fZoneCount:=0;
+  fBreadcrumbCount:=0;
+  fCurrentBreadcrumbIndex:=-1;
+  fZoneStackCount:=0;
 
- if assigned(fMappedData) and (fTechnique<>TpvVulkanBreadcrumbTechnique.Manual) then begin
-  MarkerValue:=TpvUInt32(fMarkerToken) shl 16;
-  for Index:=0 to TpvInt32((fMappedDataSize div SizeOf(TpvUInt32))-1) do begin
-   PpvUInt32Array(fMappedData)^[Index]:=MarkerValue;
+  fFrameId:=aFrameId;
+  fMarkerToken:=TpvUInt16(aFrameId and $ffff);
+
+  if assigned(fMappedData) and (fTechnique<>TpvVulkanBreadcrumbTechnique.Manual) then begin
+   MarkerValue:=TpvUInt32(fMarkerToken) shl 16;
+   for Index:=0 to TpvInt32((fMappedDataSize div SizeOf(TpvUInt32))-1) do begin
+    PpvUInt32Array(fMappedData)^[Index]:=MarkerValue;
+   end;
   end;
- end;
 
- FillChar(Barrier,SizeOf(TVkMemoryBarrier),#0);
- Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
- Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
- Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
- fDevice.fDeviceVulkan.CmdPipelineBarrier(aCommandBuffer,
-                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                          0,
-                                          1,@Barrier,
-                                          0,nil,
-                                          0,nil);
+  FillChar(Barrier,SizeOf(TVkMemoryBarrier),#0);
+  Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  fDevice.fDeviceVulkan.CmdPipelineBarrier(aCommandBuffer,
+                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                           0,
+                                           1,@Barrier,
+                                           0,nil,
+                                           0,nil);
+
+ finally
+  fLock.Release;
+ end;
 
  PushZone('Frame#'+IntToStr(aFrameId));
 
@@ -10484,26 +10502,33 @@ begin
   exit;
  end;
 
- if fZoneCount>=length(fZones) then begin
-  SetLength(fZones,(fZoneCount+1)*2);
+ fLock.Acquire;
+ try
+
+  if fZoneCount>=length(fZones) then begin
+   SetLength(fZones,(fZoneCount+1)*2);
+  end;
+
+  ZoneIndex:=fZoneCount;
+  inc(fZoneCount);
+
+  if fZoneStackCount>0 then begin
+   fZones[ZoneIndex].ParentZoneIndex:=fZoneStack[fZoneStackCount-1];
+  end else begin
+   fZones[ZoneIndex].ParentZoneIndex:=-1;
+  end;
+  fZones[ZoneIndex].Name:=aName;
+
+  if fZoneStackCount>=length(fZoneStack) then begin
+   SetLength(fZoneStack,(fZoneStackCount+1)*2);
+  end;
+
+  fZoneStack[fZoneStackCount]:=ZoneIndex;
+  inc(fZoneStackCount);
+
+ finally
+  fLock.Release;
  end;
-
- ZoneIndex:=fZoneCount;
- inc(fZoneCount);
-
- if fZoneStackCount>0 then begin
-  fZones[ZoneIndex].ParentZoneIndex:=fZoneStack[fZoneStackCount-1];
- end else begin
-  fZones[ZoneIndex].ParentZoneIndex:=-1;
- end;
- fZones[ZoneIndex].Name:=aName;
-
- if fZoneStackCount>=length(fZoneStack) then begin
-  SetLength(fZoneStack,(fZoneStackCount+1)*2);
- end;
-
- fZoneStack[fZoneStackCount]:=ZoneIndex;
- inc(fZoneStackCount);
 
 end;
 
@@ -10512,8 +10537,13 @@ begin
  if not assigned(self) then begin
   exit;
  end;
- if fZoneStackCount>0 then begin
-  dec(fZoneStackCount);
+ fLock.Acquire;
+ try
+  if fZoneStackCount>0 then begin
+   dec(fZoneStackCount);
+  end;
+ finally
+  fLock.Release;
  end;
 end;
 
@@ -10522,7 +10552,12 @@ begin
  if not assigned(self) then begin
   exit;
  end;
- fRecordingEnabled:=aEnable;
+ fLock.Acquire;
+ try
+  fRecordingEnabled:=aEnable;
+ finally
+  fLock.Release;
+ end;   
 end;
 
 procedure TpvVulkanBreadcrumbBuffer.RenderPassHint(const aEnterRenderPass:boolean);
@@ -10530,8 +10565,13 @@ begin
  if not assigned(self) then begin
   exit;
  end;
- if fTechnique=TpvVulkanBreadcrumbTechnique.Manual then begin
-  fRecordingEnabled:=not aEnterRenderPass;
+ fLock.Acquire;
+ try
+  if fTechnique=TpvVulkanBreadcrumbTechnique.Manual then begin
+   fRecordingEnabled:=not aEnterRenderPass;
+  end;
+ finally
+  fLock.Release;
  end;
 end;
 
@@ -10546,72 +10586,70 @@ begin
   exit;
  end;
 
- if fCurrentBreadcrumbIndex>=0 then begin
-  exit;
- end;
+ fLock.Acquire;
+ try
 
- if fBreadcrumbCount>=fMaxBreadcrumbCount then begin
-  exit;
- end;
+  if (fCurrentBreadcrumbIndex<0) and
+     (fBreadcrumbCount<fMaxBreadcrumbCount) and
+     fRecordingEnabled and
+     (fZoneCount>0) then begin
+   
+   BreadcrumbIndex:=fBreadcrumbCount;
+   inc(fBreadcrumbCount);
 
- if not fRecordingEnabled then begin
-  exit;
- end;
+   fBreadcrumbs[BreadcrumbIndex].ZoneIndex:=TpvUInt32(fZoneCount-1);
+   fBreadcrumbs[BreadcrumbIndex].BreadcrumbType:=aType;
+   fBreadcrumbs[BreadcrumbIndex].CommandInfo:=aCommandInfo;
 
- if fZoneCount<=0 then begin
-  exit;
- end;
+   fCurrentBreadcrumbIndex:=BreadcrumbIndex;
 
- BreadcrumbIndex:=fBreadcrumbCount;
- inc(fBreadcrumbCount);
+   StartValue:=(TpvUInt32(fMarkerToken) shl 16) or TpvUInt32(1);
 
- fBreadcrumbs[BreadcrumbIndex].ZoneIndex:=TpvUInt32(fZoneCount-1);
- fBreadcrumbs[BreadcrumbIndex].BreadcrumbType:=aType;
- fBreadcrumbs[BreadcrumbIndex].CommandInfo:=aCommandInfo;
-
- fCurrentBreadcrumbIndex:=BreadcrumbIndex;
-
- StartValue:=(TpvUInt32(fMarkerToken) shl 16) or TpvUInt32(1);
-
- case fTechnique of
-  TpvVulkanBreadcrumbTechnique.AmdMarker:begin
-   fDevice.fDeviceVulkan.CmdWriteBufferMarkerAMD(aCommandBuffer,
-                                                  TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                  fBuffer,
-                                                  TVkDeviceSize(TpvUInt32(BreadcrumbIndex)*2+0)*SizeOf(TpvUInt32),
-                                                  StartValue);
-  end;
-  TpvVulkanBreadcrumbTechnique.Manual:begin
-   if fDevice.fBreadcrumbForceSyncManual then begin
-    fDevice.fDeviceVulkan.CmdPipelineBarrier(aCommandBuffer,
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                             0,
-                                             0,nil,
-                                             0,nil,
-                                             0,nil);
+   case fTechnique of
+    TpvVulkanBreadcrumbTechnique.AmdMarker:begin
+     fDevice.fDeviceVulkan.CmdWriteBufferMarkerAMD(aCommandBuffer,
+                                                    TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                    fBuffer,
+                                                    TVkDeviceSize(TpvUInt32(BreadcrumbIndex)*2+0)*SizeOf(TpvUInt32),
+                                                    StartValue);
+    end;
+    TpvVulkanBreadcrumbTechnique.Manual:begin
+     if fDevice.fBreadcrumbForceSyncManual then begin
+      fDevice.fDeviceVulkan.CmdPipelineBarrier(aCommandBuffer,
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                               0,
+                                               0,nil,
+                                               0,nil,
+                                               0,nil);
+     end;
+     fDevice.fDeviceVulkan.CmdFillBuffer(aCommandBuffer,
+                                         fBuffer,
+                                         TVkDeviceSize(TpvUInt32(BreadcrumbIndex)*2+0)*SizeOf(TpvUInt32),
+                                         SizeOf(TpvUInt32),
+                                         StartValue);
+     if fDevice.fBreadcrumbForceSyncManual then begin
+      fDevice.fDeviceVulkan.CmdPipelineBarrier(aCommandBuffer,
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                               0,
+                                               0,nil,
+                                               0,nil,
+                                               0,nil);
+     end;
+    end;
+    TpvVulkanBreadcrumbTechnique.NvCheckpoint:begin
+     fDevice.fDeviceVulkan.CmdSetCheckpointNV(aCommandBuffer,pointer(TpvPtrUInt(BreadcrumbIndex)));
+    end;
    end;
-   fDevice.fDeviceVulkan.CmdFillBuffer(aCommandBuffer,
-                                       fBuffer,
-                                       TVkDeviceSize(TpvUInt32(BreadcrumbIndex)*2+0)*SizeOf(TpvUInt32),
-                                       SizeOf(TpvUInt32),
-                                       StartValue);
-   if fDevice.fBreadcrumbForceSyncManual then begin
-    fDevice.fDeviceVulkan.CmdPipelineBarrier(aCommandBuffer,
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                             0,
-                                             0,nil,
-                                             0,nil,
-                                             0,nil);
-   end;
-  end;
-  TpvVulkanBreadcrumbTechnique.NvCheckpoint:begin
-   fDevice.fDeviceVulkan.CmdSetCheckpointNV(aCommandBuffer,pointer(TpvPtrUInt(BreadcrumbIndex)));
-  end;
- end;
 
- result:=true;
+   result:=true;
+
+  end; 
+
+ finally
+  fLock.Release;
+ end;
 
 end;
 
@@ -10623,53 +10661,60 @@ begin
   exit;
  end;
 
- if fCurrentBreadcrumbIndex<0 then begin
-  exit;
- end;
+ fLock.Acquire;
+ try
 
- BreadcrumbIndex:=fCurrentBreadcrumbIndex;
+  if fCurrentBreadcrumbIndex>=0 then begin
 
- EndValue:=(TpvUInt32(fMarkerToken) shl 16) or TpvUInt32(1);
+   BreadcrumbIndex:=fCurrentBreadcrumbIndex;
 
- case fTechnique of
-  TpvVulkanBreadcrumbTechnique.AmdMarker:begin
-   fDevice.fDeviceVulkan.CmdWriteBufferMarkerAMD(aCommandBuffer,
-                                                  TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                                  fBuffer,
-                                                  TVkDeviceSize(TpvUInt32(BreadcrumbIndex)*2+1)*SizeOf(TpvUInt32),
-                                                  EndValue);
-  end;
-  TpvVulkanBreadcrumbTechnique.Manual:begin
-   if fDevice.fBreadcrumbForceSyncManual then begin
-    fDevice.fDeviceVulkan.CmdPipelineBarrier(aCommandBuffer,
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                             0,
-                                             0,nil,
-                                             0,nil,
-                                             0,nil);
+   EndValue:=(TpvUInt32(fMarkerToken) shl 16) or TpvUInt32(1);
+
+   case fTechnique of
+    TpvVulkanBreadcrumbTechnique.AmdMarker:begin
+     fDevice.fDeviceVulkan.CmdWriteBufferMarkerAMD(aCommandBuffer,
+                                                    TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                    fBuffer,
+                                                    TVkDeviceSize(TpvUInt32(BreadcrumbIndex)*2+1)*SizeOf(TpvUInt32),
+                                                    EndValue);
+    end;
+    TpvVulkanBreadcrumbTechnique.Manual:begin
+     if fDevice.fBreadcrumbForceSyncManual then begin
+      fDevice.fDeviceVulkan.CmdPipelineBarrier(aCommandBuffer,
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                               0,
+                                               0,nil,
+                                               0,nil,
+                                               0,nil);
+     end;
+     fDevice.fDeviceVulkan.CmdFillBuffer(aCommandBuffer,
+                                         fBuffer,
+                                         TVkDeviceSize(TpvUInt32(BreadcrumbIndex)*2+1)*SizeOf(TpvUInt32),
+                                         SizeOf(TpvUInt32),
+                                         EndValue);
+     if fDevice.fBreadcrumbForceSyncManual then begin
+      fDevice.fDeviceVulkan.CmdPipelineBarrier(aCommandBuffer,
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                               0,
+                                               0,nil,
+                                               0,nil,
+                                               0,nil);
+     end;
+    end;
+    TpvVulkanBreadcrumbTechnique.NvCheckpoint:begin
+     // NV checkpoints don't need an end marker
+    end;
    end;
-   fDevice.fDeviceVulkan.CmdFillBuffer(aCommandBuffer,
-                                       fBuffer,
-                                       TVkDeviceSize(TpvUInt32(BreadcrumbIndex)*2+1)*SizeOf(TpvUInt32),
-                                       SizeOf(TpvUInt32),
-                                       EndValue);
-   if fDevice.fBreadcrumbForceSyncManual then begin
-    fDevice.fDeviceVulkan.CmdPipelineBarrier(aCommandBuffer,
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                             0,
-                                             0,nil,
-                                             0,nil,
-                                             0,nil);
-   end;
-  end;
-  TpvVulkanBreadcrumbTechnique.NvCheckpoint:begin
-   // NV checkpoints don't need an end marker
-  end;
- end;
 
- fCurrentBreadcrumbIndex:=-1;
+   fCurrentBreadcrumbIndex:=-1;
+
+  end; 
+
+ finally
+  fLock.Release;
+ end;
 
 end;
 
@@ -10690,69 +10735,76 @@ begin
   exit;
  end;
 
- case fTechnique of
-  TpvVulkanBreadcrumbTechnique.AmdMarker,
-  TpvVulkanBreadcrumbTechnique.Manual:begin
-   if assigned(fMappedData) then begin
-    for BreadcrumbIndex:=0 to fBreadcrumbCount-1 do begin
-     MarkerIndex:=BreadcrumbIndex*2;
-     MarkerValueStart:=PpvUInt32Array(fMappedData)^[MarkerIndex+0];
-     MarkerValueEnd:=PpvUInt32Array(fMappedData)^[MarkerIndex+1];
-     MarkerStateStart:=MarkerValueStart and $ffff;
-     MarkerStateEnd:=MarkerValueEnd and $ffff;
-     if MarkerStateEnd=1 then begin
-      // Completed successfully
-     end else if MarkerStateStart=1 then begin
-      ZoneId:='';
-      FormatZoneId(ZoneId,fBreadcrumbs[BreadcrumbIndex].ZoneIndex);
-      VulkanDebugLn('Breadcrumb '+IntToStr(BreadcrumbIndex)+': started execution and did not finish. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo);
-     end else if MarkerStateStart=0 then begin
-      // Not yet started
+ fLock.Acquire;
+ try
+
+  case fTechnique of
+   TpvVulkanBreadcrumbTechnique.AmdMarker,
+   TpvVulkanBreadcrumbTechnique.Manual:begin
+    if assigned(fMappedData) then begin
+     for BreadcrumbIndex:=0 to fBreadcrumbCount-1 do begin
+      MarkerIndex:=BreadcrumbIndex*2;
+      MarkerValueStart:=PpvUInt32Array(fMappedData)^[MarkerIndex+0];
+      MarkerValueEnd:=PpvUInt32Array(fMappedData)^[MarkerIndex+1];
+      MarkerStateStart:=MarkerValueStart and $ffff;
+      MarkerStateEnd:=MarkerValueEnd and $ffff;
+      if MarkerStateEnd=1 then begin
+       // Completed successfully
+      end else if MarkerStateStart=1 then begin
+       ZoneId:='';
+       FormatZoneId(ZoneId,fBreadcrumbs[BreadcrumbIndex].ZoneIndex);
+       VulkanDebugLn('Breadcrumb '+IntToStr(BreadcrumbIndex)+': started execution and did not finish. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo);
+      end else if MarkerStateStart=0 then begin
+       // Not yet started
+      end;
      end;
     end;
    end;
-  end;
-  TpvVulkanBreadcrumbTechnique.NvCheckpoint:begin
-   CheckpointDataCount:=0;
-   fDevice.fDeviceVulkan.GetQueueCheckpointDataNV(aQueue,@CheckpointDataCount,nil);
-   if CheckpointDataCount>0 then begin
-    if CheckpointDataCount>64 then begin
-     CheckpointDataCount:=64;
-    end;
-    for CheckpointDataIndex:=0 to TpvInt32(CheckpointDataCount)-1 do begin
-     FillChar(CheckpointData[CheckpointDataIndex],SizeOf(TVkCheckpointDataNV),#0);
-     CheckpointData[CheckpointDataIndex].sType:=VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV;
-    end;
-    fDevice.fDeviceVulkan.GetQueueCheckpointDataNV(aQueue,@CheckpointDataCount,@CheckpointData[0]);
-    LastFailedBreadcrumbIndex:=0;
-    for CheckpointDataIndex:=0 to TpvInt32(CheckpointDataCount)-1 do begin
-     CheckpointBreadcrumbIndex:=TpvUInt32(TpvPtrUInt(CheckpointData[CheckpointDataIndex].pCheckpointMarker));
-     if TpvInt32(CheckpointBreadcrumbIndex)>LastFailedBreadcrumbIndex then begin
-      LastFailedBreadcrumbIndex:=TpvInt32(CheckpointBreadcrumbIndex);
+   TpvVulkanBreadcrumbTechnique.NvCheckpoint:begin
+    CheckpointDataCount:=0;
+    fDevice.fDeviceVulkan.GetQueueCheckpointDataNV(aQueue,@CheckpointDataCount,nil);
+    if CheckpointDataCount>0 then begin
+     if CheckpointDataCount>64 then begin
+      CheckpointDataCount:=64;
      end;
-    end;
-    for BreadcrumbIndex:=0 to LastFailedBreadcrumbIndex do begin
-     if BreadcrumbIndex<fBreadcrumbCount then begin
-      ZoneId:='';
-      FormatZoneId(ZoneId,fBreadcrumbs[BreadcrumbIndex].ZoneIndex);
-      FoundBreadcrumbReport:=false;
-      for CheckpointDataIndex:=0 to TpvInt32(CheckpointDataCount)-1 do begin
-       CheckpointBreadcrumbIndex:=TpvUInt32(TpvPtrUInt(CheckpointData[CheckpointDataIndex].pCheckpointMarker));
-       if CheckpointBreadcrumbIndex=TpvUInt32(BreadcrumbIndex) then begin
-        FoundBreadcrumbReport:=true;
-        VulkanDebugLn('Breadcrumb '+IntToStr(BreadcrumbIndex)+': started execution and did not finish. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo);
+     for CheckpointDataIndex:=0 to TpvInt32(CheckpointDataCount)-1 do begin
+      FillChar(CheckpointData[CheckpointDataIndex],SizeOf(TVkCheckpointDataNV),#0);
+      CheckpointData[CheckpointDataIndex].sType:=VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV;
+     end;
+     fDevice.fDeviceVulkan.GetQueueCheckpointDataNV(aQueue,@CheckpointDataCount,@CheckpointData[0]);
+     LastFailedBreadcrumbIndex:=0;
+     for CheckpointDataIndex:=0 to TpvInt32(CheckpointDataCount)-1 do begin
+      CheckpointBreadcrumbIndex:=TpvUInt32(TpvPtrUInt(CheckpointData[CheckpointDataIndex].pCheckpointMarker));
+      if TpvInt32(CheckpointBreadcrumbIndex)>LastFailedBreadcrumbIndex then begin
+       LastFailedBreadcrumbIndex:=TpvInt32(CheckpointBreadcrumbIndex);
+      end;
+     end;
+     for BreadcrumbIndex:=0 to LastFailedBreadcrumbIndex do begin
+      if BreadcrumbIndex<fBreadcrumbCount then begin
+       ZoneId:='';
+       FormatZoneId(ZoneId,fBreadcrumbs[BreadcrumbIndex].ZoneIndex);
+       FoundBreadcrumbReport:=false;
+       for CheckpointDataIndex:=0 to TpvInt32(CheckpointDataCount)-1 do begin
+        CheckpointBreadcrumbIndex:=TpvUInt32(TpvPtrUInt(CheckpointData[CheckpointDataIndex].pCheckpointMarker));
+        if CheckpointBreadcrumbIndex=TpvUInt32(BreadcrumbIndex) then begin
+         FoundBreadcrumbReport:=true;
+         VulkanDebugLn('Breadcrumb '+IntToStr(BreadcrumbIndex)+': started execution and did not finish. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo);
+        end;
+       end;
+       if not FoundBreadcrumbReport then begin
+        VulkanDebugLn('Breadcrumb '+IntToStr(BreadcrumbIndex)+': finished execution. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo);
        end;
       end;
-      if not FoundBreadcrumbReport then begin
-       VulkanDebugLn('Breadcrumb '+IntToStr(BreadcrumbIndex)+': finished execution. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo);
-      end;
      end;
     end;
    end;
+   else begin
+    VulkanDebugLn('Vulkan breadcrumbs are disabled');
+   end;
   end;
-  else begin
-   VulkanDebugLn('Vulkan breadcrumbs are disabled');
-  end;
+
+ finally
+  fLock.Release;
  end;
 
 end;
