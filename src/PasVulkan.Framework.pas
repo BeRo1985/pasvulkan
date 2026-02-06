@@ -10341,7 +10341,7 @@ begin
  fBufferMemory:=VK_NULL_HANDLE;
  fMappedData:=nil;
  fMappedDataSize:=0;
- fDirectTrace:=false;
+ fDirectTrace:=true;
 
  SetLength(fZones,128);
  SetLength(fZoneStack,128);
