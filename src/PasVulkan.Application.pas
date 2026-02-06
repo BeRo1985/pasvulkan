@@ -1556,6 +1556,8 @@ type EpvApplication=class(Exception)
        fHideSystemBars:boolean;
        fAcceptDragDropFiles:boolean;
        fUseBreadcrumbs:boolean;
+       fManualBreadcrumbs:boolean;
+       fManualSyncBreadcrumbs:boolean;
        fAndroidMouseTouchEvents:boolean;
        fAndroidTouchMouseEvents:boolean;
        fAndroidBlockOnPause:boolean;
@@ -2007,6 +2009,8 @@ type EpvApplication=class(Exception)
 
        procedure ClearDelayedObjectsToFreeIteration;
 
+       procedure ParseCommandLine;
+
       public
 
        constructor Create; reintroduce; virtual;
@@ -2195,6 +2199,10 @@ type EpvApplication=class(Exception)
        property AcceptDragDropFiles:boolean read fAcceptDragDropFiles write fAcceptDragDropFiles;
 
        property UseBreadcrumbs:boolean read fUseBreadcrumbs write fUseBreadcrumbs;
+
+       property ManualBreadcrumbs:boolean read fManualBreadcrumbs write fManualBreadcrumbs;
+
+       property ManualSyncBreadcrumbs:boolean read fManualSyncBreadcrumbs write fManualSyncBreadcrumbs;
 
        property DisplayOrientations:TpvApplicationDisplayOrientations read fDisplayOrientations write fDisplayOrientations;
 
@@ -8823,6 +8831,8 @@ begin
  fHideSystemBars:=false;
  fAcceptDragDropFiles:=false;
  fUseBreadcrumbs:=false;
+ fManualBreadcrumbs:=false;
+ fManualSyncBreadcrumbs:=false;
  fDisplayOrientations:=[TpvApplicationDisplayOrientation.LandscapeLeft,TpvApplicationDisplayOrientation.LandscapeRight];
  fAndroidMouseTouchEvents:=false;
  fAndroidTouchMouseEvents:=false;
@@ -8995,6 +9005,8 @@ begin
 
  pvApplication:=self;
 
+ ParseCommandLine;
+
 end;
 
 destructor TpvApplication.Destroy;
@@ -9137,6 +9149,34 @@ begin
    end;
   end;
 {$ifend}
+ end;
+end;
+
+procedure TpvApplication.ParseCommandLine;
+var Index,Count:TpvSizeInt;
+    Value:TpvInt32;
+    Parameter:string;
+begin
+
+ // Parse command line parameters
+ Index:=1;
+ Count:=ParamCount;
+ while Index<=Count do begin
+  Parameter:=LowerCase(ParamStr(Index));
+  inc(Index);
+  if (length(Parameter)>0) and ((Parameter[1]='-') or (Parameter[1]='/')) then begin
+   Delete(Parameter,1,1);
+   if (length(Parameter)>0) and ((Parameter[1]='-') or (Parameter[1]='/')) then begin
+    Delete(Parameter,1,1);
+   end;
+   if Parameter='breadcrumbs' then begin
+    fUseBreadcrumbs:=true;
+   end else if Parameter='manualbreadcrumbs' then begin
+    fManualBreadcrumbs:=true;
+   end else if Parameter='manualsyncbreadcrumbs' then begin
+    fManualSyncBreadcrumbs:=true;
+   end;
+  end;
  end;
 end;
 
@@ -9513,6 +9553,8 @@ begin
                                         fVulkanPreferDedicatedGPUs);
 
   fVulkanDevice.UseBreadcrumbs:=fUseBreadcrumbs;
+  fVulkanDevice.BreadcrumbForceManual:=fManualBreadcrumbs;
+  fVulkanDevice.BreadcrumbForceSyncManual:=fManualSyncBreadcrumbs;
 
   fVulkanPhysicalDeviceHandle:=fVulkanDevice.PhysicalDevice.Handle;
 
