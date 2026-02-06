@@ -322,14 +322,26 @@ begin
 
      if (CountDrawCallIndices=0) or ((FirstDrawCallIndex+CountDrawCallIndices)<>DrawChoreographyBatchRange^.DrawCallIndex) then begin
       if CountDrawCallIndices>0 then begin
+       if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+        fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'MeshCullPass0ComputePass.FillCounter1');
+       end;
        aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
                                     FirstDrawCallIndex*SizeOf(TVkUInt32),
                                     CountDrawCallIndices*SizeOf(TVkUInt32),
                                     0);
+       if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+        fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+       end;
+       if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+        fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'MeshCullPass0ComputePass.FillCounter2');
+       end;
        aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
                                     (TpvScene3DRendererInstance.MaxMultiIndirectDrawCalls+FirstDrawCallIndex)*SizeOf(TVkUInt32),
                                     CountDrawCallIndices*SizeOf(TVkUInt32),
                                     0);
+       if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+        fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+       end;
       end;
       FirstDrawCallIndex:=DrawChoreographyBatchRange^.DrawCallIndex;
       CountDrawCallIndices:=0;
@@ -342,14 +354,26 @@ begin
    end;
 
    if CountDrawCallIndices>0 then begin
+    if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+     fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'MeshCullPass0ComputePass.FillCounterFinal1');
+    end;
     aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
                                  FirstDrawCallIndex*SizeOf(TVkUInt32),
                                  CountDrawCallIndices*SizeOf(TVkUInt32),
                                  0);
+    if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+     fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+    end;
+    if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+     fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'MeshCullPass0ComputePass.FillCounterFinal2');
+    end;
     aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
                                  (TpvScene3DRendererInstance.MaxMultiIndirectDrawCalls+FirstDrawCallIndex)*SizeOf(TVkUInt32),
                                  CountDrawCallIndices*SizeOf(TVkUInt32),
                                  0);
+    if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+     fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+    end;
    end;
 
   end;
@@ -411,7 +435,13 @@ begin
                                      SizeOf(TpvScene3DRendererPassesMeshCullPass0ComputePass.TPushConstants),
                                      @PushConstants);
 
+     if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+      fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'MeshCullPass0ComputePass.Dispatch');
+     end;
      aCommandBuffer.CmdDispatch((DrawChoreographyBatchRange^.CountCommands+255) shr 8,1,1);
+     if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+      fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+     end;
 
     end;
 

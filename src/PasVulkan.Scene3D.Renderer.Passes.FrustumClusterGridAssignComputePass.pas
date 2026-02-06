@@ -335,9 +335,15 @@ begin
                                   SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants),
                                   @FrustumClusterGridPushConstants);
 
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'FrustumClusterGridAssign');
+  end;
   aCommandBuffer.CmdDispatch((fInstance.FrustumClusterGridSizeX+7) shr 3,
                              (fInstance.FrustumClusterGridSizeY+7) shr 3,
                              (fInstance.FrustumClusterGridSizeZ+7) shr 3);
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
   MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;

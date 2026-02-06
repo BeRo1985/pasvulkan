@@ -363,9 +363,15 @@ begin
                                   SizeOf(TpvUInt32),
                                   @CascadeIndex);
 
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'GICVCTRadianceTransfer');
+  end;
   aCommandBuffer.CmdDispatch((fInstance.Renderer.GlobalIlluminationVoxelGridSize+7) shr 3,
                              (fInstance.Renderer.GlobalIlluminationVoxelGridSize+7) shr 3,
                              (fInstance.Renderer.GlobalIlluminationVoxelGridSize+7) shr 3);
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
  end;
 
