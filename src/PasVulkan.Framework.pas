@@ -225,8 +225,8 @@ type EpvVulkanException=class(Exception);
       (
        None,
        Manual,
-       AmdMarker,
-       NvCheckpoint
+       AMDMarker,
+       NVCheckpoint
       );
 
      PpvVulkanBreadcrumbZone=^TpvVulkanBreadcrumbZone;
@@ -10349,7 +10349,7 @@ begin
  SetLength(fZoneStack,128);
  SetLength(fBreadcrumbs,fMaxBreadcrumbCount);
 
- if (fTechnique=TpvVulkanBreadcrumbTechnique.Manual) or (fTechnique=TpvVulkanBreadcrumbTechnique.AmdMarker) then begin
+ if (fTechnique=TpvVulkanBreadcrumbTechnique.Manual) or (fTechnique=TpvVulkanBreadcrumbTechnique.AMDMarker) then begin
 
   MarkerBufferSize:=TVkDeviceSize(fMaxBreadcrumbCount)*2*SizeOf(TpvUInt32);
 
@@ -10389,7 +10389,7 @@ end;
 
 destructor TpvVulkanBreadcrumbBuffer.Destroy;
 begin
- if (fTechnique=TpvVulkanBreadcrumbTechnique.AmdMarker) or (fTechnique=TpvVulkanBreadcrumbTechnique.Manual) then begin
+ if (fTechnique=TpvVulkanBreadcrumbTechnique.AMDMarker) or (fTechnique=TpvVulkanBreadcrumbTechnique.Manual) then begin
   if assigned(fMappedData) then begin
    fDevice.fDeviceVulkan.UnmapMemory(fDevice.fDeviceHandle,fBufferMemory);
    fMappedData:=nil;
@@ -10607,7 +10607,7 @@ begin
    StartValue:=(TpvUInt32(fMarkerToken) shl 16) or TpvUInt32(1);
 
    case fTechnique of
-    TpvVulkanBreadcrumbTechnique.AmdMarker:begin
+    TpvVulkanBreadcrumbTechnique.AMDMarker:begin
      fDevice.fDeviceVulkan.CmdWriteBufferMarkerAMD(aCommandBuffer,
                                                    TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                    fBuffer,
@@ -10639,7 +10639,7 @@ begin
                                                0,nil);
      end;
     end;
-    TpvVulkanBreadcrumbTechnique.NvCheckpoint:begin
+    TpvVulkanBreadcrumbTechnique.NVCheckpoint:begin
      fDevice.fDeviceVulkan.CmdSetCheckpointNV(aCommandBuffer,pointer(TpvPtrUInt(BreadcrumbIndex)));
     end;
    end;
@@ -10673,7 +10673,7 @@ begin
    EndValue:=(TpvUInt32(fMarkerToken) shl 16) or TpvUInt32(1);
 
    case fTechnique of
-    TpvVulkanBreadcrumbTechnique.AmdMarker:begin
+    TpvVulkanBreadcrumbTechnique.AMDMarker:begin
      fDevice.fDeviceVulkan.CmdWriteBufferMarkerAMD(aCommandBuffer,
                                                    TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                                    fBuffer,
@@ -10705,7 +10705,7 @@ begin
                                                0,nil);
      end;
     end;
-    TpvVulkanBreadcrumbTechnique.NvCheckpoint:begin
+    TpvVulkanBreadcrumbTechnique.NVCheckpoint:begin
      // NV checkpoints don't need an end marker
     end;
    end;
@@ -10741,7 +10741,7 @@ begin
  try
 
   case fTechnique of
-   TpvVulkanBreadcrumbTechnique.AmdMarker,
+   TpvVulkanBreadcrumbTechnique.AMDMarker,
    TpvVulkanBreadcrumbTechnique.Manual:begin
     if assigned(fMappedData) then begin
      for BreadcrumbIndex:=0 to fBreadcrumbCount-1 do begin
@@ -10762,7 +10762,7 @@ begin
      end;
     end;
    end;
-   TpvVulkanBreadcrumbTechnique.NvCheckpoint:begin
+   TpvVulkanBreadcrumbTechnique.NVCheckpoint:begin
     CheckpointDataCount:=0;
     fDevice.fDeviceVulkan.GetQueueCheckpointDataNV(aQueue,@CheckpointDataCount,nil);
     if CheckpointDataCount>0 then begin
@@ -12045,10 +12045,10 @@ begin
       ((fEnabledExtensionNames.IndexOf(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)<0) and
        (fEnabledExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)<0)) then begin
     fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.Manual;
-   end else if fEnabledExtensionNames.IndexOf(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)>=0 then begin
-    fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.AmdMarker;
    end else if fEnabledExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)>=0 then begin
-    fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.NvCheckpoint;
+    fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.NVCheckpoint;
+   end else if fEnabledExtensionNames.IndexOf(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)>=0 then begin
+    fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.AMDMarker;
    end else begin
     fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.None;
    end;
