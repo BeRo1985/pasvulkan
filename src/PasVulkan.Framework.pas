@@ -30318,7 +30318,11 @@ begin
 
       Assert(TVkSizeInt(DataOffset)=TVkSizeInt(aDataSize));
 
-      aGraphicsCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,fImage.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,BufferImageCopyArraySize,@BufferImageCopyArray[0]);
+      aGraphicsCommandBuffer.CmdCopyBufferToImage(StagingBuffer.fBufferHandle,
+                                                  fImage.fImageHandle,
+                                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                  BufferImageCopyArraySize,
+                                                  @BufferImageCopyArray[0]);
 
       if fCountMipMaps<1 then begin
 
