@@ -10728,9 +10728,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'BlendMapInitialization');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fData.fBlendMapImage.Width+15) shr 4,
                             (fPlanet.fData.fBlendMapImage.Height+15) shr 4,
                             TpvScene3DPlanet.CountBlendMapLayers);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -10923,9 +10929,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'BlendMapModification');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fBlendMapResolution+15) shr 4,
                             (fPlanet.fBlendMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -11117,9 +11129,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'BlendMapNormalMap');
+ end;
  aCommandBuffer.CmdDispatch(((fPlanet.fBlendMapResolution shr 1)+15) shr 4,
                             ((fPlanet.fBlendMapResolution shr 1)+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -11327,9 +11345,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereMiniMap');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fAtmosphereMapResolution+7) shr 3,
                             (fPlanet.fAtmosphereMapResolution+7) shr 3,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -11597,9 +11621,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipitationMiniMap');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+7) shr 3,
                             (fPlanet.fPrecipitationMapResolution+7) shr 3,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -11832,9 +11862,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'GrassMapInitialization');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fGrassMapResolution+15) shr 4,
                             (fPlanet.fGrassMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -12028,9 +12064,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'GrassMapModification');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fGrassMapResolution+15) shr 4,
                             (fPlanet.fGrassMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -12197,9 +12239,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipitationMapInit');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+15) shr 4,
                             (fPlanet.fPrecipitationMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -12393,9 +12441,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipitationMapModification');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+15) shr 4,
                             (fPlanet.fPrecipitationMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -12742,9 +12796,15 @@ begin
                                         0,
                                         nil);
 
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipitationSimulation');
+   end;
    aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+15) shr 4,
                               (fPlanet.fPrecipitationMapResolution+15) shr 4,
                               1);
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+   end;
 
    fPlanet.fData.fPrecipitationSimulationIndex:=(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1;
     
@@ -13001,9 +13061,15 @@ begin
                                       0,
                                       nil);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipitationClouds');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+15) shr 4,
                             (fPlanet.fPrecipitationMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -13170,9 +13236,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereMapInitialization');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fAtmosphereMapResolution+15) shr 4,
                             (fPlanet.fAtmosphereMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -13366,9 +13438,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereMapModification');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fAtmosphereMapResolution+15) shr 4,
                             (fPlanet.fAtmosphereMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -13581,9 +13659,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereMapSimulation');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fAtmosphereMapResolution+15) shr 4,
                             (fPlanet.fAtmosphereMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -13802,9 +13886,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);       
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipAtmosphereMapCombine');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationAtmosphereMapResolution+15) shr 4,
                             (fPlanet.fPrecipitationAtmosphereMapResolution+15) shr 4,
-                            1);    
+                            1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
@@ -14647,9 +14737,15 @@ begin
                                    SizeOf(TModificationPushConstants),
                                    @fModificationPushConstants); 
 
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'WaterModification');
+   end;
    aCommandBuffer.CmdDispatch((fPlanet.fWaterMapResolution+15) shr 4,
                               (fPlanet.fWaterMapResolution+15) shr 4,
                               1);
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+   end;
 
    BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -14835,9 +14931,15 @@ begin
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fOutFlowPipeline.Handle);
 
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'WaterOutFlow');
+  end;
   aCommandBuffer.CmdDispatch(((fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))+15) shr 4,
                              ((fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))+15) shr 4,
                              1);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Buffer memory barriers                                                              //
@@ -14872,9 +14974,15 @@ begin
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fWaterHeightPipeline.Handle);
 
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'WaterHeight');
+  end;
   aCommandBuffer.CmdDispatch((fPlanet.fWaterMapResolution+15) shr 4,
                              (fPlanet.fWaterMapResolution+15) shr 4,
                              1);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Buffer memory barriers                                                              //
@@ -15013,9 +15121,15 @@ begin
                                   SizeOf(TDownsamplePushConstants),
                                   @fDownsamplePushConstants);    
 
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'WaterDownsample');
+  end;
   aCommandBuffer.CmdDispatch(((fPlanet.fWaterMapResolution shr 1)+8) shr 3,
                              ((fPlanet.fWaterMapResolution shr 1)+8) shr 3,
                              1);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -15120,9 +15234,15 @@ begin
                                   SizeOf(TInterpolationPushConstants),
                                   @fInterpolationPushConstants);
 
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'WaterInterpolation');
+  end;
   aCommandBuffer.CmdDispatch((fPlanet.fWaterMapResolution+15) shr 4,
                              (fPlanet.fWaterMapResolution+15) shr 4,
                              1);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -15410,9 +15530,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'HeightMapDataInitialization');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fHeightMapResolution+15) shr 4,
                             (fPlanet.fHeightMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -15620,9 +15746,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'HeightMapRandomInitialization');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fHeightMapResolution+15) shr 4,
                             (fPlanet.fHeightMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
