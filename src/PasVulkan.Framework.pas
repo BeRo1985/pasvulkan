@@ -10395,6 +10395,9 @@ var MarkerValue:TpvUInt32;
     Barrier:TVkMemoryBarrier;
     Index:TpvInt32;
 begin
+ if not assigned(self) then begin
+  exit;
+ end;
 
  fZoneCount:=0;
  fBreadcrumbCount:=0;
@@ -10429,12 +10432,18 @@ end;
 
 procedure TpvVulkanBreadcrumbBuffer.EndFrame;
 begin
+ if not assigned(self) then begin
+  exit;
+ end;
  PopZone;
 end;
 
 procedure TpvVulkanBreadcrumbBuffer.PushZone(const aName:TpvRawByteString);
 var ZoneIndex:TpvInt32;
 begin
+ if not assigned(self) then begin
+  exit;
+ end;
 
  if fZoneCount>=length(fZones) then begin
   SetLength(fZones,(fZoneCount+1)*2);
@@ -10461,6 +10470,9 @@ end;
 
 procedure TpvVulkanBreadcrumbBuffer.PopZone;
 begin
+ if not assigned(self) then begin
+  exit;
+ end;
  if fZoneStackCount>0 then begin
   dec(fZoneStackCount);
  end;
@@ -10468,11 +10480,17 @@ end;
 
 procedure TpvVulkanBreadcrumbBuffer.ToggleRecording(const aEnable:boolean);
 begin
+ if not assigned(self) then begin
+  exit;
+ end;
  fRecordingEnabled:=aEnable;
 end;
 
 procedure TpvVulkanBreadcrumbBuffer.RenderPassHint(const aEnterRenderPass:boolean);
 begin
+ if not assigned(self) then begin
+  exit;
+ end;
  if fTechnique=TpvVulkanBreadcrumbTechnique.Manual then begin
   fRecordingEnabled:=not aEnterRenderPass;
  end;
@@ -10484,6 +10502,10 @@ var BreadcrumbIndex:TpvInt32;
 begin
 
  result:=false;
+
+ if not assigned(self) then begin
+  exit;
+ end;
 
  if fCurrentBreadcrumbIndex>=0 then begin
   exit;
@@ -10558,6 +10580,9 @@ procedure TpvVulkanBreadcrumbBuffer.EndBreadcrumb(const aCommandBuffer:TVkComman
 var BreadcrumbIndex:TpvInt32;
     EndValue:TpvUInt32;
 begin
+ if not assigned(self) then begin
+  exit;
+ end;
 
  if fCurrentBreadcrumbIndex<0 then begin
   exit;
@@ -10622,6 +10647,9 @@ var BreadcrumbIndex:TpvInt32;
     FoundBreadcrumbReport:boolean;
     CheckpointBreadcrumbIndex:TpvUInt32;
 begin
+ if not assigned(self) then begin
+  exit;
+ end;
 
  case fTechnique of
   TpvVulkanBreadcrumbTechnique.AmdMarker,
