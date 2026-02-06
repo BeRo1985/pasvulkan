@@ -719,7 +719,13 @@ begin
                                       0,
                                       nil);
 
+ if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+  fScene3D.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'SkyBoxDraw');
+ end;
  aCommandBuffer.CmdDraw(36,1,0,0);
+ if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+  fScene3D.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  if fCached then begin
   fHistoryValid[aInFlightFrameIndex]:=true;
