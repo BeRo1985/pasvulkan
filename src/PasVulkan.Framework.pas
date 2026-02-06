@@ -774,6 +774,7 @@ type EpvVulkanException=class(Exception);
        fBreadcrumbForceManual:boolean;
        fBreadcrumbForceSyncManual:boolean;
        fBreadcrumbTechnique:TpvVulkanBreadcrumbTechnique;
+       fBreadcrumbBuffer:TpvVulkanBreadcrumbBuffer;
        fFullScreenExclusiveSupport:boolean;
        fPresentIDSupport:boolean;
        fPresentWaitSupport:boolean;
@@ -868,6 +869,7 @@ type EpvVulkanException=class(Exception);
        property BreadcrumbForceManual:boolean read fBreadcrumbForceManual write fBreadcrumbForceManual;
        property BreadcrumbForceSyncManual:boolean read fBreadcrumbForceSyncManual write fBreadcrumbForceSyncManual;
        property BreadcrumbTechnique:TpvVulkanBreadcrumbTechnique read fBreadcrumbTechnique;
+       property BreadcrumbBuffer:TpvVulkanBreadcrumbBuffer read fBreadcrumbBuffer;
        property FullScreenExclusiveSupport:boolean read fFullScreenExclusiveSupport;
        property PresentIDSupport:boolean read fPresentIDSupport;
        property PresentWaitSupport:boolean read fPresentWaitSupport;
@@ -10769,6 +10771,7 @@ begin
  fBreadcrumbForceManual:=false;
  fBreadcrumbForceSyncManual:=true;
  fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.None;
+ fBreadcrumbBuffer:=nil;
 
  fNVIDIADeviceDiagnosticsFlags:=TVkDeviceDiagnosticsConfigFlagsNV(VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_DEBUG_INFO_BIT_NV) or
                                 TVkDeviceDiagnosticsConfigFlagsNV(VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_RESOURCE_TRACKING_BIT_NV) or
@@ -10917,6 +10920,7 @@ begin
  if ktxVulkanDevice=self then begin
   ktxVulkanDevice:=nil;
  end;
+ FreeAndNil(fBreadcrumbBuffer);
  FreeAndNil(fCanvasCommon);
  for Index:=0 to length(fQueueFamilyQueues)-1 do begin
   for SubIndex:=0 to length(fQueueFamilyQueues[Index])-1 do begin
@@ -11926,6 +11930,10 @@ begin
    end;
   end else begin
    fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.None;
+  end;
+
+  if fBreadcrumbTechnique<>TpvVulkanBreadcrumbTechnique.None then begin
+   fBreadcrumbBuffer:=TpvVulkanBreadcrumbBuffer.Create(self,fBreadcrumbTechnique);
   end;
 
  end;
