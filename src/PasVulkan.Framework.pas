@@ -988,6 +988,7 @@ type EpvVulkanException=class(Exception);
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aTechnique:TpvVulkanBreadcrumbTechnique); reintroduce;
        destructor Destroy; override;
+       procedure ResetFrame(const aFrameId:TpvUInt64);
        procedure BeginFrame(const aCommandBuffer:TVkCommandBuffer;const aFrameId:TpvUInt64);
        procedure EndFrame;
        procedure PushZone(const aName:TpvRawByteString);
@@ -10401,6 +10402,31 @@ begin
  fZoneStack:=nil;
  fBreadcrumbs:=nil;
  inherited Destroy;
+end;
+
+procedure TpvVulkanBreadcrumbBuffer.ResetFrame(const aFrameId:TpvUInt64);
+var MarkerValue:TpvUInt32;
+    Index:TpvInt32;
+begin
+ if not assigned(self) then begin
+  exit;
+ end;
+
+ fZoneCount:=0;
+ fBreadcrumbCount:=0;
+ fCurrentBreadcrumbIndex:=-1;
+ fZoneStackCount:=0;
+
+ fFrameId:=aFrameId;
+ fMarkerToken:=TpvUInt16(aFrameId and $ffff);
+
+ if assigned(fMappedData) then begin
+  MarkerValue:=TpvUInt32(fMarkerToken) shl 16;
+  for Index:=0 to TpvInt32((fMappedDataSize div SizeOf(TpvUInt32))-1) do begin
+   PpvUInt32Array(fMappedData)^[Index]:=MarkerValue;
+  end;
+ end;
+
 end;
 
 procedure TpvVulkanBreadcrumbBuffer.BeginFrame(const aCommandBuffer:TVkCommandBuffer;const aFrameId:TpvUInt64);
