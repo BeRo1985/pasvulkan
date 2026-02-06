@@ -12051,10 +12051,10 @@ begin
       ((fEnabledExtensionNames.IndexOf(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)<0) and
        (fEnabledExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)<0)) then begin
     fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.Manual;
-   end else if fEnabledExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)>=0 then begin
-    fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.NVCheckpoint;
    end else if fEnabledExtensionNames.IndexOf(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)>=0 then begin
     fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.AMDMarker;
+   end else if fEnabledExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)>=0 then begin
+    fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.NVCheckpoint;
    end else begin
     fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.None;
    end;
