@@ -24624,9 +24624,9 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aAtmosphereMiniMapResolutionShift:TpvSizeInt;
                                     const aPrecipitationMiniMapResolutionShift:TpvSizeInt;
                                     const aUseHeightMapSmoothing:Boolean);
-var InFlightFrameIndex,Index,Resolution,x,y,CountActiveBrushes:TpvSizeInt;
+var InFlightFrameIndex,Index,Resolution,x,y,CountUsedBrushes:TpvSizeInt;
     Pixel:TpvUInt32;
-    BrushActive:Boolean;
+    BrushUsed:Boolean;
 //  ta,tb:TpvHighResolutionTime;
     TileLODLevels:TTileLODLevels;
     DescriptorImageInfos:TVkDescriptorImageInfoArray;
@@ -24671,16 +24671,16 @@ begin
 
  fQueuedDownloadLastTime:=0;
 
- CountActiveBrushes:=1;
+ CountUsedBrushes:=1;
  for Index:=0 to TpvScene3DPlanet.CountBrushes-1 do begin
-  BrushActive:=false;
+  BrushUsed:=false;
   for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
    for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
     Pixel:=aSmoothedBrushes[0,Index,y,x];
     fRGBABrushes[Index,TpvScene3DPlanet.BrushSize-(y+1),x]:=(TpvUInt32(Pixel) shl 24) or TpvUInt32($00ffffff);
-    if (not BrushActive) and (Pixel<>0) then begin     
-     CountActiveBrushes:=Max(CountActiveBrushes,Index+1);
-     BrushActive:=true;
+    if (not BrushUsed) and (Pixel<>0) then begin
+     CountUsedBrushes:=Max(CountUsedBrushes,Index+1);
+     BrushUsed:=true;
     end;
    end;
   end; 
@@ -25050,7 +25050,7 @@ begin
                                                      TpvScene3DPlanet.BrushSize,
                                                      TpvScene3DPlanet.BrushSize,
                                                      0,
-                                                     CountActiveBrushes,
+                                                     CountUsedBrushes,
                                                      1,
                                                      1,
                                                      [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
@@ -25080,7 +25080,7 @@ begin
                                                               TpvScene3DPlanet.BrushSize,
                                                               TpvScene3DPlanet.BrushSize,
                                                               0,
-                                                              CountActiveBrushes,
+                                                              CountUsedBrushes,
                                                               1,
                                                               1,
                                                               [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
@@ -25111,7 +25111,7 @@ begin
                                                          TpvScene3DPlanet.BrushSize,
                                                          TpvScene3DPlanet.BrushSize,
                                                          0,
-                                                         CountActiveBrushes,
+                                                         CountUsedBrushes,
                                                          1,
                                                          1,
                                                          [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
