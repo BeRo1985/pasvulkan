@@ -978,6 +978,7 @@ type EpvVulkanException=class(Exception);
        fFrameId:TpvUInt64;
        fMarkerToken:TpvUInt16;
        fRecordingEnabled:TPasMPBool32;
+       fInsideRenderPass:TPasMPBool32;
        fBuffer:TVkBuffer;
        fBufferMemory:TVkDeviceMemory;
        fMappedData:PpvUInt32;
@@ -10337,6 +10338,7 @@ begin
  fFrameId:=0;
  fMarkerToken:=0;
  fRecordingEnabled:=true;
+ fInsideRenderPass:=false;
  fBuffer:=VK_NULL_HANDLE;
  fBufferMemory:=VK_NULL_HANDLE;
  fMappedData:=nil;
@@ -10567,9 +10569,7 @@ begin
  end;
  fLock.Acquire;
  try
-  if fTechnique=TpvVulkanBreadcrumbTechnique.Manual then begin
-   fRecordingEnabled:=not aEnterRenderPass;
-  end;
+  fInsideRenderPass:=aEnterRenderPass;
  finally
   fLock.Release;
  end;
@@ -10592,6 +10592,7 @@ begin
   if (fCurrentBreadcrumbIndex<0) and
      (fBreadcrumbCount<fMaxBreadcrumbCount) and
      fRecordingEnabled and
+     ((fTechnique<>TpvVulkanBreadcrumbTechnique.Manual) or not fInsideRenderPass) and
      (fZoneCount>0) then begin
    
    BreadcrumbIndex:=fBreadcrumbCount;
