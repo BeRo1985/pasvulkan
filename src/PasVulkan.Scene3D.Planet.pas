@@ -26172,7 +26172,7 @@ begin
        SumWeight:=0.0;
        for kx:=-KernelRadius to KernelRadius do begin
         Weight:=Kernel[abs(kx)];
-        if ((x+kx)>=0) and ((x+kx)<=TpvScene3DPlanet.BrushSize) then begin
+        if ((x+kx)>=0) and ((x+kx)<TpvScene3DPlanet.BrushSize) then begin
          Sum:=Sum+((SourceBrush^[y,x+kx]*OneOver255)*Weight);
         end;
         SumWeight:=SumWeight+Weight;
@@ -26192,7 +26192,7 @@ begin
        SumWeight:=0.0;
        for ky:=-KernelRadius to KernelRadius do begin
         Weight:=Kernel[abs(ky)];
-        if ((y+ky)>=0) and ((y+ky)<=TpvScene3DPlanet.BrushSize) then begin
+        if ((y+ky)>=0) and ((y+ky)<TpvScene3DPlanet.BrushSize) then begin
          Sum:=Sum+(TempBrush^[y+ky,x]*Weight);
         end;
         SumWeight:=SumWeight+Weight;
