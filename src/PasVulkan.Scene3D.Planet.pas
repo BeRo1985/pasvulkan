@@ -25561,7 +25561,7 @@ begin
                                                          1,
                                                          [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
                                                          @fRGBABrushes,
-                                                         SizeOf(TpvScene3DPlanet.TRGBABrushes),
+                                                         SizeOf(TpvScene3DPlanet.TRGBABrush)*CountUsedBrushes,
                                                          false,
                                                          false,
                                                          0,
