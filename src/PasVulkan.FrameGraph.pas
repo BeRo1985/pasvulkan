@@ -246,17 +246,17 @@ type EpvFrameGraph=class(Exception);
             TPhysicalPassCrossEvents=TpvObjectGenericList<TPhysicalPassCrossEvent>;
             TInFlightFrameSemaphores=array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
             TExternalWaitingOnSemaphore=class
-             private 
+             private
               fFrameGraph:TpvFrameGraph;
               fInFlightFrameSemaphores:TInFlightFrameSemaphores;
               function GetInFlightFrameSemaphore(const aIndex:TpvSizeInt):TpvVulkanSemaphore;
-              procedure SetInFlightFrameSemaphore(const aIndex:TpvSizeInt;const aInFlightFrameSemaphore:TpvVulkanSemaphore); 
+              procedure SetInFlightFrameSemaphore(const aIndex:TpvSizeInt;const aInFlightFrameSemaphore:TpvVulkanSemaphore);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce;
               destructor Destroy; override;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
-             public   
+             public
               property InFlightFrameSemaphores[const aIndex:TpvSizeInt]:TpvVulkanSemaphore read GetInFlightFrameSemaphore write SetInFlightFrameSemaphore;
             end;
             TExternalWaitingOnSemaphores=TpvObjectGenericList<TExternalWaitingOnSemaphore>;
@@ -308,7 +308,7 @@ type EpvFrameGraph=class(Exception);
                      procedure AcquireVolatileResources;
                      procedure ReleaseVolatileResources;
                    end;
-                   TCommandBuffers=TpvObjectGenericList<TCommandBuffer>;                   
+                   TCommandBuffers=TpvObjectGenericList<TCommandBuffer>;
              private
               fFrameGraph:TpvFrameGraph;
               fPhysicalQueue:TpvVulkanQueue;
@@ -1119,7 +1119,7 @@ type EpvFrameGraph=class(Exception);
               procedure AddEndMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
-              destructor Destroy; override;              
+              destructor Destroy; override;
               procedure AddExternalWaitingOnSemaphore(const aExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore;const aStageMask:TVkPipelineStageFlags=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
               procedure AddExplicitPassDependency(const aPass:TPass;const aDstStageMask:TVkPipelineStageFlags=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)); overload;
               procedure AddExplicitPassDependency(const aPassName:TpvRawByteString;const aDstStageMask:TVkPipelineStageFlags=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)); overload;
@@ -1712,9 +1712,9 @@ end;
 
 constructor TpvFrameGraph.TExternalWaitingOnSemaphore.Create(const aFrameGraph:TpvFrameGraph);
 begin
- inherited Create; 
+ inherited Create;
  fFrameGraph:=aFrameGraph;
- FillChar(fInFlightFrameSemaphores,SizeOf(TInFlightFrameSemaphores),#0); 
+ FillChar(fInFlightFrameSemaphores,SizeOf(TInFlightFrameSemaphores),#0);
 end;
 
 destructor TpvFrameGraph.TExternalWaitingOnSemaphore.Destroy;
@@ -3009,7 +3009,7 @@ begin
  fNextPasses.OwnsObjects:=false;
 
  fExternalWaitingOnSemaphoreReferences:=TExternalWaitingOnSemaphoreReferences.Create(true);
- 
+
  fFlags:=[TFlag.Enabled];
 
  fPhysicalPass:=nil;
@@ -3047,7 +3047,7 @@ begin
 
 end;
 
-procedure TpvFrameGraph.TPass.AddExternalWaitingOnSemaphore(const aExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore;const aStageMask:TVkPipelineStageFlags); 
+procedure TpvFrameGraph.TPass.AddExternalWaitingOnSemaphore(const aExternalWaitingOnSemaphore:TExternalWaitingOnSemaphore;const aStageMask:TVkPipelineStageFlags);
 var ExternalWaitingOnSemaphoreReference:TExternalWaitingOnSemaphoreReference;
 begin
  fExternalWaitingOnSemaphoreReferences.Add(TExternalWaitingOnSemaphoreReference.Create(fFrameGraph,aExternalWaitingOnSemaphore,aStageMask));
@@ -4662,7 +4662,10 @@ begin
                                     0,
                                     fActiveRenderAreaWidth,
                                     fActiveRenderAreaHeight);
-  fActiveRenderPass:=fVulkanRenderPass;                                  
+  if assigned(fFrameGraph.fVulkanDevice.BreadcrumbBuffer) then begin
+   fFrameGraph.fVulkanDevice.BreadcrumbBuffer.RenderPassHint(true);
+  end;
+  fActiveRenderPass:=fVulkanRenderPass;
   for SubpassIndex:=0 to fSubpasses.Count-1 do begin
    Subpass:=fSubpasses[SubpassIndex];
    if Subpass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
@@ -4679,6 +4682,9 @@ begin
    end;
   end;
   if assigned(fActiveRenderPass) then begin
+   if assigned(fFrameGraph.fVulkanDevice.BreadcrumbBuffer) then begin
+    fFrameGraph.fVulkanDevice.BreadcrumbBuffer.RenderPassHint(false);
+   end;
    fActiveRenderPass.EndRenderPass(aCommandBuffer);
    fActiveRenderPass:=nil;
   end;
@@ -4708,6 +4714,9 @@ begin
  if not assigned(fActiveCommandBuffer) then begin
   raise EpvFrameGraph.Create('Render pass restart has no active command buffer');
  end;
+ if assigned(fFrameGraph.fVulkanDevice.BreadcrumbBuffer) then begin
+  fFrameGraph.fVulkanDevice.BreadcrumbBuffer.RenderPassHint(false);
+ end;
  fActiveRenderPass.EndRenderPass(fActiveCommandBuffer);
  fActiveRenderPass:=nil;
 end;
@@ -4736,7 +4745,10 @@ begin
                                        0,
                                        fActiveRenderAreaWidth,
                                        fActiveRenderAreaHeight);
- fActiveRenderPass:=fVulkanLoadRenderPass; 
+ if assigned(fFrameGraph.fVulkanDevice.BreadcrumbBuffer) then begin
+  fFrameGraph.fVulkanDevice.BreadcrumbBuffer.RenderPassHint(true);
+ end;
+ fActiveRenderPass:=fVulkanLoadRenderPass;
 end;
 
 { TpvFrameGraph }

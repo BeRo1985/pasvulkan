@@ -16215,7 +16215,13 @@ begin
                                    0,
                                    fVulkanSwapChain.Width,
                                    fVulkanSwapChain.Height);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.RenderPassHint(true);
+ end;
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.RenderPassHint(false);
+ end;
  fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 
  VulkanCommandBuffer.EndRecording;
