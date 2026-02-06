@@ -10578,6 +10578,7 @@ end;
 function TpvVulkanBreadcrumbBuffer.BeginBreadcrumb(const aCommandBuffer:TVkCommandBuffer;const aType:TpvVulkanBreadcrumbType;const aCommandInfo:TpvRawByteString):boolean;
 var BreadcrumbIndex:TpvInt32;
     StartValue:TpvUInt32;
+    Offset:TVkDeviceSize;
 begin
 
  result:=false;
@@ -10608,10 +10609,11 @@ begin
 
    case fTechnique of
     TpvVulkanBreadcrumbTechnique.AMDMarker:begin
+     Offset:=((TVkDeviceSize(BreadcrumbIndex) shl 1) or 0) shl 2;
      fDevice.fDeviceVulkan.CmdWriteBufferMarkerAMD(aCommandBuffer,
                                                    TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                    fBuffer,
-                                                   TVkDeviceSize((TpvUInt32(BreadcrumbIndex)*2)+0)*SizeOf(TpvUInt32),
+                                                   Offset,
                                                    StartValue);
     end;
     TpvVulkanBreadcrumbTechnique.Manual:begin
@@ -10624,9 +10626,10 @@ begin
                                                0,nil,
                                                0,nil);
      end;
+     Offset:=((TVkDeviceSize(BreadcrumbIndex) shl 1) or 0) shl 2;
      fDevice.fDeviceVulkan.CmdFillBuffer(aCommandBuffer,
                                          fBuffer,
-                                         TVkDeviceSize((TpvUInt32(BreadcrumbIndex)*2)+0)*SizeOf(TpvUInt32),
+                                         Offset,
                                          SizeOf(TpvUInt32),
                                          StartValue);
      if fDevice.fBreadcrumbForceSyncManual then begin
@@ -10657,6 +10660,7 @@ end;
 procedure TpvVulkanBreadcrumbBuffer.EndBreadcrumb(const aCommandBuffer:TVkCommandBuffer);
 var BreadcrumbIndex:TpvInt32;
     EndValue:TpvUInt32;
+    Offset:TVkDeviceSize;
 begin
 
  if not assigned(self) then begin
@@ -10674,10 +10678,11 @@ begin
 
    case fTechnique of
     TpvVulkanBreadcrumbTechnique.AMDMarker:begin
+     Offset:=((TVkDeviceSize(BreadcrumbIndex) shl 1) or 1) shl 2;
      fDevice.fDeviceVulkan.CmdWriteBufferMarkerAMD(aCommandBuffer,
                                                    TVkPipelineStageFlagBits(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                                    fBuffer,
-                                                   TVkDeviceSize((TpvUInt32(BreadcrumbIndex)*2)+1)*SizeOf(TpvUInt32),
+                                                   Offset,
                                                    EndValue);
     end;
     TpvVulkanBreadcrumbTechnique.Manual:begin
@@ -10690,9 +10695,10 @@ begin
                                                0,nil,
                                                0,nil);
      end;
+     Offset:=((TVkDeviceSize(BreadcrumbIndex) shl 1) or 1) shl 2;
      fDevice.fDeviceVulkan.CmdFillBuffer(aCommandBuffer,
                                          fBuffer,
-                                         TVkDeviceSize((TpvUInt32(BreadcrumbIndex)*2)+1)*SizeOf(TpvUInt32),
+                                         Offset,
                                          SizeOf(TpvUInt32),
                                          EndValue);
      if fDevice.fBreadcrumbForceSyncManual then begin
