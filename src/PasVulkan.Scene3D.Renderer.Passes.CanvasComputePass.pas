@@ -389,18 +389,36 @@ begin
                                     0,nil);
 
   // Clear SolidPrimitiveIndirectDrawCommandBuffer and set the second uint32 to 1 (so three vkCmdFillBuffer calls are needed)
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'CanvasFillBuffer0');
+  end;
   aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
                                0,
                                SizeOf(TpvUInt32),
                                0);
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'CanvasFillBuffer1');
+  end;
   aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
                                SizeOf(TpvUInt32),
                                SizeOf(TpvUInt32),
                                1);
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'CanvasFillBuffer2');
+  end;
   aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
                                SizeOf(TpvUInt32)*2,
                                (SizeOf(TVkDrawIndexedIndirectCommand)+SizeOf(TpvUInt32))-(SizeOf(TpvUInt32)*2),
                                0);
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   BufferMemoryBarriers[3].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
   BufferMemoryBarriers[3].pNext:=nil;
@@ -435,7 +453,13 @@ begin
                                   SizeOf(TPushConstants),
                                   @PushConstants);
 
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'CanvasCompute');
+  end;
   aCommandBuffer.CmdDispatch((PushConstants.CountPrimitives+255) shr 8,1,1);
+  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   BufferMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
   BufferMemoryBarriers[0].pNext:=nil;

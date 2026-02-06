@@ -704,6 +704,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fTransparentShapeStartIndexIndex:TpvInt32;
        fOnSuspendRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent;
        fOnResumeRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent;
+       fUseBreadcrumbs:Boolean;
        procedure SetVulkanRenderPass(const aVulkanRenderPass:TpvVulkanRenderPass);
        procedure QueueCoverageReset;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
@@ -928,6 +929,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property FillStyle:TpvCanvasFillStyle read GetFillStyle write SetFillStyle;
        property FillWrapMode:TpvCanvasFillWrapMode read GetFillWrapMode write SetFillWrapMode;
        property Texture:TObject read GetTexture write SetTexture;
+       property UseBreadcrumbs:Boolean read fUseBreadcrumbs write fUseBreadcrumbs;
        property MaskTexture:TObject read GetMaskTexture write SetMaskTexture;
        property State:TpvCanvasState read fState;
        property OnSuspendRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnSuspendRenderPass write fOnSuspendRenderPass;
@@ -3744,6 +3746,8 @@ begin
 
  fState.Reset;
 
+ fUseBreadcrumbs:=false;
+
  fWidth:=1280;
  fHeight:=720;
 
@@ -5956,7 +5960,13 @@ begin
        aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
       end;
 
+      if fUseBreadcrumbs and assigned(fDevice.BreadcrumbBuffer) then begin
+       fDevice.BreadcrumbBuffer.BeginBreadcrumb(aVulkanCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexed,'CanvasDraw');
+      end;
       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
+      if fUseBreadcrumbs and assigned(fDevice.BreadcrumbBuffer) then begin
+       fDevice.BreadcrumbBuffer.EndBreadcrumb(aVulkanCommandBuffer.Handle);
+      end;
 
 {     DynamicOffset:=QueueItem^.StartVertexIndex*SizeOf(TpvCanvasVertex);
       aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@DynamicOffset);
@@ -6098,7 +6108,13 @@ begin
         aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
        end;
 
+       if fUseBreadcrumbs and assigned(fDevice.BreadcrumbBuffer) then begin
+        fDevice.BreadcrumbBuffer.BeginBreadcrumb(aVulkanCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexed,'CanvasShapeReset');
+       end;
        aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
+       if fUseBreadcrumbs and assigned(fDevice.BreadcrumbBuffer) then begin
+        fDevice.BreadcrumbBuffer.EndBreadcrumb(aVulkanCommandBuffer.Handle);
+       end;
 
        if assigned(fCoverageBufferImage) then begin
         
@@ -6230,7 +6246,13 @@ begin
        aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
       end;
 
+      if fUseBreadcrumbs and assigned(fDevice.BreadcrumbBuffer) then begin
+       fDevice.BreadcrumbBuffer.BeginBreadcrumb(aVulkanCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexed,'CanvasShapeMask');
+      end;
       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
+      if fUseBreadcrumbs and assigned(fDevice.BreadcrumbBuffer) then begin
+       fDevice.BreadcrumbBuffer.EndBreadcrumb(aVulkanCommandBuffer.Handle);
+      end;
 
       ForceUpdate:=true; // Force update after mask pass to rebind normal pipeline
 
@@ -6373,7 +6395,13 @@ begin
        aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
       end;
 
+      if fUseBreadcrumbs and assigned(fDevice.BreadcrumbBuffer) then begin
+       fDevice.BreadcrumbBuffer.BeginBreadcrumb(aVulkanCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexed,'CanvasShapeCover');
+      end;
       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
+      if fUseBreadcrumbs and assigned(fDevice.BreadcrumbBuffer) then begin
+       fDevice.BreadcrumbBuffer.EndBreadcrumb(aVulkanCommandBuffer.Handle);
+      end;
 
       ForceUpdate:=true; // Force update after cover pass to rebind normal pipeline
 

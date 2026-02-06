@@ -3269,9 +3269,15 @@ begin
                                   SizeOf(TpvScene3DAtmosphereGlobals.TTransmittanceLUTPushConstants),
                                   @TransmittanceLUTPushConstants);
 
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereTransmittanceLUT');
+  end;
   aCommandBuffer.CmdDispatch((fTransmittanceTexture.Width+15) shr 4,
                              (fTransmittanceTexture.Height+15) shr 4,
                              1);
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
 
   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -3349,9 +3355,15 @@ begin
                                   SizeOf(TpvScene3DAtmosphereGlobals.TMultiScatteringLUTPushConstants),
                                   @MultiScatteringLUTPushConstants);
 
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereMultiScatteringLUT');
+  end;
   aCommandBuffer.CmdDispatch(fMultiScatteringTexture.Width,
                              fMultiScatteringTexture.Height,
-                             TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews);   
+                             TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews);
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -3425,11 +3437,17 @@ begin
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
                                   0,
                                   SizeOf(TpvScene3DAtmosphereGlobals.TSkyLuminanceLUTPushConstants),
-                                  @SkyLuminanceLUTPushConstants);    
+                                  @SkyLuminanceLUTPushConstants);
 
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereSkyLuminanceLUT');
+  end;
   aCommandBuffer.CmdDispatch(fSkyLuminanceLUTTexture.Width, 
                              fSkyLuminanceLUTTexture.Height,
-                             6);    
+                             6);
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -3507,9 +3525,15 @@ begin
                                   SizeOf(TpvScene3DAtmosphereGlobals.TSkyViewLUTPushConstants),
                                   @SkyViewLUTPushConstants);
 
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereSkyViewLUT');
+  end;
   aCommandBuffer.CmdDispatch((fSkyViewLUTTexture.Width+15) shr 4,
                              (fSkyViewLUTTexture.Height+15) shr 4,
-                             TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews);    
+                             TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews);
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -3618,9 +3642,15 @@ begin
                                   SizeOf(TpvScene3DAtmosphereGlobals.TCameraVolumePushConstants),
                                   @CameraVolumePushConstants);
 
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereCameraVolume');
+  end;
   aCommandBuffer.CmdDispatch((fCameraVolumeTexture.Width+15) shr 4,
                              (fCameraVolumeTexture.Height+15) shr 4,
-                             fCameraVolumeTexture.Layers); // includes CountSurfaceViews already    
+                             fCameraVolumeTexture.Layers); // includes CountSurfaceViews already
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -3727,9 +3757,15 @@ begin
                                   SizeOf(TpvScene3DAtmosphereGlobals.TCubeMapPushConstants),
                                   @CubeMapPushConstants);
 
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereCubeMap');
+  end;
   aCommandBuffer.CmdDispatch((fCubeMapTexture.Width+15) shr 4,
                              (fCubeMapTexture.Height+15) shr 4,
                              6);
+  if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+   TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -3828,7 +3864,13 @@ begin
                                       0,
                                       nil);
 
+ if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'AtmosphereCloudsDraw');
+ end;
  aCommandBuffer.CmdDraw(3,1,0,0);
+ if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -3867,7 +3909,13 @@ begin
                                       0,
                                       nil);
 
+ if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'AtmosphereDraw');
+ end;
  aCommandBuffer.CmdDraw(3,1,0,0);
+ if assigned(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -4142,6 +4190,9 @@ begin
                                       1,@BufferMemoryBarrier,
                                       0,nil);
 
+    if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+     TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'AtmosphereMapMinMaxClear');
+    end;
     aCommandBuffer.CmdFillBuffer(fAtmosphere.fAtmosphereMapMinMaxBuffer.Handle,
                                  0,
                                  SizeOf(TpvUInt32),
@@ -4150,7 +4201,10 @@ begin
     aCommandBuffer.CmdFillBuffer(fAtmosphere.fAtmosphereMapMinMaxBuffer.Handle,
                                  SizeOf(TpvUInt32),
                                  SizeOf(TpvUInt32),
-                                 TpvUInt32($00000000));                             
+                                 TpvUInt32($00000000));
+    if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+     TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+    end;
 
     BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -4220,9 +4274,15 @@ begin
                                         1,@fTextureScanDescriptorSet.Handle,
                                         0,nil);
 
+   if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+    TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'DirectionalMapTextureScan');
+   end;
    aCommandBuffer.CmdDispatch((fTextureSourceImage.Width+15) shr 4,
                               (fTextureSourceImage.Height+15) shr 4,
                               1);
+   if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+    TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+   end;
 
    BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -4250,9 +4310,15 @@ begin
                                         1,@fTextureTransferDescriptorSets[aInFlightFrameIndex].Handle,
                                         0,nil);
 
+   if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+    TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'DirectionalMapTextureTransfer');
+   end;
    aCommandBuffer.CmdDispatch((fTexture.Width+15) shr 4,
                               (fTexture.Height+15) shr 4,
                               6);
+   if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+    TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+   end;
 
    ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -4303,10 +4369,16 @@ begin
                                       1,@BufferMemoryBarrier,
                                       0,nil);
 
+    if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+     TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'AtmosphereMapMinMaxFill');
+    end;
     aCommandBuffer.CmdFillBuffer(fAtmosphere.fAtmosphereMapMinMaxBuffer.Handle,
                                  0,
                                  fAtmosphere.fAtmosphereMapMinMaxBuffer.Size,
                                  PpvUInt32(pointer(@FloatOne))^);
+    if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+     TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+    end;
 
     BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -4369,9 +4441,15 @@ begin
                                         1,@fTextureInitializationDescriptorSets[aInFlightFrameIndex].Handle,
                                         0,nil);
 
+   if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+    TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'DirectionalMapTextureInitialization');
+   end;
    aCommandBuffer.CmdDispatch((fTexture.Width+15) shr 4,
                               (fTexture.Height+15) shr 4,
                               6);
+   if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+    TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+   end;
 
    ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -4823,9 +4901,15 @@ begin
                                     SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants),
                                     @PushConstants);
 
+    if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+     TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'CloudWeatherMap');
+    end;
     aCommandBuffer.CmdDispatch((fWeatherMapTexture.Width+15) shr 4,
                                (fWeatherMapTexture.Height+15) shr 4,
                                6);
+    if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
+     TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+    end;
 
     ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),

@@ -7600,6 +7600,9 @@ begin
 
       if aDisocclusions then begin
 
+       if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+        fScene3D.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexedIndirectCount,'MeshDrawDisocclusion');
+       end;
        vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
                                      fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex].Handle,
                                      ((fPerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets[aInFlightFrameIndex]+DrawChoreographyBatchRange^.FirstCommand)*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand))+TpvPtrUInt(Pointer(@TpvScene3D.PGPUDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand)),
@@ -7607,9 +7610,15 @@ begin
                                      (TpvScene3DRendererInstance.MaxMultiIndirectDrawCalls+DrawChoreographyBatchRange^.DrawCallIndex)*SizeOf(TpvUInt32),
                                      DrawChoreographyBatchRange^.CountCommands,
                                      SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand));
+       if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+        fScene3D.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+       end;
 
       end else begin
 
+       if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+        fScene3D.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexedIndirectCount,'MeshDraw');
+       end;
        vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
                                      fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex].Handle,
                                      (DrawChoreographyBatchRange^.FirstCommand*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand))+TpvPtrUInt(Pointer(@TpvScene3D.PGPUDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand)),
@@ -7617,15 +7626,24 @@ begin
                                      DrawChoreographyBatchRange^.DrawCallIndex*SizeOf(TpvUInt32),
                                      DrawChoreographyBatchRange^.CountCommands,
                                      SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand));
+       if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+        fScene3D.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+       end;
 
       end;
 
      end else begin
 
+      if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+       fScene3D.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexedIndirect,'MeshDrawFallback');
+      end;
       aCommandBuffer.CmdDrawIndexedIndirect(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].Handle,
                                             (DrawChoreographyBatchRange^.FirstCommand*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand))+TpvPtrUInt(Pointer(@TpvScene3D.PGPUDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand)),
                                             DrawChoreographyBatchRange^.CountCommands,
                                             SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand));
+      if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+       fScene3D.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+      end;
      end;
 
     end;
@@ -8515,7 +8533,13 @@ begin
 
   aCommandBuffer.CmdBindIndexBuffer(fSpaceLinesIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
 
+  if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+   fScene3D.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexedIndirect,'SpaceLinesDraw');
+  end;
   aCommandBuffer.CmdDrawIndexedIndirect(fSpaceLinesIndirectDrawCommandBuffer.Handle,0,1,SizeOf(TVkDrawIndexedIndirectCommand));
+  if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+   fScene3D.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
  end;
 
@@ -8567,7 +8591,13 @@ begin
 
   aCommandBuffer.CmdBindIndexBuffer(fSolidPrimitiveIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
 
+  if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+   fScene3D.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexedIndirect,'SolidPrimitivesDraw');
+  end;
   aCommandBuffer.CmdDrawIndexedIndirect(fSolidPrimitiveIndirectDrawCommandBuffer.Handle,0,1,SizeOf(TVkDrawIndexedIndirectCommand));
+  if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+   fScene3D.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
  end;
 

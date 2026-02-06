@@ -36576,7 +36576,13 @@ begin
                                     SizeOf(TpvScene3D.TMeshComputeStagePushConstants),
                                     @MeshComputeStagePushConstants);
 
+    if assigned(fVulkanDevice) and assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+     fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'MeshComputeStage');
+    end;
     aCommandBuffer.CmdDispatch((Current^.Count+127) shr 7,1,1);
+    if assigned(fVulkanDevice) and assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+     fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+    end;
 
    end;
 
@@ -36984,7 +36990,13 @@ begin
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
   aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
+  if assigned(fVulkanDevice) and assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'DebugPrimitivesDraw');
+  end;
   aCommandBuffer.CmdDraw(Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices),1,0,0);
+  if assigned(fVulkanDevice) and assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
  end;
 end;
@@ -37024,7 +37036,13 @@ begin
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
   aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanParticleVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
+  if assigned(fVulkanDevice) and assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'ParticlesDraw');
+  end;
   aCommandBuffer.CmdDraw(Min(fCountInFlightFrameParticleVertices[aInFlightFrameIndex],TpvScene3D.MaxParticleVertices),1,0,0);
+  if assigned(fVulkanDevice) and assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 

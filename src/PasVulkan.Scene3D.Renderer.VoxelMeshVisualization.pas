@@ -333,12 +333,18 @@ begin
                                   0,
                                   SizeOf(TpvScene3DRendererVoxelMeshVisualization.TPushConstants),
                                   @PushConstants);
+  if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+   fScene3D.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'VoxelMeshVisualization');
+  end;
   aCommandBuffer.CmdDraw(fInstance.Renderer.GlobalIlluminationVoxelGridSize*
                          fInstance.Renderer.GlobalIlluminationVoxelGridSize*
                          fInstance.Renderer.GlobalIlluminationVoxelGridSize*36,
                          1,
                          0,
                          0);
+  if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
+   fScene3D.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
  end;
 
 end;
