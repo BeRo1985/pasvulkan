@@ -16687,9 +16687,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'TileDirtyExpansion');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fTileMapResolution+15) shr 4,
                             (fPlanet.fTileMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
