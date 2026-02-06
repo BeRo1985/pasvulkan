@@ -17226,12 +17226,24 @@ begin
 
  if fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
   if fPlanet.fData.fCountDirtyTiles>0 then begin
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'HeightMapSmooth');
+   end;
    aCommandBuffer.CmdDispatch(((fPlanet.fTileResolution*fPlanet.fTileResolution)+255) shr 8,
                               fPlanet.fData.fCountDirtyTiles,
                               1);
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+   end;
   end;
  end else begin
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DispatchIndirect,'HeightMapSmooth');
+  end;
   aCommandBuffer.CmdDispatchIndirect(fPlanet.fData.fTileDirtyQueueBuffer.Handle,SizeOf(TVkDispatchIndirectCommand)*2);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
  end;
 
  // Transition smoothed image back to SHADER_READ_ONLY for consumers
