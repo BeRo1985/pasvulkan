@@ -4401,6 +4401,10 @@ var ktxTexture_CreateFromMemory:TktxTexture_CreateFromMemory=nil;
 
     ktxVulkanDevice:TpvVulkanDevice=nil;
 
+{$if defined(PasVulkanBreadcrumbDebug)}
+    BreadcrumbVulkanDevice:TpvVulkanDevice=nil;
+{$ifend}
+
     KTXTextureName:TpvUTF8String='KTX2Texture';
 
 function ktxVulkanTexture_subAllocatorAllocMemFunc(allocInfo:PVkMemoryAllocateInfo;memReq:PVkMemoryRequirements;pageCount:PpvUInt64):TpvUInt64; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
@@ -7876,6 +7880,16 @@ var s:TpvUTF8String;
 {$ifend}
 begin
  if ResultCode<>VK_SUCCESS then begin
+{$if defined(PasVulkanBreadcrumbDebug)}
+  if ResultCode=VK_ERROR_DEVICE_LOST then begin
+   if assigned(BreadcrumbVulkanDevice) and assigned(BreadcrumbVulkanDevice.fBreadcrumbBuffer) then begin
+    VulkanDebugLn('VK_ERROR_DEVICE_LOST detected - dumping breadcrumb state:');
+    if assigned(BreadcrumbVulkanDevice.fUniversalQueue) then begin
+     BreadcrumbVulkanDevice.fBreadcrumbBuffer.TraceState(BreadcrumbVulkanDevice.fUniversalQueue.fQueueHandle);
+    end;
+   end;
+  end;
+{$ifend}
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   s:='Vulkan error ['+IntToStr(TpvInt64(ResultCode))+']: '+VulkanErrorToString(ResultCode);
   __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(s));
@@ -10948,6 +10962,11 @@ begin
  if ktxVulkanDevice=self then begin
   ktxVulkanDevice:=nil;
  end;
+{$if defined(PasVulkanBreadcrumbDebug)}
+ if BreadcrumbVulkanDevice=self then begin
+  BreadcrumbVulkanDevice:=nil;
+ end;
+{$ifend}
  FreeAndNil(fBreadcrumbBuffer);
  FreeAndNil(fCanvasCommon);
  for Index:=0 to length(fQueueFamilyQueues)-1 do begin
@@ -11962,6 +11981,9 @@ begin
 
   if fBreadcrumbTechnique<>TpvVulkanBreadcrumbTechnique.None then begin
    fBreadcrumbBuffer:=TpvVulkanBreadcrumbBuffer.Create(self,fBreadcrumbTechnique);
+{$if defined(PasVulkanBreadcrumbDebug)}
+   BreadcrumbVulkanDevice:=self;
+{$ifend}
   end;
 
  end;
