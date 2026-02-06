@@ -18130,13 +18130,25 @@ begin
                                  @fPushConstants);
 
  if fPhysics then begin
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PhysicsMeshIndexGeneration');
+  end;
   aCommandBuffer.CmdDispatch((fPlanet.fCountPhysicsMeshIndices+255) shr 8,
                              1,
                              1);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
  end else begin
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'VisualMeshIndexGeneration');
+  end;
   aCommandBuffer.CmdDispatch((fPlanet.fCountVisualMeshIndices+255) shr 8,
                              1,
                              1);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
  end;
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
