@@ -25129,6 +25129,7 @@ begin
    end;
   end; 
  end;
+ CountUsedBrushes:=Min(Max(RoundUpToPowerOfTwo(CountUsedBrushes),4),TpvScene3DPlanet.CountBrushes);
 
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
 
