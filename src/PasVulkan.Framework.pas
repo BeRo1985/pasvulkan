@@ -975,7 +975,7 @@ type EpvVulkanException=class(Exception);
        fBreadcrumbCount:TpvInt32;
        fMaxBreadcrumbCount:TpvInt32;
        fCurrentBreadcrumbIndex:TpvInt32;
-       fFrameId:TpvUInt64;
+       fFrameID:TpvUInt64;
        fMarkerToken:TpvUInt16;
        fRecordingEnabled:TPasMPBool32;
        fInsideRenderPass:TPasMPBool32;
@@ -986,7 +986,7 @@ type EpvVulkanException=class(Exception);
        fDirectTrace:TPasMPBool32;
        function GetBreadcrumbTypeString(const aType:TpvVulkanBreadcrumbType):TpvRawByteString;
        procedure FormatZoneId(var aTarget:TpvRawByteString;const aZoneIndex:TpvInt32);
-       function FindMarkerBufferMemoryTypeIndex(const aMemTypeBits:TpvUInt32):TpvInt32;
+       function FindMarkerBufferMemoryTypeIndex(const aMemoryTypeBits:TpvUInt32):TpvInt32;
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aTechnique:TpvVulkanBreadcrumbTechnique); reintroduce;
        destructor Destroy; override;
@@ -10298,7 +10298,7 @@ begin
  end;
 end;
 
-function TpvVulkanBreadcrumbBuffer.FindMarkerBufferMemoryTypeIndex(const aMemTypeBits:TpvUInt32):TpvInt32;
+function TpvVulkanBreadcrumbBuffer.FindMarkerBufferMemoryTypeIndex(const aMemoryTypeBits:TpvUInt32):TpvInt32;
 var MemoryProperties:TVkPhysicalDeviceMemoryProperties;
     Index:TpvInt32;
     TypeMask,ExpectedFlags:TpvUInt32;
@@ -10308,7 +10308,7 @@ begin
  ExpectedFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
  for Index:=0 to TpvInt32(MemoryProperties.memoryTypeCount)-1 do begin
   TypeMask:=TpvUInt32(1) shl Index;
-  if ((aMemTypeBits and TypeMask)<>0) and ((MemoryProperties.memoryTypes[Index].propertyFlags and ExpectedFlags)=ExpectedFlags) then begin
+  if ((aMemoryTypeBits and TypeMask)<>0) and ((MemoryProperties.memoryTypes[Index].propertyFlags and ExpectedFlags)=ExpectedFlags) then begin
    result:=Index;
    exit;
   end;
@@ -10335,7 +10335,7 @@ begin
  fZoneStackCount:=0;
  fBreadcrumbCount:=0;
  fCurrentBreadcrumbIndex:=-1;
- fFrameId:=0;
+ fFrameID:=0;
  fMarkerToken:=0;
  fRecordingEnabled:=true;
  fInsideRenderPass:=false;
@@ -10426,7 +10426,7 @@ begin
   fCurrentBreadcrumbIndex:=-1;
   fZoneStackCount:=0;
 
-  fFrameId:=aFrameId;
+  fFrameID:=aFrameId;
   fMarkerToken:=TpvUInt16(aFrameId and $ffff);
 
   if assigned(fMappedData) then begin
@@ -10459,7 +10459,7 @@ begin
   fCurrentBreadcrumbIndex:=-1;
   fZoneStackCount:=0;
 
-  fFrameId:=aFrameID;
+  fFrameID:=aFrameID;
   fMarkerToken:=TpvUInt16(aFrameID and $ffff);
 
   if assigned(fMappedData) and (fTechnique<>TpvVulkanBreadcrumbTechnique.Manual) then begin
@@ -10751,9 +10751,9 @@ begin
    TpvVulkanBreadcrumbTechnique.Manual:begin
     if assigned(fMappedData) then begin
      for BreadcrumbIndex:=0 to fBreadcrumbCount-1 do begin
-      MarkerIndex:=BreadcrumbIndex*2;
-      MarkerValueStart:=PpvUInt32Array(fMappedData)^[MarkerIndex+0];
-      MarkerValueEnd:=PpvUInt32Array(fMappedData)^[MarkerIndex+1];
+      MarkerIndex:=BreadcrumbIndex shl 1;
+      MarkerValueStart:=PpvUInt32Array(fMappedData)^[MarkerIndex or 0];
+      MarkerValueEnd:=PpvUInt32Array(fMappedData)^[MarkerIndex or 1];
       MarkerStateStart:=MarkerValueStart and $ffff;
       MarkerStateEnd:=MarkerValueEnd and $ffff;
       if MarkerStateEnd=1 then begin
