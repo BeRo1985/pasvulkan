@@ -110,6 +110,9 @@ type TpvScene3DPlanets=class;
        const CountBlendMapLayers=2; // with each four values
              MaximumCountRainDrops=65536; // must be power of two
              DefaultCountRainDrops=4096; // must be power of two
+             CountBrushes=256;
+             BrushSize=256;
+             BrushSmoothLevels=16;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
@@ -292,15 +295,19 @@ type TpvScene3DPlanets=class;
             end;
             PWaterModificationItem=^TWaterModificationItem;
             TWaterModificationItems=array[0..MaxInFlightFrames-1] of TWaterModificationItem;
-            TBrush=array[0..255,0..255] of TpvUInt8;
+            TBrush=array[0..TpvScene3DPlanet.BrushSize-1,0..TpvScene3DPlanet.BrushSize-1] of TpvUInt8;
             PBrush=^TBrush;
-            TBrushes=array[0..255] of TBrush;
+            TFloatBrush=array[0..TpvScene3DPlanet.BrushSize-1,0..TpvScene3DPlanet.BrushSize-1] of TpvFloat;
+            PFloatBrush=^TFloatBrush;
+            TBrushes=array[0..TpvScene3DPlanet.CountBrushes-1] of TBrush;
             PBrushes=^TBrushes;
-            TRGBABrush=array[0..255,0..255] of TpvUInt32;
+            TSmoothedBrushes=array[0..TpvScene3DPlanet.BrushSmoothLevels-1] of TBrushes;
+            PSmoothedBrushes=^TSmoothedBrushes;
+            TRGBABrush=array[0..TpvScene3DPlanet.BrushSize-1,0..TpvScene3DPlanet.BrushSize-1] of TpvUInt32;
             PRGBABrush=^TRGBABrush;
-            TRGBABrushes=array[0..255] of TRGBABrush;
+            TRGBABrushes=array[0..TpvScene3DPlanet.CountBrushes-1] of TRGBABrush;
             PRGBABrushes=^TRGBABrushes;
-            TUsedBrushes=array[0..255] of Boolean;
+            TUsedBrushes=array[0..TpvScene3DPlanet.CountBrushes-1] of Boolean;
             PUsedBrushes=^TUsedBrushes;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
@@ -2683,8 +2690,9 @@ type TpvScene3DPlanets=class;
        fImageRowChanged:array[0..16384-1] of boolean; // 16k is overkill anyway, better too much than too less
        fImageRowBufferCopy:array[0..8192-1] of TVkBufferImageCopy; // 16k / 2, since contiguous rows are merged into one copy operation
        fAtmosphere:TObject;
-       fBrushes:TpvScene3DPlanet.TBrushes; 
-       fBrushesTexture:TpvVulkanTexture;       
+       fBrushesTexture:TpvVulkanTexture;
+       fBrushesTextures:array[0..15] of TpvVulkanTexture;
+       fBrushesTexturesDescriptorImageInfos:TVkDescriptorImageInfoArray;
        fRGBABrushes:TpvScene3DPlanet.TRGBABrushes; 
        fRGBABrushesTexture:TpvVulkanTexture;
        fUsePlanetHeightMapBuffer:Boolean;
@@ -2720,7 +2728,8 @@ type TpvScene3DPlanets=class;
                                      out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
       public
        constructor Create(const aScene3D:TObject;
-                          const aBrushes:TpvScene3DPlanet.TBrushes; 
+                          const aBrushes:TpvScene3DPlanet.TBrushes;
+                          const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes;
                           const aHeightMapResolution:TpvInt32=4096;
                           const aVisualResolution:TpvSizeInt=4096;
                           const aPhysicsResolution:TpvSizeInt=1024;
@@ -2737,6 +2746,7 @@ type TpvScene3DPlanets=class;
        procedure BeforeDestruction; override;
        procedure Release;
        function HandleRelease:boolean;
+       class procedure SmoothBrushes(out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes;const aBrushes:TpvScene3DPlanet.TBrushes); static;
        class function CreatePlanetDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice;const aMeshShaders:Boolean):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetCullDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
@@ -2802,6 +2812,7 @@ type TpvScene3DPlanets=class;
        function GetPosition(const aNormal:TpvVector3):TpvVector3; overload;
        procedure GetPositionAndNormal(const aUV:TpvVector2;out aOutPosition,aOutNormal:TpvVector3); overload;
        procedure GetPositionAndNormal(const aNormal:TpvVector3;out aOutPosition,aOutNormal:TpvVector3); overload;
+       function GetBrushesTexturesDescriptorImageInfos:TVkDescriptorImageInfoArray;
        function GetGrass(const aUV:TpvVector2):TpvScalar; overload;
        function GetGrass(const aNormal:TpvVector3):TpvScalar; overload;
        function GetPrecipitation(const aUV:TpvVector2):TpvScalar; overload;
@@ -2892,6 +2903,7 @@ type TpvScene3DPlanets=class;
        property WaterRainSettings:TpvScene3DPlanet.TWaterRainSettings read fWaterRainSettings;
        property PrecipitationSimulationSettings:TpvScene3DPlanet.TPrecipitationSimulationSettings read fPrecipitationSimulationSettings;
        property SimulationActive:TPasMPBool32 read fSimulationActive write fSimulationActive;
+       property WaterMiniMapResolution:TpvSizeInt read fWaterMiniMapResolution;
      end;
 
      { TpvScene3DPlanets }
@@ -2930,6 +2942,12 @@ function LoadBrushesFromAsset(const aAssetPath:TpvUTF8String;out aBrushes:TpvSce
 procedure SaveBrushesToStream(const aStream:TStream;const aBrushes:TpvScene3DPlanet.TBrushes);
 procedure SaveBrushesToAsset(const aAssetPath:TpvUTF8String;const aBrushes:TpvScene3DPlanet.TBrushes);
 
+function LoadSmoothedBrushesFromStream(const aStream:TStream;out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes):boolean;
+function LoadSmoothedBrushesFromAsset(const aAssetPath:TpvUTF8String;out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes):boolean;
+
+procedure SaveSmoothedBrushesToStream(const aStream:TStream;const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes);
+procedure SaveSmoothedBrushesToAsset(const aAssetPath:TpvUTF8String;const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes);
+
 procedure BrushesToUsedBrushes(const aBrushes:TpvScene3DPlanet.TBrushes;out aUsedBrushes:TpvScene3DPlanet.TUsedBrushes);
 
 implementation
@@ -2949,9 +2967,9 @@ var Index,y:TpvSizeInt;
 begin
  GetMem(NewBrushes,SizeOf(TpvScene3DPlanet.TBrushes));
  try
-  for Index:=0 to 255 do begin
-   for y:=0 to 255 do begin
-    NewBrushes^[Index,y]:=aBrushes[Index,255-y];
+  for Index:=0 to TpvScene3DPlanet.CountBrushes-1 do begin
+   for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+    NewBrushes^[Index,y]:=aBrushes[Index,TpvScene3DPlanet.BrushSize-(y+1)];
    end;
   end;
   aBrushes:=NewBrushes^;
@@ -3007,15 +3025,15 @@ begin
        inc(m8);
       end;
      end;
-     if (PNGWidth<>256) or (PNGHeight<>256) then begin
-      GetMem(p8,256*256);
-      ResizeR8(PixelData,PNGWidth,PNGHeight,p8,256,256);
+     if (PNGWidth<>TpvScene3DPlanet.BrushSize) or (PNGHeight<>TpvScene3DPlanet.BrushSize) then begin
+      GetMem(p8,TpvScene3DPlanet.BrushSize*TpvScene3DPlanet.BrushSize);
+      ResizeR8(PixelData,PNGWidth,PNGHeight,p8,TpvScene3DPlanet.BrushSize,TpvScene3DPlanet.BrushSize);
       FreeMem(PixelData);
       PixelData:=p8;
-      PNGWidth:=256;
-      PNGHeight:=256;
+      PNGWidth:=TpvScene3DPlanet.BrushSize;
+      PNGHeight:=TpvScene3DPlanet.BrushSize;
      end;
-     Move(PixelData^,aBrushes[PNGIndex],256*256);
+     Move(PixelData^,aBrushes[PNGIndex],TpvScene3DPlanet.BrushSize*TpvScene3DPlanet.BrushSize);
     end;    
    finally
     FreeMem(PNGData);
@@ -3104,15 +3122,15 @@ begin
         inc(m8);
        end;
       end;
-      if QOIWidth<>256 then begin
-       GetMem(p8,256*256);
-       ResizeR8(PixelData,QOIWidth,QOIHeight,p8,256,256);
+      if QOIWidth<>TpvScene3DPlanet.BrushSize then begin
+       GetMem(p8,TpvScene3DPlanet.BrushSize*TpvScene3DPlanet.BrushSize);
+       ResizeR8(PixelData,QOIWidth,QOIHeight,p8,TpvScene3DPlanet.BrushSize,TpvScene3DPlanet.BrushSize);
        FreeMem(PixelData);
        PixelData:=p8;
-       QOIWidth:=256;
-       QOIHeight:=256;
+       QOIWidth:=TpvScene3DPlanet.BrushSize;
+       QOIHeight:=TpvScene3DPlanet.BrushSize;
       end;
-      Move(PixelData^,aBrushes[QOIIndex],256*256);
+      Move(PixelData^,aBrushes[QOIIndex],TpvScene3DPlanet.BrushSize*TpvScene3DPlanet.BrushSize);
      end;
     end;
    finally
@@ -3236,16 +3254,86 @@ begin
  end;
 end;
 
+function LoadSmoothedBrushesFromStream(const aStream:TStream;out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes):boolean;
+var OutStream:TMemoryStream;
+begin
+ OutStream:=TMemoryStream.Create;
+ try
+  if DecompressStream(aStream,OutStream) then begin
+   if OutStream.Size=SizeOf(TpvScene3DPlanet.TSmoothedBrushes) then begin
+    OutStream.Seek(0,soBeginning);
+    OutStream.Read(aSmoothedBrushes,SizeOf(TpvScene3DPlanet.TSmoothedBrushes));
+    result:=true;
+   end else begin
+    FillChar(aSmoothedBrushes,SizeOf(TpvScene3DPlanet.TSmoothedBrushes),#0);
+    result:=false;
+   end;
+  end else begin
+   FillChar(aSmoothedBrushes,SizeOf(TpvScene3DPlanet.TSmoothedBrushes),#0);
+   result:=false;
+  end;
+ finally
+  FreeAndNil(OutStream);
+ end;
+end;
+
+function LoadSmoothedBrushesFromAsset(const aAssetPath:TpvUTF8String;out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes):boolean;
+var Stream:TStream;
+begin
+ if pvApplication.Assets.ExistAsset(aAssetPath) then begin
+  Stream:=pvApplication.Assets.GetAssetStream(aAssetPath);
+  try
+   result:=LoadSmoothedBrushesFromStream(Stream,aSmoothedBrushes);
+  finally
+   FreeAndNil(Stream);
+  end;
+ end else begin
+  FillChar(aSmoothedBrushes,SizeOf(TpvScene3DPlanet.TSmoothedBrushes),#0);
+  result:=false;
+ end;
+end;
+
+procedure SaveSmoothedBrushesToStream(const aStream:TStream;const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes);
+var OutStream:TMemoryStream;
+begin
+ OutStream:=TMemoryStream.Create;
+ try
+  OutStream.Write(aSmoothedBrushes,SizeOf(TpvScene3DPlanet.TSmoothedBrushes));
+  OutStream.Seek(0,soBeginning);
+  if not CompressStream(OutStream,aStream,TpvCompressionMethod.LZBRRC,5,0) then begin
+   if not CompressStream(OutStream,aStream,TpvCompressionMethod.None,5,0) then begin
+    Assert(false);
+   end;
+  end;
+ finally
+  FreeAndNil(OutStream);
+ end;
+end;
+
+procedure SaveSmoothedBrushesToAsset(const aAssetPath:TpvUTF8String;const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes);
+var RealFilePath:TpvUTF8String;
+    Stream:TMemoryStream;
+begin
+ RealFilePath:=IncludeTrailingPathDelimiter(pvApplication.Assets.BasePath)+aAssetPath;
+ Stream:=TMemoryStream.Create;
+ try
+  SaveSmoothedBrushesToStream(Stream,aSmoothedBrushes);
+  Stream.SaveToFile(RealFilePath);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
 procedure BrushesToUsedBrushes(const aBrushes:TpvScene3DPlanet.TBrushes;out aUsedBrushes:TpvScene3DPlanet.TUsedBrushes);
 var Index,x,y:TpvUInt32;
     Used:Boolean;
     Brush:TpvScene3DPlanet.PBrush;
 begin
- for Index:=0 to 255 do begin
+ for Index:=0 to TpvScene3DPlanet.CountBrushes-1 do begin
   Used:=false;
   Brush:=@aBrushes[Index];
-  for y:=0 to 255 do begin
-   for x:=0 to 255 do begin
+  for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+   for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
     if Brush^[y,x]<>0 then begin
      Used:=true;
      break;
@@ -10640,9 +10728,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'BlendMapInitialization');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fData.fBlendMapImage.Width+15) shr 4,
                             (fPlanet.fData.fBlendMapImage.Height+15) shr 4,
                             TpvScene3DPlanet.CountBlendMapLayers);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -10702,7 +10796,7 @@ begin
                                   0);
   fDescriptorSetLayout.AddBinding(1,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                  1,
+                                  16,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
@@ -10719,7 +10813,7 @@ begin
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                   1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
   fDescriptorPool.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TBlendMapModification.fDescriptorPool');
@@ -10737,11 +10831,9 @@ begin
                                       false);
   fDescriptorSet.WriteToDescriptorSet(1,
                                       0,
-                                      1,
+                                      16,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      fPlanet.GetBrushesTexturesDescriptorImageInfos,
                                       [],
                                       [],
                                       false);
@@ -10837,9 +10929,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'BlendMapModification');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fBlendMapResolution+15) shr 4,
                             (fPlanet.fBlendMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -11031,9 +11129,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'BlendMapNormalMap');
+ end;
  aCommandBuffer.CmdDispatch(((fPlanet.fBlendMapResolution shr 1)+15) shr 4,
                             ((fPlanet.fBlendMapResolution shr 1)+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -11241,9 +11345,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereMiniMap');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fAtmosphereMapResolution+7) shr 3,
                             (fPlanet.fAtmosphereMapResolution+7) shr 3,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -11511,9 +11621,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipitationMiniMap');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+7) shr 3,
                             (fPlanet.fPrecipitationMapResolution+7) shr 3,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -11746,9 +11862,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'GrassMapInitialization');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fGrassMapResolution+15) shr 4,
                             (fPlanet.fGrassMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -11810,7 +11932,7 @@ begin
                                   0);
   fDescriptorSetLayout.AddBinding(1,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                  1,
+                                  16,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
@@ -11827,7 +11949,7 @@ begin
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                   1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
   fDescriptorPool.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TGrassMapModification.fDescriptorPool');
@@ -11845,11 +11967,9 @@ begin
                                       false);
   fDescriptorSet.WriteToDescriptorSet(1,
                                       0,
-                                      1,
+                                      16,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      fPlanet.GetBrushesTexturesDescriptorImageInfos,
                                       [],
                                       [],
                                       false);
@@ -11944,9 +12064,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'GrassMapModification');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fGrassMapResolution+15) shr 4,
                             (fPlanet.fGrassMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -12113,9 +12239,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipitationMapInit');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+15) shr 4,
                             (fPlanet.fPrecipitationMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -12177,7 +12309,7 @@ begin
                                   0);
   fDescriptorSetLayout.AddBinding(1,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                  1,
+                                  16,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
@@ -12194,7 +12326,7 @@ begin
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                   1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
   fDescriptorPool.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TPrecipitationMapModification.fDescriptorPool');
@@ -12212,11 +12344,9 @@ begin
                                       false);
   fDescriptorSet.WriteToDescriptorSet(1,
                                       0,
-                                      1,
+                                      16,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      fPlanet.GetBrushesTexturesDescriptorImageInfos,
                                       [],
                                       [],
                                       false);
@@ -12311,9 +12441,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipitationMapModification');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+15) shr 4,
                             (fPlanet.fPrecipitationMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -12660,9 +12796,15 @@ begin
                                         0,
                                         nil);
 
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipitationSimulation');
+   end;
    aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+15) shr 4,
                               (fPlanet.fPrecipitationMapResolution+15) shr 4,
                               1);
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+   end;
 
    fPlanet.fData.fPrecipitationSimulationIndex:=(fPlanet.fData.fPrecipitationSimulationIndex+1) and 1;
     
@@ -12919,9 +13061,15 @@ begin
                                       0,
                                       nil);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipitationClouds');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationMapResolution+15) shr 4,
                             (fPlanet.fPrecipitationMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -13088,9 +13236,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereMapInitialization');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fAtmosphereMapResolution+15) shr 4,
                             (fPlanet.fAtmosphereMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -13152,7 +13306,7 @@ begin
                                   0);
   fDescriptorSetLayout.AddBinding(1,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                  1,
+                                  16,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
@@ -13169,7 +13323,7 @@ begin
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                   1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
   fDescriptorPool.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TAtmosphereMapModification.fDescriptorPool');
@@ -13187,11 +13341,9 @@ begin
                                       false);
   fDescriptorSet.WriteToDescriptorSet(1,
                                       0,
-                                      1,
+                                      16,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      fPlanet.GetBrushesTexturesDescriptorImageInfos,
                                       [],
                                       [],
                                       false);
@@ -13286,9 +13438,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereMapModification');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fAtmosphereMapResolution+15) shr 4,
                             (fPlanet.fAtmosphereMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -13501,9 +13659,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'AtmosphereMapSimulation');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fAtmosphereMapResolution+15) shr 4,
                             (fPlanet.fAtmosphereMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -13722,9 +13886,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);       
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'PrecipAtmosphereMapCombine');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fPrecipitationAtmosphereMapResolution+15) shr 4,
                             (fPlanet.fPrecipitationAtmosphereMapResolution+15) shr 4,
-                            1);    
+                            1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
@@ -14567,9 +14737,15 @@ begin
                                    SizeOf(TModificationPushConstants),
                                    @fModificationPushConstants); 
 
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'WaterModification');
+   end;
    aCommandBuffer.CmdDispatch((fPlanet.fWaterMapResolution+15) shr 4,
                               (fPlanet.fWaterMapResolution+15) shr 4,
                               1);
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+   end;
 
    BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -14755,9 +14931,15 @@ begin
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fOutFlowPipeline.Handle);
 
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'WaterOutFlow');
+  end;
   aCommandBuffer.CmdDispatch(((fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))+15) shr 4,
                              ((fPlanet.fWaterMapResolution+(fPlanet.fWaterMapBorder*2))+15) shr 4,
                              1);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Buffer memory barriers                                                              //
@@ -14792,9 +14974,15 @@ begin
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fWaterHeightPipeline.Handle);
 
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'WaterHeight');
+  end;
   aCommandBuffer.CmdDispatch((fPlanet.fWaterMapResolution+15) shr 4,
                              (fPlanet.fWaterMapResolution+15) shr 4,
                              1);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Buffer memory barriers                                                              //
@@ -14933,9 +15121,15 @@ begin
                                   SizeOf(TDownsamplePushConstants),
                                   @fDownsamplePushConstants);    
 
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'WaterDownsample');
+  end;
   aCommandBuffer.CmdDispatch(((fPlanet.fWaterMapResolution shr 1)+8) shr 3,
                              ((fPlanet.fWaterMapResolution shr 1)+8) shr 3,
                              1);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -15040,9 +15234,15 @@ begin
                                   SizeOf(TInterpolationPushConstants),
                                   @fInterpolationPushConstants);
 
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'WaterInterpolation');
+  end;
   aCommandBuffer.CmdDispatch((fPlanet.fWaterMapResolution+15) shr 4,
                              (fPlanet.fWaterMapResolution+15) shr 4,
                              1);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
 
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -15330,9 +15530,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'HeightMapDataInitialization');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fHeightMapResolution+15) shr 4,
                             (fPlanet.fHeightMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -15540,9 +15746,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'HeightMapRandomInitialization');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fHeightMapResolution+15) shr 4,
                             (fPlanet.fHeightMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -15618,7 +15830,7 @@ begin
                                   0);
   fDescriptorSetLayout.AddBinding(2,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                  1,
+                                  16,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
@@ -15636,7 +15848,7 @@ begin
                                                   1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
   fDescriptorPool.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.THeightMapModification.fDescriptorPool');
 
@@ -15663,11 +15875,9 @@ begin
                                       false);
   fDescriptorSet.WriteToDescriptorSet(2,
                                       0,
-                                      1,
+                                      16,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                     fPlanet.fBrushesTexture.ImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      fPlanet.GetBrushesTexturesDescriptorImageInfos,
                                       [],
                                       [],
                                       false);    
@@ -15817,9 +16027,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'HeightMapModification');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fHeightMapResolution+15) shr 4,
                             (fPlanet.fHeightMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -16050,9 +16266,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'HeightMapFlatten');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fHeightMapResolution+15) shr 4,
                             (fPlanet.fHeightMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -16244,9 +16466,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'TiledMeshBoundingVolumes');
+ end;
  aCommandBuffer.CmdDispatch(((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+255) shr 8,
                             1,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
@@ -16459,9 +16687,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'TileDirtyExpansion');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fTileMapResolution+15) shr 4,
                             (fPlanet.fTileMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
@@ -16690,9 +16924,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'TileDirtyQueueGeneration');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fTileMapResolution+15) shr 4,
                             (fPlanet.fTileMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
@@ -16986,12 +17226,24 @@ begin
 
  if fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
   if fPlanet.fData.fCountDirtyTiles>0 then begin
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'HeightMapSmooth');
+   end;
    aCommandBuffer.CmdDispatch(((fPlanet.fTileResolution*fPlanet.fTileResolution)+255) shr 8,
                               fPlanet.fData.fCountDirtyTiles,
                               1);
+   if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+    fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+   end;
   end;
  end else begin
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DispatchIndirect,'HeightMapSmooth');
+  end;
   aCommandBuffer.CmdDispatchIndirect(fPlanet.fData.fTileDirtyQueueBuffer.Handle,SizeOf(TVkDispatchIndirectCommand)*2);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
  end;
 
  // Transition smoothed image back to SHADER_READ_ONLY for consumers
@@ -17184,9 +17436,15 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'NormalMapGeneration');
+ end;
  aCommandBuffer.CmdDispatch((fPlanet.fHeightMapResolution+15) shr 4,
                             (fPlanet.fHeightMapResolution+15) shr 4,
                             1);
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
 
  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -24534,6 +24792,7 @@ end;
 
 constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aBrushes:TpvScene3DPlanet.TBrushes;
+                                    const aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes;
                                     const aHeightMapResolution:TpvInt32;
                                     const aVisualResolution:TpvSizeInt;
                                     const aPhysicsResolution:TpvSizeInt;
@@ -24545,9 +24804,12 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aAtmosphereMiniMapResolutionShift:TpvSizeInt;
                                     const aPrecipitationMiniMapResolutionShift:TpvSizeInt;
                                     const aUseHeightMapSmoothing:Boolean);
-var InFlightFrameIndex,Index,Resolution,x,y:TpvSizeInt;
+var InFlightFrameIndex,Index,Resolution,x,y,CountUsedBrushes:TpvSizeInt;
+    Pixel:TpvUInt32;
+    BrushUsed:Boolean;
 //  ta,tb:TpvHighResolutionTime;
     TileLODLevels:TTileLODLevels;
+    DescriptorImageInfos:TVkDescriptorImageInfoArray;
 begin
 
  inherited Create;
@@ -24589,12 +24851,17 @@ begin
 
  fQueuedDownloadLastTime:=0;
 
- fBrushes:=aBrushes;
-
- for Index:=Low(TBrushes) to High(TBrushes) do begin
-  for y:=0 to 255 do begin
-   for x:=0 to 255 do begin
-    fRGBABrushes[Index,255-y,x]:=(TpvUInt32(fBrushes[Index,y,x]) shl 24) or TpvUInt32($00ffffff);
+ CountUsedBrushes:=1;
+ for Index:=0 to TpvScene3DPlanet.CountBrushes-1 do begin
+  BrushUsed:=false;
+  for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+   for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+    Pixel:=aSmoothedBrushes[0,Index,y,x];
+    fRGBABrushes[Index,TpvScene3DPlanet.BrushSize-(y+1),x]:=(TpvUInt32(Pixel) shl 24) or TpvUInt32($00ffffff);
+    if (not BrushUsed) and (Pixel<>0) then begin
+     CountUsedBrushes:=Max(CountUsedBrushes,Index+1);
+     BrushUsed:=true;
+    end;
    end;
   end; 
  end;
@@ -24960,14 +25227,14 @@ begin
                                                      fVulkanUniversalFence,
                                                      VK_FORMAT_R8_UNORM,
                                                      VK_SAMPLE_COUNT_1_BIT,
-                                                     256,
-                                                     256,
+                                                     TpvScene3DPlanet.BrushSize,
+                                                     TpvScene3DPlanet.BrushSize,
                                                      0,
-                                                     256,
+                                                     CountUsedBrushes,
                                                      1,
                                                      1,
                                                      [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
-                                                     @fBrushes,
+                                                     @aBrushes,
                                                      SizeOf(TpvScene3DPlanet.TBrushes),
                                                      false,
                                                      false,
@@ -24979,6 +25246,39 @@ begin
   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fBrushesTexture.Image');
   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fBrushesTexture.ImageView');
 
+  // Create array of 16 separate textures for smooth levels (for descriptor array)
+  for Index:=0 to 15 do begin
+   fBrushesTextures[Index]:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                              fVulkanUniversalQueue,
+                                                              fVulkanUniversalCommandBuffer,
+                                                              fVulkanUniversalFence,
+                                                              fVulkanUniversalQueue,
+                                                              fVulkanUniversalCommandBuffer,
+                                                              fVulkanUniversalFence,
+                                                              VK_FORMAT_R8_UNORM,
+                                                              VK_SAMPLE_COUNT_1_BIT,
+                                                              TpvScene3DPlanet.BrushSize,
+                                                              TpvScene3DPlanet.BrushSize,
+                                                              0,
+                                                              CountUsedBrushes,
+                                                              1,
+                                                              1,
+                                                              [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
+                                                              @aSmoothedBrushes[Index],
+                                                              SizeOf(TpvScene3DPlanet.TBrushes),
+                                                              false,
+                                                              false,
+                                                              0,
+                                                              true,
+                                                              false,
+                                                              false,
+                                                              0);
+   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTextures[Index].Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fBrushesTextures['+IntToStr(Index)+'].Image');
+   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTextures[Index].ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fBrushesTextures['+IntToStr(Index)+'].ImageView');
+  end;
+
+  fBrushesTexturesDescriptorImageInfos:=nil;
+
   fRGBABrushesTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
                                                          fVulkanUniversalQueue,
                                                          fVulkanUniversalCommandBuffer,
@@ -24988,10 +25288,10 @@ begin
                                                          fVulkanUniversalFence,
                                                          VK_FORMAT_R8G8B8A8_UNORM,
                                                          VK_SAMPLE_COUNT_1_BIT,
-                                                         256,
-                                                         256,
+                                                         TpvScene3DPlanet.BrushSize,
+                                                         TpvScene3DPlanet.BrushSize,
                                                          0,
-                                                         256,
+                                                         CountUsedBrushes,
                                                          1,
                                                          1,
                                                          [TpvVulkanTextureUsageFlag.Sampled,TpvVulkanTextureUsageFlag.TransferDst],
@@ -25141,57 +25441,65 @@ begin
 
   for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
 
-   fPlanetDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPlanetDescriptorPool,TpvScene3D(fScene3D).PlanetDescriptorSetLayout);
-   fPlanetDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
-                                                                  0,
-                                                                  11,
-                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                  [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fHeightMapImage.VulkanImageView.Handle,
-                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fNormalMapImage.VulkanImageView.Handle,
-                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fBlendMapImage.VulkanArrayImageView.Handle,
-                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fGrassMapImage.VulkanImageView.Handle,
-                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                                 {fInFlightFrameDataList[InFlightFrameIndex].}fData.fWaterHeightMapImage.VulkanImageView.Handle,
-                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                                 fBrushesTexture.ImageView.Handle,
-                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
-                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fPrecipitationMapImage.VulkanImageView.Handle,
-                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
-                                                                                                 fInFlightFrameDataList[InFlightFrameIndex].fAtmosphereMapImage.VulkanImageView.Handle,
-                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
-                                                                                                 TpvScene3D(fScene3D).RainTexture.ImageView.Handle,
-                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
-                                                                                                 TpvScene3D(fScene3D).RainNormalTexture.ImageView.Handle,
-                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-                                                                   TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
-                                                                                                 TpvScene3D(fScene3D).RainStreaksNormalTexture.ImageView.Handle,
-                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                                                                  ],
-                                                                  [],
-                                                                  [],
-                                                                  false);
-   fPlanetDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
-                                                                  0,
-                                                                  1,
-                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                  [],
-                                                                  [fPlanetDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                                  [],
-                                                                  false);
-   fPlanetDescriptorSets[InFlightFrameIndex].Flush;
+   DescriptorImageInfos:=[TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                        fInFlightFrameDataList[InFlightFrameIndex].fHeightMapImage.VulkanImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                          TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                        fInFlightFrameDataList[InFlightFrameIndex].fNormalMapImage.VulkanImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                          TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                        fInFlightFrameDataList[InFlightFrameIndex].fBlendMapImage.VulkanArrayImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                          TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                        fInFlightFrameDataList[InFlightFrameIndex].fGrassMapImage.VulkanImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                          TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                        {fInFlightFrameDataList[InFlightFrameIndex].}fData.fWaterHeightMapImage.VulkanImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                          TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                        fBrushesTexture.ImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                          TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
+                                                        fInFlightFrameDataList[InFlightFrameIndex].fPrecipitationMapImage.VulkanImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                          TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
+                                                        fInFlightFrameDataList[InFlightFrameIndex].fAtmosphereMapImage.VulkanImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                          TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
+                                                        TpvScene3D(fScene3D).RainTexture.ImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                          TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
+                                                        TpvScene3D(fScene3D).RainNormalTexture.ImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                          TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
+                                                        TpvScene3D(fScene3D).RainStreaksNormalTexture.ImageView.Handle,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                         ]+GetBrushesTexturesDescriptorImageInfos;
+
+   try
+
+    fPlanetDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPlanetDescriptorPool,TpvScene3D(fScene3D).PlanetDescriptorSetLayout);
+    fPlanetDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                   0,
+                                                                   27,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                   DescriptorImageInfos,
+                                                                   [],
+                                                                   [],
+                                                                   false);
+    fPlanetDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                   [],
+                                                                   [fPlanetDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                   [],
+                                                                   false);
+    fPlanetDescriptorSets[InFlightFrameIndex].Flush;
+
+   finally
+    DescriptorImageInfos:=nil;
+   end;
 
   end;
 
@@ -25278,6 +25586,12 @@ end;
 destructor TpvScene3DPlanet.Destroy;
 var InFlightFrameIndex,Index:TpvSizeInt;
 begin
+
+ fBrushesTexturesDescriptorImageInfos:=nil;
+
+ for Index:=0 to 15 do begin
+  FreeAndNil(fBrushesTextures[Index]);
+ end;
 
  FreeAndNil(fBrushesTexture);
 
@@ -25535,6 +25849,156 @@ begin
  end else begin
   result:=false;
  end;
+end;
+
+procedure TpvScene3DPlanetSmoothBrushesParallelForMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+const StartRadius=4.0;
+      RadiusDelta=1.5787528837; // Calculated to reach effective 64px after 15 progressive steps  #
+      OneOver255=1.0/255.0;
+var SmoothLevel,BrushIndex,x,y,kx,ky,Index:TpvInt32;
+    Radius,Sigma,Sum,SumWeight,Weight,MaxHeight,LocalMaxHeight,Factor:TpvFloat;
+    TempBrush,OtherTempBrush:TpvScene3DPlanet.PFloatBrush;
+    SourceBrush,TargetBrush:TpvScene3DPlanet.PBrush;
+    KernelRadius:TpvInt32;
+    SmoothedBrushes:TpvScene3DPlanet.PSmoothedBrushes;
+    Kernel:array[0..31] of TpvFloat;
+begin
+
+ SmoothedBrushes:=aData;
+
+ GetMem(TempBrush,SizeOf(TpvScene3DPlanet.TFloatBrush));
+ try
+
+  GetMem(OtherTempBrush,SizeOf(TpvScene3DPlanet.TFloatBrush));
+  try
+
+   // Progressive blur: each level applies blur to the previous level
+   // Outer loop by brush for parallelization with PasMP
+   for BrushIndex:=aFromIndex to aToIndex do begin
+
+    // Find the maximum height in the original brush for normalization (optional, can be skipped if not needed)
+    MaxHeight:=0.0;
+    SourceBrush:=@SmoothedBrushes^[0,BrushIndex];
+    for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+     for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+      MaxHeight:=Max(MaxHeight,SourceBrush^[y,x]*OneOver255);
+     end;
+    end;
+    
+    // Generate 15 smoothed versions (indices 1-15, index 0 is already the original)
+    for SmoothLevel:=1 to TpvScene3DPlanet.BrushSmoothLevels-1 do begin
+
+     // Progressive linear radius: 4, 5.58, 7.16, 8.74, 10.31, ... 26.10 pixels
+     // Effective cumulative: 4, 6.87, 9.92, 13.22, ... 64.0 pixels
+     Radius:=StartRadius+((SmoothLevel-1)*RadiusDelta);
+     Sigma:=Radius/3.0; // Standard deviation for Gaussian blur
+     KernelRadius:=Ceil(Radius);
+
+     SourceBrush:=@SmoothedBrushes^[SmoothLevel-1,BrushIndex];
+     TargetBrush:=@SmoothedBrushes^[SmoothLevel,BrushIndex];
+
+     for Index:=0 to KernelRadius do begin
+      Kernel[Index]:=Exp(-Sqr(Index)/(2.0*Sqr(Sigma)));
+     end;
+
+     // First pass: horizontal blur into temp buffer from previous smooth level
+     for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+      for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+       Sum:=0.0;
+       SumWeight:=0.0;
+       for kx:=-KernelRadius to KernelRadius do begin
+        Weight:=Kernel[abs(kx)];
+        if ((x+kx)>=0) and ((x+kx)<=TpvScene3DPlanet.BrushSize) then begin
+         Sum:=Sum+((SourceBrush^[y,x+kx]*OneOver255)*Weight);
+        end;
+        SumWeight:=SumWeight+Weight;
+       end;
+       if SumWeight>0.0 then begin
+        TempBrush^[y,x]:=Min(Max(Sum/SumWeight,0.0),1.0);
+       end else begin
+        TempBrush^[y,x]:=SourceBrush^[y,x];
+       end;
+      end;
+     end;
+
+     // Second pass: vertical blur from temp buffer to final smoothed brush
+     for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+      for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+       Sum:=0.0;
+       SumWeight:=0.0;
+       for ky:=-KernelRadius to KernelRadius do begin
+        Weight:=Kernel[abs(ky)];
+        if ((y+ky)>=0) and ((y+ky)<=TpvScene3DPlanet.BrushSize) then begin
+         Sum:=Sum+(TempBrush^[y+ky,x]*Weight);
+        end;
+        SumWeight:=SumWeight+Weight;
+       end;
+       if SumWeight>0.0 then begin
+        OtherTempBrush^[y,x]:=Min(Max(Sum/SumWeight,0.0),1.0);
+       end else begin
+        OtherTempBrush^[y,x]:=Min(Max(TempBrush^[y,x],0.0),1.0);
+       end;
+      end;
+     end;
+
+     // Third pass: Find the maximum height in the smoothed brush for normalization
+     LocalMaxHeight:=0.0;
+     for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+      for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+       LocalMaxHeight:=Max(LocalMaxHeight,OtherTempBrush^[y,x]); 
+      end;
+     end;  
+
+     // Fourth pass: Normalize the smoothed brush to the original maximum height
+     if LocalMaxHeight>0.0 then begin
+      Factor:=MaxHeight/LocalMaxHeight;
+      for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+       for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+        TargetBrush^[y,x]:=Min(Max(round((OtherTempBrush^[y,x]*Factor)*255.0),0),255);
+       end;
+      end;
+     end else begin
+      for y:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+       for x:=0 to TpvScene3DPlanet.BrushSize-1 do begin
+        TargetBrush^[y,x]:=Min(Max(round(OtherTempBrush^[y,x]*255.0),0),255);
+       end;
+      end;
+     end;
+
+    end;
+
+   end;
+
+  finally
+   FreeMem(OtherTempBrush);
+  end;
+
+ finally
+  FreeMem(TempBrush);
+ end;
+
+end;
+
+class procedure TpvScene3DPlanet.SmoothBrushes(out aSmoothedBrushes:TpvScene3DPlanet.TSmoothedBrushes;const aBrushes:TpvScene3DPlanet.TBrushes);
+begin
+ aSmoothedBrushes[0]:=aBrushes;
+ pvApplication.PasMPInstance.Invoke(
+  pvApplication.PasMPInstance.ParallelFor(
+   @aSmoothedBrushes[0],
+   0,
+   TpvScene3DPlanet.CountBrushes-1,
+   TpvScene3DPlanetSmoothBrushesParallelForMethod,
+   1,
+   PasMPDefaultDepth,
+   nil,
+   0,
+   0,
+   0,
+   false,
+   PasMPAffinityMaskAll,
+   PasMPAffinityMaskNone
+  )
+ );
 end;
 
 procedure TpvScene3DPlanet.GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
@@ -26022,7 +26486,7 @@ begin
  // Height map + normal map + blend map + grass map + water map + brushes + precipitation map + atmosphere map + rain texture + rain normal texture
  result.AddBinding(0,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                   11,
+                   27,
                    ShaderStageFlags,
                    [],
                    TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
@@ -26046,7 +26510,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),11*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),27*aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetDescriptorPool');
@@ -26413,8 +26877,8 @@ class function TpvScene3DPlanet.CreatePlanetRainStreakMeshGenerationDescriptorPo
 begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                        aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),3*aCountInFlightFrames);
+                                        aCountInFlightFrames*5);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),5*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetRainStreakMeshGenerationDescriptorPool');
 end;
@@ -28847,6 +29311,20 @@ begin
  finally
   fLock.ReleaseRead;
  end;
+end;
+
+function TpvScene3DPlanet.GetBrushesTexturesDescriptorImageInfos:TVkDescriptorImageInfoArray;
+var Index:TpvSizeInt;
+begin
+ if length(fBrushesTexturesDescriptorImageInfos)=0 then begin
+  SetLength(fBrushesTexturesDescriptorImageInfos,16);
+  for Index:=0 to 15 do begin
+   fBrushesTexturesDescriptorImageInfos[Index]:=TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                                              fBrushesTextures[Index].ImageView.Handle,
+                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  end;
+ end;
+ result:=fBrushesTexturesDescriptorImageInfos;
 end;
 
 end.

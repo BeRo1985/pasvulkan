@@ -9606,6 +9606,17 @@ begin
    fVulkanDevice.UseNVIDIADeviceDiagnostics:=true;
   end;
 
+  if fVulkanDevice.UseBreadcrumbs then begin
+   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)>=0 then begin
+    fVulkanDevice.EnabledExtensionNames.Add(VK_AMD_BUFFER_MARKER_EXTENSION_NAME);
+   end;
+   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)>=0 then begin
+    if fVulkanDevice.EnabledExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)<0 then begin
+     fVulkanDevice.EnabledExtensionNames.Add(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+    end;
+   end;
+  end;
+
   if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
    // = Vulkan API version 1.0
    if fVulkanInstance.EnabledExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin

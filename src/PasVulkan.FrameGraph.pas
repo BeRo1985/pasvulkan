@@ -3339,10 +3339,16 @@ begin
  end else begin
   fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
  end;
+ if assigned(fFrameGraph.fVulkanDevice.BreadcrumbBuffer) then begin
+  fFrameGraph.fVulkanDevice.BreadcrumbBuffer.PushZone(fName);
+ end;
 end;
 
 procedure TpvFrameGraph.TPass.AddEndMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
+ if assigned(fFrameGraph.fVulkanDevice.BreadcrumbBuffer) then begin
+  fFrameGraph.fVulkanDevice.BreadcrumbBuffer.PopZone;
+ end;
  if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
   fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(aQueue.fPhysicalQueue,aCommandBuffer);
  end;
@@ -7855,6 +7861,9 @@ begin
  end;
  if length(fCPUTimeValues)>=2 then begin
   fCPUTimeValues[length(fCPUTimeValues)-1]:=pvApplication.HighResolutionTimer.GetTime;
+ end;
+ if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+  fVulkanDevice.BreadcrumbBuffer.ResetFrame(fDrawFrameIndex);
  end;
  if fCanDoParallelProcessing and assigned(pvApplication) and (fQueues.Count>1) then begin
   pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0));

@@ -591,12 +591,27 @@ void main(){
 
       vec2 uv = vec2(dot(o, t), dot(o, b)) / planetData.selected.w;
 
-      float d = smoothstep(1.0, 1.0 - (1.0 / length(vec2(textureSize(uPlanetArrayTextures[PLANET_TEXTURE_BRUSHES], 0).xy))), max(abs(uv.x), abs(uv.y)));
+      float d = smoothstep(1.0, 1.0 - (1.0 / length(vec2(textureSize(uPlanetArrayTextures[PLANET_TEXTURE_SMOOTHEDBRUSHES], 0).xy))), max(abs(uv.x), abs(uv.y)));
 
       d *= smoothstep(-1e-4, 1e-4, dot(p, n)); // When we are on the back side of the planet, we need to clear the brush, but smoothly.
 
       if(d > 0.0){
-        d *= textureLod(uPlanetArrayTextures[PLANET_TEXTURE_BRUSHES], vec3(fma(uv, vec2(0.5), vec2(0.5)), float(brushIndex)), 0.0).x;
+
+        // Smooth level interpolation between the 16 brush textures
+        float smoothLevel = clamp(planetData.selectedInnerRadius * 15.0, 0.0, 15.0); // Scale from [0.0, 1.0] to [0.0, 15.0]
+        float smoothLevelFract = fract(smoothLevel);
+        uint smoothLevelInt = uint(smoothLevel);
+        uint smoothLevelIntNext = min(smoothLevelInt + 1u, 15u);
+        
+        vec2 uvCoords = fma(uv, vec2(0.5), vec2(0.5));
+        
+        // Sample both levels
+        float value0 = textureLod(uPlanetArrayTextures[PLANET_TEXTURE_SMOOTHEDBRUSHES + smoothLevelInt], vec3(uvCoords, float(brushIndex)), 0.0).x;
+        float value1 = textureLod(uPlanetArrayTextures[PLANET_TEXTURE_SMOOTHEDBRUSHES + smoothLevelIntNext], vec3(uvCoords, float(brushIndex)), 0.0).x;
+        
+        // Interpolate between levels
+        d *= mix(value0, value1, smoothLevelFract);
+
       } 
 
 //    c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), selectedColor.xyz, selectedColor.w), d);
