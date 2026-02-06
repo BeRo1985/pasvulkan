@@ -22339,6 +22339,9 @@ begin
          case fMode of
           TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
           TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion:begin
+           if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+            Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexedIndirectCount,'PlanetVisualMeshDisocclusion');
+           end;
            vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
                                          RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
                                          ((Planet.TileMapResolution*Planet.TileMapResolution)+1)*(16*SizeOf(TVkUInt32)),
@@ -22346,8 +22349,14 @@ begin
                                          SizeOf(TVkUInt32),
                                          Planet.TileMapResolution*Planet.TileMapResolution,
                                          16*SizeOf(TVkUInt32));
+           if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+            Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+           end;
           end;
           else begin
+           if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+            Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexedIndirectCount,'PlanetVisualMesh');
+           end;
            vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
                                          RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
                                          16*SizeOf(TVkUInt32),
@@ -22355,24 +22364,39 @@ begin
                                          0,
                                          Planet.TileMapResolution*Planet.TileMapResolution,
                                          16*SizeOf(TVkUInt32));
+           if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+            Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+           end;
           end;
          end;
         end else begin
+         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+          Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexed,'PlanetVisualMeshFallback');
+         end;
          aCommandBuffer.CmdDrawIndexed(Planet.fVisualMeshLODCounts[0],
                                        1,
                                        Planet.fVisualMeshLODOffsets[0],
                                        0,
                                        0);
+         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+          Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+         end;
         end;
        end;
        TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
         aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fPhysicsMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
         aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fPhysicsMeshVertexBuffer.Handle,@Offsets);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexed,'PlanetPhysicsMesh');
+        end;
         aCommandBuffer.CmdDrawIndexed(Planet.fPhysicsMeshLODCounts[0],
                                       1,
                                       Planet.fPhysicsMeshLODOffsets[0],
                                       0,
                                       0);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+        end;
        end;
        else begin
         Assert(false);
@@ -22503,23 +22527,38 @@ begin
         aCommandBuffer.CmdBindIndexBuffer(RendererViewInstance.fVulkanGrassIndicesBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
         aCommandBuffer.CmdBindVertexBuffers(0,1,@RendererViewInstance.fVulkanGrassVerticesBuffer.Handle,@Offsets);
 
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexedIndirect,'PlanetGrass');
+        end;
         aCommandBuffer.CmdDrawIndexedIndirect(RendererViewInstance.fVulkanGrassMetaDataBuffer.Handle,
                                               TpvPtrUInt(@PGrassMetaData(nil)^.DrawIndexedIndirectCommand),
                                               1,
                                               SizeOf(TVkDrawIndexedIndirectCommand));
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+        end;
 
        end else if TpvScene3D(fScene3D).MeshShaderSupport then begin
 
         if assigned(TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksIndirectEXT) then begin
 
+         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+          Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndirect,'PlanetGrassMeshShader');
+         end;
          TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksIndirectEXT(aCommandBuffer.Handle,
                                                                                          RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
                                                                                          0,
                                                                                          1,
                                                                                          SizeOf(TVkDrawMeshTasksIndirectCommandEXT));
+         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+          Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+         end;
 
         end else begin
 
+         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+          Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetGrassMeshShaderDirect');
+         end;
          TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksEXT(aCommandBuffer.Handle,
                                                                                  (((Planet.fVisualTileResolution shr 0)*(Planet.fVisualTileResolution shr 0))+127) shr 7,
                                                                                  ((Planet.fTileMapResolution*Planet.fTileMapResolution)+0) shr 0,
@@ -22527,6 +22566,9 @@ begin
                                                                                 {((Planet.fTileMapResolution*Planet.fTileMapResolution)+7) shr 3,
                                                                                  (((Planet.fVisualTileResolution shr 2)*(Planet.fVisualTileResolution shr 2))+15) shr 4,
                                                                                  1});
+         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+          Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+         end;
 
         end;
 
@@ -23395,10 +23437,16 @@ begin
                                         0,
                                         VK_INDEX_TYPE_UINT32);
 
+      if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+       Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexedIndirect,'PlanetRainStreaks');
+      end;
       aCommandBuffer.CmdDrawIndexedIndirect(RendererInstance.fVulkanRainDropDrawIndexedIndirectCommandBuffer.Handle,
                                             0,
                                             1,
                                             SizeOf(TVkDrawIndexedIndirectCommand));
+      if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+       Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+      end;
       
       result:=true;
 
@@ -24122,10 +24170,22 @@ begin
                                        @fPushConstants);
 
        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fUnderwaterPipeline.Handle);
+       if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+        Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetUnderwater');
+       end;
        aCommandBuffer.CmdDraw(3,1,0,0);
+       if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+        Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+       end;
 
        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fWaterPipeline.Handle);
+       if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+        Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetWater');
+       end;
        aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*4,1,0,0);
+       if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+        Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+       end;
 
       end;
 
