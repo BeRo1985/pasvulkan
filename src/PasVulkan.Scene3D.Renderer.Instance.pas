@@ -786,6 +786,7 @@ type { TpvScene3DRendererInstance }
        fHUDRenderPassParent:TObject;
       private
        fSizeFactor:TpvDouble;
+       fPostProcessingAtScaledResolution:Boolean;
       private
        fVulkanViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TViewUniformBuffer;
        fVulkanViewUniformBuffers:TpvScene3D.TVulkanViewUniformBuffers;
@@ -1137,6 +1138,7 @@ type { TpvScene3DRendererInstance }
        property ZFar:TpvFloat read fZFar write fZFar;
        property PixelAmountFactor:TpvDouble read GetPixelAmountFactor write SetPixelAmountFactor;
        property SizeFactor:TpvDouble read fSizeFactor write fSizeFactor;
+       property PostProcessingAtScaledResolution:Boolean read fPostProcessingAtScaledResolution write fPostProcessingAtScaledResolution;
        property UseDebugBlit:boolean read fUseDebugBlit write fUseDebugBlit;
       public
        property WaterSimulationSemaphores:TInFlightFrameSemaphores read fWaterSimulationSemaphores;
@@ -1981,6 +1983,8 @@ begin
  fHUDRenderPassParent:=nil;
 
  fSizeFactor:=1.0;
+
+ fPostProcessingAtScaledResolution:=true;
 
  fReflectionProbeWidth:=256;
 
@@ -4719,7 +4723,8 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
 
  end; //*)
 
- if not SameValue(fSizeFactor,1.0) then begin
+ if (not fPostProcessingAtScaledResolution) and (not SameValue(fSizeFactor,1.0)) then begin
+  // Resampling BEFORE Lens passes (Lens at native resolution - old behavior)
   TpvScene3DRendererInstancePasses(fPasses).fResamplingRenderPass:=TpvScene3DRendererPassesResamplingRenderPass.Create(fFrameGraph,self);
  end;
 
@@ -4750,6 +4755,11 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fLensRainRenderPass:=TpvScene3DRendererPassesLensRainRenderPass.Create(fFrameGraph,self);
  end else begin
   TpvScene3DRendererInstancePasses(fPasses).fLensRainRenderPass:=nil;
+ end;
+
+ if fPostProcessingAtScaledResolution and (not SameValue(fSizeFactor,1.0)) then begin
+  // Resampling AFTER Lens passes (Lens at scaled resolution - new behavior)
+  TpvScene3DRendererInstancePasses(fPasses).fResamplingRenderPass:=TpvScene3DRendererPassesResamplingRenderPass.Create(fFrameGraph,self);
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass:=TpvScene3DRendererPassesTonemappingRenderPass.Create(fFrameGraph,self);
@@ -5515,7 +5525,7 @@ begin
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fSceneMipmappedArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fSceneMipmappedArray2DImage.Image');
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fSceneMipmappedArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fSceneMipmappedArray2DImage.ImageView');
 
-      if SameValue(fSizeFactor,1.0) then begin
+      if SameValue(fSizeFactor,1.0) or fPostProcessingAtScaledResolution then begin
        fFullResSceneMipmappedArray2DImage:=fSceneMipmappedArray2DImage;
       end else begin
        fFullResSceneMipmappedArray2DImage:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R16G16B16A16_SFLOAT{Renderer.OptimizedNonAlphaFormat},VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface,'TpvScene3DRendererInstance.fFullResSceneMipmappedArray2DImage');
