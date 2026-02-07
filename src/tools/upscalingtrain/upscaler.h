@@ -182,4 +182,12 @@ Model *model_load(const char *path);
 /* Export weights as GLSL source with inline constant arrays */
 int model_export_glsl(const Model *m, const char *path, int tonemap_variant);
 
+/* ============================================================================
+ * Vulkan Compute Backend (optional, compile with -DUSE_VULKAN)
+ * ========================================================================= */
+
+#ifdef USE_VULKAN
+#include "vk_cnn.h"
+#endif
+
 #endif /* UPSCALER_H */

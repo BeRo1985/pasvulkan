@@ -48,6 +48,9 @@ static void print_usage(const char *prog)
         "  --save-every <n>      Checkpoint every n epochs (default: 50)\n"
         "  --iters-per-epoch <n> Iterations per epoch (default: auto)\n"
         "  --resume <path>       Resume training from checkpoint\n"
+#ifdef USE_VULKAN
+        "  --gpu                 Use Vulkan compute backend\n"
+#endif
         "\n"
         "INFER options:\n"
         "  --model <file>        Model file\n"
@@ -60,6 +63,9 @@ static void print_usage(const char *prog)
         "  --colorspace <srgb|linear>  Input color space (default: srgb)\n"
         "  --tonemap <none|brian_karis|amd>  Tonemapping (default: none)\n"
         "  --tile <n>            Tile size for large images (0=off, default: 0)\n"
+#ifdef USE_VULKAN
+        "  --gpu                 Use Vulkan compute backend\n"
+#endif
         "\n"
         "EXPORT options:\n"
         "  --model <file>        Model file\n"
@@ -166,6 +172,7 @@ static void train_mode(int argc, char **argv)
     uint32_t seed   = DEFAULT_SEED;
     int save_every  = DEFAULT_SAVE_EVERY;
     int iters_per_epoch = 0;  /* 0 = auto */
+    int use_gpu = 0;
 
     /* Parse arguments */
     for (int i = 2; i < argc; i++) {
@@ -185,6 +192,7 @@ static void train_mode(int argc, char **argv)
         else if (!strcmp(argv[i], "--save-every") && i+1 < argc) save_every = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--iters-per-epoch") && i+1 < argc) iters_per_epoch = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--deep"))   deep = 1;
+        else if (!strcmp(argv[i], "--gpu"))    use_gpu = 1;
         else if (!strcmp(argv[i], "--colorspace") && i+1 < argc) {
             i++;
             if      (!strcmp(argv[i], "linear")) colorspace = COLORSPACE_LINEAR;
@@ -289,8 +297,9 @@ static void train_mode(int argc, char **argv)
         printf("Training: %d epochs, batch %d, patch %d (LR), loss=%s, lr=%.6f\n",
                epochs, batch_size, patch_size,
                loss_type == LOSS_L1 ? "L1" : "MSE", (double)lr);
-        printf("Color space: %s\n\n",
+        printf("Color space: %s\n",
                colorspace == COLORSPACE_LINEAR ? "linear" : "sRGB");
+        printf("Backend: %s\n\n", use_gpu ? "Vulkan GPU" : "CPU");
     }
 
     /* Auto-compute iterations per epoch if not set */
@@ -310,6 +319,25 @@ static void train_mode(int argc, char **argv)
     float *output   = (float *)malloc((size_t)3 * hps * hps * sizeof(float));
     float *grad     = (float *)malloc((size_t)3 * hps * hps * sizeof(float));
 
+    /* GPU batched buffers (only allocated when --gpu) */
+    float *lr_batch = NULL;
+    float *hr_batch = NULL;
+
+#ifdef USE_VULKAN
+    VkCNN *gpu = NULL;
+    if (use_gpu) {
+        gpu = vkcnn_create(model);
+        lr_batch = (float *)malloc((size_t)batch_size * in_channels * lps * lps * sizeof(float));
+        hr_batch = (float *)malloc((size_t)batch_size * 3 * hps * hps * sizeof(float));
+    }
+#else
+    if (use_gpu) {
+        fprintf(stderr, "ERROR: --gpu requires building with VULKAN=1\n");
+        model_free(model);
+        goto cleanup;
+    }
+#endif
+
     int adam_step = start_epoch * iters_per_epoch + 1;
     float current_lr = lr;
     clock_t t_start = clock();
@@ -328,74 +356,99 @@ static void train_mode(int argc, char **argv)
 
         for (int iter = 0; iter < iters_per_epoch; iter++) {
 
-            model_zero_grad(model);
-            float batch_loss = 0.0f;
+#ifdef USE_VULKAN
+            if (use_gpu) {
+                /* ---- GPU training path -------------------------------- */
+                /* Build batch on CPU */
+                int actual_batch = 0;
+                for (int b = 0; b < batch_size; b++) {
+                    int idx = rng_int(0, num_loaded - 1);
+                    if (!image_extract_patch_pair(images[idx], depths[idx],
+                                                  img_w[idx], img_h[idx],
+                                                  factor, lps, in_channels,
+                                                  lr_patch, hr_patch))
+                        continue;
+                    image_augment(lr_patch, hr_patch, lps, hps, in_channels, 3);
 
-            for (int b = 0; b < batch_size; b++) {
-                /* Pick random image */
-                int idx = rng_int(0, num_loaded - 1);
+                    memcpy(lr_batch + (size_t)actual_batch * in_channels * lps * lps,
+                           lr_patch, (size_t)in_channels * lps * lps * sizeof(float));
+                    memcpy(hr_batch + (size_t)actual_batch * 3 * hps * hps,
+                           hr_patch, (size_t)3 * hps * hps * sizeof(float));
+                    actual_batch++;
+                }
+                if (actual_batch == 0) continue;
 
-                /* Extract patch pair */
-                if (!image_extract_patch_pair(images[idx], depths[idx],
-                                              img_w[idx], img_h[idx],
-                                              factor, lps, in_channels,
-                                              lr_patch, hr_patch))
-                    continue;
+                /* Full forward + loss + backward on GPU */
+                vkcnn_zero_grad(gpu);
+                float batch_loss = vkcnn_train_step(gpu, lr_batch, hr_batch,
+                                                     actual_batch, lps, lps,
+                                                     loss_type);
 
-                /* Augmentation */
-                image_augment(lr_patch, hr_patch, lps, hps, in_channels, 3);
+                /* Scale gradients and Adam update on GPU */
+                vkcnn_scale_grads(gpu, 1.0f / (float)actual_batch);
+                vkcnn_adam_update(gpu, current_lr,
+                                  DEFAULT_BETA1, DEFAULT_BETA2, DEFAULT_EPSILON,
+                                  adam_step);
+                adam_step++;
 
-                /* Forward (single sample: batch=1) */
-                model_forward(model, lr_patch, output, 1, lps, lps);
+                epoch_loss += (double)(batch_loss / (float)actual_batch);
+                epoch_samples += actual_batch;
+            } else
+#endif
+            {
+                /* ---- CPU training path -------------------------------- */
+                model_zero_grad(model);
+                float batch_loss = 0.0f;
 
-                /* Compute loss and gradient */
-                const int out_count = 3 * hps * hps;
-                float sample_loss = 0.0f;
+                for (int b = 0; b < batch_size; b++) {
+                    int idx = rng_int(0, num_loaded - 1);
+                    if (!image_extract_patch_pair(images[idx], depths[idx],
+                                                  img_w[idx], img_h[idx],
+                                                  factor, lps, in_channels,
+                                                  lr_patch, hr_patch))
+                        continue;
+                    image_augment(lr_patch, hr_patch, lps, hps, in_channels, 3);
+                    model_forward(model, lr_patch, output, 1, lps, lps);
 
-                if (loss_type == LOSS_L1) {
-                    for (int j = 0; j < out_count; j++) {
-                        float diff = output[j] - hr_patch[j];
-                        sample_loss += fabsf(diff);
-                        grad[j] = (diff >= 0.0f ? 1.0f : -1.0f)
-                                  / (float)out_count;
+                    const int out_count = 3 * hps * hps;
+                    float sample_loss = 0.0f;
+                    if (loss_type == LOSS_L1) {
+                        for (int j = 0; j < out_count; j++) {
+                            float diff = output[j] - hr_patch[j];
+                            sample_loss += fabsf(diff);
+                            grad[j] = (diff >= 0.0f ? 1.0f : -1.0f)
+                                      / (float)out_count;
+                        }
+                        sample_loss /= (float)out_count;
+                    } else {
+                        for (int j = 0; j < out_count; j++) {
+                            float diff = output[j] - hr_patch[j];
+                            sample_loss += diff * diff;
+                            grad[j] = 2.0f * diff / (float)out_count;
+                        }
+                        sample_loss /= (float)out_count;
                     }
-                    sample_loss /= (float)out_count;
-                } else { /* MSE */
-                    for (int j = 0; j < out_count; j++) {
-                        float diff = output[j] - hr_patch[j];
-                        sample_loss += diff * diff;
-                        grad[j] = 2.0f * diff / (float)out_count;
-                    }
-                    sample_loss /= (float)out_count;
+                    batch_loss += sample_loss;
+                    model_backward(model, grad);
                 }
 
-                batch_loss += sample_loss;
+                model_scale_grads(model, 1.0f / (float)batch_size);
+                model_adam_update(model, current_lr,
+                                  DEFAULT_BETA1, DEFAULT_BETA2, DEFAULT_EPSILON,
+                                  adam_step);
+                adam_step++;
 
-                /* Backward (accumulates gradients) */
-                model_backward(model, grad);
+                epoch_loss += (double)(batch_loss / (float)batch_size);
+                epoch_samples += batch_size;
             }
-
-            /* Average gradients over batch */
-            model_scale_grads(model, 1.0f / (float)batch_size);
-
-            /* Adam update */
-            model_adam_update(model, current_lr,
-                              DEFAULT_BETA1, DEFAULT_BETA2, DEFAULT_EPSILON,
-                              adam_step);
-            adam_step++;
-
-            epoch_loss += (double)(batch_loss / (float)batch_size);
-            epoch_samples += batch_size;
         }
 
         epoch_loss /= (double)iters_per_epoch;
 
-        /* Compute PSNR from epoch loss */
         double psnr = 0.0;
         if (loss_type == LOSS_MSE && epoch_loss > 1e-10) {
             psnr = 10.0 * log10(1.0 / epoch_loss);
         } else if (loss_type == LOSS_L1 && epoch_loss > 1e-10) {
-            /* Approximate: PSNR from MAE ≈ PSNR from MSE with factor */
             psnr = 10.0 * log10(1.0 / (epoch_loss * epoch_loss));
         }
 
@@ -407,12 +460,20 @@ static void train_mode(int argc, char **argv)
         /* Checkpoint */
         if (save_every > 0 && (epoch + 1) % save_every == 0
             && epoch + 1 < epochs) {
+#ifdef USE_VULKAN
+            if (use_gpu) vkcnn_download_weights(gpu, model);
+#endif
             char ckpt[512];
             snprintf(ckpt, sizeof(ckpt), "%s.epoch%d",
                      output_path, epoch + 1);
             model_save(model, ckpt);
         }
     }
+
+    /* Download final weights from GPU */
+#ifdef USE_VULKAN
+    if (use_gpu) vkcnn_download_weights(gpu, model);
+#endif
 
     /* Save final model */
     model_save(model, output_path);
@@ -422,6 +483,11 @@ static void train_mode(int argc, char **argv)
     free(hr_patch);
     free(output);
     free(grad);
+    free(lr_batch);
+    free(hr_batch);
+#ifdef USE_VULKAN
+    if (gpu) vkcnn_destroy(gpu);
+#endif
     model_free(model);
 
 cleanup:
@@ -450,6 +516,7 @@ static void infer_mode(int argc, char **argv)
     int colorspace  = COLORSPACE_SRGB;
     int tonemap_var = TONEMAP_NONE;
     int tile_size   = 0;
+    int use_gpu __attribute__((unused)) = 0;
 
     for (int i = 2; i < argc; i++) {
         if      (!strcmp(argv[i], "--model")  && i+1 < argc) model_path  = argv[++i];
@@ -460,6 +527,7 @@ static void infer_mode(int argc, char **argv)
         else if (!strcmp(argv[i], "--depth-h")&& i+1 < argc) depth_h     = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--scale-from") && i+1 < argc) scale_from = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--tile")   && i+1 < argc) tile_size   = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--gpu"))    use_gpu = 1;
         else if (!strcmp(argv[i], "--colorspace") && i+1 < argc) {
             i++;
             if      (!strcmp(argv[i], "linear")) colorspace = COLORSPACE_LINEAR;
@@ -583,10 +651,23 @@ static void infer_mode(int argc, char **argv)
     } else {
         /* Full-image inference */
         output = (float *)malloc((size_t)3 * oh * ow * sizeof(float));
-        printf("Running inference: %dx%d → %dx%d\n", iw, ih, ow, oh);
+        printf("Running inference: %dx%d → %dx%d", iw, ih, ow, oh);
 
         clock_t t0 = clock();
-        model_forward(model, input_tensor, output, 1, ih, iw);
+
+#ifdef USE_VULKAN
+        if (use_gpu) {
+            printf(" (Vulkan GPU)\n");
+            VkCNN *gpu = vkcnn_create(model);
+            vkcnn_forward(gpu, input_tensor, output, 1, ih, iw);
+            vkcnn_destroy(gpu);
+        } else
+#endif
+        {
+            printf(" (CPU)\n");
+            model_forward(model, input_tensor, output, 1, ih, iw);
+        }
+
         double elapsed = (double)(clock() - t0) / CLOCKS_PER_SEC;
         printf("Inference time: %.3f s\n", elapsed);
     }
