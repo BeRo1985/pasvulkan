@@ -29484,11 +29484,11 @@ begin
 
    UpdateGlobalAABBProxy(aInFlightFrameIndex,false);
 
-   UpdateInstanceNodes(aInFlightFrameIndex,false);
-
 {$ifdef InstanceUpdateDirtySkip}
   end; // if not InstanceUpdateDirtySkipped
 {$endif}
+
+  UpdateInstanceNodes(aInFlightFrameIndex,false);
 
   // Update the model matrix of the assigned non-virtual instance, if applicable. Needed for appendages and similar.
   if fVirtual and assigned(fAssignedNonVirtualInstance) then begin
