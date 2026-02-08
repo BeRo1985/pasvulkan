@@ -65,6 +65,8 @@ unit PasVulkan.Scene3D;
 
 {$define InstanceUpdateDirtySkip}
 
+{$define DeferredAABBTreeUpdates}
+
 {$undef DeferredLightAABBTreeUpdates}
 
 {$define UpdateProfilingTimes}
@@ -3264,6 +3266,7 @@ type EpvScene3D=class(Exception);
                             Count:TpvSizeInt;
                           end;
                           PAABBTreeSkipList=^TAABBTreeSkipList;
+{$ifdef DeferredAABBTreeUpdates}
                           TDeferredAABBOperationType=
                            (
                             Create_,
@@ -3279,6 +3282,7 @@ type EpvScene3D=class(Exception);
                           end;
                           PDeferredAABBOperation=^TDeferredAABBOperation;
                           TDeferredAABBOperations=TpvDynamicQueue<TDeferredAABBOperation>;
+{$endif}
 {$ifdef DeferredLightAABBTreeUpdates}
                           TDeferredLightOperationType=
                            (
@@ -3401,7 +3405,9 @@ type EpvScene3D=class(Exception);
                      fCullVisibleBitmaps:TCullVisibleBitmaps;
                      fAABBTreeProxy:TpvSizeInt;
                      fAABBTree:TpvBVHDynamicAABBTree;
+{$ifdef DeferredAABBTreeUpdates}
                      fDeferredAABBOperations:TDeferredAABBOperations;
+{$endif}
 {$ifdef DeferredLightAABBTreeUpdates}
                      fDeferredLightOperations:TDeferredLightOperations;
 {$endif}
@@ -3452,7 +3458,9 @@ type EpvScene3D=class(Exception);
                                                                 const aRelative:Boolean;
                                                                 const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
                      procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
+{$ifdef DeferredAABBTreeUpdates}
                      procedure AddDeferredAABBOperation(const aOperationType:TDeferredAABBOperationType;const aTree:TpvBVHDynamicAABBTree;const aProxy:PpvSizeInt;const aAABB:TpvAABB;const aUserData:TpvPtrInt);
+{$endif}
 {$ifdef DeferredLightAABBTreeUpdates}
                      procedure AddDeferredLightOperation(const aOperationType:TDeferredLightOperationType;const aLight:TpvScene3D.TLight);
 {$endif}
@@ -4492,7 +4500,9 @@ type EpvScene3D=class(Exception);
        procedure ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
        procedure ProcessDirectedAcyclicGraphInstanceParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
        procedure ProcessDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
+{$ifdef DeferredAABBTreeUpdates}
        procedure ProcessDeferredAABBOperations;
+{$endif}
 {$ifdef DeferredLightAABBTreeUpdates}
        procedure ProcessDeferredLightOperations;
 {$endif}
@@ -24712,7 +24722,9 @@ begin
   fAABBTree:=nil;
  end;
 
+{$ifdef DeferredAABBTreeUpdates}
  fDeferredAABBOperations.Initialize;
+{$endif}
 
 {$ifdef DeferredLightAABBTreeUpdates}
  fDeferredLightOperations.Initialize;
@@ -24789,7 +24801,9 @@ begin
  fDeferredLightOperations.Finalize;
 {$endif}
 
+{$ifdef DeferredAABBTreeUpdates}
  fDeferredAABBOperations.Finalize;
+{$endif}
 
  FreeAndNil(fDrawChoreographyBatchItems);
 
@@ -29126,6 +29140,7 @@ begin
  {$ifdef UpdateProfilingTimes}
    StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  {$endif}
+{$ifdef DeferredAABBTreeUpdates}
    if fAABBTreeProxy<0 then begin
     AddDeferredAABBOperation(TDeferredAABBOperationType.Create_,fGroup.fSceneInstance.fAABBTree,@fAABBTreeProxy,fBoundingBox,TpvPtrInt(Pointer(self)));
    end else begin
@@ -29135,6 +29150,22 @@ begin
      AddDeferredAABBOperation(TDeferredAABBOperationType.Move,fGroup.fSceneInstance.fAABBTree,@fAABBTreeProxy,fBoundingBox,0);
     end;
    end;
+{$else}
+   fGroup.fSceneInstance.fAABBTreeLock.Acquire;
+   try
+    if fAABBTreeProxy<0 then begin
+     fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
+    end else begin
+     if fUseRenderInstances then begin
+      fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(-TpvVector3.AllMaxAxis,TpvVector3.AllMaxAxis),TpvVector3.Null,TpvVector3.AllAxis,true);
+     end else begin
+      fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis,true);
+     end;
+    end;
+   finally
+    fGroup.fSceneInstance.fAABBTreeLock.Release;
+   end;
+{$endif}
 {$ifdef UpdateProfilingTimes}
    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    fSceneInstance.fInstanceTimeAABBTreeSum:=fSceneInstance.fInstanceTimeAABBTreeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
@@ -29171,6 +29202,7 @@ begin
   end;
 
   if fAABBTreeProxy>=0 then begin
+{$ifdef DeferredAABBTreeUpdates}
    if assigned(fGroup) and
       assigned(fGroup.fSceneInstance) and
       assigned(fGroup.fSceneInstance.fAABBTree) then begin
@@ -29178,6 +29210,22 @@ begin
    end else begin
     fAABBTreeProxy:=-1;
    end;
+{$else}
+   try
+    if assigned(fGroup) and
+       assigned(fGroup.fSceneInstance) and
+       assigned(fGroup.fSceneInstance.fAABBTree) then begin
+     fGroup.fSceneInstance.fAABBTreeLock.Acquire;
+     try
+      fGroup.fSceneInstance.fAABBTree.DestroyProxy(fAABBTreeProxy);
+     finally
+      fGroup.fSceneInstance.fAABBTreeLock.Release;
+     end;
+    end;
+   finally
+    fAABBTreeProxy:=-1;
+   end;
+{$endif}
   end;
 
   for Index:=0 to fNodes.Count-1 do begin
@@ -29196,7 +29244,20 @@ begin
 {$endif}
    end;
    if assigned(fAABBTree) and (InstanceNode.fAABBTreeProxy>=0) then begin
+{$ifdef DeferredAABBTreeUpdates}
     AddDeferredAABBOperation(TDeferredAABBOperationType.Destroy_,fAABBTree,@InstanceNode.fAABBTreeProxy,TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin),0);
+{$else}
+    try
+     fGroup.fSceneInstance.fAABBTreeLock.Acquire;
+     try
+      fAABBTree.DestroyProxy(InstanceNode.fAABBTreeProxy);
+     finally
+      fGroup.fSceneInstance.fAABBTreeLock.Release;
+     end;
+    finally
+     InstanceNode.fAABBTreeProxy:=-1;
+    end;
+{$endif}
    end;
   end;
 
@@ -30488,6 +30549,7 @@ begin
 
 end;
 
+{$ifdef DeferredAABBTreeUpdates}
 procedure TpvScene3D.TGroup.TInstance.AddDeferredAABBOperation(const aOperationType:TDeferredAABBOperationType;const aTree:TpvBVHDynamicAABBTree;const aProxy:PpvSizeInt;const aAABB:TpvAABB;const aUserData:TpvPtrInt);
 var Operation:TDeferredAABBOperation;
 begin
@@ -30498,6 +30560,7 @@ begin
  Operation.UserData:=aUserData;
  fDeferredAABBOperations.Enqueue(Operation);
 end;
+{$endif}
 
 {$ifdef DeferredLightAABBTreeUpdates}
 procedure TpvScene3D.TGroup.TInstance.AddDeferredLightOperation(const aOperationType:TDeferredLightOperationType;const aLight:TpvScene3D.TLight);
@@ -34751,6 +34814,7 @@ begin
 
 end;
 
+{$ifdef DeferredAABBTreeUpdates}
 procedure TpvScene3D.ProcessDeferredAABBOperations;
 var GroupInstanceIndex:TpvSizeInt;
     GroupInstance:TpvScene3D.TGroup.TInstance;
@@ -34774,6 +34838,7 @@ begin
   end;
  end;
 end;
+{$endif}
 
 {$ifdef DeferredLightAABBTreeUpdates}
 procedure TpvScene3D.ProcessDeferredLightOperations;
@@ -34947,7 +35012,9 @@ begin
    PartCPUTime:=PartEndCPUTime-PartStartCPUTime;
    fTimeProcessDirectedAcyclicGraph:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0; // in ms
 
+{$ifdef DeferredAABBTreeUpdates}
    ProcessDeferredAABBOperations;
+{$endif}
 
 {$ifdef DeferredLightAABBTreeUpdates}
    ProcessDeferredLightOperations;
