@@ -54,6 +54,25 @@ static uint32_t find_memory_type(VkPhysicalDevice physDev,
     exit(1);
 }
 
+/* Like find_memory_type but matches exactly — does NOT try to add DEVICE_LOCAL.
+ * Used for readback buffers where we need HOST_CACHED (not WC/BAR memory). */
+static uint32_t find_memory_type_exact(VkPhysicalDevice physDev,
+                                       uint32_t typeBits,
+                                       VkMemoryPropertyFlags props)
+{
+    VkPhysicalDeviceMemoryProperties mem;
+    vkGetPhysicalDeviceMemoryProperties(physDev, &mem);
+
+    for (uint32_t i = 0; i < mem.memoryTypeCount; i++) {
+        if ((typeBits & (1u << i)) &&
+            (mem.memoryTypes[i].propertyFlags & props) == props) {
+            return i;
+        }
+    }
+    fprintf(stderr, "ERROR: no suitable memory type found (exact)\n");
+    exit(1);
+}
+
 /* ============================================================================
  * Context creation
  * ========================================================================= */
@@ -255,6 +274,8 @@ VkCtx *vkctx_create(int use_device_local)
     /* ---- Initial staging buffer --------------------------------------- */
     ctx->stagingCap = 0;
     memset(&ctx->staging, 0, sizeof(ctx->staging));
+    ctx->readbackCap = 0;
+    memset(&ctx->readback, 0, sizeof(ctx->readback));
 
     /* ---- Pipeline cache (load from disk if available) ----------------- */
     {
@@ -335,6 +356,7 @@ void vkctx_destroy(VkCtx *ctx)
 
     vkctx_destroy_buffer(ctx, &ctx->dummy);
     vkctx_destroy_buffer(ctx, &ctx->staging);
+    vkctx_destroy_buffer(ctx, &ctx->readback);
     vkDestroyDescriptorPool(ctx->device, ctx->dsPool, NULL);
     vkDestroyPipelineLayout(ctx->device, ctx->pipeLayout, NULL);
     vkDestroyDescriptorSetLayout(ctx->device, ctx->dsLayout, NULL);
@@ -469,6 +491,83 @@ static void ensure_staging(VkCtx *ctx, VkDeviceSize need)
     ctx->stagingCap = cap;
 }
 
+/* Create a HOST_CACHED readback buffer for fast GPU→CPU downloads.
+ * On discrete GPUs, HOST_CACHED memory sits in system RAM and is CPU-cacheable,
+ * unlike BAR/WC memory which has ~30 MB/s read speed. */
+static void ensure_readback(VkCtx *ctx, VkDeviceSize need)
+{
+    if (ctx->readbackCap >= need) return;
+
+    if (ctx->readback.buffer)
+        vkctx_destroy_buffer(ctx, &ctx->readback);
+
+    VkDeviceSize cap = (need + (1 << 20) - 1) & ~((VkDeviceSize)(1 << 20) - 1);
+    if (cap < need) cap = need;
+
+    /* Allocate with HOST_CACHED + HOST_VISIBLE + HOST_COHERENT */
+    GpuBuf buf = {0};
+    buf.size = cap;
+    buf.device_local = 0;
+
+    VkBufferCreateInfo bci = {
+        .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size        = cap,
+        .usage       = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+    VK_CHECK(vkCreateBuffer(ctx->device, &bci, NULL, &buf.buffer));
+
+    VkMemoryRequirements memReqs;
+    vkGetBufferMemoryRequirements(ctx->device, buf.buffer, &memReqs);
+
+    /* Try HOST_VISIBLE + HOST_CACHED + HOST_COHERENT (ideal for readback) */
+    VkMemoryPropertyFlags readbackFlags =
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+      | VK_MEMORY_PROPERTY_HOST_CACHED_BIT
+      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    /* Some GPUs don't have coherent+cached; fall back to cached-only (need flush) */
+    VkPhysicalDeviceMemoryProperties mem;
+    vkGetPhysicalDeviceMemoryProperties(ctx->physDev, &mem);
+    int found = 0;
+    for (uint32_t i = 0; i < mem.memoryTypeCount; i++) {
+        if ((memReqs.memoryTypeBits & (1u << i)) &&
+            (mem.memoryTypes[i].propertyFlags & readbackFlags) == readbackFlags) {
+            found = 1;
+            break;
+        }
+    }
+    if (!found) {
+        /* Fall back: HOST_VISIBLE + HOST_CACHED (will need invalidate) */
+        readbackFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                      | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        for (uint32_t i = 0; i < mem.memoryTypeCount; i++) {
+            if ((memReqs.memoryTypeBits & (1u << i)) &&
+                (mem.memoryTypes[i].propertyFlags & readbackFlags) == readbackFlags) {
+                found = 1;
+                break;
+            }
+        }
+    }
+    if (!found) {
+        /* Last resort: same as normal staging */
+        readbackFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    }
+
+    VkMemoryAllocateInfo mai = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize  = memReqs.size,
+        .memoryTypeIndex = find_memory_type_exact(ctx->physDev, memReqs.memoryTypeBits, readbackFlags)
+    };
+    VK_CHECK(vkAllocateMemory(ctx->device, &mai, NULL, &buf.memory));
+    VK_CHECK(vkBindBufferMemory(ctx->device, buf.buffer, buf.memory, 0));
+    VK_CHECK(vkMapMemory(ctx->device, buf.memory, 0, cap, 0, &buf.mapped));
+
+    ctx->readback    = buf;
+    ctx->readbackCap = cap;
+}
+
 /* Submit a one-shot command buffer for a copy operation */
 static void submit_copy(VkCtx *ctx)
 {
@@ -516,7 +615,7 @@ void vkctx_download_staged(VkCtx *ctx, const GpuBuf *src, void *data, size_t byt
         return;
     }
 
-    ensure_staging(ctx, (VkDeviceSize)bytes);
+    ensure_readback(ctx, (VkDeviceSize)bytes);
 
     VK_CHECK(vkResetCommandBuffer(ctx->cmdBuf, 0));
     VkCommandBufferBeginInfo bi = {
@@ -526,11 +625,20 @@ void vkctx_download_staged(VkCtx *ctx, const GpuBuf *src, void *data, size_t byt
     VK_CHECK(vkBeginCommandBuffer(ctx->cmdBuf, &bi));
 
     VkBufferCopy region = { .srcOffset = 0, .dstOffset = 0, .size = bytes };
-    vkCmdCopyBuffer(ctx->cmdBuf, src->buffer, ctx->staging.buffer, 1, &region);
+    vkCmdCopyBuffer(ctx->cmdBuf, src->buffer, ctx->readback.buffer, 1, &region);
 
     submit_copy(ctx);
 
-    memcpy(data, ctx->staging.mapped, bytes);
+    /* Invalidate cache if not coherent */
+    VkMappedMemoryRange range = {
+        .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+        .memory = ctx->readback.memory,
+        .offset = 0,
+        .size   = VK_WHOLE_SIZE
+    };
+    vkInvalidateMappedMemoryRanges(ctx->device, 1, &range);
+
+    memcpy(data, ctx->readback.mapped, bytes);
 }
 
 void vkctx_zero_buffer_gpu(VkCtx *ctx, GpuBuf *buf)

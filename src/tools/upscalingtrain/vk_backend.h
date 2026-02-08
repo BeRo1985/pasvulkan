@@ -59,8 +59,10 @@ typedef struct {
     GpuBuf                   dummy;
 
     /* Staging buffer (host-visible, reused for transfers) */
-    GpuBuf                   staging;
-    VkDeviceSize             stagingCap;  /* current staging capacity */
+    GpuBuf                   staging;      /* upload: WC memory (fast writes) */
+    VkDeviceSize             stagingCap;
+    GpuBuf                   readback;     /* download: cached memory (fast reads) */
+    VkDeviceSize             readbackCap;
 
     /* Pipeline cache (persisted to disk for fast subsequent launches) */
     VkPipelineCache          pipeCache;

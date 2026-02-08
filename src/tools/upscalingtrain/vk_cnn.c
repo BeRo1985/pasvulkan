@@ -11,6 +11,7 @@
 
 #include "vk_cnn.h"
 #include "shader_spirv.h"
+#include <time.h>
 
 /* Ceiling division */
 #define CDIV(a, b) (((a) + (b) - 1) / (b))
