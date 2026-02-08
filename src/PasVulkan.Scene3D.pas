@@ -28620,7 +28620,7 @@ begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrices[PreviousInFlightFrameIndex];
        RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
-       PerInFlightFrameRenderInstance:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNew;
+       PerInFlightFrameRenderInstance:=pointer(fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNew);
        PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
       end;
