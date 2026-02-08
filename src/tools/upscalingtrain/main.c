@@ -664,20 +664,9 @@ static void infer_mode(int argc, char **argv)
 #ifdef USE_VULKAN
         if (use_gpu) {
             printf(" (Vulkan GPU)\n");
-            clock_t tc0 = clock();
             VkCNN *gpu = vkcnn_create(model, host_mem, /*training=*/0);
-            double t_create = (double)(clock() - tc0) / CLOCKS_PER_SEC;
-
-            clock_t tf0 = clock();
             vkcnn_forward(gpu, input_tensor, output, 1, ih, iw);
-            double t_fwd = (double)(clock() - tf0) / CLOCKS_PER_SEC;
-
-            clock_t td0 = clock();
             vkcnn_destroy(gpu);
-            double t_destroy = (double)(clock() - td0) / CLOCKS_PER_SEC;
-
-            printf("  init: %.3fs  forward: %.3fs  cleanup: %.3fs\n",
-                   t_create, t_fwd, t_destroy);
         } else
 #endif
         {
