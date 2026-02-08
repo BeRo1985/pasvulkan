@@ -29,6 +29,8 @@ typedef struct {
     VkPipeline pip_relu_bwd;
     VkPipeline pip_adam;
     VkPipeline pip_loss_grad;
+    VkPipeline pip_loss_reduce;
+    VkPipeline pip_scale_buffer;
 
     /* Model architecture (copy from Model) */
     int num_layers;
@@ -63,6 +65,7 @@ typedef struct {
     GpuBuf gTarget;              /* HR ground truth  */
     GpuBuf gGrad;                /* HR gradient      */
     GpuBuf gLossElem;            /* per-element loss */
+    GpuBuf gLossSum;             /* scalar loss sum (uint for atomic CAS) */
 
     /* Allocated dimensions */
     int buf_h, buf_w, buf_n;
@@ -91,7 +94,17 @@ void vkcnn_ensure_buffers(VkCNN *g, int batch, int h, int w);
 void vkcnn_forward(VkCNN *g, const float *input, float *output,
                    int batch, int h, int w);
 
-/* Full training step (GPU):
+/* Full combined training step (GPU):
+ *   Performs zero_grad + forward + loss + backward + scale_grads + adam_update
+ *   in a single GPU submission. Returns total loss.
+ *   Much faster than calling individual functions. */
+float vkcnn_train_step_full(VkCNN *g,
+                             const float *input, const float *target,
+                             int batch, int h, int w, int loss_type,
+                             float lr, float beta1, float beta2,
+                             float eps, int adam_step);
+
+/* Full training step (GPU) — legacy, uses separate submissions.
  *   input  = LR patches [batch × in_ch × h × w]
  *   target = HR patches [batch × 3 × (h*r) × (w*r)]
  *   Returns average loss for this batch.

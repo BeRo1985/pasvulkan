@@ -28,6 +28,8 @@ pixel_unshuffle
 relu_backward
 adam_update
 loss_grad
+loss_reduce
+scale_buffer
 "
 
 echo "Compiling compute shaders..."

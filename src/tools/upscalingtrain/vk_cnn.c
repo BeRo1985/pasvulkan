@@ -11,6 +11,7 @@
 
 #include "vk_cnn.h"
 #include "shader_spirv.h"
+#include <time.h>
 
 /* Ceiling division */
 #define CDIV(a, b) (((a) + (b) - 1) / (b))
@@ -41,6 +42,8 @@ VkCNN *vkcnn_create(const Model *m, int host_mem, int training)
         g->pip_relu_bwd        = vkctx_create_pipeline(g->ctx, spirv_relu_backward,       RELU_BACKWARD_SIZE);
         g->pip_adam            = vkctx_create_pipeline(g->ctx, spirv_adam_update,          ADAM_UPDATE_SIZE);
         g->pip_loss_grad       = vkctx_create_pipeline(g->ctx, spirv_loss_grad,           LOSS_GRAD_SIZE);
+        g->pip_loss_reduce     = vkctx_create_pipeline(g->ctx, spirv_loss_reduce,         LOSS_REDUCE_SIZE);
+        g->pip_scale_buffer    = vkctx_create_pipeline(g->ctx, spirv_scale_buffer,        SCALE_BUFFER_SIZE);
     }
 
     /* Copy model architecture */
@@ -120,6 +123,7 @@ void vkcnn_destroy(VkCNN *g)
     vkctx_destroy_buffer(g->ctx, &g->gTarget);
     vkctx_destroy_buffer(g->ctx, &g->gGrad);
     vkctx_destroy_buffer(g->ctx, &g->gLossElem);
+    vkctx_destroy_buffer(g->ctx, &g->gLossSum);
 
     vkctx_destroy_pipeline(g->ctx, g->pip_conv_fwd);
     vkctx_destroy_pipeline(g->ctx, g->pip_pixel_shuffle);
@@ -132,6 +136,8 @@ void vkcnn_destroy(VkCNN *g)
         vkctx_destroy_pipeline(g->ctx, g->pip_relu_bwd);
         vkctx_destroy_pipeline(g->ctx, g->pip_adam);
         vkctx_destroy_pipeline(g->ctx, g->pip_loss_grad);
+        vkctx_destroy_pipeline(g->ctx, g->pip_loss_reduce);
+        vkctx_destroy_pipeline(g->ctx, g->pip_scale_buffer);
     }
 
     vkctx_destroy(g->ctx);
@@ -177,6 +183,7 @@ void vkcnn_ensure_buffers(VkCNN *g, int batch, int h, int w)
         vkctx_destroy_buffer(g->ctx, &g->gTarget);
         vkctx_destroy_buffer(g->ctx, &g->gGrad);
         vkctx_destroy_buffer(g->ctx, &g->gLossElem);
+        vkctx_destroy_buffer(g->ctx, &g->gLossSum);
     }
 
     /* Allocate new (in VRAM when using device-local mode) */
@@ -197,7 +204,8 @@ void vkcnn_ensure_buffers(VkCNN *g, int batch, int h, int w)
     if (g->training) {
         g->gTarget   = vkctx_create_buffer_gpu(g->ctx, out_sz);
         g->gGrad     = vkctx_create_buffer_gpu(g->ctx, out_sz);
-        g->gLossElem = vkctx_create_buffer(g->ctx, out_sz); /* host-visible: CPU reads loss values */
+        g->gLossElem = vkctx_create_buffer_gpu(g->ctx, out_sz); /* device-local: reduced on GPU */
+        g->gLossSum  = vkctx_create_buffer(g->ctx, sizeof(uint32_t)); /* host-visible: read single float */
     }
 
     g->buf_h = h;
@@ -515,6 +523,147 @@ void vkcnn_adam_update(VkCNN *g, float lr,
     }
 
     vkctx_cmd_end(g->ctx);
+}
+
+/* ============================================================================
+ * Combined training step — entire iter in ONE GPU submission
+ *
+ * Does: zero_grad → forward → loss+grad → backward → scale_grads → adam
+ * Only the scalar loss sum is read back via a tiny host-visible buffer.
+ * ========================================================================= */
+
+float vkcnn_train_step_full(VkCNN *g,
+                             const float *input, const float *target,
+                             int batch, int h, int w, int loss_type,
+                             float lr, float beta1, float beta2,
+                             float eps, int adam_step)
+{
+    vkcnn_ensure_buffers(g, batch, h, w);
+
+    int r  = g->scale_factor;
+    int oh = h * r;
+    int ow = w * r;
+    float inv_batch = 1.0f / (float)batch;
+
+    /* Upload input and target (staging → device) */
+    size_t in_sz  = (size_t)batch * g->in_channels * h * w * sizeof(float);
+    size_t out_sz = (size_t)batch * 3 * oh * ow * sizeof(float);
+    vkctx_upload_staged(g->ctx, &g->gAct[0], input, in_sz);
+    vkctx_upload_staged(g->ctx, &g->gTarget, target, out_sz);
+
+    /* Zero the loss sum accumulator (host-visible, direct write) */
+    uint32_t zero = 0;
+    memcpy(g->gLossSum.mapped, &zero, sizeof(uint32_t));
+
+    /* ---- Record everything in ONE command buffer ---- */
+    vkctx_cmd_begin(g->ctx);
+
+    /* 1) Zero gradient buffers */
+    for (int i = 0; i < g->num_layers; i++) {
+        vkctx_cmd_fill_zero(g->ctx, &g->gdW[i]);
+        vkctx_cmd_fill_zero(g->ctx, &g->gdB[i]);
+    }
+    vkctx_cmd_barrier(g->ctx);
+
+    /* 2) Forward pass */
+    record_forward(g, batch, h, w);
+
+    /* 3) Loss + gradient computation */
+    {
+        int count = batch * 3 * oh * ow;
+        VkPC pc = {0};
+        pc.p[0] = count;
+        pc.p[1] = loss_type;
+
+        vkctx_cmd_dispatch(g->ctx, g->pip_loss_grad,
+                            &g->gOutput, &g->gTarget,
+                            &g->gGrad, &g->gLossElem,
+                            &pc, CDIV(count, 256), 1, 1);
+        vkctx_cmd_barrier(g->ctx);
+
+        /* 3b) Parallel reduction of loss → gLossSum */
+        VkPC rpc = {0};
+        rpc.p[0] = count;
+        uint32_t reduce_groups = CDIV(count, 256);
+        if (reduce_groups > 1024) reduce_groups = 1024; /* cap for grid-stride loop */
+
+        vkctx_cmd_dispatch(g->ctx, g->pip_loss_reduce,
+                            &g->gLossElem, &g->gLossSum,
+                            NULL, NULL,
+                            &rpc, reduce_groups, 1, 1);
+        vkctx_cmd_barrier(g->ctx);
+    }
+
+    /* 4) Backward pass */
+    record_backward(g, batch, h, w);
+
+    /* 5) Scale gradients by 1/batch on GPU */
+    for (int i = 0; i < g->num_layers; i++) {
+        {
+            VkPC pc = {0};
+            pc.p[0] = g->w_count[i];
+            pc.f[0] = inv_batch;
+            vkctx_cmd_dispatch(g->ctx, g->pip_scale_buffer,
+                                &g->gdW[i], NULL, NULL, NULL,
+                                &pc, CDIV(g->w_count[i], 256), 1, 1);
+        }
+        {
+            VkPC pc = {0};
+            pc.p[0] = g->b_count[i];
+            pc.f[0] = inv_batch;
+            vkctx_cmd_dispatch(g->ctx, g->pip_scale_buffer,
+                                &g->gdB[i], NULL, NULL, NULL,
+                                &pc, CDIV(g->b_count[i], 256), 1, 1);
+        }
+    }
+    vkctx_cmd_barrier(g->ctx);
+
+    /* 6) Adam update */
+    {
+        float bc1 = 1.0f - powf(beta1, (float)adam_step);
+        float bc2 = 1.0f - powf(beta2, (float)adam_step);
+
+        for (int i = 0; i < g->num_layers; i++) {
+            {
+                VkPC pc = {0};
+                pc.p[0] = g->w_count[i];
+                pc.f[0] = lr;
+                pc.f[1] = beta1;
+                pc.f[2] = beta2;
+                pc.f[3] = eps;
+                pc.f[4] = bc1;
+                pc.f[5] = bc2;
+                vkctx_cmd_dispatch(g->ctx, g->pip_adam,
+                                    &g->gW[i], &g->gdW[i],
+                                    &g->gmW[i], &g->gvW[i],
+                                    &pc, CDIV(g->w_count[i], 256), 1, 1);
+            }
+            {
+                VkPC pc = {0};
+                pc.p[0] = g->b_count[i];
+                pc.f[0] = lr;
+                pc.f[1] = beta1;
+                pc.f[2] = beta2;
+                pc.f[3] = eps;
+                pc.f[4] = bc1;
+                pc.f[5] = bc2;
+                vkctx_cmd_dispatch(g->ctx, g->pip_adam,
+                                    &g->gB[i], &g->gdB[i],
+                                    &g->gmB[i], &g->gvB[i],
+                                    &pc, CDIV(g->b_count[i], 256), 1, 1);
+            }
+            vkctx_cmd_barrier(g->ctx);
+        }
+    }
+
+    vkctx_cmd_end(g->ctx);  /* Submit + wait — single sync point! */
+
+    /* Read back the scalar loss (single uint→float, from host-visible buffer) */
+    uint32_t loss_bits;
+    memcpy(&loss_bits, g->gLossSum.mapped, sizeof(uint32_t));
+    float total_loss;
+    memcpy(&total_loss, &loss_bits, sizeof(float));
+    return total_loss;
 }
 
 #endif /* USE_VULKAN */

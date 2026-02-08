@@ -382,17 +382,12 @@ static void train_mode(int argc, char **argv)
                 }
                 if (actual_batch == 0) continue;
 
-                /* Full forward + loss + backward on GPU */
-                vkcnn_zero_grad(gpu);
-                float batch_loss = vkcnn_train_step(gpu, lr_batch, hr_batch,
-                                                     actual_batch, lps, lps,
-                                                     loss_type);
-
-                /* Scale gradients and Adam update on GPU */
-                vkcnn_scale_grads(gpu, 1.0f / (float)actual_batch);
-                vkcnn_adam_update(gpu, current_lr,
-                                  DEFAULT_BETA1, DEFAULT_BETA2, DEFAULT_EPSILON,
-                                  adam_step);
+                /* Full combined step: zero+fwd+loss+bwd+scale+adam in ONE submission */
+                float batch_loss = vkcnn_train_step_full(gpu, lr_batch, hr_batch,
+                                                          actual_batch, lps, lps,
+                                                          loss_type, current_lr,
+                                                          DEFAULT_BETA1, DEFAULT_BETA2,
+                                                          DEFAULT_EPSILON, adam_step);
                 adam_step++;
 
                 epoch_loss += (double)(batch_loss / (float)actual_batch);
