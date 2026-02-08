@@ -29445,7 +29445,7 @@ begin
 
 {$ifdef InstanceUpdateDirtySkip}
 
-  InstanceUpdateDirtySkipped:=//fInstanceUpdateDirtySkippable and
+  InstanceUpdateDirtySkipped:=fInstanceUpdateDirtySkippable and
                               (fDirtyCounter<=0) and
                               (not fIsNewInstance) and
                               fPreviousActive and
