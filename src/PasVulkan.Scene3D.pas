@@ -3516,9 +3516,14 @@ type EpvScene3D=class(Exception);
                      procedure UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
 {$endif}
                      procedure UpdateAnimationAndOverwrites(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
-                     procedure UpdateLightsCamerasMaterials(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
-                     procedure UpdateNodesAndSkins(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
-                     procedure UpdateNodeBoundsAndPVS(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateLights(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateCameras(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateMaterials(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateNodes(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateSkins(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateNodeBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateNodePVS(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateNodeAABBTree(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateInstanceBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateGlobalAABBProxy(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateDeactivation(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
@@ -28750,17 +28755,13 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TInstance.UpdateLightsCamerasMaterials(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+procedure TpvScene3D.TGroup.TInstance.UpdateLights(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
 var Index:TpvSizeInt;
-    InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
-    HasMaterialUpdate:boolean;
 {$ifdef UpdateProfilingTimes}
     StartCPUTime,EndCPUTime:TpvHighResolutionTime;
 {$endif}
 begin
-
  if aInFlightFrameIndex>=0 then begin
-
 {$ifdef UpdateProfilingTimes}
   StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
@@ -28771,7 +28772,16 @@ begin
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
   fSceneInstance.fInstanceTimeLightSum:=fSceneInstance.fInstanceTimeLightSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
 {$endif}
+ end;
+end;
 
+procedure TpvScene3D.TGroup.TInstance.UpdateCameras(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
+ if aInFlightFrameIndex>=0 then begin
 {$ifdef UpdateProfilingTimes}
   StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
@@ -28782,9 +28792,17 @@ begin
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
   fSceneInstance.fInstanceTimeCameraSum:=fSceneInstance.fInstanceTimeCameraSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
 {$endif}
-
  end;
+end;
 
+procedure TpvScene3D.TGroup.TInstance.UpdateMaterials(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+    InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
+    HasMaterialUpdate:boolean;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
  HasMaterialUpdate:=false;
 {$ifdef UpdateProfilingTimes}
  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -28803,10 +28821,9 @@ begin
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  fSceneInstance.fInstanceTimeMaterialSum:=fSceneInstance.fInstanceTimeMaterialSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
 {$endif}
-
 end;
 
-procedure TpvScene3D.TGroup.TInstance.UpdateNodesAndSkins(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+procedure TpvScene3D.TGroup.TInstance.UpdateNodes(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
 var Index:TpvSizeInt;
     Dirty:boolean;
     Node:TpvScene3D.TGroup.TNode;
@@ -28852,15 +28869,6 @@ begin
    end;
   end;
 
-{$ifdef UpdateProfilingTimes}
-  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-{$endif}
-  ProcessSkins;
-{$ifdef UpdateProfilingTimes}
-  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-  fSceneInstance.fInstanceTimeSkinsSum:=fSceneInstance.fInstanceTimeSkinsSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
-{$endif}
-
   fNodeMatrices[0]:=fWorkModelMatrix;
 
   for Index:=0 to fGroup.fNodes.Count-1 do begin
@@ -28876,7 +28884,25 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.TInstance.UpdateNodeBoundsAndPVS(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+procedure TpvScene3D.TGroup.TInstance.UpdateSkins(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+    Node:TpvScene3D.TGroup.TNode;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
+{$ifdef UpdateProfilingTimes}
+ StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+ ProcessSkins;
+{$ifdef UpdateProfilingTimes}
+ EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+ fSceneInstance.fInstanceTimeSkinsSum:=fSceneInstance.fInstanceTimeSkinsSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateNodeBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
 var Index:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
@@ -28929,6 +28955,21 @@ begin
 
   end;
 
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateNodePVS(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+    Node:TpvScene3D.TGroup.TNode;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
+
+ if assigned(aScene) then begin
+
   if aInFlightFrameIndex>=0 then begin
 
 {$ifdef UpdateProfilingTimes}
@@ -28952,6 +28993,25 @@ begin
    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    fSceneInstance.fInstanceTimePotentiallyVisibleSetSum:=fSceneInstance.fInstanceTimePotentiallyVisibleSetSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
 {$endif}
+
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateNodeAABBTree(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+    Node:TpvScene3D.TGroup.TNode;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
+
+ if assigned(aScene) then begin
+
+  if aInFlightFrameIndex>=0 then begin
 
    if assigned(fAABBTree) then begin
 {$ifdef UpdateProfilingTimes}
@@ -30194,9 +30254,14 @@ begin
 {$endif}
 
    UpdateAnimationAndOverwrites(aInFlightFrameIndex,Scene,false);
-   UpdateLightsCamerasMaterials(aInFlightFrameIndex,false);
-   UpdateNodesAndSkins(aInFlightFrameIndex,Scene,false);
-   UpdateNodeBoundsAndPVS(aInFlightFrameIndex,Scene,false);
+   UpdateLights(aInFlightFrameIndex,false);
+   UpdateCameras(aInFlightFrameIndex,false);
+   UpdateMaterials(aInFlightFrameIndex,false);
+   UpdateNodes(aInFlightFrameIndex,Scene,false);
+   UpdateSkins(aInFlightFrameIndex,false);
+   UpdateNodeBounds(aInFlightFrameIndex,Scene,false);
+   UpdateNodePVS(aInFlightFrameIndex,Scene,false);
+   UpdateNodeAABBTree(aInFlightFrameIndex,Scene,false);
    UpdateInstanceBounds(aInFlightFrameIndex,Scene,false);
    UpdateRenderInstances(aInFlightFrameIndex,false);
    UpdateBoundingVolumes(aInFlightFrameIndex,false);
