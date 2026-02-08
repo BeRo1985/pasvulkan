@@ -32,8 +32,8 @@ for arg in "$@"; do
             echo "  2x|4x       Upscale factor (default: 2x)"
             echo "  srgb|linear Color space (default: srgb)"
             echo "  low         200 epochs, batch 16, feat 64/32 (default)"
-            echo "  mid         400 epochs, batch 32, feat 128/64"
-            echo "  high        800 epochs, batch 64, feat 256/128, deep"
+            echo "  mid         400 epochs, batch 32, feat 64/32, deep"
+            echo "  high        600 epochs, batch 32, feat 128/64, deep"
             echo "  --gpu       Use Vulkan compute backend"
             echo "  --host-mem  Force host-visible memory (slower, for debugging)"
             exit 0 ;;
@@ -47,11 +47,11 @@ done
 # Quality presets
 case "$QUALITY" in
     low)
-        EPOCHS=200; BATCH=16; FEAT1=64; FEAT2=32; DEEP="" ;;
+        EPOCHS=200; BATCH=16; FEAT1=64; FEAT2=32; DEEP=""; LR_DECAY=100 ;;
     mid)
-        EPOCHS=400; BATCH=32; FEAT1=128; FEAT2=64; DEEP="" ;;
+        EPOCHS=400; BATCH=32; FEAT1=64; FEAT2=32; DEEP="--deep"; LR_DECAY=100 ;;
     high)
-        EPOCHS=800; BATCH=64; FEAT1=256; FEAT2=128; DEEP="--deep" ;;
+        EPOCHS=600; BATCH=32; FEAT1=128; FEAT2=64; DEEP="--deep"; LR_DECAY=150 ;;
 esac
 
 SUFFIX="${FACTOR}x_${COLORSPACE}"
@@ -92,7 +92,7 @@ GPU_FLAG=""
     --patch 32 \
     $DEEP \
     --lr 0.001 \
-    --lr-decay 100 \
+    --lr-decay "$LR_DECAY" \
     --feat1 "$FEAT1" \
     --feat2 "$FEAT2" \
     --loss l1 \
