@@ -33,7 +33,7 @@ for arg in "$@"; do
             echo "  srgb|linear Color space (default: srgb)"
             echo "  low         200 epochs, batch 16, feat 64/32 (default)"
             echo "  mid         400 epochs, batch 32, feat 64/32, deep"
-            echo "  high        600 epochs, batch 32, feat 128/64, deep"
+            echo "  high        600 epochs, batch 64, feat 128/64, deep"
             echo "  --gpu       Use Vulkan compute backend"
             echo "  --host-mem  Force host-visible memory (slower, for debugging)"
             exit 0 ;;
@@ -51,7 +51,7 @@ case "$QUALITY" in
     mid)
         EPOCHS=400; BATCH=32; FEAT1=64; FEAT2=32; DEEP="--deep"; LR_DECAY=100 ;;
     high)
-        EPOCHS=600; BATCH=32; FEAT1=128; FEAT2=64; DEEP="--deep"; LR_DECAY=150 ;;
+        EPOCHS=600; BATCH=64; FEAT1=128; FEAT2=64; DEEP="--deep"; LR_DECAY=150 ;;
 esac
 
 SUFFIX="${FACTOR}x_${COLORSPACE}_${QUALITY}"
