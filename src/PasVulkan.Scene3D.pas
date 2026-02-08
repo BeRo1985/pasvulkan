@@ -3512,9 +3512,6 @@ type EpvScene3D=class(Exception);
                      procedure UpdateRenderInstances(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateBoundingVolumes(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
 {$ifdef SplitInstanceUpdate}
-{$ifdef InstanceUpdateDirtySkip}
-                     procedure UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
-{$endif}
                      procedure UpdateAnimationAndOverwrites(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateLights(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateCameras(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
@@ -3528,6 +3525,9 @@ type EpvScene3D=class(Exception);
                      procedure UpdateGlobalAABBProxy(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateDeactivation(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateLocalAABBTreeState(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+{$ifdef InstanceUpdateDirtySkip}
+                     procedure UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+{$endif}
 {$endif}
                     public
                      procedure Check(const aInFlightFrameIndex:TpvSizeInt);
@@ -28568,99 +28568,6 @@ end;
 
 {$ifdef SplitInstanceUpdate}
 
-{$ifdef InstanceUpdateDirtySkip}
-procedure TpvScene3D.TGroup.TInstance.UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
-var Index,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
-    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
-    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
-    PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
-    RenderInstanceDirty:boolean;
-    PreviousInFlightFrameIndex:TpvSizeInt;
-begin
-
- // Copy per-InFlightFrame BoundingBox from current state
- fBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
-
- // Ensure fNodeMatrices[0] is consistent (fWorkModelMatrix is recomputed every frame)
- fNodeMatrices[0]:=fWorkModelMatrix;
-
- // Copy per-InFlightFrame BoundingSphere data from current state
- PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
- if PreviousInFlightFrameIndex<0 then begin
-  PreviousInFlightFrameIndex:=fSceneInstance.fCountInFlightFrames-1;
- end;
-
- for Index:=0 to fNodes.Count-1 do begin
-  InstanceNode:=fNodes.RawItems[Index];
-  InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=InstanceNode.fBoundingBoxes[PreviousInFlightFrameIndex];
-  InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=InstanceNode.fBoundingBoxFilled[PreviousInFlightFrameIndex];
-  InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=InstanceNode.fBoundingSpheres[PreviousInFlightFrameIndex];
-  InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=InstanceNode.fPotentiallyVisibleSetNodeIndices[PreviousInFlightFrameIndex];
-  if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(fGroup.fNodes[Index].Mesh) then begin
-   fSceneInstance.fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][InstanceNode.fBoundingSphereIndex]:=InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4;
-  end;
-  InstanceNode.Update(aInFlightFrameIndex);
- end;
-
- // Copy per-InFlightFrame PVS
- fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fPotentiallyVisibleSetNodeIndices[PreviousInFlightFrameIndex];
-
- RenderInstanceDirty:=fSceneInstance.fUpdatedOriginTransform;
- if fUseRenderInstances and (fRenderInstances.Count>0) and not RenderInstanceDirty then begin
-  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
-  try
-   for Index:=0 to fRenderInstances.Count-1 do begin
-    RenderInstance:=fRenderInstances[Index];
-    if (RenderInstance.fWorkActives[aInFlightFrameIndex]<>RenderInstance.fWorkActive) or
-       ((RenderInstance.fWorkActive and
-        (((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) or
-         (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) or
-         (RenderInstance.fModelMatrices[aInFlightFrameIndex]<>RenderInstance.fModelMatrix))) or
-        ((not RenderInstance.fWorkActive) and
-         ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0))) then begin
-     RenderInstanceDirty:=true;
-     break;
-    end;
-   end;
-  finally
-   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
-  end;
- end;
-
- if RenderInstanceDirty then begin
-
-  UpdateRenderInstances(aInFlightFrameIndex,true);
-
-  UpdateBoundingVolumes(aInFlightFrameIndex,true);
-
- end else begin
-
-  // Copy per-InFlightFrame RenderInstance data
-  if fUseRenderInstances and (fRenderInstances.Count>0) then begin
-   fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
-   TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
-   try
-    for Index:=0 to fRenderInstances.Count-1 do begin
-     RenderInstance:=fRenderInstances[Index];
-     if RenderInstance.fWorkActive then begin
-      TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
-      RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrices[PreviousInFlightFrameIndex];
-      RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
-      PerInFlightFrameRenderInstance:=pointer(fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNew);
-      PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
-      PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
-     end;
-    end;
-   finally
-    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
-   end;
-  end;
-
- end;
-
-end;
-{$endif}
-
 procedure TpvScene3D.TGroup.TInstance.UpdateAnimationAndOverwrites(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
 var Index:TpvSizeInt;
     WeightSum,WeightOverFactor:TpvDouble;
@@ -28919,6 +28826,7 @@ begin
    StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
    for Index:=0 to fGroup.fNodes.Count-1 do begin
+    Node:=fGroup.fNodes[Index];
     InstanceNode:=fNodes.RawItems[Node.Index];
     InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
     InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
@@ -29307,9 +29215,286 @@ begin
 
 end;
 
+{$ifdef InstanceUpdateDirtySkip}
+procedure TpvScene3D.TGroup.TInstance.UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+var Index,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+    PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
+    RenderInstanceDirty:boolean;
+    PreviousInFlightFrameIndex:TpvSizeInt;
+begin
+
+ // Copy per-InFlightFrame BoundingBox from current state
+ fBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
+
+ // Ensure fNodeMatrices[0] is consistent (fWorkModelMatrix is recomputed every frame)
+ fNodeMatrices[0]:=fWorkModelMatrix;
+
+ // Copy per-InFlightFrame BoundingSphere data from current state
+ PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
+ if PreviousInFlightFrameIndex<0 then begin
+  PreviousInFlightFrameIndex:=fSceneInstance.fCountInFlightFrames-1;
+ end;
+
+ for Index:=0 to fNodes.Count-1 do begin
+  InstanceNode:=fNodes.RawItems[Index];
+  InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=InstanceNode.fBoundingBoxes[PreviousInFlightFrameIndex];
+  InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=InstanceNode.fBoundingBoxFilled[PreviousInFlightFrameIndex];
+  InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=InstanceNode.fBoundingSpheres[PreviousInFlightFrameIndex];
+  InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=InstanceNode.fPotentiallyVisibleSetNodeIndices[PreviousInFlightFrameIndex];
+  if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(fGroup.fNodes[Index].Mesh) then begin
+   fSceneInstance.fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][InstanceNode.fBoundingSphereIndex]:=InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4;
+  end;
+  InstanceNode.Update(aInFlightFrameIndex);
+ end;
+
+ // Copy per-InFlightFrame PVS
+ fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fPotentiallyVisibleSetNodeIndices[PreviousInFlightFrameIndex];
+
+ RenderInstanceDirty:=fSceneInstance.fUpdatedOriginTransform;
+ if fUseRenderInstances and (fRenderInstances.Count>0) and not RenderInstanceDirty then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
+  try
+   for Index:=0 to fRenderInstances.Count-1 do begin
+    RenderInstance:=fRenderInstances[Index];
+    if (RenderInstance.fWorkActives[aInFlightFrameIndex]<>RenderInstance.fWorkActive) or
+       ((RenderInstance.fWorkActive and
+        (((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) or
+         (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) or
+         (RenderInstance.fModelMatrices[aInFlightFrameIndex]<>RenderInstance.fModelMatrix))) or
+        ((not RenderInstance.fWorkActive) and
+         ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0))) then begin
+     RenderInstanceDirty:=true;
+     break;
+    end;
+   end;
+  finally
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
+  end;
+ end;
+
+ if RenderInstanceDirty then begin
+
+  UpdateRenderInstances(aInFlightFrameIndex,true);
+
+  UpdateBoundingVolumes(aInFlightFrameIndex,true);
+
+ end else begin
+
+  // Copy per-InFlightFrame RenderInstance data
+  if fUseRenderInstances and (fRenderInstances.Count>0) then begin
+   fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
+   try
+    for Index:=0 to fRenderInstances.Count-1 do begin
+     RenderInstance:=fRenderInstances[Index];
+     if RenderInstance.fWorkActive then begin
+      TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
+      RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrices[PreviousInFlightFrameIndex];
+      RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+      PerInFlightFrameRenderInstance:=pointer(fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNew);
+      PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
+      PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
+     end;
+    end;
+   finally
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
+   end;
+  end;
+
+ end;
+
+end;
 {$endif}
 
-{$ifndef SplitInstanceUpdate}
+procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
+var Index:TpvSizeInt;
+    Scene:TpvScene3D.TGroup.TScene;
+    Animation:TpvScene3D.TGroup.TInstance.TAnimation;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+    IsActive,CanUpdate,ActiveAnimationProcessing:boolean;
+    TemporaryVector:TpvVector3;
+{$ifdef InstanceUpdateDirtySkip}
+    InstanceUpdateDirtySkipped:boolean;
+{$endif}
+begin
+
+{$ifdef InstanceUpdateDirtySkip}
+ InstanceUpdateDirtySkipped:=false;
+{$endif}
+
+ if assigned(fAppendageInstance) and assigned(fAppendageNode) then begin
+  fModelMatrix:=(fAppendageTransform*
+                 fAppendageInstance.fNodes[fAppendageNode.fIndex].fWorkMatrix)*
+                 fAppendageInstance.fModelMatrix;
+  if fAppendageIgnoreScale then begin
+   fModelMatrix.Tangent.xyz:=fModelMatrix.Tangent.xyz.Normalize;
+   fModelMatrix.Bitangent.xyz:=fModelMatrix.Bitangent.xyz.Normalize;
+   fModelMatrix.Normal.xyz:=fModelMatrix.Normal.xyz.Normalize;
+  end;
+  SetDirty;
+ end;
+
+ if assigned(fOnUpdate) and fOnUpdate(aInFlightFrameIndex) then begin
+  SetDirty;
+ end;
+
+ if (aInFlightFrameIndex>=0) and not fUseRenderInstances then begin
+  if fSceneInstance.fUpdatedOriginTransform then begin
+   SetDirty;
+  end;
+  fWorkModelMatrix:=fSceneInstance.TransformOrigin(fModelMatrix,aInFlightFrameIndex,false);
+ end else begin
+  fWorkModelMatrix:=fModelMatrix;
+ end;
+
+ if fActive then begin
+  if fUseRenderInstances then begin
+   if fRenderInstances.Count>0 then begin
+    IsActive:=false;
+    for Index:=0 to fRenderInstances.Count-1 do begin
+     RenderInstance:=fRenderInstances[Index];
+     RenderInstance.fWorkActive:=RenderInstance.fActive;
+     if RenderInstance.fWorkActive then begin
+      IsActive:=true;
+     end;
+    end;
+   end else begin
+    IsActive:=false;
+   end;
+  end else begin
+   IsActive:=true;
+  end;
+ end else begin
+  IsActive:=false;
+ end;
+
+ if fActive and fSceneInstance.fUpdateCulling.fActive then begin
+  TemporaryVector:=fGroup.fBoundingBox.Max-fGroup.fBoundingBox.Min;
+  if fUseRenderInstances and (fRenderInstances.Count>0) then begin
+   CanUpdate:=false;
+   for Index:=0 to fRenderInstances.Count-1 do begin
+    RenderInstance:=fRenderInstances[Index];
+    if RenderInstance.fActive then begin
+     if fBoundingRadius>0.0 then begin
+      RenderInstance.fWorkActive:=fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,fBoundingRadius);
+     end else begin
+      RenderInstance.fWorkActive:=fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,TemporaryVector);
+     end;
+     if RenderInstance.fWorkActive then begin
+      CanUpdate:=true;
+     end;
+    end else begin
+     RenderInstance.fWorkActive:=false;
+    end;
+   end;
+  end else if not fUseRenderInstances then begin
+   if fBoundingRadius>0.0 then begin
+    CanUpdate:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,fBoundingRadius);
+   end else begin
+    CanUpdate:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,TemporaryVector);
+   end;
+  end else begin
+   CanUpdate:=true;
+  end;
+  IsActive:=CanUpdate;
+ end else begin
+  CanUpdate:=fActive;
+ end;
+
+ if IsActive then begin
+
+  Scene:=GetScene;
+  ActiveAnimationProcessing:=fUpdateDynamic;
+
+{$ifdef InstanceUpdateDirtySkip}
+
+  InstanceUpdateDirtySkipped:=fInstanceUpdateDirtySkippable and
+                              (fDirtyCounter<=0) and
+                              (not fIsNewInstance) and
+                              fPreviousActive and
+                              (aInFlightFrameIndex>=0) and
+                              (fActives[aInFlightFrameIndex]=IsActive) and
+                              (fActiveScenes[aInFlightFrameIndex]=Scene) and
+                              (fNodeMatrices[0]=fWorkModelMatrix) and
+                              (not fSceneInstance.fUpdatedOriginTransform);
+
+  if InstanceUpdateDirtySkipped and ActiveAnimationProcessing then begin
+   for Index:=-1 to length(fAnimations)-2 do begin
+    Animation:=fAnimations[Index+1];
+    if (Animation.fFactor<>Animation.fPreviousUpdateFactor) or
+       (Animation.fTime<>Animation.fPreviousUpdateTime) then begin
+     InstanceUpdateDirtySkipped:=false;
+     break;
+    end;
+   end;
+  end;
+
+  if InstanceUpdateDirtySkipped then begin
+
+   UpdateDirtySkipFastPath(aInFlightFrameIndex,true);
+
+  end else begin
+
+   // Store current animation state for next frame's dirty check
+   if ActiveAnimationProcessing then begin
+    for Index:=-1 to length(fAnimations)-2 do begin
+     Animation:=fAnimations[Index+1];
+     Animation.fPreviousUpdateFactor:=Animation.fFactor;
+     Animation.fPreviousUpdateTime:=Animation.fTime;
+    end;
+   end;
+
+{$endif}
+
+   UpdateAnimationAndOverwrites(aInFlightFrameIndex,Scene,false);
+   UpdateLights(aInFlightFrameIndex,false);
+   UpdateCameras(aInFlightFrameIndex,false);
+   UpdateMaterials(aInFlightFrameIndex,false);
+   UpdateNodes(aInFlightFrameIndex,Scene,false);
+   UpdateSkins(aInFlightFrameIndex,false);
+   UpdateNodeBounds(aInFlightFrameIndex,Scene,false);
+   UpdateNodePVS(aInFlightFrameIndex,Scene,false);
+   UpdateNodeAABBTree(aInFlightFrameIndex,Scene,false);
+   UpdateInstanceBounds(aInFlightFrameIndex,Scene,false);
+   UpdateRenderInstances(aInFlightFrameIndex,false);
+   UpdateBoundingVolumes(aInFlightFrameIndex,false);
+   UpdateGlobalAABBProxy(aInFlightFrameIndex,false);
+
+{$ifdef InstanceUpdateDirtySkip}
+  end; // if not InstanceUpdateDirtySkipped
+{$endif}
+
+  // Update the model matrix of the assigned non-virtual instance, if applicable. Needed for appendages and similar.
+  if fVirtual and assigned(fAssignedNonVirtualInstance) then begin
+   if assigned(fAssignedNonVirtualInstanceRenderInstance) then begin
+    fAssignedNonVirtualInstanceRenderInstance.ModelMatrix:=fModelMatrix;
+   end else begin
+    fAssignedNonVirtualInstance.ModelMatrix:=fModelMatrix;
+   end;
+  end;
+
+  fPreviousActive:=true;
+
+ end else if fPreviousActive then begin
+
+  UpdateDeactivation(aInFlightFrameIndex,false);
+
+ end;
+
+ if aInFlightFrameIndex>=0 then begin
+  fActives[aInFlightFrameIndex]:=IsActive;
+ end;
+
+ if aInFlightFrameIndex>=0 then begin
+  UpdateLocalAABBTreeState(aInFlightFrameIndex,{$ifdef InstanceUpdateDirtySkip}InstanceUpdateDirtySkipped{$else}false{$endif});
+ end;
+
+end;
+
+{$else}
+
 procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
 var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     WeightSum,WeightOverFactor:TpvDouble;
@@ -29756,6 +29941,7 @@ begin
      StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
      for Index:=0 to fGroup.fNodes.Count-1 do begin
+      Node:=fGroup.fNodes[Index];
       InstanceNode:=fNodes.RawItems[Node.Index];
       InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
       InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
@@ -30111,189 +30297,6 @@ begin
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
   fSceneInstance.fInstanceTimeAABBTreeSum:=fSceneInstance.fInstanceTimeAABBTreeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
 {$endif}
- end;
-
-end;
-
-{$else}
-
-procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
-var Index:TpvSizeInt;
-    Scene:TpvScene3D.TGroup.TScene;
-    Animation:TpvScene3D.TGroup.TInstance.TAnimation;
-    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
-    IsActive,CanUpdate,ActiveAnimationProcessing:boolean;
-    TemporaryVector:TpvVector3;
-{$ifdef InstanceUpdateDirtySkip}
-    InstanceUpdateDirtySkipped:boolean;
-{$endif}
-begin
-
- if assigned(fAppendageInstance) and assigned(fAppendageNode) then begin
-  fModelMatrix:=(fAppendageTransform*
-                 fAppendageInstance.fNodes[fAppendageNode.fIndex].fWorkMatrix)*
-                 fAppendageInstance.fModelMatrix;
-  if fAppendageIgnoreScale then begin
-   fModelMatrix.Tangent.xyz:=fModelMatrix.Tangent.xyz.Normalize;
-   fModelMatrix.Bitangent.xyz:=fModelMatrix.Bitangent.xyz.Normalize;
-   fModelMatrix.Normal.xyz:=fModelMatrix.Normal.xyz.Normalize;
-  end;
-  SetDirty;
- end;
-
- if assigned(fOnUpdate) and fOnUpdate(aInFlightFrameIndex) then begin
-  SetDirty;
- end;
-
- if (aInFlightFrameIndex>=0) and not fUseRenderInstances then begin
-  if fSceneInstance.fUpdatedOriginTransform then begin
-   SetDirty;
-  end;
-  fWorkModelMatrix:=fSceneInstance.TransformOrigin(fModelMatrix,aInFlightFrameIndex,false);
- end else begin
-  fWorkModelMatrix:=fModelMatrix;
- end;
-
- if fActive then begin
-  if fUseRenderInstances then begin
-   if fRenderInstances.Count>0 then begin
-    IsActive:=false;
-    for Index:=0 to fRenderInstances.Count-1 do begin
-     RenderInstance:=fRenderInstances[Index];
-     RenderInstance.fWorkActive:=RenderInstance.fActive;
-     if RenderInstance.fWorkActive then begin
-      IsActive:=true;
-     end;
-    end;
-   end else begin
-    IsActive:=false;
-   end;
-  end else begin
-   IsActive:=true;
-  end;
- end else begin
-  IsActive:=false;
- end;
-
- if fActive and fSceneInstance.fUpdateCulling.fActive then begin
-  TemporaryVector:=fGroup.fBoundingBox.Max-fGroup.fBoundingBox.Min;
-  if fUseRenderInstances and (fRenderInstances.Count>0) then begin
-   CanUpdate:=false;
-   for Index:=0 to fRenderInstances.Count-1 do begin
-    RenderInstance:=fRenderInstances[Index];
-    if RenderInstance.fActive then begin
-     if fBoundingRadius>0.0 then begin
-      RenderInstance.fWorkActive:=fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,fBoundingRadius);
-     end else begin
-      RenderInstance.fWorkActive:=fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,TemporaryVector);
-     end;
-     if RenderInstance.fWorkActive then begin
-      CanUpdate:=true;
-     end;
-    end else begin
-     RenderInstance.fWorkActive:=false;
-    end;
-   end;
-  end else if not fUseRenderInstances then begin
-   if fBoundingRadius>0.0 then begin
-    CanUpdate:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,fBoundingRadius);
-   end else begin
-    CanUpdate:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,TemporaryVector);
-   end;
-  end else begin
-   CanUpdate:=true;
-  end;
-  IsActive:=CanUpdate;
- end else begin
-  CanUpdate:=fActive;
- end;
-
- if IsActive then begin
-
-  Scene:=GetScene;
-  ActiveAnimationProcessing:=fUpdateDynamic;
-
-{$ifdef InstanceUpdateDirtySkip}
-
-  InstanceUpdateDirtySkipped:=fInstanceUpdateDirtySkippable and
-                              (fDirtyCounter<=0) and
-                              (not fIsNewInstance) and
-                              fPreviousActive and
-                              (aInFlightFrameIndex>=0) and
-                              (fActives[aInFlightFrameIndex]=IsActive) and
-                              (fActiveScenes[aInFlightFrameIndex]=Scene) and
-                              (fNodeMatrices[0]=fWorkModelMatrix) and
-                              (not fSceneInstance.fUpdatedOriginTransform);
-
-  if InstanceUpdateDirtySkipped and ActiveAnimationProcessing then begin
-   for Index:=-1 to length(fAnimations)-2 do begin
-    Animation:=fAnimations[Index+1];
-    if (Animation.fFactor<>Animation.fPreviousUpdateFactor) or
-       (Animation.fTime<>Animation.fPreviousUpdateTime) then begin
-     InstanceUpdateDirtySkipped:=false;
-     break;
-    end;
-   end;
-  end;
-
-  if InstanceUpdateDirtySkipped then begin
-
-   UpdateDirtySkipFastPath(aInFlightFrameIndex,true);
-
-  end else begin
-
-   // Store current animation state for next frame's dirty check
-   if ActiveAnimationProcessing then begin
-    for Index:=-1 to length(fAnimations)-2 do begin
-     Animation:=fAnimations[Index+1];
-     Animation.fPreviousUpdateFactor:=Animation.fFactor;
-     Animation.fPreviousUpdateTime:=Animation.fTime;
-    end;
-   end;
-
-{$endif}
-
-   UpdateAnimationAndOverwrites(aInFlightFrameIndex,Scene,false);
-   UpdateLights(aInFlightFrameIndex,false);
-   UpdateCameras(aInFlightFrameIndex,false);
-   UpdateMaterials(aInFlightFrameIndex,false);
-   UpdateNodes(aInFlightFrameIndex,Scene,false);
-   UpdateSkins(aInFlightFrameIndex,false);
-   UpdateNodeBounds(aInFlightFrameIndex,Scene,false);
-   UpdateNodePVS(aInFlightFrameIndex,Scene,false);
-   UpdateNodeAABBTree(aInFlightFrameIndex,Scene,false);
-   UpdateInstanceBounds(aInFlightFrameIndex,Scene,false);
-   UpdateRenderInstances(aInFlightFrameIndex,false);
-   UpdateBoundingVolumes(aInFlightFrameIndex,false);
-   UpdateGlobalAABBProxy(aInFlightFrameIndex,false);
-
-{$ifdef InstanceUpdateDirtySkip}
-  end; // if not InstanceUpdateDirtySkipped
-{$endif}
-
-  // Update the model matrix of the assigned non-virtual instance, if applicable. Needed for appendages and similar.
-  if fVirtual and assigned(fAssignedNonVirtualInstance) then begin
-   if assigned(fAssignedNonVirtualInstanceRenderInstance) then begin
-    fAssignedNonVirtualInstanceRenderInstance.ModelMatrix:=fModelMatrix;
-   end else begin
-    fAssignedNonVirtualInstance.ModelMatrix:=fModelMatrix;
-   end;
-  end;
-
-  fPreviousActive:=true;
-
- end else if fPreviousActive then begin
-
-  UpdateDeactivation(aInFlightFrameIndex,false);
-
- end;
-
- if aInFlightFrameIndex>=0 then begin
-  fActives[aInFlightFrameIndex]:=IsActive;
- end;
-
- if aInFlightFrameIndex>=0 then begin
-  UpdateLocalAABBTreeState(aInFlightFrameIndex,{$ifdef InstanceUpdateDirtySkip}InstanceUpdateDirtySkipped{$else}false{$endif});
  end;
 
 end;
