@@ -12,6 +12,7 @@ FACTOR=2
 COLORSPACE=srgb
 USE_GPU=0
 HOST_MEM=0
+QUALITY=low
 
 # Parse arguments (order-independent)
 for arg in "$@"; do
@@ -22,20 +23,36 @@ for arg in "$@"; do
         linear)    COLORSPACE=linear ;;
         --gpu|gpu) USE_GPU=1 ;;
         --host-mem) HOST_MEM=1 ;;
+        low)       QUALITY=low ;;
+        mid|medium) QUALITY=mid ;;
+        high)      QUALITY=high ;;
         -h|--help)
-            echo "Usage: $0 [2x|4x] [srgb|linear] [--gpu] [--host-mem]"
+            echo "Usage: $0 [2x|4x] [srgb|linear] [low|mid|high] [--gpu] [--host-mem]"
             echo ""
             echo "  2x|4x       Upscale factor (default: 2x)"
             echo "  srgb|linear Color space (default: srgb)"
+            echo "  low         200 epochs, batch 16, feat 64/32 (default)"
+            echo "  mid         400 epochs, batch 32, feat 128/64"
+            echo "  high        800 epochs, batch 64, feat 256/128, deep"
             echo "  --gpu       Use Vulkan compute backend"
             echo "  --host-mem  Force host-visible memory (slower, for debugging)"
             exit 0 ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: $0 [2x|4x] [srgb|linear] [--gpu] [--host-mem]"
+            echo "Usage: $0 [2x|4x] [srgb|linear] [low|mid|high] [--gpu] [--host-mem]"
             exit 1 ;;
     esac
 done
+
+# Quality presets
+case "$QUALITY" in
+    low)
+        EPOCHS=200; BATCH=16; FEAT1=64; FEAT2=32; DEEP="" ;;
+    mid)
+        EPOCHS=400; BATCH=32; FEAT1=128; FEAT2=64; DEEP="" ;;
+    high)
+        EPOCHS=800; BATCH=64; FEAT1=256; FEAT2=128; DEEP="--deep" ;;
+esac
 
 SUFFIX="${FACTOR}x_${COLORSPACE}"
 MODEL="model_${SUFFIX}.bin"
@@ -58,7 +75,7 @@ if [ ! -d data ] || [ -z "$(ls data/*.png 2>/dev/null)" ]; then
     exit 1
 fi
 
-echo "=== Training ${FACTOR}x upscaler (${COLORSPACE}$([ "$USE_GPU" -eq 1 ] && echo ', Vulkan GPU')) ==="
+echo "=== Training ${FACTOR}x upscaler (${COLORSPACE}, ${QUALITY}$([ "$USE_GPU" -eq 1 ] && echo ', Vulkan GPU')) ==="
 echo "Model output: ${MODEL}"
 echo ""
 
@@ -70,13 +87,14 @@ GPU_FLAG=""
     --data data \
     --factor "$FACTOR" \
     --colorspace "$COLORSPACE" \
-    --epochs 200 \
-    --batch 16 \
+    --epochs "$EPOCHS" \
+    --batch "$BATCH" \
     --patch 32 \
+    $DEEP \
     --lr 0.001 \
     --lr-decay 100 \
-    --feat1 64 \
-    --feat2 32 \
+    --feat1 "$FEAT1" \
+    --feat2 "$FEAT2" \
     --loss l1 \
     --save-every 50 \
     --output "$MODEL" \
