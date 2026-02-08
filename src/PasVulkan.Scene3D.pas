@@ -3376,6 +3376,7 @@ type EpvScene3D=class(Exception);
                      fOnUpdate:TpvScene3D.TGroup.TInstance.TOnUpdate;
                      fUploaded:boolean;
                      fDirtyCounter:TPasMPInt32;
+                     fInstanceUpdateDirtyCounter:TPasMPInt32;
                      fPreparedMeshContentGeneration:TpvUInt64;
                      fFramePreparedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fFrameUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
@@ -3405,6 +3406,7 @@ type EpvScene3D=class(Exception);
                      fPotentiallyVisibleSetNodeIndices:array[-1..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                      fCullVisibleBitmapLocks:array[-1..MaxInFlightFrames-1] of TPasMPInt32;
                      fCullVisibleBitmaps:TCullVisibleBitmaps;
+                     fLastUpdateInFlightFrameIndex:TpvSizeInt;
                      fAABBTreeProxy:TpvSizeInt;
                      fAABBTree:TpvBVHDynamicAABBTree;
 {$ifdef DeferredAABBTreeUpdates}
@@ -3528,7 +3530,7 @@ type EpvScene3D=class(Exception);
                      procedure UpdateDeactivation(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateLocalAABBTreeState(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
 {$ifdef InstanceUpdateDirtySkip}
-                     procedure UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
 {$endif}
 {$endif}
                     public
@@ -24357,6 +24359,7 @@ var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex,CountLightNodes:TpvSi
     SrcMorphTargetVertex,DstMorphTargetVertex:PMorphTargetVertex;
     SrcJointBlock,DstJointBlock:PJointBlock;
 begin
+
  inherited Create(aResourceManager,aParent,aMetaResource);
 
  fTag:=0;
@@ -24441,11 +24444,15 @@ begin
 
  fDirtyCounter:=1;
 
+ fInstanceUpdateDirtyCounter:=2;
+
  fRaytracingMask:=$ff;
 
  fCastingShadows:=true;
 
  fScene:=-1;
+
+ fLastUpdateInFlightFrameIndex:=-1;
 
  fNodes:=nil;
 
@@ -28972,7 +28979,8 @@ begin
  end;
  if assigned(aScene) and (aInFlightFrameIndex>=-1) then begin
   for Index:=0 to aScene.fNodes.Count-1 do begin
-   InstanceNode:=fNodes.RawItems[aScene.fNodes[Index].fIndex];
+   Node:=aScene.fNodes.RawItems[Index];
+   InstanceNode:=fNodes.RawItems[Node.fIndex];
    if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
     fBoundingBox.DirectCombine(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
    end;
@@ -28981,7 +28989,7 @@ begin
 
  if assigned(aScene) and (aInFlightFrameIndex>=0) then begin
   for Index:=0 to aScene.fAllNodes.Count-1 do begin
-   Node:=aScene.fAllNodes[Index];
+   Node:=aScene.fAllNodes.RawItems[Index];
    InstanceNode:=fNodes.RawItems[Node.Index];
    if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(Node.Mesh) then begin
     InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=TpvSphere.CreateFromAABB(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
@@ -29230,7 +29238,7 @@ begin
 end;
 
 {$ifdef InstanceUpdateDirtySkip}
-procedure TpvScene3D.TGroup.TInstance.UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+procedure TpvScene3D.TGroup.TInstance.UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
 var Index,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
@@ -29239,17 +29247,21 @@ var Index,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     PreviousInFlightFrameIndex:TpvSizeInt;
 begin
 
+ // Copy per-InFlightFrame BoundingSphere data from current state
+ if fLastUpdateInFlightFrameIndex>=0 then begin
+  PreviousInFlightFrameIndex:=fLastUpdateInFlightFrameIndex;
+ end else begin
+  PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
+  if PreviousInFlightFrameIndex<0 then begin
+   PreviousInFlightFrameIndex:=fSceneInstance.fCountInFlightFrames-1;
+  end;
+ end;
+
  // Copy per-InFlightFrame BoundingBox from current state
  fBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
 
  // Ensure fNodeMatrices[0] is consistent (fWorkModelMatrix is recomputed every frame)
  fNodeMatrices[0]:=fWorkModelMatrix;
-
- // Copy per-InFlightFrame BoundingSphere data from current state
- PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
- if PreviousInFlightFrameIndex<0 then begin
-  PreviousInFlightFrameIndex:=fSceneInstance.fCountInFlightFrames-1;
- end;
 
  for Index:=0 to fNodes.Count-1 do begin
   InstanceNode:=fNodes.RawItems[Index];
@@ -29290,9 +29302,18 @@ begin
 
  if RenderInstanceDirty then begin
 
+{ UpdateNodeBounds(aInFlightFrameIndex,aScene,true);
+  UpdateNodePVS(aInFlightFrameIndex,aScene,true);
+  UpdateNodeAABBTree(aInFlightFrameIndex,aScene,true);}
+
+  UpdateInstanceBounds(aInFlightFrameIndex,aScene,true);
+  UpdateInstancePVS(aInFlightFrameIndex,aScene,true);
+
   UpdateRenderInstances(aInFlightFrameIndex,true);
 
   UpdateBoundingVolumes(aInFlightFrameIndex,true);
+
+  UpdateGlobalAABBProxy(aInFlightFrameIndex,true);
 
  end else begin
 
@@ -29424,7 +29445,7 @@ begin
 
 {$ifdef InstanceUpdateDirtySkip}
 
-  InstanceUpdateDirtySkipped:=fInstanceUpdateDirtySkippable and
+  InstanceUpdateDirtySkipped:=//fInstanceUpdateDirtySkippable and
                               (fDirtyCounter<=0) and
                               (not fIsNewInstance) and
                               fPreviousActive and
@@ -29445,11 +29466,19 @@ begin
    end;
   end;
 
-  if InstanceUpdateDirtySkipped then begin
+  if InstanceUpdateDirtySkipped and (fInstanceUpdateDirtyCounter<=0) then begin
 
-   UpdateDirtySkipFastPath(aInFlightFrameIndex,true);
+   UpdateDirtySkipFastPath(aInFlightFrameIndex,Scene,true);
 
   end else begin
+
+   if InstanceUpdateDirtySkipped then begin
+    if fInstanceUpdateDirtyCounter>0 then begin
+     dec(fInstanceUpdateDirtyCounter);
+    end;
+   end else begin
+    fInstanceUpdateDirtyCounter:=MaxInFlightFrames;
+   end;
 
    // Store current animation state for next frame's dirty check
    if ActiveAnimationProcessing then begin
@@ -29514,6 +29543,8 @@ begin
  if aInFlightFrameIndex>=0 then begin
   UpdateLocalAABBTreeState(aInFlightFrameIndex,{$ifdef InstanceUpdateDirtySkip}InstanceUpdateDirtySkipped{$else}false{$endif});
  end;
+
+ fLastUpdateInFlightFrameIndex:=aInFlightFrameIndex;
 
 end;
 
@@ -30779,6 +30810,7 @@ end;
 procedure TpvScene3D.TGroup.TInstance.SetDirty;
 begin
  fDirtyCounter:=fGroup.fSceneInstance.fCountInFlightFrames+1;
+ fLastUpdateInFlightFrameIndex:=-1;
 end;
 
 function TpvScene3D.TGroup.TInstance.GetOrder:TpvInt64;
