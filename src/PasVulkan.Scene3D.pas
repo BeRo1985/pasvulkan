@@ -71,6 +71,8 @@ unit PasVulkan.Scene3D;
 
 {$define UpdateProfilingTimes}
 
+{$define SplitInstanceUpdate}
+
 interface
 
 uses {$ifdef Windows}
@@ -3509,6 +3511,19 @@ type EpvScene3D=class(Exception);
                      procedure GenerateAABBTreeSkipList(const aInFlightFrameIndex:TpvSizeInt);
                      procedure UpdateRenderInstances(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateBoundingVolumes(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+{$ifdef SplitInstanceUpdate}
+{$ifdef InstanceUpdateDirtySkip}
+                     procedure UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+{$endif}
+                     procedure UpdateAnimationAndOverwrites(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateLightsCamerasMaterials(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateNodesAndSkins(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateNodeBoundsAndPVS(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateInstanceBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateGlobalAABBProxy(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateDeactivation(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateLocalAABBTreeState(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+{$endif}
                     public
                      procedure Check(const aInFlightFrameIndex:TpvSizeInt);
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
@@ -28546,6 +28561,695 @@ begin
  end;
 end;
 
+{$ifdef SplitInstanceUpdate}
+
+{$ifdef InstanceUpdateDirtySkip}
+procedure TpvScene3D.TGroup.TInstance.UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+var Index,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+    PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
+    RenderInstanceDirty:boolean;
+    PreviousInFlightFrameIndex:TpvSizeInt;
+begin
+
+ // Copy per-InFlightFrame BoundingBox from current state
+ fBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
+
+ // Ensure fNodeMatrices[0] is consistent (fWorkModelMatrix is recomputed every frame)
+ fNodeMatrices[0]:=fWorkModelMatrix;
+
+ // Copy per-InFlightFrame BoundingSphere data from current state
+ PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
+ if PreviousInFlightFrameIndex<0 then begin
+  PreviousInFlightFrameIndex:=fSceneInstance.fCountInFlightFrames-1;
+ end;
+
+ for Index:=0 to fNodes.Count-1 do begin
+  InstanceNode:=fNodes.RawItems[Index];
+  InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=InstanceNode.fBoundingBoxes[PreviousInFlightFrameIndex];
+  InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=InstanceNode.fBoundingBoxFilled[PreviousInFlightFrameIndex];
+  InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=InstanceNode.fBoundingSpheres[PreviousInFlightFrameIndex];
+  InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=InstanceNode.fPotentiallyVisibleSetNodeIndices[PreviousInFlightFrameIndex];
+  if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(fGroup.fNodes[Index].Mesh) then begin
+   fSceneInstance.fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][InstanceNode.fBoundingSphereIndex]:=InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4;
+  end;
+  InstanceNode.Update(aInFlightFrameIndex);
+ end;
+
+ // Copy per-InFlightFrame PVS
+ fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fPotentiallyVisibleSetNodeIndices[PreviousInFlightFrameIndex];
+
+ RenderInstanceDirty:=fSceneInstance.fUpdatedOriginTransform;
+ if fUseRenderInstances and (fRenderInstances.Count>0) and not RenderInstanceDirty then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
+  try
+   for Index:=0 to fRenderInstances.Count-1 do begin
+    RenderInstance:=fRenderInstances[Index];
+    if (RenderInstance.fWorkActives[aInFlightFrameIndex]<>RenderInstance.fWorkActive) or
+       ((RenderInstance.fWorkActive and
+        (((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) or
+         (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) or
+         (RenderInstance.fModelMatrices[aInFlightFrameIndex]<>RenderInstance.fModelMatrix))) or
+        ((not RenderInstance.fWorkActive) and
+         ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0))) then begin
+     RenderInstanceDirty:=true;
+     break;
+    end;
+   end;
+  finally
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
+  end;
+ end;
+
+ if RenderInstanceDirty then begin
+
+  UpdateRenderInstances(aInFlightFrameIndex,true);
+
+  UpdateBoundingVolumes(aInFlightFrameIndex,true);
+
+ end else begin
+
+  // Copy per-InFlightFrame RenderInstance data
+  if fUseRenderInstances and (fRenderInstances.Count>0) then begin
+   fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
+   try
+    for Index:=0 to fRenderInstances.Count-1 do begin
+     RenderInstance:=fRenderInstances[Index];
+     if RenderInstance.fWorkActive then begin
+      TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
+      RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrices[PreviousInFlightFrameIndex];
+      RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+      PerInFlightFrameRenderInstance:=pointer(fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNew);
+      PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
+      PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
+     end;
+    end;
+   finally
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
+   end;
+  end;
+
+ end;
+
+end;
+{$endif}
+
+procedure TpvScene3D.TGroup.TInstance.UpdateAnimationAndOverwrites(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+    WeightSum,WeightOverFactor:TpvDouble;
+    Animation:TpvScene3D.TGroup.TInstance.TAnimation;
+    ActiveAnimationProcessing:boolean;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
+
+ ActiveAnimationProcessing:=fUpdateDynamic;
+
+ if assigned(aScene) then begin
+
+  if (aInFlightFrameIndex>=0) and (fActiveScenes[aInFlightFrameIndex]<>aScene) then begin
+   fActiveScenes[aInFlightFrameIndex]:=aScene;
+  end;
+
+{$ifdef UpdateProfilingTimes}
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+  ResetLights(ActiveAnimationProcessing);
+{$ifdef UpdateProfilingTimes}
+  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+  fSceneInstance.fInstanceTimeResetSum:=fSceneInstance.fInstanceTimeResetSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+{$ifdef UpdateProfilingTimes}
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+{$ifdef UpdateProfilingTimes}
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+  ResetCameras(ActiveAnimationProcessing);
+{$ifdef UpdateProfilingTimes}
+  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+  fSceneInstance.fInstanceTimeCameraSum:=fSceneInstance.fInstanceTimeCameraSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+{$ifdef UpdateProfilingTimes}
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+  ResetMaterials(ActiveAnimationProcessing);
+{$ifdef UpdateProfilingTimes}
+  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+  fSceneInstance.fInstanceTimeMaterialSum:=fSceneInstance.fInstanceTimeMaterialSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+  ResetNodes(ActiveAnimationProcessing);
+
+  for Index:=0 to length(fSkins)-1 do begin
+   fSkins[Index].Used:=false;
+  end;
+
+{$ifdef UpdateProfilingTimes}
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+  if ActiveAnimationProcessing then begin
+
+   WeightSum:=0.0;
+
+   for Index:=-1 to length(fAnimations)-2 do begin
+    Animation:=fAnimations[Index+1];
+    WeightSum:=WeightSum+Max(0.0,Animation.fFactor);
+   end;
+
+   if IsZero(WeightSum) then begin
+    WeightOverFactor:=0.0;
+   end else begin
+    WeightOverFactor:=1.0/WeightSum;
+   end;
+
+   for Index:=-1 to length(fAnimations)-2 do begin
+    Animation:=fAnimations[Index+1];
+    if Animation.fFactor>0.0 then begin
+     if Index<0 then begin
+      ProcessBaseOverwrite(Animation.fFactor);
+     end else if (Animation.fFactor*WeightOverFactor)>1e-3 then begin
+      ProcessAnimation(Index,Animation.fTime,Animation.fFactor);
+     end;
+    end;
+   end;
+
+  end;
+{$ifdef UpdateProfilingTimes}
+  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+  fSceneInstance.fInstanceTimeAnimationTimeSum:=fSceneInstance.fInstanceTimeAnimationTimeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+  fSceneInstance.fInstanceTimeBaseOverwriteTimeSum:=fSceneInstance.fInstanceTimeBaseOverwriteTimeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateLightsCamerasMaterials(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+    InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
+    HasMaterialUpdate:boolean;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
+
+ if aInFlightFrameIndex>=0 then begin
+
+{$ifdef UpdateProfilingTimes}
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+  for Index:=0 to fLights.Count-1 do begin
+   fLights[Index].Update;
+  end;
+{$ifdef UpdateProfilingTimes}
+  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+  fSceneInstance.fInstanceTimeLightSum:=fSceneInstance.fInstanceTimeLightSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+{$ifdef UpdateProfilingTimes}
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+  for Index:=0 to fCameras.Count-1 do begin
+   fCameras[Index].Update;
+  end;
+{$ifdef UpdateProfilingTimes}
+  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+  fSceneInstance.fInstanceTimeCameraSum:=fSceneInstance.fInstanceTimeCameraSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+ end;
+
+ HasMaterialUpdate:=false;
+{$ifdef UpdateProfilingTimes}
+ StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+ for Index:=0 to fMaterials.Count-1 do begin
+  InstanceMaterial:=fMaterials[Index];
+  if assigned(InstanceMaterial) then begin
+   InstanceMaterial.Update;
+   HasMaterialUpdate:=true;
+  end;
+ end;
+ if HasMaterialUpdate then begin
+  SceneInstance.NewMaterialDataGeneration;
+ end;
+{$ifdef UpdateProfilingTimes}
+ EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+ fSceneInstance.fInstanceTimeMaterialSum:=fSceneInstance.fInstanceTimeMaterialSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateNodesAndSkins(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+    Dirty:boolean;
+    Node:TpvScene3D.TGroup.TNode;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
+
+ if assigned(aScene) then begin
+
+  Dirty:=fDirtyCounter>0;
+  if Dirty then begin
+   dec(fDirtyCounter);
+  end;
+
+{$ifdef UpdateProfilingTimes}
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+  for Index:=0 to aScene.fNodes.Count-1 do begin
+   ProcessNode(aInFlightFrameIndex,aScene.fNodes[Index].Index,TpvMatrix4x4.Identity,Dirty,Dirty);
+  end;
+{$ifdef UpdateProfilingTimes}
+  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+  fSceneInstance.fInstanceTimeProcessNodesSum:=fSceneInstance.fInstanceTimeProcessNodesSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+  if aInFlightFrameIndex>=0 then begin
+   for Index:=0 to fNodes.Count-1 do begin
+    InstanceNode:=fNodes.RawItems[Index];
+    if not InstanceNode.fProcessed then begin
+     if assigned(InstanceNode.fLight) then begin
+      FreeAndNil(InstanceNode.fLight);
+     end;
+     if assigned(fAABBTree) and (InstanceNode.fAABBTreeProxy>=0) then begin
+      try
+       fAABBTree.DestroyProxy(InstanceNode.fAABBTreeProxy);
+      finally
+       InstanceNode.fAABBTreeProxy:=-1;
+      end;
+     end;
+    end;
+   end;
+  end;
+
+{$ifdef UpdateProfilingTimes}
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+  ProcessSkins;
+{$ifdef UpdateProfilingTimes}
+  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+  fSceneInstance.fInstanceTimeSkinsSum:=fSceneInstance.fInstanceTimeSkinsSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+  fNodeMatrices[0]:=fWorkModelMatrix;
+
+  for Index:=0 to fGroup.fNodes.Count-1 do begin
+   Node:=fGroup.fNodes[Index];
+   InstanceNode:=fNodes.RawItems[Index];
+   fNodeMatrices[Node.Index+1]:=InstanceNode.fWorkMatrix;
+   if length(InstanceNode.fWorkWeights)>0 then begin
+    Move(InstanceNode.fWorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode.fWorkWeights)*SizeOf(TpvFloat));
+   end;
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateNodeBoundsAndPVS(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+    Node:TpvScene3D.TGroup.TNode;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
+
+ if assigned(aScene) then begin
+
+  if aInFlightFrameIndex>=(-1) then begin
+
+{$ifdef UpdateProfilingTimes}
+   StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+   for Index:=0 to fGroup.fNodes.Count-1 do begin
+    InstanceNode:=fNodes.RawItems[Node.Index];
+    InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
+    InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
+   end;
+
+   for Index:=0 to aScene.fAllNodes.Count-1 do begin
+    Node:=aScene.fAllNodes[Index];
+    InstanceNode:=fNodes.RawItems[Node.Index];
+    if assigned(Node.fMesh) then begin
+     if assigned(Node.fSkin) then begin
+      ProcessSkinNode(aInFlightFrameIndex,Node,InstanceNode);
+     end else begin
+      InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fNodeMatrices[0]);
+      InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
+     end;
+    end else begin
+     InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
+     InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
+    end;
+   end;
+{$ifdef UpdateProfilingTimes}
+   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+   fSceneInstance.fInstanceTimeBoundingSum:=fSceneInstance.fInstanceTimeBoundingSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+{$ifdef UpdateProfilingTimes}
+   StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+   ProcessBoundingSceneBoxNodes(aInFlightFrameIndex,aScene);
+{$ifdef UpdateProfilingTimes}
+   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+   fSceneInstance.fInstanceTimeBoundingSum:=fSceneInstance.fInstanceTimeBoundingSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+  end;
+
+  if aInFlightFrameIndex>=0 then begin
+
+{$ifdef UpdateProfilingTimes}
+   StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+   for Index:=0 to aScene.fAllNodes.Count-1 do begin
+    Node:=aScene.fAllNodes[Index];
+    InstanceNode:=fNodes.RawItems[Node.Index];
+    if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
+     if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
+        ((InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+         ((InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+          fSceneInstance.fPotentiallyVisibleSet.fNodes[InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Contains(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]))) then begin
+      InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
+     end;
+    end else begin
+     InstanceNode.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+    end;
+   end;
+{$ifdef UpdateProfilingTimes}
+   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+   fSceneInstance.fInstanceTimePotentiallyVisibleSetSum:=fSceneInstance.fInstanceTimePotentiallyVisibleSetSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+   if assigned(fAABBTree) then begin
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+    for Index:=0 to aScene.fAllNodes.Count-1 do begin
+     Node:=aScene.fAllNodes[Index];
+     InstanceNode:=fNodes.RawItems[Node.Index];
+     if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(Node.Mesh) then begin
+      if InstanceNode.fAABBTreeProxy<0 then begin
+       InstanceNode.fAABBTreeProxy:=fAABBTree.CreateProxy(InstanceNode.fBoundingBoxes[aInFlightFrameIndex],TpvPtrInt(Node.fIndex)+1);
+      end else begin
+       fAABBTree.MoveProxy(InstanceNode.fAABBTreeProxy,InstanceNode.fBoundingBoxes[aInFlightFrameIndex],TpvVector3.Null,TpvVector3.AllAxis,true);
+      end;
+     end else if InstanceNode.fAABBTreeProxy>=0 then begin
+      fAABBTree.DestroyProxy(InstanceNode.fAABBTreeProxy);
+      InstanceNode.fAABBTreeProxy:=-1;
+     end;
+    end;
+{$ifdef UpdateProfilingTimes}
+    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+    fSceneInstance.fInstanceTimeAABBTreeSum:=fSceneInstance.fInstanceTimeAABBTreeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+   end;
+
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateInstanceBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+    Node:TpvScene3D.TGroup.TNode;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
+
+{$ifdef UpdateProfilingTimes}
+ StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+ fBoundingBox:=fGroup.fBoundingBox.HomogenTransform(fNodeMatrices[0]);
+ if fGroup.fHasStaticBoundingBox then begin
+  fBoundingBox.DirectCombine(fGroup.fStaticBoundingBox.HomogenTransform(fNodeMatrices[0]));
+ end;
+ if assigned(aScene) and (aInFlightFrameIndex>=-1) then begin
+  for Index:=0 to aScene.fNodes.Count-1 do begin
+   InstanceNode:=fNodes.RawItems[aScene.fNodes[Index].fIndex];
+   if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] then begin
+    fBoundingBox.DirectCombine(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
+   end;
+  end;
+ end;
+
+ if assigned(aScene) and (aInFlightFrameIndex>=0) then begin
+  for Index:=0 to aScene.fAllNodes.Count-1 do begin
+   Node:=aScene.fAllNodes[Index];
+   InstanceNode:=fNodes.RawItems[Node.Index];
+   if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(Node.Mesh) then begin
+    InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=TpvSphere.CreateFromAABB(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
+    fSceneInstance.fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][InstanceNode.fBoundingSphereIndex]:=InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4;
+   end;
+  end;
+ end;
+{$ifdef UpdateProfilingTimes}
+ EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+ fSceneInstance.fInstanceTimeBoundingSum:=fSceneInstance.fInstanceTimeBoundingSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+ if aInFlightFrameIndex>=0 then begin
+{$ifdef UpdateProfilingTimes}
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+  if fUseRenderInstances then begin
+   fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+  end else if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
+              ((fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+               ((fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+                fSceneInstance.fPotentiallyVisibleSet.fNodes[fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Contains(fBoundingBox))) then begin
+   fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(fBoundingBox);
+  end;
+{$ifdef UpdateProfilingTimes}
+  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+  fSceneInstance.fInstanceTimePotentiallyVisibleSetSum:=fSceneInstance.fInstanceTimePotentiallyVisibleSetSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateGlobalAABBProxy(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
+
+{$ifdef UpdateProfilingTimes}
+ StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+{$ifdef DeferredAABBTreeUpdates}
+ if fAABBTreeProxy<0 then begin
+  AddDeferredAABBOperation(TDeferredAABBOperationType.Create_,fGroup.fSceneInstance.fAABBTree,@fAABBTreeProxy,fBoundingBox,TpvPtrInt(Pointer(self)));
+ end else begin
+  if fUseRenderInstances then begin
+   AddDeferredAABBOperation(TDeferredAABBOperationType.Move,fGroup.fSceneInstance.fAABBTree,@fAABBTreeProxy,TpvAABB.Create(-TpvVector3.AllMaxAxis,TpvVector3.AllMaxAxis),0);
+  end else begin
+   AddDeferredAABBOperation(TDeferredAABBOperationType.Move,fGroup.fSceneInstance.fAABBTree,@fAABBTreeProxy,fBoundingBox,0);
+  end;
+ end;
+{$else}
+ fGroup.fSceneInstance.fAABBTreeLock.Acquire;
+ try
+  if fAABBTreeProxy<0 then begin
+   fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
+  end else begin
+   if fUseRenderInstances then begin
+    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(-TpvVector3.AllMaxAxis,TpvVector3.AllMaxAxis),TpvVector3.Null,TpvVector3.AllAxis,true);
+   end else begin
+    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis,true);
+   end;
+  end;
+ finally
+  fGroup.fSceneInstance.fAABBTreeLock.Release;
+ end;
+{$endif}
+{$ifdef UpdateProfilingTimes}
+ EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+ fSceneInstance.fInstanceTimeAABBTreeSum:=fSceneInstance.fInstanceTimeAABBTreeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+ if aInFlightFrameIndex>=0 then begin
+  // Update all instance nodes.
+  for Index:=0 to fNodes.Count-1 do begin
+   fNodes.RawItems[Index].Update(aInFlightFrameIndex);
+  end;
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateDeactivation(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+begin
+
+ if aInFlightFrameIndex>=0 then begin
+  fActiveScenes[aInFlightFrameIndex]:=nil;
+ end;
+
+ if fAABBTreeProxy>=0 then begin
+{$ifdef DeferredAABBTreeUpdates}
+  if assigned(fGroup) and
+     assigned(fGroup.fSceneInstance) and
+     assigned(fGroup.fSceneInstance.fAABBTree) then begin
+   AddDeferredAABBOperation(TDeferredAABBOperationType.Destroy_,fGroup.fSceneInstance.fAABBTree,@fAABBTreeProxy,TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin),0);
+  end else begin
+   fAABBTreeProxy:=-1;
+  end;
+{$else}
+  try
+   if assigned(fGroup) and
+      assigned(fGroup.fSceneInstance) and
+      assigned(fGroup.fSceneInstance.fAABBTree) then begin
+    fGroup.fSceneInstance.fAABBTreeLock.Acquire;
+    try
+     fGroup.fSceneInstance.fAABBTree.DestroyProxy(fAABBTreeProxy);
+    finally
+     fGroup.fSceneInstance.fAABBTreeLock.Release;
+    end;
+   end;
+  finally
+   fAABBTreeProxy:=-1;
+  end;
+{$endif}
+ end;
+
+ for Index:=0 to fNodes.Count-1 do begin
+  InstanceNode:=fNodes.RawItems[Index];
+  if assigned(InstanceNode.fLight) then begin
+{$ifdef DeferredLightAABBTreeUpdates}
+   AddDeferredLightOperation(TDeferredLightOperationType.Destroy_,InstanceNode.fLight);
+   InstanceNode.fLight:=nil;
+{$else}
+   fGroup.fSceneInstance.fLightDataLock.Acquire;
+   try
+    FreeAndNil(InstanceNode.fLight);
+   finally
+    fGroup.fSceneInstance.fLightDataLock.Release;
+   end;
+{$endif}
+  end;
+  if assigned(fAABBTree) and (InstanceNode.fAABBTreeProxy>=0) then begin
+{$ifdef DeferredAABBTreeUpdates}
+   AddDeferredAABBOperation(TDeferredAABBOperationType.Destroy_,fAABBTree,@InstanceNode.fAABBTreeProxy,TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin),0);
+{$else}
+   try
+    fGroup.fSceneInstance.fAABBTreeLock.Acquire;
+    try
+     fAABBTree.DestroyProxy(InstanceNode.fAABBTreeProxy);
+    finally
+     fGroup.fSceneInstance.fAABBTreeLock.Release;
+    end;
+   finally
+    InstanceNode.fAABBTreeProxy:=-1;
+   end;
+{$endif}
+  end;
+ end;
+
+ if fRenderInstances.Count>0 then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
+  try
+   for Index:=0 to fRenderInstances.Count-1 do begin
+    RenderInstance:=fRenderInstances[Index];
+    RenderInstance.fFirst:=true;
+    TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl aInFlightFrameIndex));
+    RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+   end;
+  finally
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
+  end;
+ end;
+
+ if aInFlightFrameIndex>=0 then begin
+
+  fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
+
+  fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+
+  fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
+
+ end;
+
+ fPreviousActive:=false;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateLocalAABBTreeState(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+    AABBTreeState:TpvBVHDynamicAABBTree.PState;
+    AABBTreeNode:TpvBVHDynamicAABBTree.PTreeNode;
+    AABBTreeNodePotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
+begin
+
+{$ifdef UpdateProfilingTimes}
+ StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+ AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
+ if assigned(fAABBTree) then begin
+  fAABBTree.UpdateGeneration;
+  if AABBTreeState^.Generation<>fAABBTree.Generation then begin
+   AABBTreeState^.Generation:=fAABBTree.Generation;
+   if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
+    if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) then begin
+     for Index:=0 to length(fAABBTree.Nodes)-1 do begin
+      AABBTreeNode:=@fAABBTree.Nodes[Index];
+      if (AABBTreeNode^.UserData=0) or ((TpvPtrUInt(AABBTreeNode^.UserData) and TpvUInt32($80000000))<>0) then begin
+       if AABBTreeNode^.UserData=0 then begin
+        AABBTreeNodePotentiallyVisibleSet:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+       end else begin
+        AABBTreeNodePotentiallyVisibleSet:=TpvPtrUInt(AABBTreeNode^.UserData) and TpvUInt32($7fffffff);
+       end;
+       if ((AABBTreeNodePotentiallyVisibleSet=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+           ((AABBTreeNodePotentiallyVisibleSet<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+           fSceneInstance.fPotentiallyVisibleSet.fNodes[AABBTreeNodePotentiallyVisibleSet].fAABB.Contains(AABBTreeNode^.AABB))) then begin
+        AABBTreeNodePotentiallyVisibleSet:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(AABBTreeNode^.AABB);
+        if AABBTreeNodePotentiallyVisibleSet=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+         AABBTreeNode^.UserData:=0;
+        end else begin
+         AABBTreeNode^.UserData:=TpvPtrInt(TpvPtrUInt(AABBTreeNodePotentiallyVisibleSet or TpvUInt32($80000000)));
+        end;
+       end;
+      end;
+     end;
+    end;
+    GenerateAABBTreeSkipList(aInFlightFrameIndex);
+   end else begin
+    fAABBTreeSkipLists[aInFlightFrameIndex].Count:=0;
+   end;
+  end;
+ end else begin
+  fAABBTreeSkipLists[aInFlightFrameIndex].Count:=0;
+ end;
+{$ifdef UpdateProfilingTimes}
+ EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+ fSceneInstance.fInstanceTimeAABBTreeSum:=fSceneInstance.fInstanceTimeAABBTreeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
+
+end;
+
+{$endif}
+
+{$ifndef SplitInstanceUpdate}
 procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
 var Index,OtherIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
     WeightSum,WeightOverFactor:TpvDouble;
@@ -29350,6 +30054,186 @@ begin
  end;
 
 end;
+
+{$else}
+
+procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
+var Index:TpvSizeInt;
+    Scene:TpvScene3D.TGroup.TScene;
+    Animation:TpvScene3D.TGroup.TInstance.TAnimation;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+    IsActive,CanUpdate,ActiveAnimationProcessing:boolean;
+    TemporaryVector:TpvVector3;
+{$ifdef InstanceUpdateDirtySkip}
+    InstanceUpdateDirtySkipped:boolean;
+{$endif}
+begin
+
+ if assigned(fAppendageInstance) and assigned(fAppendageNode) then begin
+  fModelMatrix:=(fAppendageTransform*
+                 fAppendageInstance.fNodes[fAppendageNode.fIndex].fWorkMatrix)*
+                 fAppendageInstance.fModelMatrix;
+  if fAppendageIgnoreScale then begin
+   fModelMatrix.Tangent.xyz:=fModelMatrix.Tangent.xyz.Normalize;
+   fModelMatrix.Bitangent.xyz:=fModelMatrix.Bitangent.xyz.Normalize;
+   fModelMatrix.Normal.xyz:=fModelMatrix.Normal.xyz.Normalize;
+  end;
+  SetDirty;
+ end;
+
+ if assigned(fOnUpdate) and fOnUpdate(aInFlightFrameIndex) then begin
+  SetDirty;
+ end;
+
+ if (aInFlightFrameIndex>=0) and not fUseRenderInstances then begin
+  if fSceneInstance.fUpdatedOriginTransform then begin
+   SetDirty;
+  end;
+  fWorkModelMatrix:=fSceneInstance.TransformOrigin(fModelMatrix,aInFlightFrameIndex,false);
+ end else begin
+  fWorkModelMatrix:=fModelMatrix;
+ end;
+
+ if fActive then begin
+  if fUseRenderInstances then begin
+   if fRenderInstances.Count>0 then begin
+    IsActive:=false;
+    for Index:=0 to fRenderInstances.Count-1 do begin
+     RenderInstance:=fRenderInstances[Index];
+     RenderInstance.fWorkActive:=RenderInstance.fActive;
+     if RenderInstance.fWorkActive then begin
+      IsActive:=true;
+     end;
+    end;
+   end else begin
+    IsActive:=false;
+   end;
+  end else begin
+   IsActive:=true;
+  end;
+ end else begin
+  IsActive:=false;
+ end;
+
+ if fActive and fSceneInstance.fUpdateCulling.fActive then begin
+  TemporaryVector:=fGroup.fBoundingBox.Max-fGroup.fBoundingBox.Min;
+  if fUseRenderInstances and (fRenderInstances.Count>0) then begin
+   CanUpdate:=false;
+   for Index:=0 to fRenderInstances.Count-1 do begin
+    RenderInstance:=fRenderInstances[Index];
+    if RenderInstance.fActive then begin
+     if fBoundingRadius>0.0 then begin
+      RenderInstance.fWorkActive:=fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,fBoundingRadius);
+     end else begin
+      RenderInstance.fWorkActive:=fSceneInstance.fUpdateCulling.Check(RenderInstance.ModelMatrix,TemporaryVector);
+     end;
+     if RenderInstance.fWorkActive then begin
+      CanUpdate:=true;
+     end;
+    end else begin
+     RenderInstance.fWorkActive:=false;
+    end;
+   end;
+  end else if not fUseRenderInstances then begin
+   if fBoundingRadius>0.0 then begin
+    CanUpdate:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,fBoundingRadius);
+   end else begin
+    CanUpdate:=fSceneInstance.fUpdateCulling.Check(fModelMatrix,TemporaryVector);
+   end;
+  end else begin
+   CanUpdate:=true;
+  end;
+  IsActive:=CanUpdate;
+ end else begin
+  CanUpdate:=fActive;
+ end;
+
+ if IsActive then begin
+
+  Scene:=GetScene;
+  ActiveAnimationProcessing:=fUpdateDynamic;
+
+{$ifdef InstanceUpdateDirtySkip}
+
+  InstanceUpdateDirtySkipped:=fInstanceUpdateDirtySkippable and
+                              (fDirtyCounter<=0) and
+                              (not fIsNewInstance) and
+                              fPreviousActive and
+                              (aInFlightFrameIndex>=0) and
+                              (fActives[aInFlightFrameIndex]=IsActive) and
+                              (fActiveScenes[aInFlightFrameIndex]=Scene) and
+                              (fNodeMatrices[0]=fWorkModelMatrix) and
+                              (not fSceneInstance.fUpdatedOriginTransform);
+
+  if InstanceUpdateDirtySkipped and ActiveAnimationProcessing then begin
+   for Index:=-1 to length(fAnimations)-2 do begin
+    Animation:=fAnimations[Index+1];
+    if (Animation.fFactor<>Animation.fPreviousUpdateFactor) or
+       (Animation.fTime<>Animation.fPreviousUpdateTime) then begin
+     InstanceUpdateDirtySkipped:=false;
+     break;
+    end;
+   end;
+  end;
+
+  if InstanceUpdateDirtySkipped then begin
+
+   UpdateDirtySkipFastPath(aInFlightFrameIndex,true);
+
+  end else begin
+
+   // Store current animation state for next frame's dirty check
+   if ActiveAnimationProcessing then begin
+    for Index:=-1 to length(fAnimations)-2 do begin
+     Animation:=fAnimations[Index+1];
+     Animation.fPreviousUpdateFactor:=Animation.fFactor;
+     Animation.fPreviousUpdateTime:=Animation.fTime;
+    end;
+   end;
+
+{$endif}
+
+   UpdateAnimationAndOverwrites(aInFlightFrameIndex,Scene,false);
+   UpdateLightsCamerasMaterials(aInFlightFrameIndex,false);
+   UpdateNodesAndSkins(aInFlightFrameIndex,Scene,false);
+   UpdateNodeBoundsAndPVS(aInFlightFrameIndex,Scene,false);
+   UpdateInstanceBounds(aInFlightFrameIndex,Scene,false);
+   UpdateRenderInstances(aInFlightFrameIndex,false);
+   UpdateBoundingVolumes(aInFlightFrameIndex,false);
+   UpdateGlobalAABBProxy(aInFlightFrameIndex,false);
+
+{$ifdef InstanceUpdateDirtySkip}
+  end; // if not InstanceUpdateDirtySkipped
+{$endif}
+
+  // Update the model matrix of the assigned non-virtual instance, if applicable. Needed for appendages and similar.
+  if fVirtual and assigned(fAssignedNonVirtualInstance) then begin
+   if assigned(fAssignedNonVirtualInstanceRenderInstance) then begin
+    fAssignedNonVirtualInstanceRenderInstance.ModelMatrix:=fModelMatrix;
+   end else begin
+    fAssignedNonVirtualInstance.ModelMatrix:=fModelMatrix;
+   end;
+  end;
+
+  fPreviousActive:=true;
+
+ end else if fPreviousActive then begin
+
+  UpdateDeactivation(aInFlightFrameIndex,false);
+
+ end;
+
+ if aInFlightFrameIndex>=0 then begin
+  fActives[aInFlightFrameIndex]:=IsActive;
+ end;
+
+ if aInFlightFrameIndex>=0 then begin
+  UpdateLocalAABBTreeState(aInFlightFrameIndex,{$ifdef InstanceUpdateDirtySkip}InstanceUpdateDirtySkipped{$else}false{$endif});
+ end;
+
+end;
+
+{$endif}
 
 procedure TpvScene3D.TGroup.TInstance.PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
 begin
