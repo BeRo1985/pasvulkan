@@ -65,7 +65,7 @@ unit PasVulkan.Scene3D;
 
 {$define InstanceUpdateDirtySkip}
 
-{$define DeferredLightAABBTreeUpdates}
+{$undef DeferredLightAABBTreeUpdates}
 
 {$define UpdateProfilingTimes}
 
