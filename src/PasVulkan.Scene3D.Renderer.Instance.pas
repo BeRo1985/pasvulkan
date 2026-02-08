@@ -113,7 +113,19 @@ type { TpvScene3DRendererInstance }
              MaxSolidPrimitives=1 shl 20;
              InitialCountSpaceLines=1 shl 10;
              MaxSpaceLines=1 shl 20;
-       type TRaytracingFlag=
+       type TAIUpscaleMode=
+             (
+              None,
+              Factor2X,
+              Factor4X
+             );
+            TAIUpscaleQuality=
+             (
+              Low,
+              Mid,
+              High
+             );
+            TRaytracingFlag=
              (
               SoftShadows,
               SphereSolidAngleSampling,
@@ -788,6 +800,9 @@ type { TpvScene3DRendererInstance }
        fSizeFactor:TpvDouble;
        fPostProcessingAtScaledResolution:Boolean;
       private
+       fAIUpscaleMode:TAIUpscaleMode;
+       fAIUpscaleQuality:TAIUpscaleQuality;
+      private
        fVulkanViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TViewUniformBuffer;
        fVulkanViewUniformBuffers:TpvScene3D.TVulkanViewUniformBuffers;
       private
@@ -1139,6 +1154,8 @@ type { TpvScene3DRendererInstance }
        property PixelAmountFactor:TpvDouble read GetPixelAmountFactor write SetPixelAmountFactor;
        property SizeFactor:TpvDouble read fSizeFactor write fSizeFactor;
        property PostProcessingAtScaledResolution:Boolean read fPostProcessingAtScaledResolution write fPostProcessingAtScaledResolution;
+       property AIUpscaleMode:TAIUpscaleMode read fAIUpscaleMode write fAIUpscaleMode;
+       property AIUpscaleQuality:TAIUpscaleQuality read fAIUpscaleQuality write fAIUpscaleQuality;
        property UseDebugBlit:boolean read fUseDebugBlit write fUseDebugBlit;
       public
        property WaterSimulationSemaphores:TInFlightFrameSemaphores read fWaterSimulationSemaphores;
@@ -1247,6 +1264,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass2RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ResamplingRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.CNNUpscalerComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensDownsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensResolveRenderPass,
@@ -1369,6 +1387,7 @@ type TpvScene3DRendererInstancePasses=class
        fDepthOfFieldGatherPass2RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass2RenderPass;
        fDepthOfFieldResolveRenderPass:TpvScene3DRendererPassesDepthOfFieldResolveRenderPass;
        fResamplingRenderPass:TpvScene3DRendererPassesResamplingRenderPass;
+       fCNNUpscalerComputePass:TpvScene3DRendererPassesCNNUpscalerComputePass;
        fLensDownsampleComputePass:TpvScene3DRendererPassesLensDownsampleComputePass;
        fLensUpsampleComputePass:TpvScene3DRendererPassesLensUpsampleComputePass;
        fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
@@ -1985,6 +2004,10 @@ begin
  fSizeFactor:=1.0;
 
  fPostProcessingAtScaledResolution:=true;
+
+ fAIUpscaleMode:=TAIUpscaleMode.None;
+
+ fAIUpscaleQuality:=TAIUpscaleQuality.Low;
 
  fReflectionProbeWidth:=256;
 
@@ -3595,7 +3618,7 @@ begin
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
                                   1
                                  );
 
@@ -4723,9 +4746,13 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
 
  end; //*)
 
- if (not fPostProcessingAtScaledResolution) and (not SameValue(fSizeFactor,1.0)) then begin
-  // Resampling BEFORE Lens passes (Lens at native resolution - old behavior)
-  TpvScene3DRendererInstancePasses(fPasses).fResamplingRenderPass:=TpvScene3DRendererPassesResamplingRenderPass.Create(fFrameGraph,self);
+ if not (fPostProcessingAtScaledResolution or SameValue(fSizeFactor,1.0)) then begin
+  // Resampling BEFORE Lens passes
+  if fAIUpscaleMode<>TAIUpscaleMode.None then begin
+   TpvScene3DRendererInstancePasses(fPasses).fCNNUpscalerComputePass:=TpvScene3DRendererPassesCNNUpscalerComputePass.Create(fFrameGraph,self);
+  end else begin
+   TpvScene3DRendererInstancePasses(fPasses).fResamplingRenderPass:=TpvScene3DRendererPassesResamplingRenderPass.Create(fFrameGraph,self);
+  end;
  end;
 
  if not assigned(VirtualReality) then begin
@@ -4757,9 +4784,13 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fLensRainRenderPass:=nil;
  end;
 
- if fPostProcessingAtScaledResolution and (not SameValue(fSizeFactor,1.0)) then begin
-  // Resampling AFTER Lens passes (Lens at scaled resolution - new behavior)
-  TpvScene3DRendererInstancePasses(fPasses).fResamplingRenderPass:=TpvScene3DRendererPassesResamplingRenderPass.Create(fFrameGraph,self);
+ if fPostProcessingAtScaledResolution and not SameValue(fSizeFactor,1.0) then begin
+  // Resampling AFTER Lens passes
+  if fAIUpscaleMode<>TAIUpscaleMode.None then begin
+   TpvScene3DRendererInstancePasses(fPasses).fCNNUpscalerComputePass:=TpvScene3DRendererPassesCNNUpscalerComputePass.Create(fFrameGraph,self);
+  end else begin
+   TpvScene3DRendererInstancePasses(fPasses).fResamplingRenderPass:=TpvScene3DRendererPassesResamplingRenderPass.Create(fFrameGraph,self);
+  end;
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass:=TpvScene3DRendererPassesTonemappingRenderPass.Create(fFrameGraph,self);
