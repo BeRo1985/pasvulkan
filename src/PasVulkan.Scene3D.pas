@@ -3255,6 +3255,21 @@ type EpvScene3D=class(Exception);
                             Count:TpvSizeInt;
                           end;
                           PAABBTreeSkipList=^TAABBTreeSkipList;
+                          TDeferredAABBOperationType=
+                           (
+                            Create_,
+                            Move,
+                            Destroy_
+                           );
+                          TDeferredAABBOperation=record
+                           OperationType:TDeferredAABBOperationType;
+                           Tree:TpvBVHDynamicAABBTree; // nil = global fSceneInstance.fAABBTree, else instance-local fAABBTree
+                           Proxy:PpvSizeInt;
+                           AABB:TpvAABB;
+                           UserData:TpvPtrInt;
+                          end;
+                          PDeferredAABBOperation=^TDeferredAABBOperation;
+                          TDeferredAABBOperations=TpvDynamicQueue<TDeferredAABBOperation>;
                           TBoundingSpheres=array[0..MaxInFlightFrames-1] of TpvSphere;
                           { TBufferRanges }
                           TBufferRanges=record
@@ -3363,6 +3378,7 @@ type EpvScene3D=class(Exception);
                      fCullVisibleBitmaps:TCullVisibleBitmaps;
                      fAABBTreeProxy:TpvSizeInt;
                      fAABBTree:TpvBVHDynamicAABBTree;
+                     fDeferredAABBOperations:TDeferredAABBOperations;
                      fAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
                      fAABBTreeSkipLists:array[-1..MaxInFlightFrames-1] of TAABBTreeSkipList;
                      fBufferRanges:TBufferRanges;
@@ -3410,6 +3426,7 @@ type EpvScene3D=class(Exception);
                                                                 const aRelative:Boolean;
                                                                 const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
                      procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
+                     procedure AddDeferredAABBOperation(const aOperationType:TDeferredAABBOperationType;const aTree:TpvBVHDynamicAABBTree;const aProxy:PpvSizeInt;const aAABB:TpvAABB;const aUserData:TpvPtrInt);
                     private
                      procedure ProcessStateSetBitMask(const aBitMask:TPasMPUInt32);
                      procedure ProcessStateClearBitMask(const aBitMask:TPasMPUInt32);
@@ -4443,6 +4460,7 @@ type EpvScene3D=class(Exception);
        procedure ProcessDirectedAcyclicGraphInstanceLeafsToRootJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
        procedure ProcessDirectedAcyclicGraphInstanceParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
        procedure ProcessDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessDeferredAABBOperations;
       public
        class function DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; overload; static;
        class function DetectFileType(const aStream:TStream):TpvScene3D.TFileType; overload; static;
@@ -24591,6 +24609,8 @@ begin
   fAABBTree:=nil;
  end;
 
+ fDeferredAABBOperations.Initialize;
+
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fAABBTreeStates[Index].TreeNodes:=nil;
   fAABBTreeStates[Index].Root:=-1;
@@ -24657,6 +24677,8 @@ begin
    fAABBTreeProxy:=-1;
   end;
  end;
+
+ fDeferredAABBOperations.Finalize;
 
  FreeAndNil(fDrawChoreographyBatchItems);
 
@@ -28929,19 +28951,14 @@ begin
  {$ifdef UpdateProfilingTimes}
    StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  {$endif}
-   fGroup.fSceneInstance.fAABBTreeLock.Acquire;
-   try
-    if fAABBTreeProxy<0 then begin
-     fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
+   if fAABBTreeProxy<0 then begin
+    AddDeferredAABBOperation(TDeferredAABBOperationType.Create_,fGroup.fSceneInstance.fAABBTree,@fAABBTreeProxy,fBoundingBox,TpvPtrInt(Pointer(self)));
+   end else begin
+    if fUseRenderInstances then begin
+     AddDeferredAABBOperation(TDeferredAABBOperationType.Move,fGroup.fSceneInstance.fAABBTree,@fAABBTreeProxy,TpvAABB.Create(-TpvVector3.AllMaxAxis,TpvVector3.AllMaxAxis),0);
     end else begin
-     if fUseRenderInstances then begin
-      fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(-TpvVector3.AllMaxAxis,TpvVector3.AllMaxAxis),TpvVector3.Null,TpvVector3.AllAxis,true);
-     end else begin
-      fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis,true);
-     end;
+     AddDeferredAABBOperation(TDeferredAABBOperationType.Move,fGroup.fSceneInstance.fAABBTree,@fAABBTreeProxy,fBoundingBox,0);
     end;
-   finally
-    fGroup.fSceneInstance.fAABBTreeLock.Release;
    end;
 {$ifdef UpdateProfilingTimes}
    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -28979,18 +28996,11 @@ begin
   end;
 
   if fAABBTreeProxy>=0 then begin
-   try
-    if assigned(fGroup) and
-       assigned(fGroup.fSceneInstance) and
-       assigned(fGroup.fSceneInstance.fAABBTree) then begin
-     fGroup.fSceneInstance.fAABBTreeLock.Acquire;
-     try
-      fGroup.fSceneInstance.fAABBTree.DestroyProxy(fAABBTreeProxy);
-     finally
-      fGroup.fSceneInstance.fAABBTreeLock.Release;
-     end;
-    end;
-   finally
+   if assigned(fGroup) and
+      assigned(fGroup.fSceneInstance) and
+      assigned(fGroup.fSceneInstance.fAABBTree) then begin
+    AddDeferredAABBOperation(TDeferredAABBOperationType.Destroy_,fGroup.fSceneInstance.fAABBTree,@fAABBTreeProxy,TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin),0);
+   end else begin
     fAABBTreeProxy:=-1;
    end;
   end;
@@ -29006,16 +29016,7 @@ begin
     end;
    end;
    if assigned(fAABBTree) and (InstanceNode.fAABBTreeProxy>=0) then begin
-    try
-     fGroup.fSceneInstance.fAABBTreeLock.Acquire;
-     try
-      fAABBTree.DestroyProxy(InstanceNode.fAABBTreeProxy);
-     finally
-      fGroup.fSceneInstance.fAABBTreeLock.Release;
-     end;
-    finally
-     InstanceNode.fAABBTreeProxy:=-1;
-    end;
+    AddDeferredAABBOperation(TDeferredAABBOperationType.Destroy_,fAABBTree,@InstanceNode.fAABBTreeProxy,TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin),0);
    end;
   end;
 
@@ -30301,6 +30302,17 @@ begin
  fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex,RendererInstanceID,aRenderPass]:=FirstInstance;
  fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,RendererInstanceID,aRenderPass]:=InstancesCount;
 
+end;
+
+procedure TpvScene3D.TGroup.TInstance.AddDeferredAABBOperation(const aOperationType:TDeferredAABBOperationType;const aTree:TpvBVHDynamicAABBTree;const aProxy:PpvSizeInt;const aAABB:TpvAABB;const aUserData:TpvPtrInt);
+var Operation:TDeferredAABBOperation;
+begin
+ Operation.OperationType:=aOperationType;
+ Operation.Tree:=aTree;
+ Operation.Proxy:=aProxy;
+ Operation.AABB:=aAABB;
+ Operation.UserData:=aUserData;
+ fDeferredAABBOperations.Enqueue(Operation);
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
@@ -34545,6 +34557,30 @@ begin
 
 end;
 
+procedure TpvScene3D.ProcessDeferredAABBOperations;
+var GroupInstanceIndex:TpvSizeInt;
+    GroupInstance:TpvScene3D.TGroup.TInstance;
+    Operation:TpvScene3D.TGroup.TInstance.TDeferredAABBOperation;
+begin
+ for GroupInstanceIndex:=0 to fGroupInstances.Count-1 do begin
+  GroupInstance:=fGroupInstances.RawItems[GroupInstanceIndex];
+  while GroupInstance.fDeferredAABBOperations.Dequeue(Operation) do begin
+   case Operation.OperationType of
+    TpvScene3D.TGroup.TInstance.TDeferredAABBOperationType.Create_:begin
+     Operation.Proxy^:=Operation.Tree.CreateProxy(Operation.AABB,Operation.UserData);
+    end;
+    TpvScene3D.TGroup.TInstance.TDeferredAABBOperationType.Move:begin
+     Operation.Tree.MoveProxy(Operation.Proxy^,Operation.AABB,TpvVector3.Null,TpvVector3.AllAxis,true);
+    end;
+    TpvScene3D.TGroup.TInstance.TDeferredAABBOperationType.Destroy_:begin
+     Operation.Tree.DestroyProxy(Operation.Proxy^);
+     Operation.Proxy^:=-1;
+    end;
+   end;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.Update(const aInFlightFrameIndex:TpvSizeInt);
 var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     MinMaterialID,MaxMaterialID:TpvInt32;
@@ -34694,6 +34730,8 @@ begin
    PartEndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    PartCPUTime:=PartEndCPUTime-PartStartCPUTime;
    fTimeProcessDirectedAcyclicGraph:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0; // in ms
+
+   ProcessDeferredAABBOperations;
 
   finally
    fGroupInstanceListLock.Release;
