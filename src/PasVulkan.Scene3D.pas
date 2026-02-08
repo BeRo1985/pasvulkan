@@ -3522,7 +3522,9 @@ type EpvScene3D=class(Exception);
                      procedure UpdateNodePVS(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateNodeAABBTree(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateInstanceBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateInstancePVS(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateGlobalAABBProxy(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateInstanceNodes(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateDeactivation(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateLocalAABBTreeState(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
 {$ifdef InstanceUpdateDirtySkip}
@@ -28963,6 +28965,7 @@ begin
 {$ifdef UpdateProfilingTimes}
  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
+
  fBoundingBox:=fGroup.fBoundingBox.HomogenTransform(fNodeMatrices[0]);
  if fGroup.fHasStaticBoundingBox then begin
   fBoundingBox.DirectCombine(fGroup.fStaticBoundingBox.HomogenTransform(fNodeMatrices[0]));
@@ -28986,15 +28989,23 @@ begin
    end;
   end;
  end;
+
 {$ifdef UpdateProfilingTimes}
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  fSceneInstance.fInstanceTimeBoundingSum:=fSceneInstance.fInstanceTimeBoundingSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
 {$endif}
 
- if aInFlightFrameIndex>=0 then begin
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateInstancePVS(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
 {$ifdef UpdateProfilingTimes}
-  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+var StartCPUTime,EndCPUTime:TpvHighResolutionTime;
 {$endif}
+begin
+{$ifdef UpdateProfilingTimes}
+ StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+ if aInFlightFrameIndex>=0 then begin
   if fUseRenderInstances then begin
    fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
   end else if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
@@ -29003,12 +29014,11 @@ begin
                 fSceneInstance.fPotentiallyVisibleSet.fNodes[fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Contains(fBoundingBox))) then begin
    fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(fBoundingBox);
   end;
-{$ifdef UpdateProfilingTimes}
-  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-  fSceneInstance.fInstanceTimePotentiallyVisibleSetSum:=fSceneInstance.fInstanceTimePotentiallyVisibleSetSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
-{$endif}
  end;
-
+{$ifdef UpdateProfilingTimes}
+ EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+ fSceneInstance.fInstanceTimePotentiallyVisibleSetSum:=fSceneInstance.fInstanceTimePotentiallyVisibleSetSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+{$endif}
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UpdateGlobalAABBProxy(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
@@ -29052,13 +29062,17 @@ begin
  fSceneInstance.fInstanceTimeAABBTreeSum:=fSceneInstance.fInstanceTimeAABBTreeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
 {$endif}
 
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateInstanceNodes(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+var Index:TpvSizeInt;
+begin
  if aInFlightFrameIndex>=0 then begin
   // Update all instance nodes.
   for Index:=0 to fNodes.Count-1 do begin
    fNodes.RawItems[Index].Update(aInFlightFrameIndex);
   end;
  end;
-
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UpdateDeactivation(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
@@ -29449,18 +29463,28 @@ begin
 {$endif}
 
    UpdateAnimationAndOverwrites(aInFlightFrameIndex,Scene,false);
+
    UpdateLights(aInFlightFrameIndex,false);
    UpdateCameras(aInFlightFrameIndex,false);
    UpdateMaterials(aInFlightFrameIndex,false);
+
    UpdateNodes(aInFlightFrameIndex,Scene,false);
    UpdateSkins(aInFlightFrameIndex,false);
+
    UpdateNodeBounds(aInFlightFrameIndex,Scene,false);
    UpdateNodePVS(aInFlightFrameIndex,Scene,false);
    UpdateNodeAABBTree(aInFlightFrameIndex,Scene,false);
+
    UpdateInstanceBounds(aInFlightFrameIndex,Scene,false);
+   UpdateInstancePVS(aInFlightFrameIndex,Scene,false);
+
    UpdateRenderInstances(aInFlightFrameIndex,false);
+
    UpdateBoundingVolumes(aInFlightFrameIndex,false);
+
    UpdateGlobalAABBProxy(aInFlightFrameIndex,false);
+
+   UpdateInstanceNodes(aInFlightFrameIndex,false);
 
 {$ifdef InstanceUpdateDirtySkip}
   end; // if not InstanceUpdateDirtySkipped
