@@ -256,6 +256,46 @@ VkCtx *vkctx_create(int use_device_local)
     ctx->stagingCap = 0;
     memset(&ctx->staging, 0, sizeof(ctx->staging));
 
+    /* ---- Pipeline cache (load from disk if available) ----------------- */
+    {
+        /* Build cache file path next to the executable */
+        snprintf(ctx->pipeCachePath, sizeof(ctx->pipeCachePath),
+                 "pipeline_cache.bin");
+
+        VkPipelineCacheCreateInfo pcci = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+            .initialDataSize = 0,
+            .pInitialData    = NULL
+        };
+
+        /* Try to load existing cache from disk */
+        FILE *cf = fopen(ctx->pipeCachePath, "rb");
+        void *cacheData = NULL;
+        if (cf) {
+            fseek(cf, 0, SEEK_END);
+            long cacheSize = ftell(cf);
+            fseek(cf, 0, SEEK_SET);
+            if (cacheSize > 0) {
+                cacheData = malloc((size_t)cacheSize);
+                if (cacheData && fread(cacheData, 1, (size_t)cacheSize, cf) == (size_t)cacheSize) {
+                    pcci.initialDataSize = (size_t)cacheSize;
+                    pcci.pInitialData    = cacheData;
+                    printf("Pipeline cache loaded (%ld bytes)\n", cacheSize);
+                }
+            }
+            fclose(cf);
+        }
+
+        VkResult cr = vkCreatePipelineCache(ctx->device, &pcci, NULL, &ctx->pipeCache);
+        free(cacheData);
+        if (cr != VK_SUCCESS) {
+            /* If loading failed (e.g. stale cache), retry without initial data */
+            pcci.initialDataSize = 0;
+            pcci.pInitialData    = NULL;
+            VK_CHECK(vkCreatePipelineCache(ctx->device, &pcci, NULL, &ctx->pipeCache));
+        }
+    }
+
     printf("Vulkan memory mode: %s\n",
            ctx->use_device_local ? "DEVICE_LOCAL + staging" : "HOST_VISIBLE");
 
@@ -271,6 +311,27 @@ void vkctx_destroy(VkCtx *ctx)
     if (!ctx) return;
 
     vkDeviceWaitIdle(ctx->device);
+
+    /* Save pipeline cache to disk */
+    if (ctx->pipeCache) {
+        size_t cacheSize = 0;
+        vkGetPipelineCacheData(ctx->device, ctx->pipeCache, &cacheSize, NULL);
+        if (cacheSize > 0) {
+            void *data = malloc(cacheSize);
+            if (data) {
+                if (vkGetPipelineCacheData(ctx->device, ctx->pipeCache,
+                                           &cacheSize, data) == VK_SUCCESS) {
+                    FILE *cf = fopen(ctx->pipeCachePath, "wb");
+                    if (cf) {
+                        fwrite(data, 1, cacheSize, cf);
+                        fclose(cf);
+                    }
+                }
+                free(data);
+            }
+        }
+        vkDestroyPipelineCache(ctx->device, ctx->pipeCache, NULL);
+    }
 
     vkctx_destroy_buffer(ctx, &ctx->dummy);
     vkctx_destroy_buffer(ctx, &ctx->staging);
@@ -513,7 +574,7 @@ VkPipeline vkctx_create_pipeline(VkCtx *ctx,
     };
 
     VkPipeline pipeline;
-    VK_CHECK(vkCreateComputePipelines(ctx->device, VK_NULL_HANDLE,
+    VK_CHECK(vkCreateComputePipelines(ctx->device, ctx->pipeCache,
                                        1, &cpci, NULL, &pipeline));
     vkDestroyShaderModule(ctx->device, module, NULL);
     return pipeline;

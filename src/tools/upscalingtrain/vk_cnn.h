@@ -67,12 +67,17 @@ typedef struct {
     /* Allocated dimensions */
     int buf_h, buf_w, buf_n;
 
+    /* Mode: 0 = inference only, 1 = training (has gradient/optimizer buffers) */
+    int training;
+
 } VkCNN;
 
 /* Lifecycle.
- *   host_mem = 0: use DEVICE_LOCAL memory (fast, default)
- *   host_mem = 1: use HOST_VISIBLE memory (slower, for debugging or iGPUs) */
-VkCNN *vkcnn_create(const Model *m, int host_mem);
+ *   host_mem  = 0: use DEVICE_LOCAL memory (fast, default)
+ *   host_mem  = 1: use HOST_VISIBLE memory (slower, for debugging or iGPUs)
+ *   training  = 0: inference only (fewer pipelines & buffers, faster init)
+ *   training  = 1: full training support */
+VkCNN *vkcnn_create(const Model *m, int host_mem, int training);
 void   vkcnn_destroy(VkCNN *g);
 
 /* Sync weights between CPU Model and GPU VkCNN */

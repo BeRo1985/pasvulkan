@@ -19,24 +19,29 @@
  * Creation
  * ========================================================================= */
 
-VkCNN *vkcnn_create(const Model *m, int host_mem)
+VkCNN *vkcnn_create(const Model *m, int host_mem, int training)
 {
     VkCNN *g = (VkCNN *)calloc(1, sizeof(VkCNN));
     if (!g) { fprintf(stderr, "ERROR: alloc VkCNN\n"); exit(1); }
 
+    g->training = training;
+
     /* Init Vulkan context */
     g->ctx = vkctx_create(!host_mem);  /* use_device_local = !host_mem */
 
-    /* Create compute pipelines from embedded SPIR-V */
+    /* Create compute pipelines — only what's needed */
     g->pip_conv_fwd        = vkctx_create_pipeline(g->ctx, spirv_conv_forward,        CONV_FORWARD_SIZE);
-    g->pip_conv_bwd_data   = vkctx_create_pipeline(g->ctx, spirv_conv_backward_data,  CONV_BACKWARD_DATA_SIZE);
-    g->pip_conv_bwd_filter = vkctx_create_pipeline(g->ctx, spirv_conv_backward_filter,CONV_BACKWARD_FILTER_SIZE);
-    g->pip_conv_bwd_bias   = vkctx_create_pipeline(g->ctx, spirv_conv_backward_bias,  CONV_BACKWARD_BIAS_SIZE);
     g->pip_pixel_shuffle   = vkctx_create_pipeline(g->ctx, spirv_pixel_shuffle,       PIXEL_SHUFFLE_SIZE);
-    g->pip_pixel_unshuffle = vkctx_create_pipeline(g->ctx, spirv_pixel_unshuffle,     PIXEL_UNSHUFFLE_SIZE);
-    g->pip_relu_bwd        = vkctx_create_pipeline(g->ctx, spirv_relu_backward,       RELU_BACKWARD_SIZE);
-    g->pip_adam            = vkctx_create_pipeline(g->ctx, spirv_adam_update,          ADAM_UPDATE_SIZE);
-    g->pip_loss_grad       = vkctx_create_pipeline(g->ctx, spirv_loss_grad,           LOSS_GRAD_SIZE);
+
+    if (training) {
+        g->pip_conv_bwd_data   = vkctx_create_pipeline(g->ctx, spirv_conv_backward_data,  CONV_BACKWARD_DATA_SIZE);
+        g->pip_conv_bwd_filter = vkctx_create_pipeline(g->ctx, spirv_conv_backward_filter,CONV_BACKWARD_FILTER_SIZE);
+        g->pip_conv_bwd_bias   = vkctx_create_pipeline(g->ctx, spirv_conv_backward_bias,  CONV_BACKWARD_BIAS_SIZE);
+        g->pip_pixel_unshuffle = vkctx_create_pipeline(g->ctx, spirv_pixel_unshuffle,     PIXEL_UNSHUFFLE_SIZE);
+        g->pip_relu_bwd        = vkctx_create_pipeline(g->ctx, spirv_relu_backward,       RELU_BACKWARD_SIZE);
+        g->pip_adam            = vkctx_create_pipeline(g->ctx, spirv_adam_update,          ADAM_UPDATE_SIZE);
+        g->pip_loss_grad       = vkctx_create_pipeline(g->ctx, spirv_loss_grad,           LOSS_GRAD_SIZE);
+    }
 
     /* Copy model architecture */
     g->num_layers    = m->num_layers;
@@ -60,18 +65,21 @@ VkCNN *vkcnn_create(const Model *m, int host_mem)
 
         g->gW[i]  = vkctx_create_buffer_gpu(g->ctx, wsz);
         g->gB[i]  = vkctx_create_buffer_gpu(g->ctx, bsz);
-        g->gdW[i] = vkctx_create_buffer_gpu(g->ctx, wsz);
-        g->gdB[i] = vkctx_create_buffer_gpu(g->ctx, bsz);
-        g->gmW[i] = vkctx_create_buffer_gpu(g->ctx, wsz);
-        g->gvW[i] = vkctx_create_buffer_gpu(g->ctx, wsz);
-        g->gmB[i] = vkctx_create_buffer_gpu(g->ctx, bsz);
-        g->gvB[i] = vkctx_create_buffer_gpu(g->ctx, bsz);
 
-        /* Zero optimizer state */
-        vkctx_zero_buffer(g->ctx, &g->gmW[i]);
-        vkctx_zero_buffer(g->ctx, &g->gvW[i]);
-        vkctx_zero_buffer(g->ctx, &g->gmB[i]);
-        vkctx_zero_buffer(g->ctx, &g->gvB[i]);
+        if (training) {
+            g->gdW[i] = vkctx_create_buffer_gpu(g->ctx, wsz);
+            g->gdB[i] = vkctx_create_buffer_gpu(g->ctx, bsz);
+            g->gmW[i] = vkctx_create_buffer_gpu(g->ctx, wsz);
+            g->gvW[i] = vkctx_create_buffer_gpu(g->ctx, wsz);
+            g->gmB[i] = vkctx_create_buffer_gpu(g->ctx, bsz);
+            g->gvB[i] = vkctx_create_buffer_gpu(g->ctx, bsz);
+
+            /* Zero optimizer state */
+            vkctx_zero_buffer(g->ctx, &g->gmW[i]);
+            vkctx_zero_buffer(g->ctx, &g->gvW[i]);
+            vkctx_zero_buffer(g->ctx, &g->gmB[i]);
+            vkctx_zero_buffer(g->ctx, &g->gvB[i]);
+        }
     }
 
     /* Upload initial weights */
@@ -92,12 +100,14 @@ void vkcnn_destroy(VkCNN *g)
     for (int i = 0; i < g->num_layers; i++) {
         vkctx_destroy_buffer(g->ctx, &g->gW[i]);
         vkctx_destroy_buffer(g->ctx, &g->gB[i]);
-        vkctx_destroy_buffer(g->ctx, &g->gdW[i]);
-        vkctx_destroy_buffer(g->ctx, &g->gdB[i]);
-        vkctx_destroy_buffer(g->ctx, &g->gmW[i]);
-        vkctx_destroy_buffer(g->ctx, &g->gvW[i]);
-        vkctx_destroy_buffer(g->ctx, &g->gmB[i]);
-        vkctx_destroy_buffer(g->ctx, &g->gvB[i]);
+        if (g->training) {
+            vkctx_destroy_buffer(g->ctx, &g->gdW[i]);
+            vkctx_destroy_buffer(g->ctx, &g->gdB[i]);
+            vkctx_destroy_buffer(g->ctx, &g->gmW[i]);
+            vkctx_destroy_buffer(g->ctx, &g->gvW[i]);
+            vkctx_destroy_buffer(g->ctx, &g->gmB[i]);
+            vkctx_destroy_buffer(g->ctx, &g->gvB[i]);
+        }
     }
 
     for (int i = 0; i <= g->num_layers; i++) {
@@ -112,14 +122,17 @@ void vkcnn_destroy(VkCNN *g)
     vkctx_destroy_buffer(g->ctx, &g->gLossElem);
 
     vkctx_destroy_pipeline(g->ctx, g->pip_conv_fwd);
-    vkctx_destroy_pipeline(g->ctx, g->pip_conv_bwd_data);
-    vkctx_destroy_pipeline(g->ctx, g->pip_conv_bwd_filter);
-    vkctx_destroy_pipeline(g->ctx, g->pip_conv_bwd_bias);
     vkctx_destroy_pipeline(g->ctx, g->pip_pixel_shuffle);
-    vkctx_destroy_pipeline(g->ctx, g->pip_pixel_unshuffle);
-    vkctx_destroy_pipeline(g->ctx, g->pip_relu_bwd);
-    vkctx_destroy_pipeline(g->ctx, g->pip_adam);
-    vkctx_destroy_pipeline(g->ctx, g->pip_loss_grad);
+
+    if (g->training) {
+        vkctx_destroy_pipeline(g->ctx, g->pip_conv_bwd_data);
+        vkctx_destroy_pipeline(g->ctx, g->pip_conv_bwd_filter);
+        vkctx_destroy_pipeline(g->ctx, g->pip_conv_bwd_bias);
+        vkctx_destroy_pipeline(g->ctx, g->pip_pixel_unshuffle);
+        vkctx_destroy_pipeline(g->ctx, g->pip_relu_bwd);
+        vkctx_destroy_pipeline(g->ctx, g->pip_adam);
+        vkctx_destroy_pipeline(g->ctx, g->pip_loss_grad);
+    }
 
     vkctx_destroy(g->ctx);
     free(g);
@@ -156,20 +169,22 @@ void vkcnn_ensure_buffers(VkCNN *g, int batch, int h, int w)
     /* Free old activation/gradient buffers */
     for (int i = 0; i <= g->num_layers; i++) {
         vkctx_destroy_buffer(g->ctx, &g->gAct[i]);
-        vkctx_destroy_buffer(g->ctx, &g->gGradAct[i]);
+        if (g->training) vkctx_destroy_buffer(g->ctx, &g->gGradAct[i]);
     }
     vkctx_destroy_buffer(g->ctx, &g->gInput);
     vkctx_destroy_buffer(g->ctx, &g->gOutput);
-    vkctx_destroy_buffer(g->ctx, &g->gTarget);
-    vkctx_destroy_buffer(g->ctx, &g->gGrad);
-    vkctx_destroy_buffer(g->ctx, &g->gLossElem);
+    if (g->training) {
+        vkctx_destroy_buffer(g->ctx, &g->gTarget);
+        vkctx_destroy_buffer(g->ctx, &g->gGrad);
+        vkctx_destroy_buffer(g->ctx, &g->gLossElem);
+    }
 
     /* Allocate new (in VRAM when using device-local mode) */
     for (int i = 0; i <= g->num_layers; i++) {
         int ch = (i == 0) ? g->in_channels : g->layer_out[i - 1];
         size_t sz = (size_t)batch * ch * h * w * sizeof(float);
-        g->gAct[i]     = vkctx_create_buffer_gpu(g->ctx, sz);
-        g->gGradAct[i] = vkctx_create_buffer_gpu(g->ctx, sz);
+        g->gAct[i] = vkctx_create_buffer_gpu(g->ctx, sz);
+        if (g->training) g->gGradAct[i] = vkctx_create_buffer_gpu(g->ctx, sz);
     }
 
     int r  = g->scale_factor;
@@ -179,9 +194,11 @@ void vkcnn_ensure_buffers(VkCNN *g, int batch, int h, int w)
 
     g->gInput    = vkctx_create_buffer_gpu(g->ctx, (size_t)batch * g->in_channels * h * w * sizeof(float));
     g->gOutput   = vkctx_create_buffer_gpu(g->ctx, out_sz);
-    g->gTarget   = vkctx_create_buffer_gpu(g->ctx, out_sz);
-    g->gGrad     = vkctx_create_buffer_gpu(g->ctx, out_sz);
-    g->gLossElem = vkctx_create_buffer(g->ctx, out_sz); /* host-visible: CPU reads loss values */
+    if (g->training) {
+        g->gTarget   = vkctx_create_buffer_gpu(g->ctx, out_sz);
+        g->gGrad     = vkctx_create_buffer_gpu(g->ctx, out_sz);
+        g->gLossElem = vkctx_create_buffer(g->ctx, out_sz); /* host-visible: CPU reads loss values */
+    }
 
     g->buf_h = h;
     g->buf_w = w;

@@ -62,6 +62,10 @@ typedef struct {
     GpuBuf                   staging;
     VkDeviceSize             stagingCap;  /* current staging capacity */
 
+    /* Pipeline cache (persisted to disk for fast subsequent launches) */
+    VkPipelineCache          pipeCache;
+    char                     pipeCachePath[512];
+
     /* Configuration */
     int                      use_device_local; /* 1 = DEVICE_LOCAL (fast), 0 = HOST_VISIBLE */
 

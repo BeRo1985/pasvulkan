@@ -330,7 +330,7 @@ static void train_mode(int argc, char **argv)
 #ifdef USE_VULKAN
     VkCNN *gpu = NULL;
     if (use_gpu) {
-        gpu = vkcnn_create(model, host_mem);
+        gpu = vkcnn_create(model, host_mem, /*training=*/1);
         lr_batch = (float *)malloc((size_t)batch_size * in_channels * lps * lps * sizeof(float));
         hr_batch = (float *)malloc((size_t)batch_size * 3 * hps * hps * sizeof(float));
     }
@@ -664,7 +664,7 @@ static void infer_mode(int argc, char **argv)
 #ifdef USE_VULKAN
         if (use_gpu) {
             printf(" (Vulkan GPU)\n");
-            VkCNN *gpu = vkcnn_create(model, host_mem);
+            VkCNN *gpu = vkcnn_create(model, host_mem, /*training=*/0);
             vkcnn_forward(gpu, input_tensor, output, 1, ih, iw);
             vkcnn_destroy(gpu);
         } else
