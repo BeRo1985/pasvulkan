@@ -407,6 +407,11 @@ compileshaderarguments=(
   "-V particle.vert -DRAYTRACING -DVOXELIZATION -o ${tempPath}/particle_raytracing_voxelization_vert.spv"
 
   "-V resampling.frag -o ${tempPath}/resampling_frag.spv"
+
+  "-V cnn_conv_forward.comp -o ${tempPath}/cnn_conv_forward_comp.spv"
+  "-V cnn_pixel_shuffle.comp -o ${tempPath}/cnn_pixel_shuffle_comp.spv"
+  "-V cnn_image_to_buffer.comp -o ${tempPath}/cnn_image_to_buffer_comp.spv"
+  "-V cnn_buffer_to_image.comp -o ${tempPath}/cnn_buffer_to_image_comp.spv"
    
   "-V cubemap_sphericalharmonics.comp -o ${tempPath}/cubemap_sphericalharmonics_comp.spv"
   
