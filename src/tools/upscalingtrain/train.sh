@@ -54,7 +54,7 @@ case "$QUALITY" in
         EPOCHS=600; BATCH=32; FEAT1=128; FEAT2=64; DEEP="--deep"; LR_DECAY=150 ;;
 esac
 
-SUFFIX="${FACTOR}x_${COLORSPACE}"
+SUFFIX="${FACTOR}x_${COLORSPACE}_${QUALITY}"
 MODEL="model_${SUFFIX}.bin"
 
 # Build if needed
