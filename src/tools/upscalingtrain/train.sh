@@ -1,6 +1,6 @@
 #!/bin/sh
 # Train CNN upscaler model from PNG files in data/ subdirectory
-# Usage: ./train.sh [2x|4x] [srgb|linear] [--gpu]
+# Usage: ./train.sh [2x|4x] [srgb|linear] [--gpu] [--host-mem]
 
 set -e
 
@@ -11,6 +11,7 @@ cd "$SCRIPT_DIR"
 FACTOR=2
 COLORSPACE=srgb
 USE_GPU=0
+HOST_MEM=0
 
 # Parse arguments (order-independent)
 for arg in "$@"; do
@@ -20,16 +21,18 @@ for arg in "$@"; do
         srgb)      COLORSPACE=srgb ;;
         linear)    COLORSPACE=linear ;;
         --gpu|gpu) USE_GPU=1 ;;
+        --host-mem) HOST_MEM=1 ;;
         -h|--help)
-            echo "Usage: $0 [2x|4x] [srgb|linear] [--gpu]"
+            echo "Usage: $0 [2x|4x] [srgb|linear] [--gpu] [--host-mem]"
             echo ""
             echo "  2x|4x       Upscale factor (default: 2x)"
             echo "  srgb|linear Color space (default: srgb)"
             echo "  --gpu       Use Vulkan compute backend"
+            echo "  --host-mem  Force host-visible memory (slower, for debugging)"
             exit 0 ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: $0 [2x|4x] [srgb|linear] [--gpu]"
+            echo "Usage: $0 [2x|4x] [srgb|linear] [--gpu] [--host-mem]"
             exit 1 ;;
     esac
 done
@@ -61,6 +64,7 @@ echo ""
 
 GPU_FLAG=""
 [ "$USE_GPU" -eq 1 ] && GPU_FLAG="--gpu"
+[ "$HOST_MEM" -eq 1 ] && GPU_FLAG="$GPU_FLAG --host-mem"
 
 ./upscaler train \
     --data data \

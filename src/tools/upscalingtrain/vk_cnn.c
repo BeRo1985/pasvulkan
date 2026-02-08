@@ -19,13 +19,13 @@
  * Creation
  * ========================================================================= */
 
-VkCNN *vkcnn_create(const Model *m)
+VkCNN *vkcnn_create(const Model *m, int host_mem)
 {
     VkCNN *g = (VkCNN *)calloc(1, sizeof(VkCNN));
     if (!g) { fprintf(stderr, "ERROR: alloc VkCNN\n"); exit(1); }
 
     /* Init Vulkan context */
-    g->ctx = vkctx_create();
+    g->ctx = vkctx_create(!host_mem);  /* use_device_local = !host_mem */
 
     /* Create compute pipelines from embedded SPIR-V */
     g->pip_conv_fwd        = vkctx_create_pipeline(g->ctx, spirv_conv_forward,        CONV_FORWARD_SIZE);
@@ -53,19 +53,19 @@ VkCNN *vkcnn_create(const Model *m)
         g->b_count[i]    = m->b_count[i];
     }
 
-    /* Allocate parameter buffers */
+    /* Allocate parameter buffers (in VRAM when device-local) */
     for (int i = 0; i < g->num_layers; i++) {
         size_t wsz = (size_t)g->w_count[i] * sizeof(float);
         size_t bsz = (size_t)g->b_count[i] * sizeof(float);
 
-        g->gW[i]  = vkctx_create_buffer(g->ctx, wsz);
-        g->gB[i]  = vkctx_create_buffer(g->ctx, bsz);
-        g->gdW[i] = vkctx_create_buffer(g->ctx, wsz);
-        g->gdB[i] = vkctx_create_buffer(g->ctx, bsz);
-        g->gmW[i] = vkctx_create_buffer(g->ctx, wsz);
-        g->gvW[i] = vkctx_create_buffer(g->ctx, wsz);
-        g->gmB[i] = vkctx_create_buffer(g->ctx, bsz);
-        g->gvB[i] = vkctx_create_buffer(g->ctx, bsz);
+        g->gW[i]  = vkctx_create_buffer_gpu(g->ctx, wsz);
+        g->gB[i]  = vkctx_create_buffer_gpu(g->ctx, bsz);
+        g->gdW[i] = vkctx_create_buffer_gpu(g->ctx, wsz);
+        g->gdB[i] = vkctx_create_buffer_gpu(g->ctx, bsz);
+        g->gmW[i] = vkctx_create_buffer_gpu(g->ctx, wsz);
+        g->gvW[i] = vkctx_create_buffer_gpu(g->ctx, wsz);
+        g->gmB[i] = vkctx_create_buffer_gpu(g->ctx, bsz);
+        g->gvB[i] = vkctx_create_buffer_gpu(g->ctx, bsz);
 
         /* Zero optimizer state */
         vkctx_zero_buffer(g->ctx, &g->gmW[i]);
@@ -132,16 +132,16 @@ void vkcnn_destroy(VkCNN *g)
 void vkcnn_upload_weights(VkCNN *g, const Model *m)
 {
     for (int i = 0; i < g->num_layers; i++) {
-        vkctx_upload(&g->gW[i], m->W[i], (size_t)g->w_count[i] * sizeof(float));
-        vkctx_upload(&g->gB[i], m->B[i], (size_t)g->b_count[i] * sizeof(float));
+        vkctx_upload_staged(g->ctx, &g->gW[i], m->W[i], (size_t)g->w_count[i] * sizeof(float));
+        vkctx_upload_staged(g->ctx, &g->gB[i], m->B[i], (size_t)g->b_count[i] * sizeof(float));
     }
 }
 
 void vkcnn_download_weights(VkCNN *g, Model *m)
 {
     for (int i = 0; i < g->num_layers; i++) {
-        vkctx_download(&g->gW[i], m->W[i], (size_t)g->w_count[i] * sizeof(float));
-        vkctx_download(&g->gB[i], m->B[i], (size_t)g->b_count[i] * sizeof(float));
+        vkctx_download_staged(g->ctx, &g->gW[i], m->W[i], (size_t)g->w_count[i] * sizeof(float));
+        vkctx_download_staged(g->ctx, &g->gB[i], m->B[i], (size_t)g->b_count[i] * sizeof(float));
     }
 }
 
@@ -164,12 +164,12 @@ void vkcnn_ensure_buffers(VkCNN *g, int batch, int h, int w)
     vkctx_destroy_buffer(g->ctx, &g->gGrad);
     vkctx_destroy_buffer(g->ctx, &g->gLossElem);
 
-    /* Allocate new */
+    /* Allocate new (in VRAM when using device-local mode) */
     for (int i = 0; i <= g->num_layers; i++) {
         int ch = (i == 0) ? g->in_channels : g->layer_out[i - 1];
         size_t sz = (size_t)batch * ch * h * w * sizeof(float);
-        g->gAct[i]     = vkctx_create_buffer(g->ctx, sz);
-        g->gGradAct[i] = vkctx_create_buffer(g->ctx, sz);
+        g->gAct[i]     = vkctx_create_buffer_gpu(g->ctx, sz);
+        g->gGradAct[i] = vkctx_create_buffer_gpu(g->ctx, sz);
     }
 
     int r  = g->scale_factor;
@@ -177,11 +177,11 @@ void vkcnn_ensure_buffers(VkCNN *g, int batch, int h, int w)
     int ow = w * r;
     size_t out_sz = (size_t)batch * 3 * oh * ow * sizeof(float);
 
-    g->gInput    = vkctx_create_buffer(g->ctx, (size_t)batch * g->in_channels * h * w * sizeof(float));
-    g->gOutput   = vkctx_create_buffer(g->ctx, out_sz);
-    g->gTarget   = vkctx_create_buffer(g->ctx, out_sz);
-    g->gGrad     = vkctx_create_buffer(g->ctx, out_sz);
-    g->gLossElem = vkctx_create_buffer(g->ctx, out_sz);
+    g->gInput    = vkctx_create_buffer_gpu(g->ctx, (size_t)batch * g->in_channels * h * w * sizeof(float));
+    g->gOutput   = vkctx_create_buffer_gpu(g->ctx, out_sz);
+    g->gTarget   = vkctx_create_buffer_gpu(g->ctx, out_sz);
+    g->gGrad     = vkctx_create_buffer_gpu(g->ctx, out_sz);
+    g->gLossElem = vkctx_create_buffer(g->ctx, out_sz); /* host-visible: CPU reads loss values */
 
     g->buf_h = h;
     g->buf_w = w;
@@ -248,7 +248,7 @@ void vkcnn_forward(VkCNN *g, const float *input, float *output,
 
     /* Upload input to act[0] GPU buffer */
     size_t in_sz = (size_t)batch * g->in_channels * h * w * sizeof(float);
-    vkctx_upload(&g->gAct[0], input, in_sz);
+    vkctx_upload_staged(g->ctx, &g->gAct[0], input, in_sz);
 
     /* Record & execute forward pass */
     vkctx_cmd_begin(g->ctx);
@@ -258,7 +258,7 @@ void vkcnn_forward(VkCNN *g, const float *input, float *output,
     /* Download output */
     int r = g->scale_factor;
     size_t out_sz = (size_t)batch * 3 * (h * r) * (w * r) * sizeof(float);
-    vkctx_download(&g->gOutput, output, out_sz);
+    vkctx_download_staged(g->ctx, &g->gOutput, output, out_sz);
 }
 
 /* ============================================================================
@@ -372,8 +372,8 @@ float vkcnn_train_step(VkCNN *g,
     /* Upload input and target */
     size_t in_sz  = (size_t)batch * g->in_channels * h * w * sizeof(float);
     size_t out_sz = (size_t)batch * 3 * oh * ow * sizeof(float);
-    vkctx_upload(&g->gAct[0], input, in_sz);
-    vkctx_upload(&g->gTarget, target, out_sz);
+    vkctx_upload_staged(g->ctx, &g->gAct[0], input, in_sz);
+    vkctx_upload_staged(g->ctx, &g->gTarget, target, out_sz);
 
     /* Record all GPU operations */
     vkctx_cmd_begin(g->ctx);
@@ -425,12 +425,25 @@ void vkcnn_zero_grad(VkCNN *g)
 
 void vkcnn_scale_grads(VkCNN *g, float s)
 {
-    /* Scale on CPU (weights are host-visible) */
     for (int i = 0; i < g->num_layers; i++) {
-        float *dw = (float *)g->gdW[i].mapped;
-        float *db = (float *)g->gdB[i].mapped;
+        /* Download grads to temp, scale, re-upload */
+        size_t wsz = (size_t)g->w_count[i] * sizeof(float);
+        size_t bsz = (size_t)g->b_count[i] * sizeof(float);
+
+        float *dw = (float *)malloc(wsz);
+        float *db = (float *)malloc(bsz);
+
+        vkctx_download_staged(g->ctx, &g->gdW[i], dw, wsz);
+        vkctx_download_staged(g->ctx, &g->gdB[i], db, bsz);
+
         for (int j = 0; j < g->w_count[i]; j++) dw[j] *= s;
         for (int j = 0; j < g->b_count[i]; j++) db[j] *= s;
+
+        vkctx_upload_staged(g->ctx, &g->gdW[i], dw, wsz);
+        vkctx_upload_staged(g->ctx, &g->gdB[i], db, bsz);
+
+        free(dw);
+        free(db);
     }
 }
 

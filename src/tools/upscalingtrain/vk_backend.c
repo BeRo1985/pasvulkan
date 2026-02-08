@@ -58,9 +58,10 @@ static uint32_t find_memory_type(VkPhysicalDevice physDev,
  * Context creation
  * ========================================================================= */
 
-VkCtx *vkctx_create(void)
+VkCtx *vkctx_create(int use_device_local)
 {
     VkCtx *ctx = (VkCtx *)calloc(1, sizeof(VkCtx));
+    ctx->use_device_local = use_device_local;
 
     /* ---- Instance ----------------------------------------------------- */
     VkApplicationInfo appInfo = {
@@ -251,6 +252,13 @@ VkCtx *vkctx_create(void)
     /* ---- Dummy buffer (16 bytes, for unused SSBO bindings) ------------ */
     ctx->dummy = vkctx_create_buffer(ctx, 16);
 
+    /* ---- Initial staging buffer --------------------------------------- */
+    ctx->stagingCap = 0;
+    memset(&ctx->staging, 0, sizeof(ctx->staging));
+
+    printf("Vulkan memory mode: %s\n",
+           ctx->use_device_local ? "DEVICE_LOCAL + staging" : "HOST_VISIBLE");
+
     return ctx;
 }
 
@@ -265,6 +273,7 @@ void vkctx_destroy(VkCtx *ctx)
     vkDeviceWaitIdle(ctx->device);
 
     vkctx_destroy_buffer(ctx, &ctx->dummy);
+    vkctx_destroy_buffer(ctx, &ctx->staging);
     vkDestroyDescriptorPool(ctx->device, ctx->dsPool, NULL);
     vkDestroyPipelineLayout(ctx->device, ctx->pipeLayout, NULL);
     vkDestroyDescriptorSetLayout(ctx->device, ctx->dsLayout, NULL);
@@ -284,6 +293,7 @@ GpuBuf vkctx_create_buffer(VkCtx *ctx, VkDeviceSize size)
 {
     GpuBuf buf = {0};
     buf.size = (size < 16) ? 16 : size;  /* minimum 16 bytes */
+    buf.device_local = 0;
 
     VkBufferCreateInfo bci = {
         .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -313,10 +323,49 @@ GpuBuf vkctx_create_buffer(VkCtx *ctx, VkDeviceSize size)
     return buf;
 }
 
+GpuBuf vkctx_create_buffer_gpu(VkCtx *ctx, VkDeviceSize size)
+{
+    /* If device-local mode is off, fall back to host-visible */
+    if (!ctx->use_device_local) {
+        return vkctx_create_buffer(ctx, size);
+    }
+
+    GpuBuf buf = {0};
+    buf.size = (size < 16) ? 16 : size;
+    buf.device_local = 1;
+    buf.mapped = NULL;
+
+    VkBufferCreateInfo bci = {
+        .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size        = buf.size,
+        .usage       = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                     | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                     | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+    VK_CHECK(vkCreateBuffer(ctx->device, &bci, NULL, &buf.buffer));
+
+    VkMemoryRequirements memReqs;
+    vkGetBufferMemoryRequirements(ctx->device, buf.buffer, &memReqs);
+
+    /* Allocate in DEVICE_LOCAL memory (fastest VRAM) */
+    VkMemoryAllocateInfo mai = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize  = memReqs.size,
+        .memoryTypeIndex = find_memory_type(
+            ctx->physDev, memReqs.memoryTypeBits,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+    };
+    VK_CHECK(vkAllocateMemory(ctx->device, &mai, NULL, &buf.memory));
+    VK_CHECK(vkBindBufferMemory(ctx->device, buf.buffer, buf.memory, 0));
+
+    return buf;
+}
+
 void vkctx_destroy_buffer(VkCtx *ctx, GpuBuf *buf)
 {
     if (!buf->buffer) return;
-    vkUnmapMemory(ctx->device, buf->memory);
+    if (buf->mapped) vkUnmapMemory(ctx->device, buf->memory);
     vkDestroyBuffer(ctx->device, buf->buffer, NULL);
     vkFreeMemory(ctx->device, buf->memory, NULL);
     memset(buf, 0, sizeof(*buf));
@@ -334,8 +383,107 @@ void vkctx_download(const GpuBuf *buf, void *data, size_t bytes)
 
 void vkctx_zero_buffer(VkCtx *ctx, GpuBuf *buf)
 {
-    (void)ctx;
-    memset(buf->mapped, 0, buf->size);
+    if (buf->device_local) {
+        vkctx_zero_buffer_gpu(ctx, buf);
+    } else {
+        (void)ctx;
+        memset(buf->mapped, 0, buf->size);
+    }
+}
+
+/* ---- Staging buffer management ---------------------------------------- */
+
+static void ensure_staging(VkCtx *ctx, VkDeviceSize need)
+{
+    if (ctx->stagingCap >= need) return;
+
+    /* Free old staging buffer */
+    if (ctx->staging.buffer)
+        vkctx_destroy_buffer(ctx, &ctx->staging);
+
+    /* Allocate new staging buffer with some headroom (round up to 1 MB) */
+    VkDeviceSize cap = (need + (1 << 20) - 1) & ~((VkDeviceSize)(1 << 20) - 1);
+    if (cap < need) cap = need;
+    ctx->staging    = vkctx_create_buffer(ctx, cap);  /* host-visible */
+    ctx->stagingCap = cap;
+}
+
+/* Submit a one-shot command buffer for a copy operation */
+static void submit_copy(VkCtx *ctx)
+{
+    VK_CHECK(vkEndCommandBuffer(ctx->cmdBuf));
+
+    VK_CHECK(vkResetFences(ctx->device, 1, &ctx->fence));
+    VkSubmitInfo si = {
+        .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers    = &ctx->cmdBuf
+    };
+    VK_CHECK(vkQueueSubmit(ctx->queue, 1, &si, ctx->fence));
+    VK_CHECK(vkWaitForFences(ctx->device, 1, &ctx->fence, VK_TRUE, UINT64_MAX));
+}
+
+void vkctx_upload_staged(VkCtx *ctx, GpuBuf *dst, const void *data, size_t bytes)
+{
+    if (!dst->device_local) {
+        /* Host-visible: direct memcpy */
+        memcpy(dst->mapped, data, bytes);
+        return;
+    }
+
+    ensure_staging(ctx, (VkDeviceSize)bytes);
+    memcpy(ctx->staging.mapped, data, bytes);
+
+    VK_CHECK(vkResetCommandBuffer(ctx->cmdBuf, 0));
+    VkCommandBufferBeginInfo bi = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+    VK_CHECK(vkBeginCommandBuffer(ctx->cmdBuf, &bi));
+
+    VkBufferCopy region = { .srcOffset = 0, .dstOffset = 0, .size = bytes };
+    vkCmdCopyBuffer(ctx->cmdBuf, ctx->staging.buffer, dst->buffer, 1, &region);
+
+    submit_copy(ctx);
+}
+
+void vkctx_download_staged(VkCtx *ctx, const GpuBuf *src, void *data, size_t bytes)
+{
+    if (!src->device_local) {
+        /* Host-visible: direct memcpy */
+        memcpy(data, src->mapped, bytes);
+        return;
+    }
+
+    ensure_staging(ctx, (VkDeviceSize)bytes);
+
+    VK_CHECK(vkResetCommandBuffer(ctx->cmdBuf, 0));
+    VkCommandBufferBeginInfo bi = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+    VK_CHECK(vkBeginCommandBuffer(ctx->cmdBuf, &bi));
+
+    VkBufferCopy region = { .srcOffset = 0, .dstOffset = 0, .size = bytes };
+    vkCmdCopyBuffer(ctx->cmdBuf, src->buffer, ctx->staging.buffer, 1, &region);
+
+    submit_copy(ctx);
+
+    memcpy(data, ctx->staging.mapped, bytes);
+}
+
+void vkctx_zero_buffer_gpu(VkCtx *ctx, GpuBuf *buf)
+{
+    VK_CHECK(vkResetCommandBuffer(ctx->cmdBuf, 0));
+    VkCommandBufferBeginInfo bi = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+    VK_CHECK(vkBeginCommandBuffer(ctx->cmdBuf, &bi));
+
+    vkCmdFillBuffer(ctx->cmdBuf, buf->buffer, 0, buf->size, 0);
+
+    submit_copy(ctx);
 }
 
 /* ============================================================================

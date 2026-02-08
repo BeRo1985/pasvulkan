@@ -69,8 +69,10 @@ typedef struct {
 
 } VkCNN;
 
-/* Lifecycle */
-VkCNN *vkcnn_create(const Model *m);
+/* Lifecycle.
+ *   host_mem = 0: use DEVICE_LOCAL memory (fast, default)
+ *   host_mem = 1: use HOST_VISIBLE memory (slower, for debugging or iGPUs) */
+VkCNN *vkcnn_create(const Model *m, int host_mem);
 void   vkcnn_destroy(VkCNN *g);
 
 /* Sync weights between CPU Model and GPU VkCNN */

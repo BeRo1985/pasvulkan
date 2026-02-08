@@ -33,7 +33,8 @@ typedef struct {
     VkBuffer       buffer;
     VkDeviceMemory memory;
     VkDeviceSize   size;
-    void          *mapped;
+    void          *mapped;   /* non-NULL only for host-visible buffers */
+    int            device_local; /* 1 if DEVICE_LOCAL without host mapping */
 } GpuBuf;
 
 /* Vulkan compute context */
@@ -57,21 +58,45 @@ typedef struct {
     /* Small dummy buffer for unused SSBO bindings */
     GpuBuf                   dummy;
 
+    /* Staging buffer (host-visible, reused for transfers) */
+    GpuBuf                   staging;
+    VkDeviceSize             stagingCap;  /* current staging capacity */
+
+    /* Configuration */
+    int                      use_device_local; /* 1 = DEVICE_LOCAL (fast), 0 = HOST_VISIBLE */
+
     /* Device properties */
     uint32_t                 maxWorkGroupSize;
     char                     deviceName[256];
 } VkCtx;
 
 /* ---- Lifecycle -------------------------------------------------------- */
-VkCtx *vkctx_create(void);
+VkCtx *vkctx_create(int use_device_local);
 void   vkctx_destroy(VkCtx *ctx);
 
 /* ---- Buffer management ------------------------------------------------ */
+
+/* Create a host-visible buffer (always mapped, for staging/readback) */
 GpuBuf vkctx_create_buffer(VkCtx *ctx, VkDeviceSize size);
+
+/* Create a device-local buffer (fast VRAM, no CPU mapping).
+ * Falls back to host-visible if use_device_local is 0. */
+GpuBuf vkctx_create_buffer_gpu(VkCtx *ctx, VkDeviceSize size);
+
 void   vkctx_destroy_buffer(VkCtx *ctx, GpuBuf *buf);
+
+/* Direct memcpy for host-visible buffers */
 void   vkctx_upload(GpuBuf *buf, const void *data, size_t bytes);
 void   vkctx_download(const GpuBuf *buf, void *data, size_t bytes);
 void   vkctx_zero_buffer(VkCtx *ctx, GpuBuf *buf);
+
+/* Staged transfer for device-local buffers (CPU → staging → GPU copy).
+ * These submit their own command buffer internally. */
+void   vkctx_upload_staged(VkCtx *ctx, GpuBuf *dst, const void *data, size_t bytes);
+void   vkctx_download_staged(VkCtx *ctx, const GpuBuf *src, void *data, size_t bytes);
+
+/* Zero a device-local buffer via vkCmdFillBuffer (submits internally). */
+void   vkctx_zero_buffer_gpu(VkCtx *ctx, GpuBuf *buf);
 
 /* ---- Pipeline management ---------------------------------------------- */
 VkPipeline vkctx_create_pipeline(VkCtx *ctx,

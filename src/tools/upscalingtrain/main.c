@@ -50,6 +50,7 @@ static void print_usage(const char *prog)
         "  --resume <path>       Resume training from checkpoint\n"
 #ifdef USE_VULKAN
         "  --gpu                 Use Vulkan compute backend\n"
+        "  --host-mem            Force host-visible memory (slower, for debugging)\n"
 #endif
         "\n"
         "INFER options:\n"
@@ -65,6 +66,7 @@ static void print_usage(const char *prog)
         "  --tile <n>            Tile size for large images (0=off, default: 0)\n"
 #ifdef USE_VULKAN
         "  --gpu                 Use Vulkan compute backend\n"
+        "  --host-mem            Force host-visible memory (slower, for debugging)\n"
 #endif
         "\n"
         "EXPORT options:\n"
@@ -172,7 +174,8 @@ static void train_mode(int argc, char **argv)
     uint32_t seed   = DEFAULT_SEED;
     int save_every  = DEFAULT_SAVE_EVERY;
     int iters_per_epoch = 0;  /* 0 = auto */
-    int use_gpu = 0;
+    int use_gpu __attribute__((unused))  = 0;
+    int host_mem __attribute__((unused)) = 0;
 
     /* Parse arguments */
     for (int i = 2; i < argc; i++) {
@@ -193,6 +196,7 @@ static void train_mode(int argc, char **argv)
         else if (!strcmp(argv[i], "--iters-per-epoch") && i+1 < argc) iters_per_epoch = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--deep"))   deep = 1;
         else if (!strcmp(argv[i], "--gpu"))    use_gpu = 1;
+        else if (!strcmp(argv[i], "--host-mem")) host_mem = 1;
         else if (!strcmp(argv[i], "--colorspace") && i+1 < argc) {
             i++;
             if      (!strcmp(argv[i], "linear")) colorspace = COLORSPACE_LINEAR;
@@ -326,7 +330,7 @@ static void train_mode(int argc, char **argv)
 #ifdef USE_VULKAN
     VkCNN *gpu = NULL;
     if (use_gpu) {
-        gpu = vkcnn_create(model);
+        gpu = vkcnn_create(model, host_mem);
         lr_batch = (float *)malloc((size_t)batch_size * in_channels * lps * lps * sizeof(float));
         hr_batch = (float *)malloc((size_t)batch_size * 3 * hps * hps * sizeof(float));
     }
@@ -517,6 +521,7 @@ static void infer_mode(int argc, char **argv)
     int tonemap_var = TONEMAP_NONE;
     int tile_size   = 0;
     int use_gpu __attribute__((unused)) = 0;
+    int host_mem __attribute__((unused)) = 0;
 
     for (int i = 2; i < argc; i++) {
         if      (!strcmp(argv[i], "--model")  && i+1 < argc) model_path  = argv[++i];
@@ -528,6 +533,7 @@ static void infer_mode(int argc, char **argv)
         else if (!strcmp(argv[i], "--scale-from") && i+1 < argc) scale_from = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--tile")   && i+1 < argc) tile_size   = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--gpu"))    use_gpu = 1;
+        else if (!strcmp(argv[i], "--host-mem")) host_mem = 1;
         else if (!strcmp(argv[i], "--colorspace") && i+1 < argc) {
             i++;
             if      (!strcmp(argv[i], "linear")) colorspace = COLORSPACE_LINEAR;
@@ -658,7 +664,7 @@ static void infer_mode(int argc, char **argv)
 #ifdef USE_VULKAN
         if (use_gpu) {
             printf(" (Vulkan GPU)\n");
-            VkCNN *gpu = vkcnn_create(model);
+            VkCNN *gpu = vkcnn_create(model, host_mem);
             vkcnn_forward(gpu, input_tensor, output, 1, ih, iw);
             vkcnn_destroy(gpu);
         } else
