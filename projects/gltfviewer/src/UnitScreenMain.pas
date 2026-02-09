@@ -270,6 +270,7 @@ begin
  fRenderer.TransparencyMode:=UnitApplication.Application.TransparencyMode;
  fRenderer.DepthOfFieldMode:=UnitApplication.Application.DepthOfFieldMode;
  fRenderer.LensMode:=UnitApplication.Application.LensMode;
+ fRenderer.ResamplingMode:=UnitApplication.Application.ResamplingMode;
  fRenderer.AIUpscaleMode:=UnitApplication.Application.AIUpscaleMode;
  fRenderer.AIUpscaleQuality:=UnitApplication.Application.AIUpscaleQuality;
  fRenderer.MaxMSAA:=UnitApplication.Application.MaxMSAA;

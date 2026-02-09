@@ -49,6 +49,7 @@ type TApplication=class(TpvApplication)
        fDepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode;
        fShadowMode:TpvScene3DRendererShadowMode;
        fLensMode:TpvScene3DRendererLensMode;
+       fResamplingMode:TpvScene3DRendererResamplingMode;
        fAIUpscaleMode:TpvScene3DRendererAIUpscaleMode;
        fAIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality;
        fSizeFactor:TpvDouble;
@@ -88,6 +89,7 @@ type TApplication=class(TpvApplication)
        property DepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode read fDepthOfFieldMode;
        property ShadowMode:TpvScene3DRendererShadowMode read fShadowMode;
        property LensMode:TpvScene3DRendererLensMode read fLensMode;
+       property ResamplingMode:TpvScene3DRendererResamplingMode read fResamplingMode;
        property AIUpscaleMode:TpvScene3DRendererAIUpscaleMode read fAIUpscaleMode;
        property AIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality read fAIUpscaleQuality;
        property SizeFactor:TpvDouble read fSizeFactor;
@@ -130,6 +132,7 @@ begin
  fDepthOfFieldMode:=TpvScene3DRendererDepthOfFieldMode.None;
  fShadowMode:=TpvScene3DRendererShadowMode.Auto;
  fLensMode:=TpvScene3DRendererLensMode.Auto;
+ fResamplingMode:=TpvScene3DRendererResamplingMode.Lanczos;
  fAIUpscaleMode:=TpvScene3DRendererAIUpscaleMode.None;
  fAIUpscaleQuality:=TpvScene3DRendererAIUpscaleQuality.Low;
  fSizeFactor:=1.0;
@@ -286,6 +289,12 @@ begin
   end else if (Parameter='--transparent-color-key') or
               (Parameter='/transparent-color-key') then begin
    fTransparentColorKey:=true;
+  end else if (Parameter='--resampling-mode') or
+              (Parameter='/resampling-mode') then begin
+   if Index<=ParamCount then begin
+    fResamplingMode.FromString(ParamStr(Index));
+    inc(Index);
+   end;
   end else if (Parameter='--ai-upscale-mode') or
               (Parameter='/ai-upscale-mode') then begin
    if Index<=ParamCount then begin
