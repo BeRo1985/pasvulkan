@@ -196,7 +196,7 @@ begin
 
  fResourceOutput:=AddImageOutput('resourcetype_color_fullres_optimized_non_alpha',
                                  'resource_upsampled_color',
-                                 VK_IMAGE_LAYOUT_GENERAL,
+                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare),
                                  []
                                 );
@@ -926,6 +926,7 @@ var LayerIndex:TpvInt32;
     CountViews:TpvInt32;
     PushConstants:TPushConstants;
     MemoryBarrier:TVkMemoryBarrier;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -1016,7 +1017,7 @@ begin
    PushConstants.p2:=fLayers[LayerIndex].KernelSize;
    PushConstants.p3:=fLayers[LayerIndex].Padding;
    PushConstants.p4:=ScaledHeight;
-   PushConstants.p5:=ScaledWidth;
+   PushConstants.p5:=ScaledWidth; 
    PushConstants.p6:=CountViews; // batch = views
    PushConstants.p7:=fLayers[LayerIndex].UseReLU;
 
@@ -1103,6 +1104,28 @@ begin
 
  begin
 
+  // Transition output image from SHADER_READ_ONLY_OPTIMAL to GENERAL for storage image write
+  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  ImageMemoryBarrier.srcAccessMask:=0;
+  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
+  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.image:=fResourceOutput.VulkanImages[aInFlightFrameIndex].Handle;
+  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+  ImageMemoryBarrier.subresourceRange.levelCount:=1;
+  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+  ImageMemoryBarrier.subresourceRange.layerCount:=CountViews;
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);
+
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fBufferToImagePipeline.Handle);
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -1132,6 +1155,28 @@ begin
   if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
   end;
+
+  // Transition output image back from GENERAL to SHADER_READ_ONLY_OPTIMAL
+  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+  ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_GENERAL;
+  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarrier.image:=fResourceOutput.VulkanImages[aInFlightFrameIndex].Handle;
+  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+  ImageMemoryBarrier.subresourceRange.levelCount:=1;
+  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+  ImageMemoryBarrier.subresourceRange.layerCount:=CountViews;
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);
 
  end;
 

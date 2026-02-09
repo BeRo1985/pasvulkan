@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="--ai-upscale-mode 2x --antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers \home\bero\Projects\GLTF\TransmissionTest.glb"/>
+        <CommandLineParams Value="--ai-upscale-mode 2x --ai-upscale-quality high --antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers \home\bero\Projects\GLTF\TransmissionTest.glb"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="--ai-upscale-mode 2x --antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers \home\bero\Projects\GLTF\TransmissionTest.glb"/>
+            <CommandLineParams Value="--ai-upscale-mode 2x --ai-upscale-quality high --antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers \home\bero\Projects\GLTF\TransmissionTest.glb"/>
           </local>
         </Mode0>
       </Modes>

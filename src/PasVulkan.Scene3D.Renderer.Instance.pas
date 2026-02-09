@@ -3603,15 +3603,27 @@ begin
   end;
  end;
 
- fFrameGraph.AddImageResourceType('resourcetype_color_fullres_optimized_non_alpha',
-                                  false,
-                                  VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
-                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                  TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
-                                  1
-                                 );
+ if Renderer.AIUpscaleMode<>TpvScene3DRendererAIUpscaleMode.None then begin
+  fFrameGraph.AddImageResourceType('resourcetype_color_fullres_optimized_non_alpha',
+                                   false,
+                                   VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
+                                   1
+                                  );
+ end else begin
+  fFrameGraph.AddImageResourceType('resourcetype_color_fullres_optimized_non_alpha',
+                                   false,
+                                   VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                   1
+                                  );
+ end;
 
  fFrameGraph.AddImageResourceType('resourcetype_color_tonemapping',
                                   false,
