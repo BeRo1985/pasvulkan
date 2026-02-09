@@ -137,6 +137,24 @@ type TpvScene3DRendererAntialiasingMode=
 
      PpvScene3DRendererLensMode=^TpvScene3DRendererLensMode;
 
+     TpvScene3DRendererAIUpscaleMode=
+      (
+       None,
+       Factor2X,
+       Factor4X
+      );
+
+     PpvScene3DRendererAIUpscaleMode=^TpvScene3DRendererAIUpscaleMode;
+
+     TpvScene3DRendererAIUpscaleQuality=
+      (
+       Low,
+       Mid,
+       High
+      );
+
+     PpvScene3DRendererAIUpscaleQuality=^TpvScene3DRendererAIUpscaleQuality;
+
      TpvScene3DRendererGlobalIlluminationMode=
       (
        Auto=0,

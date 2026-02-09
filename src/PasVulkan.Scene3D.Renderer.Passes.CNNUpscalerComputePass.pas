@@ -265,13 +265,13 @@ begin
  fPixelShuffleShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fPixelShuffleShaderModule,'main');
  fBufferToImageShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fBufferToImageShaderModule,'main');
 
- // Determine model file name based on instance settings
+ // Determine model file name based on renderer settings
 
- case fInstance.AIUpscaleMode of
-  TpvScene3DRendererInstance.TAIUpscaleMode.Factor2X:begin
+ case fInstance.Renderer.AIUpscaleMode of
+  TpvScene3DRendererAIUpscaleMode.Factor2X:begin
    ModelFileName:='model_2x_srgb_';
   end;
-  TpvScene3DRendererInstance.TAIUpscaleMode.Factor4X:begin
+  TpvScene3DRendererAIUpscaleMode.Factor4X:begin
    ModelFileName:='model_4x_srgb_';
   end;
   else begin
@@ -279,14 +279,14 @@ begin
   end;
  end;
 
- case fInstance.AIUpscaleQuality of
-  TpvScene3DRendererInstance.TAIUpscaleQuality.Low:begin
+ case fInstance.Renderer.AIUpscaleQuality of
+  TpvScene3DRendererAIUpscaleQuality.Low:begin
    ModelFileName:=ModelFileName+'low.bin';
   end;
-  TpvScene3DRendererInstance.TAIUpscaleQuality.Mid:begin
+  TpvScene3DRendererAIUpscaleQuality.Mid:begin
    ModelFileName:=ModelFileName+'mid.bin';
   end;
-  TpvScene3DRendererInstance.TAIUpscaleQuality.High:begin
+  TpvScene3DRendererAIUpscaleQuality.High:begin
    ModelFileName:=ModelFileName+'high.bin';
   end;
   else begin

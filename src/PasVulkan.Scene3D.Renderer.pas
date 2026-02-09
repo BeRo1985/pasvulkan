@@ -179,6 +179,8 @@ type TpvScene3DRenderer=class;
        fGlobalIlluminationVoxelGridSize:TpvInt32;
        fGlobalIlluminationVoxelCountCascades:TpvInt32;
        fGlobalIlluminationVoxelCountBounces:TpvInt32;
+       fAIUpscaleMode:TpvScene3DRendererAIUpscaleMode;
+       fAIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality;
       private
        fSkyBoxCubeMap:TpvScene3DRendererEnvironmentCubeMap;
        fEnvironmentCubeMap:TpvScene3DRendererEnvironmentCubeMap;
@@ -238,6 +240,8 @@ type TpvScene3DRenderer=class;
        property LensMode:TpvScene3DRendererLensMode read fLensMode write fLensMode;
        property GlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode read fGlobalIlluminationMode write fGlobalIlluminationMode;
        property ToneMappingMode:TpvScene3DRendererToneMappingMode read fToneMappingMode write fToneMappingMode;
+       property AIUpscaleMode:TpvScene3DRendererAIUpscaleMode read fAIUpscaleMode write fAIUpscaleMode;
+       property AIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality read fAIUpscaleQuality write fAIUpscaleQuality;
 {      property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
        property MaxLogLuminance:TpvFloat read fMaxLogLuminance write fMaxLogLuminance;}
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
@@ -430,6 +434,10 @@ begin
  fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.Auto;
 
  fToneMappingMode:=TpvScene3DRendererToneMappingMode.Auto;
+
+ fAIUpscaleMode:=TpvScene3DRendererAIUpscaleMode.None;
+
+ fAIUpscaleQuality:=TpvScene3DRendererAIUpscaleQuality.Low;
 
 {fMinLogLuminance:=-8.0;
 
