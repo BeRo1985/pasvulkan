@@ -5279,6 +5279,18 @@ begin
 
  end;
 
+ // If AI upscaling is enabled, enforce the size factor from the upscale mode.
+ case Renderer.AIUpscaleMode of
+  TpvScene3DRendererAIUpscaleMode.Factor2X:begin
+   fSizeFactor:=0.5;
+  end;
+  TpvScene3DRendererAIUpscaleMode.Factor4X:begin
+   fSizeFactor:=0.25;
+  end;
+  else begin
+  end;
+ end;
+
  fScaledWidth:=Max(1,round(fSizeFactor*fWidth));
  fScaledHeight:=Max(1,round(fSizeFactor*fHeight));
 
