@@ -36692,7 +36692,7 @@ begin
    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
    // Start atmosphere simulation after frame data upload is complete
-   if fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
+   if fEnableAtmosphere and fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
 
     PlanetAtmospherePrecipitationSimulationCommandBuffer:=fPlanetAtmospherePrecipitationSimulationCommandBuffers[aInFlightFrameIndex];
 
@@ -36736,7 +36736,7 @@ begin
 
     fPlanetAtmospherePrecipitationSimulationQueue.Submit(1,@SubmitInfo,nil);
 
-   end else begin
+   end else if fEnableAtmosphere then begin
 
     fProcessFrameTimerQueryAtmosphereSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Planet Atmosphere Precipitation Simulation');
     BeginTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -36774,7 +36774,7 @@ begin
     FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
     SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
     SubmitInfo.pNext:=nil;
-    if fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
+    if fEnableAtmosphere and fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
      // Wait for atmosphere/precipitation simulation to complete first
      SubmitInfo.waitSemaphoreCount:=1;
      SubmitInfo.pWaitSemaphores:=@fPlanetAtmospherePrecipitationSimulationSemaphores[aInFlightFrameIndex].Handle;
@@ -36959,7 +36959,7 @@ begin
     WaitDstStageFlags[CountSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
     inc(CountSemaphores);
    end;
-   if fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
+   if fEnableAtmosphere and fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
     // Atmosphere parallel queue is active - wait on atmosphere main thread semaphore
     Semaphores[CountSemaphores]:=fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores[aInFlightFrameIndex].Handle;
     WaitDstStageFlags[CountSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
