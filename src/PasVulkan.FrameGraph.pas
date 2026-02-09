@@ -5152,6 +5152,15 @@ type TEventBeforeAfter=(Event,Before,After);
     result:=0;
    end;
   end;
+  // When an image input is used as a render pass attachment (loadOp=LOAD), vkCmdBeginRenderPass
+  // also reads it at COLOR_ATTACHMENT_OUTPUT, so we need to include that stage.
+  if (aResourceTransition.fKind in [TResourceTransition.TKind.ImageInput,
+                                    TResourceTransition.TKind.ImageDepthInput]) and
+     (TResourceTransition.TFlag.Attachment in aResourceTransition.fFlags) and
+     assigned(aResourceTransition.fPass) and
+     (aResourceTransition.fPass is TRenderPass) then begin
+   result:=result or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+  end;
   if assigned(aResourceTransition.fPass) then begin
    if aResourceTransition.fPass is TRenderPass then begin
     result:=result and (TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT) or
@@ -5289,6 +5298,15 @@ type TEventBeforeAfter=(Event,Before,After);
    else begin
     result:=0;
    end;
+  end;
+  // When an image input is used as a render pass attachment (loadOp=LOAD), vkCmdBeginRenderPass
+  // also reads it at COLOR_ATTACHMENT_READ, so we need to include that access flag.
+  if (aResourceTransition.fKind in [TResourceTransition.TKind.ImageInput,
+                                    TResourceTransition.TKind.ImageDepthInput]) and
+     (TResourceTransition.TFlag.Attachment in aResourceTransition.fFlags) and
+     assigned(aResourceTransition.fPass) and
+     (aResourceTransition.fPass is TRenderPass) then begin
+   result:=result or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
   end;
  end;
  procedure IndexingPasses;
