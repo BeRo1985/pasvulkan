@@ -155,6 +155,20 @@ type TpvScene3DRendererAntialiasingMode=
 
      PpvScene3DRendererAIUpscaleQuality=^TpvScene3DRendererAIUpscaleQuality;
 
+     { TpvScene3DRendererAIUpscaleModeHelper }
+
+     TpvScene3DRendererAIUpscaleModeHelper=record helper for TpvScene3DRendererAIUpscaleMode
+      function ToString:TpvUTF8String;
+      procedure FromString(const aValue:TpvUTF8String);
+     end;
+
+     { TpvScene3DRendererAIUpscaleQualityHelper }
+
+     TpvScene3DRendererAIUpscaleQualityHelper=record helper for TpvScene3DRendererAIUpscaleQuality
+      function ToString:TpvUTF8String;
+      procedure FromString(const aValue:TpvUTF8String);
+     end;
+
      TpvScene3DRendererGlobalIlluminationMode=
       (
        Auto=0,
@@ -369,6 +383,76 @@ begin
   self:=TpvScene3DRendererToneMappingMode.KhronosPBRNeutral;
  end else begin
   self:=TpvScene3DRendererToneMappingMode.Auto;
+ end;
+end;
+
+{ TpvScene3DRendererAIUpscaleModeHelper }
+
+function TpvScene3DRendererAIUpscaleModeHelper.ToString:TpvUTF8String;
+begin
+ case self of
+  TpvScene3DRendererAIUpscaleMode.None:begin
+   result:='none';
+  end;
+  TpvScene3DRendererAIUpscaleMode.Factor2X:begin
+   result:='factor2x';
+  end;
+  TpvScene3DRendererAIUpscaleMode.Factor4X:begin
+   result:='factor4x';
+  end;
+  else begin
+   result:='none';
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererAIUpscaleModeHelper.FromString(const aValue:TpvUTF8String);
+var Value:TpvUTF8String;
+begin
+ Value:=LowerCase(Trim(aValue));
+ if (Value='none') or (Value='off') or (Value='disabled') then begin
+  self:=TpvScene3DRendererAIUpscaleMode.None;
+ end else if (Value='factor2x') or (Value='2x') then begin
+  self:=TpvScene3DRendererAIUpscaleMode.Factor2X;
+ end else if (Value='factor4x') or (Value='4x') then begin
+  self:=TpvScene3DRendererAIUpscaleMode.Factor4X;
+ end else begin
+  self:=TpvScene3DRendererAIUpscaleMode.None;
+ end;
+end;
+
+{ TpvScene3DRendererAIUpscaleQualityHelper }
+
+function TpvScene3DRendererAIUpscaleQualityHelper.ToString:TpvUTF8String;
+begin
+ case self of
+  TpvScene3DRendererAIUpscaleQuality.Low:begin
+   result:='low';
+  end;
+  TpvScene3DRendererAIUpscaleQuality.Mid:begin
+   result:='mid';
+  end;
+  TpvScene3DRendererAIUpscaleQuality.High:begin
+   result:='high';
+  end;
+  else begin
+   result:='low';
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererAIUpscaleQualityHelper.FromString(const aValue:TpvUTF8String);
+var Value:TpvUTF8String;
+begin
+ Value:=LowerCase(Trim(aValue));
+ if (Value='low') or (Value='lo') then begin
+  self:=TpvScene3DRendererAIUpscaleQuality.Low;
+ end else if (Value='mid') or (Value='medium') then begin
+  self:=TpvScene3DRendererAIUpscaleQuality.Mid;
+ end else if (Value='high') or (Value='hi') then begin
+  self:=TpvScene3DRendererAIUpscaleQuality.High;
+ end else begin
+  self:=TpvScene3DRendererAIUpscaleQuality.Low;
  end;
 end;
 
