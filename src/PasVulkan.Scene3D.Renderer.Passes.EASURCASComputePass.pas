@@ -228,6 +228,7 @@ procedure TpvScene3DRendererPassesEASURCASComputePass.AcquireVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
     FullWidth,FullHeight:TpvInt32;
     CountViews:TpvInt32;
+    ImageViewType:TVkImageViewType;
     MemoryRequirements:TVkMemoryRequirements;
 begin
 
@@ -236,6 +237,12 @@ begin
  FullWidth:=fInstance.Width;
  FullHeight:=fInstance.Height;
  CountViews:=fInstance.CountSurfaceViews;
+
+ if CountViews>1 then begin
+  ImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+ end else begin
+  ImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
+ end;
 
  ///////////////////////////////////////////
  // EASU descriptor set layout            //
@@ -362,7 +369,7 @@ begin
   // Create image view for the intermediate image
   fIntermediateImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
                                                                         fIntermediateImages[InFlightFrameIndex],
-                                                                        VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+                                                                        ImageViewType,
                                                                         VK_FORMAT_R16G16B16A16_SFLOAT,
                                                                         VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                         VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -403,7 +410,7 @@ begin
   // EASU input image view (from the scaled-resolution color)
   fEASUInputImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
                                                                       fResourceInput.VulkanImages[InFlightFrameIndex],
-                                                                      VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+                                                                      ImageViewType,
                                                                       TpvFrameGraph.TImageResourceType(fResourceInput.ResourceType).Format,
                                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -449,7 +456,7 @@ begin
   // RCAS output image view (final output)
   fRCASOutputImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
                                                                        fResourceOutput.VulkanImages[InFlightFrameIndex],
-                                                                       VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+                                                                       ImageViewType,
                                                                        TpvFrameGraph.TImageResourceType(fResourceOutput.ResourceType).Format,
                                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
