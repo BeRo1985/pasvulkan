@@ -270,6 +270,8 @@ begin
  fRenderer.TransparencyMode:=UnitApplication.Application.TransparencyMode;
  fRenderer.DepthOfFieldMode:=UnitApplication.Application.DepthOfFieldMode;
  fRenderer.LensMode:=UnitApplication.Application.LensMode;
+ fRenderer.AIUpscaleMode:=UnitApplication.Application.AIUpscaleMode;
+ fRenderer.AIUpscaleQuality:=UnitApplication.Application.AIUpscaleQuality;
  fRenderer.MaxMSAA:=UnitApplication.Application.MaxMSAA;
  fRenderer.MaxShadowMSAA:=UnitApplication.Application.MaxShadowMSAA;
  fRenderer.ShadowMapSize:=UnitApplication.Application.ShadowMapSize;
@@ -281,7 +283,7 @@ begin
 
  fRendererInstance:=TpvScene3DRendererInstance.Create(fRenderer,UnitApplication.Application.VirtualReality);
 
- fRendererInstance.PixelAmountFactor:=1.0;
+ fRendererInstance.PixelAmountFactor:=UnitApplication.Application.SizeFactor;
 
  fRendererInstance.UseDebugBlit:=false;
 
