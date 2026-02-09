@@ -4339,6 +4339,9 @@ type EpvScene3D=class(Exception);
        fVulkanParticleVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fSkyBoxBrightnessFactor:TpvScalar;
        fSkyBoxCaching:Boolean;
+       fEnableAtmosphere:Boolean;
+       fEnableRain:Boolean;
+       fEnableWater:Boolean;
        fLightIntensityFactor:TpvScalar;
        fEmissiveIntensityFactor:TpvScalar;
        fGPUInstanceDataDynamicArray:TGPUInstanceDataDynamicArray;
@@ -4702,6 +4705,9 @@ type EpvScene3D=class(Exception);
        property Particles:PParticles read fPointerToParticles;
        property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
        property SkyBoxCaching:Boolean read fSkyBoxCaching write fSkyBoxCaching;
+       property EnableAtmosphere:Boolean read fEnableAtmosphere write fEnableAtmosphere;
+       property EnableRain:Boolean read fEnableRain write fEnableRain;
+       property EnableWater:Boolean read fEnableWater write fEnableWater;
        property LightIntensityFactor:TpvScalar read fLightIntensityFactor write fLightIntensityFactor;
        property EmissiveIntensityFactor:TpvScalar read fEmissiveIntensityFactor write fEmissiveIntensityFactor;
       public
@@ -32045,6 +32051,10 @@ begin
 
  fSkyBoxCaching:=false;
 
+ fEnableAtmosphere:=false;
+ fEnableRain:=false;
+ fEnableWater:=false;
+
  fLightIntensityFactor:=1.0;
 
  fEmissiveIntensityFactor:=1.0;
@@ -36650,7 +36660,7 @@ begin
 
    fProcessFrameTimerQueries[aInFlightFrameIndex].Reset;
 
-   if fPlanetWaterSimulationUseParallelQueue then begin
+   if fEnableWater and fPlanetWaterSimulationUseParallelQueue then begin
 
     PlanetWaterSimulationCommandBuffer:=fPlanetWaterSimulationCommandBuffers[aInFlightFrameIndex];
 
@@ -36738,7 +36748,7 @@ begin
 
    end;
 
-   if fPlanetWaterSimulationUseParallelQueue then begin
+   if fEnableWater and fPlanetWaterSimulationUseParallelQueue then begin
 
     fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fPlanetWaterSimulationQueue,PlanetWaterSimulationCommandBuffer,'Planet Water Simulation');
     BeginTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -36784,7 +36794,7 @@ begin
 
     fPlanetWaterSimulationQueue.Submit(1,@SubmitInfo,nil);
 
-   end else begin
+   end else if fEnableWater then begin
 
     fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Planet Water Simulation');
     BeginTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -36955,7 +36965,7 @@ begin
     WaitDstStageFlags[CountSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
     inc(CountSemaphores);
    end;
-   if fPlanetWaterSimulationUseParallelQueue then begin
+   if fEnableWater and fPlanetWaterSimulationUseParallelQueue then begin
     // Water parallel queue is active
     Semaphores[CountSemaphores]:=fPlanetWaterSimulationSemaphores[aInFlightFrameIndex].Handle;
     WaitDstStageFlags[CountSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
