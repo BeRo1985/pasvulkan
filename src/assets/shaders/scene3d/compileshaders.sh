@@ -435,6 +435,12 @@ compileshaderarguments=(
 
   "-V resampling.frag -o ${tempPath}/resampling_frag.spv"
 
+  "-V resampling_easu.comp -o ${tempPath}/resampling_easu_comp.spv"
+  "-V resampling_easu.comp -DMULTIVIEW -o ${tempPath}/resampling_easu_multiview_comp.spv"
+
+  "-V resampling_rcas.comp -o ${tempPath}/resampling_rcas_comp.spv"
+  "-V resampling_rcas.comp -DMULTIVIEW -o ${tempPath}/resampling_rcas_multiview_comp.spv"
+
   "-V cnn_conv_forward.comp -o ${tempPath}/cnn_conv_forward_comp.spv"
   "-V cnn_pixel_shuffle.comp -o ${tempPath}/cnn_pixel_shuffle_comp.spv"
   "-V cnn_image_to_buffer.comp -o ${tempPath}/cnn_image_to_buffer_comp.spv"

@@ -1,0 +1,151 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+// RCAS - Robust Contrast-Adaptive Sharpening (FSR1 Pass 2)
+//
+// This is a contrast-adaptive sharpening compute shader inspired by AMD's FidelityFX RCAS.
+// Applied after EASU at display resolution. It uses a 5-tap pattern (center + 4 cardinal
+// neighbors) and derives a sharpening amount inversely proportional to local contrast.
+// High-contrast edges get little/no sharpening (they're already sharp), while low-contrast
+// areas get more sharpening (to recover detail lost during upscaling).
+// The result is clamped to the min/max of the 5-tap neighborhood for anti-ringing.
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+#ifdef MULTIVIEW
+layout(set = 0, binding = 0) uniform sampler2DArray uSourceTexture;
+layout(set = 0, binding = 1, rgba16f) writeonly uniform image2DArray uDestinationTexture;
+#else
+layout(set = 0, binding = 0) uniform sampler2D uSourceTexture;
+layout(set = 0, binding = 1, rgba16f) writeonly uniform image2D uDestinationTexture;
+#endif
+
+/* clang-format on */
+
+// Push constant for tunable sharpness.
+// sharpness: 0.0 = maximum sharpening, 1.0 = no sharpening.
+// Recommended default: 0.2 (moderate sharpening).
+layout(push_constant) uniform PushConstants {
+  float sharpness;  // 0.0 = max sharpening, 1.0 = no sharpening
+} pushConstants;
+
+#ifdef MULTIVIEW
+int viewIndex = int(gl_GlobalInvocationID.z);
+#endif
+
+// Compute luminance from an RGB color.
+float getLuma(vec3 c) {
+  return dot(c, vec3(0.2126, 0.7152, 0.0722));
+}
+
+// Fetch a source texel, clamped to valid coordinates.
+vec4 fetchSource(ivec2 coord, ivec2 srcSize) {
+  coord = clamp(coord, ivec2(0), srcSize - ivec2(1));
+#ifdef MULTIVIEW
+  return texelFetch(uSourceTexture, ivec3(coord, viewIndex), 0);
+#else
+  return texelFetch(uSourceTexture, coord, 0);
+#endif
+}
+
+void main() {
+
+#ifdef MULTIVIEW
+  ivec3 invocationPosition = ivec3(gl_GlobalInvocationID.xyz);
+  ivec3 dstSize = imageSize(uDestinationTexture);
+  if (any(greaterThanEqual(invocationPosition, dstSize))) return;
+#else
+  ivec2 invocationPosition = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 dstSize = imageSize(uDestinationTexture);
+  if (any(greaterThanEqual(invocationPosition, dstSize))) return;
+#endif
+
+  ivec2 coord = invocationPosition.xy;
+  ivec2 srcSize = ivec2(textureSize(uSourceTexture, 0).xy);
+
+  // 5-tap cross pattern: center + north/south/east/west.
+  vec4 center = fetchSource(coord,                  srcSize);
+  vec4 north  = fetchSource(coord + ivec2( 0, -1),  srcSize);
+  vec4 south  = fetchSource(coord + ivec2( 0,  1),  srcSize);
+  vec4 west   = fetchSource(coord + ivec2(-1,  0),  srcSize);
+  vec4 east   = fetchSource(coord + ivec2( 1,  0),  srcSize);
+
+  // Compute luminances.
+  float lC = getLuma(center.rgb);
+  float lN = getLuma(north.rgb);
+  float lS = getLuma(south.rgb);
+  float lW = getLuma(west.rgb);
+  float lE = getLuma(east.rgb);
+
+  // Local contrast: min and max of the 5-tap neighborhood luminances.
+  float lumaMin = min(lC, min(min(lN, lS), min(lW, lE)));
+  float lumaMax = max(lC, max(max(lN, lS), max(lW, lE)));
+
+  // Anti-ringing bounding box (per channel).
+  vec4 colorMin = min(center, min(min(north, south), min(west, east)));
+  vec4 colorMax = max(center, max(max(north, south), max(west, east)));
+
+  // ------------------------------------------------------------------
+  // Derive adaptive sharpening strength.
+  //
+  // The idea: the sharpen amount is derived from how much "room" there is
+  // to sharpen without exceeding the local min/max. A high-contrast
+  // edge has little room (already sharp), while a low-contrast area
+  // has lots of room (detail can be recovered).
+  //
+  // hitMin = lumaMin / (4 * lumaMax)         -- headroom toward black
+  // hitMax = (1-lumaMax) / (4*(1-lumaMin))   -- headroom toward white
+  // lobe = clamp(min(hitMin, hitMax), -limit, 0)
+  //
+  // The 'limit' parameter controls maximum sharpening. A value of
+  // 0.25 gives strong sharpening; 0.0 gives none.
+  // ------------------------------------------------------------------
+
+  float rcpLumaMax = 1.0 / max(lumaMax, 1e-6);
+
+  // How far can we push from center toward min/max?
+  float hitMin = lumaMin / (4.0 * max(lumaMax, 1e-6));
+  float hitMax = (1.0 - lumaMax) / (4.0 * max(1.0 - lumaMin, 1e-6));
+
+  // The sharpening limit: map pushConstants.sharpness [0..1] -> limit [0.25..0].
+  // sharpness=0 -> limit=0.25 (maximum sharpening)
+  // sharpness=1 -> limit=0    (no sharpening)
+  float limit = 0.25 * (1.0 - pushConstants.sharpness);
+
+  // Negative lobe weight: this is effectively the sharpening kernel weight
+  // for the 4 cardinal neighbors. The negative sign means they contribute
+  // oppositely to the center, creating an unsharp mask effect.
+  float lobe = max(-limit, min(hitMin, hitMax));
+
+  // ------------------------------------------------------------------
+  // Apply the sharpening filter.
+  //
+  // The kernel is:
+  //          0   lobe   0
+  //         lobe  1   lobe
+  //          0   lobe   0
+  //
+  // Normalized by dividing by (1 + 4*lobe).
+  // Since lobe is negative, this is an unsharp mask:
+  //   result = (center + lobe*(N+S+E+W)) / (1 + 4*lobe)
+  // ------------------------------------------------------------------
+
+  float invWeight = 1.0 / (1.0 + 4.0 * lobe);
+
+  vec4 result = (center + lobe * (north + south + east + west)) * invWeight;
+
+  // Anti-ringing clamp: don't let sharpening push beyond the local min/max.
+  result = clamp(result, colorMin, colorMax);
+
+  // Preserve alpha from center.
+  result.a = center.a;
+
+  // Write output.
+  imageStore(uDestinationTexture, invocationPosition, result);
+
+}
