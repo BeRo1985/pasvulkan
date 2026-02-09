@@ -32,34 +32,75 @@ layout(set = 0, binding = 1, rgba16f) writeonly uniform image2D uDestinationText
 int viewIndex = int(gl_GlobalInvocationID.z);
 #endif
 
-// Lanczos2 window function approximation using two terms of the sinc expansion.
-// This avoids the transcendental sin() calls by using a polynomial approximation
-// of the Lanczos kernel that closely matches the true windowed sinc.
-// The parameter x is the distance from the filter center in source texels.
-float lanczos2Approx(float x) {
-  // Attempt to approximate: (2 * sin(pi*x) * sin(pi*x/2)) / (pi^2 * x^2)
-  // Using a piece-wise polynomial that is 1.0 at x=0, has correct zero crossings at x=2,
-  // and is negative in the [1,2) lobe like the true Lanczos kernel.
-  float x2 = x * x;
-  // Piece-wise polynomial fit (accurate to within ~0.5% of the true kernel):
-  // For |x| < 2: w(x) = ((25/16) * (x^2/4 - 1)^2 - (25/16 - 1)) = (25/16)(x^2/4 - 1)^2 - 9/16
-  // This gives: w(0)=1, w(1)≈0.14, w(2)=0, and has a smooth negative lobe.
-  float a = (x2 * 0.25) - 1.0;
-  return max(0.0, (25.0 / 16.0) * a * a - (9.0 / 16.0));
+// Approximate Lanczos2 kernel evaluated on squared distance.
+// Takes distanceSquared (avoids sqrt per tap) and lobeStrength which
+// controls the negative lobe depth (adapts to edge strength).
+//
+// The approximation factors into two parts:
+//   shape:  (25/16) * ((2/5)*distanceSquared - 1)^2 - 9/16
+//   window: (lobeStrength * distanceSquared - 1)^2
+// Together they produce: 1.0 at distanceSquared=0, proper negative lobe in the [1,2) region,
+// and 0.0 beyond distanceSquared=4 (i.e. |d|=2). The lobeStrength parameter tunes how
+// deep the negative lobe goes — stronger in flat areas, weaker on edges.
+float evaluateKernel(float distanceSquared, float lobeStrength) {
+  float shape  = (2.0 / 5.0) * distanceSquared - 1.0;
+  float window = lobeStrength * distanceSquared - 1.0;
+  shape  *= shape;
+  window *= window;
+  return ((25.0 / 16.0) * shape - (9.0 / 16.0)) * window;
 }
 
-// Compute luminance from an RGB color.
-float getLuma(vec3 c) {
-  return dot(c, vec3(0.2126, 0.7152, 0.0722));
+// Cheap luma approximation: R*0.5 + G + B*0.5 (= luma * 2).
+// Costs only 2 FMA/MAD, and what matters here is relative contrast,
+// not exact perceptual luminance.
+float computeLuma(vec3 color) {
+  return color.b * 0.5 + (color.r * 0.5 + color.g);
+}
+
+// Accumulate edge direction and strength from one bilinear sub-quad.
+// Each quad has a cross-shaped 5-sample pattern:
+//        top
+//   left center right
+//       bottom
+// We compute horizontal and vertical gradients, but normalize each by
+// the maximum one-sided difference. This makes the measurement relative
+// to local contrast rather than absolute brightness — a crucial difference
+// for robust edge detection across varying exposure levels.
+void accumulateEdgeInfo(
+  inout vec2 direction,
+  inout float edginess,
+  float weight,
+  float top, float left, float center, float right, float bottom
+) {
+  // Horizontal: how consistent is the left-to-right gradient?
+  float gradientRight       = right - center;
+  float gradientLeft        = center - left;
+  float maxOneSideHorizontal = max(abs(gradientRight), abs(gradientLeft));
+  float totalHorizontal      = right - left;
+  direction.x += totalHorizontal * weight;
+  // Ratio of total gradient to max one-sided gradient.
+  // If gradient reverses (left>center>right vs left<center<right), this goes to 0.
+  // If gradient is consistent, this goes to 1.
+  float consistencyHorizontal = clamp(abs(totalHorizontal) / max(maxOneSideHorizontal, 1e-6), 0.0, 1.0);
+  edginess += consistencyHorizontal * consistencyHorizontal * weight;
+
+  // Vertical: same logic
+  float gradientBottom      = bottom - center;
+  float gradientTop         = center - top;
+  float maxOneSideVertical  = max(abs(gradientBottom), abs(gradientTop));
+  float totalVertical       = bottom - top;
+  direction.y += totalVertical * weight;
+  float consistencyVertical = clamp(abs(totalVertical) / max(maxOneSideVertical, 1e-6), 0.0, 1.0);
+  edginess += consistencyVertical * consistencyVertical * weight;
 }
 
 // Fetch a source texel using texelFetch, clamped to source dimensions, and apply tone mapping.
-vec4 fetchSource(ivec2 coord, ivec2 srcSize) {
-  coord = clamp(coord, ivec2(0), srcSize - ivec2(1));
+vec4 fetchSource(ivec2 coordinate, ivec2 sourceSize) {
+  coordinate = clamp(coordinate, ivec2(0), sourceSize - ivec2(1));
 #ifdef MULTIVIEW
-  return ApplyToneMapping(texelFetch(uSourceTexture, ivec3(coord, viewIndex), 0));
+  return ApplyToneMapping(texelFetch(uSourceTexture, ivec3(coordinate, viewIndex), 0));
 #else
-  return ApplyToneMapping(texelFetch(uSourceTexture, coord, 0));
+  return ApplyToneMapping(texelFetch(uSourceTexture, coordinate, 0));
 #endif
 }
 
@@ -68,207 +109,196 @@ void main() {
 #ifdef MULTIVIEW
   ivec3 invocationPosition = ivec3(gl_GlobalInvocationID.xyz);
   ivec3 dstSize = imageSize(uDestinationTexture);
-  if (any(greaterThanEqual(invocationPosition, dstSize))) return;
+  if (any(greaterThanEqual(invocationPosition, dstSize))) {
+    return;
+  }
 #else
   ivec2 invocationPosition = ivec2(gl_GlobalInvocationID.xy);
   ivec2 dstSize = imageSize(uDestinationTexture);
-  if (any(greaterThanEqual(invocationPosition, dstSize))) return;
+  if (any(greaterThanEqual(invocationPosition, dstSize))) {
+    return;
+  }
 #endif
 
-  ivec2 dstCoord = invocationPosition.xy;
-  ivec2 srcSize = ivec2(textureSize(uSourceTexture, 0).xy);
+  ivec2 destinationCoordinate = invocationPosition.xy;
+  ivec2 sourceSize = ivec2(textureSize(uSourceTexture, 0).xy);
 
   // Compute the source-space position of this destination pixel center.
   // Map destination pixel center -> source continuous coordinates.
-  vec2 srcPos = (vec2(dstCoord) + vec2(0.5)) * (vec2(srcSize) / vec2(dstSize.xy)) - vec2(0.5);
+  vec2 sourcePosition = (vec2(destinationCoordinate) + vec2(0.5)) * (vec2(sourceSize) / vec2(dstSize.xy)) - vec2(0.5);
 
-  // Integer part: the nearest source texel to the top-left.
-  ivec2 srcCoord = ivec2(floor(srcPos));
-  // Fractional part: sub-texel position within the source texel quad.
-  vec2 f = srcPos - vec2(srcCoord);
-
-  // ------------------------------------------------------------------
-  // Gather 4x4 neighborhood of source texels and their luminances.
-  // Layout (relative to srcCoord):
-  //   (-1,-1) (0,-1) (1,-1) (2,-1)   <- row a
-  //   (-1, 0) (0, 0) (1, 0) (2, 0)   <- row b
-  //   (-1, 1) (0, 1) (1, 1) (2, 1)   <- row c
-  //   (-1, 2) (0, 2) (1, 2) (2, 2)   <- row d
-  // ------------------------------------------------------------------
-
-  vec4 ca0 = fetchSource(srcCoord + ivec2(-1, -1), srcSize);
-  vec4 ca1 = fetchSource(srcCoord + ivec2( 0, -1), srcSize);
-  vec4 ca2 = fetchSource(srcCoord + ivec2( 1, -1), srcSize);
-  vec4 ca3 = fetchSource(srcCoord + ivec2( 2, -1), srcSize);
-
-  vec4 cb0 = fetchSource(srcCoord + ivec2(-1,  0), srcSize);
-  vec4 cb1 = fetchSource(srcCoord + ivec2( 0,  0), srcSize);
-  vec4 cb2 = fetchSource(srcCoord + ivec2( 1,  0), srcSize);
-  vec4 cb3 = fetchSource(srcCoord + ivec2( 2,  0), srcSize);
-
-  vec4 cc0 = fetchSource(srcCoord + ivec2(-1,  1), srcSize);
-  vec4 cc1 = fetchSource(srcCoord + ivec2( 0,  1), srcSize);
-  vec4 cc2 = fetchSource(srcCoord + ivec2( 1,  1), srcSize);
-  vec4 cc3 = fetchSource(srcCoord + ivec2( 2,  1), srcSize);
-
-  vec4 cd0 = fetchSource(srcCoord + ivec2(-1,  2), srcSize);
-  vec4 cd1 = fetchSource(srcCoord + ivec2( 0,  2), srcSize);
-  vec4 cd2 = fetchSource(srcCoord + ivec2( 1,  2), srcSize);
-  vec4 cd3 = fetchSource(srcCoord + ivec2( 2,  2), srcSize);
-
-  // Compute luminances for edge detection.
-  float la0 = getLuma(ca0.rgb), la1 = getLuma(ca1.rgb), la2 = getLuma(ca2.rgb), la3 = getLuma(ca3.rgb);
-  float lb0 = getLuma(cb0.rgb), lb1 = getLuma(cb1.rgb), lb2 = getLuma(cb2.rgb), lb3 = getLuma(cb3.rgb);
-  float lc0 = getLuma(cc0.rgb), lc1 = getLuma(cc1.rgb), lc2 = getLuma(cc2.rgb), lc3 = getLuma(cc3.rgb);
-  float ld0 = getLuma(cd0.rgb), ld1 = getLuma(cd1.rgb), ld2 = getLuma(cd2.rgb), ld3 = getLuma(cd3.rgb);
+  // Integer part: the nearest source texel to the top-left of the 2x2 quad.
+  vec2 sourceFloor = floor(sourcePosition);
+  // Fractional part: sub-texel position within that quad, in [0,1).
+  vec2 fractional = sourcePosition - sourceFloor;
+  ivec2 sourceCoordinate = ivec2(sourceFloor);
 
   // ------------------------------------------------------------------
-  // Detect edge direction and strength using luminance gradients
-  // across the four 2x2 quads that overlap the center region.
+  // Fetch 12-tap cross neighborhood (4x4 minus the four corners).
   //
-  //   Quad 0 (top-left):      a1,a2,b1,b2
-  //   Quad 1 (top-right):     a2,a3,b2,b3
-  //   Quad 2 (bottom-left):   b1,b2,c1,c2
-  //   Quad 3 (bottom-right):  b2,b3,c2,c3
+  // Layout relative to sourceCoordinate (which sits at position 'F'):
+  //      B  C
+  //   E  F  G  H
+  //   I  J  K  L
+  //      N  O
   //
-  // We also look at extended gradients from the outer ring for
-  // more robust direction estimation.
+  // F,G,J,K are the 4 nearest texels used for anti-ringing bounds.
   // ------------------------------------------------------------------
 
-  // Horizontal and vertical gradients from each 2x2 quad.
-  // Horizontal: right - left,  Vertical: bottom - top
-  float dxQ0 = (la2 + lb2) - (la1 + lb1);
-  float dyQ0 = (lb1 + lb2) - (la1 + la2);
+  vec4 tapB = fetchSource(sourceCoordinate + ivec2( 0, -1), sourceSize);
+  vec4 tapC = fetchSource(sourceCoordinate + ivec2( 1, -1), sourceSize);
+  vec4 tapE = fetchSource(sourceCoordinate + ivec2(-1,  0), sourceSize);
+  vec4 tapF = fetchSource(sourceCoordinate + ivec2( 0,  0), sourceSize);
+  vec4 tapG = fetchSource(sourceCoordinate + ivec2( 1,  0), sourceSize);
+  vec4 tapH = fetchSource(sourceCoordinate + ivec2( 2,  0), sourceSize);
+  vec4 tapI = fetchSource(sourceCoordinate + ivec2(-1,  1), sourceSize);
+  vec4 tapJ = fetchSource(sourceCoordinate + ivec2( 0,  1), sourceSize);
+  vec4 tapK = fetchSource(sourceCoordinate + ivec2( 1,  1), sourceSize);
+  vec4 tapL = fetchSource(sourceCoordinate + ivec2( 2,  1), sourceSize);
+  vec4 tapN = fetchSource(sourceCoordinate + ivec2( 0,  2), sourceSize);
+  vec4 tapO = fetchSource(sourceCoordinate + ivec2( 1,  2), sourceSize);
 
-  float dxQ1 = (la3 + lb3) - (la2 + lb2);
-  float dyQ1 = (lb2 + lb3) - (la2 + la3);
-
-  float dxQ2 = (lb2 + lc2) - (lb1 + lc1);
-  float dyQ2 = (lc1 + lc2) - (lb1 + lb2);
-
-  float dxQ3 = (lb3 + lc3) - (lb2 + lc2);
-  float dyQ3 = (lc2 + lc3) - (lb2 + lb3);
-
-  // Blend the four quad gradients using the sub-texel position as weights.
-  // This gives a smooth gradient estimate at the output pixel position.
-  float wx0 = 1.0 - f.x, wx1 = f.x;
-  float wy0 = 1.0 - f.y, wy1 = f.y;
-
-  float dx = (dxQ0 * wx0 + dxQ1 * wx1) * wy0 + (dxQ2 * wx0 + dxQ3 * wx1) * wy1;
-  float dy = (dyQ0 * wx0 + dyQ1 * wx1) * wy0 + (dyQ2 * wx0 + dyQ3 * wx1) * wy1;
-
-  // Edge direction is perpendicular to the gradient: edge = (-dy, dx).
-  // Edge strength is the gradient magnitude.
-  float gradLen = length(vec2(dx, dy));
-  float edgeStrength = clamp(gradLen * 4.0, 0.0, 1.0); // Normalize; tweak multiplier to taste.
-
-  // Compute edge direction angle (we only need sin and cos).
-  float normFactor = 1.0 / max(gradLen, 1e-6);
-  float edgeDirX = -dy * normFactor;  // Edge direction X = -gradient.y
-  float edgeDirY =  dx * normFactor;  // Edge direction Y =  gradient.x
+  // Luma for edge detection.
+  float lumaB = computeLuma(tapB.rgb), lumaC = computeLuma(tapC.rgb);
+  float lumaE = computeLuma(tapE.rgb), lumaF = computeLuma(tapF.rgb);
+  float lumaG = computeLuma(tapG.rgb), lumaH = computeLuma(tapH.rgb);
+  float lumaI = computeLuma(tapI.rgb), lumaJ = computeLuma(tapJ.rgb);
+  float lumaK = computeLuma(tapK.rgb), lumaL = computeLuma(tapL.rgb);
+  float lumaN = computeLuma(tapN.rgb), lumaO = computeLuma(tapO.rgb);
 
   // ------------------------------------------------------------------
-  // Shape the filter kernel.
+  // Edge detection via 4 overlapping cross-patterns.
   //
-  // For each of the 12 taps (the 16 texels in the 4x4 minus the 4 corners),
-  // compute the distance from the destination pixel to the source texel center.
-  // Then warp this distance through a directional scaling matrix:
+  // Each cross is centered on one of F, G, J, K and reads the 4
+  // cardinal neighbors from the 12-tap set:
   //
-  //   Along edge direction:  stretch by (1 + edgeStrength * stretchAmount)
-  //   Across edge direction: keep at 1.0 (or slightly shrink)
+  //   Cross centered on F:  top=B, left=E, ctr=F, right=G, bot=J
+  //   Cross centered on G:  top=C, left=F, ctr=G, right=H, bot=K
+  //   Cross centered on J:  top=F, left=I, ctr=J, right=K, bot=N
+  //   Cross centered on K:  top=G, left=J, ctr=K, right=L, bot=O
   //
-  // This makes the filter elongate along edges, averaging more samples
-  // along the edge for smoothness while staying tight across the edge
-  // for sharpness.
-  //
-  // For simplicity and ALU savings, we use all 16 taps with the
-  // directional Lanczos kernel rather than the 12-tap pattern.
+  // The four crosses are blended with bilinear weights from the
+  // sub-texel position, so the result smoothly tracks where the
+  // output pixel actually lands.
   // ------------------------------------------------------------------
 
-  // Stretch factor: how much to elongate the filter along the edge.
-  // At edgeStrength=0 (flat area), stretchScale=1 (isotropic Lanczos).
-  // At edgeStrength=1 (strong edge), stretchScale=2 (2x elongation along edge).
-  float stretchScale = mix(1.0, 2.0, edgeStrength);
+  vec2 direction = vec2(0.0);
+  float edginess = 0.0;
 
-  // Build the transform matrix: rotate to edge-aligned space, scale, rotate back.
-  // R = [edgeDirX, edgeDirY; -edgeDirY, edgeDirX]  (rotation to edge-aligned frame)
-  // S = diag(1/stretchScale, 1)                     (compress along-edge distances)
-  // M = R^T * S * R                                 (combined: shrink along-edge in original frame)
+  float weightTopLeft     = (1.0 - fractional.x) * (1.0 - fractional.y);
+  float weightTopRight    = fractional.x          * (1.0 - fractional.y);
+  float weightBottomLeft  = (1.0 - fractional.x) * fractional.y;
+  float weightBottomRight = fractional.x          * fractional.y;
+
+  accumulateEdgeInfo(direction, edginess, weightTopLeft,     lumaB, lumaE, lumaF, lumaG, lumaJ);
+  accumulateEdgeInfo(direction, edginess, weightTopRight,    lumaC, lumaF, lumaG, lumaH, lumaK);
+  accumulateEdgeInfo(direction, edginess, weightBottomLeft,  lumaF, lumaI, lumaJ, lumaK, lumaN);
+  accumulateEdgeInfo(direction, edginess, weightBottomRight, lumaG, lumaJ, lumaK, lumaL, lumaO);
+
+  // ------------------------------------------------------------------
+  // Normalize direction, handle near-zero gradient gracefully.
+  // ------------------------------------------------------------------
+
+  float directionLengthSquared = dot(direction, direction);
+  bool noEdge = directionLengthSquared < (1.0 / 32768.0);
+  float inverseDirectionLength = inversesqrt(max(directionLengthSquared, 1e-10));
+  // When there's no detectable edge, default to horizontal (arbitrary but stable).
+  direction = noEdge ? vec2(1.0, 0.0) : direction * inverseDirectionLength;
+
+  // ------------------------------------------------------------------
+  // Compute anisotropic kernel parameters from edge strength.
   //
-  // When we shrink distances along the edge, the Lanczos kernel "sees" those texels
-  // as closer, effectively widening the filter along the edge.
-  float invStretch = 1.0 / stretchScale;
-  // M = R^T * diag(invStretch, 1) * R
-  // M[0][0] = ex*ex*is + ey*ey     M[0][1] = ex*ey*is - ex*ey = ex*ey*(is-1)
-  // M[1][0] = M[0][1]              M[1][1] = ey*ey*is + ex*ex
-  float mxx = edgeDirX * edgeDirX * invStretch + edgeDirY * edgeDirY;
-  float mxy = edgeDirX * edgeDirY * (invStretch - 1.0);
-  float myy = edgeDirY * edgeDirY * invStretch + edgeDirX * edgeDirX;
-
-  // ------------------------------------------------------------------
-  // Evaluate the directional Lanczos2 kernel for each of the 16 texels.
-  // The offset of each texel relative to the sub-pixel position is
-  //   d = ivec2(col, row) - f   where col in {-1,0,1,2}, row in {-1,0,1,2}
-  // We transform d through M to get the effective distance, then evaluate
-  // the Lanczos2 weight.
+  // edginess is in [0..2] range (sum of H+V from the weighted quads).
+  // We remap it to [0..1] and square to emphasize strong edges.
   // ------------------------------------------------------------------
 
-  float totalWeight = 0.0;
-  vec4 totalColor = vec4(0.0);
+  float edgeAmount = edginess * 0.5;   // [0..1]
+  edgeAmount *= edgeAmount;            // emphasize
 
-  // Anti-ringing: track min/max of the 4 nearest source texels.
-  vec4 minValue = min(min(cb1, cb2), min(cc1, cc2));
-  vec4 maxValue = max(max(cb1, cb2), max(cc1, cc2));
+  // The kernel stretches from isotropic (circle) to anisotropic (ellipse):
+  //   Along the edge direction:  scale goes from 1x to 'stretch'x
+  //   Across the edge direction: scale goes from 1x to ~0.5x (tighter)
+  //
+  // 'stretch' accounts for diagonal directions: when direction is 45°,
+  // |dir|² / max(|dir.x|,|dir.y|) = sqrt(2), stretching the kernel
+  // slightly to cover the diagonal distance properly.
+  float diagonalStretch = dot(direction, direction) / max(abs(direction.x), abs(direction.y));
+  vec2 anisotropicScale = vec2(
+    1.0 + (diagonalStretch - 1.0) * edgeAmount,  // along-edge: widen
+    1.0 - 0.5 * edgeAmount                       // across-edge: tighten
+  );
 
-  // Macro-like inline to reduce repetition.
-  // For each tap: compute distance, warp, evaluate weight, accumulate.
-  #define TAP(color, offX, offY) {                                       \
-    vec2 d = vec2(float(offX) - f.x, float(offY) - f.y);                 \
-    /* Apply directional scaling */                                      \
-    float tx = mxx * d.x + mxy * d.y;                                    \
-    float ty = mxy * d.x + myy * d.y;                                    \
-    float dist = sqrt(tx * tx + ty * ty);                                \
-    float w = (dist < 2.0) ? lanczos2Approx(dist) : 0.0;                 \
-    totalWeight += w;                                                    \
-    totalColor += color * w;                                             \
+  // Adaptive negative lobe control.
+  // In flat areas (edgeAmount≈0), lobeStrength≈0.5 → deeper negative lobe → sharper.
+  // On strong edges (edgeAmount≈1), lobeStrength≈0.21 → shallower lobe → smoother.
+  float lobeStrength = 0.5 - 0.29 * edgeAmount;
+
+  // Maximum distance² before the tap is considered outside the kernel window.
+  // This clips far-away taps (especially on corners) cleanly.
+  float maxDistanceSquared = 1.0 / lobeStrength;
+
+  // ------------------------------------------------------------------
+  // Accumulate 12 taps through the directional kernel.
+  //
+  // For each tap, we:
+  //  1. Compute the offset from the output pixel to the tap center
+  //  2. Rotate into edge-aligned coordinates
+  //  3. Apply anisotropic scaling (stretch along edge, compress across)
+  //  4. Evaluate the kernel on the squared distance (no sqrt!)
+  //  5. Accumulate weighted color
+  // ------------------------------------------------------------------
+
+  vec3 accumulatedColor = vec3(0.0);
+  float accumulatedWeight = 0.0;
+
+  // Anti-ringing: bounding box from the 4 nearest source texels.
+  vec3 nearestMin = min(min(tapF.rgb, tapG.rgb), min(tapJ.rgb, tapK.rgb));
+  vec3 nearestMax = max(max(tapF.rgb, tapG.rgb), max(tapJ.rgb, tapK.rgb));
+
+  #define ACCUMULATE_TAP(tapColor, offsetX, offsetY) {                                    \
+    vec2 tapOffset = vec2(float(offsetX) - fractional.x, float(offsetY) - fractional.y);  \
+    /* Rotate into edge-aligned frame */                                                  \
+    vec2 rotatedOffset = vec2(                                                            \
+      tapOffset.x * direction.x + tapOffset.y * direction.y,                              \
+      tapOffset.x * (-direction.y) + tapOffset.y * direction.x                            \
+    );                                                                                    \
+    /* Apply anisotropic scaling */                                                       \
+    rotatedOffset *= anisotropicScale;                                                    \
+    /* Squared distance (no sqrt needed!) */                                              \
+    float distanceSquared = min(dot(rotatedOffset, rotatedOffset), maxDistanceSquared);   \
+    float tapWeight = evaluateKernel(distanceSquared, lobeStrength);                      \
+    accumulatedColor += (tapColor).rgb * tapWeight;                                       \
+    accumulatedWeight += tapWeight;                                                       \
   }
 
-  // Row -1 (a)
-  TAP(ca0, -1, -1)
-  TAP(ca1,  0, -1)
-  TAP(ca2,  1, -1)
-  TAP(ca3,  2, -1)
+  //      B  C          (offsets: B=(0,-1), C=(1,-1))
+  //   E  F  G  H       (offsets: E=(-1,0), F=(0,0), G=(1,0), H=(2,0))
+  //   I  J  K  L       (offsets: I=(-1,1), J=(0,1), K=(1,1), L=(2,1))
+  //      N  O          (offsets: N=(0,2), O=(1,2))
 
-  // Row 0 (b)
-  TAP(cb0, -1,  0)
-  TAP(cb1,  0,  0)
-  TAP(cb2,  1,  0)
-  TAP(cb3,  2,  0)
+  ACCUMULATE_TAP(tapB,  0, -1)
+  ACCUMULATE_TAP(tapC,  1, -1)
+  ACCUMULATE_TAP(tapE, -1,  0)
+  ACCUMULATE_TAP(tapF,  0,  0)
+  ACCUMULATE_TAP(tapG,  1,  0)
+  ACCUMULATE_TAP(tapH,  2,  0)
+  ACCUMULATE_TAP(tapI, -1,  1)
+  ACCUMULATE_TAP(tapJ,  0,  1)
+  ACCUMULATE_TAP(tapK,  1,  1)
+  ACCUMULATE_TAP(tapL,  2,  1)
+  ACCUMULATE_TAP(tapN,  0,  2)
+  ACCUMULATE_TAP(tapO,  1,  2)
 
-  // Row 1 (c)
-  TAP(cc0, -1,  1)
-  TAP(cc1,  0,  1)
-  TAP(cc2,  1,  1)
-  TAP(cc3,  2,  1)
+  #undef ACCUMULATE_TAP
 
-  // Row 2 (d)
-  TAP(cd0, -1,  2)
-  TAP(cd1,  0,  2)
-  TAP(cd2,  1,  2)
-  TAP(cd3,  2,  2)
+  // Normalize, then clamp to the neighborhood bounding box to prevent ringing.
+  vec3 resultColor = clamp(accumulatedColor / max(accumulatedWeight, 1e-6), nearestMin, nearestMax);
 
-  #undef TAP
+  // Bilinearly interpolate alpha from the 4 nearest texels.
+  float resultAlpha = mix(mix(tapF.a, tapG.a, fractional.x), mix(tapJ.a, tapK.a, fractional.x), fractional.y);
 
-  // Normalize.
-  vec4 result = totalColor / max(totalWeight, 1e-6);
-
-  // Anti-ringing clamp: constrain to the bounding box of the 4 nearest source texels.
-  result = clamp(result, minValue, maxValue);
-
-  // Undo tone mapping.
-  result = ApplyInverseToneMapping(result);
-
-  // Write output.
-  imageStore(uDestinationTexture, invocationPosition, result);
+  // Undo tone mapping and write output.
+  imageStore(uDestinationTexture, invocationPosition,
+             ApplyInverseToneMapping(vec4(resultColor, resultAlpha)));
 
 }

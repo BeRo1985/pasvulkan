@@ -38,18 +38,24 @@ layout(push_constant) uniform PushConstants {
 int viewIndex = int(gl_GlobalInvocationID.z);
 #endif
 
-// Compute luminance from an RGB color.
-float getLuma(vec3 c) {
-  return dot(c, vec3(0.2126, 0.7152, 0.0722));
+// Cheap luma approximation: R*0.5 + G + B*0.5 (= luma * 2).
+// Matches EASU for consistency; exact perceptual luminance is not needed
+// since we only use this for relative contrast measurements.
+float computeLuma(vec3 color) {
+  return color.b * 0.5 + (color.r * 0.5 + color.g);
 }
 
+// Maximum negative weight before sharpening looks unnatural.
+// Empirically tuned to 0.25 - 1/16 = 0.1875.
+const float SHARPENING_LIMIT = 0.25 - (1.0 / 16.0);
+
 // Fetch a source texel, clamped to valid coordinates.
-vec4 fetchSource(ivec2 coord, ivec2 srcSize) {
-  coord = clamp(coord, ivec2(0), srcSize - ivec2(1));
+vec4 fetchSource(ivec2 coordinate, ivec2 sourceSize) {
+  coordinate = clamp(coordinate, ivec2(0), sourceSize - ivec2(1));
 #ifdef MULTIVIEW
-  return texelFetch(uSourceTexture, ivec3(coord, viewIndex), 0);
+  return texelFetch(uSourceTexture, ivec3(coordinate, viewIndex), 0);
 #else
-  return texelFetch(uSourceTexture, coord, 0);
+  return texelFetch(uSourceTexture, coordinate, 0);
 #endif
 }
 
@@ -65,87 +71,107 @@ void main() {
   if (any(greaterThanEqual(invocationPosition, dstSize))) return;
 #endif
 
-  ivec2 coord = invocationPosition.xy;
-  ivec2 srcSize = ivec2(textureSize(uSourceTexture, 0).xy);
+  ivec2 coordinate = invocationPosition.xy;
+  ivec2 sourceSize = ivec2(textureSize(uSourceTexture, 0).xy);
 
   // 5-tap cross pattern: center + north/south/east/west.
-  vec4 center = fetchSource(coord,                  srcSize);
-  vec4 north  = fetchSource(coord + ivec2( 0, -1),  srcSize);
-  vec4 south  = fetchSource(coord + ivec2( 0,  1),  srcSize);
-  vec4 west   = fetchSource(coord + ivec2(-1,  0),  srcSize);
-  vec4 east   = fetchSource(coord + ivec2( 1,  0),  srcSize);
-
-  // Compute luminances.
-  float lC = getLuma(center.rgb);
-  float lN = getLuma(north.rgb);
-  float lS = getLuma(south.rgb);
-  float lW = getLuma(west.rgb);
-  float lE = getLuma(east.rgb);
-
-  // Local contrast: min and max of the 5-tap neighborhood luminances.
-  float lumaMin = min(lC, min(min(lN, lS), min(lW, lE)));
-  float lumaMax = max(lC, max(max(lN, lS), max(lW, lE)));
-
-  // Anti-ringing bounding box (per channel).
-  vec4 colorMin = min(center, min(min(north, south), min(west, east)));
-  vec4 colorMax = max(center, max(max(north, south), max(west, east)));
+  vec4 center = fetchSource(coordinate,                  sourceSize);
+  vec4 north  = fetchSource(coordinate + ivec2( 0, -1),  sourceSize);
+  vec4 south  = fetchSource(coordinate + ivec2( 0,  1),  sourceSize);
+  vec4 west   = fetchSource(coordinate + ivec2(-1,  0),  sourceSize);
+  vec4 east   = fetchSource(coordinate + ivec2( 1,  0),  sourceSize);
 
   // ------------------------------------------------------------------
-  // Derive adaptive sharpening strength.
+  // Noise detection.
   //
-  // The idea: the sharpen amount is derived from how much "room" there is
-  // to sharpen without exceeding the local min/max. A high-contrast
-  // edge has little room (already sharp), while a low-contrast area
-  // has lots of room (detail can be recovered).
-  //
-  // hitMin = lumaMin / (4 * lumaMax)         -- headroom toward black
-  // hitMax = (1-lumaMax) / (4*(1-lumaMin))   -- headroom toward white
-  // lobe = clamp(min(hitMin, hitMax), -limit, 0)
-  //
-  // The 'limit' parameter controls maximum sharpening. A value of
-  // 0.25 gives strong sharpening; 0.0 gives none.
+  // A simple highpass filter: average of the 4 neighbors minus center.
+  // If this is large relative to local contrast, we're looking at noise
+  // rather than real detail, so we attenuate sharpening.
+  //   noiseFactor = 1.0 → no noise detected, sharpen fully
+  //   noiseFactor < 1.0 → noise detected, reduce sharpening
   // ------------------------------------------------------------------
 
-  float rcpLumaMax = 1.0 / max(lumaMax, 1e-6);
+  float lumaNorth  = computeLuma(north.rgb);
+  float lumaSouth  = computeLuma(south.rgb);
+  float lumaWest   = computeLuma(west.rgb);
+  float lumaEast   = computeLuma(east.rgb);
+  float lumaCenter = computeLuma(center.rgb);
 
-  // How far can we push from center toward min/max?
-  float hitMin = lumaMin / (4.0 * max(lumaMax, 1e-6));
-  float hitMax = (1.0 - lumaMax) / (4.0 * max(1.0 - lumaMin, 1e-6));
-
-  // The sharpening limit: map pushConstants.sharpness [0..1] -> limit [0.25..0].
-  // sharpness=0 -> limit=0.25 (maximum sharpening)
-  // sharpness=1 -> limit=0    (no sharpening)
-  float limit = 0.25 * (1.0 - pushConstants.sharpness);
-
-  // Negative lobe weight: this is effectively the sharpening kernel weight
-  // for the 4 cardinal neighbors. The negative sign means they contribute
-  // oppositely to the center, creating an unsharp mask effect.
-  float lobe = max(-limit, min(hitMin, hitMax));
+  float highpass = 0.25 * (lumaNorth + lumaSouth + lumaWest + lumaEast) - lumaCenter;
+  float lumaMaximum = max(max(max(lumaNorth, lumaSouth), max(lumaWest, lumaEast)), lumaCenter);
+  float lumaMinimum = min(min(min(lumaNorth, lumaSouth), min(lumaWest, lumaEast)), lumaCenter);
+  float localContrast = lumaMaximum - lumaMinimum;
+  float noiseRatio = clamp(abs(highpass) / max(localContrast, 1e-6), 0.0, 1.0);
+  float noiseFactor = 1.0 - 0.5 * noiseRatio;
 
   // ------------------------------------------------------------------
-  // Apply the sharpening filter.
+  // Per-channel sharpening weight derivation.
   //
-  // The kernel is:
+  // The sharpening filter is:
+  //   output = (w*(N+S+E+W) + center) / (4*w + 1)
+  //
+  // For the output to stay in [0,1], w must satisfy:
+  //   w >= -center / (N+S+E+W)          (output >= 0)
+  //   w >= (1-center) / (N+S+E+W - 4)   (output <= 1)
+  //
+  // Rather than using individual tap values (which is noisy with MSAA),
+  // we substitute the neighborhood min/max:
+  //   headroomBlack = min(neighborMin, center) / (4 * neighborMax)
+  //   headroomWhite = (1 - max(neighborMax, center)) / (4 * neighborMin - 4)
+  //
+  // We compute this per-channel and take the most conservative (least
+  // negative) weight across R, G, B to prevent any channel from clipping.
+  // ------------------------------------------------------------------
+
+  // Per-channel neighborhood min/max (4 neighbors only, not center).
+  vec3 neighborMinimum = min(min(north.rgb, south.rgb), min(west.rgb, east.rgb));
+  vec3 neighborMaximum = max(max(north.rgb, south.rgb), max(west.rgb, east.rgb));
+
+  // Headroom toward black: how much negative weight before we'd clip below 0.
+  // This value is always >= 0.
+  vec3 headroomBlack = min(neighborMinimum, center.rgb) / (4.0 * neighborMaximum);
+
+  // Headroom toward white: how much negative weight before we'd clip above 1.
+  // The denominator (4*neighborMinimum - 4) is always <= 0 for values in [0,1],
+  // so the result is <= 0 (a negative weight limit).
+  vec3 headroomWhite = (vec3(1.0) - max(neighborMaximum, center.rgb)) / (4.0 * neighborMinimum - vec3(4.0));
+
+  // Per-channel lobe: the maximum (least-negative) of the two constraints.
+  // -headroomBlack is <= 0, headroomWhite is <= 0, so max picks the tighter bound.
+  vec3 perChannelLobe = max(-headroomBlack, headroomWhite);
+
+  // Pick the channel that allows the least sharpening (most conservative).
+  float conservativeLobe = max(max(perChannelLobe.r, perChannelLobe.g), perChannelLobe.b);
+
+  // Clamp to [−SHARPENING_LIMIT, 0], scale by user's sharpness control,
+  // and apply noise attenuation.
+  float sharpnessScale = 1.0 - pushConstants.sharpness;
+  float lobeWeight = max(-SHARPENING_LIMIT, min(conservativeLobe, 0.0)) * sharpnessScale * noiseFactor;
+
+  // ------------------------------------------------------------------
+  // Apply the sharpening kernel.
+  //
   //          0   lobe   0
   //         lobe  1   lobe
   //          0   lobe   0
   //
-  // Normalized by dividing by (1 + 4*lobe).
   // Since lobe is negative, this is an unsharp mask:
-  //   result = (center + lobe*(N+S+E+W)) / (1 + 4*lobe)
+  // it subtracts a fraction of the neighbors to enhance the center.
   // ------------------------------------------------------------------
 
-  float invWeight = 1.0 / (1.0 + 4.0 * lobe);
+  float normalization = 1.0 / (1.0 + 4.0 * lobeWeight);
 
-  vec4 result = (center + lobe * (north + south + east + west)) * invWeight;
+  vec3 resultColor = (center.rgb
+    + lobeWeight * north.rgb + lobeWeight * south.rgb
+    + lobeWeight * west.rgb  + lobeWeight * east.rgb
+  ) * normalization;
 
-  // Anti-ringing clamp: don't let sharpening push beyond the local min/max.
-  result = clamp(result, colorMin, colorMax);
+  // Safety clamp: don't exceed the neighborhood bounding box.
+  vec3 boundingMin = min(center.rgb, neighborMinimum);
+  vec3 boundingMax = max(center.rgb, neighborMaximum);
+  resultColor = clamp(resultColor, boundingMin, boundingMax);
 
   // Preserve alpha from center.
-  result.a = center.a;
-
-  // Write output.
-  imageStore(uDestinationTexture, invocationPosition, result);
+  imageStore(uDestinationTexture, invocationPosition, vec4(resultColor, center.a));
 
 }
