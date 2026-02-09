@@ -137,6 +137,21 @@ type TpvScene3DRendererAntialiasingMode=
 
      PpvScene3DRendererLensMode=^TpvScene3DRendererLensMode;
 
+     TpvScene3DRendererResamplingMode=
+      (
+       Lanczos,
+       EASU
+      );
+
+     PpvScene3DRendererResamplingMode=^TpvScene3DRendererResamplingMode;
+
+     { TpvScene3DRendererResamplingModeHelper }
+
+     TpvScene3DRendererResamplingModeHelper=record helper for TpvScene3DRendererResamplingMode
+      function ToString:TpvUTF8String;
+      procedure FromString(const aValue:TpvUTF8String);
+     end;
+
      TpvScene3DRendererAIUpscaleMode=
       (
        None,
@@ -383,6 +398,36 @@ begin
   self:=TpvScene3DRendererToneMappingMode.KhronosPBRNeutral;
  end else begin
   self:=TpvScene3DRendererToneMappingMode.Auto;
+ end;
+end;
+
+{ TpvScene3DRendererResamplingModeHelper }
+
+function TpvScene3DRendererResamplingModeHelper.ToString:TpvUTF8String;
+begin
+ case self of
+  TpvScene3DRendererResamplingMode.Lanczos:begin
+   result:='lanczos';
+  end;
+  TpvScene3DRendererResamplingMode.EASU:begin
+   result:='easu';
+  end;
+  else begin
+   result:='lanczos';
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererResamplingModeHelper.FromString(const aValue:TpvUTF8String);
+var Value:TpvUTF8String;
+begin
+ Value:=LowerCase(Trim(aValue));
+ if (Value='lanczos') or (Value='default') then begin
+  self:=TpvScene3DRendererResamplingMode.Lanczos;
+ end else if (Value='easu') or (Value='fsr1') or (Value='fsr') then begin
+  self:=TpvScene3DRendererResamplingMode.EASU;
+ end else begin
+  self:=TpvScene3DRendererResamplingMode.Lanczos;
  end;
 end;
 

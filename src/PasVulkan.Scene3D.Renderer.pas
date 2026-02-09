@@ -179,6 +179,7 @@ type TpvScene3DRenderer=class;
        fGlobalIlluminationVoxelGridSize:TpvInt32;
        fGlobalIlluminationVoxelCountCascades:TpvInt32;
        fGlobalIlluminationVoxelCountBounces:TpvInt32;
+       fResamplingMode:TpvScene3DRendererResamplingMode;
        fAIUpscaleMode:TpvScene3DRendererAIUpscaleMode;
        fAIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality;
       private
@@ -240,6 +241,7 @@ type TpvScene3DRenderer=class;
        property LensMode:TpvScene3DRendererLensMode read fLensMode write fLensMode;
        property GlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode read fGlobalIlluminationMode write fGlobalIlluminationMode;
        property ToneMappingMode:TpvScene3DRendererToneMappingMode read fToneMappingMode write fToneMappingMode;
+       property ResamplingMode:TpvScene3DRendererResamplingMode read fResamplingMode write fResamplingMode;
        property AIUpscaleMode:TpvScene3DRendererAIUpscaleMode read fAIUpscaleMode write fAIUpscaleMode;
        property AIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality read fAIUpscaleQuality write fAIUpscaleQuality;
 {      property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
@@ -434,6 +436,8 @@ begin
  fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.Auto;
 
  fToneMappingMode:=TpvScene3DRendererToneMappingMode.Auto;
+
+ fResamplingMode:=TpvScene3DRendererResamplingMode.Lanczos;
 
  fAIUpscaleMode:=TpvScene3DRendererAIUpscaleMode.None;
 

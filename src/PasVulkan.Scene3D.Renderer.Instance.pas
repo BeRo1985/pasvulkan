@@ -1247,6 +1247,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass2RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ResamplingRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.EASURCASComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CNNUpscalerComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensDownsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
@@ -1370,6 +1371,7 @@ type TpvScene3DRendererInstancePasses=class
        fDepthOfFieldGatherPass2RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass2RenderPass;
        fDepthOfFieldResolveRenderPass:TpvScene3DRendererPassesDepthOfFieldResolveRenderPass;
        fResamplingRenderPass:TpvScene3DRendererPassesResamplingRenderPass;
+       fEASURCASComputePass:TpvScene3DRendererPassesEASURCASComputePass;
        fCNNUpscalerComputePass:TpvScene3DRendererPassesCNNUpscalerComputePass;
        fLensDownsampleComputePass:TpvScene3DRendererPassesLensDownsampleComputePass;
        fLensUpsampleComputePass:TpvScene3DRendererPassesLensUpsampleComputePass;
@@ -4829,7 +4831,14 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   if Renderer.AIUpscaleMode<>TpvScene3DRendererAIUpscaleMode.None then begin
    TpvScene3DRendererInstancePasses(fPasses).fCNNUpscalerComputePass:=TpvScene3DRendererPassesCNNUpscalerComputePass.Create(fFrameGraph,self);
   end else begin
-   TpvScene3DRendererInstancePasses(fPasses).fResamplingRenderPass:=TpvScene3DRendererPassesResamplingRenderPass.Create(fFrameGraph,self);
+   case Renderer.ResamplingMode of
+    TpvScene3DRendererResamplingMode.EASU:begin
+     TpvScene3DRendererInstancePasses(fPasses).fEASURCASComputePass:=TpvScene3DRendererPassesEASURCASComputePass.Create(fFrameGraph,self);
+    end;
+    else begin
+     TpvScene3DRendererInstancePasses(fPasses).fResamplingRenderPass:=TpvScene3DRendererPassesResamplingRenderPass.Create(fFrameGraph,self);
+    end;
+   end;
   end;
  end;
 
@@ -4867,7 +4876,14 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   if Renderer.AIUpscaleMode<>TpvScene3DRendererAIUpscaleMode.None then begin
    TpvScene3DRendererInstancePasses(fPasses).fCNNUpscalerComputePass:=TpvScene3DRendererPassesCNNUpscalerComputePass.Create(fFrameGraph,self);
   end else begin
-   TpvScene3DRendererInstancePasses(fPasses).fResamplingRenderPass:=TpvScene3DRendererPassesResamplingRenderPass.Create(fFrameGraph,self);
+   case Renderer.ResamplingMode of
+    TpvScene3DRendererResamplingMode.EASU:begin
+     TpvScene3DRendererInstancePasses(fPasses).fEASURCASComputePass:=TpvScene3DRendererPassesEASURCASComputePass.Create(fFrameGraph,self);
+    end;
+    else begin
+     TpvScene3DRendererInstancePasses(fPasses).fResamplingRenderPass:=TpvScene3DRendererPassesResamplingRenderPass.Create(fFrameGraph,self);
+    end;
+   end;
   end;
  end;
 
