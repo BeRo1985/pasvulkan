@@ -180,6 +180,7 @@ type TpvScene3DRenderer=class;
        fGlobalIlluminationVoxelCountCascades:TpvInt32;
        fGlobalIlluminationVoxelCountBounces:TpvInt32;
        fResamplingMode:TpvScene3DRendererResamplingMode;
+       fRCASSharpness:TpvFloat;
        fAIUpscaleMode:TpvScene3DRendererAIUpscaleMode;
        fAIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality;
       private
@@ -438,6 +439,8 @@ begin
  fToneMappingMode:=TpvScene3DRendererToneMappingMode.Auto;
 
  fResamplingMode:=TpvScene3DRendererResamplingMode.Lanczos;
+
+ fRCASSharpness:=0.2;
 
  fAIUpscaleMode:=TpvScene3DRendererAIUpscaleMode.None;
 

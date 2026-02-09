@@ -686,7 +686,7 @@ begin
                                        nil);
 
   // Push RCAS sharpness constant: 0.2 = moderate sharpening (0.0 = max, 1.0 = none)
-  RCASPushConstants.Sharpness:=0.2;
+  RCASPushConstants.Sharpness:=fInstance.Renderer.RCASSharpness;
 
   aCommandBuffer.CmdPushConstants(fRCASPipelineLayout.Handle,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),

@@ -50,6 +50,7 @@ type TApplication=class(TpvApplication)
        fShadowMode:TpvScene3DRendererShadowMode;
        fLensMode:TpvScene3DRendererLensMode;
        fResamplingMode:TpvScene3DRendererResamplingMode;
+       fRCASSharpness:TpvDouble;
        fAIUpscaleMode:TpvScene3DRendererAIUpscaleMode;
        fAIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality;
        fSizeFactor:TpvDouble;
@@ -90,6 +91,7 @@ type TApplication=class(TpvApplication)
        property ShadowMode:TpvScene3DRendererShadowMode read fShadowMode;
        property LensMode:TpvScene3DRendererLensMode read fLensMode;
        property ResamplingMode:TpvScene3DRendererResamplingMode read fResamplingMode;
+       property RCASSharpness:TpvDouble read fRCASSharpness;
        property AIUpscaleMode:TpvScene3DRendererAIUpscaleMode read fAIUpscaleMode;
        property AIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality read fAIUpscaleQuality;
        property SizeFactor:TpvDouble read fSizeFactor;
@@ -133,6 +135,7 @@ begin
  fShadowMode:=TpvScene3DRendererShadowMode.Auto;
  fLensMode:=TpvScene3DRendererLensMode.Auto;
  fResamplingMode:=TpvScene3DRendererResamplingMode.Lanczos;
+ fRCASSharpness:=0.2;
  fAIUpscaleMode:=TpvScene3DRendererAIUpscaleMode.None;
  fAIUpscaleQuality:=TpvScene3DRendererAIUpscaleQuality.Low;
  fSizeFactor:=1.0;
@@ -293,6 +296,16 @@ begin
               (Parameter='/resampling-mode') then begin
    if Index<=ParamCount then begin
     fResamplingMode.FromString(ParamStr(Index));
+    inc(Index);
+   end;
+  end else if (Parameter='--rcas-sharpness') or
+              (Parameter='/rcas-sharpness') then begin
+   if Index<=ParamCount then begin
+    OK:=false;
+    fRCASSharpness:=ConvertStringToDouble(ParamStr(Index),rmNearest,@OK);
+    if not OK then begin
+     fRCASSharpness:=0.2;
+    end;
     inc(Index);
    end;
   end else if (Parameter='--ai-upscale-mode') or
