@@ -24,6 +24,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasDblStrUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
@@ -107,6 +108,7 @@ var VirtualRealityMode:TpvVirtualReality.TMode;
 {$if not (defined(Android) or defined(iOS))}
     Index:TpvInt32;
     OriginalParameter,Parameter:String;
+    OK:TPasDblStrUtilsBoolean;
 {$ifend}
 begin
  inherited Create;
@@ -299,7 +301,11 @@ begin
   end else if (Parameter='--size-factor') or
               (Parameter='/size-factor') then begin
    if Index<=ParamCount then begin
-    fSizeFactor:=StrToFloatDef(ParamStr(Index),1.0);
+    OK:=false;
+    fSizeFactor:=ConvertStringToDouble(ParamStr(Index),rmNearest,@OK);
+    if not OK then begin
+     fSizeFactor:=1.0;
+    end;
     inc(Index);
    end;
   end else begin

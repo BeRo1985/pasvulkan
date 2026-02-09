@@ -283,7 +283,7 @@ begin
 
  fRendererInstance:=TpvScene3DRendererInstance.Create(fRenderer,UnitApplication.Application.VirtualReality);
 
- fRendererInstance.PixelAmountFactor:=UnitApplication.Application.SizeFactor;
+ fRendererInstance.SizeFactor:=UnitApplication.Application.SizeFactor;
 
  fRendererInstance.UseDebugBlit:=false;
 
