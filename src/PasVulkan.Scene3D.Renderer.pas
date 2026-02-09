@@ -243,6 +243,7 @@ type TpvScene3DRenderer=class;
        property GlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode read fGlobalIlluminationMode write fGlobalIlluminationMode;
        property ToneMappingMode:TpvScene3DRendererToneMappingMode read fToneMappingMode write fToneMappingMode;
        property ResamplingMode:TpvScene3DRendererResamplingMode read fResamplingMode write fResamplingMode;
+       property RCASSharpness:TpvFloat read fRCASSharpness write fRCASSharpness;
        property AIUpscaleMode:TpvScene3DRendererAIUpscaleMode read fAIUpscaleMode write fAIUpscaleMode;
        property AIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality read fAIUpscaleQuality write fAIUpscaleQuality;
 {      property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
