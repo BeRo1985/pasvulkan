@@ -28,6 +28,8 @@ layout(set = 0, binding = 1, rgba16f) writeonly uniform image2D uDestinationText
 
 #include "bidirectional_tonemapping.glsl"
 
+#include "srgb.glsl"
+
 #ifdef MULTIVIEW
 int viewIndex = int(gl_GlobalInvocationID.z);
 #endif
@@ -95,12 +97,14 @@ void accumulateEdgeInfo(
 }
 
 // Fetch a source texel using texelFetch, clamped to source dimensions, and apply tone mapping.
+// Applies tone mapping (HDR linear → [0,1] linear) followed by linear-to-sRGB conversion,
+// so that all filtering happens in perceptual sRGB space.
 vec4 fetchSource(ivec2 coordinate, ivec2 sourceSize) {
   coordinate = clamp(coordinate, ivec2(0), sourceSize - ivec2(1));
 #ifdef MULTIVIEW
-  return ApplyToneMapping(texelFetch(uSourceTexture, ivec3(coordinate, viewIndex), 0));
+  return convertLinearRGBToSRGB(ApplyToneMapping(texelFetch(uSourceTexture, ivec3(coordinate, viewIndex), 0)));
 #else
-  return ApplyToneMapping(texelFetch(uSourceTexture, coordinate, 0));
+  return convertLinearRGBToSRGB(ApplyToneMapping(texelFetch(uSourceTexture, coordinate, 0)));
 #endif
 }
 
@@ -297,8 +301,7 @@ void main() {
   // Bilinearly interpolate alpha from the 4 nearest texels.
   float resultAlpha = mix(mix(tapF.a, tapG.a, fractional.x), mix(tapJ.a, tapK.a, fractional.x), fractional.y);
 
-  // Undo tone mapping and write output.
-  imageStore(uDestinationTexture, invocationPosition,
-             ApplyInverseToneMapping(vec4(resultColor, resultAlpha)));
+  // Output stays in sRGB space - RCAS will read it directly and convert back at the end.
+  imageStore(uDestinationTexture, invocationPosition, vec4(resultColor, resultAlpha));
 
 }

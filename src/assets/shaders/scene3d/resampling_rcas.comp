@@ -38,6 +38,10 @@ layout(push_constant) uniform PushConstants {
 int viewIndex = int(gl_GlobalInvocationID.z);
 #endif
 
+#include "bidirectional_tonemapping.glsl"
+
+#include "srgb.glsl"
+
 // Cheap luma approximation: R*0.5 + G + B*0.5 (= luma * 2).
 // Matches EASU for consistency; exact perceptual luminance is not needed
 // since we only use this for relative contrast measurements.
@@ -50,6 +54,7 @@ float computeLuma(vec3 color) {
 const float SHARPENING_LIMIT = 0.25 - (1.0 / 16.0);
 
 // Fetch a source texel, clamped to valid coordinates.
+// Input is already in sRGB space from EASU output — read as-is.
 vec4 fetchSource(ivec2 coordinate, ivec2 sourceSize) {
   coordinate = clamp(coordinate, ivec2(0), sourceSize - ivec2(1));
 #ifdef MULTIVIEW
@@ -171,7 +176,10 @@ void main() {
   vec3 boundingMax = max(center.rgb, neighborMaximum);
   resultColor = clamp(resultColor, boundingMin, boundingMax);
 
+  // Convert from sRGB back to linear, then undo tone mapping to restore HDR.
   // Preserve alpha from center.
-  imageStore(uDestinationTexture, invocationPosition, vec4(resultColor, center.a));
+  imageStore(uDestinationTexture, invocationPosition,
+             ApplyInverseToneMapping(convertSRGBToLinearRGB(vec4(resultColor, center.a))));
+  // Note: alpha passes through convertSRGBToLinearRGB unchanged (vec4 overload preserves .w).
 
 }
