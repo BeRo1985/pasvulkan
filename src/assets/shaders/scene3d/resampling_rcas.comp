@@ -28,10 +28,13 @@ layout(set = 0, binding = 1, rgba16f) writeonly uniform image2D uDestinationText
 /* clang-format on */
 
 // Push constant for tunable sharpness.
-// sharpness: 0.0 = maximum sharpening, 1.0 = no sharpening.
-// Recommended default: 0.2 (moderate sharpening).
+// sharpness: pre-computed on CPU as exp2(-stops) where stops is in AMD's convention:
+//   stops=0.0 → sharpness=1.0 (maximum sharpening)
+//   stops=1.0 → sharpness=0.5 (half sharpening)
+//   stops=2.0 → sharpness=0.25 (quarter sharpening)
+// Recommended default: exp2(-0.25) ≈ 0.84 (slight attenuation)
 layout(push_constant) uniform PushConstants {
-  float sharpness;  // 0.0 = max sharpening, 1.0 = no sharpening
+  float sharpness;  // pre-computed: exp2(-stops), 1.0 = max, 0.0 = none
 } pushConstants;
 
 #ifdef MULTIVIEW
@@ -54,7 +57,7 @@ float computeLuma(vec3 color) {
 const float SHARPENING_LIMIT = 0.25 - (1.0 / 16.0);
 
 // Fetch a source texel, clamped to valid coordinates.
-// Input is already in sRGB space from EASU output — read as-is.
+// Input is already in sRGB space from EASU output - read as-is.
 vec4 fetchSource(ivec2 coordinate, ivec2 sourceSize) {
   coordinate = clamp(coordinate, ivec2(0), sourceSize - ivec2(1));
 #ifdef MULTIVIEW
@@ -148,10 +151,9 @@ void main() {
   // Pick the channel that allows the least sharpening (most conservative).
   float conservativeLobe = max(max(perChannelLobe.r, perChannelLobe.g), perChannelLobe.b);
 
-  // Clamp to [−SHARPENING_LIMIT, 0], scale by user's sharpness control,
+  // Clamp to [−SHARPENING_LIMIT, 0], scale by pre-computed sharpness factor,
   // and apply noise attenuation.
-  float sharpnessScale = 1.0 - pushConstants.sharpness;
-  float lobeWeight = max(-SHARPENING_LIMIT, min(conservativeLobe, 0.0)) * sharpnessScale * noiseFactor;
+  float lobeWeight = max(-SHARPENING_LIMIT, min(conservativeLobe, 0.0)) * pushConstants.sharpness * noiseFactor;
 
   // ------------------------------------------------------------------
   // Apply the sharpening kernel.
@@ -177,9 +179,7 @@ void main() {
   resultColor = clamp(resultColor, boundingMin, boundingMax);
 
   // Convert from sRGB back to linear, then undo tone mapping to restore HDR.
-  // Preserve alpha from center.
-  imageStore(uDestinationTexture, invocationPosition,
-             ApplyInverseToneMapping(convertSRGBToLinearRGB(vec4(resultColor, center.a))));
-  // Note: alpha passes through convertSRGBToLinearRGB unchanged (vec4 overload preserves .w).
+  // Preserve alpha from center. Note: alpha passes through convertSRGBToLinearRGB unchanged (vec4 overload preserves .w).
+  imageStore(uDestinationTexture, invocationPosition, ApplyInverseToneMapping(convertSRGBToLinearRGB(vec4(resultColor, center.a))));
 
 }

@@ -441,7 +441,7 @@ begin
 
  fResamplingMode:=TpvScene3DRendererResamplingMode.Lanczos;
 
- fRCASSharpness:=0.2;
+ fRCASSharpness:=0.25;
 
  fAIUpscaleMode:=TpvScene3DRendererAIUpscaleMode.None;
 

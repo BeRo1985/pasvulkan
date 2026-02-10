@@ -135,7 +135,7 @@ begin
  fShadowMode:=TpvScene3DRendererShadowMode.Auto;
  fLensMode:=TpvScene3DRendererLensMode.Auto;
  fResamplingMode:=TpvScene3DRendererResamplingMode.Lanczos;
- fRCASSharpness:=0.2;
+ fRCASSharpness:=0.25;
  fAIUpscaleMode:=TpvScene3DRendererAIUpscaleMode.None;
  fAIUpscaleQuality:=TpvScene3DRendererAIUpscaleQuality.Low;
  fSizeFactor:=1.0;
@@ -304,7 +304,7 @@ begin
     OK:=false;
     fRCASSharpness:=ConvertStringToDouble(ParamStr(Index),rmNearest,@OK);
     if not OK then begin
-     fRCASSharpness:=0.2;
+     fRCASSharpness:=0.25;
     end;
     inc(Index);
    end;
