@@ -3943,8 +3943,8 @@ var ImageMemoryRequirements:TVkMemoryRequirements;
 begin
 
  // Update dimensions
- fWidth:=aWidth;
- fHeight:=aHeight;
+{SetWidth(aWidth);
+ SetHeight(aHeight);}
 
  // Only create coverage buffer if feature is supported
  if not (fTransparentShapes and fCanvasCommon.fFragmentStoresAndAtomicsSupported) then begin
