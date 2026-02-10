@@ -72,11 +72,15 @@ void main() {
 #ifdef MULTIVIEW
   ivec3 invocationPosition = ivec3(gl_GlobalInvocationID.xyz);
   ivec3 dstSize = imageSize(uDestinationTexture);
-  if (any(greaterThanEqual(invocationPosition, dstSize))) return;
+  if (any(greaterThanEqual(invocationPosition, dstSize))) {
+    return;
+  }
 #else
   ivec2 invocationPosition = ivec2(gl_GlobalInvocationID.xy);
   ivec2 dstSize = imageSize(uDestinationTexture);
-  if (any(greaterThanEqual(invocationPosition, dstSize))) return;
+  if (any(greaterThanEqual(invocationPosition, dstSize))) {
+    return;
+  }
 #endif
 
   ivec2 coordinate = invocationPosition.xy;
