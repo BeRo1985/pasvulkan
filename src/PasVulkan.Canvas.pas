@@ -705,6 +705,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fOnSuspendRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent;
        fOnResumeRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent;
        fUseBreadcrumbs:Boolean;
+       procedure SetWidth(const aWidth:TpvInt32);
+       procedure SetHeight(const aHeight:TpvInt32);
        procedure SetVulkanRenderPass(const aVulkanRenderPass:TpvVulkanRenderPass);
        procedure QueueCoverageReset;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
@@ -915,8 +917,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property Device:TpvVulkanDevice read fDevice;
        property VulkanRenderPass:TpvVulkanRenderPass read fVulkanRenderPass write SetVulkanRenderPass;
        property CountBuffers:TpvInt32 read fCountBuffers write SetCountBuffers;
-       property Width:TpvInt32 read fWidth write fWidth;
-       property Height:TpvInt32 read fHeight write fHeight;
+       property Width:TpvInt32 read fWidth write SetWidth;
+       property Height:TpvInt32 read fHeight write SetHeight;
        property FrameBufferWidth:TpvInt32 read fFrameBufferWidth write fFrameBufferWidth;
        property FrameBufferHeight:TpvInt32 read fFrameBufferHeight write fFrameBufferHeight;
        property BlendingMode:TpvCanvasBlendingMode read GetBlendingMode write SetBlendingMode;
@@ -4635,6 +4637,20 @@ begin
 
  end;
 
+end;
+
+procedure TpvCanvas.SetWidth(const aWidth:TpvInt32);
+begin
+ if fWidth<>aWidth then begin
+  fWidth:=aWidth;
+ end;
+end;
+
+procedure TpvCanvas.SetHeight(const aHeight:TpvInt32);
+begin
+ if fHeight<>aHeight then begin
+  fHeight:=aHeight;
+ end;
 end;
 
 procedure TpvCanvas.SetCountBuffers(const aCountBuffers:TpvInt32);
