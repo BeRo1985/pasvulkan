@@ -1777,10 +1777,8 @@ type EpvScene3D=class(Exception);
               fIndex:TpvSizeInt;
               fVisible:boolean;
               fPasses:TDecalPasses;
-              fDecalToWorldMatrix:TpvMatrix4x4D;  // Non-inverted decal-to-world transform (64-bit, API-side)
-              fWorldToDecalMatrix:TpvMatrix4x4D;  // Inverted world-to-decal transform (64-bit, derived from fDecalToWorldMatrix)
-              fWorldToDecalMatrix32:TMatrix4x3;   // Origin-offset 32-bit version for GPU (transposed column-major layout to avoid padding alignment and for better cache locality)
-              fPosition:TpvVector3D;
+              fMatrix:TpvMatrix4x4D;  // Non-inverted decal-to-world transform (64-bit, API-side)
+              fWorkMatrix:TpvMatrix4x4;           // Origin-offset 32-bit version for GPU (transposed column-major layout to avoid padding alignment and for better cache locality)
               fSize:TpvVector3;
               fUVScaleOffset:TpvVector4;
               fOpacity:TpvFloat;
@@ -1813,7 +1811,7 @@ type EpvScene3D=class(Exception);
              public
               property Visible:boolean read fVisible write fVisible;
               property Passes:TDecalPasses read fPasses write fPasses;
-              property DecalToWorldMatrix:TpvMatrix4x4D read fDecalToWorldMatrix write fDecalToWorldMatrix;
+              property DecalToWorldMatrix:TpvMatrix4x4D read fMatrix write fMatrix;
               property Size:TpvVector3 read fSize write fSize;
               property UVScaleOffset:TpvVector4 read fUVScaleOffset write fUVScaleOffset;
               property Opacity:TpvFloat read fOpacity write fOpacity;
@@ -1838,7 +1836,9 @@ type EpvScene3D=class(Exception);
             TDecalItem=packed record
 
              // Transform world space to decal OBB space
-             WorldToDecalMatrix:TMatrix4x3;
+             Matrix0:TpvVector4;
+             Matrix1:TpvVector4;
+             Matrix2:TpvVector4;
 
              UVScaleOffset:TpvVector4;         // xy=scale, zw=offset
 
@@ -12302,11 +12302,8 @@ end;
 procedure TpvScene3D.TDecal.Update(const aInFlightFrameIndex:TpvSizeInt);
 var OBB:TpvOBB;
     AABB:TpvAABB;
-    Matrix64,ScaledMatrix64:TpvMatrix4x4D;
-    Matrix32:TpvMatrix4x4;
+    Matrix:TpvMatrix4x4D;
     Flags:TpvUInt32;
-{   Radius:TpvDouble;
-    Position:TpvVector3;}
 begin
 
  if fVisible then begin
@@ -12323,71 +12320,29 @@ begin
   end;
   fFlags:=Flags;
 
-  // Calculate world-to-decal matrix (inverse of decal-to-world)
-  fWorldToDecalMatrix:=fDecalToWorldMatrix.Inverse;
-
   // Apply size scaling to world-to-decal matrix
-  ScaledMatrix64:=fWorldToDecalMatrix;
-  ScaledMatrix64.Right.xyz:=ScaledMatrix64.Right.xyz*fSize.x;
-  ScaledMatrix64.Up.xyz:=ScaledMatrix64.Up.xyz*fSize.y;
-  ScaledMatrix64.Forwards.xyz:=ScaledMatrix64.Forwards.xyz*fSize.z;
-
-  // Apply origin-offset transform (64-bit to 32-bit), same pattern as TLight.Update
   if aInFlightFrameIndex>=0 then begin
-   Matrix64:=fSceneInstance.TransformOrigin(ScaledMatrix64,aInFlightFrameIndex,false);
-   Matrix32:=Matrix64;
+   Matrix:=fSceneInstance.TransformOrigin(fMatrix,aInFlightFrameIndex,false);
   end else begin
-   Matrix32:=ScaledMatrix64;
+   Matrix:=fMatrix;
   end;
+  Matrix.Right.xyz:=Matrix.Right.xyz*fSize.x;
+  Matrix.Up.xyz:=Matrix.Up.xyz*fSize.y;
+  Matrix.Forwards.xyz:=Matrix.Forwards.xyz*fSize.z;
 
-  // Transpose to column-major TMatrix4x3 format to avoid padding alignment and for better cache locality
-  fWorldToDecalMatrix32[0,0]:=Matrix32.RawComponents[0,0];
-  fWorldToDecalMatrix32[0,1]:=Matrix32.RawComponents[1,0];
-  fWorldToDecalMatrix32[0,2]:=Matrix32.RawComponents[2,0];
-  fWorldToDecalMatrix32[0,3]:=Matrix32.RawComponents[3,0];
-  fWorldToDecalMatrix32[1,0]:=Matrix32.RawComponents[0,1];
-  fWorldToDecalMatrix32[1,1]:=Matrix32.RawComponents[1,1];
-  fWorldToDecalMatrix32[1,2]:=Matrix32.RawComponents[2,1];
-  fWorldToDecalMatrix32[1,3]:=Matrix32.RawComponents[3,1];
-  fWorldToDecalMatrix32[2,0]:=Matrix32.RawComponents[0,2];
-  fWorldToDecalMatrix32[2,1]:=Matrix32.RawComponents[1,2];
-  fWorldToDecalMatrix32[2,2]:=Matrix32.RawComponents[2,2];
-  fWorldToDecalMatrix32[2,3]:=Matrix32.RawComponents[3,2];
-
-  // Apply size scaling to world-to-decal matrix
-  ScaledMatrix64:=fDecalToWorldMatrix;
-  ScaledMatrix64.Right.xyz:=ScaledMatrix64.Right.xyz/fSize.x;
-  ScaledMatrix64.Up.xyz:=ScaledMatrix64.Up.xyz/fSize.y;
-  ScaledMatrix64.Forwards.xyz:=ScaledMatrix64.Forwards.xyz/fSize.z;
-
-  // Apply origin-offset transform (64-bit to 32-bit), same pattern as TLight.Update
-  if aInFlightFrameIndex>=0 then begin
-   Matrix64:=fSceneInstance.TransformOrigin(ScaledMatrix64,aInFlightFrameIndex,false);
-   Matrix32:=Matrix64;
-  end else begin
-   Matrix32:=ScaledMatrix64;
-  end;
+  // Store matrix for shader
+  fWorkMatrix:=Matrix.Inverse;
 
   // DecalForward is the Z-axis (Forwards) of the decal-to-world transform
-  fDecalForward:=fDecalToWorldMatrix.Forwards.xyz.Normalize;
+  fDecalForward:=Matrix.Forwards.xyz.Normalize;
 
   // Compute OBB from origin-offset 32-bit matrix
-  OBB.Center:=Matrix32.MulHomogen(TpvVector3.Origin);
+  OBB.Center:=Matrix.MulHomogen(TpvVector3.Origin);
   OBB.HalfExtents:=fSize*0.5;
-  OBB.Matrix:=Matrix32.ToMatrix3x3;
+  OBB.Matrix:=Matrix.ToMatrix4x4.ToMatrix3x3;
 
   // Convert OBB to AABB
   AABB:=TpvAABB.CreateFromOBB(OBB);
-
-{ Radius:=1.0;
-  if aInFlightFrameIndex>=0 then begin
-   Position:=fSceneInstance.TransformOrigin(fDecalToWorldMatrix,aInFlightFrameIndex,false).Translation.xyz;
-  end else begin
-   Position:=fDecalToWorldMatrix.Translation.xyz;
-  end;
-  AABB.Min:=Position-TpvVector3.InlineableCreate(Radius,Radius,Radius);
-  AABB.Max:=Position+TpvVector3.InlineableCreate(Radius,Radius,Radius);}
-
   fBoundingBox:=AABB;
 
   if assigned(fSceneInstance) and assigned(fSceneInstance.fDecalAABBTree) then begin
@@ -36301,6 +36256,7 @@ var DecalIndex:TpvSizeInt;
     DecalItem:TpvScene3D.PDecalItem;
     DecalMetaInfo:TpvScene3D.PDecalMetaInfo;
     RemainingLife,FadeFactor,EffectiveOpacity:TpvDouble;
+    Matrix:PpvMatrix4x4;
 begin
  
  aDecalItemArray.ClearNoFree;
@@ -36318,7 +36274,19 @@ begin
     DecalItem:=@aDecalItemArray.Items[Decal.fDecalItemIndex];
 
     // Use origin-offset 32-bit matrix (transposed for column-major layout to avoid padding alignment and for better cache locality)
-    DecalItem^.WorldToDecalMatrix:=Decal.fWorldToDecalMatrix32;
+    Matrix:=@Decal.fWorkMatrix;
+    DecalItem^.Matrix0.x:=Matrix^.RawComponents[0,0];
+    DecalItem^.Matrix0.y:=Matrix^.RawComponents[1,0];
+    DecalItem^.Matrix0.z:=Matrix^.RawComponents[2,0];
+    DecalItem^.Matrix0.w:=Matrix^.RawComponents[3,0];
+    DecalItem^.Matrix1.x:=Matrix^.RawComponents[0,1];
+    DecalItem^.Matrix1.y:=Matrix^.RawComponents[1,1];
+    DecalItem^.Matrix1.z:=Matrix^.RawComponents[2,1];
+    DecalItem^.Matrix1.w:=Matrix^.RawComponents[3,1];
+    DecalItem^.Matrix2.x:=Matrix^.RawComponents[0,2];
+    DecalItem^.Matrix2.y:=Matrix^.RawComponents[1,2];
+    DecalItem^.Matrix2.z:=Matrix^.RawComponents[2,2];
+    DecalItem^.Matrix2.w:=Matrix^.RawComponents[3,2];
 
     DecalItem^.UVScaleOffset:=Decal.fUVScaleOffset;
 
@@ -39038,7 +39006,7 @@ function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
                                const aPasses:TpvScene3D.TDecalPasses;
                                const aHolder:TObject):TpvScene3D.TDecal;
 var Up,Right,Forward:TpvVector3D;
-    DecalToWorld:TpvMatrix4x4D;
+    Matrix:TpvMatrix4x4D;
 begin
 
  // Calculate decal-to-world transform from position and normal (64-bit)
@@ -39047,20 +39015,19 @@ begin
  Right:=Forward.Cross(Up).Normalize;
  Up:=Right.Cross(Forward).Normalize;
 
- // Create decal-to-world matrix (unit vectors, size will be applied in Update)
- DecalToWorld.Right.xyz:=Right;
- DecalToWorld.Right.w:=0.0;
- DecalToWorld.Up.xyz:=Up;
- DecalToWorld.Up.w:=0.0;
- DecalToWorld.Forwards.xyz:=Forward;
- DecalToWorld.Forwards.w:=0.0;
- DecalToWorld.Translation.xyz:=aPosition;
- DecalToWorld.Translation.w:=1.0;
+ // Create matrix (unit vectors, size will be applied in Update)
+ Matrix.Right.xyz:=Right;
+ Matrix.Right.w:=0.0;
+ Matrix.Up.xyz:=Up;
+ Matrix.Up.w:=0.0;
+ Matrix.Forwards.xyz:=Forward;
+ Matrix.Forwards.w:=0.0;
+ Matrix.Translation.xyz:=aPosition;
+ Matrix.Translation.w:=1.0;
 
  // Create the decal
  result:=TpvScene3D.TDecal.Create(self);
- result.fPosition:=aPosition;
- result.fDecalToWorldMatrix:=DecalToWorld;
+ result.fMatrix:=Matrix;
  result.fSize:=TpvVector3.InlineableCreate(aSize.x,aSize.y,0.5);
  result.fUVScaleOffset:=TpvVector4.InlineableCreate(1.0,1.0,0.0,0.0); // Default UV: no scale/offset
  result.fAlbedoTexture:=aAlbedoTexture;

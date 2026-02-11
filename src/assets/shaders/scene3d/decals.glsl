@@ -79,9 +79,19 @@ void applyDecals(
 
         // Check if decal applies to this rendering pass
         if ((decalFlags & DECAL_FLAG_PASS) != 0u) {          
-          
+
+          // Construct world to decal matrix from three vec4 and transpose for correct multiplication with world position.
+          // Also allows us to keep decal data as vec4 arrays which are more compatible with buffer references.
+//        mat4 worldToDecalMatrix = transpose(mat4(decal.matrix0, decal.matrix1, decal.matrix2, vec4(0.0, 0.0, 0.0, 1.0)));
+          mat4 worldToDecalMatrix = mat4(
+            decal.matrix0.x, decal.matrix1.x, decal.matrix2.x, 0.0,
+            decal.matrix0.y, decal.matrix1.y, decal.matrix2.y, 0.0,
+            decal.matrix0.z, decal.matrix1.z, decal.matrix2.z, 0.0,
+            decal.matrix0.w, decal.matrix1.w, decal.matrix2.w, 1.0
+          );
+                    
           // Project world position into decal OBB space
-          vec3 decalSpacePos = (transpose(mat4(decal.worldToDecalMatrix)) * vec4(worldPosition, 1.0)).xyz;
+          vec3 decalSpacePos = (worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
           
           // Check if fragment is inside decal box (OBB bounds: -0.5 to 0.5)
           if(all(greaterThan(decalSpacePos + 0.5, vec3(0.0))) && 
@@ -176,9 +186,11 @@ void applyDecals(
             decalNormal = blendNormals(decalNormal, decalNormalTangentSpace, blend);
             decalNormalBlend = 1.0 - ((1.0 - decalNormalBlend) * (1.0 - blend));
 
+            baseColor.x = 1.0; // DEBUG: visualize decal coverage
           }
 
-          baseColor.xyz = vec3(0.0); // DEBUG: visualize decal coverage
+          baseColor.y = 0.0; // DEBUG: visualize decal coverage
+
 #if defined(LIGHTCLUSTERS)
         }
       }
@@ -233,8 +245,18 @@ void applyDecalsUnlit(
         // Check if decal applies to this rendering pass
         if ((decalFlags & DECAL_FLAG_PASS) != 0u) {          
 
+          // Construct world to decal matrix from three vec4 and transpose for correct multiplication with world position.
+          // Also allows us to keep decal data as vec4 arrays which are more compatible with buffer references.
+//        mat4 worldToDecalMatrix = transpose(mat4(decal.matrix0, decal.matrix1, decal.matrix2, vec4(0.0, 0.0, 0.0, 1.0)));
+          mat4 worldToDecalMatrix = mat4(
+            decal.matrix0.x, decal.matrix1.x, decal.matrix2.x, 0.0,
+            decal.matrix0.y, decal.matrix1.y, decal.matrix2.y, 0.0,
+            decal.matrix0.z, decal.matrix1.z, decal.matrix2.z, 0.0,
+            decal.matrix0.w, decal.matrix1.w, decal.matrix2.w, 1.0
+          );
+
           // Project world position into decal OBB space
-          vec3 decalSpacePos = (transpose(mat4(decal.worldToDecalMatrix)) * vec4(worldPosition, 1.0)).xyz;
+          vec3 decalSpacePos = (worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
           
           // Check if fragment is inside decal box (OBB bounds: -0.5 to 0.5)
           if(all(greaterThan(decalSpacePos + 0.5, vec3(0.0))) && 

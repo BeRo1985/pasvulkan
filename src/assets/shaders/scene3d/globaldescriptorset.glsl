@@ -59,7 +59,13 @@ layout(set = 0, binding = 2, std430) readonly buffer LightTreeNodeData {
 };
 
 struct Decal {
-  mat4x3 worldToDecalMatrix;   // World to decal OBB transform (3x4 matrix) - 48 bytes
+  
+  // World to decal OBB transform (3x4 matrix) - 48 bytes - here as three vec4 instead mat4x3 for 
+  // better alignment and compatibility with buffer reference  
+  vec4 matrix0;                
+  vec4 matrix1;                
+  vec4 matrix2;                
+
   vec4 uvScaleOffset;          // xy=scale, zw=offset - 16 bytes
   uvec4 blendParams;           // x=opacity(float bits), y=angleFade(float bits), z=edgeFade(float bits), w=blendMode - 16 bytes
   ivec4 textureIndices;        // albedo, normal, ORM, specular texture indices (-1 = none) - 16 bytes
@@ -67,7 +73,7 @@ struct Decal {
   uvec4 decalForwardFlags;     // xyz=forward direction for angle fade(float bits), w=flags(uint bits) - 16 bytes
 };                             // Total: 128 bytes
 
-layout(set = 0, binding = 3, std430, row_major) readonly buffer DecalItemData {
+layout(set = 0, binding = 3, std430) readonly buffer DecalItemData {
   Decal decals[];
 };
 
