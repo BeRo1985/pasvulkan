@@ -6,6 +6,8 @@
 const uint DECAL_FLAG_PASS_MESH = 1u << 0;
 const uint DECAL_FLAG_PASS_PLANET = 1u << 1;
 const uint DECAL_FLAG_PASS_GRASS = 1u << 2;
+const uint DECAL_FLAG_DEBUG_DECAL = 1u << 30;
+const uint DECAL_FLAG_DEBUG_CULL = 1u << 31;
 
 #if defined(MESH_PASS) || defined(MESH_FRAGMENT_SHADER)
 const uint DECAL_FLAG_PASS = DECAL_FLAG_PASS_MESH;
@@ -186,11 +188,15 @@ void applyDecals(
             decalNormal = blendNormals(decalNormal, decalNormalTangentSpace, blend);
             decalNormalBlend = 1.0 - ((1.0 - decalNormalBlend) * (1.0 - blend));
 
-            //baseColor.x = 1.0; // DEBUG: visualize decal coverage
+            if((decalFlags & DECAL_FLAG_DEBUG_DECAL) != 0u) {
+              baseColor.x = 1.0; // DEBUG: visualize decal coverage
+            }
 
           }
 
-          //baseColor.y = 0.0; // DEBUG: visualize decal coverage
+          if((decalFlags & DECAL_FLAG_DEBUG_CULL) != 0u) {
+            baseColor.y = 0.0; // DEBUG: visualize decal coverage
+          }
 
 #if defined(LIGHTCLUSTERS)
         }
@@ -305,6 +311,15 @@ void applyDecalsUnlit(
                 break;
               }
             }
+
+            if((decalFlags & DECAL_FLAG_DEBUG_DECAL) != 0u) {
+              color.x = 1.0; // DEBUG: visualize decal coverage
+            }
+
+          }
+
+          if((decalFlags & DECAL_FLAG_DEBUG_CULL) != 0u) {
+            color.y = 0.0; // DEBUG: visualize decal coverage
           }
         
         }
