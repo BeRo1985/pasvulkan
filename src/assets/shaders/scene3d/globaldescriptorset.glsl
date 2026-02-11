@@ -67,7 +67,7 @@ struct Decal {
   uvec4 decalForwardFlags;     // xyz=forward direction for angle fade(float bits), w=flags(uint bits) - 16 bytes
 };                             // Total: 128 bytes
 
-layout(set = 0, binding = 3, std430, column_major) readonly buffer DecalItemData {
+layout(set = 0, binding = 3, std430, row_major) readonly buffer DecalItemData {
   Decal decals[];
 };
 

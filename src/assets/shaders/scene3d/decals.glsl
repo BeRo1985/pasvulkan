@@ -81,7 +81,7 @@ void applyDecals(
         if ((decalFlags & DECAL_FLAG_PASS) != 0u) {          
           
           // Project world position into decal OBB space
-          vec3 decalSpacePos = (decal.worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
+          vec3 decalSpacePos = (transpose(mat4(decal.worldToDecalMatrix)) * vec4(worldPosition, 1.0)).xyz;
           
           // Check if fragment is inside decal box (OBB bounds: -0.5 to 0.5)
           if(all(greaterThan(decalSpacePos + 0.5, vec3(0.0))) && 
@@ -176,6 +176,8 @@ void applyDecals(
             decalNormal = blendNormals(decalNormal, decalNormalTangentSpace, blend);
             decalNormalBlend = 1.0 - ((1.0 - decalNormalBlend) * (1.0 - blend));
 
+            baseColor.xyz = vec3(0.0); // DEBUG: visualize decal coverage
+
           }
 #if defined(LIGHTCLUSTERS)
         }
@@ -232,21 +234,21 @@ void applyDecalsUnlit(
         if ((decalFlags & DECAL_FLAG_PASS) != 0u) {          
 
           // Project world position into decal OBB space
-          vec3 decalSpacePos = (decal.worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
+          vec3 decalSpacePos = (transpose(mat4(decal.worldToDecalMatrix)) * vec4(worldPosition, 1.0)).xyz;
           
-          // Check if fragment is inside decal box
+          // Check if fragment is inside decal box (OBB bounds: -0.5 to 0.5)
           if(all(greaterThan(decalSpacePos + 0.5, vec3(0.0))) && 
             all(lessThan(decalSpacePos, vec3(0.5)))) {
             
-            // Calculate UVs
+            // Calculate UVs [0,1]
             vec2 decalUV = decalSpacePos.xy + 0.5;
             decalUV = decalUV * decal.uvScaleOffset.xy + decal.uvScaleOffset.zw;
             
-            // Edge fade
+            // Edge fade (soft edges at decal boundaries)
             vec2 edgeDist = min(decalUV, 1.0 - decalUV) * 2.0;
             float edgeFade = smoothstep(0.0, uintBitsToFloat(decal.blendParams.z), min(edgeDist.x, edgeDist.y));
             
-            // Angle fade
+            // Angle fade (fade based on surface orientation vs decal forward)
             float angleFade = clamp(dot(normalize(worldNormal), normalize(uintBitsToFloat(decal.decalForwardFlags.xyz))), 0.0, 1.0);
             angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
             
