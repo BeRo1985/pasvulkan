@@ -11856,9 +11856,9 @@ begin
      AABB.Max:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
     end else begin
      OppositeLength:=Tan(Data^.fOuterConeAngle{*0.5})*Radius;
-     OBB.Center:=fMatrix.MulHomogen(TpvVector3.InlineableCreate(0.0,0.0,-Radius*0.5));
+     OBB.Center:=Matrix32.MulHomogen(TpvVector3.InlineableCreate(0.0,0.0,-Radius*0.5));
      OBB.HalfExtents:=TpvVector3.InlineableCreate(OppositeLength,OppositeLength,Radius*0.5);
-     OBB.Matrix:=fMatrix.ToMatrix4x4.ToMatrix3x3;
+     OBB.Matrix:=Matrix32.ToMatrix4x4.ToMatrix3x3;
      AABB:=TpvAABB.CreateFromOBB(OBB);
     end;
    end;
@@ -12355,9 +12355,9 @@ begin
   fDecalForward:=fDecalToWorldMatrix.Forwards.xyz.Normalize;
 
   // Compute OBB from origin-offset 32-bit matrix (inverse gives us the decal-to-world transform)
-  OBB.Center:=Matrix32.Inverse.MulHomogen(TpvVector3.Origin);
+  OBB.Center:=Matrix32.MulHomogen(TpvVector3.Origin);
   OBB.HalfExtents:=fSize*0.5;
-  OBB.Matrix:=Matrix32.Inverse.ToMatrix3x3;
+  OBB.Matrix:=Matrix32.ToMatrix3x3;
 
   // Convert OBB to AABB
   AABB:=TpvAABB.CreateFromOBB(OBB);
