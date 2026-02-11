@@ -1777,9 +1777,10 @@ type EpvScene3D=class(Exception);
               fIndex:TpvSizeInt;
               fVisible:boolean;
               fPasses:TDecalPasses;
-              fMatrix:TpvMatrix4x4D;  // Non-inverted decal-to-world transform (64-bit, API-side)
-              fWorkMatrix:TpvMatrix4x4;           // Origin-offset 32-bit version for GPU (transposed column-major layout to avoid padding alignment and for better cache locality)
+              fPosition:TpvVector3D;
+              fOrientation:TpvQuaternion;
               fSize:TpvVector3;
+              fMatrix:TpvMatrix4x4;
               fUVScaleOffset:TpvVector4;
               fOpacity:TpvFloat;
               fAngleFade:TpvFloat;
@@ -1812,7 +1813,8 @@ type EpvScene3D=class(Exception);
              public
               property Visible:boolean read fVisible write fVisible;
               property Passes:TDecalPasses read fPasses write fPasses;
-              property DecalToWorldMatrix:TpvMatrix4x4D read fMatrix write fMatrix;
+              property Position:TpvVector3D read fPosition write fPosition;
+              property Orientation:TpvQuaternion read fOrientation write fOrientation;
               property Size:TpvVector3 read fSize write fSize;
               property UVScaleOffset:TpvVector4 read fUVScaleOffset write fUVScaleOffset;
               property Opacity:TpvFloat read fOpacity write fOpacity;
@@ -12326,26 +12328,30 @@ begin
   end;
   fFlags:=Flags;
 
-  // Apply size scaling to world-to-decal matrix
+  // Construct matrix from position and orientation
+  Matrix:=TpvMatrix4x4D.Create(fOrientation);
+  Matrix.Translation.xyz:=fPosition;
+
+  // Apply the origin offset
   if aInFlightFrameIndex>=0 then begin
-   Matrix:=fSceneInstance.TransformOrigin(fMatrix,aInFlightFrameIndex,false);
-  end else begin
-   Matrix:=fMatrix;
+   Matrix:=fSceneInstance.TransformOrigin(Matrix,aInFlightFrameIndex,false);
   end;
+
+  // Compute OBB
+  OBB.Center:=Matrix.MulHomogen(TpvVector3.Origin);
+  OBB.HalfExtents:=fSize*0.5;
+  OBB.Matrix:=Matrix.ToMatrix4x4.ToMatrix3x3;
+
+  // Scale matrix
   Matrix.Right.xyz:=Matrix.Right.xyz*fSize.x;
   Matrix.Up.xyz:=Matrix.Up.xyz*fSize.y;
   Matrix.Forwards.xyz:=Matrix.Forwards.xyz*fSize.z;
 
-  // Store matrix for shader
-  fWorkMatrix:=Matrix.Inverse;
+  // Store inversed matrix for shader
+  fMatrix:=Matrix.Inverse;
 
   // DecalForward is the Z-axis (Forwards) of the decal-to-world transform
   fDecalForward:=Matrix.Forwards.xyz.Normalize;
-
-  // Compute OBB from origin-offset 32-bit matrix
-  OBB.Center:=Matrix.MulHomogen(TpvVector3.Origin);
-  OBB.HalfExtents:=fSize*0.5;
-  OBB.Matrix:=Matrix.ToMatrix4x4.ToMatrix3x3;
 
   // Convert OBB to AABB
   AABB:=TpvAABB.CreateFromOBB(OBB);
@@ -36280,7 +36286,7 @@ begin
     DecalItem:=@aDecalItemArray.Items[Decal.fDecalItemIndex];
 
     // Use origin-offset 32-bit matrix (transposed for column-major layout to avoid padding alignment and for better cache locality)
-    Matrix:=@Decal.fWorkMatrix;
+    Matrix:=@Decal.fMatrix;
     DecalItem^.Matrix0.x:=Matrix^.RawComponents[0,0];
     DecalItem^.Matrix0.y:=Matrix^.RawComponents[1,0];
     DecalItem^.Matrix0.z:=Matrix^.RawComponents[2,0];
@@ -39015,21 +39021,14 @@ var RotationMatrix:TpvMatrix3x3;
     Matrix:TpvMatrix4x4D;
 begin
 
- // Build decal-to-world rotation from quaternion
- RotationMatrix:=TpvMatrix3x3.CreateFromQuaternion(aOrientation);
-
  // Create matrix (unit vectors, size will be applied in Update)
- Matrix.Right.xyz:=RotationMatrix.Right;
- Matrix.Right.w:=0.0;
- Matrix.Up.xyz:=RotationMatrix.Up;
- Matrix.Up.w:=0.0;
- Matrix.Forwards.xyz:=RotationMatrix.Forwards;
- Matrix.Forwards.w:=0.0;
+ Matrix:=TpvMatrix4x4.CreateFromQuaternion(aOrientation);
  Matrix.Translation.xyz:=aPosition;
- Matrix.Translation.w:=1.0;
 
  // Create the decal
  result:=TpvScene3D.TDecal.Create(self);
+ result.fPosition:=aPosition;
+ result.fOrientation:=aOrientation;
  result.fMatrix:=Matrix;
  result.fSize:=TpvVector3.InlineableCreate(aSize.x,aSize.y,0.5);
  result.fUVScaleOffset:=TpvVector4.InlineableCreate(1.0,1.0,0.0,0.0); // Default UV: no scale/offset
