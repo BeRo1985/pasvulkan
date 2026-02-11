@@ -1765,13 +1765,21 @@ type EpvScene3D=class(Exception);
               Planet=1,         // Decal applied to planets
               Grass=2           // Decal applied to grass
              ); 
-            TDecalPasses=set of TDecalPass; 
+            TDecalPasses=set of TDecalPass;
+            TDecalDebugFlag=
+             (
+              DebugDecal=0,     // Visualize decal coverage (red tint)
+              DebugCull=1       // Visualize decal culling (green removal)
+             );
+            TDecalDebugFlags=set of TDecalDebugFlag;
             { TDecal }
             TDecal=class
              public
-              const DECAL_FLAG_PASS_MESH=TpvUInt32(1 shl 0);
-                    DECAL_FLAG_PASS_PLANET=TpvUInt32(1 shl 1);
-                    DECAL_FLAG_PASS_GRASS=TpvUInt32(1 shl 2);
+              const DECAL_FLAG_PASS_MESH=TpvUInt32(TpvUInt32(1) shl 0);
+                    DECAL_FLAG_PASS_PLANET=TpvUInt32(TpvUInt32(1) shl 1);
+                    DECAL_FLAG_PASS_GRASS=TpvUInt32(TpvUInt32(1) shl 2);
+                    DECAL_FLAG_DEBUG_DECAL=TpvUInt32(TpvUInt32(1) shl 30);
+                    DECAL_FLAG_DEBUG_CULL=TpvUInt32(TpvUInt32(1) shl 31);
              private
               fSceneInstance:TpvScene3D;
               fIndex:TpvSizeInt;
@@ -4316,6 +4324,7 @@ type EpvScene3D=class(Exception);
        fDecalAABBTreeStateGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
        fDecalBuffers:TpvScene3D.TDecalBuffers;
        fDecalNeedsCompaction:TPasMPBool32;
+       fDecalDebugFlags:TpvScene3D.TDecalDebugFlags;
        fDecalTimeSteps:Boolean;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeLock:TPasMPSlimReaderWriterLock;
@@ -4722,6 +4731,7 @@ type EpvScene3D=class(Exception);
        property EnableRain:Boolean read fEnableRain write fEnableRain;
        property EnableWater:Boolean read fEnableWater write fEnableWater;
        property DecalTimeSteps:Boolean read fDecalTimeSteps write fDecalTimeSteps;
+       property DecalDebugFlags:TpvScene3D.TDecalDebugFlags read fDecalDebugFlags write fDecalDebugFlags;
        property Decals:TDecals read fDecals;
        property LightIntensityFactor:TpvScalar read fLightIntensityFactor write fLightIntensityFactor;
        property EmissiveIntensityFactor:TpvScalar read fEmissiveIntensityFactor write fEmissiveIntensityFactor;
@@ -12316,7 +12326,7 @@ begin
 
  if fVisible then begin
 
-  Flags:=fFlags and not (DECAL_FLAG_PASS_MESH or DECAL_FLAG_PASS_PLANET or DECAL_FLAG_PASS_GRASS);
+  Flags:=fFlags and not (DECAL_FLAG_PASS_MESH or DECAL_FLAG_PASS_PLANET or DECAL_FLAG_PASS_GRASS or DECAL_FLAG_DEBUG_DECAL or DECAL_FLAG_DEBUG_CULL);
   if TpvScene3D.TDecalPass.Mesh in fPasses then begin
    Flags:=Flags or DECAL_FLAG_PASS_MESH;
   end;
@@ -12325,6 +12335,14 @@ begin
   end;
   if TpvScene3D.TDecalPass.Grass in fPasses then begin
    Flags:=Flags or DECAL_FLAG_PASS_GRASS;
+  end;
+  if assigned(fSceneInstance) then begin
+   if TpvScene3D.TDecalDebugFlag.DebugDecal in fSceneInstance.fDecalDebugFlags then begin
+    Flags:=Flags or DECAL_FLAG_DEBUG_DECAL;
+   end;
+   if TpvScene3D.TDecalDebugFlag.DebugCull in fSceneInstance.fDecalDebugFlags then begin
+    Flags:=Flags or DECAL_FLAG_DEBUG_CULL;
+   end;
   end;
   fFlags:=Flags;
 
@@ -32803,6 +32821,7 @@ begin
 
  fDecalNeedsCompaction:=false;
 
+ fDecalDebugFlags:=[];
  fDecalTimeSteps:=false;
 
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
