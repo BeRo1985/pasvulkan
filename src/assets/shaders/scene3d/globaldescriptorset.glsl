@@ -70,7 +70,7 @@ struct Decal {
   uvec4 blendParams;           // x=opacity(float bits), y=angleFade(float bits), z=edgeFade(float bits), w=blendMode - 16 bytes
   ivec4 textureIndices;        // albedo, normal, ORM, specular texture indices (-1 = none) - 16 bytes
   ivec4 textureIndices2;       // emissive, unused, unused, unused - 16 bytes
-  uvec4 decalForwardFlags;     // xyz=forward direction for angle fade(float bits), w=flags(uint bits) - 16 bytes
+  uvec4 decalUpFlags;          // xyz=up direction for angle fade(float bits), w=flags(uint bits) - 16 bytes
 };                             // Total: 128 bytes
 
 layout(set = 0, binding = 3, std430) readonly buffer DecalItemData {

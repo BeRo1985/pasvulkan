@@ -77,7 +77,7 @@ void applyDecals(
 #endif
         
         // Get decal flags for this rendering pass
-        const uint decalFlags = decal.decalForwardFlags.w;
+        const uint decalFlags = decal.decalUpFlags.w;
 
         // Check if decal applies to this rendering pass
         if ((decalFlags & DECAL_FLAG_PASS) != 0u) {          
@@ -105,8 +105,8 @@ void applyDecals(
             vec2 edgeDist = min(decalUV, vec2(1.0) - decalUV) * 2.0;
             float edgeFade = smoothstep(0.0, uintBitsToFloat(decal.blendParams.z), min(edgeDist.x, edgeDist.y));
             
-            // Angle fade (fade based on surface orientation vs decal forward)
-            float angleFade = clamp(dot(normalize(worldNormal), normalize(uintBitsToFloat(decal.decalForwardFlags.xyz))), 0.0, 1.0);
+            // Angle fade (fade based on surface orientation vs decal up)
+            float angleFade = clamp(dot(normalize(worldNormal), normalize(uintBitsToFloat(decal.decalUpFlags.xyz))), 0.0, 1.0);
             angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
             
             // Sample decal textures from unified u2DTextures array
@@ -245,7 +245,7 @@ void applyDecalsUnlit(
 #endif
     
         // Get decal flags for this rendering pass
-        const uint decalFlags = decal.decalForwardFlags.w;
+        const uint decalFlags = decal.decalUpFlags.w;
 
         // Check if decal applies to this rendering pass
         if ((decalFlags & DECAL_FLAG_PASS) != 0u) {          
@@ -273,8 +273,8 @@ void applyDecalsUnlit(
             vec2 edgeDist = min(decalUV, vec2(1.0) - decalUV) * 2.0;
             float edgeFade = smoothstep(0.0, uintBitsToFloat(decal.blendParams.z), min(edgeDist.x, edgeDist.y));
             
-            // Angle fade (fade based on surface orientation vs decal forward)
-            float angleFade = clamp(dot(normalize(worldNormal), normalize(uintBitsToFloat(decal.decalForwardFlags.xyz))), 0.0, 1.0);
+            // Angle fade (fade based on surface orientation vs decal up)
+            float angleFade = clamp(dot(normalize(worldNormal), normalize(uintBitsToFloat(decal.decalUpFlags.xyz))), 0.0, 1.0);
             angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
             
             // Sample only albedo texture for unlit (sRGB)

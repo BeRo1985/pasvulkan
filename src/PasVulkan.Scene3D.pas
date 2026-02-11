@@ -1799,7 +1799,7 @@ type EpvScene3D=class(Exception);
               fORMTexture:TpvInt32;
               fSpecularTexture:TpvInt32;
               fEmissiveTexture:TpvInt32;
-              fDecalForward:TpvVector3;
+              fDecalUp:TpvVector3;
               fFlags:TpvUInt32;
               fBoundingBox:TpvAABB;
               fAABBTreeProxy:TpvSizeInt;
@@ -1859,7 +1859,7 @@ type EpvScene3D=class(Exception);
 
              TextureIndices2:TpvInt32Vector4;  // emissive, unused, unused, unused
 
-             DecalForward:TpvVector3;          // forward direction for angle fade
+             DecalUp:TpvVector3;               // up direction for angle fade
              Flags:TpvUInt32;
 
             end; // 128 bytes
@@ -12368,8 +12368,8 @@ begin
   // Store inversed matrix for shader
   fMatrix:=Matrix.Inverse;
 
-  // DecalForward is the Z-axis (Forwards) of the decal-to-world transform
-  fDecalForward:=Matrix.Forwards.xyz.Normalize;
+  // DecalUp is the Y-axis (Up) of the decal-to-world transform
+  fDecalUp:=Matrix.Up.xyz.Normalize;
 
   // Convert OBB to AABB
   AABB:=TpvAABB.CreateFromOBB(OBB);
@@ -36351,7 +36351,7 @@ begin
     DecalItem^.TextureIndices2.z:=-1;
     DecalItem^.TextureIndices2.w:=-1;
 
-    DecalItem^.DecalForward:=Decal.fDecalForward;
+    DecalItem^.DecalUp:=Decal.fDecalUp;
     DecalItem^.Flags:=Decal.fFlags;
 
     DecalMetaInfo:=@aDecalMetaInfoArray[Decal.fDecalItemIndex];
