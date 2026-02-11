@@ -39017,8 +39017,7 @@ function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
                                const aFadeOutTime:TpvDouble;
                                const aPasses:TpvScene3D.TDecalPasses;
                                const aHolder:TObject):TpvScene3D.TDecal;
-var RotationMatrix:TpvMatrix3x3;
-    Matrix:TpvMatrix4x4D;
+var Matrix:TpvMatrix4x4D;
 begin
 
  // Create matrix (unit vectors, size will be applied in Update)
