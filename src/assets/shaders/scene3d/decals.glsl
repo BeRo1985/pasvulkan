@@ -130,7 +130,7 @@ void applyDecals(
             vec3 decalF90Dielectric = vec3(decalSpecularWeight);
             
             // Combined blend factor
-            float blend = decalAlbedo.a * uintBitsToFloat(decal.blendParams.x) * angleFade * edgeFade;
+            float blend = decalAlbedo.w * uintBitsToFloat(decal.blendParams.x) * angleFade * edgeFade;
             
             // Apply blend mode
             uint blendMode = decal.blendParams.w;
