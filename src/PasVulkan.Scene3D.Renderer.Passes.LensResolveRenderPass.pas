@@ -143,7 +143,7 @@ begin
 
 //SeparateCommandBuffer:=true;
 
- if fInstance.PostProcessingAtScaledResolution and (not SameValue(fInstance.SizeFactor,1.0)) then begin
+ if fInstance.PostProcessingAtScaledResolution and not SameValue(fInstance.SizeFactor,1.0) then begin
   Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
                                         fInstance.SizeFactor,
                                         fInstance.SizeFactor,
@@ -163,7 +163,7 @@ begin
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                               );
 
- if fInstance.PostProcessingAtScaledResolution and (not SameValue(fInstance.SizeFactor,1.0)) then begin
+ if fInstance.PostProcessingAtScaledResolution and not SameValue(fInstance.SizeFactor,1.0) then begin
   fResourceOutput:=AddImageOutput('resourcetype_color_optimized_non_alpha',
                                   'resource_lens_final_color',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,

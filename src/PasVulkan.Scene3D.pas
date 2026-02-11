@@ -1799,6 +1799,9 @@ type EpvScene3D=class(Exception);
               fLifetime:TpvDouble;     // Remaining lifetime in seconds, <0 means infinite
               fFadeOutTime:TpvDouble;  // Duration of fade-out before expiration (0 = instant removal)
               fAge:TpvDouble;          // Age in seconds since creation
+              fLastAge:TpvDouble;      // Stored age from previous timestep (for Fix-Your-Timestep interpolation)
+              fInterpolatedAge:TpvDouble; // Interpolated age for current render frame
+              fInterpolatedOpacity:TpvFloat; // Interpolated effective opacity (incl. fade-out)
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
@@ -4307,6 +4310,7 @@ type EpvScene3D=class(Exception);
        fDecalAABBTreeStateGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
        fDecalBuffers:TpvScene3D.TDecalBuffers;
        fDecalNeedsCompaction:TPasMPBool32;
+       fDecalTimeSteps:Boolean;
        fAABBTree:TpvBVHDynamicAABBTree;
        fAABBTreeLock:TPasMPSlimReaderWriterLock;
        fAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
@@ -4677,7 +4681,9 @@ type EpvScene3D=class(Exception);
                            const aLifetime:TpvDouble=-1.0;
                            const aFadeOutTime:TpvDouble=0.0;
                            const aPasses:TpvScene3D.TDecalPasses=[TpvScene3D.TDecalPass.Mesh,TpvScene3D.TDecalPass.Planet,TpvScene3D.TDecalPass.Grass]):TpvScene3D.TDecal;
+       procedure StoreDecalStates;
        procedure UpdateDecals(const aDeltaTime:TpvDouble);
+       procedure InterpolateDecalStates(const aAlpha:TpvDouble);
       public
        function CreateMaterial(const aName:TpvUTF8String):TpvScene3D.TMaterial;
        function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
@@ -4708,6 +4714,7 @@ type EpvScene3D=class(Exception);
        property EnableAtmosphere:Boolean read fEnableAtmosphere write fEnableAtmosphere;
        property EnableRain:Boolean read fEnableRain write fEnableRain;
        property EnableWater:Boolean read fEnableWater write fEnableWater;
+       property DecalTimeSteps:Boolean read fDecalTimeSteps write fDecalTimeSteps;
        property LightIntensityFactor:TpvScalar read fLightIntensityFactor write fLightIntensityFactor;
        property EmissiveIntensityFactor:TpvScalar read fEmissiveIntensityFactor write fEmissiveIntensityFactor;
       public
@@ -12220,6 +12227,9 @@ begin
  fLifetime:=-1.0; // Infinite lifetime by default
  fFadeOutTime:=0.0;
  fAge:=0.0;
+ fLastAge:=0.0;
+ fInterpolatedAge:=0.0;
+ fInterpolatedOpacity:=1.0;
  fFlags:=0;
 end;
 
@@ -32794,6 +32804,8 @@ begin
 
  fDecalNeedsCompaction:=false;
 
+ fDecalTimeSteps:=false;
+
  fAABBTree:=TpvBVHDynamicAABBTree.Create;
 
  fAABBTreeLock:=TPasMPSlimReaderWriterLock.Create;
@@ -36278,12 +36290,17 @@ begin
     DecalItem^.UVScaleOffset:=Decal.fUVScaleOffset;
 
     // Pack blend params and calculate effective opacity with fadeout
-    EffectiveOpacity:=Decal.fOpacity;
-    if (Decal.fLifetime>=0.0) and (Decal.fFadeOutTime>0.0) then begin
-     RemainingLife:=Decal.fLifetime-Decal.fAge;
-     if RemainingLife<=Decal.fFadeOutTime then begin
-      FadeFactor:=RemainingLife/Decal.fFadeOutTime;
-      EffectiveOpacity:=EffectiveOpacity*FadeFactor;
+    if fDecalTimeSteps then begin
+     // When using timestep mode, InterpolateDecalStates has already computed the interpolated opacity
+     EffectiveOpacity:=Decal.fInterpolatedOpacity;
+    end else begin
+     EffectiveOpacity:=Decal.fOpacity;
+     if (Decal.fLifetime>=0.0) and (Decal.fFadeOutTime>0.0) then begin
+      RemainingLife:=Decal.fLifetime-Decal.fAge;
+      if RemainingLife<=Decal.fFadeOutTime then begin
+       FadeFactor:=RemainingLife/Decal.fFadeOutTime;
+       EffectiveOpacity:=EffectiveOpacity*FadeFactor;
+      end;
      end;
     end;
     PpvFloat(@DecalItem^.BlendParams.x)^:=EffectiveOpacity;
@@ -39030,6 +39047,18 @@ begin
  
 end;
 
+procedure TpvScene3D.StoreDecalStates;
+var Index:TpvSizeInt;
+    Decal:TpvScene3D.TDecal;
+begin
+ for Index:=0 to fDecals.Count-1 do begin
+  Decal:=fDecals[Index];
+  if assigned(Decal) then begin
+   Decal.fLastAge:=Decal.fAge;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.UpdateDecals(const aDeltaTime:TpvDouble);
 var Index:TpvSizeInt;
     Decal:TpvScene3D.TDecal;
@@ -39040,9 +39069,45 @@ begin
   if assigned(Decal) then begin
    if Decal.fLifetime>=0.0 then begin
     Decal.fAge:=Decal.fAge+aDeltaTime;
-    if Decal.fAge>=Decal.fLifetime then begin
-     // Decal has expired, remove it
+    if (not fDecalTimeSteps) and (Decal.fAge>=Decal.fLifetime) then begin
+     // Per-frame mode: remove expired decals immediately
      FreeAndNil(Decal);
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.InterpolateDecalStates(const aAlpha:TpvDouble);
+var Index:TpvSizeInt;
+    Decal:TpvScene3D.TDecal;
+    FadeStart,FadeProgress,RemainingLife:TpvDouble;
+begin
+ for Index:=fDecals.Count-1 downto 0 do begin
+  Decal:=fDecals[Index];
+  if assigned(Decal) then begin
+   // Interpolate age between stored and current
+   Decal.fInterpolatedAge:=Decal.fLastAge+((Decal.fAge-Decal.fLastAge)*aAlpha);
+   // Remove expired decals based on interpolated age
+   if (Decal.fLifetime>=0.0) and (Decal.fInterpolatedAge>=Decal.fLifetime) then begin
+    FreeAndNil(Decal);
+   end else begin
+    // Calculate fade-out opacity from interpolated age
+    if (Decal.fLifetime>=0.0) and (Decal.fFadeOutTime>0.0) then begin
+     RemainingLife:=Decal.fLifetime-Decal.fInterpolatedAge;
+     if RemainingLife<=Decal.fFadeOutTime then begin
+      FadeProgress:=RemainingLife/Decal.fFadeOutTime;
+      if FadeProgress<0.0 then begin
+       FadeProgress:=0.0;
+      end else if FadeProgress>1.0 then begin
+       FadeProgress:=1.0;
+      end;
+      Decal.fInterpolatedOpacity:=Decal.fOpacity*FadeProgress;
+     end else begin
+      Decal.fInterpolatedOpacity:=Decal.fOpacity;
+     end;
+    end else begin
+     Decal.fInterpolatedOpacity:=Decal.fOpacity;
     end;
    end;
   end;
