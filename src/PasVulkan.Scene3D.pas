@@ -1802,6 +1802,7 @@ type EpvScene3D=class(Exception);
               fLastAge:TpvDouble;      // Stored age from previous timestep (for Fix-Your-Timestep interpolation)
               fInterpolatedAge:TpvDouble; // Interpolated age for current render frame
               fInterpolatedOpacity:TpvFloat; // Interpolated effective opacity (incl. fade-out)
+              fHolder:TObject;       // The object whose surface this decal is on (e.g. planet, mesh, vehicle)
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
@@ -1828,6 +1829,7 @@ type EpvScene3D=class(Exception);
               property Lifetime:TpvDouble read fLifetime write fLifetime;
               property FadeOutTime:TpvDouble read fFadeOutTime write fFadeOutTime;
               property Age:TpvDouble read fAge write fAge;
+              property Holder:TObject read fHolder write fHolder;
             end;
             TDecals=TpvObjectGenericList<TpvScene3D.TDecal>;
             TDecalsHashMap=TpvHashMap<TpvScene3D.TDecal,Boolean>;
@@ -4680,7 +4682,8 @@ type EpvScene3D=class(Exception);
                            const aEdgeFade:TpvFloat=0.1;
                            const aLifetime:TpvDouble=-1.0;
                            const aFadeOutTime:TpvDouble=0.0;
-                           const aPasses:TpvScene3D.TDecalPasses=[TpvScene3D.TDecalPass.Mesh,TpvScene3D.TDecalPass.Planet,TpvScene3D.TDecalPass.Grass]):TpvScene3D.TDecal;
+                           const aPasses:TpvScene3D.TDecalPasses=[TpvScene3D.TDecalPass.Mesh,TpvScene3D.TDecalPass.Planet,TpvScene3D.TDecalPass.Grass];
+                           const aHolder:TObject=nil):TpvScene3D.TDecal;
        procedure StoreDecalStates;
        procedure UpdateDecals(const aDeltaTime:TpvDouble);
        procedure InterpolateDecalStates(const aAlpha:TpvDouble);
@@ -4715,6 +4718,7 @@ type EpvScene3D=class(Exception);
        property EnableRain:Boolean read fEnableRain write fEnableRain;
        property EnableWater:Boolean read fEnableWater write fEnableWater;
        property DecalTimeSteps:Boolean read fDecalTimeSteps write fDecalTimeSteps;
+       property Decals:TDecals read fDecals;
        property LightIntensityFactor:TpvScalar read fLightIntensityFactor write fLightIntensityFactor;
        property EmissiveIntensityFactor:TpvScalar read fEmissiveIntensityFactor write fEmissiveIntensityFactor;
       public
@@ -12230,6 +12234,7 @@ begin
  fLastAge:=0.0;
  fInterpolatedAge:=0.0;
  fInterpolatedOpacity:=1.0;
+ fHolder:=nil;
  fFlags:=0;
 end;
 
@@ -12280,7 +12285,7 @@ begin
       fIndex:=fSceneInstance.fDecals.Count-1;
      end;
      fSceneInstance.fDecals.Extract(fIndex);}
-     fSceneInstance.fDecals.Items[fIndex]:=nil;
+     fSceneInstance.fDecals.RawItems[fIndex]:=nil;
      fSceneInstance.fDecalNeedsCompaction:=true;
     finally
      fIndex:=-1;
@@ -36252,13 +36257,14 @@ begin
    Decal:=fDecals[ReadIndex];
    if assigned(Decal) then begin
     if WriteIndex<>ReadIndex then begin
+     Decal.fIndex:=WriteIndex;
      fDecals[WriteIndex]:=Decal;
     end;
     inc(WriteIndex);
    end;
   end;
   fDecals.Count:=WriteIndex;
- end; 
+ end;
 end;
 
 procedure TpvScene3D.CollectDecals(var aDecalItemArray:TpvScene3D.TDecalItems;
@@ -39002,7 +39008,8 @@ function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
                                const aEdgeFade:TpvFloat;
                                const aLifetime:TpvDouble;
                                const aFadeOutTime:TpvDouble;
-                               const aPasses:TpvScene3D.TDecalPasses):TpvScene3D.TDecal;
+                               const aPasses:TpvScene3D.TDecalPasses;
+                               const aHolder:TObject):TpvScene3D.TDecal;
 var Up,Right,Forward:TpvVector3D;
     DecalToWorld:TpvMatrix4x4D;
 begin
@@ -39043,6 +39050,7 @@ begin
  result.fAge:=0.0;
  result.fVisible:=true;
  result.fPasses:=aPasses;
+ result.fHolder:=aHolder;
  result.Update(-1); // Initial update without origin transform
  
 end;
@@ -39065,13 +39073,14 @@ var Index:TpvSizeInt;
 begin
  // Update decal ages and remove expired decals
  for Index:=fDecals.Count-1 downto 0 do begin
-  Decal:=fDecals[Index];
+  Decal:=fDecals.RawItems[Index];
   if assigned(Decal) then begin
    if Decal.fLifetime>=0.0 then begin
     Decal.fAge:=Decal.fAge+aDeltaTime;
     if (not fDecalTimeSteps) and (Decal.fAge>=Decal.fLifetime) then begin
      // Per-frame mode: remove expired decals immediately
-     FreeAndNil(Decal);
+     fDecals.RawItems[Index]:=nil;
+     Decal.Free;
     end;
    end;
   end;
@@ -39084,13 +39093,14 @@ var Index:TpvSizeInt;
     FadeStart,FadeProgress,RemainingLife:TpvDouble;
 begin
  for Index:=fDecals.Count-1 downto 0 do begin
-  Decal:=fDecals[Index];
+  Decal:=fDecals.RawItems[Index];
   if assigned(Decal) then begin
    // Interpolate age between stored and current
    Decal.fInterpolatedAge:=Decal.fLastAge+((Decal.fAge-Decal.fLastAge)*aAlpha);
    // Remove expired decals based on interpolated age
    if (Decal.fLifetime>=0.0) and (Decal.fInterpolatedAge>=Decal.fLifetime) then begin
-    FreeAndNil(Decal);
+    fDecals.RawItems[Index]:=nil;
+    Decal.Free;
    end else begin
     // Calculate fade-out opacity from interpolated age
     if (Decal.fLifetime>=0.0) and (Decal.fFadeOutTime>0.0) then begin
