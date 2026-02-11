@@ -1787,6 +1787,7 @@ type EpvScene3D=class(Exception);
               fPasses:TDecalPasses;
               fPosition:TpvVector3D;
               fOrientation:TpvQuaternion;
+              fRotation:TpvFloat;
               fSize:TpvVector3;
               fMatrix:TpvMatrix4x4;
               fUVScaleOffset:TpvVector4;
@@ -1823,6 +1824,7 @@ type EpvScene3D=class(Exception);
               property Passes:TDecalPasses read fPasses write fPasses;
               property Position:TpvVector3D read fPosition write fPosition;
               property Orientation:TpvQuaternion read fOrientation write fOrientation;
+              property Rotation:TpvFloat read fRotation write fRotation;
               property Size:TpvVector3 read fSize write fSize;
               property UVScaleOffset:TpvVector4 read fUVScaleOffset write fUVScaleOffset;
               property Opacity:TpvFloat read fOpacity write fOpacity;
@@ -4683,6 +4685,7 @@ type EpvScene3D=class(Exception);
        function ValidDecal(const aDecal:TpvScene3D.TDecal):Boolean;
        function SpawnDecal(const aPosition:TpvVector3D;
                            const aOrientation:TpvQuaternion;
+                           const aRotation:TpvFloat=0.0;
                            const aSize:TpvVector2;
                            const aAlbedoTexture:TpvInt32=-1;
                            const aNormalTexture:TpvInt32=-1;
@@ -12348,6 +12351,12 @@ begin
 
   // Construct matrix from position and orientation
   Matrix:=TpvMatrix4x4D.Create(fOrientation);
+
+  // Apply 2D rotation around local up axis (Y)
+  if fRotation<>0.0 then begin
+   Matrix:=Matrix*TpvMatrix4x4D.CreateRotate(fRotation,TpvVector3D.Create(0.0,1.0,0.0));
+  end;
+
   Matrix.Translation.xyz:=fPosition;
 
   // Apply the origin offset
@@ -39022,6 +39031,7 @@ end;
 
 function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
                                const aOrientation:TpvQuaternion;
+                               const aRotation:TpvFloat;
                                const aSize:TpvVector2;
                                const aAlbedoTexture:TpvInt32;
                                const aNormalTexture:TpvInt32;
@@ -39047,6 +39057,7 @@ begin
  result:=TpvScene3D.TDecal.Create(self);
  result.fPosition:=aPosition;
  result.fOrientation:=aOrientation;
+ result.fRotation:=aRotation;
  result.fMatrix:=Matrix;
  result.fSize:=TpvVector3.InlineableCreate(aSize.x,aSize.y,0.5);
  result.fUVScaleOffset:=TpvVector4.InlineableCreate(1.0,1.0,0.0,0.0); // Default UV: no scale/offset
