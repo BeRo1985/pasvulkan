@@ -95,11 +95,11 @@ void applyDecals(
           // Project world position into decal OBB space
           vec3 decalSpacePos = (worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
           
-          // Check if fragment is inside decal box (OBB bounds: -1.0 to 1.0)
-          if(all(greaterThan(decalSpacePos, vec3(-1.0))) && all(lessThan(decalSpacePos, vec3(1.0)))) {
+          // Check if fragment is inside decal box (OBB bounds: -0.5 to 0.5)
+          if(all(greaterThan(decalSpacePos, vec3(-0.5))) && all(lessThan(decalSpacePos, vec3(0.5)))) {
             
             // Calculate UVs [0,1]
-            vec2 decalUV = fma(fma(decalSpacePos.xy, vec2(0.5), vec2(0.5)), decal.uvScaleOffset.xy, decal.uvScaleOffset.zw);
+            vec2 decalUV = fma(decalSpacePos.xz + vec2(0.5), decal.uvScaleOffset.xy, decal.uvScaleOffset.zw);
             
             // Edge fade (soft edges at decal boundaries)
             vec2 edgeDist = min(decalUV, vec2(1.0) - decalUV) * 2.0;
@@ -263,11 +263,11 @@ void applyDecalsUnlit(
           // Project world position into decal OBB space
           vec3 decalSpacePos = (worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
           
-          // Check if fragment is inside decal box (OBB bounds: -1.0 to 1.0)
-          if(all(greaterThan(decalSpacePos, vec3(-1.0))) && all(lessThan(decalSpacePos, vec3(1.0)))) {
+          // Check if fragment is inside decal box (OBB bounds: -0.5 to 0.5)
+          if(all(greaterThan(decalSpacePos, vec3(-0.5))) && all(lessThan(decalSpacePos, vec3(0.5)))) {
             
             // Calculate UVs [0,1]
-            vec2 decalUV = fma(fma(decalSpacePos.xy, vec2(0.5), vec2(0.5)), decal.uvScaleOffset.xy, decal.uvScaleOffset.zw);
+            vec2 decalUV = fma(decalSpacePos.xz + vec2(0.5), decal.uvScaleOffset.xy, decal.uvScaleOffset.zw);
             
             // Edge fade (soft edges at decal boundaries)
             vec2 edgeDist = min(decalUV, vec2(1.0) - decalUV) * 2.0;

@@ -12362,8 +12362,8 @@ begin
 
   // Scale matrix
   Matrix.Right.xyz:=Matrix.Right.xyz*fSize.x;
-  Matrix.Up.xyz:=Matrix.Up.xyz*fSize.y;
-  Matrix.Forwards.xyz:=Matrix.Forwards.xyz*fSize.z;
+  Matrix.Up.xyz:=Matrix.Up.xyz*fSize.z;
+  Matrix.Forwards.xyz:=Matrix.Forwards.xyz*fSize.y;
 
   // Store inversed matrix for shader
   fMatrix:=Matrix.Inverse;
@@ -39048,7 +39048,7 @@ begin
  result.fPosition:=aPosition;
  result.fOrientation:=aOrientation;
  result.fMatrix:=Matrix;
- result.fSize:=TpvVector3.InlineableCreate(aSize.x,aSize.y,1.0);
+ result.fSize:=TpvVector3.InlineableCreate(aSize.x,aSize.y,0.5);
  result.fUVScaleOffset:=TpvVector4.InlineableCreate(1.0,1.0,0.0,0.0); // Default UV: no scale/offset
  result.fAlbedoTexture:=aAlbedoTexture;
  result.fNormalTexture:=aNormalTexture;
