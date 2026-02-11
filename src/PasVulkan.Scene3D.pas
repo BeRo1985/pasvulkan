@@ -39048,7 +39048,7 @@ begin
  result.fPosition:=aPosition;
  result.fOrientation:=aOrientation;
  result.fMatrix:=Matrix;
- result.fSize:=TpvVector3.InlineableCreate(aSize.x,aSize.y,0.5);
+ result.fSize:=TpvVector3.InlineableCreate(aSize.x,aSize.y,1.0);
  result.fUVScaleOffset:=TpvVector4.InlineableCreate(1.0,1.0,0.0,0.0); // Default UV: no scale/offset
  result.fAlbedoTexture:=aAlbedoTexture;
  result.fNormalTexture:=aNormalTexture;
