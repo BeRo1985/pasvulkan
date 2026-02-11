@@ -1808,6 +1808,7 @@ type EpvScene3D=class(Exception);
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
               procedure Update(const aInFlightFrameIndex:TpvSizeInt=-1);
+              class function QuaternionFromNormal(const aNormal:TpvVector3):TpvQuaternion; static;
              public
               property Visible:boolean read fVisible write fVisible;
               property Passes:TDecalPasses read fPasses write fPasses;
@@ -4670,7 +4671,7 @@ type EpvScene3D=class(Exception);
                             const aAdditiveBlending:boolean):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
        function ValidDecal(const aDecal:TpvScene3D.TDecal):Boolean;
        function SpawnDecal(const aPosition:TpvVector3D;
-                           const aNormal:TpvVector3D;
+                           const aOrientation:TpvQuaternion;
                            const aSize:TpvVector2;
                            const aAlbedoTexture:TpvInt32=-1;
                            const aNormalTexture:TpvInt32=-1;
@@ -12297,6 +12298,11 @@ begin
   end;
  end;
  inherited BeforeDestruction;
+end;
+
+class function TpvScene3D.TDecal.QuaternionFromNormal(const aNormal:TpvVector3):TpvQuaternion;
+begin
+ result:=TpvQuaternion.CreateFromToRotation(TpvVector3.Create(0.0,0.0,1.0),aNormal.Normalize);
 end;
 
 procedure TpvScene3D.TDecal.Update(const aInFlightFrameIndex:TpvSizeInt);
@@ -38990,7 +38996,7 @@ begin
 end;
 
 function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
-                               const aNormal:TpvVector3D;
+                               const aOrientation:TpvQuaternion;
                                const aSize:TpvVector2;
                                const aAlbedoTexture:TpvInt32;
                                const aNormalTexture:TpvInt32;
@@ -39005,22 +39011,19 @@ function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
                                const aFadeOutTime:TpvDouble;
                                const aPasses:TpvScene3D.TDecalPasses;
                                const aHolder:TObject):TpvScene3D.TDecal;
-var Up,Right,Forward:TpvVector3D;
+var RotationMatrix:TpvMatrix3x3;
     Matrix:TpvMatrix4x4D;
 begin
 
- // Calculate decal-to-world transform from position and normal (64-bit)
- Forward:=aNormal.Normalize;
- Up:=Forward.Perpendicular;
- Right:=Forward.Cross(Up).Normalize;
- Up:=Right.Cross(Forward).Normalize;
+ // Build decal-to-world rotation from quaternion
+ RotationMatrix:=TpvMatrix3x3.CreateFromQuaternion(aOrientation);
 
  // Create matrix (unit vectors, size will be applied in Update)
- Matrix.Right.xyz:=Right;
+ Matrix.Right.xyz:=RotationMatrix.Right;
  Matrix.Right.w:=0.0;
- Matrix.Up.xyz:=Up;
+ Matrix.Up.xyz:=RotationMatrix.Up;
  Matrix.Up.w:=0.0;
- Matrix.Forwards.xyz:=Forward;
+ Matrix.Forwards.xyz:=RotationMatrix.Forwards;
  Matrix.Forwards.w:=0.0;
  Matrix.Translation.xyz:=aPosition;
  Matrix.Translation.w:=1.0;
