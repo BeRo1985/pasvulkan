@@ -186,10 +186,11 @@ void applyDecals(
             decalNormal = blendNormals(decalNormal, decalNormalTangentSpace, blend);
             decalNormalBlend = 1.0 - ((1.0 - decalNormalBlend) * (1.0 - blend));
 
-            baseColor.x = 1.0; // DEBUG: visualize decal coverage
+            //baseColor.x = 1.0; // DEBUG: visualize decal coverage
+
           }
 
-          baseColor.y = 0.0; // DEBUG: visualize decal coverage
+          //baseColor.y = 0.0; // DEBUG: visualize decal coverage
 
 #if defined(LIGHTCLUSTERS)
         }
