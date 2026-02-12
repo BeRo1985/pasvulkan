@@ -626,44 +626,42 @@ if ((decalFlags & DECAL_FLAG_PASS) != 0u) {
 
 ### Matrix Transformation Details
 
-#### Why mat4x3 instead of mat4x4?
+#### Why three vec4 instead of mat4x3/mat3x4?
 
-Traditional mat4x4 (64 bytes) has bottom row always [0,0,0,1]:
+Traditional mat4x4 (64 bytes) has a bottom row always [0,0,0,1] — 16 bytes wasted.
+
+GLSL's native `mat3x4`/`mat4x3` types would save those 16 bytes in theory, but in practice they break 16-byte alignment rules in `std430` buffers and still round up to 64 bytes according to RenderDoc observations. This makes them no better than a full `mat4x4` in terms of actual memory consumption.
+
+Instead, the matrix is stored as **three explicit `vec4`** (3×16 = 48 bytes), which:
+- Maintains strict 16-byte alignment per row
+- Actually saves 16 bytes (no padding to 64)
+- Is fully compatible with buffer references
+- Allows the shader to construct a `mat4` with an implicit `vec4(0,0,0,1)` fourth row
+
 ```
-[ Xx  Xy  Xz  Tx ]   16 bytes
-[ Yx  Yy  Yz  Ty ]   16 bytes
-[ Zx  Zy  Zz  Tz ]   16 bytes
-[ 0   0   0   1  ]   16 bytes (wasted)
-```
-
-mat4x3 (48 bytes) omits the unused row:
-```
-[ Xx  Xy  Xz  Tx ]   16 bytes
-[ Yx  Yy  Yz  Ty ]   16 bytes
-[ Zx  Zy  Zz  Tz ]   16 bytes
-```
-
-**Savings**: 16 bytes per decal (12.5% reduction)
-
-#### Column-Major Layout
-
-GLSL mat4x3 is column-major, so we transpose on CPU:
-
-```pascal
-// Pascal (row-major)
-fWorldToDecalMatrix32[0,0]:=row0.x;  // Row 0, Col 0
-fWorldToDecalMatrix32[0,1]:=row0.y;  // Row 0, Col 1
-fWorldToDecalMatrix32[0,2]:=row0.z;  // Row 0, Col 2
-fWorldToDecalMatrix32[0,3]:=row0.w;  // Row 0, Col 3
-
-// GPU receives as (column-major):
-// Column 0: [row0.x, row1.x, row2.x]
-// Column 1: [row0.y, row1.y, row2.y]
-// Column 2: [row0.z, row1.z, row2.z]
-// Column 3: [row0.w, row1.w, row2.w]
+vec4 matrix0: [ Xx  Xy  Xz  Tx ]   16 bytes
+vec4 matrix1: [ Yx  Yy  Yz  Ty ]   16 bytes
+vec4 matrix2: [ Zx  Zy  Zz  Tz ]   16 bytes
 ```
 
-This matches GLSL's expectation without runtime transposition.
+**Savings**: 16 bytes per decal vs mat4x4 (12.5% reduction), without the alignment pitfalls of native mat3x4/mat4x3.
+
+#### Matrix Layout and Transposition
+
+The matrix is stored as three `vec4` rows on the CPU/GPU buffer (row-major). In the shader, it is transposed at runtime to construct a column-major `mat4` for correct `mat4 * vec4` multiplication:
+
+```glsl
+// Shader reconstructs column-major mat4 by transposing the three stored rows:
+mat4 worldToDecalMatrix = mat4(
+  decal.matrix0.x, decal.matrix1.x, decal.matrix2.x, 0.0,  // Column 0
+  decal.matrix0.y, decal.matrix1.y, decal.matrix2.y, 0.0,  // Column 1
+  decal.matrix0.z, decal.matrix1.z, decal.matrix2.z, 0.0,  // Column 2
+  decal.matrix0.w, decal.matrix1.w, decal.matrix2.w, 1.0   // Column 3 (translation)
+);
+// Equivalent to: transpose(mat4(matrix0, matrix1, matrix2, vec4(0,0,0,1)))
+```
+
+The three `vec4` are stored row-major on the CPU side for natural matrix indexing, and the shader handles the transpose inline.
 
 #### Origin Offset Technique
 
