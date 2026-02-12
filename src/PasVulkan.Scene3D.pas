@@ -1754,10 +1754,12 @@ type EpvScene3D=class(Exception);
             TMatrix4x3=array[0..2,0..3] of TpvFloat;  // 3 rows × 4 columns = column-major, 16-byte aligned rows
             TDecalBlendMode=
              (
-              AlphaBlend=0,  // Standard alpha blending
-              Multiply=1,    // Multiply (dirt/grime)
-              Overlay=2,     // Overlay (painted markings)
-              Additive=3     // Additive (glowing effects)
+              AlphaBlend=0,   // Standard alpha blending
+              Multiply=1,     // Multiply (dirt/grime)
+              Overlay=2,      // Overlay (painted markings)
+              Additive=3,     // Additive (glowing effects)
+              JustPBR=4,      // Just PBR
+              JustNormalMap=5 // Just normal map
              );
             TDecalPass=
              (
@@ -1775,9 +1777,10 @@ type EpvScene3D=class(Exception);
             { TDecal }
             TDecal=class
              public
-              const DECAL_FLAG_PASS_MESH=TpvUInt32(TpvUInt32(1) shl 0);
-                    DECAL_FLAG_PASS_PLANET=TpvUInt32(TpvUInt32(1) shl 1);
-                    DECAL_FLAG_PASS_GRASS=TpvUInt32(TpvUInt32(1) shl 2);
+              const DECAL_FLAG_MASK_MODE=TpvUInt32((TpvUInt32(1) shl 4)-1);
+                    DECAL_FLAG_PASS_MESH=TpvUInt32(TpvUInt32(1) shl 4);
+                    DECAL_FLAG_PASS_PLANET=TpvUInt32(TpvUInt32(1) shl 5);
+                    DECAL_FLAG_PASS_GRASS=TpvUInt32(TpvUInt32(1) shl 6);
                     DECAL_FLAG_DEBUG_DECAL=TpvUInt32(TpvUInt32(1) shl 30);
                     DECAL_FLAG_DEBUG_CULL=TpvUInt32(TpvUInt32(1) shl 31);
              private
@@ -1795,6 +1798,7 @@ type EpvScene3D=class(Exception);
               fAngleFade:TpvFloat;
               fEdgeFade:TpvFloat;
               fBlendMode:TpvScene3D.TDecalBlendMode;
+              fPBRBlendFactor:TpvFloat;
               fAlbedoTexture:TpvInt32;
               fNormalTexture:TpvInt32;
               fORMTexture:TpvInt32;
@@ -1831,6 +1835,7 @@ type EpvScene3D=class(Exception);
               property AngleFade:TpvFloat read fAngleFade write fAngleFade;
               property EdgeFade:TpvFloat read fEdgeFade write fEdgeFade;
               property BlendMode:TDecalBlendMode read fBlendMode write fBlendMode;
+              property PBRBlendFactor:TpvFloat read fPBRBlendFactor write fPBRBlendFactor;
               property AlbedoTexture:TpvInt32 read fAlbedoTexture write fAlbedoTexture;
               property NormalTexture:TpvInt32 read fNormalTexture write fNormalTexture;
               property ORMTexture:TpvInt32 read fORMTexture write fORMTexture;
@@ -1855,7 +1860,7 @@ type EpvScene3D=class(Exception);
 
              UVScaleOffset:TpvVector4;         // xy=scale, zw=offset
 
-             BlendParams:TpvUInt32Vector4;     // x=opacity(float as bits), y=angleFade(float as bits), z=edgeFade(float as bits), w=blendMode(uint)
+             BlendParams:TpvUInt32Vector4;     // x=opacity(float as bits), y=angleFade(float as bits), z=edgeFade(float as bits), w=pbrBlendFactor(float as bits)
 
              TextureIndices:TpvInt32Vector4;   // albedo, normal, ORM, specular texture indices
 
@@ -4693,6 +4698,7 @@ type EpvScene3D=class(Exception);
                            const aSpecularTexture:TpvInt32=-1;
                            const aEmissiveTexture:TpvInt32=-1;
                            const aBlendMode:TpvScene3D.TDecalBlendMode=TpvScene3D.TDecalBlendMode.AlphaBlend;
+                           const aPBRBlendFactor:TpvFloat=1.0;
                            const aOpacity:TpvFloat=1.0;
                            const aAngleFade:TpvFloat=1.0;
                            const aEdgeFade:TpvFloat=0.1;
@@ -36347,7 +36353,7 @@ begin
     PpvFloat(@DecalItem^.BlendParams.x)^:=EffectiveOpacity;
     PpvFloat(@DecalItem^.BlendParams.y)^:=Decal.fAngleFade;
     PpvFloat(@DecalItem^.BlendParams.z)^:=Decal.fEdgeFade;
-    DecalItem^.BlendParams.w:=TpvUInt32(Decal.fBlendMode);
+    PpvFloat(@DecalItem^.BlendParams.w)^:=Decal.fPBRBlendFactor;
 
     // Pack texture indices
     DecalItem^.TextureIndices.x:=Decal.fAlbedoTexture;
@@ -36361,7 +36367,7 @@ begin
     DecalItem^.TextureIndices2.w:=-1;
 
     DecalItem^.DecalUp:=Decal.fDecalUp;
-    DecalItem^.Flags:=Decal.fFlags;
+    DecalItem^.Flags:=(Decal.fFlags and not TpvScene3D.TDecal.DECAL_FLAG_MASK_MODE) or (TpvUInt32(Decal.fBlendMode) and TpvScene3D.TDecal.DECAL_FLAG_MASK_MODE);
 
     DecalMetaInfo:=@aDecalMetaInfoArray[Decal.fDecalItemIndex];
     DecalMetaInfo^.MinBounds:=TpvVector4.Create(Decal.fBoundingBox.Min,1.0);
@@ -39039,7 +39045,8 @@ function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
                                const aSpecularTexture:TpvInt32;
                                const aEmissiveTexture:TpvInt32;
                                const aBlendMode:TpvScene3D.TDecalBlendMode;
-                               const aOpacity:TpvFloat;
+                               const aPBRBlendFactor:TpvFloat;
+                               const aOpacity:TpvFloat;                               
                                const aAngleFade:TpvFloat;
                                const aEdgeFade:TpvFloat;
                                const aLifetime:TpvDouble;
@@ -39071,6 +39078,7 @@ begin
  result.fAngleFade:=aAngleFade;
  result.fEdgeFade:=aEdgeFade;
  result.fBlendMode:=aBlendMode;
+ result.fPBRBlendFactor:=aPBRBlendFactor;
  result.fLifetime:=aLifetime;
  result.fFadeOutTime:=aFadeOutTime;
  result.fAge:=0.0;

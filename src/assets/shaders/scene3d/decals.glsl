@@ -3,9 +3,10 @@
 
 #ifdef LIGHTS
 
-const uint DECAL_FLAG_PASS_MESH = 1u << 0;
-const uint DECAL_FLAG_PASS_PLANET = 1u << 1;
-const uint DECAL_FLAG_PASS_GRASS = 1u << 2;
+const uint DECAL_FLAG_MODE_MASK = (1u << 4) - 1;
+const uint DECAL_FLAG_PASS_MESH = 1u << 4;
+const uint DECAL_FLAG_PASS_PLANET = 1u << 5;
+const uint DECAL_FLAG_PASS_GRASS = 1u << 6;
 const uint DECAL_FLAG_DEBUG_DECAL = 1u << 30;
 const uint DECAL_FLAG_DEBUG_CULL = 1u << 31;
 
@@ -133,12 +134,13 @@ void applyDecals(
             float blend = decalAlbedo.w * uintBitsToFloat(decal.blendParams.x) * angleFade * edgeFade;
             
             // Apply blend mode
-            uint blendMode = decal.blendParams.w;
+            uint blendMode = decalFlags & DECAL_FLAG_MODE_MASK;
+            float pbrBlendFactor = uintBitsToFloat(decal.blendParams.w);
             switch(blendMode) {
               case 0u: {  // Alpha blend (standard)
                 baseColor.xyz = mix(baseColor.xyz, decalAlbedo.xyz, blend);
-                metallic = mix(metallic, decalMetallic, blend);
-                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend);
+                metallic = mix(metallic, decalMetallic, blend * pbrBlendFactor);
+                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * pbrBlendFactor);
                 occlusion = mix(occlusion, decalOcclusion, blend);
                 F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend);
                 F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend);
@@ -147,21 +149,20 @@ void applyDecals(
               }
               case 1u: {  // Multiply (dirt/grime/darkening)
                 baseColor.xyz *= mix(vec3(1.0), decalAlbedo.xyz, blend);
-                // Less influence on material properties for multiply
-                metallic = mix(metallic, decalMetallic, blend * 0.5);
-                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * 0.5);
+                metallic = mix(metallic, decalMetallic, blend * pbrBlendFactor);
+                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * pbrBlendFactor);
                 occlusion = mix(occlusion, decalOcclusion, blend);
                 // Don't modify specular for multiply mode
                 break;
               }
               case 2u: {  // Overlay (painted markings)
                 baseColor.xyz = mix(baseColor.xyz, decalOverlayBlend(baseColor.xyz, decalAlbedo.xyz), blend);
-                metallic = mix(metallic, decalMetallic, blend);
-                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend);
+                metallic = mix(metallic, decalMetallic, blend * pbrBlendFactor);
+                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * pbrBlendFactor);
                 occlusion = mix(occlusion, decalOcclusion, blend);
-                F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend);
-                F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend);
-                specularWeight = mix(specularWeight, decalSpecularWeight, blend);
+                F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend * pbrBlendFactor);
+                F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend * pbrBlendFactor);
+                specularWeight = mix(specularWeight, decalSpecularWeight, blend * pbrBlendFactor);
                 break;
               }
               case 3u: {  // Additive (glowing effects)
@@ -169,15 +170,27 @@ void applyDecals(
                 // Don't modify material properties for additive
                 break;
               }
+              case 4u: { // Just PBR
+                metallic = mix(metallic, decalMetallic, blend * pbrBlendFactor);
+                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * pbrBlendFactor);
+                occlusion = mix(occlusion, decalOcclusion, blend);
+                F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend * pbrBlendFactor);
+                F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend * pbrBlendFactor);
+                specularWeight = mix(specularWeight, decalSpecularWeight, blend * pbrBlendFactor);
+                break;
+              }   
+              case 5u: { // Just normal map
+                break;
+              } 
               default: {
                 // Alpha blend as fallback
                 baseColor.xyz = mix(baseColor.xyz, decalAlbedo.xyz, blend);
-                metallic = mix(metallic, decalMetallic, blend);
-                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend);
+                metallic = mix(metallic, decalMetallic, blend * pbrBlendFactor);
+                perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * pbrBlendFactor);
                 occlusion = mix(occlusion, decalOcclusion, blend);
-                F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend);
-                F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend);
-                specularWeight = mix(specularWeight, decalSpecularWeight, blend);
+                F0Dielectric = mix(F0Dielectric, decalF0Dielectric, blend * pbrBlendFactor);
+                F90Dielectric = mix(F90Dielectric, decalF90Dielectric, blend * pbrBlendFactor);
+                specularWeight = mix(specularWeight, decalSpecularWeight, blend * pbrBlendFactor);
                 break;
               }
             }
@@ -284,7 +297,7 @@ void applyDecalsUnlit(
             float blend = decalAlbedo.w * uintBitsToFloat(decal.blendParams.x) * angleFade * edgeFade;
             
             // Apply blend mode (only color, no material properties)
-            uint blendMode = decal.blendParams.w;
+            uint blendMode = decalFlags & DECAL_FLAG_MODE_MASK;
             switch(blendMode) {
               case 0u: {  // Alpha blend
                 color = mix(color, decalAlbedo.xyz, blend);
@@ -300,6 +313,12 @@ void applyDecalsUnlit(
               }
               case 3u: {  // Additive
                 color += decalAlbedo.xyz * blend;
+                break;
+              }
+              case 4u: { // Just PBR
+                break;
+              }
+              case 5u: { // Just normal map
                 break;
               }
               default: {
