@@ -689,7 +689,7 @@ The skip-tree is a flattened BVH optimized for GPU traversal:
 ```glsl
 struct DecalTreeNode {
   uvec4 aabbMinSkipCount;  // xyz=min bounds (as bits), w=skip count
-  uvec4 aabbMaxUserData;   // xyz=max bounds (as bits), w=decal index or 0xFFFFFFFF
+  uvec4 aabbMaxUserData;   // xyz=max bounds (as bits), w=decal index or 0xFFFFFFFFu
 };
 ```
 
@@ -705,7 +705,7 @@ while (nodeIndex < nodeCount) {
   vec3 aabbMax = uintBitsToFloat(node.aabbMaxUserData.xyz);
   
   if (pointInAABB(worldPosition, aabbMin, aabbMax)) {
-    if (node.aabbMaxUserData.w != 0xFFFFFFFF) {
+    if (node.aabbMaxUserData.w != 0xFFFFFFFFu) {
       // Leaf node - test this decal
       Decal decal = decals[node.aabbMaxUserData.w];
       // ... apply decal ...
