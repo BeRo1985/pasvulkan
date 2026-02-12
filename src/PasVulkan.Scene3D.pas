@@ -4685,7 +4685,7 @@ type EpvScene3D=class(Exception);
        function ValidDecal(const aDecal:TpvScene3D.TDecal):Boolean;
        function SpawnDecal(const aPosition:TpvVector3D;
                            const aOrientation:TpvQuaternion;
-                           const aRotation:TpvFloat=0.0;
+                           const aRotation:TpvFloat;
                            const aSize:TpvVector2;
                            const aAlbedoTexture:TpvInt32=-1;
                            const aNormalTexture:TpvInt32=-1;
