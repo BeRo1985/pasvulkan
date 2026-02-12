@@ -28,9 +28,12 @@ The Scene3D decal system provides a high-performance, order-stable solution for 
 - ✅ **Dual-mode rendering** - Frustum cluster grid (for rasterization) and BVH skip-tree (for pathtracing/raytracing and similar uses)
 - ✅ **Full PBR workflow** - Modifies albedo, normals, metallic, roughness, occlusion, and specular
 - ✅ **Order-stable rendering** - Consistent overlap ordering, no flickering
-- ✅ **Four blend modes** - AlphaBlend, Multiply, Overlay, Additive
-- ✅ **Lifetime management** - Automatic expiration and cleanup
+- ✅ **Six blend modes** - AlphaBlend, Multiply, Overlay, Additive, JustPBR, JustNormalMap
+- ✅ **Lifetime management** - Automatic expiration, smooth fade-out, and cleanup
 - ✅ **Pass filtering** - Selective application to mesh/planet/grass passes
+- ✅ **Holder tracking** - Associate decals with objects (planets, vehicles, etc.)
+- ✅ **Rotation support** - Arbitrary rotation around decal forward axis
+- ✅ **PBR blend factor** - Independent control over PBR property blending
 - ✅ **Efficient deletion** - Deferred compaction for stable ordering
 
 ---
@@ -41,17 +44,20 @@ The Scene3D decal system provides a high-performance, order-stable solution for 
 
 ```pascal
 var Decal:TpvScene3D.TDecal;
+    HitOrientation:TpvQuaternion;
 begin
+ // Create orientation from surface normal
+ HitOrientation:=TpvScene3D.TDecal.QuaternionFromNormal(HitNormal);
+ 
  // Spawn a bullet hole decal
  Decal:=Scene3D.SpawnDecal(
   HitPosition,                // TpvVector3D - World position
-  HitNormal,                  // TpvVector3D - Surface normal
+  HitOrientation,             // TpvQuaternion - Decal orientation
+  0.0,                        // Rotation in radians around forward axis
   TpvVector2.Create(0.2,0.2), // Size in meters (width, height)
   BulletHoleAlbedoTexture,    // Texture index for color
   BulletHoleNormalTexture,    // Texture index for normal map
-  BulletHoleORMTexture,       // Texture index for ORM (occlusion/roughness/metallic)
-  0,                          // No specular texture
-  0                           // No emissive texture
+  BulletHoleORMTexture        // Texture index for ORM (occlusion/roughness/metallic)
  );
  
  // Decal is now active and will render automatically
@@ -63,9 +69,10 @@ end;
 ```pascal
 // Create a decal that fades out after 10 seconds
 Decal:=Scene3D.SpawnDecal(
- Position,Normal,Size,
+ Position,Orientation,0.0,Size,
  AlbedoTex,NormalTex,ORMTex,0,0,
  TpvScene3D.TDecalBlendMode.AlphaBlend,
+ 1.0,    // PBR blend factor
  1.0,    // Full opacity
  1.0,    // Angle fade
  0.1,    // Edge fade
@@ -78,9 +85,10 @@ Decal:=Scene3D.SpawnDecal(
 ```pascal
 // Create a decal that smoothly fades out over last 2 seconds
 Decal:=Scene3D.SpawnDecal(
- Position,Normal,Size,
+ Position,Orientation,0.0,Size,
  AlbedoTex,NormalTex,ORMTex,0,0,
  TpvScene3D.TDecalBlendMode.AlphaBlend,
+ 1.0,    // PBR blend factor
  1.0,    // Full opacity
  1.0,    // Angle fade
  0.1,    // Edge fade
@@ -90,9 +98,10 @@ Decal:=Scene3D.SpawnDecal(
 
 // Or fade over entire lifetime (spawn at full opacity, fade to nothing)
 Decal:=Scene3D.SpawnDecal(
- Position,Normal,Size,
+ Position,Orientation,0.0,Size,
  AlbedoTex,NormalTex,ORMTex,0,0,
  TpvScene3D.TDecalBlendMode.AlphaBlend,
+ 1.0,    // PBR blend factor
  1.0,    // Full opacity
  1.0,    // Angle fade
  0.1,    // Edge fade
@@ -112,6 +121,12 @@ Decal:=Scene3D.SpawnDecal(...,TpvScene3D.TDecalBlendMode.Overlay,...);
 
 // Additive mode - glowing effects
 Decal:=Scene3D.SpawnDecal(...,TpvScene3D.TDecalBlendMode.Additive,...);
+
+// JustPBR mode - only modify metallic/roughness/occlusion, no albedo
+Decal:=Scene3D.SpawnDecal(...,TpvScene3D.TDecalBlendMode.JustPBR,...);
+
+// JustNormalMap mode - only apply normal map, no other changes
+Decal:=Scene3D.SpawnDecal(...,TpvScene3D.TDecalBlendMode.JustNormalMap,...);
 ```
 
 ---
@@ -125,7 +140,8 @@ Creates and spawns a new decal in the scene.
 ```pascal
 function SpawnDecal(
   const aPosition:TpvVector3D;
-  const aNormal:TpvVector3D;
+  const aOrientation:TpvQuaternion;
+  const aRotation:TpvFloat=0.0;
   const aSize:TpvVector2;
   const aAlbedoTexture:TpvInt32=-1;
   const aNormalTexture:TpvInt32=-1;
@@ -133,19 +149,22 @@ function SpawnDecal(
   const aSpecularTexture:TpvInt32=-1;
   const aEmissiveTexture:TpvInt32=-1;
   const aBlendMode:TDecalBlendMode=TDecalBlendMode.AlphaBlend;
+  const aPBRBlendFactor:TpvFloat=1.0;
   const aOpacity:TpvFloat=1.0;
   const aAngleFade:TpvFloat=1.0;
   const aEdgeFade:TpvFloat=0.1;
   const aLifetime:TpvDouble=-1.0;
   const aFadeOutTime:TpvDouble=0.0;
-  const aPasses:TDecalPasses=[TDecalPass.Mesh,TDecalPass.Planet,TDecalPass.Grass]
+  const aPasses:TDecalPasses=[TDecalPass.Mesh,TDecalPass.Planet,TDecalPass.Grass];
+  const aHolder:TObject=nil
 ):TDecal;
 ```
 
 **Parameters:**
 
 - `aPosition` - World-space position (64-bit precision)
-- `aNormal` - Surface normal vector (used to orient the decal)
+- `aOrientation` - Decal orientation as quaternion (use `TDecal.QuaternionFromNormal` to create from surface normal)
+- `aRotation` - Rotation in radians around the decal's forward axis (0.0 = no rotation)
 - `aSize` - Width and height in world units (depth is automatically 0.5)
 - `aAlbedoTexture` - Texture index for base color (-1 = white/none)
 - `aNormalTexture` - Texture index for normal map (-1 = flat)
@@ -156,10 +175,15 @@ function SpawnDecal(
 - `aSpecularTexture` - Texture index for specular properties (-1 = defaults)
 - `aEmissiveTexture` - Texture index for emissive glow (-1 = none)
 - `aBlendMode` - How decal blends with surface material
-  - `AlphaBlend` - Standard alpha blending (default)
-  - `Multiply` - Darkens surface (dirt, grime, shadows)
-  - `Overlay` - Painted markings
-  - `Additive` - Glowing effects (lights, magic)
+  - `AlphaBlend` (0) - Standard alpha blending (default)
+  - `Multiply` (1) - Darkens surface (dirt, grime, shadows)
+  - `Overlay` (2) - Painted markings
+  - `Additive` (3) - Glowing effects (lights, magic)
+  - `JustPBR` (4) - Only modify PBR properties (metallic, roughness, occlusion, specular), no albedo
+  - `JustNormalMap` (5) - Only apply normal map, no other material changes
+- `aPBRBlendFactor` - Independent blend factor for PBR material properties (0.0 to 1.0)
+  - Controls how strongly metallic/roughness/occlusion/specular are blended
+  - 1.0 = full PBR blending (default), 0.0 = no PBR change
 - `aOpacity` - Overall opacity multiplier (0.0 to 1.0)
 - `aAngleFade` - Power for angle-based fade (higher = sharper falloff)
   - 1.0 = linear falloff, 2.0 = quadratic, etc.
@@ -171,6 +195,7 @@ function SpawnDecal(
   - 1.0 = fade out over last 1 second
   - Can be equal to or greater than lifetime for full-lifetime fade
 - `aPasses` - Which render passes to apply decal to
+- `aHolder` - Object whose surface this decal is on (e.g. planet, mesh, vehicle). Used for bulk removal via `RemoveDecalsForHolder`.
 
 **Returns:** TDecal instance that can be modified or manually removed
 
@@ -179,28 +204,36 @@ function SpawnDecal(
 ```pascal
 property Visible:boolean;                  // Enable/disable rendering
 property Passes:TDecalPasses;              // Which passes to render in
-property DecalToWorldMatrix:TpvMatrix4x4D; // Transform (64-bit)
+property Position:TpvVector3D;             // World-space position (64-bit)
+property Orientation:TpvQuaternion;        // Decal orientation quaternion
+property Rotation:TpvFloat;                // Rotation around forward axis (radians)
 property Size:TpvVector3;                  // Dimensions (width, height, depth)
 property UVScaleOffset:TpvVector4;         // UV transform (xy=scale, zw=offset)
 property Opacity:TpvFloat;                 // Overall opacity (0.0 to 1.0)
 property AngleFade:TpvFloat;               // Angle falloff power
 property EdgeFade:TpvFloat;                // Edge softness distance
 property BlendMode:TDecalBlendMode;        // Blend operation
+property PBRBlendFactor:TpvFloat;          // PBR property blend factor (0.0 to 1.0)
 property AlbedoTexture:TpvInt32;           // Albedo texture index (-1 = none)
 property NormalTexture:TpvInt32;           // Normal map texture index (-1 = none)
 property ORMTexture:TpvInt32;              // ORM map texture index (-1 = none)
 property SpecularTexture:TpvInt32;         // Specular texture index (-1 = none)
 property EmissiveTexture:TpvInt32;         // Emissive texture index (-1 = none)
-property Flags:TpvUInt32;                  // Internal pass flags
-property BoundingBox:TpvAABB;              // World-space AABB (read-only)
+property Flags:TpvUInt32;                  // Internal pass/mode flags
+property BoundingBox:TpvAABB;              // World-space AABB
 property Lifetime:TpvDouble;               // Remaining lifetime (-1 = infinite)
 property FadeOutTime:TpvDouble;            // Fade-out duration (0 = instant)
 property Age:TpvDouble;                    // Current age in seconds
+property Holder:TObject;                   // Owner object (planet, vehicle, etc.)
 ```
 
-### TDecal Methods
+### TDecal Class Methods
 
 ```pascal
+class function QuaternionFromNormal(const aNormal:TpvVector3):TpvQuaternion; static;
+// Creates a quaternion orientation from a surface normal vector.
+// Useful for orienting decals to surfaces from raycasts.
+
 procedure Update(const aInFlightFrameIndex:TpvSizeInt=-1);
 // Updates internal state (matrix, AABB). Called automatically.
 ```
@@ -216,6 +249,64 @@ Updates all decal ages and removes expired decals. Call this once per frame with
 ```pascal
 Scene3D.UpdateDecals(FrameDeltaTime);
 ```
+
+### Fix-Your-Timestep Interpolation (Optional)
+
+For physics-style fixed timestep loops, the decal system supports store/interpolate to achieve smooth fade-outs independent of the render framerate.
+
+#### Enabling Timestep Mode
+
+```pascal
+Scene3D.DecalTimeSteps:=true;  // Enable store/interpolate mode (default: false)
+```
+
+When `DecalTimeSteps` is `true`:
+- `UpdateDecals` advances ages but does **not** remove expired decals (deferred to interpolation)
+- Fade-out opacity is computed from interpolated age, not raw age
+- You must call `StoreDecalStates` and `InterpolateDecalStates` yourself
+
+#### API
+
+```pascal
+procedure StoreDecalStates;
+// Snapshots current age of all decals into fLastAge.
+// Call BEFORE the fixed-timestep physics/logic update.
+
+procedure InterpolateDecalStates(const aAlpha:TpvDouble);
+// Interpolates age between stored (fLastAge) and current (fAge) using aAlpha.
+// Computes fInterpolatedOpacity including fade-out.
+// Removes decals whose interpolated age exceeds lifetime.
+// Call AFTER the update loop, before rendering, with the interpolation alpha.
+```
+
+#### Usage Pattern
+
+```pascal
+// Fixed timestep game loop
+Scene3D.DecalTimeSteps:=true;
+
+// Each frame:
+Scene3D.StoreDecalStates;                    // 1. Snapshot ages
+
+Accumulator:=Accumulator+FrameDeltaTime;     // 2. Accumulate frame time
+while Accumulator>=FixedDeltaTime do begin
+ Scene3D.UpdateDecals(FixedDeltaTime);       // 3. Advance ages at fixed rate
+ Accumulator:=Accumulator-FixedDeltaTime;
+end;
+
+Alpha:=Accumulator/FixedDeltaTime;
+Scene3D.InterpolateDecalStates(Alpha);       // 4. Interpolate for smooth rendering
+```
+
+#### Internal Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `fLastAge` | `TpvDouble` | Stored age from previous timestep |
+| `fInterpolatedAge` | `TpvDouble` | Interpolated age for current render frame |
+| `fInterpolatedOpacity` | `TpvFloat` | Effective opacity including fade-out (used by GPU upload) |
+
+When `DecalTimeSteps` is `false` (default), fade-out opacity is computed directly from `fAge` during GPU buffer collection, and `StoreDecalStates`/`InterpolateDecalStates` are not needed.
 
 ---
 
@@ -381,8 +472,9 @@ Per decal in GPU memory:
 ├─────────────────────────────────────────────────────────────┤
 │  TpvScene3D.SpawnDecal()                                    │
 │    ├─> Create TDecal instance                               │
-│    ├─> Calculate decal-to-world transform (64-bit)          │
-│    ├─> Invert to world-to-decal for GPU                     │
+│    ├─> Store position, orientation, rotation                │
+│    ├─> Calculate world-to-decal transform matrix            │
+│    ├─> Register in AABB tree                                │
 │    └─> Add to fDecals list (order-stable)                   │
 └──────────────────┬──────────────────────────────────────────┘
                    │
@@ -423,25 +515,27 @@ Per decal in GPU memory:
 
 ### Transform Pipeline
 
-Decals use a 64-bit → 32-bit precision cascade:
+Decals use position + orientation + rotation to build the transform matrix:
 
-1. **Creation (64-bit)**
+1. **Creation**
    ```pascal
-   fDecalToWorldMatrix:TpvMatrix4x4D;  // 64-bit, API-side
+   fPosition:TpvVector3D;         // 64-bit world position
+   fOrientation:TpvQuaternion;    // Decal orientation
+   fRotation:TpvFloat;            // Rotation around forward axis (radians)
+   fMatrix:TpvMatrix4x4;          // Computed world-to-decal matrix
    ```
 
-2. **Inversion (64-bit)**
-   ```pascal
-   fWorldToDecalMatrix:TpvMatrix4x4D;  // 64-bit, inverted
-   ```
+2. **Matrix computation** (in `TDecal.Update`)
+   - Build rotation matrix from orientation quaternion
+   - Apply additional rotation around forward axis
+   - Scale by decal size
+   - Invert for world-to-decal transform
+   - Apply origin offset for numerical stability
 
-3. **GPU Conversion (32-bit)**
-   ```pascal
-   fWorldToDecalMatrix32:TMatrix4x3;   // 32-bit, column-major, origin-offset
-   ```
-   - Transposed to column-major layout (3 rows × 4 columns)
-   - Origin offset applied for numerical stability
-   - Direct copy to GPU (no per-frame transformation)
+3. **GPU upload (32-bit)**
+   - Matrix stored as 3×vec4 (48 bytes), compatible with buffer references
+   - Column-major layout for direct GLSL consumption
+   - Origin offset applied for distant decals
 
 ### Order Stability Mechanism
 
@@ -483,13 +577,17 @@ The decal system guarantees stable rendering order through deferred compaction:
 
 ```glsl
 struct Decal {
-  mat4x3 worldToDecalMatrix;  // 48 bytes - 3×vec4 (column-major)
-  vec4 uvScaleOffset;         // 16 bytes - xy=scale, zw=offset
-  uvec4 blendParams;          // 16 bytes - packed floats as bits + blend mode
-  uvec4 textureIndices;       // 16 bytes - albedo, normal, ORM, specular
-  uvec4 textureIndices2;      // 16 bytes - emissive, reserved×3
-  uvec4 decalForwardFlags;    // 16 bytes - xyz=forward(as bits), w=pass flags
-};
+  // World to decal OBB transform (3x4 matrix as three vec4) - 48 bytes
+  vec4 matrix0;
+  vec4 matrix1;
+  vec4 matrix2;
+
+  vec4 uvScaleOffset;          // xy=scale, zw=offset - 16 bytes
+  uvec4 blendParams;           // x=opacity(float bits), y=angleFade(float bits), z=edgeFade(float bits), w=pbrBlendFactor(float bits) - 16 bytes
+  ivec4 textureIndices;        // albedo, normal, ORM, specular texture indices (-1 = none) - 16 bytes
+  ivec4 textureIndices2;       // emissive, unused, unused, unused - 16 bytes
+  uvec4 decalUpFlags;          // xyz=up direction for angle fade(float bits), w=flags(uint bits) - 16 bytes
+};                             // Total: 128 bytes
 ```
 
 **Memory layout rationale:**
@@ -498,20 +596,32 @@ struct Decal {
 - Packed floats as uint bits to avoid padding between blend params
 - Total size is power-of-2-friendly (128 bytes)
 
-#### Pass Flags Encoding
+#### Pass and Mode Flags Encoding
+
+The flags field (`decalUpFlags.w`) encodes both the blend mode and pass filters:
 
 ```pascal
-const DECAL_FLAG_PASS_MESH=1 shl 0;   // $00000001
-      DECAL_FLAG_PASS_PLANET=1 shl 1; // $00000002
-      DECAL_FLAG_PASS_GRASS=1 shl 2;  // $00000004
+// Blend mode in lower 4 bits (mask: $0000000F)
+const DECAL_FLAG_MASK_MODE=(1 shl 4)-1;  // Bits 0-3: blend mode value (0-5)
+
+// Pass flags in bits 4-6
+const DECAL_FLAG_PASS_MESH=1 shl 4;     // $00000010
+      DECAL_FLAG_PASS_PLANET=1 shl 5;   // $00000020
+      DECAL_FLAG_PASS_GRASS=1 shl 6;    // $00000040
+
+// Debug flags in upper bits
+const DECAL_FLAG_DEBUG_DECAL=1 shl 30;  // $40000000
+      DECAL_FLAG_DEBUG_CULL=1 shl 31;   // $80000000
 ```
 
-Stored in `decalForwardFlags.w`:
+Shader extraction:
 ```glsl
-const uint decalFlags = decal.decalForwardFlags.w;
+const uint decalFlags = decal.decalUpFlags.w;
+uint blendMode = decalFlags & DECAL_FLAG_MODE_MASK;  // 0-5
 if ((decalFlags & DECAL_FLAG_PASS) != 0u) {
   // Apply decal in this pass
 }
+```
 ```
 
 ### Matrix Transformation Details
@@ -746,11 +856,11 @@ vec3 blendNormals(vec3 base, vec3 detail, float blend) {
 
 ### Angle Fade Implementation
 
-Fade based on surface orientation relative to decal forward direction:
+Fade based on surface orientation relative to decal up direction:
 
 ```glsl
 float angleFade = clamp(
-  dot(normalize(worldNormal), normalize(decalForward)),
+  dot(normalize(worldNormal), normalize(decalUp)),
   0.0, 1.0
 );
 angleFade = pow(angleFade, angleFadePower);
@@ -1102,7 +1212,7 @@ void applyDecals(
   #endif
   
       // Check pass flags
-      if ((decal.decalForwardFlags.w & DECAL_FLAG_PASS) != 0u) {
+      if ((decal.decalUpFlags.w & DECAL_FLAG_PASS) != 0u) {
         // Transform to decal space
         vec3 decalSpacePos = (decal.worldToDecalMatrix * vec4(worldPosition, 1.0)).xyz;
         
@@ -1120,7 +1230,7 @@ void applyDecals(
                                       min(edgeDist.x, edgeDist.y));
           
           float angleFade = clamp(dot(normalize(worldNormal), 
-                                      normalize(uintBitsToFloat(decal.decalForwardFlags.xyz))), 
+                                      normalize(uintBitsToFloat(decal.decalUpFlags.xyz))), 
                                  0.0, 1.0);
           angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
           
@@ -1133,12 +1243,19 @@ void applyDecals(
           // Calculate blend
           float blend = decalAlbedo.a * uintBitsToFloat(decal.blendParams.x) * 
                        angleFade * edgeFade;
+          float pbrBlendFactor = uintBitsToFloat(decal.blendParams.w);
           
-          // Apply based on blend mode
-          applyBlendMode(decal.blendParams.w, blend, 
-                        baseColor, metallic, perceptualRoughness, occlusion,
-                        F0Dielectric, F90Dielectric, specularWeight,
-                        decalAlbedo, decalORM, decalSpecular);
+          // Apply based on blend mode (stored in lower 4 bits of flags)
+          uint blendMode = decal.decalUpFlags.w & DECAL_FLAG_MODE_MASK;
+          switch(blendMode) {
+            case 0u: // AlphaBlend
+            case 1u: // Multiply
+            case 2u: // Overlay
+            case 3u: // Additive
+            case 4u: // JustPBR (no albedo change)
+            case 5u: // JustNormalMap (no material changes)
+            // ... apply blend with pbrBlendFactor for PBR properties
+          }
           
           // Accumulate normals
           decalNormal = blendNormals(decalNormal, decalNormalTS, blend);
