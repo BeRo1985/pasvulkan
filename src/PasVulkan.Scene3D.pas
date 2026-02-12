@@ -12354,7 +12354,7 @@ begin
 
   // Apply 2D rotation around local up axis (Y)
   if fRotation<>0.0 then begin
-   Matrix:=Matrix*TpvMatrix4x4D.CreateRotate(fRotation,TpvVector3D.Create(0.0,1.0,0.0));
+   Matrix:=Matrix*TpvMatrix4x4.CreateRotateY(fRotation);
   end;
 
   Matrix.Translation.xyz:=fPosition;
