@@ -151,7 +151,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        procedure ResetFrameBuffer;
        procedure Execute; override;
       public
-       constructor Create;
+       constructor Create; virtual;
        destructor Destroy; override;
        procedure Shutdown; virtual;
        procedure Boot; virtual;
