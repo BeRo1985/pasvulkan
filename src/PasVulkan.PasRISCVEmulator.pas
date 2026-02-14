@@ -210,7 +210,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        function HandleKeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function HandlePointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
        function HandleScrolled(const aRelativeAmount:TpvVector2):boolean;
-       procedure UpdateEmulatorState(const aUpdateOutputData:boolean=false);
+       procedure UpdateEmulatorState;
        procedure RecordFrameBufferUpload(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure RenderToCanvas(const aInFlightFrameIndex:TpvSizeInt;const aCanvasWidth,aCanvasHeight:TpvFloat);
        property GraphicsFrameBuffer:TpvPasRISCVEmulatorMachineInstance.TFrameBuffer read fGraphicsFrameBuffer;
@@ -2417,7 +2417,7 @@ begin
  end;
 end;
 
-procedure TpvPasRISCVEmulatorRenderer.UpdateEmulatorState(const aUpdateOutputData:boolean);
+procedure TpvPasRISCVEmulatorRenderer.UpdateEmulatorState;
 var IncomingChars:TpvInt32;
     Updated,FrameBufferActive,FrameBufferGenerationDirty:boolean;
 begin
@@ -2434,9 +2434,7 @@ begin
     fMachineInstance.Machine.FrameBufferDevice.AutomaticRefresh and
     (fMachineInstance.NextFrameTime<=pvApplication.HighResolutionTimer.GetTime) then begin
   if fMachineInstance.Machine.FrameBufferDevice.CheckDirtyAndFlush then begin
-   if aUpdateOutputData then begin
-    fMachineInstance.Machine.FrameBufferDevice.UpdateOutputData;
-   end;
+   fMachineInstance.Machine.FrameBufferDevice.UpdateOutputData;
    fMachineInstance.OnNewFrame;
   end;
   fMachineInstance.NextFrameTime:=pvApplication.HighResolutionTimer.GetTime+(pvApplication.HighResolutionTimer.SecondInterval div 60);
