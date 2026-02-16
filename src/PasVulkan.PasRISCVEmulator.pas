@@ -1535,7 +1535,7 @@ begin
 
  pvApplication.Audio.Lock;
  try
-  pvApplication.Audio.OnFillBuffer:=fMachine.VirtIOSoundDevice.OutputAudioFillBufferCallback;
+  pvApplication.Audio.OnFillBuffer:=fMachine.SoundIO.OutputAudioFillBufferCallback;
  finally
   pvApplication.Audio.Unlock;
  end;
