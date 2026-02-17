@@ -9328,121 +9328,135 @@ var Index:TpvSizeInt;
     pObjects:PVkDebugUtilsObjectNameInfoEXT;
     pLabels:PVkDebugUtilsLabelEXT;
     DoBreak:Boolean;
+    LogLevel:TpvInt32;
 begin
 
  DoBreak:=false;
 
  try
 
-  if assigned(aCallbackData) then begin
+  if pvOutputLogLevel>LOG_NONE then begin
 
-   Message:=aCallbackData^.pMessage;
+   if assigned(aCallbackData) then begin
 
-   MessageIDName:=aCallbackData^.pMessageIdName;
+    Message:=aCallbackData^.pMessage;
 
-   if (pos('Mapping an image with layout',String(Message))>0) and (pos('can result in undefined behavior if this memory is used by the device',String(Message))>0) then begin
-    // Ignore because the AMD allocator will mix up memory types on IGP processors.
-   end else if pos('Invalid SPIR-V binary version 1.3',String(Message))>0 then begin
-    // Ignore because the validator is wrong here.
-   end else if pos('Shader requires flag',String(Message))>0 then begin
-    // Ignore because the validator is wrong here.
-   end else if (pos('SPIR-V module not valid: Pointer operand',String(Message))>0) and (pos('must be a memory object',String(Message))>0) then begin
-    // Ignore because the validator is wrong here.
-   end else if pos('UNASSIGNED-CoreValidation-DrawState-ClearCmdBeforeDraw',String(MessageIDName))>0 then begin
-    // Ignore
-   end else begin
+    MessageIDName:=aCallbackData^.pMessageIdName;
 
-    MessageSeverityTypes:='';
-    if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT))<>0 then begin
-     if length(MessageSeverityTypes)>0 then begin
-      MessageSeverityTypes:=MessageSeverityTypes+'|';
-     end;
-     MessageSeverityTypes:=MessageSeverityTypes+'VERBOSE';
-    end;
-    if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))<>0 then begin
-     if length(MessageSeverityTypes)>0 then begin
-      MessageSeverityTypes:=MessageSeverityTypes+'|';
-     end;
-     MessageSeverityTypes:=MessageSeverityTypes+'INFORMATION';
-    end;
-    if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT))<>0 then begin
-     if length(MessageSeverityTypes)>0 then begin
-      MessageSeverityTypes:=MessageSeverityTypes+'|';
-     end;
-     MessageSeverityTypes:=MessageSeverityTypes+'WARNING';
-    end;
-    if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))<>0 then begin
-     if length(MessageSeverityTypes)>0 then begin
-      MessageSeverityTypes:=MessageSeverityTypes+'|';
-     end;
-     MessageSeverityTypes:=MessageSeverityTypes+'ERROR';
-     DoBreak:=true;
-    end;
+    if (pos('Mapping an image with layout',String(Message))>0) and (pos('can result in undefined behavior if this memory is used by the device',String(Message))>0) then begin
+     // Ignore because the AMD allocator will mix up memory types on IGP processors.
+    end else if pos('Invalid SPIR-V binary version 1.3',String(Message))>0 then begin
+     // Ignore because the validator is wrong here.
+    end else if pos('Shader requires flag',String(Message))>0 then begin
+     // Ignore because the validator is wrong here.
+    end else if (pos('SPIR-V module not valid: Pointer operand',String(Message))>0) and (pos('must be a memory object',String(Message))>0) then begin
+     // Ignore because the validator is wrong here.
+    end else if pos('UNASSIGNED-CoreValidation-DrawState-ClearCmdBeforeDraw',String(MessageIDName))>0 then begin
+     // Ignore
+    end else begin
 
-    MessageTypes:='';
-    if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT))<>0 then begin
-     if length(MessageTypes)>0 then begin
-      MessageTypes:=MessageTypes+'|';
-     end;
-     MessageTypes:=MessageTypes+'GENERAL';
-    end;
-    if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT))<>0 then begin
-     if length(MessageTypes)>0 then begin
-      MessageTypes:=MessageTypes+'|';
-     end;
-     MessageTypes:=MessageTypes+'VALIDATION';
-    end;
-    if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT))<>0 then begin
-     if length(MessageTypes)>0 then begin
-      MessageTypes:=MessageTypes+'|';
-     end;
-     MessageTypes:=MessageTypes+'PERFORMANCE';
-    end;
-    if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT))<>0 then begin
-     if length(MessageTypes)>0 then begin
-      MessageTypes:=MessageTypes+'|';
-     end;
-     MessageTypes:=MessageTypes+'DEVICE_ADDRESS_BINDING';
-    end;
-
-    Objects:='';
-    if aCallbackData^.objectCount>0 then begin
-     Objects:=NewLine+Tab+'Objects - '+TpvUTF8String(IntToStr(aCallbackData^.objectCount));
-     pObjects:=aCallbackData^.pObjects;
-     for Index:=0 to TpvSizeInt(aCallbackData^.objectCount)-1 do begin
-      Objects:=Objects+NewLine+Tab+Tab+'Object['+TpvUTF8String(IntToStr(Index))+'] - '+
-               TpvUTF8String(VulkanObjectTypeToString(pObjects^.objectType))+', '+
-               'Handle '+TpvUTF8String(UIntToStr(TpvUInt64(pObjects^.objectHandle)));
-      if assigned(pObjects^.pObjectName) and (length(pObjects^.pObjectName)>0) then begin
-       Objects:=Objects+', Name '+TpvUTF8String(pObjects^.pObjectName);
+     LogLevel:=LOG_DEBUG;
+     MessageSeverityTypes:='';
+     if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT))<>0 then begin
+      if length(MessageSeverityTypes)>0 then begin
+       MessageSeverityTypes:=MessageSeverityTypes+'|';
       end;
-      inc(pObjects);
+      MessageSeverityTypes:=MessageSeverityTypes+'VERBOSE';
+      LogLevel:=LOG_VERBOSE;
      end;
-    end;
-
-    QueueLabels:='';
-    if aCallbackData^.QueueLabelCount>0 then begin
-     QueueLabels:=NewLine+Tab+'Queue labels - '+TpvUTF8String(IntToStr(aCallbackData^.QueueLabelCount));
-     pLabels:=aCallbackData^.pQueueLabels;
-     for Index:=0 to TpvSizeInt(aCallbackData^.QueueLabelCount)-1 do begin
-      QueueLabels:=QueueLabels+NewLine+Tab+Tab+'Label['+TpvUTF8String(IntToStr(Index))+'] - '+TpvUTF8String(pLabels^.pLabelName)+'{ '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[0]))+', '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[1]))+', '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[2]))+', '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[3]))+' }';
-      inc(pLabels);
+     if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))<>0 then begin
+      if length(MessageSeverityTypes)>0 then begin
+       MessageSeverityTypes:=MessageSeverityTypes+'|';
+      end;
+      MessageSeverityTypes:=MessageSeverityTypes+'INFORMATION';
+      LogLevel:=LOG_INFO;
      end;
-    end;
-
-    CmdBufLabels:='';
-    if aCallbackData^.cmdBufLabelCount>0 then begin
-     CmdBufLabels:=NewLine+Tab+'Command buffer labels - '+IntToStr(aCallbackData^.cmdBufLabelCount);
-     pLabels:=aCallbackData^.pCmdBufLabels;
-     for Index:=0 to TpvSizeInt(aCallbackData^.cmdBufLabelCount)-1 do begin
-      CmdBufLabels:=CmdBufLabels+NewLine+Tab+Tab+'Label['+IntToStr(Index)+'] - '+TpvUTF8String(pLabels^.pLabelName)+'{ '+ConvertDoubleToString(pLabels^.color[0])+', '+ConvertDoubleToString(pLabels^.color[1])+', '+ConvertDoubleToString(pLabels^.color[2])+', '+ConvertDoubleToString(pLabels^.color[3])+' }';
-      inc(pLabels);
+     if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT))<>0 then begin
+      if length(MessageSeverityTypes)>0 then begin
+       MessageSeverityTypes:=MessageSeverityTypes+'|';
+      end;
+      MessageSeverityTypes:=MessageSeverityTypes+'WARNING';
+      LogLevel:=LOG_WARNING;
      end;
+     if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))<>0 then begin
+      if length(MessageSeverityTypes)>0 then begin
+       MessageSeverityTypes:=MessageSeverityTypes+'|';
+      end;
+      MessageSeverityTypes:=MessageSeverityTypes+'ERROR';
+      LogLevel:=LOG_ERROR;
+      DoBreak:=true;
+     end;
+
+     MessageTypes:='';
+     if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT))<>0 then begin
+      if length(MessageTypes)>0 then begin
+       MessageTypes:=MessageTypes+'|';
+      end;
+      MessageTypes:=MessageTypes+'GENERAL';
+     end;
+     if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT))<>0 then begin
+      if length(MessageTypes)>0 then begin
+       MessageTypes:=MessageTypes+'|';
+      end;
+      MessageTypes:=MessageTypes+'VALIDATION';
+     end;
+     if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT))<>0 then begin
+      if length(MessageTypes)>0 then begin
+       MessageTypes:=MessageTypes+'|';
+      end;
+      MessageTypes:=MessageTypes+'PERFORMANCE';
+     end;
+     if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT))<>0 then begin
+      if length(MessageTypes)>0 then begin
+       MessageTypes:=MessageTypes+'|';
+      end;
+      MessageTypes:=MessageTypes+'DEVICE_ADDRESS_BINDING';
+     end;
+
+     Objects:='';
+     if aCallbackData^.objectCount>0 then begin
+      Objects:=NewLine+Tab+'Objects - '+TpvUTF8String(IntToStr(aCallbackData^.objectCount));
+      pObjects:=aCallbackData^.pObjects;
+      for Index:=0 to TpvSizeInt(aCallbackData^.objectCount)-1 do begin
+       Objects:=Objects+NewLine+Tab+Tab+'Object['+TpvUTF8String(IntToStr(Index))+'] - '+
+                TpvUTF8String(VulkanObjectTypeToString(pObjects^.objectType))+', '+
+                'Handle '+TpvUTF8String(UIntToStr(TpvUInt64(pObjects^.objectHandle)));
+       if assigned(pObjects^.pObjectName) and (length(pObjects^.pObjectName)>0) then begin
+        Objects:=Objects+', Name '+TpvUTF8String(pObjects^.pObjectName);
+       end;
+       inc(pObjects);
+      end;
+     end;
+
+     QueueLabels:='';
+     if aCallbackData^.QueueLabelCount>0 then begin
+      QueueLabels:=NewLine+Tab+'Queue labels - '+TpvUTF8String(IntToStr(aCallbackData^.QueueLabelCount));
+      pLabels:=aCallbackData^.pQueueLabels;
+      for Index:=0 to TpvSizeInt(aCallbackData^.QueueLabelCount)-1 do begin
+       QueueLabels:=QueueLabels+NewLine+Tab+Tab+'Label['+TpvUTF8String(IntToStr(Index))+'] - '+TpvUTF8String(pLabels^.pLabelName)+'{ '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[0]))+', '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[1]))+', '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[2]))+', '+TpvUTF8String(ConvertDoubleToString(pLabels^.color[3]))+' }';
+       inc(pLabels);
+      end;
+     end;
+
+     CmdBufLabels:='';
+     if aCallbackData^.cmdBufLabelCount>0 then begin
+      CmdBufLabels:=NewLine+Tab+'Command buffer labels - '+IntToStr(aCallbackData^.cmdBufLabelCount);
+      pLabels:=aCallbackData^.pCmdBufLabels;
+      for Index:=0 to TpvSizeInt(aCallbackData^.cmdBufLabelCount)-1 do begin
+       CmdBufLabels:=CmdBufLabels+NewLine+Tab+Tab+'Label['+IntToStr(Index)+'] - '+TpvUTF8String(pLabels^.pLabelName)+'{ '+ConvertDoubleToString(pLabels^.color[0])+', '+ConvertDoubleToString(pLabels^.color[1])+', '+ConvertDoubleToString(pLabels^.color[2])+', '+ConvertDoubleToString(pLabels^.color[3])+' }';
+       inc(pLabels);
+      end;
+     end;
+
+     if LogLevel<=pvOutputLogLevel then begin
+
+      Whole:='[Debug] '+MessageSeverityTypes+': '+MessageTypes+' - Message ID number: '+IntToStr(aCallbackData^.messageIdNumber)+' - Message ID name: '+MessageIDName+NewLine+Tab+Message+Objects+QueueLabels+CmdBufLabels;
+
+      VulkanDebugLn(Whole);
+      
+     end;
+
     end;
-
-    Whole:='[Debug] '+MessageSeverityTypes+': '+MessageTypes+' - Message ID number: '+IntToStr(aCallbackData^.messageIdNumber)+' - Message ID name: '+MessageIDName+NewLine+Tab+Message+Objects+QueueLabels+CmdBufLabels;
-
-    VulkanDebugLn(Whole);
 
    end;
 
