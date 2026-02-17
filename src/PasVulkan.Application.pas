@@ -9376,7 +9376,7 @@ begin
        MessageSeverityTypes:=MessageSeverityTypes+'|';
       end;
       MessageSeverityTypes:=MessageSeverityTypes+'WARNING';
-      LogLevel:=LOG_WARNING;
+      LogLevel:=LOG_INFO;
      end;
      if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))<>0 then begin
       if length(MessageSeverityTypes)>0 then begin
@@ -9453,7 +9453,7 @@ begin
       Whole:='[Debug] '+MessageSeverityTypes+': '+MessageTypes+' - Message ID number: '+IntToStr(aCallbackData^.messageIdNumber)+' - Message ID name: '+MessageIDName+NewLine+Tab+Message+Objects+QueueLabels+CmdBufLabels;
 
       VulkanDebugLn(Whole);
-      
+
      end;
 
     end;
