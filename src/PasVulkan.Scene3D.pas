@@ -37633,7 +37633,7 @@ begin
                                                                                        0,
                                                                                        pvAllocationGroupIDScene3DDynamic,
                                                                                        'TpvScene3D.fVulkanDebugPrimitiveVertexBuffers['+IntToStr(aInFlightFrameIndex)+']');
-       fVulkanDevice.DebugUtils.SetObjectName(fVulkanDebugPrimitiveVertexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanDebugPrimitiveVertexBuffers['+IntToStr(aInFlightFrameIndex)+']');
+       fVulkanDevice.DebugUtils.SetObjectName(fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanDebugPrimitiveVertexBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
      end;
 
@@ -37641,8 +37641,8 @@ begin
       Assert(false);
      end;
 
-
     end;
+
    end;
 
    fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
