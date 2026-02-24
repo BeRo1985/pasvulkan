@@ -130,7 +130,8 @@ type { TpvPasRISCVEmulatorMachineInstance }
             TFrameBufferItems=array[0..3] of TFrameBufferItem;
             TIntegers=array of TpvInt32;
       private
-       fFileSystem:TPasRISCV9PFileSystem;
+       f9PFileSystem:TPasRISCV9PFileSystem;
+       fFUSEFileSystem:TPasRISCVFUSEFileSystem;
        fEthernetDevice:TPasRISCVEthernetDevice;
        fNextFrameTime:TpvHighResolutionTime;
        fFrameBufferItems:TFrameBufferItems;
@@ -1519,11 +1520,18 @@ begin
  fMachine:=TPasRISCV.Create(fMachineConfiguration);
 
 {$if (defined(fpc) and defined(unix)) or defined(Windows)}
- fFileSystem:=TPasRISCV9PFileSystemNative.Create(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(pvApplication.Assets.BasePath)+'riscv')+'extern');
+ f9PFileSystem:=TPasRISCV9PFileSystemNative.Create(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(pvApplication.Assets.BasePath)+'riscv')+'extern');
 {$else}
- fFileSystem:=nil;
+ f9PFileSystem:=nil;
 {$ifend}
- fMachine.VirtIO9PDevice.FileSystem:=fFileSystem;
+ fMachine.VirtIO9PDevice.FileSystem:=f9PFileSystem;
+
+{$if (defined(fpc) and defined(unix)) or defined(Windows)}
+ fFUSEFileSystem:=TPasRISCVFUSEFileSystemNative.Create(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(pvApplication.Assets.BasePath)+'riscv')+'extern');
+{$else}
+ fFUSEFileSystem:=nil;
+{$ifend}
+ fMachine.VirtIOFSDevice.FileSystem:=fFUSEFileSystem;
 
 {$if defined(fpc) and defined(unix)}
  fEthernetDevice:=TPasRISCVEthernetDeviceTUN.Create;
@@ -1568,7 +1576,8 @@ begin
  end;
  FreeAndNil(fMachine);
  FreeAndNil(fMachineConfiguration);
- FreeAndNil(fFileSystem);
+ FreeAndNil(fFUSEFileSystem);
+ FreeAndNil(f9PFileSystem);
  FreeAndNil(fEthernetDevice);
  fXCacheIntegers:=nil;
  inherited Destroy;
