@@ -2059,6 +2059,9 @@ var c:AnsiChar;
     v:TPasTermUInt8;
 begin
  result:=false;
+ if not assigned(fMachineInstance) then begin
+  exit;
+ end;
  if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT])=[TpvApplicationInputKeyModifier.CTRL] then begin
   case aKeyEvent.KeyCode of
    KEYCODE_F12:begin
@@ -2416,7 +2419,10 @@ end;
 function TpvPasRISCVEmulatorRenderer.HandleScrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  result:=false;
- if fReady and not fSerialConsoleMode then begin
+ if not assigned(fMachineInstance) then begin
+  exit;
+ end;
+if fReady and not fSerialConsoleMode then begin
   if assigned(fMachineInstance.Machine.PS2MouseDevice) then begin
    fMachineInstance.Machine.PS2MouseDevice.Scroll(round(abs(aRelativeAmount.x)+abs(aRelativeAmount.y)));
   end;
@@ -2451,26 +2457,28 @@ begin
 
  Updated:=false;
  FrameBufferGenerationDirty:=false;
- if fMachineInstance.TransferFrame(@fGraphicsFrameBuffer,FrameBufferActive) then begin
-  if FrameBufferActive then begin
-   FrameBufferGenerationDirty:=true;
-  end else begin
-   fTerm.Refresh;
-  end;
- end;
- repeat
-  IncomingChars:=fMachineInstance.Machine.UARTDevice.OutputRingBuffer.AvailableForRead;
-  if IncomingChars>0 then begin
-   IncomingChars:=fMachineInstance.Machine.UARTDevice.OutputRingBuffer.ReadAsMuchAsPossible(@fUARTOutputBuffer,Min(IncomingChars,SizeOf(fUARTOutputBuffer)));
-   if IncomingChars>0 then begin
-    system.write(copy(fUARTOutputBuffer,0,IncomingChars));
-    fTerm.Write(@fUARTOutputBuffer,IncomingChars);
-    Updated:=true;
+ if assigned(fMachineInstance) then begin
+  if fMachineInstance.TransferFrame(@fGraphicsFrameBuffer,FrameBufferActive) then begin
+   if FrameBufferActive then begin
+    FrameBufferGenerationDirty:=true;
+   end else begin
+    fTerm.Refresh;
    end;
-  end else begin
-   break;
   end;
- until false;
+  repeat
+   IncomingChars:=fMachineInstance.Machine.UARTDevice.OutputRingBuffer.AvailableForRead;
+   if IncomingChars>0 then begin
+    IncomingChars:=fMachineInstance.Machine.UARTDevice.OutputRingBuffer.ReadAsMuchAsPossible(@fUARTOutputBuffer,Min(IncomingChars,SizeOf(fUARTOutputBuffer)));
+    if IncomingChars>0 then begin
+     system.write(copy(fUARTOutputBuffer,0,IncomingChars));
+     fTerm.Write(@fUARTOutputBuffer,IncomingChars);
+     Updated:=true;
+    end;
+   end else begin
+    break;
+   end;
+  until false;
+ end;
  if Updated then begin
   fTerminalFrameBufferSnapshot.Update;
   FrameBufferGenerationDirty:=true;
