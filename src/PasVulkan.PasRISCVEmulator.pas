@@ -2406,7 +2406,11 @@ begin
       end;
      end;
      if assigned(fMachineInstance.Machine.VirtIOInputMouseDevice) then begin
-      fMachineInstance.Machine.VirtIOInputMouseDevice.HandleMouse(round(aPointerEvent.RelativePosition.x),round(aPointerEvent.RelativePosition.y),0,fMouseButtons);
+      if fMachineInstance.Machine.VirtIOInputMouseDevice.AbsoluteEvents then begin
+       fMachineInstance.Machine.VirtIOInputMouseDevice.HandleMouse(round((aPointerEvent.Position.x/pvApplication.Width)*32767),round((aPointerEvent.Position.y/pvApplication.Height)*32767),0,fMouseButtons);
+      end else begin
+       fMachineInstance.Machine.VirtIOInputMouseDevice.HandleMouse(round(aPointerEvent.RelativePosition.x),round(aPointerEvent.RelativePosition.y),0,fMouseButtons);
+      end;
      end;
     end;
     TpvApplicationInputPointerEventType.Drag:begin
