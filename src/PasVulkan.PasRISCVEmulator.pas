@@ -2426,10 +2426,10 @@ begin
  end;
 if fReady and not fSerialConsoleMode then begin
   if assigned(fMachineInstance.Machine.PS2MouseDevice) then begin
-   fMachineInstance.Machine.PS2MouseDevice.Scroll(round(abs(aRelativeAmount.x)+abs(aRelativeAmount.y)));
+   fMachineInstance.Machine.PS2MouseDevice.Scroll(round(aRelativeAmount.x+aRelativeAmount.y));
   end;
   if assigned(fMachineInstance.Machine.VirtIOInputMouseDevice) then begin
-   fMachineInstance.Machine.VirtIOInputMouseDevice.HandleMouse(0,0,round(abs(aRelativeAmount.x)+abs(aRelativeAmount.y)),fMouseButtons);
+   fMachineInstance.Machine.VirtIOInputMouseDevice.HandleMouse(0,0,round(aRelativeAmount.x+aRelativeAmount.y),fMouseButtons);
   end;
  end;
 end;
