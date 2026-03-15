@@ -489,6 +489,7 @@ type EpvVulkanException=class(Exception);
        fRayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR;
        fPresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR;
        fPresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR;
+       fPresentTimingFeatures:TVkPhysicalDevicePresentTimingFeaturesEXT;
        fFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
        fProperties2KHR:TVkPhysicalDeviceProperties2KHR;
        fQueueFamilyProperties:TVkQueueFamilyPropertiesArray;
@@ -573,6 +574,7 @@ type EpvVulkanException=class(Exception);
        property RayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR read fRayTracingMaintenance1FeaturesKHR;
        property PresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR read fPresentIDFeatures;
        property PresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR read fPresentWaitFeatures;
+       property PresentTimingFeatures:TVkPhysicalDevicePresentTimingFeaturesEXT read fPresentTimingFeatures;
        property Features2KHR:TVkPhysicalDeviceFeatures2KHR read fFeatures2KHR;
        property Properties2KHR:TVkPhysicalDeviceProperties2KHR read fProperties2KHR;
       published
@@ -778,6 +780,7 @@ type EpvVulkanException=class(Exception);
        fFullScreenExclusiveSupport:boolean;
        fPresentIDSupport:boolean;
        fPresentWaitSupport:boolean;
+       fPresentTimingSupport:boolean;
        fNVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV;
        fNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
@@ -800,6 +803,7 @@ type EpvVulkanException=class(Exception);
        fRayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR;
        fPresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR;
        fPresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR;
+       fPresentTimingFeatures:TVkPhysicalDevicePresentTimingFeaturesEXT;
        fMultiView:boolean;
        fMultiViewTessellationShader:boolean;
        fMultiViewGeometryShader:boolean;
@@ -873,6 +877,7 @@ type EpvVulkanException=class(Exception);
        property FullScreenExclusiveSupport:boolean read fFullScreenExclusiveSupport;
        property PresentIDSupport:boolean read fPresentIDSupport;
        property PresentWaitSupport:boolean read fPresentWaitSupport;
+       property PresentTimingSupport:boolean read fPresentTimingSupport;
        property OnBeforeDeviceCreate:TpvVulkanDeviceOnBeforeDeviceCreate read fOnBeforeDeviceCreate write fOnBeforeDeviceCreate;
       public
        property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT write fDescriptorIndexingFeaturesEXT;
@@ -895,6 +900,7 @@ type EpvVulkanException=class(Exception);
        property RayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR read fRayTracingMaintenance1FeaturesKHR write fRayTracingMaintenance1FeaturesKHR;
        property PresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR read fPresentIDFeatures write fPresentIDFeatures;
        property PresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR read fPresentWaitFeatures write fPresentWaitFeatures;
+       property PresentTimingFeatures:TVkPhysicalDevicePresentTimingFeaturesEXT read fPresentTimingFeatures write fPresentTimingFeatures;
       published
        property MultiView:boolean read fMultiView;
        property MultiViewTessellationShader:boolean read fMultiViewTessellationShader;
@@ -9039,6 +9045,15 @@ begin
   end;
  end;
 
+ begin
+  FillChar(fPresentTimingFeatures,SizeOf(TVkPhysicalDevicePresentTimingFeaturesEXT),#0);
+  fPresentTimingFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_TIMING_FEATURES_EXT;
+  if AvailableExtensionNames.IndexOf(VK_EXT_PRESENT_TIMING_EXTENSION_NAME)>=0 then begin
+   fPresentTimingFeatures.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fPresentTimingFeatures;
+  end;
+ end;
+
  if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
     assigned(fInstance.Commands.Commands.GetPhysicalDeviceFeatures2KHR) then begin
   fInstance.Commands.GetPhysicalDeviceFeatures2KHR(Handle,@fFeatures2KHR);
@@ -11849,6 +11864,17 @@ begin
     DeviceCreateInfo.pNext:=@fPresentWaitFeatures;
    end;
 
+   FillChar(fPresentTimingFeatures,SizeOf(TVkPhysicalDevicePresentTimingFeaturesEXT),#0);
+   fPresentTimingFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_TIMING_FEATURES_EXT;
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_PRESENT_TIMING_EXTENSION_NAME)>=0) and
+      (PhysicalDevice.fPresentTimingFeatures.presentTiming<>VK_FALSE) then begin
+    fPresentTimingFeatures.presentTiming:=PhysicalDevice.fPresentTimingFeatures.presentTiming;
+    fPresentTimingFeatures.presentAtAbsoluteTime:=PhysicalDevice.fPresentTimingFeatures.presentAtAbsoluteTime;
+    fPresentTimingFeatures.presentAtRelativeTime:=PhysicalDevice.fPresentTimingFeatures.presentAtRelativeTime;
+    fPresentTimingFeatures.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPresentTimingFeatures;
+   end;
+
   end;
 
   /////////////////////////////////////////////////////////////////////////
@@ -11866,6 +11892,8 @@ begin
    fPresentIDSupport:=fPresentIDFeatures.presentId<>VK_FALSE;
 
    fPresentWaitSupport:=fPresentWaitFeatures.presentWait<>VK_FALSE;
+
+   fPresentTimingSupport:=fPresentTimingFeatures.presentTiming<>VK_FALSE;
 
    fMultiView:=fMultiviewFeaturesKHR.multiview<>VK_FALSE;
    fMultiViewTessellationShader:=fMultiviewFeaturesKHR.multiviewTessellationShader<>VK_FALSE;
@@ -20155,6 +20183,11 @@ begin
    SwapChainCreateInfo.oldSwapchain:=aOldSwapChain.fSwapChainHandle;
   end else begin
    SwapChainCreateInfo.oldSwapchain:=VK_NULL_HANDLE;
+  end;
+
+  // Enable present timing on swapchain when the extension is active
+  if fDevice.PresentTimingSupport then begin
+   SwapChainCreateInfo.flags:=SwapChainCreateInfo.flags or TVkSwapchainCreateFlagsKHR(VK_SWAPCHAIN_CREATE_PRESENT_TIMING_BIT_EXT);
   end;
 
 {$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}

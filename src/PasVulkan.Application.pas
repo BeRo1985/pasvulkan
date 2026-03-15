@@ -122,6 +122,9 @@ const MaxSwapChainImages=3;
       FrameTimesHistorySize=1 shl 10;
       FrameTimesHistoryMask=FrameTimesHistorySize-1;
 
+      FramePacingHistorySize=16;
+      FramePacingHistoryMask=FramePacingHistorySize-1;
+
       LOG_NONE=0;
       LOG_ERROR=1;
       LOG_INFO=2;
@@ -1361,6 +1364,15 @@ type EpvApplication=class(Exception)
        VSync={$ifdef fpc}2{$else}TpvApplicationPresentMode.FIFO{$endif}
       );
 
+     PpvApplicationFramePacingMode=^TpvApplicationFramePacingMode;
+     TpvApplicationFramePacingMode=
+      (
+       None=0,
+       Auto=1,
+       Software=2,
+       VulkanPresentTiming=3
+      );
+
      TpvApplicationProcessingMode=
       (
        Strict=0,
@@ -1731,6 +1743,20 @@ type EpvApplication=class(Exception)
 
        fFrameRateLimiterLastTime:TpvHighResolutionTime;
        fFrameRateLimiterDeviation:TpvHighResolutionTime;
+
+       // Frame pacing state for temporally consistent frame output
+       fFramePacingMode:TpvApplicationFramePacingMode;
+       fFramePacingActive:boolean;
+       fFramePacingEstimatedRefreshInterval:TpvInt64; // in high-res timer ticks
+       fFramePacingNextPresentTarget:TpvInt64;
+       fFramePacingLastPresentTime:TpvInt64;
+       fFramePacingHistory:array[0..FramePacingHistorySize-1] of TpvInt64;
+       fFramePacingHistoryIndex:TpvInt32;
+       fFramePacingHistoryCount:TpvInt32;
+       fFramePacingDriftAccumulator:TpvInt64;
+       fFramePacingSleepWithDriftCompensation:TpvHighResolutionTimerSleepWithDriftCompensation;
+       fFramePacingPresentTimingRefreshDuration:TpvUInt64; // from VK_EXT_present_timing, in nanoseconds
+       fFramePacingPresentTimingAvailable:boolean;
 
        fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of TpvDouble;
        fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TpvHighResolutionTime;
@@ -2177,6 +2203,8 @@ type EpvApplication=class(Exception)
        property ReinitializeGraphics:boolean read fReinitializeGraphics write fReinitializeGraphics;
 
        property PresentMode:TpvApplicationPresentMode read fPresentMode write fPresentMode;
+
+       property FramePacingMode:TpvApplicationFramePacingMode read fFramePacingMode write fFramePacingMode;
 
        property PresentFrameLatency:TpvUInt64 read fPresentFrameLatency write fPresentFrameLatency;
 
@@ -8746,6 +8774,8 @@ begin
 
  fFrameLimiterHighResolutionTimerSleepWithDriftCompensation:=TpvHighResolutionTimerSleepWithDriftCompensation.Create(fHighResolutionTimer);
 
+ fFramePacingSleepWithDriftCompensation:=TpvHighResolutionTimerSleepWithDriftCompensation.Create(fHighResolutionTimer);
+
  fDelayedObjectInstanceToFreeArray.Initialize;
 
  fDelayedObjectInstanceToFreeArrayLock:=TPasMPCriticalSection.Create;
@@ -8969,6 +8999,18 @@ begin
  fFrameRateLimiterLastTime:=0;
  fFrameRateLimiterDeviation:=0;
 
+ fFramePacingMode:=TpvApplicationFramePacingMode.None;
+ fFramePacingActive:=false;
+ fFramePacingEstimatedRefreshInterval:=0;
+ fFramePacingNextPresentTarget:=0;
+ fFramePacingLastPresentTime:=0;
+ FillChar(fFramePacingHistory,SizeOf(fFramePacingHistory),#0);
+ fFramePacingHistoryIndex:=0;
+ fFramePacingHistoryCount:=0;
+ fFramePacingDriftAccumulator:=0;
+ fFramePacingPresentTimingRefreshDuration:=0;
+ fFramePacingPresentTimingAvailable:=false;
+
  fFrameCounter:=0;
 
  fUpdateFrameCounter:=0;
@@ -9045,6 +9087,7 @@ begin
  fDelayedObjectInstanceToFreeArray.Finalize;
 
  FreeAndNil(fFrameLimiterHighResolutionTimerSleepWithDriftCompensation);
+ FreeAndNil(fFramePacingSleepWithDriftCompensation);
 
  FreeAndNil(fHighResolutionTimer);
 
@@ -9629,6 +9672,10 @@ begin
 
   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>=0 then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_PRESENT_TIMING_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_PRESENT_TIMING_EXTENSION_NAME);
   end;
 
   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>=0 then begin
@@ -10275,6 +10322,8 @@ end;
 
 procedure TpvApplication.CreateVulkanSwapChain;
 var Index:TpvInt32;
+    SwapchainTimingProperties:TVkSwapchainTimingPropertiesEXT;
+    SwapchainTimingPropertiesCounter:TpvUInt64;
 {$if defined(Windows) and not defined(PasVulkanHeadless)}
 {$if defined(PasVulkanUseSDL2)}
     WMInfo:TSDL_SysWMinfo;
@@ -10341,6 +10390,42 @@ begin
                                              {$if defined(Windows)}@WindowHandle{$else}nil{$ifend});
 
  fCountSwapChainImages:=fVulkanSwapChain.CountImages;
+
+ // Query VK_EXT_present_timing refresh duration if available
+ fFramePacingPresentTimingAvailable:=false;
+ fFramePacingPresentTimingRefreshDuration:=0;
+ if assigned(fVulkanDevice) and
+    fVulkanDevice.PresentTimingSupport and
+    assigned(fVulkanDevice.Commands.Commands.GetSwapchainTimingPropertiesEXT) then begin
+  try
+   FillChar(SwapchainTimingProperties,SizeOf(TVkSwapchainTimingPropertiesEXT),#0);
+   SwapchainTimingProperties.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT;
+   SwapchainTimingPropertiesCounter:=0;
+   if fVulkanDevice.Commands.GetSwapchainTimingPropertiesEXT(fVulkanDevice.Handle,
+                                                             fVulkanSwapChain.Handle,
+                                                             @SwapchainTimingProperties,
+                                                             @SwapchainTimingPropertiesCounter)=VK_SUCCESS then begin
+    if SwapchainTimingProperties.refreshDuration>0 then begin
+     fFramePacingPresentTimingRefreshDuration:=SwapchainTimingProperties.refreshDuration;
+     fFramePacingPresentTimingAvailable:=true;
+     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: refreshDuration='+IntToStr(fFramePacingPresentTimingRefreshDuration)+'ns');
+    end;
+   end;
+  except
+   Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing query failed');
+  end;
+ end;
+
+ // Reset frame pacing state for new swapchain
+ fFramePacingActive:=false;
+ fFramePacingNextPresentTarget:=0;
+ fFramePacingLastPresentTime:=0;
+ fFramePacingHistoryIndex:=0;
+ fFramePacingHistoryCount:=0;
+ fFramePacingDriftAccumulator:=0;
+ if assigned(fFramePacingSleepWithDriftCompensation) then begin
+  fFramePacingSleepWithDriftCompensation.Reset;
+ end;
 {$ifend}
 
  fSwapChainImageCounterIndex:=0;
@@ -11028,6 +11113,11 @@ var Target,TimeOut:TpvUInt64;
     PrepreviousFrameFrenceIndex:TpvInt32;
     PrepreviousFrameFrenceMask:TpvUInt32;
     PrepreviousFrameFrence:TpvVulkanFence;
+    PacingNow,PacingInterval,PacingSleepDuration,PacingDiff:TpvInt64;
+    PacingSum:TpvInt64;
+    PacingIndex,PacingSortIndex,PacingCount:TpvInt32;
+    PacingSorted:array[0..FramePacingHistorySize-1] of TpvInt64;
+    PacingTemp:TpvInt64;
 begin
 
  if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
@@ -11141,6 +11231,125 @@ begin
      end;
 
      result:=true;
+
+    end;
+
+   end;
+
+  end;
+
+  /////////////////////////////////////////////////////////////////////////
+  // Frame pacing: align CPU frame start to estimated display refresh    //
+  // boundaries for temporally consistent frame output.                  //
+  /////////////////////////////////////////////////////////////////////////
+
+  if result and fBlocking and (fFramePacingMode<>TpvApplicationFramePacingMode.None) then begin
+
+   PacingNow:=fHighResolutionTimer.GetTime;
+
+   // Record timestamp for frame pacing estimation (measured AFTER GPU waits,
+   // BEFORE pacing sleep, so the sleep is not included in the interval estimate)
+   if fFramePacingLastPresentTime<>0 then begin
+    fFramePacingHistory[fFramePacingHistoryIndex]:=PacingNow-fFramePacingLastPresentTime;
+    fFramePacingHistoryIndex:=(fFramePacingHistoryIndex+1) and FramePacingHistoryMask;
+    if fFramePacingHistoryCount<FramePacingHistorySize then begin
+     inc(fFramePacingHistoryCount);
+    end;
+   end;
+   fFramePacingLastPresentTime:=PacingNow;
+
+   // Determine the effective refresh interval:
+   // Prefer VK_EXT_present_timing hardware data when available,
+   // otherwise fall back to software estimation from present history.
+   PacingInterval:=0;
+
+   if (fFramePacingMode in [TpvApplicationFramePacingMode.Auto,TpvApplicationFramePacingMode.VulkanPresentTiming]) and
+      fFramePacingPresentTimingAvailable and (fFramePacingPresentTimingRefreshDuration>0) then begin
+
+    // VK_EXT_present_timing path: use the actual refresh duration reported by the driver
+    PacingInterval:=fHighResolutionTimer.FromNanoseconds(fFramePacingPresentTimingRefreshDuration);
+
+   end else if (fFramePacingMode in [TpvApplicationFramePacingMode.Auto,TpvApplicationFramePacingMode.Software]) and
+               (fFramePacingHistoryCount>=4) then begin
+
+    // Software estimation path: compute median of recent present-to-present intervals
+    // to robustly estimate the display refresh interval.
+    PacingCount:=fFramePacingHistoryCount;
+    for PacingIndex:=0 to PacingCount-1 do begin
+     PacingSorted[PacingIndex]:=fFramePacingHistory[(fFramePacingHistoryIndex+FramePacingHistorySize-PacingCount+PacingIndex) and FramePacingHistoryMask];
+    end;
+    // Simple insertion sort for small array (max 16 elements)
+    for PacingIndex:=1 to PacingCount-1 do begin
+     PacingTemp:=PacingSorted[PacingIndex];
+     PacingSortIndex:=PacingIndex;
+     while (PacingSortIndex>0) and (PacingSorted[PacingSortIndex-1]>PacingTemp) do begin
+      PacingSorted[PacingSortIndex]:=PacingSorted[PacingSortIndex-1];
+      dec(PacingSortIndex);
+     end;
+     PacingSorted[PacingSortIndex]:=PacingTemp;
+    end;
+    // Use median (middle quartile range average for robustness)
+    PacingSum:=0;
+    for PacingIndex:=(PacingCount shr 2) to PacingCount-1-(PacingCount shr 2) do begin
+     PacingSum:=PacingSum+PacingSorted[PacingIndex];
+    end;
+    PacingInterval:=PacingSum div (PacingCount-(2*(PacingCount shr 2)));
+
+   end;
+
+   // Sanity check: only apply frame pacing when the estimated interval looks like
+   // a realistic display refresh rate (between ~4ms/250Hz and ~50ms/20Hz).
+   // During loading screens or other slow frames, the software estimation would
+   // produce huge intervals that cause additional unnecessary sleep.
+   if (PacingInterval>0) and
+      (PacingInterval>=fHighResolutionTimer.FromMilliseconds(4)) and
+      (PacingInterval<=fHighResolutionTimer.FromMilliseconds(50)) then begin
+
+    if (fFramePacingNextPresentTarget=0) or
+       // Reset phase lock if we drifted more than 1.5x the refresh interval
+       (abs(PacingNow-fFramePacingNextPresentTarget)>(PacingInterval+(PacingInterval shr 1))) then begin
+     // Initialize or reinitialize: target the next refresh boundary
+     fFramePacingNextPresentTarget:=PacingNow+PacingInterval;
+     fFramePacingDriftAccumulator:=0;
+     fFramePacingActive:=true;
+    end;
+
+    if fFramePacingActive then begin
+
+     // Calculate how long we need to sleep to hit the target
+     PacingSleepDuration:=(fFramePacingNextPresentTarget-PacingNow)-fFramePacingDriftAccumulator;
+
+     if PacingSleepDuration>0 then begin
+      // Only sleep if meaningful (more than ~0.5ms to avoid busy-wait overhead)
+      if PacingSleepDuration>(fHighResolutionTimer.MillisecondInterval shr 1) then begin
+       PacingNow:=fFramePacingSleepWithDriftCompensation.Sleep(PacingSleepDuration);
+      end else begin
+       // Spin-wait for very short durations
+       while fHighResolutionTimer.GetTime<(fFramePacingNextPresentTarget-fFramePacingDriftAccumulator) do begin
+        TPasMP.Yield;
+       end;
+       PacingNow:=fHighResolutionTimer.GetTime;
+      end;
+     end;
+
+     // Measure actual drift and accumulate for compensation on next frame
+     PacingDiff:=PacingNow-fFramePacingNextPresentTarget;
+     // Clamp drift accumulator to avoid over-compensation after stalls
+     fFramePacingDriftAccumulator:=PacingDiff;
+     if fFramePacingDriftAccumulator>(PacingInterval shr 3) then begin
+      fFramePacingDriftAccumulator:=PacingInterval shr 3;
+     end else if fFramePacingDriftAccumulator<(-(PacingInterval shr 3)) then begin
+      fFramePacingDriftAccumulator:=-(PacingInterval shr 3);
+     end;
+
+     // Advance target to next refresh boundary
+     fFramePacingNextPresentTarget:=fFramePacingNextPresentTarget+PacingInterval;
+
+     // If we fell behind, snap forward to avoid cascading catch-up
+     if fFramePacingNextPresentTarget<PacingNow then begin
+      fFramePacingNextPresentTarget:=PacingNow+PacingInterval;
+      fFramePacingDriftAccumulator:=0;
+     end;
 
     end;
 
@@ -11539,6 +11748,8 @@ end;
 
 function TpvApplication.PresentVulkanBackBuffer:boolean;
 var PresentIdKHR:TVkPresentIdKHR;
+    PresentTimingsInfoEXT:TVkPresentTimingsInfoEXT;
+    PresentTimingInfoEXT:TVkPresentTimingInfoEXT;
     PresentNext:Pointer;
 begin
 
@@ -11614,6 +11825,26 @@ begin
    PresentIdKHR.pPresentIds:=@fVulkanPresentID;
    inc(fVulkanPresentID);
    PresentNext:=@PresentIdKHR;
+  end;
+
+  // Chain VK_EXT_present_timing info when available, to request
+  // presentation at the nearest refresh cycle for consistent pacing
+  if fFramePacingPresentTimingAvailable and
+     assigned(fVulkanDevice) and
+     fVulkanDevice.PresentTimingSupport then begin
+   FillChar(PresentTimingInfoEXT,SizeOf(TVkPresentTimingInfoEXT),#0);
+   PresentTimingInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
+   PresentTimingInfoEXT.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT);
+   PresentTimingInfoEXT.targetTime:=0; // nearest refresh cycle
+   PresentTimingInfoEXT.timeDomainId:=0;
+   PresentTimingInfoEXT.presentStageQueries:=0;
+   PresentTimingInfoEXT.targetTimeDomainPresentStage:=0;
+   FillChar(PresentTimingsInfoEXT,SizeOf(TVkPresentTimingsInfoEXT),#0);
+   PresentTimingsInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT;
+   PresentTimingsInfoEXT.swapchainCount:=1;
+   PresentTimingsInfoEXT.pTimingInfos:=@PresentTimingInfoEXT;
+   PresentTimingsInfoEXT.pNext:=PresentNext;
+   PresentNext:=@PresentTimingsInfoEXT;
   end;
 
   try
