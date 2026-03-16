@@ -11243,7 +11243,7 @@ begin
   // boundaries for temporally consistent frame output.                  //
   /////////////////////////////////////////////////////////////////////////
 
-  if result and fBlocking and (fFramePacingMode<>TpvApplicationFramePacingMode.None) then begin
+  if fBlocking and (fFramePacingMode<>TpvApplicationFramePacingMode.None) then begin
 
    PacingNow:=fHighResolutionTimer.GetTime;
 
