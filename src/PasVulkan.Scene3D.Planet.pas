@@ -2914,6 +2914,11 @@ type TpvScene3DPlanets=class;
                                      out aCountMeshLODLevels:TpvSizeInt;
                                      out aMeshLODOffsets:TpvScene3DPlanet.TSizeIntArray;
                                      out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
+       { Common logic for both RandomDirectionWaterDensity and 
+         RandomDirectionGrassDensity. }
+       function RandomDirectionDataDensity(out aNormal:TpvVector3;
+        const MinDensity:TpvFloat;
+        const Data:array of TpvFloat;const DataResolution:TpvUInt32):Boolean;
       public
        constructor Create(const aScene3D:TObject;
                           const aBrushes:TpvScene3DPlanet.TBrushes;
@@ -3017,6 +3022,16 @@ type TpvScene3DPlanets=class;
        function GetAtmosphere(const aNormal:TpvVector3):TpvScalar; overload;
        function GetWater(const aUV:TpvVector2):TpvScalar; overload;
        function GetWater(const aNormal:TpvVector3):TpvScalar; overload;
+       { Choose random direction, with random distribution reflecting
+         the water amount at each point. 
+         The minimum water density for tile to be considered is MinDensity,
+         tiles with less are treated as if they had 0 water. 
+         Returns @true and sets aNormal if suitable direction on water is found. }
+       function RandomDirectionWaterDensity(out aNormal:TpvVector3;const MinDensity:TpvScalar):Boolean;
+       { Choose random direction, with random distribution reflecting
+         the grass amount at each point. 
+         @seealso RandomDirectionWaterDensity }
+       function RandomDirectionGrassDensity(out aNormal:TpvVector3;const MinDensity:TpvScalar):Boolean;
        function GetBlendMap(const aUV:TpvVector2):TBlendMapValue; overload;
        function GetBlendMap(const aNormal:TpvVector3):TBlendMapValue; overload;
        function GetUV(const aPosition:TpvVector3):TpvVector2;
@@ -31009,6 +31024,70 @@ end;
 function TpvScene3DPlanet.GetAtmosphere(const aNormal:TpvVector3):TpvScalar;
 begin
  result:=GetAtmosphere(OctEqualAreaUnsignedEncode(aNormal));
+end;
+
+function TpvScene3DPlanet.RandomDirectionDataDensity(out aNormal:TpvVector3;
+ const MinDensity:TpvFloat;
+ const Data:array of TpvFloat;const DataResolution:TpvUInt32):Boolean;
+var SumDensities:TpvScalar;
+    RandomValue:TpvScalar;
+    Index:TpvInt32;
+    Density:TpvFloat; // type just like Data values
+    xi,yi:TpvInt32;
+    xf,yf:TpvFloat;
+    UV:TpvVector2;
+begin
+ Assert(Sqr(DataResolution) = length(Data));
+
+ // iterate over Data to sum densities
+ SumDensities:=0.0;
+ for Index:=0 to length(Data)-1 do begin
+  Density:=Data[Index]-MinDensity;
+  if Density<=0.0 then Continue;
+  SumDensities:=SumDensities+Density;
+ end;
+
+ if SumDensities<=0.001 then begin
+  // no water/grass
+  exit(false);
+ end;
+
+ RandomValue:=Random*SumDensities;
+
+ // iterate again to find the corresponding normal
+ SumDensities:=0.0;
+ for Index:=0 to length(Data)-1 do begin
+  Density:=Data[Index]-MinDensity;
+  if Density<=0.0 then Continue;
+  SumDensities:=SumDensities+Density;
+  if SumDensities>=RandomValue then begin
+   // calculate the normal corresponding to this index
+   xi:=Index mod DataResolution;
+   yi:=Index div DataResolution;
+   xf:=xi+Random;
+   yf:=yi+Random;
+   UV:=WrapOctahedralCoordinates(TpvVector2.InlineableCreate(
+    xf/DataResolution,
+    yf/DataResolution));
+   aNormal:=OctEqualAreaUnsignedDecode(UV);
+   Exit(true);
+  end;
+ end;
+
+ // failed to find RandomValue, may happen due to floats imprecision
+ result:=False;
+end;
+
+function TpvScene3DPlanet.RandomDirectionWaterDensity(out aNormal:TpvVector3;const MinDensity:TpvFloat):Boolean;
+begin
+ result:=RandomDirectionDataDensity(aNormal,MinDensity,
+  fData.fWaterMiniMapData,fWaterMiniMapResolution);
+end;
+
+function TpvScene3DPlanet.RandomDirectionGrassDensity(out aNormal:TpvVector3;const MinDensity:TpvFloat):Boolean;
+begin
+ result:=RandomDirectionDataDensity(aNormal,MinDensity,
+  fData.fGrassMapData,fGrassMapResolution);
 end;
 
 function TpvScene3DPlanet.GetWater(const aUV:TpvVector2):TpvScalar;
