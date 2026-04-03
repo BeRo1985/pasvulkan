@@ -11110,7 +11110,7 @@ begin
      if (fManualIndex+1)<fSceneInstance.fManualLights.Count then begin
       OtherLight:=fSceneInstance.fManualLights[fSceneInstance.fManualLights.Count-1];
       OtherLight.fManualIndex:=fManualIndex;
-      fSceneInstance.fManualLights[fIndex]:=OtherLight;
+      fSceneInstance.fManualLights[fManualIndex]:=OtherLight;
       fManualIndex:=fSceneInstance.fManualLights.Count-1;
      end;
      fSceneInstance.fManualLights.Extract(fManualIndex);
