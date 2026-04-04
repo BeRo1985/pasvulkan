@@ -340,6 +340,7 @@ void main(){
   uint localIndex = globalIndex - prefixSums.sums[pushConstants.prefixSumOffset + rangeIndex];
 
   uint baseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].baseCommandIndex;
+  uint countCommands = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommands;
   uint drawCallIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].drawCallIndex;
   uint visibilityBufferOffset = pushConstants.visibilityBufferOffset;
 
@@ -389,17 +390,20 @@ void main(){
     }
   }
 
-  if(cmd0.w != 0u){
-    // It has vertex offset, so it is not a candidate for HiZ depth buffer culling
+  if(((cmd1.w & 2u) | cmd0.w) != 0u){
+    // It has instance effects, so it is not a candidate for HiZ depth buffer culling, since it can have holes in the depth buffer through the
+    // instance effects, so just pass it through to the next pass as non-added, so that the next pass can handle it properly.
     return;
   }
 
   inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1.w = (cmd1.w |= 1u); // Mark as added
 
-  uint destinationIndex = baseCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
-  
-  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
-  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+  uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
+  if(destinationIndex < countCommands){
+    destinationIndex += baseCommandIndex;
+    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
+    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+  }
   
 #else // PASS == 1
 
@@ -448,9 +452,11 @@ void main(){
   uint localIndex = globalIndex - prefixSums.sums[pushConstants.prefixSumOffset + rangeIndex];
 
   uint baseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].baseCommandIndex;
+  uint countCommands = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommands;
   uint drawCallIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].drawCallIndex;
   uint visibilityBufferOffset = pushConstants.visibilityBufferOffset;
   uint baseCommandIndexForDisocclusions = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].baseCommandIndexForDisocclusions;
+  uint countCommandsForDisocclusions = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommandsForDisocclusions;
   uint drawCallIndexForDisocclusions = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].drawCallIndexForDisocclusions;
 
   uint sourceIndex = baseCommandIndex + localIndex;
@@ -593,11 +599,12 @@ void main(){
   // occlusion culls are avoided as much as possible.
   {
 
-    uint destinationIndex = baseCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
-    
-    // Copy the command data to the output buffer
-    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
-    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+    uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
+    if(destinationIndex < countCommands){
+      destinationIndex += baseCommandIndex;
+      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
+      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+    }
 
   }
 
@@ -606,11 +613,13 @@ void main(){
   if(((cmd1.w & 1u) == 0u) &&                                        // Just when not already added in the previous pass to the global output buffer part
      (baseCommandIndexForDisocclusions != 0xffffffffu)){ // Just when enabled
 
-    uint destinationIndex = baseCommandIndexForDisocclusions + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndexForDisocclusions], 1u);
-    
     // Copy the command data to the output buffer
-    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
-    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+    uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndexForDisocclusions], 1u);
+    if(destinationIndex < countCommandsForDisocclusions){
+      destinationIndex += baseCommandIndexForDisocclusions;
+      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
+      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+    }
 
   }
 
