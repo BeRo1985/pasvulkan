@@ -336,20 +336,27 @@ void main(){
   uint localIndex;
 
   if(pushConstants.batchRangeIndex < 0){
+
     // Mega-dispatch: binary search over prefix sums
+    
     uint globalIndex = gl_GlobalInvocationID.x;
     if(globalIndex >= pushConstants.totalCommands){
       return;  
     }
+
     rangeIndex = findRangeIndex(globalIndex);
     localIndex = globalIndex - prefixSums.sums[pushConstants.prefixSumOffset + rangeIndex];
+
   } else {
+    
     // Per-range dispatch: range index given directly
+
     rangeIndex = uint(pushConstants.batchRangeIndex);
-    localIndex = gl_GlobalInvocationID.x;
+    localIndex = gl_GlobalInvocationID.x;    
     if(localIndex >= batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommands){
       return;
     }
+
   }
 
   uint baseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].baseCommandIndex;
@@ -462,20 +469,27 @@ void main(){
   uint localIndex;
 
   if(pushConstants.batchRangeIndex < 0){
+
     // Mega-dispatch: binary search over prefix sums
+
     uint globalIndex = gl_GlobalInvocationID.x;
     if(globalIndex >= pushConstants.totalCommands){
       return;  
     }
+
     rangeIndex = findRangeIndex(globalIndex);
     localIndex = globalIndex - prefixSums.sums[pushConstants.prefixSumOffset + rangeIndex];
+
   } else {
+
     // Per-range dispatch: range index given directly
+
     rangeIndex = uint(pushConstants.batchRangeIndex);
     localIndex = gl_GlobalInvocationID.x;
     if(localIndex >= batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommands){
       return;
     }
+    
   }
 
   uint baseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].baseCommandIndex;

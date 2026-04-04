@@ -59,6 +59,7 @@ unit PasVulkan.Scene3D.Renderer.Instance;
  {$endif}
 {$endif}
 {$m+}
+{-$rangechecks on}
 
 {$undef UseSphereBasedCascadedShadowMaps}
 
@@ -1425,6 +1426,8 @@ const CountJitterOffsets=32;
       JitterOffsetMask=CountJitterOffsets-1;
 
 var JitterOffsets:array[0..CountJitterOffsets-1] of TpvVector2;
+
+var DebugDrawInfoDumpCounter:TpvInt32=0;
 
 { TpvScene3DRendererInstance.TMeshFragmentSpecializationConstants }
 
@@ -7720,6 +7723,14 @@ var DrawChoreographyBatchItemIndex,DrawChoreographyBatchRangeIndex,InstanceIndex
     GroupInstance:TpvScene3D.TGroup.TInstance;
     BoundingSphereIndex:TpvUInt32;
     Task:PPrepareDrawRenderInstanceFillTask;
+    DebugFile:TextFile;
+    DebugCmdIndex:TpvSizeInt;
+    DebugCmd:TpvScene3D.PGPUDrawIndexedIndirectCommand;
+    DebugDrawInfo:TpvScene3D.PGPUDrawInfo;
+    DebugDrawInfoArray:TpvScene3D.PGlobalVulkanDrawInfoDynamicArray;
+    DebugBatchRange:TpvScene3D.PDrawChoreographyBatchRange;
+    DebugFile2:TextFile;
+    DebugFile2Open:boolean;
 begin
 
  fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPass]:=aGPUCulling;
@@ -7743,6 +7754,18 @@ begin
   TotalCount:=0;
 
   CountTotalRenderInstances:=0;
+
+  // DEBUG: Open batch item context file if triggered
+  DebugFile2Open:=false;
+  if fScene3D.DebugDumpDrawInfo then begin
+   DebugFile2Open:=true;
+   inc(DebugDrawInfoDumpCounter);
+   AssignFile(DebugFile2,'/tmp/drawbatch_dump_iff'+IntToStr(aInFlightFrameIndex)+'_rp'+IntToStr(ord(aRenderPass))+'_n'+IntToStr(DebugDrawInfoDumpCounter)+'.txt');
+   Rewrite(DebugFile2);
+   WriteLn(DebugFile2,'=== DrawChoreographyBatchItem Context Dump ===');
+   WriteLn(DebugFile2,'InFlightFrame=',aInFlightFrameIndex,' RenderPass=',ord(aRenderPass));
+   WriteLn(DebugFile2,'');
+  end;
 
   for MaterialAlphaMode in aMaterialAlphaModes do begin
 
@@ -7768,6 +7791,22 @@ begin
         inc(Count);
 
         CountInstances:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPass];
+
+        // DEBUG: Dump batch item context
+        if DebugFile2Open then begin
+         WriteLn(DebugFile2,'BatchItem[',Count-1,'] Group="',DrawChoreographyBatchItem.Group.Name,
+                 '" Material="',DrawChoreographyBatchItem.Material.Name,
+                 '" NodeIdx=',TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Index,
+                 ' AlphaMode=',ord(DrawChoreographyBatchItem.AlphaMode),
+                 ' MeshObjID=',DrawChoreographyBatchItem.MeshObjectID,
+                 ' StartIdx=',DrawChoreographyBatchItem.StartIndex,
+                 ' CountIdx=',DrawChoreographyBatchItem.CountIndices,
+                 ' LODInfoIdx=',DrawChoreographyBatchItem.LODInfoIndex,
+                 ' UseRI=',TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).UseRenderInstances,
+                 ' CountInstances=',CountInstances,
+                 ' CmdArrayPos=',GPUDrawIndexedIndirectCommandDynamicArray^.Count);
+        end;
+
         if CountInstances>0 then begin
 
          NodeIndex:=TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Index;
@@ -7847,6 +7886,11 @@ begin
 
   end;
 
+  // Close debug batch item file
+  if DebugFile2Open then begin
+   CloseFile(DebugFile2);
+  end;
+
   // Fill render instance tasks
   if CountTotalRenderInstances>0 then begin
    if CountTotalRenderInstances>128 then begin
@@ -7873,6 +7917,58 @@ begin
   end;
 
   //writeln('PrepareDraw Count: ',Count,' - Total Count: ',TotalCount);
+
+  // DEBUG DUMP: Write all commands + DrawInfo to text file when triggered
+  if fScene3D.DebugDumpDrawInfo then begin
+   AssignFile(DebugFile,'/tmp/drawinfo_dump_iff'+IntToStr(aInFlightFrameIndex)+'_rp'+IntToStr(ord(aRenderPass))+'_n'+IntToStr(DebugDrawInfoDumpCounter)+'.txt');
+   Rewrite(DebugFile);
+   WriteLn(DebugFile,'=== PrepareDraw Dump ===');
+   WriteLn(DebugFile,'InFlightFrame=',aInFlightFrameIndex,' RenderPass=',ord(aRenderPass),' GPUCulling=',aGPUCulling);
+   WriteLn(DebugFile,'TotalCommands=',GPUDrawIndexedIndirectCommandDynamicArray^.Count,' TotalBatchRanges=',DrawChoreographyBatchRangeIndexDynamicArray^.Count);
+   WriteLn(DebugFile,'');
+   // Dump batch ranges
+   WriteLn(DebugFile,'--- BatchRanges ---');
+   for DebugCmdIndex:=0 to DrawChoreographyBatchRangeIndexDynamicArray^.Count-1 do begin
+    DebugBatchRange:=@DrawChoreographyBatchRangeDynamicArray^.ItemArray[DrawChoreographyBatchRangeIndexDynamicArray^.ItemArray[DebugCmdIndex]];
+    WriteLn(DebugFile,'  Range[',DebugCmdIndex,'] AlphaMode=',ord(DebugBatchRange^.AlphaMode),
+            ' PrimTopo=',ord(DebugBatchRange^.PrimitiveTopology),
+            ' FaceCull=',ord(DebugBatchRange^.FaceCullingMode),
+            ' DrawCallIdx=',DebugBatchRange^.DrawCallIndex,
+            ' FirstCmd=',DebugBatchRange^.FirstCommand,
+            ' CountCmds=',DebugBatchRange^.CountCommands);
+   end;
+   WriteLn(DebugFile,'');
+   // Dump all commands + DrawInfo lookup
+   WriteLn(DebugFile,'--- Commands ---');
+   DebugDrawInfoArray:=@fScene3D.GlobalVulkanDrawInfoDynamicArrays[aInFlightFrameIndex];
+   for DebugCmdIndex:=0 to GPUDrawIndexedIndirectCommandDynamicArray^.Count-1 do begin
+    DebugCmd:=@GPUDrawIndexedIndirectCommandDynamicArray^.ItemArray[DebugCmdIndex];
+    WriteLn(DebugFile,'  Cmd[',DebugCmdIndex,'] firstIndex=',DebugCmd^.DrawIndexedIndirectCommand.firstIndex,
+            ' indexCount=',DebugCmd^.DrawIndexedIndirectCommand.indexCount,
+            ' vertexOffset=',DebugCmd^.DrawIndexedIndirectCommand.vertexOffset,
+            ' firstInstance(MeshObjID)=',DebugCmd^.DrawIndexedIndirectCommand.firstInstance,
+            ' instanceCount=',DebugCmd^.DrawIndexedIndirectCommand.instanceCount,
+            ' BoundingSphereIdx=',DebugCmd^.BoundingSphereIndex,
+            ' LODInfoIdx=',DebugCmd^.LODInfoIndex,
+            ' Flags=',DebugCmd^.Flags);
+    // DrawInfo lookup by MeshObjectID (=firstInstance)
+    if (DebugCmd^.DrawIndexedIndirectCommand.firstInstance>0) and
+       (TpvSizeInt(DebugCmd^.DrawIndexedIndirectCommand.firstInstance)<DebugDrawInfoArray^.Count) then begin
+     DebugDrawInfo:=@DebugDrawInfoArray^.ItemArray[DebugCmd^.DrawIndexedIndirectCommand.firstInstance];
+     WriteLn(DebugFile,'    DrawInfo: MatrixID=',DebugDrawInfo^.MatrixID,
+             ' InstDataIdx=',DebugDrawInfo^.InstanceDataIndex,
+             ' MeshObjID=',DebugDrawInfo^.MeshObjectID,
+             ' Flags(RPMask)=',DebugDrawInfo^.Flags,
+             ' NodeMatricesIdx=',DebugDrawInfo^.NodeMatricesIndex);
+    end else begin
+     WriteLn(DebugFile,'    DrawInfo: N/A (MeshObjID=',DebugCmd^.DrawIndexedIndirectCommand.firstInstance,' out of range ',DebugDrawInfoArray^.Count,')');
+    end;
+   end;
+   CloseFile(DebugFile);
+   WriteLn('[DEBUG] Dumped ',GPUDrawIndexedIndirectCommandDynamicArray^.Count,' commands to /tmp/drawinfo_dump_iff',aInFlightFrameIndex,'_rp',ord(aRenderPass),'_n',DebugDrawInfoDumpCounter,'.txt');
+   // Reset trigger after last RenderPass dump
+   fScene3D.DebugDumpDrawInfo:=false;
+  end;
 
  end;
 

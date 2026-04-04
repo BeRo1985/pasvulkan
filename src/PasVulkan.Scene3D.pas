@@ -59,7 +59,7 @@ unit PasVulkan.Scene3D;
  {$endif}
 {$endif}
 {$m+}
-// - {$rangechecks on}
+{-$rangechecks on}
 
 {$undef PasVulkanScene3DVirualInstancesInsideDAG}
 
@@ -1896,8 +1896,8 @@ type EpvScene3D=class(Exception);
               fMeshObjectID:TpvUInt32;
               fMesh:TObject;
               fMeshPrimitive:TpvSizeInt;
-              fStartIndex:TpvSizeInt;
-              fCountIndices:TpvSizeInt;
+              fStartIndex:TpvUInt32;
+              fCountIndices:TpvUInt32;
               fLODInfoIndex:TpvUInt32;
              public
               constructor Create; reintroduce;
@@ -1917,8 +1917,8 @@ type EpvScene3D=class(Exception);
               property MeshObjectID:TpvUInt32 read fMeshObjectID write fMeshObjectID;
               property Mesh:TObject read fMesh write fMesh;
               property MeshPrimitive:TpvSizeInt read fMeshPrimitive write fMeshPrimitive;
-              property StartIndex:TpvSizeInt read fStartIndex write fStartIndex;
-              property CountIndices:TpvSizeInt read fCountIndices write fCountIndices;
+              property StartIndex:TpvUInt32 read fStartIndex write fStartIndex;
+              property CountIndices:TpvUInt32 read fCountIndices write fCountIndices;
               property LODInfoIndex:TpvUInt32 read fLODInfoIndex write fLODInfoIndex;
             end;
             TDrawChoreographyBatchItemArray=array of TDrawChoreographyBatchItem;
@@ -4415,6 +4415,7 @@ type EpvScene3D=class(Exception);
        fSmartResize:boolean;
        fAllowBufferShrink:boolean;
        fUseMegaDispatch:boolean;
+       fDebugDumpDrawInfo:boolean;
        fDefragVertexReverseMap:TDefragOffsetToGroupInstanceHashMap;
        fDefragDrawIndexReverseMap:TDefragOffsetToGroupInstanceHashMap;
        fDefragDrawUniqueIndexReverseMap:TDefragOffsetToGroupInstanceHashMap;
@@ -4866,6 +4867,7 @@ type EpvScene3D=class(Exception);
        property SmartResize:boolean read fSmartResize write fSmartResize;
        property AllowBufferShrink:boolean read fAllowBufferShrink write fAllowBufferShrink;
        property UseMegaDispatch:boolean read fUseMegaDispatch write fUseMegaDispatch;
+       property DebugDumpDrawInfo:boolean read fDebugDumpDrawInfo write fDebugDumpDrawInfo;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property BufferStreamingMode:TBufferStreamingMode read fBufferStreamingMode write fBufferStreamingMode;
        property MultiDrawSupport:boolean read fMultiDrawSupport;
@@ -12333,25 +12335,27 @@ end;
 
 procedure TpvScene3D.TDrawChoreographyBatchItems.GroupInstanceClone(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject;const aIsUnique:Boolean);
 var DrawChoreographyBatchItem,NewDrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
+    GroupInstance:TpvScene3D.TGroup.TInstance;
 begin
- for DrawChoreographyBatchItem in aFrom do begin
-  NewDrawChoreographyBatchItem:=DrawChoreographyBatchItem.Clone;
-  try
-   NewDrawChoreographyBatchItem.fGroupInstance:=aGroupInstance;
-   if assigned(aGroupInstance) then begin
+ GroupInstance:=TpvScene3D.TGroup.TInstance(aGroupInstance);
+ if assigned(GroupInstance) and (GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Size>0) and not (GroupInstance.fVirtual or GroupInstance.fHeadless) then begin
+  for DrawChoreographyBatchItem in aFrom do begin
+   NewDrawChoreographyBatchItem:=DrawChoreographyBatchItem.Clone;
+   try
+    NewDrawChoreographyBatchItem.fGroupInstance:=aGroupInstance;
     if assigned(DrawChoreographyBatchItem.Node) then begin
      NewDrawChoreographyBatchItem.fMeshObjectID:=TpvScene3D.TGroup.TInstance(aGroupInstance).Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex].fMeshObjectID;
     end else begin
      NewDrawChoreographyBatchItem.fMeshObjectID:=0;
     end;
     if aIsUnique then begin
-     inc(NewDrawChoreographyBatchItem.fStartIndex,TpvScene3D.TGroup.TInstance(aGroupInstance).fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset);
+     inc(NewDrawChoreographyBatchItem.fStartIndex,GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset);
     end else begin
-     inc(NewDrawChoreographyBatchItem.fStartIndex,TpvScene3D.TGroup.TInstance(aGroupInstance).fBufferRanges.VulkanDrawIndexBufferRange.Offset);
+     inc(NewDrawChoreographyBatchItem.fStartIndex,GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Offset);
     end;
+   finally
+    Add(NewDrawChoreographyBatchItem);
    end;
-  finally
-   Add(NewDrawChoreographyBatchItem);
   end;
  end;
 end;
@@ -29571,8 +29575,8 @@ begin
  if MatrixDirty then begin
   InstanceNode.NewCacheMatrixGeneration;
  end;
- InstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex]:=InstanceNode.fCacheMatrixGeneration;
  if aInFlightFrameIndex>=0 then begin
+  InstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex]:=InstanceNode.fCacheMatrixGeneration;
   InstanceNode.fInFlightFrameActiveLODLevel[aInFlightFrameIndex]:=0;
   InstanceNode.fInFlightFrameScreenCoverage[aInFlightFrameIndex]:=1.0;
  end;
@@ -32061,7 +32065,7 @@ begin
 
  InstancesCount:=0;
 
- if fActives[aInFlightFrameIndex] then begin
+ if fActives[aInFlightFrameIndex] and not (fHeadless or fVirtual) then begin
 
   Scene:=fActiveScenes[aInFlightFrameIndex];
 
@@ -32087,7 +32091,7 @@ begin
     if PotentiallyVisible then begin
 
      DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
-     for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
+     for DrawChoreographyBatchItemIndex:=0 to Min(DrawChoreographyBatchItemIndices^.Count,fDrawChoreographyBatchItems.Count)-1 do begin
       DrawChoreographyBatchItemElementIndex:=DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex];
       DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
       if DrawChoreographyBatchItem.fMaterial.fVisible and
@@ -32390,6 +32394,7 @@ begin
  fSmartResize:=true;
  fAllowBufferShrink:=false;
  fUseMegaDispatch:=false;
+ fDebugDumpDrawInfo:=false;
 
  fDefragVertexReverseMap:=TDefragOffsetToGroupInstanceHashMap.Create(nil);
  fDefragDrawIndexReverseMap:=TDefragOffsetToGroupInstanceHashMap.Create(nil);
