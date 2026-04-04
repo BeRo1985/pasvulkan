@@ -96,6 +96,7 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
              RenderPassMask:TpvUInt32;
              RendererInstanceIndex:TpvUInt32;
              LODFlags:TpvUInt32;
+             BatchRangeIndex:TpvInt32;
             end;
             PPushConstants=^TPushConstants;
             TMeshCullResetPushConstants=packed record
@@ -239,6 +240,7 @@ var RenderPass:TpvScene3DRendererRenderPass;
     ResetPushConstants:TMeshCullResetPushConstants;
     DescriptorSets:array[0..2] of TVkDescriptorSet;
     CountRanges,TotalCommands:TpvUInt32;
+    RangeIndex,BatchRangeOffset,RangeCountCommands:TpvUInt32;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -471,19 +473,51 @@ begin
      PushConstants.LODLevelPreviousBDA:=0;
     end;
 
-    aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
-                                    TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
-                                    0,
-                                    SizeOf(TpvScene3DRendererPassesMeshCullPass1ComputePass.TPushConstants),
-                                    @PushConstants);
+    if fInstance.Scene3D.UseMegaDispatch then begin
 
-    if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
-     fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'MeshCullPass1ComputePass.Dispatch');
-    end;
-    aCommandBuffer.CmdDispatchIndirect(fInstance.PerInFlightFrameMeshCullIndirectDispatchBuffers[aInFlightFrameIndex].Handle,
-                                       TpvUInt32(Part)*SizeOf(TVkDispatchIndirectCommand));
-    if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
-     fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+     PushConstants.BatchRangeIndex:=-1;
+
+     aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                     TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                     0,
+                                     SizeOf(TpvScene3DRendererPassesMeshCullPass1ComputePass.TPushConstants),
+                                     @PushConstants);
+
+     if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+      fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'MeshCullPass1ComputePass.Dispatch');
+     end;
+     aCommandBuffer.CmdDispatchIndirect(fInstance.PerInFlightFrameMeshCullIndirectDispatchBuffers[aInFlightFrameIndex].Handle,
+                                        TpvUInt32(Part)*SizeOf(TVkDispatchIndirectCommand));
+     if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+      fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+     end;
+
+    end else begin
+
+     BatchRangeOffset:=fInstance.PerInFlightFrameMeshCullBatchRangeOffsets[aInFlightFrameIndex,fCullRenderPass];
+
+     for RangeIndex:=0 to CountRanges-1 do begin
+
+      RangeCountCommands:=fInstance.GPUBatchRanges[BatchRangeOffset+RangeIndex].CountCommands;
+
+      PushConstants.BatchRangeIndex:=TpvInt32(RangeIndex);
+
+      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                      TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                      0,
+                                      SizeOf(TpvScene3DRendererPassesMeshCullPass1ComputePass.TPushConstants),
+                                      @PushConstants);
+
+      if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+       fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'MeshCullPass1ComputePass.Dispatch');
+      end;
+      aCommandBuffer.CmdDispatch((RangeCountCommands+255) shr 8,1,1);
+      if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+       fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+      end;
+
+     end;
+
     end;
 
    end;

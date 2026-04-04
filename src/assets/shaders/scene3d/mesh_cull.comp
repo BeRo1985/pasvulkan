@@ -76,6 +76,7 @@ layout(push_constant) uniform PushConstants {
   uint countViews;
   uint rendererInstanceIndex;  // index of current RendererInstance (0..31) for lodNeeded atomicOr
   uint lodFlags;               // bitmask: LOD_FLAG_ENABLED | LOD_FLAG_TEMPORAL | LOD_FLAG_RESET_FRAME
+  int batchRangeIndex;         // <0 = mega-dispatch (findRangeIndex), >=0 = per-range dispatch (direct index)
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -144,6 +145,7 @@ layout(push_constant) uniform PushConstants {
   uint renderPassMask;         // bitmask: 1 << ord(RenderPass)
   uint rendererInstanceIndex;  // index of current RendererInstance (0..31) for lodNeeded atomicOr
   uint lodFlags;               // bitmask: LOD_FLAG_ENABLED | LOD_FLAG_TEMPORAL | LOD_FLAG_RESET_FRAME
+  int batchRangeIndex;         // <0 = mega-dispatch (findRangeIndex), >=0 = per-range dispatch (direct index)
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -330,14 +332,25 @@ void main(){
 
   // In the first pass, just draw the previous frame visible stuff as against-cull-data (HiZ depth buffer) for the next pass
 
-  uint globalIndex = gl_GlobalInvocationID.x;
+  uint rangeIndex;
+  uint localIndex;
 
-  if(globalIndex >= pushConstants.totalCommands){
-    return;  
+  if(pushConstants.batchRangeIndex < 0){
+    // Mega-dispatch: binary search over prefix sums
+    uint globalIndex = gl_GlobalInvocationID.x;
+    if(globalIndex >= pushConstants.totalCommands){
+      return;  
+    }
+    rangeIndex = findRangeIndex(globalIndex);
+    localIndex = globalIndex - prefixSums.sums[pushConstants.prefixSumOffset + rangeIndex];
+  } else {
+    // Per-range dispatch: range index given directly
+    rangeIndex = uint(pushConstants.batchRangeIndex);
+    localIndex = gl_GlobalInvocationID.x;
+    if(localIndex >= batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommands){
+      return;
+    }
   }
-
-  uint rangeIndex = findRangeIndex(globalIndex);
-  uint localIndex = globalIndex - prefixSums.sums[pushConstants.prefixSumOffset + rangeIndex];
 
   uint baseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].baseCommandIndex;
   uint countCommands = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommands;
@@ -381,9 +394,12 @@ void main(){
         uint oitDrawCallIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].oitDrawCallIndex;
         if(oitDrawCallIndex != 0xffffffffu){
           uint oitBaseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].oitBaseCommandIndex;
-          uint destIdx = oitBaseCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
-          outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = cmd0;
-          outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = cmd1;
+          uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
+          if(oitDestIndex < countCommands){
+            uint destIdx = oitBaseCommandIndex + oitDestIndex;
+            outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = cmd0;
+            outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = cmd1;
+          }
         }
         return;
       }
@@ -442,21 +458,32 @@ void main(){
   groupMemoryBarrier();
   barrier(); 
 
-  uint globalIndex = gl_GlobalInvocationID.x;
+  uint rangeIndex;
+  uint localIndex;
 
-  if(globalIndex >= pushConstants.totalCommands){
-    return;  
+  if(pushConstants.batchRangeIndex < 0){
+    // Mega-dispatch: binary search over prefix sums
+    uint globalIndex = gl_GlobalInvocationID.x;
+    if(globalIndex >= pushConstants.totalCommands){
+      return;  
+    }
+    rangeIndex = findRangeIndex(globalIndex);
+    localIndex = globalIndex - prefixSums.sums[pushConstants.prefixSumOffset + rangeIndex];
+  } else {
+    // Per-range dispatch: range index given directly
+    rangeIndex = uint(pushConstants.batchRangeIndex);
+    localIndex = gl_GlobalInvocationID.x;
+    if(localIndex >= batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommands){
+      return;
+    }
   }
-
-  uint rangeIndex = findRangeIndex(globalIndex);
-  uint localIndex = globalIndex - prefixSums.sums[pushConstants.prefixSumOffset + rangeIndex];
 
   uint baseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].baseCommandIndex;
   uint countCommands = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommands;
   uint drawCallIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].drawCallIndex;
   uint visibilityBufferOffset = pushConstants.visibilityBufferOffset;
   uint baseCommandIndexForDisocclusions = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].baseCommandIndexForDisocclusions;
-  uint countCommandsForDisocclusions = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommandsForDisocclusions;
+  uint countCommandsForDisocclusions = countCommands; // same output space size as normal
   uint drawCallIndexForDisocclusions = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].drawCallIndexForDisocclusions;
 
   uint sourceIndex = baseCommandIndex + localIndex;
@@ -577,17 +604,23 @@ void main(){
         if(oitDrawCallIndex != 0xffffffffu){
           // Route to OIT normal output
           uint oitBaseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].oitBaseCommandIndex;
-          uint destIdx = oitBaseCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
-          outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = cmd0;
-          outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = cmd1;
+          uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
+          if(oitDestIndex < countCommands){
+            uint destIdx = oitBaseCommandIndex + oitDestIndex;
+            outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = cmd0;
+            outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = cmd1;
+          }
           // Route to OIT disocclusion output
           if(((cmd1.w & 1u) == 0u) &&
              (baseCommandIndexForDisocclusions != 0xffffffffu)){
             uint oitDisocDrawCallIndex = oitDrawCallIndex + (drawCallIndexForDisocclusions - drawCallIndex);
             uint oitDisocBaseCommandIndex = oitBaseCommandIndex + (baseCommandIndexForDisocclusions - baseCommandIndex);
-            uint destIdx2 = oitDisocBaseCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDisocDrawCallIndex], 1u);
-            outputDrawIndexedIndirectCommands.commands[destIdx2].cmd0 = cmd0;
-            outputDrawIndexedIndirectCommands.commands[destIdx2].cmd1 = cmd1;
+            uint oitDisocDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDisocDrawCallIndex], 1u);
+            if(oitDisocDestIndex < countCommandsForDisocclusions){
+              uint destIdx2 = oitDisocBaseCommandIndex + oitDisocDestIndex;
+              outputDrawIndexedIndirectCommands.commands[destIdx2].cmd0 = cmd0;
+              outputDrawIndexedIndirectCommands.commands[destIdx2].cmd1 = cmd1;
+            }
           }
         }
         return;

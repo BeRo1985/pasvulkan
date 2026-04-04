@@ -4414,6 +4414,7 @@ type EpvScene3D=class(Exception);
        fSmartMoveDefrag:boolean;
        fSmartResize:boolean;
        fAllowBufferShrink:boolean;
+       fUseMegaDispatch:boolean;
        fDefragVertexReverseMap:TDefragOffsetToGroupInstanceHashMap;
        fDefragDrawIndexReverseMap:TDefragOffsetToGroupInstanceHashMap;
        fDefragDrawUniqueIndexReverseMap:TDefragOffsetToGroupInstanceHashMap;
@@ -4864,6 +4865,7 @@ type EpvScene3D=class(Exception);
        property SmartMoveDefrag:boolean read fSmartMoveDefrag write fSmartMoveDefrag;
        property SmartResize:boolean read fSmartResize write fSmartResize;
        property AllowBufferShrink:boolean read fAllowBufferShrink write fAllowBufferShrink;
+       property UseMegaDispatch:boolean read fUseMegaDispatch write fUseMegaDispatch;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property BufferStreamingMode:TBufferStreamingMode read fBufferStreamingMode write fBufferStreamingMode;
        property MultiDrawSupport:boolean read fMultiDrawSupport;
@@ -32387,6 +32389,7 @@ begin
  fSmartMoveDefrag:=true;
  fSmartResize:=true;
  fAllowBufferShrink:=false;
+ fUseMegaDispatch:=false;
 
  fDefragVertexReverseMap:=TDefragOffsetToGroupInstanceHashMap.Create(nil);
  fDefragDrawIndexReverseMap:=TDefragOffsetToGroupInstanceHashMap.Create(nil);

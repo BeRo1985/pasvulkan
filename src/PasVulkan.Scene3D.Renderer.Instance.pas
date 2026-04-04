@@ -1089,6 +1089,7 @@ type { TpvScene3DRendererInstance }
        property PerInFlightFrameMeshCullBatchRangeCounts:TMeshCullUInt32PerCullRenderPassArray read fPerInFlightFrameMeshCullBatchRangeCounts;
        property PerInFlightFrameMeshCullTotalCommands:TMeshCullUInt32PerCullRenderPassArray read fPerInFlightFrameMeshCullTotalCommands;
        property PerInFlightFrameMeshCullBatchRangeOffsets:TMeshCullUInt32PerCullRenderPassArray read fPerInFlightFrameMeshCullBatchRangeOffsets;
+       property GPUBatchRanges:TpvScene3D.TGPUBatchRanges read fGPUBatchRanges;
        property PerInFlightFrameMeshCullPrefixSumOffsets:TMeshCullUInt32PerCullRenderPassArray read fPerInFlightFrameMeshCullPrefixSumOffsets;
        property PerInFlightFrameMeshCullIndirectDispatchBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fPerInFlightFrameMeshCullIndirectDispatchBuffers;
        property LODLevelBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fLODLevelBuffers;
