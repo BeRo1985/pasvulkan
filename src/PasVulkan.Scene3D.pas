@@ -71,6 +71,8 @@ unit PasVulkan.Scene3D;
 
 {$define SplitInstanceUpdate}
 
+{$undef FrameTextFileDebug}
+
 interface
 
 uses {$ifdef Windows}
@@ -4415,7 +4417,9 @@ type EpvScene3D=class(Exception);
        fSmartResize:boolean;
        fAllowBufferShrink:boolean;
        fUseMegaDispatch:boolean;
+{$ifdef FrameTextFileDebug}
        fDebugDumpDrawInfo:boolean;
+{$endif}
        fDefragVertexReverseMap:TDefragOffsetToGroupInstanceHashMap;
        fDefragDrawIndexReverseMap:TDefragOffsetToGroupInstanceHashMap;
        fDefragDrawUniqueIndexReverseMap:TDefragOffsetToGroupInstanceHashMap;
@@ -4867,7 +4871,9 @@ type EpvScene3D=class(Exception);
        property SmartResize:boolean read fSmartResize write fSmartResize;
        property AllowBufferShrink:boolean read fAllowBufferShrink write fAllowBufferShrink;
        property UseMegaDispatch:boolean read fUseMegaDispatch write fUseMegaDispatch;
+{$ifdef FrameTextFileDebug}
        property DebugDumpDrawInfo:boolean read fDebugDumpDrawInfo write fDebugDumpDrawInfo;
+{$endif}
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property BufferStreamingMode:TBufferStreamingMode read fBufferStreamingMode write fBufferStreamingMode;
        property MultiDrawSupport:boolean read fMultiDrawSupport;
@@ -32394,7 +32400,9 @@ begin
  fSmartResize:=true;
  fAllowBufferShrink:=false;
  fUseMegaDispatch:=false;
+{$ifdef FrameTextFileDebug}
  fDebugDumpDrawInfo:=false;
+{$endif}
 
  fDefragVertexReverseMap:=TDefragOffsetToGroupInstanceHashMap.Create(nil);
  fDefragDrawIndexReverseMap:=TDefragOffsetToGroupInstanceHashMap.Create(nil);

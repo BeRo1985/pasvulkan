@@ -63,6 +63,8 @@ unit PasVulkan.Scene3D.Renderer.Instance;
 
 {$undef UseSphereBasedCascadedShadowMaps}
 
+{$undef FrameTextFileDebug}
+
 interface
 
 uses Classes,
@@ -1427,7 +1429,9 @@ const CountJitterOffsets=32;
 
 var JitterOffsets:array[0..CountJitterOffsets-1] of TpvVector2;
 
+{$ifdef FrameTextFileDebug}
 var DebugDrawInfoDumpCounter:TpvInt32=0;
+{$endif}
 
 { TpvScene3DRendererInstance.TMeshFragmentSpecializationConstants }
 
@@ -7723,6 +7727,7 @@ var DrawChoreographyBatchItemIndex,DrawChoreographyBatchRangeIndex,InstanceIndex
     GroupInstance:TpvScene3D.TGroup.TInstance;
     BoundingSphereIndex:TpvUInt32;
     Task:PPrepareDrawRenderInstanceFillTask;
+{$ifdef FrameTextFileDebug}
     DebugFile:TextFile;
     DebugCmdIndex:TpvSizeInt;
     DebugCmd:TpvScene3D.PGPUDrawIndexedIndirectCommand;
@@ -7731,6 +7736,7 @@ var DrawChoreographyBatchItemIndex,DrawChoreographyBatchRangeIndex,InstanceIndex
     DebugBatchRange:TpvScene3D.PDrawChoreographyBatchRange;
     DebugFile2:TextFile;
     DebugFile2Open:boolean;
+{$endif}
 begin
 
  fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPass]:=aGPUCulling;
@@ -7755,6 +7761,7 @@ begin
 
   CountTotalRenderInstances:=0;
 
+{$ifdef FrameTextFileDebug}
   // DEBUG: Open batch item context file if triggered
   DebugFile2Open:=false;
   if fScene3D.DebugDumpDrawInfo then begin
@@ -7766,6 +7773,7 @@ begin
    WriteLn(DebugFile2,'InFlightFrame=',aInFlightFrameIndex,' RenderPass=',ord(aRenderPass));
    WriteLn(DebugFile2,'');
   end;
+{$endif}
 
   for MaterialAlphaMode in aMaterialAlphaModes do begin
 
@@ -7792,6 +7800,7 @@ begin
 
         CountInstances:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPass];
 
+{$ifdef FrameTextFileDebug}
         // DEBUG: Dump batch item context
         if DebugFile2Open then begin
          WriteLn(DebugFile2,'BatchItem[',Count-1,'] Group="',DrawChoreographyBatchItem.Group.Name,
@@ -7806,6 +7815,7 @@ begin
                  ' CountInstances=',CountInstances,
                  ' CmdArrayPos=',GPUDrawIndexedIndirectCommandDynamicArray^.Count);
         end;
+{$endif}
 
         if CountInstances>0 then begin
 
@@ -7887,9 +7897,11 @@ begin
   end;
 
   // Close debug batch item file
+{$ifdef FrameTextFileDebug}
   if DebugFile2Open then begin
    CloseFile(DebugFile2);
   end;
+{$endif}
 
   // Fill render instance tasks
   if CountTotalRenderInstances>0 then begin
@@ -7918,6 +7930,7 @@ begin
 
   //writeln('PrepareDraw Count: ',Count,' - Total Count: ',TotalCount);
 
+{$ifdef FrameTextFileDebug}
   // DEBUG DUMP: Write all commands + DrawInfo to text file when triggered
   if fScene3D.DebugDumpDrawInfo then begin
    AssignFile(DebugFile,'/tmp/drawinfo_dump_iff'+IntToStr(aInFlightFrameIndex)+'_rp'+IntToStr(ord(aRenderPass))+'_n'+IntToStr(DebugDrawInfoDumpCounter)+'.txt');
@@ -7969,6 +7982,7 @@ begin
    // Reset trigger after last RenderPass dump
    fScene3D.DebugDumpDrawInfo:=false;
   end;
+{$endif}
 
  end;
 
