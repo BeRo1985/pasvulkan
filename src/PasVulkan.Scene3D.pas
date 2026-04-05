@@ -32399,7 +32399,7 @@ begin
  fSmartMoveDefrag:=true;
  fSmartResize:=true;
  fAllowBufferShrink:=false;
- fUseMegaDispatch:=false;
+ fUseMegaDispatch:=true;
 {$ifdef FrameTextFileDebug}
  fDebugDumpDrawInfo:=false;
 {$endif}
