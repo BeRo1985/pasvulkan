@@ -196,7 +196,7 @@ void main(){
 
   vec3 workTangent = orthonormalizedTangent * sideSign;
   vec3 workBitangent = cross(normalizedNormal, orthonormalizedTangent) * inBlock.tangentSign.w * sideSign;
-  vec3 workNormal = normalizedNormal * sideSign;
+  workNormal = normalizedNormal * sideSign;
 
 //workNormal = normalize(cross(dFdyFine(inBlock.cameraRelativePosition), dFdxFine(inBlock.cameraRelativePosition))); // * sideSign;
 /*vec3 workTangent = normalize(cross((abs(workNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), workNormal));

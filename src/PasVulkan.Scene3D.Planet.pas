@@ -23647,6 +23647,7 @@ begin
  ///    aCommandBuffer.CmdBindIndexBuffer(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
  //      aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBuffer.Handle,@Offsets);{}
         if assigned(vkCmdDrawIndexedIndirectCount) and
+           (not ((fMode in [TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion]) and not TpvScene3DRenderer(fRenderer).GPUShadowCulling)) and
            Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPass),
                                                       RendererViewInstance) then begin
          case fMode of
