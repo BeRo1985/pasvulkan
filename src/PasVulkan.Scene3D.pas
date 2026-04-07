@@ -32606,7 +32606,7 @@ begin
   fGlobalVulkanDrawInfoDynamicArrays[Index].Resize(65536);
   fGlobalVulkanDrawInfoDynamicArrays[Index].Count:=0;
   // Entry 0: default DrawInfo for non-instanced draws (MatrixID=0 = Identity)
-  DrawInfoEntry:=fGlobalVulkanDrawInfoDynamicArrays[Index].AddNew;
+  DrawInfoEntry:=Pointer(fGlobalVulkanDrawInfoDynamicArrays[Index].AddNew);
   FillChar(DrawInfoEntry^,SizeOf(TGPUDrawInfo),#0);
 
   fGlobalVulkanDrawInfoLocks[Index]:=TPasMPMultipleReaderSingleWriterLock.Create;
@@ -32615,7 +32615,7 @@ begin
   fGlobalMatrixPairDynamicArrays[Index].Initialize;
   fGlobalMatrixPairDynamicArrays[Index].Resize(65536);
   fGlobalMatrixPairDynamicArrays[Index].Count:=0;
-  MatrixPairEntry:=fGlobalMatrixPairDynamicArrays[Index].AddNew;
+  MatrixPairEntry:=Pointer(fGlobalMatrixPairDynamicArrays[Index].AddNew);
   FillChar(MatrixPairEntry^,SizeOf(TGPUMatrixPair),#0);
   MatrixPairEntry^.ModelMatrix:=TpvMatrix4x4.Identity;
   MatrixPairEntry^.PreviousModelMatrix:=TpvMatrix4x4.Identity;
