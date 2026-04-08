@@ -37198,6 +37198,9 @@ begin
    if DirtyMax>=fMasterDrawInfoDynamicArray.Count then begin
     DirtyMax:=fMasterDrawInfoDynamicArray.Count-1;
    end;
+   if DirtyMax>=fGlobalVulkanDrawInfoDynamicArrays[aInFlightFrameIndex].Count then begin
+    DirtyMax:=fGlobalVulkanDrawInfoDynamicArrays[aInFlightFrameIndex].Count-1;
+   end;
    if (DirtyMin>=0) and (DirtyMin<=DirtyMax) then begin
     CopyCount:=DirtyMax-DirtyMin+1;
     Move(fMasterDrawInfoDynamicArray.ItemArray[DirtyMin],fGlobalVulkanDrawInfoDynamicArrays[aInFlightFrameIndex].ItemArray[DirtyMin],CopyCount*SizeOf(TGPUDrawInfo));
@@ -37238,6 +37241,9 @@ begin
   if DirtyMax>=DirtyMin then begin
    if DirtyMax>=fMasterMatrixPairDynamicArray.Count then begin
     DirtyMax:=fMasterMatrixPairDynamicArray.Count-1;
+   end;
+   if DirtyMax>=fGlobalMatrixPairDynamicArrays[aInFlightFrameIndex].Count then begin
+    DirtyMax:=fGlobalMatrixPairDynamicArrays[aInFlightFrameIndex].Count-1;
    end;
    if (DirtyMin>=0) and (DirtyMin<=DirtyMax) then begin
     CopyCount:=DirtyMax-DirtyMin+1;

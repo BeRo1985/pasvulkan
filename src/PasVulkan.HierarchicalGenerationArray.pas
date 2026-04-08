@@ -119,7 +119,9 @@ begin
 end;
 
 procedure TpvHierarchicalGenerationArray.EnsureCapacity(const aCount:TpvSizeInt);
-var LevelIndex,NewLevelCount,OldLevelCount,LevelSize:TpvSizeInt;
+var LevelIndex,NewLevelCount,OldLevelCount,OldLevelSizeAtLevel,LevelSize,BlockIndex,ChildBase,ChildEnd,ChildIndex:TpvSizeInt;
+    MaxGen:TpvUInt64;
+    NeedRebuildParents:Boolean;
 begin
  
  if fCount<aCount then begin
@@ -134,7 +136,8 @@ begin
  
   // Grow level arrays if needed
   OldLevelCount:=fLevelCount;
-  if NewLevelCount>OldLevelCount then begin
+  NeedRebuildParents:=NewLevelCount>OldLevelCount;
+  if NeedRebuildParents then begin
    SetLength(fLevelSizes,NewLevelCount);
    SetLength(fLevels,NewLevelCount);
    for LevelIndex:=OldLevelCount to NewLevelCount-1 do begin
@@ -154,6 +157,29 @@ begin
    LevelSize:=(LevelSize+BlockMask) shr BlockShift;
   end;
   fCount:=aCount;
+
+  // When new hierarchy levels were added, rebuild parent blocks from children
+  // so that existing level 0 generations are correctly reflected in the new parents
+  if NeedRebuildParents then begin
+   for LevelIndex:=1 to fLevelCount-1 do begin
+    for BlockIndex:=0 to fLevelSizes[LevelIndex]-1 do begin
+     ChildBase:=BlockIndex shl BlockShift;
+     ChildEnd:=ChildBase+BlockMask;
+     if ChildEnd>=fLevelSizes[LevelIndex-1] then begin
+      ChildEnd:=fLevelSizes[LevelIndex-1]-1;
+     end;
+     MaxGen:=0;
+     for ChildIndex:=ChildBase to ChildEnd do begin
+      if fLevels[LevelIndex-1][ChildIndex]>MaxGen then begin
+       MaxGen:=fLevels[LevelIndex-1][ChildIndex];
+      end;
+     end;
+     if MaxGen>fLevels[LevelIndex][BlockIndex] then begin
+      fLevels[LevelIndex][BlockIndex]:=MaxGen;
+     end;
+    end;
+   end;
+  end;
 
  end;
 
