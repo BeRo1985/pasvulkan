@@ -37212,7 +37212,7 @@ begin
     DirtyMax:=fGlobalMatrixPairDynamicArrays[aInFlightFrameIndex].Count-1;
    end;
    if (DirtyMin>=0) and (DirtyMin<=DirtyMax) then begin
-    CopyCount:=DirtyMax-DirtyMin+1;
+    CopyCount:=(DirtyMax-DirtyMin)+1;
     Move(fMasterMatrixPairDynamicArray.ItemArray[DirtyMin],fGlobalMatrixPairDynamicArrays[aInFlightFrameIndex].ItemArray[DirtyMin],CopyCount*SizeOf(TGPUMatrixPair));
     MappedBase:=fMatrixPairMappedBasePointers[aInFlightFrameIndex];
     if assigned(MappedBase) then begin
@@ -37223,7 +37223,7 @@ begin
       CopyMax:=MappedCount-1;
      end;
      if (CopyMin>=0) and (CopyMin<=CopyMax) then begin
-      Move(fGlobalMatrixPairDynamicArrays[aInFlightFrameIndex].ItemArray[CopyMin],PGPUMatrixPair(Pointer(TpvPtrUInt(MappedBase)+TpvPtrUInt(TpvSizeUInt(CopyMin)*SizeOf(TGPUMatrixPair))))^,(CopyMax-CopyMin+1)*SizeOf(TGPUMatrixPair));
+      Move(fGlobalMatrixPairDynamicArrays[aInFlightFrameIndex].ItemArray[CopyMin],PGPUMatrixPair(Pointer(TpvPtrUInt(MappedBase)+TpvPtrUInt(TpvSizeUInt(CopyMin)*SizeOf(TGPUMatrixPair))))^,((CopyMax-CopyMin)+1)*SizeOf(TGPUMatrixPair));
      end;
     end;
     if DirtyMin<fMatrixPairDirtyMin[aInFlightFrameIndex] then begin
@@ -37374,7 +37374,7 @@ begin
     DirtyMax:=fGlobalVulkanDrawInfoDynamicArrays[aInFlightFrameIndex].Count-1;
    end;
    if (DirtyMin>=0) and (DirtyMin<=DirtyMax) then begin
-    CopyCount:=DirtyMax-DirtyMin+1;
+    CopyCount:=(DirtyMax-DirtyMin)+1;
     Move(fMasterDrawInfoDynamicArray.ItemArray[DirtyMin],fGlobalVulkanDrawInfoDynamicArrays[aInFlightFrameIndex].ItemArray[DirtyMin],CopyCount*SizeOf(TGPUDrawInfo));
     MappedBase:=fDrawInfoMappedBasePointers[aInFlightFrameIndex];
     if assigned(MappedBase) then begin
@@ -37385,7 +37385,7 @@ begin
       CopyMax:=MappedCount-1;
      end;
      if (CopyMin>=0) and (CopyMin<=CopyMax) then begin
-      Move(fGlobalVulkanDrawInfoDynamicArrays[aInFlightFrameIndex].ItemArray[CopyMin],PGPUDrawInfo(Pointer(TpvPtrUInt(MappedBase)+TpvPtrUInt(TpvSizeUInt(CopyMin)*SizeOf(TGPUDrawInfo))))^,(CopyMax-CopyMin+1)*SizeOf(TGPUDrawInfo));
+      Move(fGlobalVulkanDrawInfoDynamicArrays[aInFlightFrameIndex].ItemArray[CopyMin],PGPUDrawInfo(Pointer(TpvPtrUInt(MappedBase)+TpvPtrUInt(TpvSizeUInt(CopyMin)*SizeOf(TGPUDrawInfo))))^,((CopyMax-CopyMin)+1)*SizeOf(TGPUDrawInfo));
      end;
     end;
     if DirtyMin<fDrawInfoDirtyMin[aInFlightFrameIndex] then begin
@@ -39529,7 +39529,7 @@ begin
 
    if DirtyMin<=DirtyMax then begin
     DirtyUploadOffset:=DirtyMin*SizeOf(TGPUDrawInfo);
-    DirtyUploadSize:=(DirtyMax-DirtyMin+1)*SizeOf(TGPUDrawInfo);
+    DirtyUploadSize:=((DirtyMax-DirtyMin)+1)*SizeOf(TGPUDrawInfo);
     case fBufferStreamingMode of
 
      TBufferStreamingMode.Direct:begin
@@ -39672,7 +39672,7 @@ begin
 
     if DirtyMin<=DirtyMax then begin
      DirtyUploadOffset:=DirtyMin*SizeOf(TGPUMatrixPair);
-     DirtyUploadSize:=(DirtyMax-DirtyMin+1)*SizeOf(TGPUMatrixPair);
+     DirtyUploadSize:=((DirtyMax-DirtyMin)+1)*SizeOf(TGPUMatrixPair);
      case fBufferStreamingMode of
 
       TBufferStreamingMode.Direct:begin
