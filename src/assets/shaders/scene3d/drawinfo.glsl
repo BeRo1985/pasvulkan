@@ -40,7 +40,7 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Gen
   uint generations[];
 };
 
-// GlobalBDAPointers - 64 bytes, single instance in SSBO at binding 7
+// GlobalBDAPointers - 96 bytes, single instance in SSBO at binding 7
 // Contains the global buffer device addresses shared by all draws (big-buffer mode).
 // For future per-group buffers, these would move back into DrawInfo or become per-group.
 // Layout (std430):
@@ -52,7 +52,11 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Gen
 //   offset 40: matrixPairBDA              (uvec2, 8 bytes, BDA to MatrixPair buffer)
 //   offset 48: lodInfoBDA                 (uvec2, 8 bytes, BDA to LODInfo buffer)
 //   offset 56: lodNeededCurrentBDA        (uvec2, 8 bytes, BDA to lodNeeded[currentIFF])
-// Total: 64 bytes
+//   offset 64: meshletDescriptorBDA       (uvec2, 8 bytes, BDA to meshlet descriptor buffer)
+//   offset 72: meshletVertexBDA           (uvec2, 8 bytes, BDA to meshlet vertex buffer)
+//   offset 80: meshletPrimitiveBDA        (uvec2, 8 bytes, BDA to meshlet primitive buffer)
+//   offset 88: reserved0BDA               (uvec2, 8 bytes, padding)
+// Total: 96 bytes
 
 struct GlobalBDAPointers {
   uvec2 cachedVerticesBDA;
@@ -63,6 +67,10 @@ struct GlobalBDAPointers {
   uvec2 matrixPairBDA;
   uvec2 lodInfoBDA;
   uvec2 lodNeededCurrentBDA;
+  uvec2 meshletDescriptorBDA;
+  uvec2 meshletVertexBDA;
+  uvec2 meshletPrimitiveBDA;
+  uvec2 reserved0BDA;
 };
 
 // MatrixPair struct - 128 bytes, two full mat4 matrices
@@ -85,7 +93,9 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
 //   offset   4: instanceDataIndex        (uint, 4 bytes)
 //   offset   8: meshObjectID             (uint, 4 bytes)
 //   offset  12: flags                    (uint, 4 bytes)
-//   offset  16: _reserved                (uvec4, 16 bytes - padding to 32 for power-of-two alignment)
+//   offset  16: nodeMatricesIndex        (uint, 4 bytes)
+//   offset  20: meshletDescriptorBase    (uint, 4 bytes - instance-level base into global meshlet descriptor buffer)
+//   offset  24: _reserved                (uvec2, 8 bytes - padding to 32 for power-of-two alignment)
 // Total: 32 bytes
 
 struct DrawInfo {
@@ -94,24 +104,27 @@ struct DrawInfo {
   uint meshObjectID;
   uint flags;
   uint nodeMatricesIndex;
+  uint meshletDescriptorBase;
   uint _reserved0;
   uint _reserved1;
-  uint _reserved2;
 };
 
-// LODInfo struct - 128 bytes per LOD-enabled submesh (5x uvec4 active = 80 bytes, padded to 128)
+// LODInfo struct - 128 bytes per LOD-enabled submesh (8x uvec4 active = 128 bytes)
 // Stores per-LOD geometry data for command-rewriting in mesh_cull.comp
 // countLODs=1 means no LOD (noop), 2..4 means active LOD levels
+// Also stores per-LOD meshlet descriptor offsets/counts for mesh shader path
 // Layout (std430):
-//   offset   0: countLODs     (uint, 4 bytes)
-//   offset   4: reserved0     (uint, 4 bytes)
-//   offset   8: reserved1     (uint, 4 bytes)
-//   offset  12: reserved2     (uint, 4 bytes)
-//   offset  16: thresholds    (vec4, 16 bytes - screenCoverage thresholds)
-//   offset  32: firstIndices  (uvec4, 16 bytes - per LOD level 0..3)
-//   offset  48: countIndices  (uvec4, 16 bytes - per LOD level 0..3)
-//   offset  64: firstVertices (ivec4, 16 bytes - vertexOffset per LOD, signed)
-//   offset  80: padding       (uvec4[3], 48 bytes - padding to 128)
+//   offset   0: countLODs          (uint, 4 bytes)
+//   offset   4: reserved0          (uint, 4 bytes)
+//   offset   8: reserved1          (uint, 4 bytes)
+//   offset  12: reserved2          (uint, 4 bytes)
+//   offset  16: thresholds         (vec4, 16 bytes - screenCoverage thresholds)
+//   offset  32: firstIndices       (uvec4, 16 bytes - per LOD level 0..3)
+//   offset  48: countIndices       (uvec4, 16 bytes - per LOD level 0..3)
+//   offset  64: firstVertices      (ivec4, 16 bytes - vertexOffset per LOD, signed)
+//   offset  80: meshletLocalOffsets(uvec4, 16 bytes - per LOD meshlet descriptor local offset within instance range)
+//   offset  96: meshletCounts      (uvec4, 16 bytes - per LOD meshlet count)
+//   offset 112: padding            (uvec4, 16 bytes - padding to 128)
 // Total: 128 bytes
 
 struct LODInfo {
@@ -123,9 +136,9 @@ struct LODInfo {
   uvec4 firstIndices;
   uvec4 countIndices;
   ivec4 firstVertices;
+  uvec4 meshletLocalOffsets;
+  uvec4 meshletCounts;
   uvec4 _padding0;
-  uvec4 _padding1;
-  uvec4 _padding2;
 }; // 128 bytes = 8x vec4
 
 // Buffer reference for LODInfo via BDA
@@ -141,6 +154,41 @@ layout(buffer_reference, std430, buffer_reference_align = 4) buffer LODNeededBuf
 // Buffer reference for lodLevel (per nodeMatricesIndex, uint32 LOD level)
 layout(buffer_reference, std430, buffer_reference_align = 4) buffer LODLevelBuffer {
   uint levels[];
+};
+
+// GPU Meshlet Descriptor — 32 bytes, matches TGPUMeshletDescriptor in Pascal
+struct MeshletDescriptor {
+  vec4 boundingSphere;   // xyz=center (object-space), w=radius
+  uint vertexOffset;     // into global meshlet vertex buffer
+  uint vertexCount;      // unique vertices in this meshlet
+  uint primitiveOffset;  // into global meshlet primitive buffer
+  uint primitiveCount;   // triangles in this meshlet
+};
+
+// Buffer reference for meshlet descriptors via BDA
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshletDescriptorBuffer {
+  MeshletDescriptor descriptors[];
+};
+
+// Buffer reference for meshlet vertex remap table via BDA (uint32 global vertex indices)
+layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer MeshletVertexBuffer {
+  uint vertices[];
+};
+
+// Buffer reference for meshlet packed primitive indices via BDA (3×uint8 per uint32)
+layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer MeshletPrimitiveBuffer {
+  uint primitives[];
+};
+
+// Indirect command metadata for mesh shader path — 32 bytes, matches TGPUDrawMeshTasksIndirectCommand
+struct MeshDrawCommand {
+  uvec4 cmd0; // x=groupCountX, y=1, z=1, w=meshletBaseIndex
+  uvec4 cmd1; // x=meshletCount, y=meshObjectID, z=boundingSphereIndex, w=flags
+};
+
+// Buffer reference for mesh draw commands (indirect command buffer) via BDA
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshDrawCommandBuffer {
+  MeshDrawCommand commands[];
 };
 
 // Reconstruct a full mat4 from a packed mat3x4 affine transform.

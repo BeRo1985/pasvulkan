@@ -101,6 +101,11 @@ type { TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVox
        fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshGeometry:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshFragment:TpvVulkanPipelineShaderStage;
+       fMeshTaskShaderModule:TpvVulkanShaderModule;
+       fMeshMeshShaderModule:TpvVulkanShaderModule;
+       fVulkanPipelineShaderStageMeshTask:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageMeshMesh:TpvVulkanPipelineShaderStage;
+       fMeshShaderGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
        fVulkanGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fParticleVertexShaderModule:TpvVulkanShaderModule;
@@ -221,6 +226,34 @@ begin
  fVulkanPipelineShaderStageMeshGeometry:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_GEOMETRY_BIT,fMeshGeometryShaderModule,'main');
 
  fVulkanPipelineShaderStageMeshFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshFragmentShaderModule,'main');
+
+ if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_voxelization_task_pass0.spv');
+  try
+   fMeshTaskShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_voxelization_mesh.spv');
+  try
+   fMeshMeshShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  fVulkanPipelineShaderStageMeshTask:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TASK_BIT_EXT,fMeshTaskShaderModule,'main');
+
+  fVulkanPipelineShaderStageMeshMesh:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_MESH_BIT_EXT,fMeshMeshShaderModule,'main');
+
+ end else begin
+  fMeshTaskShaderModule:=nil;
+  fMeshMeshShaderModule:=nil;
+  fVulkanPipelineShaderStageMeshTask:=nil;
+  fVulkanPipelineShaderStageMeshMesh:=nil;
+ end;
+
 
  /// --
 
@@ -346,6 +379,11 @@ begin
 
  FreeAndNil(fParticleFragmentShaderModule);
 
+ FreeAndNil(fVulkanPipelineShaderStageMeshTask);
+ FreeAndNil(fVulkanPipelineShaderStageMeshMesh);
+ FreeAndNil(fMeshTaskShaderModule);
+ FreeAndNil(fMeshMeshShaderModule);
+
  inherited ReleasePersistentResources;
 end;
 
@@ -362,11 +400,19 @@ begin
  fVulkanRenderPass:=VulkanRenderPass;
 
  fPassVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
- fPassVulkanDescriptorSetLayout.AddBinding(0,
-                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                             1,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
+ if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+  fPassVulkanDescriptorSetLayout.AddBinding(0,
+                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),
+                                              []);
+ end else begin
+  fPassVulkanDescriptorSetLayout.AddBinding(0,
+                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              []);
+ end;
  fPassVulkanDescriptorSetLayout.AddBinding(1,
                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                              1,
@@ -428,7 +474,11 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3D.TMeshStagePushConstants));
+ if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0,SizeOf(TpvScene3D.TMeshStagePushConstants));
+ end else begin
+  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3D.TMeshStagePushConstants));
+ end;
  fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fPassVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
@@ -436,6 +486,11 @@ begin
  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
   for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
    FreeAndNil(fVulkanGraphicsPipelines[PrimitiveTopology,FaceCullingMode]);
+  end;
+ end;
+ for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
+  for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
+   FreeAndNil(fMeshShaderGraphicsPipelines[PrimitiveTopology,FaceCullingMode]);
   end;
  end;
 
@@ -531,6 +586,105 @@ begin
 
  end;
 
+ if assigned(fVulkanPipelineShaderStageMeshTask) and assigned(fVulkanPipelineShaderStageMeshMesh) then begin
+
+  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
+   for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
+    fMeshShaderGraphicsPipelines[PrimitiveTopology,FaceCullingMode]:=nil;
+   end;
+  end;
+
+  for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
+
+   VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
+                                                            fInstance.Renderer.VulkanPipelineCache,
+                                                            0,
+                                                            [],
+                                                            fVulkanPipelineLayout,
+                                                            fVulkanRenderPass,
+                                                            VulkanRenderPassSubpassIndex,
+                                                            nil,
+                                                            0);
+
+   try
+
+
+    if assigned(fInstance.Renderer.VulkanDevice.PhysicalDevice.ConservativeRasterizationPropertiesEXT.pNext) then begin
+     FillChar(PipelineRasterizationConservativeStateCreateInfoEXT,SizeOf(TVkPipelineRasterizationConservativeStateCreateInfoEXT),#0);
+     PipelineRasterizationConservativeStateCreateInfoEXT.sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT;
+     PipelineRasterizationConservativeStateCreateInfoEXT.flags:=0;
+     PipelineRasterizationConservativeStateCreateInfoEXT.conservativeRasterizationMode:=VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+     PipelineRasterizationConservativeStateCreateInfoEXT.extraPrimitiveOverestimationSize:=Min(0.75,fInstance.Renderer.VulkanDevice.PhysicalDevice.ConservativeRasterizationPropertiesEXT.maxExtraPrimitiveOverestimationSize);
+     VulkanGraphicsPipeline.RasterizationState.SetPipelineRasterizationConservativeStateCreateInfoEXT(PipelineRasterizationConservativeStateCreateInfoEXT);
+    end;
+
+    VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshTask);
+    VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshMesh);
+    VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshFragment);
+
+    VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+    fInstance.Renderer.Scene3D.InitializeGraphicsPipeline(VulkanGraphicsPipeline);
+
+    VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fResourceColor.Width,fResourceColor.Height,0.0,1.0);
+    VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fResourceColor.Width,fResourceColor.Height);
+
+    VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
+    VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+    VulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+    VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+    VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+    VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+    VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+    VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+    VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+
+    VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+    VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+    VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+    VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+    VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+    VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+    VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
+    VulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+    VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_OP_ADD,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_OP_ADD,
+                                                                        0{TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT)});
+
+    VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=false;
+    VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
+    VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+    VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+    VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
+
+    VulkanGraphicsPipeline.Initialize;
+
+    VulkanGraphicsPipeline.FreeMemory;
+
+
+   finally
+    fMeshShaderGraphicsPipelines[TpvScene3D.TPrimitiveTopology.Triangles,FaceCullingMode]:=VulkanGraphicsPipeline;
+   end;
+
+  end;
+
+ end;
+
  VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
                                                           fInstance.Renderer.VulkanPipelineCache,
                                                           0,
@@ -616,6 +770,7 @@ begin
  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
   for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
    FreeAndNil(fVulkanGraphicsPipelines[PrimitiveTopology,FaceCullingMode]);
+   FreeAndNil(fMeshShaderGraphicsPipelines[PrimitiveTopology,FaceCullingMode]);
   end;
  end;
  FreeAndNil(fVulkanPipelineLayout);
@@ -676,7 +831,11 @@ begin
                                   OnSetRenderPassResources,
                                   [TpvScene3D.TMaterial.TAlphaMode.Opaque,
                                    TpvScene3D.TMaterial.TAlphaMode.Mask,
-                                   TpvScene3D.TMaterial.TAlphaMode.Blend]);
+                                   TpvScene3D.TMaterial.TAlphaMode.Blend],
+                                   nil,
+                                   false,
+                                   false,
+                                   @fMeshShaderGraphicsPipelines);
 
   fInstance.Renderer.Scene3D.DrawParticles(fInstance,
                                            fVulkanParticleGraphicsPipeline,

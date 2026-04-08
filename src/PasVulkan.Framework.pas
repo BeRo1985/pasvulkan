@@ -3631,6 +3631,7 @@ type EpvVulkanException=class(Exception);
        fPersistent:Boolean;
        procedure UpdateSRGBFormat;
        procedure SetSampler(const aSampler:TpvVulkanSampler);
+       function GetHasKTXTexture:boolean;
       public
        constructor Create; overload;
        constructor Create(const aDevice:TpvVulkanDevice;const aExternal:boolean=false;const aName:TpvUTF8String=''); overload;
@@ -4012,6 +4013,7 @@ type EpvVulkanException=class(Exception);
        property BorderColor:TVkBorderColor read fBorderColor write fBorderColor;
        property MaxAnisotropy:double read fMaxAnisotropy write fMaxAnisotropy;
        property DoFreeDataAfterFinish:boolean read fDoFreeDataAfterFinish write fDoFreeDataAfterFinish;
+       property HasKTXTexture:boolean read GetHasKTXTexture;
        property Name:TpvUTF8String read fName write fName;
      end;
 
@@ -27166,7 +27168,11 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
       raise EpvVulkanTextureException.Create('KTX error: '+KTXErrorCodeToString(KTXResult));
      end;
     finally
-     ktxVulkanDeviceInfo_Destroy(KTXVulkanDeviceInfo);
+     try
+      fDevice.Commands.Commands.QueueWaitIdle(aGraphicsQueue.Handle);
+     finally
+      ktxVulkanDeviceInfo_Destroy(KTXVulkanDeviceInfo);
+     end;
     end;
    end else begin
     raise EpvVulkanTextureException.Create('KTX library error');
@@ -30870,6 +30876,11 @@ begin
    fDescriptorImageInfo.sampler:=VK_NULL_HANDLE;
   end;
  end;
+end;
+
+function TpvVulkanTexture.GetHasKTXTexture:boolean;
+begin
+ result:=assigned(fKTXTexture);
 end;
 
 procedure TpvVulkanTexture.UpdateSampler;

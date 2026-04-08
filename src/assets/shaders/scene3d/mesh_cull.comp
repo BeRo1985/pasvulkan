@@ -5,6 +5,13 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_control_flow_attributes : enable
+#extension GL_EXT_debug_printf : enable
+
+#ifdef MESH_SHADER_PATH
+#ifndef TASK_GROUP_SIZE
+#define TASK_GROUP_SIZE 32
+#endif
+#endif
 
 /* clang-format off */
 
@@ -247,7 +254,9 @@ const uint LOD_FLAG_ENABLED = 1u << 0;     // LOD selection + command-rewrite ac
 const uint LOD_FLAG_TEMPORAL = 1u << 1;    // temporal 1-frame-lag mode (writes lodNeeded/lodLevel, defers rewrite on reset)
 const uint LOD_FLAG_RESET_FRAME = 1u << 2; // first frames / camera teleport: in temporal mode, skip command-rewrite
 
-void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uint meshObjectID){
+void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uint meshObjectID, out uint outSelectedLOD){
+
+  outSelectedLOD = 0u;
 
   // Only apply LOD if the buffer with LODInfo is valid (non-zero BDA)
   if(!all(equal(globalBDAPointers.lodInfoBDA, uvec2(0u)))){
@@ -312,6 +321,7 @@ void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uin
                               : selectedLOD; // default to LOD 0 for temporal mode, may be overwritten by the following conditions
           if(rewriteLOD != 0xffffffffu){ 
             cmd0.xzw = uvec3(uint(lodInfo.countIndices[rewriteLOD]), uint(lodInfo.firstIndices[rewriteLOD]), uint(lodInfo.firstVertices[rewriteLOD]));
+            outSelectedLOD = rewriteLOD;
           } else {
             // Invalid LOD index, likely due to invalid or missing LOD data, so skip rewriting and just render with the original command parameters as a fallback
           }
@@ -325,6 +335,33 @@ void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uin
   }
 
 }
+
+#ifdef MESH_SHADER_PATH
+// Compute DrawMeshTasksIndirectCommand fields from meshlet data.
+// Output reinterprets the same 32-byte DrawIndexedIndirectCommand layout:
+//   cmd0 = uvec4(groupCountX, 1, 1, meshletBaseIndex)
+//   cmd1 = uvec4(meshletCount, meshObjectID, boundingSphereIndex, flags)
+void computeMeshletCommand(out uvec4 outCmd0, out uvec4 outCmd1,
+                           uint meshObjectID, uint boundingSphereIndex,
+                           uint lodInfoIndex, uint selectedLOD, uint flags){
+  uint meshletBase = drawInfoItems[meshObjectID].meshletDescriptorBase;
+  uint meshletCount = 0u;
+  if((lodInfoIndex != 0xffffffffu) && !all(equal(globalBDAPointers.lodInfoBDA, uvec2(0u)))){
+    LODInfo lodInfo = LODInfoBuffer(globalBDAPointers.lodInfoBDA).items[lodInfoIndex];
+    meshletBase += lodInfo.meshletLocalOffsets[min(selectedLOD, 3u)];
+    meshletCount = lodInfo.meshletCounts[min(selectedLOD, 3u)];
+  }
+  uint groupCountX = (meshletCount + TASK_GROUP_SIZE - 1u) / TASK_GROUP_SIZE;
+#ifdef MESH_SHADER_DEBUG
+  debugPrintfEXT("mesh_cull computeMeshletCmd: objID=%u lodInfoIdx=%u meshletBase=%u meshletCount=%u groupCountX=%u lodBDA=%u:%u descBase=%u",
+    meshObjectID, lodInfoIndex, meshletBase, meshletCount, groupCountX,
+    globalBDAPointers.lodInfoBDA.y, globalBDAPointers.lodInfoBDA.x,
+    drawInfoItems[meshObjectID].meshletDescriptorBase);
+#endif
+  outCmd0 = uvec4(groupCountX, 1u, 1u, meshletBase);
+  outCmd1 = uvec4(meshletCount, meshObjectID, boundingSphereIndex, flags);
+}
+#endif
 
 void main(){
 
@@ -371,6 +408,13 @@ void main(){
 
   const uint meshObjectID = cmd1.x;
 
+  uint batchAlphaMode = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].alphaMode;
+#ifdef MESH_SHADER_DEBUG
+  debugPrintfEXT("mesh_cull PASS0: objID=%u rpMask=0x%x flags=0x%x alphaMode=%u rangeIdx=%u descBase=%u",
+    meshObjectID, pushConstants.renderPassMask, drawInfoItems[meshObjectID].flags, batchAlphaMode, rangeIndex,
+    drawInfoItems[meshObjectID].meshletDescriptorBase);
+#endif
+
   // RenderPassMask filter: skip if this draw is not visible in the current render pass
   if((drawInfoItems[meshObjectID].flags & pushConstants.renderPassMask) == 0u){
     return;
@@ -387,7 +431,8 @@ void main(){
   }
 
   // LOD selection: rewrite command geometry based on screen coverage
-  applyLOD(cmd0, cmd1.z, cmd1.y, meshObjectID);
+  uint selectedLOD;
+  applyLOD(cmd0, cmd1.z, cmd1.y, meshObjectID, selectedLOD);
 
   {
     // Check for instance effects (dissolve/dithered transparency) by reading directly from InstanceData SSBO
@@ -404,8 +449,16 @@ void main(){
           uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
           if(oitDestIndex < countCommands){
             uint destIdx = oitBaseCommandIndex + oitDestIndex;
+#ifdef MESH_SHADER_PATH
+            computeMeshletCommand(
+              outputDrawIndexedIndirectCommands.commands[destIdx].cmd0,
+              outputDrawIndexedIndirectCommands.commands[destIdx].cmd1,
+              meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w
+            );
+#else
             outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = cmd0;
             outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = cmd1;
+#endif
           }
         }
         return;
@@ -424,8 +477,16 @@ void main(){
   uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
   if(destinationIndex < countCommands){
     destinationIndex += baseCommandIndex;
+#ifdef MESH_SHADER_PATH
+    computeMeshletCommand(
+      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0,
+      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1,
+      meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w
+    );
+#else
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+#endif
   }
   
 #else // PASS == 1
@@ -509,6 +570,13 @@ void main(){
   const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
 
   const uint meshObjectID = cmd1.x;
+
+  uint batchAlphaMode1 = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].alphaMode;
+#ifdef MESH_SHADER_DEBUG
+  debugPrintfEXT("mesh_cull PASS1: objID=%u rpMask=0x%x flags=0x%x alphaMode=%u rangeIdx=%u descBase=%u",
+    meshObjectID, pushConstants.renderPassMask, drawInfoItems[meshObjectID].flags, batchAlphaMode1, rangeIndex,
+    drawInfoItems[meshObjectID].meshletDescriptorBase);
+#endif
 
   // RenderPassMask filter: skip if this draw is not visible in the current render pass
   if((drawInfoItems[meshObjectID].flags & pushConstants.renderPassMask) == 0u){
@@ -602,7 +670,8 @@ void main(){
   }
 
   // LOD selection: rewrite command geometry based on screen coverage
-  applyLOD(cmd0, cmd1.z, cmd1.y, meshObjectID);
+  uint selectedLOD;
+  applyLOD(cmd0, cmd1.z, cmd1.y, meshObjectID, selectedLOD);
   
   // Mark as visible in any case, independently of being already added in the previous pass 
   atomicOr(outputVisiblityBuffer.bitmap[visibilityBufferOffset + (meshObjectID >> 5u)], 1u << (meshObjectID & 31u)); 
@@ -621,8 +690,16 @@ void main(){
           uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
           if(oitDestIndex < countCommands){
             uint destIdx = oitBaseCommandIndex + oitDestIndex;
+#ifdef MESH_SHADER_PATH
+            computeMeshletCommand(
+              outputDrawIndexedIndirectCommands.commands[destIdx].cmd0,
+              outputDrawIndexedIndirectCommands.commands[destIdx].cmd1,
+              meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w
+            );
+#else
             outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = cmd0;
             outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = cmd1;
+#endif
           }
           // Route to OIT disocclusion output
           if(((cmd1.w & 1u) == 0u) &&
@@ -632,8 +709,16 @@ void main(){
             uint oitDisocDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDisocDrawCallIndex], 1u);
             if(oitDisocDestIndex < countCommandsForDisocclusions){
               uint destIdx2 = oitDisocBaseCommandIndex + oitDisocDestIndex;
+#ifdef MESH_SHADER_PATH
+              computeMeshletCommand(
+                outputDrawIndexedIndirectCommands.commands[destIdx2].cmd0,
+                outputDrawIndexedIndirectCommands.commands[destIdx2].cmd1,
+                meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w
+              );
+#else
               outputDrawIndexedIndirectCommands.commands[destIdx2].cmd0 = cmd0;
               outputDrawIndexedIndirectCommands.commands[destIdx2].cmd1 = cmd1;
+#endif
             }
           }
         }
@@ -649,8 +734,16 @@ void main(){
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
     if(destinationIndex < countCommands){
       destinationIndex += baseCommandIndex;
+#ifdef MESH_SHADER_PATH
+      computeMeshletCommand(
+        outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0,
+        outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1,
+        meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w
+      );
+#else
       outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
       outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+#endif
     }
 
   }
@@ -664,8 +757,16 @@ void main(){
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndexForDisocclusions], 1u);
     if(destinationIndex < countCommandsForDisocclusions){
       destinationIndex += baseCommandIndexForDisocclusions;
+#ifdef MESH_SHADER_PATH
+      computeMeshletCommand(
+        outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0,
+        outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1,
+        meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w
+      );
+#else
       outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
       outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+#endif
     }
 
   }

@@ -113,6 +113,9 @@ type { TpvScene3DRendererPassesMeshCullPass0ComputePass }
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
+       fMeshShaderComputeShaderModule:TpvVulkanShaderModule;
+       fMeshShaderVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
+       fMeshShaderPipeline:TpvVulkanComputePipeline;
        fPlanetCullPass:TpvScene3DPlanet.TCullPass;
 //     fPlanetCullPass2:TpvScene3DPlanet.TCullPass;
       public
@@ -173,6 +176,20 @@ begin
 
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
+ if fInstance.Scene3D.MeshShaderSupport then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_cull_meshshader_pass0_comp.spv');
+  try
+   fMeshShaderComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fMeshShaderComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesMeshCullPass0ComputePass.fMeshShaderComputeShaderModule');
+  finally
+   Stream.Free;
+  end;
+  fMeshShaderVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fMeshShaderComputeShaderModule,'main');
+ end else begin
+  fMeshShaderComputeShaderModule:=nil;
+  fMeshShaderVulkanPipelineShaderStageCompute:=nil;
+ end;
+
  fPlanetCullPass:=TpvScene3DPlanet.TCullPass.Create(fInstance.Renderer,
                                                     fInstance,
                                                     fInstance.Renderer.Scene3D,
@@ -191,6 +208,8 @@ procedure TpvScene3DRendererPassesMeshCullPass0ComputePass.ReleasePersistentReso
 begin
  FreeAndNil(fPlanetCullPass);
 //FreeAndNil(fPlanetCullPass2);
+ FreeAndNil(fMeshShaderVulkanPipelineShaderStageCompute);
+ FreeAndNil(fMeshShaderComputeShaderModule);
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
  inherited ReleasePersistentResources;
@@ -220,6 +239,19 @@ begin
                                             0);
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererPassesMeshCullPass0ComputePass.fPipeline');
 
+ if assigned(fMeshShaderVulkanPipelineShaderStageCompute) then begin
+  fMeshShaderPipeline:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
+                                                       fInstance.Renderer.VulkanPipelineCache,
+                                                       0,
+                                                       fMeshShaderVulkanPipelineShaderStageCompute,
+                                                       fPipelineLayout,
+                                                       nil,
+                                                       0);
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fMeshShaderPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererPassesMeshCullPass0ComputePass.fMeshShaderPipeline');
+ end else begin
+  fMeshShaderPipeline:=nil;
+ end;
+
  fPlanetCullPass.AllocateResources;
 
 //fPlanetCullPass2.AllocateResources;
@@ -231,6 +263,7 @@ var Index:TpvSizeInt;
 begin
  fPlanetCullPass.ReleaseResources;
 //fPlanetCullPass2.ReleaseResources;
+ FreeAndNil(fMeshShaderPipeline);
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
  inherited ReleaseVolatileResources;
@@ -387,7 +420,14 @@ begin
                                     2,@BufferMemoryBarriers[0],
                                     0,nil);
 
-  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+  if fInstance.Renderer.UseMeshShaderPipeline and assigned(fMeshShaderPipeline) then begin
+{$ifdef MeshShaderDebug}
+   WriteLn('[DEBUG-MS] MeshCullPass0: Using MESH_SHADER_PATH pipeline');
+{$endif}
+   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fMeshShaderPipeline.Handle);
+  end else begin
+   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+  end;
 
   DescriptorSets[0]:=fInstance.MeshCullPass0ComputeVulkanDescriptorSets[aInFlightFrameIndex].Handle;
   DescriptorSets[1]:=fInstance.Scene3D.GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
