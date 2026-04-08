@@ -144,6 +144,7 @@ layout(location = 1) out OutBlock {
   vec4 previousClipSpace;
   vec4 currentClipSpace;
 #endif  
+  uint meshletID; 
 } outBlock[];
 
 #else
@@ -160,6 +161,7 @@ layout(location = 0) out OutBlock {
   vec4 previousClipSpace;
   vec4 currentClipSpace;
 #endif  
+  uint meshletID; 
 } outBlock[];
 #endif // defined(RAYTRACING)
 
@@ -849,6 +851,7 @@ void main() {
       outBlock[vertexID].currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
       outBlock[vertexID].previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(previousPosition, 1.0);
     #endif
+      outBlock[vertexID].meshletID = ((pushConstants.flags & 1u) != 0u) ? ((((invocationVariantIndex * countBlades) + bladeID) + (invocationIndex * 53956u)) | 0x80000000u) : 0u;
 
     #if defined(RAYTRACING)
       outWorldSpacePosition[vertexID] = worldSpacePosition;

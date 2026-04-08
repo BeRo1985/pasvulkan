@@ -43,6 +43,7 @@ layout(location = 1) in InBlock {
   vec4 previousClipSpace;
   vec4 currentClipSpace;
 #endif  
+  uint meshletID; 
 } inBlock;
 
 #else
@@ -59,6 +60,7 @@ layout(location = 0) in InBlock {
   vec4 previousClipSpace;
   vec4 currentClipSpace;
 #endif  
+  uint meshletID; 
 } inBlock;
 
 #endif
@@ -180,6 +182,8 @@ const vec3 inModelScale = vec3(1.0);
 #include "pbr.glsl"
 #include "pbr_wetness.glsl"
 #include "blendnormals.glsl"
+
+#include "meshlet.glsl"
 
 void main(){
 
@@ -374,7 +378,11 @@ void main(){
     c = mix(c, d, d.w * 0.25);
   } 
 #endif
-   
+
+  if((inBlock.meshletID & 0x80000000u) != 0u){
+    c.xyz = meshletDebugColor(inBlock.meshletID & 0x7fffffffu);
+  }
+  
   outFragColor = vec4(clamp(c.xyz, vec3(-65504.0), vec3(65504.0)), c.w);
 
 #if defined(VELOCITY)

@@ -55,6 +55,7 @@ layout(location = 1) out OutBlock {
   vec4 previousClipSpace;
   vec4 currentClipSpace;
 #endif  
+  uint meshletID; 
 } outBlock;
 
 #else
@@ -71,6 +72,7 @@ layout(location = 0) out OutBlock {
   vec4 previousClipSpace;
   vec4 currentClipSpace;
 #endif  
+  uint meshletID; 
 } outBlock;
 #endif
 
@@ -159,6 +161,7 @@ void main(){
   outBlock.currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
   outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(previousPosition, 1.0);
 #endif
+  outBlock.meshletID = 0u; // No meshlet ID in the vertex shader path, since meshlets are not used here, but we still keep this field in the output for consistency with the mesh shader path, where meshlet ID is available and can be used for debugging or other purposes.
 
 #if defined(RAYTRACING)
   outWorldSpacePosition = worldSpacePosition;

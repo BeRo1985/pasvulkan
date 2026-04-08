@@ -2071,7 +2071,7 @@ type TpvScene3DPlanets=class;
                     
                     TileMapResolution:TpvUInt32;
                     TileResolution:TpvUInt32;
-                    LOD:TpvUInt32;
+                    Flags:TpvUInt32;
                     FrameIndex:TpvUInt32;
                     
                     TimeSeconds:TpvUInt32;
@@ -2243,7 +2243,7 @@ type TpvScene3DPlanets=class;
 
                     TileMapResolution:TpvUInt32;
                     TileResolution:TpvUInt32;
-                    LOD:TpvUInt32; // ResolutionXY
+                    Flags:TpvUInt32;
                     FrameIndex:TpvUInt32;
 
                     TimeSeconds:TpvUInt32;
@@ -21831,7 +21831,10 @@ begin
          fGrassPushConstants.GrassHeight:=0.125*5.0;//1.25;
          fGrassPushConstants.GrassThickness:=0.01;
          fGrassPushConstants.MaximalCountBladesPerPatch:=8;
-         fGrassPushConstants.LOD:=Max(0,IntLog2(Planet.fHeightMapResolution)-IntLog2(Planet.fVisualResolution));
+         fGrassPushConstants.Flags:=0;
+         if TpvScene3DRendererInstance(fRendererInstance).DrawMeshletDebugColors then begin
+          fGrassPushConstants.Flags:=fGrassPushConstants.Flags or 1;
+         end;
          fGrassPushConstants.FrameIndex:=0;
          fGrassPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
          fGrassPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
@@ -23799,8 +23802,10 @@ begin
       fGrassPushConstants.GrassHeight:=0.125*5.0;//1.25;
       fGrassPushConstants.GrassThickness:=0.01;
       fGrassPushConstants.MaximalCountBladesPerPatch:=8;
-      //fGrassPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
-      fGrassPushConstants.LOD:=Max(0,IntLog2(Planet.fHeightMapResolution)-IntLog2(Planet.fVisualResolution));
+      fGrassPushConstants.Flags:=0;
+      if TpvScene3DRendererInstance(fRendererInstance).DrawMeshletDebugColors then begin
+       fGrassPushConstants.Flags:=fGrassPushConstants.Flags or 1;
+      end;
       fGrassPushConstants.FrameIndex:=0;
       fGrassPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
       fGrassPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);

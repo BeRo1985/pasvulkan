@@ -19,7 +19,7 @@ layout(push_constant) uniform PushConstants {
 
   uint tileMapResolution;
   uint tileResolution;  
-  uint lod;
+  uint flags; // bit 0: meshlet debug colors
   int frameIndex; 
 
   uint timeSeconds; // The current time in seconds
