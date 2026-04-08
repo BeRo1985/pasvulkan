@@ -145,10 +145,7 @@ struct TaskPayload {
 };
 taskPayloadSharedEXT TaskPayload payload;
 
-vec3 meshletDebugColor(uint id){
-  const vec3 oneDiv255 = vec3(1.0 / 255.0);
-  return vec3(uvec3(uvec3(id * uvec3(2654435761u, 2246822519u, 3266489917u)) & uvec3(0xffu))) * oneDiv255 * 0.125;
-}
+#include "meshlet.glsl"
 
 void main(){
 
