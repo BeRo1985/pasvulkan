@@ -189,8 +189,8 @@ compileshaderarguments=(
 
   "-V mesh_cull.comp --target-env vulkan1.2 -DPASS=0 -o ${tempPath}/mesh_cull_pass0_comp.spv"
   "-V mesh_cull.comp --target-env vulkan1.2 -DPASS=1 -o ${tempPath}/mesh_cull_pass1_comp.spv"
-  "-V mesh_cull.comp --target-env vulkan1.2 -DPASS=0 -DMESH_SHADER_PATH -o ${tempPath}/mesh_cull_meshshader_pass0_comp.spv"
-  "-V mesh_cull.comp --target-env vulkan1.2 -DPASS=1 -DMESH_SHADER_PATH -o ${tempPath}/mesh_cull_meshshader_pass1_comp.spv"
+  "-V mesh_cull.comp --target-env vulkan1.2 -DPASS=0 -DMESH_SHADER_PATH -DMESHLET_EXPAND -o ${tempPath}/mesh_cull_meshshader_pass0_comp.spv"
+  "-V mesh_cull.comp --target-env vulkan1.2 -DPASS=1 -DMESH_SHADER_PATH -DMESHLET_EXPAND -o ${tempPath}/mesh_cull_meshshader_pass1_comp.spv"
   "-V mesh_cull_reset.comp --target-env vulkan1.2 -o ${tempPath}/mesh_cull_reset_comp.spv"
 
   "-V mesh.task --target-env vulkan1.2 -DPASS=0 -o ${tempPath}/mesh_task_pass0.spv"

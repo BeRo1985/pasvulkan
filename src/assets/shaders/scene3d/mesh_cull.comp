@@ -13,6 +13,12 @@
 #endif
 #endif
 
+#ifdef MESHLET_EXPAND
+#ifndef MESHLET_EXPANSION_FACTOR
+#define MESHLET_EXPANSION_FACTOR 32u
+#endif
+#endif
+
 /* clang-format off */
 
 #ifndef PASS
@@ -361,6 +367,36 @@ void computeMeshletCommand(out uvec4 outCmd0, out uvec4 outCmd1,
   outCmd0 = uvec4(groupCountX, 1u, 1u, meshletBase);
   outCmd1 = uvec4(meshletCount, meshObjectID, boundingSphereIndex, flags);
 }
+
+#ifdef MESHLET_EXPAND
+// B3: Expand visible object's meshlets into flat per-meshlet draw commands.
+// Each output entry dispatches exactly 1 task workgroup with 1 meshlet.
+void expandMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMaxCount,
+                           uint meshObjectID, uint boundingSphereIndex,
+                           uint lodInfoIndex, uint selectedLOD, uint flags){
+  uint meshletBase = drawInfoItems[meshObjectID].meshletDescriptorBase;
+  uint meshletCount = 0u;
+  if((lodInfoIndex != 0xffffffffu) && !all(equal(globalBDAPointers.lodInfoBDA, uvec2(0u)))){
+    LODInfo lodInfo = LODInfoBuffer(globalBDAPointers.lodInfoBDA).items[lodInfoIndex];
+    meshletBase += lodInfo.meshletLocalOffsets[min(selectedLOD, 3u)];
+    meshletCount = lodInfo.meshletCounts[min(selectedLOD, 3u)];
+  }
+  if(meshletCount > 0u){
+    uint outputBase = inputBaseOffset * MESHLET_EXPANSION_FACTOR;
+    uint outputMax = inputMaxCount * MESHLET_EXPANSION_FACTOR;
+    uint destBase = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], meshletCount);
+    for(uint i = 0u; i < meshletCount; i++){
+      uint destIdx = destBase + i;
+      if(destIdx < outputMax){
+        destIdx += outputBase;
+        outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(1u, 1u, 1u, meshletBase + i);
+        outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+      }
+    }
+  }
+}
+#endif
+
 #endif
 
 void main(){
@@ -446,6 +482,10 @@ void main(){
         uint oitDrawCallIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].oitDrawCallIndex;
         if(oitDrawCallIndex != 0xffffffffu){
           uint oitBaseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].oitBaseCommandIndex;
+#ifdef MESHLET_EXPAND
+          expandMeshletCommands(oitDrawCallIndex, oitBaseCommandIndex, countCommands,
+                                meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
+#else
           uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
           if(oitDestIndex < countCommands){
             uint destIdx = oitBaseCommandIndex + oitDestIndex;
@@ -460,6 +500,7 @@ void main(){
             outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = cmd1;
 #endif
           }
+#endif
         }
         return;
       }
@@ -474,6 +515,10 @@ void main(){
 
   inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1.w = (cmd1.w |= 1u); // Mark as added
 
+#ifdef MESHLET_EXPAND
+  expandMeshletCommands(drawCallIndex, baseCommandIndex, countCommands,
+                        meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
+#else
   uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
   if(destinationIndex < countCommands){
     destinationIndex += baseCommandIndex;
@@ -488,6 +533,7 @@ void main(){
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
 #endif
   }
+#endif
   
 #else // PASS == 1
 
@@ -687,6 +733,10 @@ void main(){
         if(oitDrawCallIndex != 0xffffffffu){
           // Route to OIT normal output
           uint oitBaseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].oitBaseCommandIndex;
+#ifdef MESHLET_EXPAND
+          expandMeshletCommands(oitDrawCallIndex, oitBaseCommandIndex, countCommands,
+                                meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
+#else
           uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
           if(oitDestIndex < countCommands){
             uint destIdx = oitBaseCommandIndex + oitDestIndex;
@@ -701,11 +751,16 @@ void main(){
             outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = cmd1;
 #endif
           }
+#endif
           // Route to OIT disocclusion output
           if(((cmd1.w & 1u) == 0u) &&
              (baseCommandIndexForDisocclusions != 0xffffffffu)){
             uint oitDisocDrawCallIndex = oitDrawCallIndex + (drawCallIndexForDisocclusions - drawCallIndex);
             uint oitDisocBaseCommandIndex = oitBaseCommandIndex + (baseCommandIndexForDisocclusions - baseCommandIndex);
+#ifdef MESHLET_EXPAND
+            expandMeshletCommands(oitDisocDrawCallIndex, oitDisocBaseCommandIndex, countCommandsForDisocclusions,
+                                  meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
+#else
             uint oitDisocDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDisocDrawCallIndex], 1u);
             if(oitDisocDestIndex < countCommandsForDisocclusions){
               uint destIdx2 = oitDisocBaseCommandIndex + oitDisocDestIndex;
@@ -720,6 +775,7 @@ void main(){
               outputDrawIndexedIndirectCommands.commands[destIdx2].cmd1 = cmd1;
 #endif
             }
+#endif
           }
         }
         return;
@@ -731,6 +787,10 @@ void main(){
   // occlusion culls are avoided as much as possible.
   {
 
+#ifdef MESHLET_EXPAND
+    expandMeshletCommands(drawCallIndex, baseCommandIndex, countCommands,
+                          meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
+#else
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
     if(destinationIndex < countCommands){
       destinationIndex += baseCommandIndex;
@@ -745,6 +805,7 @@ void main(){
       outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
 #endif
     }
+#endif
 
   }
 
@@ -754,6 +815,10 @@ void main(){
     (baseCommandIndexForDisocclusions != 0xffffffffu)){ // Just when enabled
 
     // Copy the command data to the output buffer
+#ifdef MESHLET_EXPAND
+    expandMeshletCommands(drawCallIndexForDisocclusions, baseCommandIndexForDisocclusions, countCommandsForDisocclusions,
+                          meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
+#else
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndexForDisocclusions], 1u);
     if(destinationIndex < countCommandsForDisocclusions){
       destinationIndex += baseCommandIndexForDisocclusions;
@@ -768,6 +833,7 @@ void main(){
       outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
 #endif
     }
+#endif
 
   }
 
