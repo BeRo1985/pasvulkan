@@ -136,7 +136,7 @@ begin
  
   // Grow level arrays if needed
   OldLevelCount:=fLevelCount;
-  NeedRebuildParents:=NewLevelCount>OldLevelCount;
+  NeedRebuildParents:=OldLevelCount<NewLevelCount;
   if NeedRebuildParents then begin
    SetLength(fLevelSizes,NewLevelCount);
    SetLength(fLevels,NewLevelCount);
@@ -174,7 +174,7 @@ begin
        MaxGen:=fLevels[LevelIndex-1][ChildIndex];
       end;
      end;
-     if MaxGen>fLevels[LevelIndex][BlockIndex] then begin
+     if fLevels[LevelIndex][BlockIndex]<MaxGen then begin
       fLevels[LevelIndex][BlockIndex]:=MaxGen;
      end;
     end;
@@ -279,7 +279,7 @@ begin
   end;
   
   for ChildIndex:=ChildBase to ChildEnd do begin
-   if aMaster.fLevels[0][ChildIndex]>fLevels[0][ChildIndex] then begin
+   if fLevels[0][ChildIndex]<aMaster.fLevels[0][ChildIndex] then begin
     fLevels[0][ChildIndex]:=aMaster.fLevels[0][ChildIndex];
     if ChildIndex<aDirtyMin then begin
      aDirtyMin:=ChildIndex;
@@ -302,7 +302,7 @@ begin
   end;
 
   for ChildIndex:=ChildBase to ChildEnd do begin
-   if aMaster.fLevels[aLevel-1][ChildIndex]>fLevels[aLevel-1][ChildIndex] then begin
+   if fLevels[aLevel-1][ChildIndex]<aMaster.fLevels[aLevel-1][ChildIndex] then begin
     SyncFromBlock(aMaster,aLevel-1,ChildIndex,aDirtyMin,aDirtyMax);
     fLevels[aLevel-1][ChildIndex]:=aMaster.fLevels[aLevel-1][ChildIndex];
    end;
@@ -328,7 +328,7 @@ begin
   // Only level 0 exists, scan all elements directly
   for BlockIndex:=0 to fCount-1 do begin
   
-   if aMaster.fLevels[0][BlockIndex]>fLevels[0][BlockIndex] then begin
+   if fLevels[0][BlockIndex]<aMaster.fLevels[0][BlockIndex] then begin
   
     fLevels[0][BlockIndex]:=aMaster.fLevels[0][BlockIndex];
 
@@ -352,7 +352,7 @@ begin
 
   for BlockIndex:=0 to fLevelSizes[TopLevel]-1 do begin
    
-   if aMaster.fLevels[TopLevel][BlockIndex]>fLevels[TopLevel][BlockIndex] then begin
+   if fLevels[TopLevel][BlockIndex]<aMaster.fLevels[TopLevel][BlockIndex] then begin
 
     SyncFromBlock(aMaster,TopLevel,BlockIndex,aDirtyMin,aDirtyMax);
 
