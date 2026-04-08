@@ -495,7 +495,7 @@ void main() {
       
 #if defined(MESH_SHADER_EMULATION)
 
-   if(gl_LocalInvocationIndex == 0u){
+  if(gl_LocalInvocationIndex == 0u){
 
     validGroup = ((outputMetaData.countVertices + countVertices) < pushConstants.maximalCountVertices) && 
                  ((outputMetaData.indexCount + countIndicesPerPayload) < pushConstants.maximalCountIndices);

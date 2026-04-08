@@ -347,7 +347,11 @@ begin
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) or
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                    TVkPipelineStageFlags(IfThen(fInstance.Scene3D.MeshShaderSupport,
+                                                                 TVkFlags(VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT) or
+                                                                 TVkFlags(VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT),
+                                                                 0)),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     0,
                                     0,nil,
@@ -594,7 +598,11 @@ begin
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) or
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                    TVkPipelineStageFlags(IfThen(fInstance.Scene3D.MeshShaderSupport,
+                                                                 TVkFlags(VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT) or
+                                                                 TVkFlags(VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT),
+                                                                 0)),
                                     0,
                                     0,nil,
                                     4,@BufferMemoryBarriers[0],

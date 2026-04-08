@@ -270,9 +270,7 @@ void main(){
     vec3 faceNormal = cross(worldPos[1] - worldPos[0], worldPos[2] - worldPos[0]);
     ivec3 vertexIndexOrder = (faceNormal.z > 0.0) ? ivec3(0, 1, 2) : ivec3(0, 2, 1);
     faceNormal = abs(faceNormal);
-    int dominantAxisIndex = (faceNormal.y > faceNormal.x)
-      ? ((faceNormal.y > faceNormal.z) ? 1 : 2)
-      : ((faceNormal.x > faceNormal.z) ? 0 : 2);
+    int dominantAxisIndex = (faceNormal.y > faceNormal.x) ? ((faceNormal.y > faceNormal.z) ? 1 : 2) : ((faceNormal.x > faceNormal.z) ? 0 : 2);
 
     const ivec3 dominantAxisComponentOrders[3] = ivec3[3](
       ivec3(2, 1, 0), // zyx

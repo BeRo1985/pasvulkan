@@ -179,7 +179,7 @@ layout (set = 1, binding = 6, std140) readonly uniform FrustumClusterGridGlobals
 } uFrustumClusterGridGlobals;
 
 layout (set = 1, binding = 7, std430) readonly buffer FrustumClusterGridIndexList {
-   uint frustumClusterGridIndexList[];
+  uint frustumClusterGridIndexList[];
 };
 
 layout (set = 1, binding = 8, std430) readonly buffer FrustumClusterGridData {
@@ -412,8 +412,8 @@ vec4 getWetness(){ // x = wetness, yzw = normal to planet ground
 void main() {
 #ifdef VOXELIZATION
   if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || 
-     any(greaterThan(inWorldSpacePosition.xyz, inAABBMax.xyz)) ||
-     (uint(inCascadeIndex) >= uint(voxelGridData.countCascades))){
+    any(greaterThan(inWorldSpacePosition.xyz, inAABBMax.xyz)) ||
+    (uint(inCascadeIndex) >= uint(voxelGridData.countCascades))){
     outFragColor = vec4(0.0);
     return;
   }
@@ -522,8 +522,8 @@ void main() {
   vec4 emissionColor = vec4(0.0);
 #endif
 #if 0
-   // Just for debugging purposes
-   color = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
+  // Just for debugging purposes
+  color = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
 #else
   float litIntensity = 1.0;
   vec3 baseIORF0Dielectric, F0Dielectric;

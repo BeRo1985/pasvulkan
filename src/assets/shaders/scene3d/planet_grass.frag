@@ -105,7 +105,7 @@ layout (set = 1, binding = 8, std140) readonly uniform FrustumClusterGridGlobals
 } uFrustumClusterGridGlobals;
 
 layout (set = 1, binding = 9, std430) readonly buffer FrustumClusterGridIndexList {
-   uint frustumClusterGridIndexList[];
+  uint frustumClusterGridIndexList[];
 };
 
 layout (set = 1, binding = 10, std430) readonly buffer FrustumClusterGridData {

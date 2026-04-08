@@ -421,7 +421,7 @@ void main(){
   }
 
   if((pushConstants.skipCulling == 0u) &&  // If it is the first frame or the like, just don't cull anything
-     ((meshObjectID < pushConstants.countMeshObjectIDs) && // Check if the mesh object ID is in the valid range, since
+    ((meshObjectID < pushConstants.countMeshObjectIDs) && // Check if the mesh object ID is in the valid range, since
                                                            // new drawIndexedIndirectCommands may have been added 
                                                            // with a higher mesh object ID than the current 
                                                            // countMeshObjectIDs in contrast to the previous frame
@@ -751,7 +751,7 @@ void main(){
   // Manage disocclusion in the output buffer. This step helps optimize depth pre-pass by minimizing depth-buffer overdraw and avoiding redundant rendering 
   // in the depth buffer. This is necessary because a complete depth pre-pass is needed for things like e.g. screen space ambient occlusion and the like.
   if(((cmd1.w & 1u) == 0u) &&                                        // Just when not already added in the previous pass to the global output buffer part
-     (baseCommandIndexForDisocclusions != 0xffffffffu)){ // Just when enabled
+    (baseCommandIndexForDisocclusions != 0xffffffffu)){ // Just when enabled
 
     // Copy the command data to the output buffer
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndexForDisocclusions], 1u);
