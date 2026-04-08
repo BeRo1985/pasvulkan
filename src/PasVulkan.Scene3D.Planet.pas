@@ -21817,7 +21817,6 @@ begin
            Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPass),
                                                       RendererViewInstance) then begin
 
-
          ModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix,aInFlightFrameIndex,false);
          fGrassPushConstants.ModelMatrixPositionScale:=TpvVector4.InlineableCreate(ModelMatrix.Translation.xyz,1.0);
          fGrassPushConstants.ModelMatrixOrientation:=ModelMatrix.ToQuaternionD.ToQuaternion;
