@@ -255,10 +255,10 @@ const uint FLAG_LOD_ENABLED = 1u << 0;     // LOD selection + command-rewrite ac
 const uint FLAG_LOD_TEMPORAL = 1u << 1;    // temporal 1-frame-lag mode (writes lodNeeded/lodLevel, defers rewrite on reset)
 const uint FLAG_LOD_RESET_FRAME = 1u << 2; // first frames / camera teleport: in temporal mode, skip command-rewrite
 
-const uint FLAG_MESHLET_ENABLED = 1u << 3; // Whether to submit meshlet commands for visible objects, if meshlet data is available, and 
-                                           // perform meshlet culling in the task shader. If not set, the full mesh will be rendered 
-                                           // without meshlet culling, but still with object-level culling based on the bounding sphere
-                                           // of the whole object.
+const uint FLAG_MESHLET_CULLING_ENABLED = 1u << 3; // Whether to submit meshlet commands for visible objects, if meshlet data is available, and 
+                                                   // perform meshlet culling in the task shader. If not set, the full mesh will be rendered 
+                                                   // without meshlet culling, but still with object-level culling based on the bounding sphere
+                                                   // of the whole object.
 
 void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uint meshObjectID, out uint outSelectedLOD){
 
@@ -345,23 +345,7 @@ void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uin
 #ifdef MESH_SHADER_PATH
 // Submit draw commands for the meshlets of a visible object, either as one command with the
 // full meshlet count for the task shader to expand, or as multiple commands each with one 
-// meshlet for direct dispatch, depending on whether MESHLET_EXPAND is defined. In the first 
-// case, the task shader gets the full meshlet count and can decide how many workgroups to 
-// dispatch based on it (up to TASK_GROUP_SIZE meshlets per workgroup). In the second case,
-// each command corresponds to exactly one meshlet and dispatches exactly one task workgroup, 
-// so the number of commands is equal to the number of meshlets (up to a maximum of 
-// inputMaxCount). In the expand case, the task shader can be skipped entirely, when the
-// mesh shader can directly consume the meshlet data and dispatch mesh shader workgroups 
-// based on it, which may be more efficient, since it saves the overhead of an extra draw 
-// indirect dispatch and an extra cull pass in the task shader. For this, meshlet-culling
-// should be added here in mesh_cull.comp, which requires fetching the bounding sphere 
-// for each meshlet and testing it against the view frustum, similar to how it is done 
-// for whole objects in the current implementation, but it is a TODO for the future.
-// At least, the goal is to have 1. a single mesh_cull.comp that can be used for both
-// regular object culling and meshlet culling, with some conditional logic based on 
-// whether MESHLET_EXPAND is defined or not, and 2. a flexible system that can support 
-// both approaches, so that the best one can be chosen based on the specific use case 
-// and performance characteristics of the scene and hardware. 
+// meshlet for direct dispatch, depending on whether FLAG_MESHLET_CULLING_ENABLED is set or not. 
 void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMaxCount,
                            uint meshObjectID, uint boundingSphereIndex,
                            uint lodInfoIndex, uint selectedLOD, uint flags){
@@ -376,15 +360,67 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
 #ifdef MESHLET_EXPAND
     // Submit visible object into one draw command with full meshletCount.
     // Task shader gets full workgroups (TASK_GROUP_SIZE meshlets each).
-    if(pushConstants.flags & FLAG_MESHLET_ENABLED){
-      // If meshlet culling is enabled, cull the meshlets here in mesh_cull.comp, and only submit the visible ones
-      // to the mesh shader, so that the task shader can be skipped entirely, and the mesh shader can directly consume 
-      // the meshlet data and dispatch mesh shader workgroups in a single pass, which may be more efficient, since it
-      // saves the overhead of an extra draw indirect dispatch and an extra cull pass in the task shader.
-
-      // TODO: Add meshlet culling here, which requires fetching the bounding sphere for each meshlet and testing it against the view frustum,
-      //       similar to how it is done for whole objects in the current implementation, and submit only the visible meshlets to the mesh shader.
-
+    if(pushConstants.flags & FLAG_MESHLET_CULLING_ENABLED){
+      // Per-meshlet culling: only in PASS 1 (where HiZ + shared view data are available),
+      // PASS 0 submits all meshlets unconditionally and PASS 1 catches up with culling.
+#if PASS == 1
+      MatrixPairBuffer matrixPairBuffer = MatrixPairBuffer(globalBDAPointers.matrixPairBDA);
+      mat4 modelMatrix = matrixPairBuffer.pairs[drawInfoItems[meshObjectID].matrixID].modelMatrix;
+      vec2 viewPortSize = vec2(textureSize(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], 0).xy);
+      int countLODLevels = textureQueryLevels(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)]);
+      uint countViews = min(pushConstants.countViews, 8u);
+      for(uint i = 0u; i < meshletCount; i++){
+        MeshletDescriptor desc = MeshletDescriptorBuffer(globalBDAPointers.meshletDescriptorBDA).descriptors[meshletBase + i];
+        vec4 meshletSphere = sphereTransform(desc.boundingSphere, modelMatrix);
+        bool meshletVisible = false;
+        for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
+          vec4 viewSpaceSphere = vec4((viewMatrices[viewIndex] * vec4(meshletSphere.xyz, 1.0)).xyz, meshletSphere.w);
+          bool visible = frustumCullingSphereTest(frustums[viewIndex], viewSpaceSphere);
+          if(visible){
+            vec4 aabb;
+            if(projectSphere(viewSpaceSphere.xyz, viewSpaceSphere.w, zNears[viewIndex], uView.views[pushConstants.baseViewIndex + viewIndex].projectionMatrix, aabb, true)){
+              vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
+              float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1));
+              vec2 depthZ = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
+                (aabb.xy + aabb.zw) - vec2(1.0),
+                textureLod(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x,
+                1.0
+              )).zw;
+              float depth = -(depthZ.x / depthZ.y);
+              visible = ((-viewSpaceSphere.z) - viewSpaceSphere.w) <= depth;
+            }
+          }
+          if(visible){
+            meshletVisible = true;
+            break;
+          }
+        }
+        if(meshletVisible){
+          uint destIdx = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], 1u);
+          if(destIdx < inputMaxCount){
+            destIdx += inputBaseOffset;
+            outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(1u, 1u, 1u, meshletBase + i);
+            outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+          }
+        }
+      }
+#else
+      // PASS 0: no HiZ available yet, submit all meshlets unconditionally.
+      // TODO: Add a per-meshlet visibility bitmap (analogous to inputVisibilityBuffer for objects) to allow
+      //       PASS 0 to skip meshlets that were not visible in the previous frame, avoiding the chicken&egg
+      //       problem where PASS 0 needs HiZ but HiZ needs rendered meshlets.
+      // TODO: Add a recheck-meshlet-queue buffer so that PASS 0 can enqueue skipped meshlets for PASS 1 to
+      //       recheck with HiZ culling, instead of discarding them entirely.
+      uint destBase = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], meshletCount);
+      for(uint i = 0u; i < meshletCount; i++){
+        uint destIdx = destBase + i;
+        if(destIdx < inputMaxCount){
+          destIdx += inputBaseOffset;
+          outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(1u, 1u, 1u, meshletBase + i);
+          outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+        }
+      }
+#endif
     }else{
       // If meshlet culling is not enabled, just submit the full mesh with one command, without meshlet info, and 
       // skip the task shader entirely. 
