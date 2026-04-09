@@ -4201,6 +4201,7 @@ type EpvScene3D=class(Exception);
        fMultiDrawSupport:Boolean;
        fMaxMultiDrawCount:TpvUInt32;
        fMeshShaderSupport:Boolean;
+       fTotalActiveMeshletCount:TPasMPInt64; // Atomic: total meshlet count across all active instances and renderinstances (for buffer sizing)
        fHardwareRaytracingSupport:Boolean;
        fRaytracingActive:Boolean;
        fPlanetSingleBuffers:Boolean;
@@ -4975,6 +4976,7 @@ type EpvScene3D=class(Exception);
        property MultiDrawSupport:boolean read fMultiDrawSupport;
        property MaxMultiDrawCount:TpvUInt32 read fMaxMultiDrawCount write fMaxMultiDrawCount;
        property MeshShaderSupport:Boolean read fMeshShaderSupport;
+       property TotalActiveMeshletCount:TPasMPInt64 read fTotalActiveMeshletCount;
        property HardwareRaytracingSupport:Boolean read fHardwareRaytracingSupport;
        property RaytracingActive:Boolean read fRaytracingActive;
        property PlanetSingleBuffers:Boolean read fPlanetSingleBuffers write fPlanetSingleBuffers;
@@ -25930,6 +25932,9 @@ begin
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fInstance.fRenderInstanceLock);
   end;
+  if assigned(fInstance.fGroup) and (fInstance.fGroup.fTotalMeshletCount>0) then begin
+   TPasMPInterlocked.Add(fSceneInstance.fTotalActiveMeshletCount,TPasMPInt64(fInstance.fGroup.fTotalMeshletCount));
+  end;
  end;
 end;
 
@@ -25938,6 +25943,9 @@ var Index,LastIndex:TpvSizeInt;
     OtherRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
  if (fIndex>=0) and assigned(fInstance) then begin
+  if assigned(fInstance.fGroup) and (fInstance.fGroup.fTotalMeshletCount>0) then begin
+   TPasMPInterlocked.Sub(fSceneInstance.fTotalActiveMeshletCount,TPasMPInt64(fInstance.fGroup.fTotalMeshletCount));
+  end;
   RemoveLights;
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fInstance.fRenderInstanceLock);
   try
@@ -26871,6 +26879,10 @@ begin
    inc(fSceneInstance.fDrawDataGeneration);
 {$endif}
 
+   if assigned(fGroup) and (fGroup.fTotalMeshletCount>0) then begin
+    TPasMPInterlocked.Add(fSceneInstance.fTotalActiveMeshletCount,TPasMPInt64(fGroup.fTotalMeshletCount));
+   end;
+
    begin
     fSceneInstance.fNewInstanceListLock.Acquire;
     try
@@ -26927,6 +26939,9 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.BeforeDestruction;
 begin
+ if assigned(fGroup) and assigned(fSceneInstance) and (fGroup.fTotalMeshletCount>0) then begin
+  TPasMPInterlocked.Sub(fSceneInstance.fTotalActiveMeshletCount,TPasMPInt64(fGroup.fTotalMeshletCount));
+ end;
  Remove;
  inherited BeforeDestruction;
 end;
@@ -33146,6 +33161,8 @@ begin
                      (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.meshShader<>VK_FALSE) and
                      (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE) and
                      ((fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE) or not assigned(fVirtualReality));
+
+ fTotalActiveMeshletCount:=0;
 
  fHardwareRaytracingSupport:=//false and
                              aUseBufferDeviceAddress and
