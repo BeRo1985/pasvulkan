@@ -95,7 +95,7 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
              CountViews:TpvUInt32;
              RenderPassMask:TpvUInt32;
              RendererInstanceIndex:TpvUInt32;
-             LODFlags:TpvUInt32;
+             Flags:TpvUInt32;
              BatchRangeIndex:TpvInt32;
             end;
             PPushConstants=^TPushConstants;
@@ -483,21 +483,21 @@ begin
     end;
 
     PushConstants.RendererInstanceIndex:=TpvUInt32(fInstance.RendererInstanceIndex);
-    PushConstants.LODFlags:=0;
+    PushConstants.Flags:=0;
     if fInstance.Scene3D.GPULODEnabled then begin
      case fCullRenderPass of
       TpvScene3DRendererCullRenderPass.FinalView:begin
-       PushConstants.LODFlags:=PushConstants.LODFlags or TpvUInt32(1 shl 0); // LOD_FLAG_ENABLED
+       PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 0); // FLAG_LOD_ENABLED
       end;
       else begin
        // LOD selection only for final view pass for now
       end;
      end;
      if not fInstance.Scene3D.LODTransformAllLevels then begin
-      PushConstants.LODFlags:=PushConstants.LODFlags or TpvUInt32(1 shl 1); // LOD_FLAG_TEMPORAL
+      PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 1); // FLAG_LOD_TEMPORAL
      end;
      if fInstance.Scene3D.LODFrameCounter<fInstance.Scene3D.CountInFlightFrames then begin
-      PushConstants.LODFlags:=PushConstants.LODFlags or TpvUInt32(1 shl 2); // LOD_FLAG_RESET_FRAME
+      PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 2); // FLAG_LOD_RESET_FRAME
      end;
      if assigned(fInstance.LODLevelBuffers[aInFlightFrameIndex]) then begin
       PushConstants.LODLevelCurrentBDA:=fInstance.LODLevelBuffers[aInFlightFrameIndex].DeviceAddress;
