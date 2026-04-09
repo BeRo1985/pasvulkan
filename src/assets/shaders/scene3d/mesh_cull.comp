@@ -85,6 +85,7 @@ layout(push_constant) uniform PushConstants {
   uint rendererInstanceIndex;  // index of current RendererInstance (0..31) for lodNeeded atomicOr
   uint flags;               // bitmask: FLAG_LOD_ENABLED | FLAG_LOD_TEMPORAL | FLAG_LOD_RESET_FRAME
   int batchRangeIndex;         // <0 = mega-dispatch (findRangeIndex), >=0 = per-range dispatch (direct index)
+  uint maxOutputCommands;      // total output buffer capacity in commands
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -154,6 +155,7 @@ layout(push_constant) uniform PushConstants {
   uint rendererInstanceIndex;  // index of current RendererInstance (0..31) for lodNeeded atomicOr
   uint flags;               // bitmask: FLAG_LOD_ENABLED | FLAG_LOD_TEMPORAL | FLAG_LOD_RESET_FRAME
   int batchRangeIndex;         // <0 = mega-dispatch (findRangeIndex), >=0 = per-range dispatch (direct index)
+  uint maxOutputCommands;      // total output buffer capacity in commands
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -397,7 +399,7 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
         }
         if(meshletVisible){
           uint destIdx = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], 1u);
-          if(destIdx < inputMaxCount){
+          if((destIdx + inputBaseOffset) < inputMaxCount){
             destIdx += inputBaseOffset;
             outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(1u, 1u, 1u, meshletBase + i);
             outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
@@ -414,7 +416,7 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
       uint destBase = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], meshletCount);
       for(uint i = 0u; i < meshletCount; i++){
         uint destIdx = destBase + i;
-        if(destIdx < inputMaxCount){
+        if((destIdx + inputBaseOffset) < inputMaxCount){
           destIdx += inputBaseOffset;
           outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(1u, 1u, 1u, meshletBase + i);
           outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
@@ -427,7 +429,7 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
       uint destBase = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], meshletCount);
       for(uint i = 0u; i < meshletCount; i++){
         uint destIdx = destBase + i;
-        if(destIdx < inputMaxCount){
+        if((destIdx + inputBaseOffset) < inputMaxCount){
           destIdx += inputBaseOffset;
           outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(1u, 1u, 1u, meshletBase + i);
           outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
@@ -443,7 +445,7 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
     // the final culling per meshlet.
     uint groupCountX = (meshletCount + TASK_GROUP_SIZE - 1u) / TASK_GROUP_SIZE;
     uint destIdx = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], 1u);
-    if(destIdx < inputMaxCount){
+    if((destIdx + inputBaseOffset) < inputMaxCount){
       destIdx += inputBaseOffset;
       outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(groupCountX, 1u, 1u, meshletBase);
       outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(meshletCount, meshObjectID, boundingSphereIndex, flags);
@@ -538,7 +540,7 @@ void main(){
         if(oitDrawCallIndex != 0xffffffffu){
           uint oitBaseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].oitBaseCommandIndex;
 #ifdef MESH_SHADER_PATH
-          submitMeshletCommands(oitDrawCallIndex, oitBaseCommandIndex, countCommands,
+          submitMeshletCommands(oitDrawCallIndex, oitBaseCommandIndex, pushConstants.maxOutputCommands,
                                 meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
           uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
@@ -563,7 +565,7 @@ void main(){
   inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1.w = (cmd1.w |= 1u); // Mark as added
 
 #ifdef MESH_SHADER_PATH
-  submitMeshletCommands(drawCallIndex, baseCommandIndex, countCommands,
+  submitMeshletCommands(drawCallIndex, baseCommandIndex, pushConstants.maxOutputCommands,
                         meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
   uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
@@ -773,7 +775,7 @@ void main(){
           // Route to OIT normal output
           uint oitBaseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].oitBaseCommandIndex;
 #ifdef MESH_SHADER_PATH
-          submitMeshletCommands(oitDrawCallIndex, oitBaseCommandIndex, countCommands,
+          submitMeshletCommands(oitDrawCallIndex, oitBaseCommandIndex, pushConstants.maxOutputCommands,
                                 meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
           uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
@@ -789,7 +791,7 @@ void main(){
             uint oitDisocDrawCallIndex = oitDrawCallIndex + (drawCallIndexForDisocclusions - drawCallIndex);
             uint oitDisocBaseCommandIndex = oitBaseCommandIndex + (baseCommandIndexForDisocclusions - baseCommandIndex);
 #ifdef MESH_SHADER_PATH
-            submitMeshletCommands(oitDisocDrawCallIndex, oitDisocBaseCommandIndex, countCommandsForDisocclusions,
+            submitMeshletCommands(oitDisocDrawCallIndex, oitDisocBaseCommandIndex, pushConstants.maxOutputCommands,
                                   meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
             uint oitDisocDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDisocDrawCallIndex], 1u);
@@ -811,7 +813,7 @@ void main(){
   {
 
 #ifdef MESH_SHADER_PATH
-    submitMeshletCommands(drawCallIndex, baseCommandIndex, countCommands,
+    submitMeshletCommands(drawCallIndex, baseCommandIndex, pushConstants.maxOutputCommands,
                           meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
@@ -831,7 +833,7 @@ void main(){
 
     // Copy the command data to the output buffer
 #ifdef MESH_SHADER_PATH
-    submitMeshletCommands(drawCallIndexForDisocclusions, baseCommandIndexForDisocclusions, countCommandsForDisocclusions,
+    submitMeshletCommands(drawCallIndexForDisocclusions, baseCommandIndexForDisocclusions, pushConstants.maxOutputCommands,
                           meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndexForDisocclusions], 1u);

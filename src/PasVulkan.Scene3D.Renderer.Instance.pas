@@ -1123,6 +1123,7 @@ type { TpvScene3DRendererInstance }
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
+       property PerInFlightFrameMeshShaderOutputBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameMeshShaderOutputBufferSizes;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers;
@@ -8017,6 +8018,7 @@ var DrawChoreographyBatchRangeIndex:TpvSizeInt;
     vkCmdDrawMeshTasksIndirectCountEXT:TvkCmdDrawMeshTasksIndirectCountEXT;
     OutputBufferDeviceAddress,AdjustedBDA:TVkDeviceAddress;
     MeshShaderPushConstantStageFlags:TVkShaderStageFlags;
+    MaxOutputCommands:TpvSizeInt;
     Time:TpvDouble;
 begin
 
@@ -8076,12 +8078,14 @@ begin
                                      TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or
                                      TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT);
    UseMeshShaderDraw:=true;
+   MaxOutputCommands:=Max(fPerInFlightFrameMeshShaderOutputBufferSizes[aInFlightFrameIndex],fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]);
   end else begin
    vkCmdDrawMeshTasksIndirectCountEXT:=nil;
    OutputBufferDeviceAddress:=0;
    MeshStagePushConstants^.MeshDrawCommandsBDA:=0;
    MeshShaderPushConstantStageFlags:=0;
    UseMeshShaderDraw:=false;
+   MaxOutputCommands:=0;
   end;
 
   DrawChoreographyBatchRangeDynamicArray:=@fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex];
@@ -8155,7 +8159,7 @@ begin
                                            (fPerInFlightFrameGPUDrawIndexedIndirectCommandOITDisocclusionOffsets[aInFlightFrameIndex]+DrawChoreographyBatchRange^.FirstCommand)*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),
                                            fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
                                            ((TpvScene3DRendererInstance.MaxMultiIndirectDrawCalls*3)+DrawChoreographyBatchRange^.DrawCallIndex)*SizeOf(TpvUInt32),
-                                           DrawChoreographyBatchRange^.CountCommands,
+                                           MaxOutputCommands,
                                            SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand));
         if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
          fScene3D.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
@@ -8174,7 +8178,7 @@ begin
                                            (fPerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets[aInFlightFrameIndex]+DrawChoreographyBatchRange^.FirstCommand)*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),
                                            fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
                                            (TpvScene3DRendererInstance.MaxMultiIndirectDrawCalls+DrawChoreographyBatchRange^.DrawCallIndex)*SizeOf(TpvUInt32),
-                                           DrawChoreographyBatchRange^.CountCommands,
+                                           MaxOutputCommands,
                                            SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand));
         if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
          fScene3D.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
@@ -8197,7 +8201,7 @@ begin
                                            (fPerInFlightFrameGPUDrawIndexedIndirectCommandOITPromotionOffsets[aInFlightFrameIndex]+DrawChoreographyBatchRange^.FirstCommand)*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),
                                            fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
                                            ((TpvScene3DRendererInstance.MaxMultiIndirectDrawCalls*2)+DrawChoreographyBatchRange^.DrawCallIndex)*SizeOf(TpvUInt32),
-                                           DrawChoreographyBatchRange^.CountCommands,
+                                           MaxOutputCommands,
                                            SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand));
         if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
          fScene3D.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
@@ -8216,7 +8220,7 @@ begin
                                            DrawChoreographyBatchRange^.FirstCommand*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),
                                            fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
                                            DrawChoreographyBatchRange^.DrawCallIndex*SizeOf(TpvUInt32),
-                                           DrawChoreographyBatchRange^.CountCommands,
+                                           MaxOutputCommands,
                                            SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand));
         if assigned(fScene3D.VulkanDevice.BreadcrumbBuffer) then begin
          fScene3D.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);

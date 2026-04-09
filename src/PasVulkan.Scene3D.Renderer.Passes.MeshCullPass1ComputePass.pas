@@ -97,6 +97,7 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
              RendererInstanceIndex:TpvUInt32;
              Flags:TpvUInt32;
              BatchRangeIndex:TpvInt32;
+             MaxOutputCommands:TpvUInt32;
             end;
             PPushConstants=^TPushConstants;
             TMeshCullResetPushConstants=packed record
@@ -521,6 +522,8 @@ begin
     if fInstance.Renderer.UseMeshletExpandCulling and assigned(fMeshShaderPipeline) then begin
      PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 3); // FLAG_MESHLET_CULLING_ENABLED
     end;
+
+    PushConstants.MaxOutputCommands:=Max(fInstance.PerInFlightFrameMeshShaderOutputBufferSizes[aInFlightFrameIndex],fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]);
 
     if fInstance.Scene3D.UseMegaDispatch then begin
 
