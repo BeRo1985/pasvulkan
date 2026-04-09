@@ -8071,16 +8071,10 @@ begin
    vkCmdDrawMeshTasksIndirectCountEXT:=Renderer.VulkanDevice.Commands.Commands.CmdDrawMeshTasksIndirectCountEXT;
    OutputBufferDeviceAddress:=fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex].DeviceAddress;
    MeshStagePushConstants^.MeshDrawCommandsBDA:=OutputBufferDeviceAddress;
-   if Renderer.UseMeshletExpand then begin
-    MeshShaderPushConstantStageFlags:=TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
-                                      TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT);
-   end else begin
-    MeshShaderPushConstantStageFlags:=TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
-                                      TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or
-                                      TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT);
-   end;
+   MeshShaderPushConstantStageFlags:=TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT);
    UseMeshShaderDraw:=true;
   end else begin
    vkCmdDrawMeshTasksIndirectCountEXT:=nil;

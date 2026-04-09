@@ -859,8 +859,7 @@ addParticleFragmentZVariants(){
   addParticleFragmentShadingAntialiasingVariants "$1" "$2"
   
   # Reversed Z direction
-  addParticleFragmentShadingAntialiasingVariants "${1}_reversedz" "$2 -DREVERSEDZ"
- 
+  addParticleFragmentShadingAntialiasingVariants "${1}_reversedz" "$2 -DREVERSEDZ" 
  
 }
 
@@ -927,8 +926,7 @@ addPlanetWaterFragmentZVariants(){
   addPlanetWaterFragmentShadingAntialiasingVariants "$1" "$2"
   
   # Reversed Z direction
-  addPlanetWaterFragmentShadingAntialiasingVariants "${1}_reversedz" "$2 -DREVERSEDZ"
- 
+  addPlanetWaterFragmentShadingAntialiasingVariants "${1}_reversedz" "$2 -DREVERSEDZ" 
  
 }
 
