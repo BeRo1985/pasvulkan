@@ -13,12 +13,6 @@
 #endif
 #endif
 
-#ifdef MESHLET_EXPAND
-#ifndef MESHLET_EXPANSION_FACTOR
-#define MESHLET_EXPANSION_FACTOR 32u
-#endif
-#endif
-
 /* clang-format off */
 
 #ifndef PASS
@@ -369,8 +363,8 @@ void computeMeshletCommand(out uvec4 outCmd0, out uvec4 outCmd1,
 }
 
 #ifdef MESHLET_EXPAND
-// B3: Expand visible object's meshlets into flat per-meshlet draw commands.
-// Each output entry dispatches exactly 1 task workgroup with 1 meshlet.
+// B3: Expand visible object into one draw command with full meshletCount.
+// Task shader gets full workgroups (TASK_GROUP_SIZE meshlets each).
 void expandMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMaxCount,
                            uint meshObjectID, uint boundingSphereIndex,
                            uint lodInfoIndex, uint selectedLOD, uint flags){
@@ -382,16 +376,12 @@ void expandMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
     meshletCount = lodInfo.meshletCounts[min(selectedLOD, 3u)];
   }
   if(meshletCount > 0u){
-    uint outputBase = inputBaseOffset * MESHLET_EXPANSION_FACTOR;
-    uint outputMax = inputMaxCount * MESHLET_EXPANSION_FACTOR;
-    uint destBase = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], meshletCount);
-    for(uint i = 0u; i < meshletCount; i++){
-      uint destIdx = destBase + i;
-      if(destIdx < outputMax){
-        destIdx += outputBase;
-        outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(1u, 1u, 1u, meshletBase + i);
-        outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
-      }
+    uint groupCountX = (meshletCount + TASK_GROUP_SIZE - 1u) / TASK_GROUP_SIZE;
+    uint destIdx = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], 1u);
+    if(destIdx < inputMaxCount){
+      destIdx += inputBaseOffset;
+      outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(groupCountX, 1u, 1u, meshletBase);
+      outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(meshletCount, meshObjectID, boundingSphereIndex, flags);
     }
   }
 }

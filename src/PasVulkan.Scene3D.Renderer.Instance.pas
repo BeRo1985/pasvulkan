@@ -113,7 +113,7 @@ type { TpvScene3DRendererInstance }
                                                           GlobalIlluminationRadiantHintVolumeSize)*
                                                          GlobalIlluminationRadiantHintVolumeSize;
              MaxMultiIndirectDrawCalls=65536; //1048576; // as worst case
-             MeshletExpansionFactor=32; // B3: each object expands into up to this many per-meshlet commands
+             MeshletExpansionFactor=1; // B3: 1 command per visible object (task shader handles full workgroups)
              InitialCountSolidPrimitives=1 shl 10;
              MaxSolidPrimitives=1 shl 20;
              InitialCountSpaceLines=1 shl 10;
