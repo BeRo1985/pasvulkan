@@ -43,14 +43,13 @@ layout(push_constant) uniform PushConstants {
   vec4 jitter;
   uvec4 timeSecondsTimeFractionalSecondWidthHeight;
   uint raytracingFlags;
-#if PASS == 1
-  uint textureDepthIndex;       // was unused0 — HiZ texture array index
-#else
-  uint drawFlags; // bit 0 = meshlet debug colors
-#endif
+  uint drawFlags; // bit 0 = meshlet debug colors, bit 3 = meshlet culling enabled
+  uint textureDepthIndex;
   uint meshDrawCommandsBDALow;  // Low 32 bits of mesh draw commands buffer BDA
   uint meshDrawCommandsBDAHigh; // High 32 bits of mesh draw commands buffer BDA
 } pushConstants;
+
+const uint FLAG_MESHLET_CULLING_ENABLED = 1u << 3;
 
 #include "drawinfo.glsl"
 
@@ -192,7 +191,7 @@ void main(){
 
     // Voxelization: test meshlet bounding sphere against each cascade AABB
     // Emit one entry per visible meshlet × cascade pair
-    if(meshletSphere.w > 0.0){
+    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && (meshletSphere.w > 0.0)){
 
       // Transform meshlet bounding sphere to world space
       vec4 worldSphere = sphereTransform(meshletSphere, modelMatrix);
@@ -214,7 +213,7 @@ void main(){
       }
 
     }else{
-      // No valid bounding sphere → emit for all cascades (conservative)
+      // Culling disabled or no valid bounding sphere → emit for all cascades (conservative)
       uint countCascades = voxelGridData.countCascades;
       for(uint cascadeIndex = 0u; cascadeIndex < countCascades; cascadeIndex++){
         uint idx = atomicAdd(payload.count, 1u);
@@ -231,7 +230,7 @@ void main(){
     // Emit one payload entry per visible meshlet × view pair.
     // The mesh shader uses the view index to select the correct matrices and sets
     // gl_Layer per primitive for cascade/layer routing without multiview.
-    if(meshletSphere.w > 0.0){
+    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && (meshletSphere.w > 0.0)){
 
       vec4 worldSphere = sphereTransform(meshletSphere, modelMatrix);
 
@@ -285,7 +284,7 @@ void main(){
       }
 
     }else{
-      // No valid bounding sphere → emit for all views (conservative)
+      // Culling disabled or no valid bounding sphere → emit for all views (conservative)
       for(uint viewIdx = 0u; viewIdx < countViews; viewIdx++){
         uint idx = atomicAdd(payload.count, 1u);
         if(idx < TASK_GROUP_SIZE){
@@ -299,7 +298,7 @@ void main(){
 
     bool visible = false;
 
-    if(meshletSphere.w > 0.0){
+    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && (meshletSphere.w > 0.0)){
 
       // Transform meshlet bounding sphere to world space via model matrix
       vec4 worldSphere = sphereTransform(meshletSphere, modelMatrix);
@@ -352,7 +351,7 @@ void main(){
       }
 
     }else{
-      // No valid bounding sphere → always visible (conservative)
+      // Culling disabled or no valid bounding sphere → always visible (conservative)
       visible = true;
     }
 

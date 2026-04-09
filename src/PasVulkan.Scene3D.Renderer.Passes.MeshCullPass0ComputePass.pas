@@ -518,7 +518,7 @@ begin
      PushConstants.LODLevelPreviousBDA:=0;
     end;
 
-    if fInstance.Renderer.UseMeshletExpandCulling and assigned(fMeshShaderPipeline) then begin
+    if fInstance.Renderer.UseMeshletCulling and assigned(fMeshShaderPipeline) then begin
      PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 3); // FLAG_MESHLET_CULLING_ENABLED
     end;
 

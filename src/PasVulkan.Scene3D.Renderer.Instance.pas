@@ -8046,6 +8046,10 @@ begin
   if fDrawMeshletDebugColors then begin
    MeshStagePushConstants^.DrawFlags:=MeshStagePushConstants^.DrawFlags or 1;
   end;
+  if Renderer.UseMeshletCulling then begin
+   MeshStagePushConstants^.DrawFlags:=MeshStagePushConstants^.DrawFlags or (TpvUInt32(1) shl 3); // FLAG_MESHLET_CULLING_ENABLED
+  end;
+  MeshStagePushConstants^.TextureDepthIndex:=0;
   
   fSetGlobalResourcesDone[aRenderPass]:=false;
 

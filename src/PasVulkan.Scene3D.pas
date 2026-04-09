@@ -536,6 +536,7 @@ type EpvScene3D=class(Exception);
 
              RaytracingFlags:TpvUInt32;
              DrawFlags:TpvUInt32;
+             TextureDepthIndex:TpvUInt32;
              MeshDrawCommandsBDA:TVkDeviceAddress;
 
             end;
