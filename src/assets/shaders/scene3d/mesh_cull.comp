@@ -7,6 +7,8 @@
 #extension GL_EXT_control_flow_attributes : enable
 #extension GL_EXT_debug_printf : enable
 
+#define MESH_SHADER_DEBUG_EX
+
 #ifdef MESH_SHADER_PATH
 #ifndef TASK_GROUP_SIZE
 #define TASK_GROUP_SIZE 32
@@ -373,41 +375,100 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
       vec2 viewPortSize = vec2(textureSize(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], 0).xy);
       int countLODLevels = textureQueryLevels(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)]);
       uint countViews = min(pushConstants.countViews, 8u);
+#ifdef MESH_SHADER_DEBUG_EX
+      uint meshletVisibleCount = 0u;
+      uint meshletFrustumCulled = 0u;
+      uint meshletHiZCulled = 0u;
+      uint meshletProjectFailed = 0u;
+#endif
       for(uint i = 0u; i < meshletCount; i++){
         MeshletDescriptor desc = MeshletDescriptorBuffer(globalBDAPointers.meshletDescriptorBDA).descriptors[meshletBase + i];
-        vec4 meshletSphere = sphereTransform(desc.boundingSphere, modelMatrix);
+#ifdef MESH_SHADER_DEBUG_EX
+        if(i < 2u){
+          debugPrintfEXT("meshletRAW obj=%u ml=%u meshletBase=%u descBase=%u rawSphere=[%f,%f,%f,%f] vOff=%u vCnt=%u pOff=%u pCnt=%u BDA=[%u,%u]",
+            meshObjectID, i, meshletBase, drawInfoItems[meshObjectID].meshletDescriptorBase,
+            desc.boundingSphere.x, desc.boundingSphere.y, desc.boundingSphere.z, desc.boundingSphere.w,
+            desc.vertexOffset, desc.vertexCount, desc.primitiveOffset, desc.primitiveCount,
+            globalBDAPointers.meshletDescriptorBDA.x, globalBDAPointers.meshletDescriptorBDA.y);
+        }
+#endif
         bool meshletVisible = false;
-        for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
-          vec4 viewSpaceSphere = vec4((viewMatrices[viewIndex] * vec4(meshletSphere.xyz, 1.0)).xyz, meshletSphere.w);
-          bool visible = frustumCullingSphereTest(frustums[viewIndex], viewSpaceSphere);
-          if(visible){
-            vec4 aabb;
-            if(projectSphere(viewSpaceSphere.xyz, viewSpaceSphere.w, zNears[viewIndex], uView.views[pushConstants.baseViewIndex + viewIndex].projectionMatrix, aabb, true)){
-              vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
-              float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1));
-              vec2 depthZ = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
-                (aabb.xy + aabb.zw) - vec2(1.0),
-                textureLod(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x,
-                1.0
-              )).zw;
-              float depth = -(depthZ.x / depthZ.y);
-              visible = ((-viewSpaceSphere.z) - viewSpaceSphere.w) <= depth;
+#ifdef MESH_SHADER_DEBUG_EX
+        bool meshletWasFrustumCulled = true;
+#endif
+        if(desc.boundingSphere.w > 0.0){
+          // Valid bounding sphere — do frustum + HiZ culling
+          vec4 meshletSphere = sphereTransform(desc.boundingSphere, modelMatrix);
+          for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
+            vec4 viewSpaceSphere = vec4((viewMatrices[viewIndex] * vec4(meshletSphere.xyz, 1.0)).xyz, meshletSphere.w);
+            bool visible = frustumCullingSphereTest(frustums[viewIndex], viewSpaceSphere);
+            if(visible){
+#ifdef MESH_SHADER_DEBUG_EX
+              meshletWasFrustumCulled = false;
+#endif
+              vec4 aabb;
+              if(projectSphere(viewSpaceSphere.xyz, viewSpaceSphere.w, zNears[viewIndex], uView.views[pushConstants.baseViewIndex + viewIndex].projectionMatrix, aabb, true)){
+                vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
+                float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1));
+                float sampledRawDepth = textureLod(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x;
+                vec2 depthZ = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
+                  (aabb.xy + aabb.zw) - vec2(1.0),
+                  sampledRawDepth,
+                  1.0
+                )).zw;
+                float depth = -(depthZ.x / depthZ.y);
+                float sphereFront = (-viewSpaceSphere.z) - viewSpaceSphere.w;
+                visible = sphereFront <= depth;
+#ifdef MESH_SHADER_DEBUG_EX
+                if(!visible && i < 3u){
+                  debugPrintfEXT("meshletCull REJECT obj=%u ml=%u view=%u sphereFront=%f depth=%f rawD=%f vsZ=%f r=%f aabb=[%f,%f,%f,%f] lod=%f",
+                    meshObjectID, i, viewIndex, sphereFront, depth, sampledRawDepth, viewSpaceSphere.z, viewSpaceSphere.w,
+                    aabb.x, aabb.y, aabb.z, aabb.w, level);
+                }
+#endif
+              }else{
+                // projectSphere returned false => sphere behind near plane => visible
+#ifdef MESH_SHADER_DEBUG_EX
+                meshletProjectFailed++;
+#endif
+              }
+            }
+            if(visible){
+              meshletVisible = true;
+              break;
             }
           }
-          if(visible){
-            meshletVisible = true;
-            break;
-          }
+        }else{
+          // No valid bounding sphere (e.g. animated meshlets) → always visible (conservative)
+          meshletVisible = true;
         }
         if(meshletVisible){
+#ifdef MESH_SHADER_DEBUG_EX
+          meshletVisibleCount++;
+#endif
           uint destIdx = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], 1u);
           if((destIdx + inputBaseOffset) < inputMaxCount){
             destIdx += inputBaseOffset;
             outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(1u, 1u, 1u, meshletBase + i);
             outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
           }
+#ifdef MESH_SHADER_DEBUG_EX
+        }else{
+          if(meshletWasFrustumCulled){
+            meshletFrustumCulled++;
+          }else{
+            meshletHiZCulled++;
+          }
+#endif
         }
       }
+#ifdef MESH_SHADER_DEBUG_EX
+      if(meshletHiZCulled > 0u){
+        debugPrintfEXT("meshletCull SUMMARY obj=%u total=%u vis=%u hiZ=%u frust=%u projFail=%u views=%u texIdx=%u baseView=%u",
+          meshObjectID, meshletCount, meshletVisibleCount, meshletHiZCulled, meshletFrustumCulled, meshletProjectFailed,
+          countViews, pushConstants.textureDepthIndex, pushConstants.baseViewIndex);
+      }
+#endif
 #else
       // PASS 0: no HiZ available yet, submit all meshlets unconditionally.
       // TODO: Add a per-meshlet visibility bitmap (analogous to inputVisibilityBuffer for objects) to allow
