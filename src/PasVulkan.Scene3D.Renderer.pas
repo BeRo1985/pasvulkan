@@ -691,7 +691,7 @@ begin
 
  fUseMeshletExpand:=fUseMeshShaderPipeline;
 
- fUseMeshletExpandCulling:=fUseMeshletExpand;
+ fUseMeshletExpandCulling:=false;//fUseMeshletExpand;
 
  fUseMeshShaderLayerRouting:=fScene3D.MeshShaderSupport and
                              (fScene3D.VulkanDevice.PhysicalDevice.Vulkan12Features.shaderOutputLayer<>VK_FALSE);
