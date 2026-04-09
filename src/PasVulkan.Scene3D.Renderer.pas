@@ -138,6 +138,7 @@ type TpvScene3DRenderer=class;
        fGPUShadowCulling:Boolean;
        fUseMeshShaderPipeline:Boolean;
        fUseMeshletExpand:Boolean;
+       fUseMeshletExpandCulling:Boolean;
        fUseMeshShaderLayerRouting:Boolean;
        fEarlyDepthPrepassNeeded:Boolean;
        fWetnessMapActive:Boolean;
@@ -237,6 +238,7 @@ type TpvScene3DRenderer=class;
        property GPUShadowCulling:Boolean read fGPUShadowCulling;
        property UseMeshShaderPipeline:Boolean read fUseMeshShaderPipeline write fUseMeshShaderPipeline;
        property UseMeshletExpand:Boolean read fUseMeshletExpand write fUseMeshletExpand;
+       property UseMeshletExpandCulling:Boolean read fUseMeshletExpandCulling write fUseMeshletExpandCulling;
        property UseMeshShaderLayerRouting:Boolean read fUseMeshShaderLayerRouting write fUseMeshShaderLayerRouting;
        property EarlyDepthPrepassNeeded:Boolean read fEarlyDepthPrepassNeeded;
        property WetnessMapActive:Boolean read fWetnessMapActive write fWetnessMapActive;
@@ -688,6 +690,8 @@ begin
  fUseMeshShaderPipeline:=fScene3D.MeshShaderSupport;
 
  fUseMeshletExpand:=fUseMeshShaderPipeline;
+
+ fUseMeshletExpandCulling:=fUseMeshletExpand;
 
  fUseMeshShaderLayerRouting:=fScene3D.MeshShaderSupport and
                              (fScene3D.VulkanDevice.PhysicalDevice.Vulkan12Features.shaderOutputLayer<>VK_FALSE);

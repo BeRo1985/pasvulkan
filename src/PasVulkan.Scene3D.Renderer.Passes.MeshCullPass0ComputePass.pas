@@ -177,7 +177,11 @@ begin
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
  if fInstance.Scene3D.MeshShaderSupport then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_cull_meshshader_pass0_comp.spv');
+  if fInstance.Renderer.UseMeshletExpand then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_cull_meshshader_expand_pass0_comp.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_cull_meshshader_pass0_comp.spv');
+  end;
   try
    fMeshShaderComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
    fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fMeshShaderComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesMeshCullPass0ComputePass.fMeshShaderComputeShaderModule');
@@ -512,7 +516,7 @@ begin
      PushConstants.LODLevelPreviousBDA:=0;
     end;
 
-    if fInstance.Renderer.UseMeshShaderPipeline and assigned(fMeshShaderPipeline) then begin
+    if fInstance.Renderer.UseMeshletExpandCulling and assigned(fMeshShaderPipeline) then begin
      PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 3); // FLAG_MESHLET_CULLING_ENABLED
     end;
 
