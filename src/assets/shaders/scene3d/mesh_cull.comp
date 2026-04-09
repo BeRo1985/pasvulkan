@@ -360,7 +360,7 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
 #ifdef MESHLET_EXPAND
     // Submit visible object into one draw command with full meshletCount.
     // Task shader gets full workgroups (TASK_GROUP_SIZE meshlets each).
-    if(pushConstants.flags & FLAG_MESHLET_CULLING_ENABLED){
+    if((pushConstants.flags & FLAG_MESHLET_CULLING_ENABLED) != 0u){
       // Per-meshlet culling: only in PASS 1 (where HiZ + shared view data are available),
       // PASS 0 submits all meshlets unconditionally and PASS 1 catches up with culling.
 #if PASS == 1
