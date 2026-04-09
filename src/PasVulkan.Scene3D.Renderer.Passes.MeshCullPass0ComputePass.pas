@@ -512,6 +512,10 @@ begin
      PushConstants.LODLevelPreviousBDA:=0;
     end;
 
+    if fInstance.Renderer.UseMeshShaderPipeline and assigned(fMeshShaderPipeline) then begin
+     PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 3); // FLAG_MESHLET_CULLING_ENABLED
+    end;
+
     if fInstance.Scene3D.UseMegaDispatch then begin
 
      PushConstants.BatchRangeIndex:=-1;

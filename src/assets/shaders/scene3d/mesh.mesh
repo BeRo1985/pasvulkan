@@ -129,6 +129,24 @@ layout(set = 1, binding = 1, std140) readonly uniform VoxelGridData {
 
 #include "adjugate.glsl"
 
+#ifdef NO_TASK_SHADER
+
+// No task shader: mesh_cull.comp already expanded per-meshlet commands via MESHLET_EXPAND.
+// Each draw command = 1 meshlet. Read command from MeshDrawCommandBuffer via BDA + gl_DrawID.
+
+#include "meshlet.glsl"
+
+void main(){
+
+  uint localID = gl_LocalInvocationIndex;
+
+  MeshDrawCommandBuffer meshDrawCmdBuf = MeshDrawCommandBuffer(uvec2(pushConstants.meshDrawCommandsBDALow, pushConstants.meshDrawCommandsBDAHigh));
+  MeshDrawCommand cmd = meshDrawCmdBuf.commands[uint(gl_DrawID)];
+  uint meshletGlobalIndex = cmd.cmd0.w;
+  uint meshObjectID = cmd.cmd1.y;
+
+#else
+
 // Task payload from mesh.task — must match exactly
 #ifndef TASK_GROUP_SIZE
 #define TASK_GROUP_SIZE 32
@@ -161,6 +179,8 @@ void main(){
 #elif defined(USE_LAYER_ROUTING)
   uint layerIndex = payload.layerIndices[workGroupIndex];
 #endif
+
+#endif // NO_TASK_SHADER
 
   // Construct BDA references for meshlet data
   MeshletDescriptorBuffer meshletDescBuf = MeshletDescriptorBuffer(globalBDAPointers.meshletDescriptorBDA);

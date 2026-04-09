@@ -203,6 +203,8 @@ compileshaderarguments=(
   "-V mesh.mesh --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/mesh_velocity_mesh.spv"
   "-V mesh.mesh --target-env vulkan1.2 -DVOXELIZATION -o ${tempPath}/mesh_voxelization_mesh.spv"
   "-V mesh.mesh --target-env vulkan1.2 -DUSE_LAYER_ROUTING -o ${tempPath}/mesh_layerrouting_mesh.spv"
+  "-V mesh.mesh --target-env vulkan1.2 -DNO_TASK_SHADER -o ${tempPath}/mesh_notask_mesh.spv"
+  "-V mesh.mesh --target-env vulkan1.2 -DNO_TASK_SHADER -DVELOCITY -o ${tempPath}/mesh_velocity_notask_mesh.spv"
 
   "-V mesh.vert --target-env vulkan1.2 -o ${tempPath}/mesh_vert.spv"
   "-V mesh.vert --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/mesh_velocity_vert.spv"
