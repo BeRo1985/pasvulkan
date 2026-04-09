@@ -470,7 +470,7 @@ begin
      BoundingBox.Min:=PpvVector3(Pointer(TpvPtrUInt(TpvPtrUInt(aVertices)+(TpvPtrUInt(Meshlet^.Vertices[VertexIndex])*TpvPtrUInt(aVertexStride)))))^;
      BoundingBox.Max:=BoundingBox.Min;
     end else begin
-     BoundingBox.CombineVector3(PpvVector3(Pointer(TpvPtrUInt(TpvPtrUInt(aVertices)+(TpvPtrUInt(Meshlet^.Vertices[VertexIndex])*TpvPtrUInt(aVertexStride)))))^);
+     BoundingBox.DirectCombineVector3(PpvVector3(Pointer(TpvPtrUInt(TpvPtrUInt(aVertices)+(TpvPtrUInt(Meshlet^.Vertices[VertexIndex])*TpvPtrUInt(aVertexStride)))))^);
     end;
    end;
 

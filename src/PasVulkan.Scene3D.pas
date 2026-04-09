@@ -27117,6 +27117,12 @@ begin
        SrcMeshlet:=@Primitive.fMeshlets.Items[MeshletIndex];
        DstDescriptor:=@fSceneInstance.fVulkanMeshletDescriptorBufferData.Items[DescriptorOffset];
        DstDescriptor^.BoundingSphere:=SrcMeshlet^.BoundingSphere;
+       // Invalidate meshlet bounding sphere for animated meshes (skinning/morph targets),
+       // since object-space bounds become invalid after vertex deformation.
+       // The shader treats w=0 as "always visible" (conservative fallback).
+       if (fGroup.fMorphTargetCount>0) or (fGroup.fCountJointNodeMatrices>0) then begin
+        DstDescriptor^.BoundingSphere.w:=0.0;
+       end;
        DstDescriptor^.VertexOffset:=MeshletVertexOffset;
        DstDescriptor^.VertexCount:=SrcMeshlet^.CountVertices;
        DstDescriptor^.PrimitiveOffset:=MeshletPrimitiveOffset;

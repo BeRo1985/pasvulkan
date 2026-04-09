@@ -7,7 +7,7 @@
 #extension GL_EXT_control_flow_attributes : enable
 #extension GL_EXT_debug_printf : enable
 
-#define MESH_SHADER_DEBUG_EX
+//#define MESH_SHADER_DEBUG_EX
 
 #ifdef MESH_SHADER_PATH
 #ifndef TASK_GROUP_SIZE
