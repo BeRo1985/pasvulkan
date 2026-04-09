@@ -411,6 +411,12 @@ begin
 
  fScene3D:=aScene3D;
 
+ fUseMeshShaderPipeline:=true;
+
+ fUseMeshletExpand:=true;
+
+ fUseMeshletExpandCulling:=true;
+
  if assigned(aVulkanDevice) then begin
   fVulkanDevice:=aVulkanDevice;
  end else begin
@@ -687,11 +693,11 @@ begin
 
  fGPUShadowCulling:=not fScene3D.RaytracingActive;
 
- fUseMeshShaderPipeline:=fScene3D.MeshShaderSupport;
+ fUseMeshShaderPipeline:=fUseMeshShaderPipeline and fScene3D.MeshShaderSupport;
 
- fUseMeshletExpand:=fUseMeshShaderPipeline;
+ fUseMeshletExpand:=fUseMeshletExpand and fUseMeshShaderPipeline;
 
- fUseMeshletExpandCulling:=false;//fUseMeshletExpand;
+ fUseMeshletExpandCulling:=fUseMeshletExpandCulling and fUseMeshletExpand;
 
  fUseMeshShaderLayerRouting:=fScene3D.MeshShaderSupport and
                              (fScene3D.VulkanDevice.PhysicalDevice.Vulkan12Features.shaderOutputLayer<>VK_FALSE);
