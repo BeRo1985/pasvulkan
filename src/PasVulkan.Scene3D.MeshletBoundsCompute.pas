@@ -119,7 +119,6 @@ begin
  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3D.TMeshletBoundsComputePushConstants));
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fSceneInstance).MeshletBoundsComputeVulkanDescriptorSet0Layout);
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fSceneInstance).MeshComputeVulkanDescriptorSet1Layout);
- fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fSceneInstance).GlobalMeshletBoundingSphereVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
  TpvScene3D(fSceneInstance).VulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DMeshletBoundsCompute.fPipelineLayout');

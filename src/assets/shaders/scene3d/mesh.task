@@ -187,12 +187,12 @@ void main(){
     uint meshletGlobalIndex = meshletBase + meshletLocalIndex;
 
     // Try per-instance world-space sphere first (from mesh_update_meshlet_boundingspheres.comp)
-    uint meshletBSBase = drawInfoItems[meshObjectID].meshletBoundingSphereBase;
+    uint meshletBoundingSphereBase = drawInfoItems[meshObjectID].meshletBoundingSphereBase;
     vec4 worldSphere;
     bool hasSphere = false;
-    if((meshletBSBase != 0xFFFFFFFFu) && (globalBDAPointers.meshletBoundingSphereBDA != uvec2(0u))){
-      MeshletBoundingSphereBuffer meshletBSBuf = MeshletBoundingSphereBuffer(globalBDAPointers.meshletBoundingSphereBDA);
-      worldSphere = meshletBSBuf.spheres[meshletBSBase + meshletLocalIndex];
+    if((meshletBoundingSphereBase != 0xffffffffu) && (globalBDAPointers.meshletBoundingSphereBDA != uvec2(0u))){
+      MeshletBoundingSphereBuffer meshletBoundingSphereBuffer = MeshletBoundingSphereBuffer(globalBDAPointers.meshletBoundingSphereBDA);
+      worldSphere = meshletBoundingSphereBuffer.spheres[meshletBoundingSphereBase + meshletLocalIndex];
       hasSphere = (worldSphere.w > 0.0);
     }
     if(!hasSphere){

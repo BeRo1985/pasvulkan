@@ -527,6 +527,8 @@ type EpvScene3D=class(Exception);
              OutputSphereBase:TpvUInt32;
              MeshletDescriptorBase:TpvUInt32;
              MeshletCount:TpvUInt32;
+             Pad0:TpvUInt32;
+             OutputSphereBDA:TVkDeviceAddress;
             end;
             PMeshletBoundsComputePushConstants=^TMeshletBoundsComputePushConstants;
             TMeshStagePushConstants=packed record
@@ -3984,7 +3986,6 @@ type EpvScene3D=class(Exception);
             TImageInfos=array[0..65535] of TVkDescriptorImageInfo;
             TGlobalVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TGlobalBoundingSphereVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-            TGlobalMeshletBoundingSphereVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TMeshStagePushConstantArray=array[TpvScene3DRendererRenderPass] of TpvScene3D.TMeshStagePushConstants;
             TInFlightFrameLights=array[0..MaxInFlightFrames-1] of TpvScene3D.TLights;
             TCountInFlightFrameLights=array[-1..MaxInFlightFrames-1] of TpvSizeInt;
@@ -4287,9 +4288,6 @@ type EpvScene3D=class(Exception);
        fGlobalBoundingSphereVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalBoundingSphereVulkanDescriptorSets:TGlobalBoundingSphereVulkanDescriptorSets;
        fGlobalMeshletBoundingSphereBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-       fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fGlobalMeshletBoundingSphereVulkanDescriptorPool:TpvVulkanDescriptorPool;
-       fGlobalMeshletBoundingSphereVulkanDescriptorSets:TGlobalMeshletBoundingSphereVulkanDescriptorSets;
        fMeshletBoundsComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
        fMeshletBoundsCompute:TObject;
        fGlobalMeshletVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -4861,7 +4859,6 @@ type EpvScene3D=class(Exception);
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
        property GlobalVulkanDescriptorSets:TGlobalVulkanDescriptorSets read fGlobalVulkanDescriptorSets;
        property GlobalBoundingSphereVulkanDescriptorSets:TGlobalBoundingSphereVulkanDescriptorSets read fGlobalBoundingSphereVulkanDescriptorSets;
-       property GlobalMeshletBoundingSphereVulkanDescriptorSets:TGlobalMeshletBoundingSphereVulkanDescriptorSets read fGlobalMeshletBoundingSphereVulkanDescriptorSets;
        property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
        property PrimaryLightDirections:TInFlightFrameVector3s read fPrimaryLightDirections;
        property PrimaryShadowMapLightDirection:TpvVector3 read fPrimaryShadowMapLightDirection write fPrimaryShadowMapLightDirection;
@@ -4996,7 +4993,6 @@ type EpvScene3D=class(Exception);
        property MeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet1Layout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
        property GlobalBoundingSphereVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalBoundingSphereVulkanDescriptorSetLayout;
-       property GlobalMeshletBoundingSphereVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout;
       published
        property MeshletBoundsComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshletBoundsComputeVulkanDescriptorSet0Layout;
        property GlobalMeshletVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalMeshletVulkanDescriptorSetLayout;
@@ -33507,10 +33503,7 @@ begin
 
  for Index:=0 to MaxInFlightFrames-1 do begin
   fGlobalMeshletBoundingSphereBuffers[Index]:=nil;
-  fGlobalMeshletBoundingSphereVulkanDescriptorSets[Index]:=nil;
  end;
- fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout:=nil;
- fGlobalMeshletBoundingSphereVulkanDescriptorPool:=nil;
  fMeshletBoundsComputeVulkanDescriptorSet0Layout:=nil;
  fMeshletBoundsCompute:=nil;
 
@@ -34311,30 +34304,6 @@ begin
 
   if fMeshShaderSupport then begin
 
-   // Meshlet bounding sphere descriptor set layout (output buffer for meshlet bounds compute)
-   fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
-   fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout.AddBinding(0,
-                                                                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                                     1,
-                                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                                     []);
-   fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout.Initialize;
-   fVulkanDevice.DebugUtils.SetObjectName(fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3D.fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout');
-
-   // Meshlet bounding sphere descriptor pool
-   fGlobalMeshletBoundingSphereVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
-                                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                                                     fCountInFlightFrames);
-   fGlobalMeshletBoundingSphereVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,fCountInFlightFrames);
-   fGlobalMeshletBoundingSphereVulkanDescriptorPool.Initialize;
-   fVulkanDevice.DebugUtils.SetObjectName(fGlobalMeshletBoundingSphereVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3D.fGlobalMeshletBoundingSphereVulkanDescriptorPool');
-
-   // Meshlet bounding sphere descriptor sets
-   for Index:=0 to fCountInFlightFrames-1 do begin
-    fGlobalMeshletBoundingSphereVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fGlobalMeshletBoundingSphereVulkanDescriptorPool,fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout);
-    fVulkanDevice.DebugUtils.SetObjectName(fGlobalMeshletBoundingSphereVulkanDescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3D.fGlobalMeshletBoundingSphereVulkanDescriptorSets['+IntToStr(Index)+']');
-   end;
-
    // Meshlet bounds compute Set 0 layout (MeshletVertexBuffer + MeshletDescriptorBuffer)
    fMeshletBoundsComputeVulkanDescriptorSet0Layout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
    fMeshletBoundsComputeVulkanDescriptorSet0Layout.AddBinding(0,
@@ -34354,11 +34323,6 @@ begin
 
   end else begin
 
-   fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout:=nil;
-   fGlobalMeshletBoundingSphereVulkanDescriptorPool:=nil;
-   for Index:=0 to fCountInFlightFrames-1 do begin
-    fGlobalMeshletBoundingSphereVulkanDescriptorSets[Index]:=nil;
-   end;
    fMeshletBoundsComputeVulkanDescriptorSet0Layout:=nil;
    fMeshletBoundsCompute:=nil;
 
@@ -34370,11 +34334,6 @@ begin
 
  end else begin
 
-  fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout:=nil;
-  fGlobalMeshletBoundingSphereVulkanDescriptorPool:=nil;
-  for Index:=0 to fCountInFlightFrames-1 do begin
-   fGlobalMeshletBoundingSphereVulkanDescriptorSets[Index]:=nil;
-  end;
   fMeshletBoundsComputeVulkanDescriptorSet0Layout:=nil;
   fMeshletBoundsCompute:=nil;
 
@@ -34938,11 +34897,6 @@ begin
  FreeAndNil(fGlobalMeshletVulkanDescriptorPool);
  FreeAndNil(fGlobalMeshletVulkanDescriptorSetLayout);
 
- for Index:=0 to MaxInFlightFrames-1 do begin
-  FreeAndNil(fGlobalMeshletBoundingSphereVulkanDescriptorSets[Index]);
- end;
- FreeAndNil(fGlobalMeshletBoundingSphereVulkanDescriptorPool);
- FreeAndNil(fGlobalMeshletBoundingSphereVulkanDescriptorSetLayout);
  FreeAndNil(fMeshletBoundsComputeVulkanDescriptorSet0Layout);
 
  while TpvScene3DPlanets(fPlanets).Count>0 do begin
@@ -36331,18 +36285,6 @@ begin
                                                                                      'TpvScene3D.GlobalMeshletBoundingSphereBuffer['+IntToStr(aInFlightFrameIndex)+']'
                                                                                     );
    fVulkanDevice.DebugUtils.SetObjectName(fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.GlobalMeshletBoundingSphereBuffer['+IntToStr(aInFlightFrameIndex)+']');
-   if assigned(fGlobalMeshletBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex]) then begin
-    fGlobalMeshletBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(0,
-                                                                                                0,
-                                                                                                1,
-                                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                                                [],
-                                                                                                [fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex].DescriptorBufferInfo],
-                                                                                                [],
-                                                                                                false
-                                                                                               );
-    fGlobalMeshletBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].Flush;
-   end;
   end;
  end;
 end;
@@ -40752,15 +40694,6 @@ begin
                                        0,
                                        nil);
 
-  // Set 2: Output meshlet bounding spheres
-  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                       aPipelineLayout.Handle,
-                                       2,
-                                       1,
-                                       @fGlobalMeshletBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].Handle,
-                                       0,
-                                       nil);
-
   for Index:=0 to fCachedMeshletBoundsRanges.Count-1 do begin
 
    Current:=@fCachedMeshletBoundsRanges.Items[Index];
@@ -40770,6 +40703,8 @@ begin
    PushConstants.OutputSphereBase:=Current^.OutputSphereBase;
    PushConstants.MeshletDescriptorBase:=Current^.MeshletDescriptorBase;
    PushConstants.MeshletCount:=Current^.MeshletCount;
+   PushConstants.Pad0:=0;
+   PushConstants.OutputSphereBDA:=fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex].DeviceAddress;
 
    aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
                                    TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
