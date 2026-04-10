@@ -107,7 +107,7 @@ struct DrawInfo {
   uint nodeMatricesIndex;
   uint meshletDescriptorBase;
   uint meshletBoundingSphereBase;
-  uint _reserved1;
+  uint meshletVisibilityBase;
 };
 
 // LODInfo struct - 128 bytes per LOD-enabled submesh (8x uvec4 active = 128 bytes)

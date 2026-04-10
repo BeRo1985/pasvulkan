@@ -99,6 +99,9 @@ type { TpvScene3DRendererPassesMeshCullPass0ComputePass }
              MaxOutputCommands:TpvUInt32;
              ScratchBufferBDA:TVkDeviceAddress;
              MaxScratchEntries:TpvUInt32;
+             MeshletVisibilityBDAPadding:TpvUInt32;
+             MeshletVisibilityBDA:TVkDeviceAddress;
+             MeshletVisibilityPartOffset:TpvUInt32;
             end;
             PPushConstants=^TPushConstants;
             TMeshCullResetPushConstants=packed record
@@ -600,6 +603,22 @@ begin
      PushConstants.MaxScratchEntries:=0;
     end;
 
+    PushConstants.MeshletVisibilityBDAPadding:=0;
+    begin
+     // PASS 0 reads from PREVIOUS in-flight frame's buffer (what the previous frame's PASS 1 wrote)
+     PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
+     if PreviousInFlightFrameIndex<0 then begin
+      inc(PreviousInFlightFrameIndex,fInstance.Renderer.CountInFlightFrames);
+     end;
+     if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[PreviousInFlightFrameIndex]) then begin
+      PushConstants.MeshletVisibilityBDA:=fInstance.PerInFlightFrameMeshletVisibilityBuffers[PreviousInFlightFrameIndex].DeviceAddress;
+      PushConstants.MeshletVisibilityPartOffset:=0;
+     end else begin
+      PushConstants.MeshletVisibilityBDA:=0;
+      PushConstants.MeshletVisibilityPartOffset:=0;
+     end;
+    end;
+
     if fInstance.Scene3D.UseMegaDispatch then begin
 
      PushConstants.BatchRangeIndex:=-1;
@@ -613,6 +632,7 @@ begin
      if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
       fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'MeshCullPass0ComputePass.Dispatch');
      end;
+
      aCommandBuffer.CmdDispatchIndirect(fInstance.PerInFlightFrameMeshCullIndirectDispatchBuffers[aInFlightFrameIndex].Handle,
                                         TpvUInt32(Part)*SizeOf(TVkDispatchIndirectCommand));
      if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin

@@ -90,6 +90,9 @@ layout(push_constant) uniform PushConstants {
   uint maxOutputCommands;      // total output buffer capacity in commands
   uvec2 scratchBufferBDA;      // BDA to scratch buffer (MESHLET_EXPAND only, counter at offset 0, entries at offset 16)
   uint maxScratchEntries;      // max scratch entries capacity (MESHLET_EXPAND only)
+  uint meshletVisibilityBDAPadding; // std430 alignment padding for 8-byte aligned uvec2
+  uvec2 meshletVisibilityBDA;  // BDA to meshlet visibility bitmap buffer
+  uint meshletVisibilityPartOffset; // uint32 offset into bitmap for current part (double-buffered)
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -162,6 +165,9 @@ layout(push_constant) uniform PushConstants {
   uint maxOutputCommands;      // total output buffer capacity in commands
   uvec2 scratchBufferBDA;      // BDA to scratch buffer (MESHLET_EXPAND only, counter at offset 0, entries at offset 16)
   uint maxScratchEntries;      // max scratch entries capacity (MESHLET_EXPAND only)
+  uint meshletVisibilityBDAPadding; // std430 alignment padding for 8-byte aligned uvec2
+  uvec2 meshletVisibilityBDA;  // BDA to meshlet visibility bitmap buffer
+  uint meshletVisibilityPartOffset; // uint32 offset into bitmap for current part (double-buffered)
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -241,6 +247,10 @@ layout(buffer_reference, std430, buffer_reference_align = 4) buffer ScratchBuffe
   uvec4 entryData[]; // 3 uvec4 per entry: [i*3]=cmd0, [i*3+1]=cmd1, [i*3+2].x=counterIndex
 };
 #endif
+
+layout(buffer_reference, std430, buffer_reference_align = 4) buffer MeshletVisibilityBuffer {
+  uint bitmap[];
+};
 
 #include "projectsphere.glsl"
 
@@ -372,7 +382,7 @@ void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uin
 // The sort shader later scatters them into per-range output positions.
 #endif
 void submitMeshletCommands(uint counterIndex, 
-#ifdef MESHLET_EXPAND
+#ifndef MESHLET_EXPAND
                            uint inputBaseOffset, uint inputMaxCount,
 #endif
                            uint meshObjectID, uint boundingSphereIndex,
@@ -478,6 +488,15 @@ void submitMeshletCommands(uint counterIndex,
 #ifdef MESH_SHADER_DEBUG_EX
           meshletVisibleCount++;
 #endif
+          // Write meshlet visibility bit for next frame
+          {
+            uint mvbBase = drawInfoItems[meshObjectID].meshletVisibilityBase;
+            if((mvbBase != 0xffffffffu) && !all(equal(pushConstants.meshletVisibilityBDA, uvec2(0u)))){
+              uint mvbLocalOffset = meshletBase - drawInfoItems[meshObjectID].meshletDescriptorBase;
+              uint mvbBitIndex = mvbBase + mvbLocalOffset + i;
+              atomicOr(MeshletVisibilityBuffer(pushConstants.meshletVisibilityBDA).bitmap[pushConstants.meshletVisibilityPartOffset + (mvbBitIndex >> 5u)], 1u << (mvbBitIndex & 31u));
+            }
+          }
           uint scratchIdx = atomicAdd(scratch.counter, 1u);
           if(scratchIdx < pushConstants.maxScratchEntries){
             scratch.entryData[scratchIdx * 3u] = uvec4(1u, 1u, 1u, meshletBase + i);
@@ -502,14 +521,36 @@ void submitMeshletCommands(uint counterIndex,
       }
 #endif
 #else
-      // PASS 0: no HiZ available yet, submit all meshlets unconditionally to scratch.
-      uint scratchBase = atomicAdd(scratch.counter, meshletCount);
-      for(uint i = 0u; i < meshletCount; i++){
-        uint scratchIdx = scratchBase + i;
-        if(scratchIdx < pushConstants.maxScratchEntries){
-          scratch.entryData[scratchIdx * 3u] = uvec4(1u, 1u, 1u, meshletBase + i);
-          scratch.entryData[scratchIdx * 3u + 1u] = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
-          scratch.entryData[scratchIdx * 3u + 2u] = uvec4(counterIndex, 0u, 0u, 0u);
+      // PASS 0: use meshlet visibility from previous frame — only submit previously-visible meshlets.
+      {
+        uint meshletVisibilityBase = drawInfoItems[meshObjectID].meshletVisibilityBase;
+        bool useMeshletVisibility = (meshletVisibilityBase != 0xffffffffu) &&
+                                    (pushConstants.skipCulling == 0u) &&
+                                    !all(equal(pushConstants.meshletVisibilityBDA, uvec2(0u)));
+        if(useMeshletVisibility){
+          MeshletVisibilityBuffer meshletVisibility = MeshletVisibilityBuffer(pushConstants.meshletVisibilityBDA);
+          uint meshletLocalOffset = meshletBase - drawInfoItems[meshObjectID].meshletDescriptorBase;
+          for(uint i = 0u; i < meshletCount; i++){
+            uint bitGlobalIndex = meshletVisibilityBase + meshletLocalOffset + i;
+            if((meshletVisibility.bitmap[pushConstants.meshletVisibilityPartOffset + (bitGlobalIndex >> 5u)] & (1u << (bitGlobalIndex & 31u))) != 0u){
+              uint scratchIdx = atomicAdd(scratch.counter, 1u);
+              if(scratchIdx < pushConstants.maxScratchEntries){
+                scratch.entryData[scratchIdx * 3u] = uvec4(1u, 1u, 1u, meshletBase + i);
+                scratch.entryData[scratchIdx * 3u + 1u] = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+                scratch.entryData[scratchIdx * 3u + 2u] = uvec4(counterIndex, 0u, 0u, 0u);
+              }
+            }
+          }
+        }else{
+          uint scratchBase = atomicAdd(scratch.counter, meshletCount);
+          for(uint i = 0u; i < meshletCount; i++){
+            uint scratchIdx = scratchBase + i;
+            if(scratchIdx < pushConstants.maxScratchEntries){
+              scratch.entryData[scratchIdx * 3u] = uvec4(1u, 1u, 1u, meshletBase + i);
+              scratch.entryData[scratchIdx * 3u + 1u] = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+              scratch.entryData[scratchIdx * 3u + 2u] = uvec4(counterIndex, 0u, 0u, 0u);
+            }
+          }
         }
       }
 #endif
