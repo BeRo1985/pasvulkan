@@ -4921,7 +4921,7 @@ type EpvScene3D=class(Exception);
        property MeshBoundsCompute:TObject read fMeshBoundsCompute;
       public
        property CachedBoundsRanges:TCachedBoundsRanges read fCachedBoundsRanges;
-      property CachedMeshletBoundsRanges:TCachedMeshletBoundsRanges read fCachedMeshletBoundsRanges;
+       property CachedMeshletBoundsRanges:TCachedMeshletBoundsRanges read fCachedMeshletBoundsRanges;
       public
        property VirtualReality:TpvVirtualReality read fVirtualReality;
       public
