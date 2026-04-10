@@ -2048,6 +2048,13 @@ type EpvScene3D=class(Exception);
             end;
             PGPUBatchRange=^TGPUBatchRange;
             TGPUBatchRanges=array of TGPUBatchRange;
+            { TGPUExpandRangeInfo }
+            TGPUExpandRangeInfo=packed record
+             OutputBase:TpvUInt32;
+             OutputCapacity:TpvUInt32;
+            end;
+            PGPUExpandRangeInfo=^TGPUExpandRangeInfo;
+            TGPUExpandRangeInfos=array of TGPUExpandRangeInfo;
             TGPUBatchRangeDynamicArray=TpvDynamicArray<TGPUBatchRange>;
             PGPUBatchRangeDynamicArray=^TGPUBatchRangeDynamicArray;
             TDrawChoreographyBatchRangeDynamicArray=TpvDynamicArray<TDrawChoreographyBatchRange>;

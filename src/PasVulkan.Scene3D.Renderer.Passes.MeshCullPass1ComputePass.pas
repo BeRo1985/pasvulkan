@@ -98,7 +98,9 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
              Flags:TpvUInt32;
              BatchRangeIndex:TpvInt32;
              MaxOutputCommands:TpvUInt32;
-             OutputExpansionScale:TpvUInt32;
+             ScratchBufferBDAPadding:TpvUInt32; // std430 alignment padding for 8-byte aligned uvec2
+             ScratchBufferBDA:TVkDeviceAddress;
+             MaxScratchEntries:TpvUInt32;
             end;
             PPushConstants=^TPushConstants;
             TMeshCullResetPushConstants=packed record
@@ -109,6 +111,13 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
              CullDispatchIndex:TpvUInt32;
             end;
             PMeshCullResetPushConstants=^TMeshCullResetPushConstants;
+            TSortPushConstants=packed record
+             ScratchBufferBDA:TVkDeviceAddress;
+             ExpandRangeInfoBDA:TVkDeviceAddress;
+             OutputCommandsBDA:TVkDeviceAddress;
+             CountersBDA:TVkDeviceAddress;
+            end;
+            PSortPushConstants=^TSortPushConstants;
       private
        fInstance:TpvScene3DRendererInstance;
        fCullRenderPass:TpvScene3DRendererCullRenderPass;
@@ -119,6 +128,10 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
        fMeshShaderComputeShaderModule:TpvVulkanShaderModule;
        fMeshShaderVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
        fMeshShaderPipeline:TpvVulkanComputePipeline;
+       fSortComputeShaderModule:TpvVulkanShaderModule;
+       fSortVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
+       fSortPipelineLayout:TpvVulkanPipelineLayout;
+       fSortPipeline:TpvVulkanComputePipeline;
        fPlanetCullPass:TpvScene3DPlanet.TCullPass;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aCullRenderPass:TpvScene3DRendererCullRenderPass); reintroduce;
@@ -196,6 +209,20 @@ begin
   fMeshShaderVulkanPipelineShaderStageCompute:=nil;
  end;
 
+ if fInstance.Renderer.UseMeshletExpand then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_cull_sort_comp.spv');
+  try
+   fSortComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fSortComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesMeshCullPass1ComputePass.fSortComputeShaderModule');
+  finally
+   Stream.Free;
+  end;
+  fSortVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fSortComputeShaderModule,'main');
+ end else begin
+  fSortComputeShaderModule:=nil;
+  fSortVulkanPipelineShaderStageCompute:=nil;
+ end;
+
  fPlanetCullPass:=TpvScene3DPlanet.TCullPass.Create(fInstance.Renderer,
                                                     fInstance,
                                                     fInstance.Renderer.Scene3D,
@@ -207,6 +234,8 @@ end;
 procedure TpvScene3DRendererPassesMeshCullPass1ComputePass.ReleasePersistentResources;
 begin
  FreeAndNil(fPlanetCullPass);
+ FreeAndNil(fSortVulkanPipelineShaderStageCompute);
+ FreeAndNil(fSortComputeShaderModule);
  FreeAndNil(fMeshShaderVulkanPipelineShaderStageCompute);
  FreeAndNil(fMeshShaderComputeShaderModule);
  FreeAndNil(fVulkanPipelineShaderStageCompute);
@@ -251,6 +280,24 @@ begin
   fMeshShaderPipeline:=nil;
  end;
 
+ if assigned(fSortVulkanPipelineShaderStageCompute) then begin
+  fSortPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
+  fSortPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3DRendererPassesMeshCullPass1ComputePass.TSortPushConstants));
+  fSortPipelineLayout.Initialize;
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fSortPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DRendererPassesMeshCullPass1ComputePass.fSortPipelineLayout');
+  fSortPipeline:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
+                                                  fInstance.Renderer.VulkanPipelineCache,
+                                                  0,
+                                                  fSortVulkanPipelineShaderStageCompute,
+                                                  fSortPipelineLayout,
+                                                  nil,
+                                                  0);
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fSortPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererPassesMeshCullPass1ComputePass.fSortPipeline');
+ end else begin
+  fSortPipelineLayout:=nil;
+  fSortPipeline:=nil;
+ end;
+
  fPlanetCullPass.AllocateResources;
 
 end;
@@ -259,6 +306,8 @@ procedure TpvScene3DRendererPassesMeshCullPass1ComputePass.ReleaseVolatileResour
 var Index:TpvSizeInt;
 begin
  fPlanetCullPass.ReleaseResources;
+ FreeAndNil(fSortPipeline);
+ FreeAndNil(fSortPipelineLayout);
  FreeAndNil(fMeshShaderPipeline);
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
@@ -274,9 +323,10 @@ procedure TpvScene3DRendererPassesMeshCullPass1ComputePass.Execute(const aComman
 var RenderPass:TpvScene3DRendererRenderPass;
     PreviousInFlightFrameIndex,
     Part:TpvSizeInt;
-    BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
+    BufferMemoryBarriers:array[0..4] of TVkBufferMemoryBarrier;
     PushConstants:TpvScene3DRendererPassesMeshCullPass1ComputePass.TPushConstants;
     ResetPushConstants:TMeshCullResetPushConstants;
+    SortPushConstants:TpvScene3DRendererPassesMeshCullPass1ComputePass.TSortPushConstants;
     DescriptorSets:array[0..3] of TVkDescriptorSet;
     CountRanges,TotalCommands:TpvUInt32;
     RangeIndex,BatchRangeOffset,RangeCountCommands:TpvUInt32;
@@ -406,6 +456,10 @@ begin
    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
   end;
 
+  if fInstance.Renderer.UseMeshletExpand and assigned(fSortPipeline) then begin
+   aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].Handle,0,4,0);
+  end;
+
   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
@@ -430,13 +484,30 @@ begin
                                                          0,
                                                          VK_WHOLE_SIZE);
 
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
-                                    0,
-                                    0,nil,
-                                    3,@BufferMemoryBarriers[0],
-                                    0,nil);
+  if fInstance.Renderer.UseMeshletExpand and assigned(fSortPipeline) then begin
+   BufferMemoryBarriers[3]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].Handle,
+                                                          0,
+                                                          VK_WHOLE_SIZE);
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
+                                     0,
+                                     0,nil,
+                                     4,@BufferMemoryBarriers[0],
+                                     0,nil);
+  end else begin
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
+                                     0,
+                                     0,nil,
+                                     3,@BufferMemoryBarriers[0],
+                                     0,nil);
+  end;
 
   if fInstance.Renderer.UseMeshShaderPipeline and assigned(fMeshShaderPipeline) then begin
    aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fMeshShaderPipeline.Handle);
@@ -525,10 +596,14 @@ begin
 
     PushConstants.MaxOutputCommands:=Max(fInstance.PerInFlightFrameMeshShaderOutputBufferSizes[aInFlightFrameIndex],fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]);
 
+    PushConstants.ScratchBufferBDAPadding:=0;
+
     if fInstance.Renderer.UseMeshletExpand then begin
-     PushConstants.OutputExpansionScale:=Max(1,PushConstants.MaxOutputCommands div Max(1,fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets[aInFlightFrameIndex]*4));
+     PushConstants.ScratchBufferBDA:=fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].DeviceAddress;
+     PushConstants.MaxScratchEntries:=fInstance.PerInFlightFrameMeshCullMaxScratchEntries[aInFlightFrameIndex];
     end else begin
-     PushConstants.OutputExpansionScale:=1;
+     PushConstants.ScratchBufferBDA:=0;
+     PushConstants.MaxScratchEntries:=0;
     end;
 
     if fInstance.Scene3D.UseMegaDispatch then begin
@@ -578,6 +653,47 @@ begin
 
     end;
 
+   end;
+
+  end;
+
+  // Sort dispatch for MESHLET_EXPAND: scatter scratch entries to per-range output positions
+  if fInstance.Renderer.UseMeshletExpand and assigned(fSortPipeline) then begin
+
+   // Barrier: mesh_cull scratch writes -> sort shader reads
+   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].Handle,
+                                                          0,
+                                                          VK_WHOLE_SIZE);
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     1,@BufferMemoryBarriers[0],
+                                     0,nil);
+
+   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fSortPipeline.Handle);
+
+   SortPushConstants.ScratchBufferBDA:=fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].DeviceAddress;
+   SortPushConstants.ExpandRangeInfoBDA:=fInstance.PerInFlightFrameExpandRangeInfoBuffers[aInFlightFrameIndex].DeviceAddress;
+   SortPushConstants.OutputCommandsBDA:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex].DeviceAddress;
+   SortPushConstants.CountersBDA:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].DeviceAddress;
+
+   aCommandBuffer.CmdPushConstants(fSortPipelineLayout.Handle,
+                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                   0,
+                                   SizeOf(SortPushConstants),
+                                   @SortPushConstants);
+
+   if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'MeshCullPass1ComputePass.SortDispatch');
+   end;
+   aCommandBuffer.CmdDispatch((fInstance.PerInFlightFrameMeshCullMaxScratchEntries[aInFlightFrameIndex]+255) shr 8,1,1);
+   if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
+    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
    end;
 
   end;

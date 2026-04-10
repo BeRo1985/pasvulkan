@@ -88,7 +88,8 @@ layout(push_constant) uniform PushConstants {
   uint flags;               // bitmask: FLAG_LOD_ENABLED | FLAG_LOD_TEMPORAL | FLAG_LOD_RESET_FRAME
   int batchRangeIndex;         // <0 = mega-dispatch (findRangeIndex), >=0 = per-range dispatch (direct index)
   uint maxOutputCommands;      // total output buffer capacity in commands
-  uint outputExpansionScale;   // scale factor for output base indices (MaxOutputCommands / (4*objectCount))
+  uvec2 scratchBufferBDA;      // BDA to scratch buffer (MESHLET_EXPAND only, counter at offset 0, entries at offset 16)
+  uint maxScratchEntries;      // max scratch entries capacity (MESHLET_EXPAND only)
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -159,7 +160,8 @@ layout(push_constant) uniform PushConstants {
   uint flags;               // bitmask: FLAG_LOD_ENABLED | FLAG_LOD_TEMPORAL | FLAG_LOD_RESET_FRAME
   int batchRangeIndex;         // <0 = mega-dispatch (findRangeIndex), >=0 = per-range dispatch (direct index)
   uint maxOutputCommands;      // total output buffer capacity in commands
-  uint outputExpansionScale;   // scale factor for output base indices (MaxOutputCommands / (4*objectCount))
+  uvec2 scratchBufferBDA;      // BDA to scratch buffer (MESHLET_EXPAND only, counter at offset 0, entries at offset 16)
+  uint maxScratchEntries;      // max scratch entries capacity (MESHLET_EXPAND only)
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -225,6 +227,19 @@ shared float zNears[8];
 //shared vec4 fastFrustums[8];
 shared Frustum frustums[8];
 
+#endif
+
+// Scratch buffer for MESHLET_EXPAND: global append buffer for unsorted meshlet commands.
+// Counter at offset 0 (4 bytes + 12 pad), entries at offset 16 (3 uvec4 = 48 bytes each).
+// The sort shader later scatters these into per-range output positions.
+#ifdef MESHLET_EXPAND
+layout(buffer_reference, std430, buffer_reference_align = 4) buffer ScratchBuffer {
+  uint counter;
+  uint pad0;
+  uint pad1;
+  uint pad2;
+  uvec4 entryData[]; // 3 uvec4 per entry: [i*3]=cmd0, [i*3+1]=cmd1, [i*3+2].x=counterIndex
+};
 #endif
 
 #include "projectsphere.glsl"
@@ -352,7 +367,14 @@ void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uin
 // Submit draw commands for the meshlets of a visible object, either as one command with the
 // full meshlet count for the task shader to expand, or as multiple commands each with one 
 // meshlet for direct dispatch, depending on whether FLAG_MESHLET_CULLING_ENABLED is set or not. 
-void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMaxCount,
+#ifdef MESHLET_EXPAND
+// MESHLET_EXPAND: write per-meshlet commands to global scratch buffer (unsorted).
+// The sort shader later scatters them into per-range output positions.
+#endif
+void submitMeshletCommands(uint counterIndex, 
+#ifdef MESHLET_EXPAND
+                           uint inputBaseOffset, uint inputMaxCount,
+#endif
                            uint meshObjectID, uint boundingSphereIndex,
                            uint lodInfoIndex, uint selectedLOD, uint flags){
   uint meshletBase = drawInfoItems[meshObjectID].meshletDescriptorBase;
@@ -364,8 +386,7 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
   }
   if(meshletCount > 0u){
 #ifdef MESHLET_EXPAND
-    // Submit visible object into one draw command with full meshletCount.
-    // Task shader gets full workgroups (TASK_GROUP_SIZE meshlets each).
+    ScratchBuffer scratch = ScratchBuffer(pushConstants.scratchBufferBDA);
     if((pushConstants.flags & FLAG_MESHLET_CULLING_ENABLED) != 0u){
       // Per-meshlet culling: only in PASS 1 (where HiZ + shared view data are available),
       // PASS 0 submits all meshlets unconditionally and PASS 1 catches up with culling.
@@ -396,7 +417,6 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
 #ifdef MESH_SHADER_DEBUG_EX
         bool meshletWasFrustumCulled = true;
 #endif
-#ifdef MESH_SHADER_PATH
         // Try per-instance world-space sphere first via BDA (from mesh_update_meshlet_boundingspheres.comp)
         uint meshletBoundingSphereBase = drawInfoItems[meshObjectID].meshletBoundingSphereBase;
         vec4 meshletSphere;
@@ -410,14 +430,6 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
           meshletSphere = sphereTransform(desc.boundingSphere, modelMatrix);
           hasSphere = true;
         }
-#else
-        vec4 meshletSphere;
-        bool hasSphere = false;
-        if(desc.boundingSphere.w > 0.0){
-          meshletSphere = sphereTransform(desc.boundingSphere, modelMatrix);
-          hasSphere = true;
-        }
-#endif
         if(hasSphere){
           for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
             vec4 viewSpaceSphere = vec4((viewMatrices[viewIndex] * vec4(meshletSphere.xyz, 1.0)).xyz, meshletSphere.w);
@@ -466,11 +478,11 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
 #ifdef MESH_SHADER_DEBUG_EX
           meshletVisibleCount++;
 #endif
-          uint destIdx = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], 1u);
-          if((destIdx + inputBaseOffset) < inputMaxCount){
-            destIdx += inputBaseOffset;
-            outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(1u, 1u, 1u, meshletBase + i);
-            outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+          uint scratchIdx = atomicAdd(scratch.counter, 1u);
+          if(scratchIdx < pushConstants.maxScratchEntries){
+            scratch.entryData[scratchIdx * 3u] = uvec4(1u, 1u, 1u, meshletBase + i);
+            scratch.entryData[scratchIdx * 3u + 1u] = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+            scratch.entryData[scratchIdx * 3u + 2u] = uvec4(counterIndex, 0u, 0u, 0u);
           }
 #ifdef MESH_SHADER_DEBUG_EX
         }else{
@@ -490,42 +502,32 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
       }
 #endif
 #else
-      // PASS 0: no HiZ available yet, submit all meshlets unconditionally.
-      // TODO: Add a per-meshlet visibility bitmap (analogous to inputVisibilityBuffer for objects) to allow
-      //       PASS 0 to skip meshlets that were not visible in the previous frame, avoiding the chicken&egg
-      //       problem where PASS 0 needs HiZ but HiZ needs rendered meshlets.
-      // TODO: Add a recheck-meshlet-queue buffer so that PASS 0 can enqueue skipped meshlets for PASS 1 to
-      //       recheck with HiZ culling, instead of discarding them entirely.
-      uint destBase = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], meshletCount);
+      // PASS 0: no HiZ available yet, submit all meshlets unconditionally to scratch.
+      uint scratchBase = atomicAdd(scratch.counter, meshletCount);
       for(uint i = 0u; i < meshletCount; i++){
-        uint destIdx = destBase + i;
-        if((destIdx + inputBaseOffset) < inputMaxCount){
-          destIdx += inputBaseOffset;
-          outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(1u, 1u, 1u, meshletBase + i);
-          outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+        uint scratchIdx = scratchBase + i;
+        if(scratchIdx < pushConstants.maxScratchEntries){
+          scratch.entryData[scratchIdx * 3u] = uvec4(1u, 1u, 1u, meshletBase + i);
+          scratch.entryData[scratchIdx * 3u + 1u] = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+          scratch.entryData[scratchIdx * 3u + 2u] = uvec4(counterIndex, 0u, 0u, 0u);
         }
       }
 #endif
     }else{
-      // If meshlet culling is not enabled, just submit the full mesh with one command, without meshlet info, and 
-      // skip the task shader entirely. 
-      uint destBase = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], meshletCount);
+      // Meshlet culling not enabled: submit all meshlets to scratch.
+      uint scratchBase = atomicAdd(scratch.counter, meshletCount);
       for(uint i = 0u; i < meshletCount; i++){
-        uint destIdx = destBase + i;
-        if((destIdx + inputBaseOffset) < inputMaxCount){
-          destIdx += inputBaseOffset;
-          outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = uvec4(1u, 1u, 1u, meshletBase + i);
-          outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+        uint scratchIdx = scratchBase + i;
+        if(scratchIdx < pushConstants.maxScratchEntries){
+          scratch.entryData[scratchIdx * 3u] = uvec4(1u, 1u, 1u, meshletBase + i);
+          scratch.entryData[scratchIdx * 3u + 1u] = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+          scratch.entryData[scratchIdx * 3u + 2u] = uvec4(counterIndex, 0u, 0u, 0u);
         }
       }
     }
 #else
-    // Submit visible object's meshlet count as the instance count in a single draw command, and the task shader will 
-    // expand it into meshlet draws. This is more efficient if the meshlet culling is not enabled, since it avoids the 
-    // overhead of multiple draw commands and lets the GPU schedule the meshlet tasks more freely, but it still allows 
-    // for culling at the meshlet level in the task shader if FLAG_MESHLET_CULLING_ENABLED is set.
-    // Each output entry dispatches exactly 1 task workgroup with all meshlets for that object, and the task shader does 
-    // the final culling per meshlet.
+    // Non-expand: submit visible object's meshlet count as the instance count in a single draw command,
+    // and the task shader will expand it into meshlet draws.
     uint groupCountX = (meshletCount + TASK_GROUP_SIZE - 1u) / TASK_GROUP_SIZE;
     uint destIdx = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[counterIndex], 1u);
     if((destIdx + inputBaseOffset) < inputMaxCount){
@@ -623,7 +625,10 @@ void main(){
         if(oitDrawCallIndex != 0xffffffffu){
           uint oitBaseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].oitBaseCommandIndex;
 #ifdef MESH_SHADER_PATH
-          submitMeshletCommands(oitDrawCallIndex, oitBaseCommandIndex * pushConstants.outputExpansionScale, pushConstants.maxOutputCommands,
+          submitMeshletCommands(oitDrawCallIndex,
+#ifndef MESHLET_EXPAND
+                                oitBaseCommandIndex, pushConstants.maxOutputCommands,
+#endif
                                 meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
           uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
@@ -648,7 +653,10 @@ void main(){
   inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1.w = (cmd1.w |= 1u); // Mark as added
 
 #ifdef MESH_SHADER_PATH
-  submitMeshletCommands(drawCallIndex, baseCommandIndex * pushConstants.outputExpansionScale, pushConstants.maxOutputCommands,
+  submitMeshletCommands(drawCallIndex,
+#ifndef MESHLET_EXPAND
+                        baseCommandIndex, pushConstants.maxOutputCommands,
+#endif
                         meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
   uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
@@ -858,7 +866,10 @@ void main(){
           // Route to OIT normal output
           uint oitBaseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].oitBaseCommandIndex;
 #ifdef MESH_SHADER_PATH
-          submitMeshletCommands(oitDrawCallIndex, oitBaseCommandIndex * pushConstants.outputExpansionScale, pushConstants.maxOutputCommands,
+          submitMeshletCommands(oitDrawCallIndex,
+#ifndef MESHLET_EXPAND
+                                oitBaseCommandIndex, pushConstants.maxOutputCommands,
+#endif 
                                 meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
           uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
@@ -874,7 +885,10 @@ void main(){
             uint oitDisocDrawCallIndex = oitDrawCallIndex + (drawCallIndexForDisocclusions - drawCallIndex);
             uint oitDisocBaseCommandIndex = oitBaseCommandIndex + (baseCommandIndexForDisocclusions - baseCommandIndex);
 #ifdef MESH_SHADER_PATH
-            submitMeshletCommands(oitDisocDrawCallIndex, oitDisocBaseCommandIndex * pushConstants.outputExpansionScale, pushConstants.maxOutputCommands,
+            submitMeshletCommands(oitDisocDrawCallIndex,
+#ifndef MESHLET_EXPAND
+                                  oitDisocBaseCommandIndex, pushConstants.maxOutputCommands,
+#endif
                                   meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
             uint oitDisocDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDisocDrawCallIndex], 1u);
@@ -896,7 +910,10 @@ void main(){
   {
 
 #ifdef MESH_SHADER_PATH
-    submitMeshletCommands(drawCallIndex, baseCommandIndex * pushConstants.outputExpansionScale, pushConstants.maxOutputCommands,
+    submitMeshletCommands(drawCallIndex,
+#ifndef MESHLET_EXPAND
+                          baseCommandIndex, pushConstants.maxOutputCommands,
+#endif  
                           meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
@@ -916,7 +933,10 @@ void main(){
 
     // Copy the command data to the output buffer
 #ifdef MESH_SHADER_PATH
-    submitMeshletCommands(drawCallIndexForDisocclusions, baseCommandIndexForDisocclusions * pushConstants.outputExpansionScale, pushConstants.maxOutputCommands,
+    submitMeshletCommands(drawCallIndexForDisocclusions,
+#ifndef MESHLET_EXPAND
+                          baseCommandIndexForDisocclusions, pushConstants.maxOutputCommands,
+#endif
                           meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndexForDisocclusions], 1u);
