@@ -4865,6 +4865,8 @@ type EpvScene3D=class(Exception);
        function TransformOrigin(const aMatrix:TpvMatrix4x4D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvMatrix4x4D;
        function TransformDirection(const aDirection:TpvVector3D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvVector3D;
       public
+       function GetGlobalMeshletBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+      public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
        property GlobalVulkanDescriptorSets:TGlobalVulkanDescriptorSets read fGlobalVulkanDescriptorSets;
@@ -38868,6 +38870,11 @@ begin
 
 end;
 
+function TpvScene3D.GetGlobalMeshletBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+begin
+ result:=fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex];
+end;
+
 procedure TpvScene3D.ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
 var PlanetIndex,PassIndex,CountPlanetAtmospherePrecipitationSimulationToSignalSemaphores,CountPlanetWaterSimulationToSignalSemaphores,Index:TpvSizeInt;
     Planet:TpvScene3DPlanet;
@@ -39153,6 +39160,11 @@ begin
     TpvScene3DMeshletBoundsCompute(fMeshletBoundsCompute).Execute(CommandBuffer,aInFlightFrameIndex,true);
     fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryMeshletBoundsComputeIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
+   end;
+
+   // Debug meshlet bounding sphere visualization compute dispatch
+   for RendererInstanceIndex:=0 to fRendererInstanceList.Count-1 do begin
+    TpvScene3DRendererInstance(fRendererInstanceList.RawItems[RendererInstanceIndex]).DispatchDebugMeshletSpheres(CommandBuffer,aInFlightFrameIndex);
    end;
 
    if fRaytracingActive then begin

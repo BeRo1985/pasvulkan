@@ -415,7 +415,7 @@ begin
 
  fUseMeshletExpand:=true;
 
- fUseMeshletCulling:=false;
+ fUseMeshletCulling:=true;
 
  if assigned(aVulkanDevice) then begin
   fVulkanDevice:=aVulkanDevice;
