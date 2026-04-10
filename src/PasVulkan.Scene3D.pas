@@ -4597,6 +4597,7 @@ type EpvScene3D=class(Exception);
        fProcessFrameTimerQueryAtmosphereSimulationIndex:TpvSizeInt;
        fProcessFrameTimerQueryMeshComputeIndex:TpvSizeInt;
        fProcessFrameTimerQueryMeshBoundsComputeIndex:TpvSizeInt;
+       fProcessFrameTimerQueryMeshletBoundsComputeIndex:TpvSizeInt;
        fProcessFrameTimerQueryUpdateRaytracingIndex:TpvSizeInt;
        fSceneTimes:TSceneTimes;
        fPointerToSceneTimes:PSceneTimes;
@@ -33867,6 +33868,7 @@ begin
    fProcessFrameTimerQueryAtmosphereSimulationIndex:=-1;
    fProcessFrameTimerQueryMeshComputeIndex:=-1;
    fProcessFrameTimerQueryMeshBoundsComputeIndex:=-1;
+   fProcessFrameTimerQueryMeshletBoundsComputeIndex:=-1;
    fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
 
    fLastProcessFrameTimerQueryResults:=nil;
@@ -39166,7 +39168,11 @@ begin
    end;
 
    if assigned(fMeshletBoundsCompute) then begin
+    fProcessFrameTimerQueryMeshletBoundsComputeIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Meshlet bounds compute');
+    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
     TpvScene3DMeshletBoundsCompute(fMeshletBoundsCompute).Execute(CommandBuffer,aInFlightFrameIndex,true);
+    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryMeshletBoundsComputeIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
    end;
 
    if fRaytracingActive then begin
