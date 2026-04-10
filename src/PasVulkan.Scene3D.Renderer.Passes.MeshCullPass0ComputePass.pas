@@ -232,7 +232,9 @@ begin
  fPipelineLayout.AddDescriptorSetLayout(fInstance.MeshCullPass0ComputeVulkanDescriptorSetLayout);
  fPipelineLayout.AddDescriptorSetLayout(fInstance.Scene3D.GlobalVulkanDescriptorSetLayout);
  fPipelineLayout.AddDescriptorSetLayout(fInstance.Scene3D.GlobalBoundingSphereVulkanDescriptorSetLayout);
- fPipelineLayout.AddDescriptorSetLayout(fInstance.Scene3D.GlobalMeshletBoundingSphereVulkanDescriptorSetLayout);
+ if fInstance.Scene3D.MeshShaderSupport then begin
+  fPipelineLayout.AddDescriptorSetLayout(fInstance.Scene3D.GlobalMeshletBoundingSphereVulkanDescriptorSetLayout);
+ end;
  fPipelineLayout.Initialize;
 
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DRendererPassesMeshCullPass0ComputePass.fPipelineLayout');
@@ -443,15 +445,24 @@ begin
   DescriptorSets[0]:=fInstance.MeshCullPass0ComputeVulkanDescriptorSets[aInFlightFrameIndex].Handle;
   DescriptorSets[1]:=fInstance.Scene3D.GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
   DescriptorSets[2]:=fInstance.Scene3D.GlobalBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].Handle;
-  DescriptorSets[3]:=fInstance.Scene3D.GlobalMeshletBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].Handle;
-
-  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                       fPipelineLayout.Handle,
-                                       0,
-                                       4,
-                                       @DescriptorSets[0],
-                                       0,
-                                       nil);
+  if fInstance.Scene3D.MeshShaderSupport then begin
+   DescriptorSets[3]:=fInstance.Scene3D.GlobalMeshletBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        fPipelineLayout.Handle,
+                                        0,
+                                        4,
+                                        @DescriptorSets[0],
+                                        0,
+                                        nil);
+  end else begin
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        fPipelineLayout.Handle,
+                                        0,
+                                        3,
+                                        @DescriptorSets[0],
+                                        0,
+                                        nil);
+  end;
 
   if fInstance.PerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPass] then begin
 

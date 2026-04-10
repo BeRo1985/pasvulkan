@@ -139,10 +139,12 @@ layout(set = 2, binding = 0, std430) readonly buffer BoundingSpheres {
   vec4 boundingSpheres[];
 } boundingSphereBuffer;
 
+#ifdef MESH_SHADER_PATH
 // Per-instance meshlet bounding sphere descriptor set (world-space, from mesh_update_meshlet_boundingspheres.comp)
 layout(set = 3, binding = 0, std430) readonly buffer MeshletBoundingSpheresPass0 {
   vec4 spheres[];
 } meshletBoundingSphereBuffer;
+#endif
 
 #else // PASS == 1
 
@@ -217,10 +219,12 @@ layout(set = 2, binding = 0, std430) readonly buffer BoundingSpheres {
   vec4 boundingSpheres[]; // xyz = center, w = radius
 } boundingSphereBuffer;
 
+#ifdef MESH_SHADER_PATH
 // Per-instance meshlet bounding sphere descriptor set (world-space, from mesh_update_meshlet_boundingspheres.comp)
 layout(set = 3, binding = 0, std430) readonly buffer MeshletBoundingSpheres {
   vec4 spheres[];
 } meshletBoundingSphereBuffer;
+#endif
 
 #include "frustum.glsl"
 
@@ -406,6 +410,7 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
 #ifdef MESH_SHADER_DEBUG_EX
         bool meshletWasFrustumCulled = true;
 #endif
+#ifdef MESH_SHADER_PATH
         // Try per-instance world-space sphere first (from mesh_update_meshlet_boundingspheres.comp)
         uint meshletBSBase = drawInfoItems[meshObjectID].meshletBoundingSphereBase;
         vec4 meshletSphere;
@@ -418,6 +423,14 @@ void submitMeshletCommands(uint counterIndex, uint inputBaseOffset, uint inputMa
           meshletSphere = sphereTransform(desc.boundingSphere, modelMatrix);
           hasSphere = true;
         }
+#else
+        vec4 meshletSphere;
+        bool hasSphere = false;
+        if(desc.boundingSphere.w > 0.0){
+          meshletSphere = sphereTransform(desc.boundingSphere, modelMatrix);
+          hasSphere = true;
+        }
+#endif
         if(hasSphere){
           for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
             vec4 viewSpaceSphere = vec4((viewMatrices[viewIndex] * vec4(meshletSphere.xyz, 1.0)).xyz, meshletSphere.w);
