@@ -55,7 +55,7 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Gen
 //   offset 64: meshletDescriptorBDA       (uvec2, 8 bytes, BDA to meshlet descriptor buffer)
 //   offset 72: meshletVertexBDA           (uvec2, 8 bytes, BDA to meshlet vertex buffer)
 //   offset 80: meshletPrimitiveBDA        (uvec2, 8 bytes, BDA to meshlet primitive buffer)
-//   offset 88: reserved0BDA               (uvec2, 8 bytes, padding)
+//   offset 88: meshletBoundingSphereBDA   (uvec2, 8 bytes, BDA to per-instance meshlet bounding sphere buffer)
 // Total: 96 bytes
 
 struct GlobalBDAPointers {
@@ -70,7 +70,7 @@ struct GlobalBDAPointers {
   uvec2 meshletDescriptorBDA;
   uvec2 meshletVertexBDA;
   uvec2 meshletPrimitiveBDA;
-  uvec2 reserved0BDA;
+  uvec2 meshletBoundingSphereBDA;
 };
 
 // MatrixPair struct - 128 bytes, two full mat4 matrices
@@ -179,6 +179,11 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Mes
 // Buffer reference for meshlet packed primitive indices via BDA (3×uint8 per uint32)
 layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer MeshletPrimitiveBuffer {
   uint primitives[];
+};
+
+// Buffer reference for per-instance meshlet bounding spheres via BDA (vec4 per meshlet)
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshletBoundingSphereBuffer {
+  vec4 spheres[];
 };
 
 // Indirect command metadata for mesh shader path — 32 bytes, matches TGPUDrawMeshTasksIndirectCommand

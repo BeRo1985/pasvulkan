@@ -185,16 +185,29 @@ void main(){
   if(meshletLocalIndex < meshletCount){
 
     uint meshletGlobalIndex = meshletBase + meshletLocalIndex;
-    vec4 meshletSphere = meshletDescBuf.descriptors[meshletGlobalIndex].boundingSphere;
+
+    // Try per-instance world-space sphere first (from mesh_update_meshlet_boundingspheres.comp)
+    uint meshletBSBase = drawInfoItems[meshObjectID].meshletBoundingSphereBase;
+    vec4 worldSphere;
+    bool hasSphere = false;
+    if((meshletBSBase != 0xFFFFFFFFu) && (globalBDAPointers.meshletBoundingSphereBDA != uvec2(0u))){
+      MeshletBoundingSphereBuffer meshletBSBuf = MeshletBoundingSphereBuffer(globalBDAPointers.meshletBoundingSphereBDA);
+      worldSphere = meshletBSBuf.spheres[meshletBSBase + meshletLocalIndex];
+      hasSphere = (worldSphere.w > 0.0);
+    }
+    if(!hasSphere){
+      vec4 meshletSphere = meshletDescBuf.descriptors[meshletGlobalIndex].boundingSphere;
+      if(meshletSphere.w > 0.0){
+        worldSphere = sphereTransform(meshletSphere, modelMatrix);
+        hasSphere = true;
+      }
+    }
 
 #ifdef VOXELIZATION
 
     // Voxelization: test meshlet bounding sphere against each cascade AABB
     // Emit one entry per visible meshlet × cascade pair
-    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && (meshletSphere.w > 0.0)){
-
-      // Transform meshlet bounding sphere to world space
-      vec4 worldSphere = sphereTransform(meshletSphere, modelMatrix);
+    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere){
 
       uint countCascades = voxelGridData.countCascades;
       for(uint cascadeIndex = 0u; cascadeIndex < countCascades; cascadeIndex++){
@@ -230,9 +243,7 @@ void main(){
     // Emit one payload entry per visible meshlet × view pair.
     // The mesh shader uses the view index to select the correct matrices and sets
     // gl_Layer per primitive for cascade/layer routing without multiview.
-    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && (meshletSphere.w > 0.0)){
-
-      vec4 worldSphere = sphereTransform(meshletSphere, modelMatrix);
+    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere){
 
       for(uint viewIdx = 0u; viewIdx < countViews; viewIdx++){
 
@@ -298,10 +309,7 @@ void main(){
 
     bool visible = false;
 
-    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && (meshletSphere.w > 0.0)){
-
-      // Transform meshlet bounding sphere to world space via model matrix
-      vec4 worldSphere = sphereTransform(meshletSphere, modelMatrix);
+    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere){
 
       // Test visibility against each view (visible if ANY view sees it)
       for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){

@@ -232,6 +232,7 @@ begin
  fPipelineLayout.AddDescriptorSetLayout(fInstance.MeshCullPass0ComputeVulkanDescriptorSetLayout);
  fPipelineLayout.AddDescriptorSetLayout(fInstance.Scene3D.GlobalVulkanDescriptorSetLayout);
  fPipelineLayout.AddDescriptorSetLayout(fInstance.Scene3D.GlobalBoundingSphereVulkanDescriptorSetLayout);
+ fPipelineLayout.AddDescriptorSetLayout(fInstance.Scene3D.GlobalMeshletBoundingSphereVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DRendererPassesMeshCullPass0ComputePass.fPipelineLayout');
@@ -287,7 +288,7 @@ var RenderPass:TpvScene3DRendererRenderPass;
     BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
     PushConstants:TpvScene3DRendererPassesMeshCullPass0ComputePass.TPushConstants;
     ResetPushConstants:TMeshCullResetPushConstants;
-    DescriptorSets:array[0..2] of TVkDescriptorSet;
+    DescriptorSets:array[0..3] of TVkDescriptorSet;
     CountRanges,TotalCommands:TpvUInt32;
     RangeIndex,BatchRangeOffset,RangeCountCommands:TpvUInt32;
 begin
@@ -442,11 +443,12 @@ begin
   DescriptorSets[0]:=fInstance.MeshCullPass0ComputeVulkanDescriptorSets[aInFlightFrameIndex].Handle;
   DescriptorSets[1]:=fInstance.Scene3D.GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
   DescriptorSets[2]:=fInstance.Scene3D.GlobalBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+  DescriptorSets[3]:=fInstance.Scene3D.GlobalMeshletBoundingSphereVulkanDescriptorSets[aInFlightFrameIndex].Handle;
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                        fPipelineLayout.Handle,
                                        0,
-                                       3,
+                                       4,
                                        @DescriptorSets[0],
                                        0,
                                        nil);
