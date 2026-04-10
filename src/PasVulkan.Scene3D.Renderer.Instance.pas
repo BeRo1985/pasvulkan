@@ -257,6 +257,15 @@ type { TpvScene3DRendererInstance }
             TApproximationOrderIndependentTransparentUniformBuffer=packed record
              ZNearZFar:TpvVector4;
             end;
+            { TDebugMeshletSpherePushConstants }
+            TDebugMeshletSpherePushConstants=packed record
+             TotalPairCount:TpvUInt32;
+             MaxOutputVertices:TpvUInt32;
+             SphereBDA:TVkDeviceAddress;
+             OutputBDA:TVkDeviceAddress;
+             PairsBDA:TVkDeviceAddress;
+             MatrixPairBDA:TVkDeviceAddress;
+            end;
             PCascadedShadowMap=^TCascadedShadowMap;
             TCascadedShadowMaps=array[0..CountCascadedShadowMapCascades-1] of TCascadedShadowMap;
             PCascadedShadowMaps=^TCascadedShadowMaps;
@@ -5629,7 +5638,7 @@ begin
   end;
 
   fDebugMeshletSphereComputePipelineLayout:=TpvVulkanPipelineLayout.Create(Renderer.VulkanDevice);
-  fDebugMeshletSphereComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,24);
+  fDebugMeshletSphereComputePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TDebugMeshletSpherePushConstants));
   fDebugMeshletSphereComputePipelineLayout.Initialize;
   Renderer.VulkanDevice.DebugUtils.SetObjectName(fDebugMeshletSphereComputePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DRendererInstance.fDebugMeshletSphereComputePipelineLayout');
 
@@ -5646,7 +5655,7 @@ begin
   // Max 65536 spheres × 96 vertices × 16 bytes + 16 bytes header
   for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
    fDebugMeshletSphereLineBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                               16+(65536*96*16),
+                                                                               SizeOf(TVkDrawIndirectCommand)+(65536*96*4*SizeOf(TpvUInt32)),
                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                [],
@@ -9625,15 +9634,10 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.DispatchDebugMeshletSpheres(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
-type TPushConstants=packed record
-      TotalSphereCount:TpvUInt32;
-      MaxOutputVertices:TpvUInt32;
-      SphereBDA:TVkDeviceAddress;
-      OutputBDA:TVkDeviceAddress;
-     end;
-var PushConstants:TPushConstants;
-    SphereCount:TpvUInt32;
+var PushConstants:TDebugMeshletSpherePushConstants;
+    PairCount:TpvUInt32;
     SphereBuffer:TpvVulkanBuffer;
+    PairsBuffer:TpvVulkanBuffer;
     LineBuffer:TpvVulkanBuffer;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     InitData:array[0..3] of TpvUInt32;
@@ -9654,20 +9658,25 @@ begin
   exit;
  end;
 
- SphereCount:=Min(TpvUInt32(fScene3D.TotalActiveMeshletCount),65536);
- if SphereCount=0 then begin
+ PairCount:=Min(TpvUInt32(fScene3D.DebugMeshletSpherePairCount),65536);
+ if PairCount=0 then begin
+  exit;
+ end;
+
+ PairsBuffer:=fScene3D.GetDebugMeshletSpherePairsBuffer(aInFlightFrameIndex);
+ if not assigned(PairsBuffer) then begin
   exit;
  end;
 
  Renderer.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'DebugMeshletSpheres',[1.0,0.5,0.0,1.0]);
 
  // Clear indirect draw command header: vertexCount=0, instanceCount=1, firstVertex=0, firstInstance=0
- aCommandBuffer.CmdFillBuffer(LineBuffer.Handle,0,16,0);
+ aCommandBuffer.CmdFillBuffer(LineBuffer.Handle,0,SizeOf(TVkDrawIndirectCommand),0);
  InitData[0]:=0;
  InitData[1]:=1;
  InitData[2]:=0;
  InitData[3]:=0;
- aCommandBuffer.CmdUpdateBuffer(LineBuffer.Handle,0,16,@InitData[0]);
+ aCommandBuffer.CmdUpdateBuffer(LineBuffer.Handle,0,SizeOf(TVkDrawIndirectCommand),@InitData[0]);
 
  // Barrier: transfer → compute
  FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
@@ -9689,19 +9698,21 @@ begin
  // Bind compute pipeline and push constants
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fDebugMeshletSphereComputePipeline.Handle);
 
- PushConstants.TotalSphereCount:=SphereCount;
- PushConstants.MaxOutputVertices:=SphereCount*96;
+ PushConstants.TotalPairCount:=PairCount;
+ PushConstants.MaxOutputVertices:=PairCount*96;
  PushConstants.SphereBDA:=SphereBuffer.DeviceAddress;
  PushConstants.OutputBDA:=LineBuffer.DeviceAddress;
+ PushConstants.PairsBDA:=PairsBuffer.DeviceAddress;
+ PushConstants.MatrixPairBDA:=fScene3D.GlobalVulkanMatrixPairBuffers[aInFlightFrameIndex].DeviceAddress;
 
  aCommandBuffer.CmdPushConstants(fDebugMeshletSphereComputePipelineLayout.Handle,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   0,
-                                  SizeOf(TPushConstants),
+                                  SizeOf(TDebugMeshletSpherePushConstants),
                                   @PushConstants);
 
- // Dispatch: one workgroup per sphere
- aCommandBuffer.CmdDispatch(SphereCount,1,1);
+ // Dispatch: one workgroup per pair
+ aCommandBuffer.CmdDispatch(PairCount,1,1);
 
  // Barrier: compute → vertex input + indirect draw
  BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);

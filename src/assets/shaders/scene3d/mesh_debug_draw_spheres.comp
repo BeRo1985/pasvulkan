@@ -11,7 +11,7 @@
 
 /* clang-format off */
 
-// Each workgroup processes one meshlet bounding sphere.
+// Each workgroup processes one (sphereIndex, matrixID) pair.
 // 16 threads per workgroup, each thread generates one segment per circle (3 circles).
 // Output: VkDrawIndirectCommand header + line vertices (vec3 pos + uint color).
 
@@ -31,24 +31,43 @@ layout(buffer_reference, std430, buffer_reference_align = 4) buffer DebugLineOut
   uint data[];
 };
 
+// (sphereIndex, matrixID) pair — 8 bytes each
+layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer DebugSpherePairBuffer {
+  uvec2 pairs[]; // .x = sphereIndex, .y = matrixID
+};
+
+// MatrixPair: mat4 modelMatrix + mat4 previousModelMatrix = 128 bytes
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MatrixPairBuffer {
+  mat4 matrices[]; // pairs of (modelMatrix, previousModelMatrix), stride = 2 mat4s
+};
+
 layout(push_constant) uniform PushConstants {
-  uint totalSphereCount;
+  uint totalPairCount;
   uint maxOutputVertices;
   uvec2 sphereBDA;
   uvec2 outputBDA;
+  uvec2 pairsBDA;
+  uvec2 matrixPairBDA;
 } pushConstants;
 
 /* clang-format on */
 
 void main() {
 
-  uint sphereIndex = gl_WorkGroupID.x;
-  if (sphereIndex >= pushConstants.totalSphereCount) {
+  uint pairIndex = gl_WorkGroupID.x;
+  if (pairIndex >= pushConstants.totalPairCount) {
     return;
   }
 
   uint tid = gl_LocalInvocationID.x;
 
+  // Read the (sphereIndex, matrixID) pair
+  DebugSpherePairBuffer pairBuffer = DebugSpherePairBuffer(pushConstants.pairsBDA);
+  uvec2 pair = pairBuffer.pairs[pairIndex];
+  uint sphereIndex = pair.x;
+  uint matrixID = pair.y;
+
+  // Read the bounding sphere (in GroupInstance space for RIs, world space for non-RI)
   MeshletBoundingSphereBuffer sphereBuffer = MeshletBoundingSphereBuffer(pushConstants.sphereBDA);
   vec4 sphere = sphereBuffer.spheres[sphereIndex];
 
@@ -58,6 +77,13 @@ void main() {
 
   vec3 center = sphere.xyz;
   float radius = sphere.w;
+
+  // Apply modelMatrix transform (identity for non-RI via matrixID=0, RI world transform otherwise)
+  MatrixPairBuffer matrixBuffer = MatrixPairBuffer(pushConstants.matrixPairBDA);
+  mat4 modelMatrix = matrixBuffer.matrices[matrixID * 2u]; // stride 2: [modelMatrix, previousModelMatrix]
+  center = (modelMatrix * vec4(center, 1.0)).xyz;
+  // Scale radius by the length of the first column (assumes uniform or near-uniform scale)
+  radius *= length(modelMatrix[0].xyz);
 
   const uint SEGMENTS = 16u;
   const float PI2 = 6.283185307179586;
