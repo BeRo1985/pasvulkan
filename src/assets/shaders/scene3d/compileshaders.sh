@@ -187,6 +187,8 @@ compileshaderarguments=(
 
   "-V mesh_bounds.comp -o ${tempPath}/mesh_bounds_comp.spv"
 
+  "-V mesh_update_meshlet_boundingspheres.comp -o ${tempPath}/mesh_update_meshlet_boundingspheres_comp.spv"
+
   "-V mesh_cull.comp --target-env vulkan1.2 -DPASS=0 -o ${tempPath}/mesh_cull_pass0_comp.spv"
   "-V mesh_cull.comp --target-env vulkan1.2 -DPASS=1 -o ${tempPath}/mesh_cull_pass1_comp.spv"
   "-V mesh_cull.comp --target-env vulkan1.2 -DPASS=0 -DMESH_SHADER_PATH -o ${tempPath}/mesh_cull_meshshader_pass0_comp.spv"

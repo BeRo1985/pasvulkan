@@ -428,9 +428,9 @@ begin
     end;
     Meshlet^.CountPrimitives:=MeshletPrimitiveCache.fCountPrimitives;
     for PrimitiveIndex:=0 to MeshletPrimitiveCache.fCountPrimitives-1 do begin
-     Meshlet^.Indices[PrimitiveIndex]:=(MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,0] and $ff)
-                                    or ((MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,1] and $ff) shl 8)
-                                    or ((MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,2] and $ff) shl 16);
+     Meshlet^.Indices[PrimitiveIndex]:=(MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,0] and $ff) or
+                                       ((MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,1] and $ff) shl 8) or
+                                       ((MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,2] and $ff) shl 16);
     end;
 
    end;

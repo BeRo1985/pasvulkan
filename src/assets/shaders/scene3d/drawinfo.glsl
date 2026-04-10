@@ -95,7 +95,8 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
 //   offset  12: flags                    (uint, 4 bytes)
 //   offset  16: nodeMatricesIndex        (uint, 4 bytes)
 //   offset  20: meshletDescriptorBase    (uint, 4 bytes - instance-level base into global meshlet descriptor buffer)
-//   offset  24: _reserved                (uvec2, 8 bytes - padding to 32 for power-of-two alignment)
+//   offset  24: meshletBoundingSphereBase (uint, 4 bytes - base into per-instance meshlet bounding sphere buffer, 0xFFFFFFFF=invalid)
+//   offset  28: _reserved                (uint, 4 bytes - padding to 32 for power-of-two alignment)
 // Total: 32 bytes
 
 struct DrawInfo {
@@ -105,7 +106,7 @@ struct DrawInfo {
   uint flags;
   uint nodeMatricesIndex;
   uint meshletDescriptorBase;
-  uint _reserved0;
+  uint meshletBoundingSphereBase;
   uint _reserved1;
 };
 
