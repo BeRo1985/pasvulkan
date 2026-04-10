@@ -33857,7 +33857,7 @@ begin
 
   begin
 
-   Count:=5+IfThen(fRaytracingActive,1,0);
+   Count:=5+IfThen(fMeshShaderSupport,1,0)+IfThen(fRaytracingActive,1,0);
 
    for Index:=0 to fCountInFlightFrames-1 do begin
     fProcessFrameTimerQueries[Index]:=TpvTimerQuery.Create(fVulkanDevice,Count);
