@@ -36,17 +36,25 @@ layout(local_size_x = TASK_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 // Push constants — same base layout as mesh_pushconstants.glsl with
 // task-specific reuse of unused fields. Must match mesh.mesh layout.
 layout(push_constant) uniform PushConstants {
+  
   uint viewBaseIndex;
   uint countViews;
   uint countAllViews;
   uint frameIndex;
+
   vec4 jitter;
+  
   uvec4 timeSecondsTimeFractionalSecondWidthHeight;
+  
   uint raytracingFlags;
   uint drawFlags; // bit 0 = meshlet debug colors, bit 3 = meshlet culling enabled
   uint textureDepthIndex;
   uint meshDrawCommandsBDALow;  // Low 32 bits of mesh draw commands buffer BDA
+  
   uint meshDrawCommandsBDAHigh; // High 32 bits of mesh draw commands buffer BDA
+  float maximumDistance;
+  float areaTooSmallThreshold;
+
 } pushConstants;
 
 const uint FLAG_MESHLET_CULLING_ENABLED = 1u << 3;
@@ -215,11 +223,20 @@ void main(){
       }
     }
 
+    // Distance-based culling: skip meshlets too far from camera
+    bool distanceCulled = false;
+    if(hasSphere && (pushConstants.maximumDistance > 0.0)){
+      vec3 cameraPosition = uView.views[0].inverseViewMatrix[3].xyz;
+      if(distance(cameraPosition, worldSphere.xyz) - worldSphere.w > pushConstants.maximumDistance){
+        distanceCulled = true;
+      }
+    }
+
 #ifdef VOXELIZATION
 
     // Voxelization: test meshlet bounding sphere against each cascade AABB
     // Emit one entry per visible meshlet × cascade pair
-    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere){
+    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere && !distanceCulled){
 
       uint countCascades = voxelGridData.countCascades;
       for(uint cascadeIndex = 0u; cascadeIndex < countCascades; cascadeIndex++){
@@ -237,7 +254,7 @@ void main(){
         }
       }
 
-    }else{
+    }else if(!distanceCulled){
       // Culling disabled or no valid bounding sphere → emit for all cascades (conservative)
       uint countCascades = voxelGridData.countCascades;
       for(uint cascadeIndex = 0u; cascadeIndex < countCascades; cascadeIndex++){
@@ -255,7 +272,7 @@ void main(){
     // Emit one payload entry per visible meshlet × view pair.
     // The mesh shader uses the view index to select the correct matrices and sets
     // gl_Layer per primitive for cascade/layer routing without multiview.
-    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere){
+    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere && !distanceCulled){
 
       for(uint viewIdx = 0u; viewIdx < countViews; viewIdx++){
 
@@ -280,6 +297,12 @@ void main(){
             int countLODLevels = textureQueryLevels(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)]);
 
             vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
+
+            // Area-based culling: skip meshlets too small in this view
+            if((pushConstants.areaTooSmallThreshold > 0.0) && (max(size.x, size.y) < pushConstants.areaTooSmallThreshold)){
+              continue;
+            }
+
             float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1));
 
             vec2 depthZ = (uView.views[pushConstants.viewBaseIndex + viewIdx].inverseProjectionMatrix * vec4(
@@ -306,7 +329,7 @@ void main(){
 
       }
 
-    }else{
+    }else if(!distanceCulled){
       // Culling disabled or no valid bounding sphere → emit for all views (conservative)
       for(uint viewIdx = 0u; viewIdx < countViews; viewIdx++){
         uint idx = atomicAdd(payload.count, 1u);
@@ -321,7 +344,7 @@ void main(){
 
     bool visible = false;
 
-    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere){
+    if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere && !distanceCulled){
 
       // Test visibility against each view (visible if ANY view sees it)
       for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
@@ -347,6 +370,12 @@ void main(){
             int countLODLevels = textureQueryLevels(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)]);
 
             vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
+
+            // Area-based culling: skip meshlets too small in this view
+            if((pushConstants.areaTooSmallThreshold > 0.0) && (max(size.x, size.y) < pushConstants.areaTooSmallThreshold)){
+              continue;
+            }
+
             float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1));
 
             vec2 depthZ = (uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix * vec4(
@@ -370,7 +399,7 @@ void main(){
 
       }
 
-    }else{
+    }else if(!distanceCulled){
       // Culling disabled or no valid bounding sphere → always visible (conservative)
       visible = true;
     }

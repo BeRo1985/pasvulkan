@@ -83,6 +83,8 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
        type TPushConstants=packed record
              LODLevelCurrentBDA:TVkDeviceAddress;
              LODLevelPreviousBDA:TVkDeviceAddress;
+             ScratchBufferBDA:TVkDeviceAddress;
+             MeshletVisibilityBDA:TVkDeviceAddress;
              CountRanges:TpvUInt32;
              TotalCommands:TpvUInt32;
              CountMeshObjectIDs:TpvUInt32;
@@ -98,12 +100,10 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
              Flags:TpvUInt32;
              BatchRangeIndex:TpvInt32;
              MaxOutputCommands:TpvUInt32;
-             ScratchBufferBDAPadding:TpvUInt32; // std430 alignment padding for 8-byte aligned uvec2
-             ScratchBufferBDA:TVkDeviceAddress;
              MaxScratchEntries:TpvUInt32;
-             MeshletVisibilityBDAPadding:TpvUInt32;
-             MeshletVisibilityBDA:TVkDeviceAddress;
              MeshletVisibilityPartOffset:TpvUInt32;
+             MaximumDistance:TpvFloat;
+             AreaTooSmallThreshold:TpvFloat;
             end;
             PPushConstants=^TPushConstants;
             TMeshCullResetPushConstants=packed record
@@ -641,8 +641,6 @@ begin
 
     PushConstants.MaxOutputCommands:=Max(fInstance.PerInFlightFrameMeshShaderOutputBufferSizes[aInFlightFrameIndex],fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]);
 
-    PushConstants.ScratchBufferBDAPadding:=0;
-
     if fInstance.Renderer.UseMeshletExpand then begin
      PushConstants.ScratchBufferBDA:=fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].DeviceAddress;
      PushConstants.MaxScratchEntries:=fInstance.PerInFlightFrameMeshCullMaxScratchEntries[aInFlightFrameIndex];
@@ -651,13 +649,27 @@ begin
      PushConstants.MaxScratchEntries:=0;
     end;
 
-    PushConstants.MeshletVisibilityBDAPadding:=0;
     if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,fCullRenderPass]) then begin
      PushConstants.MeshletVisibilityBDA:=fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,fCullRenderPass].DeviceAddress;
      PushConstants.MeshletVisibilityPartOffset:=0;
     end else begin
      PushConstants.MeshletVisibilityBDA:=0;
      PushConstants.MeshletVisibilityPartOffset:=0;
+    end;
+
+    case fCullRenderPass of
+     TpvScene3DRendererCullRenderPass.FinalView:begin
+      PushConstants.MaximumDistance:=fInstance.FinalViewMaximumDistance;
+      PushConstants.AreaTooSmallThreshold:=fInstance.FinalViewAreaTooSmallThreshold;
+     end;
+     TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+      PushConstants.MaximumDistance:=fInstance.ShadowMaximumDistance;
+      PushConstants.AreaTooSmallThreshold:=fInstance.ShadowAreaTooSmallThreshold;
+     end;
+     else begin
+      PushConstants.MaximumDistance:=-1.0;
+      PushConstants.AreaTooSmallThreshold:=-1.0;
+     end;
     end;
 
     if fInstance.Scene3D.UseMegaDispatch then begin

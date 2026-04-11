@@ -83,6 +83,8 @@ type { TpvScene3DRendererPassesMeshCullPass0ComputePass }
        type TPushConstants=packed record
              LODLevelCurrentBDA:TVkDeviceAddress;
              LODLevelPreviousBDA:TVkDeviceAddress;
+             ScratchBufferBDA:TVkDeviceAddress;
+             MeshletVisibilityBDA:TVkDeviceAddress;
              CountRanges:TpvUInt32;
              TotalCommands:TpvUInt32;
              CountMeshObjectIDs:TpvUInt32;
@@ -97,11 +99,10 @@ type { TpvScene3DRendererPassesMeshCullPass0ComputePass }
              Flags:TpvUInt32;
              BatchRangeIndex:TpvInt32;
              MaxOutputCommands:TpvUInt32;
-             ScratchBufferBDA:TVkDeviceAddress;
              MaxScratchEntries:TpvUInt32;
-             MeshletVisibilityBDAPadding:TpvUInt32;
-             MeshletVisibilityBDA:TVkDeviceAddress;
              MeshletVisibilityPartOffset:TpvUInt32;
+             MaximumDistance:TpvFloat;
+             AreaTooSmallThreshold:TpvFloat;
             end;
             PPushConstants=^TPushConstants;
             TMeshCullResetPushConstants=packed record
@@ -603,7 +604,6 @@ begin
      PushConstants.MaxScratchEntries:=0;
     end;
 
-    PushConstants.MeshletVisibilityBDAPadding:=0;
     begin
      // PASS 0 reads from PREVIOUS in-flight frame's buffer for THIS cull render pass
      PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
@@ -618,6 +618,9 @@ begin
       PushConstants.MeshletVisibilityPartOffset:=0;
      end;
     end;
+
+    PushConstants.MaximumDistance:=-1.0;
+    PushConstants.AreaTooSmallThreshold:=-1.0;
 
     if fInstance.Scene3D.UseMegaDispatch then begin
 

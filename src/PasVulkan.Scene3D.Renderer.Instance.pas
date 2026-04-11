@@ -629,6 +629,10 @@ type { TpvScene3DRendererInstance }
        fCascadedShadowMapHeight:TpvInt32;
        fCascadedShadowMapCenter:TpvVector3D;
        fCascadedShadowMapRadius:TpvDouble;
+       fShadowMaximumDistance:TpvFloat;
+       fShadowAreaTooSmallThreshold:TpvFloat;
+       fFinalViewMaximumDistance:TpvFloat;
+       fFinalViewAreaTooSmallThreshold:TpvFloat;
        fCountSurfaceViews:TpvInt32;
        fSurfaceMultiviewMask:TpvUInt32;
        fLeft:TpvInt32;
@@ -1190,6 +1194,10 @@ type { TpvScene3DRendererInstance }
       public
        property CascadedShadowMapCenter:TpvVector3D read fCascadedShadowMapCenter write fCascadedShadowMapCenter;
        property CascadedShadowMapRadius:TpvDouble read fCascadedShadowMapRadius write fCascadedShadowMapRadius;
+       property ShadowMaximumDistance:TpvFloat read fShadowMaximumDistance write fShadowMaximumDistance;
+       property ShadowAreaTooSmallThreshold:TpvFloat read fShadowAreaTooSmallThreshold write fShadowAreaTooSmallThreshold;
+       property FinalViewMaximumDistance:TpvFloat read fFinalViewMaximumDistance write fFinalViewMaximumDistance;
+       property FinalViewAreaTooSmallThreshold:TpvFloat read fFinalViewAreaTooSmallThreshold write fFinalViewAreaTooSmallThreshold;
       published
        property Left:TpvInt32 read fLeft write fLeft;
        property Top:TpvInt32 read fTop write fTop;
@@ -2099,6 +2107,11 @@ begin
  fCascadedShadowMapCenter:=TpvVector3.Null;
 
  fCascadedShadowMapRadius:=Infinity;
+
+ fShadowMaximumDistance:=-1.0;
+ fShadowAreaTooSmallThreshold:=-1.0;
+ fFinalViewMaximumDistance:=-1.0;
+ fFinalViewAreaTooSmallThreshold:=-1.0;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCameraViewMatrices[InFlightFrameIndex]:=TpvMatrix4x4.Identity;
@@ -8244,6 +8257,20 @@ begin
    MeshStagePushConstants^.DrawFlags:=MeshStagePushConstants^.DrawFlags or (TpvUInt32(1) shl 3); // FLAG_MESHLET_CULLING_ENABLED
   end;
   MeshStagePushConstants^.TextureDepthIndex:=0;
+  case aRenderPass of
+   TpvScene3DRendererRenderPass.View:begin
+    MeshStagePushConstants^.MaximumDistance:=fFinalViewMaximumDistance;
+    MeshStagePushConstants^.AreaTooSmallThreshold:=fFinalViewAreaTooSmallThreshold;
+   end;
+   TpvScene3DRendererRenderPass.CascadedShadowMap:begin
+    MeshStagePushConstants^.MaximumDistance:=fShadowMaximumDistance;
+    MeshStagePushConstants^.AreaTooSmallThreshold:=fShadowAreaTooSmallThreshold;
+   end;
+   else begin
+    MeshStagePushConstants^.MaximumDistance:=-1.0;
+    MeshStagePushConstants^.AreaTooSmallThreshold:=-1.0;
+   end;
+  end;
   
   fSetGlobalResourcesDone[aRenderPass]:=false;
 

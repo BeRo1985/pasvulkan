@@ -551,6 +551,9 @@ type EpvScene3D=class(Exception);
              DrawFlags:TpvUInt32;
              TextureDepthIndex:TpvUInt32;
              MeshDrawCommandsBDA:TVkDeviceAddress;
+             
+             MaximumDistance:TpvFloat;
+             AreaTooSmallThreshold:TpvFloat;
 
             end;
             PMeshStagePushConstants=^TMeshStagePushConstants;
