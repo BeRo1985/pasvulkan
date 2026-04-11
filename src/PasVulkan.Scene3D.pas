@@ -38938,13 +38938,19 @@ var Group:TpvScene3D.TGroup;
     Pair:TDebugMeshletSpherePair;
 begin
  fDebugMeshletSpherePairs.Count:=0;
+{$ifdef MeshShaderDebug}
  WriteLn('[DBG-PAIRS] RebuildDebugMeshletSpherePairs: fGroups.Count=',fGroups.Count);
+{$endif}
  for Group in fGroups do begin
+{$ifdef MeshShaderDebug}
   WriteLn('[DBG-PAIRS] Group: Usable=',Group.Usable,' MeshletCount=',Group.fTotalMeshletCount,' Instances=',Group.fInstances.Count);
+{$endif}
   if Group.Usable and (Group.fTotalMeshletCount>0) then begin
    for GroupInstanceIndex:=0 to Group.fInstances.Count-1 do begin
     GroupInstance:=Group.fInstances[GroupInstanceIndex];
+{$ifdef MeshShaderDebug}
     WriteLn('[DBG-PAIRS] GroupInst: Active=',GroupInstance.fActives[aInFlightFrameIndex],' Headless=',GroupInstance.fHeadless,' Virtual=',GroupInstance.fVirtual,' UseRI=',GroupInstance.fUseRenderInstances,' SphereBase=',GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset);
+{$endif}
     if GroupInstance.fActives[aInFlightFrameIndex] and (not GroupInstance.fHeadless) and (not GroupInstance.fVirtual) then begin
      SphereBase:=GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
      MeshletCount:=Group.fTotalMeshletCount;
@@ -38971,7 +38977,9 @@ begin
    end;
   end;
  end;
+{$ifdef MeshShaderDebug}
  WriteLn('[DBG-PAIRS] Total pairs built: ',fDebugMeshletSpherePairs.Count);
+{$endif}
  fDebugMeshletSpherePairsDirty:=false;
 end;
 

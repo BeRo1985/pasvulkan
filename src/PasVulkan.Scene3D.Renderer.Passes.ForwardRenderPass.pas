@@ -1889,43 +1889,6 @@ begin
 
   end;
 
-  if fInstance.DebugDrawMeshletBoundingSpheres and
-     fInstance.Renderer.Scene3D.MeshShaderSupport and
-     assigned(fVulkanDebugLinesGraphicsPipeline) and
-     assigned(fVulkanDebugLinesPipelineLayout) and
-     assigned(fInstance.DebugMeshletSphereLineBuffers[aInFlightFrameIndex]) and
-     (InFlightFrameState^.FinalViewIndex>=0) and
-     (InFlightFrameState^.CountFinalViews>0) then begin
-
-   FrameGraph.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Debug Meshlet Spheres',[0.8,0.2,0.2,1.0]);
-
-   DebugLinesPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
-   DebugLinesPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
-   DebugLinesPushConstants.VertexBufferBDA:=fInstance.DebugMeshletSphereLineBuffers[aInFlightFrameIndex].DeviceAddress;
-   aCommandBuffer.CmdPushConstants(fVulkanDebugLinesPipelineLayout.Handle,
-                                    TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
-                                    0,
-                                    SizeOf(TDebugLinesPushConstants),
-                                    @DebugLinesPushConstants);
-
-   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                        fVulkanDebugLinesPipelineLayout.Handle,
-                                        0,
-                                        1,
-                                        @fPassVulkanDescriptorSets[aInFlightFrameIndex].Handle,
-                                        0,
-                                        nil);
-
-   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanDebugLinesGraphicsPipeline.Handle);
-
-   aCommandBuffer.CmdDrawIndirect(fInstance.DebugMeshletSphereLineBuffers[aInFlightFrameIndex].Handle,0,1,0);
-
-   fOnSetRenderPassResourcesDone:=false;
-
-   FrameGraph.VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
-
-  end;
-
 { if fPlanetRainStreakRenderPass.Draw(aInFlightFrameIndex,
                                       aFrameIndex,
                                       TpvScene3DRendererRenderPass.View,

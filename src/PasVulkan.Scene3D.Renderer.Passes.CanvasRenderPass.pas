@@ -92,6 +92,12 @@ type { TpvScene3DRendererPassesCanvasRenderPass }
              ViewPortSize:TpvVector2;
             end;
             PPushConstants=^TPushConstants;
+            TDebugLinesPushConstants=packed record
+             ViewBaseIndex:TpvUInt32;
+             CountViews:TpvUInt32;
+             VertexBufferBDA:TpvUInt64;
+            end;
+            PDebugLinesPushConstants=^TDebugLinesPushConstants;
       private
        fOnSetRenderPassResourcesDone:boolean;
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -120,6 +126,12 @@ type { TpvScene3DRendererPassesCanvasRenderPass }
        fVulkanPipelineShaderStageSolidPrimitiveFragment:TpvVulkanPipelineShaderStage;
        fVulkanDebugPrimitiveGraphicsPipeline:TpvVulkanGraphicsPipeline;
        fVulkanSolidPrimitiveGraphicsPipeline:TpvVulkanGraphicsPipeline;
+       fVulkanDebugLinesGraphicsPipeline:TpvVulkanGraphicsPipeline;
+       fVulkanDebugLinesPipelineLayout:TpvVulkanPipelineLayout;
+       fDebugLinesVertexShaderModule:TpvVulkanShaderModule;
+       fDebugLinesFragmentShaderModule:TpvVulkanShaderModule;
+       fVulkanPipelineShaderStageDebugLinesVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageDebugLinesFragment:TpvVulkanPipelineShaderStage;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
@@ -237,10 +249,43 @@ begin
 
  fVulkanPipelineShaderStageSolidPrimitiveFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fSolidPrimitiveFragmentShaderModule,'main');
 
+ if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_lines_vert.spv');
+  try
+   fDebugLinesVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fDebugLinesVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesCanvasRenderPass.DebugLinesVertexShaderModule');
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_lines_frag.spv');
+  try
+   fDebugLinesFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fDebugLinesFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesCanvasRenderPass.DebugLinesFragmentShaderModule');
+
+  fVulkanPipelineShaderStageDebugLinesVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fDebugLinesVertexShaderModule,'main');
+
+  fVulkanPipelineShaderStageDebugLinesFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fDebugLinesFragmentShaderModule,'main');
+
+ end else begin
+  fDebugLinesVertexShaderModule:=nil;
+  fDebugLinesFragmentShaderModule:=nil;
+  fVulkanPipelineShaderStageDebugLinesVertex:=nil;
+  fVulkanPipelineShaderStageDebugLinesFragment:=nil;
+ end;
+
 end;
 
 procedure TpvScene3DRendererPassesCanvasRenderPass.ReleasePersistentResources;
 begin
+
+ FreeAndNil(fVulkanPipelineShaderStageDebugLinesVertex);
+
+ FreeAndNil(fVulkanPipelineShaderStageDebugLinesFragment);
 
  FreeAndNil(fVulkanPipelineShaderStageSolidPrimitiveVertex);
 
@@ -261,6 +306,10 @@ begin
  FreeAndNil(fDebugPrimitiveGeometryShaderModule);
 
  FreeAndNil(fDebugPrimitiveFragmentShaderModule);
+
+ FreeAndNil(fDebugLinesVertexShaderModule);
+
+ FreeAndNil(fDebugLinesFragmentShaderModule);
 
  inherited ReleasePersistentResources;
 end;
@@ -428,11 +477,101 @@ begin
 
  end;
 
+ if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+  fVulkanDebugLinesPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
+  fVulkanDebugLinesPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TDebugLinesPushConstants));
+  fVulkanDebugLinesPipelineLayout.AddDescriptorSetLayout(fPassVulkanDescriptorSetLayout);
+  fVulkanDebugLinesPipelineLayout.Initialize;
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fVulkanDebugLinesPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DRendererPassesCanvasRenderPass.DebugLinesPipelineLayout');
+ end else begin
+  fVulkanDebugLinesPipelineLayout:=nil;
+ end;
+
+ if fInstance.Renderer.Scene3D.MeshShaderSupport and assigned(fVulkanDebugLinesPipelineLayout) then begin
+
+  VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
+                                                           fInstance.Renderer.VulkanPipelineCache,
+                                                           0,
+                                                           [],
+                                                           fVulkanDebugLinesPipelineLayout,
+                                                           fVulkanRenderPass,
+                                                           VulkanRenderPassSubpassIndex,
+                                                           nil,
+                                                           0);
+
+  try
+
+   VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageDebugLinesVertex);
+   VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageDebugLinesFragment);
+
+   VulkanGraphicsPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology.VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+   VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+   VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fResourceColor.Width,fResourceColor.Height,0.0,1.0);
+   VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fResourceColor.Width,fResourceColor.Height);
+
+   VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
+   VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+   VulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+   VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+   VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+   VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+   VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+   VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+   VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+   VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+
+   VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+   VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+   VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+   VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+   VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+   VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+   VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
+   VulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+   VulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+   VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+   VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+   VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+   VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                                       VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                       VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       VK_BLEND_FACTOR_ONE,
+                                                                       VK_BLEND_FACTOR_ZERO,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+   VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=false;
+   VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
+   VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
+   VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+   VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
+
+   VulkanGraphicsPipeline.Initialize;
+
+   VulkanGraphicsPipeline.FreeMemory;
+
+  finally
+   fVulkanDebugLinesGraphicsPipeline:=VulkanGraphicsPipeline;
+   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(VulkanGraphicsPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererPassesCanvasRenderPass.DebugLinesGraphicsPipeline');
+  end;
+
+ end else begin
+  fVulkanDebugLinesGraphicsPipeline:=nil;
+ end;
+
 end;
 
 procedure TpvScene3DRendererPassesCanvasRenderPass.ReleaseVolatileResources;
 var Index:TpvSizeInt;
 begin
+ FreeAndNil(fVulkanDebugLinesGraphicsPipeline);
+ FreeAndNil(fVulkanDebugLinesPipelineLayout);
  FreeAndNil(fVulkanDebugPrimitiveGraphicsPipeline);
  FreeAndNil(fVulkanSolidPrimitiveGraphicsPipeline);
  FreeAndNil(fVulkanPipelineLayout);
@@ -472,6 +611,7 @@ procedure TpvScene3DRendererPassesCanvasRenderPass.Execute(const aCommandBuffer:
                                                             const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     PushConstants:TPushConstants;
+    DebugLinesPushConstants:TDebugLinesPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
@@ -525,6 +665,43 @@ begin
                                 aCommandBuffer,
                                 fVulkanPipelineLayout,
                                 OnSetRenderPassResources);
+
+  if fInstance.DebugDrawMeshletBoundingSpheres and
+     fInstance.Renderer.Scene3D.MeshShaderSupport and
+     assigned(fVulkanDebugLinesGraphicsPipeline) and
+     assigned(fVulkanDebugLinesPipelineLayout) and
+     assigned(fInstance.DebugMeshletSphereLineBuffers[aInFlightFrameIndex]) and
+     (InFlightFrameState^.FinalViewIndex>=0) and
+     (InFlightFrameState^.CountFinalViews>0) then begin
+
+   FrameGraph.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Debug Meshlet Spheres',[0.8,0.2,0.2,1.0]);
+
+   DebugLinesPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
+   DebugLinesPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
+   DebugLinesPushConstants.VertexBufferBDA:=fInstance.DebugMeshletSphereLineBuffers[aInFlightFrameIndex].DeviceAddress;
+   aCommandBuffer.CmdPushConstants(fVulkanDebugLinesPipelineLayout.Handle,
+                                    TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
+                                    0,
+                                    SizeOf(TDebugLinesPushConstants),
+                                    @DebugLinesPushConstants);
+
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        fVulkanDebugLinesPipelineLayout.Handle,
+                                        0,
+                                        1,
+                                        @fPassVulkanDescriptorSets[aInFlightFrameIndex].Handle,
+                                        0,
+                                        nil);
+
+   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanDebugLinesGraphicsPipeline.Handle);
+
+   aCommandBuffer.CmdDrawIndirect(fInstance.DebugMeshletSphereLineBuffers[aInFlightFrameIndex].Handle,0,1,0);
+
+   fOnSetRenderPassResourcesDone:=false;
+
+   FrameGraph.VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+  end;
 
  end;
 
