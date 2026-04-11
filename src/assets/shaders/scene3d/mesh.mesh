@@ -38,10 +38,10 @@
 #ifdef VOXELIZATION
 // Voxelization: vertices are duplicated per primitive (dominant-axis projection differs per triangle).
 // 3 vertices × MAX_MESHLET_PRIMITIVES. With 256 prims this would be 768 vertices which exceeds
-// typical maxMeshOutputVertices. Limit to 84 primitives × 3 = 252 vertices for voxelization.
-#define MAX_VOXEL_MESHLET_PRIMITIVES 84
+// typical maxMeshOutputVertices. Limit to 42 primitives × 3 = 126 vertices for voxelization.
+#define MAX_VOXEL_MESHLET_PRIMITIVES 42
 layout(local_size_x = MESH_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
-layout(triangles, max_vertices = 252, max_primitives = MAX_VOXEL_MESHLET_PRIMITIVES) out;
+layout(triangles, max_vertices = 126, max_primitives = MAX_VOXEL_MESHLET_PRIMITIVES) out;
 #else
 layout(local_size_x = MESH_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = MAX_MESHLET_VERTICES, max_primitives = MAX_MESHLET_PRIMITIVES) out;
