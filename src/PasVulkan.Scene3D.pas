@@ -36369,7 +36369,7 @@ begin
   Count:=Max(65536,Max(fTotalActiveMeshletCount,fVulkanMeshletBoundingSphereBufferRangeAllocator.Capacity));
   if (not assigned(fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex])) or
      (fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex].Size<TpvSizeInt(Count*SizeOf(TpvVector4))) then begin
-   FreeAndNil(fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex]);
+   AddToFreeQueue(fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex],-1);
    fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                                      Count*SizeOf(TpvVector4)*2,
                                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
