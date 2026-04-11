@@ -192,8 +192,20 @@ void main(){
     bool hasSphere = false;
     if((meshletBoundingSphereBase != 0xffffffffu) && (globalBDAPointers.meshletBoundingSphereBDA != uvec2(0u))){
       MeshletBoundingSphereBuffer meshletBoundingSphereBuffer = MeshletBoundingSphereBuffer(globalBDAPointers.meshletBoundingSphereBDA);
-      worldSphere = meshletBoundingSphereBuffer.spheres[meshletBoundingSphereBase + meshletLocalIndex];
+      uint sphereIndex = meshletBoundingSphereBase + (meshletBase - drawInfoItems[meshObjectID].meshletDescriptorBase) + meshletLocalIndex;
+      worldSphere = meshletBoundingSphereBuffer.spheres[sphereIndex];
       hasSphere = (worldSphere.w > 0.0);
+      if(hasSphere){
+        worldSphere = sphereTransform(worldSphere, modelMatrix);
+      }
+#ifdef MESH_SHADER_DEBUG_EX          
+      if(meshletLocalIndex < 2u){
+        debugPrintfEXT("mesh.task BDASphere obj=%u ml=%u base=%u idx=%u sphere=[%f,%f,%f,%f] hasSphere=%u",
+          meshObjectID, meshletLocalIndex, meshletBoundingSphereBase, sphereIndex,
+          worldSphere.x, worldSphere.y, worldSphere.z, worldSphere.w,
+          uint(hasSphere));
+      }
+#endif      
     }
     if(!hasSphere){
       vec4 meshletSphere = meshletDescBuf.descriptors[meshletGlobalIndex].boundingSphere;

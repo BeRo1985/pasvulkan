@@ -433,8 +433,21 @@ void submitMeshletCommands(uint counterIndex,
         bool hasSphere = false;
         if((meshletBoundingSphereBase != 0xffffffffu) && !all(equal(globalBDAPointers.meshletBoundingSphereBDA, uvec2(0u)))){
           MeshletBoundingSphereBuffer meshletBoundingSphereBuffer = MeshletBoundingSphereBuffer(globalBDAPointers.meshletBoundingSphereBDA);
-          meshletSphere = meshletBoundingSphereBuffer.spheres[meshletBoundingSphereBase + i];
+          uint sphereIndex = meshletBoundingSphereBase + (meshletBase - drawInfoItems[meshObjectID].meshletDescriptorBase) + i;
+          meshletSphere = meshletBoundingSphereBuffer.spheres[sphereIndex];
           hasSphere = (meshletSphere.w > 0.0);
+          if(hasSphere){
+            meshletSphere = sphereTransform(meshletSphere, modelMatrix);
+          }
+#ifdef MESH_SHADER_DEBUG_EX          
+          if(i < 2u){
+            debugPrintfEXT("meshletBDASphere obj=%u ml=%u base=%u idx=%u sphere=[%f,%f,%f,%f] hasSphere=%u descSphere=[%f,%f,%f,%f]",
+              meshObjectID, i, meshletBoundingSphereBase, sphereIndex,
+              meshletSphere.x, meshletSphere.y, meshletSphere.z, meshletSphere.w,
+              uint(hasSphere),
+              desc.boundingSphere.x, desc.boundingSphere.y, desc.boundingSphere.z, desc.boundingSphere.w);
+          }
+#endif          
         }
         if(!hasSphere && (desc.boundingSphere.w > 0.0)){
           meshletSphere = sphereTransform(desc.boundingSphere, modelMatrix);

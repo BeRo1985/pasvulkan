@@ -9645,6 +9645,7 @@ begin
  if (not fDebugDrawMeshletBoundingSpheres) or
     (not Renderer.Scene3D.MeshShaderSupport) or
     (not assigned(fDebugMeshletSphereComputePipeline)) then begin
+  WriteLn('[DBG-DISPATCH] Exit1: flag=',fDebugDrawMeshletBoundingSpheres,' meshShader=',Renderer.Scene3D.MeshShaderSupport,' pipeline=',assigned(fDebugMeshletSphereComputePipeline));
   exit;
  end;
 
@@ -9659,7 +9660,9 @@ begin
  end;
 
  PairCount:=Min(TpvUInt32(fScene3D.DebugMeshletSpherePairCount),65536);
+ WriteLn('[DBG-DISPATCH] PairCount=',PairCount,' RawPairCount=',fScene3D.DebugMeshletSpherePairCount);
  if PairCount=0 then begin
+  WriteLn('[DBG-DISPATCH] Exit: PairCount=0');
   exit;
  end;
 
@@ -9712,6 +9715,7 @@ begin
                                   @PushConstants);
 
  // Dispatch: one workgroup per pair
+ WriteLn('[DBG-DISPATCH] Dispatching pairs=',PairCount,' SphereBDA=',PushConstants.SphereBDA,' OutputBDA=',PushConstants.OutputBDA,' PairsBDA=',PushConstants.PairsBDA);
  aCommandBuffer.CmdDispatch(PairCount,1,1);
 
  // Barrier: compute → vertex input + indirect draw
