@@ -81,6 +81,7 @@ type { TpvScene3DRendererPassesTonemappingRenderPass }
       public
        type TPushConstants=record 
              Mode:TpvInt32;
+             DebugBypass:TpvInt32;
             end; 
             PPushConstants=^TPushConstants;
       private
@@ -393,6 +394,11 @@ begin
   PushConstants.Mode:=TpvInt32(fInstance.Renderer.TonemappingMode);
  end else begin
   PushConstants.Mode:=0; // HDR => No tone mapping, just color grading if all.
+ end;
+ if fInstance.DrawMeshletDebugColors and fInstance.Renderer.UseMeshShaderPipeline then begin
+  PushConstants.DebugBypass:=1;
+ end else begin
+  PushConstants.DebugBypass:=0;
  end;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,

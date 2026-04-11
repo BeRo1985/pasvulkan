@@ -92,6 +92,7 @@ type { TpvScene3DRendererPassesLensResolveRenderPass }
              Dispersal:TpvFloat;
              HaloWidth:TpvFloat;
              Distortion:TpvFloat;
+             DebugBypass:TpvInt32;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -437,6 +438,11 @@ begin
  fPushConstants.Dispersal:=0.3;
  fPushConstants.HaloWidth:=0.5;
  fPushConstants.Distortion:=1.5;
+ if fInstance.DrawMeshletDebugColors and fInstance.Renderer.UseMeshShaderPipeline then begin
+  fPushConstants.DebugBypass:=1;
+ end else begin
+  fPushConstants.DebugBypass:=0;
+ end;
 
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
