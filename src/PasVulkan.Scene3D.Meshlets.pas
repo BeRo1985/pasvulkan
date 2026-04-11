@@ -80,13 +80,13 @@ const MaxVerticesPerMeshlet=256;
       MaxPrimitivesPerMeshlet=256;
 
 type TpvScene3DMeshlet=packed record
-      Vertices:array[0..MaxVerticesPerMeshlet-1] of TpvUInt32;   // 1024 B (Offset    0) — global vertex indices (local-to-global remap)
-      Indices:array[0..MaxPrimitivesPerMeshlet-1] of TpvUInt32;  // 1024 B (Offset 1024) — packed local triangle indices (3x uint8 per uint32)
+      Vertices:array[0..MaxVerticesPerMeshlet-1] of TpvUInt32;    // 1024 B (Offset    0) — global vertex indices (local-to-global remap)
+      Indices:array[0..MaxPrimitivesPerMeshlet-1] of TpvUInt32;   // 1024 B (Offset 1024) — packed local triangle indices (3x uint8 per uint32)
       CountVertices:TpvUInt32;                                    //    4 B (Offset 2048)
       CountPrimitives:TpvUInt32;                                  //    4 B (Offset 2052)
       Padding:array[0..1] of TpvUInt32;                           //    8 B (Offset 2056) — reserved for future use (e.g. cone culling)
       BoundingSphere:TpvVector4;                                  //   16 B (Offset 2064, 16-byte aligned)
-     end;                                                          // 2080 B total (divisible by 32)
+     end;                                                         // 2080 B total (divisible by 32)
      PpvScene3DMeshlet=^TpvScene3DMeshlet;
 
      TpvScene3DMeshlets=TpvDynamicArray<TpvScene3DMeshlet>;

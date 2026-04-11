@@ -15333,7 +15333,7 @@ begin
                  TpvScene3D.MaximumVerticesPerMeshlet,
                  TpvScene3D.MaximumPrimitivesPerMeshlet,
                  fMeshlets,
-                 false);
+                 true);
 {$ifdef MeshShaderDebug}
    WriteLn('[DEBUG-MS] Primitive.Finish: BuildMeshlets produced ',fMeshlets.Count,' meshlets from ',fTemporaryVertices.Count,' verts ',fTemporaryIndices.Count,' indices');
 {$endif}
@@ -17273,7 +17273,7 @@ begin
                        TpvScene3D.MaximumVerticesPerMeshlet,
                        TpvScene3D.MaximumPrimitivesPerMeshlet,
                        DestinationMeshPrimitive.fMeshlets,
-                       false);
+                       true);
 {$ifdef MeshShaderDebug}
          WriteLn('[DEBUG-MS] glTF BuildMeshlets: produced ',DestinationMeshPrimitive.fMeshlets.Count,' meshlets from ',length(DestinationMeshPrimitiveVertices),' verts ',length(DestinationMeshPrimitiveIndices),' indices');
 {$endif}
