@@ -1765,6 +1765,22 @@ type EpvVulkanException=class(Exception);
        property Handle:TVkSemaphore read fSemaphoreHandle;
      end;
 
+     TpvVulkanTimelineSemaphore=class(TpvVulkanObject)
+      private
+       fDevice:TpvVulkanDevice;
+       fSemaphoreHandle:TVkSemaphore;
+      public
+       constructor Create(const aDevice:TpvVulkanDevice;
+                          const aInitialValue:TpvUInt64=0);
+       destructor Destroy; override;
+       function GetCounterValue:TpvUInt64;
+       procedure Signal(const aValue:TpvUInt64);
+       function WaitFor(const aValue:TpvUInt64;const aTimeout:TpvUInt64=TpvUInt64(high(TpvUInt64))):TVkResult;
+      published
+       property Device:TpvVulkanDevice read fDevice;
+       property Handle:TVkSemaphore read fSemaphoreHandle;
+     end;
+
      TpvVulkanQueue=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
@@ -11660,6 +11676,8 @@ begin
     fVulkan12Features.shaderOutputLayer:=PhysicalDevice.fVulkan12Features.shaderOutputLayer;
     fVulkan12Features.shaderOutputViewportIndex:=PhysicalDevice.fVulkan12Features.shaderOutputViewportIndex;
 
+    fVulkan12Features.timelineSemaphore:=PhysicalDevice.fVulkan12Features.timelineSemaphore;
+
     fDescriptorIndexingFeaturesEXT.shaderInputAttachmentArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayDynamicIndexing;
     fDescriptorIndexingFeaturesEXT.shaderUniformTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing;
     fDescriptorIndexingFeaturesEXT.shaderStorageTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageTexelBufferArrayDynamicIndexing;
@@ -17594,6 +17612,65 @@ begin
   fSemaphoreHandle:=VK_NULL_HANDLE;
  end;
  inherited Destroy;
+end;
+
+constructor TpvVulkanTimelineSemaphore.Create(const aDevice:TpvVulkanDevice;
+                                              const aInitialValue:TpvUInt64=0);
+var SemaphoreCreateInfo:TVkSemaphoreCreateInfo;
+    SemaphoreTypeCreateInfo:TVkSemaphoreTypeCreateInfo;
+begin
+ inherited Create;
+ fDevice:=aDevice;
+ fSemaphoreHandle:=VK_NULL_HANDLE;
+ FillChar(SemaphoreTypeCreateInfo,SizeOf(TVkSemaphoreTypeCreateInfo),#0);
+ SemaphoreTypeCreateInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+ SemaphoreTypeCreateInfo.pNext:=nil;
+ SemaphoreTypeCreateInfo.semaphoreType:=VK_SEMAPHORE_TYPE_TIMELINE;
+ SemaphoreTypeCreateInfo.initialValue:=aInitialValue;
+ FillChar(SemaphoreCreateInfo,SizeOf(TVkSemaphoreCreateInfo),#0);
+ SemaphoreCreateInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+ SemaphoreCreateInfo.pNext:=@SemaphoreTypeCreateInfo;
+ SemaphoreCreateInfo.flags:=0;
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateSemaphore(fDevice.fDeviceHandle,@SemaphoreCreateInfo,fDevice.fAllocationCallbacks,@fSemaphoreHandle));
+end;
+
+destructor TpvVulkanTimelineSemaphore.Destroy;
+begin
+ if fSemaphoreHandle<>VK_NULL_HANDLE then begin
+  fDevice.fDeviceVulkan.DestroySemaphore(fDevice.fDeviceHandle,fSemaphoreHandle,fDevice.fAllocationCallbacks);
+  fSemaphoreHandle:=VK_NULL_HANDLE;
+ end;
+ inherited Destroy;
+end;
+
+function TpvVulkanTimelineSemaphore.GetCounterValue:TpvUInt64;
+begin
+ result:=0;
+ VulkanCheckResult(fDevice.fDeviceVulkan.GetSemaphoreCounterValue(fDevice.fDeviceHandle,fSemaphoreHandle,@result));
+end;
+
+procedure TpvVulkanTimelineSemaphore.Signal(const aValue:TpvUInt64);
+var SignalInfo:TVkSemaphoreSignalInfo;
+begin
+ FillChar(SignalInfo,SizeOf(TVkSemaphoreSignalInfo),#0);
+ SignalInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
+ SignalInfo.pNext:=nil;
+ SignalInfo.semaphore:=fSemaphoreHandle;
+ SignalInfo.value:=aValue;
+ VulkanCheckResult(fDevice.fDeviceVulkan.SignalSemaphore(fDevice.fDeviceHandle,@SignalInfo));
+end;
+
+function TpvVulkanTimelineSemaphore.WaitFor(const aValue:TpvUInt64;const aTimeout:TpvUInt64=TpvUInt64(high(TpvUInt64))):TVkResult;
+var WaitInfo:TVkSemaphoreWaitInfo;
+begin
+ FillChar(WaitInfo,SizeOf(TVkSemaphoreWaitInfo),#0);
+ WaitInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+ WaitInfo.pNext:=nil;
+ WaitInfo.flags:=0;
+ WaitInfo.semaphoreCount:=1;
+ WaitInfo.pSemaphores:=@fSemaphoreHandle;
+ WaitInfo.pValues:=@aValue;
+ result:=fDevice.fDeviceVulkan.WaitSemaphores(fDevice.fDeviceHandle,@WaitInfo,aTimeout);
 end;
 
 constructor TpvVulkanQueue.Create(const aDevice:TpvVulkanDevice;
