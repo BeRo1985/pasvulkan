@@ -142,6 +142,8 @@ type EpvScene3D=class(Exception);
        const MaxRendererInstances=32;
              MaxVisibleLights=65536;
              MaxVisibleDecals=2048;  // Maximum number of decals in frustum cluster grid
+             MaximumVerticesPerMeshlet=64;
+             MaximumPrimitivesPerMeshlet=126;
              InitialCountDebugPrimitiveVertices=1 shl 8;
              MaxDebugPrimitiveVertices=1 shl 20;
              MaxParticles=65536; // <= Must be power of two
@@ -15326,8 +15328,8 @@ begin
                  SizeOf(TpvScene3D.TVertex),
                  @fTemporaryIndices.ItemArray[0],
                  fTemporaryIndices.Count,
-                 MaxVerticesPerMeshlet,
-                 MaxPrimitivesPerMeshlet,
+                 TpvScene3D.MaximumVerticesPerMeshlet,
+                 TpvScene3D.MaximumPrimitivesPerMeshlet,
                  fMeshlets,
                  false);
 {$ifdef MeshShaderDebug}
