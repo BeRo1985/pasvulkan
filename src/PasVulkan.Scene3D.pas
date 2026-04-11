@@ -39007,7 +39007,7 @@ begin
   RequiredSize:=fDebugMeshletSpherePairs.Count*SizeOf(TDebugMeshletSpherePair);
   if (not assigned(fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex])) or
      (fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex].Size<RequiredSize) then begin
-   FreeAndNil(fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex]);
+   AddToFreeQueue(fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex],-1);
    fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                                   RequiredSize*2,
                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
