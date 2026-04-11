@@ -8256,6 +8256,9 @@ begin
   if Renderer.UseMeshletCulling then begin
    MeshStagePushConstants^.DrawFlags:=MeshStagePushConstants^.DrawFlags or (TpvUInt32(1) shl 3); // FLAG_MESHLET_CULLING_ENABLED
   end;
+  if fZFar<0.0 then begin
+   MeshStagePushConstants^.DrawFlags:=MeshStagePushConstants^.DrawFlags or (TpvUInt32(1) shl 4); // FLAG_REVERSED_Z
+  end;
   MeshStagePushConstants^.TextureDepthIndex:=0;
   case aRenderPass of
    TpvScene3DRendererRenderPass.View:begin

@@ -25127,10 +25127,6 @@ begin
 
  //ShaderFileName:=ShaderFileName+'_'+TpvScene3DRenderer(aRenderer).MeshFragShadowTypeName; // pcfpcss or msm
 
- if TpvScene3DRendererInstance(aRendererInstance).ZFar<0.0 then begin
-  ShaderFileName:=ShaderFileName+'_reversedz';
- end;
-
  if TpvScene3DRenderer(aRenderer).SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fMSAA then begin
    ShaderFileName:=ShaderFileName+'_msaa';

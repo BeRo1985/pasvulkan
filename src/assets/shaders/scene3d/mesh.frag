@@ -139,13 +139,6 @@ vec3 inGeometricNormal = normalize(
   #endif
 #endif
 
-// Specialization constants are sadly unusable due to dead slow shader stage compilation times with several minutes "per" pipeline, 
-// when the validation layers and a debugger (GDB, LLDB, etc.) are active at the same time!
-#undef USE_SPECIALIZATION_CONSTANTS
-#ifdef USE_SPECIALIZATION_CONSTANTS
-layout (constant_id = 0) const bool UseReversedZ = true;
-#endif
-
 const int TEXTURE_BRDF_GGX = 0;
 const int TEXTURE_BRDF_CHARLIE = 1;
 const int TEXTURE_BRDF_SHEEN_E = 2;
@@ -158,6 +151,11 @@ const int TEXTURE_BASE_INDEX = 10;
 // Push constants
 
 #include "mesh_pushconstants.glsl" 
+
+#define REVERSEDZ_BIT 4
+bool reversedZ = (pushConstants.drawFlags & (1u << REVERSEDZ_BIT)) != 0;
+//float reversedZFactor = reversedZ ? -1.0 : 1.0;
+//uint reversedZInvertBit = reversedZ ? 1u : 0u;
 
 // Global descriptor set
 
@@ -1146,15 +1144,7 @@ void main() {
   #else 
     #if defined(NODISCARD)  
       // Workaround for Intel (i)GPUs, which've problems with discarding fragments in 2x2 fragment blocks at alpha-test usage
-#ifdef USE_SPECIALIZATION_CONSTANTS
-      fragDepth = UseReversedZ ? -0.1 : 1.1;      
-#else
-      #if defined(REVERSEDZ)
-        fragDepth = -0.1;
-      #else
-        fragDepth = 1.1;
-      #endif
-#endif
+      fragDepth = reversedZ ? -0.1 : 1.1;
     #else
       #if defined(USEDEMOTE)
         demote;

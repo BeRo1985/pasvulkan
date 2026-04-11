@@ -208,39 +208,19 @@ begin
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fInstance.Scene3D.EnableWater then begin
-   if fInstance.ZFar<0.0 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_water_reversedz_frag.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_water_frag.spv');
-   end;
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_water_frag.spv');
   end else begin
-   if fInstance.ZFar<0.0 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_reversedz_frag.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_frag.spv');
-   end;
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_frag.spv');
   end;
  end else begin
   if fInstance.Scene3D.EnableWater then begin
    if fInstance.Renderer.SupersampleWaterWhenMSAA then begin
-    if fInstance.ZFar<0.0 then begin
-     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_water_reversedz_msaa_frag.spv');
-    end else begin
-     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_water_msaa_frag.spv');
-    end;
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_water_msaa_frag.spv');
    end else begin
-    if fInstance.ZFar<0.0 then begin
-     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_water_reversedz_msaa_no_msaa_water_frag.spv');
-    end else begin
-     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_water_msaa_no_msaa_water_frag.spv');
-    end;
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_water_msaa_no_msaa_water_frag.spv');
    end;
   end else begin
-   if fInstance.ZFar<0.0 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_reversedz_msaa_frag.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_msaa_frag.spv');
-   end;
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('loopoit_resolve_msaa_frag.spv');
   end; 
  end;
  try

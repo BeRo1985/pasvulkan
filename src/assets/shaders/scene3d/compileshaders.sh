@@ -277,29 +277,17 @@ compileshaderarguments=(
 
   "-V loopoit_resolve.frag -o ${tempPath}/loopoit_resolve_frag.spv"
   "-V loopoit_resolve.frag -DWATER -o ${tempPath}/loopoit_resolve_water_frag.spv"
-  "-V loopoit_resolve.frag -DREVERSEDZ -o ${tempPath}/loopoit_resolve_reversedz_frag.spv"
-  "-V loopoit_resolve.frag -DWATER -DREVERSEDZ -o ${tempPath}/loopoit_resolve_water_reversedz_frag.spv"
   "-V loopoit_resolve.frag -DMSAA -o ${tempPath}/loopoit_resolve_msaa_frag.spv"
   "-V loopoit_resolve.frag -DMSAA -DWATER -o ${tempPath}/loopoit_resolve_water_msaa_frag.spv"
-  "-V loopoit_resolve.frag -DMSAA -DREVERSEDZ -o ${tempPath}/loopoit_resolve_reversedz_msaa_frag.spv"
-  "-V loopoit_resolve.frag -DMSAA -DWATER -DREVERSEDZ -o ${tempPath}/loopoit_resolve_water_reversedz_msaa_frag.spv"
   "-V loopoit_resolve.frag -DMSAA -DNO_MSAA_WATER -o ${tempPath}/loopoit_resolve_msaa_no_msaa_water_frag.spv"
   "-V loopoit_resolve.frag -DMSAA -DWATER -DNO_MSAA_WATER -o ${tempPath}/loopoit_resolve_water_msaa_no_msaa_water_frag.spv"
-  "-V loopoit_resolve.frag -DMSAA -DNO_MSAA_WATER -DREVERSEDZ -o ${tempPath}/loopoit_resolve_reversedz_msaa_no_msaa_water_frag.spv"
-  "-V loopoit_resolve.frag -DMSAA -DWATER -DNO_MSAA_WATER -DREVERSEDZ -o ${tempPath}/loopoit_resolve_water_reversedz_msaa_no_msaa_water_frag.spv"
 
   "-V dfaoit_resolve.frag -o ${tempPath}/dfaoit_resolve_frag.spv"
   "-V dfaoit_resolve.frag -DWATER -o ${tempPath}/dfaoit_resolve_water_frag.spv"
-  "-V dfaoit_resolve.frag -DREVERSEDZ -o ${tempPath}/dfaoit_resolve_reversedz_frag.spv"
-  "-V dfaoit_resolve.frag -DWATER -DREVERSEDZ -o ${tempPath}/dfaoit_resolve_water_reversedz_frag.spv"
   "-V dfaoit_resolve.frag -DMSAA -o ${tempPath}/dfaoit_resolve_msaa_frag.spv"
   "-V dfaoit_resolve.frag -DMSAA -DWATER -o ${tempPath}/dfaoit_resolve_water_msaa_frag.spv"
-  "-V dfaoit_resolve.frag -DMSAA -DREVERSEDZ -o ${tempPath}/dfaoit_resolve_reversedz_msaa_frag.spv"
-  "-V dfaoit_resolve.frag -DMSAA -DWATER -DREVERSEDZ -o ${tempPath}/dfaoit_resolve_water_reversedz_msaa_frag.spv"
   "-V dfaoit_resolve.frag -DMSAA -DNO_MSAA_WATER -o ${tempPath}/dfaoit_resolve_msaa_no_msaa_water_frag.spv"
   "-V dfaoit_resolve.frag -DMSAA -DWATER -DNO_MSAA_WATER -o ${tempPath}/dfaoit_resolve_water_msaa_no_msaa_water_frag.spv"
-  "-V dfaoit_resolve.frag -DMSAA -DNO_MSAA_WATER -DREVERSEDZ -o ${tempPath}/dfaoit_resolve_reversedz_msaa_no_msaa_water_frag.spv"
-  "-V dfaoit_resolve.frag -DMSAA -DWATER -DNO_MSAA_WATER -DREVERSEDZ -o ${tempPath}/dfaoit_resolve_water_reversedz_msaa_no_msaa_water_frag.spv"
 
   "-V blend_resolve.frag -o ${tempPath}/blend_resolve_frag.spv"
   "-V blend_resolve.frag -DWATER -o ${tempPath}/blend_resolve_water_frag.spv"
@@ -862,17 +850,6 @@ addParticleFragmentShadingAntialiasingVariants(){
 
 }
 
-# Add particle fragment shader variants with different Z direction
-addParticleFragmentZVariants(){
-  
-  # Normal Z direction
-  addParticleFragmentShadingAntialiasingVariants "$1" "$2"
-  
-  # Reversed Z direction
-  addParticleFragmentShadingAntialiasingVariants "${1}_reversedz" "$2 -DREVERSEDZ" 
- 
-}
-
 # Add particle fragment shader variants with different voxelization modes 
 addParticleFragmentVoxelizationVariants(){
     
@@ -884,9 +861,9 @@ addParticleFragmentVoxelizationVariants(){
 # Add particle fragment shader variants with different techniques (if any)
 addParticleFragmentVariants(){
   
-  addParticleFragmentZVariants "${1}" "$2"
+  addParticleFragmentShadingAntialiasingVariants "${1}" "$2"
 
-  addParticleFragmentZVariants "${1}_raytracing" "$2 -DRAYTRACING" # Raytracing
+  addParticleFragmentShadingAntialiasingVariants "${1}_raytracing" "$2 -DRAYTRACING" # Raytracing
 
   addParticleFragmentVoxelizationVariants "${1}" "$2"
 
@@ -929,22 +906,11 @@ addPlanetWaterFragmentShadingAntialiasingVariants(){
 
 }
 
-# Add planet water fragment shader variants with different Z direction
-addPlanetWaterFragmentZVariants(){
-  
-  # Normal Z direction
-  addPlanetWaterFragmentShadingAntialiasingVariants "$1" "$2"
-  
-  # Reversed Z direction
-  addPlanetWaterFragmentShadingAntialiasingVariants "${1}_reversedz" "$2 -DREVERSEDZ" 
- 
-}
-
 # Add planet water fragment shader variants with different shadow techniques (if any)
 addPlanetWaterFragmentShadingShadowVariants(){
 
   # Shadows
-  addPlanetWaterFragmentZVariants "${1}" "$2"
+  addPlanetWaterFragmentShadingAntialiasingVariants "${1}" "$2"
 
 }
 
@@ -1141,25 +1107,14 @@ addMeshFragmentPassTargetVariants(){
 
 }
 
-# Add mesh fragment shader variants with different Z direction
-addMeshFragmentZVariants(){
-
-  # Normal Z direction
-  addMeshFragmentPassTargetVariants "${1}" "$2"
-
-  # Reversed Z direction
-  addMeshFragmentPassTargetVariants "${1}_reversedz" "$2 -DREVERSEDZ"
-
-}
-
 # Add mesh fragment shader variants with different material source
 addMeshFragmentMaterialSourceVariants(){
   
   # Material access per buffer references (pointer-like raw access inside shaders)
-  addMeshFragmentZVariants "${1}_matbufref" "$2 -DUSE_MATERIAL_BUFFER_REFERENCE"
+  addMeshFragmentPassTargetVariants "${1}_matbufref" "$2 -DUSE_MATERIAL_BUFFER_REFERENCE"
 
   # Material access per buffer references with raytracing support
-  addMeshFragmentZVariants "${1}_matbufref_raytracing" "$2 -DUSE_MATERIAL_BUFFER_REFERENCE -DRAYTRACING"
+  addMeshFragmentPassTargetVariants "${1}_matbufref_raytracing" "$2 -DUSE_MATERIAL_BUFFER_REFERENCE -DRAYTRACING"
 
 } 
 
