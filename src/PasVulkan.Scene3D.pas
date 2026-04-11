@@ -24588,80 +24588,87 @@ begin
  result:=false;
 //fSceneInstance.fLoadLock.Acquire;
  try
-  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Entering...');
   try
-   if assigned(aStream) then begin
-    fName:=FileName;
-    case TpvScene3D.DetectFileType(aStream) of
-     TpvScene3D.TFileType.PVMF:begin
-      // our own native but version dependent format (can be changed every time, but is for fast loading without further time-costing
-      // post-processing)
-      LoadFromStream(aStream);
-      result:=true;
-     end;
-     TpvScene3D.TFileType.GLTF:begin
-      GLTF:=TPasGLTF.TDocument.Create;
-      try
-       if (length(FileName)>0) and (FileExists(FileName)) then begin
-        GLTF.RootPath:=ExtractFilePath(ExpandFileName(FileName));
+   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Entering...');
+   try
+    if assigned(aStream) then begin
+     fName:=FileName;
+     case TpvScene3D.DetectFileType(aStream) of
+      TpvScene3D.TFileType.PVMF:begin
+       // our own native but version dependent format (can be changed every time, but is for fast loading without further time-costing
+       // post-processing)
+       LoadFromStream(aStream);
+       result:=true;
+      end;
+      TpvScene3D.TFileType.GLTF:begin
+       GLTF:=TPasGLTF.TDocument.Create;
+       try
+        if (length(FileName)>0) and (FileExists(FileName)) then begin
+         GLTF.RootPath:=ExtractFilePath(ExpandFileName(FileName));
+        end;
+        if IsAsset then begin
+         GLTF.GetURI:=AssetGetURI;
+        end;
+        GLTF.LoadFromStream(aStream);
+        AssignFromGLTF(GLTF);
+       finally
+        FreeAndNil(GLTF);
        end;
-       if IsAsset then begin
-        GLTF.GetURI:=AssetGetURI;
+       result:=true;
+      end;
+      TpvScene3D.TFileType.FBX:begin
+       FBX:=TpvFBXLoader.Create;
+       try
+        FBX.LoadFromStream(aStream);
+        AssignFromFBX(FBX);
+       finally
+        FreeAndNil(FBX);
        end;
-       GLTF.LoadFromStream(aStream);
-       AssignFromGLTF(GLTF);
-      finally
-       FreeAndNil(GLTF);
+       result:=true;
       end;
-      result:=true;
-     end;
-     TpvScene3D.TFileType.FBX:begin
-      FBX:=TpvFBXLoader.Create;
-      try
-       FBX.LoadFromStream(aStream);
-       AssignFromFBX(FBX);
-      finally
-       FreeAndNil(FBX);
-      end;
-      result:=true;
-     end;
-     TpvScene3D.TFileType.SAM:begin
-      SAM:=TpvSAM.TModel.Create;
-      try
-       SAM.LoadFromStream(aStream);
-       AssignFromSAM(SAM);
-      finally
-       FreeAndNil(SAM);
-      end;
-      result:=true;
-     end;
-     TpvScene3D.TFileType.WavefrontOBJ:begin
-      OBJ:=TpvOBJModel.Create;
-      try
-       OBJ.LoadFromStream(aStream);
-       AssignFromOBJ(OBJ);
-      finally
-       FreeAndNil(OBJ);
-      end;
-      result:=true;
-     end;
-     TpvScene3D.TFileType.ColladaDAE:begin
-      DAE:=TpvDAELoader.Create;
-      try
-       if DAE.Load(aStream) then begin
-        AssignFromDAE(DAE);
-        result:=true;
+      TpvScene3D.TFileType.SAM:begin
+       SAM:=TpvSAM.TModel.Create;
+       try
+        SAM.LoadFromStream(aStream);
+        AssignFromSAM(SAM);
+       finally
+        FreeAndNil(SAM);
        end;
-      finally
-       FreeAndNil(DAE);
+       result:=true;
       end;
-     end;
-     else begin
+      TpvScene3D.TFileType.WavefrontOBJ:begin
+       OBJ:=TpvOBJModel.Create;
+       try
+        OBJ.LoadFromStream(aStream);
+        AssignFromOBJ(OBJ);
+       finally
+        FreeAndNil(OBJ);
+       end;
+       result:=true;
+      end;
+      TpvScene3D.TFileType.ColladaDAE:begin
+       DAE:=TpvDAELoader.Create;
+       try
+        if DAE.Load(aStream) then begin
+         AssignFromDAE(DAE);
+         result:=true;
+        end;
+       finally
+        FreeAndNil(DAE);
+       end;
+      end;
+      else begin
+      end;
      end;
     end;
-   end;
-   if not result then begin
-    pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Error!');
+    if not result then begin
+     pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Error!');
+    end;
+   except
+    on e:Exception do begin
+     pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Exception['+e.ClassName+']: '+e.Message);
+     raise;
+    end;
    end;
   finally
    pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad("'+FileName+'")','Leaving...');
