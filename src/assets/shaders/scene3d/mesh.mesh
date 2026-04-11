@@ -28,12 +28,24 @@
 #endif
 
 #ifndef MESH_GROUP_SIZE
-#define MESH_GROUP_SIZE 128
+#define MESH_GROUP_SIZE 64
 #endif
 
 // Meshlet limits — must match TpvScene3D (MaximumVerticesPerMeshlet, MaximumPrimitivesPerMeshlet)
 #define MAX_MESHLET_VERTICES 64
 #define MAX_MESHLET_PRIMITIVES 126
+
+// AMD suggests 128 vertices and 256 primitives per meshlet for optimal performance, while
+// NVIDIA suggests 64 vertices and 126 primitives (or 40, 84 as other possible sweet spots for
+// the primitive count). First generation mesh shader NVIDIA hardware allocates primitive 
+// indices in 128 byte granularity and needs to reserve 4 bytes for the primitive count.
+// Therefore 126, not 128, since going beyond 126 triangles would allocate the next 128 bytes
+// on these first gen NVIDIA cards, resulting in a significant memory waste and performance drop. 
+// On AMD hardware, it is possible to use up to 128 vertices and 256 primitives without such a 
+// penalty, but in practice the optimal numbers can vary based on the specific scene and workload. 
+// So the more conservative 64 vertices and 126 primitives is chosen as the default to ensure good
+// performance across a wider range of hardware, especially considering that many scenes may not 
+// benefit significantly from larger meshlets and that the memory savings can be substantial.
 
 #ifdef VOXELIZATION
 // Voxelization: vertices are duplicated per primitive (dominant-axis projection differs per triangle).
@@ -190,15 +202,15 @@ void main(){
 
   // Load meshlet geometry descriptor
   MeshletDescriptor desc = meshletDescBuf.descriptors[meshletGlobalIndex];
-  uint vertexCount = desc.vertexCount;
-  uint primitiveCount = desc.primitiveCount;
+  uint vertexCount = min(desc.vertexCount, MAX_MESHLET_VERTICES);
+  uint primitiveCount = min(desc.primitiveCount, MAX_MESHLET_PRIMITIVES);
 
 #ifdef VOXELIZATION
   // Voxelization: each primitive needs its own 3 vertices (dominant-axis projection
   // differs per triangle, so vertices cannot be shared across primitives)
   primitiveCount = min(primitiveCount, MAX_VOXEL_MESHLET_PRIMITIVES);
-  uint voxVertexCount = primitiveCount * 3u;
-  SetMeshOutputsEXT(voxVertexCount, primitiveCount);
+  uint voxelVertexCount = primitiveCount * 3u;
+  SetMeshOutputsEXT(voxelVertexCount, primitiveCount);
 #else
   // Declare mesh output sizes (must be called before writing any output)
   SetMeshOutputsEXT(vertexCount, primitiveCount);

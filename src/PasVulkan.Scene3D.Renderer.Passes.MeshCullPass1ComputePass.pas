@@ -463,11 +463,11 @@ begin
    aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].Handle,0,4,0);
   end;
 
-  // Clear current-frame part of meshlet visibility bitmap
-  if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex]) then begin
-   aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex].Handle,
+  // Clear current-frame part of meshlet visibility bitmap for this cull render pass
+  if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,fCullRenderPass]) then begin
+   aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,fCullRenderPass].Handle,
                                 0,
-                                fInstance.PerInFlightFrameMeshletVisibilityBufferPartSizes[aInFlightFrameIndex]*SizeOf(TVkUInt32),
+                                fInstance.PerInFlightFrameMeshletVisibilityBufferPartSizes[aInFlightFrameIndex,fCullRenderPass]*SizeOf(TVkUInt32),
                                 0);
   end;
 
@@ -503,12 +503,12 @@ begin
                                                           fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);
-   if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex]) then begin
+   if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,fCullRenderPass]) then begin
     BufferMemoryBarriers[4]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                             TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                             VK_QUEUE_FAMILY_IGNORED,
                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                            fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex].Handle,
+                                                            fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,fCullRenderPass].Handle,
                                                             0,
                                                             VK_WHOLE_SIZE);
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
@@ -528,12 +528,12 @@ begin
                                       0,nil);
    end;
   end else begin
-   if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex]) then begin
+   if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,fCullRenderPass]) then begin
     BufferMemoryBarriers[3]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                             TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                             VK_QUEUE_FAMILY_IGNORED,
                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                            fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex].Handle,
+                                                            fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,fCullRenderPass].Handle,
                                                             0,
                                                             VK_WHOLE_SIZE);
     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
@@ -652,8 +652,8 @@ begin
     end;
 
     PushConstants.MeshletVisibilityBDAPadding:=0;
-    if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex]) then begin
-     PushConstants.MeshletVisibilityBDA:=fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex].DeviceAddress;
+    if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,fCullRenderPass]) then begin
+     PushConstants.MeshletVisibilityBDA:=fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,fCullRenderPass].DeviceAddress;
      PushConstants.MeshletVisibilityPartOffset:=0;
     end else begin
      PushConstants.MeshletVisibilityBDA:=0;

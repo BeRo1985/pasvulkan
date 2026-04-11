@@ -2025,6 +2025,8 @@ type EpvScene3D=class(Exception);
             TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues=array[0..MaxInFlightFrames-1] of TpvSizeInt;
             TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TPerInFlightFrameGPUDrawIndexedIndirectCommandBufferPartSizes=array[0..MaxInFlightFrames-1] of TpvSizeUInt;
+            TPerInFlightFrameMeshletVisibilityBuffersPerCullRenderPass=array[0..MaxInFlightFrames-1,TpvScene3DRendererCullRenderPass] of TpvVulkanBuffer;
+            TPerInFlightFrameMeshletVisibilityBufferPartSizesPerCullRenderPass=array[0..MaxInFlightFrames-1,TpvScene3DRendererCullRenderPass] of TpvSizeUInt;
             TPerInFlightFrameGPUCulledArray=array[0..MaxInFlightFrames-1,TpvScene3DRendererRenderPass] of Boolean;
             PPerInFlightFrameGPUCulledArray=^TPerInFlightFrameGPUCulledArray;
             TPerInFlightFrameGPUCountMeshObjectIDsArray=array[0..MaxInFlightFrames-1] of TpvSizeInt;
@@ -4196,7 +4198,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($0000000c);
+             PVMFVersion=TpVUInt32($0000000d);
              ProceduralTextureImageHookDefault:TProceduralTextureImageHook=(Hook:nil;AllocateTexture:true);
              EmptyGPUInstanceData:TGPUInstanceData=
               (
@@ -17268,8 +17270,8 @@ begin
                        SizeOf(TpvScene3D.TVertex),
                        @DestinationMeshPrimitiveIndices[0],
                        length(DestinationMeshPrimitiveIndices),
-                       MaxVerticesPerMeshlet,
-                       MaxPrimitivesPerMeshlet,
+                       TpvScene3D.MaximumVerticesPerMeshlet,
+                       TpvScene3D.MaximumPrimitivesPerMeshlet,
                        DestinationMeshPrimitive.fMeshlets,
                        false);
 {$ifdef MeshShaderDebug}

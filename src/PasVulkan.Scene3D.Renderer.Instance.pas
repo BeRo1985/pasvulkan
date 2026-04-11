@@ -839,8 +839,8 @@ type { TpvScene3DRendererInstance }
        fPerInFlightFrameMeshCullScratchBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers;
        fPerInFlightFrameExpandRangeInfoBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers;
        fPerInFlightFrameMeshCullMaxScratchEntries:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues;
-       fPerInFlightFrameMeshletVisibilityBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers;
-       fPerInFlightFrameMeshletVisibilityBufferPartSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBufferPartSizes;
+       fPerInFlightFrameMeshletVisibilityBuffers:TpvScene3D.TPerInFlightFrameMeshletVisibilityBuffersPerCullRenderPass;
+       fPerInFlightFrameMeshletVisibilityBufferPartSizes:TpvScene3D.TPerInFlightFrameMeshletVisibilityBufferPartSizesPerCullRenderPass;
       private
        fDebugDrawMeshletBoundingSpheres:Boolean;
        fDebugMeshletSphereLineBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
@@ -1162,8 +1162,8 @@ type { TpvScene3DRendererInstance }
        property PerInFlightFrameMeshCullScratchBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fPerInFlightFrameMeshCullScratchBuffers;
        property PerInFlightFrameExpandRangeInfoBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fPerInFlightFrameExpandRangeInfoBuffers;
        property PerInFlightFrameMeshCullMaxScratchEntries:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameMeshCullMaxScratchEntries;
-       property PerInFlightFrameMeshletVisibilityBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fPerInFlightFrameMeshletVisibilityBuffers;
-       property PerInFlightFrameMeshletVisibilityBufferPartSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBufferPartSizes read fPerInFlightFrameMeshletVisibilityBufferPartSizes;
+       property PerInFlightFrameMeshletVisibilityBuffers:TpvScene3D.TPerInFlightFrameMeshletVisibilityBuffersPerCullRenderPass read fPerInFlightFrameMeshletVisibilityBuffers;
+       property PerInFlightFrameMeshletVisibilityBufferPartSizes:TpvScene3D.TPerInFlightFrameMeshletVisibilityBufferPartSizesPerCullRenderPass read fPerInFlightFrameMeshletVisibilityBufferPartSizes;
        property DrawChoreographyBatchRangeFrameBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameBuckets read fDrawChoreographyBatchRangeFrameBuckets write fDrawChoreographyBatchRangeFrameBuckets;
        property DrawChoreographyBatchRangeFrameRenderPassBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameRenderPassBuckets read fDrawChoreographyBatchRangeFrameRenderPassBuckets write fDrawChoreographyBatchRangeFrameRenderPassBuckets;
       public
@@ -5126,6 +5126,7 @@ procedure TpvScene3DRendererInstance.AcquirePersistentResources;
 var InFlightFrameIndex:TpvSizeInt;
     Stream:TStream;
     RenderPass:TpvScene3DRendererRenderPass;
+    CullRenderPass:TpvScene3DRendererCullRenderPass;
 begin
 
  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
@@ -5413,27 +5414,29 @@ begin
                                                                                        );
    Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameExpandRangeInfoBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.ExpandRangeInfoBuffers['+IntToStr(InFlightFrameIndex)+']');
 
-   // Meshlet visibility bitmap: 1 bit per allocated meshlet slot, one buffer per IFF (previous IFF read, current IFF write)
-   fPerInFlightFrameMeshletVisibilityBufferPartSizes[InFlightFrameIndex]:=65536;
-   fPerInFlightFrameMeshletVisibilityBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                          65536*SizeOf(TpvUInt32),
-                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                          [],
-                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                          0,
-                                                                                          0,
-                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                          0,
-                                                                                          0,
-                                                                                          0,
-                                                                                          0,
-                                                                                          [TpvVulkanBufferFlag.BufferDeviceAddress],
-                                                                                          0,
-                                                                                          pvAllocationGroupIDScene3DDynamic,
-                                                                                          '3DRendererInstance.MeshletVisibilityBuffers['+IntToStr(InFlightFrameIndex)+']'
-                                                                                         );
-   Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameMeshletVisibilityBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.MeshletVisibilityBuffers['+IntToStr(InFlightFrameIndex)+']');
+   // Meshlet visibility bitmap: 1 bit per allocated meshlet slot, one buffer per IFF per CullRenderPass
+   for CullRenderPass:=TpvScene3DRendererCullRenderPass.First to TpvScene3DRendererCullRenderPass.Last do begin
+    fPerInFlightFrameMeshletVisibilityBufferPartSizes[InFlightFrameIndex,CullRenderPass]:=65536;
+    fPerInFlightFrameMeshletVisibilityBuffers[InFlightFrameIndex,CullRenderPass]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                                         65536*SizeOf(TpvUInt32),
+                                                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                         [],
+                                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                         0,
+                                                                                                         0,
+                                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                                         0,
+                                                                                                         0,
+                                                                                                         0,
+                                                                                                         0,
+                                                                                                         [TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                                                                         0,
+                                                                                                         pvAllocationGroupIDScene3DDynamic,
+                                                                                                         '3DRendererInstance.MeshletVisibilityBuffers['+IntToStr(InFlightFrameIndex)+','+IntToStr(Ord(CullRenderPass))+']'
+                                                                                                        );
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameMeshletVisibilityBuffers[InFlightFrameIndex,CullRenderPass].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.MeshletVisibilityBuffers['+IntToStr(InFlightFrameIndex)+','+IntToStr(Ord(CullRenderPass))+']');
+   end;
 
    fPerInFlightFrameMeshCullIndirectDispatchBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                 2*SizeOf(TVkDispatchIndirectCommand),
@@ -5691,6 +5694,7 @@ end;
 procedure TpvScene3DRendererInstance.ReleasePersistentResources;
 var InFlightFrameIndex:TpvSizeInt;
     RenderPass:TpvScene3DRendererRenderPass;
+    CullRenderPass:TpvScene3DRendererCullRenderPass;
 begin
 
  fFrameGraph.ReleasePersistentResources;
@@ -5717,7 +5721,9 @@ begin
   FreeAndNil(fPerInFlightFrameMeshCullPrefixSumBuffers[InFlightFrameIndex]);
   FreeAndNil(fPerInFlightFrameMeshCullScratchBuffers[InFlightFrameIndex]);
   FreeAndNil(fPerInFlightFrameExpandRangeInfoBuffers[InFlightFrameIndex]);
-  FreeAndNil(fPerInFlightFrameMeshletVisibilityBuffers[InFlightFrameIndex]);
+  for CullRenderPass:=TpvScene3DRendererCullRenderPass.First to TpvScene3DRendererCullRenderPass.Last do begin
+   FreeAndNil(fPerInFlightFrameMeshletVisibilityBuffers[InFlightFrameIndex,CullRenderPass]);
+  end;
   FreeAndNil(fPerInFlightFrameMeshCullIndirectDispatchBuffers[InFlightFrameIndex]);
   FreeAndNil(fLODLevelBuffers[InFlightFrameIndex]);
 
@@ -9286,29 +9292,31 @@ begin
    if MeshletVisibilityPartSize<1 then begin
     MeshletVisibilityPartSize:=1;
    end;
-   if (not assigned(fPerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex])) or
-      (fPerInFlightFrameMeshletVisibilityBufferPartSizes[aInFlightFrameIndex]<MeshletVisibilityPartSize) then begin
-    fScene3D.AddToFreeQueue(fPerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex],1);
-    fPerInFlightFrameMeshletVisibilityBufferPartSizes[aInFlightFrameIndex]:=MeshletVisibilityPartSize;
-    fPerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                            MeshletVisibilityPartSize*SizeOf(TpvUInt32),
-                                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                            [],
-                                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                            0,
-                                                                                            0,
-                                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                            0,
-                                                                                            0,
-                                                                                            0,
-                                                                                            0,
-                                                                                            [TpvVulkanBufferFlag.BufferDeviceAddress],
-                                                                                            0,
-                                                                                            pvAllocationGroupIDScene3DDynamic,
-                                                                                            '3DRendererInstance.MeshletVisibilityBuffers['+IntToStr(aInFlightFrameIndex)+']'
-                                                                                           );
-    Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.MeshletVisibilityBuffers['+IntToStr(aInFlightFrameIndex)+']');
+   for CullRenderPass:=TpvScene3DRendererCullRenderPass.First to TpvScene3DRendererCullRenderPass.Last do begin
+    if (not assigned(fPerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,CullRenderPass])) or
+       (fPerInFlightFrameMeshletVisibilityBufferPartSizes[aInFlightFrameIndex,CullRenderPass]<MeshletVisibilityPartSize) then begin
+     fScene3D.AddToFreeQueue(fPerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,CullRenderPass],1);
+     fPerInFlightFrameMeshletVisibilityBufferPartSizes[aInFlightFrameIndex,CullRenderPass]:=MeshletVisibilityPartSize;
+     fPerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,CullRenderPass]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                                           MeshletVisibilityPartSize*SizeOf(TpvUInt32),
+                                                                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                           [],
+                                                                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                           0,
+                                                                                                           0,
+                                                                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                                           0,
+                                                                                                           0,
+                                                                                                           0,
+                                                                                                           0,
+                                                                                                           [TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                                                                           0,
+                                                                                                           pvAllocationGroupIDScene3DDynamic,
+                                                                                                           '3DRendererInstance.MeshletVisibilityBuffers['+IntToStr(aInFlightFrameIndex)+','+IntToStr(Ord(CullRenderPass))+']'
+                                                                                                          );
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,CullRenderPass].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.MeshletVisibilityBuffers['+IntToStr(aInFlightFrameIndex)+','+IntToStr(Ord(CullRenderPass))+']');
+    end;
    end;
   end;
 

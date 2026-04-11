@@ -605,13 +605,13 @@ begin
 
     PushConstants.MeshletVisibilityBDAPadding:=0;
     begin
-     // PASS 0 reads from PREVIOUS in-flight frame's buffer (what the previous frame's PASS 1 wrote)
+     // PASS 0 reads from PREVIOUS in-flight frame's buffer for THIS cull render pass
      PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
      if PreviousInFlightFrameIndex<0 then begin
       inc(PreviousInFlightFrameIndex,fInstance.Renderer.CountInFlightFrames);
      end;
-     if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[PreviousInFlightFrameIndex]) then begin
-      PushConstants.MeshletVisibilityBDA:=fInstance.PerInFlightFrameMeshletVisibilityBuffers[PreviousInFlightFrameIndex].DeviceAddress;
+     if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[PreviousInFlightFrameIndex,fCullRenderPass]) then begin
+      PushConstants.MeshletVisibilityBDA:=fInstance.PerInFlightFrameMeshletVisibilityBuffers[PreviousInFlightFrameIndex,fCullRenderPass].DeviceAddress;
       PushConstants.MeshletVisibilityPartOffset:=0;
      end else begin
       PushConstants.MeshletVisibilityBDA:=0;
