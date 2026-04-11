@@ -31,9 +31,9 @@
 #define MESH_GROUP_SIZE 128
 #endif
 
-// Meshlet limits — must match TpvScene3DMeshlet (MaxVerticesPerMeshlet, MaxPrimitivesPerMeshlet)
-#define MAX_MESHLET_VERTICES 256
-#define MAX_MESHLET_PRIMITIVES 256
+// Meshlet limits — must match TpvScene3D (MaximumVerticesPerMeshlet, MaximumPrimitivesPerMeshlet)
+#define MAX_MESHLET_VERTICES 64
+#define MAX_MESHLET_PRIMITIVES 126
 
 #ifdef VOXELIZATION
 // Voxelization: vertices are duplicated per primitive (dominant-axis projection differs per triangle).
