@@ -4337,6 +4337,7 @@ type EpvScene3D=class(Exception);
        fSharedBufferTimelineCounter:TpvUInt64;
        fSharedBufferFence:TpvVulkanFence;
        fUseTimelineSemaphore:boolean;
+       fWaitOnceOnPreviousFrameFirst:boolean;
 {      fVulkanLightItemsStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightTreeStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightMetaInfoStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;}
@@ -4754,6 +4755,7 @@ type EpvScene3D=class(Exception);
        procedure DumpUpdateProfilingTimes;
        procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
+       procedure WaitOnceOnPreviousFrame;
        procedure ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
 //     procedure FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
@@ -34454,6 +34456,7 @@ begin
   end;
 
   fSharedBufferTimelineCounter:=0;
+ fWaitOnceOnPreviousFrameFirst:=false;
   fUseTimelineSemaphore:=fVulkanDevice.PhysicalDevice.Vulkan12Features.timelineSemaphore<>VK_FALSE;
   if fUseTimelineSemaphore then begin
    fSharedBufferTimelineSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
@@ -38897,6 +38900,19 @@ begin
 
 end;
 
+procedure TpvScene3D.WaitOnceOnPreviousFrame;
+begin
+ if fWaitOnceOnPreviousFrameFirst then begin
+  fWaitOnceOnPreviousFrameFirst:=false;
+  if fUseTimelineSemaphore and assigned(fSharedBufferTimelineSemaphore) then begin
+   fSharedBufferTimelineSemaphore.WaitFor(fSharedBufferTimelineCounter);
+  end else if assigned(fSharedBufferFence) then begin
+   fSharedBufferFence.WaitFor;
+   fSharedBufferFence.Reset;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
 var PlanetIndex:TpvSizeInt;
     Planet:TpvScene3DPlanet;
@@ -38905,6 +38921,8 @@ var PlanetIndex:TpvSizeInt;
 begin
 
  if assigned(fVulkanDevice) then begin
+
+  fWaitOnceOnPreviousFrameFirst:=true;
 
   if assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) then begin
    fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
@@ -39068,6 +39086,7 @@ procedure TpvScene3D.ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWait
 var PlanetIndex,PassIndex,CountPlanetAtmospherePrecipitationSimulationToSignalSemaphores,CountPlanetWaterSimulationToSignalSemaphores,Index:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     SubmitInfo:TVkSubmitInfo;
+    WaitDstStageFlags:TVkPipelineStageFlags;
     WaitSemaphoreHandles:array[0..1] of TVkSemaphore;
     WaitSemaphoreDstStageFlags:array[0..1] of TVkPipelineStageFlags;
     WaitSemaphoreValues:array[0..1] of TpvUInt64;
@@ -39089,11 +39108,10 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  // Fence fallback: CPU wait for previous frame's shared buffer usage to complete
-  if (not fUseTimelineSemaphore) and assigned(fSharedBufferFence) then begin
-   fSharedBufferFence.WaitFor;
-   fSharedBufferFence.Reset;
-  end;
+   // Fence fallback: ensure previous frame's GPU work is complete (no-op for timeline path)
+   if not fUseTimelineSemaphore then begin
+    WaitOnceOnPreviousFrame;
+   end;
 
   VulkanShortTermDynamicBufferData:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex];
 
