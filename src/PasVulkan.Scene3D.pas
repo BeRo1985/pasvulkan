@@ -3816,7 +3816,6 @@ type EpvScene3D=class(Exception);
               fTotalMeshletVertexCount:TpvSizeInt;
               fTotalMeshletPrimitiveCount:TpvSizeInt;
               fMorphTargetVertices:TpvScene3D.TMorphTargetVertexDynamicArrayList;
-              fFrameMorphTargetVertices:array[0..MaxInFlightFrames-1] of TpvScene3D.TMorphTargetVertexDynamicArrayList;
               fMorphTargetCount:TpvSizeInt;
               fCountNodeWeights:TpvSizeInt;
               fCountJointNodeMatrices:TpvSizeInt;
@@ -18810,10 +18809,6 @@ begin
 
  fMorphTargetVertices.Clear;
 
- for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
-  fFrameMorphTargetVertices[InFlightFrameIndex]:=TpvScene3D.TMorphTargetVertexDynamicArrayList.Create;
- end;
-
  fMorphTargetCount:=0;
 
  fJointBlocks:=TpvScene3D.TGroup.TGroupJointBlocks.Create;
@@ -19008,10 +19003,6 @@ begin
 
  for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
   FreeAndNil(fFrameVertices[InFlightFrameIndex]);
- end;
-
- for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
-  FreeAndNil(fFrameMorphTargetVertices[InFlightFrameIndex]);
  end;
 
  FreeAndNil(fMorphTargetVertices);
@@ -24787,10 +24778,6 @@ begin
 
   if assigned(fFrameVertices[aInFlightFrameIndex]) then begin
    fFrameVertices[aInFlightFrameIndex].FastAssign(fVertices);
-  end;
-
-  if assigned(fFrameMorphTargetVertices[aInFlightFrameIndex]) then begin
-   fFrameMorphTargetVertices[aInFlightFrameIndex].FastAssign(fMorphTargetVertices);
   end;
 
   fFrameUpdatedMeshContentGenerations[aInFlightFrameIndex]:=fMeshContentGeneration;
@@ -32268,10 +32255,10 @@ begin
    end;
 
    if (fBufferRanges.VulkanMorphTargetVertexBufferRange.Offset>=0) and
-      (fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].Count>0) then begin
-    SrcMorphTargetVertex:=@fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].ItemArray[0];
+      (fGroup.fMorphTargetVertices.Count>0) then begin
+    SrcMorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[0];
     DstMorphTargetVertex:=@fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[fBufferRanges.VulkanMorphTargetVertexBufferRange.Offset];
-    for Index:=0 to fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].Count-1 do begin
+    for Index:=0 to fGroup.fMorphTargetVertices.Count-1 do begin
      DstMorphTargetVertex^:=SrcMorphTargetVertex^;
      inc(DstMorphTargetVertex^.Index,fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Offset);
      if DstMorphTargetVertex^.Next<>TpvUInt32($ffffffff) then begin
