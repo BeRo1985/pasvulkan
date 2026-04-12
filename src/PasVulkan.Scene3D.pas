@@ -3766,6 +3766,7 @@ type EpvScene3D=class(Exception);
               fDynamicAABBTreeCulling:boolean;
               fHeadless:boolean;
               fHasLODs:boolean;
+              fOptimizeMeshletIndices:Boolean;
               fOrder:TpvInt64;
               fObjects:TBaseObjects;
               fMaterialsToDuplicate:TpvScene3D.TGroup.TMaterialsToDuplicate;
@@ -3962,6 +3963,7 @@ type EpvScene3D=class(Exception);
               property DynamicAABBTreeCulling:boolean read fDynamicAABBTreeCulling write fDynamicAABBTreeCulling;
               property Headless:boolean read fHeadless write fHeadless;
               property HasLODs:boolean read fHasLODs;
+              property OptimizeMeshletIndices:boolean read fOptimizeMeshletIndices write fOptimizeMeshletIndices;
               property Order:TpvInt64 read fOrder write fOrder;
               property Objects:TBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
@@ -15347,7 +15349,7 @@ begin
                  TpvScene3D.MaximumVerticesPerMeshlet,
                  TpvScene3D.MaximumPrimitivesPerMeshlet,
                  fMeshlets,
-                 true);
+                 fGroup.fOptimizeMeshletIndices);
 {$ifdef MeshShaderDebug}
    WriteLn('[DEBUG-MS] Primitive.Finish: BuildMeshlets produced ',fMeshlets.Count,' meshlets from ',fTemporaryVertices.Count,' verts ',fTemporaryIndices.Count,' indices');
 {$endif}
@@ -17287,7 +17289,7 @@ begin
                        TpvScene3D.MaximumVerticesPerMeshlet,
                        TpvScene3D.MaximumPrimitivesPerMeshlet,
                        DestinationMeshPrimitive.fMeshlets,
-                       true);
+                       fGroup.fOptimizeMeshletIndices);
 {$ifdef MeshShaderDebug}
          WriteLn('[DEBUG-MS] glTF BuildMeshlets: produced ',DestinationMeshPrimitive.fMeshlets.Count,' meshlets from ',length(DestinationMeshPrimitiveVertices),' verts ',length(DestinationMeshPrimitiveIndices),' indices');
 {$endif}
@@ -18812,6 +18814,8 @@ begin
  fDynamicAABBTreeCulling:=false;
 
  fHasLODs:=false;
+
+ fOptimizeMeshletIndices:=true;
 
  fUsedVisibleDrawNodes:=TUsedVisibleDrawNodes.Create;
  fUsedVisibleDrawNodes.OwnsObjects:=false;
