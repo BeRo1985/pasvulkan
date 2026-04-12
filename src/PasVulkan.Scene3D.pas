@@ -4603,7 +4603,7 @@ type EpvScene3D=class(Exception);
        fCachedMeshletBoundsNextOutputIndex:TpvUInt32;
       private
        fDebugMeshletSpherePairs:TDebugMeshletSpherePairs;
-       fDebugMeshletSpherePairsBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fDebugMeshletSpherePairsBuffer:TpvVulkanBuffer;
        fDebugMeshletSpherePairsDirty:boolean;
       private
        // TInstance.Update profiling accumulators (in milliseconds)
@@ -4895,7 +4895,7 @@ type EpvScene3D=class(Exception);
       public
        procedure RebuildDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
-       function GetDebugMeshletSpherePairsBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+       function GetDebugMeshletSpherePairsBuffer:TpvVulkanBuffer;
        property DebugMeshletSpherePairCount:TpvSizeInt read fDebugMeshletSpherePairs.Count;
        property DebugMeshletSpherePairsDirty:boolean read fDebugMeshletSpherePairsDirty write fDebugMeshletSpherePairsDirty;
       public
@@ -35233,9 +35233,7 @@ begin
  fCachedMeshletBoundsRanges.Finalize;
 
  fDebugMeshletSpherePairs.Finalize;
- for Index:=0 to MaxInFlightFrames-1 do begin
-  FreeAndNil(fDebugMeshletSpherePairsBuffers[Index]);
- end;
+ FreeAndNil(fDebugMeshletSpherePairsBuffer);
 
  FreeAndNil(fVulkanVertexBufferRangeAllocator);
 
@@ -39044,10 +39042,11 @@ begin
  end;
  if fDebugMeshletSpherePairs.Count>0 then begin
   RequiredSize:=fDebugMeshletSpherePairs.Count*SizeOf(TDebugMeshletSpherePair);
-  if (not assigned(fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex])) or
-     (fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex].Size<RequiredSize) then begin
-   AddToFreeQueue(fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex],-1);
-   fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+  if (not assigned(fDebugMeshletSpherePairsBuffer)) or
+     (fDebugMeshletSpherePairsBuffer.Size<RequiredSize) then begin
+   WaitOnceOnPreviousFrame;
+   FreeAndNil(fDebugMeshletSpherePairsBuffer);
+   fDebugMeshletSpherePairsBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                                   RequiredSize*2,
                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
@@ -39066,19 +39065,19 @@ begin
                                                                                   [TpvVulkanBufferFlag.BufferDeviceAddress],
                                                                                   0,
                                                                                   pvAllocationGroupIDScene3DDynamic,
-                                                                                  'TpvScene3D.DebugMeshletSpherePairsBuffer['+IntToStr(aInFlightFrameIndex)+']'
+                                                                                  'TpvScene3D.DebugMeshletSpherePairsBuffer'
                                                                                  );
-   fVulkanDevice.DebugUtils.SetObjectName(fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.DebugMeshletSpherePairsBuffer['+IntToStr(aInFlightFrameIndex)+']');
+   fVulkanDevice.DebugUtils.SetObjectName(fDebugMeshletSpherePairsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.DebugMeshletSpherePairsBuffer');
   end;
-  fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex].UpdateData(fDebugMeshletSpherePairs.Items[0],
+  fDebugMeshletSpherePairsBuffer.UpdateData(fDebugMeshletSpherePairs.Items[0],
                                                                     0,
                                                                     RequiredSize);
  end;
 end;
 
-function TpvScene3D.GetDebugMeshletSpherePairsBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+function TpvScene3D.GetDebugMeshletSpherePairsBuffer:TpvVulkanBuffer;
 begin
- result:=fDebugMeshletSpherePairsBuffers[aInFlightFrameIndex];
+ result:=fDebugMeshletSpherePairsBuffer;
 end;
 
 procedure TpvScene3D.ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);

@@ -847,7 +847,7 @@ type { TpvScene3DRendererInstance }
        fPerInFlightFrameMeshletVisibilityBufferPartSizes:TpvScene3D.TPerInFlightFrameMeshletVisibilityBufferPartSizesPerCullRenderPass;
       private
        fDebugDrawMeshletBoundingSpheres:Boolean;
-       fDebugMeshletSphereLineBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fDebugMeshletSphereLineBuffer:TpvVulkanBuffer;
        fDebugMeshletSphereComputeShaderModule:TpvVulkanShaderModule;
        fDebugMeshletSphereComputePipelineLayout:TpvVulkanPipelineLayout;
        fDebugMeshletSphereComputePipeline:TpvVulkanComputePipeline;
@@ -1134,7 +1134,7 @@ type { TpvScene3DRendererInstance }
       public
        property DebugTAAMode:TpvUInt32 read fDebugTAAMode write fDebugTAAMode;
        property DebugDrawMeshletBoundingSpheres:Boolean read fDebugDrawMeshletBoundingSpheres write fDebugDrawMeshletBoundingSpheres;
-       property DebugMeshletSphereLineBuffers[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanBuffer read GetDebugMeshletSphereLineBuffer;
+       property DebugMeshletSphereLineBuffer:TpvVulkanBuffer read fDebugMeshletSphereLineBuffer;
       public
        property SolidPrimitivePrimitiveDynamicArrays:TSolidPrimitivePrimitiveDynamicArrays read fSolidPrimitivePrimitiveDynamicArrays;
        property SolidPrimitivePrimitiveBuffers:TSolidPrimitiveVulkanBuffers read fSolidPrimitivePrimitiveBuffers;
@@ -5674,10 +5674,9 @@ begin
                                                                        0);
   Renderer.VulkanDevice.DebugUtils.SetObjectName(fDebugMeshletSphereComputePipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererInstance.fDebugMeshletSphereComputePipeline');
 
-  // Create per-IFF debug line buffers (indirect draw header + vertex data)
+   // Create debug line buffer (indirect draw header + vertex data)
   // Max 65536 spheres × 96 vertices × 16 bytes + 16 bytes header
-  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
-   fDebugMeshletSphereLineBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+   fDebugMeshletSphereLineBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                SizeOf(TVkDrawIndirectCommand)+(65536*96*4*SizeOf(TpvUInt32)),
                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -5693,10 +5692,9 @@ begin
                                                                                [TpvVulkanBufferFlag.BufferDeviceAddress],
                                                                                0,
                                                                                pvAllocationGroupIDScene3DDynamic,
-                                                                               '3DRendererInstance.DebugMeshletSphereLineBuffers['+IntToStr(InFlightFrameIndex)+']'
+                                                                               '3DRendererInstance.DebugMeshletSphereLineBuffer'
                                                                               );
-   Renderer.VulkanDevice.DebugUtils.SetObjectName(fDebugMeshletSphereLineBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.DebugMeshletSphereLineBuffers['+IntToStr(InFlightFrameIndex)+']');
-  end;
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fDebugMeshletSphereLineBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.DebugMeshletSphereLineBuffer');
 
  end else begin
   fDebugMeshletSphereComputeShaderModule:=nil;
@@ -5704,9 +5702,7 @@ begin
   fDebugMeshletSphereFragmentShaderModule:=nil;
   fDebugMeshletSphereComputePipelineLayout:=nil;
   fDebugMeshletSphereComputePipeline:=nil;
-  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
-   fDebugMeshletSphereLineBuffers[InFlightFrameIndex]:=nil;
-  end;
+  fDebugMeshletSphereLineBuffer:=nil;
  end;
 
 end;
@@ -5721,9 +5717,7 @@ begin
 
  FreeAndNil(fImageBasedLightingReflectionProbeCubeMaps);
 
- for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
-  FreeAndNil(fDebugMeshletSphereLineBuffers[InFlightFrameIndex]);
- end;
+ FreeAndNil(fDebugMeshletSphereLineBuffer);
  FreeAndNil(fDebugMeshletSphereComputePipeline);
  FreeAndNil(fDebugMeshletSphereComputePipelineLayout);
  FreeAndNil(fDebugMeshletSphereFragmentShaderModule);
@@ -9678,7 +9672,7 @@ end;
 
 function TpvScene3DRendererInstance.GetDebugMeshletSphereLineBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
 begin
- result:=fDebugMeshletSphereLineBuffers[aInFlightFrameIndex];
+ result:=fDebugMeshletSphereLineBuffer;
 end;
 
 procedure TpvScene3DRendererInstance.DispatchDebugMeshletSpheres(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
@@ -9699,7 +9693,7 @@ begin
   exit;
  end;
 
- LineBuffer:=fDebugMeshletSphereLineBuffers[aInFlightFrameIndex];
+ LineBuffer:=fDebugMeshletSphereLineBuffer;
  if not assigned(LineBuffer) then begin
   exit;
  end;
@@ -9720,7 +9714,7 @@ begin
   exit;
  end;
 
- PairsBuffer:=fScene3D.GetDebugMeshletSpherePairsBuffer(aInFlightFrameIndex);
+ PairsBuffer:=fScene3D.GetDebugMeshletSpherePairsBuffer;
  if not assigned(PairsBuffer) then begin
   exit;
  end;

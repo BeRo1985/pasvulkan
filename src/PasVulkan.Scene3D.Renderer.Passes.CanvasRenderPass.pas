@@ -670,7 +670,7 @@ begin
      fInstance.Renderer.Scene3D.MeshShaderSupport and
      assigned(fVulkanDebugLinesGraphicsPipeline) and
      assigned(fVulkanDebugLinesPipelineLayout) and
-     assigned(fInstance.DebugMeshletSphereLineBuffers[aInFlightFrameIndex]) and
+     assigned(fInstance.DebugMeshletSphereLineBuffer) and
      (InFlightFrameState^.FinalViewIndex>=0) and
      (InFlightFrameState^.CountFinalViews>0) then begin
 
@@ -678,7 +678,7 @@ begin
 
    DebugLinesPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
    DebugLinesPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
-   DebugLinesPushConstants.VertexBufferBDA:=fInstance.DebugMeshletSphereLineBuffers[aInFlightFrameIndex].DeviceAddress;
+   DebugLinesPushConstants.VertexBufferBDA:=fInstance.DebugMeshletSphereLineBuffer.DeviceAddress;
    aCommandBuffer.CmdPushConstants(fVulkanDebugLinesPipelineLayout.Handle,
                                     TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
                                     0,
@@ -695,7 +695,7 @@ begin
 
    aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanDebugLinesGraphicsPipeline.Handle);
 
-   aCommandBuffer.CmdDrawIndirect(fInstance.DebugMeshletSphereLineBuffers[aInFlightFrameIndex].Handle,0,1,0);
+   aCommandBuffer.CmdDrawIndirect(fInstance.DebugMeshletSphereLineBuffer.Handle,0,1,0);
 
    fOnSetRenderPassResourcesDone:=false;
 
