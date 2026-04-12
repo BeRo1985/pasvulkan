@@ -399,7 +399,7 @@ begin
                                                          TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
                                                          VK_QUEUE_FAMILY_IGNORED,
-                                                         fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
+                                                         fInstance.GPUDrawIndexedIndirectCommandCounterBuffer.Handle,
                                                          0,
                                                          VK_WHOLE_SIZE);
 
@@ -468,7 +468,7 @@ begin
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
                                                          VK_QUEUE_FAMILY_IGNORED,
-                                                         fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
+                                                         fInstance.GPUDrawIndexedIndirectCommandCounterBuffer.Handle,
                                                          0,
                                                          VK_WHOLE_SIZE);
 
@@ -476,7 +476,7 @@ begin
                                                          TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
                                                          VK_QUEUE_FAMILY_IGNORED,
-                                                         fInstance.PerInFlightFrameMeshCullIndirectDispatchBuffers[aInFlightFrameIndex].Handle,
+                                                         fInstance.MeshCullIndirectDispatchBuffer.Handle,
                                                          0,
                                                          VK_WHOLE_SIZE);
 
@@ -636,7 +636,7 @@ begin
       fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'MeshCullPass0ComputePass.Dispatch');
      end;
 
-     aCommandBuffer.CmdDispatchIndirect(fInstance.PerInFlightFrameMeshCullIndirectDispatchBuffers[aInFlightFrameIndex].Handle,
+     aCommandBuffer.CmdDispatchIndirect(fInstance.MeshCullIndirectDispatchBuffer.Handle,
                                         TpvUInt32(Part)*SizeOf(TVkDispatchIndirectCommand));
      if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
       fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
@@ -697,7 +697,7 @@ begin
    SortPushConstants.ScratchBufferBDA:=fInstance.MeshCullScratchBuffer.DeviceAddress;
    SortPushConstants.ExpandRangeInfoBDA:=fInstance.PerInFlightFrameExpandRangeInfoBuffers[aInFlightFrameIndex].DeviceAddress;
    SortPushConstants.OutputCommandsBDA:=fInstance.GPUDrawIndexedIndirectCommandOutputBuffer.DeviceAddress;
-   SortPushConstants.CountersBDA:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].DeviceAddress;
+   SortPushConstants.CountersBDA:=fInstance.GPUDrawIndexedIndirectCommandCounterBuffer.DeviceAddress;
 
    aCommandBuffer.CmdPushConstants(fSortPipelineLayout.Handle,
                                    TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
@@ -743,7 +743,7 @@ begin
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
                                                          VK_QUEUE_FAMILY_IGNORED,
-                                                         fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
+                                                         fInstance.GPUDrawIndexedIndirectCommandCounterBuffer.Handle,
                                                          0,
                                                          VK_WHOLE_SIZE);
 

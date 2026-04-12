@@ -97,7 +97,7 @@ type { TpvScene3DRendererMeshCullReset }
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aCountInFlightFrames:TpvSizeInt);
        destructor Destroy; override;
-       procedure AcquireResources(const aBatchRangeBuffers,aCounterBuffers,aPrefixSumBuffers,aIndirectDispatchBuffers:TInFlightFrameVulkanBuffers);
+       procedure AcquireResources(const aBatchRangeBuffers:TInFlightFrameVulkanBuffers;const aCounterBuffer:TpvVulkanBuffer;const aPrefixSumBuffers:TInFlightFrameVulkanBuffers;const aIndirectDispatchBuffer:TpvVulkanBuffer);
        procedure ReleaseResources;
        property Pipeline:TpvVulkanComputePipeline read fPipeline;
        property PipelineLayout:TpvVulkanPipelineLayout read fPipelineLayout;
@@ -135,7 +135,7 @@ begin
  result:=fVulkanDescriptorSets[aInFlightFrameIndex];
 end;
 
-procedure TpvScene3DRendererMeshCullReset.AcquireResources(const aBatchRangeBuffers,aCounterBuffers,aPrefixSumBuffers,aIndirectDispatchBuffers:TInFlightFrameVulkanBuffers);
+procedure TpvScene3DRendererMeshCullReset.AcquireResources(const aBatchRangeBuffers:TInFlightFrameVulkanBuffers;const aCounterBuffer:TpvVulkanBuffer;const aPrefixSumBuffers:TInFlightFrameVulkanBuffers;const aIndirectDispatchBuffer:TpvVulkanBuffer);
 var Stream:TStream;
     InFlightFrameIndex:TpvSizeInt;
 begin
@@ -197,7 +197,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [aCounterBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                 [aCounterBuffer.DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
@@ -215,7 +215,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [aIndirectDispatchBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                 [aIndirectDispatchBuffer.DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
