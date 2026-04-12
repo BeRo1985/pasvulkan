@@ -3998,6 +3998,7 @@ type EpvScene3D=class(Exception);
             TTextureHashMap=TpvHashMap<TTexture.THashData,TTexture>;
             TMaterialHashMap=TpvHashMap<TMaterial.THashData,TMaterial>;
             TMaterialExistHashMap=TpvHashMap<TMaterial,Boolean>;
+            TImageExistHashMap=TpvHashMap<TImage,Boolean>;
             TBufferMemoryBarriers=TpvDynamicArray<TVkBufferMemoryBarrier>;
             TInFlightFrameBufferMemoryBarriers=array[0..MaxInFlightFrames-1] of TBufferMemoryBarriers;
             TMaterialBufferData=array[0..65535] of TMaterial.TShaderData;
@@ -4397,6 +4398,7 @@ type EpvScene3D=class(Exception);
        fImageIDManager:TIDManager;
        fImageIDHashMap:TImageIDHashMap;
        fImageHashMap:TImageHashMap;
+       fImageExistHashMap:TImageExistHashMap;
        fProceduralTextureImageHookStringHashMap:TProceduralTextureImageHookStringHashMap;
        fSamplerListLock:TPasMPCriticalSection;
        fSamplers:TSamplers;
@@ -4418,6 +4420,14 @@ type EpvScene3D=class(Exception);
        fMaterialIDMap:TMaterialIDMap;
        fMaterialHashMap:TMaterialHashMap;
        fMaterialExistHashMap:TMaterialExistHashMap;
+       fDedupImageCount:TPasMPInt32;
+       fUniqueImageCount:TPasMPInt32;
+       fDedupSamplerCount:TPasMPInt32;
+       fUniqueSamplerCount:TPasMPInt32;
+       fDedupTextureCount:TPasMPInt32;
+       fUniqueTextureCount:TPasMPInt32;
+       fDedupMaterialCount:TPasMPInt32;
+       fUniqueMaterialCount:TPasMPInt32;
        fEmptyMaterial:TpvScene3D.TMaterial;
        fMaterialDataProcessedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fMaterialDataUpdatedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
@@ -4720,6 +4730,7 @@ type EpvScene3D=class(Exception);
        procedure Initialize;
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
        procedure DumpMemoryUsage(const aStringList:TStringList);
+       procedure DumpDedupStats;
        procedure AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook;const aAllocateTexture:Boolean);
        procedure RemoveProceduralTextureImageHook(const aName:TpvUTF8String);
        function AcquireGPUInstanceDataIndex:TpvUInt32;
@@ -7363,6 +7374,7 @@ begin
   fSceneInstance.fImageListLock.Acquire;
   try
    fSceneInstance.fImages.Add(self);
+   fSceneInstance.fImageExistHashMap.Add(self,true);
    fID:=fSceneInstance.fImageIDManager.AllocateID;
    fSceneInstance.fImageIDHashMap.Add(fID,self);
   finally
@@ -7388,6 +7400,9 @@ begin
     fSceneInstance.fImages.Remove(self);
     if fSceneInstance.fImageHashMap[fHashData]=self then begin
      fSceneInstance.fImageHashMap.Delete(fHashData);
+    end;
+    if fSceneInstance.fImageExistHashMap.ExistKey(self) then begin
+     fSceneInstance.fImageExistHashMap.Delete(self);
     end;
     if fID>0 then begin
      if fSceneInstance.fImageIDHashMap[fID]=self then begin
@@ -20811,24 +20826,28 @@ begin
    HashData:=Image.GetHashData;
    fSceneInstance.fImageListLock.Acquire;
    try
-    if aForceNew then begin
+    if aForceNew or (HashData.MessageDigest=0) then begin
+     Image.fHashData:=HashData;
      if not fSceneInstance.fImageHashMap.ExistKey(HashData) then begin
       fSceneInstance.fImageHashMap[HashData]:=Image;
      end;
      result:=fNewImageMap.Add(Image);
      CurrentImage:=Image;
      Image:=nil;
+     TPasMPInterlocked.Increment(fSceneInstance.fUniqueImageCount);
     end else begin
      HashedImage:=fSceneInstance.fImageHashMap[HashData];
-     if assigned(HashedImage) then begin
+     if assigned(HashedImage) and fSceneInstance.fImageExistHashMap.ExistKey(HashedImage) then begin
       result:=fNewImageMap.Add(HashedImage);
       CurrentImage:=HashedImage;
+      TPasMPInterlocked.Increment(fSceneInstance.fDedupImageCount);
      end else begin
       Image.fHashData:=HashData;
       fSceneInstance.fImageHashMap[HashData]:=Image;
       result:=fNewImageMap.Add(Image);
       CurrentImage:=Image;
       Image:=nil;
+      TPasMPInterlocked.Increment(fSceneInstance.fUniqueImageCount);
      end;
     end;
    finally
@@ -20864,16 +20883,19 @@ begin
      result:=fNewSamplerMap.Add(Sampler);
      CurrentSampler:=Sampler;
      Sampler:=nil;
+     TPasMPInterlocked.Increment(fSceneInstance.fUniqueSamplerCount);
     end else begin
      HashedSampler:=fSceneInstance.fSamplerHashMap[HashData];
      if assigned(HashedSampler) then begin
       result:=fNewSamplerMap.Add(HashedSampler);
       CurrentSampler:=HashedSampler;
+      TPasMPInterlocked.Increment(fSceneInstance.fDedupSamplerCount);
      end else begin
       fSceneInstance.fSamplerHashMap[HashData]:=Sampler;
       result:=fNewSamplerMap.Add(Sampler);
       CurrentSampler:=Sampler;
       Sampler:=nil;
+      TPasMPInterlocked.Increment(fSceneInstance.fUniqueSamplerCount);
      end;
     end;
     if assigned(CurrentSampler) and (fNewSamplers.IndexOf(CurrentSampler)<0) then begin
@@ -20908,16 +20930,19 @@ begin
      result:=fNewTextureMap.Add(Texture);
      CurrentTexture:=Texture;
      Texture:=nil;
+     TPasMPInterlocked.Increment(fSceneInstance.fUniqueTextureCount);
     end else begin
      HashedTexture:=fSceneInstance.fTextureHashMap[HashData];
      if assigned(HashedTexture) then begin
       result:=fNewTextureMap.Add(HashedTexture);
       CurrentTexture:=HashedTexture;
+      TPasMPInterlocked.Increment(fSceneInstance.fDedupTextureCount);
      end else begin
       fSceneInstance.fTextureHashMap[HashData]:=Texture;
       result:=fNewTextureMap.Add(Texture);
       CurrentTexture:=Texture;
       Texture:=nil;
+      TPasMPInterlocked.Increment(fSceneInstance.fUniqueTextureCount);
      end;
     end;
     if assigned(CurrentTexture) and (fNewTextures.IndexOf(CurrentTexture)<0) then begin
@@ -20956,18 +20981,21 @@ begin
     fMaterialIndexHashMap.Add(Material,result);
     UsedMaterial:=Material;
     Material:=nil;
+    TPasMPInterlocked.Increment(fSceneInstance.fUniqueMaterialCount);
    end else begin
     HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
     if assigned(HashedMaterial) and fSceneInstance.fMaterialExistHashMap.ExistKey(HashedMaterial) and (HashedMaterial.fName=Material.fName) then begin
      result:=fMaterials.Add(HashedMaterial);
      fMaterialIndexHashMap.Add(HashedMaterial,result);
      UsedMaterial:=HashedMaterial;
+     TPasMPInterlocked.Increment(fSceneInstance.fDedupMaterialCount);
     end else begin
      fSceneInstance.fMaterialHashMap[HashData]:=Material;
      result:=fMaterials.Add(Material);
      fMaterialIndexHashMap.Add(Material,result);
      UsedMaterial:=Material;
      Material:=nil;
+     TPasMPInterlocked.Increment(fSceneInstance.fUniqueMaterialCount);
     end;
    end;
    if length(trim(aMaterial.fName))>0 then begin
@@ -33750,6 +33778,7 @@ begin
  fImageIDHashMap:=TImageIDHashMap.Create(nil);
 
  fImageHashMap:=TImageHashMap.Create(nil);
+ fImageExistHashMap:=TImageExistHashMap.Create(false);
 
  fProceduralTextureImageHookStringHashMap:=TProceduralTextureImageHookStringHashMap.Create(ProceduralTextureImageHookDefault);
 
@@ -33795,6 +33824,15 @@ begin
  fMaterialHashMap:=TMaterialHashMap.Create(nil);
 
  fMaterialExistHashMap:=TMaterialExistHashMap.Create(false);
+
+ fDedupImageCount:=0;
+ fUniqueImageCount:=0;
+ fDedupSamplerCount:=0;
+ fUniqueSamplerCount:=0;
+ fDedupTextureCount:=0;
+ fUniqueTextureCount:=0;
+ fDedupMaterialCount:=0;
+ fUniqueMaterialCount:=0;
 
  FillChar(fInFlightFrameMaterialBufferDataGenerations,SizeOf(TInFlightFrameMaterialBufferDataGenerations),#$ff);
 
@@ -35131,6 +35169,7 @@ begin
  end;
  FreeAndNil(fImages);
  FreeAndNil(fImageHashMap);
+ FreeAndNil(fImageExistHashMap);
  FreeAndNil(fImageIDHashMap);
  FreeAndNil(fImageIDManager);
  FreeAndNil(fImageListLock);
@@ -36190,6 +36229,16 @@ begin
 
  aStringList.Add('');
 
+end;
+
+procedure TpvScene3D.DumpDedupStats;
+begin
+ WriteLn('=== TpvScene3D Dedup Stats ===');
+ WriteLn('Images:    ',fUniqueImageCount,' unique, ',fDedupImageCount,' deduplicated');
+ WriteLn('Samplers:  ',fUniqueSamplerCount,' unique, ',fDedupSamplerCount,' deduplicated');
+ WriteLn('Textures:  ',fUniqueTextureCount,' unique, ',fDedupTextureCount,' deduplicated');
+ WriteLn('Materials: ',fUniqueMaterialCount,' unique, ',fDedupMaterialCount,' deduplicated');
+ WriteLn('==============================');
 end;
 
 procedure TpvScene3D.AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook;const aAllocateTexture:Boolean);

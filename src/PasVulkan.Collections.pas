@@ -4510,14 +4510,14 @@ begin
     Index:=0;
     pA:=@aKeyA;
     pB:=@aKeyB;
-    while (Index+SizeOf(TpvUInt32))<SizeOf(TpvHashMapKey) do begin
+    while (Index+SizeOf(TpvUInt32))<=SizeOf(TpvHashMapKey) do begin
      if TpvUInt32(TpvPointer(@pA^[Index])^)<>TpvUInt32(TpvPointer(@pB^[Index])^) then begin
       result:=false;
       exit;
      end;
      inc(Index,SizeOf(TpvUInt32));
     end;
-    while (Index+SizeOf(UInt8))<SizeOf(TpvHashMapKey) do begin
+    while (Index+SizeOf(UInt8))<=SizeOf(TpvHashMapKey) do begin
      if UInt8(TpvPointer(@pA^[Index])^)<>UInt8(TpvPointer(@pB^[Index])^) then begin
       result:=false;
       exit;
