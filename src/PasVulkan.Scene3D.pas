@@ -15349,7 +15349,7 @@ begin
                  TpvScene3D.MaximumVerticesPerMeshlet,
                  TpvScene3D.MaximumPrimitivesPerMeshlet,
                  fMeshlets,
-                 fGroup.fOptimizeMeshletIndices);
+                 fMesh.fGroup.fOptimizeMeshletIndices);
 {$ifdef MeshShaderDebug}
    WriteLn('[DEBUG-MS] Primitive.Finish: BuildMeshlets produced ',fMeshlets.Count,' meshlets from ',fTemporaryVertices.Count,' verts ',fTemporaryIndices.Count,' indices');
 {$endif}
