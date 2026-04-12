@@ -4730,7 +4730,7 @@ type EpvScene3D=class(Exception);
        procedure Initialize;
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
        procedure DumpMemoryUsage(const aStringList:TStringList);
-       procedure DumpDedupStats;
+       procedure DumpDedupStats(const aStringList:TStringList);
        procedure AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook;const aAllocateTexture:Boolean);
        procedure RemoveProceduralTextureImageHook(const aName:TpvUTF8String);
        function AcquireGPUInstanceDataIndex:TpvUInt32;
@@ -36231,14 +36231,14 @@ begin
 
 end;
 
-procedure TpvScene3D.DumpDedupStats;
+procedure TpvScene3D.DumpDedupStats(const aStringList:TStringList);
 begin
- WriteLn('=== TpvScene3D Dedup Stats ===');
- WriteLn('Images:    ',fUniqueImageCount,' unique, ',fDedupImageCount,' deduplicated');
- WriteLn('Samplers:  ',fUniqueSamplerCount,' unique, ',fDedupSamplerCount,' deduplicated');
- WriteLn('Textures:  ',fUniqueTextureCount,' unique, ',fDedupTextureCount,' deduplicated');
- WriteLn('Materials: ',fUniqueMaterialCount,' unique, ',fDedupMaterialCount,' deduplicated');
- WriteLn('==============================');
+ aStringList.Add('=== TpvScene3D Dedup Stats ===');
+ aStringList.Add('Images:    '+IntToStr(fUniqueImageCount)+' unique, '+IntToStr(fDedupImageCount)+' deduplicated');
+ aStringList.Add('Samplers:  '+IntToStr(fUniqueSamplerCount)+' unique, '+IntToStr(fDedupSamplerCount)+' deduplicated');
+ aStringList.Add('Textures:  '+IntToStr(fUniqueTextureCount)+' unique, '+IntToStr(fDedupTextureCount)+' deduplicated');
+ aStringList.Add('Materials: '+IntToStr(fUniqueMaterialCount)+' unique, '+IntToStr(fDedupMaterialCount)+' deduplicated');
+ aStringList.Add('==============================');
 end;
 
 procedure TpvScene3D.AddProceduralTextureImageHook(const aName:TpvUTF8String;const aHook:TImage.THook;const aAllocateTexture:Boolean);
