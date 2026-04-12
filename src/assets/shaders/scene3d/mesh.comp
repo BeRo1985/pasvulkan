@@ -15,11 +15,18 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer LOD
   uint needed[];
 };
 
+// Buffer reference for morph weight base offsets (per rootNode, uint32 offset into morphTargetWeights)
+layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer MorphWeightBaseOffsetsBuffer {
+  uint offsets[];
+};
+
 layout(push_constant) uniform PushConstants {
   uint indexOffset;
   uint countIndices;
   uvec2 lodNeededBDA; // BDA to lodNeeded[previousIFF] for 1-frame-delayed vertex skip
   uint lodTransformAllLevels; // 0 = Option B (skip if lodNeeded==0), 1 = Option A (transform all)
+  uint morphWeightBaseOffsetsPadding; // explicit padding for 8-byte alignment
+  uvec2 morphWeightBaseOffsetsBDA; // BDA to morph weight base offsets buffer
 } pushConstants;
 
 struct InPackedVertex {
@@ -141,6 +148,7 @@ vec2 unpackSnorm2x16Ex(uint v){
 #include "adjugate.glsl"
 
 void main(){
+  
   uint vertexIndex = gl_GlobalInvocationID.x;
   // uint vertexIndex = uint((((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x);
   if(vertexIndex < pushConstants.countIndices){
@@ -184,6 +192,12 @@ void main(){
 
       // Process morph target vertices (a linked list of morph target vertices)
       if(inMorphTargetVertexBaseIndex != 0xffffffffu){
+        // Resolve per-instance morph weight base offset via BDA buffer indexed by rootNode
+        uint morphWeightBaseOffset = 0u;
+        if(!all(equal(pushConstants.morphWeightBaseOffsetsBDA, uvec2(0u)))){
+          MorphWeightBaseOffsetsBuffer mwbo = MorphWeightBaseOffsetsBuffer(pushConstants.morphWeightBaseOffsetsBDA);
+          morphWeightBaseOffset = mwbo.offsets[inRootNode];
+        }
         vec4 normal = vec4(tangentSpace[2], 0.0);
         vec4 tangent = vec4(tangentSpace[0], sign(dot(cross(tangentSpace[2], tangentSpace[0]), tangentSpace[1])));
         vec3 originalNormal = normal.xyz, originalTangent = tangent.xyz; // Needed for morph target blending, since absolute normal and tangent are stored in the morph target vertices, instead of the deltas originally, because for better precision with 16-bit octahedral normals and tangents. 
@@ -191,7 +205,7 @@ void main(){
         uint protectionCounter = 0x0ffffu;
         while((morphTargetVertexIndex != 0xffffffffu) && (protectionCounter-- > 0u)){
           MorphTargetVertex morphTargetVertex = morphTargetVertices[morphTargetVertexIndex];
-          float weight = morphTargetWeights[morphTargetVertex.position.w];
+          float weight = morphTargetWeights[morphTargetVertex.position.w + morphWeightBaseOffset];
           if(weight != 0.0){ // since octehedron decoding can be somewhat costly, we only do it when the weight is not zero
             position += uintBitsToFloat(morphTargetVertex.position.xyz) * weight;
             normal += vec4(octDecode(unpackSnorm2x16(morphTargetVertex.normalTangentNext.x)) - originalNormal, 1.0) * weight;
