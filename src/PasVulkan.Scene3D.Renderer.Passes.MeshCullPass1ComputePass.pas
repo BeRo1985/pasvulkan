@@ -460,7 +460,7 @@ begin
   end;
 
   if fInstance.Renderer.UseMeshletExpand and assigned(fSortPipeline) then begin
-   aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].Handle,0,4,0);
+   aCommandBuffer.CmdFillBuffer(fInstance.MeshCullScratchBuffer.Handle,0,4,0);
   end;
 
   // Clear current-frame part of meshlet visibility bitmap for this cull render pass
@@ -500,7 +500,7 @@ begin
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           VK_QUEUE_FAMILY_IGNORED,
                                                           VK_QUEUE_FAMILY_IGNORED,
-                                                          fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].Handle,
+                                                          fInstance.MeshCullScratchBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);
    if assigned(fInstance.PerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,fCullRenderPass]) then begin
@@ -642,8 +642,8 @@ begin
     PushConstants.MaxOutputCommands:=Max(fInstance.MeshShaderOutputBufferSize,fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]);
 
     if fInstance.Renderer.UseMeshletExpand then begin
-     PushConstants.ScratchBufferBDA:=fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].DeviceAddress;
-     PushConstants.MaxScratchEntries:=fInstance.PerInFlightFrameMeshCullMaxScratchEntries[aInFlightFrameIndex];
+     PushConstants.ScratchBufferBDA:=fInstance.MeshCullScratchBuffer.DeviceAddress;
+     PushConstants.MaxScratchEntries:=fInstance.MeshCullMaxScratchEntries;
     end else begin
      PushConstants.ScratchBufferBDA:=0;
      PushConstants.MaxScratchEntries:=0;
@@ -731,7 +731,7 @@ begin
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
                                                           VK_QUEUE_FAMILY_IGNORED,
                                                           VK_QUEUE_FAMILY_IGNORED,
-                                                          fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].Handle,
+                                                          fInstance.MeshCullScratchBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -743,7 +743,7 @@ begin
 
    aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fSortPipeline.Handle);
 
-   SortPushConstants.ScratchBufferBDA:=fInstance.PerInFlightFrameMeshCullScratchBuffers[aInFlightFrameIndex].DeviceAddress;
+   SortPushConstants.ScratchBufferBDA:=fInstance.MeshCullScratchBuffer.DeviceAddress;
    SortPushConstants.ExpandRangeInfoBDA:=fInstance.PerInFlightFrameExpandRangeInfoBuffers[aInFlightFrameIndex].DeviceAddress;
    SortPushConstants.OutputCommandsBDA:=fInstance.GPUDrawIndexedIndirectCommandOutputBuffer.DeviceAddress;
    SortPushConstants.CountersBDA:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].DeviceAddress;
@@ -757,7 +757,7 @@ begin
    if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
     fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'MeshCullPass1ComputePass.SortDispatch');
    end;
-   aCommandBuffer.CmdDispatch((fInstance.PerInFlightFrameMeshCullMaxScratchEntries[aInFlightFrameIndex]+255) shr 8,1,1);
+   aCommandBuffer.CmdDispatch((fInstance.MeshCullMaxScratchEntries+255) shr 8,1,1);
    if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
     fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
    end;
