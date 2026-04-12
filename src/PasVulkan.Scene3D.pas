@@ -36521,10 +36521,10 @@ var Size:TVkDeviceSize;
 begin
  if (fMorphWeightBaseOffsetsData.Count>0) and
     (fMorphWeightBaseOffsetsGeneration<>fMorphWeightBaseOffsetsUploadedGeneration) then begin
+  WaitOnceOnPreviousFrame;
   Size:=Max(1,fMorphWeightBaseOffsetsData.Count)*TpvInt64(SizeOf(TpvUInt32));
   if (not assigned(fMorphWeightBaseOffsetsBuffer)) or
      (fMorphWeightBaseOffsetsBuffer.Size<Size) then begin
-   WaitOnceOnPreviousFrame;
    FreeAndNil(fMorphWeightBaseOffsetsBuffer);
    Size:=Max(1,fMorphWeightBaseOffsetsData.Count+((fMorphWeightBaseOffsetsData.Count+1) shr 1))*TpvInt64(SizeOf(TpvUInt32));
    fMorphWeightBaseOffsetsBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
