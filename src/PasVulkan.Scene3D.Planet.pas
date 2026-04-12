@@ -28960,8 +28960,6 @@ begin
 
  // NOTE: Precipitation and Atmosphere simulation moved to ProcessAtmospherePrecipitationSimulation
  // for optional parallel execution when PlanetSingleBuffers is false
- // NOTE: Precipitation and Atmosphere simulation moved to ProcessAtmospherePrecipitationSimulation
- // for optional parallel execution when PlanetSingleBuffers is false
  // NOTE: Minimap downloads also moved to PrepareAtmospherePrecipitationSimulation
  UpdatedAtmosphere:=false;
  UpdatedPrecipitation:=false;
@@ -29638,6 +29636,13 @@ end;
 procedure TpvScene3DPlanet.Check(const aInFlightFrameIndex:TpvSizeInt);
 begin
  if TpvScene3D(fScene3D).PlanetSingleBuffers then begin
+  // Wait for previous frame's render to complete before modifying shared images,
+  // using the same timeline semaphore / fence mechanism as the IFF single-frame buffers
+  if TpvScene3D(fScene3D).UseTimelineSemaphore and assigned(TpvScene3D(fScene3D).SharedBufferTimelineSemaphore) then begin
+   TpvScene3D(fScene3D).SharedBufferTimelineSemaphore.WaitFor(TpvScene3D(fScene3D).SharedBufferTimelineCounter);
+  end else if assigned(TpvScene3D(fScene3D).SharedBufferFence) then begin
+   TpvScene3D(fScene3D).SharedBufferFence.WaitFor;
+  end;
   ProcessModifications(aInFlightFrameIndex);
  end;
 end;
