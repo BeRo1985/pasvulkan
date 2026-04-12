@@ -9704,7 +9704,7 @@ begin
   exit;
  end;
 
- SphereBuffer:=fScene3D.GetGlobalMeshletBoundingSphereBuffer(aInFlightFrameIndex);
+ SphereBuffer:=fScene3D.GetGlobalMeshletBoundingSphereBuffer;
  if not assigned(SphereBuffer) then begin
   exit;
  end;
