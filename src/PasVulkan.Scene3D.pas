@@ -12617,9 +12617,9 @@ begin
  end;
 end;
 
-{ TpvScene3D.TVulkanLongTermStaticBufferData }
+{ TpvScene3D.TVulkanLongTermStaticBuffer }
 
-constructor TpvScene3D.TVulkanLongTermStaticBufferData.Create(const aSceneInstance:TpvScene3D);
+constructor TpvScene3D.TVulkanLongTermStaticBuffer.Create(const aSceneInstance:TpvScene3D);
 begin
  inherited Create;
  fSceneInstance:=aSceneInstance;
@@ -12637,9 +12637,10 @@ begin
  fVulkanComputeDescriptorSet:=nil;
  fVulkanMeshletBoundsComputeDescriptorPool:=nil;
  fVulkanMeshletBoundsComputeDescriptorSet:=nil;
+ fGeneration:=0;
 end;
 
-destructor TpvScene3D.TVulkanLongTermStaticBufferData.Destroy;
+destructor TpvScene3D.TVulkanLongTermStaticBuffer.Destroy;
 begin
  FreeAndNil(fVulkanMeshletBoundsComputeDescriptorSet);
  FreeAndNil(fVulkanMeshletBoundsComputeDescriptorPool);
@@ -12658,28 +12659,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvScene3D.TVulkanLongTermStaticBufferData.Check:Boolean;
-begin
- result:=((not assigned(fVulkanDynamicVertexBuffer)) and
-          (not assigned(fVulkanStaticVertexBuffer)) and
-//        ((not assigned(fVulkanIndexBuffer)) or not fSceneInstance.fRaytracingActive) and
-          (not assigned(fVulkanDrawIndexBuffer)) and
-          (not assigned(fVulkanDrawUniqueIndexBuffer)) and
-          (not assigned(fVulkanMorphTargetVertexBuffer)) and
-          (not assigned(fVulkanJointBlockBuffer))) or
-         ((assigned(fVulkanDynamicVertexBuffer) and ((Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))<=fVulkanDynamicVertexBuffer.Size)) and
-          (assigned(fVulkanStaticVertexBuffer) and ((Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))<=fVulkanStaticVertexBuffer.Size)) and
-//        ((assigned(fVulkanIndexBuffer) and ((Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanIndexBuffer.Size)) or not fSceneInstance.fRaytracingActive) and
-          (assigned(fVulkanDrawIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawIndexBuffer.Size)) and
-          (assigned(fVulkanDrawUniqueIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawUniqueIndexBuffer.Size)) and
-          (assigned(fVulkanMorphTargetVertexBuffer) and ((Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))<=fVulkanMorphTargetVertexBuffer.Size)) and
-          (assigned(fVulkanJointBlockBuffer) and ((Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))<=fVulkanJointBlockBuffer.Size)) and
-          ((not fSceneInstance.fMeshShaderSupport) or (fSceneInstance.fVulkanMeshletDescriptorBufferData.Count=0) or (assigned(fVulkanMeshletDescriptorBuffer) and ((Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor))<=fVulkanMeshletDescriptorBuffer.Size))) and
-          ((not fSceneInstance.fMeshShaderSupport) or (fSceneInstance.fVulkanMeshletVertexBufferData.Count=0) or (assigned(fVulkanMeshletVertexBuffer) and ((Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanMeshletVertexBuffer.Size))) and
-          ((not fSceneInstance.fMeshShaderSupport) or (fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count=0) or (assigned(fVulkanMeshletPrimitiveBuffer) and ((Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanMeshletPrimitiveBuffer.Size))));
-end;
-
-procedure TpvScene3D.TVulkanLongTermStaticBufferData.Update(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.TVulkanLongTermStaticBuffer.Update(const aInFlightFrameIndex:TpvSizeInt);
 var GroupInstance:TpvScene3D.TGroup.TInstance;
     InFlightFrameDataTransferQueue:TpvTransferQueue;
 begin
@@ -12711,6 +12691,9 @@ begin
 
    // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before) or the buffers are
    // not yet allocated.
+
+   // Wait for the previous frame to finish using these buffers before we resize/recreate them
+   fSceneInstance.WaitOnceOnPreviousFrame;
 
    FreeAndNil(fVulkanComputeDescriptorSet);
    FreeAndNil(fVulkanComputeDescriptorPool);
@@ -13158,6 +13141,8 @@ begin
 
    end;
 
+   inc(fGeneration);
+
   end else begin
 
    fSceneInstance.fNewInstanceListLock.Acquire;
@@ -13317,66 +13302,6 @@ begin
 
  end;
 
- fReleaseFrameCounter:=fSceneInstance.fCountInFlightFrames+1; // The decrementing counter is used to determine if the buffer is still in use by the GPU or not
-
-end;
-
-procedure TpvScene3D.TVulkanLongTermStaticBufferData.UpdateReleaseFrameCounter;
-begin
- if fReleaseFrameCounter>0 then begin
-  dec(fReleaseFrameCounter);
-  if fReleaseFrameCounter=0 then begin
-   // The buffers are no longer in use by the GPU, so we can free it safely
-   FreeAndNil(fVulkanDynamicVertexBuffer);
-   FreeAndNil(fVulkanStaticVertexBuffer);
-// FreeAndNil(fVulkanIndexBuffer);
-   FreeAndNil(fVulkanDrawIndexBuffer);
-   FreeAndNil(fVulkanDrawUniqueIndexBuffer);
-   FreeAndNil(fVulkanMorphTargetVertexBuffer);
-   FreeAndNil(fVulkanJointBlockBuffer);
-  end;
- end;
-end;
-
-{ TpvScene3D.TVulkanLongTermStaticBuffers }
-
-constructor TpvScene3D.TVulkanLongTermStaticBuffers.Create(const aSceneInstance:TpvScene3D);
-var Index:TpvSizeInt;
-begin
- inherited Create;
- fSceneInstance:=aSceneInstance;
- for Index:=0 to MaxInFlightFrames-1 do begin
-  fBufferDataArray[Index]:=TpvScene3D.TVulkanLongTermStaticBufferData.Create(fSceneInstance);
- end;
- fCurrentIndex:=0;
- fBufferData:=fBufferDataArray[fCurrentIndex];
-end;
-
-destructor TpvScene3D.TVulkanLongTermStaticBuffers.Destroy;
-var Index:TpvSizeInt;
-begin
- for Index:=0 to MaxInFlightFrames-1 do begin
-  FreeAndNil(fBufferDataArray[Index]);
- end;
- inherited Destroy;
-end;
-
-procedure TpvScene3D.TVulkanLongTermStaticBuffers.Update(const aInFlightFrameIndex:TpvSizeInt);
-var Index:TpvSizeInt;
-begin
- if not fBufferDataArray[fCurrentIndex].Check then begin
-  inc(fCurrentIndex);
-  if fCurrentIndex>=MaxInFlightFrames then begin
-   fCurrentIndex:=0;
-  end;
- end;
- fBufferData:=fBufferDataArray[fCurrentIndex];
- fBufferData.Update(aInFlightFrameIndex);
- for Index:=0 to MaxInFlightFrames-1 do begin
-  if Index<>fCurrentIndex then begin
-   fBufferDataArray[Index].UpdateReleaseFrameCounter;
-  end;
- end;
 end;
 
 { TVulkanShortTermDynamicBufferData }
