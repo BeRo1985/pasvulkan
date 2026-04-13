@@ -12716,9 +12716,9 @@ begin
                                                        [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
                                                        0,
                                                        pvAllocationGroupIDScene3DDynamic,
-                                                       'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanDynamicVertexBuffer'
+                                                       'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDynamicVertexBuffer'
                                                       );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDynamicVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanDynamicVertexBuffer');
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDynamicVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDynamicVertexBuffer');
    end;
    if fSceneInstance.fVulkanDynamicVertexBufferData.Count>0 then begin
     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
@@ -12748,9 +12748,9 @@ begin
                                                       [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
                                                       0,
                                                       pvAllocationGroupIDScene3DDynamic,
-                                                      'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanStaticVertexBuffer'
+                                                      'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer'
                                                      );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanStaticVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanStaticVertexBuffer');
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanStaticVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer');
    end;
    if fSceneInstance.fVulkanStaticVertexBufferData.Count>0 then begin
     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
@@ -12781,9 +12781,9 @@ begin
                                                 [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
                                                 0,
                                                 pvAllocationGroupIDScene3DDynamic,
-                                                'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanIndexBuffer'
+                                                'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanIndexBuffer'
                                                );
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanIndexBuffer');
+     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanIndexBuffer');
     end;
     if fSceneInstance.fVulkanIndexBufferData.Count>0 then begin
      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
@@ -12846,9 +12846,9 @@ begin
                                                          [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
                                                          0,
                                                          pvAllocationGroupIDScene3DDynamic,
-                                                         'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanDrawUniqueIndexBufferData'
+                                                         'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDrawUniqueIndexBufferData'
                                                         );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawUniqueIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanDrawUniqueIndexBufferData');
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawUniqueIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDrawUniqueIndexBufferData');
    end;
    if fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count>0 then begin
     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
@@ -12878,9 +12878,9 @@ begin
                                                            [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
                                                            0,
                                                            pvAllocationGroupIDScene3DDynamic,
-                                                           'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanMorphTargetVertexBuffer'
+                                                           'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMorphTargetVertexBuffer'
                                                           );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMorphTargetVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanMorphTargetVertexBuffer');
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMorphTargetVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMorphTargetVertexBuffer');
    end;
    if fSceneInstance.fVulkanMorphTargetVertexBufferData.Count>0 then begin
     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
@@ -12910,9 +12910,9 @@ begin
                                                     [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
                                                     0,
                                                     pvAllocationGroupIDScene3DDynamic,
-                                                    'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanJointBlockBuffer'
+                                                    'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanJointBlockBuffer'
                                                    );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanJointBlockBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanJointBlockBuffer');
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanJointBlockBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanJointBlockBuffer');
    end;
    if fSceneInstance.fVulkanJointBlockBufferData.Count>0 then begin
     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
@@ -12944,9 +12944,9 @@ begin
                                                              [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation,TpvVulkanBufferFlag.BufferDeviceAddress],
                                                              0,
                                                              pvAllocationGroupIDScene3DDynamic,
-                                                             'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanMeshletDescriptorBuffer'
+                                                             'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer'
                                                             );
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletDescriptorBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanMeshletDescriptorBuffer');
+     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletDescriptorBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer');
     end;
     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                       fSceneInstance.fVulkanStagingCommandBuffer,
@@ -12977,9 +12977,9 @@ begin
                                                          [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation,TpvVulkanBufferFlag.BufferDeviceAddress],
                                                          0,
                                                          pvAllocationGroupIDScene3DDynamic,
-                                                         'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanMeshletVertexBuffer'
+                                                         'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletVertexBuffer'
                                                         );
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanMeshletVertexBuffer');
+     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletVertexBuffer');
     end;
     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                       fSceneInstance.fVulkanStagingCommandBuffer,
@@ -13010,9 +13010,9 @@ begin
                                                             [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation,TpvVulkanBufferFlag.BufferDeviceAddress],
                                                             0,
                                                             pvAllocationGroupIDScene3DDynamic,
-                                                            'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanMeshletPrimitiveBuffer'
+                                                            'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletPrimitiveBuffer'
                                                            );
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletPrimitiveBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanMeshletPrimitiveBuffer');
+     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletPrimitiveBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletPrimitiveBuffer');
     end;
     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                       fSceneInstance.fVulkanStagingCommandBuffer,
@@ -13054,7 +13054,7 @@ begin
                                                                  1);
     fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,4);
     fVulkanComputeDescriptorPool.Initialize;
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanComputeDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanComputeDescriptorPool');
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanComputeDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanComputeDescriptorPool');
 
     fVulkanComputeDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanComputeDescriptorPool,
                                                                fSceneInstance.fMeshComputeVulkanDescriptorSet0Layout);
@@ -13093,7 +13093,7 @@ begin
                                                       false);
     finally
      fVulkanComputeDescriptorSet.Flush;
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanComputeDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanComputeDescriptorSet');
+     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanComputeDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanComputeDescriptorSet');
     end;
 
    end;
@@ -13110,7 +13110,7 @@ begin
                                                                                1);
     fVulkanMeshletBoundsComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2);
     fVulkanMeshletBoundsComputeDescriptorPool.Initialize;
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletBoundsComputeDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanMeshletBoundsComputeDescriptorPool');
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletBoundsComputeDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletBoundsComputeDescriptorPool');
 
     fVulkanMeshletBoundsComputeDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanMeshletBoundsComputeDescriptorPool,
                                                                              fSceneInstance.fMeshletBoundsComputeVulkanDescriptorSet0Layout);
@@ -13133,7 +13133,7 @@ begin
                                                                     false);
     finally
      fVulkanMeshletBoundsComputeDescriptorSet.Flush;
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletBoundsComputeDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanMeshletBoundsComputeDescriptorSet');
+     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletBoundsComputeDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletBoundsComputeDescriptorSet');
     end;
 
    end;
