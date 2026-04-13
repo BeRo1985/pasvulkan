@@ -1765,6 +1765,7 @@ type EpvApplication=class(Exception)
        fFramePacingDriftAccumulator:TpvInt64;
        fFramePacingSleepWithDriftCompensation:TpvHighResolutionTimerSleepWithDriftCompensation;
        fFramePacingPresentTimingRefreshDuration:TpvUInt64; // from VK_EXT_present_timing, in nanoseconds
+       fFramePacingPresentTimingTimeDomainID:TpvUInt64; // from vkGetSwapchainTimeDomainPropertiesEXT
        fFramePacingPresentTimingAvailable:boolean;
        fFramePacingEffectiveInterval:TpvInt64; // computed pacing interval, consumed by FramePacingAndFrameRateLimiter
 
@@ -9026,6 +9027,7 @@ begin
  fFramePacingHistoryCount:=0;
  fFramePacingDriftAccumulator:=0;
  fFramePacingPresentTimingRefreshDuration:=0;
+ fFramePacingPresentTimingTimeDomainID:=0;
  fFramePacingPresentTimingAvailable:=false;
  fFramePacingEffectiveInterval:=0;
 
@@ -9730,6 +9732,14 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
   end;
 
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_ID_2_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PRESENT_ID_2_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME);
+  end;
+
   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_PRESENT_TIMING_EXTENSION_NAME)>=0 then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_PRESENT_TIMING_EXTENSION_NAME);
   end;
@@ -10377,9 +10387,15 @@ begin
 end;
 
 procedure TpvApplication.CreateVulkanSwapChain;
+type TTimeDomains=array[0..15] of TVkTimeDomainKHR;
+     TTimeDomainIDs=array[0..15] of TpvUInt64;
 var Index:TpvInt32;
     SwapchainTimingProperties:TVkSwapchainTimingPropertiesEXT;
     SwapchainTimingPropertiesCounter:TpvUInt64;
+    SwapchainTimeDomainProperties:TVkSwapchainTimeDomainPropertiesEXT;
+    TimeDomains:TTimeDomains;
+    TimeDomainIDs:TTimeDomainIDs;
+    TimeDomainCount:TpvUInt64;
 {$if defined(Windows) and not defined(PasVulkanHeadless)}
 {$if defined(PasVulkanUseSDL2)}
     WMInfo:TSDL_SysWMinfo;
@@ -10470,6 +10486,30 @@ begin
    end;
   except
    Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing query failed');
+  end;
+ end;
+
+ // Query time domain ID for VK_EXT_present_timing
+ fFramePacingPresentTimingTimeDomainID:=0;
+ if fFramePacingPresentTimingAvailable and assigned(fVulkanDevice.Commands.Commands.GetSwapchainTimeDomainPropertiesEXT) then begin
+  try
+   FillChar(SwapchainTimeDomainProperties,SizeOf(TVkSwapchainTimeDomainPropertiesEXT),#0);
+   SwapchainTimeDomainProperties.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_TIME_DOMAIN_PROPERTIES_EXT;
+   SwapchainTimeDomainProperties.timeDomainCount:=Length(TimeDomains);
+   SwapchainTimeDomainProperties.pTimeDomains:=@TimeDomains[0];
+   SwapchainTimeDomainProperties.pTimeDomainIDs:=@TimeDomainIDs[0];
+   TimeDomainCount:=0;
+   if fVulkanDevice.Commands.GetSwapchainTimeDomainPropertiesEXT(fVulkanDevice.Handle,
+                                                                 fVulkanSwapChain.Handle,
+                                                                 @SwapchainTimeDomainProperties,
+                                                                 @TimeDomainCount)=VK_SUCCESS then begin
+    if TimeDomainCount>0 then begin
+     fFramePacingPresentTimingTimeDomainID:=TimeDomainIDs[0];
+     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: timeDomainID='+IntToStr(fFramePacingPresentTimingTimeDomainID));
+    end;
+   end;
+  except
+   Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing time domain query failed');
   end;
  end;
 
@@ -11894,7 +11934,7 @@ begin
    PresentTimingInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
    PresentTimingInfoEXT.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT);
    PresentTimingInfoEXT.targetTime:=0; // nearest refresh cycle
-   PresentTimingInfoEXT.timeDomainId:=0;
+   PresentTimingInfoEXT.timeDomainID:=fFramePacingPresentTimingTimeDomainID;
    PresentTimingInfoEXT.presentStageQueries:=0;
    PresentTimingInfoEXT.targetTimeDomainPresentStage:=0;
    FillChar(PresentTimingsInfoEXT,SizeOf(TVkPresentTimingsInfoEXT),#0);
