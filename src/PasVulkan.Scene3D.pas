@@ -2087,8 +2087,8 @@ type EpvScene3D=class(Exception);
              ReferencedPlanetDataArray:TVkDeviceSize;
             end;
             PGPURaytracingData=^TGPURaytracingData;
-            { TVulkanLongTermStaticBufferData }
-            TVulkanLongTermStaticBufferData=class
+            { TVulkanLongTermStaticBuffer }
+            TVulkanLongTermStaticBuffer=class
              private
               fSceneInstance:TpvScene3D;
               fVulkanDynamicVertexBuffer:TpvVulkanBuffer;
@@ -2105,28 +2105,11 @@ type EpvScene3D=class(Exception);
               fVulkanComputeDescriptorSet:TpvVulkanDescriptorSet;
               fVulkanMeshletBoundsComputeDescriptorPool:TpvVulkanDescriptorPool;
               fVulkanMeshletBoundsComputeDescriptorSet:TpvVulkanDescriptorSet;
-              fReleaseFrameCounter:TpvSizeInt;
-             public
-              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
-              destructor Destroy; override;
-              function Check:Boolean;
-              procedure Update(const aInFlightFrameIndex:TpvSizeInt);
-              procedure UpdateReleaseFrameCounter;
-            end;
-            TVulkanLongTermStaticBufferDataArray=array[0..MaxInFlightFrames-1] of TVulkanLongTermStaticBufferData;
-            { TVulkanLongTermStaticBuffers }
-            TVulkanLongTermStaticBuffers=class
-             private
-              fSceneInstance:TpvScene3D;
-              fBufferDataArray:TVulkanLongTermStaticBufferDataArray;
-              fBufferData:TVulkanLongTermStaticBufferData;
-              fCurrentIndex:TpvSizeInt;
+              fGeneration:TpvUInt64;
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
-             published
-              property BufferData:TVulkanLongTermStaticBufferData read fBufferData;
             end;
             { TVulkanShortTermDynamicBufferData }
             TVulkanShortTermDynamicBufferData=class
@@ -4118,7 +4101,7 @@ type EpvScene3D=class(Exception);
               fBLASGroups:TBLASGroups;
               fCacheVerticesGeneration:TpvUInt64;
               fCacheMatrixGeneration:TpvUInt64;
-              fVulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
+              fVulkanLongTermStaticBufferGeneration:TpvUInt64;
               fDynamicGeometry:Boolean;
               fGeometryChanged:Boolean;
               fMatrixChanged:Boolean;
@@ -4564,7 +4547,7 @@ type EpvScene3D=class(Exception);
        fVulkanMeshletPrimitiveBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanMeshletVisibilityBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanMeshletBoundingSphereBufferRangeAllocator:TpvBufferRangeAllocator;
-       fVulkanLongTermStaticBuffers:TVulkanLongTermStaticBuffers;
+       fVulkanLongTermStaticBuffer:TVulkanLongTermStaticBuffer;
       private
        fInDefragment:TPasMPBool32;
        fDefragmentationDataCheckGeneration:TpvUInt64;
