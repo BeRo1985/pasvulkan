@@ -12925,7 +12925,7 @@ begin
    end;
 
    // Meshlet descriptor buffer
-   if fSceneInstance.fMeshShaderSupport and (fSceneInstance.fVulkanMeshletDescriptorBufferData.Count>0) then begin
+   if fSceneInstance.fMeshShaderSupport then begin
     if (not assigned(fVulkanMeshletDescriptorBuffer)) or (fVulkanMeshletDescriptorBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletDescriptorBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor)))) then begin
      FreeAndNil(fVulkanMeshletDescriptorBuffer);
      fVulkanMeshletDescriptorBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -12948,17 +12948,19 @@ begin
                                                             );
      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletDescriptorBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer');
     end;
-    fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                      fSceneInstance.fVulkanStagingCommandBuffer,
-                                                      fSceneInstance.fVulkanStagingFence,
-                                                      fSceneInstance.fVulkanMeshletDescriptorBufferData.Items[0],
-                                                      fVulkanMeshletDescriptorBuffer,
-                                                      0,
-                                                      fSceneInstance.fVulkanMeshletDescriptorBufferData.Count*SizeOf(TGPUMeshletDescriptor));
+    if fSceneInstance.fVulkanMeshletDescriptorBufferData.Count>0 then begin
+     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                       fSceneInstance.fVulkanStagingCommandBuffer,
+                                                       fSceneInstance.fVulkanStagingFence,
+                                                       fSceneInstance.fVulkanMeshletDescriptorBufferData.Items[0],
+                                                       fVulkanMeshletDescriptorBuffer,
+                                                       0,
+                                                       fSceneInstance.fVulkanMeshletDescriptorBufferData.Count*SizeOf(TGPUMeshletDescriptor));
+    end;
    end;
 
    // Meshlet vertex buffer (global vertex index remap)
-   if fSceneInstance.fMeshShaderSupport and (fSceneInstance.fVulkanMeshletVertexBufferData.Count>0) then begin
+   if fSceneInstance.fMeshShaderSupport then begin
     if (not assigned(fVulkanMeshletVertexBuffer)) or (fVulkanMeshletVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32)))) then begin
      FreeAndNil(fVulkanMeshletVertexBuffer);
      fVulkanMeshletVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -12981,17 +12983,19 @@ begin
                                                         );
      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletVertexBuffer');
     end;
-    fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                      fSceneInstance.fVulkanStagingCommandBuffer,
-                                                      fSceneInstance.fVulkanStagingFence,
-                                                      fSceneInstance.fVulkanMeshletVertexBufferData.Items[0],
-                                                      fVulkanMeshletVertexBuffer,
-                                                      0,
-                                                      fSceneInstance.fVulkanMeshletVertexBufferData.Count*SizeOf(TpvUInt32));
+    if fSceneInstance.fVulkanMeshletVertexBufferData.Count>0 then begin
+     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                       fSceneInstance.fVulkanStagingCommandBuffer,
+                                                       fSceneInstance.fVulkanStagingFence,
+                                                       fSceneInstance.fVulkanMeshletVertexBufferData.Items[0],
+                                                       fVulkanMeshletVertexBuffer,
+                                                       0,
+                                                       fSceneInstance.fVulkanMeshletVertexBufferData.Count*SizeOf(TpvUInt32));
+    end;
    end;
 
    // Meshlet primitive buffer (packed triangle indices)
-   if fSceneInstance.fMeshShaderSupport and (fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count>0) then begin
+   if fSceneInstance.fMeshShaderSupport then begin
     if (not assigned(fVulkanMeshletPrimitiveBuffer)) or (fVulkanMeshletPrimitiveBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletPrimitiveBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32)))) then begin
      FreeAndNil(fVulkanMeshletPrimitiveBuffer);
      fVulkanMeshletPrimitiveBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -13014,13 +13018,15 @@ begin
                                                            );
      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletPrimitiveBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletPrimitiveBuffer');
     end;
-    fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                      fSceneInstance.fVulkanStagingCommandBuffer,
-                                                      fSceneInstance.fVulkanStagingFence,
-                                                      fSceneInstance.fVulkanMeshletPrimitiveBufferData.Items[0],
-                                                      fVulkanMeshletPrimitiveBuffer,
-                                                      0,
-                                                      fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count*SizeOf(TpvUInt32));
+    if fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count>0 then begin
+     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                       fSceneInstance.fVulkanStagingCommandBuffer,
+                                                       fSceneInstance.fVulkanStagingFence,
+                                                       fSceneInstance.fVulkanMeshletPrimitiveBufferData.Items[0],
+                                                       fVulkanMeshletPrimitiveBuffer,
+                                                       0,
+                                                       fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count*SizeOf(TpvUInt32));
+    end;
    end;
 
    fSceneInstance.fNewInstanceListLock.Acquire;
