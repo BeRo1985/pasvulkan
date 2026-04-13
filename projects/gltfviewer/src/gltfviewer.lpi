@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="--resampling-mode easu --size-factor 0.5 --antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers \data2\a3\base.glb"/>
+        <CommandLineParams Value="--antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers \home\bero\Projects\GLTF\NegativeScaleTest.glb"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="--resampling-mode easu --size-factor 0.5 --antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers \data2\a3\base.glb"/>
+            <CommandLineParams Value="--antialiasing-mode smaa --depth-of-field-mode none --force-use-validation-layers \home\bero\Projects\GLTF\NegativeScaleTest.glb"/>
           </local>
         </Mode0>
       </Modes>

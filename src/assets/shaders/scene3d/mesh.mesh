@@ -263,6 +263,7 @@ void main(){
   mat4 prevModelViewProjectionMatrix = previousView.projectionMatrix * (previousView.viewMatrix * matrixPair.previousModelMatrix);
 #endif
 
+#ifdef MESH_SHADER_DEBUG_FRONT_FACING_WINDING_ISSUE
   // Determine if winding order must be flipped (negative-scale node transform).
   // The mesh shader handles this instead of using separate Inversed front-face pipelines.
   bool flipWinding = false;
@@ -288,6 +289,7 @@ void main(){
                    modelMatrix[2][0], modelMatrix[2][1], modelMatrix[2][2], modelMatrix[2][3],
                    modelMatrix[3][0], modelMatrix[3][1], modelMatrix[3][2], modelMatrix[3][3]);
   }
+#endif
 
 #ifdef VOXELIZATION
 
@@ -307,8 +309,7 @@ void main(){
   for(uint i = localID; i < primitiveCount; i += MESH_GROUP_SIZE){
 
     // Unpack local triangle indices
-    uint packed = meshletPrimBuf.primitives[desc.primitiveOffset + i];
-    uvec3 localTri = uvec3(packed & 0xFFu, (packed >> 8u) & 0xFFu, (packed >> 16u) & 0xFFu);
+    uvec3 localTri = (uvec3(meshletPrimBuf.primitives[desc.primitiveOffset + i]) >> uvec3(0u, 8u, 16u)) & uvec3(0xffu);
 
     // Fetch world-space positions for the 3 vertices
     vec3 worldPos[3];
@@ -462,12 +463,14 @@ void main(){
 
     vec3 worldSpacePosition = (modelMatrix * vec4(position, 1.0)).xyz;
 
+#ifdef MESH_SHADER_DEBUG_FRONT_FACING_WINDING_ISSUE
     if(i == 0u){
       debugPrintfEXT("  v0: pos=(%.3f,%.3f,%.3f) world=(%.3f,%.3f,%.3f) clip=(%.4f,%.4f,%.4f,%.4f)",
                      position.x, position.y, position.z,
                      worldSpacePosition.x, worldSpacePosition.y, worldSpacePosition.z,
                      clipSpacePosition.x, clipSpacePosition.y, clipSpacePosition.z, clipSpacePosition.w);
     }
+#endif
 
     // Write per-vertex built-in outputs
     gl_MeshVerticesEXT[i].gl_Position = clipSpacePosition;
@@ -506,10 +509,8 @@ void main(){
   // --- Primitive processing ---
   // Each thread handles up to ceil(primitiveCount / MESH_GROUP_SIZE) primitives.
   // Unpack 3×uint8 triangle indices from each uint32.
-  // If flipWinding is true (negative-scale node), swap indices 1 and 2 to reverse winding order.
   for(uint i = localID; i < primitiveCount; i += MESH_GROUP_SIZE){
-    const uvec3 triangleIndices = (uvec3(meshletPrimBuf.primitives[desc.primitiveOffset + i]) >> uvec3(0u, 8u, 16u)) & uvec3(0xffu);
-    gl_PrimitiveTriangleIndicesEXT[i] = flipWinding ? triangleIndices.zyx : triangleIndices;
+    gl_PrimitiveTriangleIndicesEXT[i] = (uvec3(meshletPrimBuf.primitives[desc.primitiveOffset + i]) >> uvec3(0u, 8u, 16u)) & uvec3(0xffu);
 #ifdef USE_LAYER_ROUTING
     // Route each primitive to the correct array layer (cascade)
     gl_MeshPrimitivesEXT[i].gl_Layer = int(layerIndex);

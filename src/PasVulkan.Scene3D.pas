@@ -2481,6 +2481,8 @@ type EpvScene3D=class(Exception);
                                    fStartBufferVertexOffset:TpvSizeUInt;
                                    fStartBufferIndexOffset:TpvSizeUInt;
                                    fStartBufferDrawIndexOffset:TpvSizeUInt;
+                                   fMeshletLocalOffset:TpvSizeInt;
+                                   fMeshletLocalCount:TpvSizeInt;
                                    fGeneration:TpvUInt64;
                                   published
                                    property MorphTargetBaseIndex:TpvSizeUInt read fMorphTargetBaseIndex write fMorphTargetBaseIndex;
@@ -4191,7 +4193,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($0000000d);
+             PVMFVersion=TpVUInt32($0000000e);
              ProceduralTextureImageHookDefault:TProceduralTextureImageHook=(Hook:nil;AllocateTexture:true);
              EmptyGPUInstanceData:TGPUInstanceData=
               (
@@ -15440,6 +15442,8 @@ begin
     NodeMeshPrimitiveInstance.fStartBufferVertexOffset:=StreamIO.ReadInt64;
     NodeMeshPrimitiveInstance.fStartBufferIndexOffset:=StreamIO.ReadInt64;
     NodeMeshPrimitiveInstance.fStartBufferDrawIndexOffset:=StreamIO.ReadInt64;
+    NodeMeshPrimitiveInstance.fMeshletLocalOffset:=StreamIO.ReadInt64;
+    NodeMeshPrimitiveInstance.fMeshletLocalCount:=StreamIO.ReadInt64;
 
     // Fix material IDs in the vertices, since these could be different after re-loading
     Vertex:=@fMesh.fGroup.fVertices.ItemArray[NodeMeshPrimitiveInstance.fStartBufferVertexOffset];
@@ -15554,6 +15558,8 @@ begin
    StreamIO.WriteInt64(NodeMeshPrimitiveInstance.fStartBufferVertexOffset);
    StreamIO.WriteInt64(NodeMeshPrimitiveInstance.fStartBufferIndexOffset);
    StreamIO.WriteInt64(NodeMeshPrimitiveInstance.fStartBufferDrawIndexOffset);
+   StreamIO.WriteInt64(NodeMeshPrimitiveInstance.fMeshletLocalOffset);
+   StreamIO.WriteInt64(NodeMeshPrimitiveInstance.fMeshletLocalCount);
   end;
 
   StreamIO.WriteUInt64(fRaytracingPrimitiveID);
@@ -19373,9 +19379,10 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.CollectMeshlets;
-var MeshIndex,PrimitiveIndex,MeshletIndex:TpvSizeInt;
+var MeshIndex,PrimitiveIndex,MeshletIndex,NodeInstanceIndex,NodeInstanceCount:TpvSizeInt;
     Mesh:TpvScene3D.TGroup.TMesh;
     Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance;
 begin
  fTotalMeshletCount:=0;
  fTotalMeshletVertexCount:=0;
@@ -19386,10 +19393,19 @@ begin
    Primitive:=Mesh.fPrimitives[PrimitiveIndex];
    Primitive.fMeshletLocalOffset:=fTotalMeshletCount;
    Primitive.fMeshletLocalCount:=Primitive.fMeshlets.Count;
-   inc(fTotalMeshletCount,Primitive.fMeshlets.Count);
+   NodeInstanceCount:=Primitive.fNodeMeshPrimitiveInstances.Count;
+   if NodeInstanceCount<1 then begin
+    NodeInstanceCount:=1;
+   end;
+   for NodeInstanceIndex:=0 to Primitive.fNodeMeshPrimitiveInstances.Count-1 do begin
+    NodeMeshPrimitiveInstance:=Primitive.fNodeMeshPrimitiveInstances[NodeInstanceIndex];
+    NodeMeshPrimitiveInstance.fMeshletLocalOffset:=fTotalMeshletCount+(NodeInstanceIndex*Primitive.fMeshlets.Count);
+    NodeMeshPrimitiveInstance.fMeshletLocalCount:=Primitive.fMeshlets.Count;
+   end;
+   inc(fTotalMeshletCount,Primitive.fMeshlets.Count*NodeInstanceCount);
    for MeshletIndex:=0 to Primitive.fMeshlets.Count-1 do begin
-    inc(fTotalMeshletVertexCount,Primitive.fMeshlets.Items[MeshletIndex].CountVertices);
-    inc(fTotalMeshletPrimitiveCount,Primitive.fMeshlets.Items[MeshletIndex].CountPrimitives);
+    inc(fTotalMeshletVertexCount,Primitive.fMeshlets.Items[MeshletIndex].CountVertices*NodeInstanceCount);
+    inc(fTotalMeshletPrimitiveCount,Primitive.fMeshlets.Items[MeshletIndex].CountPrimitives*NodeInstanceCount);
    end;
   end;
  end;
@@ -20408,9 +20424,9 @@ begin
        SourceNodeMeshPrimitiveInstance:=SourcePrimitive.fNodeMeshPrimitiveInstances[SourceNode.fNodeMeshInstanceIndex];
        LODFirstVertices[0]:=SourceNodeMeshPrimitiveInstance.fStartBufferVertexOffset;
        LODCountVertices[0]:=SourcePrimitive.fCountVertices;
+       LODInfo^.MeshletLocalOffsets[0]:=SourceNodeMeshPrimitiveInstance.fMeshletLocalOffset;
+       LODInfo^.MeshletCounts[0]:=SourceNodeMeshPrimitiveInstance.fMeshletLocalCount;
       end;
-      LODInfo^.MeshletLocalOffsets[0]:=SourcePrimitive.fMeshletLocalOffset;
-      LODInfo^.MeshletCounts[0]:=SourcePrimitive.fMeshletLocalCount;
      end;
      for LODLevel:=1 to 3 do begin
       LODFirstVertices[LODLevel]:=0;
@@ -20516,16 +20532,20 @@ begin
         end;
        end;
       end;
-      // Set meshlet data for this LOD level from the source batch item's primitive
+      // Set meshlet data for this LOD level from the source batch item's node instance
       begin
+       SourceNode:=TpvScene3D.TGroup.TNode(SourceBatchItem.fNode);
        SourceMesh:=TpvScene3D.TGroup.TMesh(SourceBatchItem.fMesh);
-       if assigned(SourceMesh) and
+       if assigned(SourceNode) and assigned(SourceMesh) and
           (SourceBatchItem.fMeshPrimitive>=0) and
           (SourceBatchItem.fMeshPrimitive<SourceMesh.fPrimitives.Count) then begin
         SourcePrimitive:=SourceMesh.fPrimitives[SourceBatchItem.fMeshPrimitive];
-        if assigned(SourcePrimitive) then begin
-         LODInfo^.MeshletLocalOffsets[LODLevel]:=SourcePrimitive.fMeshletLocalOffset;
-         LODInfo^.MeshletCounts[LODLevel]:=SourcePrimitive.fMeshletLocalCount;
+        if assigned(SourcePrimitive) and
+           (SourceNode.fNodeMeshInstanceIndex>=0) and
+           (SourceNode.fNodeMeshInstanceIndex<SourcePrimitive.fNodeMeshPrimitiveInstances.Count) then begin
+         SourceNodeMeshPrimitiveInstance:=SourcePrimitive.fNodeMeshPrimitiveInstances[SourceNode.fNodeMeshInstanceIndex];
+         LODInfo^.MeshletLocalOffsets[LODLevel]:=SourceNodeMeshPrimitiveInstance.fMeshletLocalOffset;
+         LODInfo^.MeshletCounts[LODLevel]:=SourceNodeMeshPrimitiveInstance.fMeshletLocalCount;
         end;
        end;
       end;
@@ -20545,12 +20565,16 @@ begin
     TPasMPInterlocked.Increment(fSceneInstance.fLODInfoGeneration);
    end else begin
     // Non-LOD primitive: allocate LODInfo if it has meshlets (for mesh shader path)
+    SourceNode:=TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.fNode);
     SourceMesh:=TpvScene3D.TGroup.TMesh(DrawChoreographyBatchItem.fMesh);
-    if assigned(SourceMesh) and
+    if assigned(SourceNode) and assigned(SourceMesh) and
        (DrawChoreographyBatchItem.fMeshPrimitive>=0) and
        (DrawChoreographyBatchItem.fMeshPrimitive<SourceMesh.fPrimitives.Count) then begin
      SourcePrimitive:=SourceMesh.fPrimitives[DrawChoreographyBatchItem.fMeshPrimitive];
-     if assigned(SourcePrimitive) and (SourcePrimitive.fMeshlets.Count>0) then begin
+     if assigned(SourcePrimitive) and (SourcePrimitive.fMeshlets.Count>0) and
+        (SourceNode.fNodeMeshInstanceIndex>=0) and
+        (SourceNode.fNodeMeshInstanceIndex<SourcePrimitive.fNodeMeshPrimitiveInstances.Count) then begin
+      SourceNodeMeshPrimitiveInstance:=SourcePrimitive.fNodeMeshPrimitiveInstances[SourceNode.fNodeMeshInstanceIndex];
       fSceneInstance.fLODInfoIDManagerLock.Acquire;
       try
        LODInfoIndex:=fSceneInstance.fLODInfoIDManager.AllocateID;
@@ -20564,14 +20588,14 @@ begin
        LODInfo^.FirstIndices[0]:=DrawChoreographyBatchItem.fStartIndex;
        LODInfo^.CountIndices[0]:=DrawChoreographyBatchItem.fCountIndices;
        LODInfo^.FirstVertices[0]:=0;
-       LODInfo^.MeshletLocalOffsets[0]:=SourcePrimitive.fMeshletLocalOffset;
-       LODInfo^.MeshletCounts[0]:=SourcePrimitive.fMeshletLocalCount;
+       LODInfo^.MeshletLocalOffsets[0]:=SourceNodeMeshPrimitiveInstance.fMeshletLocalOffset;
+       LODInfo^.MeshletCounts[0]:=SourceNodeMeshPrimitiveInstance.fMeshletLocalCount;
        DrawChoreographyBatchItem.fLODInfoIndex:=LODInfoIndex;
       finally
        fSceneInstance.fLODInfoIDManagerLock.Release;
       end;
 {$ifdef MeshShaderDebug}
-      WriteLn('[DEBUG-MS] CollectLODData: NonLOD meshlet LODInfoIdx=',LODInfoIndex,' Offset=',SourcePrimitive.fMeshletLocalOffset,' Count=',SourcePrimitive.fMeshletLocalCount);
+      WriteLn('[DEBUG-MS] CollectLODData: NonLOD meshlet LODInfoIdx=',LODInfoIndex,' Offset=',SourceNodeMeshPrimitiveInstance.fMeshletLocalOffset,' Count=',SourceNodeMeshPrimitiveInstance.fMeshletLocalCount);
 {$endif}
       TPasMPInterlocked.Increment(fSceneInstance.fLODInfoGeneration);
      end;
@@ -27139,8 +27163,9 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.ConstructData(const aLock:boolean);
-var Index,MeshIndex,PrimitiveIndex,MeshletIndex,VertexIndex:TpvSizeInt;
+var Index,MeshIndex,PrimitiveIndex,MeshletIndex,VertexIndex,NodeInstanceIndex,NodeInstanceCount:TpvSizeInt;
     DescriptorOffset,MeshletVertexOffset,MeshletPrimitiveOffset:TpvSizeInt;
+    VertexDelta:TpvSizeInt;
     Generation:TpvUInt32;
 {   Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;}
@@ -27150,6 +27175,7 @@ var Index,MeshIndex,PrimitiveIndex,MeshletIndex,VertexIndex:TpvSizeInt;
     SrcJointBlock,DstJointBlock:PJointBlock;
     Mesh:TpvScene3D.TGroup.TMesh;
     Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance;
     SrcMeshlet:PpvScene3DMeshlet;
     DstDescriptor:PGPUMeshletDescriptor;
 begin
@@ -27281,7 +27307,7 @@ begin
     inc(DstJointBlock^.Joints[3],fBufferRanges.VulkanNodeMatricesBufferRange.Offset);
    end;
 
-   // Copy meshlet data to global CPU arrays
+   // Copy meshlet data to global CPU arrays (per node instance for correct vertex offsets)
    if fGroup.fTotalMeshletCount>0 then begin
     DescriptorOffset:=fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
     MeshletVertexOffset:=fBufferRanges.VulkanMeshletVertexBufferRange.Offset;
@@ -27291,29 +27317,40 @@ begin
      for PrimitiveIndex:=0 to Mesh.fPrimitives.Count-1 do begin
       Primitive:=Mesh.fPrimitives[PrimitiveIndex];
       Primitive.fMeshletGPUBaseIndex:=DescriptorOffset;
-      for MeshletIndex:=0 to Primitive.fMeshlets.Count-1 do begin
-       SrcMeshlet:=@Primitive.fMeshlets.Items[MeshletIndex];
-       DstDescriptor:=@fSceneInstance.fVulkanMeshletDescriptorBufferData.Items[DescriptorOffset];
-       DstDescriptor^.BoundingSphere:=SrcMeshlet^.BoundingSphere;
-       // Invalidate meshlet bounding sphere for animated meshes (skinning/morph targets),
-       // since object-space bounds become invalid after vertex deformation.
-       // The shader treats w=0 as "always visible" (conservative fallback).
-       if (fGroup.fMorphTargetCount>0) or (fGroup.fCountJointNodeMatrices>0) then begin
-        DstDescriptor^.BoundingSphere.w:=0.0;
+      NodeInstanceCount:=Primitive.fNodeMeshPrimitiveInstances.Count;
+      if NodeInstanceCount<1 then begin
+       NodeInstanceCount:=1;
+      end;
+      for NodeInstanceIndex:=0 to NodeInstanceCount-1 do begin
+       if NodeInstanceIndex<Primitive.fNodeMeshPrimitiveInstances.Count then begin
+        VertexDelta:=TpvSizeInt(Primitive.fNodeMeshPrimitiveInstances[NodeInstanceIndex].fStartBufferVertexOffset)-TpvSizeInt(Primitive.fStartBufferVertexOffset);
+       end else begin
+        VertexDelta:=0;
        end;
-       DstDescriptor^.VertexOffset:=MeshletVertexOffset;
-       DstDescriptor^.VertexCount:=SrcMeshlet^.CountVertices;
-       DstDescriptor^.PrimitiveOffset:=MeshletPrimitiveOffset;
-       DstDescriptor^.PrimitiveCount:=SrcMeshlet^.CountPrimitives;
-       for VertexIndex:=0 to TpvSizeInt(SrcMeshlet^.CountVertices)-1 do begin
-        fSceneInstance.fVulkanMeshletVertexBufferData.Items[MeshletVertexOffset+VertexIndex]:=SrcMeshlet^.Vertices[VertexIndex]+fBufferRanges.VulkanVertexBufferRange.Offset;
+       for MeshletIndex:=0 to Primitive.fMeshlets.Count-1 do begin
+        SrcMeshlet:=@Primitive.fMeshlets.Items[MeshletIndex];
+        DstDescriptor:=@fSceneInstance.fVulkanMeshletDescriptorBufferData.Items[DescriptorOffset];
+        DstDescriptor^.BoundingSphere:=SrcMeshlet^.BoundingSphere;
+        // Invalidate meshlet bounding sphere for animated meshes (skinning/morph targets),
+        // since object-space bounds become invalid after vertex deformation.
+        // The shader treats w=0 as "always visible" (conservative fallback).
+        if (fGroup.fMorphTargetCount>0) or (fGroup.fCountJointNodeMatrices>0) then begin
+         DstDescriptor^.BoundingSphere.w:=0.0;
+        end;
+        DstDescriptor^.VertexOffset:=MeshletVertexOffset;
+        DstDescriptor^.VertexCount:=SrcMeshlet^.CountVertices;
+        DstDescriptor^.PrimitiveOffset:=MeshletPrimitiveOffset;
+        DstDescriptor^.PrimitiveCount:=SrcMeshlet^.CountPrimitives;
+        for VertexIndex:=0 to TpvSizeInt(SrcMeshlet^.CountVertices)-1 do begin
+         fSceneInstance.fVulkanMeshletVertexBufferData.Items[MeshletVertexOffset+VertexIndex]:=TpvSizeInt(SrcMeshlet^.Vertices[VertexIndex])+VertexDelta+fBufferRanges.VulkanVertexBufferRange.Offset;
+        end;
+        if SrcMeshlet^.CountPrimitives>0 then begin
+         System.Move(SrcMeshlet^.Indices[0],fSceneInstance.fVulkanMeshletPrimitiveBufferData.Items[MeshletPrimitiveOffset],TpvSizeInt(SrcMeshlet^.CountPrimitives)*SizeOf(TpvUInt32));
+        end;
+        inc(MeshletVertexOffset,SrcMeshlet^.CountVertices);
+        inc(MeshletPrimitiveOffset,SrcMeshlet^.CountPrimitives);
+        inc(DescriptorOffset);
        end;
-       if SrcMeshlet^.CountPrimitives>0 then begin
-        System.Move(SrcMeshlet^.Indices[0],fSceneInstance.fVulkanMeshletPrimitiveBufferData.Items[MeshletPrimitiveOffset],TpvSizeInt(SrcMeshlet^.CountPrimitives)*SizeOf(TpvUInt32));
-       end;
-       inc(MeshletVertexOffset,SrcMeshlet^.CountVertices);
-       inc(MeshletPrimitiveOffset,SrcMeshlet^.CountPrimitives);
-       inc(DescriptorOffset);
       end;
      end;
     end;
@@ -33053,6 +33090,7 @@ var NodeIndex,IndicesStart,IndicesCount,InFlightFrameIndex,
     CachedMeshletBoundsRange:TpvScene3D.TCachedMeshletBoundsRange;
     Node:TpvScene3D.TGroup.TNode;
     Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance;
     CurrentBoundingSphereIndex:TpvUInt32;
 begin
 
@@ -33220,14 +33258,18 @@ begin
 
        InstanceNode:=fNodes.RawItems[NodeIndex];
 
-       CachedMeshletBoundsRange.MeshletDescriptorBase:=fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset+TpvUInt32(Primitive.fMeshletLocalOffset);
-       CachedMeshletBoundsRange.MeshletCount:=Primitive.fMeshletLocalCount;
-       CachedMeshletBoundsRange.OutputSphereBase:=fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset+TpvUInt32(Primitive.fMeshletLocalOffset);
+       if (Node.fNodeMeshInstanceIndex>=0) and
+          (Node.fNodeMeshInstanceIndex<Primitive.fNodeMeshPrimitiveInstances.Count) then begin
+        NodeMeshPrimitiveInstance:=Primitive.fNodeMeshPrimitiveInstances[Node.fNodeMeshInstanceIndex];
+        CachedMeshletBoundsRange.MeshletDescriptorBase:=fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset+TpvUInt32(NodeMeshPrimitiveInstance.fMeshletLocalOffset);
+        CachedMeshletBoundsRange.MeshletCount:=NodeMeshPrimitiveInstance.fMeshletLocalCount;
+        CachedMeshletBoundsRange.OutputSphereBase:=fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset+TpvUInt32(NodeMeshPrimitiveInstance.fMeshletLocalOffset);
 
 {$ifdef MeshShaderDebug}
-       WriteLn('[DBG-SPHERE] UpdateCached OutputBase=',CachedMeshletBoundsRange.OutputSphereBase,' AllocOffset=',fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset,' LocalOff=',Primitive.fMeshletLocalOffset,' Count=',CachedMeshletBoundsRange.MeshletCount);
+        WriteLn('[DBG-SPHERE] UpdateCached OutputBase=',CachedMeshletBoundsRange.OutputSphereBase,' AllocOffset=',fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset,' LocalOff=',NodeMeshPrimitiveInstance.fMeshletLocalOffset,' Count=',CachedMeshletBoundsRange.MeshletCount);
 {$endif}
-       fGroup.fSceneInstance.fCachedMeshletBoundsRanges.Add(CachedMeshletBoundsRange);
+        fGroup.fSceneInstance.fCachedMeshletBoundsRanges.Add(CachedMeshletBoundsRange);
+       end;
 
       end;
 
