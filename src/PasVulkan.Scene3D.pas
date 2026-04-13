@@ -2105,7 +2105,7 @@ type EpvScene3D=class(Exception);
               fVulkanComputeDescriptorSet:TpvVulkanDescriptorSet;
               fVulkanMeshletBoundsComputeDescriptorPool:TpvVulkanDescriptorPool;
               fVulkanMeshletBoundsComputeDescriptorSet:TpvVulkanDescriptorSet;
-              fGeneration:TpvUInt64;
+              fGeneration:TPasMPUInt64;
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
