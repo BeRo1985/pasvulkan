@@ -4101,7 +4101,7 @@ type EpvScene3D=class(Exception);
               fBLASGroups:TBLASGroups;
               fCacheVerticesGeneration:TpvUInt64;
               fCacheMatrixGeneration:TpvUInt64;
-              fVulkanLongTermStaticBufferGeneration:TpvUInt64;
+              fVulkanLongTermStaticBufferGeneration:TPasMPUInt64;
               fDynamicGeometry:Boolean;
               fGeometryChanged:Boolean;
               fMatrixChanged:Boolean;
