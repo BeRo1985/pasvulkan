@@ -13138,7 +13138,7 @@ begin
 
    end;
 
-   inc(fGeneration);
+   TPasMPInterlocked.Increment(fGeneration);
 
   end else begin
 
