@@ -6756,7 +6756,7 @@ begin
 
  fCacheMatrixGeneration:=High(TpvUInt64);
 
- fVulkanLongTermStaticBufferData:=nil;
+ fVulkanLongTermStaticBufferGeneration:=High(TpvUInt64);
 
  fDirty:=false;
 
@@ -6832,7 +6832,6 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     DoubleSided,MustUpdate,MustUpdateAll,Opaque,CastingShadows,NodeCastingShadows,
     UsePretransformedVerticesForRaytracing:Boolean;
     VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
-    VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
     AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
     AllocationGroupID:TpvUInt64;
     RaytracingMask:TpvUInt8;
@@ -6892,10 +6891,8 @@ begin
 
  VulkanShortTermDynamicBufferData:=fSceneInstance.fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex];
 
- VulkanLongTermStaticBufferData:=fSceneInstance.fVulkanLongTermStaticBuffers.BufferData;
-
- if fVulkanLongTermStaticBufferData<>VulkanLongTermStaticBufferData then begin
-  fVulkanLongTermStaticBufferData:=VulkanLongTermStaticBufferData;
+ if fVulkanLongTermStaticBufferGeneration<>fSceneInstance.fVulkanLongTermStaticBuffer.fGeneration then begin
+  fVulkanLongTermStaticBufferGeneration:=fSceneInstance.fVulkanLongTermStaticBuffer.fGeneration;
   MustUpdateAll:=true;
  end else begin
   MustUpdateAll:=false;
@@ -6999,7 +6996,7 @@ begin
        end else begin
         AccelerationStructureGeometry^.geometry.triangles.vertexData.deviceAddress:=VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer.DeviceAddress;
        end;
-       AccelerationStructureGeometry^.geometry.triangles.indexData.deviceAddress:=VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer.DeviceAddress;
+       AccelerationStructureGeometry^.geometry.triangles.indexData.deviceAddress:=fSceneInstance.fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer.DeviceAddress;
       end;
      finally
       fSceneInstance.fRaytracingLock.ReleaseRead;
@@ -7090,7 +7087,7 @@ begin
                                                                     0,
                                                                     fInstance.fBufferRanges.VulkanVertexBufferRange.Offset+fInstance.fBufferRanges.VulkanVertexBufferRange.Size,
                                                                     SizeOf(TGPUCachedVertex),
-                                                                    VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer,
+                                                                    fSceneInstance.fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer,
                                                                     IndexOffset*SizeOf(TpvUInt32),
                                                                     RaytracingPrimitive.fCountIndices,
                                                                     Opaque,
@@ -7101,7 +7098,7 @@ begin
                                                                     0,
                                                                     fInstance.fBufferRanges.VulkanVertexBufferRange.Offset+fInstance.fBufferRanges.VulkanVertexBufferRange.Size,
                                                                     SizeOf(TGPUCachedRaytracingVertex),
-                                                                    VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer,
+                                                                    fSceneInstance.fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer,
                                                                     IndexOffset*SizeOf(TpvUInt32),
                                                                     RaytracingPrimitive.fCountIndices,
                                                                     Opaque,
@@ -12817,9 +12814,9 @@ begin
                                                    [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
                                                    0,
                                                    pvAllocationGroupIDScene3DDynamic,
-                                                   'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer'
+                                                   'TpvScene3D.TfSceneInstance.fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer'
                                                   );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer');
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TfSceneInstance.fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer');
    end;
    if fSceneInstance.fVulkanDrawIndexBufferData.Count>0 then begin
     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
@@ -33602,7 +33599,7 @@ begin
  fVulkanMeshletVisibilityBufferRangeAllocator.AutomaticSizeAlignment:=fBuddyModeAllocation;
  fVulkanMeshletBoundingSphereBufferRangeAllocator.AutomaticSizeAlignment:=fBuddyModeAllocation;
 
- fVulkanLongTermStaticBuffers:=TpvScene3D.TVulkanLongTermStaticBuffers.Create(self);
+ fVulkanLongTermStaticBuffer:=TpvScene3D.TVulkanLongTermStaticBuffer.Create(self);
 
  fVulkanShortTermDynamicBuffers:=TpvScene3D.TVulkanShortTermDynamicBuffers.Create(self);
 
@@ -35232,7 +35229,7 @@ begin
 
  FreeAndNil(fVulkanShortTermDynamicBuffers);
 
- FreeAndNil(fVulkanLongTermStaticBuffers);
+ FreeAndNil(fVulkanLongTermStaticBuffer);
 
  FreeAndNil(fBufferRangeAllocatorLock);
 
@@ -39148,7 +39145,6 @@ var PlanetIndex,PassIndex,CountPlanetAtmospherePrecipitationSimulationToSignalSe
     PlanetAtmospherePrecipitationSimulationCommandBufferHandle,PlanetWaterSimulationCommandBufferHandle,CommandBufferHandle:TVkCommandBuffer;
     BeginTime:TpvHighResolutionTime;
     VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
-    VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     MemoryBarrier:TVkMemoryBarrier;
     RendererInstanceIndex:TpvSizeInt;
@@ -39165,8 +39161,6 @@ begin
    end;
 
   VulkanShortTermDynamicBufferData:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex];
-
-  VulkanLongTermStaticBufferData:=fVulkanLongTermStaticBuffers.BufferData;
 
   if assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) then begin
    fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
@@ -39496,8 +39490,8 @@ begin
       fGPURaytracingData.GeometryItems:=0;
      end;
 
-     fGPURaytracingData.MeshStaticVertices:=VulkanLongTermStaticBufferData.fVulkanStaticVertexBuffer.DeviceAddress;
-     fGPURaytracingData.MeshIndices:=VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer.DeviceAddress;
+     fGPURaytracingData.MeshStaticVertices:=fVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer.DeviceAddress;
+     fGPURaytracingData.MeshIndices:=fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer.DeviceAddress;
      fGPURaytracingData.MeshDynamicVertices:=VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer.DeviceAddress;
 
      fGPURaytracingData.ParticleVertices:=fVulkanParticleVertexBuffers[aInFlightFrameIndex].DeviceAddress;
@@ -39778,7 +39772,7 @@ begin
 
   begin
    
-   fVulkanLongTermStaticBuffers.Update(aInFlightFrameIndex);
+   fVulkanLongTermStaticBuffer.Update(aInFlightFrameIndex);
    
    fVulkanShortTermDynamicBuffers.Update(aInFlightFrameIndex);
 
@@ -40155,8 +40149,8 @@ begin
     if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer) then begin
      DrawInfoBDACachedVertices:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.DeviceAddress;
     end;
-    if assigned(fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanStaticVertexBuffer) then begin
-     DrawInfoBDAStaticVertices:=fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanStaticVertexBuffer.DeviceAddress;
+    if assigned(fVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer) then begin
+     DrawInfoBDAStaticVertices:=fVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer.DeviceAddress;
     end;
     if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[PreviousInFlightFrameIndex].fVulkanCachedVertexBuffer) then begin
      DrawInfoBDAPreviousCachedVertices:=fVulkanShortTermDynamicBuffers.fBufferDataArray[PreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.DeviceAddress;
@@ -40563,19 +40557,15 @@ begin
   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletVertexDeviceAddress:=0;
   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletPrimitiveDeviceAddress:=0;
   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletBoundingSphereDeviceAddress:=0;
-  if fMeshShaderSupport and assigned(fVulkanLongTermStaticBuffers) then begin
-   if (fVulkanLongTermStaticBuffers.fCurrentIndex>=0) and
-      (fVulkanLongTermStaticBuffers.fCurrentIndex<length(fVulkanLongTermStaticBuffers.fBufferDataArray)) and
-      assigned(fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex]) then begin
-    if assigned(fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanMeshletDescriptorBuffer) then begin
-     fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletDescriptorDeviceAddress:=fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanMeshletDescriptorBuffer.DeviceAddress;
-    end;
-    if assigned(fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanMeshletVertexBuffer) then begin
-     fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletVertexDeviceAddress:=fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanMeshletVertexBuffer.DeviceAddress;
-    end;
-    if assigned(fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanMeshletPrimitiveBuffer) then begin
-     fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletPrimitiveDeviceAddress:=fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanMeshletPrimitiveBuffer.DeviceAddress;
-    end;
+  if fMeshShaderSupport and assigned(fVulkanLongTermStaticBuffer) then begin
+   if assigned(fVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer) then begin
+    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletDescriptorDeviceAddress:=fVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer.DeviceAddress;
+   end;
+   if assigned(fVulkanLongTermStaticBuffer.fVulkanMeshletVertexBuffer) then begin
+    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletVertexDeviceAddress:=fVulkanLongTermStaticBuffer.fVulkanMeshletVertexBuffer.DeviceAddress;
+   end;
+   if assigned(fVulkanLongTermStaticBuffer.fVulkanMeshletPrimitiveBuffer) then begin
+    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletPrimitiveDeviceAddress:=fVulkanLongTermStaticBuffer.fVulkanMeshletPrimitiveBuffer.DeviceAddress;
    end;
   end;
   // Set per-instance meshlet bounding sphere BDA (per IFF, dynamic buffer)
@@ -40856,7 +40846,7 @@ begin
    // BDA Vertex Pulling: no CmdBindVertexBuffers needed for mesh data.
    // Vertex data is fetched via BDA in the vertex shader using DrawInfo SSBO.
 
-   aCommandBuffer.CmdBindIndexBuffer(fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanDrawIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
+   aCommandBuffer.CmdBindIndexBuffer(fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
 
   end;
 
@@ -40927,7 +40917,7 @@ begin
                                         aPipelineLayout.Handle,
                                         0,
                                         1,
-                                        @fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanComputeDescriptorSet.Handle,
+                                        @fVulkanLongTermStaticBuffer.fVulkanComputeDescriptorSet.Handle,
                                         0,
                                         nil);
 
@@ -41059,7 +41049,7 @@ begin
                                        aPipelineLayout.Handle,
                                        0,
                                        1,
-                                       @fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanComputeDescriptorSet.Handle,
+                                       @fVulkanLongTermStaticBuffer.fVulkanComputeDescriptorSet.Handle,
                                        0,
                                        nil);
 
@@ -41122,7 +41112,7 @@ begin
                                        aPipelineLayout.Handle,
                                        0,
                                        1,
-                                       @fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanMeshletBoundsComputeDescriptorSet.Handle,
+                                       @fVulkanLongTermStaticBuffer.fVulkanMeshletBoundsComputeDescriptorSet.Handle,
                                        0,
                                        nil);
 
