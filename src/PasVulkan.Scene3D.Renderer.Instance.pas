@@ -9702,7 +9702,7 @@ begin
   exit;
  end;
 
- PairsBuffer:=fScene3D.GetDebugMeshletSpherePairsBuffer;
+ PairsBuffer:=fScene3D.DebugMeshletSpherePairsBuffer;
  if not assigned(PairsBuffer) then begin
   exit;
  end;

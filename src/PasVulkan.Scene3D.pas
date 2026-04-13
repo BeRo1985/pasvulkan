@@ -4686,8 +4686,8 @@ type EpvScene3D=class(Exception);
        procedure NewMaterialDataGeneration;
        procedure PrepareBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
-       procedure PrepareMeshletBoundingSphereBuffer;
-       procedure UploadMorphWeightBaseOffsetsBuffer;
+       procedure UpdateMeshletBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
+       procedure UpdateMorphWeightBaseOffsetsBuffer(const aInFlightFrameIndex:TpvSizeInt);
       private
        procedure CollectLights(var aLightItemArray:TpvScene3D.TLightItems;
                                var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
@@ -4915,7 +4915,8 @@ type EpvScene3D=class(Exception);
       public
        procedure RebuildDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
-       function GetDebugMeshletSpherePairsBuffer:TpvVulkanBuffer;
+      public
+       property DebugMeshletSpherePairsBuffer:TpvVulkanBuffer read fDebugMeshletSpherePairsBuffer;
        property DebugMeshletSpherePairCount:TpvSizeInt read fDebugMeshletSpherePairs.Count;
        property DebugMeshletSpherePairsDirty:boolean read fDebugMeshletSpherePairsDirty write fDebugMeshletSpherePairsDirty;
       public
@@ -36480,7 +36481,7 @@ begin
 
 end;
 
-procedure TpvScene3D.PrepareMeshletBoundingSphereBuffer;
+procedure TpvScene3D.UpdateMeshletBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
 var Count:TpvSizeInt;
 begin
  if fMeshShaderSupport then begin
@@ -36516,7 +36517,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.UploadMorphWeightBaseOffsetsBuffer;
+procedure TpvScene3D.UpdateMorphWeightBaseOffsetsBuffer(const aInFlightFrameIndex:TpvSizeInt);
 var Size:TVkDeviceSize;
 begin
  if (fMorphWeightBaseOffsetsData.Count>0) and
@@ -37915,8 +37916,6 @@ begin
 
  PrepareBoundingSphereBuffer(aInFlightFrameIndex);
 
- PrepareMeshletBoundingSphereBuffer;
-
  Defragment(false);
 
  ProcessFreeQueue;
@@ -39213,11 +39212,6 @@ begin
  end;
 end;
 
-function TpvScene3D.GetDebugMeshletSpherePairsBuffer:TpvVulkanBuffer;
-begin
- result:=fDebugMeshletSpherePairsBuffer;
-end;
-
 procedure TpvScene3D.ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
 var PlanetIndex,PassIndex,CountPlanetAtmospherePrecipitationSimulationToSignalSemaphores,CountPlanetWaterSimulationToSignalSemaphores,Index:TpvSizeInt;
     Planet:TpvScene3DPlanet;
@@ -39861,11 +39855,16 @@ begin
 
   UploadBoundingSphereBuffer(aInFlightFrameIndex);
 
-  UploadMorphWeightBaseOffsetsBuffer;
-
   begin
+   
    fVulkanLongTermStaticBuffers.Update(aInFlightFrameIndex);
+   
    fVulkanShortTermDynamicBuffers.Update(aInFlightFrameIndex);
+
+   UpdateMorphWeightBaseOffsetsBuffer(aInFlightFrameIndex);
+
+   UpdateMeshletBoundingSphereBuffer(aInFlightFrameIndex);
+
   end;
 
   if fInFlightFrameImageInfoImageDescriptorUploadedGenerations[aInFlightFrameIndex]<>fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex] then begin
