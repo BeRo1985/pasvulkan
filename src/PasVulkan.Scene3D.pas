@@ -12665,181 +12665,59 @@ begin
 
  if assigned(fSceneInstance) and assigned(fSceneInstance.fVulkanDevice) then begin
 
-  // First to try to defragment the buffers, when the size of the buffers has changed (larger than before), because we could
-  // avoid to resize the buffers, if the size of the buffers has not changed after the defragmentation
-  if (assigned(fVulkanDynamicVertexBuffer) and (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex)))) or
-     (assigned(fVulkanStaticVertexBuffer) and (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex)))) or
-//   (fSceneInstance.fRaytracingActive and (assigned(fVulkanIndexBuffer) and (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
-     (assigned(fVulkanDrawIndexBuffer) and (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
-     (assigned(fVulkanDrawUniqueIndexBuffer) and (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
-     (assigned(fVulkanMorphTargetVertexBuffer) and (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) or
-     (assigned(fVulkanJointBlockBuffer) and (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock)))) or
-     (fSceneInstance.fMeshShaderSupport and assigned(fVulkanMeshletDescriptorBuffer) and (fVulkanMeshletDescriptorBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor)))) or
-     (fSceneInstance.fMeshShaderSupport and assigned(fVulkanMeshletVertexBuffer) and (fVulkanMeshletVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32)))) or
-     (fSceneInstance.fMeshShaderSupport and assigned(fVulkanMeshletPrimitiveBuffer) and (fVulkanMeshletPrimitiveBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32)))) then begin
-   fSceneInstance.Defragment(true);
-  end;
+  // Lock to prevent race conditions with ConstructData/Group.Upload running on background threads
+  // (they resize the CPU-side BufferData arrays under this same lock)
+  fSceneInstance.fBufferRangeAllocatorLock.Acquire;
+  try
 
-  if TPasMPInterlocked.CompareExchange(fForceFullReload,TPasMPBool32(false),TPasMPBool32(true)) or
-     ((not assigned(fVulkanDynamicVertexBuffer)) or (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDynamicVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))))) or
-     ((not assigned(fVulkanStaticVertexBuffer)) or (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanStaticVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))))) or
-//   (fSceneInstance.fRaytracingActive and ((not assigned(fVulkanIndexBuffer)) or (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
-     ((not assigned(fVulkanDrawIndexBuffer)) or (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDrawIndexBuffer.Size>(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
-     ((not assigned(fVulkanDrawUniqueIndexBuffer)) or (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDrawUniqueIndexBuffer.Size>(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
-     ((not assigned(fVulkanMorphTargetVertexBuffer)) or (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMorphTargetVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))))) or
-     ((not assigned(fVulkanJointBlockBuffer)) or (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))) or (fSceneInstance.fAllowBufferShrink and (fVulkanJointBlockBuffer.Size>(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))))) or
-     (fSceneInstance.fMeshShaderSupport and
-      (((not assigned(fVulkanMeshletDescriptorBuffer)) or (fVulkanMeshletDescriptorBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletDescriptorBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor))))) or
-       ((not assigned(fVulkanMeshletVertexBuffer)) or (fVulkanMeshletVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32))))) or
-       ((not assigned(fVulkanMeshletPrimitiveBuffer)) or (fVulkanMeshletPrimitiveBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletPrimitiveBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32))))))) then begin
-
-   // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before) or the buffers are
-   // not yet allocated.
-
-   // Wait for the previous frame to finish using these buffers before we resize/recreate them
-   fSceneInstance.WaitOnceOnPreviousFrame;
-
-   FreeAndNil(fVulkanComputeDescriptorSet);
-   FreeAndNil(fVulkanComputeDescriptorPool);
-
-   FreeAndNil(fVulkanMeshletBoundsComputeDescriptorSet);
-   FreeAndNil(fVulkanMeshletBoundsComputeDescriptorPool);
-
-   if (not assigned(fVulkanDynamicVertexBuffer)) or (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDynamicVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex)))) then begin
-    FreeAndNil(fVulkanDynamicVertexBuffer);
-    fVulkanDynamicVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                       Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex),
-                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
-                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                       [],
-                                                       0,
-                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                       0,
-                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                       0,
-                                                       0,
-                                                       0,
-                                                       0,
-                                                       [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                       0,
-                                                       pvAllocationGroupIDScene3DDynamic,
-                                                       'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDynamicVertexBuffer'
-                                                      );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDynamicVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDynamicVertexBuffer');
-   end;
-   if fSceneInstance.fVulkanDynamicVertexBufferData.Count>0 then begin
-    fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                      fSceneInstance.fVulkanStagingCommandBuffer,
-                                                      fSceneInstance.fVulkanStagingFence,
-                                                      fSceneInstance.fVulkanDynamicVertexBufferData.Items[0],
-                                                      fVulkanDynamicVertexBuffer,
-                                                      0,
-                                                      fSceneInstance.fVulkanDynamicVertexBufferData.Count*SizeOf(TGPUDynamicVertex));
+   // First to try to defragment the buffers, when the size of the buffers has changed (larger than before), because we could
+   // avoid to resize the buffers, if the size of the buffers has not changed after the defragmentation
+   if (assigned(fVulkanDynamicVertexBuffer) and (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex)))) or
+      (assigned(fVulkanStaticVertexBuffer) and (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex)))) or
+ //   (fSceneInstance.fRaytracingActive and (assigned(fVulkanIndexBuffer) and (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
+      (assigned(fVulkanDrawIndexBuffer) and (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
+      (assigned(fVulkanDrawUniqueIndexBuffer) and (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
+      (assigned(fVulkanMorphTargetVertexBuffer) and (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) or
+      (assigned(fVulkanJointBlockBuffer) and (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock)))) or
+      (fSceneInstance.fMeshShaderSupport and assigned(fVulkanMeshletDescriptorBuffer) and (fVulkanMeshletDescriptorBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor)))) or
+      (fSceneInstance.fMeshShaderSupport and assigned(fVulkanMeshletVertexBuffer) and (fVulkanMeshletVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32)))) or
+      (fSceneInstance.fMeshShaderSupport and assigned(fVulkanMeshletPrimitiveBuffer) and (fVulkanMeshletPrimitiveBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32)))) then begin
+    fSceneInstance.Defragment(true);
    end;
 
-   if (not assigned(fVulkanStaticVertexBuffer)) or (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanStaticVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex)))) then begin
-    FreeAndNil(fVulkanStaticVertexBuffer);
-    fVulkanStaticVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                      Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex),
-                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
-                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                      [],
-                                                      0,
-                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                      0,
-                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                      0,
-                                                      0,
-                                                      0,
-                                                      0,
-                                                      [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                      0,
-                                                      pvAllocationGroupIDScene3DDynamic,
-                                                      'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer'
-                                                     );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanStaticVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer');
-   end;
-   if fSceneInstance.fVulkanStaticVertexBufferData.Count>0 then begin
-    fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                      fSceneInstance.fVulkanStagingCommandBuffer,
-                                                      fSceneInstance.fVulkanStagingFence,
-                                                      fSceneInstance.fVulkanStaticVertexBufferData.Items[0],
-                                                      fVulkanStaticVertexBuffer,
-                                                      0,
-                                                      fSceneInstance.fVulkanStaticVertexBufferData.Count*SizeOf(TGPUStaticVertex));
-   end;
+   if TPasMPInterlocked.CompareExchange(fForceFullReload,TPasMPBool32(false),TPasMPBool32(true)) or
+      ((not assigned(fVulkanDynamicVertexBuffer)) or (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDynamicVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))))) or
+      ((not assigned(fVulkanStaticVertexBuffer)) or (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanStaticVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))))) or
+ //   (fSceneInstance.fRaytracingActive and ((not assigned(fVulkanIndexBuffer)) or (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
+      ((not assigned(fVulkanDrawIndexBuffer)) or (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDrawIndexBuffer.Size>(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
+      ((not assigned(fVulkanDrawUniqueIndexBuffer)) or (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDrawUniqueIndexBuffer.Size>(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
+      ((not assigned(fVulkanMorphTargetVertexBuffer)) or (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMorphTargetVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))))) or
+      ((not assigned(fVulkanJointBlockBuffer)) or (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))) or (fSceneInstance.fAllowBufferShrink and (fVulkanJointBlockBuffer.Size>(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))))) or
+      (fSceneInstance.fMeshShaderSupport and
+       (((not assigned(fVulkanMeshletDescriptorBuffer)) or (fVulkanMeshletDescriptorBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletDescriptorBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor))))) or
+        ((not assigned(fVulkanMeshletVertexBuffer)) or (fVulkanMeshletVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32))))) or
+        ((not assigned(fVulkanMeshletPrimitiveBuffer)) or (fVulkanMeshletPrimitiveBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletPrimitiveBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32))))))) then begin
 
-{  if fSceneInstance.fRaytracingActive then begin
-    if (not assigned(fVulkanIndexBuffer)) or (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))) then begin
-     FreeAndNil(fVulkanIndexBuffer);
-     fVulkanIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32),
-                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
-                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                [],
-                                                0,
-                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                0,
-                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                0,
-                                                0,
-                                                0,
-                                                0,
-                                                [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                0,
-                                                pvAllocationGroupIDScene3DDynamic,
-                                                'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanIndexBuffer'
-                                               );
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanIndexBuffer');
-    end;
-    if fSceneInstance.fVulkanIndexBufferData.Count>0 then begin
-     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                       fSceneInstance.fVulkanStagingCommandBuffer,
-                                                       fSceneInstance.fVulkanStagingFence,
-                                                       fSceneInstance.fVulkanIndexBufferData.Items[0],
-                                                       fVulkanIndexBuffer,
-                                                       0,
-                                                       fSceneInstance.fVulkanIndexBufferData.Count*SizeOf(TpvUInt32));
-    end;
-   end;}
+    // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before) or the buffers are
+    // not yet allocated.
 
-   if (not assigned(fVulkanDrawIndexBuffer)) or (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDrawIndexBuffer.Size>(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32)))) then begin
-    FreeAndNil(fVulkanDrawIndexBuffer);
-    fVulkanDrawIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                   Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32),
-                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
-                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                   [],
-                                                   0,
-                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                   0,
-                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                   0,
-                                                   pvAllocationGroupIDScene3DDynamic,
-                                                   'TpvScene3D.TfSceneInstance.fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer'
-                                                  );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TfSceneInstance.fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer');
-   end;
-   if fSceneInstance.fVulkanDrawIndexBufferData.Count>0 then begin
-    fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                      fSceneInstance.fVulkanStagingCommandBuffer,
-                                                      fSceneInstance.fVulkanStagingFence,
-                                                      fSceneInstance.fVulkanDrawIndexBufferData.Items[0],
-                                                      fVulkanDrawIndexBuffer,
-                                                      0,
-                                                      fSceneInstance.fVulkanDrawIndexBufferData.Count*SizeOf(TpvUInt32));
-   end;
+    // Wait for the previous frame to finish using these buffers before we resize/recreate them
+    fSceneInstance.WaitOnceOnPreviousFrame;
 
-   if (not assigned(fVulkanDrawUniqueIndexBuffer)) or (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDrawUniqueIndexBuffer.Size>(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32)))) then begin
-    FreeAndNil(fVulkanDrawUniqueIndexBuffer);
-    fVulkanDrawUniqueIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                         Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32),
-                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
+    fSceneInstance.fNewInstanceListLock.Acquire;
+    try
+
+     FreeAndNil(fVulkanComputeDescriptorSet);
+     FreeAndNil(fVulkanComputeDescriptorPool);
+
+     FreeAndNil(fVulkanMeshletBoundsComputeDescriptorSet);
+     FreeAndNil(fVulkanMeshletBoundsComputeDescriptorPool);
+
+     if (not assigned(fVulkanDynamicVertexBuffer)) or (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDynamicVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex)))) then begin
+      FreeAndNil(fVulkanDynamicVertexBuffer);
+      fVulkanDynamicVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                         Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex),
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                          [],
                                                          0,
@@ -12853,25 +12731,123 @@ begin
                                                          [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
                                                          0,
                                                          pvAllocationGroupIDScene3DDynamic,
-                                                         'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDrawUniqueIndexBufferData'
+                                                         'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDynamicVertexBuffer'
                                                         );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawUniqueIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDrawUniqueIndexBufferData');
-   end;
-   if fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count>0 then begin
-    fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                      fSceneInstance.fVulkanStagingCommandBuffer,
-                                                      fSceneInstance.fVulkanStagingFence,
-                                                      fSceneInstance.fVulkanDrawUniqueIndexBufferData.Items[0],
-                                                      fVulkanDrawUniqueIndexBuffer,
-                                                      0,
-                                                      fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count*SizeOf(TpvUInt32));
-   end;
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDynamicVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDynamicVertexBuffer');
+     end;
+     if fSceneInstance.fVulkanDynamicVertexBufferData.Count>0 then begin
+      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                        fSceneInstance.fVulkanStagingCommandBuffer,
+                                                        fSceneInstance.fVulkanStagingFence,
+                                                        fSceneInstance.fVulkanDynamicVertexBufferData.Items[0],
+                                                        fVulkanDynamicVertexBuffer,
+                                                        0,
+                                                        fSceneInstance.fVulkanDynamicVertexBufferData.Count*SizeOf(TGPUDynamicVertex));
+     end;
 
-   if (not assigned(fVulkanMorphTargetVertexBuffer)) or (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMorphTargetVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) then begin
-    FreeAndNil(fVulkanMorphTargetVertexBuffer);
-    fVulkanMorphTargetVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                           Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex),
-                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+     if (not assigned(fVulkanStaticVertexBuffer)) or (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanStaticVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex)))) then begin
+      FreeAndNil(fVulkanStaticVertexBuffer);
+      fVulkanStaticVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                        Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
+                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                        [],
+                                                        0,
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                        0,
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                        0,
+                                                        pvAllocationGroupIDScene3DDynamic,
+                                                        'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer'
+                                                       );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanStaticVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer');
+     end;
+     if fSceneInstance.fVulkanStaticVertexBufferData.Count>0 then begin
+      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                        fSceneInstance.fVulkanStagingCommandBuffer,
+                                                        fSceneInstance.fVulkanStagingFence,
+                                                        fSceneInstance.fVulkanStaticVertexBufferData.Items[0],
+                                                        fVulkanStaticVertexBuffer,
+                                                        0,
+                                                        fSceneInstance.fVulkanStaticVertexBufferData.Count*SizeOf(TGPUStaticVertex));
+     end;
+
+  {  if fSceneInstance.fRaytracingActive then begin
+      if (not assigned(fVulkanIndexBuffer)) or (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))) then begin
+       FreeAndNil(fVulkanIndexBuffer);
+       fVulkanIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                  Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32),
+                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
+                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                  [],
+                                                  0,
+                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                  0,
+                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                  0,
+                                                  pvAllocationGroupIDScene3DDynamic,
+                                                  'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanIndexBuffer'
+                                                 );
+       fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanIndexBuffer');
+      end;
+      if fSceneInstance.fVulkanIndexBufferData.Count>0 then begin
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         fSceneInstance.fVulkanIndexBufferData.Items[0],
+                                                         fVulkanIndexBuffer,
+                                                         0,
+                                                         fSceneInstance.fVulkanIndexBufferData.Count*SizeOf(TpvUInt32));
+      end;
+     end;}
+
+     if (not assigned(fVulkanDrawIndexBuffer)) or (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDrawIndexBuffer.Size>(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32)))) then begin
+      FreeAndNil(fVulkanDrawIndexBuffer);
+      fVulkanDrawIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                     Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32),
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     0,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                     0,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                     0,
+                                                     pvAllocationGroupIDScene3DDynamic,
+                                                     'TpvScene3D.TfSceneInstance.fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer'
+                                                    );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TfSceneInstance.fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer');
+     end;
+     if fSceneInstance.fVulkanDrawIndexBufferData.Count>0 then begin
+      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                        fSceneInstance.fVulkanStagingCommandBuffer,
+                                                        fSceneInstance.fVulkanStagingFence,
+                                                        fSceneInstance.fVulkanDrawIndexBufferData.Items[0],
+                                                        fVulkanDrawIndexBuffer,
+                                                        0,
+                                                        fSceneInstance.fVulkanDrawIndexBufferData.Count*SizeOf(TpvUInt32));
+     end;
+
+     if (not assigned(fVulkanDrawUniqueIndexBuffer)) or (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDrawUniqueIndexBuffer.Size>(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32)))) then begin
+      FreeAndNil(fVulkanDrawUniqueIndexBuffer);
+      fVulkanDrawUniqueIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                           Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32),
+                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                            [],
                                                            0,
@@ -12885,59 +12861,25 @@ begin
                                                            [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
                                                            0,
                                                            pvAllocationGroupIDScene3DDynamic,
-                                                           'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMorphTargetVertexBuffer'
+                                                           'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDrawUniqueIndexBufferData'
                                                           );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMorphTargetVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMorphTargetVertexBuffer');
-   end;
-   if fSceneInstance.fVulkanMorphTargetVertexBufferData.Count>0 then begin
-    fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                      fSceneInstance.fVulkanStagingCommandBuffer,
-                                                      fSceneInstance.fVulkanStagingFence,
-                                                      fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[0],
-                                                      fVulkanMorphTargetVertexBuffer,
-                                                      0,
-                                                      fSceneInstance.fVulkanMorphTargetVertexBufferData.Count*SizeOf(TMorphTargetVertex));
-   end;
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawUniqueIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanDrawUniqueIndexBufferData');
+     end;
+     if fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count>0 then begin
+      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                        fSceneInstance.fVulkanStagingCommandBuffer,
+                                                        fSceneInstance.fVulkanStagingFence,
+                                                        fSceneInstance.fVulkanDrawUniqueIndexBufferData.Items[0],
+                                                        fVulkanDrawUniqueIndexBuffer,
+                                                        0,
+                                                        fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count*SizeOf(TpvUInt32));
+     end;
 
-   if (not assigned(fVulkanJointBlockBuffer)) or (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))) or (fSceneInstance.fAllowBufferShrink and (fVulkanJointBlockBuffer.Size>(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock)))) then begin
-    FreeAndNil(fVulkanJointBlockBuffer);
-    fVulkanJointBlockBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                    Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock),
-                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                    [],
-                                                    0,
-                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                    0,
-                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                    0,
-                                                    0,
-                                                    0,
-                                                    0,
-                                                    [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
-                                                    0,
-                                                    pvAllocationGroupIDScene3DDynamic,
-                                                    'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanJointBlockBuffer'
-                                                   );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanJointBlockBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanJointBlockBuffer');
-   end;
-   if fSceneInstance.fVulkanJointBlockBufferData.Count>0 then begin
-    fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                      fSceneInstance.fVulkanStagingCommandBuffer,
-                                                      fSceneInstance.fVulkanStagingFence,
-                                                      fSceneInstance.fVulkanJointBlockBufferData.Items[0],
-                                                      fVulkanJointBlockBuffer,
-                                                      0,
-                                                      fSceneInstance.fVulkanJointBlockBufferData.Count*SizeOf(TJointBlock));
-   end;
-
-   // Meshlet descriptor buffer
-   if fSceneInstance.fMeshShaderSupport then begin
-    if (not assigned(fVulkanMeshletDescriptorBuffer)) or (fVulkanMeshletDescriptorBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletDescriptorBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor)))) then begin
-     FreeAndNil(fVulkanMeshletDescriptorBuffer);
-     fVulkanMeshletDescriptorBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                             Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor),
-                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+     if (not assigned(fVulkanMorphTargetVertexBuffer)) or (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMorphTargetVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) then begin
+      FreeAndNil(fVulkanMorphTargetVertexBuffer);
+      fVulkanMorphTargetVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                             Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex),
+                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                              [],
                                                              0,
@@ -12948,406 +12890,476 @@ begin
                                                              0,
                                                              0,
                                                              0,
-                                                             [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation,TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                             [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
                                                              0,
                                                              pvAllocationGroupIDScene3DDynamic,
-                                                             'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer'
+                                                             'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMorphTargetVertexBuffer'
                                                             );
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletDescriptorBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer');
-    end;
-    if fSceneInstance.fVulkanMeshletDescriptorBufferData.Count>0 then begin
-     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                       fSceneInstance.fVulkanStagingCommandBuffer,
-                                                       fSceneInstance.fVulkanStagingFence,
-                                                       fSceneInstance.fVulkanMeshletDescriptorBufferData.Items[0],
-                                                       fVulkanMeshletDescriptorBuffer,
-                                                       0,
-                                                       fSceneInstance.fVulkanMeshletDescriptorBufferData.Count*SizeOf(TGPUMeshletDescriptor));
-    end;
-   end;
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMorphTargetVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMorphTargetVertexBuffer');
+     end;
+     if fSceneInstance.fVulkanMorphTargetVertexBufferData.Count>0 then begin
+      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                        fSceneInstance.fVulkanStagingCommandBuffer,
+                                                        fSceneInstance.fVulkanStagingFence,
+                                                        fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[0],
+                                                        fVulkanMorphTargetVertexBuffer,
+                                                        0,
+                                                        fSceneInstance.fVulkanMorphTargetVertexBufferData.Count*SizeOf(TMorphTargetVertex));
+     end;
 
-   // Meshlet vertex buffer (global vertex index remap)
-   if fSceneInstance.fMeshShaderSupport then begin
-    if (not assigned(fVulkanMeshletVertexBuffer)) or (fVulkanMeshletVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32)))) then begin
-     FreeAndNil(fVulkanMeshletVertexBuffer);
-     fVulkanMeshletVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                         Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32),
-                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                         [],
-                                                         0,
-                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                         0,
-                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                         0,
-                                                         0,
-                                                         0,
-                                                         0,
-                                                         [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation,TpvVulkanBufferFlag.BufferDeviceAddress],
-                                                         0,
-                                                         pvAllocationGroupIDScene3DDynamic,
-                                                         'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletVertexBuffer'
-                                                        );
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletVertexBuffer');
-    end;
-    if fSceneInstance.fVulkanMeshletVertexBufferData.Count>0 then begin
-     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                       fSceneInstance.fVulkanStagingCommandBuffer,
-                                                       fSceneInstance.fVulkanStagingFence,
-                                                       fSceneInstance.fVulkanMeshletVertexBufferData.Items[0],
-                                                       fVulkanMeshletVertexBuffer,
-                                                       0,
-                                                       fSceneInstance.fVulkanMeshletVertexBufferData.Count*SizeOf(TpvUInt32));
-    end;
-   end;
+     if (not assigned(fVulkanJointBlockBuffer)) or (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))) or (fSceneInstance.fAllowBufferShrink and (fVulkanJointBlockBuffer.Size>(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock)))) then begin
+      FreeAndNil(fVulkanJointBlockBuffer);
+      fVulkanJointBlockBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                      Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock),
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                      [],
+                                                      0,
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                      0,
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation],
+                                                      0,
+                                                      pvAllocationGroupIDScene3DDynamic,
+                                                      'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanJointBlockBuffer'
+                                                     );
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanJointBlockBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanJointBlockBuffer');
+     end;
+     if fSceneInstance.fVulkanJointBlockBufferData.Count>0 then begin
+      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                        fSceneInstance.fVulkanStagingCommandBuffer,
+                                                        fSceneInstance.fVulkanStagingFence,
+                                                        fSceneInstance.fVulkanJointBlockBufferData.Items[0],
+                                                        fVulkanJointBlockBuffer,
+                                                        0,
+                                                        fSceneInstance.fVulkanJointBlockBufferData.Count*SizeOf(TJointBlock));
+     end;
 
-   // Meshlet primitive buffer (packed triangle indices)
-   if fSceneInstance.fMeshShaderSupport then begin
-    if (not assigned(fVulkanMeshletPrimitiveBuffer)) or (fVulkanMeshletPrimitiveBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletPrimitiveBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32)))) then begin
-     FreeAndNil(fVulkanMeshletPrimitiveBuffer);
-     fVulkanMeshletPrimitiveBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                            Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32),
-                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                            [],
-                                                            0,
-                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                            0,
-                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                            0,
-                                                            0,
-                                                            0,
-                                                            0,
-                                                            [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation,TpvVulkanBufferFlag.BufferDeviceAddress],
-                                                            0,
-                                                            pvAllocationGroupIDScene3DDynamic,
-                                                            'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletPrimitiveBuffer'
-                                                           );
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletPrimitiveBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletPrimitiveBuffer');
-    end;
-    if fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count>0 then begin
-     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                       fSceneInstance.fVulkanStagingCommandBuffer,
-                                                       fSceneInstance.fVulkanStagingFence,
-                                                       fSceneInstance.fVulkanMeshletPrimitiveBufferData.Items[0],
-                                                       fVulkanMeshletPrimitiveBuffer,
-                                                       0,
-                                                       fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count*SizeOf(TpvUInt32));
-    end;
-   end;
+     // Meshlet descriptor buffer
+     if fSceneInstance.fMeshShaderSupport then begin
+      if (not assigned(fVulkanMeshletDescriptorBuffer)) or (fVulkanMeshletDescriptorBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletDescriptorBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor)))) then begin
+       FreeAndNil(fVulkanMeshletDescriptorBuffer);
+       fVulkanMeshletDescriptorBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                               Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor),
+                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                               [],
+                                                               0,
+                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                               0,
+                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation,TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                               0,
+                                                               pvAllocationGroupIDScene3DDynamic,
+                                                               'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer'
+                                                              );
+       fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletDescriptorBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer');
+      end;
+      if fSceneInstance.fVulkanMeshletDescriptorBufferData.Count>0 then begin
+       writeln('fSceneInstance.fVulkanMeshletDescriptorBufferData.Count: ',fSceneInstance.fVulkanMeshletDescriptorBufferData.Count);
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         fSceneInstance.fVulkanMeshletDescriptorBufferData.Items[0],
+                                                         fVulkanMeshletDescriptorBuffer,
+                                                         0,
+                                                         fSceneInstance.fVulkanMeshletDescriptorBufferData.Count*SizeOf(TGPUMeshletDescriptor));
+      end;
+     end;
 
-   fSceneInstance.fNewInstanceListLock.Acquire;
-   try
+     // Meshlet vertex buffer (global vertex index remap)
+     if fSceneInstance.fMeshShaderSupport then begin
+      if (not assigned(fVulkanMeshletVertexBuffer)) or (fVulkanMeshletVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32)))) then begin
+       FreeAndNil(fVulkanMeshletVertexBuffer);
+       fVulkanMeshletVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                           Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32),
+                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                           [],
+                                                           0,
+                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                           0,
+                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                           0,
+                                                           0,
+                                                           0,
+                                                           0,
+                                                           [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation,TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                           0,
+                                                           pvAllocationGroupIDScene3DDynamic,
+                                                           'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletVertexBuffer'
+                                                          );
+       fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletVertexBuffer');
+      end;
+      if fSceneInstance.fVulkanMeshletVertexBufferData.Count>0 then begin
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         fSceneInstance.fVulkanMeshletVertexBufferData.Items[0],
+                                                         fVulkanMeshletVertexBuffer,
+                                                         0,
+                                                         fSceneInstance.fVulkanMeshletVertexBufferData.Count*SizeOf(TpvUInt32));
+      end;
+     end;
+
+     // Meshlet primitive buffer (packed triangle indices)
+     if fSceneInstance.fMeshShaderSupport then begin
+      if (not assigned(fVulkanMeshletPrimitiveBuffer)) or (fVulkanMeshletPrimitiveBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletPrimitiveBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32)))) then begin
+       FreeAndNil(fVulkanMeshletPrimitiveBuffer);
+       fVulkanMeshletPrimitiveBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                              Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32),
+                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                              [],
+                                                              0,
+                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                              0,
+                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                              0,
+                                                              0,
+                                                              0,
+                                                              0,
+                                                              [TpvVulkanBufferFlag.OwnSingleMemoryChunk,TpvVulkanBufferFlag.DedicatedAllocation,TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                              0,
+                                                              pvAllocationGroupIDScene3DDynamic,
+                                                              'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletPrimitiveBuffer'
+                                                             );
+       fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletPrimitiveBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletPrimitiveBuffer');
+      end;
+      if fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count>0 then begin
+       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                         fSceneInstance.fVulkanStagingCommandBuffer,
+                                                         fSceneInstance.fVulkanStagingFence,
+                                                         fSceneInstance.fVulkanMeshletPrimitiveBufferData.Items[0],
+                                                         fVulkanMeshletPrimitiveBuffer,
+                                                         0,
+                                                         fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count*SizeOf(TpvUInt32));
+      end;
+     end;
+
+     try
+      for GroupInstance in fSceneInstance.fNewInstances do begin
+       TPasMPInterlocked.Write(GroupInstance.fIsNewInstance,TPasMPBool32(false));
+      end;
+     finally
+      fSceneInstance.fNewInstances.Clear;
+     end;
+
+    finally
+     fSceneInstance.fNewInstanceListLock.Release;
+    end;
+
+    fSceneInstance.fGroupInstanceListLock.Acquire;
     try
-     for GroupInstance in fSceneInstance.fNewInstances do begin
-      TPasMPInterlocked.Write(GroupInstance.fIsNewInstance,TPasMPBool32(false));
+     for GroupInstance in fSceneInstance.fGroupInstances do begin
+      if GroupInstance.fGroup.Usable and not (GroupInstance.fHeadless or GroupInstance.fVirtual) then begin
+       GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex];
+      end;
      end;
     finally
-     fSceneInstance.fNewInstances.Clear;
+     fSceneInstance.fGroupInstanceListLock.Release;
     end;
-   finally
-    fSceneInstance.fNewInstanceListLock.Release;
-   end;
 
-   fSceneInstance.fGroupInstanceListLock.Acquire;
-   try
-    for GroupInstance in fSceneInstance.fGroupInstances do begin
-     if GroupInstance.fGroup.Usable and not (GroupInstance.fHeadless or GroupInstance.fVirtual) then begin
-      GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex];
+    begin
+
+     fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
+                                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                  1);
+     fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,4);
+     fVulkanComputeDescriptorPool.Initialize;
+     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanComputeDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanComputeDescriptorPool');
+
+     fVulkanComputeDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanComputeDescriptorPool,
+                                                                fSceneInstance.fMeshComputeVulkanDescriptorSet0Layout);
+     try
+      fVulkanComputeDescriptorSet.WriteToDescriptorSet(0,
+                                                       0,
+                                                       1,
+                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                       [],
+                                                       [{fVulkanVertexBuffer}fVulkanDynamicVertexBuffer.DescriptorBufferInfo],
+                                                       [],
+                                                       false);
+      fVulkanComputeDescriptorSet.WriteToDescriptorSet(1,
+                                                       0,
+                                                       1,
+                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                       [],
+                                                       [fVulkanDrawUniqueIndexBuffer.DescriptorBufferInfo],
+                                                       [],
+                                                       false);
+      fVulkanComputeDescriptorSet.WriteToDescriptorSet(2,
+                                                       0,
+                                                       1,
+                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                       [],
+                                                       [fVulkanMorphTargetVertexBuffer.DescriptorBufferInfo],
+                                                       [],
+                                                       false);
+      fVulkanComputeDescriptorSet.WriteToDescriptorSet(3,
+                                                       0,
+                                                       1,
+                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                       [],
+                                                       [fVulkanJointBlockBuffer.DescriptorBufferInfo],
+                                                       [],
+                                                       false);
+     finally
+      fVulkanComputeDescriptorSet.Flush;
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanComputeDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanComputeDescriptorSet');
      end;
+
     end;
-   finally
-    fSceneInstance.fGroupInstanceListLock.Release;
-   end;
 
-   begin
+    // Meshlet bounds compute descriptor set (Set 0: MeshletVertexBuffer + MeshletDescriptorBuffer)
+    if fSceneInstance.fMeshShaderSupport and
+       assigned(fVulkanMeshletVertexBuffer) and
+       assigned(fVulkanMeshletDescriptorBuffer) and
+       assigned(fSceneInstance.fMeshletBoundsComputeVulkanDescriptorSet0Layout) and
+       (not assigned(fVulkanMeshletBoundsComputeDescriptorSet)) then begin
 
-    fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
-                                                                 TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                                 1);
-    fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,4);
-    fVulkanComputeDescriptorPool.Initialize;
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanComputeDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanComputeDescriptorPool');
+     fVulkanMeshletBoundsComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
+                                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                                1);
+     fVulkanMeshletBoundsComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2);
+     fVulkanMeshletBoundsComputeDescriptorPool.Initialize;
+     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletBoundsComputeDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletBoundsComputeDescriptorPool');
 
-    fVulkanComputeDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanComputeDescriptorPool,
-                                                               fSceneInstance.fMeshComputeVulkanDescriptorSet0Layout);
+     fVulkanMeshletBoundsComputeDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanMeshletBoundsComputeDescriptorPool,
+                                                                              fSceneInstance.fMeshletBoundsComputeVulkanDescriptorSet0Layout);
+     try
+      fVulkanMeshletBoundsComputeDescriptorSet.WriteToDescriptorSet(0,
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                     [],
+                                                                     [fVulkanMeshletVertexBuffer.DescriptorBufferInfo],
+                                                                     [],
+                                                                     false);
+      fVulkanMeshletBoundsComputeDescriptorSet.WriteToDescriptorSet(1,
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                     [],
+                                                                     [fVulkanMeshletDescriptorBuffer.DescriptorBufferInfo],
+                                                                     [],
+                                                                     false);
+     finally
+      fVulkanMeshletBoundsComputeDescriptorSet.Flush;
+      fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletBoundsComputeDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletBoundsComputeDescriptorSet');
+     end;
+
+    end;
+
+    TPasMPInterlocked.Increment(fGeneration);
+
+   end else begin
+
+    fSceneInstance.fNewInstanceListLock.Acquire;
     try
-     fVulkanComputeDescriptorSet.WriteToDescriptorSet(0,
-                                                      0,
-                                                      1,
-                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                      [],
-                                                      [{fVulkanVertexBuffer}fVulkanDynamicVertexBuffer.DescriptorBufferInfo],
-                                                      [],
-                                                      false);
-     fVulkanComputeDescriptorSet.WriteToDescriptorSet(1,
-                                                      0,
-                                                      1,
-                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                      [],
-                                                      [fVulkanDrawUniqueIndexBuffer.DescriptorBufferInfo],
-                                                      [],
-                                                      false);
-     fVulkanComputeDescriptorSet.WriteToDescriptorSet(2,
-                                                      0,
-                                                      1,
-                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                      [],
-                                                      [fVulkanMorphTargetVertexBuffer.DescriptorBufferInfo],
-                                                      [],
-                                                      false);
-     fVulkanComputeDescriptorSet.WriteToDescriptorSet(3,
-                                                      0,
-                                                      1,
-                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                      [],
-                                                      [fVulkanJointBlockBuffer.DescriptorBufferInfo],
-                                                      [],
-                                                      false);
+
+     try
+
+      for GroupInstance in fSceneInstance.fNewInstances do begin
+
+       if TPasMPInterlocked.CompareExchange(GroupInstance.fIsNewInstance,TPasMPBool32(false),TPasMPBool32(true)) then begin
+
+        if GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size>0 then begin
+
+         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                           fSceneInstance.fVulkanStagingCommandBuffer,
+                                                           fSceneInstance.fVulkanStagingFence,
+                                                           fSceneInstance.fVulkanDynamicVertexBufferData.Items[GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset],
+                                                           fVulkanDynamicVertexBuffer,
+                                                           GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset*SizeOf(TGPUDynamicVertex),
+                                                           GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size*SizeOf(TGPUDynamicVertex));
+
+         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                           fSceneInstance.fVulkanStagingCommandBuffer,
+                                                           fSceneInstance.fVulkanStagingFence,
+                                                           fSceneInstance.fVulkanStaticVertexBufferData.Items[GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset],
+                                                           fVulkanStaticVertexBuffer,
+                                                           GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset*SizeOf(TGPUStaticVertex),
+                                                           GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size*SizeOf(TGPUStaticVertex));
+
+        end;
+
+ {      if fSceneInstance.fRaytracingActive and (GroupInstance.fVulkanIndexBufferRange.Size>0) then begin
+         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                           fSceneInstance.fVulkanStagingCommandBuffer,
+                                                           fSceneInstance.fVulkanStagingFence,
+                                                           fSceneInstance.fVulkanIndexBufferData.Items[GroupInstance.fVulkanIndexBufferRange.Offset],
+                                                           fVulkanIndexBuffer,
+                                                           GroupInstance.fVulkanIndexBufferRange.Offset*SizeOf(TpvUInt32),
+                                                           GroupInstance.fVulkanIndexBufferRange.Size*SizeOf(TpvUInt32));
+        end;}
+
+        if GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Size>0 then begin
+         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                           fSceneInstance.fVulkanStagingCommandBuffer,
+                                                           fSceneInstance.fVulkanStagingFence,
+                                                           fSceneInstance.fVulkanDrawIndexBufferData.Items[GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Offset],
+                                                           fVulkanDrawIndexBuffer,
+                                                           GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Offset*SizeOf(TpvUInt32),
+                                                           GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Size*SizeOf(TpvUInt32));
+        end;
+
+        if GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size>0 then begin
+         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                           fSceneInstance.fVulkanStagingCommandBuffer,
+                                                           fSceneInstance.fVulkanStagingFence,
+                                                           fSceneInstance.fVulkanDrawUniqueIndexBufferData.Items[GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset],
+                                                           fVulkanDrawUniqueIndexBuffer,
+                                                           GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset*SizeOf(TpvUInt32),
+                                                           GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size*SizeOf(TpvUInt32));
+        end;
+
+        if GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Size>0 then begin
+         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                           fSceneInstance.fVulkanStagingCommandBuffer,
+                                                           fSceneInstance.fVulkanStagingFence,
+                                                           fSceneInstance.fVulkanJointBlockBufferData.Items[GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Offset],
+                                                           fVulkanJointBlockBuffer,
+                                                           GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Offset*SizeOf(TJointBlock),
+                                                           GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Size*SizeOf(TJointBlock));
+        end;
+
+        if GroupInstance.fGroup.fSharedMorphTargetVertexBufferRange.Size>0 then begin
+         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                           fSceneInstance.fVulkanStagingCommandBuffer,
+                                                           fSceneInstance.fVulkanStagingFence,
+                                                           fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[GroupInstance.fGroup.fSharedMorphTargetVertexBufferRange.Offset],
+                                                           fVulkanMorphTargetVertexBuffer,
+                                                           GroupInstance.fGroup.fSharedMorphTargetVertexBufferRange.Offset*SizeOf(TMorphTargetVertex),
+                                                           GroupInstance.fGroup.fSharedMorphTargetVertexBufferRange.Size*SizeOf(TMorphTargetVertex));
+        end;
+
+        if fSceneInstance.fMeshShaderSupport then begin
+         if GroupInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Size>0 then begin
+          fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                            fSceneInstance.fVulkanStagingCommandBuffer,
+                                                            fSceneInstance.fVulkanStagingFence,
+                                                            fSceneInstance.fVulkanMeshletDescriptorBufferData.Items[GroupInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset],
+                                                            fVulkanMeshletDescriptorBuffer,
+                                                            GroupInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset*SizeOf(TGPUMeshletDescriptor),
+                                                            GroupInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Size*SizeOf(TGPUMeshletDescriptor));
+         end;
+         if GroupInstance.fBufferRanges.VulkanMeshletVertexBufferRange.Size>0 then begin
+          fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                            fSceneInstance.fVulkanStagingCommandBuffer,
+                                                            fSceneInstance.fVulkanStagingFence,
+                                                            fSceneInstance.fVulkanMeshletVertexBufferData.Items[GroupInstance.fBufferRanges.VulkanMeshletVertexBufferRange.Offset],
+                                                            fVulkanMeshletVertexBuffer,
+                                                            GroupInstance.fBufferRanges.VulkanMeshletVertexBufferRange.Offset*SizeOf(TpvUInt32),
+                                                            GroupInstance.fBufferRanges.VulkanMeshletVertexBufferRange.Size*SizeOf(TpvUInt32));
+         end;
+         if GroupInstance.fBufferRanges.VulkanMeshletPrimitiveBufferRange.Size>0 then begin
+          fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                            fSceneInstance.fVulkanStagingCommandBuffer,
+                                                            fSceneInstance.fVulkanStagingFence,
+                                                            fSceneInstance.fVulkanMeshletPrimitiveBufferData.Items[GroupInstance.fBufferRanges.VulkanMeshletPrimitiveBufferRange.Offset],
+                                                            fVulkanMeshletPrimitiveBuffer,
+                                                            GroupInstance.fBufferRanges.VulkanMeshletPrimitiveBufferRange.Offset*SizeOf(TpvUInt32),
+                                                            GroupInstance.fBufferRanges.VulkanMeshletPrimitiveBufferRange.Size*SizeOf(TpvUInt32));
+         end;
+        end;
+
+        GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex];
+
+       end;
+
+      end;
+
+     finally
+      fSceneInstance.fNewInstances.Clear;
+     end;
+
     finally
-     fVulkanComputeDescriptorSet.Flush;
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanComputeDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanComputeDescriptorSet');
+     fSceneInstance.fNewInstanceListLock.Release;
     end;
 
-   end;
-
-   // Meshlet bounds compute descriptor set (Set 0: MeshletVertexBuffer + MeshletDescriptorBuffer)
-   if fSceneInstance.fMeshShaderSupport and
-      assigned(fVulkanMeshletVertexBuffer) and
-      assigned(fVulkanMeshletDescriptorBuffer) and
-      assigned(fSceneInstance.fMeshletBoundsComputeVulkanDescriptorSet0Layout) and
-      (not assigned(fVulkanMeshletBoundsComputeDescriptorSet)) then begin
-
-    fVulkanMeshletBoundsComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
-                                                                               TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                                               1);
-    fVulkanMeshletBoundsComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2);
-    fVulkanMeshletBoundsComputeDescriptorPool.Initialize;
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletBoundsComputeDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletBoundsComputeDescriptorPool');
-
-    fVulkanMeshletBoundsComputeDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanMeshletBoundsComputeDescriptorPool,
-                                                                             fSceneInstance.fMeshletBoundsComputeVulkanDescriptorSet0Layout);
-    try
-     fVulkanMeshletBoundsComputeDescriptorSet.WriteToDescriptorSet(0,
-                                                                    0,
-                                                                    1,
-                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                    [],
-                                                                    [fVulkanMeshletVertexBuffer.DescriptorBufferInfo],
-                                                                    [],
-                                                                    false);
-     fVulkanMeshletBoundsComputeDescriptorSet.WriteToDescriptorSet(1,
-                                                                    0,
-                                                                    1,
-                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                    [],
-                                                                    [fVulkanMeshletDescriptorBuffer.DescriptorBufferInfo],
-                                                                    [],
-                                                                    false);
-    finally
-     fVulkanMeshletBoundsComputeDescriptorSet.Flush;
-     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletBoundsComputeDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletBoundsComputeDescriptorSet');
-    end;
-
-   end;
-
-   TPasMPInterlocked.Increment(fGeneration);
-
-  end else begin
-
-   fSceneInstance.fNewInstanceListLock.Acquire;
-   try
-
+    fSceneInstance.fGroupInstanceListLock.Acquire;
     try
 
-     for GroupInstance in fSceneInstance.fNewInstances do begin
+     for GroupInstance in fSceneInstance.fGroupInstances do begin
 
-      if TPasMPInterlocked.CompareExchange(GroupInstance.fIsNewInstance,TPasMPBool32(false),TPasMPBool32(true)) then begin
-
-       if GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size>0 then begin
-
-        fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                          fSceneInstance.fVulkanStagingCommandBuffer,
-                                                          fSceneInstance.fVulkanStagingFence,
-                                                          fSceneInstance.fVulkanDynamicVertexBufferData.Items[GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset],
-                                                          fVulkanDynamicVertexBuffer,
-                                                          GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset*SizeOf(TGPUDynamicVertex),
-                                                          GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size*SizeOf(TGPUDynamicVertex));
-
-        fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                          fSceneInstance.fVulkanStagingCommandBuffer,
-                                                          fSceneInstance.fVulkanStagingFence,
-                                                          fSceneInstance.fVulkanStaticVertexBufferData.Items[GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset],
-                                                          fVulkanStaticVertexBuffer,
-                                                          GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset*SizeOf(TGPUStaticVertex),
-                                                          GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size*SizeOf(TGPUStaticVertex));
-
-       end;
-
-{      if fSceneInstance.fRaytracingActive and (GroupInstance.fVulkanIndexBufferRange.Size>0) then begin
-        fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                          fSceneInstance.fVulkanStagingCommandBuffer,
-                                                          fSceneInstance.fVulkanStagingFence,
-                                                          fSceneInstance.fVulkanIndexBufferData.Items[GroupInstance.fVulkanIndexBufferRange.Offset],
-                                                          fVulkanIndexBuffer,
-                                                          GroupInstance.fVulkanIndexBufferRange.Offset*SizeOf(TpvUInt32),
-                                                          GroupInstance.fVulkanIndexBufferRange.Size*SizeOf(TpvUInt32));
-       end;}
-
-       if GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Size>0 then begin
-        fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                          fSceneInstance.fVulkanStagingCommandBuffer,
-                                                          fSceneInstance.fVulkanStagingFence,
-                                                          fSceneInstance.fVulkanDrawIndexBufferData.Items[GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Offset],
-                                                          fVulkanDrawIndexBuffer,
-                                                          GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Offset*SizeOf(TpvUInt32),
-                                                          GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Size*SizeOf(TpvUInt32));
-       end;
-
-       if GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size>0 then begin
-        fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                          fSceneInstance.fVulkanStagingCommandBuffer,
-                                                          fSceneInstance.fVulkanStagingFence,
-                                                          fSceneInstance.fVulkanDrawUniqueIndexBufferData.Items[GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset],
-                                                          fVulkanDrawUniqueIndexBuffer,
-                                                          GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset*SizeOf(TpvUInt32),
-                                                          GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size*SizeOf(TpvUInt32));
-       end;
-
-       if GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Size>0 then begin
-        fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                          fSceneInstance.fVulkanStagingCommandBuffer,
-                                                          fSceneInstance.fVulkanStagingFence,
-                                                          fSceneInstance.fVulkanJointBlockBufferData.Items[GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Offset],
-                                                          fVulkanJointBlockBuffer,
-                                                          GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Offset*SizeOf(TJointBlock),
-                                                          GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Size*SizeOf(TJointBlock));
-       end;
-
-       if GroupInstance.fGroup.fSharedMorphTargetVertexBufferRange.Size>0 then begin
-        fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                          fSceneInstance.fVulkanStagingCommandBuffer,
-                                                          fSceneInstance.fVulkanStagingFence,
-                                                          fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[GroupInstance.fGroup.fSharedMorphTargetVertexBufferRange.Offset],
-                                                          fVulkanMorphTargetVertexBuffer,
-                                                          GroupInstance.fGroup.fSharedMorphTargetVertexBufferRange.Offset*SizeOf(TMorphTargetVertex),
-                                                          GroupInstance.fGroup.fSharedMorphTargetVertexBufferRange.Size*SizeOf(TMorphTargetVertex));
-       end;
-
-       if fSceneInstance.fMeshShaderSupport then begin
-        if GroupInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Size>0 then begin
-         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                           fSceneInstance.fVulkanStagingCommandBuffer,
-                                                           fSceneInstance.fVulkanStagingFence,
-                                                           fSceneInstance.fVulkanMeshletDescriptorBufferData.Items[GroupInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset],
-                                                           fVulkanMeshletDescriptorBuffer,
-                                                           GroupInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset*SizeOf(TGPUMeshletDescriptor),
-                                                           GroupInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Size*SizeOf(TGPUMeshletDescriptor));
-        end;
-        if GroupInstance.fBufferRanges.VulkanMeshletVertexBufferRange.Size>0 then begin
-         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                           fSceneInstance.fVulkanStagingCommandBuffer,
-                                                           fSceneInstance.fVulkanStagingFence,
-                                                           fSceneInstance.fVulkanMeshletVertexBufferData.Items[GroupInstance.fBufferRanges.VulkanMeshletVertexBufferRange.Offset],
-                                                           fVulkanMeshletVertexBuffer,
-                                                           GroupInstance.fBufferRanges.VulkanMeshletVertexBufferRange.Offset*SizeOf(TpvUInt32),
-                                                           GroupInstance.fBufferRanges.VulkanMeshletVertexBufferRange.Size*SizeOf(TpvUInt32));
-        end;
-        if GroupInstance.fBufferRanges.VulkanMeshletPrimitiveBufferRange.Size>0 then begin
-         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
-                                                           fSceneInstance.fVulkanStagingCommandBuffer,
-                                                           fSceneInstance.fVulkanStagingFence,
-                                                           fSceneInstance.fVulkanMeshletPrimitiveBufferData.Items[GroupInstance.fBufferRanges.VulkanMeshletPrimitiveBufferRange.Offset],
-                                                           fVulkanMeshletPrimitiveBuffer,
-                                                           GroupInstance.fBufferRanges.VulkanMeshletPrimitiveBufferRange.Offset*SizeOf(TpvUInt32),
-                                                           GroupInstance.fBufferRanges.VulkanMeshletPrimitiveBufferRange.Size*SizeOf(TpvUInt32));
-        end;
-       end;
+      if GroupInstance.fGroup.Usable and
+         (not (GroupInstance.fHeadless or GroupInstance.fVirtual)) and
+         (GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]<>GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex]) then begin
 
        GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex];
 
+       InFlightFrameDataTransferQueue:=fSceneInstance.fInFlightFrameDataTransferQueues[aInFlightFrameIndex];
+
+       if GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size>0 then begin
+
+        InFlightFrameDataTransferQueue.Queue(fSceneInstance.fVulkanStagingQueue,
+                                             fSceneInstance.fVulkanStagingCommandBuffer,
+                                             fSceneInstance.fVulkanStagingFence,
+                                             fSceneInstance.fVulkanDynamicVertexBufferData.Items[GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset],
+                                             fVulkanDynamicVertexBuffer,
+                                             GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset*SizeOf(TGPUDynamicVertex),
+                                             GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size*SizeOf(TGPUDynamicVertex));
+
+        InFlightFrameDataTransferQueue.Queue(fSceneInstance.fVulkanStagingQueue,
+                                             fSceneInstance.fVulkanStagingCommandBuffer,
+                                             fSceneInstance.fVulkanStagingFence,
+                                             fSceneInstance.fVulkanStaticVertexBufferData.Items[GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset],
+                                             fVulkanStaticVertexBuffer,
+                                             GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset*SizeOf(TGPUStaticVertex),
+                                             GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size*SizeOf(TGPUStaticVertex));
+       end;
+
+ {     if GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Size>0 then begin
+        InFlightFrameDataTransferQueue.Queue(fSceneInstance.fVulkanStagingQueue,
+                                             fSceneInstance.fVulkanStagingCommandBuffer,
+                                             fSceneInstance.fVulkanStagingFence,
+                                             fSceneInstance.fVulkanDrawIndexBufferData.Items[GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Offset],
+                                             fVulkanDrawIndexBuffer,
+                                             GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Offset*SizeOf(TpvUInt32),
+                                             GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Size*SizeOf(TpvUInt32));
+       end;
+
+       if GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size>0 then begin
+        InFlightFrameDataTransferQueue.Queue(fSceneInstance.fVulkanStagingQueue,
+                                             fSceneInstance.fVulkanStagingCommandBuffer,
+                                             fSceneInstance.fVulkanStagingFence,
+                                             fSceneInstance.fVulkanDrawUniqueIndexBufferData.Items[GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset],
+                                             fVulkanDrawUniqueIndexBuffer,
+                                             GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset*SizeOf(TpvUInt32),
+                                             GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size*SizeOf(TpvUInt32));
+       end;
+
+       if GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Size>0 then begin
+        InFlightFrameDataTransferQueue.Queue(fSceneInstance.fVulkanStagingQueue,
+                                             fSceneInstance.fVulkanStagingCommandBuffer,
+                                             fSceneInstance.fVulkanStagingFence,
+                                             fSceneInstance.fVulkanJointBlockBufferData.Items[GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Offset],
+                                             fVulkanJointBlockBuffer,
+                                             GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Offset*SizeOf(TJointBlock),
+                                             GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Size*SizeOf(TJointBlock));
+       end;}
+
       end;
 
      end;
 
     finally
-     fSceneInstance.fNewInstances.Clear;
+     fSceneInstance.fGroupInstanceListLock.Release;
     end;
 
-   finally
-    fSceneInstance.fNewInstanceListLock.Release;
    end;
 
-   fSceneInstance.fGroupInstanceListLock.Acquire;
-   try
-
-    for GroupInstance in fSceneInstance.fGroupInstances do begin
-
-     if GroupInstance.fGroup.Usable and
-        (not (GroupInstance.fHeadless or GroupInstance.fVirtual)) and
-        (GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]<>GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex]) then begin
-
-      GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex];
-
-      InFlightFrameDataTransferQueue:=fSceneInstance.fInFlightFrameDataTransferQueues[aInFlightFrameIndex];
-
-      if GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size>0 then begin
-
-       InFlightFrameDataTransferQueue.Queue(fSceneInstance.fVulkanStagingQueue,
-                                            fSceneInstance.fVulkanStagingCommandBuffer,
-                                            fSceneInstance.fVulkanStagingFence,
-                                            fSceneInstance.fVulkanDynamicVertexBufferData.Items[GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset],
-                                            fVulkanDynamicVertexBuffer,
-                                            GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset*SizeOf(TGPUDynamicVertex),
-                                            GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size*SizeOf(TGPUDynamicVertex));
-
-       InFlightFrameDataTransferQueue.Queue(fSceneInstance.fVulkanStagingQueue,
-                                            fSceneInstance.fVulkanStagingCommandBuffer,
-                                            fSceneInstance.fVulkanStagingFence,
-                                            fSceneInstance.fVulkanStaticVertexBufferData.Items[GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset],
-                                            fVulkanStaticVertexBuffer,
-                                            GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset*SizeOf(TGPUStaticVertex),
-                                            GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size*SizeOf(TGPUStaticVertex));
-      end;
-
-{     if GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Size>0 then begin
-       InFlightFrameDataTransferQueue.Queue(fSceneInstance.fVulkanStagingQueue,
-                                            fSceneInstance.fVulkanStagingCommandBuffer,
-                                            fSceneInstance.fVulkanStagingFence,
-                                            fSceneInstance.fVulkanDrawIndexBufferData.Items[GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Offset],
-                                            fVulkanDrawIndexBuffer,
-                                            GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Offset*SizeOf(TpvUInt32),
-                                            GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Size*SizeOf(TpvUInt32));
-      end;
-
-      if GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size>0 then begin
-       InFlightFrameDataTransferQueue.Queue(fSceneInstance.fVulkanStagingQueue,
-                                            fSceneInstance.fVulkanStagingCommandBuffer,
-                                            fSceneInstance.fVulkanStagingFence,
-                                            fSceneInstance.fVulkanDrawUniqueIndexBufferData.Items[GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset],
-                                            fVulkanDrawUniqueIndexBuffer,
-                                            GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset*SizeOf(TpvUInt32),
-                                            GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size*SizeOf(TpvUInt32));
-      end;
-
-      if GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Size>0 then begin
-       InFlightFrameDataTransferQueue.Queue(fSceneInstance.fVulkanStagingQueue,
-                                            fSceneInstance.fVulkanStagingCommandBuffer,
-                                            fSceneInstance.fVulkanStagingFence,
-                                            fSceneInstance.fVulkanJointBlockBufferData.Items[GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Offset],
-                                            fVulkanJointBlockBuffer,
-                                            GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Offset*SizeOf(TJointBlock),
-                                            GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Size*SizeOf(TJointBlock));
-      end;}
-
-     end;
-
-    end;
-
-   finally
-    fSceneInstance.fGroupInstanceListLock.Release;
-   end;
-
+  finally
+   fSceneInstance.fBufferRangeAllocatorLock.Release;
   end;
 
  end;
@@ -27057,10 +27069,10 @@ begin
     fSceneInstance.fNewInstanceListLock.Acquire;
     try
      fSceneInstance.fNewInstances.Add(self);
+     TPasMPInterlocked.Write(fIsNewInstance,TPasMPBool32(true));
     finally
      fSceneInstance.fNewInstanceListLock.Release;
     end;
-    TPasMPInterlocked.Write(fIsNewInstance,TPasMPBool32(true));
    end;
 
    // Register instance with virtual instance manager when applicable
@@ -27400,10 +27412,10 @@ begin
    fSceneInstance.fNewInstanceListLock.Acquire;
    try
     fSceneInstance.fNewInstances.Add(self);
+    TPasMPInterlocked.Write(fIsNewInstance,TPasMPBool32(true));
    finally
     fSceneInstance.fNewInstanceListLock.Release;
    end;
-   TPasMPInterlocked.Write(fIsNewInstance,TPasMPBool32(true));
   end;
 
  end else begin
@@ -27612,10 +27624,10 @@ begin
     fSceneInstance.fNewInstanceListLock.Acquire;
     try
      fSceneInstance.fNewInstances.Add(self);
+     TPasMPInterlocked.Write(fIsNewInstance,TPasMPBool32(true));
     finally
      fSceneInstance.fNewInstanceListLock.Release;
     end;
-    TPasMPInterlocked.Write(fIsNewInstance,TPasMPBool32(true));
    end;
 
    if fSceneInstance.fRaytracingActive then begin
@@ -35683,10 +35695,10 @@ begin
             fNewInstanceListLock.Acquire;
             try
              fNewInstances.Add(GroupInstance);
+             TPasMPInterlocked.Write(GroupInstance.fIsNewInstance,TPasMPBool32(true));
             finally
              fNewInstanceListLock.Release;
             end;
-            TPasMPInterlocked.Write(GroupInstance.fIsNewInstance,TPasMPBool32(true));
            end;
 
            // Raytracing: re-add BLAS nodes
