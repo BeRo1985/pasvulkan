@@ -40,7 +40,7 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Gen
   uint generations[];
 };
 
-// GlobalBDAPointers - 96 bytes, single instance in SSBO at binding 7
+// GlobalBDAPointers - 104 bytes, single instance in SSBO at binding 7
 // Contains the global buffer device addresses shared by all draws (big-buffer mode).
 // For future per-group buffers, these would move back into DrawInfo or become per-group.
 // Layout (std430):
@@ -56,7 +56,8 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Gen
 //   offset 72: meshletVertexBDA           (uvec2, 8 bytes, BDA to meshlet vertex buffer)
 //   offset 80: meshletPrimitiveBDA        (uvec2, 8 bytes, BDA to meshlet primitive buffer)
 //   offset 88: meshletBoundingSphereBDA   (uvec2, 8 bytes, BDA to per-instance meshlet bounding sphere buffer)
-// Total: 96 bytes
+//   offset 96: nodeMatricesBDA            (uvec2, 8 bytes, BDA to per-IFF node matrices buffer)
+// Total: 104 bytes
 
 struct GlobalBDAPointers {
   uvec2 cachedVerticesBDA;
@@ -71,6 +72,7 @@ struct GlobalBDAPointers {
   uvec2 meshletVertexBDA;
   uvec2 meshletPrimitiveBDA;
   uvec2 meshletBoundingSphereBDA;
+  uvec2 nodeMatricesBDA;
 };
 
 // MatrixPair struct - 128 bytes, two full mat4 matrices
@@ -184,6 +186,11 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Mes
 // Buffer reference for per-instance meshlet bounding spheres via BDA (vec4 per meshlet)
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshletBoundingSphereBuffer {
   vec4 spheres[];
+};
+
+// Buffer reference for node matrices via BDA (mat4 per node, indexed by drawInfo.nodeMatricesIndex)
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer NodeMatricesBDABuffer {
+  mat4 matrices[];
 };
 
 // Indirect command metadata for mesh shader path — 32 bytes, matches TGPUDrawMeshTasksIndirectCommand

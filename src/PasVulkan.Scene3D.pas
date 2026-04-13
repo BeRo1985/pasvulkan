@@ -395,7 +395,7 @@ type EpvScene3D=class(Exception);
             TGlobalVulkanInstanceCounts=array[0..MaxInFlightFrames-1] of TPasMPUInt32;
             PGlobalVulkanInstanceCounts=^TGlobalVulkanInstanceCounts;
             { TGPUGlobalBDAPointers }
-            // 48 bytes, single instance in SSBO at binding 7
+            // 104 bytes, single instance in SSBO at binding 7
             // Contains the global buffer device addresses shared by all draws (big-buffer mode).
             // For future per-group buffers, these would move back into TGPUDrawInfo.
             TGPUGlobalBDAPointers=packed record
@@ -413,9 +413,10 @@ type EpvScene3D=class(Exception);
                MeshletVertexDeviceAddress:TVkDeviceAddress;            // + 8 =  80 (BDA to meshlet vertex buffer)
                MeshletPrimitiveDeviceAddress:TVkDeviceAddress;         // + 8 =  88 (BDA to meshlet primitive buffer)
                MeshletBoundingSphereDeviceAddress:TVkDeviceAddress;    // + 8 =  96 (BDA to per-instance meshlet bounding sphere buffer)
+               NodeMatricesDeviceAddress:TVkDeviceAddress;             // + 8 = 104 (BDA to per-IFF node matrices buffer)
               );
               true:(
-               RawData:array[0..95] of TpvUInt8;
+               RawData:array[0..103] of TpvUInt8;
               );
             end;
             PGPUGlobalBDAPointers=^TGPUGlobalBDAPointers;
@@ -13503,7 +13504,7 @@ begin
      TBufferStreamingMode.Direct:begin
       fVulkanNodeMatricesBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                         Max(1,fSceneInstance.fVulkanNodeMatricesBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvMatrix4x4),
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                         [],
                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
@@ -13524,7 +13525,7 @@ begin
      TBufferStreamingMode.Staging:begin
       fVulkanNodeMatricesBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                         Max(1,fSceneInstance.fVulkanNodeMatricesBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvMatrix4x4),
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                         [],
                                                         0,
@@ -40642,6 +40643,13 @@ begin
    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletBoundingSphereDeviceAddress:=fGlobalMeshletBoundingSphereBuffer.DeviceAddress;
   end;
 
+  // Set node matrices BDA (per IFF, dynamic buffer — for mesh shader winding flip via determinant)
+  if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanNodeMatricesBuffer) then begin
+   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].NodeMatricesDeviceAddress:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanNodeMatricesBuffer.DeviceAddress;
+  end else begin 
+   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].NodeMatricesDeviceAddress:=0;
+  end;
+
 {$ifdef MeshShaderDebug}
   if aInFlightFrameIndex=0 then begin
    WriteLn('[DEBUG-MS] BDA IFF=',aInFlightFrameIndex,
@@ -40653,7 +40661,7 @@ begin
   end;
 {$endif}
 
-  // Upload global BDA pointers to binding 7 SSBO (96 bytes, always)
+  // Upload global BDA pointers to binding 7 SSBO (static for all draws, but per-IFF due to dynamic buffers)
   case fBufferStreamingMode of
 
    TBufferStreamingMode.Direct:begin

@@ -840,6 +840,32 @@ begin
     PpvVector3(pointer(@fCameraMatrix.RawComponents[2,0]))^:=PpvVector3(pointer(@fCameraMatrix.RawComponents[0,0]))^.Cross(PpvVector3(pointer(@fCameraMatrix.RawComponents[1,0]))^).Normalize;
     fCameraMatrix:=fCameraMatrix.RobustOrthoNormalize;
    end;
+   KEYCODE_D:begin
+    if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.SHIFT])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
+     if assigned(fRendererInstance) then begin
+      fRendererInstance.DrawMeshletDebugColors:=not fRendererInstance.DrawMeshletDebugColors;
+      if fRendererInstance.DrawMeshletDebugColors then begin
+       pvApplication.Log(LOG_INFO,'TScreenMain.KeyEvent','Meshlet debug colors enabled');
+      end else begin
+       pvApplication.Log(LOG_INFO,'TScreenMain.KeyEvent','Meshlet debug colors disabled');
+      end;
+     end;
+     result:=true;
+    end;
+   end;
+   KEYCODE_H:begin
+    if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.SHIFT])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
+     if assigned(fRendererInstance) then begin
+      fRendererInstance.DebugDrawMeshletBoundingSpheres:=not fRendererInstance.DebugDrawMeshletBoundingSpheres;
+      if fRendererInstance.DebugDrawMeshletBoundingSpheres then begin
+       pvApplication.Log(LOG_INFO,'TScreenMain.KeyEvent','Debug draw meshlet bounding spheres enabled');
+      end else begin
+       pvApplication.Log(LOG_INFO,'TScreenMain.KeyEvent','Debug draw meshlet bounding spheres disabled');
+      end;
+     end;
+     result:=true;
+    end;
+   end;
   end;
  end;
  if aKeyEvent.KeyEventType in [TpvApplicationInputKeyEventType.Down,TpvApplicationInputKeyEventType.Up] then begin
