@@ -12967,7 +12967,7 @@ begin
        fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletDescriptorBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer');
       end;
       if fSceneInstance.fVulkanMeshletDescriptorBufferData.Count>0 then begin
-       writeln('fSceneInstance.fVulkanMeshletDescriptorBufferData.Count: ',fSceneInstance.fVulkanMeshletDescriptorBufferData.Count);
+//     writeln('fSceneInstance.fVulkanMeshletDescriptorBufferData.Count: ',fSceneInstance.fVulkanMeshletDescriptorBufferData.Count);
        fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                          fSceneInstance.fVulkanStagingCommandBuffer,
                                                          fSceneInstance.fVulkanStagingFence,
