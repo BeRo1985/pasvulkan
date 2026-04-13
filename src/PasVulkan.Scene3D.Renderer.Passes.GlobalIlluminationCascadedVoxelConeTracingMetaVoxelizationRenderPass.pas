@@ -489,9 +489,6 @@ begin
   end;
  end;
  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
-  if fMeshShaderGraphicsPipelines[PrimitiveTopology,TpvScene3D.TFaceCullingMode.Inversed]=fMeshShaderGraphicsPipelines[PrimitiveTopology,TpvScene3D.TFaceCullingMode.Normal] then begin
-   fMeshShaderGraphicsPipelines[PrimitiveTopology,TpvScene3D.TFaceCullingMode.Inversed]:=nil;
-  end;
   for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
    FreeAndNil(fMeshShaderGraphicsPipelines[PrimitiveTopology,FaceCullingMode]);
   end;
@@ -599,12 +596,6 @@ begin
 
   for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
 
-
-    // Mesh shader handles winding flip for negative-scale nodes — reuse Normal pipeline for Inversed
-    if FaceCullingMode=TpvScene3D.TFaceCullingMode.Inversed then begin
-     fMeshShaderGraphicsPipelines[TpvScene3D.TPrimitiveTopology.Triangles,FaceCullingMode]:=fMeshShaderGraphicsPipelines[TpvScene3D.TPrimitiveTopology.Triangles,TpvScene3D.TFaceCullingMode.Normal];
-     continue;
-    end;
    VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
                                                             fInstance.Renderer.VulkanPipelineCache,
                                                             0,
@@ -777,9 +768,6 @@ var Index:TpvSizeInt;
 begin
  FreeAndNil(fVulkanParticleGraphicsPipeline);
  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
-  if fMeshShaderGraphicsPipelines[PrimitiveTopology,TpvScene3D.TFaceCullingMode.Inversed]=fMeshShaderGraphicsPipelines[PrimitiveTopology,TpvScene3D.TFaceCullingMode.Normal] then begin
-   fMeshShaderGraphicsPipelines[PrimitiveTopology,TpvScene3D.TFaceCullingMode.Inversed]:=nil;
-  end;
   for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
    FreeAndNil(fVulkanGraphicsPipelines[PrimitiveTopology,FaceCullingMode]);
    FreeAndNil(fMeshShaderGraphicsPipelines[PrimitiveTopology,FaceCullingMode]);

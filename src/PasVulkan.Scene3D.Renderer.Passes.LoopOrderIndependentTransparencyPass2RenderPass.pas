@@ -670,9 +670,6 @@ begin
 
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
-   if fMeshShaderGraphicsPipelines[AlphaMode,PrimitiveTopology,TpvScene3D.TFaceCullingMode.Inversed]=fMeshShaderGraphicsPipelines[AlphaMode,PrimitiveTopology,TpvScene3D.TFaceCullingMode.Normal] then begin
-    fMeshShaderGraphicsPipelines[AlphaMode,PrimitiveTopology,TpvScene3D.TFaceCullingMode.Inversed]:=nil;
-   end;
    for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
     FreeAndNil(fMeshShaderGraphicsPipelines[AlphaMode,PrimitiveTopology,FaceCullingMode]);
    end;
@@ -810,12 +807,6 @@ begin
 
    for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
 
-
-    // Mesh shader handles winding flip for negative-scale nodes — reuse Normal pipeline for Inversed
-    if FaceCullingMode=TpvScene3D.TFaceCullingMode.Inversed then begin
-     fMeshShaderGraphicsPipelines[AlphaMode,TpvScene3D.TPrimitiveTopology.Triangles,FaceCullingMode]:=fMeshShaderGraphicsPipelines[AlphaMode,TpvScene3D.TPrimitiveTopology.Triangles,TpvScene3D.TFaceCullingMode.Normal];
-     continue;
-    end;
     VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
                                                              fInstance.Renderer.VulkanPipelineCache,
                                                              0,
@@ -1025,9 +1016,6 @@ begin
  end;
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
-   if fMeshShaderGraphicsPipelines[AlphaMode,PrimitiveTopology,TpvScene3D.TFaceCullingMode.Inversed]=fMeshShaderGraphicsPipelines[AlphaMode,PrimitiveTopology,TpvScene3D.TFaceCullingMode.Normal] then begin
-    fMeshShaderGraphicsPipelines[AlphaMode,PrimitiveTopology,TpvScene3D.TFaceCullingMode.Inversed]:=nil;
-   end;
    for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
     FreeAndNil(fMeshShaderGraphicsPipelines[AlphaMode,PrimitiveTopology,FaceCullingMode]);
    end;
