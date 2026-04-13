@@ -4622,7 +4622,8 @@ type EpvScene3D=class(Exception);
       private
        fDebugMeshletSpherePairs:TDebugMeshletSpherePairs;
        fDebugMeshletSpherePairsBuffer:TpvVulkanBuffer;
-       fDebugMeshletSpherePairsDirty:boolean;
+       fDebugMeshletSpherePairsGeneration:TPasMPUInt64;
+       fDebugMeshletSpherePairsUploadedGeneration:TPasMPUInt64;
       private
        // TInstance.Update profiling accumulators (in milliseconds)
        fInstanceTimeResetSum:TpvDouble;
@@ -4918,7 +4919,6 @@ type EpvScene3D=class(Exception);
       public
        property DebugMeshletSpherePairsBuffer:TpvVulkanBuffer read fDebugMeshletSpherePairsBuffer;
        property DebugMeshletSpherePairCount:TpvSizeInt read fDebugMeshletSpherePairs.Count;
-       property DebugMeshletSpherePairsDirty:boolean read fDebugMeshletSpherePairsDirty write fDebugMeshletSpherePairsDirty;
       public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
@@ -26139,7 +26139,7 @@ begin
   end;
   if assigned(fInstance.fGroup) and (fInstance.fGroup.fTotalMeshletCount>0) then begin
    TPasMPInterlocked.Add(fSceneInstance.fTotalActiveMeshletCount,TPasMPInt64(fInstance.fGroup.fTotalMeshletCount));
-   fSceneInstance.fDebugMeshletSpherePairsDirty:=true;
+   TPasMPInterlocked.Increment(fSceneInstance.fDebugMeshletSpherePairsGeneration);
   end;
  end;
 end;
@@ -26149,10 +26149,6 @@ var Index,LastIndex:TpvSizeInt;
     OtherRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
  if (fIndex>=0) and assigned(fInstance) then begin
-  if assigned(fInstance.fGroup) and (fInstance.fGroup.fTotalMeshletCount>0) then begin
-   TPasMPInterlocked.Sub(fSceneInstance.fTotalActiveMeshletCount,TPasMPInt64(fInstance.fGroup.fTotalMeshletCount));
-   fSceneInstance.fDebugMeshletSpherePairsDirty:=true;
-  end;
   RemoveLights;
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fInstance.fRenderInstanceLock);
   try
@@ -26179,6 +26175,10 @@ begin
 {$endif}
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fInstance.fRenderInstanceLock);
+  end;
+  if assigned(fInstance.fGroup) and (fInstance.fGroup.fTotalMeshletCount>0) then begin
+   TPasMPInterlocked.Sub(fSceneInstance.fTotalActiveMeshletCount,TPasMPInt64(fInstance.fGroup.fTotalMeshletCount));
+   TPasMPInterlocked.Increment(fSceneInstance.fDebugMeshletSpherePairsGeneration);
   end;
  end;
  for Index:=-1 to MaxInFlightFrames-1 do begin
@@ -27092,7 +27092,7 @@ begin
 
    if assigned(fGroup) and (fGroup.fTotalMeshletCount>0) then begin
     TPasMPInterlocked.Add(fSceneInstance.fTotalActiveMeshletCount,TPasMPInt64(fGroup.fTotalMeshletCount));
-    fSceneInstance.fDebugMeshletSpherePairsDirty:=true;
+    TPasMPInterlocked.Increment(fSceneInstance.fDebugMeshletSpherePairsGeneration);
    end;
 
    begin
@@ -27151,11 +27151,11 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.BeforeDestruction;
 begin
+ Remove;
  if assigned(fGroup) and assigned(fSceneInstance) and (fGroup.fTotalMeshletCount>0) then begin
   TPasMPInterlocked.Sub(fSceneInstance.fTotalActiveMeshletCount,TPasMPInt64(fGroup.fTotalMeshletCount));
-  fSceneInstance.fDebugMeshletSpherePairsDirty:=true;
+  TPasMPInterlocked.Increment(fSceneInstance.fDebugMeshletSpherePairsGeneration);
  end;
- Remove;
  inherited BeforeDestruction;
 end;
 
@@ -33704,7 +33704,8 @@ begin
  fCachedMeshletBoundsNextOutputIndex:=0;
 
  fDebugMeshletSpherePairs.Initialize;
- fDebugMeshletSpherePairsDirty:=true;
+ fDebugMeshletSpherePairsGeneration:=0;
+ fDebugMeshletSpherePairsUploadedGeneration:=High(TPasMPUInt64);
 
  fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
 
@@ -39168,48 +39169,60 @@ begin
 {$ifdef MeshShaderDebug}
  WriteLn('[DBG-PAIRS] Total pairs built: ',fDebugMeshletSpherePairs.Count);
 {$endif}
- fDebugMeshletSpherePairsDirty:=false;
 end;
 
 procedure TpvScene3D.UploadDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
 var RequiredSize:TpvSizeInt;
+    Generation:TPasMPUInt64;
 begin
- if fDebugMeshletSpherePairsDirty then begin
+ Generation:=fDebugMeshletSpherePairsGeneration;
+ if fDebugMeshletSpherePairsUploadedGeneration<>Generation then begin
+  
+  fDebugMeshletSpherePairsUploadedGeneration:=Generation;
+  
   RebuildDebugMeshletSpherePairs(aInFlightFrameIndex);
- end;
- if fDebugMeshletSpherePairs.Count>0 then begin
-  RequiredSize:=fDebugMeshletSpherePairs.Count*SizeOf(TDebugMeshletSpherePair);
+  
+  WaitOnceOnPreviousFrame;
+  
+  RequiredSize:=Max(1,fDebugMeshletSpherePairs.Count)*SizeOf(TDebugMeshletSpherePair);
+  
   if (not assigned(fDebugMeshletSpherePairsBuffer)) or
      (fDebugMeshletSpherePairsBuffer.Size<RequiredSize) then begin
-   WaitOnceOnPreviousFrame;
+
    FreeAndNil(fDebugMeshletSpherePairsBuffer);
+
    fDebugMeshletSpherePairsBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                                  RequiredSize*2,
-                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                  [],
-                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or
-                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                  0,
-                                                                                  0,
-                                                                                  0,
-                                                                                  0,
-                                                                                  0,
-                                                                                  0,
-                                                                                  0,
-                                                                                  [TpvVulkanBufferFlag.BufferDeviceAddress],
-                                                                                  0,
-                                                                                  pvAllocationGroupIDScene3DDynamic,
-                                                                                  'TpvScene3D.DebugMeshletSpherePairsBuffer'
-                                                                                 );
+                                                          RequiredSize*2,
+                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                          [],
+                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or
+                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          [TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                          0,
+                                                          pvAllocationGroupIDScene3DDynamic,
+                                                          'TpvScene3D.DebugMeshletSpherePairsBuffer'
+                                                         );
    fVulkanDevice.DebugUtils.SetObjectName(fDebugMeshletSpherePairsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.DebugMeshletSpherePairsBuffer');
+   
   end;
-  fDebugMeshletSpherePairsBuffer.UpdateData(fDebugMeshletSpherePairs.Items[0],
-                                                                    0,
-                                                                    RequiredSize);
- end;
+  
+  if fDebugMeshletSpherePairs.Count>0 then begin
+   fDebugMeshletSpherePairsBuffer.UpdateData(fDebugMeshletSpherePairs.Items[0],
+                                             0,
+                                             fDebugMeshletSpherePairs.Count*SizeOf(TDebugMeshletSpherePair));
+  end;
+
+ end; 
 end;
 
 procedure TpvScene3D.ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
