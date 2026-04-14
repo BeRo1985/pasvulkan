@@ -851,6 +851,7 @@ begin
       end;
      end;
      result:=true;
+     exit;
     end;
    end;
    KEYCODE_H:begin
@@ -864,6 +865,7 @@ begin
       end;
      end;
      result:=true;
+     exit;
     end;
    end;
   end;
