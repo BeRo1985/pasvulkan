@@ -39267,10 +39267,10 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-   // Fence fallback: ensure previous frame's GPU work is complete (no-op for timeline path)
-   if not fUseTimelineSemaphore then begin
-    WaitOnceOnPreviousFrame;
-   end;
+  // Fence fallback: ensure previous frame's GPU work is complete (no-op for timeline path)
+  if not fUseTimelineSemaphore then begin
+   WaitOnceOnPreviousFrame;
+  end;
 
   VulkanShortTermDynamicBufferData:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex];
 
