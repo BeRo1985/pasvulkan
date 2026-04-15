@@ -545,6 +545,12 @@ void main() {
           if((currentInstanceDataIndex > 0u) && ((flags & (1u << 25u)) != 0u)){
             applyMaterialInstanceDataEffect(uint(currentInstanceDataIndex), baseColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false);
           }
+          {
+            uint materialColorKeySlot = (flags >> 17u) & 7u;
+            if((materialColorKeySlot > 0u) && (materialColorKeySlot <= 4u) && (currentInstanceDataIndex > 0u)){
+              baseColor *= unpackUnorm4x8(instanceDataItems[currentInstanceDataIndex].materialColorKeys[materialColorKeySlot - 1u]);
+            }
+          }
           vec3 specularColorFactor = material.specularFactor.xyz;
           specularWeight = material.specularFactor.w;
           if ((flags & (1u << 9u)) != 0u) {
@@ -562,7 +568,13 @@ void main() {
           baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
           if((currentInstanceDataIndex > 0u) && ((flags & (1u << 25u)) != 0u)){
             applyMaterialInstanceDataEffect(uint(currentInstanceDataIndex), baseColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false);
-          }         
+          }
+          {
+            uint materialColorKeySlot = (flags >> 17u) & 7u;
+            if((materialColorKeySlot > 0u) && (materialColorKeySlot <= 4u) && (currentInstanceDataIndex > 0u)){
+              baseColor *= unpackUnorm4x8(instanceDataItems[currentInstanceDataIndex].materialColorKeys[materialColorKeySlot - 1u]);
+            }
+          }
           perceptualRoughness = clamp(1.0 - specularGlossiness.w, 1e-3, 1.0);
           baseIORF0Dielectric = specularGlossiness.xyz;
           F0Dielectric = min(baseIORF0Dielectric * material.specularFactor.xyz, vec3(1.0));
@@ -992,7 +1004,13 @@ void main() {
       color = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
       if((currentInstanceDataIndex > 0u) && ((flags & (1u << 25u)) != 0u)){
         applyMaterialInstanceDataEffect(uint(currentInstanceDataIndex), color, vec2(texCoords[0]), uvec2(gl_FragCoord.xy), false);
-      }      
+      }
+      {
+        uint materialColorKeySlot = (flags >> 17u) & 7u;
+        if((materialColorKeySlot > 0u) && (materialColorKeySlot <= 4u) && (currentInstanceDataIndex > 0u)){
+          color *= unpackUnorm4x8(instanceDataItems[currentInstanceDataIndex].materialColorKeys[materialColorKeySlot - 1u]);
+        }
+      }
       color *= vec2((litIntensity * 0.25) + 0.75, 1.0).xxxy;
       break;
     }

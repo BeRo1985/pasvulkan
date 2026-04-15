@@ -114,8 +114,7 @@ struct InstanceData {
   uvec4 colorKeysRG; // 2x half float RGBA
   uvec4 colorKeysBA; // 2x half float RGBA
 
-  // For alignment
-  uvec4 unused0;
+  uvec4 materialColorKeys; // 4x packed RGBA8 per-material color tinting
   uvec4 unused1;
 };
 

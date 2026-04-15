@@ -58,7 +58,7 @@ struct InstanceData {
   vec4 DissolveColor1Width;  
   uvec4 colorKeysRG;
   uvec4 colorKeysBA;
-  uvec4 unused0;
+  uvec4 materialColorKeys;
   uvec4 unused1;
 };
 

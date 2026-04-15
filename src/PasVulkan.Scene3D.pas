@@ -690,7 +690,8 @@ type EpvScene3D=class(Exception);
              ColorKeyB:TpvHalfFloatVector4;
              ColorKeyA:TpvHalfFloatVector4;
 
-             Unused0:array[0..3] of TpvUInt32;
+             MaterialColorKeys:array[0..3] of TpvUInt32; // 4x packed RGBA8 per-material color tinting (0=white/no effect)
+
              Unused1:array[0..3] of TpvUInt32;
 
             end;
@@ -826,6 +827,8 @@ type EpvScene3D=class(Exception);
               procedure SetColorKeyB(const aValue:TpvVector4);
               function GetColorKeyA:TpvVector4;
               procedure SetColorKeyA(const aValue:TpvVector4);
+              function GetMaterialColorKey(const aIndex:TpvInt32):TpvVector4;
+              procedure SetMaterialColorKey(const aIndex:TpvInt32;const aValue:TpvVector4);
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
@@ -862,6 +865,7 @@ type EpvScene3D=class(Exception);
               property ColorKeyG:TpvVector4 read GetColorKeyG write SetColorKeyG;
               property ColorKeyB:TpvVector4 read GetColorKeyB write SetColorKeyB;
               property ColorKeyA:TpvVector4 read GetColorKeyA write SetColorKeyA;
+              property MaterialColorKeys[const aIndex:TpvInt32]:TpvVector4 read GetMaterialColorKey write SetMaterialColorKey;
             end;
             TInstanceDataList=TpvObjectGenericList<TInstanceData>;
             { TBaseObject }
@@ -1318,6 +1322,7 @@ type EpvScene3D=class(Exception);
                      NoWetness:boolean;
                      ExtendedWetness:boolean;
                      ColorKeys:boolean;
+                     MaterialColorKeyIndex:TpvInt32; // 0=none, 1-4=slot index into TGPUInstanceData.MaterialColorKeys
                      NormalTexture:TTextureReference;
                      NormalTextureScale:TpvFloat;
                      OcclusionTexture:TTextureReference;
@@ -1354,6 +1359,7 @@ type EpvScene3D=class(Exception);
                      NoWetness:false;
                      ExtendedWetness:false;
                      ColorKeys:false;
+                     MaterialColorKeyIndex:0;
                      NormalTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      NormalTextureScale:1.0;
                      OcclusionTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
@@ -4215,7 +4221,7 @@ type EpvScene3D=class(Exception);
                ColorKeyB:(RawIntComponents:(0,0,0,0));
                ColorKeyA:(RawIntComponents:(0,0,0,0));
 
-               Unused0:(0,0,0,0);
+               MaterialColorKeys:($ffffffff,$ffffffff,$ffffffff,$ffffffff); // default white = no tinting
                Unused1:(0,0,0,0);
 
               );
@@ -6433,6 +6439,36 @@ begin
   GPUInstanceData^.ColorKeyA.z:=aValue.z;
   GPUInstanceData^.ColorKeyA.w:=aValue.w;
   inc(fSceneInstance.fGPUInstanceDataGeneration);
+ end;
+end;
+
+function TpvScene3D.TInstanceData.GetMaterialColorKey(const aIndex:TpvInt32):TpvVector4;
+const OneOver255=1.0/255.0;
+var Packed_:TpvUInt32;
+begin
+ if (aIndex>=0) and (aIndex<=3) then begin
+  Packed_:=GPUInstanceData^.MaterialColorKeys[aIndex];
+  result.x:=((Packed_ shr 0) and $ff)*OneOver255;
+  result.y:=((Packed_ shr 8) and $ff)*OneOver255;
+  result.z:=((Packed_ shr 16) and $ff)*OneOver255;
+  result.w:=((Packed_ shr 24) and $ff)*OneOver255;
+ end else begin
+  result:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
+ end;
+end;
+
+procedure TpvScene3D.TInstanceData.SetMaterialColorKey(const aIndex:TpvInt32;const aValue:TpvVector4);
+var Packed_:TpvUInt32;
+begin
+ if (aIndex>=0) and (aIndex<=3) then begin
+  Packed_:=((TpvUInt32(Round(Clamp(aValue.x,0.0,1.0)*255.0)) and $ff) shl 0) or
+           ((TpvUInt32(Round(Clamp(aValue.y,0.0,1.0)*255.0)) and $ff) shl 8) or
+           ((TpvUInt32(Round(Clamp(aValue.z,0.0,1.0)*255.0)) and $ff) shl 16) or
+           ((TpvUInt32(Round(Clamp(aValue.w,0.0,1.0)*255.0)) and $ff) shl 24);
+  if GPUInstanceData^.MaterialColorKeys[aIndex]<>Packed_ then begin
+   GPUInstanceData^.MaterialColorKeys[aIndex]:=Packed_;
+   inc(fSceneInstance.fGPUInstanceDataGeneration);
+  end;
  end;
 end;
 
@@ -9765,6 +9801,11 @@ begin
   fData.ExtendedWetness:=(Flags and 16)<>0;
   fData.ColorKeys:=(Flags and 32)<>0;
 
+  fData.MaterialColorKeyIndex:=0;
+  if (Flags and 64)<>0 then begin
+   fData.MaterialColorKeyIndex:=StreamIO.ReadInt32;
+  end;
+
   fData.AlphaCutOff:=StreamIO.ReadFloat;
 
   fData.AlphaMode:=TpvScene3D.TMaterial.TAlphaMode(TpvUInt32(StreamIO.ReadUInt32));
@@ -10142,7 +10183,14 @@ begin
   if fData.ColorKeys then begin
    Flags:=Flags or 32;
   end;
+  if fData.MaterialColorKeyIndex>0 then begin
+   Flags:=Flags or 64;
+  end;
   StreamIO.WriteUInt32(Flags);
+
+  if fData.MaterialColorKeyIndex>0 then begin
+   StreamIO.WriteInt32(fData.MaterialColorKeyIndex);
+  end;
 
   StreamIO.WriteFloat(fData.AlphaCutOff);
 
@@ -10417,6 +10465,28 @@ begin
   fData.NoWetness:=pos('_nowetness',LowerCaseName)<>0;
   fData.ExtendedWetness:=pos('_extendedwetness',LowerCaseName)<>0;
   fData.ColorKeys:=pos('_colorkeys',LowerCaseName)<>0;
+
+  // Per-material color key index (0=none, 1-4=slot)
+  fData.MaterialColorKeyIndex:=0;
+  if pos('_colorkey0',LowerCaseName)<>0 then begin
+   fData.MaterialColorKeyIndex:=1;
+  end else if pos('_colorkey1',LowerCaseName)<>0 then begin
+   fData.MaterialColorKeyIndex:=2;
+  end else if pos('_colorkey2',LowerCaseName)<>0 then begin
+   fData.MaterialColorKeyIndex:=3;
+  end else if pos('_colorkey3',LowerCaseName)<>0 then begin
+   fData.MaterialColorKeyIndex:=4;
+  end;
+  // GLTF extras override (has priority over naming convention)
+  if assigned(aSourceMaterial.Extras) and (aSourceMaterial.Extras is TPasJSONItemObject) then begin
+   JSONItem:=TPasJSONItemObject(aSourceMaterial.Extras).Properties['materialColorKey'];
+   if assigned(JSONItem) then begin
+    fData.MaterialColorKeyIndex:=TPasJSON.GetInt64(JSONItem,0);
+    if (fData.MaterialColorKeyIndex<0) or (fData.MaterialColorKeyIndex>4) then begin
+     fData.MaterialColorKeyIndex:=0;
+    end;
+   end;
+  end;
 
   begin
    fData.AlphaCutOff:=aSourceMaterial.AlphaCutOff;
@@ -11012,6 +11082,10 @@ begin
 
  if fData.ColorKeys then begin
   fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 25);
+ end;
+
+ if (fData.MaterialColorKeyIndex>0) and (fData.MaterialColorKeyIndex<=4) then begin
+  fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(fData.MaterialColorKeyIndex) shl 17);
  end;
 
  if fData.ExtendedWetness then begin
@@ -40568,7 +40642,7 @@ begin
                                      FlushUpdateData
                                     );
     end;
-    TBufferStreamingMode.Staging:begin
+    TBufferStreamingMode.Staging:begin 
      fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
                                         fVulkanStagingCommandBuffer,
                                         fVulkanStagingFence,
