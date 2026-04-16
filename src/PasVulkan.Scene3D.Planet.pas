@@ -26504,9 +26504,9 @@ begin
 
  fMaxGrassIndices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 2)*((4*2)-2);}
 
- fMaxGrassVertices:=Max(65536,(512 shl 20) div SizeOf(TpvScene3DPlanet.TGrassVertex));
+ fMaxGrassVertices:=Max(65536,TpvScene3D(fScene3D).MaxGrassVertices);
 
- fMaxGrassIndices:=Max(65536,(256 shl 20) div SizeOf(TpvUInt32));
+ fMaxGrassIndices:=Max(65536,TpvScene3D(fScene3D).MaxGrassIndices);
 
  fGenerateLODIndices:=aGenerateLODIndices;
 

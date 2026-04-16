@@ -4251,6 +4251,8 @@ type EpvScene3D=class(Exception);
        fMaxMultiDrawCount:TpvUInt32;
        fMeshShaderSupport:Boolean;
        fGrassMeshShaders:Boolean;
+       fMaxGrassVertices:TpvSizeInt;
+       fMaxGrassIndices:TpvSizeInt;
        fTotalActiveMeshletCount:TPasMPInt64; // Atomic: total meshlet count across all active instances and renderinstances (for buffer sizing)
        fHardwareRaytracingSupport:Boolean;
        fRaytracingActive:Boolean;
@@ -5087,6 +5089,8 @@ type EpvScene3D=class(Exception);
        property MeshShaderSupport:Boolean read fMeshShaderSupport;
        property GrassMeshShaders:Boolean read fGrassMeshShaders write fGrassMeshShaders;
        property GrassMeshShaderSupport:Boolean read GetGrassMeshShaderSupport;
+       property MaxGrassVertices:TpvSizeInt read fMaxGrassVertices write fMaxGrassVertices;
+       property MaxGrassIndices:TpvSizeInt read fMaxGrassIndices write fMaxGrassIndices;
        property TotalActiveMeshletCount:TPasMPInt64 read fTotalActiveMeshletCount;
        property HardwareRaytracingSupport:Boolean read fHardwareRaytracingSupport;
        property RaytracingActive:Boolean read fRaytracingActive;
@@ -33533,6 +33537,10 @@ begin
                      ((fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE) or not assigned(fVirtualReality));
 
  fGrassMeshShaders:=true;
+
+ fMaxGrassVertices:=Max(65536,(512 shl 20) div SizeOf(TpvScene3DPlanet.TGrassVertex));
+
+ fMaxGrassIndices:=Max(65536,(256 shl 20) div SizeOf(TpvUInt32));
 
  fTotalActiveMeshletCount:=0;
 
