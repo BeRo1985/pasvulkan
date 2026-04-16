@@ -67,7 +67,8 @@ uses SysUtils,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Framework,
-     PasVulkan.Application;
+     PasVulkan.Application,
+     PasVulkan.Scene3D.Globals;
 
 type { TpvScene3DRendererMeshCullReset }
      TpvScene3DRendererMeshCullReset=class
@@ -80,8 +81,6 @@ type { TpvScene3DRendererMeshCullReset }
              CullDispatchIndex:TpvUInt32;
             end;
             PPushConstants=^TPushConstants;
-            TInFlightFrameVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-            PInFlightFrameVulkanBuffers=^TInFlightFrameVulkanBuffers;
       private
        fVulkanDevice:TpvVulkanDevice;
        fVulkanPipelineCache:TpvVulkanPipelineCache;
@@ -97,7 +96,7 @@ type { TpvScene3DRendererMeshCullReset }
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aCountInFlightFrames:TpvSizeInt);
        destructor Destroy; override;
-       procedure AcquireResources(const aBatchRangeBuffers:TInFlightFrameVulkanBuffers;const aCounterBuffer:TpvVulkanBuffer;const aPrefixSumBuffers:TInFlightFrameVulkanBuffers;const aIndirectDispatchBuffer:TpvVulkanBuffer);
+       procedure AcquireResources(const aBatchRangeBuffers:TpvVulkanInFlightFrameBuffers;const aCounterBuffers:TpvVulkanInFlightFrameBuffers;const aPrefixSumBuffers:TpvVulkanInFlightFrameBuffers;const aIndirectDispatchBuffers:TpvVulkanInFlightFrameBuffers);
        procedure ReleaseResources;
        property Pipeline:TpvVulkanComputePipeline read fPipeline;
        property PipelineLayout:TpvVulkanPipelineLayout read fPipelineLayout;
@@ -135,7 +134,7 @@ begin
  result:=fVulkanDescriptorSets[aInFlightFrameIndex];
 end;
 
-procedure TpvScene3DRendererMeshCullReset.AcquireResources(const aBatchRangeBuffers:TInFlightFrameVulkanBuffers;const aCounterBuffer:TpvVulkanBuffer;const aPrefixSumBuffers:TInFlightFrameVulkanBuffers;const aIndirectDispatchBuffer:TpvVulkanBuffer);
+procedure TpvScene3DRendererMeshCullReset.AcquireResources(const aBatchRangeBuffers:TpvVulkanInFlightFrameBuffers;const aCounterBuffers:TpvVulkanInFlightFrameBuffers;const aPrefixSumBuffers:TpvVulkanInFlightFrameBuffers;const aIndirectDispatchBuffers:TpvVulkanInFlightFrameBuffers);
 var Stream:TStream;
     InFlightFrameIndex:TpvSizeInt;
 begin
@@ -197,7 +196,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [aCounterBuffer.DescriptorBufferInfo],
+                                                                 [aCounterBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
@@ -215,7 +214,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [aIndirectDispatchBuffer.DescriptorBufferInfo],
+                                                                 [aIndirectDispatchBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );

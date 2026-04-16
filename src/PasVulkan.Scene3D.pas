@@ -116,6 +116,7 @@ uses {$ifdef Windows}
      PasVulkan.FileFormats.FBX,
      PasVulkan.FileFormats.SAM,
      PasVulkan.FileFormats.IES,
+     PasVulkan.Scene3D.Globals,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Meshlets,
      PasVulkan.SimpleParallelJobExecutor,
@@ -4246,6 +4247,7 @@ type EpvScene3D=class(Exception);
        fTotalActiveMeshletCount:TPasMPInt64; // Atomic: total meshlet count across all active instances and renderinstances (for buffer sizing)
        fHardwareRaytracingSupport:Boolean;
        fRaytracingActive:Boolean;
+       fUsePerInFlightFrameBuffers:Boolean;
        fPlanetSingleBuffers:Boolean;
        fAccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags;
        fDefaultSampler:TSampler;
@@ -4308,7 +4310,7 @@ type EpvScene3D=class(Exception);
        fGlobalBoundingSphereVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalBoundingSphereVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalBoundingSphereVulkanDescriptorSets:TGlobalBoundingSphereVulkanDescriptorSets;
-       fGlobalMeshletBoundingSphereBuffer:TpvVulkanBuffer;
+       fGlobalMeshletBoundingSphereBuffers:TpvVulkanInFlightFrameBuffers;
        fGlobalMeshletBoundingSphereBufferNeedsClear:boolean;
        fMeshletBoundsComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
        fMeshletBoundsCompute:TObject;
@@ -4903,8 +4905,6 @@ type EpvScene3D=class(Exception);
        function TransformOrigin(const aMatrix:TpvMatrix4x4D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvMatrix4x4D;
        function TransformDirection(const aDirection:TpvVector3D;const aInFlightFrameIndex:TpvSizeInt;const aInverse:Boolean):TpvVector3D;
       public
-       function GetGlobalMeshletBoundingSphereBuffer:TpvVulkanBuffer;
-      public
        procedure RebuildDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
       public
@@ -4913,6 +4913,7 @@ type EpvScene3D=class(Exception);
       public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
+       property GlobalMeshletBoundingSphereBuffers:TpvVulkanInFlightFrameBuffers read fGlobalMeshletBoundingSphereBuffers;
        property GlobalVulkanDescriptorSets:TGlobalVulkanDescriptorSets read fGlobalVulkanDescriptorSets;
        property GlobalBoundingSphereVulkanDescriptorSets:TGlobalBoundingSphereVulkanDescriptorSets read fGlobalBoundingSphereVulkanDescriptorSets;
        property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
@@ -5076,6 +5077,7 @@ type EpvScene3D=class(Exception);
        property TotalActiveMeshletCount:TPasMPInt64 read fTotalActiveMeshletCount;
        property HardwareRaytracingSupport:Boolean read fHardwareRaytracingSupport;
        property RaytracingActive:Boolean read fRaytracingActive;
+       property UsePerInFlightFrameBuffers:Boolean read fUsePerInFlightFrameBuffers write fUsePerInFlightFrameBuffers;
        property PlanetSingleBuffers:Boolean read fPlanetSingleBuffers write fPlanetSingleBuffers;
        property AccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags read fAccelerationStructureInputBufferUsageFlags;
        property PasMPInstance:TPasMP read fPasMPInstance write fPasMPInstance;
@@ -33531,11 +33533,8 @@ begin
   fAccelerationStructureInputBufferUsageFlags:=TVkBufferUsageFlags(0);
  end;
 
-{$ifdef PasVulkanLowMem}
+ fUsePerInFlightFrameBuffers:=false;
  fPlanetSingleBuffers:=true;
-{$else}
- fPlanetSingleBuffers:=false;
-{$endif}
 
  fMeshGenerationCounter:=1;
 
@@ -33712,7 +33711,7 @@ begin
  fGlobalBoundingSphereIndexIDManager:=TpvIDManager.Create;
  fGlobalBoundingSphereIndexIDManagerLock:=TPasMPSlimReaderWriterLock.Create;
 
- fGlobalMeshletBoundingSphereBuffer:=nil;
+ FillChar(fGlobalMeshletBoundingSphereBuffers,SizeOf(fGlobalMeshletBoundingSphereBuffers),#0);
  fGlobalMeshletBoundingSphereBufferNeedsClear:=false;
  fMeshletBoundsComputeVulkanDescriptorSet0Layout:=nil;
  fMeshletBoundsCompute:=nil;
@@ -35323,7 +35322,14 @@ begin
  fVulkanMeshletVertexBufferData.Finalize;
  fVulkanMeshletPrimitiveBufferData.Finalize;
 
- FreeAndNil(fGlobalMeshletBoundingSphereBuffer);
+ if not fUsePerInFlightFrameBuffers then begin
+  for Index:=1 to MaxInFlightFrames-1 do begin
+   fGlobalMeshletBoundingSphereBuffers[Index]:=nil;
+  end;
+ end;
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fGlobalMeshletBoundingSphereBuffers[Index]);
+ end;
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fGlobalVulkanDrawInfoLocks[Index]);
   fGlobalVulkanDrawInfoDynamicArrays[Index].Finalize;
@@ -36562,37 +36568,51 @@ begin
 end;
 
 procedure TpvScene3D.UpdateMeshletBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
-var Count:TpvSizeInt;
+var Count,InFlightFrameIndex,FirstIndex,LastIndex:TpvSizeInt;
 begin
  if fMeshShaderSupport then begin
   Count:=Max(65536,Max(fTotalActiveMeshletCount,fVulkanMeshletBoundingSphereBufferRangeAllocator.Capacity));
-  if (not assigned(fGlobalMeshletBoundingSphereBuffer)) or
-     (fGlobalMeshletBoundingSphereBuffer.Size<TpvSizeInt(Count*SizeOf(TpvVector4))) then begin
-   WaitOnceOnPreviousFrame;
-   FreeAndNil(fGlobalMeshletBoundingSphereBuffer);
-   fGlobalMeshletBoundingSphereBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                              Count*SizeOf(TpvVector4)*2,
-                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                              [],
-                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                              0,
-                                                              0,
-                                                              0,
-                                                              0,
-                                                              0,
-                                                              0,
-                                                              0,
-                                                              [TpvVulkanBufferFlag.BufferDeviceAddress],
-                                                              0,
-                                                              pvAllocationGroupIDScene3DDynamic,
-                                                              'TpvScene3D.GlobalMeshletBoundingSphereBuffer'
-                                                             );
-   fVulkanDevice.DebugUtils.SetObjectName(fGlobalMeshletBoundingSphereBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.GlobalMeshletBoundingSphereBuffer');
-   fGlobalMeshletBoundingSphereBufferNeedsClear:=true;
+  if fUsePerInFlightFrameBuffers then begin
+   FirstIndex:=aInFlightFrameIndex;
+   LastIndex:=aInFlightFrameIndex;
+  end else begin
+   FirstIndex:=0;
+   LastIndex:=0;
+  end;
+  for InFlightFrameIndex:=FirstIndex to LastIndex do begin
+   if (not assigned(fGlobalMeshletBoundingSphereBuffers[InFlightFrameIndex])) or
+      (fGlobalMeshletBoundingSphereBuffers[InFlightFrameIndex].Size<TpvSizeInt(Count*SizeOf(TpvVector4))) then begin
+    WaitOnceOnPreviousFrame;
+    FreeAndNil(fGlobalMeshletBoundingSphereBuffers[InFlightFrameIndex]);
+    fGlobalMeshletBoundingSphereBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                    Count*SizeOf(TpvVector4)*2,
+                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                    [],
+                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    [TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                                                    0,
+                                                                                    pvAllocationGroupIDScene3DDynamic,
+                                                                                    'TpvScene3D.GlobalMeshletBoundingSphereBuffer['+IntToStr(InFlightFrameIndex)+']'
+                                                                                   );
+    fVulkanDevice.DebugUtils.SetObjectName(fGlobalMeshletBoundingSphereBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.GlobalMeshletBoundingSphereBuffer['+IntToStr(InFlightFrameIndex)+']');
+    fGlobalMeshletBoundingSphereBufferNeedsClear:=true;
 {$ifdef MeshShaderDebug}
-   WriteLn('[DBG-SPHERE] Buffer created Size=',fGlobalMeshletBoundingSphereBuffer.Size,' Count=',Count,' AllocCapacity=',fVulkanMeshletBoundingSphereBufferRangeAllocator.Capacity);
+    WriteLn('[DBG-SPHERE] Buffer created IFF=',InFlightFrameIndex,' Size=',fGlobalMeshletBoundingSphereBuffers[InFlightFrameIndex].Size,' Count=',Count,' AllocCapacity=',fVulkanMeshletBoundingSphereBufferRangeAllocator.Capacity);
 {$endif}
+   end;
+  end;
+  if not fUsePerInFlightFrameBuffers then begin
+   for InFlightFrameIndex:=1 to MaxInFlightFrames-1 do begin
+    fGlobalMeshletBoundingSphereBuffers[InFlightFrameIndex]:=fGlobalMeshletBoundingSphereBuffers[0];
+   end;
   end;
  end;
 end;
@@ -39187,10 +39207,6 @@ begin
 
 end;
 
-function TpvScene3D.GetGlobalMeshletBoundingSphereBuffer:TpvVulkanBuffer;
-begin
- result:=fGlobalMeshletBoundingSphereBuffer;
-end;
 
 procedure TpvScene3D.RebuildDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
 var Group:TpvScene3D.TGroup;
@@ -39318,6 +39334,7 @@ var PlanetIndex,PassIndex,CountPlanetAtmospherePrecipitationSimulationToSignalSe
     MemoryBarrier:TVkMemoryBarrier;
     RendererInstanceIndex:TpvSizeInt;
     RendererInstance:TpvScene3DRendererInstance;
+    MeshletBoundingSphereBuffer:TpvVulkanBuffer;
 begin
 
  //exit;
@@ -39583,14 +39600,15 @@ begin
 
    // Zero-fill newly (re)created meshlet bounding sphere buffer so uncomputed spheres have w=0
    // (shader falls back to descriptor spheres when w<=0)
+   MeshletBoundingSphereBuffer:=fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex];
    if fMeshShaderSupport and
-      assigned(fGlobalMeshletBoundingSphereBuffer) and
+      assigned(MeshletBoundingSphereBuffer) and
       fGlobalMeshletBoundingSphereBufferNeedsClear then begin
     fGlobalMeshletBoundingSphereBufferNeedsClear:=false;
 {$ifdef MeshShaderDebug}
-    WriteLn('[DBG-SPHERE] ZeroFill BufferSize=',fGlobalMeshletBoundingSphereBuffer.Size);
+    WriteLn('[DBG-SPHERE] ZeroFill BufferSize=',MeshletBoundingSphereBuffer.Size);
 {$endif}
-    CommandBuffer.CmdFillBuffer(fGlobalMeshletBoundingSphereBuffer.Handle,0,VK_WHOLE_SIZE,0);
+    CommandBuffer.CmdFillBuffer(MeshletBoundingSphereBuffer.Handle,0,VK_WHOLE_SIZE,0);
     FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
     MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
     MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
@@ -39884,6 +39902,7 @@ var Index,ItemID,PlanetIndex:TpvSizeInt;
     DirtyMin,DirtyMax:TpvSizeInt;
     RendererInstanceIndex:TpvSizeInt;
     RendererInstance:TpvScene3DRendererInstance;
+    MeshletBoundingSphereBuffer:TpvVulkanBuffer;
 begin
 
  if assigned(fVulkanDevice) then begin
@@ -40722,9 +40741,11 @@ begin
     fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletPrimitiveDeviceAddress:=fVulkanLongTermStaticBuffer.fVulkanMeshletPrimitiveBuffer.DeviceAddress;
    end;
   end;
+  
   // Set per-instance meshlet bounding sphere BDA (per IFF, dynamic buffer)
-  if assigned(fGlobalMeshletBoundingSphereBuffer) then begin
-   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletBoundingSphereDeviceAddress:=fGlobalMeshletBoundingSphereBuffer.DeviceAddress;
+  MeshletBoundingSphereBuffer:=fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex];
+  if assigned(MeshletBoundingSphereBuffer) then begin
+   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletBoundingSphereDeviceAddress:=MeshletBoundingSphereBuffer.DeviceAddress;
   end;
 
   // Set node matrices BDA (per IFF, dynamic buffer — for mesh shader winding flip via determinant)
@@ -41296,7 +41317,7 @@ begin
    PushConstants.MeshletDescriptorBase:=Current^.MeshletDescriptorBase;
    PushConstants.MeshletCount:=Current^.MeshletCount;
    PushConstants.Pad0:=0;
-   PushConstants.OutputSphereBDA:=fGlobalMeshletBoundingSphereBuffer.DeviceAddress;
+   PushConstants.OutputSphereBDA:=fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex].DeviceAddress;
 
    aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
                                    TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
