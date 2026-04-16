@@ -639,7 +639,7 @@ begin
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                       [fInstance.DeepAndFastApproximateOrderIndependentTransparencyFragmentCounterFragmentDepthsSampleMaskImage.DescriptorImageInfo],
+                                                                       [fInstance.DeepAndFastApproximateOrderIndependentTransparencyFragmentCounterFragmentDepthsSampleMaskImages[InFlightFrameIndex].DescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
@@ -647,7 +647,7 @@ begin
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                       [fInstance.DeepAndFastApproximateOrderIndependentTransparencyAccumulationImage.DescriptorImageInfo],
+                                                                       [fInstance.DeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex].DescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
@@ -655,7 +655,7 @@ begin
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                       [fInstance.DeepAndFastApproximateOrderIndependentTransparencyAverageImage.DescriptorImageInfo],
+                                                                       [fInstance.DeepAndFastApproximateOrderIndependentTransparencyAverageImages[InFlightFrameIndex].DescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
@@ -663,7 +663,7 @@ begin
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                       [fInstance.DeepAndFastApproximateOrderIndependentTransparencyBucketImage.DescriptorImageInfo],
+                                                                       [fInstance.DeepAndFastApproximateOrderIndependentTransparencyBucketImages[InFlightFrameIndex].DescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
@@ -673,7 +673,7 @@ begin
                                                                          0,
                                                                          1,
                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                         [fInstance.DeepAndFastApproximateOrderIndependentTransparencySpinLockImage.DescriptorImageInfo],
+                                                                         [fInstance.DeepAndFastApproximateOrderIndependentTransparencySpinLockImages[InFlightFrameIndex].DescriptorImageInfo],
                                                                          [],
                                                                          [],
                                                                          false);

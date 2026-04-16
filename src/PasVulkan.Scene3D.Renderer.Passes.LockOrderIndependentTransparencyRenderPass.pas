@@ -643,13 +643,13 @@ begin
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                        [],
                                                                        [],
-                                                                       [fInstance.LockOrderIndependentTransparencyABufferBuffer.VulkanBufferView.Handle],
+                                                                       [fInstance.LockOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                        false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(11,
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                       [fInstance.LockOrderIndependentTransparencyAuxImage.DescriptorImageInfo],
+                                                                       [fInstance.LockOrderIndependentTransparencyAuxImages[InFlightFrameIndex].DescriptorImageInfo],
                                                                        [],
                                                                        [],
                                                                        false);
@@ -659,7 +659,7 @@ begin
                                                                          0,
                                                                          1,
                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                         [fInstance.LockOrderIndependentTransparencySpinLockImage.DescriptorImageInfo],
+                                                                         [fInstance.LockOrderIndependentTransparencySpinLockImages[InFlightFrameIndex].DescriptorImageInfo],
                                                                          [],
                                                                          [],
                                                                          false);

@@ -459,7 +459,7 @@ begin
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                        [],
-                                                                       [fInstance.GlobalIlluminationCascadedVoxelConeTracingContentDataBuffer.DescriptorBufferInfo],
+                                                                       [fInstance.GlobalIlluminationCascadedVoxelConeTracingContentDataBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
@@ -467,7 +467,7 @@ begin
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                        [],
-                                                                       [fInstance.GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer.DescriptorBufferInfo],
+                                                                       [fInstance.GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].Flush;

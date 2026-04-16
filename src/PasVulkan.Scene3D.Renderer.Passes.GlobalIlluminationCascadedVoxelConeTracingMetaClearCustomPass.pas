@@ -146,7 +146,7 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                         VK_QUEUE_FAMILY_IGNORED,
                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                        fInstance.GlobalIlluminationCascadedVoxelConeTracingContentDataBuffer.Handle,
+                                                        fInstance.GlobalIlluminationCascadedVoxelConeTracingContentDataBuffers[aInFlightFrameIndex].Handle,
                                                         0,
                                                         VK_WHOLE_SIZE);
 
@@ -154,7 +154,7 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                         VK_QUEUE_FAMILY_IGNORED,
                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                        fInstance.GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer.Handle,
+                                                        fInstance.GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffers[aInFlightFrameIndex].Handle,
                                                         0,
                                                         VK_WHOLE_SIZE);
 
@@ -198,7 +198,7 @@ begin
   if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'GIVoxelConeTracingMetaClear');
   end;
-  aCommandBuffer.CmdFillBuffer(fInstance.GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer.Handle,0,VK_WHOLE_SIZE,0);
+  aCommandBuffer.CmdFillBuffer(fInstance.GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffers[aInFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
   if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
   end;
@@ -207,7 +207,7 @@ begin
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
                                                          VK_QUEUE_FAMILY_IGNORED,
-                                                         fInstance.GlobalIlluminationCascadedVoxelConeTracingContentDataBuffer.Handle,
+                                                         fInstance.GlobalIlluminationCascadedVoxelConeTracingContentDataBuffers[aInFlightFrameIndex].Handle,
                                                          0,
                                                          VK_WHOLE_SIZE);
 
@@ -215,7 +215,7 @@ begin
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
                                                          VK_QUEUE_FAMILY_IGNORED,
-                                                         fInstance.GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer.Handle,
+                                                         fInstance.GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffers[aInFlightFrameIndex].Handle,
                                                          0,
                                                          VK_WHOLE_SIZE);
 

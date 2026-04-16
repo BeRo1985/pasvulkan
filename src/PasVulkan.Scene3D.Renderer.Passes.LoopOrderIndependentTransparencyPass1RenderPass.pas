@@ -599,7 +599,7 @@ begin
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                        [],
                                                                        [],
-                                                                       [fInstance.LoopOrderIndependentTransparencyZBufferBuffer.VulkanBufferView.Handle],
+                                                                       [fInstance.LoopOrderIndependentTransparencyZBufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                        false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].Flush;
   fIBLDescriptors[InFlightFrameIndex]:=TpvScene3DRendererIBLDescriptor.Create(fInstance.Renderer.VulkanDevice,

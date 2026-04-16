@@ -210,8 +210,8 @@ begin
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   fSolidPrimitivePrimitiveBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex];
-  fSolidPrimitiveVertexBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitiveVertexBuffer;
-  fSolidPrimitiveIndexBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitiveIndexBuffer;
+  fSolidPrimitiveVertexBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitiveVertexBuffers[InFlightFrameIndex];
+  fSolidPrimitiveIndexBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitiveIndexBuffers[InFlightFrameIndex];
   fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                                            fVulkanDescriptorSetLayout);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
@@ -228,7 +228,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [fInstance.SolidPrimitiveVertexBuffer.DescriptorBufferInfo],
+                                                                 [fInstance.SolidPrimitiveVertexBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
@@ -237,7 +237,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [fInstance.SolidPrimitiveIndexBuffer.DescriptorBufferInfo],
+                                                                 [fInstance.SolidPrimitiveIndexBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
@@ -246,7 +246,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [fInstance.SolidPrimitiveIndirectDrawCommandBuffer.DescriptorBufferInfo],
+                                                                 [fInstance.SolidPrimitiveIndirectDrawCommandBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
@@ -295,8 +295,8 @@ begin
 
   // Check if the buffers have changed since last frame, for example if the buffers were resized.
   if (fSolidPrimitivePrimitiveBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex]) or
-     (fSolidPrimitiveVertexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveVertexBuffer) or
-     (fSolidPrimitiveIndexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveIndexBuffer) then begin
+     (fSolidPrimitiveVertexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveVertexBuffers[InFlightFrameIndex]) or
+     (fSolidPrimitiveIndexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveIndexBuffers[InFlightFrameIndex]) then begin
    if fSolidPrimitivePrimitiveBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex] then begin
     fSolidPrimitivePrimitiveBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitivePrimitiveBuffers[InFlightFrameIndex];
     fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
@@ -309,25 +309,25 @@ begin
                                                                    false
                                                                   );
    end;
-   if fSolidPrimitiveVertexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveVertexBuffer then begin
-    fSolidPrimitiveVertexBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitiveVertexBuffer;
+   if fSolidPrimitiveVertexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveVertexBuffers[InFlightFrameIndex] then begin
+    fSolidPrimitiveVertexBuffers[InFlightFrameIndex]:=fInstance.SolidPrimitiveVertexBuffers[InFlightFrameIndex];
     fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                    0,
                                                                    1,
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                    [],
-                                                                   [fInstance.SolidPrimitiveVertexBuffer.DescriptorBufferInfo],
+                                                                   [fInstance.SolidPrimitiveVertexBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                    [],
                                                                    false
                                                                   );
    end;
-   if fSolidPrimitiveIndexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveIndexBuffer then begin
+   if fSolidPrimitiveIndexBuffers[InFlightFrameIndex]<>fInstance.SolidPrimitiveIndexBuffers[InFlightFrameIndex] then begin
     fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
                                                                    0,
                                                                    1,
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                    [],
-                                                                   [fInstance.SolidPrimitiveIndexBuffer.DescriptorBufferInfo],
+                                                                   [fInstance.SolidPrimitiveIndexBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                    [],
                                                                    false
                                                                   );
@@ -357,7 +357,7 @@ begin
   BufferMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
   BufferMemoryBarriers[1].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   BufferMemoryBarriers[1].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarriers[1].buffer:=fInstance.SolidPrimitiveVertexBuffer.Handle;
+  BufferMemoryBarriers[1].buffer:=fInstance.SolidPrimitiveVertexBuffers[aInFlightFrameIndex].Handle;
   BufferMemoryBarriers[1].offset:=0;
   BufferMemoryBarriers[1].size:=VK_WHOLE_SIZE;
 
@@ -367,7 +367,7 @@ begin
   BufferMemoryBarriers[2].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
   BufferMemoryBarriers[2].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   BufferMemoryBarriers[2].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarriers[2].buffer:=fInstance.SolidPrimitiveIndexBuffer.Handle;
+  BufferMemoryBarriers[2].buffer:=fInstance.SolidPrimitiveIndexBuffers[aInFlightFrameIndex].Handle;
   BufferMemoryBarriers[2].offset:=0;
   BufferMemoryBarriers[2].size:=VK_WHOLE_SIZE;
 
@@ -377,7 +377,7 @@ begin
   BufferMemoryBarriers[3].dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
   BufferMemoryBarriers[3].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   BufferMemoryBarriers[3].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle;
+  BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffers[aInFlightFrameIndex].Handle;
   BufferMemoryBarriers[3].offset:=0;
   BufferMemoryBarriers[3].size:=VK_WHOLE_SIZE;
 
@@ -392,7 +392,7 @@ begin
   if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'CanvasFillBuffer0');
   end;
-  aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
+  aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffers[aInFlightFrameIndex].Handle,
                                0,
                                SizeOf(TpvUInt32),
                                0);
@@ -402,7 +402,7 @@ begin
   if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'CanvasFillBuffer1');
   end;
-  aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
+  aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffers[aInFlightFrameIndex].Handle,
                                SizeOf(TpvUInt32),
                                SizeOf(TpvUInt32),
                                1);
@@ -412,7 +412,7 @@ begin
   if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'CanvasFillBuffer2');
   end;
-  aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle,
+  aCommandBuffer.CmdFillBuffer(fInstance.SolidPrimitiveIndirectDrawCommandBuffers[aInFlightFrameIndex].Handle,
                                SizeOf(TpvUInt32)*2,
                                (SizeOf(TVkDrawIndexedIndirectCommand)+SizeOf(TpvUInt32))-(SizeOf(TpvUInt32)*2),
                                0);
@@ -426,7 +426,7 @@ begin
   BufferMemoryBarriers[3].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
   BufferMemoryBarriers[3].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   BufferMemoryBarriers[3].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle;
+  BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffers[aInFlightFrameIndex].Handle;
   BufferMemoryBarriers[3].offset:=0;
   BufferMemoryBarriers[3].size:=VK_WHOLE_SIZE;
 
@@ -477,7 +477,7 @@ begin
   BufferMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
   BufferMemoryBarriers[1].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   BufferMemoryBarriers[1].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarriers[1].buffer:=fInstance.SolidPrimitiveVertexBuffer.Handle;
+  BufferMemoryBarriers[1].buffer:=fInstance.SolidPrimitiveVertexBuffers[aInFlightFrameIndex].Handle;
   BufferMemoryBarriers[1].offset:=0;
   BufferMemoryBarriers[1].size:=VK_WHOLE_SIZE;
 
@@ -487,7 +487,7 @@ begin
   BufferMemoryBarriers[2].dstAccessMask:=TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT);
   BufferMemoryBarriers[2].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   BufferMemoryBarriers[2].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarriers[2].buffer:=fInstance.SolidPrimitiveIndexBuffer.Handle;
+  BufferMemoryBarriers[2].buffer:=fInstance.SolidPrimitiveIndexBuffers[aInFlightFrameIndex].Handle;
   BufferMemoryBarriers[2].offset:=0;
   BufferMemoryBarriers[2].size:=VK_WHOLE_SIZE;
 
@@ -497,7 +497,7 @@ begin
   BufferMemoryBarriers[3].dstAccessMask:=TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
   BufferMemoryBarriers[3].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   BufferMemoryBarriers[3].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffer.Handle;
+  BufferMemoryBarriers[3].buffer:=fInstance.SolidPrimitiveIndirectDrawCommandBuffers[aInFlightFrameIndex].Handle;
   BufferMemoryBarriers[3].offset:=0;
   BufferMemoryBarriers[3].size:=VK_WHOLE_SIZE;
 

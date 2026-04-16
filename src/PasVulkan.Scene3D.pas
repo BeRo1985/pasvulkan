@@ -4247,8 +4247,9 @@ type EpvScene3D=class(Exception);
        fTotalActiveMeshletCount:TPasMPInt64; // Atomic: total meshlet count across all active instances and renderinstances (for buffer sizing)
        fHardwareRaytracingSupport:Boolean;
        fRaytracingActive:Boolean;
-       fUsePerInFlightFrameBuffers:Boolean;
+       fUsePerInFlightFrameResources:Boolean;
        fPlanetSingleBuffers:Boolean;
+       fCountPerInFlightFrameResources:TpvSizeInt;
        fAccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags;
        fDefaultSampler:TSampler;
        fDefaultNonRepeatSampler:TSampler;
@@ -5077,8 +5078,9 @@ type EpvScene3D=class(Exception);
        property TotalActiveMeshletCount:TPasMPInt64 read fTotalActiveMeshletCount;
        property HardwareRaytracingSupport:Boolean read fHardwareRaytracingSupport;
        property RaytracingActive:Boolean read fRaytracingActive;
-       property UsePerInFlightFrameBuffers:Boolean read fUsePerInFlightFrameBuffers write fUsePerInFlightFrameBuffers;
+       property UsePerInFlightFrameResources:Boolean read fUsePerInFlightFrameResources write fUsePerInFlightFrameResources;
        property PlanetSingleBuffers:Boolean read fPlanetSingleBuffers write fPlanetSingleBuffers;
+       property CountPerInFlightFrameResources:TpvSizeInt read fCountPerInFlightFrameResources;
        property AccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags read fAccelerationStructureInputBufferUsageFlags;
        property PasMPInstance:TPasMP read fPasMPInstance write fPasMPInstance;
        property UseOwnPasMPInstance:Boolean read fUseOwnPasMPInstance write fUseOwnPasMPInstance;
@@ -33533,8 +33535,14 @@ begin
   fAccelerationStructureInputBufferUsageFlags:=TVkBufferUsageFlags(0);
  end;
 
- fUsePerInFlightFrameBuffers:=false;
+ fUsePerInFlightFrameResources:=false;
  fPlanetSingleBuffers:=true;
+
+ if fUsePerInFlightFrameResources then begin
+  fCountPerInFlightFrameResources:=aCountInFlightFrames;
+ end else begin
+  fCountPerInFlightFrameResources:=1;
+ end;
 
  fMeshGenerationCounter:=1;
 
@@ -35322,7 +35330,7 @@ begin
  fVulkanMeshletVertexBufferData.Finalize;
  fVulkanMeshletPrimitiveBufferData.Finalize;
 
- if not fUsePerInFlightFrameBuffers then begin
+ if not fUsePerInFlightFrameResources then begin
   for Index:=1 to MaxInFlightFrames-1 do begin
    fGlobalMeshletBoundingSphereBuffers[Index]:=nil;
   end;
@@ -35496,6 +35504,13 @@ end;
 
 procedure TpvScene3D.Initialize;
 begin
+
+ if fUsePerInFlightFrameResources then begin
+  fCountPerInFlightFrameResources:=fCountInFlightFrames;
+ end else begin
+  fCountPerInFlightFrameResources:=1;
+ end;
+
  fVulkanDynamicVertexBufferData.Resize(fInitialCountVertices);
  fVulkanStaticVertexBufferData.Resize(fInitialCountVertices);
  //fVulkanIndexBufferData.Resize(fInitialCountIndices);
@@ -35503,6 +35518,7 @@ begin
  fVulkanDrawUniqueIndexBufferData.Resize(fInitialCountIndices);
  fVulkanMorphTargetVertexBufferData.Resize(fInitialCountMorphTargetVertices);
  fVulkanJointBlockBufferData.Resize(fInitialCountJointBlocks);
+
 end;
 
 procedure TpvScene3D.DefragMoveVertex(const aSender:TpvBufferRangeAllocator;const aOldOffset,aNewOffset,aSize:TpvInt64);
@@ -36572,7 +36588,7 @@ var Count,InFlightFrameIndex,FirstIndex,LastIndex:TpvSizeInt;
 begin
  if fMeshShaderSupport then begin
   Count:=Max(65536,Max(fTotalActiveMeshletCount,fVulkanMeshletBoundingSphereBufferRangeAllocator.Capacity));
-  if fUsePerInFlightFrameBuffers then begin
+  if fUsePerInFlightFrameResources then begin
    FirstIndex:=aInFlightFrameIndex;
    LastIndex:=aInFlightFrameIndex;
   end else begin
@@ -36609,7 +36625,7 @@ begin
 {$endif}
    end;
   end;
-  if not fUsePerInFlightFrameBuffers then begin
+  if not fUsePerInFlightFrameResources then begin
    for InFlightFrameIndex:=1 to MaxInFlightFrames-1 do begin
     fGlobalMeshletBoundingSphereBuffers[InFlightFrameIndex]:=fGlobalMeshletBoundingSphereBuffers[0];
    end;

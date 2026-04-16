@@ -609,7 +609,7 @@ begin
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                        [],
                                                                        [],
-                                                                       [fInstance.LoopOrderIndependentTransparencyZBufferBuffer.VulkanBufferView.Handle],
+                                                                       [fInstance.LoopOrderIndependentTransparencyZBufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                        false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(12,
                                                                        0,
@@ -617,7 +617,7 @@ begin
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                        [],
                                                                        [],
-                                                                       [fInstance.LoopOrderIndependentTransparencyABufferBuffer.VulkanBufferView.Handle],
+                                                                       [fInstance.LoopOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                        false);
   if fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(13,
@@ -626,7 +626,7 @@ begin
                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                         [],
                                                                         [],
-                                                                        [fInstance.LoopOrderIndependentTransparencySBufferBuffer.VulkanBufferView.Handle],
+                                                                        [fInstance.LoopOrderIndependentTransparencySBufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                         false);
   end;
   fPassVulkanDescriptorSets[InFlightFrameIndex].Flush;

@@ -392,7 +392,7 @@ begin
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                   [],
                                                                   [],
-                                                                  [fInstance.LoopOrderIndependentTransparencyABufferBuffer.VulkanBufferView.Handle],
+                                                                  [fInstance.LoopOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                   false
                                                                  );
    if fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
@@ -402,7 +402,7 @@ begin
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                    [],
                                                                    [],
-                                                                   [fInstance.LoopOrderIndependentTransparencySBufferBuffer.VulkanBufferView.Handle],
+                                                                   [fInstance.LoopOrderIndependentTransparencySBufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                    false
                                                                   );
     fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
@@ -442,7 +442,7 @@ begin
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                   [],
                                                                   [],
-                                                                  [fInstance.LoopOrderIndependentTransparencyABufferBuffer.VulkanBufferView.Handle],
+                                                                  [fInstance.LoopOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                   false
                                                                  );
    if fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
@@ -452,7 +452,7 @@ begin
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                    [],
                                                                    [],
-                                                                   [fInstance.LoopOrderIndependentTransparencySBufferBuffer.VulkanBufferView.Handle],
+                                                                   [fInstance.LoopOrderIndependentTransparencySBufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                    false
                                                                   );
     fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,

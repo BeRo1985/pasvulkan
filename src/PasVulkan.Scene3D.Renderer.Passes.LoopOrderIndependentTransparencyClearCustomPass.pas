@@ -141,7 +141,7 @@ begin
  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'LoopOITClearABuffer');
  end;
- aCommandBuffer.CmdFillBuffer(fInstance.LoopOrderIndependentTransparencyABufferBuffer.VulkanBuffer.Handle,
+ aCommandBuffer.CmdFillBuffer(fInstance.LoopOrderIndependentTransparencyABufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
                               0,
                               VK_WHOLE_SIZE,
                               0);
@@ -153,7 +153,7 @@ begin
   if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'LoopOITClearZBuffer');
   end;
-  aCommandBuffer.CmdFillBuffer(fInstance.LoopOrderIndependentTransparencyZBufferBuffer.VulkanBuffer.Handle,
+  aCommandBuffer.CmdFillBuffer(fInstance.LoopOrderIndependentTransparencyZBufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
                                0,
                                VK_WHOLE_SIZE,
                                0);
@@ -164,7 +164,7 @@ begin
   if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'LoopOITClearZBuffer');
   end;
-  aCommandBuffer.CmdFillBuffer(fInstance.LoopOrderIndependentTransparencyZBufferBuffer.VulkanBuffer.Handle,
+  aCommandBuffer.CmdFillBuffer(fInstance.LoopOrderIndependentTransparencyZBufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
                                0,
                                VK_WHOLE_SIZE,
                                $ffffffff);
@@ -177,7 +177,7 @@ begin
   if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
    fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'LoopOITClearSBuffer');
   end;
-  aCommandBuffer.CmdFillBuffer(fInstance.LoopOrderIndependentTransparencySBufferBuffer.VulkanBuffer.Handle,
+  aCommandBuffer.CmdFillBuffer(fInstance.LoopOrderIndependentTransparencySBufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
                                0,
                                VK_WHOLE_SIZE,
                                0);
@@ -190,7 +190,7 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_QUEUE_FAMILY_IGNORED,
                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                        fInstance.LoopOrderIndependentTransparencyABufferBuffer.VulkanBuffer.Handle,
+                                                        fInstance.LoopOrderIndependentTransparencyABufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
                                                         0,
                                                         VK_WHOLE_SIZE);
 
@@ -198,7 +198,7 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_QUEUE_FAMILY_IGNORED,
                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                        fInstance.LoopOrderIndependentTransparencyZBufferBuffer.VulkanBuffer.Handle,
+                                                        fInstance.LoopOrderIndependentTransparencyZBufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
                                                         0,
                                                         VK_WHOLE_SIZE);
 
@@ -207,7 +207,7 @@ begin
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                          VK_QUEUE_FAMILY_IGNORED,
                                                          VK_QUEUE_FAMILY_IGNORED,
-                                                         fInstance.LoopOrderIndependentTransparencySBufferBuffer.VulkanBuffer.Handle,
+                                                         fInstance.LoopOrderIndependentTransparencySBufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
                                                          0,
                                                          VK_WHOLE_SIZE);
   CountBufferMemoryBarriers:=3;

@@ -405,14 +405,14 @@ begin
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                   [],
                                                                   [],
-                                                                  [fInstance.LockOrderIndependentTransparencyABufferBuffer.VulkanBufferView.Handle],
+                                                                  [fInstance.LockOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                   false
                                                                  );
    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
                                                                   0,
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                  [fInstance.LockOrderIndependentTransparencyAuxImage.DescriptorImageInfo],
+                                                                  [fInstance.LockOrderIndependentTransparencyAuxImages[InFlightFrameIndex].DescriptorImageInfo],
                                                                   [],
                                                                   [],
                                                                   false
@@ -455,14 +455,14 @@ begin
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                   [],
                                                                   [],
-                                                                  [fInstance.LockOrderIndependentTransparencyABufferBuffer.VulkanBufferView.Handle],
+                                                                  [fInstance.LockOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
                                                                   false
                                                                  );
    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
                                                                   0,
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                  [fInstance.LockOrderIndependentTransparencyAuxImage.DescriptorImageInfo],
+                                                                  [fInstance.LockOrderIndependentTransparencyAuxImages[InFlightFrameIndex].DescriptorImageInfo],
                                                                   [],
                                                                   [],
                                                                   false
