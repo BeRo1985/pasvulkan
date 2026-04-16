@@ -718,6 +718,24 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanBreadcrumbBuffer=class;
 
+     TpvVulkanSemaphore=class;
+
+     TpvVulkanTimelineSemaphore=class;
+
+     TpvVulkanTimelineEmulationManager=class;
+
+     TpvVulkanTimelinePointFence=class;
+
+     TpvVulkanTimelinePointSemaphore=class;
+
+     TpvVulkanTimelinePoint=class;
+
+     TpvVulkanTimelineWaitPoint=class;
+
+     TpvVulkanDeferredQueueSubmit=class;
+
+     TpvVulkanTimelineQueueData=class;
+
      TpvVulkanDevice=class;
 
      TpvVulkanDeviceOnBeforeDeviceCreate=procedure(const aDevice:TpvVulkanDevice;const aDeviceCreateInfo:PVkDeviceCreateInfo) of object;
@@ -811,6 +829,7 @@ type EpvVulkanException=class(Exception);
        fFragmentShaderSampleInterlock:boolean;
        fFragmentShaderPixelInterlock:boolean;
        fFragmentShaderShadingRateInterlock:boolean;
+       fTimelineEmulationManager:TpvVulkanTimelineEmulationManager;
       protected
       public
        constructor Create(const aInstance:TpvVulkanInstance;
@@ -909,6 +928,7 @@ type EpvVulkanException=class(Exception);
        property FragmentShaderSampleInterlock:boolean read fFragmentShaderSampleInterlock;
        property FragmentShaderPixelInterlock:boolean read fFragmentShaderPixelInterlock;
        property FragmentShaderShadingRateInterlock:boolean read fFragmentShaderShadingRateInterlock;
+       property TimelineEmulationManager:TpvVulkanTimelineEmulationManager read fTimelineEmulationManager;
      end;
 
      TpvVulkanDeviceDebugMarker=class
@@ -1511,7 +1531,21 @@ type EpvVulkanException=class(Exception);
      TpvVulkanBufferCopyBatchItemArray=TpvDynamicArray<TpvVulkanBufferCopyBatchItem>;
      PpvVulkanBufferCopyBatchItemArray=^TpvVulkanBufferCopyBatchItemArray;
 
-     TpvVulkanSemaphore=class;
+     TpvVulkanTimelineSemaphoreReference=record
+      Semaphore:TpvVulkanTimelineSemaphore;
+      Value:TpvUInt64;
+     end;
+     PpvVulkanTimelineSemaphoreReference=^TpvVulkanTimelineSemaphoreReference;
+
+     // Helper array types for pointer-based Vulkan array access in emulation
+     TpvVulkanSemaphoreHandleArray=array[0..65535] of TVkSemaphore;
+     PpvVulkanSemaphoreHandleArray=^TpvVulkanSemaphoreHandleArray;
+
+     TpvVulkanUInt64Array=array[0..65535] of TpvUInt64;
+     PpvVulkanUInt64Array=^TpvVulkanUInt64Array;
+
+     TpvVulkanPipelineStageFlagsArray=array[0..65535] of TVkPipelineStageFlags;
+     PpvVulkanPipelineStageFlagsArray=^TpvVulkanPipelineStageFlagsArray;
 
      TpvVulkanBuffer=class(TpvVulkanObject)
       private
@@ -1765,10 +1799,95 @@ type EpvVulkanException=class(Exception);
        property Handle:TVkSemaphore read fSemaphoreHandle;
      end;
 
+     // Timeline semaphore emulation types (Khronos-style fallback for drivers without VK_KHR_timeline_semaphore)
+
+     TpvVulkanTimelinePointFence=class
+      private
+       fDevice:TpvVulkanDevice;
+       fFenceHandle:TVkFence;
+       fRefCount:TpvInt32;
+       fNext:TpvVulkanTimelinePointFence;
+     end;
+
+     TpvVulkanTimelinePointSemaphore=class
+      private
+       fDevice:TpvVulkanDevice;
+       fSemaphoreHandle:TVkSemaphore;
+       fDeviceWaited:boolean;
+       fDeviceSignaled:boolean;
+       fQueue:TpvVulkanQueue;
+       fRefCount:TpvInt32;
+       fNext:TpvVulkanTimelinePointSemaphore;
+     end;
+
+     TpvVulkanTimelinePoint=class
+      private
+       fTimeline:TpvVulkanTimelineSemaphore;
+       fSerial:TpvUInt64;
+       fQueue:TpvVulkanQueue;
+       fSemaphore:TpvVulkanTimelinePointSemaphore;
+       fFence:TpvVulkanTimelinePointFence;
+       fWaiting:TpvInt32;
+       fPrev:TpvVulkanTimelinePoint;
+       fNext:TpvVulkanTimelinePoint;
+     end;
+
+     TpvVulkanTimelineWaitPoint=class
+      private
+       fPoint:TpvVulkanTimelinePoint;
+       fSemaphore:TpvVulkanTimelinePointSemaphore;
+       fFence:TpvVulkanTimelinePointFence;
+       fPrev:TpvVulkanTimelineWaitPoint;
+       fNext:TpvVulkanTimelineWaitPoint;
+     end;
+
+     TpvVulkanDeferredQueueSubmit=class
+      private
+       fSubmitType:TVkStructureType;
+       fFence:TVkFence;
+       fCommandBuffers:array of TVkCommandBuffer;
+       fCommandBufferCount:TpvUInt32;
+       fWaitStageMask:array of TVkPipelineStageFlags;
+       fWaitSemaphores:array of TVkSemaphore;
+       fSignalSemaphores:array of TVkSemaphore;
+       fWaitSemaphoreCount:TpvUInt32;
+       fSignalSemaphoreCount:TpvUInt32;
+       fWaitTimelineReferences:array of TpvVulkanTimelineSemaphoreReference;
+       fSignalTimelineReferences:array of TpvVulkanTimelineSemaphoreReference;
+       fWaitTimelineReferenceCount:TpvUInt32;
+       fSignalTimelineReferenceCount:TpvUInt32;
+       fSerializeSemaphores:array of TpvVulkanTimelinePointSemaphore;
+       fSerializeSemaphoreCount:TpvUInt32;
+       fPrev:TpvVulkanDeferredQueueSubmit;
+       fNext:TpvVulkanDeferredQueueSubmit;
+      public
+       constructor Create;
+       destructor Destroy; override;
+     end;
+
+     TpvVulkanTimelineQueueData=class
+      private
+       fQueue:TpvVulkanQueue;
+       fDeferredHead:TpvVulkanDeferredQueueSubmit;
+       fDeferredTail:TpvVulkanDeferredQueueSubmit;
+       fWaitPointHead:TpvVulkanTimelineWaitPoint;
+       fWaitPointTail:TpvVulkanTimelineWaitPoint;
+      public
+       constructor Create(const aQueue:TpvVulkanQueue);
+       destructor Destroy; override;
+     end;
+
      TpvVulkanTimelineSemaphore=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
        fSemaphoreHandle:TVkSemaphore;
+       fNative:boolean;
+       fHighestPast:TpvUInt64;
+       fHighestPending:TpvUInt64;
+       fPointsHead:TpvVulkanTimelinePoint;
+       fPointsTail:TpvVulkanTimelinePoint;
+      public
+       class var ForceEmulation:boolean;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aInitialValue:TpvUInt64=0);
@@ -1779,6 +1898,50 @@ type EpvVulkanException=class(Exception);
       published
        property Device:TpvVulkanDevice read fDevice;
        property Handle:TVkSemaphore read fSemaphoreHandle;
+       property NativeTimelineSemaphore:boolean read fNative;
+     end;
+
+     TpvVulkanTimelineEmulationManager=class
+      private
+       fDevice:TpvVulkanDevice;
+       fLock:TPasMPCriticalSection;
+       fConditionVariableLock:TPasMPConditionVariableLock;
+       fConditionVariable:TPasMPConditionVariable;
+       fSemaphores:array of TpvVulkanTimelineSemaphore;
+       fSemaphoreCount:TpvInt32;
+       fFreePointFences:TpvVulkanTimelinePointFence;
+       fFreePointSemaphores:TpvVulkanTimelinePointSemaphore;
+       fFreePoints:TpvVulkanTimelinePoint;
+       fFreeWaitPoints:TpvVulkanTimelineWaitPoint;
+       fQueueDataArray:array of TpvVulkanTimelineQueueData;
+       fQueueDataCount:TpvInt32;
+       function GetPointFenceLocked:TpvVulkanTimelinePointFence;
+       function GetPointSemaphoreLocked:TpvVulkanTimelinePointSemaphore;
+       procedure PointFenceRefLocked(const aFence:TpvVulkanTimelinePointFence);
+       procedure PointFenceUnrefLocked(const aFence:TpvVulkanTimelinePointFence);
+       procedure PointSemaphoreRefLocked(const aSemaphore:TpvVulkanTimelinePointSemaphore);
+       procedure PointSemaphoreUnrefLocked(const aSemaphore:TpvVulkanTimelinePointSemaphore);
+       procedure WaitPointFreeLocked(const aWaitPoint:TpvVulkanTimelineWaitPoint);
+       procedure TimelinePointFreeLocked(const aPoint:TpvVulkanTimelinePoint);
+       function GarbageCollectWaitPointListLocked(var aHead,aTail:TpvVulkanTimelineWaitPoint):TVkResult;
+       function TimelineGarbageCollectLocked(const aSemaphore:TpvVulkanTimelineSemaphore):TVkResult;
+       function TimelineWaitLocked(const aSemaphores:array of TpvVulkanTimelineSemaphore;const aSerials:array of TpvUInt64;const aCount:TpvUInt32;const aWaitAll:boolean;const aAbsTimeoutNs:TpvUInt64):TVkResult;
+       function TimelineCreateWaitPointLocked(const aSemaphore:TpvVulkanTimelineSemaphore;const aSerial:TpvUInt64;const aFence:TpvVulkanTimelinePointFence;out aPointSemaphore:TpvVulkanTimelinePointSemaphore):TVkResult;
+       function TimelineCreatePointLocked(const aQueue:TpvVulkanQueue;const aSemaphore:TpvVulkanTimelineSemaphore;const aSerial:TpvUInt64;const aFence:TpvVulkanTimelinePointFence;out aPoint:TpvVulkanTimelinePoint):TVkResult;
+       function CloneSubmitInfo(const aQueue:TpvVulkanQueue;const aSubmitInfo:PVkSubmitInfo;const aTimelineSubmitInfo:PVkTimelineSemaphoreSubmitInfo;const aFence:TVkFence):TpvVulkanDeferredQueueSubmit;
+       function QueueSubmitDeferredLocked(const aQueueData:TpvVulkanTimelineQueueData;out aAdvance:TpvUInt32):TVkResult;
+       function DeviceSubmitDeferredLocked:TVkResult;
+       function GetQueueDataLocked(const aQueue:TpvVulkanQueue):TpvVulkanTimelineQueueData;
+      public
+       constructor Create(const aDevice:TpvVulkanDevice);
+       destructor Destroy; override;
+       procedure RegisterSemaphore(const aSemaphore:TpvVulkanTimelineSemaphore);
+       procedure UnregisterSemaphore(const aSemaphore:TpvVulkanTimelineSemaphore);
+       function FindSemaphore(const aHandle:TVkSemaphore):TpvVulkanTimelineSemaphore;
+       function ProcessQueueSubmit(const aQueue:TpvVulkanQueue;const aSubmitCount:TpvUInt32;const aSubmits:PVkSubmitInfo;const aFence:TVkFence):TVkResult;
+       function SignalSemaphore(const aSemaphore:TpvVulkanTimelineSemaphore;const aValue:TpvUInt64):TVkResult;
+       function WaitSemaphores(const aSemaphore:TpvVulkanTimelineSemaphore;const aValue:TpvUInt64;const aTimeout:TpvUInt64):TVkResult;
+       function GetCounterValue(const aSemaphore:TpvVulkanTimelineSemaphore;out aValue:TpvUInt64):TVkResult;
      end;
 
      TpvVulkanQueue=class(TpvVulkanObject)
@@ -10933,6 +11096,8 @@ begin
  fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.None;
  fBreadcrumbBuffer:=nil;
 
+ fTimelineEmulationManager:=nil;
+
  fNVIDIADeviceDiagnosticsFlags:=TVkDeviceDiagnosticsConfigFlagsNV(VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_DEBUG_INFO_BIT_NV) or
                                 TVkDeviceDiagnosticsConfigFlagsNV(VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_RESOURCE_TRACKING_BIT_NV) or
                                 TVkDeviceDiagnosticsConfigFlagsNV(VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_AUTOMATIC_CHECKPOINTS_BIT_NV);
@@ -11084,6 +11249,7 @@ begin
   BreadcrumbVulkanDevice:=nil;
  end;
  FreeAndNil(fBreadcrumbBuffer);
+ FreeAndNil(fTimelineEmulationManager);
  FreeAndNil(fCanvasCommon);
  for Index:=0 to length(fQueueFamilyQueues)-1 do begin
   for SubIndex:=0 to length(fQueueFamilyQueues[Index])-1 do begin
@@ -12095,6 +12261,10 @@ begin
 
   fImageFormatList:=((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2) or
                     (fEnabledExtensionNames.IndexOf(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME)>=0);
+
+  if TpvVulkanTimelineSemaphore.ForceEmulation or (fVulkan12Features.timelineSemaphore=VK_FALSE) then begin
+   fTimelineEmulationManager:=TpvVulkanTimelineEmulationManager.Create(self);
+  end;
 
   if fUseBreadcrumbs then begin
    if fBreadcrumbForceManual or
@@ -17614,63 +17784,1222 @@ begin
  inherited Destroy;
 end;
 
+{ TpvVulkanDeferredQueueSubmit }
+
+constructor TpvVulkanDeferredQueueSubmit.Create;
+begin
+ inherited Create;
+
+ fSubmitType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+ fFence:=VK_NULL_HANDLE;
+
+ fCommandBuffers:=nil;
+ fCommandBufferCount:=0;
+
+ fWaitStageMask:=nil;
+ fWaitSemaphores:=nil;
+ fSignalSemaphores:=nil;
+ fWaitSemaphoreCount:=0;
+ fSignalSemaphoreCount:=0;
+
+ fWaitTimelineReferences:=nil;
+ fSignalTimelineReferences:=nil;
+ fWaitTimelineReferenceCount:=0;
+ fSignalTimelineReferenceCount:=0;
+
+ fSerializeSemaphores:=nil;
+ fSerializeSemaphoreCount:=0;
+
+ fPrev:=nil;
+ fNext:=nil;
+end;
+
+destructor TpvVulkanDeferredQueueSubmit.Destroy;
+begin
+ fCommandBuffers:=nil;
+ fWaitStageMask:=nil;
+ fWaitSemaphores:=nil;
+ fSignalSemaphores:=nil;
+ fWaitTimelineReferences:=nil;
+ fSignalTimelineReferences:=nil;
+ fSerializeSemaphores:=nil;
+ inherited Destroy;
+end;
+
+{ TpvVulkanTimelineQueueData }
+
+constructor TpvVulkanTimelineQueueData.Create(const aQueue:TpvVulkanQueue);
+begin
+ inherited Create;
+ fQueue:=aQueue;
+ fDeferredHead:=nil;
+ fDeferredTail:=nil;
+ fWaitPointHead:=nil;
+ fWaitPointTail:=nil;
+end;
+
+destructor TpvVulkanTimelineQueueData.Destroy;
+var Deferred,NextDeferred:TpvVulkanDeferredQueueSubmit;
+    WaitPoint,NextWaitPoint:TpvVulkanTimelineWaitPoint;
+begin
+ Deferred:=fDeferredHead;
+ while assigned(Deferred) do begin
+  NextDeferred:=Deferred.fNext;
+  Deferred.Free;
+  Deferred:=NextDeferred;
+ end;
+ WaitPoint:=fWaitPointHead;
+ while assigned(WaitPoint) do begin
+  NextWaitPoint:=WaitPoint.fNext;
+  WaitPoint.Free;
+  WaitPoint:=NextWaitPoint;
+ end;
+ inherited Destroy;
+end;
+
+{ TpvVulkanTimelineEmulationManager }
+
+constructor TpvVulkanTimelineEmulationManager.Create(const aDevice:TpvVulkanDevice);
+begin
+ inherited Create;
+ fDevice:=aDevice;
+ fLock:=TPasMPCriticalSection.Create;
+ fConditionVariableLock:=TPasMPConditionVariableLock.Create;
+ fConditionVariable:=TPasMPConditionVariable.Create;
+ fSemaphores:=nil;
+ fSemaphoreCount:=0;
+ fFreePointFences:=nil;
+ fFreePointSemaphores:=nil;
+ fFreePoints:=nil;
+ fFreeWaitPoints:=nil;
+ fQueueDataArray:=nil;
+ fQueueDataCount:=0;
+end;
+
+destructor TpvVulkanTimelineEmulationManager.Destroy;
+var Index:TpvInt32;
+    Fence,NextFence:TpvVulkanTimelinePointFence;
+    Semaphore,NextSemaphore:TpvVulkanTimelinePointSemaphore;
+    Point,NextPoint:TpvVulkanTimelinePoint;
+    WaitPoint,NextWaitPoint:TpvVulkanTimelineWaitPoint;
+begin
+
+ // Free pooled fences
+ Fence:=fFreePointFences;
+ while assigned(Fence) do begin
+  NextFence:=Fence.fNext;
+  if Fence.fFenceHandle<>VK_NULL_HANDLE then begin
+   fDevice.fDeviceVulkan.DestroyFence(fDevice.fDeviceHandle,Fence.fFenceHandle,fDevice.fAllocationCallbacks);
+  end;
+  Fence.Free;
+  Fence:=NextFence;
+ end;
+
+ // Free pooled semaphores
+ Semaphore:=fFreePointSemaphores;
+ while assigned(Semaphore) do begin
+  NextSemaphore:=Semaphore.fNext;
+  if Semaphore.fSemaphoreHandle<>VK_NULL_HANDLE then begin
+   fDevice.fDeviceVulkan.DestroySemaphore(fDevice.fDeviceHandle,Semaphore.fSemaphoreHandle,fDevice.fAllocationCallbacks);
+  end;
+  Semaphore.Free;
+  Semaphore:=NextSemaphore;
+ end;
+
+ // Free pooled points
+ Point:=fFreePoints;
+ while assigned(Point) do begin
+  NextPoint:=Point.fNext;
+  Point.Free;
+  Point:=NextPoint;
+ end;
+
+ // Free pooled wait points
+ WaitPoint:=fFreeWaitPoints;
+ while assigned(WaitPoint) do begin
+  NextWaitPoint:=WaitPoint.fNext;
+  WaitPoint.Free;
+  WaitPoint:=NextWaitPoint;
+ end;
+
+ // Free queue data
+ for Index:=0 to fQueueDataCount-1 do begin
+  FreeAndNil(fQueueDataArray[Index]);
+ end;
+ fQueueDataArray:=nil;
+ fSemaphores:=nil;
+
+ FreeAndNil(fConditionVariable);
+ FreeAndNil(fConditionVariableLock);
+ FreeAndNil(fLock);
+
+ inherited Destroy;
+end;
+
+function TpvVulkanTimelineEmulationManager.GetPointFenceLocked:TpvVulkanTimelinePointFence;
+var FenceCreateInfo:TVkFenceCreateInfo;
+begin
+
+ if assigned(fFreePointFences) then begin
+
+  result:=fFreePointFences;
+  fFreePointFences:=result.fNext;
+  result.fNext:=nil;
+  result.fRefCount:=1;
+
+  // Reset the fence for reuse
+  VulkanCheckResult(fDevice.fDeviceVulkan.ResetFences(fDevice.fDeviceHandle,1,@result.fFenceHandle));
+
+ end else begin
+
+  result:=TpvVulkanTimelinePointFence.Create;
+  result.fDevice:=fDevice;
+  result.fRefCount:=1;
+  result.fNext:=nil;
+
+  FillChar(FenceCreateInfo,SizeOf(TVkFenceCreateInfo),#0);
+  FenceCreateInfo.sType:=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  FenceCreateInfo.flags:=0;
+  VulkanCheckResult(fDevice.fDeviceVulkan.CreateFence(fDevice.fDeviceHandle,@FenceCreateInfo,fDevice.fAllocationCallbacks,@result.fFenceHandle));
+
+ end;
+
+end;
+
+function TpvVulkanTimelineEmulationManager.GetPointSemaphoreLocked:TpvVulkanTimelinePointSemaphore;
+var SemaphoreCreateInfo:TVkSemaphoreCreateInfo;
+begin
+
+ if assigned(fFreePointSemaphores) then begin
+
+  result:=fFreePointSemaphores;
+  fFreePointSemaphores:=result.fNext;
+  result.fNext:=nil;
+  result.fRefCount:=1;
+  result.fDeviceWaited:=false;
+  result.fDeviceSignaled:=false;
+  result.fQueue:=nil;
+
+ end else begin
+
+  result:=TpvVulkanTimelinePointSemaphore.Create;
+  result.fDevice:=fDevice;
+  result.fRefCount:=1;
+  result.fNext:=nil;
+  result.fDeviceWaited:=false;
+  result.fDeviceSignaled:=false;
+  result.fQueue:=nil;
+
+  FillChar(SemaphoreCreateInfo,SizeOf(TVkSemaphoreCreateInfo),#0);
+  SemaphoreCreateInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+  SemaphoreCreateInfo.flags:=0;
+  VulkanCheckResult(fDevice.fDeviceVulkan.CreateSemaphore(fDevice.fDeviceHandle,@SemaphoreCreateInfo,fDevice.fAllocationCallbacks,@result.fSemaphoreHandle));
+
+ end;
+
+end;
+
+procedure TpvVulkanTimelineEmulationManager.PointFenceRefLocked(const aFence:TpvVulkanTimelinePointFence);
+begin
+ if assigned(aFence) then begin
+  inc(aFence.fRefCount);
+ end;
+end;
+
+procedure TpvVulkanTimelineEmulationManager.PointFenceUnrefLocked(const aFence:TpvVulkanTimelinePointFence);
+begin
+ if assigned(aFence) then begin
+  dec(aFence.fRefCount);
+  if aFence.fRefCount<=0 then begin
+   aFence.fNext:=fFreePointFences;
+   fFreePointFences:=aFence;
+  end;
+ end;
+end;
+
+procedure TpvVulkanTimelineEmulationManager.PointSemaphoreRefLocked(const aSemaphore:TpvVulkanTimelinePointSemaphore);
+begin
+ if assigned(aSemaphore) then begin
+  inc(aSemaphore.fRefCount);
+ end;
+end;
+
+procedure TpvVulkanTimelineEmulationManager.PointSemaphoreUnrefLocked(const aSemaphore:TpvVulkanTimelinePointSemaphore);
+begin
+ if assigned(aSemaphore) then begin
+  dec(aSemaphore.fRefCount);
+  if aSemaphore.fRefCount<=0 then begin
+
+   // If signaled but not waited, need an empty submit to consume the semaphore
+   if aSemaphore.fDeviceSignaled and (not aSemaphore.fDeviceWaited) and assigned(aSemaphore.fQueue) then begin
+    fDevice.fDeviceVulkan.QueueWaitIdle(aSemaphore.fQueue.fQueueHandle);
+   end;
+
+   aSemaphore.fQueue:=nil;
+   aSemaphore.fNext:=fFreePointSemaphores;
+   fFreePointSemaphores:=aSemaphore;
+
+  end;
+ end;
+end;
+
+procedure TpvVulkanTimelineEmulationManager.WaitPointFreeLocked(const aWaitPoint:TpvVulkanTimelineWaitPoint);
+begin
+ if assigned(aWaitPoint) then begin
+
+  PointSemaphoreUnrefLocked(aWaitPoint.fSemaphore);
+  aWaitPoint.fSemaphore:=nil;
+
+  PointFenceUnrefLocked(aWaitPoint.fFence);
+  aWaitPoint.fFence:=nil;
+
+  if assigned(aWaitPoint.fPoint) then begin
+   dec(aWaitPoint.fPoint.fWaiting);
+  end;
+  aWaitPoint.fPoint:=nil;
+
+  aWaitPoint.fPrev:=nil;
+  aWaitPoint.fNext:=nil;
+
+  // Return to pool
+  aWaitPoint.fNext:=fFreeWaitPoints;
+  fFreeWaitPoints:=aWaitPoint;
+
+ end;
+end;
+
+procedure TpvVulkanTimelineEmulationManager.TimelinePointFreeLocked(const aPoint:TpvVulkanTimelinePoint);
+begin
+ if assigned(aPoint) then begin
+
+  PointSemaphoreUnrefLocked(aPoint.fSemaphore);
+  aPoint.fSemaphore:=nil;
+
+  PointFenceUnrefLocked(aPoint.fFence);
+  aPoint.fFence:=nil;
+
+  aPoint.fTimeline:=nil;
+  aPoint.fQueue:=nil;
+  aPoint.fPrev:=nil;
+  aPoint.fNext:=nil;
+
+  // Return to pool
+  aPoint.fNext:=fFreePoints;
+  fFreePoints:=aPoint;
+
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.GarbageCollectWaitPointListLocked(var aHead,aTail:TpvVulkanTimelineWaitPoint):TVkResult;
+var WaitPoint,NextWaitPoint:TpvVulkanTimelineWaitPoint;
+begin
+ result:=VK_SUCCESS;
+ WaitPoint:=aHead;
+ while assigned(WaitPoint) do begin
+  NextWaitPoint:=WaitPoint.fNext;
+  if assigned(WaitPoint.fSemaphore) and WaitPoint.fSemaphore.fDeviceWaited then begin
+   // Remove from doubly-linked list
+   if assigned(WaitPoint.fPrev) then begin
+    WaitPoint.fPrev.fNext:=WaitPoint.fNext;
+   end else begin
+    aHead:=WaitPoint.fNext;
+   end;
+   if assigned(WaitPoint.fNext) then begin
+    WaitPoint.fNext.fPrev:=WaitPoint.fPrev;
+   end else begin
+    aTail:=WaitPoint.fPrev;
+   end;
+   WaitPointFreeLocked(WaitPoint);
+  end;
+  WaitPoint:=NextWaitPoint;
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.TimelineGarbageCollectLocked(const aSemaphore:TpvVulkanTimelineSemaphore):TVkResult;
+var Point,NextPoint:TpvVulkanTimelinePoint;
+    FenceStatus:TVkResult;
+    Index:TpvInt32;
+begin
+ result:=VK_SUCCESS;
+
+ Point:=aSemaphore.fPointsHead;
+ while assigned(Point) do begin
+  NextPoint:=Point.fNext;
+  if assigned(Point.fFence) and (Point.fFence.fFenceHandle<>VK_NULL_HANDLE) then begin
+   FenceStatus:=fDevice.fDeviceVulkan.GetFenceStatus(fDevice.fDeviceHandle,Point.fFence.fFenceHandle);
+   if FenceStatus=VK_SUCCESS then begin
+    // Fence is signaled, this point is complete
+    if (Point.fWaiting<=0) then begin
+
+     // Update highest_past
+     if Point.fSerial>aSemaphore.fHighestPast then begin
+      aSemaphore.fHighestPast:=Point.fSerial;
+     end;
+
+     // Remove from timeline's point list
+     if assigned(Point.fPrev) then begin
+      Point.fPrev.fNext:=Point.fNext;
+     end else begin
+      aSemaphore.fPointsHead:=Point.fNext;
+     end;
+     if assigned(Point.fNext) then begin
+      Point.fNext.fPrev:=Point.fPrev;
+     end else begin
+      aSemaphore.fPointsTail:=Point.fPrev;
+     end;
+
+     TimelinePointFreeLocked(Point);
+    end;
+   end else if FenceStatus<>VK_NOT_READY then begin
+    result:=FenceStatus;
+    exit;
+   end;
+  end;
+  Point:=NextPoint;
+ end;
+
+ // Also garbage collect wait points in all queue data
+ for Index:=0 to fQueueDataCount-1 do begin
+  if assigned(fQueueDataArray[Index]) then begin
+   GarbageCollectWaitPointListLocked(fQueueDataArray[Index].fWaitPointHead,fQueueDataArray[Index].fWaitPointTail);
+  end;
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.TimelineCreatePointLocked(const aQueue:TpvVulkanQueue;const aSemaphore:TpvVulkanTimelineSemaphore;const aSerial:TpvUInt64;const aFence:TpvVulkanTimelinePointFence;out aPoint:TpvVulkanTimelinePoint):TVkResult;
+begin
+ result:=VK_SUCCESS;
+
+ if assigned(fFreePoints) then begin
+  aPoint:=fFreePoints;
+  fFreePoints:=aPoint.fNext;
+ end else begin
+  aPoint:=TpvVulkanTimelinePoint.Create;
+ end;
+
+ aPoint.fTimeline:=aSemaphore;
+ aPoint.fSerial:=aSerial;
+ aPoint.fQueue:=aQueue;
+ aPoint.fWaiting:=0;
+ aPoint.fSemaphore:=GetPointSemaphoreLocked;
+ aPoint.fSemaphore.fQueue:=aQueue;
+ aPoint.fFence:=aFence;
+ PointFenceRefLocked(aFence);
+
+ aPoint.fPrev:=aSemaphore.fPointsTail;
+ aPoint.fNext:=nil;
+ if assigned(aSemaphore.fPointsTail) then begin
+  aSemaphore.fPointsTail.fNext:=aPoint;
+ end else begin
+  aSemaphore.fPointsHead:=aPoint;
+ end;
+ aSemaphore.fPointsTail:=aPoint;
+
+ // Update highest_pending
+ if aSerial>aSemaphore.fHighestPending then begin
+  aSemaphore.fHighestPending:=aSerial;
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.TimelineCreateWaitPointLocked(const aSemaphore:TpvVulkanTimelineSemaphore;const aSerial:TpvUInt64;const aFence:TpvVulkanTimelinePointFence;out aPointSemaphore:TpvVulkanTimelinePointSemaphore):TVkResult;
+var Point:TpvVulkanTimelinePoint;
+    WaitPoint:TpvVulkanTimelineWaitPoint;
+    QueueData:TpvVulkanTimelineQueueData;
+begin
+ result:=VK_SUCCESS;
+ aPointSemaphore:=nil;
+
+ // If the value is already completed (past), no wait needed
+ if aSerial<=aSemaphore.fHighestPast then begin
+  exit;
+ end;
+
+ // Find the timeline point for this serial
+ Point:=aSemaphore.fPointsHead;
+ while assigned(Point) do begin
+  if Point.fSerial=aSerial then begin
+   break;
+  end;
+  Point:=Point.fNext;
+ end;
+ if not assigned(Point) then begin
+  // Value not yet submitted, caller will need to defer
+  exit;
+ end;
+
+ // If the semaphore hasn't been waited on the device yet, reuse it directly
+ if (not Point.fSemaphore.fDeviceWaited) then begin
+  aPointSemaphore:=Point.fSemaphore;
+  PointSemaphoreRefLocked(aPointSemaphore);
+  Point.fSemaphore.fDeviceWaited:=true;
+  inc(Point.fWaiting);
+  exit;
+ end;
+
+ // Need a new wait point with a serialize submit (1:N wait relationship)
+ if assigned(fFreeWaitPoints) then begin
+  WaitPoint:=fFreeWaitPoints;
+  fFreeWaitPoints:=WaitPoint.fNext;
+ end else begin
+  WaitPoint:=TpvVulkanTimelineWaitPoint.Create;
+ end;
+
+ // Initialize wait point
+ WaitPoint.fPoint:=Point;
+ inc(Point.fWaiting);
+ WaitPoint.fSemaphore:=GetPointSemaphoreLocked;
+ WaitPoint.fSemaphore.fQueue:=Point.fQueue;
+ WaitPoint.fFence:=aFence;
+ PointFenceRefLocked(aFence);
+ aPointSemaphore:=WaitPoint.fSemaphore;
+ PointSemaphoreRefLocked(aPointSemaphore);
+ WaitPoint.fSemaphore.fDeviceWaited:=true;
+
+ // Add to queue data wait point list
+ QueueData:=GetQueueDataLocked(Point.fQueue);
+ WaitPoint.fPrev:=QueueData.fWaitPointTail;
+ WaitPoint.fNext:=nil;
+ if assigned(QueueData.fWaitPointTail) then begin
+  QueueData.fWaitPointTail.fNext:=WaitPoint;
+ end else begin
+  QueueData.fWaitPointHead:=WaitPoint;
+ end;
+ QueueData.fWaitPointTail:=WaitPoint;
+end;
+
+function TpvVulkanTimelineEmulationManager.TimelineWaitLocked(const aSemaphores:array of TpvVulkanTimelineSemaphore;const aSerials:array of TpvUInt64;const aCount:TpvUInt32;const aWaitAll:boolean;const aAbsTimeoutNs:TpvUInt64):TVkResult;
+var Index,FenceCount:TpvUInt32;
+    Fences:array of TVkFence;
+    Point:TpvVulkanTimelinePoint;
+    AllDone,AnyDone:boolean;
+    GarbageCollectResult:TVkResult;
+    RemainingTimeout:TpvUInt64;
+    CurrentTime:TpvUInt64;
+begin
+ result:=VK_SUCCESS;
+
+ while true do begin
+
+  // Garbage collect all involved timelines
+  for Index:=0 to aCount-1 do begin
+   GarbageCollectResult:=TimelineGarbageCollectLocked(aSemaphores[Index]);
+   if GarbageCollectResult<>VK_SUCCESS then begin
+    result:=GarbageCollectResult;
+    exit;
+   end;
+  end;
+
+  // Check if conditions are met
+  AllDone:=true;
+  AnyDone:=false;
+  for Index:=0 to aCount-1 do begin
+   if aSerials[Index]<=aSemaphores[Index].fHighestPast then begin
+    AnyDone:=true;
+   end else begin
+    AllDone:=false;
+   end;
+  end;
+  if aWaitAll then begin
+   if AllDone then begin
+    result:=VK_SUCCESS;
+    exit;
+   end;
+  end else begin
+   if AnyDone then begin
+    result:=VK_SUCCESS;
+    exit;
+   end;
+  end;
+
+  // Collect fences from points that are not yet complete
+  Fences:=nil;
+  FenceCount:=0;
+  for Index:=0 to aCount-1 do begin
+   if aSerials[Index]>aSemaphores[Index].fHighestPast then begin
+    Point:=aSemaphores[Index].fPointsHead;
+    while assigned(Point) do begin
+     if (Point.fSerial<=aSerials[Index]) and assigned(Point.fFence) then begin
+      if FenceCount>=TpvUInt32(length(Fences)) then begin
+       SetLength(Fences,(FenceCount+1)*2);
+      end;
+      Fences[FenceCount]:=Point.fFence.fFenceHandle;
+      inc(FenceCount);
+     end;
+     Point:=Point.fNext;
+    end;
+   end;
+  end;
+
+  if FenceCount>0 then begin
+
+   // Wait on collected fences with a small timeout, then re-check
+   fLock.Release;
+   try
+    if aAbsTimeoutNs=TpvUInt64(high(TpvUInt64)) then begin
+     RemainingTimeout:=1000000000; // 1 second chunks for infinite wait
+    end else begin
+     CurrentTime:=0;
+     // Use a small poll interval
+     RemainingTimeout:=10000000; // 10ms poll
+    end;
+    result:=fDevice.fDeviceVulkan.WaitForFences(fDevice.fDeviceHandle,FenceCount,@Fences[0],ord(aWaitAll),RemainingTimeout);
+   finally
+    fLock.Acquire;
+   end;
+
+   if (result=VK_SUCCESS) then begin
+    continue; // Re-check after fence signaled
+   end else if (result=VK_TIMEOUT) then begin
+    if aAbsTimeoutNs<>TpvUInt64(high(TpvUInt64)) then begin
+     // Check real timeout
+     result:=VK_TIMEOUT;
+     exit;
+    end;
+    // For infinite wait, just loop again
+    continue;
+   end else begin
+    exit; // Real error
+   end;
+
+  end else begin
+
+   // No fences available yet (deferred submissions pending), wait on condition variable
+   fLock.Release;
+   try
+    fConditionVariableLock.Acquire;
+    try
+     fConditionVariable.Wait(fConditionVariableLock,10); // 10ms
+    finally
+     fConditionVariableLock.Release;
+    end;
+   finally
+    fLock.Acquire;
+   end;
+
+   if aAbsTimeoutNs<>TpvUInt64(high(TpvUInt64)) then begin
+    result:=VK_TIMEOUT;
+    exit;
+   end;
+
+  end;
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.GetQueueDataLocked(const aQueue:TpvVulkanQueue):TpvVulkanTimelineQueueData;
+var Index:TpvInt32;
+begin
+
+ for Index:=0 to fQueueDataCount-1 do begin
+  if fQueueDataArray[Index].fQueue=aQueue then begin
+   result:=fQueueDataArray[Index];
+   exit;
+  end;
+ end;
+
+ // Create new queue data
+ result:=TpvVulkanTimelineQueueData.Create(aQueue);
+ if fQueueDataCount>=length(fQueueDataArray) then begin
+  SetLength(fQueueDataArray,(fQueueDataCount+1)*2);
+ end;
+ fQueueDataArray[fQueueDataCount]:=result;
+ inc(fQueueDataCount);
+
+end;
+
+function TpvVulkanTimelineEmulationManager.CloneSubmitInfo(const aQueue:TpvVulkanQueue;const aSubmitInfo:PVkSubmitInfo;const aTimelineSubmitInfo:PVkTimelineSemaphoreSubmitInfo;const aFence:TVkFence):TpvVulkanDeferredQueueSubmit;
+var Index:TpvUInt32;
+    TimelineSemaphore:TpvVulkanTimelineSemaphore;
+begin
+ result:=TpvVulkanDeferredQueueSubmit.Create;
+ result.fSubmitType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+ result.fFence:=aFence;
+ result.fPrev:=nil;
+ result.fNext:=nil;
+
+ // Clone command buffers
+ result.fCommandBufferCount:=aSubmitInfo^.commandBufferCount;
+ if result.fCommandBufferCount>0 then begin
+  SetLength(result.fCommandBuffers,result.fCommandBufferCount);
+  Move(aSubmitInfo^.pCommandBuffers^,result.fCommandBuffers[0],result.fCommandBufferCount*SizeOf(TVkCommandBuffer));
+ end;
+
+ // Process wait semaphores
+ result.fWaitSemaphoreCount:=0;
+ result.fWaitTimelineReferenceCount:=0;
+ result.fSerializeSemaphoreCount:=0;
+ if aSubmitInfo^.waitSemaphoreCount>0 then begin
+  SetLength(result.fWaitSemaphores,aSubmitInfo^.waitSemaphoreCount);
+  SetLength(result.fWaitStageMask,aSubmitInfo^.waitSemaphoreCount);
+  SetLength(result.fWaitTimelineReferences,aSubmitInfo^.waitSemaphoreCount);
+  for Index:=0 to aSubmitInfo^.waitSemaphoreCount-1 do begin
+   TimelineSemaphore:=FindSemaphore(PpvVulkanSemaphoreHandleArray(aSubmitInfo^.pWaitSemaphores)^[Index]);
+   if assigned(TimelineSemaphore) and assigned(aTimelineSubmitInfo) and (Index<aTimelineSubmitInfo^.waitSemaphoreValueCount) then begin
+    // This is an emulated timeline semaphore wait
+    result.fWaitTimelineReferences[result.fWaitTimelineReferenceCount].Semaphore:=TimelineSemaphore;
+    result.fWaitTimelineReferences[result.fWaitTimelineReferenceCount].Value:=PpvVulkanUInt64Array(aTimelineSubmitInfo^.pWaitSemaphoreValues)^[Index];
+    inc(result.fWaitTimelineReferenceCount);
+   end else begin
+    // Regular binary semaphore
+    result.fWaitSemaphores[result.fWaitSemaphoreCount]:=PpvVulkanSemaphoreHandleArray(aSubmitInfo^.pWaitSemaphores)^[Index];
+    result.fWaitStageMask[result.fWaitSemaphoreCount]:=PpvVulkanPipelineStageFlagsArray(aSubmitInfo^.pWaitDstStageMask)^[Index];
+    inc(result.fWaitSemaphoreCount);
+   end;
+  end;
+ end;
+
+ // Process signal semaphores
+ result.fSignalSemaphoreCount:=0;
+ result.fSignalTimelineReferenceCount:=0;
+ if aSubmitInfo^.signalSemaphoreCount>0 then begin
+  SetLength(result.fSignalSemaphores,aSubmitInfo^.signalSemaphoreCount);
+  SetLength(result.fSignalTimelineReferences,aSubmitInfo^.signalSemaphoreCount);
+  for Index:=0 to aSubmitInfo^.signalSemaphoreCount-1 do begin
+   TimelineSemaphore:=FindSemaphore(PpvVulkanSemaphoreHandleArray(aSubmitInfo^.pSignalSemaphores)^[Index]);
+   if assigned(TimelineSemaphore) and assigned(aTimelineSubmitInfo) and (Index<aTimelineSubmitInfo^.signalSemaphoreValueCount) then begin
+    // This is an emulated timeline semaphore signal
+    result.fSignalTimelineReferences[result.fSignalTimelineReferenceCount].Semaphore:=TimelineSemaphore;
+    result.fSignalTimelineReferences[result.fSignalTimelineReferenceCount].Value:=PpvVulkanUInt64Array(aTimelineSubmitInfo^.pSignalSemaphoreValues)^[Index];
+    inc(result.fSignalTimelineReferenceCount);
+   end else begin
+    // Regular binary semaphore
+    result.fSignalSemaphores[result.fSignalSemaphoreCount]:=PpvVulkanSemaphoreHandleArray(aSubmitInfo^.pSignalSemaphores)^[Index];
+    inc(result.fSignalSemaphoreCount);
+   end;
+  end;
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.QueueSubmitDeferredLocked(const aQueueData:TpvVulkanTimelineQueueData;out aAdvance:TpvUInt32):TVkResult;
+var Deferred,NextDeferred:TpvVulkanDeferredQueueSubmit;
+    Index,WaitCount,SignalCount,SerializeIndex:TpvUInt32;
+    AllWaitsReady:boolean;
+    PointSemaphore:TpvVulkanTimelinePointSemaphore;
+    SubmitFence:TpvVulkanTimelinePointFence;
+    Point:TpvVulkanTimelinePoint;
+    SubmitInfo:TVkSubmitInfo;
+    RealWaitSemaphores:array of TVkSemaphore;
+    RealWaitStageMasks:array of TVkPipelineStageFlags;
+    RealSignalSemaphores:array of TVkSemaphore;
+    FenceHandle:TVkFence;
+    SerializeSubmitInfo:TVkSubmitInfo;
+    SerializeWaitSemaphore:TVkSemaphore;
+    SerializeSignalSemaphore:TVkSemaphore;
+    SerializeWaitStage:TVkPipelineStageFlags;
+begin
+ result:=VK_SUCCESS;
+ aAdvance:=0;
+ Deferred:=aQueueData.fDeferredHead;
+
+ while assigned(Deferred) do begin
+  NextDeferred:=Deferred.fNext;
+
+  // Check if all timeline wait dependencies are satisfied
+  AllWaitsReady:=true;
+  for Index:=0 to Deferred.fWaitTimelineReferenceCount-1 do begin
+   if Deferred.fWaitTimelineReferences[Index].Value>Deferred.fWaitTimelineReferences[Index].Semaphore.fHighestPending then begin
+    AllWaitsReady:=false;
+    break;
+   end;
+  end;
+  if not AllWaitsReady then begin
+   Deferred:=NextDeferred;
+   continue;
+  end;
+
+  // Get a shared fence for this submit's signal points
+  SubmitFence:=GetPointFenceLocked;
+
+  // Resolve wait timeline references to real binary semaphores
+  WaitCount:=Deferred.fWaitSemaphoreCount;
+  SetLength(RealWaitSemaphores,WaitCount+Deferred.fWaitTimelineReferenceCount);
+  SetLength(RealWaitStageMasks,WaitCount+Deferred.fWaitTimelineReferenceCount);
+
+  // Copy existing binary wait semaphores
+  for Index:=0 to Deferred.fWaitSemaphoreCount-1 do begin
+   RealWaitSemaphores[Index]:=Deferred.fWaitSemaphores[Index];
+   RealWaitStageMasks[Index]:=Deferred.fWaitStageMask[Index];
+  end;
+
+  // Create wait points for timeline semaphores
+  Deferred.fSerializeSemaphoreCount:=0;
+  SetLength(Deferred.fSerializeSemaphores,Deferred.fWaitTimelineReferenceCount);
+  for Index:=0 to Deferred.fWaitTimelineReferenceCount-1 do begin
+   if Deferred.fWaitTimelineReferences[Index].Value<=Deferred.fWaitTimelineReferences[Index].Semaphore.fHighestPast then begin
+    // Already done, no wait needed
+    continue;
+   end;
+   PointSemaphore:=nil;
+   result:=TimelineCreateWaitPointLocked(Deferred.fWaitTimelineReferences[Index].Semaphore,Deferred.fWaitTimelineReferences[Index].Value,SubmitFence,PointSemaphore);
+   if result<>VK_SUCCESS then begin
+    PointFenceUnrefLocked(SubmitFence);
+    exit;
+   end;
+   if assigned(PointSemaphore) then begin
+    RealWaitSemaphores[WaitCount]:=PointSemaphore.fSemaphoreHandle;
+    RealWaitStageMasks[WaitCount]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    inc(WaitCount);
+    Deferred.fSerializeSemaphores[Deferred.fSerializeSemaphoreCount]:=PointSemaphore;
+    inc(Deferred.fSerializeSemaphoreCount);
+   end;
+  end;
+
+  // Create signal points for timeline semaphores
+  SignalCount:=Deferred.fSignalSemaphoreCount;
+  SetLength(RealSignalSemaphores,SignalCount+Deferred.fSignalTimelineReferenceCount);
+
+  // Copy existing binary signal semaphores
+  for Index:=0 to Deferred.fSignalSemaphoreCount-1 do begin
+   RealSignalSemaphores[Index]:=Deferred.fSignalSemaphores[Index];
+  end;
+
+  // Create timeline points for signal
+  for Index:=0 to Deferred.fSignalTimelineReferenceCount-1 do begin
+   Point:=nil;
+   result:=TimelineCreatePointLocked(aQueueData.fQueue,Deferred.fSignalTimelineReferences[Index].Semaphore,Deferred.fSignalTimelineReferences[Index].Value,SubmitFence,Point);
+   if result<>VK_SUCCESS then begin
+    PointFenceUnrefLocked(SubmitFence);
+    exit;
+   end;
+   RealSignalSemaphores[SignalCount]:=Point.fSemaphore.fSemaphoreHandle;
+   Point.fSemaphore.fDeviceSignaled:=true;
+   inc(SignalCount);
+  end;
+
+  // Submit serialize submits for any wait points that need them (1:N wait)
+  for SerializeIndex:=0 to Deferred.fSerializeSemaphoreCount-1 do begin
+   PointSemaphore:=Deferred.fSerializeSemaphores[SerializeIndex];
+   // The serialize submit waits on the original point's semaphore and signals the new one
+   // This is already handled by TimelineCreateWaitPointLocked, the PointSemaphore is the new semaphore
+   // We don't need separate serialize submits here because we re-use the point semaphore directly
+  end;
+
+  // Build and execute the real submit
+  FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+  SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  SubmitInfo.pNext:=nil;
+  SubmitInfo.waitSemaphoreCount:=WaitCount;
+  if WaitCount>0 then begin
+   SubmitInfo.pWaitSemaphores:=@RealWaitSemaphores[0];
+   SubmitInfo.pWaitDstStageMask:=@RealWaitStageMasks[0];
+  end;
+  SubmitInfo.commandBufferCount:=Deferred.fCommandBufferCount;
+  if Deferred.fCommandBufferCount>0 then begin
+   SubmitInfo.pCommandBuffers:=@Deferred.fCommandBuffers[0];
+  end;
+  SubmitInfo.signalSemaphoreCount:=SignalCount;
+  if SignalCount>0 then begin
+   SubmitInfo.pSignalSemaphores:=@RealSignalSemaphores[0];
+  end;
+
+  // Always use our tracking fence for the real submit
+  FenceHandle:=SubmitFence.fFenceHandle;
+
+  // Actually submit to the GPU
+  fLock.Release;
+  try
+   result:=fDevice.fDeviceVulkan.QueueSubmit(aQueueData.fQueue.fQueueHandle,1,@SubmitInfo,FenceHandle);
+  finally
+   fLock.Acquire;
+  end;
+  if result<>VK_SUCCESS then begin
+   PointFenceUnrefLocked(SubmitFence);
+   exit;
+  end;
+
+  // If the app provided its own fence, submit an empty batch with it
+  if Deferred.fFence<>VK_NULL_HANDLE then begin
+   FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+   SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   fLock.Release;
+   try
+    result:=fDevice.fDeviceVulkan.QueueSubmit(aQueueData.fQueue.fQueueHandle,1,@SubmitInfo,Deferred.fFence);
+   finally
+    fLock.Acquire;
+   end;
+   if result<>VK_SUCCESS then begin
+    PointFenceUnrefLocked(SubmitFence);
+    exit;
+   end;
+  end;
+
+  PointFenceUnrefLocked(SubmitFence);
+
+  // Clean up serialize semaphore references
+  for SerializeIndex:=0 to Deferred.fSerializeSemaphoreCount-1 do begin
+   PointSemaphoreUnrefLocked(Deferred.fSerializeSemaphores[SerializeIndex]);
+  end;
+
+  // Remove from deferred list
+  if assigned(Deferred.fPrev) then begin
+   Deferred.fPrev.fNext:=Deferred.fNext;
+  end else begin
+   aQueueData.fDeferredHead:=Deferred.fNext;
+  end;
+  if assigned(Deferred.fNext) then begin
+   Deferred.fNext.fPrev:=Deferred.fPrev;
+  end else begin
+   aQueueData.fDeferredTail:=Deferred.fPrev;
+  end;
+
+  Deferred.Free;
+  inc(aAdvance);
+  Deferred:=NextDeferred;
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.DeviceSubmitDeferredLocked:TVkResult;
+var TotalAdvance,Advance:TpvUInt32;
+    Index:TpvInt32;
+begin
+ result:=VK_SUCCESS;
+
+ repeat
+  TotalAdvance:=0;
+
+  for Index:=0 to fQueueDataCount-1 do begin
+   if assigned(fQueueDataArray[Index]) and assigned(fQueueDataArray[Index].fDeferredHead) then begin
+    Advance:=0;
+    result:=QueueSubmitDeferredLocked(fQueueDataArray[Index],Advance);
+    if result<>VK_SUCCESS then begin
+     exit;
+    end;
+    inc(TotalAdvance,Advance);
+   end;
+  end;
+
+ until TotalAdvance=0;
+end;
+
+procedure TpvVulkanTimelineEmulationManager.RegisterSemaphore(const aSemaphore:TpvVulkanTimelineSemaphore);
+begin
+ fLock.Acquire;
+ try
+
+  if fSemaphoreCount>=length(fSemaphores) then begin
+   SetLength(fSemaphores,(fSemaphoreCount+1)*2);
+  end;
+  fSemaphores[fSemaphoreCount]:=aSemaphore;
+  inc(fSemaphoreCount);
+
+ finally
+  fLock.Release;
+ end;
+end;
+
+procedure TpvVulkanTimelineEmulationManager.UnregisterSemaphore(const aSemaphore:TpvVulkanTimelineSemaphore);
+var Index:TpvInt32;
+begin
+ fLock.Acquire;
+ try
+
+  for Index:=0 to fSemaphoreCount-1 do begin
+   if fSemaphores[Index]=aSemaphore then begin
+    dec(fSemaphoreCount);
+    if Index<fSemaphoreCount then begin
+     fSemaphores[Index]:=fSemaphores[fSemaphoreCount];
+    end;
+    fSemaphores[fSemaphoreCount]:=nil;
+    break;
+   end;
+  end;
+
+ finally
+  fLock.Release;
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.FindSemaphore(const aHandle:TVkSemaphore):TpvVulkanTimelineSemaphore;
+var Index:TpvInt32;
+begin
+ result:=nil;
+ for Index:=0 to fSemaphoreCount-1 do begin
+  if TVkSemaphore(TpvPtrUInt(fSemaphores[Index]))=aHandle then begin
+   result:=fSemaphores[Index];
+   exit;
+  end;
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.ProcessQueueSubmit(const aQueue:TpvVulkanQueue;const aSubmitCount:TpvUInt32;const aSubmits:PVkSubmitInfo;const aFence:TVkFence):TVkResult;
+var Index,SemaphoreIndex:TpvUInt32;
+    Submit:PVkSubmitInfo;
+    HasTimeline:boolean;
+    TimelineSubmitInfo:PVkTimelineSemaphoreSubmitInfo;
+    Deferred:TpvVulkanDeferredQueueSubmit;
+    QueueData:TpvVulkanTimelineQueueData;
+    pNext:PVkBaseInStructure;
+begin
+ result:=VK_SUCCESS;
+ fLock.Acquire;
+ try
+
+  for Index:=0 to aSubmitCount-1 do begin
+   Submit:=aSubmits;
+   inc(Submit,Index);
+
+   // Find VkTimelineSemaphoreSubmitInfo in pNext chain
+   TimelineSubmitInfo:=nil;
+   pNext:=PVkBaseInStructure(Submit^.pNext);
+   while assigned(pNext) do begin
+    if pNext^.sType=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO then begin
+     TimelineSubmitInfo:=pointer(pNext);
+     break;
+    end;
+    pNext:=pNext^.pNext;
+   end;
+
+   // Check if any semaphore in this submit is an emulated timeline semaphore
+   HasTimeline:=false;
+   if assigned(TimelineSubmitInfo) then begin
+    for SemaphoreIndex:=0 to Submit^.waitSemaphoreCount-1 do begin
+     if assigned(FindSemaphore(PpvVulkanSemaphoreHandleArray(Submit^.pWaitSemaphores)^[SemaphoreIndex])) then begin
+      HasTimeline:=true;
+      break;
+     end;
+    end;
+    if not HasTimeline then begin
+     for SemaphoreIndex:=0 to Submit^.signalSemaphoreCount-1 do begin
+      if assigned(FindSemaphore(PpvVulkanSemaphoreHandleArray(Submit^.pSignalSemaphores)^[SemaphoreIndex])) then begin
+       HasTimeline:=true;
+       break;
+      end;
+     end;
+    end;
+   end;
+
+   if HasTimeline then begin
+    // Clone and defer this submit
+    if Index=(aSubmitCount-1) then begin
+     Deferred:=CloneSubmitInfo(aQueue,Submit,TimelineSubmitInfo,aFence);
+    end else begin
+     Deferred:=CloneSubmitInfo(aQueue,Submit,TimelineSubmitInfo,VK_NULL_HANDLE);
+    end;
+    QueueData:=GetQueueDataLocked(aQueue);
+
+    // Append to deferred list
+    Deferred.fPrev:=QueueData.fDeferredTail;
+    Deferred.fNext:=nil;
+    if assigned(QueueData.fDeferredTail) then begin
+     QueueData.fDeferredTail.fNext:=Deferred;
+    end else begin
+     QueueData.fDeferredHead:=Deferred;
+    end;
+    QueueData.fDeferredTail:=Deferred;
+   end else begin
+    // No emulated timeline semaphores, pass through directly
+    if Index=(aSubmitCount-1) then begin
+     result:=fDevice.fDeviceVulkan.QueueSubmit(aQueue.fQueueHandle,1,Submit,aFence);
+    end else begin
+     result:=fDevice.fDeviceVulkan.QueueSubmit(aQueue.fQueueHandle,1,Submit,VK_NULL_HANDLE);
+    end;
+    if result<>VK_SUCCESS then begin
+     exit;
+    end;
+   end;
+  end;
+
+  // Try to process all deferred submissions
+  result:=DeviceSubmitDeferredLocked;
+
+  // Broadcast to wake up any waiters
+  fConditionVariableLock.Acquire;
+  try
+   fConditionVariable.Broadcast;
+  finally
+   fConditionVariableLock.Release;
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.SignalSemaphore(const aSemaphore:TpvVulkanTimelineSemaphore;const aValue:TpvUInt64):TVkResult;
+begin
+ result:=VK_SUCCESS;
+ fLock.Acquire;
+ try
+
+  // Host signal: advance highest_past and highest_pending
+  if aValue>aSemaphore.fHighestPast then begin
+   aSemaphore.fHighestPast:=aValue;
+  end;
+  if aValue>aSemaphore.fHighestPending then begin
+   aSemaphore.fHighestPending:=aValue;
+  end;
+
+  // Try to process deferred submissions that may now be ready
+  result:=DeviceSubmitDeferredLocked;
+
+  // Broadcast to wake up any waiters
+  fConditionVariableLock.Acquire;
+  try
+   fConditionVariable.Broadcast;
+  finally
+   fConditionVariableLock.Release;
+  end;
+
+ finally
+  fLock.Release;
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.WaitSemaphores(const aSemaphore:TpvVulkanTimelineSemaphore;const aValue:TpvUInt64;const aTimeout:TpvUInt64):TVkResult;
+var Semaphores:array[0..0] of TpvVulkanTimelineSemaphore;
+    Serials:array[0..0] of TpvUInt64;
+begin
+ Semaphores[0]:=aSemaphore;
+ Serials[0]:=aValue;
+ fLock.Acquire;
+ try
+  result:=TimelineWaitLocked(Semaphores,Serials,1,true,aTimeout);
+ finally
+  fLock.Release;
+ end;
+end;
+
+function TpvVulkanTimelineEmulationManager.GetCounterValue(const aSemaphore:TpvVulkanTimelineSemaphore;out aValue:TpvUInt64):TVkResult;
+begin
+ fLock.Acquire;
+ try
+  result:=TimelineGarbageCollectLocked(aSemaphore);
+  aValue:=aSemaphore.fHighestPast;
+ finally
+  fLock.Release;
+ end;
+end;
+
+{ TpvVulkanTimelineSemaphore }
+
 constructor TpvVulkanTimelineSemaphore.Create(const aDevice:TpvVulkanDevice;
                                               const aInitialValue:TpvUInt64=0);
 var SemaphoreCreateInfo:TVkSemaphoreCreateInfo;
     SemaphoreTypeCreateInfo:TVkSemaphoreTypeCreateInfo;
 begin
  inherited Create;
+
  fDevice:=aDevice;
  fSemaphoreHandle:=VK_NULL_HANDLE;
- FillChar(SemaphoreTypeCreateInfo,SizeOf(TVkSemaphoreTypeCreateInfo),#0);
- SemaphoreTypeCreateInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
- SemaphoreTypeCreateInfo.pNext:=nil;
- SemaphoreTypeCreateInfo.semaphoreType:=VK_SEMAPHORE_TYPE_TIMELINE;
- SemaphoreTypeCreateInfo.initialValue:=aInitialValue;
- FillChar(SemaphoreCreateInfo,SizeOf(TVkSemaphoreCreateInfo),#0);
- SemaphoreCreateInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
- SemaphoreCreateInfo.pNext:=@SemaphoreTypeCreateInfo;
- SemaphoreCreateInfo.flags:=0;
- VulkanCheckResult(fDevice.fDeviceVulkan.CreateSemaphore(fDevice.fDeviceHandle,@SemaphoreCreateInfo,fDevice.fAllocationCallbacks,@fSemaphoreHandle));
+ fPointsHead:=nil;
+ fPointsTail:=nil;
+ fNative:=not assigned(fDevice.fTimelineEmulationManager);
+
+ if fNative then begin
+
+  fHighestPast:=0;
+  fHighestPending:=0;
+
+  FillChar(SemaphoreTypeCreateInfo,SizeOf(TVkSemaphoreTypeCreateInfo),#0);
+  SemaphoreTypeCreateInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+  SemaphoreTypeCreateInfo.pNext:=nil;
+  SemaphoreTypeCreateInfo.semaphoreType:=VK_SEMAPHORE_TYPE_TIMELINE;
+  SemaphoreTypeCreateInfo.initialValue:=aInitialValue;
+
+  FillChar(SemaphoreCreateInfo,SizeOf(TVkSemaphoreCreateInfo),#0);
+  SemaphoreCreateInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+  SemaphoreCreateInfo.pNext:=@SemaphoreTypeCreateInfo;
+  SemaphoreCreateInfo.flags:=0;
+
+  VulkanCheckResult(fDevice.fDeviceVulkan.CreateSemaphore(fDevice.fDeviceHandle,@SemaphoreCreateInfo,fDevice.fAllocationCallbacks,@fSemaphoreHandle));
+
+ end else begin
+
+  // Emulated: use pointer-as-handle (Khronos-style)
+  fHighestPast:=aInitialValue;
+  fHighestPending:=aInitialValue;
+  fSemaphoreHandle:=TVkSemaphore(TpvPtrUInt(self));
+  fDevice.fTimelineEmulationManager.RegisterSemaphore(self);
+
+ end;
 end;
 
 destructor TpvVulkanTimelineSemaphore.Destroy;
+var Point,NextPoint:TpvVulkanTimelinePoint;
 begin
- if fSemaphoreHandle<>VK_NULL_HANDLE then begin
-  fDevice.fDeviceVulkan.DestroySemaphore(fDevice.fDeviceHandle,fSemaphoreHandle,fDevice.fAllocationCallbacks);
+
+ if fNative then begin
+
+  if fSemaphoreHandle<>VK_NULL_HANDLE then begin
+   fDevice.fDeviceVulkan.DestroySemaphore(fDevice.fDeviceHandle,fSemaphoreHandle,fDevice.fAllocationCallbacks);
+   fSemaphoreHandle:=VK_NULL_HANDLE;
+  end;
+
+ end else begin
+
+  if assigned(fDevice.fTimelineEmulationManager) then begin
+   fDevice.fTimelineEmulationManager.UnregisterSemaphore(self);
+
+   // Garbage collect and free remaining points
+   fDevice.fTimelineEmulationManager.fLock.Acquire;
+   try
+    fDevice.fTimelineEmulationManager.TimelineGarbageCollectLocked(self);
+    Point:=fPointsHead;
+    while assigned(Point) do begin
+     NextPoint:=Point.fNext;
+     fDevice.fTimelineEmulationManager.TimelinePointFreeLocked(Point);
+     Point:=NextPoint;
+    end;
+   finally
+    fDevice.fTimelineEmulationManager.fLock.Release;
+   end;
+  end;
+
+  fPointsHead:=nil;
+  fPointsTail:=nil;
   fSemaphoreHandle:=VK_NULL_HANDLE;
+
  end;
+
  inherited Destroy;
 end;
 
 function TpvVulkanTimelineSemaphore.GetCounterValue:TpvUInt64;
 begin
- result:=0;
- VulkanCheckResult(fDevice.fDeviceVulkan.GetSemaphoreCounterValue(fDevice.fDeviceHandle,fSemaphoreHandle,@result));
+ if fNative then begin
+  result:=0;
+  VulkanCheckResult(fDevice.fDeviceVulkan.GetSemaphoreCounterValue(fDevice.fDeviceHandle,fSemaphoreHandle,@result));
+ end else begin
+  fDevice.fTimelineEmulationManager.GetCounterValue(self,result);
+ end;
 end;
 
 procedure TpvVulkanTimelineSemaphore.Signal(const aValue:TpvUInt64);
 var SignalInfo:TVkSemaphoreSignalInfo;
 begin
- FillChar(SignalInfo,SizeOf(TVkSemaphoreSignalInfo),#0);
- SignalInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
- SignalInfo.pNext:=nil;
- SignalInfo.semaphore:=fSemaphoreHandle;
- SignalInfo.value:=aValue;
- VulkanCheckResult(fDevice.fDeviceVulkan.SignalSemaphore(fDevice.fDeviceHandle,@SignalInfo));
+
+ if fNative then begin
+
+  FillChar(SignalInfo,SizeOf(TVkSemaphoreSignalInfo),#0);
+  SignalInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
+  SignalInfo.pNext:=nil;
+  SignalInfo.semaphore:=fSemaphoreHandle;
+  SignalInfo.value:=aValue;
+  VulkanCheckResult(fDevice.fDeviceVulkan.SignalSemaphore(fDevice.fDeviceHandle,@SignalInfo));
+
+ end else begin
+  VulkanCheckResult(fDevice.fTimelineEmulationManager.SignalSemaphore(self,aValue));
+ end;
+
 end;
 
 function TpvVulkanTimelineSemaphore.WaitFor(const aValue:TpvUInt64;const aTimeout:TpvUInt64=TpvUInt64(high(TpvUInt64))):TVkResult;
 var WaitInfo:TVkSemaphoreWaitInfo;
 begin
- FillChar(WaitInfo,SizeOf(TVkSemaphoreWaitInfo),#0);
- WaitInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
- WaitInfo.pNext:=nil;
- WaitInfo.flags:=0;
- WaitInfo.semaphoreCount:=1;
- WaitInfo.pSemaphores:=@fSemaphoreHandle;
- WaitInfo.pValues:=@aValue;
- result:=fDevice.fDeviceVulkan.WaitSemaphores(fDevice.fDeviceHandle,@WaitInfo,aTimeout);
+
+ if fNative then begin
+
+  FillChar(WaitInfo,SizeOf(TVkSemaphoreWaitInfo),#0);
+  WaitInfo.sType:=VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+  WaitInfo.pNext:=nil;
+  WaitInfo.flags:=0;
+  WaitInfo.semaphoreCount:=1;
+  WaitInfo.pSemaphores:=@fSemaphoreHandle;
+  WaitInfo.pValues:=@aValue;
+  result:=fDevice.fDeviceVulkan.WaitSemaphores(fDevice.fDeviceHandle,@WaitInfo,aTimeout);
+
+ end else begin
+  result:=fDevice.fTimelineEmulationManager.WaitSemaphores(self,aValue,aTimeout);
+ end;
+
 end;
 
 constructor TpvVulkanQueue.Create(const aDevice:TpvVulkanDevice;
@@ -17695,12 +19024,21 @@ begin
 end;
 
 procedure TpvVulkanQueue.Submit(const aSubmitCount:TpvUInt32;const aSubmits:PVkSubmitInfo;const aFence:TpvVulkanFence=nil);
+var FenceHandle:TVkFence;
 begin
+
  if assigned(aFence) then begin
-  VulkanCheckResult(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,aFence.fFenceHandle));
+  FenceHandle:=aFence.fFenceHandle;
  end else begin
-  VulkanCheckResult(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,VK_NULL_HANDLE));
+  FenceHandle:=VK_NULL_HANDLE;
  end;
+
+ if assigned(fDevice.fTimelineEmulationManager) then begin
+  VulkanCheckResult(fDevice.fTimelineEmulationManager.ProcessQueueSubmit(self,aSubmitCount,aSubmits,FenceHandle));
+ end else begin
+  VulkanCheckResult(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,FenceHandle));
+ end;
+
 end;
 
 procedure TpvVulkanQueue.BindSparse(const aBindInfoCount:TpvUInt32;const aBindInfo:PVkBindSparseInfo;const aFence:TpvVulkanFence=nil);
@@ -31107,6 +32445,7 @@ begin
 end;
 
 initialization
+ TpvVulkanTimelineSemaphore.ForceEmulation:=false;
  LoadKTXLibrary;
  InitializeVulkanDefaultGroupHeapChunkSizes;
 finalization
