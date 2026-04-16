@@ -5173,7 +5173,7 @@ begin
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-                                     IfThen(TpvScene3D(fPlanet.fScene3D).MeshShaderSupport,
+                                     IfThen(TpvScene3D(fPlanet.fScene3D).GrassMeshShaderSupport,
                                             TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
                                             TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT),
                                             0) or
@@ -5283,7 +5283,7 @@ fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-                                     IfThen(TpvScene3D(fPlanet.fScene3D).MeshShaderSupport,
+                                     IfThen(TpvScene3D(fPlanet.fScene3D).GrassMeshShaderSupport,
                                             TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
                                             TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT),
                                             0) or
@@ -5555,7 +5555,7 @@ begin
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-                                     IfThen(TpvScene3D(fPlanet.fScene3D).MeshShaderSupport,
+                                     IfThen(TpvScene3D(fPlanet.fScene3D).GrassMeshShaderSupport,
                                             TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
                                             TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT),
                                             0) or
@@ -5603,7 +5603,7 @@ begin
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-                                     IfThen(TpvScene3D(fPlanet.fScene3D).MeshShaderSupport,
+                                     IfThen(TpvScene3D(fPlanet.fScene3D).GrassMeshShaderSupport,
                                             TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
                                             TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT),
                                             0) or
@@ -22870,7 +22870,7 @@ begin
    fGrassFragmentShaderStage:=nil;
   end;
 
-  fShaderStageFlags:=IfThen(TpvScene3D(fScene3D).MeshShaderSupport,
+  fShaderStageFlags:=IfThen(TpvScene3D(fScene3D).GrassMeshShaderSupport,
                             TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
                             TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT),
                             0) or
