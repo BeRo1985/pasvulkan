@@ -580,7 +580,7 @@ begin
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                        [],
-                                                                       [fInstance.LoopOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
+                                                                       [fInstance.LoopOrderIndependentTransparentUniformVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(10,

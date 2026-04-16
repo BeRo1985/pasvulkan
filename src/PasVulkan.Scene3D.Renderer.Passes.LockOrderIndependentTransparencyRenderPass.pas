@@ -668,7 +668,7 @@ begin
                                                                          1,
                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                          [],
-                                                                         [fInstance.LockOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
+                                                                         [fInstance.LockOrderIndependentTransparentUniformVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                          [],
                                                                          false);
    end;
@@ -678,7 +678,7 @@ begin
                                                                          1,
                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                          [],
-                                                                         [fInstance.LockOrderIndependentTransparentUniformVulkanBuffer.DescriptorBufferInfo],
+                                                                         [fInstance.LockOrderIndependentTransparentUniformVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                          [],
                                                                          false);
    end;
