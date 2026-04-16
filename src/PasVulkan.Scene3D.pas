@@ -4333,8 +4333,6 @@ type EpvScene3D=class(Exception);
        fVulkanPlanetSimulationFrameSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fSharedBufferTimelineSemaphore:TpvVulkanTimelineSemaphore;
        fSharedBufferTimelineCounter:TpvUInt64;
-       fSharedBufferFence:TpvVulkanFence;
-       fUseTimelineSemaphore:boolean;
        fWaitOnceOnPreviousFrameFirst:boolean;
 {      fVulkanLightItemsStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightTreeStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
@@ -4963,8 +4961,6 @@ type EpvScene3D=class(Exception);
       public
        property SharedBufferTimelineSemaphore:TpvVulkanTimelineSemaphore read fSharedBufferTimelineSemaphore;
        property SharedBufferTimelineCounter:TpvUInt64 read fSharedBufferTimelineCounter;
-       property SharedBufferFence:TpvVulkanFence read fSharedBufferFence;
-       property UseTimelineSemaphore:boolean read fUseTimelineSemaphore;
       public
        property MaxMeshObjectID:TpvUInt32 read fMaxMeshObjectID;
       public
@@ -34591,15 +34587,8 @@ begin
   end;
 
   fSharedBufferTimelineCounter:=0;
- fWaitOnceOnPreviousFrameFirst:=false;
-  fUseTimelineSemaphore:=fVulkanDevice.PhysicalDevice.Vulkan12Features.timelineSemaphore<>VK_FALSE;
-  if fUseTimelineSemaphore then begin
-   fSharedBufferTimelineSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
-   fSharedBufferFence:=nil;
-  end else begin
-   fSharedBufferTimelineSemaphore:=nil;
-   fSharedBufferFence:=TpvVulkanFence.Create(fVulkanDevice,TVkFenceCreateFlags(VK_FENCE_CREATE_SIGNALED_BIT));
-  end;
+  fWaitOnceOnPreviousFrameFirst:=false;
+  fSharedBufferTimelineSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
 
   fVulkanProcessFrameQueue:=fVulkanDevice.UniversalQueue;
 
@@ -35052,7 +35041,6 @@ begin
  end;
 
  FreeAndNil(fSharedBufferTimelineSemaphore);
- FreeAndNil(fSharedBufferFence);
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fVulkanProcessFrameCommandBuffers[Index]);
@@ -39130,12 +39118,7 @@ procedure TpvScene3D.WaitOnceOnPreviousFrame;
 begin
  if fWaitOnceOnPreviousFrameFirst then begin
   fWaitOnceOnPreviousFrameFirst:=false;
-  if fUseTimelineSemaphore and assigned(fSharedBufferTimelineSemaphore) then begin
-   fSharedBufferTimelineSemaphore.WaitFor(fSharedBufferTimelineCounter);
-  end else if assigned(fSharedBufferFence) then begin
-   fSharedBufferFence.WaitFor;
-   fSharedBufferFence.Reset;
-  end;
+  fSharedBufferTimelineSemaphore.WaitFor(fSharedBufferTimelineCounter);
  end;
 end;
 
@@ -39340,11 +39323,6 @@ begin
  //exit;
 
  if assigned(fVulkanDevice) then begin
-
-  // Fence fallback: ensure previous frame's GPU work is complete (no-op for timeline path)
-  if not fUseTimelineSemaphore then begin
-   WaitOnceOnPreviousFrame;
-  end;
 
   VulkanShortTermDynamicBufferData:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex];
 
@@ -39732,7 +39710,8 @@ begin
     WaitSemaphoreValues[CountWaitSemaphores]:=0;
     inc(CountWaitSemaphores);
    end;
-   if fUseTimelineSemaphore and assigned(fSharedBufferTimelineSemaphore) then begin
+
+   begin
     WaitSemaphoreHandles[CountWaitSemaphores]:=fSharedBufferTimelineSemaphore.Handle;
     WaitSemaphoreDstStageFlags[CountWaitSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
     WaitSemaphoreValues[CountWaitSemaphores]:=fSharedBufferTimelineCounter;
@@ -39743,7 +39722,7 @@ begin
    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
    // Timeline semaphore pNext chain for wait values
-   if fUseTimelineSemaphore and assigned(fSharedBufferTimelineSemaphore) then begin
+   begin
     FillChar(TimelineSemaphoreSubmitInfo,SizeOf(TVkTimelineSemaphoreSubmitInfo),#0);
     TimelineSemaphoreSubmitInfo.sType:=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
     TimelineSemaphoreSubmitInfo.waitSemaphoreValueCount:=CountWaitSemaphores;
@@ -39752,8 +39731,6 @@ begin
     TimelineSemaphoreSubmitInfo.signalSemaphoreValueCount:=1;
     TimelineSemaphoreSubmitInfo.pSignalSemaphoreValues:=@SignalSemaphoreValues[0];
     SubmitInfo.pNext:=@TimelineSemaphoreSubmitInfo;
-   end else begin
-    SubmitInfo.pNext:=nil;
    end;
 
    if CountWaitSemaphores>0 then begin
@@ -39790,7 +39767,6 @@ var PlanetIndex,CountSemaphores,CountSignalSemaphores:TpvSizeInt;
     WaitSemaphoreValues:array[0..2] of TpvUInt64;
     SignalSemaphoreValues:array[0..1] of TpvUInt64;
     TimelineSemaphoreSubmitInfo:TVkTimelineSemaphoreSubmitInfo;
-    SharedBufferFenceSubmitInfo:TVkSubmitInfo;
 begin
 
  if assigned(fVulkanDevice) then begin
@@ -39811,7 +39787,7 @@ begin
    TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
 
-  if assigned(aWaitFence) or fPlanetAtmospherePrecipitationSimulationUseParallelQueue or fPlanetWaterSimulationUseParallelQueue or fUseTimelineSemaphore then begin
+  {if assigned(aWaitFence) or fPlanetAtmospherePrecipitationSimulationUseParallelQueue or fPlanetWaterSimulationUseParallelQueue then}begin
 
    FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -39853,17 +39829,19 @@ begin
    SignalSemaphoreHandles[CountSignalSemaphores]:=fVulkanEndFrameSemaphores[aInFlightFrameIndex].Handle;
    SignalSemaphoreValues[CountSignalSemaphores]:=0;
    inc(CountSignalSemaphores);
-   if fUseTimelineSemaphore and assigned(fSharedBufferTimelineSemaphore) then begin
+
+   begin
     inc(fSharedBufferTimelineCounter);
     SignalSemaphoreHandles[CountSignalSemaphores]:=fSharedBufferTimelineSemaphore.Handle;
     SignalSemaphoreValues[CountSignalSemaphores]:=fSharedBufferTimelineCounter;
     inc(CountSignalSemaphores);
    end;
+
    SubmitInfo.signalSemaphoreCount:=CountSignalSemaphores;
    SubmitInfo.pSignalSemaphores:=@SignalSemaphoreHandles[0];
 
    // Timeline semaphore pNext chain for wait/signal values
-   if fUseTimelineSemaphore and assigned(fSharedBufferTimelineSemaphore) then begin
+   begin
     FillChar(TimelineSemaphoreSubmitInfo,SizeOf(TVkTimelineSemaphoreSubmitInfo),#0);
     TimelineSemaphoreSubmitInfo.sType:=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
     TimelineSemaphoreSubmitInfo.waitSemaphoreValueCount:=CountSemaphores;
@@ -39875,22 +39853,12 @@ begin
     TimelineSemaphoreSubmitInfo.signalSemaphoreValueCount:=CountSignalSemaphores;
     TimelineSemaphoreSubmitInfo.pSignalSemaphoreValues:=@SignalSemaphoreValues[0];
     SubmitInfo.pNext:=@TimelineSemaphoreSubmitInfo;
-   end else begin
-    SubmitInfo.pNext:=nil;
    end;
 
    fVulkanDevice.UniversalQueue.Submit(1,@SubmitInfo,aWaitFence);
 
    aWaitSemaphore:=fVulkanEndFrameSemaphores[aInFlightFrameIndex];
 
-  end;
-
-  // Fence fallback: signal shared buffer fence after all GPU work
-  if (not fUseTimelineSemaphore) and assigned(fSharedBufferFence) then begin
-   FillChar(SharedBufferFenceSubmitInfo,SizeOf(TVkSubmitInfo),#0);
-   SharedBufferFenceSubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-   SharedBufferFenceSubmitInfo.pNext:=nil;
-   fVulkanDevice.UniversalQueue.Submit(1,@SharedBufferFenceSubmitInfo,fSharedBufferFence);
   end;
 
  end;

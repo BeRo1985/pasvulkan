@@ -2697,6 +2697,7 @@ type TpvScene3DPlanets=class;
        fScene3D:TObject;
        fIndex:TpvSizeInt;
        fSimulationActive:TPasMPBool32;
+       fWaitOnceOnPreviousFrameForCheckFirst:boolean;
        fVulkanDevice:TpvVulkanDevice;
        fVulkanMemoryStagingQueue:TpvVulkanDeviceMemoryStagingQueue;
        fVulkanComputeQueue:TpvVulkanQueue;
@@ -2961,6 +2962,7 @@ type TpvScene3DPlanets=class;
        function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aHitNormal:TpvVector3;out aHitTime:TpvScalar):boolean;
        procedure ProcessModifications(const aInFlightFrameIndex:TpvSizeInt);
        procedure TransferData(const aInFlightFrameIndex:TpvSizeInt);
+       procedure WaitOnceOnPreviousFrameForCheck;
        procedure Check(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
@@ -26400,6 +26402,8 @@ begin
 
  fSimulationActive:=true;
 
+ fWaitOnceOnPreviousFrameForCheckFirst:=false;
+
  fWaterRainSettings:=TpvScene3DPlanet.TWaterRainSettings.Create;
 
  fPrecipitationSimulationSettings:=TpvScene3DPlanet.TPrecipitationSimulationSettings.Create;
@@ -28853,6 +28857,7 @@ begin
 
  if assigned(fVulkanDevice) and
     (fData.fDirtyHeightMap or fData.fDirtyBlendMap or fData.fDirtyGrassMap or fData.fDirtyPrecipitationMap or fData.fDirtyAtmosphereMap) then begin
+  WaitOnceOnPreviousFrameForCheck;
   fData.Upload(fVulkanUpdateQueue,
                fVulkanUpdateCommandBuffer,
                fVulkanUpdateFence,
@@ -28877,6 +28882,7 @@ begin
 
   if assigned(fVulkanDevice) then begin
 
+   WaitOnceOnPreviousFrameForCheck;
    BeginUpdate;
    try
 
@@ -28912,6 +28918,8 @@ begin
 
   if assigned(fVulkanDevice) then begin
 
+   WaitOnceOnPreviousFrameForCheck;
+
    fBlendMapTransferGeneration:=fBlendMapUpdateGeneration;
 
    BeginUpdate;
@@ -28939,6 +28947,7 @@ begin
 
   if assigned(fVulkanDevice) then begin
 
+   WaitOnceOnPreviousFrameForCheck;
    BeginUpdate;
    try
 
@@ -28968,6 +28977,7 @@ begin
 
   if assigned(fVulkanDevice) then begin
 
+   WaitOnceOnPreviousFrameForCheck;
    BeginUpdate;
    try
 
@@ -28991,6 +29001,7 @@ begin
 
   if assigned(fVulkanDevice) then begin
 
+   WaitOnceOnPreviousFrameForCheck;
    BeginUpdate;
    try
 
@@ -29012,6 +29023,7 @@ begin
 
   if assigned(fVulkanDevice) then begin
 
+   WaitOnceOnPreviousFrameForCheck;
    BeginUpdate;
    try
 
@@ -29044,6 +29056,7 @@ begin
 
     if Steps>0 then begin
 
+     WaitOnceOnPreviousFrameForCheck;
      BeginUpdate;
      try
 
@@ -29073,6 +29086,7 @@ begin
 
   if assigned(fVulkanDevice) then begin
 
+   WaitOnceOnPreviousFrameForCheck;
    BeginUpdate;
    try
 
@@ -29097,6 +29111,7 @@ begin
 
   fData.fAtmosphereMiniMapTransferGeneration:=fData.fAtmosphereMiniMapGeneration;
 
+  WaitOnceOnPreviousFrameForCheck;
   fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
                                        fVulkanUpdateCommandBuffer,
                                        fVulkanUpdateFence,
@@ -29113,6 +29128,7 @@ begin
 
   fData.fPrecipitationMiniMapTransferGeneration:=fData.fPrecipitationMiniMapGeneration;
 
+  WaitOnceOnPreviousFrameForCheck;
   fVulkanDevice.MemoryStaging.Download(fVulkanUpdateQueue,
                                        fVulkanUpdateCommandBuffer,
                                        fVulkanUpdateFence,
@@ -29135,6 +29151,8 @@ begin
     ((aInFlightFrameIndex>=0) and (fHeightMapBrushSmearItems[aInFlightFrameIndex].Active<>0)) then begin
 
   if assigned(fVulkanDevice) then begin
+
+   WaitOnceOnPreviousFrameForCheck;
 
    UpdatedHeightMap:=true;
 
@@ -29633,16 +29651,18 @@ begin
 
 end;
 
+procedure TpvScene3DPlanet.WaitOnceOnPreviousFrameForCheck;
+begin
+ if TpvScene3D(fScene3D).PlanetSingleBuffers and fWaitOnceOnPreviousFrameForCheckFirst then begin
+  fWaitOnceOnPreviousFrameForCheckFirst:=false;
+  TpvScene3D(fScene3D).SharedBufferTimelineSemaphore.WaitFor(TpvScene3D(fScene3D).SharedBufferTimelineCounter);
+ end;
+end;
+
 procedure TpvScene3DPlanet.Check(const aInFlightFrameIndex:TpvSizeInt);
 begin
  if TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-  // Wait for previous frame's render to complete before modifying shared images,
-  // using the same timeline semaphore / fence mechanism as the IFF single-frame buffers
-  if TpvScene3D(fScene3D).UseTimelineSemaphore and assigned(TpvScene3D(fScene3D).SharedBufferTimelineSemaphore) then begin
-   TpvScene3D(fScene3D).SharedBufferTimelineSemaphore.WaitFor(TpvScene3D(fScene3D).SharedBufferTimelineCounter);
-  end else if assigned(TpvScene3D(fScene3D).SharedBufferFence) then begin
-   TpvScene3D(fScene3D).SharedBufferFence.WaitFor;
-  end;
+  fWaitOnceOnPreviousFrameForCheckFirst:=true;
   ProcessModifications(aInFlightFrameIndex);
  end;
 end;
