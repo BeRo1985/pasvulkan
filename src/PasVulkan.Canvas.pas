@@ -691,6 +691,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCoverageBufferHeight:TpvInt32;
        fCoverageBufferNeedsLayoutTransition:boolean;
        fCoverageBufferNeedsReset:boolean;
+       fUsePerProcessingBufferCoverageBuffers:boolean;
        fCoverageResetPass:boolean;
        fShapeStamp:TpvUInt32;
        fTransparentShapes:Boolean;
@@ -772,7 +773,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aPipelineCache:TpvVulkanPipelineCache;
                           const aCountProcessingBuffers:TpvInt32=4;
-                          const aTransparentShapes:Boolean=false); reintroduce;
+                          const aTransparentShapes:Boolean=false;
+                          const aUsePerProcessingBufferCoverageBuffers:Boolean=true); reintroduce;
        destructor Destroy; override;
        procedure Resize(const aWidth,aHeight:TpvInt32);
        procedure Start(const aBufferIndex:TpvInt32);
@@ -3720,7 +3722,8 @@ end;
 constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
                              const aPipelineCache:TpvVulkanPipelineCache;
                              const aCountProcessingBuffers:TpvInt32;
-                             const aTransparentShapes:Boolean);
+                             const aTransparentShapes:Boolean;
+                             const aUsePerProcessingBufferCoverageBuffers:Boolean);
 var Index,TextureModeIndex:TpvInt32;
     RenderingModeIndex:TpvCanvasRenderingMode;
     BlendingModeIndex:TpvCanvasBlendingMode;
@@ -3862,6 +3865,7 @@ begin
  fCoverageResetPass:=false;
  fShapeStamp:=0;
  fTransparentShapes:=aTransparentShapes;
+ fUsePerProcessingBufferCoverageBuffers:=aUsePerProcessingBufferCoverageBuffers;
  fTransparentShapeActive:=false;
  fTransparentShapeCoverPass:=false;
  fTransparentShapeBoundingBoxMinX:=0.0;
@@ -3943,7 +3947,7 @@ begin
 end;
 
 procedure TpvCanvas.Resize(const aWidth,aHeight:TpvInt32);
-var PerProcessingBufferIndex:TpvSizeInt;
+var PerProcessingBufferIndex,CountCoverageBuffers:TpvSizeInt;
     ImageMemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
@@ -3963,9 +3967,15 @@ begin
   exit;
  end;
 
+ if fUsePerProcessingBufferCoverageBuffers then begin
+  CountCoverageBuffers:=fCountProcessingBuffers;
+ end else begin
+  CountCoverageBuffers:=1;
+ end;
+
  // Check if resize is actually needed
  if (fCoverageBufferWidth=aWidth) and (fCoverageBufferHeight=aHeight) and
-    (length(fCoverageBufferImages)=fCountProcessingBuffers) and
+    (length(fCoverageBufferImages)=CountCoverageBuffers) and
     assigned(fCoverageBufferImages[0]) and assigned(fCoverageBufferImageViews[0]) then begin
   exit;
  end;
@@ -3985,13 +3995,13 @@ begin
  // Create new coverage buffer images (R32_UINT for packed stamp+coverage)
  if (aWidth>0) and (aHeight>0) then begin
 
-  SetLength(fCoverageBufferImages,fCountProcessingBuffers);
-  SetLength(fCoverageBufferMemoryBlocks,fCountProcessingBuffers);
-  SetLength(fCoverageBufferImageViews,fCountProcessingBuffers);
-  SetLength(fVulkanCoverageBufferDescriptorPools,fCountProcessingBuffers);
-  SetLength(fVulkanCoverageBufferDescriptorSets,fCountProcessingBuffers);
+  SetLength(fCoverageBufferImages,CountCoverageBuffers);
+  SetLength(fCoverageBufferMemoryBlocks,CountCoverageBuffers);
+  SetLength(fCoverageBufferImageViews,CountCoverageBuffers);
+  SetLength(fVulkanCoverageBufferDescriptorPools,CountCoverageBuffers);
+  SetLength(fVulkanCoverageBufferDescriptorSets,CountCoverageBuffers);
 
-  for PerProcessingBufferIndex:=0 to fCountProcessingBuffers-1 do begin
+  for PerProcessingBufferIndex:=0 to CountCoverageBuffers-1 do begin
 
    fCoverageBufferImages[PerProcessingBufferIndex]:=TpvVulkanImage.Create(fDevice,
                                                                           0, // flags
@@ -4131,7 +4141,7 @@ begin
      ImageMemoryBarrier.subresourceRange.levelCount:=1;
      ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
      ImageMemoryBarrier.subresourceRange.layerCount:=1;
-     for PerProcessingBufferIndex:=0 to fCountProcessingBuffers-1 do begin
+     for PerProcessingBufferIndex:=0 to CountCoverageBuffers-1 do begin
       ImageMemoryBarrier.image:=fCoverageBufferImages[PerProcessingBufferIndex].Handle;
       UniversalCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
@@ -5833,7 +5843,7 @@ end;
 procedure TpvCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
 {$undef PasVulkanCanvasDoNotTrustGPUDriverAtDynamicStates}
 const Offsets:array[0..0] of TVkDeviceSize=(0);
-var Index,StartVertexIndex,TextureMode:TpvInt32;
+var Index,StartVertexIndex,TextureMode,CoverageBufferIndex:TpvInt32;
     Descriptor:TpvCanvasVulkanDescriptor;
     MaskingMode:Boolean;
     BlendingMode:TpvCanvasBlendingMode;
@@ -5883,6 +5893,12 @@ var Index,StartVertexIndex,TextureMode:TpvInt32;
  end;
 
 begin
+
+ if fUsePerProcessingBufferCoverageBuffers then begin
+  CoverageBufferIndex:=aBufferIndex;
+ end else begin
+  CoverageBufferIndex:=0;
+ end;
 
  // Ensure coverage buffer matches current dimensions
  if fTransparentShapes and
@@ -6044,7 +6060,7 @@ begin
 
        // Coverage buffer clear path with vkCmdClearColorImage
 
-       if assigned(fCoverageBufferImages[aBufferIndex]) then begin
+       if assigned(fCoverageBufferImages[CoverageBufferIndex]) then begin
         
         // Suspend render pass if active      
         if RenderPassActive then begin
@@ -6062,7 +6078,7 @@ begin
         ImageSubresourceRange.levelCount:=1;
         ImageSubresourceRange.baseArrayLayer:=0;
         ImageSubresourceRange.layerCount:=1;
-        aVulkanCommandBuffer.CmdClearColorImage(fCoverageBufferImages[aBufferIndex].Handle,
+        aVulkanCommandBuffer.CmdClearColorImage(fCoverageBufferImages[CoverageBufferIndex].Handle,
                                                 VK_IMAGE_LAYOUT_GENERAL,
                                                 @ClearColorValue,
                                                 1,
@@ -6078,7 +6094,7 @@ begin
         ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
         ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
         ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-        ImageMemoryBarrier.image:=fCoverageBufferImages[aBufferIndex].Handle;
+        ImageMemoryBarrier.image:=fCoverageBufferImages[CoverageBufferIndex].Handle;
         ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
         ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
         ImageMemoryBarrier.subresourceRange.levelCount:=1;
@@ -6118,8 +6134,8 @@ begin
 
        if assigned(fVulkanCoverageResetPipeline) then begin
         aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipeline.Handle);
-        if assigned(fVulkanCoverageBufferDescriptorSets[aBufferIndex]) then begin
-         aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipelineLayout.Handle,0,1,@fVulkanCoverageBufferDescriptorSets[aBufferIndex].Handle,0,nil);
+        if assigned(fVulkanCoverageBufferDescriptorSets[CoverageBufferIndex]) then begin
+         aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipelineLayout.Handle,0,1,@fVulkanCoverageBufferDescriptorSets[CoverageBufferIndex].Handle,0,nil);
         end;
         aVulkanCommandBuffer.CmdPushConstants(fVulkanCoverageResetPipelineLayout.Handle,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
@@ -6161,7 +6177,7 @@ begin
         fDevice.BreadcrumbBuffer.EndBreadcrumb(aVulkanCommandBuffer.Handle);
        end;
 
-       if assigned(fCoverageBufferImages[aBufferIndex]) then begin
+       if assigned(fCoverageBufferImages[CoverageBufferIndex]) then begin
         
         // Suspend render pass if active      
         if RenderPassActive then begin
@@ -6180,7 +6196,7 @@ begin
         ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
         ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
         ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-        ImageMemoryBarrier.image:=fCoverageBufferImages[aBufferIndex].Handle;
+        ImageMemoryBarrier.image:=fCoverageBufferImages[CoverageBufferIndex].Handle;
         ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
         ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
         ImageMemoryBarrier.subresourceRange.levelCount:=1;
@@ -6238,8 +6254,8 @@ begin
         aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageMaskPipelineLayout.Handle,0,1,@Descriptor.fDescriptorSet.Handle,0,nil);
        end;
        // Bind coverage buffer descriptor set (set = 1)
-       if assigned(fVulkanCoverageBufferDescriptorSets[aBufferIndex]) then begin
-        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageMaskPipelineLayout.Handle,1,1,@fVulkanCoverageBufferDescriptorSets[aBufferIndex].Handle,0,nil);
+       if assigned(fVulkanCoverageBufferDescriptorSets[CoverageBufferIndex]) then begin
+        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageMaskPipelineLayout.Handle,1,1,@fVulkanCoverageBufferDescriptorSets[CoverageBufferIndex].Handle,0,nil);
        end;
       end else begin
        // Fallback to normal pipeline if mask pipeline not available
@@ -6313,7 +6329,7 @@ begin
 
      // Memory barrier between mask and cover passes
      // Ensures all mask pass writes to coverage buffer are visible to cover pass reads
-      if assigned(fCoverageBufferImages[aBufferIndex]) then begin
+      if assigned(fCoverageBufferImages[CoverageBufferIndex]) then begin
 
        // Suspend render pass if active      
        if RenderPassActive then begin
@@ -6332,7 +6348,7 @@ begin
        ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
        ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
        ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-       ImageMemoryBarrier.image:=fCoverageBufferImages[aBufferIndex].Handle;
+       ImageMemoryBarrier.image:=fCoverageBufferImages[CoverageBufferIndex].Handle;
        ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
        ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
        ImageMemoryBarrier.subresourceRange.levelCount:=1;
@@ -6387,8 +6403,8 @@ begin
         aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageCoverPipelineLayout.Handle,0,1,@Descriptor.fDescriptorSet.Handle,0,nil);
        end;
        // Bind coverage buffer descriptor set (set = 1)
-       if assigned(fVulkanCoverageBufferDescriptorSets[aBufferIndex]) then begin
-        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageCoverPipelineLayout.Handle,1,1,@fVulkanCoverageBufferDescriptorSets[aBufferIndex].Handle,0,nil);
+       if assigned(fVulkanCoverageBufferDescriptorSets[CoverageBufferIndex]) then begin
+        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageCoverPipelineLayout.Handle,1,1,@fVulkanCoverageBufferDescriptorSets[CoverageBufferIndex].Handle,0,nil);
        end;
       end else begin
        // Fallback to normal pipeline if cover pipeline not available
@@ -6462,7 +6478,7 @@ begin
 
      // Memory barrier after cover pass to avoid race conditions on overlapped shapes
      // Ensures all cover pass writes to framebuffer are visible before next operations
-      if assigned(fCoverageBufferImages[aBufferIndex]) then begin
+      if assigned(fCoverageBufferImages[CoverageBufferIndex]) then begin
 
        // Suspend render pass if active      
        if RenderPassActive then begin
@@ -6481,7 +6497,7 @@ begin
        ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
        ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
        ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-       ImageMemoryBarrier.image:=fCoverageBufferImages[aBufferIndex].Handle;
+       ImageMemoryBarrier.image:=fCoverageBufferImages[CoverageBufferIndex].Handle;
        ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
        ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
        ImageMemoryBarrier.subresourceRange.levelCount:=1;
