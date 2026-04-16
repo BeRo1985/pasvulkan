@@ -39776,7 +39776,7 @@ begin
     inc(CountWaitSemaphores);
    end;
 
-   begin
+   if fFrameProcessingMode<>TpvScene3DFrameProcessingMode.Pipelined then begin
     WaitSemaphoreHandles[CountWaitSemaphores]:=fSharedBufferTimelineSemaphore.Handle;
     WaitSemaphoreDstStageFlags[CountWaitSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
     WaitSemaphoreValues[CountWaitSemaphores]:=fSharedBufferTimelineCounter;
