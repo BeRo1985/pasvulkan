@@ -647,8 +647,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fVulkanDescriptorSetTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetVectorPathLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetCoverageBufferLayout:TpvVulkanDescriptorSetLayout;
-       fVulkanCoverageBufferDescriptorPool:TpvVulkanDescriptorPool;
-       fVulkanCoverageBufferDescriptorSet:TpvVulkanDescriptorSet;
+       fVulkanCoverageBufferDescriptorPools:TpvVulkanDescriptorPoolDynamicArray;
+       fVulkanCoverageBufferDescriptorSets:TpvVulkanDescriptorSetDynamicArray;
        fCountVulkanDescriptors:TpvInt32;
        fVulkanTextureDescriptorSetHashMap:TpvCanvasTextureDescriptorSetHashMap;
        fVulkanRenderPass:TpvVulkanRenderPass;
@@ -683,9 +683,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fShape:TpvCanvasShape;
        fState:TpvCanvasState;
        fStateStack:TpvCanvasStateStack;
-       fCoverageBufferImage:TpvVulkanImage;
-       fCoverageBufferMemoryBlock:TpvVulkanDeviceMemoryBlock;
-       fCoverageBufferImageView:TpvVulkanImageView;
+       fCoverageBufferImages:TpvVulkanImageDynamicArray;
+       fCoverageBufferMemoryBlocks:TpvVulkanDeviceMemoryBlockDynamicArray;
+       fCoverageBufferImageViews:TpvVulkanImageViewDynamicArray;
        fCoverageBufferImageLayout:TVkImageLayout;
        fCoverageBufferWidth:TpvInt32;
        fCoverageBufferHeight:TpvInt32;
@@ -3780,8 +3780,8 @@ begin
 
  // Coverage buffer descriptor set layout (set = 1) - only created if feature supported
  fVulkanDescriptorSetCoverageBufferLayout:=nil;
- fVulkanCoverageBufferDescriptorPool:=nil;
- fVulkanCoverageBufferDescriptorSet:=nil;
+ fVulkanCoverageBufferDescriptorPools:=nil;
+ fVulkanCoverageBufferDescriptorSets:=nil;
  if fCanvasCommon.FragmentStoresAndAtomicsSupported then begin
   fVulkanDescriptorSetCoverageBufferLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
   fVulkanDescriptorSetCoverageBufferLayout.AddBinding(0,
@@ -3851,9 +3851,9 @@ begin
 
  fCurrentFrameNumber:=0;
 
- fCoverageBufferImage:=nil;
- fCoverageBufferMemoryBlock:=nil;
- fCoverageBufferImageView:=nil;
+ fCoverageBufferImages:=nil;
+ fCoverageBufferMemoryBlocks:=nil;
+ fCoverageBufferImageViews:=nil;
  fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
  fCoverageBufferWidth:=0;
  fCoverageBufferHeight:=0;
@@ -3895,12 +3895,17 @@ begin
  FreeAndNil(fShape);
 
  // Free coverage buffer resources
- FreeAndNil(fCoverageBufferImageView);
- if assigned(fCoverageBufferMemoryBlock) then begin
-  fDevice.MemoryManager.FreeMemoryBlock(fCoverageBufferMemoryBlock);
-  fCoverageBufferMemoryBlock:=nil;
+ for Index:=0 to length(fCoverageBufferImages)-1 do begin
+  FreeAndNil(fCoverageBufferImageViews[Index]);
+  if assigned(fCoverageBufferMemoryBlocks[Index]) then begin
+   fDevice.MemoryManager.FreeMemoryBlock(fCoverageBufferMemoryBlocks[Index]);
+   fCoverageBufferMemoryBlocks[Index]:=nil;
+  end;
+  FreeAndNil(fCoverageBufferImages[Index]);
  end;
- FreeAndNil(fCoverageBufferImage);
+ fCoverageBufferImages:=nil;
+ fCoverageBufferMemoryBlocks:=nil;
+ fCoverageBufferImageViews:=nil;
  fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
 
  SetCountBuffers(0);
@@ -3914,8 +3919,14 @@ begin
  FreeAndNil(fVulkanDescriptors);
 
  FreeAndNil(fVulkanDescriptorSetVectorPathLayout);
- FreeAndNil(fVulkanCoverageBufferDescriptorSet);
- FreeAndNil(fVulkanCoverageBufferDescriptorPool);
+ for Index:=0 to length(fVulkanCoverageBufferDescriptorSets)-1 do begin
+  FreeAndNil(fVulkanCoverageBufferDescriptorSets[Index]);
+ end;
+ fVulkanCoverageBufferDescriptorSets:=nil;
+ for Index:=0 to length(fVulkanCoverageBufferDescriptorPools)-1 do begin
+  FreeAndNil(fVulkanCoverageBufferDescriptorPools[Index]);
+ end;
+ fVulkanCoverageBufferDescriptorPools:=nil;
  FreeAndNil(fVulkanDescriptorSetCoverageBufferLayout);
  FreeAndNil(fVulkanDescriptorSetTextureLayout);
 
@@ -3932,7 +3943,8 @@ begin
 end;
 
 procedure TpvCanvas.Resize(const aWidth,aHeight:TpvInt32);
-var ImageMemoryRequirements:TVkMemoryRequirements;
+var PerProcessingBufferIndex:TpvSizeInt;
+    ImageMemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
@@ -3953,85 +3965,126 @@ begin
 
  // Check if resize is actually needed
  if (fCoverageBufferWidth=aWidth) and (fCoverageBufferHeight=aHeight) and
-    assigned(fCoverageBufferImage) and assigned(fCoverageBufferImageView) then begin
+    (length(fCoverageBufferImages)=fCountProcessingBuffers) and
+    assigned(fCoverageBufferImages[0]) and assigned(fCoverageBufferImageViews[0]) then begin
   exit;
  end;
 
  // Free old resources
- FreeAndNil(fCoverageBufferImageView);
- if assigned(fCoverageBufferMemoryBlock) then begin
-  fDevice.MemoryManager.FreeMemoryBlock(fCoverageBufferMemoryBlock);
-  fCoverageBufferMemoryBlock:=nil;
+ for PerProcessingBufferIndex:=0 to length(fCoverageBufferImages)-1 do begin
+  FreeAndNil(fCoverageBufferImageViews[PerProcessingBufferIndex]);
+  if assigned(fCoverageBufferMemoryBlocks[PerProcessingBufferIndex]) then begin
+   fDevice.MemoryManager.FreeMemoryBlock(fCoverageBufferMemoryBlocks[PerProcessingBufferIndex]);
+   fCoverageBufferMemoryBlocks[PerProcessingBufferIndex]:=nil;
+  end;
+  FreeAndNil(fCoverageBufferImages[PerProcessingBufferIndex]);
+  FreeAndNil(fVulkanCoverageBufferDescriptorSets[PerProcessingBufferIndex]);
+  FreeAndNil(fVulkanCoverageBufferDescriptorPools[PerProcessingBufferIndex]);
  end;
- FreeAndNil(fCoverageBufferImage);
 
- // Create new coverage buffer image (R32_UINT for packed stamp+coverage)
+ // Create new coverage buffer images (R32_UINT for packed stamp+coverage)
  if (aWidth>0) and (aHeight>0) then begin
 
-  fCoverageBufferImage:=TpvVulkanImage.Create(fDevice,
-                                              0, // flags
-                                              VK_IMAGE_TYPE_2D,
-                                              VK_FORMAT_R32_UINT,
-                                              aWidth,
-                                              aHeight,
-                                              1, // depth
-                                              1, // mip levels
-                                              1, // array layers
-                                              VK_SAMPLE_COUNT_1_BIT,
-                                              VK_IMAGE_TILING_OPTIMAL,
-                                              TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or
-                                              TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
-                                              VK_SHARING_MODE_EXCLUSIVE,
-                                              [],
-                                              VK_IMAGE_LAYOUT_UNDEFINED);
+  SetLength(fCoverageBufferImages,fCountProcessingBuffers);
+  SetLength(fCoverageBufferMemoryBlocks,fCountProcessingBuffers);
+  SetLength(fCoverageBufferImageViews,fCountProcessingBuffers);
+  SetLength(fVulkanCoverageBufferDescriptorPools,fCountProcessingBuffers);
+  SetLength(fVulkanCoverageBufferDescriptorSets,fCountProcessingBuffers);
 
-  // Allocate and bind memory for the image
-  ImageMemoryRequirements:=fDevice.MemoryManager.GetImageMemoryRequirements(fCoverageBufferImage.Handle,
-                                                                            RequiresDedicatedAllocation,
-                                                                            PrefersDedicatedAllocation);
-  MemoryBlockFlags:=[];
-  if RequiresDedicatedAllocation then begin
-   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
-  end else if PrefersDedicatedAllocation then begin
-   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation);
-  end;
-  fCoverageBufferMemoryBlock:=fDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
-                                                                        ImageMemoryRequirements.size,
-                                                                        ImageMemoryRequirements.alignment,
-                                                                        ImageMemoryRequirements.memoryTypeBits,
-                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                        0,
-                                                                        0,
-                                                                        0,
-                                                                        0,
-                                                                        0,
-                                                                        0,
-                                                                        0,
-                                                                        TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
-                                                                        @fCoverageBufferImage.Handle,
-                                                                        pvAllocationGroupIDCanvas);
-  if not assigned(fCoverageBufferMemoryBlock) then begin
-   FreeAndNil(fCoverageBufferImage);
-   raise EpvVulkanMemoryAllocationException.Create('Memory for coverage buffer couldn''t be allocated!');
-  end;
-  VulkanCheckResult(fDevice.Commands.BindImageMemory(fDevice.Handle,
-                                                     fCoverageBufferImage.Handle,
-                                                     fCoverageBufferMemoryBlock.MemoryChunk.Handle,
-                                                     fCoverageBufferMemoryBlock.Offset));
+  for PerProcessingBufferIndex:=0 to fCountProcessingBuffers-1 do begin
 
- fCoverageBufferImageView:=TpvVulkanImageView.Create(fDevice,
-                                                      fCoverageBufferImage,
-                                                      VK_IMAGE_VIEW_TYPE_2D,
-                                                      VK_FORMAT_R32_UINT,
-                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                      TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                      0, // base mip level
-                                                      1, // level count
-                                                      0, // base array layer
-                                                      1); // layer count
+   fCoverageBufferImages[PerProcessingBufferIndex]:=TpvVulkanImage.Create(fDevice,
+                                                                          0, // flags
+                                                                          VK_IMAGE_TYPE_2D,
+                                                                          VK_FORMAT_R32_UINT,
+                                                                          aWidth,
+                                                                          aHeight,
+                                                                          1, // depth
+                                                                          1, // mip levels
+                                                                          1, // array layers
+                                                                          VK_SAMPLE_COUNT_1_BIT,
+                                                                          VK_IMAGE_TILING_OPTIMAL,
+                                                                          TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or
+                                                                          TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
+                                                                          VK_SHARING_MODE_EXCLUSIVE,
+                                                                          [],
+                                                                          VK_IMAGE_LAYOUT_UNDEFINED);
+
+   // Allocate and bind memory for the image
+   ImageMemoryRequirements:=fDevice.MemoryManager.GetImageMemoryRequirements(fCoverageBufferImages[PerProcessingBufferIndex].Handle,
+                                                                              RequiresDedicatedAllocation,
+                                                                              PrefersDedicatedAllocation);
+   MemoryBlockFlags:=[];
+   if RequiresDedicatedAllocation then begin
+    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+   end else if PrefersDedicatedAllocation then begin
+    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation);
+   end;
+   fCoverageBufferMemoryBlocks[PerProcessingBufferIndex]:=fDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
+                                                                                                    ImageMemoryRequirements.size,
+                                                                                                    ImageMemoryRequirements.alignment,
+                                                                                                    ImageMemoryRequirements.memoryTypeBits,
+                                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                    0,
+                                                                                                    0,
+                                                                                                    0,
+                                                                                                    0,
+                                                                                                    0,
+                                                                                                    0,
+                                                                                                    0,
+                                                                                                    TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
+                                                                                                    @fCoverageBufferImages[PerProcessingBufferIndex].Handle,
+                                                                                                    pvAllocationGroupIDCanvas);
+   if not assigned(fCoverageBufferMemoryBlocks[PerProcessingBufferIndex]) then begin
+    FreeAndNil(fCoverageBufferImages[PerProcessingBufferIndex]);
+    raise EpvVulkanMemoryAllocationException.Create('Memory for coverage buffer couldn''t be allocated!');
+   end;
+   VulkanCheckResult(fDevice.Commands.BindImageMemory(fDevice.Handle,
+                                                      fCoverageBufferImages[PerProcessingBufferIndex].Handle,
+                                                      fCoverageBufferMemoryBlocks[PerProcessingBufferIndex].MemoryChunk.Handle,
+                                                      fCoverageBufferMemoryBlocks[PerProcessingBufferIndex].Offset));
+
+   fCoverageBufferImageViews[PerProcessingBufferIndex]:=TpvVulkanImageView.Create(fDevice,
+                                                                                   fCoverageBufferImages[PerProcessingBufferIndex],
+                                                                                   VK_IMAGE_VIEW_TYPE_2D,
+                                                                                   VK_FORMAT_R32_UINT,
+                                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                   0, // base mip level
+                                                                                   1, // level count
+                                                                                   0, // base array layer
+                                                                                   1); // layer count
+
+   // Update or create coverage buffer descriptor set
+   if assigned(fVulkanDescriptorSetCoverageBufferLayout) then begin
+    fVulkanCoverageBufferDescriptorPools[PerProcessingBufferIndex]:=TpvVulkanDescriptorPool.Create(fDevice,
+                                                                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                                                   1);
+    fVulkanCoverageBufferDescriptorPools[PerProcessingBufferIndex].AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1);
+    fVulkanCoverageBufferDescriptorPools[PerProcessingBufferIndex].Initialize;
+    fVulkanCoverageBufferDescriptorSets[PerProcessingBufferIndex]:=TpvVulkanDescriptorSet.Create(fVulkanCoverageBufferDescriptorPools[PerProcessingBufferIndex],
+                                                                                                 fVulkanDescriptorSetCoverageBufferLayout);
+    // Write the coverage buffer image to the descriptor set
+    fVulkanCoverageBufferDescriptorSets[PerProcessingBufferIndex].WriteToDescriptorSet(0,
+                                                                                       0,
+                                                                                       1,
+                                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                                       [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                                      fCoverageBufferImageViews[PerProcessingBufferIndex].Handle,
+                                                                                                                      VK_IMAGE_LAYOUT_GENERAL)],
+                                                                                       [],
+                                                                                       [],
+                                                                                       false);
+    fVulkanCoverageBufferDescriptorSets[PerProcessingBufferIndex].Flush;
+   end else begin
+    fVulkanCoverageBufferDescriptorPools[PerProcessingBufferIndex]:=nil;
+    fVulkanCoverageBufferDescriptorSets[PerProcessingBufferIndex]:=nil;
+   end;
+
+  end;
 
   fCoverageBufferImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
   fCoverageBufferWidth:=aWidth;
@@ -4039,45 +4092,19 @@ begin
   fCoverageBufferNeedsLayoutTransition:=true; // Mark that layout transition is needed
   fCoverageBufferNeedsReset:=true;
 
-  // Update or create coverage buffer descriptor set
-  if assigned(fVulkanDescriptorSetCoverageBufferLayout) then begin
-   // Free old descriptor set (pool will be reused)
-   FreeAndNil(fVulkanCoverageBufferDescriptorSet);
-   
-   // Create descriptor pool if needed
-   if not assigned(fVulkanCoverageBufferDescriptorPool) then begin
-    fVulkanCoverageBufferDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
-                                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                                        1);
-    fVulkanCoverageBufferDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1);
-    fVulkanCoverageBufferDescriptorPool.Initialize;
-   end;
-   
-   // Create new descriptor set
-   fVulkanCoverageBufferDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanCoverageBufferDescriptorPool,
-                                                                     fVulkanDescriptorSetCoverageBufferLayout);
-   // Write the coverage buffer image to the descriptor set
-   fVulkanCoverageBufferDescriptorSet.WriteToDescriptorSet(0,
-                                                           0,
-                                                           1,
-                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                           [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                          fCoverageBufferImageView.Handle,
-                                                                                          VK_IMAGE_LAYOUT_GENERAL)],
-                                                           [],
-                                                           [],
-                                                           false);
-   fVulkanCoverageBufferDescriptorSet.Flush;
-  end;
-
  end else begin
+  fCoverageBufferImages:=nil;
+  fCoverageBufferMemoryBlocks:=nil;
+  fCoverageBufferImageViews:=nil;
+  fVulkanCoverageBufferDescriptorPools:=nil;
+  fVulkanCoverageBufferDescriptorSets:=nil;
   fCoverageBufferWidth:=0;
   fCoverageBufferHeight:=0;
   fCoverageBufferNeedsReset:=false;
  end;
 
  // Transition coverage buffer layout if needed
- if fCoverageBufferNeedsLayoutTransition and assigned(fCoverageBufferImage) and (fCoverageBufferImageLayout<>VK_IMAGE_LAYOUT_GENERAL) then begin
+ if fCoverageBufferNeedsLayoutTransition and (length(fCoverageBufferImages)>0) and assigned(fCoverageBufferImages[0]) and (fCoverageBufferImageLayout<>VK_IMAGE_LAYOUT_GENERAL) then begin
   UniversalQueue:=fDevice.UniversalQueue;
   UniversalCommandPool:=TpvVulkanCommandPool.Create(fDevice,
                                                     fDevice.UniversalQueueFamilyIndex,
@@ -4099,19 +4126,20 @@ begin
      ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
      ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
      ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-     ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
      ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
      ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
      ImageMemoryBarrier.subresourceRange.levelCount:=1;
      ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
      ImageMemoryBarrier.subresourceRange.layerCount:=1;
-     UniversalCommandBuffer.CmdPipelineBarrier(
-      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-      0,
-      0,nil,
-      0,nil,
-      1,@ImageMemoryBarrier);
+     for PerProcessingBufferIndex:=0 to fCountProcessingBuffers-1 do begin
+      ImageMemoryBarrier.image:=fCoverageBufferImages[PerProcessingBufferIndex].Handle;
+      UniversalCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                0,
+                                                0,nil,
+                                                0,nil,
+                                                1,@ImageMemoryBarrier);
+     end;
      UniversalCommandBuffer.EndRecording;
      UniversalCommandBuffer.Execute(UniversalQueue,
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
@@ -4141,7 +4169,8 @@ begin
  if (not fTransparentShapes) or
     (not fCanvasCommon.fFragmentStoresAndAtomicsSupported) or
     (not fCoverageBufferNeedsReset) or
-    (not assigned(fCoverageBufferImage)) or
+    (length(fCoverageBufferImages)=0) or
+    (not assigned(fCoverageBufferImages[0])) or
     (not assigned(fCurrentFillBuffer)) then begin
   exit;
  end;
@@ -6015,7 +6044,7 @@ begin
 
        // Coverage buffer clear path with vkCmdClearColorImage
 
-       if assigned(fCoverageBufferImage) then begin
+       if assigned(fCoverageBufferImages[aBufferIndex]) then begin
         
         // Suspend render pass if active      
         if RenderPassActive then begin
@@ -6033,7 +6062,7 @@ begin
         ImageSubresourceRange.levelCount:=1;
         ImageSubresourceRange.baseArrayLayer:=0;
         ImageSubresourceRange.layerCount:=1;
-        aVulkanCommandBuffer.CmdClearColorImage(fCoverageBufferImage.Handle,
+        aVulkanCommandBuffer.CmdClearColorImage(fCoverageBufferImages[aBufferIndex].Handle,
                                                 VK_IMAGE_LAYOUT_GENERAL,
                                                 @ClearColorValue,
                                                 1,
@@ -6049,7 +6078,7 @@ begin
         ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
         ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
         ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-        ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+        ImageMemoryBarrier.image:=fCoverageBufferImages[aBufferIndex].Handle;
         ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
         ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
         ImageMemoryBarrier.subresourceRange.levelCount:=1;
@@ -6089,8 +6118,8 @@ begin
 
        if assigned(fVulkanCoverageResetPipeline) then begin
         aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipeline.Handle);
-        if assigned(fVulkanCoverageBufferDescriptorSet) then begin
-         aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipelineLayout.Handle,0,1,@fVulkanCoverageBufferDescriptorSet.Handle,0,nil);
+        if assigned(fVulkanCoverageBufferDescriptorSets[aBufferIndex]) then begin
+         aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageResetPipelineLayout.Handle,0,1,@fVulkanCoverageBufferDescriptorSets[aBufferIndex].Handle,0,nil);
         end;
         aVulkanCommandBuffer.CmdPushConstants(fVulkanCoverageResetPipelineLayout.Handle,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
@@ -6132,7 +6161,7 @@ begin
         fDevice.BreadcrumbBuffer.EndBreadcrumb(aVulkanCommandBuffer.Handle);
        end;
 
-       if assigned(fCoverageBufferImage) then begin
+       if assigned(fCoverageBufferImages[aBufferIndex]) then begin
         
         // Suspend render pass if active      
         if RenderPassActive then begin
@@ -6151,7 +6180,7 @@ begin
         ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
         ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
         ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-        ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+        ImageMemoryBarrier.image:=fCoverageBufferImages[aBufferIndex].Handle;
         ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
         ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
         ImageMemoryBarrier.subresourceRange.levelCount:=1;
@@ -6209,8 +6238,8 @@ begin
         aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageMaskPipelineLayout.Handle,0,1,@Descriptor.fDescriptorSet.Handle,0,nil);
        end;
        // Bind coverage buffer descriptor set (set = 1)
-       if assigned(fVulkanCoverageBufferDescriptorSet) then begin
-        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageMaskPipelineLayout.Handle,1,1,@fVulkanCoverageBufferDescriptorSet.Handle,0,nil);
+       if assigned(fVulkanCoverageBufferDescriptorSets[aBufferIndex]) then begin
+        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageMaskPipelineLayout.Handle,1,1,@fVulkanCoverageBufferDescriptorSets[aBufferIndex].Handle,0,nil);
        end;
       end else begin
        // Fallback to normal pipeline if mask pipeline not available
@@ -6284,7 +6313,7 @@ begin
 
      // Memory barrier between mask and cover passes
      // Ensures all mask pass writes to coverage buffer are visible to cover pass reads
-      if assigned(fCoverageBufferImage) then begin
+      if assigned(fCoverageBufferImages[aBufferIndex]) then begin
 
        // Suspend render pass if active      
        if RenderPassActive then begin
@@ -6303,7 +6332,7 @@ begin
        ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
        ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
        ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-       ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+       ImageMemoryBarrier.image:=fCoverageBufferImages[aBufferIndex].Handle;
        ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
        ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
        ImageMemoryBarrier.subresourceRange.levelCount:=1;
@@ -6358,8 +6387,8 @@ begin
         aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageCoverPipelineLayout.Handle,0,1,@Descriptor.fDescriptorSet.Handle,0,nil);
        end;
        // Bind coverage buffer descriptor set (set = 1)
-       if assigned(fVulkanCoverageBufferDescriptorSet) then begin
-        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageCoverPipelineLayout.Handle,1,1,@fVulkanCoverageBufferDescriptorSet.Handle,0,nil);
+       if assigned(fVulkanCoverageBufferDescriptorSets[aBufferIndex]) then begin
+        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanCoverageCoverPipelineLayout.Handle,1,1,@fVulkanCoverageBufferDescriptorSets[aBufferIndex].Handle,0,nil);
        end;
       end else begin
        // Fallback to normal pipeline if cover pipeline not available
@@ -6433,7 +6462,7 @@ begin
 
      // Memory barrier after cover pass to avoid race conditions on overlapped shapes
      // Ensures all cover pass writes to framebuffer are visible before next operations
-      if assigned(fCoverageBufferImage) then begin
+      if assigned(fCoverageBufferImages[aBufferIndex]) then begin
 
        // Suspend render pass if active      
        if RenderPassActive then begin
@@ -6452,7 +6481,7 @@ begin
        ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
        ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
        ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-       ImageMemoryBarrier.image:=fCoverageBufferImage.Handle;
+       ImageMemoryBarrier.image:=fCoverageBufferImages[aBufferIndex].Handle;
        ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
        ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
        ImageMemoryBarrier.subresourceRange.levelCount:=1;

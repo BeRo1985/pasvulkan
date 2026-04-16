@@ -1380,6 +1380,8 @@ type EpvVulkanException=class(Exception);
        property Name:TpvUTF8String read fName write fName;
      end;
 
+     TpvVulkanDeviceMemoryBlockDynamicArray=array of TpvVulkanDeviceMemoryBlock;
+
      TpvVulkanDeviceMemoryManagerChunkList=record
       First:TpvVulkanDeviceMemoryChunk;
       Last:TpvVulkanDeviceMemoryChunk;
@@ -2402,6 +2404,8 @@ type EpvVulkanException=class(Exception);
        property ImageView:TpvVulkanImageView read fImageView write fImageView;
      end;
 
+     TpvVulkanImageDynamicArray=array of TpvVulkanImage;
+
      TpvVulkanImageView=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
@@ -2432,6 +2436,8 @@ type EpvVulkanException=class(Exception);
        property Handle:TVkImageView read fImageViewHandle;
        property Image:TpvVulkanImage read fImage write fImage;
      end;
+
+     TpvVulkanImageViewDynamicArray=array of TpvVulkanImageView;
 
      TpvVulkanFrameBufferAttachment=class(TpvVulkanObject)
       private
@@ -3040,6 +3046,8 @@ type EpvVulkanException=class(Exception);
        property Handle:TVkDescriptorPool read fDescriptorPoolHandle;
      end;
 
+     TpvVulkanDescriptorPoolDynamicArray=array of TpvVulkanDescriptorPool;
+
      TpvVulkanDescriptorSetLayoutBinding=class(TpvVulkanObject)
       private
        fDescriptorSetLayoutBinding:TVkDescriptorSetLayoutBinding;
@@ -3162,6 +3170,8 @@ type EpvVulkanException=class(Exception);
        property DescriptorPool:TpvVulkanDescriptorPool read fDescriptorPool;
        property DescriptorSetLayout:TpvVulkanDescriptorSetLayout read fDescriptorSetLayout;
      end;
+
+     TpvVulkanDescriptorSetDynamicArray=array of TpvVulkanDescriptorSet;
 
      TpvVulkanPipelineLayout=class(TpvVulkanObject)
       private
