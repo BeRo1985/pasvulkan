@@ -310,6 +310,8 @@ type EpvVulkanException=class(Exception);
      TVkSubmitInfoArray=array of TVkSubmitInfo;
      TVkSemaphoreArray=array of TVkSemaphore;
      TVkPipelineStageFlagsArray=array of TVkPipelineStageFlags;
+     TVkUInt64Array=array of TVkUInt64;
+     TVkTimelineSemaphoreSubmitInfoArray=array of TVkTimelineSemaphoreSubmitInfo;
 
      TVkUInt32DynamicArray=TpvDynamicArray<TVkUInt32>;
 
@@ -2094,13 +2096,20 @@ type EpvVulkanException=class(Exception);
      // Multi-queue submit collector that batches SubmitInfos per queue and flushes
      // them with one vkQueueSubmit call per queue. Automatically eliminates redundant
      // semaphores between consecutive SubmitInfos on the same queue.
+     // Supports multiple wait/signal semaphores per entry, timeline semaphore pNext
+     // chains, and entries without command buffers (empty relay submits).
      TpvVulkanQueueSubmitCollector=class(TpvVulkanObject)
       public
        type TSubmitEntry=record
              CommandBufferHandle:TVkCommandBuffer;
-             WaitSemaphoreHandle:TVkSemaphore;
-             WaitDstStageMask:TVkPipelineStageFlags;
-             SignalSemaphoreHandle:TVkSemaphore;
+             WaitSemaphoreHandles:TVkSemaphoreArray;
+             WaitDstStageMasks:TVkPipelineStageFlagsArray;
+             WaitSemaphoreValues:TVkUInt64Array;
+             CountWaitSemaphores:TpvInt32;
+             SignalSemaphoreHandles:TVkSemaphoreArray;
+             SignalSemaphoreValues:TVkUInt64Array;
+             CountSignalSemaphores:TpvInt32;
+             HasTimelineValues:boolean;
             end;
             PSubmitEntry=^TSubmitEntry;
             TSubmitEntries=array of TSubmitEntry;
@@ -2108,7 +2117,9 @@ type EpvVulkanException=class(Exception);
              Queue:TpvVulkanQueue;
              Entries:TSubmitEntries;
              CountEntries:TpvInt32;
-             LastSignalSemaphoreHandle:TVkSemaphore;
+             LastSignalSemaphoreHandles:TVkSemaphoreArray;
+             LastSignalSemaphoreValues:TVkUInt64Array;
+             CountLastSignalSemaphores:TpvInt32;
             end;
             PQueueBatch=^TQueueBatch;
             TQueueBatches=array of TQueueBatch;
@@ -2116,22 +2127,39 @@ type EpvVulkanException=class(Exception);
        fBatches:TQueueBatches;
        fCountBatches:TpvInt32;
        fLastSignalSemaphore:TpvVulkanSemaphore;
-       // Temporary arrays for Flush, pre-allocated to avoid per-flush allocation
+       // Temporary flat arrays for Flush, pre-allocated to avoid per-flush allocation
        fFlushSubmitInfos:TVkSubmitInfoArray;
+       fFlushTimelineSemaphoreSubmitInfos:TVkTimelineSemaphoreSubmitInfoArray;
        fFlushCommandBuffers:TVkCommandBufferArray;
        fFlushWaitSemaphores:TVkSemaphoreArray;
        fFlushWaitDstStageMasks:TVkPipelineStageFlagsArray;
+       fFlushWaitSemaphoreValues:TVkUInt64Array;
        fFlushSignalSemaphores:TVkSemaphoreArray;
+       fFlushSignalSemaphoreValues:TVkUInt64Array;
        function FindOrCreateBatch(const aQueue:TpvVulkanQueue):PQueueBatch;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
        procedure Reset;
+       // Simple collect: single optional wait/signal semaphore, TpvVulkanSemaphore objects.
+       // aCommandBuffer may be nil for empty relay submits.
        procedure Collect(const aQueue:TpvVulkanQueue;
                          const aCommandBuffer:TpvVulkanCommandBuffer;
                          const aWaitSemaphore:TpvVulkanSemaphore;
                          const aWaitDstStageMask:TVkPipelineStageFlags;
-                         const aSignalSemaphore:TpvVulkanSemaphore);
+                         const aSignalSemaphore:TpvVulkanSemaphore); overload;
+       // Full collect: multiple wait/signal semaphores as raw Vulkan handles with
+       // optional timeline semaphore values. Pass nil for aWaitSemaphoreValues or
+       // aSignalSemaphoreValues when all semaphores are binary.
+       procedure Collect(const aQueue:TpvVulkanQueue;
+                         const aCommandBufferHandle:TVkCommandBuffer;
+                         const aCountWaitSemaphores:TpvInt32;
+                         const aWaitSemaphoreHandles:PVkSemaphore;
+                         const aWaitDstStageMasks:PVkPipelineStageFlags;
+                         const aWaitSemaphoreValues:PVkUInt64;
+                         const aCountSignalSemaphores:TpvInt32;
+                         const aSignalSemaphoreHandles:PVkSemaphore;
+                         const aSignalSemaphoreValues:PVkUInt64); overload;
        procedure Flush(const aFence:TpvVulkanFence=nil);
       public
        property LastSignalSemaphore:TpvVulkanSemaphore read fLastSignalSemaphore;
@@ -19667,6 +19695,8 @@ begin
  end;
 end;
 
+{ TpvVulkanCommandBufferSubmitQueue }
+
 constructor TpvVulkanCommandBufferSubmitQueue.Create(const aQueue:TpvVulkanQueue);
 begin
  inherited Create;
@@ -19788,6 +19818,8 @@ begin
 
 end;
 
+{ TpvVulkanQueueSubmitCollector }
+
 constructor TpvVulkanQueueSubmitCollector.Create;
 begin
  inherited Create;
@@ -19795,20 +19827,26 @@ begin
  fCountBatches:=0;
  fLastSignalSemaphore:=nil;
  fFlushSubmitInfos:=nil;
+ fFlushTimelineSemaphoreSubmitInfos:=nil;
  fFlushCommandBuffers:=nil;
  fFlushWaitSemaphores:=nil;
  fFlushWaitDstStageMasks:=nil;
+ fFlushWaitSemaphoreValues:=nil;
  fFlushSignalSemaphores:=nil;
+ fFlushSignalSemaphoreValues:=nil;
 end;
 
 destructor TpvVulkanQueueSubmitCollector.Destroy;
 begin
  fBatches:=nil;
  fFlushSubmitInfos:=nil;
+ fFlushTimelineSemaphoreSubmitInfos:=nil;
  fFlushCommandBuffers:=nil;
  fFlushWaitSemaphores:=nil;
  fFlushWaitDstStageMasks:=nil;
+ fFlushWaitSemaphoreValues:=nil;
  fFlushSignalSemaphores:=nil;
+ fFlushSignalSemaphoreValues:=nil;
  inherited Destroy;
 end;
 
@@ -19817,7 +19855,7 @@ var BatchIndex:TpvInt32;
 begin
  for BatchIndex:=0 to fCountBatches-1 do begin
   fBatches[BatchIndex].CountEntries:=0;
-  fBatches[BatchIndex].LastSignalSemaphoreHandle:=VK_NULL_HANDLE;
+  fBatches[BatchIndex].CountLastSignalSemaphores:=0;
  end;
  fCountBatches:=0;
  fLastSignalSemaphore:=nil;
@@ -19840,7 +19878,7 @@ begin
  result:=@fBatches[BatchIndex];
  result^.Queue:=aQueue;
  result^.CountEntries:=0;
- result^.LastSignalSemaphoreHandle:=VK_NULL_HANDLE;
+ result^.CountLastSignalSemaphores:=0;
 end;
 
 procedure TpvVulkanQueueSubmitCollector.Collect(const aQueue:TpvVulkanQueue;
@@ -19848,42 +19886,67 @@ procedure TpvVulkanQueueSubmitCollector.Collect(const aQueue:TpvVulkanQueue;
                                                 const aWaitSemaphore:TpvVulkanSemaphore;
                                                 const aWaitDstStageMask:TVkPipelineStageFlags;
                                                 const aSignalSemaphore:TpvVulkanSemaphore);
-var Batch:PQueueBatch;
-    EntryIndex:TpvInt32;
-    Entry:PSubmitEntry;
-    ActualWaitSemaphoreHandle:TVkSemaphore;
-    ActualSignalSemaphoreHandle:TVkSemaphore;
+var CommandBufferHandle:TVkCommandBuffer;
+    WaitSemaphoreHandle:TVkSemaphore;
+    WaitDstStageMaskValue:TVkPipelineStageFlags;
+    SignalSemaphoreHandle:TVkSemaphore;
+    CountWait,CountSignal:TpvInt32;
 begin
- if not assigned(aCommandBuffer) then begin
-  raise EpvVulkanException.Create('TpvVulkanQueueSubmitCollector.Collect: aCommandBuffer is nil');
- end;
- if aCommandBuffer.fLevel<>VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
-  raise EpvVulkanException.Create('TpvVulkanQueueSubmitCollector.Collect: command buffer must be primary');
- end;
- Batch:=FindOrCreateBatch(aQueue);
- // Determine actual wait semaphore handle
- if assigned(aWaitSemaphore) then begin
-  ActualWaitSemaphoreHandle:=aWaitSemaphore.fSemaphoreHandle;
- end else begin
-  ActualWaitSemaphoreHandle:=VK_NULL_HANDLE;
- end;
- // Eliminate redundant same-queue semaphore: if the wait semaphore is the same as the
- // last signal semaphore on this queue, both can be removed since Vulkan guarantees
- // execution order within a single vkQueueSubmit call
- if (ActualWaitSemaphoreHandle<>VK_NULL_HANDLE) and
-    (ActualWaitSemaphoreHandle=Batch^.LastSignalSemaphoreHandle) then begin
-  // Eliminate the redundant wait and retroactively remove the signal from the previous entry
-  ActualWaitSemaphoreHandle:=VK_NULL_HANDLE;
-  if Batch^.CountEntries>0 then begin
-   Batch^.Entries[Batch^.CountEntries-1].SignalSemaphoreHandle:=VK_NULL_HANDLE;
+ if assigned(aCommandBuffer) then begin
+  if aCommandBuffer.fLevel<>VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
+   raise EpvVulkanException.Create('TpvVulkanQueueSubmitCollector.Collect: command buffer must be primary');
   end;
- end;
- // Determine actual signal semaphore handle
- if assigned(aSignalSemaphore) then begin
-  ActualSignalSemaphoreHandle:=aSignalSemaphore.fSemaphoreHandle;
+  CommandBufferHandle:=aCommandBuffer.fCommandBufferHandle;
  end else begin
-  ActualSignalSemaphoreHandle:=VK_NULL_HANDLE;
+  CommandBufferHandle:=VK_NULL_HANDLE;
  end;
+ if assigned(aWaitSemaphore) then begin
+  WaitSemaphoreHandle:=aWaitSemaphore.fSemaphoreHandle;
+  WaitDstStageMaskValue:=aWaitDstStageMask;
+  CountWait:=1;
+ end else begin
+  WaitSemaphoreHandle:=VK_NULL_HANDLE;
+  WaitDstStageMaskValue:=0;
+  CountWait:=0;
+ end;
+ if assigned(aSignalSemaphore) then begin
+  SignalSemaphoreHandle:=aSignalSemaphore.fSemaphoreHandle;
+  CountSignal:=1;
+ end else begin
+  SignalSemaphoreHandle:=VK_NULL_HANDLE;
+  CountSignal:=0;
+ end;
+ Collect(aQueue,
+         CommandBufferHandle,
+         CountWait,
+         @WaitSemaphoreHandle,
+         @WaitDstStageMaskValue,
+         nil,
+         CountSignal,
+         @SignalSemaphoreHandle,
+         nil);
+ if assigned(aSignalSemaphore) then begin
+  fLastSignalSemaphore:=aSignalSemaphore;
+ end;
+end;
+
+procedure TpvVulkanQueueSubmitCollector.Collect(const aQueue:TpvVulkanQueue;
+                                                const aCommandBufferHandle:TVkCommandBuffer;
+                                                const aCountWaitSemaphores:TpvInt32;
+                                                const aWaitSemaphoreHandles:PVkSemaphore;
+                                                const aWaitDstStageMasks:PVkPipelineStageFlags;
+                                                const aWaitSemaphoreValues:PVkUInt64;
+                                                const aCountSignalSemaphores:TpvInt32;
+                                                const aSignalSemaphoreHandles:PVkSemaphore;
+                                                const aSignalSemaphoreValues:PVkUInt64);
+var Batch:PQueueBatch;
+    EntryIndex,WaitIndex,SignalIndex,MatchIndex,WriteIndex:TpvInt32;
+    Entry,PrevEntry:PSubmitEntry;
+    HasTimeline,Eliminated:boolean;
+begin
+
+ Batch:=FindOrCreateBatch(aQueue);
+
  // Add entry
  EntryIndex:=Batch^.CountEntries;
  inc(Batch^.CountEntries);
@@ -19891,68 +19954,311 @@ begin
   SetLength(Batch^.Entries,Batch^.CountEntries*2);
  end;
  Entry:=@Batch^.Entries[EntryIndex];
- Entry^.CommandBufferHandle:=aCommandBuffer.fCommandBufferHandle;
- Entry^.WaitSemaphoreHandle:=ActualWaitSemaphoreHandle;
- Entry^.WaitDstStageMask:=aWaitDstStageMask;
- Entry^.SignalSemaphoreHandle:=ActualSignalSemaphoreHandle;
- // Track last signal semaphore for this queue batch
- Batch^.LastSignalSemaphoreHandle:=ActualSignalSemaphoreHandle;
- // Track overall last signal semaphore
- if assigned(aSignalSemaphore) then begin
-  fLastSignalSemaphore:=aSignalSemaphore;
+ Entry^.CommandBufferHandle:=aCommandBufferHandle;
+
+ // Copy wait semaphores into entry
+ Entry^.CountWaitSemaphores:=aCountWaitSemaphores;
+ if aCountWaitSemaphores>0 then begin
+  if length(Entry^.WaitSemaphoreHandles)<aCountWaitSemaphores then begin
+   SetLength(Entry^.WaitSemaphoreHandles,aCountWaitSemaphores*2);
+   SetLength(Entry^.WaitDstStageMasks,aCountWaitSemaphores*2);
+   SetLength(Entry^.WaitSemaphoreValues,aCountWaitSemaphores*2);
+  end;
+  Move(aWaitSemaphoreHandles^,Entry^.WaitSemaphoreHandles[0],aCountWaitSemaphores*SizeOf(TVkSemaphore));
+  Move(aWaitDstStageMasks^,Entry^.WaitDstStageMasks[0],aCountWaitSemaphores*SizeOf(TVkPipelineStageFlags));
+  if assigned(aWaitSemaphoreValues) then begin
+   Move(aWaitSemaphoreValues^,Entry^.WaitSemaphoreValues[0],aCountWaitSemaphores*SizeOf(TVkUInt64));
+  end else begin
+   FillChar(Entry^.WaitSemaphoreValues[0],aCountWaitSemaphores*SizeOf(TVkUInt64),0);
+  end;
  end;
+
+ // Copy signal semaphores into entry
+ Entry^.CountSignalSemaphores:=aCountSignalSemaphores;
+ if aCountSignalSemaphores>0 then begin
+  if length(Entry^.SignalSemaphoreHandles)<aCountSignalSemaphores then begin
+   SetLength(Entry^.SignalSemaphoreHandles,aCountSignalSemaphores*2);
+   SetLength(Entry^.SignalSemaphoreValues,aCountSignalSemaphores*2);
+  end;
+  Move(aSignalSemaphoreHandles^,Entry^.SignalSemaphoreHandles[0],aCountSignalSemaphores*SizeOf(TVkSemaphore));
+  if assigned(aSignalSemaphoreValues) then begin
+   Move(aSignalSemaphoreValues^,Entry^.SignalSemaphoreValues[0],aCountSignalSemaphores*SizeOf(TVkUInt64));
+  end else begin
+   FillChar(Entry^.SignalSemaphoreValues[0],aCountSignalSemaphores*SizeOf(TVkUInt64),0);
+  end;
+ end;
+
+ // Same-queue semaphore elimination: check each wait semaphore against the
+ // previous entry's signal semaphores on this queue batch
+ if (Entry^.CountWaitSemaphores>0) and (Batch^.CountLastSignalSemaphores>0) and (EntryIndex>0) then begin
+
+  PrevEntry:=@Batch^.Entries[EntryIndex-1];
+
+  WaitIndex:=0;
+
+  while WaitIndex<Entry^.CountWaitSemaphores do begin
+
+   Eliminated:=false;
+
+   if Entry^.WaitSemaphoreHandles[WaitIndex]<>VK_NULL_HANDLE then begin
+
+    for SignalIndex:=0 to Batch^.CountLastSignalSemaphores-1 do begin
+
+     if Batch^.LastSignalSemaphoreHandles[SignalIndex]=Entry^.WaitSemaphoreHandles[WaitIndex] then begin
+
+      // Found matching signal — eliminate the wait.
+      // For binary semaphores (signal value=0), also eliminate the signal from
+      // the previous entry (binary semaphores are single-signal/single-wait).
+      // For timeline semaphores (signal value>0), keep the signal (other waiters
+      // like CPU WaitFor or cross-queue waits may need it).
+      if Batch^.LastSignalSemaphoreValues[SignalIndex]=0 then begin
+
+       // Binary semaphore: remove from previous entry's signal arrays
+       WriteIndex:=0;
+       for MatchIndex:=0 to PrevEntry^.CountSignalSemaphores-1 do begin
+        if PrevEntry^.SignalSemaphoreHandles[MatchIndex]<>Entry^.WaitSemaphoreHandles[WaitIndex] then begin
+         if WriteIndex<>MatchIndex then begin
+          PrevEntry^.SignalSemaphoreHandles[WriteIndex]:=PrevEntry^.SignalSemaphoreHandles[MatchIndex];
+          PrevEntry^.SignalSemaphoreValues[WriteIndex]:=PrevEntry^.SignalSemaphoreValues[MatchIndex];
+         end;
+         inc(WriteIndex);
+        end;
+       end;
+
+       PrevEntry^.CountSignalSemaphores:=WriteIndex;
+
+      end;
+
+      // Remove matched handle from batch's LastSignalSemaphore tracking
+      WriteIndex:=0;
+      for MatchIndex:=0 to Batch^.CountLastSignalSemaphores-1 do begin
+       if MatchIndex<>SignalIndex then begin
+        if WriteIndex<>MatchIndex then begin
+         Batch^.LastSignalSemaphoreHandles[WriteIndex]:=Batch^.LastSignalSemaphoreHandles[MatchIndex];
+         Batch^.LastSignalSemaphoreValues[WriteIndex]:=Batch^.LastSignalSemaphoreValues[MatchIndex];
+        end;
+        inc(WriteIndex);
+       end;
+      end;
+      Batch^.CountLastSignalSemaphores:=WriteIndex;
+
+      // Remove this wait semaphore from the entry (compact by shifting)
+      dec(Entry^.CountWaitSemaphores);
+      if WaitIndex<Entry^.CountWaitSemaphores then begin
+       Entry^.WaitSemaphoreHandles[WaitIndex]:=Entry^.WaitSemaphoreHandles[Entry^.CountWaitSemaphores];
+       Entry^.WaitDstStageMasks[WaitIndex]:=Entry^.WaitDstStageMasks[Entry^.CountWaitSemaphores];
+       Entry^.WaitSemaphoreValues[WaitIndex]:=Entry^.WaitSemaphoreValues[Entry^.CountWaitSemaphores];
+      end;
+      Eliminated:=true;
+      break;
+     end;
+    
+    end;
+
+   end;
+
+   if not Eliminated then begin
+    inc(WaitIndex);
+   end;
+
+  end;
+
+ end;
+
+ // Determine if this entry has any timeline semaphore values (non-zero)
+ HasTimeline:=false;
+ for WaitIndex:=0 to Entry^.CountWaitSemaphores-1 do begin
+  if Entry^.WaitSemaphoreValues[WaitIndex]<>0 then begin
+   HasTimeline:=true;
+   break;
+  end;
+ end;
+
+ if not HasTimeline then begin
+  for SignalIndex:=0 to Entry^.CountSignalSemaphores-1 do begin
+   if Entry^.SignalSemaphoreValues[SignalIndex]<>0 then begin
+    HasTimeline:=true;
+    break;
+   end;
+  end;
+ end;
+
+ Entry^.HasTimelineValues:=HasTimeline;
+
+ // Update last signal semaphore tracking for this queue batch
+ if Entry^.CountSignalSemaphores>0 then begin
+  if length(Batch^.LastSignalSemaphoreHandles)<Entry^.CountSignalSemaphores then begin
+   SetLength(Batch^.LastSignalSemaphoreHandles,Entry^.CountSignalSemaphores*2);
+   SetLength(Batch^.LastSignalSemaphoreValues,Entry^.CountSignalSemaphores*2);
+  end;
+  Batch^.CountLastSignalSemaphores:=Entry^.CountSignalSemaphores;
+  Move(Entry^.SignalSemaphoreHandles[0],Batch^.LastSignalSemaphoreHandles[0],Entry^.CountSignalSemaphores*SizeOf(TVkSemaphore));
+  Move(Entry^.SignalSemaphoreValues[0],Batch^.LastSignalSemaphoreValues[0],Entry^.CountSignalSemaphores*SizeOf(TVkUInt64));
+ end else begin
+  Batch^.CountLastSignalSemaphores:=0;
+ end;
+
 end;
 
 procedure TpvVulkanQueueSubmitCollector.Flush(const aFence:TpvVulkanFence);
 var BatchIndex,EntryIndex,SubmitInfoCount:TpvInt32;
+    TotalWaitSemaphores,TotalSignalSemaphores:TpvInt32;
+    WaitOffset,SignalOffset:TpvInt32;
     Batch:PQueueBatch;
     Entry:PSubmitEntry;
     SubmitInfo:PVkSubmitInfo;
+    HasAnyTimeline:boolean;
 begin
+
  for BatchIndex:=0 to fCountBatches-1 do begin
+
   Batch:=@fBatches[BatchIndex];
+
   if Batch^.CountEntries>0 then begin
+
+   // Calculate total semaphore counts for flat array sizing
+   TotalWaitSemaphores:=0;
+   TotalSignalSemaphores:=0;
+   HasAnyTimeline:=false;
+   for EntryIndex:=0 to Batch^.CountEntries-1 do begin
+    inc(TotalWaitSemaphores,Batch^.Entries[EntryIndex].CountWaitSemaphores);
+    inc(TotalSignalSemaphores,Batch^.Entries[EntryIndex].CountSignalSemaphores);
+    if Batch^.Entries[EntryIndex].HasTimelineValues then begin
+     HasAnyTimeline:=true;
+    end;
+   end;
+
    // Ensure flush arrays are large enough
    if length(fFlushSubmitInfos)<Batch^.CountEntries then begin
     SetLength(fFlushSubmitInfos,Batch^.CountEntries*2);
-    SetLength(fFlushCommandBuffers,Batch^.CountEntries*2);
-    SetLength(fFlushWaitSemaphores,Batch^.CountEntries*2);
-    SetLength(fFlushWaitDstStageMasks,Batch^.CountEntries*2);
-    SetLength(fFlushSignalSemaphores,Batch^.CountEntries*2);
    end;
+
+   if length(fFlushCommandBuffers)<Batch^.CountEntries then begin
+    SetLength(fFlushCommandBuffers,Batch^.CountEntries*2);
+   end;
+
+   if TotalWaitSemaphores>0 then begin
+    if length(fFlushWaitSemaphores)<TotalWaitSemaphores then begin
+     SetLength(fFlushWaitSemaphores,TotalWaitSemaphores*2);
+     SetLength(fFlushWaitDstStageMasks,TotalWaitSemaphores*2);
+    end;
+   end;
+
+   if TotalSignalSemaphores>0 then begin
+    if length(fFlushSignalSemaphores)<TotalSignalSemaphores then begin
+     SetLength(fFlushSignalSemaphores,TotalSignalSemaphores*2);
+    end;
+   end;
+
+   if HasAnyTimeline then begin
+
+    if length(fFlushTimelineSemaphoreSubmitInfos)<Batch^.CountEntries then begin
+     SetLength(fFlushTimelineSemaphoreSubmitInfos,Batch^.CountEntries*2);
+    end;
+
+    if TotalWaitSemaphores>0 then begin
+     if length(fFlushWaitSemaphoreValues)<TotalWaitSemaphores then begin
+      SetLength(fFlushWaitSemaphoreValues,TotalWaitSemaphores*2);
+     end;
+    end;
+
+    if TotalSignalSemaphores>0 then begin
+     if length(fFlushSignalSemaphoreValues)<TotalSignalSemaphores then begin
+      SetLength(fFlushSignalSemaphoreValues,TotalSignalSemaphores*2);
+     end;
+    end;
+
+   end;
+
+   // Build SubmitInfos with flat pool arrays for stable Vulkan pointers
+   
    SubmitInfoCount:=0;
+   WaitOffset:=0;
+   SignalOffset:=0;
+
    for EntryIndex:=0 to Batch^.CountEntries-1 do begin
+
     Entry:=@Batch^.Entries[EntryIndex];
-    // Copy handles to stable arrays for pointer references
+
+    // Copy command buffer handle to stable array
     fFlushCommandBuffers[EntryIndex]:=Entry^.CommandBufferHandle;
-    fFlushWaitSemaphores[EntryIndex]:=Entry^.WaitSemaphoreHandle;
-    fFlushWaitDstStageMasks[EntryIndex]:=Entry^.WaitDstStageMask;
-    fFlushSignalSemaphores[EntryIndex]:=Entry^.SignalSemaphoreHandle;
+
+    // Copy wait semaphore data to flat arrays at current offset
+    if Entry^.CountWaitSemaphores>0 then begin
+     Move(Entry^.WaitSemaphoreHandles[0],fFlushWaitSemaphores[WaitOffset],Entry^.CountWaitSemaphores*SizeOf(TVkSemaphore));
+     Move(Entry^.WaitDstStageMasks[0],fFlushWaitDstStageMasks[WaitOffset],Entry^.CountWaitSemaphores*SizeOf(TVkPipelineStageFlags));
+     if HasAnyTimeline then begin
+      Move(Entry^.WaitSemaphoreValues[0],fFlushWaitSemaphoreValues[WaitOffset],Entry^.CountWaitSemaphores*SizeOf(TVkUInt64));
+     end;
+    end;
+
+    // Copy signal semaphore data to flat arrays at current offset
+    if Entry^.CountSignalSemaphores>0 then begin
+     Move(Entry^.SignalSemaphoreHandles[0],fFlushSignalSemaphores[SignalOffset],Entry^.CountSignalSemaphores*SizeOf(TVkSemaphore));
+     if HasAnyTimeline then begin
+      Move(Entry^.SignalSemaphoreValues[0],fFlushSignalSemaphoreValues[SignalOffset],Entry^.CountSignalSemaphores*SizeOf(TVkUInt64));
+     end;
+    end;
+
     // Build SubmitInfo
     SubmitInfo:=@fFlushSubmitInfos[SubmitInfoCount];
     FillChar(SubmitInfo^,SizeOf(TVkSubmitInfo),#0);
     SubmitInfo^.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    SubmitInfo^.pNext:=nil;
-    SubmitInfo^.commandBufferCount:=1;
-    SubmitInfo^.pCommandBuffers:=@fFlushCommandBuffers[EntryIndex];
-    if Entry^.WaitSemaphoreHandle<>VK_NULL_HANDLE then begin
-     SubmitInfo^.waitSemaphoreCount:=1;
-     SubmitInfo^.pWaitSemaphores:=@fFlushWaitSemaphores[EntryIndex];
-     SubmitInfo^.pWaitDstStageMask:=@fFlushWaitDstStageMasks[EntryIndex];
+
+    // Command buffer
+    if Entry^.CommandBufferHandle<>VK_NULL_HANDLE then begin
+     SubmitInfo^.commandBufferCount:=1;
+     SubmitInfo^.pCommandBuffers:=@fFlushCommandBuffers[EntryIndex];
+    end else begin
+     SubmitInfo^.commandBufferCount:=0;
+     SubmitInfo^.pCommandBuffers:=nil;
+    end;
+
+    // Wait semaphores
+    if Entry^.CountWaitSemaphores>0 then begin
+     SubmitInfo^.waitSemaphoreCount:=Entry^.CountWaitSemaphores;
+     SubmitInfo^.pWaitSemaphores:=@fFlushWaitSemaphores[WaitOffset];
+     SubmitInfo^.pWaitDstStageMask:=@fFlushWaitDstStageMasks[WaitOffset];
     end else begin
      SubmitInfo^.waitSemaphoreCount:=0;
      SubmitInfo^.pWaitSemaphores:=nil;
      SubmitInfo^.pWaitDstStageMask:=nil;
     end;
-    if Entry^.SignalSemaphoreHandle<>VK_NULL_HANDLE then begin
-     SubmitInfo^.signalSemaphoreCount:=1;
-     SubmitInfo^.pSignalSemaphores:=@fFlushSignalSemaphores[EntryIndex];
+
+    // Signal semaphores
+    if Entry^.CountSignalSemaphores>0 then begin
+     SubmitInfo^.signalSemaphoreCount:=Entry^.CountSignalSemaphores;
+     SubmitInfo^.pSignalSemaphores:=@fFlushSignalSemaphores[SignalOffset];
     end else begin
      SubmitInfo^.signalSemaphoreCount:=0;
      SubmitInfo^.pSignalSemaphores:=nil;
     end;
+
+    // Timeline semaphore pNext chain (only for entries with timeline values,
+    // but value arrays are populated for all entries when HasAnyTimeline=true)
+    if Entry^.HasTimelineValues then begin
+     FillChar(fFlushTimelineSemaphoreSubmitInfos[SubmitInfoCount],SizeOf(TVkTimelineSemaphoreSubmitInfo),#0);
+     fFlushTimelineSemaphoreSubmitInfos[SubmitInfoCount].sType:=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+     fFlushTimelineSemaphoreSubmitInfos[SubmitInfoCount].pNext:=nil;
+     fFlushTimelineSemaphoreSubmitInfos[SubmitInfoCount].waitSemaphoreValueCount:=Entry^.CountWaitSemaphores;
+     if Entry^.CountWaitSemaphores>0 then begin
+      fFlushTimelineSemaphoreSubmitInfos[SubmitInfoCount].pWaitSemaphoreValues:=@fFlushWaitSemaphoreValues[WaitOffset];
+     end else begin
+      fFlushTimelineSemaphoreSubmitInfos[SubmitInfoCount].pWaitSemaphoreValues:=nil;
+     end;
+     fFlushTimelineSemaphoreSubmitInfos[SubmitInfoCount].signalSemaphoreValueCount:=Entry^.CountSignalSemaphores;
+     if Entry^.CountSignalSemaphores>0 then begin
+      fFlushTimelineSemaphoreSubmitInfos[SubmitInfoCount].pSignalSemaphoreValues:=@fFlushSignalSemaphoreValues[SignalOffset];
+     end else begin
+      fFlushTimelineSemaphoreSubmitInfos[SubmitInfoCount].pSignalSemaphoreValues:=nil;
+     end;
+     SubmitInfo^.pNext:=@fFlushTimelineSemaphoreSubmitInfos[SubmitInfoCount];
+    end;
+    inc(WaitOffset,Entry^.CountWaitSemaphores);
+    inc(SignalOffset,Entry^.CountSignalSemaphores);
     inc(SubmitInfoCount);
    end;
+   
    // Submit all SubmitInfos for this queue in a single vkQueueSubmit call.
    // The fence is attached to the LAST queue batch only.
    if (BatchIndex=(fCountBatches-1)) and assigned(aFence) then begin
@@ -19960,10 +20266,14 @@ begin
    end else begin
     Batch^.Queue.Submit(SubmitInfoCount,@fFlushSubmitInfos[0]);
    end;
+
   end;
+
  end;
  Reset;
 end;
+
+{ TpvVulkanRenderPass }
 
 constructor TpvVulkanRenderPass.Create(const aDevice:TpvVulkanDevice);
 begin
