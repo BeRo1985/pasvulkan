@@ -4250,6 +4250,7 @@ type EpvScene3D=class(Exception);
        fMultiDrawSupport:Boolean;
        fMaxMultiDrawCount:TpvUInt32;
        fMeshShaderSupport:Boolean;
+       fGrassMeshShaders:Boolean;
        fTotalActiveMeshletCount:TPasMPInt64; // Atomic: total meshlet count across all active instances and renderinstances (for buffer sizing)
        fHardwareRaytracingSupport:Boolean;
        fRaytracingActive:Boolean;
@@ -4753,6 +4754,8 @@ type EpvScene3D=class(Exception);
        procedure ResetSurface;
        procedure ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
       public
+       function GetGrassMeshShaderSupport:Boolean;
+      public
        procedure EnsureMasterMatrixPairCapacity(const aMinCount:TpvSizeInt;const aAlreadyReadLocked:Boolean);
        procedure EnsureInFlightFrameMatrixPairCapacity(const aInFlightFrameIndex:TpvSizeInt;const aMinCount:TpvSizeInt;const aAlreadyReadLocked:Boolean);
        function GetMatrixPairInfo(const aIndex:TpvSizeInt;const aWrite:Boolean):PGPUMatrixPair;
@@ -5082,6 +5085,8 @@ type EpvScene3D=class(Exception);
        property MultiDrawSupport:boolean read fMultiDrawSupport;
        property MaxMultiDrawCount:TpvUInt32 read fMaxMultiDrawCount write fMaxMultiDrawCount;
        property MeshShaderSupport:Boolean read fMeshShaderSupport;
+       property GrassMeshShaders:Boolean read fGrassMeshShaders write fGrassMeshShaders;
+       property GrassMeshShaderSupport:Boolean read GetGrassMeshShaderSupport;
        property TotalActiveMeshletCount:TPasMPInt64 read fTotalActiveMeshletCount;
        property HardwareRaytracingSupport:Boolean read fHardwareRaytracingSupport;
        property RaytracingActive:Boolean read fRaytracingActive;
@@ -33527,6 +33532,8 @@ begin
                      (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE) and
                      ((fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE) or not assigned(fVirtualReality));
 
+ fGrassMeshShaders:=true;
+
  fTotalActiveMeshletCount:=0;
 
  fHardwareRaytracingSupport:=//false and
@@ -37712,6 +37719,11 @@ begin
  if assigned(fMeshletBoundsCompute) then begin
   TpvScene3DMeshletBoundsCompute(fMeshletBoundsCompute).Reset;
  end;
+end;
+
+function TpvScene3D.GetGrassMeshShaderSupport:Boolean;
+begin
+ result:=fMeshShaderSupport and fGrassMeshShaders;
 end;
 
 function TpvScene3D.GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;

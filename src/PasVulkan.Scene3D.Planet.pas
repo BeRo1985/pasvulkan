@@ -21210,7 +21210,7 @@ begin
                                                    nil,
                                                    0);
 
-  if (fPass=1) and not TpvScene3D(fScene3D).MeshShaderSupport then begin
+  if (fPass=1) and not TpvScene3D(fScene3D).GrassMeshShaderSupport then begin
 
    if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_velocity_task_comp.spv');
@@ -22688,7 +22688,7 @@ begin
   end;
   fVulkanDevice.DebugUtils.SetObjectName(fPlanetVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fPlanetVertexShaderModule');
 
-  if TpvScene3D(fScene3D).MeshShaderSupport then begin
+  if TpvScene3D(fScene3D).GrassMeshShaderSupport then begin
 
    fGrassVertexShaderModule:=nil;
 
@@ -23842,7 +23842,7 @@ begin
          Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPass),
                                                     RendererViewInstance) then begin
 
-       if assigned(RendererViewInstance.fVulkanGrassVerticesBuffer) or not TpvScene3D(fScene3D).MeshShaderSupport then begin
+       if assigned(RendererViewInstance.fVulkanGrassVerticesBuffer) or not TpvScene3D(fScene3D).GrassMeshShaderSupport then begin
 
         aCommandBuffer.CmdBindIndexBuffer(RendererViewInstance.fVulkanGrassIndicesBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
         aCommandBuffer.CmdBindVertexBuffers(0,1,@RendererViewInstance.fVulkanGrassVerticesBuffer.Handle,@Offsets);
@@ -23858,7 +23858,7 @@ begin
          Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
         end;
 
-       end else if TpvScene3D(fScene3D).MeshShaderSupport then begin
+       end else if TpvScene3D(fScene3D).GrassMeshShaderSupport then begin
 
         if assigned(TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksIndirectEXT) then begin
 
@@ -25909,7 +25909,7 @@ begin
                                                      );
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanVisibleTileListBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisibleTileListBuffer');
 
- if TpvScene3DRendererInstance(fRendererInstance).Scene3D.MeshShaderSupport then begin
+ if TpvScene3DRendererInstance(fRendererInstance).Scene3D.GrassMeshShaderSupport then begin
 
   fVulkanGrassTaskIndicesBuffer:=nil;
 
@@ -26126,7 +26126,7 @@ begin
  end;
 
  fGrassCullDescriptorPool:=TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorPool(fPlanet.fVulkanDevice,
-                                                                                                 TpvScene3DRendererInstance(fRendererInstance).Scene3D.MeshShaderSupport,
+                                                                                                 TpvScene3DRendererInstance(fRendererInstance).Scene3D.GrassMeshShaderSupport,
                                                                                                  TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
 
  for Index:=0 to 1 do begin
@@ -26162,7 +26162,7 @@ begin
                                                         [],
                                                         false);
 
-   if not TpvScene3D(fPlanet.fScene3D).MeshShaderSupport then begin
+   if not TpvScene3D(fPlanet.fScene3D).GrassMeshShaderSupport then begin
 
     fGrassCullDescriptorSets[Index].WriteToDescriptorSet(3,
                                                          0,
