@@ -136,6 +136,12 @@ type EpvScene3D=class(Exception);
       );
      PpvScene3DEnvironmentMode=^TpvScene3DEnvironmentMode;
 
+     TpvScene3DFrameProcessingMode=
+      (
+       Serialized,
+       Pipelined
+      );
+
      { TpvScene3D }
 
      TpvScene3D=class(TpvResource)
@@ -4249,6 +4255,7 @@ type EpvScene3D=class(Exception);
        fRaytracingActive:Boolean;
        fUsePerInFlightFrameResources:Boolean;
        fPlanetSingleBuffers:Boolean;
+       fFrameProcessingMode:TpvScene3DFrameProcessingMode;
        fCountPerInFlightFrameResources:TpvSizeInt;
        fAccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags;
        fDefaultSampler:TSampler;
@@ -5080,6 +5087,7 @@ type EpvScene3D=class(Exception);
        property RaytracingActive:Boolean read fRaytracingActive;
        property UsePerInFlightFrameResources:Boolean read fUsePerInFlightFrameResources write fUsePerInFlightFrameResources;
        property PlanetSingleBuffers:Boolean read fPlanetSingleBuffers write fPlanetSingleBuffers;
+       property FrameProcessingMode:TpvScene3DFrameProcessingMode read fFrameProcessingMode write fFrameProcessingMode;
        property CountPerInFlightFrameResources:TpvSizeInt read fCountPerInFlightFrameResources;
        property AccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags read fAccelerationStructureInputBufferUsageFlags;
        property PasMPInstance:TPasMP read fPasMPInstance write fPasMPInstance;
@@ -33537,6 +33545,18 @@ begin
 
  fUsePerInFlightFrameResources:=false;
  fPlanetSingleBuffers:=true;
+ fFrameProcessingMode:=TpvScene3DFrameProcessingMode.Serialized;
+
+ case fFrameProcessingMode of
+  TpvScene3DFrameProcessingMode.Pipelined:begin
+   fUsePerInFlightFrameResources:=true;
+   fPlanetSingleBuffers:=false;
+  end;
+  else begin
+   fUsePerInFlightFrameResources:=false;
+   fPlanetSingleBuffers:=true;
+  end;
+ end;
 
  if fUsePerInFlightFrameResources then begin
   fCountPerInFlightFrameResources:=aCountInFlightFrames;
@@ -35504,6 +35524,17 @@ end;
 
 procedure TpvScene3D.Initialize;
 begin
+
+ case fFrameProcessingMode of
+  TpvScene3DFrameProcessingMode.Pipelined:begin
+   fUsePerInFlightFrameResources:=true;
+   fPlanetSingleBuffers:=false;
+  end;
+  else begin
+   fUsePerInFlightFrameResources:=false;
+   fPlanetSingleBuffers:=true;
+  end;
+ end;
 
  if fUsePerInFlightFrameResources then begin
   fCountPerInFlightFrameResources:=fCountInFlightFrames;
