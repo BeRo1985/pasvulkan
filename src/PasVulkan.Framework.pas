@@ -307,6 +307,9 @@ type EpvVulkanException=class(Exception);
      TVkAccelerationStructureKHRArray=array of TVkAccelerationStructureKHR;
      TVkWriteDescriptorSetAccelerationStructureKHRArray=array of TVkWriteDescriptorSetAccelerationStructureKHR;
      TVkDeviceAddressArray=array of TVkDeviceAddress;
+     TVkSubmitInfoArray=array of TVkSubmitInfo;
+     TVkSemaphoreArray=array of TVkSemaphore;
+     TVkPipelineStageFlagsArray=array of TVkPipelineStageFlags;
 
      TVkUInt32DynamicArray=TpvDynamicArray<TVkUInt32>;
 
@@ -2086,6 +2089,53 @@ type EpvVulkanException=class(Exception);
        procedure Reset;
        procedure QueueSubmit(const aCommandBuffer:TpvVulkanCommandBuffer;const aWaitDstStageFlags:TVkPipelineStageFlags;const aWaitSemaphore:TpvVulkanSemaphore=nil;const aSignalSemaphore:TpvVulkanSemaphore=nil);
        procedure SubmitQueued(const aFence:TpvVulkanFence=nil;const aDoWaitAndResetFence:boolean=true);
+     end;
+
+     // Multi-queue submit collector that batches SubmitInfos per queue and flushes
+     // them with one vkQueueSubmit call per queue. Automatically eliminates redundant
+     // semaphores between consecutive SubmitInfos on the same queue.
+     TpvVulkanQueueSubmitCollector=class(TpvVulkanObject)
+      public
+       type TSubmitEntry=record
+             CommandBufferHandle:TVkCommandBuffer;
+             WaitSemaphoreHandle:TVkSemaphore;
+             WaitDstStageMask:TVkPipelineStageFlags;
+             SignalSemaphoreHandle:TVkSemaphore;
+            end;
+            PSubmitEntry=^TSubmitEntry;
+            TSubmitEntries=array of TSubmitEntry;
+            TQueueBatch=record
+             Queue:TpvVulkanQueue;
+             Entries:TSubmitEntries;
+             CountEntries:TpvInt32;
+             LastSignalSemaphoreHandle:TVkSemaphore;
+            end;
+            PQueueBatch=^TQueueBatch;
+            TQueueBatches=array of TQueueBatch;
+      private
+       fBatches:TQueueBatches;
+       fCountBatches:TpvInt32;
+       fLastSignalSemaphore:TpvVulkanSemaphore;
+       // Temporary arrays for Flush, pre-allocated to avoid per-flush allocation
+       fFlushSubmitInfos:TVkSubmitInfoArray;
+       fFlushCommandBuffers:TVkCommandBufferArray;
+       fFlushWaitSemaphores:TVkSemaphoreArray;
+       fFlushWaitDstStageMasks:TVkPipelineStageFlagsArray;
+       fFlushSignalSemaphores:TVkSemaphoreArray;
+       function FindOrCreateBatch(const aQueue:TpvVulkanQueue):PQueueBatch;
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+       procedure Reset;
+       procedure Collect(const aQueue:TpvVulkanQueue;
+                         const aCommandBuffer:TpvVulkanCommandBuffer;
+                         const aWaitSemaphore:TpvVulkanSemaphore;
+                         const aWaitDstStageMask:TVkPipelineStageFlags;
+                         const aSignalSemaphore:TpvVulkanSemaphore);
+       procedure Flush(const aFence:TpvVulkanFence=nil);
+      public
+       property LastSignalSemaphore:TpvVulkanSemaphore read fLastSignalSemaphore;
+       property CountBatches:TpvInt32 read fCountBatches;
      end;
 
      TpvVulkanRenderPassAttachmentDescriptions=array of TVkAttachmentDescription;
@@ -19736,6 +19786,183 @@ begin
 
  end;
 
+end;
+
+constructor TpvVulkanQueueSubmitCollector.Create;
+begin
+ inherited Create;
+ fBatches:=nil;
+ fCountBatches:=0;
+ fLastSignalSemaphore:=nil;
+ fFlushSubmitInfos:=nil;
+ fFlushCommandBuffers:=nil;
+ fFlushWaitSemaphores:=nil;
+ fFlushWaitDstStageMasks:=nil;
+ fFlushSignalSemaphores:=nil;
+end;
+
+destructor TpvVulkanQueueSubmitCollector.Destroy;
+begin
+ fBatches:=nil;
+ fFlushSubmitInfos:=nil;
+ fFlushCommandBuffers:=nil;
+ fFlushWaitSemaphores:=nil;
+ fFlushWaitDstStageMasks:=nil;
+ fFlushSignalSemaphores:=nil;
+ inherited Destroy;
+end;
+
+procedure TpvVulkanQueueSubmitCollector.Reset;
+var BatchIndex:TpvInt32;
+begin
+ for BatchIndex:=0 to fCountBatches-1 do begin
+  fBatches[BatchIndex].CountEntries:=0;
+  fBatches[BatchIndex].LastSignalSemaphoreHandle:=VK_NULL_HANDLE;
+ end;
+ fCountBatches:=0;
+ fLastSignalSemaphore:=nil;
+end;
+
+function TpvVulkanQueueSubmitCollector.FindOrCreateBatch(const aQueue:TpvVulkanQueue):PQueueBatch;
+var BatchIndex:TpvInt32;
+begin
+ for BatchIndex:=0 to fCountBatches-1 do begin
+  if fBatches[BatchIndex].Queue=aQueue then begin
+   result:=@fBatches[BatchIndex];
+   exit;
+  end;
+ end;
+ BatchIndex:=fCountBatches;
+ inc(fCountBatches);
+ if length(fBatches)<fCountBatches then begin
+  SetLength(fBatches,fCountBatches*2);
+ end;
+ result:=@fBatches[BatchIndex];
+ result^.Queue:=aQueue;
+ result^.CountEntries:=0;
+ result^.LastSignalSemaphoreHandle:=VK_NULL_HANDLE;
+end;
+
+procedure TpvVulkanQueueSubmitCollector.Collect(const aQueue:TpvVulkanQueue;
+                                                const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                const aWaitSemaphore:TpvVulkanSemaphore;
+                                                const aWaitDstStageMask:TVkPipelineStageFlags;
+                                                const aSignalSemaphore:TpvVulkanSemaphore);
+var Batch:PQueueBatch;
+    EntryIndex:TpvInt32;
+    Entry:PSubmitEntry;
+    ActualWaitSemaphoreHandle:TVkSemaphore;
+    ActualSignalSemaphoreHandle:TVkSemaphore;
+begin
+ if not assigned(aCommandBuffer) then begin
+  raise EpvVulkanException.Create('TpvVulkanQueueSubmitCollector.Collect: aCommandBuffer is nil');
+ end;
+ if aCommandBuffer.fLevel<>VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
+  raise EpvVulkanException.Create('TpvVulkanQueueSubmitCollector.Collect: command buffer must be primary');
+ end;
+ Batch:=FindOrCreateBatch(aQueue);
+ // Determine actual wait semaphore handle
+ if assigned(aWaitSemaphore) then begin
+  ActualWaitSemaphoreHandle:=aWaitSemaphore.fSemaphoreHandle;
+ end else begin
+  ActualWaitSemaphoreHandle:=VK_NULL_HANDLE;
+ end;
+ // Eliminate redundant same-queue semaphore: if the wait semaphore is the same as the
+ // last signal semaphore on this queue, both can be removed since Vulkan guarantees
+ // execution order within a single vkQueueSubmit call
+ if (ActualWaitSemaphoreHandle<>VK_NULL_HANDLE) and
+    (ActualWaitSemaphoreHandle=Batch^.LastSignalSemaphoreHandle) then begin
+  // Eliminate the redundant wait and retroactively remove the signal from the previous entry
+  ActualWaitSemaphoreHandle:=VK_NULL_HANDLE;
+  if Batch^.CountEntries>0 then begin
+   Batch^.Entries[Batch^.CountEntries-1].SignalSemaphoreHandle:=VK_NULL_HANDLE;
+  end;
+ end;
+ // Determine actual signal semaphore handle
+ if assigned(aSignalSemaphore) then begin
+  ActualSignalSemaphoreHandle:=aSignalSemaphore.fSemaphoreHandle;
+ end else begin
+  ActualSignalSemaphoreHandle:=VK_NULL_HANDLE;
+ end;
+ // Add entry
+ EntryIndex:=Batch^.CountEntries;
+ inc(Batch^.CountEntries);
+ if length(Batch^.Entries)<Batch^.CountEntries then begin
+  SetLength(Batch^.Entries,Batch^.CountEntries*2);
+ end;
+ Entry:=@Batch^.Entries[EntryIndex];
+ Entry^.CommandBufferHandle:=aCommandBuffer.fCommandBufferHandle;
+ Entry^.WaitSemaphoreHandle:=ActualWaitSemaphoreHandle;
+ Entry^.WaitDstStageMask:=aWaitDstStageMask;
+ Entry^.SignalSemaphoreHandle:=ActualSignalSemaphoreHandle;
+ // Track last signal semaphore for this queue batch
+ Batch^.LastSignalSemaphoreHandle:=ActualSignalSemaphoreHandle;
+ // Track overall last signal semaphore
+ if assigned(aSignalSemaphore) then begin
+  fLastSignalSemaphore:=aSignalSemaphore;
+ end;
+end;
+
+procedure TpvVulkanQueueSubmitCollector.Flush(const aFence:TpvVulkanFence);
+var BatchIndex,EntryIndex,SubmitInfoCount:TpvInt32;
+    Batch:PQueueBatch;
+    Entry:PSubmitEntry;
+    SubmitInfo:PVkSubmitInfo;
+begin
+ for BatchIndex:=0 to fCountBatches-1 do begin
+  Batch:=@fBatches[BatchIndex];
+  if Batch^.CountEntries>0 then begin
+   // Ensure flush arrays are large enough
+   if length(fFlushSubmitInfos)<Batch^.CountEntries then begin
+    SetLength(fFlushSubmitInfos,Batch^.CountEntries*2);
+    SetLength(fFlushCommandBuffers,Batch^.CountEntries*2);
+    SetLength(fFlushWaitSemaphores,Batch^.CountEntries*2);
+    SetLength(fFlushWaitDstStageMasks,Batch^.CountEntries*2);
+    SetLength(fFlushSignalSemaphores,Batch^.CountEntries*2);
+   end;
+   SubmitInfoCount:=0;
+   for EntryIndex:=0 to Batch^.CountEntries-1 do begin
+    Entry:=@Batch^.Entries[EntryIndex];
+    // Copy handles to stable arrays for pointer references
+    fFlushCommandBuffers[EntryIndex]:=Entry^.CommandBufferHandle;
+    fFlushWaitSemaphores[EntryIndex]:=Entry^.WaitSemaphoreHandle;
+    fFlushWaitDstStageMasks[EntryIndex]:=Entry^.WaitDstStageMask;
+    fFlushSignalSemaphores[EntryIndex]:=Entry^.SignalSemaphoreHandle;
+    // Build SubmitInfo
+    SubmitInfo:=@fFlushSubmitInfos[SubmitInfoCount];
+    FillChar(SubmitInfo^,SizeOf(TVkSubmitInfo),#0);
+    SubmitInfo^.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    SubmitInfo^.pNext:=nil;
+    SubmitInfo^.commandBufferCount:=1;
+    SubmitInfo^.pCommandBuffers:=@fFlushCommandBuffers[EntryIndex];
+    if Entry^.WaitSemaphoreHandle<>VK_NULL_HANDLE then begin
+     SubmitInfo^.waitSemaphoreCount:=1;
+     SubmitInfo^.pWaitSemaphores:=@fFlushWaitSemaphores[EntryIndex];
+     SubmitInfo^.pWaitDstStageMask:=@fFlushWaitDstStageMasks[EntryIndex];
+    end else begin
+     SubmitInfo^.waitSemaphoreCount:=0;
+     SubmitInfo^.pWaitSemaphores:=nil;
+     SubmitInfo^.pWaitDstStageMask:=nil;
+    end;
+    if Entry^.SignalSemaphoreHandle<>VK_NULL_HANDLE then begin
+     SubmitInfo^.signalSemaphoreCount:=1;
+     SubmitInfo^.pSignalSemaphores:=@fFlushSignalSemaphores[EntryIndex];
+    end else begin
+     SubmitInfo^.signalSemaphoreCount:=0;
+     SubmitInfo^.pSignalSemaphores:=nil;
+    end;
+    inc(SubmitInfoCount);
+   end;
+   // Submit all SubmitInfos for this queue in a single vkQueueSubmit call.
+   // The fence is attached to the LAST queue batch only.
+   if (BatchIndex=(fCountBatches-1)) and assigned(aFence) then begin
+    Batch^.Queue.Submit(SubmitInfoCount,@fFlushSubmitInfos[0],aFence);
+   end else begin
+    Batch^.Queue.Submit(SubmitInfoCount,@fFlushSubmitInfos[0]);
+   end;
+  end;
+ end;
+ Reset;
 end;
 
 constructor TpvVulkanRenderPass.Create(const aDevice:TpvVulkanDevice);
