@@ -34189,7 +34189,7 @@ begin
 
   fPlanetCullDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetCullDescriptorSetLayout(fVulkanDevice);
 
-  fPlanetGrassCullAndMeshGenerationDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorSetLayout(fVulkanDevice,fMeshShaderSupport);
+  fPlanetGrassCullAndMeshGenerationDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorSetLayout(fVulkanDevice,fMeshShaderSupport and fGrassMeshShaders);
 
   fPlanetWaterCullDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetWaterCullDescriptorSetLayout(fVulkanDevice);
 
