@@ -30897,7 +30897,6 @@ end;
 procedure TpvScene3D.TGroup.TInstance.UpdateRenderInstances(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
 {$define UseSphereTransformedBoundingSphereForRenderInstanceCulling}
 var Index,PerInFlightFrameRenderInstanceIndex,MeshNodeArrayIndex,NodeIndex:TpvSizeInt;
-    First:Boolean;
     TemporaryBoundingBox:TpvAABB;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
@@ -30924,7 +30923,6 @@ begin
    SphereCenterLocal:=(TemporaryBoundingBox.Min+TemporaryBoundingBox.Max)*0.5;
    SphereRadiusLocal:=TemporaryBoundingBox.Min.DistanceTo(TemporaryBoundingBox.Max)*0.5;
 {$endif}
-   First:=true;
    if fRenderInstances.Count>0 then begin
     TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
     try
@@ -30941,12 +30939,6 @@ begin
         // Fast path: reuse existing data for this IFF
         TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
         RenderInstance.fWorkActives[aInFlightFrameIndex]:=true;
-        if First then begin
-         First:=false;
-         fBoundingBox:=RenderInstance.fBoundingBox;
-        end else begin
-         fBoundingBox.DirectCombine(RenderInstance.fBoundingBox);
-        end;
         PerInFlightFrameRenderInstanceIndex:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNewIndex;
         PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
         PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
@@ -30979,12 +30971,6 @@ begin
         RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
         RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
 {$endif}        
-        if First then begin
-         First:=false;
-         fBoundingBox:=RenderInstance.fBoundingBox;
-        end else begin
-         fBoundingBox.DirectCombine(RenderInstance.fBoundingBox);
-        end;
         PerInFlightFrameRenderInstanceIndex:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNewIndex;
         PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
         PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
@@ -31056,6 +31042,13 @@ begin
      end;
     finally
      TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
+    end;
+   end;
+   // Batched BB-Combine: compute fBoundingBox from all collected PerInFlightFrameRenderInstances
+   if fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count>0 then begin
+    fBoundingBox:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[0].BoundingBox;
+    for Index:=1 to fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count-1 do begin
+     fBoundingBox.DirectCombine(fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[Index].BoundingBox);
     end;
    end;
   end;
