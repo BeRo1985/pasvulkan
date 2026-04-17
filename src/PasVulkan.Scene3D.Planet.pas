@@ -29580,6 +29580,7 @@ begin
    InFlightFrameData:=nil;
   end;
 
+{ was:
   if ((fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
       (fInFlightFrameSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE))) or
 //   true or
@@ -29589,6 +29590,15 @@ begin
        (InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration) or
        (InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration) or
        (InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration))) then begin
+}  
+
+  // Only submit command buffer and wait on fence when map data actually changed
+  if assigned(InFlightFrameData) and
+     ((InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) or
+      (InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration) or
+      (InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration) or
+      (InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration) or
+      (InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration)) then begin
 
    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
     BeginUpdate;
@@ -29603,38 +29613,28 @@ begin
      fData.fVisualMeshVertexBufferUpdateIndex:=(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1;
     end;}
 
-    if assigned(InFlightFrameData) then begin
+    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
+     InFlightFrameData.AcquireOnUpdateQueue(fVulkanUpdateCommandBuffer);
+    end;
 
-     if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-      InFlightFrameData.AcquireOnUpdateQueue(fVulkanUpdateCommandBuffer);
-     end;
+    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
+     fData.TransferTo(fVulkanUpdateCommandBuffer,
+                      InFlightFrameData,
+                      InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration,
+                      InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration,
+                      InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration,
+                      InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration,
+                      InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration
+                     );
+    end;
+    InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
+    InFlightFrameData.fBlendMapGeneration:=fData.fBlendMapGeneration;
+    InFlightFrameData.fGrassMapGeneration:=fData.fGrassMapGeneration;
+    InFlightFrameData.fPrecipitationMapGeneration:=fData.fPrecipitationMapGeneration;
+    InFlightFrameData.fAtmosphereMapGeneration:=fData.fAtmosphereMapGeneration;
 
-     if (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) or
-        (InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration) or
-        (InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration) or
-        (InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration) or
-        (InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration) then begin
-      if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-       fData.TransferTo(fVulkanUpdateCommandBuffer,
-                        InFlightFrameData,
-                        InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration,
-                        InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration,
-                        InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration,
-                        InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration,
-                        InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration
-                       );
-      end;
-      InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
-      InFlightFrameData.fBlendMapGeneration:=fData.fBlendMapGeneration;
-      InFlightFrameData.fGrassMapGeneration:=fData.fGrassMapGeneration;
-      InFlightFrameData.fPrecipitationMapGeneration:=fData.fPrecipitationMapGeneration;
-      InFlightFrameData.fAtmosphereMapGeneration:=fData.fAtmosphereMapGeneration;
-     end;
-
-     if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-      InFlightFrameData.ReleaseOnUpdateQueue(fVulkanUpdateCommandBuffer);
-     end;
-
+    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
+     InFlightFrameData.ReleaseOnUpdateQueue(fVulkanUpdateCommandBuffer);
     end;
 
    finally

@@ -30293,7 +30293,7 @@ var Index,OtherIndex,RotationCounter:TpvSizeInt;
     WeightedRotationFactorSum,
     WeightsFactorSum:TpvDouble;
     Overwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
-    FirstWeights,SkinUsed,Dirty,MatrixDirty,Additive,HasAdditiveRotation:boolean;
+    FirstWeights,{SkinUsed,}Dirty,MatrixDirty,Additive,HasAdditiveRotation,DoCostlyUpdates:boolean;
     OwnVisible,EffectiveVisible:boolean;
     Light:TpvScene3D.TLight;
     InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
@@ -30339,164 +30339,185 @@ var Index,OtherIndex,RotationCounter:TpvSizeInt;
   end;
  end;
 begin
- SkinUsed:=false;
+ //SkinUsed:=false;
  InstanceNode:=fNodes.RawItems[aNodeIndex];
  Node:=fGroup.fNodes[aNodeIndex];
  InstanceNode.fProcessed:=true;
  Dirty:=aDirty;
  MatrixDirty:=aMatrixDirty;
- if (InstanceNode.fCountOverwrites>0) and (Node.Flags<>[]) then begin
-  Dirty:=true;
-  SkinUsed:=true;
-  TranslationSum.Clear;
-  ScaleSum.Clear;
-  WeightedRotationFactorSum:=0.0;
-  WeightsFactorSum:=0.0;
-  FirstWeights:=true;
-  WeightedRotation:=TpvQuaternion.Identity;
-  AdditiveRotation:=TpvQuaternion.Identity;
-  HasAdditiveRotation:=false;
-  RotationCounter:=0;
-  for Index:=0 to InstanceNode.fCountOverwrites-1 do begin
-   Overwrite:=@InstanceNode.fOverwrites[Index];
-   Factor:=Overwrite^.Factor;
-   Additive:=TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive in Overwrite^.Flags;
-   if not IsZero(Factor) then begin
-    if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults in Overwrite^.Flags then begin
-     TranslationSum.Add(Node.fTranslation,Factor,Additive);
-     ScaleSum.Add(Node.fScale,Factor,Additive);
-     AddRotation(Node.fRotation,Factor,Additive);
-     if Node.fWeights.Count>0 then begin
-      if FirstWeights then begin
-       FirstWeights:=false;
-       for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
-        InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
+ DoCostlyUpdates:=false;
+ if aMatrixDirty or
+    (InstanceNode.fCountOverwrites>0) or
+    assigned(fOnNodeMatrixPre) or
+    assigned(fOnNodeMatrixPost) then begin
+  if (InstanceNode.fCountOverwrites>0) and (Node.Flags<>[]) then begin
+   for Index:=0 to InstanceNode.fCountOverwrites-1 do begin
+    if not IsZero(InstanceNode.fOverwrites[Index].Factor) then begin
+     DoCostlyUpdates:=true;
+     break;
+    end;
+   end;
+  end else begin
+   // Fast path: parent matrix unchanged, no overwrites, no callbacks
+   // => reuse cached fWorkMatrix, skip expensive matrix construction
+  end;
+  if DoCostlyUpdates then begin
+   Dirty:=true;
+   TranslationSum.Clear;
+   ScaleSum.Clear;
+   WeightedRotationFactorSum:=0.0;
+   WeightsFactorSum:=0.0;
+   FirstWeights:=true;
+   WeightedRotation:=TpvQuaternion.Identity;
+   AdditiveRotation:=TpvQuaternion.Identity;
+   HasAdditiveRotation:=false;
+   RotationCounter:=0;
+   for Index:=0 to InstanceNode.fCountOverwrites-1 do begin
+    Overwrite:=@InstanceNode.fOverwrites[Index];
+    Factor:=Overwrite^.Factor;
+    Additive:=TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive in Overwrite^.Flags;
+    if not IsZero(Factor) then begin
+     if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults in Overwrite^.Flags then begin
+      TranslationSum.Add(Node.fTranslation,Factor,Additive);
+      ScaleSum.Add(Node.fScale,Factor,Additive);
+      AddRotation(Node.fRotation,Factor,Additive);
+      if Node.fWeights.Count>0 then begin
+       if FirstWeights then begin
+        FirstWeights:=false;
+        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
+         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
+        end;
+        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsAdditiveSum)-1 do begin
+         InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=0.0;
+        end;
        end;
-       for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsAdditiveSum)-1 do begin
-        InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=0.0;
-       end;
-      end;
-      if Additive then begin
-       for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
-        InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
-       end;
-      end else begin
-       for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
-        InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
-       end;
-       WeightsFactorSum:=WeightsFactorSum+Factor;
-      end;
-     end;
-    end else begin
-     if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Translation in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultTranslation in Overwrite^.Flags then begin
-       TranslationSum.Add(Node.fTranslation,Factor,Additive);
-      end else begin
-       TranslationSum.Add(Overwrite^.Translation,Factor,Additive);
-      end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Scale in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultScale in Overwrite^.Flags then begin
-       ScaleSum.Add(Node.fScale,Factor,Additive);
-      end else begin
-       ScaleSum.Add(Overwrite^.Scale,Factor,Additive);
-      end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Rotation in Overwrite^.Flags then begin
-      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultRotation in Overwrite^.Flags then begin
-       AddRotation(Node.fRotation,Factor,Additive);
-      end else begin
-       AddRotation(Overwrite^.Rotation,Factor,Additive);
-      end;
-     end;
-     if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Weights in Overwrite^.Flags then begin
-      if FirstWeights then begin
-       FirstWeights:=false;
-       for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
-        InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
-       end;
-       for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsAdditiveSum)-1 do begin
-        InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=0.0;
-       end;
-      end;
-      if Additive then begin
-       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
+       if Additive then begin
         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
          InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
         end;
        end else begin
-        for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
-         InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
-        end;
-       end;
-      end else begin
-       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
          InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
         end;
+        WeightsFactorSum:=WeightsFactorSum+Factor;
+       end;
+      end;
+     end else begin
+      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Translation in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultTranslation in Overwrite^.Flags then begin
+        TranslationSum.Add(Node.fTranslation,Factor,Additive);
        end else begin
-        for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
-         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
+        TranslationSum.Add(Overwrite^.Translation,Factor,Additive);
+       end;
+      end;
+      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Scale in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultScale in Overwrite^.Flags then begin
+        ScaleSum.Add(Node.fScale,Factor,Additive);
+       end else begin
+        ScaleSum.Add(Overwrite^.Scale,Factor,Additive);
+       end;
+      end;
+      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Rotation in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultRotation in Overwrite^.Flags then begin
+        AddRotation(Node.fRotation,Factor,Additive);
+       end else begin
+        AddRotation(Overwrite^.Rotation,Factor,Additive);
+       end;
+      end;
+      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Weights in Overwrite^.Flags then begin
+       if FirstWeights then begin
+        FirstWeights:=false;
+        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsSum)-1 do begin
+         InstanceNode.fOverwriteWeightsSum[OtherIndex]:=0.0;
+        end;
+        for OtherIndex:=0 to length(InstanceNode.fOverwriteWeightsAdditiveSum)-1 do begin
+         InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=0.0;
         end;
        end;
-       WeightsFactorSum:=WeightsFactorSum+Factor;
+       if Additive then begin
+        if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
+         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
+          InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+         end;
+        end else begin
+         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsAdditiveSum),Node.fWeights.Count)-1 do begin
+          InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]:=InstanceNode.fOverwriteWeightsAdditiveSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
+         end;
+        end;
+       end else begin
+        if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
+         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
+          InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
+         end;
+        end else begin
+         for OtherIndex:=0 to Min(length(InstanceNode.fOverwriteWeightsSum),Node.fWeights.Count)-1 do begin
+          InstanceNode.fOverwriteWeightsSum[OtherIndex]:=InstanceNode.fOverwriteWeightsSum[OtherIndex]+(Overwrite^.Weights[OtherIndex]*Factor);
+         end;
+        end;
+        WeightsFactorSum:=WeightsFactorSum+Factor;
+       end;
       end;
      end;
     end;
    end;
-  end;
-  Translation:=TranslationSum.Get(Node.fTranslation);
-  Scale:=ScaleSum.Get(Node.fScale);
-  if WeightedRotationFactorSum>0.0 then begin
-   WeightedRotation:=WeightedRotation.Normalize;
-  end else begin
-   WeightedRotation:=Node.fRotation;
-  end;
-  if HasAdditiveRotation then begin
-   WeightedRotation:=WeightedRotation*AdditiveRotation;
-  end;
-  if WeightsFactorSum>0.0 then begin
-   Factor:=1.0/WeightsFactorSum;
-   for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
-    InstanceNode.fWorkWeights[Index]:=(InstanceNode.fOverwriteWeightsSum[Index]*Factor)+InstanceNode.fOverwriteWeightsAdditiveSum[Index];
+   Translation:=TranslationSum.Get(Node.fTranslation);
+   Scale:=ScaleSum.Get(Node.fScale);
+   if WeightedRotationFactorSum>0.0 then begin
+    WeightedRotation:=WeightedRotation.Normalize;
+   end else begin
+    WeightedRotation:=Node.fRotation;
    end;
-  end else begin
-   if FirstWeights then begin
+   if HasAdditiveRotation then begin
+    WeightedRotation:=WeightedRotation*AdditiveRotation;
+   end;
+   if WeightsFactorSum>0.0 then begin
+    Factor:=1.0/WeightsFactorSum;
     for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
-     InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
+     InstanceNode.fWorkWeights[Index]:=(InstanceNode.fOverwriteWeightsSum[Index]*Factor)+InstanceNode.fOverwriteWeightsAdditiveSum[Index];
     end;
    end else begin
-    for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
-     InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index]+InstanceNode.fOverwriteWeightsAdditiveSum[Index];
+    if FirstWeights then begin
+     for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+      InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
+     end;
+    end else begin
+     for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+      InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index]+InstanceNode.fOverwriteWeightsAdditiveSum[Index];
+     end;
     end;
    end;
+  end else begin
+   Translation:=Node.fTranslation;
+   Scale:=Node.fScale;
+   WeightedRotation:=Node.fRotation;
+   for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+    InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
+   end;
+  end;
+  Matrix:=TpvMatrix4x4.CreateScale(Scale)*
+          (TpvMatrix4x4.CreateFromQuaternion(WeightedRotation)*
+           TpvMatrix4x4.CreateTranslation(Translation));
+  if assigned(fOnNodeMatrixPre) then begin
+   if fOnNodeMatrixPre(self,Node,InstanceNode,Matrix) then begin
+    Dirty:=true;
+   end;
+  end;
+  Matrix:=Matrix*Node.fMatrix;
+  if assigned(fOnNodeMatrixPost) then begin
+   if fOnNodeMatrixPost(self,Node,InstanceNode,Matrix) then begin
+    Dirty:=true;
+   end;
+  end;
+  Matrix:=Matrix*aMatrix;
+  if InstanceNode.fWorkMatrix.NotEquals(Matrix) then begin
+   MatrixDirty:=true;
+   InstanceNode.fWorkMatrix:=Matrix;
   end;
  end else begin
-  Translation:=Node.fTranslation;
-  Scale:=Node.fScale;
-  WeightedRotation:=Node.fRotation;
+  Matrix:=InstanceNode.fWorkMatrix;
   for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
    InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
   end;
- end;
- Matrix:=TpvMatrix4x4.CreateScale(Scale)*
-         (TpvMatrix4x4.CreateFromQuaternion(WeightedRotation)*
-          TpvMatrix4x4.CreateTranslation(Translation));
- if assigned(fOnNodeMatrixPre) then begin
-  if fOnNodeMatrixPre(self,Node,InstanceNode,Matrix) then begin
-   Dirty:=true;
-  end;
- end;
- Matrix:=Matrix*Node.fMatrix;
- if assigned(fOnNodeMatrixPost) then begin
-  if fOnNodeMatrixPost(self,Node,InstanceNode,Matrix) then begin
-   Dirty:=true;
-  end;
- end;
- Matrix:=Matrix*aMatrix;
- if InstanceNode.fWorkMatrix.NotEquals(Matrix) then begin
-  MatrixDirty:=true;
-  InstanceNode.fWorkMatrix:=Matrix;
  end;
 //InstanceNode.fWorkMatrices[aInFlightFrameIndex]:=Matrix;
  if assigned(Node.fMesh) then begin
