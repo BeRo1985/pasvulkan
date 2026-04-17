@@ -59,6 +59,9 @@ unit PasVulkan.Scene3D.Renderer;
  {$endif}
 {$endif}
 {$m+}
+{$ifdef PasVulkanRangeChecks}
+ {$rangechecks on}
+{$endif}
 
 interface
 

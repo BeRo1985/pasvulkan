@@ -59,7 +59,9 @@ unit PasVulkan.Scene3D.Renderer.Instance;
  {$endif}
 {$endif}
 {$m+}
-{-$rangechecks on}
+{$ifdef PasVulkanRangeChecks}
+ {$rangechecks on}
+{$endif}
 
 {$undef UseSphereBasedCascadedShadowMaps}
 

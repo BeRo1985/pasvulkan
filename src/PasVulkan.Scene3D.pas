@@ -59,7 +59,9 @@ unit PasVulkan.Scene3D;
  {$endif}
 {$endif}
 {$m+}
-{-$rangechecks on}
+{$ifdef PasVulkanRangeChecks}
+ {$rangechecks on}
+{$endif}
 
 {$undef PasVulkanScene3DVirualInstancesInsideDAG}
 
@@ -26944,13 +26946,20 @@ begin
      CurrentDrawInfo.InstanceDataIndex:=0;
      CurrentDrawInfo.MeshObjectID:=MeshObjectID;
      CurrentDrawInfo.Flags:=RenderPassMask;
-     CurrentDrawInfo.NodeMatricesIndex:=fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(Index)+1;
-     CurrentDrawInfo.MeshletDescriptorBase:=fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
-     CurrentDrawInfo.MeshletBoundingSphereBase:=fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
+     if fHeadless or fVirtual then begin
+      CurrentDrawInfo.NodeMatricesIndex:=0;
+      CurrentDrawInfo.MeshletDescriptorBase:=TpvUInt32($ffffffff);
+      CurrentDrawInfo.MeshletBoundingSphereBase:=TpvUInt32($ffffffff);
+      CurrentDrawInfo.MeshletVisibilityBase:=TpvUInt32($ffffffff);
+     end else begin
+      CurrentDrawInfo.NodeMatricesIndex:=TpvUInt32(fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(Index)+1);
+      CurrentDrawInfo.MeshletDescriptorBase:=TpvUInt32(fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset);
+      CurrentDrawInfo.MeshletBoundingSphereBase:=TpvUInt32(fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset);
+      CurrentDrawInfo.MeshletVisibilityBase:=TpvUInt32(fBufferRanges.VulkanMeshletVisibilityBufferRange.Offset);
+     end;
 {$ifdef MeshShaderDebug}
      WriteLn('[DBG-SPHERE] NonRI DrawInfo MeshObjID=',MeshObjectID,' SphereBase=',CurrentDrawInfo.MeshletBoundingSphereBase,' AllocOffset=',fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset);
 {$endif}
-     CurrentDrawInfo.MeshletVisibilityBase:=fBufferRanges.VulkanMeshletVisibilityBufferRange.Offset;
      fSceneInstance.AddDrawInfo(MeshObjectID,CurrentDrawInfo);
     end;
    end;
