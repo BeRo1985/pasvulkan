@@ -7363,6 +7363,10 @@ var Index:TpvSizeInt;
     ViewMatrix:TpvMatrix4x4;
 begin
 
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
  InFlightFrameState^.SceneWorldSpaceBoundingBox:=fScene3D.InFlightFrameBoundingBoxes[aInFlightFrameIndex];
@@ -7471,6 +7475,10 @@ var CascadeIndex:TpvSizeInt;
     s:TpvScalar;
 begin
 
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
  fGlobalIlluminationRadianceHintsCascadedVolumes.Update(aInFlightFrameIndex);
@@ -7564,6 +7572,10 @@ end;
 procedure TpvScene3DRendererInstance.UploadGlobalIlluminationCascadedRadianceHints(const aInFlightFrameIndex:TpvInt32);
 begin
 
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+
 {if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then}begin
   Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
                                              fScene3D.VulkanStagingCommandBuffer,
@@ -7599,6 +7611,10 @@ var CascadeIndex:TpvSizeInt;
     DataOffset:TpvUInt32;
     AABB:TpvAABB;
 begin
+
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
@@ -7735,6 +7751,10 @@ var Index:TpvSizeInt;
     zNear,zFar:TpvScalar;
 begin
 
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
 //CameraPositon:=-fViews.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.Translation.xyz;
@@ -7834,6 +7854,10 @@ var Index:TpvSizeInt;
     TopDownViewProjectionMatrix:TpvMatrix4x4;
 begin
 
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
  BoundingBox:=fScene3D.InFlightFrameBoundingBoxes[aInFlightFrameIndex];
@@ -7920,6 +7944,10 @@ var Index:TpvSizeInt;
     LightProjectionMatrix,
     LightViewProjectionMatrix:TpvMatrix4x4;
 begin
+
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
@@ -8023,6 +8051,10 @@ var Index:TpvSizeInt;
     Atmosphere:TpvScene3DAtmosphere;
     OK:boolean;
 begin
+
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
@@ -8250,7 +8282,11 @@ end;
 
 function TpvScene3DRendererInstance.NeedsDrawDataRebuild(const aInFlightFrameIndex:TpvSizeInt):boolean;
 begin
- result:=fCachedDrawDataGeneration[aInFlightFrameIndex]<>fSnapshotDrawDataGeneration[aInFlightFrameIndex];
+ if aInFlightFrameIndex<0 then begin
+  result:=false;
+ end else begin
+  result:=fCachedDrawDataGeneration[aInFlightFrameIndex]<>fSnapshotDrawDataGeneration[aInFlightFrameIndex];
+ end;
 end;
 
 procedure TpvScene3DRendererInstance.PrepareDraw(const aInFlightFrameIndex:TpvSizeInt;
@@ -8284,6 +8320,10 @@ var DrawChoreographyBatchItemIndex,DrawChoreographyBatchRangeIndex,InstanceIndex
     DebugFile2Open:boolean;
 {$endif}
 begin
+
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
 
  fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPass]:=aGPUCulling;
 
@@ -8563,6 +8603,10 @@ var DrawChoreographyBatchRangeIndex,PerInFlightFrameBufferIndex:TpvSizeInt;
     MaxOutputCommands:TpvSizeInt;
     Time:TpvDouble;
 begin
+
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
 
  if fScene3D.UsePerInFlightFrameResources then begin
   PerInFlightFrameBufferIndex:=aInFlightFrameIndex;
@@ -8983,6 +9027,10 @@ var Index:TpvSizeInt;
     FieldOfView:TpvFloat;
 begin
 
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+
  fPerInFlightFrameColorGradingSettings[aInFlightFrameIndex]:=fColorGradingSettings;
 
  fCameraPresets[aInFlightFrameIndex].Assign(fCameraPreset);
@@ -9313,6 +9361,10 @@ var PreviousInFlightFrameIndex,NextInFlightFrameIndex,Index,CountViews,Count,
     MeshletVisibilityAllocCapacity:TpvSizeInt;
     MeshletVisibilityPartSize:TpvInt64;
 begin
+
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
 
  PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
  if PreviousInFlightFrameIndex<0 then begin
@@ -10028,6 +10080,10 @@ var AtmosphereIndex:TpvSizeInt;
     Atmosphere:TpvScene3DAtmosphere;
 begin
 
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+
  TpvScene3DAtmospheres(fScene3D.Atmospheres).Lock.AcquireRead;
  try
 
@@ -10058,6 +10114,11 @@ var PerInFlightFrameIndex:TpvSizeInt;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     InitData:array[0..3] of TpvUInt32;
 begin
+
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+
  if (not fDebugDrawMeshletBoundingSpheres) or
     (not Renderer.Scene3D.MeshShaderSupport) or
     (not assigned(fDebugMeshletSphereComputePipeline)) then begin
@@ -10169,6 +10230,10 @@ const MinDeltaTime=1.0/480.0; // 480 Hz
 var t:TpvDouble;
     CameraPreset:TpvScene3DRendererCameraPreset;
 begin
+
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
 
  CameraPreset:=CameraPresets[aInFlightFrameIndex];
 
@@ -10292,6 +10357,10 @@ procedure TpvScene3DRendererInstance.DrawSpaceLines(const aRendererInstance:TObj
 const Offsets:TVkDeviceSize=0;
 begin
 
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+
  if (aViewBaseIndex>=0) and (aCountViews>0) and (fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].Count>0) then begin
 
 //fScene3D.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRendererInstance,aRenderPass,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
@@ -10349,6 +10418,10 @@ procedure TpvScene3DRendererInstance.DrawSolidPrimitives(const aRendererInstance
                                                          const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
 const Offsets:TVkDeviceSize=0;
 begin
+
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
 
  if (aViewBaseIndex>=0) and (aCountViews>0) and (fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].Count>0) then begin
 
