@@ -2913,13 +2913,17 @@ var Size:TVkSize;
     CountSolidPrimitives,PerInFlightFrameBufferIndex:TpvSizeInt;
 begin
 
- CountSolidPrimitives:=Min(TVkSize(fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].Count),TVkSize(MaxSolidPrimitives));
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
 
  if fScene3D.UsePerInFlightFrameResources then begin
   PerInFlightFrameBufferIndex:=aInFlightFrameIndex;
  end else begin
   PerInFlightFrameBufferIndex:=0;
  end;
+
+ CountSolidPrimitives:=Min(TVkSize(fSolidPrimitivePrimitiveDynamicArrays[PerInFlightFrameBufferIndex].Count),TVkSize(MaxSolidPrimitives));
 
  Size:=CountSolidPrimitives*SizeOf(TSolidPrimitivePrimitive);
  if fSolidPrimitivePrimitiveBuffers[PerInFlightFrameBufferIndex].Size<Size then begin
@@ -2941,7 +2945,7 @@ begin
                                                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                        0,
                                                                                        0,
-                                                                                       'fSolidPrimitivePrimitiveBuffers['+IntToStr(aInFlightFrameIndex)+']');
+                                                                                       'fSolidPrimitivePrimitiveBuffers['+IntToStr(PerInFlightFrameBufferIndex)+']');
 
  end;
 
@@ -3005,7 +3009,9 @@ var Size:TVkSize;
     CountSpaceLines,PerInFlightFrameBufferIndex:TpvSizeInt;
 begin
 
- CountSpaceLines:=Min(TVkSize(fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].Count),TVkSize(MaxSpaceLines));
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
 
  if fScene3D.UsePerInFlightFrameResources then begin
   PerInFlightFrameBufferIndex:=aInFlightFrameIndex;
@@ -3013,27 +3019,29 @@ begin
   PerInFlightFrameBufferIndex:=0;
  end;
 
+ CountSpaceLines:=Min(TVkSize(fSpaceLinesPrimitiveDynamicArrays[PerInFlightFrameBufferIndex].Count),TVkSize(MaxSpaceLines));
+
  Size:=CountSpaceLines*SizeOf(TSpaceLinesPrimitive);
- if fSpaceLinesPrimitiveBuffers[aInFlightFrameIndex].Size<Size then begin
+ if fSpaceLinesPrimitiveBuffers[PerInFlightFrameBufferIndex].Size<Size then begin
   Size:=(CountSpaceLines+((CountSpaceLines+1) shr 1))*SizeOf(TSpaceLinesPrimitive);
-  fScene3D.AddToFreeQueue(fSpaceLinesPrimitiveBuffers[aInFlightFrameIndex]); // Free old buffer delayed due to possible usage in the current moment
-  fSpaceLinesPrimitiveBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                           Size,
-                                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                           [],
-                                                                           0,
-                                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                           0,
-                                                                           0,
-                                                                           0,
-                                                                           0,
-                                                                           0,
-                                                                           0,
-                                                                           [TpvVulkanBufferFlag.PersistentMappedIfPossible],
-                                                                           0,
-                                                                           0,
-                                                                           'fSpaceLinePrimitiveBuffers['+IntToStr(aInFlightFrameIndex)+']');
+  fScene3D.AddToFreeQueue(fSpaceLinesPrimitiveBuffers[PerInFlightFrameBufferIndex]); // Free old buffer delayed due to possible usage in the current moment
+  fSpaceLinesPrimitiveBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                   Size,
+                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                   [],
+                                                                                   0,
+                                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                   0,
+                                                                                   0,
+                                                                                   0,
+                                                                                   0,
+                                                                                   0,
+                                                                                   0,
+                                                                                   [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                                   0,
+                                                                                   0,
+                                                                                   'fSpaceLinePrimitiveBuffers['+IntToStr(PerInFlightFrameBufferIndex)+']');
 
  end;
 
@@ -7004,13 +7012,24 @@ end;
 
 procedure TpvScene3DRendererInstance.ClearSpaceLines(const aInFlightFrameIndex:TpvSizeInt);
 begin
- fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+ if fScene3D.UsePerInFlightFrameResources then begin
+  fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
+ end else begin
+  fSpaceLinesPrimitiveDynamicArrays[0].ClearNoFree;
+ end;
 end;
 
 function TpvScene3DRendererInstance.AddSpaceLine(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aZMin:TpvScalar=0.0;const aZMax:TpvScalar=Infinity):Boolean;
 var Primitive:PSpaceLinesPrimitive;
     PrimitiveItems:TSpaceLinesPrimitiveDynamicArray;
 begin
+ if aInFlightFrameIndex<0 then begin
+  result:=false;
+  exit;
+ end;
  PrimitiveItems:=fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex];
  if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSpaceLines) then begin
   Primitive:=pointer(PrimitiveItems.AddNew);
@@ -7029,13 +7048,24 @@ end;
 
 procedure TpvScene3DRendererInstance.ClearSolid(const aInFlightFrameIndex:TpvSizeInt);
 begin
- fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+ if fScene3D.UsePerInFlightFrameResources then begin
+  fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
+ end else begin
+  fSolidPrimitivePrimitiveDynamicArrays[0].ClearNoFree;
+ end;
 end;
 
 function TpvScene3DRendererInstance.AddSolidPoint2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2;const aLineWidth:TpvScalar):Boolean;
 var Primitive:PSolidPrimitivePrimitive;
     PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
 begin
+ if aInFlightFrameIndex<0 then begin
+  result:=false;
+  exit;
+ end;
  PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
  if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
   Primitive:=pointer(PrimitiveItems.AddNew);
@@ -7062,6 +7092,10 @@ function TpvScene3DRendererInstance.AddSolidLine2D(const aInFlightFrameIndex:Tpv
 var Primitive:PSolidPrimitivePrimitive;
     PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
 begin
+ if aInFlightFrameIndex<0 then begin
+  result:=false;
+  exit;
+ end;
  PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
  if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
   Primitive:=pointer(PrimitiveItems.AddNew);
@@ -7083,6 +7117,10 @@ function TpvScene3DRendererInstance.AddSolidTriangle2D(const aInFlightFrameIndex
 var Primitive:PSolidPrimitivePrimitive;
     PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
 begin
+ if aInFlightFrameIndex<0 then begin
+  result:=false;
+  exit;
+ end;
  PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
  if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
   Primitive:=pointer(PrimitiveItems.AddNew);
@@ -7110,6 +7148,10 @@ function TpvScene3DRendererInstance.AddSolidQuad2D(const aInFlightFrameIndex:Tpv
 var Primitive:PSolidPrimitivePrimitive;
     PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
 begin
+ if aInFlightFrameIndex<0 then begin
+  result:=false;
+  exit;
+ end;
  PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
  if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
   Primitive:=pointer(PrimitiveItems.AddNew);
@@ -7139,6 +7181,10 @@ function TpvScene3DRendererInstance.AddSolidPoint3D(const aInFlightFrameIndex:Tp
 var Primitive:PSolidPrimitivePrimitive;
     PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
 begin
+ if aInFlightFrameIndex<0 then begin
+  result:=false;
+  exit;
+ end;
  PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
  if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
   Primitive:=pointer(PrimitiveItems.AddNew);
@@ -7165,6 +7211,10 @@ function TpvScene3DRendererInstance.AddSolidLine3D(const aInFlightFrameIndex:Tpv
 var Primitive:PSolidPrimitivePrimitive;
     PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
 begin
+ if aInFlightFrameIndex<0 then begin
+  result:=false;
+  exit;
+ end;
  PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
  if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
   Primitive:=pointer(PrimitiveItems.AddNew);
@@ -7186,6 +7236,10 @@ function TpvScene3DRendererInstance.AddSolidTriangle3D(const aInFlightFrameIndex
 var Primitive:PSolidPrimitivePrimitive;
     PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
 begin
+ if aInFlightFrameIndex<0 then begin
+  result:=false;
+  exit;
+ end;
  PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
  if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
   Primitive:=pointer(PrimitiveItems.AddNew);
@@ -7213,6 +7267,10 @@ function TpvScene3DRendererInstance.AddSolidQuad3D(const aInFlightFrameIndex:Tpv
 var Primitive:PSolidPrimitivePrimitive;
     PrimitiveItems:TSolidPrimitivePrimitiveDynamicArray;
 begin
+ if aInFlightFrameIndex<0 then begin
+  result:=false;
+  exit;
+ end;
  PrimitiveItems:=fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex];
  if assigned(PrimitiveItems) and (PrimitiveItems.Count<MaxSolidPrimitives) then begin
   Primitive:=pointer(PrimitiveItems.AddNew);
