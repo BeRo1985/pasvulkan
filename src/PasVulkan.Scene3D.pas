@@ -41401,40 +41401,49 @@ var Index:TpvSizeInt;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     DrawChoreographyBatchItems:TDrawChoreographyBatchItems;
     Planet:TpvScene3DPlanet;
+    NeedDrawDataRebuild:boolean;
     a,b:TpvHighResolutionTime;
 begin
 
- for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
-  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
-   for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to high(TpvScene3D.TFaceCullingMode) do begin
-    TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPass,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode].ClearNoFree;
+ NeedDrawDataRebuild:=TpvScene3DRendererInstance(aRendererInstance).NeedsDrawDataRebuild(aInFlightFrameIndex);
+
+ if NeedDrawDataRebuild then begin
+  for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
+   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
+    for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to high(TpvScene3D.TFaceCullingMode) do begin
+     TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPass,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode].ClearNoFree;
+    end;
    end;
   end;
  end;
 
  if (aViewBaseIndex>=0) and (aCountViews>0) then begin
 
-  // a:=pvApplication.HighResolutionTimer.GetTime;
+  if NeedDrawDataRebuild then begin
 
-  // GPU-driven: always flat iteration, no CPU-side CullAndPrepareGroupInstances
-  for Group in fGroups do begin
-   if Group.Usable and not Group.fHeadless then begin
-    for GroupInstance in Group.fInstances do begin
-     GroupInstance.Prepare(aInFlightFrameIndex,
-                           aRendererInstance,
-                           aRenderPass,
-                           aViewBaseIndex,
-                           aCountViews,
-                           nil,
-                           aMaterialAlphaModes,
-                           TpvUInt32($ffffffff),
-                           aShadowPass);
+   // a:=pvApplication.HighResolutionTimer.GetTime;
+
+   // GPU-driven: always flat iteration, no CPU-side CullAndPrepareGroupInstances
+   for Group in fGroups do begin
+    if Group.Usable and not Group.fHeadless then begin
+     for GroupInstance in Group.fInstances do begin
+      GroupInstance.Prepare(aInFlightFrameIndex,
+                            aRendererInstance,
+                            aRenderPass,
+                            aViewBaseIndex,
+                            aCountViews,
+                            nil,
+                            aMaterialAlphaModes,
+                            TpvUInt32($ffffffff),
+                            aShadowPass);
+     end;
     end;
    end;
-  end;
 
-{ b:=pvApplication.HighResolutionTimer.GetTime;
-  writeln('a: ',pvApplication.HighResolutionTimer.ToFloatSeconds(b-a)*1000.0:10:8,'ms');}
+  { b:=pvApplication.HighResolutionTimer.GetTime;
+   writeln('a: ',pvApplication.HighResolutionTimer.ToFloatSeconds(b-a)*1000.0:10:8,'ms');}
+
+  end;
 
   TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try
@@ -41450,12 +41459,14 @@ begin
 
  end;
 
- for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
-  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
-   for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to high(TpvScene3D.TFaceCullingMode) do begin
-    DrawChoreographyBatchItems:=TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPass,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode];
-    if DrawChoreographyBatchItems.Count>1 then begin
-     DrawChoreographyBatchItems.IndexOrderSort;
+ if NeedDrawDataRebuild then begin
+  for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
+   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
+    for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to high(TpvScene3D.TFaceCullingMode) do begin
+     DrawChoreographyBatchItems:=TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPass,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode];
+     if DrawChoreographyBatchItems.Count>1 then begin
+      DrawChoreographyBatchItems.IndexOrderSort;
+     end;
     end;
    end;
   end;
