@@ -22274,6 +22274,14 @@ begin
    SwapChainCreateInfo.flags:=SwapChainCreateInfo.flags or TVkSwapchainCreateFlagsKHR(VK_SWAPCHAIN_CREATE_PRESENT_TIMING_BIT_EXT);
   end;
 
+  // Enable present id2/wait2 on swapchain when the extensions are active
+  if fDevice.PresentId2Support then begin
+   SwapChainCreateInfo.flags:=SwapChainCreateInfo.flags or TVkSwapchainCreateFlagsKHR(VK_SWAPCHAIN_CREATE_PRESENT_ID_2_BIT_KHR);
+  end;
+  if fDevice.PresentWait2Support then begin
+   SwapChainCreateInfo.flags:=SwapChainCreateInfo.flags or TVkSwapchainCreateFlagsKHR(VK_SWAPCHAIN_CREATE_PRESENT_WAIT_2_BIT_KHR);
+  end;
+
 {$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
   VulkanDebugLn('Creating swap chain...');
 {$ifend}
