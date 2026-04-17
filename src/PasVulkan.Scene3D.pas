@@ -3277,6 +3277,7 @@ type EpvScene3D=class(Exception);
                                  TRenderInstanceDataIndices=array[-1..MaxInFlightFrames-1] of TpvUInt32;
                                  TRenderInstanceGenerations=array[-1..MaxInFlightFrames-1] of TpvUInt64;
                                  TRenderInstanceActives=array[-1..MaxInFlightFrames-1] of Boolean;
+                                 TRenderInstanceLastModelMatrices=array[0..MaxInFlightFrames-1] of TpvMatrix4x4D;
                            private
                             fInstance:TpvScene3D.TGroup.TInstance;
                             fSceneInstance:TpvScene3D;
@@ -3302,6 +3303,7 @@ type EpvScene3D=class(Exception);
                             fGenerations:TRenderInstanceGenerations;
                             fDrawInfoGenerations:TRenderInstanceGenerations;
                             fActiveRenderPassesGenerations:TRenderInstanceGenerations;
+                            fLastModelMatrices:TRenderInstanceLastModelMatrices;
                             fAssignedVirtualInstance:TInstance;
                             fAssignedVirtualInstanceRenderInstance:TRenderInstance;
                             fTag:TpvUInt64;
@@ -26052,6 +26054,7 @@ begin
   fDrawInfoGenerations[Index]:=High(TpvUInt64);
   fActiveRenderPassesGenerations[Index]:=High(TpvUInt64);
  end;
+ FillChar(fLastModelMatrices,SizeOf(TRenderInstanceLastModelMatrices),#0);
 
  fGeneration:=0;
 
@@ -30892,6 +30895,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UpdateRenderInstances(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+{$define UseSphereTransformedBoundingSphereForRenderInstanceCulling}
 var Index,PerInFlightFrameRenderInstanceIndex,MeshNodeArrayIndex,NodeIndex:TpvSizeInt;
     First:Boolean;
     TemporaryBoundingBox:TpvAABB;
@@ -30900,6 +30904,11 @@ var Index,PerInFlightFrameRenderInstanceIndex,MeshNodeArrayIndex,NodeIndex:TpvSi
     MeshObjectID:TpvUInt32;
     CurrentMatrixPair:PGPUMatrixPair;
     CurrentDrawInfo:PGPUDrawInfo;
+{$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}    
+    SphereCenterLocal,TransformedSphereCenter:TpvVector3;
+    SphereRadiusLocal,Col0LenSq,Col1LenSq,Col2LenSq,TransformedSphereRadius:TpvScalar;
+    SingleMatrix:TpvMatrix4x4;
+{$endif}
 {$ifdef UpdateProfilingTimes}
     StartCPUTime,EndCPUTime:TpvHighResolutionTime;
 {$endif}
@@ -30911,6 +30920,10 @@ begin
   fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
   if fUseRenderInstances then begin
    TemporaryBoundingBox:=fBoundingBox;
+{$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}
+   SphereCenterLocal:=(TemporaryBoundingBox.Min+TemporaryBoundingBox.Max)*0.5;
+   SphereRadiusLocal:=TemporaryBoundingBox.Min.DistanceTo(TemporaryBoundingBox.Max)*0.5;
+{$endif}
    First:=true;
    if fRenderInstances.Count>0 then begin
     TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
@@ -30918,72 +30931,115 @@ begin
      for Index:=0 to fRenderInstances.Count-1 do begin
       RenderInstance:=fRenderInstances[Index];
       if RenderInstance.fWorkActive then begin
-       TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
-       RenderInstance.fWorkActives[aInFlightFrameIndex]:=true;
-       RenderInstance.fWorkModelMatrix:=fSceneInstance.TransformOrigin(RenderInstance.fModelMatrix,aInFlightFrameIndex,false);
-       RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
-       RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
-       RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
-       RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
-       if First then begin
-        First:=false;
-        fBoundingBox:=RenderInstance.fBoundingBox;
-       end else begin
-        fBoundingBox.DirectCombine(RenderInstance.fBoundingBox);
-       end;
-       PerInFlightFrameRenderInstanceIndex:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNewIndex;
-       PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
-       PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
-       PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
-       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fWorkModelMatrix;
-       if RenderInstance.fFirst then begin
-        RenderInstance.fFirst:=false;
-        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
-        RenderInstance.fGeneration:=0;
-       end else begin
-        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
-        // Increment generation if ModelMatrix, InstanceDataIndex or fActiveRenderPasses changed
-        if (RenderInstance.fWorkModelMatrix<>RenderInstance.fPreviousModelMatrix) or
-           (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) then begin
-         inc(RenderInstance.fGeneration);
+       // Per-RI skip check: if nothing changed for this IFF, skip expensive processing
+       if (not fSceneInstance.fUpdatedOriginTransform) and
+          (not RenderInstance.fFirst) and
+          ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0) and
+          (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]=RenderInstance.fInstanceDataIndex) and
+          CompareMem(@RenderInstance.fLastModelMatrices[aInFlightFrameIndex],@RenderInstance.fModelMatrix,SizeOf(TpvMatrix4x4D)) and
+          (RenderInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]=RenderInstance.fInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]) then begin
+        // Fast path: reuse existing data for this IFF
+        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
+        RenderInstance.fWorkActives[aInFlightFrameIndex]:=true;
+        if First then begin
+         First:=false;
+         fBoundingBox:=RenderInstance.fBoundingBox;
+        end else begin
+         fBoundingBox.DirectCombine(RenderInstance.fBoundingBox);
         end;
-       end;
-       RenderInstance.fGenerations[aInFlightFrameIndex]:=RenderInstance.fGeneration;
-       PerInFlightFrameRenderInstance^.Generation:=RenderInstance.fGenerations[aInFlightFrameIndex];
-       PerInFlightFrameRenderInstance^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
-       RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
-       RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
-       RenderInstance.UpdateLights(aInFlightFrameIndex);
-       if (RenderInstance.fDrawInfoGenerations[aInFlightFrameIndex]<>RenderInstance.fGenerations[aInFlightFrameIndex]) or
-          (RenderInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]<>RenderInstance.fInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]) then begin
-        RenderInstance.fDrawInfoGenerations[aInFlightFrameIndex]:=RenderInstance.fGenerations[aInFlightFrameIndex];
-        RenderInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]:=RenderInstance.fInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex];
-        // Write matrices to MatrixPairBuffer (once per RI, not per node)
-        CurrentMatrixPair:=fSceneInstance.GetMatrixPairInfo(RenderInstance.fMatrixID,true);
-        CurrentMatrixPair^.ModelMatrix:=PerInFlightFrameRenderInstance^.ModelMatrix;
-        CurrentMatrixPair^.PreviousModelMatrix:=PerInFlightFrameRenderInstance^.PreviousModelMatrix;
-        for MeshNodeArrayIndex:=0 to length(fGroup.fMeshNodeIndices)-1 do begin
-         NodeIndex:=fGroup.fMeshNodeIndices[MeshNodeArrayIndex];
-         MeshObjectID:=RenderInstance.fNodeMeshObjectIDs[NodeIndex];
-         if MeshObjectID>0 then begin
-          CurrentDrawInfo:=fSceneInstance.AcquireDrawInfo(MeshObjectID,true);
-          try
-           CurrentDrawInfo^.MatrixID:=RenderInstance.fMatrixID;
-           CurrentDrawInfo^.InstanceDataIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
-           CurrentDrawInfo^.MeshObjectID:=MeshObjectID;
-           CurrentDrawInfo^.Flags:=pvScene3DRendererRenderPassesToMask(fActiveRenderPasses*RenderInstance.fInstance.fNodes.RawItems[NodeIndex].fActiveRenderPasses);
-           CurrentDrawInfo^.NodeMatricesIndex:=RenderInstance.fInstance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(NodeIndex)+1;
-           CurrentDrawInfo^.MeshletDescriptorBase:=RenderInstance.fInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
-           CurrentDrawInfo^.MeshletBoundingSphereBase:=RenderInstance.fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
+        PerInFlightFrameRenderInstanceIndex:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNewIndex;
+        PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
+        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
+        PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
+        PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrices[aInFlightFrameIndex];
+        PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fModelMatrices[aInFlightFrameIndex];
+        PerInFlightFrameRenderInstance^.Generation:=RenderInstance.fGenerations[aInFlightFrameIndex];
+        PerInFlightFrameRenderInstance^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
+        RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+       end else begin
+        // Full processing path
+        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
+        RenderInstance.fWorkActives[aInFlightFrameIndex]:=true;
+        RenderInstance.fWorkModelMatrix:=fSceneInstance.TransformOrigin(RenderInstance.fModelMatrix,aInFlightFrameIndex,false);
+{$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}    
+        SingleMatrix:=RenderInstance.fWorkModelMatrix;
+        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=SingleMatrix;
+        RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+        // Sphere-based bounding volume computation
+        TransformedSphereCenter:=SingleMatrix.MulHomogen(SphereCenterLocal);
+        Col0LenSq:=sqr(SingleMatrix.RawComponents[0,0])+sqr(SingleMatrix.RawComponents[0,1])+sqr(SingleMatrix.RawComponents[0,2]);
+        Col1LenSq:=sqr(SingleMatrix.RawComponents[1,0])+sqr(SingleMatrix.RawComponents[1,1])+sqr(SingleMatrix.RawComponents[1,2]);
+        Col2LenSq:=sqr(SingleMatrix.RawComponents[2,0])+sqr(SingleMatrix.RawComponents[2,1])+sqr(SingleMatrix.RawComponents[2,2]);
+        TransformedSphereRadius:=SphereRadiusLocal*sqrt(Max(Max(Col0LenSq,Col1LenSq),Col2LenSq));
+        RenderInstance.fBoundingSphere:=TpvSphere.Create(TransformedSphereCenter,TransformedSphereRadius);
+        RenderInstance.fBoundingBox:=RenderInstance.fBoundingSphere.ToAABB;
+{$else}
+        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
+        RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+        RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
+        RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
+{$endif}        
+        if First then begin
+         First:=false;
+         fBoundingBox:=RenderInstance.fBoundingBox;
+        end else begin
+         fBoundingBox.DirectCombine(RenderInstance.fBoundingBox);
+        end;
+        PerInFlightFrameRenderInstanceIndex:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNewIndex;
+        PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
+        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
+        PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
+        PerInFlightFrameRenderInstance^.ModelMatrix:={$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}SingleMatrix{$else}RenderInstance.fWorkModelMatrix{$endif};
+        if RenderInstance.fFirst then begin
+         RenderInstance.fFirst:=false;
+         PerInFlightFrameRenderInstance^.PreviousModelMatrix:={$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}SingleMatrix{$else}RenderInstance.fWorkModelMatrix{$endif};
+         RenderInstance.fGeneration:=0;
+        end else begin
+         PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
+         // Increment generation if ModelMatrix, InstanceDataIndex or fActiveRenderPasses changed
+         if (RenderInstance.fWorkModelMatrix<>RenderInstance.fPreviousModelMatrix) or
+            (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) then begin
+          inc(RenderInstance.fGeneration);
+         end;
+        end;
+        RenderInstance.fGenerations[aInFlightFrameIndex]:=RenderInstance.fGeneration;
+        PerInFlightFrameRenderInstance^.Generation:=RenderInstance.fGenerations[aInFlightFrameIndex];
+        PerInFlightFrameRenderInstance^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
+        RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+        RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
+        RenderInstance.UpdateLights(aInFlightFrameIndex);
+        if (RenderInstance.fDrawInfoGenerations[aInFlightFrameIndex]<>RenderInstance.fGenerations[aInFlightFrameIndex]) or
+           (RenderInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]<>RenderInstance.fInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]) then begin
+         RenderInstance.fDrawInfoGenerations[aInFlightFrameIndex]:=RenderInstance.fGenerations[aInFlightFrameIndex];
+         RenderInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]:=RenderInstance.fInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex];
+         // Write matrices to MatrixPairBuffer (once per RI, not per node)
+         CurrentMatrixPair:=fSceneInstance.GetMatrixPairInfo(RenderInstance.fMatrixID,true);
+         CurrentMatrixPair^.ModelMatrix:=PerInFlightFrameRenderInstance^.ModelMatrix;
+         CurrentMatrixPair^.PreviousModelMatrix:=PerInFlightFrameRenderInstance^.PreviousModelMatrix;
+         for MeshNodeArrayIndex:=0 to length(fGroup.fMeshNodeIndices)-1 do begin
+          NodeIndex:=fGroup.fMeshNodeIndices[MeshNodeArrayIndex];
+          MeshObjectID:=RenderInstance.fNodeMeshObjectIDs[NodeIndex];
+          if MeshObjectID>0 then begin
+           CurrentDrawInfo:=fSceneInstance.AcquireDrawInfo(MeshObjectID,true);
+           try
+            CurrentDrawInfo^.MatrixID:=RenderInstance.fMatrixID;
+            CurrentDrawInfo^.InstanceDataIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
+            CurrentDrawInfo^.MeshObjectID:=MeshObjectID;
+            CurrentDrawInfo^.Flags:=pvScene3DRendererRenderPassesToMask(fActiveRenderPasses*RenderInstance.fInstance.fNodes.RawItems[NodeIndex].fActiveRenderPasses);
+            CurrentDrawInfo^.NodeMatricesIndex:=RenderInstance.fInstance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(NodeIndex)+1;
+            CurrentDrawInfo^.MeshletDescriptorBase:=RenderInstance.fInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
+            CurrentDrawInfo^.MeshletBoundingSphereBase:=RenderInstance.fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
 {$ifdef MeshShaderDebug}
-           WriteLn('[DBG-SPHERE] RI DrawInfo MeshObjID=',MeshObjectID,' SphereBase=',CurrentDrawInfo^.MeshletBoundingSphereBase,' AllocOffset=',RenderInstance.fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset,' MatrixID=',RenderInstance.fMatrixID);
+            WriteLn('[DBG-SPHERE] RI DrawInfo MeshObjID=',MeshObjectID,' SphereBase=',CurrentDrawInfo^.MeshletBoundingSphereBase,' AllocOffset=',RenderInstance.fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset,' MatrixID=',RenderInstance.fMatrixID);
 {$endif}
-           CurrentDrawInfo^.MeshletVisibilityBase:=RenderInstance.fMeshletVisibilityBufferRange.Offset;
-          finally
-           fSceneInstance.ReleaseDrawInfo(MeshObjectID,true);
+            CurrentDrawInfo^.MeshletVisibilityBase:=RenderInstance.fMeshletVisibilityBufferRange.Offset;
+           finally
+            fSceneInstance.ReleaseDrawInfo(MeshObjectID,true);
+           end;
           end;
          end;
         end;
+        RenderInstance.fLastModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
        end;
       end else begin
        RenderInstance.fWorkActives[aInFlightFrameIndex]:=false;
@@ -31492,7 +31548,7 @@ begin
        ((RenderInstance.fWorkActive and
         (((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) or
          (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) or
-         (RenderInstance.fModelMatrices[aInFlightFrameIndex]<>RenderInstance.fModelMatrix))) or
+          (not CompareMem(@RenderInstance.fLastModelMatrices[aInFlightFrameIndex],@RenderInstance.fModelMatrix,SizeOf(TpvMatrix4x4D))))) or
         ((not RenderInstance.fWorkActive) and
          ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0))) then begin
      RenderInstanceDirty:=true;
@@ -31528,6 +31584,7 @@ begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrices[PreviousInFlightFrameIndex];
        RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+        RenderInstance.fLastModelMatrices[aInFlightFrameIndex]:=RenderInstance.fLastModelMatrices[PreviousInFlightFrameIndex];
        PerInFlightFrameRenderInstance:=pointer(fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNew);
        PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
        PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
@@ -31895,7 +31952,7 @@ begin
         ((RenderInstance.fWorkActive and
          (((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) or
           (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) or
-          (RenderInstance.fModelMatrices[aInFlightFrameIndex]<>RenderInstance.fModelMatrix))) or
+           (not CompareMem(@RenderInstance.fLastModelMatrices[aInFlightFrameIndex],@RenderInstance.fModelMatrix,SizeOf(TpvMatrix4x4D))))) or
          ((not RenderInstance.fWorkActive) and
           ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0))) then begin
       RenderInstanceDirty:=true;
@@ -31966,6 +32023,7 @@ begin
         TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
         RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrices[PreviousInFlightFrameIndex];
         RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+         RenderInstance.fLastModelMatrices[aInFlightFrameIndex]:=RenderInstance.fLastModelMatrices[PreviousInFlightFrameIndex];
         PerInFlightFrameRenderInstance:=pointer(fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNew);
         PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
         PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
