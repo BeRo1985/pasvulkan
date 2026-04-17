@@ -594,7 +594,7 @@ begin
      PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 3); // FLAG_MESHLET_CULLING_ENABLED
     end;
 
-    PushConstants.MaxOutputCommands:=Max(fInstance.MeshShaderOutputBufferSizes[aInFlightFrameIndex],fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]);
+    PushConstants.MaxOutputCommands:=fInstance.GPUDrawIndexedIndirectCommandOutputBufferSizes[aInFlightFrameIndex];
 
     if fInstance.Renderer.UseMeshletExpand then begin
      PushConstants.ScratchBufferBDA:=fInstance.MeshCullScratchBuffers[aInFlightFrameIndex].DeviceAddress;

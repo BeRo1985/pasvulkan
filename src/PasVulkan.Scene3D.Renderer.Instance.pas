@@ -831,6 +831,7 @@ type { TpvScene3DRendererInstance }
        fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues;
        fMeshShaderOutputBufferSizes:TpvVulkanInFlightFrameSizeInts; // Grow-only output buffer size for mesh shader path
+       fGPUDrawIndexedIndirectCommandOutputBufferSizes:TpvVulkanInFlightFrameSizeInts; // Grow-only output buffer capacity tracking
        fPerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues;
        fPerInFlightFrameGPUDrawIndexedIndirectCommandOITPromotionOffsets:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues;
        fPerInFlightFrameGPUDrawIndexedIndirectCommandOITDisocclusionOffsets:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues;
@@ -1155,6 +1156,7 @@ type { TpvScene3DRendererInstance }
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
        property MeshShaderOutputBufferSizes:TpvVulkanInFlightFrameSizeInts read fMeshShaderOutputBufferSizes;
+       property GPUDrawIndexedIndirectCommandOutputBufferSizes:TpvVulkanInFlightFrameSizeInts read fGPUDrawIndexedIndirectCommandOutputBufferSizes;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers;
        property GPUDrawIndexedIndirectCommandOutputBuffers:TpvVulkanInFlightFrameBuffers read fGPUDrawIndexedIndirectCommandOutputBuffers;
@@ -5391,6 +5393,13 @@ begin
 
    end;
 
+   // Track output buffer capacity
+   if Renderer.Scene3D.MeshShaderSupport then begin
+    fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex]:=Max(fMeshShaderOutputBufferSizes[PerInFlightFrameBufferIndex],fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[0]);
+   end else begin
+    fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex]:=fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[0];
+   end;
+
    // Scratch buffer for MESHLET_EXPAND sort: header (16 bytes) + 48 bytes per entry
    fMeshCullMaxScratchEntries[PerInFlightFrameBufferIndex]:=Max(1,fMeshShaderOutputBufferSizes[PerInFlightFrameBufferIndex]);
    fMeshCullScratchBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
@@ -5459,6 +5468,7 @@ begin
   if not fScene3D.UsePerInFlightFrameResources then begin
    for PerInFlightFrameBufferIndex:=1 to MaxInFlightFrames-1 do begin
     fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]:=fGPUDrawIndexedIndirectCommandOutputBuffers[0];
+    fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex]:=fGPUDrawIndexedIndirectCommandOutputBufferSizes[0];
     fGPUDrawIndexedIndirectCommandCounterBuffers[PerInFlightFrameBufferIndex]:=fGPUDrawIndexedIndirectCommandCounterBuffers[0];
     fMeshCullScratchBuffers[PerInFlightFrameBufferIndex]:=fMeshCullScratchBuffers[0];
     fMeshCullMaxScratchEntries[PerInFlightFrameBufferIndex]:=fMeshCullMaxScratchEntries[0];
@@ -8691,7 +8701,7 @@ begin
                                      TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or
                                      TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT);
    UseMeshShaderDraw:=true;
-   MaxOutputCommands:=Max(fMeshShaderOutputBufferSizes[aInFlightFrameIndex],fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]);
+   MaxOutputCommands:=fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex];
   end else begin
    vkCmdDrawMeshTasksIndirectCountEXT:=nil;
    OutputBufferDeviceAddress:=0;
@@ -9353,6 +9363,7 @@ var PreviousInFlightFrameIndex,NextInFlightFrameIndex,Index,CountViews,Count,
     RunningSum:TpvUInt32;
     GPUBatchRange:TpvScene3D.PGPUBatchRange;
     MeshShaderOutputNeeded:TpvSizeInt;
+    OutputNeeded:TpvSizeInt;
     ExpandRangeInfoTotalWeight:TpvSizeInt;
     ExpandRangeInfoMaxOutputCommands:TpvSizeInt;
     ExpandRangeInfoRunningBase:TpvUInt32;
@@ -9500,8 +9511,18 @@ begin
    fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]:=Count+((Count+1) shr 1);
 
    fScene3D.AddToFreeQueue(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex],1);
-   fScene3D.WaitOnceOnPreviousFrame;
-   FreeAndNil(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]);
+
+   // Grow-only output buffer size tracking
+   if Renderer.Scene3D.MeshShaderSupport then begin
+    OutputNeeded:=Max(fMeshShaderOutputBufferSizes[aInFlightFrameIndex],fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]);
+   end else begin
+    OutputNeeded:=fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex];
+   end;
+   if fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex]<OutputNeeded then begin
+    fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex]:=OutputNeeded;
+    fScene3D.WaitOnceOnPreviousFrame;
+    FreeAndNil(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]);
+   end;
 
    case fScene3D.BufferStreamingMode of
 
@@ -9527,25 +9548,27 @@ begin
                                                                                                             );
      Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdInputBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
-     fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                                      IfThen(Renderer.Scene3D.MeshShaderSupport,Max(1,Max(fMeshShaderOutputBufferSizes[aInFlightFrameIndex],fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]))*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),Max(1,fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex])*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand)),
-                                                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                                      [],
-                                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                                      0,
-                                                                                                      0,
-                                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                                      0,
-                                                                                                      0,
-                                                                                                      0,
-                                                                                                      0,
-                                                                                                      [TpvVulkanBufferFlag.BufferDeviceAddress],
-                                                                                                      0,
-                                                                                                      pvAllocationGroupIDScene3DDynamic,
-                                                                                                      '3DRendererInstance.CmdOutputBuffer'
-                                                                                                     );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffer');
+     if not assigned(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]) then begin
+      fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                                       IfThen(Renderer.Scene3D.MeshShaderSupport,Max(1,fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex])*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),Max(1,fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex])*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand)),
+                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                       [],
+                                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       [TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                                                                       0,
+                                                                                                       pvAllocationGroupIDScene3DDynamic,
+                                                                                                       '3DRendererInstance.CmdOutputBuffer'
+                                                                                                      );
+      Renderer.VulkanDevice.DebugUtils.SetObjectName(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffer');
+     end;
 
     end;
 
@@ -9571,25 +9594,27 @@ begin
                                                                                                             );
      Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdInputBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
-     fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                                      IfThen(Renderer.Scene3D.MeshShaderSupport,Max(1,Max(fMeshShaderOutputBufferSizes[aInFlightFrameIndex],fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]))*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),Max(1,fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex])*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand)),
-                                                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                                      [],
-                                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                                      0,
-                                                                                                      0,
-                                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                                      0,
-                                                                                                      0,
-                                                                                                      0,
-                                                                                                      0,
-                                                                                                      [TpvVulkanBufferFlag.BufferDeviceAddress],
-                                                                                                      0,
-                                                                                                      pvAllocationGroupIDScene3DDynamic,
-                                                                                                      '3DRendererInstance.CmdOutputBuffer'
-                                                                                                     );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffer');
+     if not assigned(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]) then begin
+      fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                                       IfThen(Renderer.Scene3D.MeshShaderSupport,Max(1,fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex])*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),Max(1,fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex])*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand)),
+                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                       [],
+                                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       0,
+                                                                                                       [TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                                                                       0,
+                                                                                                       pvAllocationGroupIDScene3DDynamic,
+                                                                                                       '3DRendererInstance.CmdOutputBuffer'
+                                                                                                      );
+      Renderer.VulkanDevice.DebugUtils.SetObjectName(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffer');
+     end;
 
     end;
 
@@ -9601,10 +9626,11 @@ begin
 
    DoNeedUpdateDescriptors:=true;
 
-   // Replicate pointer to all slots in single-buffer mode
+   // Replicate pointer and output buffer sizes to all slots in single-buffer mode
    if not fScene3D.UsePerInFlightFrameResources then begin
     for Index:=1 to MaxInFlightFrames-1 do begin
      fGPUDrawIndexedIndirectCommandOutputBuffers[Index]:=fGPUDrawIndexedIndirectCommandOutputBuffers[0];
+     fGPUDrawIndexedIndirectCommandOutputBufferSizes[Index]:=fGPUDrawIndexedIndirectCommandOutputBufferSizes[0];
     end;
    end;
 
@@ -9619,63 +9645,78 @@ begin
     
     fMeshShaderOutputBufferSizes[aInFlightFrameIndex]:=MeshShaderOutputNeeded+((MeshShaderOutputNeeded+1) shr 1);
     
-    fScene3D.WaitOnceOnPreviousFrame;
+    // Grow-only output buffer size tracking
+    OutputNeeded:=Max(fMeshShaderOutputBufferSizes[aInFlightFrameIndex],fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]);
+    if fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex]<OutputNeeded then begin
+     fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex]:=OutputNeeded;
     
-    FreeAndNil(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]);
+     fScene3D.WaitOnceOnPreviousFrame;
     
-    case fScene3D.BufferStreamingMode of
-     TpvScene3D.TBufferStreamingMode.Direct:begin
-      fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                                       Max(1,Max(fMeshShaderOutputBufferSizes[aInFlightFrameIndex],fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]))*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),
-                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                                       [],
-                                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       [TpvVulkanBufferFlag.BufferDeviceAddress],
-                                                                                                       0,
-                                                                                                       pvAllocationGroupIDScene3DDynamic,
-                                                                                                       '3DRendererInstance.CmdOutputBuffer'
-                                                                                                      );
-      Renderer.VulkanDevice.DebugUtils.SetObjectName(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffer');
+     FreeAndNil(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]);
+    
+     case fScene3D.BufferStreamingMode of
+      TpvScene3D.TBufferStreamingMode.Direct:begin
+       fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                                        Max(1,fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex])*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),
+                                                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                        [],
+                                                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        [TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                                                                        0,
+                                                                                                        pvAllocationGroupIDScene3DDynamic,
+                                                                                                        '3DRendererInstance.CmdOutputBuffer'
+                                                                                                       );
+       Renderer.VulkanDevice.DebugUtils.SetObjectName(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffer');
+      end;
+      TpvScene3D.TBufferStreamingMode.Staging:begin
+       fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                                        Max(1,fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex])*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),
+                                                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                        [],
+                                                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        0,
+                                                                                                        [TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                                                                        0,
+                                                                                                        pvAllocationGroupIDScene3DDynamic,
+                                                                                                        '3DRendererInstance.CmdOutputBuffer'
+                                                                                                       );
+       Renderer.VulkanDevice.DebugUtils.SetObjectName(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffer');
+      end;
+      else begin
+       Assert(false);
+      end;
      end;
-     TpvScene3D.TBufferStreamingMode.Staging:begin
-      fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                                       Max(1,Max(fMeshShaderOutputBufferSizes[aInFlightFrameIndex],fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]))*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand),
-                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                                       [],
-                                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       0,
-                                                                                                       [TpvVulkanBufferFlag.BufferDeviceAddress],
-                                                                                                       0,
-                                                                                                       pvAllocationGroupIDScene3DDynamic,
-                                                                                                       '3DRendererInstance.CmdOutputBuffer'
-                                                                                                      );
-      Renderer.VulkanDevice.DebugUtils.SetObjectName(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffer');
+     DoNeedUpdateDescriptors:=true;
+ 
+     // Replicate pointer and output buffer sizes to all slots in single-buffer mode
+     if not fScene3D.UsePerInFlightFrameResources then begin
+      for Index:=1 to MaxInFlightFrames-1 do begin
+       fGPUDrawIndexedIndirectCommandOutputBuffers[Index]:=fGPUDrawIndexedIndirectCommandOutputBuffers[0];
+       fGPUDrawIndexedIndirectCommandOutputBufferSizes[Index]:=fGPUDrawIndexedIndirectCommandOutputBufferSizes[0];
+      end;
      end;
-     else begin
-      Assert(false);
-     end;
+ 
     end;
-    DoNeedUpdateDescriptors:=true;
 
-    // Replicate pointer to all slots in single-buffer mode
+    // Sync mesh shader output buffer sizes in single-buffer mode
     if not fScene3D.UsePerInFlightFrameResources then begin
-     for Index:=1 to MaxInFlightFrames-1 do begin
-      fGPUDrawIndexedIndirectCommandOutputBuffers[Index]:=fGPUDrawIndexedIndirectCommandOutputBuffers[0];
+     for Index:=0 to MaxInFlightFrames-1 do begin
+      fMeshShaderOutputBufferSizes[Index]:=Max(fMeshShaderOutputBufferSizes[Index],fMeshShaderOutputBufferSizes[aInFlightFrameIndex]);
      end;
     end;
 
@@ -10049,7 +10090,7 @@ begin
    end;
    // Scale ExpandRangeInfo capacities and compute prefix sum for outputBase
    if Renderer.UseMeshletExpand then begin
-    ExpandRangeInfoMaxOutputCommands:=Max(fMeshShaderOutputBufferSizes[aInFlightFrameIndex],fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]);
+    ExpandRangeInfoMaxOutputCommands:=fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex];
     ExpandRangeInfoRunningBase:=0;
     for ExpandRangeInfoIndex:=0 to ExpandRangeInfoTotalSize-1 do begin
      if (ExpandRangeInfoTotalWeight>0) and (fExpandRangeInfos[ExpandRangeInfoIndex].OutputCapacity>0) then begin
