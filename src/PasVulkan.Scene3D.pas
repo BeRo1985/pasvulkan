@@ -31284,26 +31284,31 @@ begin
    for Index:=0 to fGroup.fNodes.Count-1 do begin
     Node:=fGroup.fNodes[Index];
     InstanceNode:=fNodes.RawItems[Node.Index];
-    InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
-    InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
+    if InstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex]<>InstanceNode.fCacheMatrixGeneration then begin
+     InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
+     InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
+    end;
    end;
 
    for Index:=0 to aScene.fAllNodes.Count-1 do begin
     Node:=aScene.fAllNodes[Index];
     InstanceNode:=fNodes.RawItems[Node.Index];
     if assigned(Node.fMesh) then begin
-     if assigned(Node.fSkin) then begin
-      // Skinned nodes: use cheap static approximation for CPU-side bounds (instance-level BB combining).
-      // Exact per-node bounding sphere is computed by mesh_bounds.comp on GPU.
-      InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fWorkModelMatrix);
-      InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
-     end else begin
-      InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fNodeMatrices[0]);
+     if InstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex]<>InstanceNode.fCacheMatrixGeneration then begin
+      if assigned(Node.fSkin) then begin
+       // Skinned nodes: use cheap static approximation for CPU-side bounds (instance-level BB combining).
+       // Exact per-node bounding sphere is computed by mesh_bounds.comp on GPU.
+       InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fWorkModelMatrix);
+      end else begin
+       InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fNodeMatrices[0]);
+      end;
       InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
      end;
     end else begin
-     InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
-     InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
+     if InstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex]<>InstanceNode.fCacheMatrixGeneration then begin
+      InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
+      InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=false;
+     end;
     end;
    end;
 {$ifdef UpdateProfilingTimes}
