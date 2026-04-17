@@ -75,6 +75,8 @@ unit PasVulkan.Scene3D;
 
 {$undef FrameTextFileDebug}
 
+{$undef FlatParallelRenderInstanceUpdates}
+
 interface
 
 uses {$ifdef Windows}
@@ -3304,6 +3306,9 @@ type EpvScene3D=class(Exception);
                             fDrawInfoGenerations:TRenderInstanceGenerations;
                             fActiveRenderPassesGenerations:TRenderInstanceGenerations;
                             fLastModelMatrices:TRenderInstanceLastModelMatrices;
+{$ifdef FlatParallelRenderInstanceUpdates}                            
+                            fComputedPreviousModelMatrix:TpvMatrix4x4;
+{$endif}                            
                             fAssignedVirtualInstance:TInstance;
                             fAssignedVirtualInstanceRenderInstance:TRenderInstance;
                             fTag:TpvUInt64;
@@ -3453,6 +3458,9 @@ type EpvScene3D=class(Exception);
                      fLightShadowMapMatrices:TPasGLTF.TMatrix4x4DynamicArray;
                      fLightShadowMapZFarValues:TPasGLTFFloatDynamicArray;
                      fBoundingBox:TpvAABB;
+{$ifdef FlatParallelRenderInstanceUpdates}                          
+                     fMeshBoundingBox:TpvAABB;
+{$endif}                     
                      fBoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
                      fBoundingSpheres:TBoundingSpheres;
                      fBoundingRadius:TpvDouble;
@@ -4689,9 +4697,20 @@ type EpvScene3D=class(Exception);
        fDirectedAcyclicGraphGeneration:TPasMPUInt32;
        fLastDirectedAcyclicGraphGeneration:TPasMPUInt32;
        fDirectedAcyclicGraphInFlightFrameIndex:TpvSizeInt;
+       fNeedBoundingBox:Boolean;
        fTimeSortGPUInstances:TpvDouble;
        fTimeRebuildDirectedAcyclicGraph:TpvDouble;
        fTimeProcessDirectedAcyclicGraph:TpvDouble;
+       fTimeProcessGlobalRenderInstances:TpvDouble;
+{$ifdef FlatParallelRenderInstanceUpdates}                            
+       fGlobalRenderInstanceWorkList:array of TGroup.TInstance.TRenderInstance;
+       fGlobalRenderInstanceWorkListCount:TpvInt32;
+       fGlobalRenderInstanceInstances:array of TGroup.TInstance;
+       fGlobalRenderInstanceInstanceCount:TpvInt32;
+      private
+       procedure ProcessGlobalRenderInstances(const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessGlobalRenderInstancesParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+{$endif}       
       public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -5111,6 +5130,7 @@ type EpvScene3D=class(Exception);
        property TimeSortGPUInstances:TpvDouble read fTimeSortGPUInstances;
        property TimeRebuildDirectedAcyclicGraph:TpvDouble read fTimeRebuildDirectedAcyclicGraph;
        property TimeProcessDirectedAcyclicGraph:TpvDouble read fTimeProcessDirectedAcyclicGraph;
+       property TimeProcessGlobalRenderInstances:TpvDouble read fTimeProcessGlobalRenderInstances;
        property ProceduralTextureImageHookStringHashMap:TProceduralTextureImageHookStringHashMap read fProceduralTextureImageHookStringHashMap;
        property GPULODEnabled:boolean read fGPULODEnabled write fGPULODEnabled;
        property LODTransformAllLevels:boolean read fLODTransformAllLevels write fLODTransformAllLevels;
@@ -30895,6 +30915,34 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UpdateRenderInstances(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
+{$ifdef FlatParallelRenderInstanceUpdates}                            
+var Index,StartIndex,CountRenderInstances:TpvSizeInt;
+begin
+ if aInFlightFrameIndex>=0 then begin
+  fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
+  if fUseRenderInstances then begin
+   fMeshBoundingBox:=fBoundingBox;
+   if fRenderInstances.Count>0 then begin
+    TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
+    try
+     CountRenderInstances:=fRenderInstances.Count;
+     if CountRenderInstances>0 then begin
+      StartIndex:=TPasMPInterlocked.Add(fSceneInstance.fGlobalRenderInstanceWorkListCount,CountRenderInstances);
+      for Index:=0 to CountRenderInstances-1 do begin
+       fSceneInstance.fGlobalRenderInstanceWorkList[StartIndex+Index]:=fRenderInstances[Index];
+      end;
+     end;
+    finally
+     TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
+    end;
+   end;
+   // Add Instance to phase 2 list
+   Index:=TPasMPInterlocked.Add(fSceneInstance.fGlobalRenderInstanceInstanceCount,1);
+   fSceneInstance.fGlobalRenderInstanceInstances[Index]:=Self;
+  end;
+ end;
+end;
+{$else}
 {$define UseSphereTransformedBoundingSphereForRenderInstanceCulling}
 var Index,PerInFlightFrameRenderInstanceIndex,MeshNodeArrayIndex,NodeIndex:TpvSizeInt;
     TemporaryBoundingBox:TpvAABB;
@@ -31058,7 +31106,7 @@ begin
 {$endif}
  end;
 end;
-
+{$endif}
 
 procedure TpvScene3D.TGroup.TInstance.UpdateBoundingVolumes(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
 {$ifdef UpdateProfilingTimes}
@@ -31561,7 +31609,9 @@ begin
 
   UpdateRenderInstances(aInFlightFrameIndex,true);
 
-  UpdateBoundingVolumes(aInFlightFrameIndex,true);
+  {$ifdef FlatParallelRenderInstanceUpdates}if not fUseRenderInstances then{$endif}begin
+   UpdateBoundingVolumes(aInFlightFrameIndex,true);
+  end;
 
  end else begin
 
@@ -31765,7 +31815,9 @@ begin
     end;
    end;
 
-   UpdateBoundingVolumes(aInFlightFrameIndex,false);
+   {$ifdef FlatParallelRenderInstanceUpdates}if not fUseRenderInstances then{$endif}begin
+    UpdateBoundingVolumes(aInFlightFrameIndex,false);
+   end;
 
 {$ifdef InstanceUpdateDirtySkip}
   end; // if not InstanceUpdateDirtySkipped
@@ -32001,7 +32053,9 @@ begin
 
     UpdateRenderInstances(aInFlightFrameIndex,true);
 
-    UpdateBoundingVolumes(aInFlightFrameIndex,true);
+    {$ifdef FlatParallelRenderInstanceUpdates}if not fUseRenderInstances then{$endif}begin
+     UpdateBoundingVolumes(aInFlightFrameIndex,true);
+    end;
 
    end else begin
 
@@ -32330,7 +32384,9 @@ begin
     end;
    end;
 
-   UpdateBoundingVolumes(aInFlightFrameIndex,false);
+   {$ifdef FlatParallelRenderInstanceUpdates}if not fUseRenderInstances then{$endif}begin
+    UpdateBoundingVolumes(aInFlightFrameIndex,false);
+   end;
 
    if aInFlightFrameIndex>=0 then begin
 
@@ -33571,6 +33627,15 @@ begin
  fDefragmentationDataCheckGeneration:=High(TpvUInt64);
 
  fDataGeneration:=0;
+
+{$ifdef FlatParallelRenderInstanceUpdates}                            
+ fGlobalRenderInstanceWorkList:=nil;
+ fGlobalRenderInstanceWorkListCount:=0;
+ fGlobalRenderInstanceInstances:=nil;
+ fGlobalRenderInstanceInstanceCount:=0;
+{$endif}
+
+ fNeedBoundingBox:=true;
 
  fBuddyModeAllocation:=false;
  fSmartMoveDefrag:=true;
@@ -38677,8 +38742,211 @@ begin
 end;
 {$endif}
 
+{$ifdef FlatParallelRenderInstanceUpdates}
+procedure TpvScene3D.ProcessGlobalRenderInstancesParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var WorkIndex:TPasMPNativeInt;
+    InFlightFrameIndex,MeshNodeArrayIndex,NodeIndex:TpvSizeInt;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+    Instance:TpvScene3D.TGroup.TInstance;
+    MeshObjectID:TpvUInt32;
+    CurrentMatrixPair:PGPUMatrixPair;
+    CurrentDrawInfo:PGPUDrawInfo;
+    SphereCenterLocal,TransformedSphereCenter:TpvVector3;
+    SphereRadiusLocal,Col0LenSq,Col1LenSq,Col2LenSq,TransformedSphereRadius:TpvScalar;
+    SingleMatrix:TpvMatrix4x4;
+begin
+ InFlightFrameIndex:=fDirectedAcyclicGraphInFlightFrameIndex;
+ for WorkIndex:=aFromIndex to aToIndex do begin
+  RenderInstance:=fGlobalRenderInstanceWorkList[WorkIndex];
+  if assigned(RenderInstance) then begin
+   Instance:=RenderInstance.fInstance;
+   if assigned(Instance) then begin
+    if RenderInstance.fWorkActive then begin
+     // Per-RI skip check (Option A): if nothing changed for this IFF, skip expensive processing
+     if (not fUpdatedOriginTransform) and
+        (not RenderInstance.fFirst) and
+        ((RenderInstance.fActiveMask and (TpvUInt32(1) shl InFlightFrameIndex))<>0) and
+        (RenderInstance.fInstanceDataIndices[InFlightFrameIndex]=RenderInstance.fInstanceDataIndex) and
+        CompareMem(@RenderInstance.fLastModelMatrices[InFlightFrameIndex],@RenderInstance.fModelMatrix,SizeOf(TpvMatrix4x4D)) and
+        (RenderInstance.fActiveRenderPassesGenerations[InFlightFrameIndex]=Instance.fActiveRenderPassesGenerations[InFlightFrameIndex]) then begin
+      // Skip path: reuse existing data for this IFF
+      TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl InFlightFrameIndex);
+      RenderInstance.fWorkActives[InFlightFrameIndex]:=true;
+      RenderInstance.fComputedPreviousModelMatrix:=RenderInstance.fModelMatrices[InFlightFrameIndex];
+      RenderInstance.fInstanceDataIndices[InFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+     end else begin
+      // Full processing path
+      TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl InFlightFrameIndex);
+      RenderInstance.fWorkActives[InFlightFrameIndex]:=true;
+      RenderInstance.fWorkModelMatrix:=TransformOrigin(RenderInstance.fModelMatrix,InFlightFrameIndex,false);
+      SingleMatrix:=RenderInstance.fWorkModelMatrix;
+      RenderInstance.fModelMatrices[InFlightFrameIndex]:=SingleMatrix;
+      RenderInstance.fInstanceDataIndices[InFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+      // Sphere-based bounding volume computation (Option C)
+      SphereCenterLocal:=(Instance.fMeshBoundingBox.Min+Instance.fMeshBoundingBox.Max)*0.5;
+      SphereRadiusLocal:=Instance.fMeshBoundingBox.Min.DistanceTo(Instance.fMeshBoundingBox.Max)*0.5;
+      TransformedSphereCenter:=SingleMatrix.MulHomogen(SphereCenterLocal);
+      Col0LenSq:=sqr(SingleMatrix.RawComponents[0,0])+sqr(SingleMatrix.RawComponents[0,1])+sqr(SingleMatrix.RawComponents[0,2]);
+      Col1LenSq:=sqr(SingleMatrix.RawComponents[1,0])+sqr(SingleMatrix.RawComponents[1,1])+sqr(SingleMatrix.RawComponents[1,2]);
+      Col2LenSq:=sqr(SingleMatrix.RawComponents[2,0])+sqr(SingleMatrix.RawComponents[2,1])+sqr(SingleMatrix.RawComponents[2,2]);
+      TransformedSphereRadius:=SphereRadiusLocal*sqrt(Max(Max(Col0LenSq,Col1LenSq),Col2LenSq));
+      RenderInstance.fBoundingSphere:=TpvSphere.Create(TransformedSphereCenter,TransformedSphereRadius);
+      RenderInstance.fBoundingBox:=RenderInstance.fBoundingSphere.ToAABB;
+      // PreviousModelMatrix handling
+      if RenderInstance.fFirst then begin
+       RenderInstance.fFirst:=false;
+       RenderInstance.fComputedPreviousModelMatrix:=SingleMatrix;
+       RenderInstance.fGeneration:=0;
+      end else begin
+       RenderInstance.fComputedPreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
+       if (RenderInstance.fWorkModelMatrix<>RenderInstance.fPreviousModelMatrix) or
+          (RenderInstance.fInstanceDataIndices[InFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) then begin
+        inc(RenderInstance.fGeneration);
+       end;
+      end;
+      RenderInstance.fGenerations[InFlightFrameIndex]:=RenderInstance.fGeneration;
+      RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
+      RenderInstance.UpdateLights(InFlightFrameIndex);
+      if (RenderInstance.fDrawInfoGenerations[InFlightFrameIndex]<>RenderInstance.fGenerations[InFlightFrameIndex]) or
+         (RenderInstance.fActiveRenderPassesGenerations[InFlightFrameIndex]<>Instance.fActiveRenderPassesGenerations[InFlightFrameIndex]) then begin
+       RenderInstance.fDrawInfoGenerations[InFlightFrameIndex]:=RenderInstance.fGenerations[InFlightFrameIndex];
+       RenderInstance.fActiveRenderPassesGenerations[InFlightFrameIndex]:=Instance.fActiveRenderPassesGenerations[InFlightFrameIndex];
+       // Write matrices to MatrixPairBuffer (thread-safe via AcquireMatrixPairInfo)
+       CurrentMatrixPair:=AcquireMatrixPairInfo(RenderInstance.fMatrixID,true);
+       try
+        CurrentMatrixPair^.ModelMatrix:=SingleMatrix;
+        CurrentMatrixPair^.PreviousModelMatrix:=RenderInstance.fComputedPreviousModelMatrix;
+       finally
+        ReleaseMatrixPairInfo(RenderInstance.fMatrixID,true);
+       end;
+       for MeshNodeArrayIndex:=0 to length(Instance.fGroup.fMeshNodeIndices)-1 do begin
+        NodeIndex:=Instance.fGroup.fMeshNodeIndices[MeshNodeArrayIndex];
+        MeshObjectID:=RenderInstance.fNodeMeshObjectIDs[NodeIndex];
+        if MeshObjectID>0 then begin
+         CurrentDrawInfo:=AcquireDrawInfo(MeshObjectID,true);
+         try
+          CurrentDrawInfo^.MatrixID:=RenderInstance.fMatrixID;
+          CurrentDrawInfo^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
+          CurrentDrawInfo^.MeshObjectID:=MeshObjectID;
+          CurrentDrawInfo^.Flags:=pvScene3DRendererRenderPassesToMask(Instance.fActiveRenderPasses*Instance.fNodes.RawItems[NodeIndex].fActiveRenderPasses);
+          CurrentDrawInfo^.NodeMatricesIndex:=Instance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(NodeIndex)+1;
+          CurrentDrawInfo^.MeshletDescriptorBase:=Instance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
+          CurrentDrawInfo^.MeshletBoundingSphereBase:=Instance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
+  {$ifdef MeshShaderDebug}
+          WriteLn('[DBG-SPHERE] RI DrawInfo MeshObjID=',MeshObjectID,' SphereBase=',CurrentDrawInfo^.MeshletBoundingSphereBase,' AllocOffset=',Instance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset,' MatrixID=',RenderInstance.fMatrixID);
+  {$endif}
+          CurrentDrawInfo^.MeshletVisibilityBase:=RenderInstance.fMeshletVisibilityBufferRange.Offset;
+         finally
+          ReleaseDrawInfo(MeshObjectID,true);
+         end;
+        end;
+       end;
+      end;
+      RenderInstance.fLastModelMatrices[InFlightFrameIndex]:=RenderInstance.fModelMatrix;
+     end;
+    end else begin
+     // Inactive path
+     RenderInstance.fWorkActives[InFlightFrameIndex]:=false;
+     if not (Instance.fUseSortedRenderInstances and
+             (not RenderInstance.fFirst) and
+             ((RenderInstance.fActiveMask and (TpvUInt32(1) shl InFlightFrameIndex))=0)) then begin
+      RenderInstance.fFirst:=true;
+      TPasMPInterlocked.BitwiseAnd(RenderInstance.fActiveMask,not (TpvUInt32(1) shl InFlightFrameIndex));
+      RenderInstance.RemoveLights;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.ProcessGlobalRenderInstances(const aInFlightFrameIndex:TpvSizeInt);
+var InstanceIndex,RenderInstanceIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
+    GroupInstance:TpvScene3D.TGroup.TInstance;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+    PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+begin
+
+ StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+
+ // Phase 1: Global ParallelFor over all collected RIs
+ if fGlobalRenderInstanceWorkListCount>0 then begin
+  if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>1) and (fGlobalRenderInstanceWorkListCount>1) then begin
+   fPasMPInstance.Invoke(
+    fPasMPInstance.ParallelFor(
+     nil,
+     0,
+     fGlobalRenderInstanceWorkListCount-1,
+     ProcessGlobalRenderInstancesParallelForJob,
+     1,
+     PasMPDefaultDepth,
+     nil,
+     0,
+     PasMPAreaMaskUpdate,
+     PasMPAreaMaskRender,
+     false,
+     PasMPAffinityMaskUpdateAllowMask,
+     PasMPAffinityMaskUpdateAvoidMask
+    )
+   );
+  end else begin
+   ProcessGlobalRenderInstancesParallelForJob(nil,0,nil,0,fGlobalRenderInstanceWorkListCount-1);
+  end;
+ end;
+
+ // Phase 2: Sequential per-Instance — populate PerInFlightFrameRenderInstances, BB-Combine, UpdateBoundingVolumes
+ for InstanceIndex:=0 to fGlobalRenderInstanceInstanceCount-1 do begin
+  GroupInstance:=fGlobalRenderInstanceInstances[InstanceIndex];
+  if assigned(GroupInstance) then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(GroupInstance.fRenderInstanceLock);
+   try
+    for RenderInstanceIndex:=0 to GroupInstance.fRenderInstances.Count-1 do begin
+     RenderInstance:=GroupInstance.fRenderInstances[RenderInstanceIndex];
+     if RenderInstance.fWorkActives[aInFlightFrameIndex] then begin
+      PerInFlightFrameRenderInstanceIndex:=GroupInstance.fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNewIndex;
+      PerInFlightFrameRenderInstance:=@GroupInstance.fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
+      PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
+      PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
+      PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrices[aInFlightFrameIndex];
+      PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fComputedPreviousModelMatrix;
+      PerInFlightFrameRenderInstance^.Generation:=RenderInstance.fGenerations[aInFlightFrameIndex];
+      PerInFlightFrameRenderInstance^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
+     end else begin
+      if GroupInstance.fUseSortedRenderInstances and
+         (not RenderInstance.fFirst) and
+         ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) then begin
+       break;
+      end;
+     end;
+    end;
+   finally
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(GroupInstance.fRenderInstanceLock);
+   end;
+
+   // BB-Combine from PerInFlightFrameRenderInstances
+   if GroupInstance.fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count>0 then begin
+    GroupInstance.fBoundingBox:=GroupInstance.fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[0].BoundingBox;
+    for RenderInstanceIndex:=1 to GroupInstance.fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count-1 do begin
+     GroupInstance.fBoundingBox.DirectCombine(GroupInstance.fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[RenderInstanceIndex].BoundingBox);
+    end;
+   end;
+
+   // UpdateBoundingVolumes (deferred from DAG processing)
+   GroupInstance.UpdateBoundingVolumes(aInFlightFrameIndex,false);
+
+  end;
+
+ end;
+
+ EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+ fTimeProcessGlobalRenderInstances:=pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+
+end;
+{$endif}
+
 procedure TpvScene3D.Update(const aInFlightFrameIndex:TpvSizeInt);
-var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
+var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize{$ifdef FlatParallelRenderInstanceUpdates},TotalRenderInstanceCount{$endif}:TpvSizeInt;
     MinMaterialID,MaxMaterialID:TpvInt32;
     Group:TpvScene3D.TGroup;
     GroupInstance,OtherGroupInstance:TpvScene3D.TGroup.TInstance;
@@ -38822,6 +39090,25 @@ begin
    PartCPUTime:=PartEndCPUTime-PartStartCPUTime;
    fTimeRebuildDirectedAcyclicGraph:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0; // in ms
 
+{$ifdef FlatParallelRenderInstanceUpdates}
+   // Pre-allocate global RI work list and reset counters for Option D
+   TotalRenderInstanceCount:=0;
+   for Index:=0 to fGroupInstances.Count-1 do begin
+    GroupInstance:=fGroupInstances.RawItems[Index];
+    if GroupInstance.fUseRenderInstances then begin
+     TotalRenderInstanceCount:=TotalRenderInstanceCount+GroupInstance.fRenderInstances.Count;
+    end;
+   end;
+   if length(fGlobalRenderInstanceWorkList)<TotalRenderInstanceCount then begin
+    SetLength(fGlobalRenderInstanceWorkList,TotalRenderInstanceCount+((TotalRenderInstanceCount+3) shr 2));
+   end;
+   if length(fGlobalRenderInstanceInstances)<fGroupInstances.Count then begin
+    SetLength(fGlobalRenderInstanceInstances,fGroupInstances.Count+((fGroupInstances.Count+3) shr 2));
+   end;
+   fGlobalRenderInstanceWorkListCount:=0;
+   fGlobalRenderInstanceInstanceCount:=0;
+{$endif}   
+
    fGlobalVulkanDrawInfoLocks[aInFlightFrameIndex].AcquireRead;
    try
 
@@ -38831,6 +39118,12 @@ begin
     PartCPUTime:=PartEndCPUTime-PartStartCPUTime;
     fTimeProcessDirectedAcyclicGraph:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0; // in ms
 
+{$ifdef FlatParallelRenderInstanceUpdates}
+    // Option D: Global parallel RenderInstance processing (Phase 1 + Phase 2)
+    ProcessGlobalRenderInstances(aInFlightFrameIndex);
+{$else}
+    fTimeProcessGlobalRenderInstances:=0.0;
+{$endif}    
 
 {$ifdef DeferredLightAABBTreeUpdates}
     ProcessDeferredLightOperations;
@@ -38848,7 +39141,7 @@ begin
   fGroupListLock.Release;
  end;
 
- begin
+ if fNeedBoundingBox then begin
 
   First:=true;
 
@@ -38891,12 +39184,12 @@ begin
 
   fInFlightFrameBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
 
-  if (aInFlightFrameIndex>=0) and fUpdatedOriginTransform then begin
-   for Index:=0 to fManualLights.Count-1 do begin
-    fManualLights[Index].Update(aInFlightFrameIndex);
-   end;
-  end;
+ end;
 
+ if (aInFlightFrameIndex>=0) and fUpdatedOriginTransform then begin
+  for Index:=0 to fManualLights.Count-1 do begin
+   fManualLights[Index].Update(aInFlightFrameIndex);
+  end;
  end;
 
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
