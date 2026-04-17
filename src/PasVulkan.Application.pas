@@ -1371,7 +1371,8 @@ type EpvApplication=class(Exception)
        Auto=1,
        MonitorRefreshRate=2,
        PresentIntervalEstimation=3,
-       VulkanPresentTiming=4
+       VulkanPresentTiming=4,
+       VulkanPresentTimingFeedback=5
       );
 
      PpvApplicationFramePacingStrategy=^TpvApplicationFramePacingStrategy;
@@ -1379,6 +1380,22 @@ type EpvApplication=class(Exception)
       (
        DeviationCompensation=0,
        AbsoluteTimeRaster=1
+      );
+
+     PpvApplicationLowLatencyMode=^TpvApplicationLowLatencyMode;
+     TpvApplicationLowLatencyMode=
+      (
+       None=0,
+       Auto=1,
+       NVReflex=2,
+       AMDAntiLag=3
+      );
+
+     TpvApplicationPresentTimingFeedbackRefreshMode=
+      (
+       Unknown=0,
+       VRR=1,
+       FRR=2
       );
 
      TpvApplicationProcessingMode=
@@ -1769,6 +1786,36 @@ type EpvApplication=class(Exception)
        fFramePacingPresentTimingAvailable:boolean;
        fFramePacingEffectiveInterval:TpvInt64; // computed pacing interval, consumed by FramePacingAndFrameRateLimiter
 
+       // Present timing feedback state (VulkanPresentTimingFeedback mode)
+       fPresentTimingFeedbackRefreshDuration:TpvUInt64; // ns
+       fPresentTimingFeedbackRefreshInterval:TpvUInt64; // ns (alignment unit)
+       fPresentTimingFeedbackRefreshMode:TpvApplicationPresentTimingFeedbackRefreshMode;
+       fPresentTimingFeedbackRefreshCounter:TpvUInt64;
+       fPresentTimingFeedbackHasRefreshFeedback:boolean;
+       fPresentTimingFeedbackTimeDomainCount:TpvInt32;
+       fPresentTimingFeedbackTimeDomains:array[0..7] of TVkTimeDomainKHR;
+       fPresentTimingFeedbackTimeDomainIDs:array[0..7] of TpvUInt64;
+       fPresentTimingFeedbackActiveTimeDomainID:TpvUInt64;
+       fPresentTimingFeedbackCalibratedHostTime:TpvUInt64;
+       fPresentTimingFeedbackCalibratedStageTime:TpvUInt64;
+       fPresentTimingFeedbackLastRecalibrationTime:TpvUInt64;
+       fPresentTimingFeedbackNeedRecalibration:boolean;
+       fPresentTimingFeedbackLastTargetTime:TpvUInt64;
+       fPresentTimingFeedbackPresentationTimeError:TpvInt64;
+       fPresentTimingFeedbackPendingCompensation:TpvInt64;
+       fPresentTimingFeedbackLastPollPresentID:TpvUInt64;
+       fPresentTimingFeedbackErrorRingIndex:TpvInt32;
+       fPresentTimingFeedbackErrorRingCount:TpvInt32;
+       fPresentTimingFeedbackErrorRingValues:array[0..15] of TpvInt64;
+       fPresentTimingFeedbackInitialized:boolean;
+
+       // Low latency mode
+       fLowLatencyMode:TpvApplicationLowLatencyMode;
+       fLowLatencyActive:boolean;
+       fLowLatencyActiveMode:TpvApplicationLowLatencyMode;
+       fLowLatencyFrameID:TpvUInt64;
+       fLowLatencySleepSemaphore:TpvVulkanTimelineSemaphore;
+
        fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of TpvDouble;
        fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TpvHighResolutionTime;
        fFrameTimesHistoryIndex:TpvSizeInt;
@@ -2029,6 +2076,15 @@ type EpvApplication=class(Exception)
 
        procedure FramePacingAndFrameRateLimiter;
 
+       procedure PollPresentTimingFeedback;
+       procedure RecalibratePresentTimingDomains;
+       procedure UpdatePresentTimingFeedbackProperties;
+       procedure ComputePresentTimingTarget(var aTimingInfo:TVkPresentTimingInfoEXT);
+       procedure InitializeLowLatencyMode;
+       procedure ShutdownLowLatencyMode;
+       procedure SetLowLatencyMarker(const aMarker:TVkLatencyMarkerNV);
+       procedure LowLatencySleep;
+
        procedure UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
        procedure DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 
@@ -2222,6 +2278,11 @@ type EpvApplication=class(Exception)
        property FramePacingMode:TpvApplicationFramePacingMode read fFramePacingMode write fFramePacingMode;
 
        property FramePacingStrategy:TpvApplicationFramePacingStrategy read fFramePacingStrategy write fFramePacingStrategy;
+
+       property LowLatencyMode:TpvApplicationLowLatencyMode read fLowLatencyMode write fLowLatencyMode;
+       property LowLatencyActive:boolean read fLowLatencyActive;
+       property LowLatencyActiveMode:TpvApplicationLowLatencyMode read fLowLatencyActiveMode;
+       property PresentTimingFeedbackRefreshMode:TpvApplicationPresentTimingFeedbackRefreshMode read fPresentTimingFeedbackRefreshMode;
 
        property PresentFrameLatency:TpvUInt64 read fPresentFrameLatency write fPresentFrameLatency;
 
@@ -9031,6 +9092,31 @@ begin
  fFramePacingPresentTimingAvailable:=false;
  fFramePacingEffectiveInterval:=0;
 
+ fPresentTimingFeedbackRefreshDuration:=0;
+ fPresentTimingFeedbackRefreshInterval:=0;
+ fPresentTimingFeedbackRefreshMode:=TpvApplicationPresentTimingFeedbackRefreshMode.Unknown;
+ fPresentTimingFeedbackRefreshCounter:=0;
+ fPresentTimingFeedbackHasRefreshFeedback:=false;
+ fPresentTimingFeedbackTimeDomainCount:=0;
+ fPresentTimingFeedbackActiveTimeDomainID:=0;
+ fPresentTimingFeedbackCalibratedHostTime:=0;
+ fPresentTimingFeedbackCalibratedStageTime:=0;
+ fPresentTimingFeedbackLastRecalibrationTime:=0;
+ fPresentTimingFeedbackNeedRecalibration:=true;
+ fPresentTimingFeedbackLastTargetTime:=0;
+ fPresentTimingFeedbackPresentationTimeError:=0;
+ fPresentTimingFeedbackPendingCompensation:=0;
+ fPresentTimingFeedbackLastPollPresentID:=0;
+ fPresentTimingFeedbackErrorRingIndex:=0;
+ fPresentTimingFeedbackErrorRingCount:=0;
+ fPresentTimingFeedbackInitialized:=false;
+
+ fLowLatencyMode:=TpvApplicationLowLatencyMode.None;
+ fLowLatencyActive:=false;
+ fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.None;
+ fLowLatencyFrameID:=0;
+ fLowLatencySleepSemaphore:=nil;
+
  fFrameCounter:=0;
 
  fUpdateFrameCounter:=0;
@@ -9742,6 +9828,22 @@ begin
 
   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_PRESENT_TIMING_EXTENSION_NAME)>=0 then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_PRESENT_TIMING_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_2_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PRESENT_WAIT_2_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_LOW_LATENCY_2_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_AMD_ANTI_LAG_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_AMD_ANTI_LAG_EXTENSION_NAME);
   end;
 
   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>=0 then begin
@@ -10523,6 +10625,26 @@ begin
  if assigned(fFramePacingSleepWithDriftCompensation) then begin
   fFramePacingSleepWithDriftCompensation.Reset;
  end;
+
+ // Reset present timing feedback state for new swapchain
+ fPresentTimingFeedbackRefreshCounter:=0;
+ fPresentTimingFeedbackHasRefreshFeedback:=false;
+ fPresentTimingFeedbackNeedRecalibration:=true;
+ fPresentTimingFeedbackLastTargetTime:=0;
+ fPresentTimingFeedbackPresentationTimeError:=0;
+ fPresentTimingFeedbackPendingCompensation:=0;
+ fPresentTimingFeedbackLastPollPresentID:=0;
+ fPresentTimingFeedbackErrorRingIndex:=0;
+ fPresentTimingFeedbackErrorRingCount:=0;
+ if fFramePacingPresentTimingAvailable and
+    (fFramePacingMode=TpvApplicationFramePacingMode.VulkanPresentTimingFeedback) then begin
+  UpdatePresentTimingFeedbackProperties;
+  fPresentTimingFeedbackActiveTimeDomainID:=fFramePacingPresentTimingTimeDomainID;
+  fPresentTimingFeedbackInitialized:=true;
+  RecalibratePresentTimingDomains;
+ end else begin
+  fPresentTimingFeedbackInitialized:=false;
+ end;
 {$ifend}
 
  fSwapChainImageCounterIndex:=0;
@@ -11239,45 +11361,58 @@ var Target,TimeOut:TpvUInt64;
     PacingSorted:array[0..FramePacingHistorySize-1] of TpvInt64;
     PacingTemp:TpvInt64;
     RefreshRate:TpvDouble;
+    PresentWait2Info:TVkPresentWait2InfoKHR;
 begin
 
  if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
 
-  // Frame present waiting part
-  if (fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
-                                   TpvApplicationPresentFrameLatencyMode.PresentWait,
-                                   TpvApplicationPresentFrameLatencyMode.CombinedWait]) and
-     assigned(fVulkanDevice) and
-     fVulkanDevice.PresentIDSupport and
-     fVulkanDevice.PresentWaitSupport and
-     (fPresentFrameLatency<>0) and
-     (fVulkanPresentLastID>fPresentFrameLatency) and
-     (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) and
-     assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
-   Target:=fVulkanPresentLastID-fPresentFrameLatency;
-   if fBlocking then begin
-    TimeOut:=High(TpvUInt64);
+   // Frame present waiting part (prefer present_wait2, fallback to present_wait)
+   if (fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
+                                    TpvApplicationPresentFrameLatencyMode.PresentWait,
+                                    TpvApplicationPresentFrameLatencyMode.CombinedWait]) and
+      assigned(fVulkanDevice) and
+      (fVulkanDevice.PresentIDSupport or fVulkanDevice.PresentID2Support) and
+      (fVulkanDevice.PresentWaitSupport or fVulkanDevice.PresentWait2Support) and
+      (fPresentFrameLatency<>0) and
+      (fVulkanPresentLastID>fPresentFrameLatency) and
+      (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) then begin
+    Target:=fVulkanPresentLastID-fPresentFrameLatency;
+    if fBlocking then begin
+     TimeOut:=High(TpvUInt64);
+    end else begin
+     TimeOut:=1; // one nanosecond
+    end;
+    if fVulkanDevice.PresentWait2Support and
+       assigned(fVulkanDevice.Commands.Commands.WaitForPresent2KHR) then begin
+     // VK_KHR_present_wait2 path
+     FillChar(PresentWait2Info,SizeOf(TVkPresentWait2InfoKHR),#0);
+     PresentWait2Info.sType:=VK_STRUCTURE_TYPE_PRESENT_WAIT_2_INFO_KHR;
+     PresentWait2Info.presentId:=Target;
+     PresentWait2Info.timeout:=TimeOut;
+     WaitResult:=fVulkanDevice.Commands.WaitForPresent2KHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,@PresentWait2Info);
+    end else if assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
+     // VK_KHR_present_wait fallback path
+     WaitResult:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,Target,TimeOut);
+    end else begin
+     WaitResult:=VK_SUCCESS;
+    end;
+    case WaitResult of
+     VK_SUCCESS,
+     VK_SUBOPTIMAL_KHR:begin
+      result:=true;
+     end;
+     VK_ERROR_OUT_OF_DATE_KHR,
+     VK_TIMEOUT:begin
+      result:=false;
+     end;
+     else begin
+      Log(LOG_INFO,'TpvApplication.WaitForSwapChainLatency','vkWaitForPresent failed: '+VulkanErrorToString(WaitResult));
+      result:=true;
+     end;
+    end;
    end else begin
-    TimeOut:=1; // one nanosecond
+    result:=true;
    end;
-   WaitResult:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,Target,TimeOut);
-   case WaitResult of
-    VK_SUCCESS,
-    VK_SUBOPTIMAL_KHR:begin
-     result:=true;
-    end;
-    VK_ERROR_OUT_OF_DATE_KHR,
-    VK_TIMEOUT:begin
-     result:=false;
-    end;
-    else begin
-     Log(LOG_INFO,'TpvApplication.WaitForSwapChainLatency','vkWaitForPresentKHR failed: '+VulkanErrorToString(WaitResult));
-     result:=true;
-    end;
-   end;
-  end else begin
-   result:=true;
-  end;
 
   // Frame fence waiting part
   if result then begin
@@ -11289,8 +11424,8 @@ begin
       ((fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
                                      TpvApplicationPresentFrameLatencyMode.PresentWait]) and
        assigned(fVulkanDevice) and
-       fVulkanDevice.PresentIDSupport and
-       fVulkanDevice.PresentWaitSupport and
+       (fVulkanDevice.PresentIDSupport or fVulkanDevice.PresentID2Support) and
+       (fVulkanDevice.PresentWaitSupport or fVulkanDevice.PresentWait2Support) and
        (fPresentMode=TpvApplicationPresentMode.VSync) and
        (fPresentFrameLatency>0)) then begin
 
@@ -11452,6 +11587,14 @@ begin
    end; 
 
    fFramePacingLastPresentTime:=PacingNow;
+
+   // Present timing feedback polling (VulkanPresentTimingFeedback mode)
+   if fFramePacingMode=TpvApplicationFramePacingMode.VulkanPresentTimingFeedback then begin
+    PollPresentTimingFeedback;
+    if fPresentTimingFeedbackNeedRecalibration then begin
+     RecalibratePresentTimingDomains;
+    end;
+   end;
 
   end;
 
@@ -11846,10 +11989,15 @@ end;
 
 function TpvApplication.PresentVulkanBackBuffer:boolean;
 var PresentIdKHR:TVkPresentIdKHR;
+    PresentId2KHR:TVkPresentId2KHR;
     PresentTimingsInfoEXT:TVkPresentTimingsInfoEXT;
     PresentTimingInfoEXT:TVkPresentTimingInfoEXT;
     PresentNext:Pointer;
+    PresentFenceInfo:TVkSwapchainPresentFenceInfoKHR;
+    PresentFenceHandle:TVkFence;
 begin
+
+ SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_START_NV);
 
  result:=false;
 
@@ -11916,7 +12064,16 @@ begin
 
   PresentNext:=nil;
 
-  if fVulkanDevice.PresentIDSupport then begin
+  if fVulkanDevice.PresentID2Support then begin
+   // VK_KHR_present_id2 path
+   FillChar(PresentId2KHR,SizeOf(TVkPresentId2KHR),#0);
+   PresentId2KHR.sType:=VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR;
+   PresentId2KHR.swapchainCount:=1;
+   PresentId2KHR.pPresentIds:=@fVulkanPresentID;
+   inc(fVulkanPresentID);
+   PresentNext:=@PresentId2KHR;
+  end else if fVulkanDevice.PresentIDSupport then begin
+   // VK_KHR_present_id fallback path
    FillChar(PresentIdKHR,SizeOf(TVkPresentIdKHR),#0);
    PresentIdKHR.sType:=VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
    PresentIdKHR.swapchainCount:=1;
@@ -11927,9 +12084,22 @@ begin
 
   // Chain VK_EXT_present_timing info when available, to request
   // presentation at the nearest refresh cycle for consistent pacing
-  if fFramePacingPresentTimingAvailable and
+  // Present timing: either simple (nearest refresh cycle) or feedback-based
+  if (fFramePacingMode=TpvApplicationFramePacingMode.VulkanPresentTimingFeedback) and
+     fPresentTimingFeedbackInitialized and
      assigned(fVulkanDevice) and
      fVulkanDevice.PresentTimingSupport then begin
+   ComputePresentTimingTarget(PresentTimingInfoEXT);
+   FillChar(PresentTimingsInfoEXT,SizeOf(TVkPresentTimingsInfoEXT),#0);
+   PresentTimingsInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT;
+   PresentTimingsInfoEXT.swapchainCount:=1;
+   PresentTimingsInfoEXT.pTimingInfos:=@PresentTimingInfoEXT;
+   PresentTimingsInfoEXT.pNext:=PresentNext;
+   PresentNext:=@PresentTimingsInfoEXT;
+  end else if fFramePacingPresentTimingAvailable and
+              assigned(fVulkanDevice) and
+              fVulkanDevice.PresentTimingSupport then begin
+   // Simple present timing: request presentation at the nearest refresh cycle for consistent pacing
    FillChar(PresentTimingInfoEXT,SizeOf(TVkPresentTimingInfoEXT),#0);
    PresentTimingInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
    PresentTimingInfoEXT.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT);
@@ -11943,6 +12113,26 @@ begin
    PresentTimingsInfoEXT.pTimingInfos:=@PresentTimingInfoEXT;
    PresentTimingsInfoEXT.pNext:=PresentNext;
    PresentNext:=@PresentTimingsInfoEXT;
+  end;
+
+  // Chain present fence via VK_KHR_swapchain_maintenance1 when available
+  if fVulkanDevice.SwapchainMaintenance1Support and
+     (fSwapChainImageIndex>=0) and
+     (fSwapChainImageIndex<length(fVulkanPresentCompleteFences)) and
+     assigned(fVulkanPresentCompleteFences[fSwapChainImageIndex]) then begin
+   if fVulkanPresentCompleteFencesReady[fSwapChainImageIndex] then begin
+    fVulkanPresentCompleteFences[fSwapChainImageIndex].WaitFor;
+    fVulkanPresentCompleteFences[fSwapChainImageIndex].Reset;
+    fVulkanPresentCompleteFencesReady[fSwapChainImageIndex]:=false;
+   end;
+   PresentFenceHandle:=fVulkanPresentCompleteFences[fSwapChainImageIndex].Handle;
+   FillChar(PresentFenceInfo,SizeOf(TVkSwapchainPresentFenceInfoKHR),#0);
+   PresentFenceInfo.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR;
+   PresentFenceInfo.swapchainCount:=1;
+   PresentFenceInfo.pFences:=@PresentFenceHandle;
+   PresentFenceInfo.pNext:=PresentNext;
+   PresentNext:=@PresentFenceInfo;
+   fVulkanPresentCompleteFencesReady[fSwapChainImageIndex]:=true;
   end;
 
   try
@@ -12024,6 +12214,8 @@ begin
   Log(LOG_VERBOSE,'TpvApplication.PresentVulkanBackBuffer','Exception');
   raise;
  end;
+
+ SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_END_NV);
 
 end;
 
@@ -12533,6 +12725,24 @@ var LastTime,NowTime,FrameTime,TargetInterval,SleepDuration,
     LateAmount,Skipped:TpvHighResolutionTime;
 begin
 
+ // VRR + low latency: when VRR display is detected and low latency mode is active,
+ // skip CPU-side frame pacing to let the display adapt to the application frame rate
+ if fLowLatencyActive and
+    (fPresentTimingFeedbackRefreshMode=TpvApplicationPresentTimingFeedbackRefreshMode.VRR) and
+    (not ((fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond))) then begin
+  fFrameRateLimiterDeviation:=0;
+  fFramePacingNextPresentTarget:=0;
+  exit;
+ end;
+
+ // VulkanPresentTimingFeedback mode: GPU feedback loop handles pacing, skip CPU-side throttling
+ if (fFramePacingMode=TpvApplicationFramePacingMode.VulkanPresentTimingFeedback) and
+    (not ((fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond))) then begin
+  fFrameRateLimiterDeviation:=0;
+  fFramePacingNextPresentTarget:=0;
+  exit;
+ end;
+
  if fFrameRateLimiterLastTime=0 then begin
   fFrameRateLimiterLastTime:=fHighResolutionTimer.GetTime; // Initialize first last time
  end;
@@ -12670,11 +12880,405 @@ begin
  end;
 end;}
 
+procedure TpvApplication.PollPresentTimingFeedback;
+var PastTimingInfo:TVkPastPresentationTimingInfoEXT;
+    PastTimingProperties:TVkPastPresentationTimingPropertiesEXT;
+    PastTimings:array[0..15] of TVkPastPresentationTimingEXT;
+    Index:TpvInt32;
+    ActualTime,ErrorNs:TpvInt64;
+begin
+ if (not assigned(fVulkanDevice)) or
+    (not fVulkanDevice.PresentTimingSupport) or
+    (not assigned(fVulkanDevice.Commands.Commands.GetPastPresentationTimingEXT)) or
+    (not assigned(fVulkanSwapChain)) then begin
+  exit;
+ end;
+ FillChar(PastTimingInfo,SizeOf(TVkPastPresentationTimingInfoEXT),#0);
+ PastTimingInfo.sType:=VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_INFO_EXT;
+ PastTimingInfo.swapchain:=fVulkanSwapChain.Handle;
+ for Index:=0 to 15 do begin
+  FillChar(PastTimings[Index],SizeOf(TVkPastPresentationTimingEXT),#0);
+  PastTimings[Index].sType:=VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT;
+  PastTimings[Index].presentStageCount:=0;
+  PastTimings[Index].pPresentStages:=nil;
+ end;
+ FillChar(PastTimingProperties,SizeOf(TVkPastPresentationTimingPropertiesEXT),#0);
+ PastTimingProperties.sType:=VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT;
+ PastTimingProperties.presentationTimingCount:=16;
+ PastTimingProperties.pPresentationTimings:=@PastTimings[0];
+ try
+  if fVulkanDevice.Commands.GetPastPresentationTimingEXT(fVulkanDevice.Handle,
+                                                         @PastTimingInfo,
+                                                         @PastTimingProperties)=VK_SUCCESS then begin
+   for Index:=0 to TpvInt32(PastTimingProperties.presentationTimingCount)-1 do begin
+    if (PastTimings[Index].reportComplete<>VK_FALSE) and
+       (PastTimings[Index].presentId>fPresentTimingFeedbackLastPollPresentID) then begin
+     fPresentTimingFeedbackLastPollPresentID:=PastTimings[Index].presentId;
+     if (PastTimings[Index].targetTime>0) and (fPresentTimingFeedbackLastTargetTime>0) then begin
+      ActualTime:=TpvInt64(PastTimings[Index].targetTime);
+      ErrorNs:=ActualTime-TpvInt64(fPresentTimingFeedbackLastTargetTime);
+      fPresentTimingFeedbackErrorRingValues[fPresentTimingFeedbackErrorRingIndex]:=ErrorNs;
+      fPresentTimingFeedbackErrorRingIndex:=(fPresentTimingFeedbackErrorRingIndex+1) and 15;
+      if fPresentTimingFeedbackErrorRingCount<16 then begin
+       inc(fPresentTimingFeedbackErrorRingCount);
+      end;
+      fPresentTimingFeedbackPresentationTimeError:=ErrorNs;
+     end;
+    end;
+   end;
+   if PastTimingProperties.timingPropertiesCounter>fPresentTimingFeedbackRefreshCounter then begin
+    fPresentTimingFeedbackRefreshCounter:=PastTimingProperties.timingPropertiesCounter;
+    UpdatePresentTimingFeedbackProperties;
+   end;
+   if PastTimingProperties.timeDomainsCounter>0 then begin
+    fPresentTimingFeedbackNeedRecalibration:=true;
+   end;
+  end;
+ except
+ end;
+end;
+
+procedure TpvApplication.RecalibratePresentTimingDomains;
+var TimestampInfo:TVkCalibratedTimestampInfoKHR;
+    Timestamps:array[0..1] of TpvUInt64;
+    MaxDeviation:TpvUInt64;
+begin
+ if (not assigned(fVulkanDevice)) or
+    (not fVulkanDevice.CalibratedTimestampsSupport) then begin
+  exit;
+ end;
+ FillChar(TimestampInfo,SizeOf(TVkCalibratedTimestampInfoKHR),#0);
+ TimestampInfo.sType:=VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR;
+ TimestampInfo.timeDomain:=VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR;
+ MaxDeviation:=0;
+ try
+  if assigned(fVulkanDevice.Commands.Commands.GetCalibratedTimestampsKHR) then begin
+   if fVulkanDevice.Commands.GetCalibratedTimestampsKHR(fVulkanDevice.Handle,
+                                                        1,
+                                                        @TimestampInfo,
+                                                        @Timestamps[0],
+                                                        @MaxDeviation)=VK_SUCCESS then begin
+    fPresentTimingFeedbackCalibratedHostTime:=Timestamps[0];
+    fPresentTimingFeedbackNeedRecalibration:=false;
+    fPresentTimingFeedbackLastRecalibrationTime:=fHighResolutionTimer.GetTime;
+   end;
+  end else if assigned(fVulkanDevice.Commands.Commands.GetCalibratedTimestampsEXT) then begin
+   if fVulkanDevice.Commands.GetCalibratedTimestampsEXT(fVulkanDevice.Handle,
+                                                        1,
+                                                        @TimestampInfo,
+                                                        @Timestamps[0],
+                                                        @MaxDeviation)=VK_SUCCESS then begin
+    fPresentTimingFeedbackCalibratedHostTime:=Timestamps[0];
+    fPresentTimingFeedbackNeedRecalibration:=false;
+    fPresentTimingFeedbackLastRecalibrationTime:=fHighResolutionTimer.GetTime;
+   end;
+  end;
+ except
+ end;
+end;
+
+procedure TpvApplication.UpdatePresentTimingFeedbackProperties;
+var SwapchainTimingProperties:TVkSwapchainTimingPropertiesEXT;
+    SwapchainTimingPropertiesCounter:TpvUInt64;
+begin
+ if (not assigned(fVulkanDevice)) or
+    (not fVulkanDevice.PresentTimingSupport) or
+    (not assigned(fVulkanDevice.Commands.Commands.GetSwapchainTimingPropertiesEXT)) or
+    (not assigned(fVulkanSwapChain)) then begin
+  exit;
+ end;
+ FillChar(SwapchainTimingProperties,SizeOf(TVkSwapchainTimingPropertiesEXT),#0);
+ SwapchainTimingProperties.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT;
+ SwapchainTimingPropertiesCounter:=0;
+ try
+  if fVulkanDevice.Commands.GetSwapchainTimingPropertiesEXT(fVulkanDevice.Handle,
+                                                            fVulkanSwapChain.Handle,
+                                                            @SwapchainTimingProperties,
+                                                            @SwapchainTimingPropertiesCounter)=VK_SUCCESS then begin
+   fPresentTimingFeedbackRefreshDuration:=SwapchainTimingProperties.refreshDuration;
+   fPresentTimingFeedbackRefreshInterval:=SwapchainTimingProperties.refreshInterval;
+   if SwapchainTimingProperties.refreshInterval=TpvUInt64($FFFFFFFFFFFFFFFF) then begin
+    fPresentTimingFeedbackRefreshMode:=TpvApplicationPresentTimingFeedbackRefreshMode.VRR;
+   end else if SwapchainTimingProperties.refreshInterval>0 then begin
+    fPresentTimingFeedbackRefreshMode:=TpvApplicationPresentTimingFeedbackRefreshMode.FRR;
+   end else begin
+    fPresentTimingFeedbackRefreshMode:=TpvApplicationPresentTimingFeedbackRefreshMode.Unknown;
+   end;
+   fPresentTimingFeedbackHasRefreshFeedback:=true;
+  end;
+ except
+ end;
+end;
+
+procedure TpvApplication.ComputePresentTimingTarget(var aTimingInfo:TVkPresentTimingInfoEXT);
+var NowNs,TargetNs,CompensationNs:TpvUInt64;
+    MeanError:TpvInt64;
+    Index:TpvInt32;
+begin
+ FillChar(aTimingInfo,SizeOf(TVkPresentTimingInfoEXT),#0);
+ aTimingInfo.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
+ aTimingInfo.timeDomainID:=fPresentTimingFeedbackActiveTimeDomainID;
+ aTimingInfo.presentStageQueries:=0;
+ aTimingInfo.targetTimeDomainPresentStage:=0;
+ if (not fPresentTimingFeedbackHasRefreshFeedback) or
+    (fPresentTimingFeedbackRefreshDuration=0) then begin
+  aTimingInfo.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT);
+  aTimingInfo.targetTime:=0;
+  exit;
+ end;
+ MeanError:=0;
+ if fPresentTimingFeedbackErrorRingCount>0 then begin
+  for Index:=0 to fPresentTimingFeedbackErrorRingCount-1 do begin
+   MeanError:=MeanError+fPresentTimingFeedbackErrorRingValues[Index];
+  end;
+  MeanError:=MeanError div fPresentTimingFeedbackErrorRingCount;
+ end;
+ CompensationNs:=0;
+ if MeanError>0 then begin
+  CompensationNs:=TpvUInt64(MeanError shr 2);
+ end;
+ if fPresentTimingFeedbackRefreshMode=TpvApplicationPresentTimingFeedbackRefreshMode.VRR then begin
+  aTimingInfo.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT);
+  TargetNs:=fPresentTimingFeedbackRefreshDuration;
+  if TargetNs>CompensationNs then begin
+   TargetNs:=TargetNs-CompensationNs;
+  end;
+  aTimingInfo.targetTime:=TargetNs;
+ end else begin
+  NowNs:=fHighResolutionTimer.ToNanoseconds(fHighResolutionTimer.GetTime);
+  TargetNs:=NowNs+fPresentTimingFeedbackRefreshDuration;
+  if fPresentTimingFeedbackRefreshInterval>0 then begin
+   TargetNs:=((TargetNs+fPresentTimingFeedbackRefreshInterval-1) div fPresentTimingFeedbackRefreshInterval)*fPresentTimingFeedbackRefreshInterval;
+  end;
+  if TargetNs>CompensationNs then begin
+   TargetNs:=TargetNs-CompensationNs;
+  end;
+  aTimingInfo.flags:=0;
+  aTimingInfo.targetTime:=TargetNs;
+ end;
+ fPresentTimingFeedbackLastTargetTime:=aTimingInfo.targetTime;
+end;
+
+procedure TpvApplication.InitializeLowLatencyMode;
+var LatencySleepModeInfo:TVkLatencySleepModeInfoNV;
+    AntiLagData:TVkAntiLagDataAMD;
+begin
+ fLowLatencyActive:=false;
+ fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.None;
+ if not assigned(fVulkanDevice) then begin
+  exit;
+ end;
+ case fLowLatencyMode of
+  TpvApplicationLowLatencyMode.NVReflex:begin
+   if fVulkanDevice.LowLatency2Support and
+      assigned(fVulkanDevice.Commands.Commands.SetLatencySleepModeNV) and
+      assigned(fVulkanSwapChain) then begin
+    FillChar(LatencySleepModeInfo,SizeOf(TVkLatencySleepModeInfoNV),#0);
+    LatencySleepModeInfo.sType:=VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV;
+    LatencySleepModeInfo.lowLatencyMode:=VK_TRUE;
+    LatencySleepModeInfo.lowLatencyBoost:=VK_FALSE;
+    LatencySleepModeInfo.minimumIntervalUs:=0;
+    try
+     if fVulkanDevice.Commands.SetLatencySleepModeNV(fVulkanDevice.Handle,
+                                                     fVulkanSwapChain.Handle,
+                                                     @LatencySleepModeInfo)=VK_SUCCESS then begin
+      fLowLatencyActive:=true;
+      Log(LOG_INFO,'TpvApplication.InitializeLowLatencyMode','NV Reflex low latency mode activated');
+       fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.NVReflex;
+      fLowLatencySleepSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
+      fLowLatencyFrameID:=0;
+     end;
+    except
+    end;
+   end;
+  end;
+  TpvApplicationLowLatencyMode.AMDAntiLag:begin
+   if fVulkanDevice.AntiLagSupport and
+      assigned(fVulkanDevice.Commands.Commands.AntiLagUpdateAMD) then begin
+     FillChar(AntiLagData,SizeOf(TVkAntiLagDataAMD),#0);
+     AntiLagData.sType:=VK_STRUCTURE_TYPE_ANTI_LAG_DATA_AMD;
+     AntiLagData.mode:=VK_ANTI_LAG_MODE_ON_AMD;
+     AntiLagData.maxFPS:=0;
+     AntiLagData.pPresentationInfo:=nil;
+     try
+      fVulkanDevice.Commands.AntiLagUpdateAMD(fVulkanDevice.Handle,@AntiLagData);
+      fLowLatencyActive:=true;
+      fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.AMDAntiLag;
+      Log(LOG_INFO,'TpvApplication.InitializeLowLatencyMode','AMD Anti-Lag mode activated');
+     except
+     end;
+   end;
+  end;
+  TpvApplicationLowLatencyMode.Auto:begin
+   if fVulkanDevice.LowLatency2Support and
+      assigned(fVulkanDevice.Commands.Commands.SetLatencySleepModeNV) and
+      assigned(fVulkanSwapChain) then begin
+    FillChar(LatencySleepModeInfo,SizeOf(TVkLatencySleepModeInfoNV),#0);
+    LatencySleepModeInfo.sType:=VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV;
+    LatencySleepModeInfo.lowLatencyMode:=VK_TRUE;
+    LatencySleepModeInfo.lowLatencyBoost:=VK_FALSE;
+    LatencySleepModeInfo.minimumIntervalUs:=0;
+    try
+     if fVulkanDevice.Commands.SetLatencySleepModeNV(fVulkanDevice.Handle,
+                                                     fVulkanSwapChain.Handle,
+                                                     @LatencySleepModeInfo)=VK_SUCCESS then begin
+      fLowLatencyActive:=true;
+      Log(LOG_INFO,'TpvApplication.InitializeLowLatencyMode','NV Reflex low latency mode activated (auto)');
+       fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.NVReflex;
+      fLowLatencySleepSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
+      fLowLatencyFrameID:=0;
+     end;
+    except
+    end;
+   end else if fVulkanDevice.AntiLagSupport and
+               assigned(fVulkanDevice.Commands.Commands.AntiLagUpdateAMD) then begin
+     FillChar(AntiLagData,SizeOf(TVkAntiLagDataAMD),#0);
+     AntiLagData.sType:=VK_STRUCTURE_TYPE_ANTI_LAG_DATA_AMD;
+     AntiLagData.mode:=VK_ANTI_LAG_MODE_ON_AMD;
+     AntiLagData.maxFPS:=0;
+     AntiLagData.pPresentationInfo:=nil;
+     try
+      fVulkanDevice.Commands.AntiLagUpdateAMD(fVulkanDevice.Handle,@AntiLagData);
+      fLowLatencyActive:=true;
+      fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.AMDAntiLag;
+      Log(LOG_INFO,'TpvApplication.InitializeLowLatencyMode','AMD Anti-Lag mode activated (auto)');
+     except
+     end;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvApplication.ShutdownLowLatencyMode;
+var LatencySleepModeInfo:TVkLatencySleepModeInfoNV;
+    AntiLagData:TVkAntiLagDataAMD;
+begin
+ if fLowLatencyActive and assigned(fVulkanDevice) then begin
+  case fLowLatencyActiveMode of
+   TpvApplicationLowLatencyMode.NVReflex:begin
+    if fVulkanDevice.LowLatency2Support and
+       assigned(fVulkanDevice.Commands.Commands.SetLatencySleepModeNV) and
+       assigned(fVulkanSwapChain) then begin
+     FillChar(LatencySleepModeInfo,SizeOf(TVkLatencySleepModeInfoNV),#0);
+     LatencySleepModeInfo.sType:=VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV;
+     LatencySleepModeInfo.lowLatencyMode:=VK_FALSE;
+     LatencySleepModeInfo.lowLatencyBoost:=VK_FALSE;
+     LatencySleepModeInfo.minimumIntervalUs:=0;
+     try
+      fVulkanDevice.Commands.SetLatencySleepModeNV(fVulkanDevice.Handle,
+                                                   fVulkanSwapChain.Handle,
+                                                   @LatencySleepModeInfo);
+     except
+     end;
+    end;
+    FreeAndNil(fLowLatencySleepSemaphore);
+   end;
+   TpvApplicationLowLatencyMode.AMDAntiLag:begin
+    if fVulkanDevice.AntiLagSupport and
+       assigned(fVulkanDevice.Commands.Commands.AntiLagUpdateAMD) then begin
+     FillChar(AntiLagData,SizeOf(TVkAntiLagDataAMD),#0);
+     AntiLagData.sType:=VK_STRUCTURE_TYPE_ANTI_LAG_DATA_AMD;
+     AntiLagData.mode:=VK_ANTI_LAG_MODE_OFF_AMD;
+     AntiLagData.maxFPS:=0;
+     AntiLagData.pPresentationInfo:=nil;
+     try
+      fVulkanDevice.Commands.AntiLagUpdateAMD(fVulkanDevice.Handle,@AntiLagData);
+     except
+     end;
+    end;
+   end;
+  end;
+  fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.None;
+  fLowLatencyActive:=false;
+ end;
+end;
+
+
+procedure TpvApplication.SetLowLatencyMarker(const aMarker:TVkLatencyMarkerNV);
+var MarkerInfo:TVkSetLatencyMarkerInfoNV;
+    AntiLagData:TVkAntiLagDataAMD;
+    AntiLagPresInfo:TVkAntiLagPresentationInfoAMD;
+begin
+ if fLowLatencyActive and assigned(fVulkanDevice) then begin
+  case fLowLatencyActiveMode of
+   TpvApplicationLowLatencyMode.NVReflex:begin
+    if fVulkanDevice.LowLatency2Support and
+       assigned(fVulkanDevice.Commands.Commands.SetLatencyMarkerNV) and
+       assigned(fVulkanSwapChain) then begin
+     FillChar(MarkerInfo,SizeOf(TVkSetLatencyMarkerInfoNV),#0);
+     MarkerInfo.sType:=VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV;
+     MarkerInfo.presentID:=fVulkanPresentID;
+     MarkerInfo.marker:=aMarker;
+     fVulkanDevice.Commands.SetLatencyMarkerNV(fVulkanDevice.Handle,
+                                               fVulkanSwapChain.Handle,
+                                               @MarkerInfo);
+    end;
+   end;
+   TpvApplicationLowLatencyMode.AMDAntiLag:begin
+    if fVulkanDevice.AntiLagSupport and
+       assigned(fVulkanDevice.Commands.Commands.AntiLagUpdateAMD) then begin
+     if aMarker=VK_LATENCY_MARKER_INPUT_SAMPLE_NV then begin
+      FillChar(AntiLagPresInfo,SizeOf(TVkAntiLagPresentationInfoAMD),#0);
+      AntiLagPresInfo.sType:=VK_STRUCTURE_TYPE_ANTI_LAG_PRESENTATION_INFO_AMD;
+      AntiLagPresInfo.stage:=VK_ANTI_LAG_STAGE_INPUT_AMD;
+      AntiLagPresInfo.frameIndex:=fFrameCounter;
+      FillChar(AntiLagData,SizeOf(TVkAntiLagDataAMD),#0);
+      AntiLagData.sType:=VK_STRUCTURE_TYPE_ANTI_LAG_DATA_AMD;
+      AntiLagData.mode:=VK_ANTI_LAG_MODE_ON_AMD;
+      AntiLagData.maxFPS:=0;
+      AntiLagData.pPresentationInfo:=@AntiLagPresInfo;
+      fVulkanDevice.Commands.AntiLagUpdateAMD(fVulkanDevice.Handle,@AntiLagData);
+     end else if aMarker=VK_LATENCY_MARKER_PRESENT_START_NV then begin
+      FillChar(AntiLagPresInfo,SizeOf(TVkAntiLagPresentationInfoAMD),#0);
+      AntiLagPresInfo.sType:=VK_STRUCTURE_TYPE_ANTI_LAG_PRESENTATION_INFO_AMD;
+      AntiLagPresInfo.stage:=VK_ANTI_LAG_STAGE_PRESENT_AMD;
+      AntiLagPresInfo.frameIndex:=fFrameCounter;
+      FillChar(AntiLagData,SizeOf(TVkAntiLagDataAMD),#0);
+      AntiLagData.sType:=VK_STRUCTURE_TYPE_ANTI_LAG_DATA_AMD;
+      AntiLagData.mode:=VK_ANTI_LAG_MODE_ON_AMD;
+      AntiLagData.maxFPS:=0;
+      AntiLagData.pPresentationInfo:=@AntiLagPresInfo;
+      fVulkanDevice.Commands.AntiLagUpdateAMD(fVulkanDevice.Handle,@AntiLagData);
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvApplication.LowLatencySleep;
+var SleepInfo:TVkLatencySleepInfoNV;
+begin
+ if fLowLatencyActive and
+    assigned(fVulkanDevice) and
+    fVulkanDevice.LowLatency2Support and
+    assigned(fVulkanDevice.Commands.Commands.LatencySleepNV) and
+    assigned(fVulkanSwapChain) and
+    assigned(fLowLatencySleepSemaphore) then begin
+  inc(fLowLatencyFrameID);
+  FillChar(SleepInfo,SizeOf(TVkLatencySleepInfoNV),#0);
+  SleepInfo.sType:=VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV;
+  SleepInfo.signalSemaphore:=fLowLatencySleepSemaphore.Handle;
+  SleepInfo.value:=fLowLatencyFrameID;
+  try
+   if fVulkanDevice.Commands.LatencySleepNV(fVulkanDevice.Handle,
+                                            fVulkanSwapChain.Handle,
+                                            @SleepInfo)=VK_SUCCESS then begin
+    fLowLatencySleepSemaphore.WaitFor(fLowLatencyFrameID,
+                                      fHighResolutionTimer.SecondInterval);
+   end;
+  except
+  end;
+ end;
+end;
+
 procedure TpvApplication.UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
  if not TPasMPInterlocked.CompareExchange(fInUpdateJobFunction,TPasMPBool32(true),TPasMPBool32(false)) then begin
   try
-   Update(fUpdateDeltaTime);
+    SetLowLatencyMarker(VK_LATENCY_MARKER_SIMULATION_START_NV);
+    Update(fUpdateDeltaTime);
+    SetLowLatencyMarker(VK_LATENCY_MARKER_SIMULATION_END_NV);
   finally
    TPasMPInterlocked.Write(fInUpdateJobFunction,TPasMPBool32(false));
   end;
@@ -12683,7 +13287,9 @@ end;
 
 procedure TpvApplication.DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
+ SetLowLatencyMarker(VK_LATENCY_MARKER_RENDERSUBMIT_START_NV);
  Draw(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+ SetLowLatencyMarker(VK_LATENCY_MARKER_RENDERSUBMIT_END_NV);
 end;
 
 procedure TpvApplication.UpdateAudioHook;
@@ -13077,6 +13683,9 @@ begin
  end;
 
  DoSkipNextFrameForRendering:=ShouldSkipNextFrameForRendering;
+
+ LowLatencySleep;
+ SetLowLatencyMarker(VK_LATENCY_MARKER_INPUT_SAMPLE_NV);
 
  ReadyForSwapChainLatency:=DoSkipNextFrameForRendering or WaitForSwapChainLatency;
 

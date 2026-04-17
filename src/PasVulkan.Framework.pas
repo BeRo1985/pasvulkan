@@ -495,6 +495,10 @@ type EpvVulkanException=class(Exception);
        fPresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR;
        fPresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR;
        fPresentTimingFeatures:TVkPhysicalDevicePresentTimingFeaturesEXT;
+       fPresentID2Features:TVkPhysicalDevicePresentId2FeaturesKHR;
+       fPresentWait2Features:TVkPhysicalDevicePresentWait2FeaturesKHR;
+       fSwapchainMaintenance1Features:TVkPhysicalDeviceSwapchainMaintenance1FeaturesKHR;
+       fAntiLagFeatures:TVkPhysicalDeviceAntiLagFeaturesAMD;
        fFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
        fProperties2KHR:TVkPhysicalDeviceProperties2KHR;
        fQueueFamilyProperties:TVkQueueFamilyPropertiesArray;
@@ -580,6 +584,10 @@ type EpvVulkanException=class(Exception);
        property PresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR read fPresentIDFeatures;
        property PresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR read fPresentWaitFeatures;
        property PresentTimingFeatures:TVkPhysicalDevicePresentTimingFeaturesEXT read fPresentTimingFeatures;
+       property PresentID2Features:TVkPhysicalDevicePresentId2FeaturesKHR read fPresentID2Features;
+       property PresentWait2Features:TVkPhysicalDevicePresentWait2FeaturesKHR read fPresentWait2Features;
+       property SwapchainMaintenance1Features:TVkPhysicalDeviceSwapchainMaintenance1FeaturesKHR read fSwapchainMaintenance1Features;
+       property AntiLagFeatures:TVkPhysicalDeviceAntiLagFeaturesAMD read fAntiLagFeatures;
        property Features2KHR:TVkPhysicalDeviceFeatures2KHR read fFeatures2KHR;
        property Properties2KHR:TVkPhysicalDeviceProperties2KHR read fProperties2KHR;
       published
@@ -804,6 +812,12 @@ type EpvVulkanException=class(Exception);
        fPresentIDSupport:boolean;
        fPresentWaitSupport:boolean;
        fPresentTimingSupport:boolean;
+       fPresentID2Support:boolean;
+       fPresentWait2Support:boolean;
+       fSwapchainMaintenance1Support:boolean;
+       fLowLatency2Support:boolean;
+       fAntiLagSupport:boolean;
+       fCalibratedTimestampsSupport:boolean;
        fNVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV;
        fNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
@@ -827,6 +841,10 @@ type EpvVulkanException=class(Exception);
        fPresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR;
        fPresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR;
        fPresentTimingFeatures:TVkPhysicalDevicePresentTimingFeaturesEXT;
+       fPresentID2Features:TVkPhysicalDevicePresentId2FeaturesKHR;
+       fPresentWait2Features:TVkPhysicalDevicePresentWait2FeaturesKHR;
+       fSwapchainMaintenance1Features:TVkPhysicalDeviceSwapchainMaintenance1FeaturesKHR;
+       fAntiLagFeatures:TVkPhysicalDeviceAntiLagFeaturesAMD;
        fMultiView:boolean;
        fMultiViewTessellationShader:boolean;
        fMultiViewGeometryShader:boolean;
@@ -902,6 +920,12 @@ type EpvVulkanException=class(Exception);
        property PresentIDSupport:boolean read fPresentIDSupport;
        property PresentWaitSupport:boolean read fPresentWaitSupport;
        property PresentTimingSupport:boolean read fPresentTimingSupport;
+       property PresentID2Support:boolean read fPresentID2Support;
+       property PresentWait2Support:boolean read fPresentWait2Support;
+       property SwapchainMaintenance1Support:boolean read fSwapchainMaintenance1Support;
+       property LowLatency2Support:boolean read fLowLatency2Support;
+       property AntiLagSupport:boolean read fAntiLagSupport;
+       property CalibratedTimestampsSupport:boolean read fCalibratedTimestampsSupport;
        property OnBeforeDeviceCreate:TpvVulkanDeviceOnBeforeDeviceCreate read fOnBeforeDeviceCreate write fOnBeforeDeviceCreate;
       public
        property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT write fDescriptorIndexingFeaturesEXT;
@@ -925,6 +949,10 @@ type EpvVulkanException=class(Exception);
        property PresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR read fPresentIDFeatures write fPresentIDFeatures;
        property PresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR read fPresentWaitFeatures write fPresentWaitFeatures;
        property PresentTimingFeatures:TVkPhysicalDevicePresentTimingFeaturesEXT read fPresentTimingFeatures write fPresentTimingFeatures;
+       property PresentID2Features:TVkPhysicalDevicePresentId2FeaturesKHR read fPresentID2Features write fPresentID2Features;
+       property PresentWait2Features:TVkPhysicalDevicePresentWait2FeaturesKHR read fPresentWait2Features write fPresentWait2Features;
+       property SwapchainMaintenance1Features:TVkPhysicalDeviceSwapchainMaintenance1FeaturesKHR read fSwapchainMaintenance1Features write fSwapchainMaintenance1Features;
+       property AntiLagFeatures:TVkPhysicalDeviceAntiLagFeaturesAMD read fAntiLagFeatures write fAntiLagFeatures;
       published
        property MultiView:boolean read fMultiView;
        property MultiViewTessellationShader:boolean read fMultiViewTessellationShader;
@@ -9321,6 +9349,43 @@ begin
    fPresentTimingFeatures.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fPresentTimingFeatures;
   end;
+
+  begin
+   FillChar(fPresentID2Features,SizeOf(TVkPhysicalDevicePresentId2FeaturesKHR),#0);
+   fPresentID2Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_2_FEATURES_KHR;
+   if AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_ID_2_EXTENSION_NAME)>=0 then begin
+    fPresentID2Features.pNext:=fFeatures2KHR.pNext;
+    fFeatures2KHR.pNext:=@fPresentID2Features;
+   end;
+  end;
+
+  begin
+   FillChar(fPresentWait2Features,SizeOf(TVkPhysicalDevicePresentWait2FeaturesKHR),#0);
+   fPresentWait2Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_2_FEATURES_KHR;
+   if AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_2_EXTENSION_NAME)>=0 then begin
+    fPresentWait2Features.pNext:=fFeatures2KHR.pNext;
+    fFeatures2KHR.pNext:=@fPresentWait2Features;
+   end;
+  end;
+
+  begin
+   FillChar(fSwapchainMaintenance1Features,SizeOf(TVkPhysicalDeviceSwapchainMaintenance1FeaturesKHR),#0);
+   fSwapchainMaintenance1Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR;
+   if AvailableExtensionNames.IndexOf(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME)>=0 then begin
+    fSwapchainMaintenance1Features.pNext:=fFeatures2KHR.pNext;
+    fFeatures2KHR.pNext:=@fSwapchainMaintenance1Features;
+   end;
+  end;
+
+  begin
+   FillChar(fAntiLagFeatures,SizeOf(TVkPhysicalDeviceAntiLagFeaturesAMD),#0);
+   fAntiLagFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ANTI_LAG_FEATURES_AMD;
+   if AvailableExtensionNames.IndexOf(VK_AMD_ANTI_LAG_EXTENSION_NAME)>=0 then begin
+    fAntiLagFeatures.pNext:=fFeatures2KHR.pNext;
+    fFeatures2KHR.pNext:=@fAntiLagFeatures;
+   end;
+  end;
+  
  end;
 
  if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
@@ -12153,6 +12218,46 @@ begin
 
   end;
 
+  begin
+
+   FillChar(fPresentID2Features,SizeOf(TVkPhysicalDevicePresentId2FeaturesKHR),#0);
+   fPresentID2Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_2_FEATURES_KHR;
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_ID_2_EXTENSION_NAME)>=0) and
+      (PhysicalDevice.fPresentID2Features.presentId2<>VK_FALSE) then begin
+    fPresentID2Features.presentId2:=PhysicalDevice.fPresentID2Features.presentId2;
+    fPresentID2Features.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPresentID2Features;
+   end;
+
+   FillChar(fPresentWait2Features,SizeOf(TVkPhysicalDevicePresentWait2FeaturesKHR),#0);
+   fPresentWait2Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_2_FEATURES_KHR;
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_2_EXTENSION_NAME)>=0) and
+      (PhysicalDevice.fPresentWait2Features.presentWait2<>VK_FALSE) then begin
+    fPresentWait2Features.presentWait2:=PhysicalDevice.fPresentWait2Features.presentWait2;
+    fPresentWait2Features.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPresentWait2Features;
+   end;
+
+   FillChar(fSwapchainMaintenance1Features,SizeOf(TVkPhysicalDeviceSwapchainMaintenance1FeaturesKHR),#0);
+   fSwapchainMaintenance1Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR;
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME)>=0) and
+      (PhysicalDevice.fSwapchainMaintenance1Features.swapchainMaintenance1<>VK_FALSE) then begin
+    fSwapchainMaintenance1Features.swapchainMaintenance1:=PhysicalDevice.fSwapchainMaintenance1Features.swapchainMaintenance1;
+    fSwapchainMaintenance1Features.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fSwapchainMaintenance1Features;
+   end;
+
+   FillChar(fAntiLagFeatures,SizeOf(TVkPhysicalDeviceAntiLagFeaturesAMD),#0);
+   fAntiLagFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ANTI_LAG_FEATURES_AMD;
+   if (fEnabledExtensionNames.IndexOf(VK_AMD_ANTI_LAG_EXTENSION_NAME)>=0) and
+      (PhysicalDevice.fAntiLagFeatures.antiLag<>VK_FALSE) then begin
+    fAntiLagFeatures.antiLag:=PhysicalDevice.fAntiLagFeatures.antiLag;
+    fAntiLagFeatures.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fAntiLagFeatures;
+   end;
+
+  end;
+
   /////////////////////////////////////////////////////////////////////////
 
   if assigned(fOnBeforeDeviceCreate) then begin
@@ -12170,6 +12275,19 @@ begin
    fPresentWaitSupport:=fPresentWaitFeatures.presentWait<>VK_FALSE;
 
    fPresentTimingSupport:=fPresentTimingFeatures.presentTiming<>VK_FALSE;
+
+   fPresentID2Support:=fPresentID2Features.presentId2<>VK_FALSE;
+
+   fPresentWait2Support:=fPresentWait2Features.presentWait2<>VK_FALSE;
+
+   fSwapchainMaintenance1Support:=fSwapchainMaintenance1Features.swapchainMaintenance1<>VK_FALSE;
+
+   fLowLatency2Support:=fEnabledExtensionNames.IndexOf(VK_NV_LOW_LATENCY_2_EXTENSION_NAME)>=0;
+
+   fAntiLagSupport:=fAntiLagFeatures.antiLag<>VK_FALSE;
+
+   fCalibratedTimestampsSupport:=(fEnabledExtensionNames.IndexOf(VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)>=0) or
+                                (fEnabledExtensionNames.IndexOf(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)>=0);
 
    fMultiView:=fMultiviewFeaturesKHR.multiview<>VK_FALSE;
    fMultiViewTessellationShader:=fMultiviewFeaturesKHR.multiviewTessellationShader<>VK_FALSE;
