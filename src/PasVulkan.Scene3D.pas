@@ -77,6 +77,8 @@ unit PasVulkan.Scene3D;
 
 {$undef FlatParallelRenderInstanceUpdates}
 
+{$undef SubTreeInFlightFramesUpdates}
+
 interface
 
 uses {$ifdef Windows}
@@ -2909,8 +2911,10 @@ type EpvScene3D=class(Exception);
                             fCacheVerticesDirtyCounter:TpvUInt32;
                             fCacheMatrixGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             fCacheMatrixGeneration:TpvUInt64;
+{$ifdef SubTreeInFlightFramesUpdates}
                             fSubtreeCleanGeneration:TpvUInt64;
-                            fSubtreeCleanIFFGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+                            fSubtreeCleanInFlightFrameGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+{$endif}
                             fParents:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                             fCullVisibleIDs:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                             fMeshObjectID:TpvUInt32;
@@ -26845,7 +26849,9 @@ begin
    for OtherIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
     InstanceNode.fCacheVerticesGenerations[OtherIndex]:=0;
     InstanceNode.fCacheMatrixGenerations[OtherIndex]:=0;
-    InstanceNode.fSubtreeCleanIFFGenerations[OtherIndex]:=0;
+{$ifdef SubTreeInFlightFramesUpdates}
+    InstanceNode.fSubtreeCleanInFlightFrameGenerations[OtherIndex]:=0;
+{$endif}
     InstanceNode.fInFlightFrameVisible[OtherIndex]:=not Node.fIsLODVariant;
     InstanceNode.fInFlightFrameActiveLODLevel[OtherIndex]:=0;
     InstanceNode.fInFlightFrameScreenCoverage[OtherIndex]:=1.0;
@@ -26853,7 +26859,9 @@ begin
    InstanceNode.fCacheVerticesGeneration:=1;
    InstanceNode.fCacheVerticesDirtyCounter:=1;
    InstanceNode.fCacheMatrixGeneration:=1;
+{$ifdef SubTreeInFlightFramesUpdates}
    InstanceNode.fSubtreeCleanGeneration:=0;
+{$endif}
    InstanceNode.fRaytracingGroupInstanceNodeID:=0;
    InstanceNode.fRaytracingMask:=$ff;
    InstanceNode.fCastingShadows:=true;
@@ -30320,7 +30328,7 @@ var Index,OtherIndex,RotationCounter:TpvSizeInt;
     WeightedRotationFactorSum,
     WeightsFactorSum:TpvDouble;
     Overwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
-    FirstWeights,{SkinUsed,}Dirty,MatrixDirty,Additive,HasAdditiveRotation,DoCostlyUpdates,SubtreeClean:boolean;
+    FirstWeights,{SkinUsed,}Dirty,MatrixDirty,Additive,HasAdditiveRotation,DoCostlyUpdates{$ifdef SubTreeInFlightFramesUpdates},SubtreeClean{$endif}:boolean;
     OwnVisible,EffectiveVisible:boolean;
     Light:TpvScene3D.TLight;
     InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
@@ -30370,15 +30378,17 @@ begin
  InstanceNode:=fNodes.RawItems[aNodeIndex];
  Node:=fGroup.fNodes[aNodeIndex];
  InstanceNode.fProcessed:=true;
+{$ifdef SubTreeInFlightFramesUpdates}
  if (aInFlightFrameIndex>=0) and
     (not aMatrixDirty) and (not aDirty) and
     (InstanceNode.fCountOverwrites=0) and
     (not assigned(fOnNodeMatrixPre)) and
     (not assigned(fOnNodeMatrixPost)) and
-    (InstanceNode.fSubtreeCleanIFFGenerations[aInFlightFrameIndex]=InstanceNode.fSubtreeCleanGeneration) and
+    (InstanceNode.fSubtreeCleanInFlightFrameGenerations[aInFlightFrameIndex]=InstanceNode.fSubtreeCleanGeneration) and
     (InstanceNode.fSubtreeCleanGeneration>0) then begin
   exit;
  end;
+{$endif}
  Dirty:=aDirty;
  MatrixDirty:=aMatrixDirty;
  DoCostlyUpdates:=false;
@@ -30659,13 +30669,14 @@ begin
  for Index:=0 to Node.Children.Count-1 do begin
   ProcessNode(aInFlightFrameIndex,Node.Children[Index].Index,Matrix,Dirty,MatrixDirty,EffectiveVisible);
  end;
+{$ifdef SubTreeInFlightFramesUpdates}
  if (aInFlightFrameIndex>=0) and (not Dirty) and (not MatrixDirty) and
     (InstanceNode.fCountOverwrites=0) and
     (not assigned(fOnNodeMatrixPre)) and
     (not assigned(fOnNodeMatrixPost)) then begin
   SubtreeClean:=true;
   for Index:=0 to Node.Children.Count-1 do begin
-   if fNodes.RawItems[Node.Children[Index].Index].fSubtreeCleanIFFGenerations[aInFlightFrameIndex]<>
+   if fNodes.RawItems[Node.Children[Index].Index].fSubtreeCleanInFlightFrameGenerations[aInFlightFrameIndex]<>
       fNodes.RawItems[Node.Children[Index].Index].fSubtreeCleanGeneration then begin
     SubtreeClean:=false;
     break;
@@ -30673,9 +30684,10 @@ begin
   end;
   if SubtreeClean then begin
    InstanceNode.fSubtreeCleanGeneration:=InstanceNode.fSubtreeCleanGeneration+1;
-   InstanceNode.fSubtreeCleanIFFGenerations[aInFlightFrameIndex]:=InstanceNode.fSubtreeCleanGeneration;
+   InstanceNode.fSubtreeCleanInFlightFrameGenerations[aInFlightFrameIndex]:=InstanceNode.fSubtreeCleanGeneration;
   end;
  end;
+{$endif}
 end;
 
 function TpvScene3D.TGroup.TInstance.SelectNodeLODLevel(const aNode:TpvScene3D.TGroup.TNode;const aBoundingSphere:TpvSphere;out aScreenCoverage:TpvFloat):TpvInt32;
