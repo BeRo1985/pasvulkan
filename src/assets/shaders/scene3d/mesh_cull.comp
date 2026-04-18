@@ -841,10 +841,10 @@ void main(){
 
   const uint meshObjectID = cmd1.x;
 
-  uint batchAlphaMode1 = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].alphaMode;
+  uint batchAlphaMode = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].alphaMode;
 #ifdef MESH_SHADER_DEBUG
   debugPrintfEXT("mesh_cull PASS1: objID=%u rpMask=0x%x flags=0x%x alphaMode=%u rangeIdx=%u descBase=%u",
-    meshObjectID, pushConstants.renderPassMask, drawInfoItems[meshObjectID].flags, batchAlphaMode1, rangeIndex,
+    meshObjectID, pushConstants.renderPassMask, drawInfoItems[meshObjectID].flags, batchAlphaMode, rangeIndex,
     drawInfoItems[meshObjectID].meshletDescriptorBase);
 #endif
 
@@ -854,7 +854,7 @@ void main(){
   }
 
   // AlphaMode filter: skip if this batch's alpha mode is not allowed for this pass
-  if(((1u << batchAlphaMode1) & pushConstants.alphaModeMask) == 0u){
+  if(((1u << batchAlphaMode) & pushConstants.alphaModeMask) == 0u){
     return;
   }
 
