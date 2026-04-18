@@ -277,24 +277,17 @@ begin
 
  if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
 
-  if not fInstance.Renderer.UseMeshletExpand then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_task_pass0.spv');
-   try
-    fMeshTaskShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
-   finally
-    Stream.Free;
-   end;
-   fVulkanPipelineShaderStageMeshTask:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TASK_BIT_EXT,fMeshTaskShaderModule,'main');
-  end else begin
-   fMeshTaskShaderModule:=nil;
-   fVulkanPipelineShaderStageMeshTask:=nil;
+  // Filter passes always use the task-shader path regardless of UseMeshletExpand,
+  // because mesh_filter.comp MESH_SHADER_PATH always outputs task-shader-format commands.
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_task_pass0.spv');
+  try
+   fMeshTaskShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+  finally
+   Stream.Free;
   end;
+  fVulkanPipelineShaderStageMeshTask:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TASK_BIT_EXT,fMeshTaskShaderModule,'main');
 
-  if fInstance.Renderer.UseMeshletExpand then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_notask_mesh.spv');
-  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_mesh.spv');
-  end;
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_mesh.spv');
   try
    fMeshMeshShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
   finally

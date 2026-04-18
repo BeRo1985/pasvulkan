@@ -8801,7 +8801,7 @@ begin
   if fDrawMeshletDebugColors then begin
    MeshStagePushConstants^.DrawFlags:=MeshStagePushConstants^.DrawFlags or 1;
   end;
-  if Renderer.UseMeshletCulling then begin
+  if Renderer.UseMeshletCulling and not (aRenderPass in [TpvScene3DRendererRenderPass.ReflectiveShadowMap,TpvScene3DRendererRenderPass.Voxelization,TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap,TpvScene3DRendererRenderPass.ReflectionProbe]) then begin
    MeshStagePushConstants^.DrawFlags:=MeshStagePushConstants^.DrawFlags or (TpvUInt32(1) shl 3); // FLAG_MESHLET_CULLING_ENABLED
   end;
   if fZFar<0.0 then begin
@@ -9043,7 +9043,7 @@ begin
 
        end else begin
 
-        if Renderer.UseMeshletExpand then begin
+        if Renderer.UseMeshletExpand and not (aRenderPass in [TpvScene3DRendererRenderPass.ReflectiveShadowMap,TpvScene3DRendererRenderPass.Voxelization,TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap,TpvScene3DRendererRenderPass.ReflectionProbe]) then begin
          AdjustedBDA:=OutputBufferDeviceAddress+(TVkDeviceSize(fExpandRangeInfos[DrawChoreographyBatchRange^.DrawCallIndex].OutputBase)*SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand));
          MeshStagePushConstants^.MeshDrawCommandsBDA:=AdjustedBDA;
          aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,MeshShaderPushConstantStageFlags,0,SizeOf(TpvScene3D.TMeshStagePushConstants),MeshStagePushConstants);
