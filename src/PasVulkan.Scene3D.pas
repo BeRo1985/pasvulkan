@@ -3543,10 +3543,7 @@ type EpvScene3D=class(Exception);
                                        const aRenderPass:TpvScene3DRendererRenderPass;
                                        const aViewBaseIndex:TpvSizeInt;
                                        const aCountViews:TpvSizeInt;
-                                       const aFrustums:TpvFrustumDynamicArray;
-                                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
-                                       const aFrustumCullMask:TpvUInt32;
-                                       const aShadowPass:Boolean);
+                                       const aFrustums:TpvFrustumDynamicArray);
                      procedure GetBakedMeshProcessMorphSkinNode(const aBakedMesh:TpvScene3D.TBakedMesh;
                                                                 const aNode:TpvScene3D.TGroup.TNode;
                                                                 const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode;
@@ -33261,10 +33258,7 @@ procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeI
                                               const aRenderPass:TpvScene3DRendererRenderPass;
                                               const aViewBaseIndex:TpvSizeInt;
                                               const aCountViews:TpvSizeInt;
-                                              const aFrustums:TpvFrustumDynamicArray;
-                                              const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
-                                              const aFrustumCullMask:TpvUInt32;
-                                              const aShadowPass:Boolean);
+                                              const aFrustums:TpvFrustumDynamicArray);
 var SkipListItemIndex,SkipListItemCount,DrawChoreographyBatchItemIndex,
     DrawChoreographyBatchItemElementIndex,InstancesCount:TpvSizeInt;
     RendererInstanceID:TpvUInt32;
@@ -33310,8 +33304,6 @@ begin
       DrawChoreographyBatchItemElementIndex:=DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex];
       DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
       if DrawChoreographyBatchItem.fMaterial.fVisible and
-         (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-         ((not aShadowPass) or (aShadowPass and DrawChoreographyBatchItem.fMaterial.fData.CastingShadows and InstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex])) and
          (DrawChoreographyBatchItem.fCountIndices>0) then begin
        DrawChoreographyBatchItemMaterialAlphaModeBuckets^[DrawChoreographyBatchItem.fAlphaMode,
                                                           DrawChoreographyBatchItem.fPrimitiveTopology,
@@ -41459,10 +41451,7 @@ begin
                             aRenderPass,
                             aViewBaseIndex,
                             aCountViews,
-                            nil,
-                            aMaterialAlphaModes,
-                            TpvUInt32($ffffffff),
-                            aShadowPass);
+                            nil);
      end;
     end;
    end;
