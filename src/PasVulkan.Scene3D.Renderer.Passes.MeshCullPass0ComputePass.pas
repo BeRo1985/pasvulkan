@@ -546,16 +546,19 @@ begin
       PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
       PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
       PushConstants.RenderPassMask:=TpvUInt32(1) shl TpvUInt32(ord(TpvScene3DRendererRenderPass.View));
+      PushConstants.AlphaModeMask:=(TpvUInt32(1) shl TpvUInt32(ord(TpvScene3D.TMaterial.TAlphaMode.Opaque))) or (TpvUInt32(1) shl TpvUInt32(ord(TpvScene3D.TMaterial.TAlphaMode.Mask))) or (TpvUInt32(1) shl TpvUInt32(ord(TpvScene3D.TMaterial.TAlphaMode.Blend))); // Opaque+Mask+Blend
      end;
      TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
       PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CascadedShadowMapViewIndex;
       PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountCascadedShadowMapViews;
       PushConstants.RenderPassMask:=TpvUInt32(1) shl TpvUInt32(ord(TpvScene3DRendererRenderPass.CascadedShadowMap));
+      PushConstants.AlphaModeMask:=(TpvUInt32(1) shl TpvUInt32(ord(TpvScene3D.TMaterial.TAlphaMode.Opaque))) or (TpvUInt32(1) shl TpvUInt32(ord(TpvScene3D.TMaterial.TAlphaMode.Mask))); // Opaque+Mask only
      end;
      else begin
       PushConstants.BaseViewIndex:=0;
       PushConstants.CountViews:=0;
       PushConstants.RenderPassMask:=$ffff;
+      PushConstants.AlphaModeMask:=(TpvUInt32(1) shl TpvUInt32(ord(TpvScene3D.TMaterial.TAlphaMode.Opaque))) or (TpvUInt32(1) shl TpvUInt32(ord(TpvScene3D.TMaterial.TAlphaMode.Mask))) or (TpvUInt32(1) shl TpvUInt32(ord(TpvScene3D.TMaterial.TAlphaMode.Blend)));
      end;
     end;
 
@@ -593,6 +596,10 @@ begin
 
     if fInstance.Renderer.UseMeshletCulling and assigned(fMeshShaderPipeline) then begin
      PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 3); // FLAG_MESHLET_CULLING_ENABLED
+    end;
+
+    if fCullRenderPass=TpvScene3DRendererCullRenderPass.CascadedShadowMap then begin
+     PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 4); // FLAG_SHADOW_PASS
     end;
 
     PushConstants.MaxOutputCommands:=fInstance.GPUDrawIndexedIndirectCommandOutputBufferSizes[aInFlightFrameIndex];
