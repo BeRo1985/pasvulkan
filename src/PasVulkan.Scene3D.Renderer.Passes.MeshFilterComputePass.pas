@@ -90,6 +90,14 @@ type { TpvScene3DRendererPassesMeshFilterComputePass }
              MaxOutputCommands:TpvUInt32;
             end;
             PPushConstants=^TPushConstants;
+            TMeshCullResetPushConstants=packed record
+             CountRanges:TpvUInt32;
+             MaxMultiIndirectDrawCalls:TpvUInt32;
+             BatchRangeOffset:TpvUInt32;
+             PrefixSumOffset:TpvUInt32;
+             CullDispatchIndex:TpvUInt32;
+            end;
+            PMeshCullResetPushConstants=^TMeshCullResetPushConstants;
       private
        fInstance:TpvScene3DRendererInstance;
        fCullRenderPass:TpvScene3DRendererCullRenderPass;
@@ -210,7 +218,7 @@ procedure TpvScene3DRendererPassesMeshFilterComputePass.Execute(const aCommandBu
 var RenderPass:TpvScene3DRendererRenderPass;
     BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
     PushConstants:TpvScene3DRendererPassesMeshFilterComputePass.TPushConstants;
-    ResetPushConstants:TpvScene3DRendererMeshCullReset.TPushConstants;
+    ResetPushConstants:TMeshCullResetPushConstants;
     DescriptorSets:array[0..1] of TVkDescriptorSet;
     CountRanges,TotalCommands:TpvUInt32;
 begin
