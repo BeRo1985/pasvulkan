@@ -109,7 +109,6 @@ type { TpvScene3DRendererPassesForwardRenderPass }
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
        fInstance:TpvScene3DRendererInstance;
-       fUsePreviousDepth:Boolean;
        fUseDepthPrepass:Boolean;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
@@ -200,8 +199,6 @@ inherited Create(aFrameGraph);
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fUsePreviousDepth:=fInstance.Renderer.GPUCulling or fInstance.Renderer.EarlyDepthPrepassNeeded;
-
  fUseDepthPrepass:=fInstance.Renderer.UseDepthPrepass and not ({fInstance.Renderer.GPUCulling or} fInstance.Renderer.EarlyDepthPrepassNeeded);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
@@ -244,27 +241,13 @@ inherited Create(aFrameGraph);
 
   end;
 
-  if fUsePreviousDepth then begin
-
-   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                      'resource_depth_data',
-//                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
-                                       TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
-                                     );//}
-
-  end else begin
-
-   fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
-                                       'resource_depth_data',
-                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
-                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                      ); //}
-
-  end;
+  fResourceDepth:=AddImageDepthInput('resourcetype_depth',
+                                     'resource_depth_data',
+//                                   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                      TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
+                                    );//}
 
   if fInstance.Renderer.WetnessMapActive then begin
    fResourceWetnessMap:=AddImageInput('resourcetype_wetnessmap',
@@ -316,27 +299,13 @@ inherited Create(aFrameGraph);
 
   end;
 
-  if fUsePreviousDepth then begin
-
-   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                      'resource_msaa_depth_data',
-//                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
-                                       TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
-                                     );
-
-  end else begin
-
-   fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
-                                       'resource_msaa_depth_data',
-                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
-                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                      );
-
-  end;
+  fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
+                                     'resource_msaa_depth_data',
+//                                   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                      TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
+                                    );
 
   if fInstance.Renderer.WetnessMapActive then begin
    fResourceWetnessMap:=AddImageInput('resourcetype_msaa_wetnessmap',
@@ -610,21 +579,12 @@ begin
                                           fInstance.Renderer.Scene3D.SkyBoxCaching);
 
  if fUseDepthPrepass then begin
-  if fInstance.Renderer.GPUCulling then begin
    fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
                                                             fInstance,
                                                             fInstance.Renderer.Scene3D,
                                                             TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
                                                             fResourceCascadedShadowMap,
                                                             fResourceSSAO);
-  end else begin
-   fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
-                                                            fInstance,
-                                                            fInstance.Renderer.Scene3D,
-                                                            TpvScene3DPlanet.TRenderPass.TMode.DepthPrePass,
-                                                            fResourceCascadedShadowMap,
-                                                            fResourceSSAO);
-  end;
  end;
 
  fPlanetOpaquePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,

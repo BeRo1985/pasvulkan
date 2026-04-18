@@ -158,14 +158,7 @@ inherited Create(aFrameGraph);
  case fInstance.Renderer.ShadowMode of
   TpvScene3DRendererShadowMode.MSM:begin
    if fInstance.Renderer.ShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    if fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling then begin
-     fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_depth',
-                                        'resource_cascadedshadowmap_single_depth',
-                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
-                                          TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
-                                        );
-    end else begin
+    if fInstance.Renderer.RaytracingActive then begin
      fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_depth',
                                          'resource_cascadedshadowmap_single_depth',
                                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -173,16 +166,16 @@ inherited Create(aFrameGraph);
                                                                       TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                        );
+    end else begin
+     fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_depth',
+                                        'resource_cascadedshadowmap_single_depth',
+                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                          TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
+                                        );
     end;
    end else begin
-    if fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling then begin
-     fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_msaa_depth',
-                                        'resource_cascadedshadowmap_msaa_depth',
-                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                        [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
-                                         TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
-                                       );
-    end else begin
+    if fInstance.Renderer.RaytracingActive then begin
      fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_msaa_depth',
                                          'resource_cascadedshadowmap_msaa_depth',
                                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -190,18 +183,18 @@ inherited Create(aFrameGraph);
                                                                       TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
                                          [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                         );
+    end else begin
+     fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_msaa_depth',
+                                        'resource_cascadedshadowmap_msaa_depth',
+                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                        [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                         TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
+                                       );
     end;
    end;
   end
   else begin
-   if fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling then begin
-    fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_data',
-                                       'resource_cascadedshadowmap_data_final',
-                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
-                                        TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
-                                      );
-   end else begin
+   if fInstance.Renderer.RaytracingActive then begin
     fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_data',
                                         'resource_cascadedshadowmap_data_final',
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -209,6 +202,13 @@ inherited Create(aFrameGraph);
                                                                      TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                        );
+   end else begin
+    fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_data',
+                                       'resource_cascadedshadowmap_data_final',
+                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                        TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
+                                      );
    end;
   end;
  end;
@@ -322,18 +322,18 @@ begin
  end;
 
 
- if fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling then begin
+ if fInstance.Renderer.RaytracingActive then begin
   fPlanetShadowMapPass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
                                                             fInstance,
                                                             fInstance.Renderer.Scene3D,
-                                                            TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
+                                                            TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
                                                             nil,
                                                             nil);
  end else begin
   fPlanetShadowMapPass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
                                                             fInstance,
                                                             fInstance.Renderer.Scene3D,
-                                                            TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+                                                            TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
                                                             nil,
                                                             nil);
  end;
@@ -946,7 +946,7 @@ begin
                                     OnSetRenderPassResources,
                                     [TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                     nil,
-                                    fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling,
+                                    not fInstance.Renderer.RaytracingActive,
                                     false,
                                     MeshShaderPipelinesOpaque);
 
@@ -963,7 +963,7 @@ begin
                                     OnSetRenderPassResources,
                                     [TpvScene3D.TMaterial.TAlphaMode.Mask],
                                     nil,
-                                    fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling,
+                                    not fInstance.Renderer.RaytracingActive,
                                     false,
                                     MeshShaderPipelinesMask);
 
@@ -980,7 +980,7 @@ begin
                                     OnSetRenderPassResources,
                                     [TpvScene3D.TMaterial.TAlphaMode.Blend],
                                     nil,
-                                    fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling);}
+                                    not fInstance.Renderer.RaytracingActive);}
     end;
 
   end;

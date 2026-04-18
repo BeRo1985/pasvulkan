@@ -143,51 +143,23 @@ inherited Create(aFrameGraph);
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
-  if fInstance.Renderer.GPUCulling then begin
-
-   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                      'resource_depth_data',
-//                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
-                                       TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
-                                     );//}
-
-  end else begin
-
-   fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
-                                       'resource_depth_data', // _temporary',
-                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
-                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                      );
-
-  end;
+  fResourceDepth:=AddImageDepthInput('resourcetype_depth',
+                                     'resource_depth_data',
+//                                   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                      TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
+                                    );//}
 
  end else begin
 
-  if fInstance.Renderer.GPUCulling then begin
-
-   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                      'resource_msaa_depth_data',
+  fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
+                                     'resource_msaa_depth_data',
 //                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
                                        TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                                      );//}
-
-  end else begin
-
-   fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
-                                       'resource_msaa_depth_data', //'_temporary',
-                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
-                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                      );
-
-  end;
 
  end;
 
@@ -278,21 +250,12 @@ begin
 
  MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshDepthMaskedFragment);
 
- if fInstance.Renderer.GPUCulling then begin
-  fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
-                                                           fInstance,
-                                                           fInstance.Renderer.Scene3D,
-                                                           TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
-                                                           nil,
-                                                           nil);
- end else begin
-  fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
-                                                           fInstance,
-                                                           fInstance.Renderer.Scene3D,
-                                                           TpvScene3DPlanet.TRenderPass.TMode.DepthPrePass,
-                                                           nil,
-                                                           nil);
- end;
+ fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                          fInstance,
+                                                          fInstance.Renderer.Scene3D,
+                                                          TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
+                                                          nil,
+                                                          nil);
 
 end;
 

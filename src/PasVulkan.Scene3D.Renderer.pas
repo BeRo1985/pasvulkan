@@ -137,8 +137,6 @@ type TpvScene3DRenderer=class;
        fVulkanPipelineCache:TpvVulkanPipelineCache;
        fCountInFlightFrames:TpvSizeInt;
        fVelocityBufferNeeded:Boolean;
-       fGPUCulling:Boolean;
-       fGPUShadowCulling:Boolean;
        fUseMeshShaderPipeline:Boolean;
        fUseMeshletExpand:Boolean;
        fUseMeshletCulling:Boolean;
@@ -237,8 +235,6 @@ type TpvScene3DRenderer=class;
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property VelocityBufferNeeded:Boolean read fVelocityBufferNeeded;
-       property GPUCulling:Boolean read fGPUCulling;
-       property GPUShadowCulling:Boolean read fGPUShadowCulling;
        property UseMeshShaderPipeline:Boolean read fUseMeshShaderPipeline write fUseMeshShaderPipeline;
        property UseMeshletExpand:Boolean read fUseMeshletExpand write fUseMeshletExpand;
        property UseMeshletCulling:Boolean read fUseMeshletCulling write fUseMeshletCulling;
@@ -691,10 +687,6 @@ var Index:TpvSizeInt;
 begin
 
  fVelocityBufferNeeded:=false;
-
- fGPUCulling:=true;
-
- fGPUShadowCulling:=not fScene3D.RaytracingActive;
 
  fUseMeshShaderPipeline:=fUseMeshShaderPipeline and fScene3D.MeshShaderSupport;
 
