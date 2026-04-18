@@ -199,7 +199,7 @@ inherited Create(aFrameGraph);
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fUseDepthPrepass:=fInstance.Renderer.UseDepthPrepass and not ({fInstance.Renderer.GPUCulling or} fInstance.Renderer.EarlyDepthPrepassNeeded);
+ fUseDepthPrepass:=false;//fInstance.Renderer.UseDepthPrepass and not ({fInstance.Renderer.GPUCulling or} fInstance.Renderer.EarlyDepthPrepassNeeded);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
                                            'resource_cascadedshadowmap_data_final',
@@ -579,12 +579,12 @@ begin
                                           fInstance.Renderer.Scene3D.SkyBoxCaching);
 
  if fUseDepthPrepass then begin
-   fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
-                                                            fInstance,
-                                                            fInstance.Renderer.Scene3D,
-                                                            TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
-                                                            fResourceCascadedShadowMap,
-                                                            fResourceSSAO);
+  fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                           fInstance,
+                                                           fInstance.Renderer.Scene3D,
+                                                           TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
+                                                           fResourceCascadedShadowMap,
+                                                           fResourceSSAO);
  end;
 
  fPlanetOpaquePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,

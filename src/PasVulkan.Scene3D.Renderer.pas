@@ -141,7 +141,6 @@ type TpvScene3DRenderer=class;
        fUseMeshletExpand:Boolean;
        fUseMeshletCulling:Boolean;
        fUseMeshShaderLayerRouting:Boolean;
-       fEarlyDepthPrepassNeeded:Boolean;
        fWetnessMapActive:Boolean;
        fScreenSpaceAmbientOcclusion:Boolean;
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
@@ -239,7 +238,6 @@ type TpvScene3DRenderer=class;
        property UseMeshletExpand:Boolean read fUseMeshletExpand write fUseMeshletExpand;
        property UseMeshletCulling:Boolean read fUseMeshletCulling write fUseMeshletCulling;
        property UseMeshShaderLayerRouting:Boolean read fUseMeshShaderLayerRouting write fUseMeshShaderLayerRouting;
-       property EarlyDepthPrepassNeeded:Boolean read fEarlyDepthPrepassNeeded;
        property WetnessMapActive:Boolean read fWetnessMapActive write fWetnessMapActive;
        property ScreenSpaceAmbientOcclusion:Boolean read fScreenSpaceAmbientOcclusion write fScreenSpaceAmbientOcclusion;
        property AntialiasingMode:TpvScene3DRendererAntialiasingMode read fAntialiasingMode write fAntialiasingMode;
@@ -696,12 +694,6 @@ begin
 
  fUseMeshShaderLayerRouting:=fScene3D.MeshShaderSupport and
                              (fScene3D.VulkanDevice.PhysicalDevice.Vulkan12Features.shaderOutputLayer<>VK_FALSE);
-
- fEarlyDepthPrepassNeeded:=false;
-
- if fWetnessMapActive or fScreenSpaceAmbientOcclusion then begin
-  fEarlyDepthPrepassNeeded:=true;
- end;
 
  if fShadowMapSize=0 then begin
   fShadowMapSize:=512;
@@ -1188,7 +1180,6 @@ begin
  case fGlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_radiance_hints_';
-   fEarlyDepthPrepassNeeded:=true;
   end;
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
    fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_voxel_cone_tracing_';
