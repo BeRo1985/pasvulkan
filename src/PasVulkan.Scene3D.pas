@@ -4829,6 +4829,12 @@ type EpvScene3D=class(Exception);
                          const aViewPortHeight:TpvInt32;
                          const aMainViewPort:Boolean;
                          const aGPUCulling:boolean=true);
+       procedure PreparePlanets(const aInFlightFrameIndex:TpvSizeInt;
+                                const aRendererInstance:TObject;
+                                const aRenderPass:TpvScene3DRendererRenderPass;
+                                const aViewPortWidth:TpvInt32;
+                                const aViewPortHeight:TpvInt32;
+                                const aMainViewPort:Boolean);
        procedure UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
                                       const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -41489,6 +41495,28 @@ begin
 {b:=pvApplication.HighResolutionTimer.GetTime;
  writeln('a: ',pvApplication.HighResolutionTimer.ToFloatSeconds(b-a)*1000.0:10:8,'ms');}
 
+end;
+
+procedure TpvScene3D.PreparePlanets(const aInFlightFrameIndex:TpvSizeInt;
+                                    const aRendererInstance:TObject;
+                                    const aRenderPass:TpvScene3DRendererRenderPass;
+                                    const aViewPortWidth:TpvInt32;
+                                    const aViewPortHeight:TpvInt32;
+                                    const aMainViewPort:Boolean);
+var Index:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+begin
+ TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
+ try
+  for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+   Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
+   if Planet.Ready then begin
+    Planet.Prepare(aInFlightFrameIndex,aRendererInstance,aRenderPass,aViewPortWidth,aViewPortHeight,aMainViewPort);
+   end;
+  end;
+ finally
+  TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
+ end;
 end;
 
 procedure TpvScene3D.SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuffer;

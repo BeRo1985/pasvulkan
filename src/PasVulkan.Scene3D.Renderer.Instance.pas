@@ -9041,6 +9041,7 @@ procedure TpvScene3DRendererInstance.PrepareFrame(const aInFlightFrameIndex:TpvI
 var Index:TpvSizeInt;
     InFlightFrameState:PInFlightFrameState;
     ViewLeft,ViewRight:TpvScene3D.TView;
+    RenderPass:TpvScene3DRendererRenderPass;
     ViewMatrix,LeftProjectionMatrix,RightProjectionMatrix:TpvMatrix4x4;
     FieldOfView:TpvFloat;
 begin
@@ -9254,9 +9255,8 @@ begin
  end;
 
 
- // Final viewport(s) (and voxelization viewport)
+ // Single unified Prepare for all mesh instances (G.5)
  if InFlightFrameState^.CountFinalViews>0 then begin
-
   fScene3D.Prepare(aInFlightFrameIndex,
                    self,
                    TpvScene3DRendererRenderPass.View,
@@ -9267,76 +9267,43 @@ begin
                    fScaledHeight,
                    true,
                    Renderer.GPUCulling);
+ end;
 
-  if Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing then begin
-   fScene3D.Prepare(aInFlightFrameIndex,
-                    self,
-                    TpvScene3DRendererRenderPass.Voxelization,
-                    fViews[aInFlightFrameIndex],
-                    InFlightFrameState^.FinalViewIndex,
-                    Min(InFlightFrameState^.CountFinalViews,1),
-                    Renderer.GlobalIlluminationVoxelGridSize,
-                    Renderer.GlobalIlluminationVoxelGridSize,
-                    false,
-                    false);
+ // Replicate View BatchRangeIndices and set GPUCulled for all other RenderPasses
+ if fCachedDrawDataGeneration[aInFlightFrameIndex]<>fSnapshotDrawDataGeneration[aInFlightFrameIndex] then begin
+  for RenderPass:=TpvScene3DRendererRenderPassFirst to TpvScene3DRendererRenderPassLast do begin
+   if RenderPass<>TpvScene3DRendererRenderPass.View then begin
+    fDrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,RenderPass].Assign(
+     fDrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,TpvScene3DRendererRenderPass.View]);
+   end;
   end;
-
  end;
 
- // Reflection probe viewport(s)
+ // Set per-RenderPass GPUCulled flags
+ fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.Voxelization]:=false;
+ fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.ReflectionProbe]:=false;
+ fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap]:=false;
+ fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.ReflectiveShadowMap]:=false;
+ fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.CascadedShadowMap]:=Renderer.GPUCulling and Renderer.GPUShadowCulling;
+
+ // Planet.Prepare per active RenderPass (separate rendering system)
+ if InFlightFrameState^.CountFinalViews>0 then begin
+  fScene3D.PreparePlanets(aInFlightFrameIndex,self,TpvScene3DRendererRenderPass.View,fScaledWidth,fScaledHeight,true);
+  if Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing then begin
+   fScene3D.PreparePlanets(aInFlightFrameIndex,self,TpvScene3DRendererRenderPass.Voxelization,Renderer.GlobalIlluminationVoxelGridSize,Renderer.GlobalIlluminationVoxelGridSize,false);
+  end;
+ end;
  if InFlightFrameState^.CountReflectionProbeViews>0 then begin
-  fScene3D.Prepare(aInFlightFrameIndex,
-                   self,
-                   TpvScene3DRendererRenderPass.ReflectionProbe,
-                   fViews[aInFlightFrameIndex],
-                   InFlightFrameState^.ReflectionProbeViewIndex,
-                   InFlightFrameState^.CountReflectionProbeViews,
-                   fReflectionProbeWidth,
-                   fReflectionProbeHeight,
-                   false,
-                   false);
+  fScene3D.PreparePlanets(aInFlightFrameIndex,self,TpvScene3DRendererRenderPass.ReflectionProbe,fReflectionProbeWidth,fReflectionProbeHeight,false);
  end;
-
- // Reflection probe viewport(s)
  if InFlightFrameState^.CountTopDownSkyOcclusionMapViews>0 then begin
-  fScene3D.Prepare(aInFlightFrameIndex,
-                   self,
-                   TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap,
-                   fViews[aInFlightFrameIndex],
-                   InFlightFrameState^.TopDownSkyOcclusionMapViewIndex,
-                   InFlightFrameState^.CountTopDownSkyOcclusionMapViews,
-                   fTopDownSkyOcclusionMapWidth,
-                   fTopDownSkyOcclusionMapHeight,
-                   false,
-                   false);
+  fScene3D.PreparePlanets(aInFlightFrameIndex,self,TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap,fTopDownSkyOcclusionMapWidth,fTopDownSkyOcclusionMapHeight,false);
  end;
-
- // Reflective shadow map viewport(s)
  if InFlightFrameState^.CountReflectiveShadowMapViews>0 then begin
-  fScene3D.Prepare(aInFlightFrameIndex,
-                   self,
-                   TpvScene3DRendererRenderPass.ReflectiveShadowMap,
-                   fViews[aInFlightFrameIndex],
-                   InFlightFrameState^.ReflectiveShadowMapViewIndex,
-                   InFlightFrameState^.CountReflectiveShadowMapViews,
-                   fReflectiveShadowMapWidth,
-                   fReflectiveShadowMapHeight,
-                   false,
-                   false);
+  fScene3D.PreparePlanets(aInFlightFrameIndex,self,TpvScene3DRendererRenderPass.ReflectiveShadowMap,fReflectiveShadowMapWidth,fReflectiveShadowMapHeight,false);
  end;
-
  if InFlightFrameState^.CountCascadedShadowMapViews>0 then begin
-  // Cascaded shadow map viewport(s)
-  fScene3D.Prepare(aInFlightFrameIndex,
-                   self,
-                   TpvScene3DRendererRenderPass.CascadedShadowMap,
-                   fViews[aInFlightFrameIndex],
-                   InFlightFrameState^.CascadedShadowMapViewIndex,
-                   InFlightFrameState^.CountCascadedShadowMapViews,
-                   fCascadedShadowMapWidth,
-                   fCascadedShadowMapHeight,
-                   false,
-                   Renderer.GPUCulling and Renderer.GPUShadowCulling);
+  fScene3D.PreparePlanets(aInFlightFrameIndex,self,TpvScene3DRendererRenderPass.CascadedShadowMap,fCascadedShadowMapWidth,fCascadedShadowMapHeight,false);
  end;
 
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
