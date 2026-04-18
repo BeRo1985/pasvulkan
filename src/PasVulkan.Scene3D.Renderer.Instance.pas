@@ -9434,10 +9434,10 @@ begin
  end;
 
  // Set per-RenderPass GPUCulled flags
- fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.Voxelization]:=false;
- fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.ReflectionProbe]:=false;
- fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap]:=false;
- fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.ReflectiveShadowMap]:=false;
+ fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.Voxelization]:=true;
+ fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.ReflectionProbe]:=true;
+ fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap]:=true;
+ fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.ReflectiveShadowMap]:=true;
  fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.CascadedShadowMap]:=Renderer.GPUCulling and Renderer.GPUShadowCulling;
 
  // Planet.Prepare per active RenderPass (separate rendering system)
@@ -10129,6 +10129,18 @@ begin
      TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
       RenderPass:=TpvScene3DRendererRenderPass.CascadedShadowMap;
      end;
+     TpvScene3DRendererCullRenderPass.Voxelization:begin
+      RenderPass:=TpvScene3DRendererRenderPass.Voxelization;
+     end;
+     TpvScene3DRendererCullRenderPass.ReflectionProbe:begin
+      RenderPass:=TpvScene3DRendererRenderPass.ReflectionProbe;
+     end;
+     TpvScene3DRendererCullRenderPass.TopDownSkyOcclusionMap:begin
+      RenderPass:=TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap;
+     end;
+     TpvScene3DRendererCullRenderPass.ReflectiveShadowMap:begin
+      RenderPass:=TpvScene3DRendererRenderPass.ReflectiveShadowMap;
+     end;
      else begin
       continue;
      end;
@@ -10146,32 +10158,42 @@ begin
       GPUBatchRange^.BaseCommandIndex:=DrawChoreographyBatchRange^.FirstCommand;
       GPUBatchRange^.CountCommands:=DrawChoreographyBatchRange^.CountCommands;
       GPUBatchRange^.DrawCallIndex:=DrawChoreographyBatchRange^.DrawCallIndex;
-      GPUBatchRange^.BaseCommandIndexForDisocclusions:=fPerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets[aInFlightFrameIndex]+DrawChoreographyBatchRange^.FirstCommand;
-      GPUBatchRange^.DrawCallIndexForDisocclusions:=MaxMultiIndirectDrawCalls+DrawChoreographyBatchRange^.DrawCallIndex;
       GPUBatchRange^.AlphaMode:=TpvUInt32(DrawChoreographyBatchRange^.AlphaMode);
-      if (CullRenderPass=TpvScene3DRendererCullRenderPass.FinalView) and
-         (DrawChoreographyBatchRange^.AlphaMode in [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask]) then begin
-       GPUBatchRange^.OITDrawCallIndex:=(MaxMultiIndirectDrawCalls shl 1)+DrawChoreographyBatchRange^.DrawCallIndex;
-       GPUBatchRange^.OITBaseCommandIndex:=fPerInFlightFrameGPUDrawIndexedIndirectCommandOITPromotionOffsets[aInFlightFrameIndex]+DrawChoreographyBatchRange^.FirstCommand;
+      if CullRenderPass in [TpvScene3DRendererCullRenderPass.FinalView,
+                             TpvScene3DRendererCullRenderPass.CascadedShadowMap] then begin
+       // Full cull passes: disocclusion + OIT + meshlet expand
+       GPUBatchRange^.BaseCommandIndexForDisocclusions:=fPerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets[aInFlightFrameIndex]+DrawChoreographyBatchRange^.FirstCommand;
+       GPUBatchRange^.DrawCallIndexForDisocclusions:=MaxMultiIndirectDrawCalls+DrawChoreographyBatchRange^.DrawCallIndex;
+       if (CullRenderPass=TpvScene3DRendererCullRenderPass.FinalView) and
+          (DrawChoreographyBatchRange^.AlphaMode in [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask]) then begin
+        GPUBatchRange^.OITDrawCallIndex:=(MaxMultiIndirectDrawCalls shl 1)+DrawChoreographyBatchRange^.DrawCallIndex;
+        GPUBatchRange^.OITBaseCommandIndex:=fPerInFlightFrameGPUDrawIndexedIndirectCommandOITPromotionOffsets[aInFlightFrameIndex]+DrawChoreographyBatchRange^.FirstCommand;
+       end else begin
+        GPUBatchRange^.OITDrawCallIndex:=TpvUInt32($ffffffff);
+        GPUBatchRange^.OITBaseCommandIndex:=0;
+       end;
+       // Accumulate ExpandRangeInfo weights for meshlet expand sort
+       if Renderer.UseMeshletExpand then begin
+        // Normal
+        fExpandRangeInfos[DrawChoreographyBatchRange^.DrawCallIndex].OutputCapacity:=DrawChoreographyBatchRange^.CountCommands;
+        inc(ExpandRangeInfoTotalWeight,DrawChoreographyBatchRange^.CountCommands);
+        // Disocclusion
+        fExpandRangeInfos[MaxMultiIndirectDrawCalls+DrawChoreographyBatchRange^.DrawCallIndex].OutputCapacity:=DrawChoreographyBatchRange^.CountCommands;
+        inc(ExpandRangeInfoTotalWeight,DrawChoreographyBatchRange^.CountCommands);
+        // OIT + OIT disocclusion
+        if GPUBatchRange^.OITDrawCallIndex<>TpvUInt32($ffffffff) then begin
+         fExpandRangeInfos[GPUBatchRange^.OITDrawCallIndex].OutputCapacity:=DrawChoreographyBatchRange^.CountCommands;
+         inc(ExpandRangeInfoTotalWeight,DrawChoreographyBatchRange^.CountCommands);
+         fExpandRangeInfos[(MaxMultiIndirectDrawCalls*3)+DrawChoreographyBatchRange^.DrawCallIndex].OutputCapacity:=DrawChoreographyBatchRange^.CountCommands;
+         inc(ExpandRangeInfoTotalWeight,DrawChoreographyBatchRange^.CountCommands);
+        end;
+       end;
       end else begin
+       // Filter-only passes: no disocclusion, no OIT, no meshlet expand
+       GPUBatchRange^.BaseCommandIndexForDisocclusions:=0;
+       GPUBatchRange^.DrawCallIndexForDisocclusions:=TpvUInt32($ffffffff);
        GPUBatchRange^.OITDrawCallIndex:=TpvUInt32($ffffffff);
        GPUBatchRange^.OITBaseCommandIndex:=0;
-      end;
-      // Accumulate ExpandRangeInfo weights for meshlet expand sort
-      if Renderer.UseMeshletExpand then begin
-       // Normal
-       fExpandRangeInfos[DrawChoreographyBatchRange^.DrawCallIndex].OutputCapacity:=DrawChoreographyBatchRange^.CountCommands;
-       inc(ExpandRangeInfoTotalWeight,DrawChoreographyBatchRange^.CountCommands);
-       // Disocclusion
-       fExpandRangeInfos[MaxMultiIndirectDrawCalls+DrawChoreographyBatchRange^.DrawCallIndex].OutputCapacity:=DrawChoreographyBatchRange^.CountCommands;
-       inc(ExpandRangeInfoTotalWeight,DrawChoreographyBatchRange^.CountCommands);
-       // OIT + OIT disocclusion
-       if GPUBatchRange^.OITDrawCallIndex<>TpvUInt32($ffffffff) then begin
-        fExpandRangeInfos[GPUBatchRange^.OITDrawCallIndex].OutputCapacity:=DrawChoreographyBatchRange^.CountCommands;
-        inc(ExpandRangeInfoTotalWeight,DrawChoreographyBatchRange^.CountCommands);
-        fExpandRangeInfos[(MaxMultiIndirectDrawCalls*3)+DrawChoreographyBatchRange^.DrawCallIndex].OutputCapacity:=DrawChoreographyBatchRange^.CountCommands;
-        inc(ExpandRangeInfoTotalWeight,DrawChoreographyBatchRange^.CountCommands);
-       end;
       end;
       fPrefixSums[PrefixSumGlobalOffset+RangeIndex]:=RunningSum;
       RunningSum:=RunningSum+DrawChoreographyBatchRange^.CountCommands;
