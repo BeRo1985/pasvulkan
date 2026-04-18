@@ -2936,6 +2936,7 @@ type EpvScene3D=class(Exception);
                             destructor Destroy; override;
                             function InverseFrontFaces:boolean; inline;
                             procedure NewCacheMatrixGeneration;
+                            function IsCastingShadows:Boolean; inline;
                             procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                            published
                             property Group:TpvScene3D.TGroup read fGroup;
@@ -25100,16 +25101,21 @@ begin
 
 end;
 
+function TpvScene3D.TGroup.TInstance.TNode.IsCastingShadows:Boolean;
+begin
+ result:=fGroup.fCastingShadows and
+         fGroupNode.fCastingShadows and
+         fGroupInstance.fCastingShadows and
+         fCastingShadows;
+end;
+
 procedure TpvScene3D.TGroup.TInstance.TNode.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
  fInFlightFrameRaytracingMasks[aInFlightFrameIndex]:=fGroup.fRaytracingMask and
                                                      fGroupNode.fRaytracingMask and
                                                      fGroupInstance.fRaytracingMask and
                                                      fRaytracingMask;
- fInFlightFrameCastingShadows[aInFlightFrameIndex]:=fGroup.fCastingShadows and
-                                                    fGroupNode.fCastingShadows and
-                                                    fGroupInstance.fCastingShadows and
-                                                    fCastingShadows;
+ fInFlightFrameCastingShadows[aInFlightFrameIndex]:=IsCastingShadows;
 end;
 
 { TpvScene3D.TGroup.TInstance.TLight }
@@ -31074,7 +31080,7 @@ begin
             CurrentDrawInfo^.InstanceDataIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
             CurrentDrawInfo^.MeshObjectID:=MeshObjectID;
             CurrentDrawInfo^.Flags:=pvScene3DRendererRenderPassesToMask(fActiveRenderPasses*RenderInstance.fInstance.fNodes.RawItems[NodeIndex].fActiveRenderPasses);
-            if RenderInstance.fInstance.fNodes.RawItems[NodeIndex].fInFlightFrameCastingShadows[aInFlightFrameIndex] then begin
+            if RenderInstance.fInstance.fNodes.RawItems[NodeIndex].IsCastingShadows then begin // was RenderInstance.fInstance.fNodes.RawItems[NodeIndex].fInFlightFrameCastingShadows[aInFlightFrameIndex]
              CurrentDrawInfo^.Flags:=CurrentDrawInfo^.Flags or DrawInfoFlagNodeCastsShadow;
             end;
             CurrentDrawInfo^.NodeMatricesIndex:=RenderInstance.fInstance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(NodeIndex)+1;
@@ -31819,7 +31825,7 @@ begin
        CurrentDrawInfo:=fSceneInstance.AcquireDrawInfo(MeshObjectID,true);
        try
         CurrentDrawInfo^.Flags:=pvScene3DRendererRenderPassesToMask(fActiveRenderPasses*InstanceNode.ActiveRenderPasses);
-        if InstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex] then begin
+        if InstanceNode.IsCastingShadows then begin // was InstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex]
          CurrentDrawInfo^.Flags:=CurrentDrawInfo^.Flags or DrawInfoFlagNodeCastsShadow;
         end;
        finally
@@ -32391,7 +32397,7 @@ begin
        CurrentDrawInfo:=fSceneInstance.AcquireDrawInfo(MeshObjectID,true);
        try
         CurrentDrawInfo^.Flags:=RenderPassMask;
-        if InstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex] then begin
+        if InstanceNode.IsCastingShadows then begin // was InstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex]
          CurrentDrawInfo^.Flags:=CurrentDrawInfo^.Flags or DrawInfoFlagNodeCastsShadow;
         end;
        finally
@@ -38852,7 +38858,7 @@ begin
           CurrentDrawInfo^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
           CurrentDrawInfo^.MeshObjectID:=MeshObjectID;
           CurrentDrawInfo^.Flags:=pvScene3DRendererRenderPassesToMask(Instance.fActiveRenderPasses*Instance.fNodes.RawItems[NodeIndex].fActiveRenderPasses);
-          if Instance.fNodes.RawItems[NodeIndex].fInFlightFrameCastingShadows[InFlightFrameIndex] then begin
+          if Instance.fNodes.RawItems[NodeIndex].IsCastingShadows then begin // was Instance.fNodes.RawItems[NodeIndex].fInFlightFrameCastingShadows[InFlightFrameIndex]
            CurrentDrawInfo^.Flags:=CurrentDrawInfo^.Flags or DrawInfoFlagNodeCastsShadow;
           end;
           CurrentDrawInfo^.NodeMatricesIndex:=Instance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(NodeIndex)+1;
