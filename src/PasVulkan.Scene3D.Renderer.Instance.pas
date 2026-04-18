@@ -950,7 +950,6 @@ type { TpvScene3DRendererInstance }
        function NeedsDrawDataRebuild(const aInFlightFrameIndex:TpvSizeInt):boolean;
        procedure PrepareDraw(const aInFlightFrameIndex:TpvSizeInt;
                              const aRenderPass:TpvScene3DRendererRenderPass;
-                             const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
                              const aGPUCulling:boolean);
        procedure ExecuteDraw(const aPreviousInFlightFrameIndex:TpvSizeInt;
                              const aInFlightFrameIndex:TpvSizeInt;
@@ -8304,7 +8303,6 @@ end;
 
 procedure TpvScene3DRendererInstance.PrepareDraw(const aInFlightFrameIndex:TpvSizeInt;
                                                  const aRenderPass:TpvScene3DRendererRenderPass;
-                                                 const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
                                                  const aGPUCulling:boolean);
 var DrawChoreographyBatchItemIndex,DrawChoreographyBatchRangeIndex,InstanceIndex,NodeIndex,
     CountInstances,FirstCommand,CountCommands,FirstInstanceCommandIndex,Count,
@@ -8374,7 +8372,7 @@ begin
   end;
 {$endif}
 
-  for MaterialAlphaMode in aMaterialAlphaModes do begin
+  for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
 
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
 
@@ -9268,8 +9266,6 @@ begin
                    fScaledWidth,
                    fScaledHeight,
                    true,
-                   [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
-                   true,
                    Renderer.GPUCulling);
 
   if Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing then begin
@@ -9281,8 +9277,6 @@ begin
                     Min(InFlightFrameState^.CountFinalViews,1),
                     Renderer.GlobalIlluminationVoxelGridSize,
                     Renderer.GlobalIlluminationVoxelGridSize,
-                    false,
-                    [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
                     false,
                     false);
   end;
@@ -9300,8 +9294,6 @@ begin
                    fReflectionProbeWidth,
                    fReflectionProbeHeight,
                    false,
-                   [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
-                   false,
                    false);
  end;
 
@@ -9315,8 +9307,6 @@ begin
                    InFlightFrameState^.CountTopDownSkyOcclusionMapViews,
                    fTopDownSkyOcclusionMapWidth,
                    fTopDownSkyOcclusionMapHeight,
-                   false,
-                   [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask],
                    false,
                    false);
  end;
@@ -9332,8 +9322,6 @@ begin
                    fReflectiveShadowMapWidth,
                    fReflectiveShadowMapHeight,
                    false,
-                   [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
-                   false,
                    false);
  end;
 
@@ -9348,10 +9336,7 @@ begin
                    fCascadedShadowMapWidth,
                    fCascadedShadowMapHeight,
                    false,
-                   [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask],
-                   true,
-                   Renderer.GPUCulling and Renderer.GPUShadowCulling,
-                   true);
+                   Renderer.GPUCulling and Renderer.GPUShadowCulling);
  end;
 
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);

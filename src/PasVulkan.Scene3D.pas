@@ -4828,10 +4828,7 @@ type EpvScene3D=class(Exception);
                          const aViewPortWidth:TpvInt32;
                          const aViewPortHeight:TpvInt32;
                          const aMainViewPort:Boolean;
-                         const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
-                         const aFrustumCulling:boolean=true;
-                         const aGPUCulling:boolean=true;
-                         const aShadowPass:boolean=false);
+                         const aGPUCulling:boolean=true);
        procedure UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
                                       const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -41408,10 +41405,7 @@ procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aViewPortWidth:TpvInt32;
                              const aViewPortHeight:TpvInt32;
                              const aMainViewPort:Boolean;
-                             const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
-                             const aFrustumCulling:boolean;
-                             const aGPUCulling:boolean;
-                             const aShadowPass:boolean);
+                             const aGPUCulling:boolean);
 var Index:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -41491,7 +41485,6 @@ begin
 //a:=pvApplication.HighResolutionTimer.GetTime;
  TpvScene3DRendererInstance(aRendererInstance).PrepareDraw(aInFlightFrameIndex,
                                                            aRenderPass,
-                                                           aMaterialAlphaModes,
                                                            aGPUCulling);
 {b:=pvApplication.HighResolutionTimer.GetTime;
  writeln('a: ',pvApplication.HighResolutionTimer.ToFloatSeconds(b-a)*1000.0:10:8,'ms');}
