@@ -180,6 +180,7 @@ type EpvScene3D=class(Exception);
              LightClusterGridHashSize=1 shl LightClusterGridHashBits;
              LightClusterGridHashMask=LightClusterGridHashSize-1;
              DrawInfoFlagNodeCastsShadow=TpvUInt32(1) shl 7; // bit 7 in DrawInfo.Flags
+             DrawCmdFlagMaterialCastsShadow=TpvUInt32(1) shl 2; // bit 2 in DrawCmd.Flags (bits 0-1 reserved for shader internal use)
        type TPrimitiveTopology=
              (
               Points=0,
@@ -2016,7 +2017,7 @@ type EpvScene3D=class(Exception);
                 DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand;
                 BoundingSphereIndex:TpvUInt32;
                 LODInfoIndex:TpvUInt32;
-                Flags:TpvUInt32;
+                Flags:TpvUInt32;                                         // bit 2: MaterialCastsShadow (bits 0-1: shader internal)
                );
                1:(
                 Alignment:array[0..31] of TpvUInt8;

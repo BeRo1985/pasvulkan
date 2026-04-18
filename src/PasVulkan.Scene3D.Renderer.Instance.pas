@@ -294,6 +294,7 @@ type { TpvScene3DRendererInstance }
              FirstIndex:TpvSizeInt;
              BoundingSphereIndex:TpvUInt32;
              LODInfoIndex:TpvUInt32;
+             CommandFlags:TpvUInt32;
              GroupInstance:TObject; // TpvScene3D.TGroup.TInstance
             end;
             PPrepareDrawRenderInstanceFillTask=^TPrepareDrawRenderInstanceFillTask;
@@ -8257,7 +8258,7 @@ begin
        GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=TpvScene3D.TGroup.TInstance.TRenderInstance(PerInFlightFrameRenderInstances^.Items[InstanceIndex].RenderInstance).NodeMeshObjectIDs[NodeIndex];
        GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
        GPUDrawIndexedIndirectCommand^.LODInfoIndex:=Task^.LODInfoIndex;
-       GPUDrawIndexedIndirectCommand^.Flags:=0;
+       GPUDrawIndexedIndirectCommand^.Flags:=Task^.CommandFlags;
       end;
      end;
 
@@ -8440,6 +8441,10 @@ begin
           Task^.FirstIndex:=DrawChoreographyBatchItem.StartIndex;
           Task^.BoundingSphereIndex:=BoundingSphereIndex;
           Task^.LODInfoIndex:=DrawChoreographyBatchItem.LODInfoIndex;
+          Task^.CommandFlags:=0;
+          if DrawChoreographyBatchItem.Material.fData.CastingShadows then begin
+           Task^.CommandFlags:=Task^.CommandFlags or TpvScene3D.DrawCmdFlagMaterialCastsShadow;
+          end;
           Task^.GroupInstance:=GroupInstance;
 
           inc(CountTotalRenderInstances,CountInstances);
@@ -8455,6 +8460,9 @@ begin
           GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
           GPUDrawIndexedIndirectCommand^.LODInfoIndex:=DrawChoreographyBatchItem.LODInfoIndex;
           GPUDrawIndexedIndirectCommand^.Flags:=0;
+          if DrawChoreographyBatchItem.Material.fData.CastingShadows then begin
+           GPUDrawIndexedIndirectCommand^.Flags:=GPUDrawIndexedIndirectCommand^.Flags or TpvScene3D.DrawCmdFlagMaterialCastsShadow;
+          end;
  //       GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=0;
 
          end;
