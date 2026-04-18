@@ -819,6 +819,9 @@ type { TpvScene3DRendererInstance }
        fMeshCullPass0ComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMeshCullPass0ComputeVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fMeshCullPass0ComputeVulkanDescriptorSets:TPerInFlightFrameVulkanDescriptorSets;
+       fMeshFilterComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fMeshFilterComputeVulkanDescriptorPool:TpvVulkanDescriptorPool;
+       fMeshFilterComputeVulkanDescriptorSets:TPerInFlightFrameVulkanDescriptorSets;
        fMeshCullPass1ComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMeshCullPass1ComputeVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fMeshCullPass1ComputeVulkanDescriptorSets:TPerInFlightFrameVulkanDescriptorSets;
@@ -1122,6 +1125,8 @@ type { TpvScene3DRendererInstance }
       public
        property MeshCullPass0ComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshCullPass0ComputeVulkanDescriptorSetLayout;
        property MeshCullPass0ComputeVulkanDescriptorSets:TPerInFlightFrameVulkanDescriptorSets read fMeshCullPass0ComputeVulkanDescriptorSets;
+       property MeshFilterComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshFilterComputeVulkanDescriptorSetLayout;
+       property MeshFilterComputeVulkanDescriptorSets:TPerInFlightFrameVulkanDescriptorSets read fMeshFilterComputeVulkanDescriptorSets;
        property MeshCullPass1ComputeVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fMeshCullPass1ComputeVulkanDescriptorSetLayout;
        property MeshCullPass1ComputeVulkanDescriptorSets:TPerInFlightFrameVulkanDescriptorSets read fMeshCullPass1ComputeVulkanDescriptorSets;
        property MeshCullReset:TpvScene3DRendererMeshCullReset read fMeshCullReset;
@@ -1235,6 +1240,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.RaytracingBuildUpdatePass,}
      PasVulkan.Scene3D.Renderer.Passes.AtmospherePrecipitationWaitCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.AtmosphereProcessCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.MeshFilterComputePass,
      PasVulkan.Scene3D.Renderer.Passes.MeshCullPass0ComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthResolveComputePass,
@@ -1360,6 +1366,10 @@ type TpvScene3DRendererInstancePasses=class
        fCascadedShadowMapRenderPass:TpvScene3DRendererPassesCascadedShadowMapRenderPass;
        fCascadedShadowMapResolveRenderPass:TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass;
        fCascadedShadowMapBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesCascadedShadowMapBlurRenderPass;
+       fVoxelizationMeshFilterComputePass:TpvScene3DRendererPassesMeshFilterComputePass;
+       fReflectionProbeMeshFilterComputePass:TpvScene3DRendererPassesMeshFilterComputePass;
+       fTopDownSkyOcclusionMapMeshFilterComputePass:TpvScene3DRendererPassesMeshFilterComputePass;
+       fReflectiveShadowMapMeshFilterComputePass:TpvScene3DRendererPassesMeshFilterComputePass;
        fMeshCullPass0ComputePass:TpvScene3DRendererPassesMeshCullPass0ComputePass;
        fCullDepthRenderPass:TpvScene3DRendererPassesCullDepthRenderPass;
        fCullDepthResolveComputePass:TpvScene3DRendererPassesCullDepthResolveComputePass;
@@ -4404,7 +4414,20 @@ begin
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
 
+   TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapMeshFilterComputePass:=TpvScene3DRendererPassesMeshFilterComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.TopDownSkyOcclusionMap);
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+   end;
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass);
+   end;
+   if Renderer.EarlyDepthPrepassNeeded then begin
+    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);
+    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
+   end;
+
    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass:=TpvScene3DRendererPassesTopDownSkyOcclusionMapRenderPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapMeshFilterComputePass);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
    end;
@@ -4426,7 +4449,11 @@ begin
 
    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapBlurRenderPasses[1]:=TpvScene3DRendererPassesTopDownSkyOcclusionMapBlurRenderPass.Create(fFrameGraph,self,false);}
 
+   TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapMeshFilterComputePass:=TpvScene3DRendererPassesMeshFilterComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.ReflectiveShadowMap);
+   TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass);
+
    TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass:=TpvScene3DRendererPassesReflectiveShadowMapRenderPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapMeshFilterComputePass);
 {  TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass);
@@ -4482,7 +4509,20 @@ begin
     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
    end;
 
+   TpvScene3DRendererInstancePasses(fPasses).fVoxelizationMeshFilterComputePass:=TpvScene3DRendererPassesMeshFilterComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.Voxelization);
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fVoxelizationMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+   end;
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fVoxelizationMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass);
+   end;
+   if Renderer.EarlyDepthPrepassNeeded then begin
+    TpvScene3DRendererInstancePasses(fPasses).fVoxelizationMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);
+    TpvScene3DRendererInstancePasses(fPasses).fVoxelizationMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
+   end;
+
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass:=TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fVoxelizationMeshFilterComputePass);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass);
 
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass:=TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass.Create(fFrameGraph,self);
@@ -4537,7 +4577,16 @@ begin
 
   TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe:begin
 
+   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMeshFilterComputePass:=TpvScene3DRendererPassesMeshFilterComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.ReflectionProbe);
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+   end;
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass);
+   end;
+
    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass:=TpvScene3DRendererPassesReflectionProbeRenderPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMeshFilterComputePass);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
    end;
@@ -4576,6 +4625,7 @@ begin
   end;
 
   else begin
+   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMeshFilterComputePass:=nil;
    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass:=nil;
    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassGGX:=nil;
    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassCharlie:=nil;
@@ -5783,6 +5833,102 @@ begin
 
  end;
 
+ // MeshFilter descriptor set layout: 5 STORAGE_BUFFER bindings (contiguous 0-4)
+ fMeshFilterComputeVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
+ fMeshFilterComputeVulkanDescriptorSetLayout.AddBinding(0,
+                                                         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                         1,
+                                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                         []);
+ fMeshFilterComputeVulkanDescriptorSetLayout.AddBinding(1,
+                                                         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                         1,
+                                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                         []);
+ fMeshFilterComputeVulkanDescriptorSetLayout.AddBinding(2,
+                                                         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                         1,
+                                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                         []);
+ fMeshFilterComputeVulkanDescriptorSetLayout.AddBinding(3,
+                                                         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                         1,
+                                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                         []);
+ fMeshFilterComputeVulkanDescriptorSetLayout.AddBinding(4,
+                                                         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                         1,
+                                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                         []);
+ fMeshFilterComputeVulkanDescriptorSetLayout.Initialize;
+ Renderer.VulkanDevice.DebugUtils.SetObjectName(fMeshFilterComputeVulkanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DRendererInstance.fMeshFilterComputeVulkanDescriptorSetLayout');
+
+ fMeshFilterComputeVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(Renderer.VulkanDevice,
+                                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                        Renderer.CountInFlightFrames);
+ fMeshFilterComputeVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,Renderer.CountInFlightFrames*5);
+ fMeshFilterComputeVulkanDescriptorPool.Initialize;
+ Renderer.VulkanDevice.DebugUtils.SetObjectName(fMeshFilterComputeVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DRendererInstance.fMeshFilterComputeVulkanDescriptorPool');
+
+ for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+
+  if fScene3D.UsePerInFlightFrameResources then begin
+   PerInFlightFrameBufferIndex:=InFlightFrameIndex;
+  end else begin
+   PerInFlightFrameBufferIndex:=0;
+  end;
+
+  fMeshFilterComputeVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fMeshFilterComputeVulkanDescriptorPool,fMeshFilterComputeVulkanDescriptorSetLayout);
+  fMeshFilterComputeVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                                  0,
+                                                                                  1,
+                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                  [],
+                                                                                  [fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                                  [],
+                                                                                  false
+                                                                                 );
+  fMeshFilterComputeVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                                  0,
+                                                                                  1,
+                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                  [],
+                                                                                  [fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex].DescriptorBufferInfo],
+                                                                                  [],
+                                                                                  false
+                                                                                 );
+  fMeshFilterComputeVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                                  0,
+                                                                                  1,
+                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                  [],
+                                                                                  [fGPUDrawIndexedIndirectCommandCounterBuffers[PerInFlightFrameBufferIndex].DescriptorBufferInfo],
+                                                                                  [],
+                                                                                  false
+                                                                                 );
+  fMeshFilterComputeVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+                                                                                  0,
+                                                                                  1,
+                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                  [],
+                                                                                  [fPerInFlightFrameMeshCullBatchRangeBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                                  [],
+                                                                                  false
+                                                                                 );
+  fMeshFilterComputeVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                                  0,
+                                                                                  1,
+                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                  [],
+                                                                                  [fPerInFlightFrameMeshCullPrefixSumBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                                  [],
+                                                                                  false
+                                                                                 );
+  fMeshFilterComputeVulkanDescriptorSets[InFlightFrameIndex].Flush;
+  Renderer.VulkanDevice.DebugUtils.SetObjectName(fMeshFilterComputeVulkanDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DRendererInstance.fMeshFilterComputeVulkanDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+
+ end;
+
  fFrameGraph.AcquirePersistentResources;
 
  begin
@@ -5968,6 +6114,13 @@ begin
  end;
  FreeAndNil(fMeshCullPass0ComputeVulkanDescriptorPool);
  FreeAndNil(fMeshCullPass0ComputeVulkanDescriptorSetLayout);
+
+ for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+  FreeAndNil(fMeshFilterComputeVulkanDescriptorSets[InFlightFrameIndex]);
+ end;
+ FreeAndNil(fMeshFilterComputeVulkanDescriptorPool);
+ FreeAndNil(fMeshFilterComputeVulkanDescriptorSetLayout);
+
  FreeAndNil(fViewBuffersDescriptorSetLayout);
 
  FreeAndNil(fMeshCullReset);
