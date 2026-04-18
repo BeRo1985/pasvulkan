@@ -2054,8 +2054,6 @@ type EpvScene3D=class(Exception);
             TPerInFlightFrameGPUDrawIndexedIndirectCommandBufferPartSizes=array[0..MaxInFlightFrames-1] of TpvSizeUInt;
             TPerInFlightFrameMeshletVisibilityBuffersPerCullRenderPass=array[0..MaxInFlightFrames-1,TpvScene3DRendererCullRenderPass] of TpvVulkanBuffer;
             TPerInFlightFrameMeshletVisibilityBufferPartSizesPerCullRenderPass=array[0..MaxInFlightFrames-1,TpvScene3DRendererCullRenderPass] of TpvSizeUInt;
-            TPerInFlightFrameGPUCulledArray=array[0..MaxInFlightFrames-1,TpvScene3DRendererRenderPass] of Boolean;
-            PPerInFlightFrameGPUCulledArray=^TPerInFlightFrameGPUCulledArray;
             TPerInFlightFrameGPUCountMeshObjectIDsArray=array[0..MaxInFlightFrames-1] of TpvSizeInt;
             PPerInFlightFrameGPUCountMeshObjectIndicesArray=^TPerInFlightFrameGPUCountMeshObjectIDsArray;
             TDrawChoreographyBatchRange=record
@@ -4827,8 +4825,7 @@ type EpvScene3D=class(Exception);
                          const aCountViews:TpvSizeInt;
                          const aViewPortWidth:TpvInt32;
                          const aViewPortHeight:TpvInt32;
-                         const aMainViewPort:Boolean;
-                         const aGPUCulling:boolean=true);
+                         const aMainViewPort:Boolean);
        procedure PreparePlanets(const aInFlightFrameIndex:TpvSizeInt;
                                 const aRendererInstance:TObject;
                                 const aRenderPass:TpvScene3DRendererRenderPass;
@@ -41410,8 +41407,7 @@ procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aCountViews:TpvSizeInt;
                              const aViewPortWidth:TpvInt32;
                              const aViewPortHeight:TpvInt32;
-                             const aMainViewPort:Boolean;
-                             const aGPUCulling:boolean);
+                             const aMainViewPort:Boolean);
 var Index:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -41489,9 +41485,8 @@ begin
  end;
 
 //a:=pvApplication.HighResolutionTimer.GetTime;
- TpvScene3DRendererInstance(aRendererInstance).PrepareDraw(aInFlightFrameIndex,
-                                                           aRenderPass,
-                                                           aGPUCulling);
+ TpvScene3DRendererInstance(aRendererInstance).PrepareDraw(aInFlightFrameIndex,aRenderPass);
+
 {b:=pvApplication.HighResolutionTimer.GetTime;
  writeln('a: ',pvApplication.HighResolutionTimer.ToFloatSeconds(b-a)*1000.0:10:8,'ms');}
 

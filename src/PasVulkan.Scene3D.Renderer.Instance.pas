@@ -846,7 +846,6 @@ type { TpvScene3DRendererInstance }
        fGPUDrawIndexedIndirectCommandCounterBuffers:TpvVulkanInFlightFrameBuffers;
        fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers;
        fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBufferPartSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBufferPartSizes;
-       fPerInFlightFrameGPUCulledArray:TpvScene3D.TPerInFlightFrameGPUCulledArray;
        fPerInFlightFrameGPUCountMeshObjectIDsArray:TpvScene3D.TPerInFlightFrameGPUCountMeshObjectIDsArray;
        fMeshCullScratchBuffers:TpvVulkanInFlightFrameBuffers;
        fPerInFlightFrameExpandRangeInfoBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers;
@@ -861,7 +860,6 @@ type { TpvScene3DRendererInstance }
        fDebugMeshletSphereComputePipeline:TpvVulkanComputePipeline;
        fDebugMeshletSphereVertexShaderModule:TpvVulkanShaderModule;
        fDebugMeshletSphereFragmentShaderModule:TpvVulkanShaderModule;
-       fPointerToPerInFlightFrameGPUCulledArray:TpvScene3D.PPerInFlightFrameGPUCulledArray;
        fDrawChoreographyBatchRangeFrameBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameBuckets;
        fDrawChoreographyBatchRangeFrameRenderPassBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameRenderPassBuckets;
        fPerInFlightFrameMeshCullBatchRangeBuffers:TpvVulkanInFlightFrameBuffers;
@@ -952,8 +950,7 @@ type { TpvScene3DRendererInstance }
        function AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
        function NeedsDrawDataRebuild(const aInFlightFrameIndex:TpvSizeInt):boolean;
        procedure PrepareDraw(const aInFlightFrameIndex:TpvSizeInt;
-                             const aRenderPass:TpvScene3DRendererRenderPass;
-                             const aGPUCulling:boolean);
+                             const aRenderPass:TpvScene3DRendererRenderPass);
        procedure ExecuteDraw(const aPreviousInFlightFrameIndex:TpvSizeInt;
                              const aInFlightFrameIndex:TpvSizeInt;
                              const aRenderPass:TpvScene3DRendererRenderPass;
@@ -1170,7 +1167,6 @@ type { TpvScene3DRendererInstance }
        property GPUDrawIndexedIndirectCommandCounterBuffers:TpvVulkanInFlightFrameBuffers read fGPUDrawIndexedIndirectCommandCounterBuffers;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBufferPartSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBufferPartSizes read fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBufferPartSizes;
-       property PerInFlightFrameGPUCulledArray:TpvScene3D.TPerInFlightFrameGPUCulledArray read fPerInFlightFrameGPUCulledArray;
        property PerInFlightFrameGPUCountMeshObjectIDsArray:TpvScene3D.TPerInFlightFrameGPUCountMeshObjectIDsArray read fPerInFlightFrameGPUCountMeshObjectIDsArray;
        property MeshCullScratchBuffers:TpvVulkanInFlightFrameBuffers read fMeshCullScratchBuffers;
        property PerInFlightFrameExpandRangeInfoBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fPerInFlightFrameExpandRangeInfoBuffers;
@@ -5696,9 +5692,7 @@ begin
 
  end;
 
- FillChar(fPerInFlightFrameGPUCulledArray,SizeOf(TpvScene3D.TPerInFlightFrameGPUCulledArray),#0);
 
- fPointerToPerInFlightFrameGPUCulledArray:=@fPerInFlightFrameGPUCulledArray;
 
  FillChar(fPerInFlightFrameGPUCountMeshObjectIDsArray,SizeOf(TpvScene3D.TPerInFlightFrameGPUCountMeshObjectIDsArray),#0);
 
@@ -7502,7 +7496,6 @@ begin
 
   for RenderPass:=TpvScene3DRendererRenderPassFirst to TpvScene3DRendererRenderPassLast do begin
    fDrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,RenderPass].Count:=0;
-   fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPass]:=false;
   end;
 
  end else begin
@@ -8456,8 +8449,7 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.PrepareDraw(const aInFlightFrameIndex:TpvSizeInt;
-                                                 const aRenderPass:TpvScene3DRendererRenderPass;
-                                                 const aGPUCulling:boolean);
+                                                 const aRenderPass:TpvScene3DRendererRenderPass);
 var DrawChoreographyBatchItemIndex,DrawChoreographyBatchRangeIndex,InstanceIndex,NodeIndex,
     CountInstances,FirstCommand,CountCommands,FirstInstanceCommandIndex,Count,
     TotalCount,TaskIndex,CountTotalRenderInstances:TpvSizeInt;
@@ -8490,11 +8482,10 @@ begin
   exit;
  end;
 
- fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPass]:=aGPUCulling;
 
  if fCachedDrawDataGeneration[aInFlightFrameIndex]<>fSnapshotDrawDataGeneration[aInFlightFrameIndex] then begin
 
-  //WriteLn('[DEBUG] PrepareDraw IFF=',aInFlightFrameIndex,' RenderPass=',ord(aRenderPass),' REBUILD GPUCulling=',aGPUCulling);
+  //WriteLn('[DEBUG] PrepareDraw IFF=',aInFlightFrameIndex,' RenderPass=',ord(aRenderPass),' REBUILD');
 
   fPrepareDrawRenderInstanceFillTasksInFlightFrameIndex:=aInFlightFrameIndex;
 
@@ -8694,7 +8685,7 @@ begin
    AssignFile(DebugFile,'/tmp/drawinfo_dump_iff'+IntToStr(aInFlightFrameIndex)+'_rp'+IntToStr(ord(aRenderPass))+'_n'+IntToStr(DebugDrawInfoDumpCounter)+'.txt');
    Rewrite(DebugFile);
    WriteLn(DebugFile,'=== PrepareDraw Dump ===');
-   WriteLn(DebugFile,'InFlightFrame=',aInFlightFrameIndex,' RenderPass=',ord(aRenderPass),' GPUCulling=',aGPUCulling);
+   WriteLn(DebugFile,'InFlightFrame=',aInFlightFrameIndex,' RenderPass=',ord(aRenderPass));
    WriteLn(DebugFile,'TotalCommands=',GPUDrawIndexedIndirectCommandDynamicArray^.Count,' TotalBatchRanges=',DrawChoreographyBatchRangeIndexDynamicArray^.Count);
    WriteLn(DebugFile,'');
    // Dump batch ranges
@@ -8837,7 +8828,7 @@ begin
 
   First:=true;
 
-  GPUCulling:=fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPass];
+  GPUCulling:=true;
 
   if GPUCulling then begin
    if assigned(Renderer.VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCount) then begin
@@ -9419,8 +9410,7 @@ begin
                    InFlightFrameState^.CountFinalViews,
                    fScaledWidth,
                    fScaledHeight,
-                   true,
-                   Renderer.GPUCulling);
+                   true);
  end;
 
  // Replicate View BatchRangeIndices and set GPUCulled for all other RenderPasses
@@ -9433,12 +9423,6 @@ begin
   end;
  end;
 
- // Set per-RenderPass GPUCulled flags
- fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.Voxelization]:=true;
- fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.ReflectionProbe]:=true;
- fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.TopDownSkyOcclusionMap]:=true;
- fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.ReflectiveShadowMap]:=true;
- fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,TpvScene3DRendererRenderPass.CascadedShadowMap]:=Renderer.GPUCulling and Renderer.GPUShadowCulling;
 
  // Planet.Prepare per active RenderPass (separate rendering system)
  if InFlightFrameState^.CountFinalViews>0 then begin
@@ -10148,9 +10132,8 @@ begin
     fPerInFlightFrameMeshCullBatchRangeOffsets[aInFlightFrameIndex,CullRenderPass]:=BatchRangeGlobalOffset;
     fPerInFlightFrameMeshCullPrefixSumOffsets[aInFlightFrameIndex,CullRenderPass]:=PrefixSumGlobalOffset;
     DrawChoreographyBatchRangeIndexDynamicArray:=@fDrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,RenderPass];
-    //WriteLn('[DEBUG] UploadFrame IFF=',aInFlightFrameIndex,' CullPass=',ord(CullRenderPass),' RangeCount=',DrawChoreographyBatchRangeIndexDynamicArray^.Count,' GPUCulled=',fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPass]);
-    if (DrawChoreographyBatchRangeIndexDynamicArray^.Count>0) and
-       fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPass] then begin
+    //WriteLn('[DEBUG] UploadFrame IFF=',aInFlightFrameIndex,' CullPass=',ord(CullRenderPass),' RangeCount=',DrawChoreographyBatchRangeIndexDynamicArray^.Count);
+    if DrawChoreographyBatchRangeIndexDynamicArray^.Count>0 then begin
      RunningSum:=0;
      for RangeIndex:=0 to DrawChoreographyBatchRangeIndexDynamicArray^.Count-1 do begin
       DrawChoreographyBatchRange:=@DrawChoreographyBatchRangeDynamicArray^.Items[DrawChoreographyBatchRangeIndexDynamicArray^.Items[RangeIndex]];
@@ -10247,10 +10230,6 @@ begin
    end;
   end;
  end;
-{for RenderPass:=TpvScene3DRendererRenderPassFirst to TpvScene3DRendererRenderPassLast do begin
-  if fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPass] then begin
-  end;
- end; }
 
 end;
 
