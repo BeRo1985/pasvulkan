@@ -100,6 +100,7 @@ layout(push_constant) uniform PushConstants {
   
   float maximumDistance;            // max camera distance for culling (<=0.0 = disabled)
   float areaTooSmallThreshold;      // min projected pixel size for culling (<=0.0 = disabled)
+  uint alphaModeMask;               // bitmask: (1 << alphaMode) for allowed alpha modes
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -182,6 +183,7 @@ layout(push_constant) uniform PushConstants {
   uint meshletVisibilityPartOffset; // uint32 offset into bitmap for current part (double-buffered)
   float maximumDistance;            // max camera distance for culling (<=0.0 = disabled)
   float areaTooSmallThreshold;     // min projected pixel size for culling (<=0.0 = disabled)
+  uint alphaModeMask;              // bitmask: (1 << alphaMode) for allowed alpha modes
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -304,6 +306,11 @@ const uint FLAG_MESHLET_CULLING_ENABLED = 1u << 3; // Whether to submit meshlet 
                                                    // perform meshlet culling in the task shader. If not set, the full mesh will be rendered 
                                                    // without meshlet culling, but still with object-level culling based on the bounding sphere
                                                    // of the whole object.
+
+const uint FLAG_SHADOW_PASS = 1u << 4;             // Shadow pass: skip items that don't cast shadows
+
+const uint DRAW_CMD_FLAG_MATERIAL_CASTS_SHADOW = 1u << 2; // Per-command: material casts shadows (bit 2 of cmd1.w)
+const uint DRAW_INFO_FLAG_NODE_CASTS_SHADOW = 1u << 7;    // Per-node: node casts shadows (bit 7 of DrawInfo.flags)
 
 void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uint meshObjectID, out uint outSelectedLOD){
 
@@ -670,6 +677,19 @@ void main(){
     return;
   }
 
+  // AlphaMode filter: skip if this batch's alpha mode is not allowed for this pass
+  if(((1u << batchAlphaMode) & pushConstants.alphaModeMask) == 0u){
+    return;
+  }
+
+  // Shadow pass filter: skip items that don't cast shadows (node or material)
+  if((pushConstants.flags & FLAG_SHADOW_PASS) != 0u){
+    if(((drawInfoItems[meshObjectID].flags & DRAW_INFO_FLAG_NODE_CASTS_SHADOW) == 0u) ||
+       ((cmd1.w & DRAW_CMD_FLAG_MATERIAL_CASTS_SHADOW) == 0u)){
+      return;
+    }
+  }
+
   if((pushConstants.skipCulling == 0u) &&  // If it is the first frame or the like, just don't cull anything
     ((meshObjectID < pushConstants.countMeshObjectIDs) && // Check if the mesh object ID is in the valid range, since
                                                            // new drawIndexedIndirectCommands may have been added 
@@ -831,6 +851,19 @@ void main(){
   // RenderPassMask filter: skip if this draw is not visible in the current render pass
   if((drawInfoItems[meshObjectID].flags & pushConstants.renderPassMask) == 0u){
     return;
+  }
+
+  // AlphaMode filter: skip if this batch's alpha mode is not allowed for this pass
+  if(((1u << batchAlphaMode1) & pushConstants.alphaModeMask) == 0u){
+    return;
+  }
+
+  // Shadow pass filter: skip items that don't cast shadows (node or material)
+  if((pushConstants.flags & FLAG_SHADOW_PASS) != 0u){
+    if(((drawInfoItems[meshObjectID].flags & DRAW_INFO_FLAG_NODE_CASTS_SHADOW) == 0u) ||
+       ((cmd1.w & DRAW_CMD_FLAG_MATERIAL_CASTS_SHADOW) == 0u)){
+      return;
+    }
   }
 
   vec4 boundingSphere = boundingSphereBuffer.boundingSpheres[cmd1.y];

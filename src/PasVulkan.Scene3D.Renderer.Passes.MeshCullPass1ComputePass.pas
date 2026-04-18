@@ -104,6 +104,7 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
              MeshletVisibilityPartOffset:TpvUInt32;
              MaximumDistance:TpvFloat;
              AreaTooSmallThreshold:TpvFloat;
+             AlphaModeMask:TpvUInt32;
             end;
             PPushConstants=^TPushConstants;
             TMeshCullResetPushConstants=packed record
