@@ -8395,7 +8395,7 @@ begin
 
         inc(Count);
 
-        CountInstances:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPass];
+        CountInstances:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID];
 
 {$ifdef FrameTextFileDebug}
         // DEBUG: Dump batch item context

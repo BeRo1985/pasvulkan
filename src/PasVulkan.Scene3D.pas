@@ -3500,7 +3500,7 @@ type EpvScene3D=class(Exception);
                      fPerInFlightFrameRenderInstances:TPerInFlightFrameRenderInstances;
                      fPointerToPerInFlightFrameRenderInstances:PPerInFlightFrameRenderInstances;
                     public
-                     fVulkanPerInFlightFrameInstancesCounts:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,TpvScene3DRendererRenderPass] of TpvSizeInt;
+                     fVulkanPerInFlightFrameInstancesCounts:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1] of TpvSizeInt;
                     private
                      fActiveScenes:array[-1..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
                      fActives:array[-1..MaxInFlightFrames-1] of boolean;
@@ -33342,7 +33342,7 @@ begin
 
  RendererInstanceID:=TpvScene3DRendererInstance(aRendererInstance).ID;
 
- fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,RendererInstanceID,aRenderPass]:=InstancesCount;
+ fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,RendererInstanceID]:=InstancesCount;
 
 end;
 
