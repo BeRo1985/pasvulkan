@@ -14,14 +14,25 @@
 //  - Has NO frustum culling, NO HiZ occlusion culling, NO disocclusion handling
 //  - Has NO LOD selection (force LOD 0 — commands pass through with original geometry)
 //  - Has NO 2-pass structure (single pass)
-//  - Has NO meshlet support
 //  - Has NO visibility buffer read/write
+//
+// When MESH_SHADER_PATH is defined:
+//  - Outputs TGPUDrawMeshTasksIndirectCommand format (groupCountX/Y/Z + meshlet metadata)
+//  - Reads LOD 0 meshlet data via globalBDAPointers.lodInfoBDA / DrawInfo.meshletDescriptorBase
+// When MESH_SHADER_PATH is not defined:
+//  - Copies DrawIndexedIndirectCommand as-is (vertex shader path)
 //
 // It ONLY performs:
 //  - AlphaMode filtering via alphaModeMask push constant
 //  - Shadow pass filtering via FLAG_SHADOW_PASS + NODE_CASTS_SHADOW + MATERIAL_CASTS_SHADOW
 //  - RenderPassMask filtering
 //  - Writes accepted commands to output buffer + atomically increments draw call count
+
+#ifdef MESH_SHADER_PATH
+#ifndef TASK_GROUP_SIZE
+#define TASK_GROUP_SIZE 32
+#endif
+#endif
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
@@ -91,6 +102,12 @@ layout(set = 1, binding = 0, std430) readonly buffer DrawInfoBuffer {
   DrawInfo drawInfoItems[];
 };
 
+#ifdef MESH_SHADER_PATH
+layout(set = 1, binding = 7, std430) readonly buffer GlobalBDAPointersBuffer {
+  GlobalBDAPointers globalBDAPointers;
+};
+#endif
+
 // Flag constants (must match mesh_cull.comp)
 const uint FLAG_SHADOW_PASS = 1u << 4;
 const uint DRAW_CMD_FLAG_MATERIAL_CASTS_SHADOW = 1u << 2;
@@ -153,6 +170,32 @@ void main(){
   }
 
   // Command passed all filters — write to output buffer
+#ifdef MESH_SHADER_PATH
+  // Mesh shader path: expand to TGPUDrawMeshTasksIndirectCommand format
+  // (cmd0 = uvec4(groupCountX, 1, 1, meshletBase), cmd1 = uvec4(meshletCount, meshObjectID, boundingSphereIndex, flags))
+  uint lodInfoIndex = cmd1.z;
+  uint boundingSphereIndex = cmd1.y;
+  uint cmdFlags = cmd1.w;
+  uint meshletBase = drawInfoItems[meshObjectID].meshletDescriptorBase;
+  uint meshletCount = 0u;
+  if((lodInfoIndex != 0xffffffffu) && !all(equal(globalBDAPointers.lodInfoBDA, uvec2(0u)))){
+    LODInfo lodInfo = LODInfoBuffer(globalBDAPointers.lodInfoBDA).items[lodInfoIndex];
+    meshletBase += lodInfo.meshletLocalOffsets[0];
+    meshletCount = lodInfo.meshletCounts[0];
+  }
+  if(meshletCount > 0u){
+    uint groupCountX = (meshletCount + TASK_GROUP_SIZE - 1u) / TASK_GROUP_SIZE;
+    uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
+    if(destinationIndex < countCommands){
+      destinationIndex += baseCommandIndex;
+      if(destinationIndex < pushConstants.maxOutputCommands){
+        outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = uvec4(groupCountX, 1u, 1u, meshletBase);
+        outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = uvec4(meshletCount, meshObjectID, boundingSphereIndex, cmdFlags);
+      }
+    }
+  }
+#else
+  // Vertex shader path: copy DrawIndexedIndirectCommand as-is
   uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
   if(destinationIndex < countCommands){
     destinationIndex += baseCommandIndex;
@@ -161,5 +204,6 @@ void main(){
       outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
     }
   }
+#endif
 
 }

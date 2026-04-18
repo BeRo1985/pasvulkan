@@ -159,7 +159,11 @@ begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_filter_comp.spv');
+ if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_filter_ms_comp.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_filter_comp.spv');
+ end;
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesMeshFilterComputePass.fComputeShaderModule');

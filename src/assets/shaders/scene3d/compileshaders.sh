@@ -203,6 +203,7 @@ compileshaderarguments=(
   "-V mesh_cull_sort.comp --target-env vulkan1.2 -o ${tempPath}/mesh_cull_sort_comp.spv"
   "-V mesh_cull_reset.comp --target-env vulkan1.2 -o ${tempPath}/mesh_cull_reset_comp.spv"
   "-V mesh_filter.comp --target-env vulkan1.2 -o ${tempPath}/mesh_filter_comp.spv"
+  "-V mesh_filter.comp --target-env vulkan1.2 -DMESH_SHADER_PATH -o ${tempPath}/mesh_filter_ms_comp.spv"
 
   "-V mesh.task --target-env vulkan1.2 -DPASS=0 -o ${tempPath}/mesh_task_pass0.spv"
   "-V mesh.task --target-env vulkan1.2 -DPASS=1 -o ${tempPath}/mesh_task_pass1.spv"
