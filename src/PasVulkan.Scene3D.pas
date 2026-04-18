@@ -4746,6 +4746,7 @@ type EpvScene3D=class(Exception);
        procedure UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresSimpleParallelForJob(const aData:pointer;const aFromIndex,aToIndex:TPasMPInt32;const aThreadIndex:TPasMPInt32);
       private
        procedure InvalidateDirectedAcyclicGraph;
+       procedure InvalidateDraw(const aIncrementGeneration,aInvalidateDirectedGraph:boolean);
        procedure RebuildDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
        function CreateDirectedAcyclicGraphInstanceLeafsToRootJob(const aParentJob:PPasMPJob;const aInstance:TpvScene3D.TGroup.TInstance):PPasMPJob;
        procedure ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
@@ -38342,6 +38343,16 @@ end;
 procedure TpvScene3D.InvalidateDirectedAcyclicGraph;
 begin
  TPasMPInterlocked.Increment(fDirectedAcyclicGraphGeneration);
+end;
+
+procedure TpvScene3D.InvalidateDraw(const aIncrementGeneration,aInvalidateDirectedGraph:boolean);
+begin
+ if aIncrementGeneration then begin
+  TPasMPInterlocked.Increment(fDrawDataGeneration);
+ end;
+ if aInvalidateDirectedGraph then begin
+  InvalidateDirectedAcyclicGraph;
+ end;
 end;
 
 procedure TpvScene3D.RebuildDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
