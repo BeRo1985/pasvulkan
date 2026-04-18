@@ -4746,7 +4746,6 @@ type EpvScene3D=class(Exception);
        procedure UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresSimpleParallelForJob(const aData:pointer;const aFromIndex,aToIndex:TPasMPInt32;const aThreadIndex:TPasMPInt32);
       private
        procedure InvalidateDirectedAcyclicGraph;
-       procedure InvalidateDraw(const aIncrementGeneration,aInvalidateDirectedGraph:boolean);
        procedure RebuildDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
        function CreateDirectedAcyclicGraphInstanceLeafsToRootJob(const aParentJob:PPasMPJob;const aInstance:TpvScene3D.TGroup.TInstance):PPasMPJob;
        procedure ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
@@ -4759,6 +4758,7 @@ type EpvScene3D=class(Exception);
        procedure ProcessDeferredLightOperations;
 {$endif}
       public
+       procedure InvalidateDraw(const aIncrementGeneration,aInvalidateDirectedGraph:boolean);
        class function DetectFileType(const aMemory:pointer;const aSize:TpvSizeInt):TpvScene3D.TFileType; overload; static;
        class function DetectFileType(const aStream:TStream):TpvScene3D.TFileType; overload; static;
        class function EncodeModeFlags(const aAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
