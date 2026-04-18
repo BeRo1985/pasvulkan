@@ -179,6 +179,7 @@ type EpvScene3D=class(Exception);
              LightClusterGridHashBits=16;
              LightClusterGridHashSize=1 shl LightClusterGridHashBits;
              LightClusterGridHashMask=LightClusterGridHashSize-1;
+             DrawInfoFlagNodeCastsShadow=TpvUInt32(1) shl 7; // bit 7 in DrawInfo.Flags
        type TPrimitiveTopology=
              (
               Points=0,
@@ -466,7 +467,7 @@ type EpvScene3D=class(Exception);
                MatrixID:TpvUInt32;                                      //   4 =   4 (index into MatrixPairBuffer, 0=Identity)
                InstanceDataIndex:TpvUInt32;                             // + 4 =   8
                MeshObjectID:TpvUInt32;                                  // + 4 =  12
-               Flags:TpvUInt32;                                         // + 4 =  16 (RenderPassMask bits)
+               Flags:TpvUInt32;                                         // + 4 =  16 (bits 0-6: RenderPassMask, bit 7: NodeCastsShadow)
                NodeMatricesIndex:TpvUInt32;                             // + 4 =  20 (index into NodeMatrices, for lodNeeded atomicOr)
                MeshletDescriptorBase:TpvUInt32;                         // + 4 =  24 (instance-level base into global meshlet descriptor buffer)
                MeshletBoundingSphereBase:TpvUInt32;                     // + 4 =  28 (base into per-instance meshlet bounding sphere buffer, $ffffffff=invalid)
@@ -26161,7 +26162,7 @@ begin
    CurrentDrawInfo.MatrixID:=fMatrixID;
    CurrentDrawInfo.InstanceDataIndex:=0;
    CurrentDrawInfo.MeshObjectID:=NodeMeshObjectID;
-   CurrentDrawInfo.Flags:=RenderPassMask;
+   CurrentDrawInfo.Flags:=RenderPassMask or DrawInfoFlagNodeCastsShadow; // init default: casts shadow
    CurrentDrawInfo.NodeMatricesIndex:=fInstance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(Index)+1;
    CurrentDrawInfo.MeshletDescriptorBase:=fInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
    CurrentDrawInfo.MeshletBoundingSphereBase:=fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
@@ -26983,7 +26984,7 @@ begin
      CurrentDrawInfo.MatrixID:=0; // Non-RI: Identity sentinel
      CurrentDrawInfo.InstanceDataIndex:=0;
      CurrentDrawInfo.MeshObjectID:=MeshObjectID;
-     CurrentDrawInfo.Flags:=RenderPassMask;
+     CurrentDrawInfo.Flags:=RenderPassMask or DrawInfoFlagNodeCastsShadow; // init default: casts shadow
      if fHeadless or fVirtual then begin
       CurrentDrawInfo.NodeMatricesIndex:=0;
       CurrentDrawInfo.MeshletDescriptorBase:=TpvUInt32($ffffffff);
@@ -31075,6 +31076,9 @@ begin
             CurrentDrawInfo^.InstanceDataIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
             CurrentDrawInfo^.MeshObjectID:=MeshObjectID;
             CurrentDrawInfo^.Flags:=pvScene3DRendererRenderPassesToMask(fActiveRenderPasses*RenderInstance.fInstance.fNodes.RawItems[NodeIndex].fActiveRenderPasses);
+            if RenderInstance.fInstance.fNodes.RawItems[NodeIndex].fInFlightFrameCastingShadows[aInFlightFrameIndex] then begin
+             CurrentDrawInfo^.Flags:=CurrentDrawInfo^.Flags or DrawInfoFlagNodeCastsShadow;
+            end;
             CurrentDrawInfo^.NodeMatricesIndex:=RenderInstance.fInstance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(NodeIndex)+1;
             CurrentDrawInfo^.MeshletDescriptorBase:=RenderInstance.fInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
             CurrentDrawInfo^.MeshletBoundingSphereBase:=RenderInstance.fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
@@ -31817,6 +31821,9 @@ begin
        CurrentDrawInfo:=fSceneInstance.AcquireDrawInfo(MeshObjectID,true);
        try
         CurrentDrawInfo^.Flags:=pvScene3DRendererRenderPassesToMask(fActiveRenderPasses*InstanceNode.ActiveRenderPasses);
+        if InstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex] then begin
+         CurrentDrawInfo^.Flags:=CurrentDrawInfo^.Flags or DrawInfoFlagNodeCastsShadow;
+        end;
        finally
         fSceneInstance.ReleaseDrawInfo(MeshObjectID,true);
        end;
@@ -32386,6 +32393,9 @@ begin
        CurrentDrawInfo:=fSceneInstance.AcquireDrawInfo(MeshObjectID,true);
        try
         CurrentDrawInfo^.Flags:=RenderPassMask;
+        if InstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex] then begin
+         CurrentDrawInfo^.Flags:=CurrentDrawInfo^.Flags or DrawInfoFlagNodeCastsShadow;
+        end;
        finally
         fSceneInstance.ReleaseDrawInfo(MeshObjectID,true);
        end;
@@ -38849,6 +38859,9 @@ begin
           CurrentDrawInfo^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
           CurrentDrawInfo^.MeshObjectID:=MeshObjectID;
           CurrentDrawInfo^.Flags:=pvScene3DRendererRenderPassesToMask(Instance.fActiveRenderPasses*Instance.fNodes.RawItems[NodeIndex].fActiveRenderPasses);
+          if Instance.fNodes.RawItems[NodeIndex].fInFlightFrameCastingShadows[InFlightFrameIndex] then begin
+           CurrentDrawInfo^.Flags:=CurrentDrawInfo^.Flags or DrawInfoFlagNodeCastsShadow;
+          end;
           CurrentDrawInfo^.NodeMatricesIndex:=Instance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(NodeIndex)+1;
           CurrentDrawInfo^.MeshletDescriptorBase:=Instance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
           CurrentDrawInfo^.MeshletBoundingSphereBase:=Instance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
