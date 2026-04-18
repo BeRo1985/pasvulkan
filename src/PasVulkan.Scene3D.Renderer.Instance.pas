@@ -5619,7 +5619,8 @@ begin
    Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameExpandRangeInfoBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.ExpandRangeInfoBuffers['+IntToStr(InFlightFrameIndex)+']');
 
    // Meshlet visibility bitmap: 1 bit per allocated meshlet slot, one buffer per IFF per CullRenderPass
-   for CullRenderPass:=TpvScene3DRendererCullRenderPass.First to TpvScene3DRendererCullRenderPass.Last do begin
+   // Only culling passes (FinalView, CascadedShadowMap) need meshlet visibility, filter-only passes do not
+   for CullRenderPass:=TpvScene3DRendererCullRenderPass.FinalView to TpvScene3DRendererCullRenderPass.CascadedShadowMap do begin
     fPerInFlightFrameMeshletVisibilityBufferPartSizes[InFlightFrameIndex,CullRenderPass]:=65536;
     fPerInFlightFrameMeshletVisibilityBuffers[InFlightFrameIndex,CullRenderPass]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                          65536*SizeOf(TpvUInt32),
@@ -5941,7 +5942,7 @@ begin
   FreeAndNil(fPerInFlightFrameMeshCullBatchRangeBuffers[InFlightFrameIndex]);
   FreeAndNil(fPerInFlightFrameMeshCullPrefixSumBuffers[InFlightFrameIndex]);
   FreeAndNil(fPerInFlightFrameExpandRangeInfoBuffers[InFlightFrameIndex]);
-  for CullRenderPass:=TpvScene3DRendererCullRenderPass.First to TpvScene3DRendererCullRenderPass.Last do begin
+  for CullRenderPass:=TpvScene3DRendererCullRenderPass.FinalView to TpvScene3DRendererCullRenderPass.CascadedShadowMap do begin
    FreeAndNil(fPerInFlightFrameMeshletVisibilityBuffers[InFlightFrameIndex,CullRenderPass]);
   end;
   FreeAndNil(fLODLevelBuffers[InFlightFrameIndex]);
@@ -9759,7 +9760,7 @@ begin
    if MeshletVisibilityPartSize<1 then begin
     MeshletVisibilityPartSize:=1;
    end;
-   for CullRenderPass:=TpvScene3DRendererCullRenderPass.First to TpvScene3DRendererCullRenderPass.Last do begin
+   for CullRenderPass:=TpvScene3DRendererCullRenderPass.FinalView to TpvScene3DRendererCullRenderPass.CascadedShadowMap do begin
     if (not assigned(fPerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,CullRenderPass])) or
        (fPerInFlightFrameMeshletVisibilityBufferPartSizes[aInFlightFrameIndex,CullRenderPass]<MeshletVisibilityPartSize) then begin
      fScene3D.AddToFreeQueue(fPerInFlightFrameMeshletVisibilityBuffers[aInFlightFrameIndex,CullRenderPass],1);

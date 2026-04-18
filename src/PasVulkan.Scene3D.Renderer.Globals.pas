@@ -265,8 +265,12 @@ type TpvScene3DRendererAntialiasingMode=
        None=0,
        FinalView=1,
        CascadedShadowMap=2,
+       Voxelization=3,
+       ReflectionProbe=4,
+       TopDownSkyOcclusionMap=5,
+       ReflectiveShadowMap=6,
        First=1,
-       Last=2
+       Last=6
       );
      PpvScene3DRendererCullRenderPass=^TpvScene3DRendererCullRenderPass;
 
