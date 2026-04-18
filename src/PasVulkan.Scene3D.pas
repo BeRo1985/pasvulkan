@@ -3338,6 +3338,7 @@ type EpvScene3D=class(Exception);
                             property Tag:TpvUInt64 read fTag write fTag;
                            published
                             property Active:Boolean read fActive write SetActive;
+                            property RawActive:Boolean read fActive write fActive;
                             property ActiveMask:TPasMPUInt32 read fActiveMask write fActiveMask;
                           end;
                           TRenderInstances=TpvObjectGenericList<TRenderInstance>;
@@ -3656,6 +3657,7 @@ type EpvScene3D=class(Exception);
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Active:boolean read fActive write SetActive;
+                     property RawActive:boolean read fActive write fActive;
                      property UpdateDynamic:TPasMPBool32 read fUpdateDynamic write fUpdateDynamic;
                      property Order:TpvInt64 read fOrder write fOrder;
                      property UseRenderInstances:boolean read fUseRenderInstances write fUseRenderInstances;
@@ -33002,7 +33004,7 @@ begin
      Count:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter+((aNonVirtualInstance.fPreallocatedRenderInstanceCounter+1) shr 1);
      while aNonVirtualInstance.fPreallocatedRenderInstances.Count<Count do begin
       RenderInstance:=aNonVirtualInstance.CreateRenderInstance;
-      RenderInstance.Active:=false;
+      RenderInstance.fActive:=false;
       aNonVirtualInstance.fPreallocatedRenderInstances.Add(RenderInstance);
      end;
     end;
@@ -33014,7 +33016,7 @@ begin
       if VirtualRenderInstance.fActive then begin
        RenderInstance:=aNonVirtualInstance.fPreallocatedRenderInstances.RawItems[Index];
        inc(Index);
-       RenderInstance.Active:=true;
+       RenderInstance.fActive:=true;
        RenderInstance.ModelMatrix:=VirtualRenderInstance.ModelMatrix;
        RenderInstance.InstanceDataIndex:=VirtualRenderInstance.InstanceDataIndex;
        RenderInstance.fAssignedVirtualInstance:=self;
@@ -33026,7 +33028,7 @@ begin
      end;
     end else begin
      RenderInstance:=aNonVirtualInstance.fPreallocatedRenderInstances.RawItems[Index];
-     RenderInstance.Active:=true;
+     RenderInstance.fActive:=true;
      RenderInstance.ModelMatrix:=fModelMatrix;
      RenderInstance.InstanceDataIndex:=0;
      RenderInstance.fAssignedVirtualInstance:=self;
@@ -43417,6 +43419,7 @@ var Index,NonVirtualIndex,AssignedCount,DebugInfoIndex,RenderInstanceIndex,Insta
     Similarity:TpvDouble;
     Visible:Boolean;
     VirtualInstanceAnimation,NonVirtualInstanceAnimation:TpvScene3D.TGroup.TInstance.TAnimation;
+    AssignmentsChanged:boolean;
 begin
 
  fLock.Acquire;
@@ -43434,8 +43437,8 @@ begin
    NonVirtualInstance:=fNonVirtualInstances[Index];
    NonVirtualInstance.fAssignedVirtualInstance:=nil;
    fAvailableNonVirtualInstances.Add(NonVirtualInstance);
-   if NonVirtualInstance.Active then begin
-    NonVirtualInstance.Active:=false;
+   if NonVirtualInstance.fActive then begin
+    NonVirtualInstance.fActive:=false;
     // Reset all non-virtual render instances in preparation for new assignments in an optimized way
     // where we stop resetting as soon as we find an inactive non-virtual render instance since all
     // following ones will also be inactive (due to preallocation order, and delete-with-swap-last
@@ -43443,8 +43446,8 @@ begin
     if assigned(NonVirtualInstance.fPreallocatedRenderInstances) then begin
      for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
       RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
-      if RenderInstance.Active then begin
-       RenderInstance.Active:=false;
+      if RenderInstance.fActive then begin
+       RenderInstance.fActive:=false;
        RenderInstance.fAssignedVirtualInstance:=nil;
        RenderInstance.fAssignedVirtualInstanceRenderInstance:=nil;
       end else begin
@@ -43562,7 +43565,7 @@ begin
     end;
     NonVirtualInstance.fScene:=VirtualInstance.fScene;
     NonVirtualInstance.fRaytracingMask:=VirtualInstance.fRaytracingMask;
-    NonVirtualInstance.Active:=true;
+    NonVirtualInstance.fActive:=true;
 
     // Copy animation states
     if VirtualInstance.fUseAnimationStates and (length(VirtualInstance.fAnimationStates)>0) then begin
@@ -43702,7 +43705,20 @@ begin
    end;
   end;
 
-  fSceneInstance.InvalidateDirectedAcyclicGraph;
+  // Detect whether assignments actually changed compared to last frame
+  AssignmentsChanged:=false;
+  for Index:=0 to fVirtualInstances.Count-1 do begin
+   VirtualInstance:=fVirtualInstances[Index];
+   if VirtualInstance.fAssignedNonVirtualInstance<>VirtualInstance.fPreviousAssignedNonVirtualInstance then begin
+    AssignmentsChanged:=true;
+    break;
+   end;
+  end;
+
+  if AssignmentsChanged then begin
+   TPasMPInterlocked.Increment(fSceneInstance.fDrawDataGeneration);
+   fSceneInstance.InvalidateDirectedAcyclicGraph;
+  end;
 
   fAssignmentDirty:=false;
 
