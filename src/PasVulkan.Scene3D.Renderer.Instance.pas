@@ -10061,6 +10061,57 @@ begin
     fMeshCullPass1ComputeVulkanDescriptorSets[aInFlightFrameIndex].Flush;
    end;
 
+   begin
+
+    fMeshFilterComputeVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                                     0,
+                                                                                     1,
+                                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                     [],
+                                                                                     [fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].DescriptorBufferInfo],
+                                                                                     [],
+                                                                                     false
+                                                                                    );
+    fMeshFilterComputeVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                                     0,
+                                                                                     1,
+                                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                     [],
+                                                                                     [fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex].DescriptorBufferInfo],
+                                                                                     [],
+                                                                                     false
+                                                                                    );
+    fMeshFilterComputeVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                                     0,
+                                                                                     1,
+                                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                     [],
+                                                                                     [fGPUDrawIndexedIndirectCommandCounterBuffers[PerInFlightFrameBufferIndex].DescriptorBufferInfo],
+                                                                                     [],
+                                                                                     false
+                                                                                    );
+    fMeshFilterComputeVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(3,
+                                                                                     0,
+                                                                                     1,
+                                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                     [],
+                                                                                     [fPerInFlightFrameMeshCullBatchRangeBuffers[aInFlightFrameIndex].DescriptorBufferInfo],
+                                                                                     [],
+                                                                                     false
+                                                                                    );
+    fMeshFilterComputeVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                                     0,
+                                                                                     1,
+                                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                                     [],
+                                                                                     [fPerInFlightFrameMeshCullPrefixSumBuffers[aInFlightFrameIndex].DescriptorBufferInfo],
+                                                                                     [],
+                                                                                     false
+                                                                                    );
+    fMeshFilterComputeVulkanDescriptorSets[aInFlightFrameIndex].Flush;
+
+   end;
+
   end;
 
   if fCachedDrawDataGeneration[aInFlightFrameIndex]<>fSnapshotDrawDataGeneration[aInFlightFrameIndex] then begin

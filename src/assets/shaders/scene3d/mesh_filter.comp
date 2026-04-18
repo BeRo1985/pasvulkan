@@ -108,7 +108,7 @@ uint findRangeIndex(uint globalIndex){
       lo = mid + 1u;
     }
   }
-  return lo;
+  return lo - 1u;
 }
 
 void main(){

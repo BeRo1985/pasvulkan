@@ -53,7 +53,8 @@ void main(){
   uint index = gl_GlobalInvocationID.x;
 
   // Thread 0 writes the indirect dispatch parameters for the main cull dispatch
-  if(index == 0u){
+  // cullDispatchIndex == 0xffffffffu means "filter-only pass" — no dispatch entry to write.
+  if((index == 0u) && (pushConstants.cullDispatchIndex != 0xffffffffu)){
     uint totalCommands = prefixSums.sums[pushConstants.prefixSumOffset + pushConstants.countRanges];
     indirectDispatch.commands[pushConstants.cullDispatchIndex] = VkDispatchIndirectCommand((totalCommands + 255u) >> 8u, 1u, 1u);
   }

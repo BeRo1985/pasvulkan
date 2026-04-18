@@ -306,7 +306,8 @@ begin
     ResetPushConstants.MaxMultiIndirectDrawCalls:=TpvScene3DRendererInstance.MaxMultiIndirectDrawCalls;
     ResetPushConstants.BatchRangeOffset:=fInstance.PerInFlightFrameMeshCullBatchRangeOffsets[aInFlightFrameIndex,fCullRenderPass];
     ResetPushConstants.PrefixSumOffset:=fInstance.PerInFlightFrameMeshCullPrefixSumOffsets[aInFlightFrameIndex,fCullRenderPass];
-    ResetPushConstants.CullDispatchIndex:=TpvUInt32(ord(fCullRenderPass));
+    ResetPushConstants.CullDispatchIndex:=TpvUInt32($ffffffff); // filter-only: no indirect dispatch entry to write
+  //ResetPushConstants.CullDispatchIndex:=TpvUInt32(ord(fCullRenderPass));
 
     aCommandBuffer.CmdPushConstants(fInstance.MeshCullReset.PipelineLayout.Handle,
                                     TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
