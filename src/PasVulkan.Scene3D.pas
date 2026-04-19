@@ -30969,6 +30969,7 @@ var Index,PerInFlightFrameRenderInstanceIndex,MeshNodeArrayIndex,NodeIndex:TpvSi
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
     MeshObjectID:TpvUInt32;
+    OldInstanceDataIndex:TpvUInt32;
     CurrentMatrixPair:PGPUMatrixPair;
     CurrentDrawInfo:PGPUDrawInfo;
 {$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}    
@@ -31024,6 +31025,7 @@ begin
 {$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}    
         SingleMatrix:=RenderInstance.fWorkModelMatrix;
         RenderInstance.fModelMatrices[aInFlightFrameIndex]:=SingleMatrix;
+        OldInstanceDataIndex:=RenderInstance.fInstanceDataIndices[aInFlightFrameIndex];
         RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
         // Sphere-based bounding volume computation
         TransformedSphereCenter:=SingleMatrix.MulHomogen(SphereCenterLocal);
@@ -31035,6 +31037,7 @@ begin
         RenderInstance.fBoundingBox:=RenderInstance.fBoundingSphere.ToAABB;
 {$else}
         RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fWorkModelMatrix;
+        OldInstanceDataIndex:=RenderInstance.fInstanceDataIndices[aInFlightFrameIndex];
         RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
         RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
         RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
@@ -31050,9 +31053,9 @@ begin
          RenderInstance.fGeneration:=0;
         end else begin
          PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
-         // Increment generation if ModelMatrix, InstanceDataIndex or fActiveRenderPasses changed
+         // Increment generation if ModelMatrix or InstanceDataIndex changed
          if (RenderInstance.fWorkModelMatrix<>RenderInstance.fPreviousModelMatrix) or
-            (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) then begin
+            (OldInstanceDataIndex<>RenderInstance.fInstanceDataIndex) then begin
           inc(RenderInstance.fGeneration);
          end;
         end;
