@@ -8607,7 +8607,7 @@ begin
           Task^.BoundingSphereIndex:=BoundingSphereIndex;
           Task^.LODInfoIndex:=DrawChoreographyBatchItem.LODInfoIndex;
           Task^.CommandFlags:=0;
-          if DrawChoreographyBatchItem.Material.fData.CastingShadows then begin
+          if DrawChoreographyBatchItem.Material.Data^.CastingShadows then begin
            Task^.CommandFlags:=Task^.CommandFlags or TpvScene3D.DrawCmdFlagMaterialCastsShadow;
           end;
           Task^.GroupInstance:=GroupInstance;
@@ -8625,7 +8625,7 @@ begin
           GPUDrawIndexedIndirectCommand^.BoundingSphereIndex:=BoundingSphereIndex;
           GPUDrawIndexedIndirectCommand^.LODInfoIndex:=DrawChoreographyBatchItem.LODInfoIndex;
           GPUDrawIndexedIndirectCommand^.Flags:=0;
-          if DrawChoreographyBatchItem.Material.fData.CastingShadows then begin
+          if DrawChoreographyBatchItem.Material.Data^.CastingShadows then begin
            GPUDrawIndexedIndirectCommand^.Flags:=GPUDrawIndexedIndirectCommand^.Flags or TpvScene3D.DrawCmdFlagMaterialCastsShadow;
           end;
  //       GPUDrawIndexedIndirectCommand^.InstanceDataIndex:=0;
