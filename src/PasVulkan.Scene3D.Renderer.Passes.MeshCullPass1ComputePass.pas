@@ -105,6 +105,7 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
              MaximumDistance:TpvFloat;
              AreaTooSmallThreshold:TpvFloat;
              AlphaModeMask:TpvUInt32;
+             OutputCommandSlotOffset:TpvUInt32; // K*N slot offset subtracted to get input source index
             end;
             PPushConstants=^TPushConstants;
             TMeshCullResetPushConstants=packed record
@@ -678,6 +679,12 @@ begin
       PushConstants.MaximumDistance:=-1.0;
       PushConstants.AreaTooSmallThreshold:=-1.0;
      end;
+    end;
+
+    if Part=0 then begin
+     PushConstants.OutputCommandSlotOffset:=0;
+    end else begin
+     PushConstants.OutputCommandSlotOffset:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCSMOffsets[aInFlightFrameIndex];
     end;
 
     if fInstance.Scene3D.UseMegaDispatch then begin

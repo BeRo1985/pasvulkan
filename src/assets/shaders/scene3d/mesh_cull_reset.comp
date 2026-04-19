@@ -70,7 +70,10 @@ void main(){
   outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex] = 0u;
 
   // Reset disocclusion counter
-  outputDrawIndexedIndirectCommandCounts.counts[pushConstants.maxMultiIndirectDrawCalls + drawCallIndex] = 0u;
+  uint drawCallIndexForDisocclusions = batchRanges.ranges[pushConstants.batchRangeOffset + index].drawCallIndexForDisocclusions;
+  if(drawCallIndexForDisocclusions != 0xffffffffu){
+    outputDrawIndexedIndirectCommandCounts.counts[drawCallIndexForDisocclusions] = 0u;
+  }
 
   // Reset OIT promotion counters
   if(oitDrawCallIndex != 0xffffffffu){

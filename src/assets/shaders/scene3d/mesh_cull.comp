@@ -101,6 +101,7 @@ layout(push_constant) uniform PushConstants {
   float maximumDistance;            // max camera distance for culling (<=0.0 = disabled)
   float areaTooSmallThreshold;      // min projected pixel size for culling (<=0.0 = disabled)
   uint alphaModeMask;               // bitmask: (1 << alphaMode) for allowed alpha modes
+  uint outputCommandSlotOffset;     // K*N slot offset to subtract when reading input source
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -184,6 +185,7 @@ layout(push_constant) uniform PushConstants {
   float maximumDistance;            // max camera distance for culling (<=0.0 = disabled)
   float areaTooSmallThreshold;     // min projected pixel size for culling (<=0.0 = disabled)
   uint alphaModeMask;              // bitmask: (1 << alphaMode) for allowed alpha modes
+  uint outputCommandSlotOffset;    // K*N slot offset to subtract when reading input source
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -658,7 +660,7 @@ void main(){
   uint drawCallIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].drawCallIndex;
   uint visibilityBufferOffset = pushConstants.visibilityBufferOffset;
 
-  uint sourceIndex = baseCommandIndex + localIndex;
+  uint sourceIndex = (baseCommandIndex - pushConstants.outputCommandSlotOffset) + localIndex;
 
   uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
   uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
@@ -831,7 +833,7 @@ void main(){
   uint countCommandsForDisocclusions = countCommands; // same output space size as normal
   uint drawCallIndexForDisocclusions = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].drawCallIndexForDisocclusions;
 
-  uint sourceIndex = baseCommandIndex + localIndex;
+  uint sourceIndex = (baseCommandIndex - pushConstants.outputCommandSlotOffset) + localIndex;
 
   bool isDrawIndexedIndirectCommandVisible = false;
 

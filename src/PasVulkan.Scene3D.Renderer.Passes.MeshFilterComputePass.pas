@@ -88,6 +88,7 @@ type { TpvScene3DRendererPassesMeshFilterComputePass }
              Flags:TpvUInt32;
              AlphaModeMask:TpvUInt32;
              MaxOutputCommands:TpvUInt32;
+             OutputCommandSlotOffset:TpvUInt32; // K*N slot offset subtracted to get input source index
             end;
             PPushConstants=^TPushConstants;
             TMeshCullResetPushConstants=packed record
@@ -398,6 +399,8 @@ begin
     PushConstants.Flags:=0;
 
     PushConstants.MaxOutputCommands:=fInstance.GPUDrawIndexedIndirectCommandOutputBufferSizes[aInFlightFrameIndex];
+
+    PushConstants.OutputCommandSlotOffset:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandFilterOffsets[aInFlightFrameIndex];
 
     aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                     TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),

@@ -72,6 +72,7 @@ layout(push_constant) uniform PushConstants {
   uint flags;
   uint alphaModeMask;
   uint maxOutputCommands;
+  uint outputCommandSlotOffset; // K*N slot offset to subtract when reading input source
 } pushConstants;
 
 // Descriptor set 0: per-instance buffers (contiguous bindings 0-4)
@@ -143,7 +144,7 @@ void main(){
   uint countCommands = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommands;
   uint drawCallIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].drawCallIndex;
 
-  uint sourceIndex = baseCommandIndex + localIndex;
+  uint sourceIndex = (baseCommandIndex - pushConstants.outputCommandSlotOffset) + localIndex;
 
   uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
   uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
