@@ -43,7 +43,7 @@ layout(location = 1) in InBlock {
   vec4 previousClipSpace;
   vec4 currentClipSpace;
 #endif  
-  uint meshletID; 
+  flat uint meshletID; 
 } inBlock;
 
 #else
@@ -60,7 +60,7 @@ layout(location = 0) in InBlock {
   vec4 previousClipSpace;
   vec4 currentClipSpace;
 #endif  
-  uint meshletID; 
+  flat uint meshletID; 
 } inBlock;
 
 #endif

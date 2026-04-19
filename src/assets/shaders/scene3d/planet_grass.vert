@@ -55,7 +55,7 @@ layout(location = 1) out OutBlock {
   vec4 previousClipSpace;
   vec4 currentClipSpace;
 #endif  
-  uint meshletID; 
+  flat uint meshletID; 
 } outBlock;
 
 #else
@@ -72,7 +72,7 @@ layout(location = 0) out OutBlock {
   vec4 previousClipSpace;
   vec4 currentClipSpace;
 #endif  
-  uint meshletID; 
+  flat uint meshletID; 
 } outBlock;
 #endif
 

@@ -45,6 +45,7 @@ layout(location = 2) in InBlock {
   vec3 triplanarPosition;
 //vec3 worldSpacePosition;
   vec3 viewSpacePosition;
+  flat uint meshletID;
 //vec3 cameraRelativePosition;
 #ifdef VELOCITY
   vec4 previousClipSpace;
@@ -75,6 +76,7 @@ layout(location = 0) in InBlock {
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
+  flat uint meshletID;
 #ifdef VELOCITY
   vec4 previousClipSpace;
   vec4 currentClipSpace;
@@ -272,6 +274,7 @@ vec3 workNormal;
 #include "pbr.glsl"
 #include "blendnormals.glsl"
 #include "decals.glsl"
+#include "meshlet.glsl"
 
 void main(){
 
@@ -635,6 +638,10 @@ void main(){
   } 
 #endif
    
+  if((inBlock.meshletID & 0x80000000u) != 0u){
+    c.xyz = meshletDebugColor(inBlock.meshletID & 0x7fffffffu);
+  }
+
   outFragColor = vec4(clamp(c.xyz, vec3(-65504.0), vec3(65504.0)), c.w);
 
 #if defined(VELOCITY)

@@ -1,0 +1,29 @@
+#version 460
+
+#pragma shader_stage(task)
+
+#extension GL_EXT_mesh_shader : enable
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_control_flow_attributes : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+#include "bufferreference_definitions.glsl"
+
+#include "planet_terrain.glsl"
+
+struct TaskData {
+  uint tileIndex;
+};
+
+taskPayloadSharedEXT TaskData taskData;
+
+void main() {
+  uint tileRes = planetData.flagsResolutions.y & 0xFFFFu;
+  uint meshletsPerSide = tileRes / MESHLET_K;
+  taskData.tileIndex = gl_GlobalInvocationID.x;
+  EmitMeshTasksEXT(meshletsPerSide * meshletsPerSide, 1u, 1u);
+}
