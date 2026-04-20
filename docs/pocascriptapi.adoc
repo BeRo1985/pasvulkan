@@ -8759,6 +8759,51 @@ let playing = music.isPlaying();
 
 '''''
 
+==== music.pause()
+
+*Usage:*
+
+[source,js]
+----
+music.pause();
+----
+
+* *Description:* Pauses the currently playing music without resetting the playback position.
+* *Parameters:* None.
+* *Return Value:* The music object (for chaining), or null if invalid.
+
+'''''
+
+==== music.resume()
+
+*Usage:*
+
+[source,js]
+----
+music.resume();
+----
+
+* *Description:* Resumes a paused music track from where it was paused.
+* *Parameters:* None.
+* *Return Value:* The music object (for chaining), or null if invalid.
+
+'''''
+
+==== music.isPaused()
+
+*Usage:*
+
+[source,js]
+----
+let paused = music.isPaused();
+----
+
+* *Description:* Checks if the music is currently paused.
+* *Parameters:* None.
+* *Return Value:* 1 if paused, 0 otherwise.
+
+'''''
+
 === Example: Audio Usage
 
 [source,js]
@@ -8781,6 +8826,11 @@ bgMusic.play(0.6, 0.0, 1.0, 1); // Loop the music
 
 // Later, fade out music by reducing volume
 bgMusic.setVolume(0.3);
+
+// Pause and resume music
+bgMusic.pause();
+// ... some time later ...
+bgMusic.resume();
 
 // Stop music
 bgMusic.stop();
