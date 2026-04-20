@@ -1824,6 +1824,14 @@ type EpvApplication=class(Exception)
 
        fFramesPerSecond:TpvDouble;
 
+       fTimingCPUUpdate:TpvDouble;
+       fTimingCPUDraw:TpvDouble;
+       fTimingCPUBeginFrame:TpvDouble;
+       fTimingCPUFinishFrame:TpvDouble;
+       fTimingCPUAcquire:TpvDouble;
+       fTimingCPUPresent:TpvDouble;
+       fTimingCPUFramePacing:TpvDouble;
+
        fMaximumFramesPerSecond:TpvDouble;
 
        fFrameCounter:TpvInt64;
@@ -2425,6 +2433,20 @@ type EpvApplication=class(Exception)
        property DeltaTime:TpvDouble read fFloatDeltaTime;
 
        property FramesPerSecond:TpvDouble read fFramesPerSecond;
+
+       property TimingCPUUpdate:TpvDouble read fTimingCPUUpdate;
+
+       property TimingCPUDraw:TpvDouble read fTimingCPUDraw;
+
+       property TimingCPUBeginFrame:TpvDouble read fTimingCPUBeginFrame;
+
+       property TimingCPUFinishFrame:TpvDouble read fTimingCPUFinishFrame;
+
+       property TimingCPUAcquire:TpvDouble read fTimingCPUAcquire;
+
+       property TimingCPUPresent:TpvDouble read fTimingCPUPresent;
+
+       property TimingCPUFramePacing:TpvDouble read fTimingCPUFramePacing;
 
        property MaximumFramesPerSecond:TpvDouble read fMaximumFramesPerSecond write fMaximumFramesPerSecond;
 
@@ -9123,6 +9145,14 @@ begin
 
  fDrawFrameCounter:=0;
 
+ fTimingCPUUpdate:=0.0;
+ fTimingCPUDraw:=0.0;
+ fTimingCPUBeginFrame:=0.0;
+ fTimingCPUFinishFrame:=0.0;
+ fTimingCPUAcquire:=0.0;
+ fTimingCPUPresent:=0.0;
+ fTimingCPUFramePacing:=0.0;
+
  SetDesiredCountInFlightFrames(2);
 
  fPreviousInFlightFrameIndex:=1;
@@ -13274,11 +13304,14 @@ begin
 end;
 
 procedure TpvApplication.UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+var StartTime:TpvHighResolutionTime;
 begin
  if not TPasMPInterlocked.CompareExchange(fInUpdateJobFunction,TPasMPBool32(true),TPasMPBool32(false)) then begin
   try
     SetLowLatencyMarker(VK_LATENCY_MARKER_SIMULATION_START_NV);
+    StartTime:=fHighResolutionTimer.GetTime;
     Update(fUpdateDeltaTime);
+    fTimingCPUUpdate:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
     SetLowLatencyMarker(VK_LATENCY_MARKER_SIMULATION_END_NV);
   finally
    TPasMPInterlocked.Write(fInUpdateJobFunction,TPasMPBool32(false));
@@ -13287,9 +13320,12 @@ begin
 end;
 
 procedure TpvApplication.DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
+var StartTime:TpvHighResolutionTime;
 begin
  SetLowLatencyMarker(VK_LATENCY_MARKER_RENDERSUBMIT_START_NV);
+ StartTime:=fHighResolutionTimer.GetTime;
  Draw(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+ fTimingCPUDraw:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
  SetLowLatencyMarker(VK_LATENCY_MARKER_RENDERSUBMIT_END_NV);
 end;
 
@@ -13677,6 +13713,7 @@ var Index,Counter,Tries:TpvInt32;
     CurrentJobWorkerThread:TPasMPJobWorkerThread;
     LocalNextScreen:TpvApplicationScreen;
     LocalNextScreenClass:TpvApplicationScreenClass;
+    StartTime:TpvHighResolutionTime;
 begin
 
  if assigned(fPasMPInstance.Profiler) then begin
@@ -14822,9 +14859,11 @@ begin
          end;
 
          if assigned(fVulkanDevice) then begin
+          StartTime:=fHighResolutionTimer.GetTime;
           while not AcquireVulkanBackBuffer do begin
            TPasMP.Yield;
           end;
+          fTimingCPUAcquire:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
          end;
 
         end;
@@ -14835,9 +14874,13 @@ begin
           if assigned(CurrentJobWorkerThread) then begin
            CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask or PasMPAreaMaskRender;
           end;
+          StartTime:=fHighResolutionTimer.GetTime;
           BeginFrame(fUpdateDeltaTime);
+          fTimingCPUBeginFrame:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
           DrawJobFunction(nil,0);
+          StartTime:=fHighResolutionTimer.GetTime;
           FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+          fTimingCPUFinishFrame:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
           if assigned(CurrentJobWorkerThread) then begin
            CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask and not PasMPAreaMaskRender;
           end;
@@ -14862,7 +14905,9 @@ begin
             end;
            finally
             try
+             StartTime:=fHighResolutionTimer.GetTime;
              PresentVulkanBackBuffer;
+             fTimingCPUPresent:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
             finally
              PostPresent(fSwapChainImageIndex);
             end;
@@ -14870,7 +14915,9 @@ begin
           end;
          end;
          inc(fFrameCounter);
+         StartTime:=fHighResolutionTimer.GetTime;
          FramePacingAndFrameRateLimiter;
+         fTimingCPUFramePacing:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
         end;
 
        finally
@@ -14920,7 +14967,9 @@ begin
 
           Check(fUpdateDeltaTime);
 
+          StartTime:=fHighResolutionTimer.GetTime;
           BeginFrame(fUpdateDeltaTime);
+          fTimingCPUBeginFrame:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
 
           if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
            fUpdateThread.Invoke;
@@ -14943,7 +14992,9 @@ begin
            end;
           end;
 
+          StartTime:=fHighResolutionTimer.GetTime;
           FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+          fTimingCPUFinishFrame:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
 
          end else begin
 
@@ -14964,18 +15015,24 @@ begin
            UpdateJobFunction(nil,0);
           end;
 
+          StartTime:=fHighResolutionTimer.GetTime;
           BeginFrame(fUpdateDeltaTime);
+          fTimingCPUBeginFrame:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
 
           DrawJobFunction(nil,0);
 
+          StartTime:=fHighResolutionTimer.GetTime;
           FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+          fTimingCPUFinishFrame:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
 
          end;
 
         finally
          if assigned(fVulkanDevice) then begin
           try
+           StartTime:=fHighResolutionTimer.GetTime;
            PresentVulkanBackBuffer;
+           fTimingCPUPresent:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
           finally
            PostPresent(fSwapChainImageIndex);
           end;
@@ -14984,7 +15041,9 @@ begin
 
         inc(fFrameCounter);
 
+        StartTime:=fHighResolutionTimer.GetTime;
         FramePacingAndFrameRateLimiter;
+        fTimingCPUFramePacing:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
 
        end;
 
