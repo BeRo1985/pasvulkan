@@ -2677,6 +2677,7 @@ type TpvScene3DPlanets=class;
               fRenderPass:TpvScene3DRendererRenderPass;
               fKey:TKey;
               fVulkanVisiblityBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+              fNotYetRendered:Boolean;
               fVulkanDrawIndexedIndirectCommandBuffer:TpvVulkanBuffer;
               fVulkanVisibleTileListBuffer:TpvVulkanBuffer;
               fVulkanGrassTaskIndicesBuffer:TpvVulkanBuffer;
@@ -21436,7 +21437,7 @@ var PlanetIndex,BaseViewIndex,CountViews,CountBufferMemoryBarriers:TpvSizeInt;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
-    BufferMemoryBarriers:array[0..5] of TVkBufferMemoryBarrier;
+    BufferMemoryBarriers:array[0..6] of TVkBufferMemoryBarrier;
     DstPipelineStageFlags:TVkPipelineStageFlags;
     BufferCopy:TVkBufferCopy;
     ModelMatrix:TpvMatrix4x4D;
@@ -21563,13 +21564,23 @@ begin
                                                                                            VK_WHOLE_SIZE);
             inc(CountBufferMemoryBarriers);
 
-            BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                                           VK_QUEUE_FAMILY_IGNORED,
-                                                                                           VK_QUEUE_FAMILY_IGNORED,
-                                                                                           RendererViewInstance.fVulkanVisiblityBuffers[PreviousInFlightFrameIndex].Handle,
-                                                                                           0,
-                                                                                           VK_WHOLE_SIZE);
+            if RendererViewInstance.fNotYetRendered then begin
+             BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                            TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                                                            RendererViewInstance.fVulkanVisiblityBuffers[PreviousInFlightFrameIndex].Handle,
+                                                                                            0,
+                                                                                            VK_WHOLE_SIZE);
+            end else begin
+             BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                            TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                                                            RendererViewInstance.fVulkanVisiblityBuffers[PreviousInFlightFrameIndex].Handle,
+                                                                                            0,
+                                                                                            VK_WHOLE_SIZE);
+            end;
             inc(CountBufferMemoryBarriers);
 
             BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
@@ -21612,6 +21623,13 @@ begin
                                        0,
                                        RendererViewInstance.fVulkanVisiblityBuffers[aInFlightFrameIndex].Size,
                                        0);
+
+          if RendererViewInstance.fNotYetRendered then begin
+           aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisiblityBuffers[PreviousInFlightFrameIndex].Handle,
+                                        0,
+                                        RendererViewInstance.fVulkanVisiblityBuffers[PreviousInFlightFrameIndex].Size,
+                                        $ffffffff);
+          end;
 
           begin
 
@@ -21668,6 +21686,17 @@ begin
                                                                                            VK_WHOLE_SIZE);
             inc(CountBufferMemoryBarriers);
 
+            if RendererViewInstance.fNotYetRendered then begin
+             BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                            TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                                                            RendererViewInstance.fVulkanVisiblityBuffers[PreviousInFlightFrameIndex].Handle,
+                                                                                            0,
+                                                                                            VK_WHOLE_SIZE);
+             inc(CountBufferMemoryBarriers);
+            end;
+
             BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                            TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                            VK_QUEUE_FAMILY_IGNORED,
@@ -21688,6 +21717,10 @@ begin
                                              0,nil,
                                              CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
                                              0,nil);
+          end;
+
+          if fPass=0 then begin
+           RendererViewInstance.fNotYetRendered:=false;
           end;
 
          end;
@@ -26350,6 +26383,8 @@ begin
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
   fVulkanVisiblityBuffers[InFlightFrameIndex]:=nil;
  end;
+
+ fNotYetRendered:=true;
 
  for InFlightFrameIndex:=0 to TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames-1 do begin
   fVulkanVisiblityBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
