@@ -1831,6 +1831,7 @@ type EpvApplication=class(Exception)
        fTimingCPUAcquire:TpvDouble;
        fTimingCPUPresent:TpvDouble;
        fTimingCPUFramePacing:TpvDouble;
+       fTimingCPUUpdateWait:TpvDouble;
 
        fMaximumFramesPerSecond:TpvDouble;
 
@@ -2447,6 +2448,8 @@ type EpvApplication=class(Exception)
        property TimingCPUPresent:TpvDouble read fTimingCPUPresent;
 
        property TimingCPUFramePacing:TpvDouble read fTimingCPUFramePacing;
+
+       property TimingCPUUpdateWait:TpvDouble read fTimingCPUUpdateWait;
 
        property MaximumFramesPerSecond:TpvDouble read fMaximumFramesPerSecond write fMaximumFramesPerSecond;
 
@@ -9152,6 +9155,7 @@ begin
  fTimingCPUAcquire:=0.0;
  fTimingCPUPresent:=0.0;
  fTimingCPUFramePacing:=0.0;
+ fTimingCPUUpdateWait:=0.0;
 
  SetDesiredCountInFlightFrames(2);
 
@@ -14888,6 +14892,7 @@ begin
           if assigned(fVulkanDevice) then begin
            try
             if fUpdateWaitsForGPU then begin
+             StartTime:=fHighResolutionTimer.GetTime;
              if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
               fUpdateThread.WaitForDone;
              end else begin
@@ -14902,6 +14907,9 @@ begin
                TPasMP.Yield;
               end;
              end;
+             fTimingCPUUpdateWait:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
+            end else begin
+             fTimingCPUUpdateWait:=0.0;
             end;
            finally
             try

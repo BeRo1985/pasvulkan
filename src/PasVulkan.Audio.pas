@@ -650,6 +650,7 @@ type PpvAudioInt32=^TpvInt32;
        Name:TpvRawByteString;
        Data:TStream;
        Active:LongBool;
+       Paused:LongBool;
        Loop:LongBool;
        KeyOff:LongBool;
        Volume:TpvInt32;
@@ -693,6 +694,8 @@ type PpvAudioInt32=^TpvInt32;
        procedure InitSINC;
        procedure Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
        procedure Stop;
+       procedure Pause;
+       procedure Resume;
        procedure SetVolume(AVolume:TpvFloat);
        procedure SetPanning(APanning:TpvFloat);
        procedure SetRate(ARate:TpvFloat);
@@ -700,6 +703,7 @@ type PpvAudioInt32=^TpvInt32;
        procedure Resample;
        procedure MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
        function IsPlaying:boolean;
+       function IsPaused:boolean;
      end;
 
      IpvAudioSoundSampleResource=interface(IpvResource)['{9E4ABC9F-7EBE-49D8-BD78-146A875F44FF}']
@@ -751,10 +755,13 @@ type PpvAudioInt32=^TpvInt32;
      IpvAudioSoundMusicResource=interface(IpvResource)['{4F43005B-109A-4DF4-808E-4ECAA3BF00A6}']
       procedure Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
       procedure Stop;
+      procedure Pause;
+      procedure Resume;
       procedure SetVolume(AVolume:TpvFloat);
       procedure SetPanning(APanning:TpvFloat);
       procedure SetRate(ARate:TpvFloat);
       function IsPlaying:boolean;
+      function IsPaused:boolean;
      end;
 
      TpvAudioSoundMusicResource=class(TpvResource,IpvAudioSoundMusicResource)
@@ -766,10 +773,13 @@ type PpvAudioInt32=^TpvInt32;
        function BeginLoad(const aStream:TStream):boolean; override;
        procedure Play(AVolume,APanning,ARate:TpvFloat;ALoop:boolean);
        procedure Stop;
+       procedure Pause;
+       procedure Resume;
        procedure SetVolume(AVolume:TpvFloat);
        procedure SetPanning(APanning:TpvFloat);
        procedure SetRate(ARate:TpvFloat);
        function IsPlaying:boolean;
+       function IsPaused:boolean;
       published
        property Music:TpvAudioSoundMusic read fMusic;
      end;
@@ -906,7 +916,9 @@ type PpvAudioInt32=^TpvInt32;
                      MusicStop,
                      MusicSetVolume,
                      MusicSetPanning,
-                     MusicSetRate
+                     MusicSetRate,
+                     MusicPause,
+                     MusicResume
                     );
                     PCommandType=^TCommandType;
              private
@@ -966,6 +978,8 @@ type PpvAudioInt32=^TpvInt32;
        procedure MusicSetVolume(const aMusic:TpvAudioSoundMusic;const aVolume:TpvFloat);
        procedure MusicSetPanning(const aMusic:TpvAudioSoundMusic;const aPanning:TpvFloat);
        procedure MusicSetRate(const aMusic:TpvAudioSoundMusic;const aRate:TpvFloat);
+       procedure MusicPause(const aMusic:TpvAudioSoundMusic);
+       procedure MusicResume(const aMusic:TpvAudioSoundMusic);
        procedure Process;
      end;
 
@@ -3967,16 +3981,32 @@ begin
  FillChar(ResamplerBuffer,SizeOf(ResamplerBuffer),AnsiChar(#0));
  FillChar(ResamplerCurrentSample,SizeOf(TpvAudioSoundMusicBufferSample),AnsiChar(#0));
  FillChar(ResamplerLastSample,SizeOf(TpvAudioSoundMusicBufferSample),AnsiChar(#0));
+ Paused:=false;
  Active:=true;
 end;
 
 procedure TpvAudioSoundMusic.Stop;
 begin
  Active:=false;
+ Paused:=false;
  inc(LastLeft,LastSample.Left);
  inc(LastRight,LastSample.Right);
  LastSample.Left:=0;
  LastSample.Right:=0;
+end;
+
+procedure TpvAudioSoundMusic.Pause;
+begin
+ if Active then begin
+  Paused:=true;
+ end;
+end;
+
+procedure TpvAudioSoundMusic.Resume;
+begin
+ if Active then begin
+  Paused:=false;
+ end;
 end;
 
 procedure TpvAudioSoundMusic.SetVolume(AVolume:TpvFloat);
@@ -4185,7 +4215,7 @@ var Counter,Pan,VolLeft,VolRight:TpvInt32;
     Sample:TpvAudioSoundMusicBufferSample;
     BufferSample:PpvAudioSoundSampleValue;
 begin
- if Active or ((VolumeRampingRemain>0) or ((LastLeft<>0) or (LastRight<>0))) then begin
+ if (Active and not Paused) or ((VolumeRampingRemain>0) or ((LastLeft<>0) or (LastRight<>0))) then begin
   Pan:=Panning+65536;
   if Pan<0 then begin
    Pan:=0;
@@ -4270,6 +4300,11 @@ end;
 function TpvAudioSoundMusic.IsPlaying:boolean;
 begin
  result:=Active;
+end;
+
+function TpvAudioSoundMusic.IsPaused:boolean;
+begin
+ result:=Paused;
 end;
 
 constructor TpvAudioSoundSampleResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
@@ -4419,6 +4454,16 @@ begin
  fMusic.Stop;
 end;
 
+procedure TpvAudioSoundMusicResource.Pause;
+begin
+ fMusic.Pause;
+end;
+
+procedure TpvAudioSoundMusicResource.Resume;
+begin
+ fMusic.Resume;
+end;
+
 procedure TpvAudioSoundMusicResource.SetVolume(AVolume:TpvFloat);
 begin
  fMusic.SetVolume(AVolume);
@@ -4437,6 +4482,11 @@ end;
 function TpvAudioSoundMusicResource.IsPlaying:boolean;
 begin
  result:=fMusic.IsPlaying;
+end;
+
+function TpvAudioSoundMusicResource.IsPaused:boolean;
+begin
+ result:=fMusic.IsPaused;
 end;
 
 constructor TpvAudioSoundSamples.Create(AAudioEngine:TpvAudio);
@@ -6222,6 +6272,44 @@ begin
  end;
 end;
 
+procedure TpvAudioCommandQueue.MusicPause(const aMusic:TpvAudioSoundMusic);
+var QueueItem:TQueueItem;
+begin
+ if assigned(aMusic) then begin
+  fLock.Acquire;
+  try
+   QueueItem:=AcquireQueueItem;
+   try
+    QueueItem.fCommandType:=TQueueItem.TCommandType.MusicPause;
+    QueueItem.fMusic:=aMusic;
+   finally
+    fQueue.Enqueue(QueueItem);
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvAudioCommandQueue.MusicResume(const aMusic:TpvAudioSoundMusic);
+var QueueItem:TQueueItem;
+begin
+ if assigned(aMusic) then begin
+  fLock.Acquire;
+  try
+   QueueItem:=AcquireQueueItem;
+   try
+    QueueItem.fCommandType:=TQueueItem.TCommandType.MusicResume;
+    QueueItem.fMusic:=aMusic;
+   finally
+    fQueue.Enqueue(QueueItem);
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
 procedure TpvAudioCommandQueue.Process;
 var QueueItem:TQueueItem;
     GlobalVoiceID:TpvID;
@@ -6385,6 +6473,18 @@ begin
        if assigned(QueueItem.fMusic) then begin
         QueueItem.fMusic.SetRate(QueueItem.fRate);
        end;
+      end;
+      TQueueItem.TCommandType.MusicPause:begin
+       if assigned(QueueItem.fMusic) then begin
+        QueueItem.fMusic.Pause;
+       end;
+      end;
+      TQueueItem.TCommandType.MusicResume:begin
+       if assigned(QueueItem.fMusic) then begin
+        QueueItem.fMusic.Resume;
+       end;
+      end;
+      else begin
       end;
      end;
     finally
