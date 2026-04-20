@@ -269,9 +269,16 @@ var InFlightFrameIndex:TpvSizeInt;
     AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
+    MeshShaderStageFlags:TVkShaderStageFlags;
 begin
 
  inherited AcquireVolatileResources;
+
+ if fInstance.Renderer.Scene3D.PlanetWaterMeshShaderSupport then begin
+  MeshShaderStageFlags:=TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT);
+ end else begin
+  MeshShaderStageFlags:=TVkShaderStageFlags(0);
+ end;
 
  fVulkanRenderPass:=VulkanRenderPass;
 
@@ -282,7 +289,8 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                             MeshShaderStageFlags,
                                              []);
  fPassVulkanDescriptorSetLayout.AddBinding(1,
                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -290,7 +298,8 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                             MeshShaderStageFlags,
                                              []);
  fPassVulkanDescriptorSetLayout.AddBinding(2,
                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -298,7 +307,8 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                             MeshShaderStageFlags,
                                              []);
  fPassVulkanDescriptorSetLayout.AddBinding(3,
                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -306,7 +316,8 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                             MeshShaderStageFlags,
                                              []);
  fPassVulkanDescriptorSetLayout.AddBinding(4,
                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -314,7 +325,8 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                             MeshShaderStageFlags,
                                              []);
  fPassVulkanDescriptorSetLayout.AddBinding(5,
                                            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -322,7 +334,8 @@ begin
                                            TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                            TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                            TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                                           TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                           MeshShaderStageFlags,
                                            []);
  fPassVulkanDescriptorSetLayout.AddBinding(6,
                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -330,7 +343,8 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                             MeshShaderStageFlags,
                                              []);
  fPassVulkanDescriptorSetLayout.AddBinding(7,
                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -338,7 +352,8 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                             MeshShaderStageFlags,
                                              []);
  fPassVulkanDescriptorSetLayout.AddBinding(8,
                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -346,7 +361,8 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                             MeshShaderStageFlags,
                                              []);
 {if assigned(fResourceDepth) then begin
   fPassVulkanDescriptorSetLayout.AddBinding(9,

@@ -170,14 +170,14 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   const uint raytracingSoftShadowFlag = 1u << 0u;
                   const uint raytracingSphereSolidAngleSamplingFlag = 1u << 1u;
                   const uint raytracingEarlyOutSamplingFlag = 1u << 2u; 
-                  if((pushConstants.raytracingFlags & raytracingSoftShadowFlag) != 0u){
+                  if((globalRaytracingFlags & raytracingSoftShadowFlag) != 0u){
 
                     // Soft shadows with area light sampling
 
                     // True area light sampling with correct contact hardening
                     // No blocker search needed - contact hardening emerges naturally from area light geometry
                     // Contact hardening emerges naturally from area light geometry - no blocker search needed
-                    const int countSamples = int(((pushConstants.raytracingFlags >> (32u - 6u)) & 0x3fu) + 4u); // Upper 6 bits for sample count (min 4, max 64) 
+                    const int countSamples = int(((globalRaytracingFlags >> (32u - 6u)) & 0x3fu) + 4u); // Upper 6 bits for sample count (min 4, max 64) 
                     
                     float shadow = 0.0;
                     
@@ -217,7 +217,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                           sampleCount++;
                           
                           // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                          if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
+                          if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((globalRaytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
                             break;                          
                           }
                         }
@@ -236,7 +236,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 
                         vec3 spotAxis = normalize(light.directionRange.xyz);
 
-                        if((pushConstants.raytracingFlags & raytracingSphereSolidAngleSamplingFlag) != 0u){
+                        if((globalRaytracingFlags & raytracingSphereSolidAngleSamplingFlag) != 0u){
 
                           // Sphere solid angle sampling (Shirley 1996)
                           // Samples directions within cone subtended by sphere, avoids self-shadowing from emitter mesh
@@ -290,7 +290,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             }
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
+                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((globalRaytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
                               break;                          
                             }
                           }
@@ -333,7 +333,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             }
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
+                            if((i == 1) && (acceptedCount == 2) && ((shadow < 1e-6) || ((shadow / max(weightSum, 1e-4)) > (1.0 - 1e-6))) && ((globalRaytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
                               break;                          
                             }
                           }
@@ -352,7 +352,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                         // Physical emitter radius (fraction of influence radius)
                         float lightPhysicalRadius = light.positionRadius.w * 0.02; // 2% of influence radius
 
-                        if((pushConstants.raytracingFlags & raytracingSphereSolidAngleSamplingFlag) != 0u){
+                        if((globalRaytracingFlags & raytracingSphereSolidAngleSamplingFlag) != 0u){
 
                           // Sphere solid angle sampling (Shirley 1996)
                           // Samples directions within cone subtended by sphere, avoids self-shadowing from emitter mesh
@@ -401,7 +401,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             sampleCount++;
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
+                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((globalRaytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
                               break;                          
                             }
                           }
@@ -438,7 +438,7 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                             sampleCount++;
                             
                             // Adaptive early-out: after 2 samples, check if both agree (fully lit or fully shadowed)
-                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((pushConstants.raytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
+                            if((i == 1) && ((shadow < 1e-6) || (shadow > (2.0 - 1e-6))) && ((globalRaytracingFlags & raytracingEarlyOutSamplingFlag) != 0u)){
                               break;                          
                             }
                           }

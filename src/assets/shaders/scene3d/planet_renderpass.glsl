@@ -19,7 +19,7 @@ layout(push_constant) uniform PushConstants {
   uint resolutionXY;  
   float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
   uint tileMapResolution;
-  uint raytracingFlags; // Raytracing flags
+  uint flags; // General flags (raytracing, debug, etc.)
 
   // Third uvec4
   int frameIndex; 
@@ -52,7 +52,7 @@ layout(push_constant) uniform PushConstants {
 
   // Third uvec4 
   int frameIndex; 
-  uint raytracingFlags; // Raytracing flags
+  uint flags; // General flags (raytracing, debug, etc.)
 #if defined(USE_BUFFER_REFERENCE) 
   PlanetData planetData;
 #else

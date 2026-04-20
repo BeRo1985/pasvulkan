@@ -35,6 +35,7 @@ layout(location = 0) out OutBlock {
   float mapValue;
   float waterOverSurface;
   float underWater;
+  flat uint meshletID;
 } outBlock;
 
 in gl_PerVertex {
@@ -158,6 +159,7 @@ void main(){
   outBlock.mapValue = mapHeight(localPosition, sphereHeight);
   outBlock.waterOverSurface = (sphereHeightData.y > 1e-6) ? 1.0 : 0.0;
   outBlock.underWater = ((inBlocks[0].flags & (1u << 0u)) != 0u) ? 1.0 : 0.0;
+  outBlock.meshletID = 0u; // No meshlet debug in tessellation path
 
 	gl_Position = viewProjectionMatrix * vec4(position, 1.0);
   

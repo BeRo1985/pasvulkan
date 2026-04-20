@@ -301,6 +301,8 @@ float diffuseTransmissionThickness = 1.0;
 
 #include "shadows.glsl"
 
+#define globalRaytracingFlags pushConstants.raytracingFlags
+
 #define LIGHTING_GLOBALS
 #include "lighting.glsl"
 #undef LIGHTING_GLOBALS

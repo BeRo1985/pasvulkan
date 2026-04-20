@@ -140,6 +140,8 @@ layout (set = 1, binding = 10, std430) readonly buffer FrustumClusterGridData {
 layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map, 5 = brushes, 6 = rain map, 7 = atmosphere map
 layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map, 5 = brushes, 6 = rain map, 7 = atmosphere map
 
+#define globalRaytracingFlags pushConstants.flags
+
 #include "planet_textures.glsl"
 
 #define RainTexture uPlanetTextures[PLANET_TEXTURE_RAINTEXTURE]

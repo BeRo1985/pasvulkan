@@ -43,6 +43,7 @@ layout(location = 0) in InBlock {
   float mapValue;
   float waterOverSurface;
   float underWater;
+  flat uint meshletID;
 } inBlock;
 #elif defined(UNDERWATER)
 layout(location = 0) in InBlock {
@@ -133,6 +134,8 @@ layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0
 layout(set = 3, binding = 2) uniform sampler2DArray uTextureWaterAcceleration;
 #endif
 
+#define globalRaytracingFlags pushConstants.flags
+
 #define PLANET_WATER
 #include "planet_renderpass.glsl"
 
@@ -184,6 +187,8 @@ int inViewIndex = int(gl_ViewIndex);
 #undef UseEnvMapLambertian
 
 #include "roughness.glsl"
+
+#include "meshlet.glsl"
 
 vec3 imageLightBasedLightDirection = vec3(0.0, 1.0, 0.0);// imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
 
@@ -670,6 +675,10 @@ void main(){
   }
 
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
+
+  if((inBlock.meshletID & 0x80000000u) != 0u) {
+    outFragColor = vec4(meshletDebugColor(inBlock.meshletID & 0x7fffffffu), 1.0);
+  }
 
 #elif defined(UNDERWATER)
 

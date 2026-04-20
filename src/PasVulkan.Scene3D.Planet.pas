@@ -2213,7 +2213,7 @@ type TpvScene3DPlanets=class;
                     TimeFractionalSecond:TpvFloat;
 
                     FrameIndex:TpvUInt32;
-                    RaytracingFlags:TpvUInt32;
+                    Flags:TpvUInt32;
                     PlanetData:TVkDeviceAddress;
 
                     Jitter:TpvVector4;
@@ -2555,7 +2555,7 @@ type TpvScene3DPlanets=class;
                     ResolutionXY:TpvUInt32;
                     TessellationFactor:TpvFloat;
                     TileMapResolution:TpvUInt32;
-                    RaytracingFlags:TpvUInt32;
+                    Flags:TpvUInt32;
 
                     FrameIndex:TpvUInt32;
                     Time:TpvFloat;
@@ -2585,6 +2585,12 @@ type TpvScene3DPlanets=class;
               fWaterTessellationControlShaderStage:TpvVulkanPipelineShaderStage;
               fWaterTessellationEvaluationShaderStage:TpvVulkanPipelineShaderStage;
               fWaterFragmentShaderStage:TpvVulkanPipelineShaderStage;
+              fWaterMeshTaskShaderModule:TpvVulkanShaderModule;
+              fWaterMeshShaderModule:TpvVulkanShaderModule;
+              fWaterMeshTaskShaderStage:TpvVulkanPipelineShaderStage;
+              fWaterMeshShaderStage:TpvVulkanPipelineShaderStage;
+              fWaterMeshPipelineLayout:TpvVulkanPipelineLayout;
+              fWaterMeshPipeline:TpvVulkanGraphicsPipeline;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fDescriptorPool:TpvVulkanDescriptorPool;
               fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
@@ -2957,7 +2963,7 @@ type TpvScene3DPlanets=class;
        class function CreatePlanetWaterCullDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetWaterPrepassDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetWaterPrepassDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
-       class function CreatePlanetWaterRenderDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
+       class function CreatePlanetWaterRenderDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice;const aMeshShaders:Boolean=false):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetWaterRenderDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetPrecipitationAtmosphereDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetPrecipitationAtmosphereDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
@@ -23853,14 +23859,14 @@ begin
       fPlanetPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
       fPlanetPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
       fPlanetPushConstants.FrameIndex:=aFrameIndex;
-      fPlanetPushConstants.RaytracingFlags:=TpvScene3DRendererInstance(fRendererInstance).RawRaytracingFlags;
+      fPlanetPushConstants.Flags:=TpvScene3DRendererInstance(fRendererInstance).RawRaytracingFlags;
       if TpvScene3DRendererInstance(fRendererInstance).DrawMeshletDebugColors then begin
-       fPlanetPushConstants.RaytracingFlags:=fPlanetPushConstants.RaytracingFlags or (TpvUInt32(1) shl 3);
+       fPlanetPushConstants.Flags:=fPlanetPushConstants.Flags or (TpvUInt32(1) shl 3);
       end;
       if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
-       fPlanetPushConstants.RaytracingFlags:=fPlanetPushConstants.RaytracingFlags or (TpvUInt32(1) shl 4); // PLANET_TERRAIN_FLAG_FRUSTUM_CULL
+       fPlanetPushConstants.Flags:=fPlanetPushConstants.Flags or (TpvUInt32(1) shl 4); // PLANET_TERRAIN_FLAG_FRUSTUM_CULL
        if Planet.fData.fLODActive then begin
-        fPlanetPushConstants.RaytracingFlags:=fPlanetPushConstants.RaytracingFlags or (TpvUInt32(1) shl 5); // PLANET_TERRAIN_FLAG_TASK_LOD
+        fPlanetPushConstants.Flags:=fPlanetPushConstants.Flags or (TpvUInt32(1) shl 5); // PLANET_TERRAIN_FLAG_TASK_LOD
        end;
       end;
       if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
@@ -25320,6 +25326,18 @@ begin
 
  fWaterFragmentShaderStage:=nil;
 
+ fWaterMeshTaskShaderModule:=nil;
+
+ fWaterMeshShaderModule:=nil;
+
+ fWaterMeshTaskShaderStage:=nil;
+
+ fWaterMeshShaderStage:=nil;
+
+ fWaterMeshPipelineLayout:=nil;
+
+ fWaterMeshPipeline:=nil;
+
  fDescriptorSetLayout:=nil;
 
  fDescriptorPool:=nil;
@@ -25432,10 +25450,56 @@ begin
 
  fWaterFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fWaterFragmentShaderModule,'main');
 
+ if TpvScene3D(fScene3D).PlanetWaterMeshShaderSupport then begin
+
+  ShaderFileName:='planet_water';
+  if TpvScene3D(fScene3D).RaytracingActive then begin
+   ShaderFileName:=ShaderFileName+'_raytracing';
+  end else if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+   ShaderFileName:=ShaderFileName+'_bufref';
+  end;
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_task.spv');
+  try
+   fWaterMeshTaskShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+  fVulkanDevice.DebugUtils.SetObjectName(fWaterMeshTaskShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fWaterMeshTaskShaderModule');
+
+  if fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_multiview_mesh.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_mesh.spv');
+  end;
+  try
+   fWaterMeshShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+  fVulkanDevice.DebugUtils.SetObjectName(fWaterMeshShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fWaterMeshShaderModule');
+
+  fWaterMeshTaskShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TASK_BIT_EXT,fWaterMeshTaskShaderModule,'main');
+
+  fWaterMeshShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_MESH_BIT_EXT,fWaterMeshShaderModule,'main');
+
+ end else begin
+
+  fWaterMeshTaskShaderModule:=nil;
+  fWaterMeshShaderModule:=nil;
+  fWaterMeshTaskShaderStage:=nil;
+  fWaterMeshShaderStage:=nil;
+
+ end;
+
 end;
 
 destructor TpvScene3DPlanet.TWaterRenderPass.Destroy;
 begin
+
+ FreeAndNil(fWaterMeshPipeline);
+
+ FreeAndNil(fWaterMeshPipelineLayout);
 
  FreeAndNil(fWaterPipeline);
 
@@ -25446,6 +25510,10 @@ begin
  FreeAndNil(fDescriptorSetLayout);
 
  FreeAndNil(fWaterFragmentShaderStage);
+
+ FreeAndNil(fWaterMeshShaderStage);
+
+ FreeAndNil(fWaterMeshTaskShaderStage);
 
  FreeAndNil(fWaterTessellationEvaluationShaderStage);
 
@@ -25458,6 +25526,10 @@ begin
  FreeAndNil(fWaterTessellationControlShaderModule);
 
  FreeAndNil(fWaterFragmentShaderModule);
+
+ FreeAndNil(fWaterMeshShaderModule);
+
+ FreeAndNil(fWaterMeshTaskShaderModule);
 
  FreeAndNil(fWaterVertexShaderModule);
 
@@ -25656,11 +25728,108 @@ begin
 
  end;
 
+ if TpvScene3D(fScene3D).PlanetWaterMeshShaderSupport and
+    assigned(fWaterMeshTaskShaderStage) and
+    assigned(fWaterMeshShaderStage) then begin
+
+  fWaterMeshPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fWaterMeshPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or
+                                                TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
+                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                0,
+                                                SizeOf(TPushConstants));
+  fWaterMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
+  fWaterMeshPipelineLayout.AddDescriptorSetLayout(aPassVulkanDescriptorSetLayout); // Pass descriptor set (views UBO)
+  fWaterMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
+  fWaterMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetWaterRenderDescriptorSetLayout); // Per render pass descriptor set
+  fWaterMeshPipelineLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fWaterMeshPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterRenderPass.fWaterMeshPipelineLayout');
+
+  fWaterMeshPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
+                                                       TpvScene3DRenderer(fRenderer).VulkanPipelineCache,
+                                                       0,
+                                                       [],
+                                                       fWaterMeshPipelineLayout,
+                                                       aRenderPass,
+                                                       0,
+                                                       nil,
+                                                       0);
+
+  fWaterMeshPipeline.AddStage(fWaterMeshTaskShaderStage);
+  fWaterMeshPipeline.AddStage(fWaterMeshShaderStage);
+  fWaterMeshPipeline.AddStage(fWaterFragmentShaderStage);
+
+  fWaterMeshPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
+  fWaterMeshPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
+
+  fWaterMeshPipeline.RasterizationState.DepthClampEnable:=false;
+  fWaterMeshPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+  fWaterMeshPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+  fWaterMeshPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+  fWaterMeshPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+  fWaterMeshPipeline.RasterizationState.DepthBiasEnable:=false;
+  fWaterMeshPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+  fWaterMeshPipeline.RasterizationState.DepthBiasClamp:=0.0;
+  fWaterMeshPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+  fWaterMeshPipeline.RasterizationState.LineWidth:=1.0;
+
+  if fMSAA then begin
+   fWaterMeshPipeline.MultisampleState.RasterizationSamples:=aVulkanSampleCountFlagBits;
+  end else begin
+   fWaterMeshPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+  end;
+  fWaterMeshPipeline.MultisampleState.SampleShadingEnable:=false;
+  fWaterMeshPipeline.MultisampleState.MinSampleShading:=0.0;
+  fWaterMeshPipeline.MultisampleState.CountSampleMasks:=0;
+  fWaterMeshPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+  fWaterMeshPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+  fWaterMeshPipeline.ColorBlendState.LogicOpEnable:=false;
+  fWaterMeshPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+  fWaterMeshPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+  fWaterMeshPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+  fWaterMeshPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+  fWaterMeshPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+  fWaterMeshPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                  VK_BLEND_FACTOR_ONE,
+                                                                  VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                  VK_BLEND_OP_ADD,
+                                                                  VK_BLEND_FACTOR_ONE,
+                                                                  VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                  VK_BLEND_OP_ADD,
+                                                                  TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                  TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                  TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                  TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+  fWaterMeshPipeline.DepthStencilState.DepthTestEnable:=true;
+  fWaterMeshPipeline.DepthStencilState.DepthWriteEnable:=true;
+  if TpvScene3DRendererInstance(fRendererInstance).ZFar<0.0 then begin
+   fWaterMeshPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
+  end else begin
+   fWaterMeshPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+  end;
+  fWaterMeshPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+  fWaterMeshPipeline.DepthStencilState.StencilTestEnable:=false;
+
+  fWaterMeshPipeline.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fWaterMeshPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TWaterRenderPass.fWaterMeshPipeline');
+
+ end else begin
+  fWaterMeshPipelineLayout:=nil;
+  fWaterMeshPipeline:=nil;
+ end;
+
 end;
 
 procedure TpvScene3DPlanet.TWaterRenderPass.ReleaseResources;
 //var InFlightFrameIndex:TpvSizeInt;
 begin
+
+ FreeAndNil(fWaterMeshPipeline);
+
+ FreeAndNil(fWaterMeshPipelineLayout);
 
  FreeAndNil(fWaterPipeline);
 
@@ -25736,7 +25905,10 @@ begin
        fPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
        fPushConstants.TessellationFactor:=1.0/4.0;
        fPushConstants.TileMapResolution:=Planet.TileMapResolution;
-       fPushConstants.RaytracingFlags:=TpvScene3DRendererInstance(fRendererInstance).RawRaytracingFlags;
+       fPushConstants.Flags:=TpvScene3DRendererInstance(fRendererInstance).RawRaytracingFlags;
+       if TpvScene3DRendererInstance(fRendererInstance).DrawMeshletDebugColors then begin
+        fPushConstants.Flags:=fPushConstants.Flags or (TpvUInt32(1) shl 3); // PLANET_WATER_FLAG_MESHLET_DEBUG_COLORS
+       end;
 
        fPushConstants.FrameIndex:=aFrameIndex;
        fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
@@ -25749,31 +25921,96 @@ begin
        fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter;
 //     fPushConstants.Jitter:=TpvVector4.Null;
 
-       aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                       0,
-                                       SizeOf(TPushConstants),
-                                       @fPushConstants);
+       if assigned(fWaterMeshPipeline) then begin
 
-       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fUnderwaterPipeline.Handle);
-       if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
-        Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetUnderwater');
-       end;
-       aCommandBuffer.CmdDraw(3,1,0,0);
-       if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
-        Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
-       end;
+        // Underwater uses fPipelineLayout — sets 0-3 already bound with fPipelineLayout above
+        aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                        0,
+                                        SizeOf(TPushConstants),
+                                        @fPushConstants);
 
-       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fWaterPipeline.Handle);
-       if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
-        Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetWater');
-       end;
-       aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*4,1,0,0);
-       if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
-        Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fUnderwaterPipeline.Handle);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetUnderwater');
+        end;
+        aCommandBuffer.CmdDraw(3,1,0,0);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+        end;
+
+        // Re-bind sets 0-3 with fWaterMeshPipelineLayout for mesh water draw
+        DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+        DescriptorSets[1]:=aPassDescriptorSet.Handle;
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             fWaterMeshPipelineLayout.Handle,
+                                             0,
+                                             2,
+                                             @DescriptorSets,
+                                             0,
+                                             nil);
+        DescriptorSets[0]:=Planet.fPlanetDescriptorSets[aInFlightFrameIndex].Handle;
+        DescriptorSets[1]:=RendererViewInstance.fWaterRenderDescriptorSets[aInFlightFrameIndex].Handle;
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             fWaterMeshPipelineLayout.Handle,
+                                             2,
+                                             2,
+                                             @DescriptorSets,
+                                             0,
+                                             nil);
+
+        aCommandBuffer.CmdPushConstants(fWaterMeshPipelineLayout.Handle,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                        0,
+                                        SizeOf(TPushConstants),
+                                        @fPushConstants);
+
+        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fWaterMeshPipeline.Handle);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetWaterMesh');
+        end;
+        TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksEXT(aCommandBuffer.Handle,
+                                                                                fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection,
+                                                                                1,
+                                                                                1);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+        end;
+
+       end else begin
+
+        aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                        0,
+                                        SizeOf(TPushConstants),
+                                        @fPushConstants);
+
+        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fUnderwaterPipeline.Handle);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetUnderwater');
+        end;
+        aCommandBuffer.CmdDraw(3,1,0,0);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+        end;
+
+        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fWaterPipeline.Handle);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetWater');
+        end;
+        aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*4,1,0,0);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+        end;
+
        end;
 
       end;
@@ -28681,8 +28918,15 @@ begin
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetWaterPrepassDescriptorPool');
 end;
 
-class function TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout;
+class function TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice;const aMeshShaders:Boolean=false):TpvVulkanDescriptorSetLayout;
+var MeshShaderStageFlags:TVkShaderStageFlags;
 begin
+ if aMeshShaders then begin
+  MeshShaderStageFlags:=TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or
+                        TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT);
+ end else begin
+  MeshShaderStageFlags:=0;
+ end;
  result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice);
  result.AddBinding(0,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -28690,7 +28934,8 @@ begin
                    TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                    TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                    TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                   MeshShaderStageFlags,
                    [],
                    0);
  result.AddBinding(1,
@@ -28699,7 +28944,8 @@ begin
                    TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                    TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                    TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                   MeshShaderStageFlags,
                    [],
                    0);
  result.AddBinding(2,

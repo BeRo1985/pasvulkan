@@ -703,6 +703,17 @@ compileshaderarguments=(
   "-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -DRAYTRACING -o ${tempPath}/planet_terrain_raytracing_multiview_mesh.spv"
   "-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_terrain_raytracing_velocity_multiview_mesh.spv"
 
+  # Water task+mesh shader variants (PLANET_WATER path)
+  "-V planet_water.task --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_bufref_task.spv"
+  "-V planet_water.task --target-env vulkan1.2 -DRAYTRACING -o ${tempPath}/planet_water_raytracing_task.spv"
+
+  #"-V planet_water.mesh --target-env vulkan1.2 -o ${tempPath}/planet_water_mesh.spv"           # unused: BDA always active
+  "-V planet_water.mesh --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_bufref_mesh.spv"
+  "-V planet_water.mesh --target-env vulkan1.2 -DRAYTRACING -o ${tempPath}/planet_water_raytracing_mesh.spv"
+  #"-V planet_water.mesh --target-env vulkan1.2 -DMULTIVIEW -o ${tempPath}/planet_water_multiview_mesh.spv"           # unused: BDA always active
+  "-V planet_water.mesh --target-env vulkan1.2 -DMULTIVIEW -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_bufref_multiview_mesh.spv"
+  "-V planet_water.mesh --target-env vulkan1.2 -DMULTIVIEW -DRAYTRACING -o ${tempPath}/planet_water_raytracing_multiview_mesh.spv"
+
   # The mesh shader emulation variants, forced to be compiled as pure compute shaders
   "-V planet_grass.task -DMESH_SHADER_EMULATION --target-env vulkan1.2 -S comp -o ${tempPath}/planet_grass_task_comp.spv"
   "-V planet_grass.mesh -DMESH_SHADER_EMULATION --target-env vulkan1.2 -S comp -o ${tempPath}/planet_grass_mesh_comp.spv"

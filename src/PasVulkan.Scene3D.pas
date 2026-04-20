@@ -4270,6 +4270,7 @@ type EpvScene3D=class(Exception);
        fMeshShaderSupport:Boolean;
        fPlanetGrassMeshShaders:Boolean;
        fPlanetTerrainMeshShaders:Boolean;
+       fPlanetWaterMeshShaders:Boolean;
        fMaxGrassVertices:TpvSizeInt;
        fMaxGrassIndices:TpvSizeInt;
        fTotalActiveMeshletCount:TPasMPInt64; // Atomic: total meshlet count across all active instances and renderinstances (for buffer sizing)
@@ -4769,7 +4770,7 @@ type EpvScene3D=class(Exception);
                                        out aPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
                                        out aFaceCullingMode:TpvScene3D.TFaceCullingMode); static;
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil;const aVirtualReality:TpvVirtualReality=nil;const aRaytracing:Boolean=true;const aMeshShaders:Boolean=true;const aPlanetGrassMeshShaders:Boolean=true;const aUseParallelQueues:Boolean=true;const aUseOwnPasMPInstance:Boolean=false;const aPlanetTerrainMeshShaders:Boolean=false); reintroduce;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil;const aVirtualReality:TpvVirtualReality=nil;const aRaytracing:Boolean=true;const aMeshShaders:Boolean=true;const aPlanetGrassMeshShaders:Boolean=true;const aUseParallelQueues:Boolean=true;const aUseOwnPasMPInstance:Boolean=false;const aPlanetTerrainMeshShaders:Boolean=false;const aPlanetWaterMeshShaders:Boolean=false); reintroduce;
        destructor Destroy; override;
        procedure Initialize;
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
@@ -4790,6 +4791,7 @@ type EpvScene3D=class(Exception);
       public
        function GetPlanetGrassMeshShaderSupport:Boolean;
        function GetPlanetTerrainMeshShaderSupport:Boolean;
+       function GetPlanetWaterMeshShaderSupport:Boolean;
       public
        procedure EnsureMasterMatrixPairCapacity(const aMinCount:TpvSizeInt;const aAlreadyReadLocked:Boolean);
        procedure EnsureInFlightFrameMatrixPairCapacity(const aInFlightFrameIndex:TpvSizeInt;const aMinCount:TpvSizeInt;const aAlreadyReadLocked:Boolean);
@@ -5127,6 +5129,8 @@ type EpvScene3D=class(Exception);
        property PlanetGrassMeshShaderSupport:Boolean read GetPlanetGrassMeshShaderSupport;
        property PlanetTerrainMeshShaderSupport:Boolean read GetPlanetTerrainMeshShaderSupport;
        property PlanetTerrainMeshShaders:Boolean read fPlanetTerrainMeshShaders write fPlanetTerrainMeshShaders;
+       property PlanetWaterMeshShaderSupport:Boolean read GetPlanetWaterMeshShaderSupport;
+       property PlanetWaterMeshShaders:Boolean read fPlanetWaterMeshShaders write fPlanetWaterMeshShaders;
        property MaxGrassVertices:TpvSizeInt read fMaxGrassVertices write fMaxGrassVertices;
        property MaxGrassIndices:TpvSizeInt read fMaxGrassIndices write fMaxGrassIndices;
        property TotalActiveMeshletCount:TPasMPInt64 read fTotalActiveMeshletCount;
@@ -33608,7 +33612,7 @@ end;
 
 { TpvScene3D }
 
-constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aVirtualReality:TpvVirtualReality;const aRaytracing:Boolean;const aMeshShaders:Boolean;const aPlanetGrassMeshShaders:Boolean;const aUseParallelQueues:Boolean;const aUseOwnPasMPInstance:Boolean;const aPlanetTerrainMeshShaders:Boolean);
+constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aVirtualReality:TpvVirtualReality;const aRaytracing:Boolean;const aMeshShaders:Boolean;const aPlanetGrassMeshShaders:Boolean;const aUseParallelQueues:Boolean;const aUseOwnPasMPInstance:Boolean;const aPlanetTerrainMeshShaders:Boolean;const aPlanetWaterMeshShaders:Boolean);
 var Index,InFlightFrameIndex,Count:TpvSizeInt;
     RenderPass:TpvScene3DRendererRenderPass;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
@@ -33747,6 +33751,7 @@ begin
 
  fPlanetGrassMeshShaders:=aPlanetGrassMeshShaders;
  fPlanetTerrainMeshShaders:=aPlanetTerrainMeshShaders;
+ fPlanetWaterMeshShaders:=aPlanetWaterMeshShaders;
 
  fMaxGrassVertices:=Max(65536,(512 shl 20) div SizeOf(TpvScene3DPlanet.TGrassVertex));
 
@@ -34407,7 +34412,7 @@ begin
 
   fPlanetWaterPrepassDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetWaterPrepassDescriptorSetLayout(fVulkanDevice);
 
-  fPlanetWaterRenderDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorSetLayout(fVulkanDevice);
+  fPlanetWaterRenderDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetWaterRenderDescriptorSetLayout(fVulkanDevice,fMeshShaderSupport and fPlanetWaterMeshShaders);
 
   fPlanetPrecipitationAtmosphereDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetPrecipitationAtmosphereDescriptorSetLayout(fVulkanDevice);
 
@@ -37952,6 +37957,11 @@ end;
 function TpvScene3D.GetPlanetTerrainMeshShaderSupport:Boolean;
 begin
  result:=fMeshShaderSupport and fPlanetTerrainMeshShaders;
+end;
+
+function TpvScene3D.GetPlanetWaterMeshShaderSupport:Boolean;
+begin
+ result:=fMeshShaderSupport and fPlanetWaterMeshShaders;
 end;
 
 function TpvScene3D.GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
