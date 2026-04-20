@@ -14984,6 +14984,8 @@ begin
 
         try
 
+         fTimingCPUFrameStartTime:=fHighResolutionTimer.GetTime;
+
          if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
 
           fDrawFrameCounter:=fFrameCounter-1;
