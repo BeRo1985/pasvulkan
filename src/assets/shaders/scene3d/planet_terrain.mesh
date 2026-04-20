@@ -41,6 +41,7 @@ layout(set = TERRAIN_MESH_DESCRIPTOR_SET, binding = 0, std430) readonly buffer V
 
 struct TaskData {
   uint tileIndex;
+  uint lodLevel; // 0=full detail, 1=half, 2=quarter; stride = 1<<lodLevel
 };
 taskPayloadSharedEXT TaskData taskData;
 
@@ -98,11 +99,12 @@ void main() {
   uint totalResMask = totalRes - 1u; // valid since totalRes is power-of-2
   uint tileX = taskData.tileIndex % tileMapRes;
   uint tileY = taskData.tileIndex / tileMapRes;
-  uint meshletsPerSide = tileRes / MESHLET_K;
+  uint lodStride = 1u << taskData.lodLevel;
+  uint meshletsPerSide = tileRes / (MESHLET_K * lodStride);
   uint meshletLocalX = gl_WorkGroupID.x % meshletsPerSide;
   uint meshletLocalY = gl_WorkGroupID.x / meshletsPerSide;
-  uint meshletBaseX = meshletLocalX * MESHLET_K;
-  uint meshletBaseY = meshletLocalY * MESHLET_K;
+  uint meshletBaseX = meshletLocalX * MESHLET_K * lodStride;
+  uint meshletBaseY = meshletLocalY * MESHLET_K * lodStride;
 
   SetMeshOutputsEXT(MESHLET_VERT_COUNT, MESHLET_PRIM_COUNT);
 
@@ -119,8 +121,8 @@ void main() {
   if (threadIdx < MESHLET_VERT_COUNT) {
     uint localX = threadIdx % MESHLET_K_PLUS_1;
     uint localY = threadIdx / MESHLET_K_PLUS_1;
-    uint globalX = meshletBaseX + localX;
-    uint globalY = meshletBaseY + localY;
+    uint globalX = meshletBaseX + (localX * lodStride);
+    uint globalY = meshletBaseY + (localY * lodStride);
     // GetVertexIndex equivalent: handle tile-seam wrap-around (octahedral sphere)
     uint absX = (tileX * tileRes) + globalX;
     uint absY = (tileY * tileRes) + globalY;
@@ -159,7 +161,7 @@ void main() {
     outBlock[threadIdx].triplanarNormal = normalize((planetData.triplanarNormalMatrix * vec4(normal, 0.0)).xyz);
     outBlock[threadIdx].triplanarPosition = triplanarPosition;
     outBlock[threadIdx].viewSpacePosition = viewSpacePositionH.xyz;
-    outBlock[threadIdx].meshletID = ((pushConstants.raytracingFlags & (1u << PLANET_TERRAIN_MESHLET_DEBUG_COLORS_BIT)) != 0u)
+    outBlock[threadIdx].meshletID = ((pushConstants.flags & (1u << PLANET_TERRAIN_FLAG_MESHLET_DEBUG_COLORS)) != 0u)
                                     ? (((taskData.tileIndex * (meshletsPerSide * meshletsPerSide)) + gl_WorkGroupID.x) | 0x80000000u)
                                     : 0u;
 

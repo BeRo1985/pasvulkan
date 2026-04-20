@@ -23858,7 +23858,10 @@ begin
        fPlanetPushConstants.RaytracingFlags:=fPlanetPushConstants.RaytracingFlags or (TpvUInt32(1) shl 3);
       end;
       if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
-       fPlanetPushConstants.RaytracingFlags:=fPlanetPushConstants.RaytracingFlags or (TpvUInt32(1) shl 4);
+       fPlanetPushConstants.RaytracingFlags:=fPlanetPushConstants.RaytracingFlags or (TpvUInt32(1) shl 4); // PLANET_TERRAIN_FLAG_FRUSTUM_CULL
+       if Planet.fData.fLODActive then begin
+        fPlanetPushConstants.RaytracingFlags:=fPlanetPushConstants.RaytracingFlags or (TpvUInt32(1) shl 5); // PLANET_TERRAIN_FLAG_TASK_LOD
+       end;
       end;
       if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
        fPlanetPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
@@ -28598,7 +28601,7 @@ begin
                    ShaderStageFlags,
                    [],
                    0);
- // VisibilityBitmap (per-tile visibility from planet_cull.comp; read by task shader when PLANET_TERRAIN_FRUSTUM_CULL_BIT is set)
+ // VisibilityBitmap (per-tile visibility from planet_cull.comp; read by task shader when PLANET_TERRAIN_FLAG_FRUSTUM_CULL is set)
  result.AddBinding(1,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                    1,

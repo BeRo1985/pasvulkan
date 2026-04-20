@@ -5,10 +5,12 @@
 #define MESHLET_VERT_COUNT ((MESHLET_K + 1u) * (MESHLET_K + 1u))
 #define MESHLET_PRIM_COUNT (MESHLET_K * MESHLET_K * 2u)
 
-// raytracingFlags bit 3: meshlet debug colors
-#define PLANET_TERRAIN_MESHLET_DEBUG_COLORS_BIT 3u
-// raytracingFlags bit 4: enable per-tile frustum culling via visibility bitmap (only set for FinalView passes)
-#define PLANET_TERRAIN_FRUSTUM_CULL_BIT 4u
+// flags bit 3: meshlet debug colors
+#define PLANET_TERRAIN_FLAG_MESHLET_DEBUG_COLORS 3u
+// flags bit 4: enable per-tile frustum culling via visibility bitmap (only set for FinalView passes)
+#define PLANET_TERRAIN_FLAG_FRUSTUM_CULL 4u
+// flags bit 5: enable task-shader LOD (distance-based vertex stride; only set for FinalView passes)
+#define PLANET_TERRAIN_FLAG_TASK_LOD 5u
 
 #if defined(USE_BUFFER_REFERENCE)
   #define USE_PLANET_BUFFER_REFERENCE
@@ -32,7 +34,7 @@ layout(push_constant) uniform PushConstants {
 
   // Third uvec4
   int frameIndex;
-  uint raytracingFlags;
+  uint flags;
 #if defined(USE_BUFFER_REFERENCE)
   PlanetData planetData;
 #else
