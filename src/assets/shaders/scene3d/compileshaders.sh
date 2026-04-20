@@ -663,41 +663,41 @@ compileshaderarguments=(
 
   #"-V planet_grass.comp -o ${tempPath}/planet_grass.spv"
 
-  "-V planet_grass.task --target-env vulkan1.2 -o ${tempPath}/planet_grass_task.spv"
-  "-V planet_grass.task --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/planet_grass_velocity_task.spv"
+  #"-V planet_grass.task --target-env vulkan1.2 -o ${tempPath}/planet_grass_task.spv"           # unused: BDA always active
+  #"-V planet_grass.task --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/planet_grass_velocity_task.spv"  # unused: BDA always active
   "-V planet_grass.task --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_task.spv"
   "-V planet_grass.task --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_task.spv"
   "-V planet_grass.task --target-env vulkan1.2 -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_task.spv"
   "-V planet_grass.task --target-env vulkan1.2 -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_task.spv"
 
-  "-V planet_grass.mesh --target-env vulkan1.2 -o ${tempPath}/planet_grass_mesh.spv"
-  "-V planet_grass.mesh --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/planet_grass_velocity_mesh.spv"
+  #"-V planet_grass.mesh --target-env vulkan1.2 -o ${tempPath}/planet_grass_mesh.spv"           # unused: BDA always active
+  #"-V planet_grass.mesh --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/planet_grass_velocity_mesh.spv"  # unused: BDA always active
   "-V planet_grass.mesh --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_mesh.spv"
   "-V planet_grass.mesh --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_mesh.spv"
   "-V planet_grass.mesh --target-env vulkan1.2 -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_mesh.spv"
   "-V planet_grass.mesh --target-env vulkan1.2 -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_mesh.spv"
-  "-V planet_grass.mesh --target-env vulkan1.2 -DMULTIVIEW -o ${tempPath}/planet_grass_multiview_mesh.spv"
-  "-V planet_grass.mesh --target-env vulkan1.2 -DMULTIVIEW -DVELOCITY -o ${tempPath}/planet_grass_velocity_multiview_mesh.spv"
+  #"-V planet_grass.mesh --target-env vulkan1.2 -DMULTIVIEW -o ${tempPath}/planet_grass_multiview_mesh.spv"           # unused: BDA always active
+  #"-V planet_grass.mesh --target-env vulkan1.2 -DMULTIVIEW -DVELOCITY -o ${tempPath}/planet_grass_velocity_multiview_mesh.spv"  # unused: BDA always active
   "-V planet_grass.mesh --target-env vulkan1.2 -DMULTIVIEW -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_multiview_mesh.spv"
   "-V planet_grass.mesh --target-env vulkan1.2 -DMULTIVIEW -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_multiview_mesh.spv"
   "-V planet_grass.mesh --target-env vulkan1.2 -DMULTIVIEW -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_multiview_mesh.spv"
   "-V planet_grass.mesh --target-env vulkan1.2 -DMULTIVIEW -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_multiview_mesh.spv"
 
-  "-V planet_terrain.task --target-env vulkan1.2 -o ${tempPath}/planet_terrain_task.spv"
-  "-V planet_terrain.task --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/planet_terrain_velocity_task.spv"
+  #"-V planet_terrain.task --target-env vulkan1.2 -o ${tempPath}/planet_terrain_task.spv"           # unused: BDA always active
+  #"-V planet_terrain.task --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/planet_terrain_velocity_task.spv"  # unused: BDA always active
   "-V planet_terrain.task --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_terrain_bufref_task.spv"
   "-V planet_terrain.task --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_terrain_bufref_velocity_task.spv"
   "-V planet_terrain.task --target-env vulkan1.2 -DRAYTRACING -o ${tempPath}/planet_terrain_raytracing_task.spv"
   "-V planet_terrain.task --target-env vulkan1.2 -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_terrain_raytracing_velocity_task.spv"
 
-  "-V planet_terrain.mesh --target-env vulkan1.2 -o ${tempPath}/planet_terrain_mesh.spv"
-  "-V planet_terrain.mesh --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/planet_terrain_velocity_mesh.spv"
+  #"-V planet_terrain.mesh --target-env vulkan1.2 -o ${tempPath}/planet_terrain_mesh.spv"           # unused: BDA always active
+  #"-V planet_terrain.mesh --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/planet_terrain_velocity_mesh.spv"  # unused: BDA always active
   "-V planet_terrain.mesh --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_terrain_bufref_mesh.spv"
   "-V planet_terrain.mesh --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_terrain_bufref_velocity_mesh.spv"
   "-V planet_terrain.mesh --target-env vulkan1.2 -DRAYTRACING -o ${tempPath}/planet_terrain_raytracing_mesh.spv"
   "-V planet_terrain.mesh --target-env vulkan1.2 -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_terrain_raytracing_velocity_mesh.spv"
-  "-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -o ${tempPath}/planet_terrain_multiview_mesh.spv"
-  "-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -DVELOCITY -o ${tempPath}/planet_terrain_velocity_multiview_mesh.spv"
+  #"-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -o ${tempPath}/planet_terrain_multiview_mesh.spv"           # unused: BDA always active
+  #"-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -DVELOCITY -o ${tempPath}/planet_terrain_velocity_multiview_mesh.spv"  # unused: BDA always active
   "-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_terrain_bufref_multiview_mesh.spv"
   "-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_terrain_bufref_velocity_multiview_mesh.spv"
   "-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -DRAYTRACING -o ${tempPath}/planet_terrain_raytracing_multiview_mesh.spv"
@@ -710,17 +710,17 @@ compileshaderarguments=(
   "-V planet_grass.task -DMESH_SHADER_EMULATION -DVELOCITY --target-env vulkan1.2 -S comp -o ${tempPath}/planet_grass_velocity_task_comp.spv"
   "-V planet_grass.mesh -DMESH_SHADER_EMULATION -DVELOCITY --target-env vulkan1.2 -S comp -o ${tempPath}/planet_grass_velocity_mesh_comp.spv"
 
-  "-V planet_grass.vert -o ${tempPath}/planet_grass_vert.spv"
-  "-V planet_grass.vert -DVELOCITY -o ${tempPath}/planet_grass_velocity_vert.spv"
+  #"-V planet_grass.vert -o ${tempPath}/planet_grass_vert.spv"           # unused: BDA always active
+  #"-V planet_grass.vert -DVELOCITY -o ${tempPath}/planet_grass_velocity_vert.spv"  # unused: BDA always active
   "-V planet_grass.vert -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_vert.spv"
   "-V planet_grass.vert -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_vert.spv"
   "-V planet_grass.vert -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_vert.spv"
   "-V planet_grass.vert -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_vert.spv"
     
-  "-V planet_grass.frag -o ${tempPath}/planet_grass_frag.spv"
-  "-V planet_grass.frag -DVELOCITY -o ${tempPath}/planet_grass_velocity_frag.spv"
-  "-V planet_grass.frag -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_frag.spv"
-  "-V planet_grass.frag -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_frag.spv"
+  #"-V planet_grass.frag -o ${tempPath}/planet_grass_frag.spv"                                   # unused: BDA always active
+  #"-V planet_grass.frag -DVELOCITY -o ${tempPath}/planet_grass_velocity_frag.spv"               # unused: BDA always active
+  #"-V planet_grass.frag -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_frag.spv"             # unused: BDA always active
+  #"-V planet_grass.frag -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_frag.spv"  # unused: BDA always active
   "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_frag.spv"
   "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_frag.spv"
   "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_grass_bufref_wireframe_frag.spv"
@@ -729,10 +729,10 @@ compileshaderarguments=(
   "-V planet_grass.frag -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_frag.spv"
   "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_frag.spv"
   "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_frag.spv"
-  "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_grass_rsm_frag.spv"
-  "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_grass_velocity_rsm_frag.spv"
-  "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_rsm_frag.spv"
-  "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_rsm_frag.spv"
+  #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_grass_rsm_frag.spv"                                  # unused: BDA always active
+  #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_grass_velocity_rsm_frag.spv"              # unused: BDA always active
+  #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_rsm_frag.spv"            # unused: BDA always active
+  #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_rsm_frag.spv"  # unused: BDA always active
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_rsm_frag.spv"
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_rsm_frag.spv"
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_grass_bufref_wireframe_rsm_frag.spv"

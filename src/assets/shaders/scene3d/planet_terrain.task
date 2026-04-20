@@ -15,6 +15,14 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 #include "planet_terrain.glsl"
 
+#define PASS_DESCRIPTOR_SET 1
+#define TERRAIN_MESH_DESCRIPTOR_SET 3
+
+// Visibility bitmap written by planet_cull.comp (one bit per tile)
+layout(set = TERRAIN_MESH_DESCRIPTOR_SET, binding = 1, std430) readonly buffer VisibilityBitmap {
+  uint bitmap[];
+} visibilityBitmap;
+
 struct TaskData {
   uint tileIndex;
 };
@@ -22,8 +30,19 @@ struct TaskData {
 taskPayloadSharedEXT TaskData taskData;
 
 void main() {
+  uint tileIndex = gl_GlobalInvocationID.x;
+
+  // Per-tile frustum culling: only active when bit PLANET_TERRAIN_FRUSTUM_CULL_BIT is set
+  // (set by Pascal only for DepthPrepass/DepthPrepassDisocclusion/Opaque passes where planet_cull.comp has run)
+  if ((pushConstants.raytracingFlags & (1u << PLANET_TERRAIN_FRUSTUM_CULL_BIT)) != 0u) {
+    if ((visibilityBitmap.bitmap[tileIndex >> 5u] & (1u << (tileIndex & 31u))) == 0u) {
+      EmitMeshTasksEXT(0u, 0u, 0u);
+      return;
+    }
+  }
+
   uint tileRes = planetData.flagsResolutions.y & 0xFFFFu;
   uint meshletsPerSide = tileRes / MESHLET_K;
-  taskData.tileIndex = gl_GlobalInvocationID.x;
+  taskData.tileIndex = tileIndex;
   EmitMeshTasksEXT(meshletsPerSide * meshletsPerSide, 1u, 1u);
 }

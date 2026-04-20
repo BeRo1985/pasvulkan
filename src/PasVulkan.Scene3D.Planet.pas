@@ -23857,6 +23857,9 @@ begin
       if TpvScene3DRendererInstance(fRendererInstance).DrawMeshletDebugColors then begin
        fPlanetPushConstants.RaytracingFlags:=fPlanetPushConstants.RaytracingFlags or (TpvUInt32(1) shl 3);
       end;
+      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
+       fPlanetPushConstants.RaytracingFlags:=fPlanetPushConstants.RaytracingFlags or (TpvUInt32(1) shl 4);
+      end;
       if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
        fPlanetPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
       end else begin
@@ -26409,6 +26412,14 @@ begin
                                                           [fPlanet.fData.fVisualMeshVertexBuffers[Index].DescriptorBufferInfo],
                                                           [],
                                                           false);
+   fTerrainMeshDescriptorSets[Index].WriteToDescriptorSet(1,
+                                                          0,
+                                                          1,
+                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                          [],
+                                                          [fVulkanVisiblityBuffers[Index].DescriptorBufferInfo],
+                                                          [],
+                                                          false);
    fTerrainMeshDescriptorSets[Index].Flush;
   end;
  end;
@@ -28587,6 +28598,13 @@ begin
                    ShaderStageFlags,
                    [],
                    0);
+ // VisibilityBitmap (per-tile visibility from planet_cull.comp; read by task shader when PLANET_TERRAIN_FRUSTUM_CULL_BIT is set)
+ result.AddBinding(1,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   ShaderStageFlags,
+                   [],
+                   0);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetTerrainMeshDescriptorSetLayout');
 end;
@@ -28596,7 +28614,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         2);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),4); // 2 sets x 2 bindings (VisualMeshVertices + VisibilityBitmap)
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetTerrainMeshDescriptorPool');
 end;

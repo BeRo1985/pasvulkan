@@ -7,6 +7,8 @@
 
 // raytracingFlags bit 3: meshlet debug colors
 #define PLANET_TERRAIN_MESHLET_DEBUG_COLORS_BIT 3u
+// raytracingFlags bit 4: enable per-tile frustum culling via visibility bitmap (only set for FinalView passes)
+#define PLANET_TERRAIN_FRUSTUM_CULL_BIT 4u
 
 #if defined(USE_BUFFER_REFERENCE)
   #define USE_PLANET_BUFFER_REFERENCE
