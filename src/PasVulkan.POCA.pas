@@ -228,10 +228,13 @@ type TpvPOCAAudio=class;
              public
               procedure Play(Volume,Panning,Rate:TpvFloat;Loop:boolean);
               procedure Stop;
+              procedure Pause;
+              procedure Resume;
               procedure SetVolume(Volume:TpvFloat);
               procedure SetPanning(Panning:TpvFloat);
               procedure SetRate(Rate:TpvFloat);
               function IsPlaying:boolean;
+              function IsPaused:boolean;
              public
               property UID:TPasMPUInt64 read fUID;
               property Ready:TPasMPBool32 read fReady write fReady;
@@ -13441,6 +13444,59 @@ begin
  end;
 end;
 
+function POCAMusicHashPause(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TpvPOCAAudio;
+    Music:TpvPOCAAudio.TMusic;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TpvPOCAAudio) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TpvPOCAAudio(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   Music.Pause;
+   result:=aThis;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashResume(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TpvPOCAAudio;
+    Music:TpvPOCAAudio.TMusic;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TpvPOCAAudio) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TpvPOCAAudio(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   Music.Resume;
+   result:=aThis;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
+function POCAMusicHashIsPaused(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Sounds:TpvPOCAAudio;
+    Music:TpvPOCAAudio.TMusic;
+begin
+ if assigned(aUserData) and (TObject(aUserData) is TpvPOCAAudio) and (POCAGhostGetType(aThis)=@POCAMusicGhost) then begin
+  Sounds:=TpvPOCAAudio(aUserData);
+  Music:=POCAGhostFastGetPointer(aThis);
+  if assigned(Music) and Sounds.fMusicExistHashList.ExistKey(Music) then begin
+   result.Num:=ord(Music.IsPaused) and 1;
+  end else begin
+   result.CastedUInt64:=POCAValueNullCastedUInt64;
+  end;
+ end else begin
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+ end;
+end;
+
 { TpvPOCAAudio.TSound }
 
 constructor TpvPOCAAudio.TSound.Create(const aSounds:TpvPOCAAudio;const aName,aFileName:TpvUTF8String;const aPolyphony:TpvInt32;const aLoop,aRealVoices:TpvInt32;const aFadeOutDuration:TpvDouble);
@@ -13974,6 +14030,30 @@ begin
  end;
 end;
 
+procedure TpvPOCAAudio.TMusic.Pause;
+begin
+ if assigned(pvApplication.Audio) and assigned(fMusic) then begin
+  pvApplication.Audio.Lock;
+  try
+   fMusic.Pause;
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
+procedure TpvPOCAAudio.TMusic.Resume;
+begin
+ if assigned(pvApplication.Audio) and assigned(fMusic) then begin
+  pvApplication.Audio.Lock;
+  try
+   fMusic.Resume;
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
 procedure TpvPOCAAudio.TMusic.SetVolume(Volume:TpvFloat);
 begin
  if assigned(pvApplication.Audio) and assigned(fMusic) then begin
@@ -14017,6 +14097,19 @@ begin
   pvApplication.Audio.Lock;
   try
    result:=fMusic.IsPlaying;
+  finally
+   pvApplication.Audio.Unlock;
+  end;
+ end;
+end;
+
+function TpvPOCAAudio.TMusic.IsPaused:boolean;
+begin
+ result:=false;
+ if assigned(pvApplication.Audio) and assigned(fMusic) then begin
+  pvApplication.Audio.Lock;
+  try
+   result:=fMusic.IsPaused;
   finally
    pvApplication.Audio.Unlock;
   end;
@@ -14087,6 +14180,9 @@ begin
  POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'setPanning',POCAMusicHashSetPanning,nil,self);
  POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'setRate',POCAMusicHashSetRate,nil,self);
  POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'isPlaying',POCAMusicHashIsPlaying,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'pause',POCAMusicHashPause,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'resume',POCAMusicHashResume,nil,self);
+ POCAAddNativeFunction(fPOCASubContext,fPOCAMusicGhostHash,'isPaused',POCAMusicHashIsPaused,nil,self);
 
  fPOCAMusicHash:=POCANewHash(fPOCASubContext);
  POCAAddNativeFunction(fPOCASubContext,fPOCAMusicHash,'create',POCAMusicManagerCreate,nil,self);
