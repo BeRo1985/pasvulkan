@@ -1832,6 +1832,11 @@ type EpvApplication=class(Exception)
        fTimingCPUPresent:TpvDouble;
        fTimingCPUFramePacing:TpvDouble;
        fTimingCPUUpdateWait:TpvDouble;
+       fTimingCPUFrameStartTime:TpvHighResolutionTime;
+       fTimingCPUUpdateStart:TpvDouble;
+       fTimingCPUUpdateEnd:TpvDouble;
+       fTimingCPUDrawStart:TpvDouble;
+       fTimingCPUDrawEnd:TpvDouble;
 
        fMaximumFramesPerSecond:TpvDouble;
 
@@ -2450,6 +2455,14 @@ type EpvApplication=class(Exception)
        property TimingCPUFramePacing:TpvDouble read fTimingCPUFramePacing;
 
        property TimingCPUUpdateWait:TpvDouble read fTimingCPUUpdateWait;
+
+       property TimingCPUUpdateStart:TpvDouble read fTimingCPUUpdateStart;
+
+       property TimingCPUUpdateEnd:TpvDouble read fTimingCPUUpdateEnd;
+
+       property TimingCPUDrawStart:TpvDouble read fTimingCPUDrawStart;
+
+       property TimingCPUDrawEnd:TpvDouble read fTimingCPUDrawEnd;
 
        property MaximumFramesPerSecond:TpvDouble read fMaximumFramesPerSecond write fMaximumFramesPerSecond;
 
@@ -9156,6 +9169,11 @@ begin
  fTimingCPUPresent:=0.0;
  fTimingCPUFramePacing:=0.0;
  fTimingCPUUpdateWait:=0.0;
+ fTimingCPUFrameStartTime:=0;
+ fTimingCPUUpdateStart:=0.0;
+ fTimingCPUUpdateEnd:=0.0;
+ fTimingCPUDrawStart:=0.0;
+ fTimingCPUDrawEnd:=0.0;
 
  SetDesiredCountInFlightFrames(2);
 
@@ -13313,9 +13331,11 @@ begin
  if not TPasMPInterlocked.CompareExchange(fInUpdateJobFunction,TPasMPBool32(true),TPasMPBool32(false)) then begin
   try
     SetLowLatencyMarker(VK_LATENCY_MARKER_SIMULATION_START_NV);
+    fTimingCPUUpdateStart:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-fTimingCPUFrameStartTime);
     StartTime:=fHighResolutionTimer.GetTime;
     Update(fUpdateDeltaTime);
     fTimingCPUUpdate:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
+    fTimingCPUUpdateEnd:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-fTimingCPUFrameStartTime);
     SetLowLatencyMarker(VK_LATENCY_MARKER_SIMULATION_END_NV);
   finally
    TPasMPInterlocked.Write(fInUpdateJobFunction,TPasMPBool32(false));
@@ -13327,9 +13347,11 @@ procedure TpvApplication.DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex
 var StartTime:TpvHighResolutionTime;
 begin
  SetLowLatencyMarker(VK_LATENCY_MARKER_RENDERSUBMIT_START_NV);
+ fTimingCPUDrawStart:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-fTimingCPUFrameStartTime);
  StartTime:=fHighResolutionTimer.GetTime;
  Draw(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
  fTimingCPUDraw:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
+ fTimingCPUDrawEnd:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-fTimingCPUFrameStartTime);
  SetLowLatencyMarker(VK_LATENCY_MARKER_RENDERSUBMIT_END_NV);
 end;
 
@@ -14821,6 +14843,8 @@ begin
          UpdateFrameTimesHistory;
 
          fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
+
+         fTimingCPUFrameStartTime:=fHighResolutionTimer.GetTime;
 
          if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
 
