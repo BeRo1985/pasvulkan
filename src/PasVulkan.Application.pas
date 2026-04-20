@@ -12096,7 +12096,8 @@ begin
    PresentTimingsInfoEXT.pTimingInfos:=@PresentTimingInfoEXT;
    PresentTimingsInfoEXT.pNext:=PresentNext;
    PresentNext:=@PresentTimingsInfoEXT;
-  end else if fFramePacingPresentTimingAvailable and
+  end else if (fFramePacingMode<>TpvApplicationFramePacingMode.None) and
+              fFramePacingPresentTimingAvailable and
               assigned(fVulkanDevice) and
               fVulkanDevice.PresentTimingSupport then begin
    // Simple present timing: request presentation at the nearest refresh cycle for consistent pacing
