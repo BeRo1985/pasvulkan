@@ -8,9 +8,10 @@
 #define MESHLET_DEBUG_COLOR_VARIANT_FORMULA_4 4
 #define MESHLET_DEBUG_COLOR_VARIANT_FORMULA_5 5
 #define MESHLET_DEBUG_COLOR_VARIANT_FORMULA_6 6
-#define MESHLET_DEBUG_COLOR_VARIANT_PREDEFINED 7
+#define MESHLET_DEBUG_COLOR_VARIANT_FORMULA_7 7
+#define MESHLET_DEBUG_COLOR_VARIANT_PREDEFINED 8
 
-#define MESHLET_DEBUG_COLOR_VARIANT MESHLET_DEBUG_COLOR_VARIANT_FORMULA_3
+#define MESHLET_DEBUG_COLOR_VARIANT MESHLET_DEBUG_COLOR_VARIANT_FORMULA_7
 
 #if MESHLET_DEBUG_COLOR_VARIANT == MESHLET_DEBUG_COLOR_VARIANT_PREDEFINED
 #if 0
@@ -78,13 +79,10 @@ vec3 meshletDebugColor(uint id){
   // A more complex hash-based approach that uses a small integer hash function with good bit mixing properties to generate more varied colors.  
   vec3 color = vec3(uvec3((uvec3(id) * uvec3(16807u, 48271u, 40692u)) & uvec3(0xffu))) * oneDiv255;
 #elif MESHLET_DEBUG_COLOR_VARIANT == MESHLET_DEBUG_COLOR_VARIANT_FORMULA_4
-  // A different complex hash-based approach that uses a variation of the Wang/Jenkins integer hash function to generate more varied colors.
-  id ^= id >> 16u;
-  id *= 0x7feb352du;
-  id ^= id >> 15u;
-  id *= 0x846ca68bu;
-  id ^= id >> 16u;
-  vec3 color = vec3(uvec3((uvec3(id) >> uvec3(0u, 8u, 16u)) & uvec3(255u))) * oneDiv255;
+  // A different hash-based approach
+  id = (id ^ (id >> 16u)) * 0x7feb352du;
+  id = (id ^ (id >> 15u)) * 0x846ca68bu;
+  vec3 color = vec3(uvec3((uvec3(id ^ (id >> 16u)) >> uvec3(0u, 8u, 16u)) & uvec3(255u))) * oneDiv255;
 #elif MESHLET_DEBUG_COLOR_VARIANT == MESHLET_DEBUG_COLOR_VARIANT_FORMULA_5
   // A more computationally expensive hash-based approach that uses a small integer hash function with good bit mixing properties 
   //followed by a post-mixing step to generate more varied colors with less correlation between similar IDs.
@@ -116,6 +114,12 @@ vec3 meshletDebugColor(uint id){
   id ^= (id << 10u);
   id ^= (id >> 15u);
   vec3 color = vec3(uvec3((uvec3(id) >> uvec3(0u, 8u, 16u)) & uvec3(255u))) * oneDiv255;
+#elif MESHLET_DEBUG_COLOR_VARIANT == MESHLET_DEBUG_COLOR_VARIANT_FORMULA_7
+  // Yet another hash-based approach 
+  id = (id ^ (id >> 17u)) * 0xed5ad4bbu;
+  id = (id ^ (id >> 11u)) * 0xac4c1b51u;
+  id = (id ^ (id >> 15u)) * 0x31848babu;
+  vec3 color = vec3(uvec3((uvec3(id ^ (id >> 14u)) >> uvec3(0u, 8u, 16u)) & uvec3(255u))) * oneDiv255;
 #else
   // Fallback to a default color if no valid variant is selected
   vec3 color = vec3(1.0); // white for none or unknown variants
