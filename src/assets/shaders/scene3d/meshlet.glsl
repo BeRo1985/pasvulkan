@@ -7,7 +7,7 @@
 #define MESHLET_DEBUG_COLOR_VARIANT_FORMULA_3 3
 #define MESHLET_DEBUG_COLOR_VARIANT_PREDEFINED 4
 
-#define MESHLET_DEBUG_COLOR_VARIANT MESHLET_DEBUG_COLOR_VARIANT_FORMULA_2
+#define MESHLET_DEBUG_COLOR_VARIANT MESHLET_DEBUG_COLOR_VARIANT_FORMULA_3
 
 #if MESHLET_DEBUG_COLOR_VARIANT == MESHLET_DEBUG_COLOR_VARIANT_PREDEFINED
 #if 0
@@ -63,10 +63,11 @@ vec3 meshletDebugColor(uint id){
   const vec3 color = vec3(quantized) * oneDiv255 * 0.125;
   return color;
 #elif MESHLET_DEBUG_COLOR_VARIANT == MESHLET_DEBUG_COLOR_VARIANT_FORMULA_2
-  return vec3(uvec3((uvec3((id * 747796405u) + 2891336453u) >> uvec3(0u, 8u, 16u)) & uvec3(255u))) * (1.0 / 255.0);
+  const vec3 oneDiv255 = vec3(1.0 / 255.0);
+  return vec3(uvec3((uvec3((id * 747796405u) + 2891336453u) >> uvec3(0u, 8u, 16u)) & uvec3(255u))) * oneDiv255;
 #elif MESHLET_DEBUG_COLOR_VARIANT == MESHLET_DEBUG_COLOR_VARIANT_FORMULA_3
   const vec3 oneDiv255 = vec3(1.0 / 255.0);
-  return vec3(uint((uint(id) * uvec3(16807u, 48271u, 40692u)) & uvec3(0xffu))) * oneDiv255;
+  return vec3(uvec3((uvec3(id) * uvec3(16807u, 48271u, 40692u)) & uvec3(0xffu))) * oneDiv255;
 #else
   return vec3(1.0); // white for none or unknown variants
 #endif

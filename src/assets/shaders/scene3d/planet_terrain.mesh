@@ -21,6 +21,14 @@ layout(triangles, max_vertices = 81, max_primitives = 128) out;
 #include "planet_terrain.glsl"
 #include "octahedral.glsl"
 
+#if defined(RAYTRACING)
+layout(set = 0, binding = 10) uniform sampler2D u2DTextures[];
+#else
+layout(set = 0, binding = 8) uniform sampler2D u2DTextures[];
+#endif
+
+#include "planet_displacement.glsl"
+
 #define PASS_DESCRIPTOR_SET 1
 #define TERRAIN_MESH_DESCRIPTOR_SET 3
 
@@ -150,7 +158,12 @@ void main() {
     vec3 worldSpacePosition = position;
 
     vec3 normal = octSignedDecode(encodedNormal);
-    // TODO: displacement via layered multiplanar height needs global descriptor textures (deferred)
+    if((planetData.flagsResolutions.x & (1u << 1u)) != 0u){
+      layerMaterialSetup(sphereNormal);
+      multiplanarSetup(position, vec3(1e-6), vec3(1e-6), normal);
+      float displacement = 1.0 - clamp(getLayeredMultiplanarHeight(), 0.0, 1.0);
+      position -= normal * displacement * 0.25;
+    }
 
     vec4 viewSpacePositionH = viewMatrix * vec4(position, 1.0);
     viewSpacePositionH.xyz /= viewSpacePositionH.w;
@@ -182,6 +195,12 @@ void main() {
   }
 
   // Primitive processing: MESHLET_PRIM_COUNT = K*K*2 = 128 primitives, all 128 threads each handle one primitive
+  // MAYBE-TODO: per-primitive back-face culling (via gl_MeshPrimitiveCullEXT or degenerate index)
+  //   PRO:  eliminates back-facing triangles before rasterization, ~save at horizon/grazing angles
+  //   CON:  HW rasterizer already culls back-faces cheaply; back-side tiles already culled by task
+  //         shader; curvature per meshlet is tiny (large planet) => almost no back-faces inside a
+  //         visible meshlet; needs shared memory to read vertex positions in primitive threads.
+  //   VERDICT: overhead > gain for planet terrain -- skip unless profiling shows otherwise.
   {
     uint primIdx = threadIdx;
     uint quadIdx = primIdx >> 1u;
