@@ -12942,7 +12942,7 @@ var PastTimingInfo:TVkPastPresentationTimingInfoEXT;
     PastTimingProperties:TVkPastPresentationTimingPropertiesEXT;
     PastTimings:array[0..15] of TVkPastPresentationTimingEXT;
     Index:TpvInt32;
-    ActualTime,ErrorNs:TpvInt64;
+    ActualTime,ErrorTime:TpvInt64;
 begin
  if (not assigned(fVulkanDevice)) or
     (not fVulkanDevice.PresentTimingSupport) or
@@ -12973,13 +12973,13 @@ begin
      fPresentTimingFeedbackLastPollPresentID:=PastTimings[Index].presentId;
      if (PastTimings[Index].targetTime>0) and (fPresentTimingFeedbackLastTargetTime>0) then begin
       ActualTime:=TpvInt64(PastTimings[Index].targetTime);
-      ErrorNs:=ActualTime-TpvInt64(fPresentTimingFeedbackLastTargetTime);
-      fPresentTimingFeedbackErrorRingValues[fPresentTimingFeedbackErrorRingIndex]:=ErrorNs;
+      ErrorTime:=ActualTime-TpvInt64(fPresentTimingFeedbackLastTargetTime);
+      fPresentTimingFeedbackErrorRingValues[fPresentTimingFeedbackErrorRingIndex]:=ErrorTime;
       fPresentTimingFeedbackErrorRingIndex:=(fPresentTimingFeedbackErrorRingIndex+1) and 15;
       if fPresentTimingFeedbackErrorRingCount<16 then begin
        inc(fPresentTimingFeedbackErrorRingCount);
       end;
-      fPresentTimingFeedbackPresentationTimeError:=ErrorNs;
+      fPresentTimingFeedbackPresentationTimeError:=ErrorTime;
      end;
     end;
    end;
