@@ -13145,7 +13145,7 @@ begin
   NowTime:=fHighResolutionTimer.ToNanoseconds(fHighResolutionTimer.GetTime);
   TargetTime:=NowTime+fPresentTimingFeedbackRefreshDuration;
   if fPresentTimingFeedbackRefreshInterval>0 then begin
-   TargetTime:=((TargetTime+fPresentTimingFeedbackRefreshInterval-1) div fPresentTimingFeedbackRefreshInterval)*fPresentTimingFeedbackRefreshInterval;
+   TargetTime:=((TargetTime+fPresentTimingFeedbackRefreshInterval)-1) div fPresentTimingFeedbackRefreshInterval)*fPresentTimingFeedbackRefreshInterval;
   end;
   if TargetTime>CompensationTime then begin
    TargetTime:=TargetTime-CompensationTime;
