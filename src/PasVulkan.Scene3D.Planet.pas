@@ -27407,7 +27407,8 @@ begin
                                                      true,
                                                      false,
                                                      false,
-                                                     0);
+                                                     0,
+                                                     'TpvScene3DPlanet.fBrushesTexture');
   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fBrushesTexture.Image');
   fVulkanDevice.DebugUtils.SetObjectName(fBrushesTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fBrushesTexture.ImageView');
 
@@ -27437,7 +27438,8 @@ begin
                                                               true,
                                                               false,
                                                               false,
-                                                              0);
+                                                              0,
+                                                              'TpvScene3DPlanet.fBrushesTextures['+IntToStr(Index)+']');
    fVulkanDevice.DebugUtils.SetObjectName(fBrushesTextures[Index].Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.fBrushesTextures['+IntToStr(Index)+'].Image');
    fVulkanDevice.DebugUtils.SetObjectName(fBrushesTextures[Index].ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.fBrushesTextures['+IntToStr(Index)+'].ImageView');
   end;
@@ -27468,7 +27470,8 @@ begin
                                                          true,
                                                          false,
                                                          false,
-                                                         0);
+                                                         0,
+                                                         'TpvScene3DPlanet.fRGBABrushesTexture');
   fRGBABrushesTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToEdge;
   fRGBABrushesTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToEdge;
   fRGBABrushesTexture.UpdateSampler;
