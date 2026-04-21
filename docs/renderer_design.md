@@ -453,7 +453,7 @@ PasVulkan's animation system is designed to efficiently handle complex animation
    The system supports animating various properties, including:
 
    * **Bone Transformations:** Each bone in a skeleton can be animated independently, allowing for complex character animations.
-   * **Morph Targets:** Supports morph target animations for facial expressions and other deformations.
+   * **Morph Targets (also known as blend shapes):** Supports morph target animations for facial expressions and other deformations.
    * **Material Properties:** Materials can have animated properties, such as color, texture offsets, and other shader parameters.
    * **Scene Graph Nodes:** Allows for animating the transformations of scene graph nodes, enabling hierarchical animations where parent-child relationships are respected.
    * **Camera Animations:** Cameras can be animated to create dynamic viewpoints and transitions.
