@@ -13110,7 +13110,7 @@ begin
 end;
 
 procedure TpvApplication.ComputePresentTimingTarget(var aTimingInfo:TVkPresentTimingInfoEXT);
-var NowNs,TargetNs,CompensationNs:TpvUInt64;
+var NowTime,TargetTime,CompensationTime:TpvUInt64;
     MeanError:TpvInt64;
     Index:TpvInt32;
 begin
@@ -13132,34 +13132,34 @@ begin
   end;
   MeanError:=MeanError div fPresentTimingFeedbackErrorRingCount;
  end;
- CompensationNs:=0;
+ CompensationTime:=0;
  if MeanError>0 then begin
-  CompensationNs:=TpvUInt64(MeanError shr 2);
+  CompensationTime:=TpvUInt64(MeanError shr 2);
  end;
  if fPresentTimingFeedbackRefreshMode=TpvApplicationPresentTimingFeedbackRefreshMode.VRR then begin
   aTimingInfo.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT);
-  TargetNs:=fPresentTimingFeedbackRefreshDuration;
-  if TargetNs>CompensationNs then begin
-   TargetNs:=TargetNs-CompensationNs;
+  TargetTime:=fPresentTimingFeedbackRefreshDuration;
+  if TargetTime>CompensationTime then begin
+   TargetTime:=TargetTime-CompensationTime;
   end;
-  aTimingInfo.targetTime:=TargetNs;
+  aTimingInfo.targetTime:=TargetTime;
  end else begin
-  NowNs:=fHighResolutionTimer.ToNanoseconds(fHighResolutionTimer.GetTime);
-  TargetNs:=NowNs+fPresentTimingFeedbackRefreshDuration;
+  NowTime:=fHighResolutionTimer.ToNanoseconds(fHighResolutionTimer.GetTime);
+  TargetTime:=NowTime+fPresentTimingFeedbackRefreshDuration;
   if fPresentTimingFeedbackRefreshInterval>0 then begin
-   TargetNs:=((TargetNs+fPresentTimingFeedbackRefreshInterval-1) div fPresentTimingFeedbackRefreshInterval)*fPresentTimingFeedbackRefreshInterval;
+   TargetTime:=((TargetTime+fPresentTimingFeedbackRefreshInterval-1) div fPresentTimingFeedbackRefreshInterval)*fPresentTimingFeedbackRefreshInterval;
   end;
-  if TargetNs>CompensationNs then begin
-   TargetNs:=TargetNs-CompensationNs;
+  if TargetTime>CompensationTime then begin
+   TargetTime:=TargetTime-CompensationTime;
   end;
   // Convert from host time domain to swapchain time domain using calibration offset
   if (fPresentTimingFeedbackCalibratedHostTime>0) and
      (fPresentTimingFeedbackCalibratedStageTime>0) and
      (fPresentTimingFeedbackCalibratedHostTime<>fPresentTimingFeedbackCalibratedStageTime) then begin
-   TargetNs:=TpvUInt64(TpvInt64(TargetNs)+TpvInt64(fPresentTimingFeedbackCalibratedStageTime)-TpvInt64(fPresentTimingFeedbackCalibratedHostTime));
+   TargetTime:=TpvUInt64(TpvInt64(TargetTime)+TpvInt64(fPresentTimingFeedbackCalibratedStageTime)-TpvInt64(fPresentTimingFeedbackCalibratedHostTime));
   end;
   aTimingInfo.flags:=0;
-  aTimingInfo.targetTime:=TargetNs;
+  aTimingInfo.targetTime:=TargetTime;
  end;
  fPresentTimingFeedbackLastTargetTime:=aTimingInfo.targetTime;
 end;
