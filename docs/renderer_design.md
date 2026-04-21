@@ -113,8 +113,8 @@ As the name suggests, the technique generally operates in two - but actually thr
 
 This pass determines the visibility of the remaining objects (potential *occludees*) that were not rendered in the initial Z-prepass.
 
-1.  **Prepare Occludee List:** Identify the objects whose visibility needs testing. This usually involves objects that passed view-frustum culling. For each object, its bounding sphere is used for the occlusion test.
-2.  **GPU-Based Testing:** This pass is implemented as a compute shader operating over the visible object list. For each potential occludee:
+1.  **Prepare Occludee List:** Identify the draw nodes whose visibility needs testing. In PasVulkan the tested granularity is the **TGroup mesh node** — a single mesh node within a glTF scene graph — not the top-level scene object or the whole TGroup. This usually involves nodes that passed view-frustum culling. For each node, its bounding sphere is used for the occlusion test.
+2.  **GPU-Based Testing:** This pass is implemented as a compute shader operating over the visible draw-node list. For each potential occludee:
     * **Project Bounding Sphere:** The object's bounding sphere (center + radius) is projected analytically onto the screen (`projectSphere`), yielding a screen-space circle that conservatively bounds the projected sphere.
     * **Find Screen-Space Footprint:** The axis-aligned bounding rectangle of the screen-space circle is used as the test region.
     * **Determine Front-Face Depth ($Z_{front}$):** The view-space depth of the sphere's front face (center depth minus radius, clamped to the near plane) is computed and expressed in the same depth representation as the Hi-Z samples.
@@ -358,7 +358,7 @@ The `GPULODEnabled` property on `TpvScene3D` toggles the feature (enabled by def
 
 ### Meshlet Rendering
 
-PasVulkan supports GPU-driven meshlet rendering as an optional tier on top of the Hi-Z two-pass culling pipeline, available when the device exposes mesh shader support (`VK_EXT_mesh_shader`). Meshlets partition each primitive into small, independently cullable triangle clusters, enabling fine-grained GPU-side visibility determination that goes beyond object-level culling.
+PasVulkan supports GPU-driven meshlet rendering as an optional tier on top of the Hi-Z two-pass culling pipeline, available when the device exposes mesh shader support (`VK_EXT_mesh_shader`). Meshlets partition each primitive into small, independently cullable triangle clusters, enabling fine-grained GPU-side visibility determination that goes beyond node-level (per TGroup mesh node) culling.
 
 #### Meshlet Data Structures
 
@@ -368,7 +368,7 @@ A **meshlet** is a self-contained cluster of up to **64 vertices** and **126 tri
 * **`MeshletVertexBuffer`** — remapped per-meshlet vertex indices (`uint32`), referencing the global vertex buffer.
 * **`MeshletPrimitiveBuffer`** — packed triangle index triples (3× `uint8` per triangle, stored as `uint32`).
 
-Meshlets are built during glTF import (`BuildMeshlets`) for triangle-list primitives. Per-meshlet bounding spheres are updated to world space each frame for accurate culling. Culling is enabled per-object via `FLAG_MESHLET_CULLING_ENABLED` (bit 3 of the cull flags).
+Meshlets are built during glTF import (`BuildMeshlets`) for triangle-list primitives. Per-meshlet bounding spheres are updated to world space each frame for accurate culling. Culling is enabled per-node via `FLAG_MESHLET_CULLING_ENABLED` (bit 3 of the cull flags).
 
 #### LOD Integration
 
@@ -380,7 +380,7 @@ Two distinct rendering paths are available depending on whether `MESHLET_EXPAND`
 
 **1. Normal mesh-shader path** (default)
 
-`mesh_cull.comp` performs object-level frustum and Hi-Z culling and, for each surviving object, emits one indirect task-shader dispatch with `groupCountX = ceil(meshletCount / 32)`. The **task shader** (`mesh.task`, `TASK_GROUP_SIZE = 32`) then runs one workgroup per 32 meshlets: in Pass 0 it applies per-meshlet frustum culling only; in Pass 1 it additionally tests each meshlet's bounding sphere against the Hi-Z pyramid. Meshlets that survive are forwarded via the task payload to the **mesh shader** (`mesh.mesh`) for rasterization.
+`mesh_cull.comp` performs per-node (per TGroup mesh node) frustum and Hi-Z culling and, for each surviving node, emits one indirect task-shader dispatch with `groupCountX = ceil(meshletCount / 32)`. The **task shader** (`mesh.task`, `TASK_GROUP_SIZE = 32`) then runs one workgroup per 32 meshlets: in Pass 0 it applies per-meshlet frustum culling only; in Pass 1 it additionally tests each meshlet's bounding sphere against the Hi-Z pyramid. Meshlets that survive are forwarded via the task payload to the **mesh shader** (`mesh.mesh`) for rasterization.
 
 **2. `MESHLET_EXPAND` mode** (alternative compile-time variant)
 
@@ -388,7 +388,7 @@ The task shader is bypassed entirely. `mesh_cull.comp` itself performs per-meshl
 
 #### Fallback Path
 
-When mesh shader support is unavailable, PasVulkan falls back transparently to standard `vkCmdDrawIndexedIndirect` using the conventional vertex/index pipeline. No meshlet culling is performed in this path; object-level Hi-Z culling still applies.
+When mesh shader support is unavailable, PasVulkan falls back transparently to standard `vkCmdDrawIndexedIndirect` using the conventional vertex/index pipeline. No meshlet culling is performed in this path; node-level Hi-Z culling (per TGroup mesh node, independent of meshlets) still applies.
 
 ### Missing Features
 
