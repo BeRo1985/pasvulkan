@@ -167,6 +167,8 @@ Efficient model data management is critical for modern rendering engines to achi
 
 Beyond glTF, PasVulkan can also import **Collada (`.dae`)**, **Wavefront OBJ (`.obj`)**, and **FBX (`.fbx`)** files. All three are implemented as fully native Pascal loaders with no third-party libraries, residing in `PasVulkan.FileFormats.DAE.pas`, `PasVulkan.FileFormats.OBJ.pas`, and `PasVulkan.FileFormats.FBX.pas` respectively. Regardless of the source format, the importer converts the data into the same internal representation as glTF, so all downstream systems (meshlet building, LOD, PVMF caching, GPU buffers) work identically for all formats.
 
+The same native-Pascal philosophy applies to **image and texture formats**. BMP, PNG, JPEG, TGA, QOI, and KTX1 all have fully self-contained Pascal loaders and writers (`PasVulkan.Image.BMP.pas`, `PasVulkan.Image.PNG.pas`, `PasVulkan.Image.JPEG.pas`, `PasVulkan.Image.TGA.pas`, `PasVulkan.Image.QOI.pas`), with no external dependencies. The sole exception is **KTX2**: because KTX2 requires Basis Universal GPU texture compression transcoding, PasVulkan loads the Khronos `libktx` shared library at runtime (`ktx.dll` / `libktx.so` / `libktx.dylib`) to handle KTX2 files.
+
 ### glTF 2.0 Compatibility and Game-Oriented Design
 
 PasVulkan strives to maintain broad glTF 2.0 compatibility while simultaneously being practical for game use. The philosophy is: support the full richness of the Khronos ecosystem wherever possible, but integrate it into a pipeline that performs well in real-time gameplay scenarios.
