@@ -10660,6 +10660,9 @@ begin
     if TimeDomainCount>0 then begin
      fFramePacingPresentTimingTimeDomainID:=TimeDomainIDs[0];
      Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: timeDomainID='+IntToStr(fFramePacingPresentTimingTimeDomainID));
+     fPresentTimingFeedbackTimeDomainCount:=1;
+     fPresentTimingFeedbackTimeDomains[0]:=TimeDomains[0];
+     fPresentTimingFeedbackTimeDomainIDs[0]:=TimeDomainIDs[0];
     end;
    end;
   except
@@ -10688,6 +10691,7 @@ begin
  fPresentTimingFeedbackLastPollPresentID:=0;
  fPresentTimingFeedbackErrorRingIndex:=0;
  fPresentTimingFeedbackErrorRingCount:=0;
+ fPresentTimingFeedbackTimeDomainCount:=0;
  if fFramePacingPresentTimingAvailable and
     (fFramePacingMode=TpvApplicationFramePacingMode.VulkanPresentTimingFeedback) then begin
   UpdatePresentTimingFeedbackProperties;
@@ -12986,42 +12990,84 @@ begin
    if PastTimingProperties.timeDomainsCounter>0 then begin
     fPresentTimingFeedbackNeedRecalibration:=true;
    end;
+   // Periodic recalibration every ~1 second
+   if fHighResolutionTimer.GetTime>fPresentTimingFeedbackLastRecalibrationTime+fHighResolutionTimer.SecondInterval then begin
+    fPresentTimingFeedbackNeedRecalibration:=true;
+   end;
   end;
  except
  end;
 end;
 
 procedure TpvApplication.RecalibratePresentTimingDomains;
-var TimestampInfo:TVkCalibratedTimestampInfoKHR;
+var TimestampInfos:array[0..1] of TVkCalibratedTimestampInfoKHR;
+    SwapchainCalibratedInfo:TVkSwapchainCalibratedTimestampInfoEXT;
     Timestamps:array[0..1] of TpvUInt64;
     MaxDeviation:TpvUInt64;
+    ActiveDomain:TVkTimeDomainKHR;
+    Count:TpvUInt32;
 begin
  if (not assigned(fVulkanDevice)) or
     (not fVulkanDevice.CalibratedTimestampsSupport) then begin
   exit;
  end;
- FillChar(TimestampInfo,SizeOf(TVkCalibratedTimestampInfoKHR),#0);
- TimestampInfo.sType:=VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR;
- TimestampInfo.timeDomain:=VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR;
+ // Determine the active present timing domain type
+ ActiveDomain:=VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR;
+ if fPresentTimingFeedbackTimeDomainCount>0 then begin
+  ActiveDomain:=fPresentTimingFeedbackTimeDomains[0];
+ end;
+ FillChar(TimestampInfos,SizeOf(TimestampInfos),#0);
+ FillChar(Timestamps,SizeOf(Timestamps),#0);
+ FillChar(SwapchainCalibratedInfo,SizeOf(SwapchainCalibratedInfo),#0);
+ // infos[0] = host domain (CLOCK_MONOTONIC_RAW)
+ TimestampInfos[0].sType:=VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR;
+ TimestampInfos[0].timeDomain:=VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR;
  MaxDeviation:=0;
+ if (ActiveDomain=TVkTimeDomainKHR(VK_TIME_DOMAIN_SWAPCHAIN_LOCAL_EXT)) and
+    assigned(fVulkanSwapChain) then begin
+  // 2-entry query: host + swapchain domain simultaneously
+  TimestampInfos[1].sType:=VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR;
+  TimestampInfos[1].timeDomain:=TVkTimeDomainKHR(VK_TIME_DOMAIN_SWAPCHAIN_LOCAL_EXT);
+  SwapchainCalibratedInfo.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT;
+  SwapchainCalibratedInfo.pNext:=nil;
+  SwapchainCalibratedInfo.swapchain:=fVulkanSwapChain.Handle;
+  SwapchainCalibratedInfo.presentStage:=0;
+  SwapchainCalibratedInfo.timeDomainId:=fPresentTimingFeedbackActiveTimeDomainID;
+  TimestampInfos[1].pNext:=@SwapchainCalibratedInfo;
+  Count:=2;
+ end else begin
+  Count:=1;
+ end;
  try
   if assigned(fVulkanDevice.Commands.Commands.GetCalibratedTimestampsKHR) then begin
    if fVulkanDevice.Commands.GetCalibratedTimestampsKHR(fVulkanDevice.Handle,
-                                                        1,
-                                                        @TimestampInfo,
+                                                        Count,
+                                                        @TimestampInfos[0],
                                                         @Timestamps[0],
                                                         @MaxDeviation)=VK_SUCCESS then begin
     fPresentTimingFeedbackCalibratedHostTime:=Timestamps[0];
+    if Count>1 then begin
+     fPresentTimingFeedbackCalibratedStageTime:=Timestamps[1];
+    end else begin
+     // Same domain as host: identity calibration
+     fPresentTimingFeedbackCalibratedStageTime:=Timestamps[0];
+    end;
     fPresentTimingFeedbackNeedRecalibration:=false;
     fPresentTimingFeedbackLastRecalibrationTime:=fHighResolutionTimer.GetTime;
    end;
   end else if assigned(fVulkanDevice.Commands.Commands.GetCalibratedTimestampsEXT) then begin
    if fVulkanDevice.Commands.GetCalibratedTimestampsEXT(fVulkanDevice.Handle,
-                                                        1,
-                                                        @TimestampInfo,
+                                                        Count,
+                                                        @TimestampInfos[0],
                                                         @Timestamps[0],
                                                         @MaxDeviation)=VK_SUCCESS then begin
     fPresentTimingFeedbackCalibratedHostTime:=Timestamps[0];
+    if Count>1 then begin
+     fPresentTimingFeedbackCalibratedStageTime:=Timestamps[1];
+    end else begin
+     // Same domain as host: identity calibration
+     fPresentTimingFeedbackCalibratedStageTime:=Timestamps[0];
+    end;
     fPresentTimingFeedbackNeedRecalibration:=false;
     fPresentTimingFeedbackLastRecalibrationTime:=fHighResolutionTimer.GetTime;
    end;
@@ -13050,7 +13096,7 @@ begin
                                                             @SwapchainTimingPropertiesCounter)=VK_SUCCESS then begin
    fPresentTimingFeedbackRefreshDuration:=SwapchainTimingProperties.refreshDuration;
    fPresentTimingFeedbackRefreshInterval:=SwapchainTimingProperties.refreshInterval;
-   if SwapchainTimingProperties.refreshInterval=TpvUInt64($FFFFFFFFFFFFFFFF) then begin
+   if SwapchainTimingProperties.refreshInterval=TpvUInt64($ffffffffffffffff) then begin
     fPresentTimingFeedbackRefreshMode:=TpvApplicationPresentTimingFeedbackRefreshMode.VRR;
    end else if SwapchainTimingProperties.refreshInterval>0 then begin
     fPresentTimingFeedbackRefreshMode:=TpvApplicationPresentTimingFeedbackRefreshMode.FRR;
@@ -13105,6 +13151,12 @@ begin
   end;
   if TargetNs>CompensationNs then begin
    TargetNs:=TargetNs-CompensationNs;
+  end;
+  // Convert from host time domain to swapchain time domain using calibration offset
+  if (fPresentTimingFeedbackCalibratedHostTime>0) and
+     (fPresentTimingFeedbackCalibratedStageTime>0) and
+     (fPresentTimingFeedbackCalibratedHostTime<>fPresentTimingFeedbackCalibratedStageTime) then begin
+   TargetNs:=TpvUInt64(TpvInt64(TargetNs)+TpvInt64(fPresentTimingFeedbackCalibratedStageTime)-TpvInt64(fPresentTimingFeedbackCalibratedHostTime));
   end;
   aTimingInfo.flags:=0;
   aTimingInfo.targetTime:=TargetNs;
