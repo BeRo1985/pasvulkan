@@ -254,11 +254,31 @@ Modern GPU-driven architectures such as PasVulkan therefore trade flexibility fo
 
 This requirement for explicit preprocessing and duplication of animation states contributes to higher memory consumption in modern games. As a result, even titles with similar or only marginally improved visual quality compared to older games may demand significantly more video RAM (vRAM). This increased memory footprint is partly driven by the need to store multiple precomputed animation states and related data structures, which were previously avoided by dynamic runtime calculation but are now necessary for compatibility with advanced rendering features like hardware ray tracing as well as other modern rendering techniques and performance optimizations.
 
+### Dynamic Level of Detail (LOD)
+
+PasVulkan implements a GPU-driven dynamic Level of Detail (LOD) system that automatically adjusts model detail based on screen-space coverage. The LOD selection runs entirely on the GPU inside the mesh culling compute pass (`mesh_cull.comp`), which rewrites draw commands to use the appropriate LOD level for each visible instance.
+
+Key aspects of the implementation:
+
+* **Per-submesh LOD metadata:** Each LOD-enabled submesh stores a `TGPULODInfo` structure (128 bytes) containing up to four LOD levels (`CountLODs` = 1..4), along with screen-coverage thresholds (`Thresholds[0..3]`), index offsets (`FirstIndices`), index counts (`CountIndices`), vertex offsets (`FirstVertices`), and meshlet range descriptors (`MeshletLocalOffsets`, `MeshletCounts`). `CountLODs = 1` means no LOD variation (noop).
+
+* **GPU-side selection:** During the `MeshCullPass0` and `MeshCullPass1` compute passes, the shader evaluates per-instance screen coverage (the minimum over all active views of `max(projected AABB width, projected AABB height)`) against the stored thresholds and selects the appropriate LOD level. The command rewriting — updating the index/vertex offsets in `cmd0` draw commands — happens directly inside `mesh_cull.comp` via buffer device address writes. In temporal mode, the selected LOD level is additionally written to per-in-flight-frame `LODLevelBuffers` for use in the following frame.
+
+* **FinalView pass only:** LOD command rewriting is currently active only for the final view render pass (`TpvScene3DRendererCullRenderPass.FinalView`). Shadow-map passes (e.g. cascaded shadow maps) and other auxiliary passes receive no LOD simplification and always use the full-detail base level.
+
+* **Temporal stability:** To avoid LOD popping, the system supports an optional temporal mode controlled by `FLAG_LOD_TEMPORAL`. When `LODTransformAllLevels` is `false`, temporal mode is enabled: the shader reads the previous frame's selected LOD from `LODLevelBuffers` to rewrite commands one frame ahead of the threshold crossing, avoiding one-frame visual glitches. When `LODTransformAllLevels` is `true` (the default), temporal mode is disabled and all LOD levels are transformed each frame. `FLAG_LOD_RESET_FRAME` is set during the first `CountInFlightFrames` frames after startup and also on any camera reset, causing all LOD levels to be treated as active to fully prime the state. The `lodNeeded` bitfield (per `nodeMatricesIndex`, atomically OR'd with a renderer-instance bitmask) tracks which nodes require vertex transform in the current frame; this is separate from the per-instance LOD level history stored in `LODLevelBuffers`.
+
+* **Integration with occlusion culling:** LOD selection occurs inside the same GPU-driven culling pipeline as Hi-Z occlusion culling, ensuring that distant or small objects are both occluded and simplified with minimal CPU overhead.
+
+* **glTF import and `MSFT_lod` extension:** During glTF import, the engine reads the Microsoft `MSFT_lod` extension from nodes (`node.extensions.MSFT_lod.ids`) to build per-node LOD variant lists (`fLODNodeIndices`). Optional screen-coverage thresholds are read from `node.extras.MSFT_screencoverage` (`fLODScreenCoverages`). Materials also support `MSFT_lod` via `material.extensions.MSFT_lod.ids` (`fLODMaterialIndices`), allowing both geometry and material to vary per LOD level. If no explicit thresholds are provided, the engine falls back to a default power-of-two halving scheme (`0.25`, `0.125`, `0.0625`, ...) for the thresholds stored in `TGPULODInfo`. This fallback is independent of the default CPU-side heuristic in `SelectNodeLODLevel`.
+
+* **Asset preprocessing:** LOD data is generated during asset import / build time and serialized with the scene. The engine stores precomputed LOD metadata in its own binary format (`TGPULODInfo`) alongside the imported geometry, so no glTF re-parsing is required at runtime.
+
+The `GPULODEnabled` property on `TpvScene3D` toggles the feature (enabled by default), while `LODTransformAllLevels` controls whether temporal mode is active: `false` enables temporal mode (only the previously selected LOD level is transformed each frame); `true` (the default) disables temporal mode and transforms all LOD levels every frame.
+
 ### Missing Features
 
 PasVulkan does not currently support the following features:
-
-* **Dynamic LODing:** The renderer does not yet implement dynamic Level of Detail (LOD) management, which would allow automatic adjustment of model detail based on distance from the camera or other criteria inside the Hi-Z two-pass occlusion culling process. The problem with dynamic LODing is that it requires additional preprocessing and management of multiple LOD levels per model, which would increase memory usage and complexity. And GLTF does not natively support dynamic LODing yet, so it would require additional extensions or custom implementations to handle this feature. However, this feature is planned for future versions to improve performance in large scenes.
 
 ### Summary
 
