@@ -13227,7 +13227,7 @@ begin
                                                      @LatencySleepModeInfo)=VK_SUCCESS then begin
       fLowLatencyActive:=true;
       Log(LOG_INFO,'TpvApplication.InitializeLowLatencyMode','NV Reflex low latency mode activated (auto)');
-       fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.NVReflex;
+      fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.NVReflex;
       fLowLatencySleepSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
       fLowLatencyFrameID:=0;
      end;
@@ -13235,18 +13235,18 @@ begin
     end;
    end else if fVulkanDevice.AntiLagSupport and
                assigned(fVulkanDevice.Commands.Commands.AntiLagUpdateAMD) then begin
-     FillChar(AntiLagData,SizeOf(TVkAntiLagDataAMD),#0);
-     AntiLagData.sType:=VK_STRUCTURE_TYPE_ANTI_LAG_DATA_AMD;
-     AntiLagData.mode:=VK_ANTI_LAG_MODE_ON_AMD;
-     AntiLagData.maxFPS:=0;
-     AntiLagData.pPresentationInfo:=nil;
-     try
-      fVulkanDevice.Commands.AntiLagUpdateAMD(fVulkanDevice.Handle,@AntiLagData);
-      fLowLatencyActive:=true;
-      fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.AMDAntiLag;
-      Log(LOG_INFO,'TpvApplication.InitializeLowLatencyMode','AMD Anti-Lag mode activated (auto)');
-     except
-     end;
+    FillChar(AntiLagData,SizeOf(TVkAntiLagDataAMD),#0);
+    AntiLagData.sType:=VK_STRUCTURE_TYPE_ANTI_LAG_DATA_AMD;
+    AntiLagData.mode:=VK_ANTI_LAG_MODE_ON_AMD;
+    AntiLagData.maxFPS:=0;
+    AntiLagData.pPresentationInfo:=nil;
+    try
+     fVulkanDevice.Commands.AntiLagUpdateAMD(fVulkanDevice.Handle,@AntiLagData);
+     fLowLatencyActive:=true;
+     fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.AMDAntiLag;
+     Log(LOG_INFO,'TpvApplication.InitializeLowLatencyMode','AMD Anti-Lag mode activated (auto)');
+    except
+    end;
    end;
   end;
  end;
