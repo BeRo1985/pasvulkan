@@ -8967,7 +8967,7 @@ begin
  fPresentMode:=TpvApplicationPresentMode.Immediate;
  fPresentFrameLatency:={$ifdef Android}2{$else}1{$endif};
  fPresentFrameLatencyMode:=TpvApplicationPresentFrameLatencyMode.CombinedWait;
- fProcessingMode:=TpvApplicationProcessingMode.Flexible;
+ fProcessingMode:=TpvApplicationProcessingMode.Strict;
  fResizable:=true;
  fVisibleMouseCursor:=false;
  fCatchMouseOnButton:=false;
