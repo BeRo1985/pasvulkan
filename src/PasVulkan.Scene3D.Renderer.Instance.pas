@@ -2954,29 +2954,29 @@ begin
   PerInFlightFrameBufferIndex:=0;
  end;
 
- CountSolidPrimitives:=Min(TVkSize(fSolidPrimitivePrimitiveDynamicArrays[PerInFlightFrameBufferIndex].Count),TVkSize(MaxSolidPrimitives));
+ CountSolidPrimitives:=Min(TVkSize(fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].Count),TVkSize(MaxSolidPrimitives));
 
  Size:=CountSolidPrimitives*SizeOf(TSolidPrimitivePrimitive);
- if fSolidPrimitivePrimitiveBuffers[PerInFlightFrameBufferIndex].Size<Size then begin
+ if fSolidPrimitivePrimitiveBuffers[aInFlightFrameIndex].Size<Size then begin
   Size:=(CountSolidPrimitives+((CountSolidPrimitives+1) shr 1))*SizeOf(TSolidPrimitivePrimitive);
-  fScene3D.AddToFreeQueue(fSolidPrimitivePrimitiveBuffers[PerInFlightFrameBufferIndex]); // Free old buffer delayed due to possible usage in the current moment
-  fSolidPrimitivePrimitiveBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                       Size,
-                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                       [],
-                                                                                       0,
-                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                                       0,
-                                                                                       0,
-                                                                                       0,
-                                                                                       0,
-                                                                                       0,
-                                                                                       0,
-                                                                                       [TpvVulkanBufferFlag.PersistentMappedIfPossible],
-                                                                                       0,
-                                                                                       0,
-                                                                                       'fSolidPrimitivePrimitiveBuffers['+IntToStr(PerInFlightFrameBufferIndex)+']');
+  fScene3D.AddToFreeQueue(fSolidPrimitivePrimitiveBuffers[aInFlightFrameIndex]); // Free old buffer delayed due to possible usage in the current moment
+  fSolidPrimitivePrimitiveBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                               Size,
+                                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                               [],
+                                                                               0,
+                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                               0,
+                                                                               0,
+                                                                               0,
+                                                                               0,
+                                                                               0,
+                                                                               0,
+                                                                               [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                               0,
+                                                                               0,
+                                                                               'fSolidPrimitivePrimitiveBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
  end;
 
@@ -3050,29 +3050,29 @@ begin
   PerInFlightFrameBufferIndex:=0;
  end;
 
- CountSpaceLines:=Min(TVkSize(fSpaceLinesPrimitiveDynamicArrays[PerInFlightFrameBufferIndex].Count),TVkSize(MaxSpaceLines));
+ CountSpaceLines:=Min(TVkSize(fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].Count),TVkSize(MaxSpaceLines));
 
  Size:=CountSpaceLines*SizeOf(TSpaceLinesPrimitive);
- if fSpaceLinesPrimitiveBuffers[PerInFlightFrameBufferIndex].Size<Size then begin
+ if fSpaceLinesPrimitiveBuffers[aInFlightFrameIndex].Size<Size then begin
   Size:=(CountSpaceLines+((CountSpaceLines+1) shr 1))*SizeOf(TSpaceLinesPrimitive);
-  fScene3D.AddToFreeQueue(fSpaceLinesPrimitiveBuffers[PerInFlightFrameBufferIndex]); // Free old buffer delayed due to possible usage in the current moment
-  fSpaceLinesPrimitiveBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                   Size,
-                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                   [],
-                                                                                   0,
-                                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                                   0,
-                                                                                   0,
-                                                                                   0,
-                                                                                   0,
-                                                                                   0,
-                                                                                   0,
-                                                                                   [TpvVulkanBufferFlag.PersistentMappedIfPossible],
-                                                                                   0,
-                                                                                   0,
-                                                                                   'fSpaceLinePrimitiveBuffers['+IntToStr(PerInFlightFrameBufferIndex)+']');
+  fScene3D.AddToFreeQueue(fSpaceLinesPrimitiveBuffers[aInFlightFrameIndex]); // Free old buffer delayed due to possible usage in the current moment
+  fSpaceLinesPrimitiveBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                           Size,
+                                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                           [],
+                                                                           0,
+                                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                           0,
+                                                                           0,
+                                                                           0,
+                                                                           0,
+                                                                           0,
+                                                                           0,
+                                                                           [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                           0,
+                                                                           0,
+                                                                           'fSpaceLinePrimitiveBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
  end;
 
@@ -7233,11 +7233,7 @@ begin
  if aInFlightFrameIndex<0 then begin
   exit;
  end;
- if fScene3D.UsePerInFlightFrameResources then begin
-  fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
- end else begin
-  fSolidPrimitivePrimitiveDynamicArrays[0].ClearNoFree;
- end;
+ fSolidPrimitivePrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
 end;
 
 function TpvScene3DRendererInstance.AddSolidPoint2D(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector2;const aColor:TpvVector4;const aSize:TpvScalar;const aPositionOffset:TpvVector2;const aLineWidth:TpvScalar):Boolean;
