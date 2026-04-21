@@ -643,14 +643,21 @@ type PpvAudioInt32=^TpvInt32;
 
      TpvAudioSoundMusics=class;
 
+     TpvAudioSoundMusicState=
+      (
+       Stopped=0,
+       Playing=1,
+       Paused=2
+      );
+     PpvAudioSoundMusicState=^TpvAudioSoundMusic;
+
      TpvAudioSoundMusic=class
       public
        AudioEngine:TpvAudio;
        SoundMusics:TpvAudioSoundMusics;
        Name:TpvRawByteString;
        Data:TStream;
-       Active:LongBool;
-       Paused:LongBool;
+       State:TpvAudioSoundMusicState;
        Loop:LongBool;
        KeyOff:LongBool;
        Volume:TpvInt32;
@@ -3866,7 +3873,7 @@ begin
  if length(Name)>0 then begin
   SoundMusics.HashMap.Add(Name,self);
  end;}
- Active:=false;
+ State:=TpvAudioSoundMusicState.Stopped;
  VolumeRampingRemain:=0;
  LastLeft:=0;
  LastRight:=0;
@@ -3981,14 +3988,12 @@ begin
  FillChar(ResamplerBuffer,SizeOf(ResamplerBuffer),AnsiChar(#0));
  FillChar(ResamplerCurrentSample,SizeOf(TpvAudioSoundMusicBufferSample),AnsiChar(#0));
  FillChar(ResamplerLastSample,SizeOf(TpvAudioSoundMusicBufferSample),AnsiChar(#0));
- Paused:=false;
- Active:=true;
+ State:=TpvAudioSoundMusicState.Playing;
 end;
 
 procedure TpvAudioSoundMusic.Stop;
 begin
- Active:=false;
- Paused:=false;
+ State:=TpvAudioSoundMusicState.Stopped;
  inc(LastLeft,LastSample.Left);
  inc(LastRight,LastSample.Right);
  LastSample.Left:=0;
@@ -3997,15 +4002,23 @@ end;
 
 procedure TpvAudioSoundMusic.Pause;
 begin
- if Active then begin
-  Paused:=true;
+ case State of
+  TpvAudioSoundMusicState.Playing:begin
+   State:=TpvAudioSoundMusicState.Paused;
+  end;
+  else begin
+  end;
  end;
 end;
 
 procedure TpvAudioSoundMusic.Resume;
 begin
- if Active then begin
-  Paused:=false;
+ case State of
+  TpvAudioSoundMusicState.Paused:begin
+   State:=TpvAudioSoundMusicState.Playing;
+  end;
+  else begin
+  end;
  end;
 end;
 
@@ -4047,7 +4060,7 @@ begin
      InBufferSize:=length(InBuffer);
      FillChar(PCMBuffer[0],SizeOf(SmallInt)*length(PCMBuffer),AnsiChar(#0));
     end;
-    Active:=false;
+    State:=TpvAudioSoundMusicState.Stopped;
    end;
    break;
   end;
@@ -4215,7 +4228,7 @@ var Counter,Pan,VolLeft,VolRight:TpvInt32;
     Sample:TpvAudioSoundMusicBufferSample;
     BufferSample:PpvAudioSoundSampleValue;
 begin
- if (Active and not Paused) or ((VolumeRampingRemain>0) or ((LastLeft<>0) or (LastRight<>0))) then begin
+ if (State=TpvAudioSoundMusicState.Playing) or ((VolumeRampingRemain>0) or ((LastLeft<>0) or (LastRight<>0))) then begin
   Pan:=Panning+65536;
   if Pan<0 then begin
    Pan:=0;
@@ -4254,7 +4267,7 @@ begin
   end;
   BufferSample:=@Buffer^[0];
   for Counter:=1 to AudioEngine.BufferSamples do begin
-   if Active then begin
+   if State=TpvAudioSoundMusicState.Playing then begin
     if OutBufferPosition>=OutBufferSize then begin
      Resample;
     end;
@@ -4299,12 +4312,12 @@ end;
 
 function TpvAudioSoundMusic.IsPlaying:boolean;
 begin
- result:=Active;
+ result:=State=TpvAudioSoundMusicState.Playing;
 end;
 
 function TpvAudioSoundMusic.IsPaused:boolean;
 begin
- result:=Paused;
+ result:=State=TpvAudioSoundMusicState.Paused;
 end;
 
 constructor TpvAudioSoundSampleResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
