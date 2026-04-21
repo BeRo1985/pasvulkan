@@ -113,7 +113,7 @@ As the name suggests, the technique generally operates in two - but actually thr
 
 This pass determines the visibility of the remaining objects (potential *occludees*) that were not rendered in the initial Z-prepass.
 
-1.  **Prepare Occludee List:** Identify the objects whose visibility needs testing. This usually involves objects that passed view-frustum culling. For each object, its bounding volume (e.g., an axis-aligned bounding box - AABB, or an oriented bounding box - OBB) is used for the test.
+1.  **Prepare Occludee List:** Identify the objects whose visibility needs testing. This usually involves objects that passed view-frustum culling. For each object, its bounding sphere is used for the occlusion test.
 2.  **GPU-Based Testing:** This pass is implemented as a compute shader operating over the visible object list. For each potential occludee:
     * **Project Bounding Sphere:** The object's bounding sphere (center + radius) is projected analytically onto the screen (`projectSphere`), yielding a screen-space circle that conservatively bounds the projected sphere.
     * **Find Screen-Space Footprint:** The axis-aligned bounding rectangle of the screen-space circle is used as the test region.
@@ -145,14 +145,14 @@ Finally, the main rendering passes draws the scene on the screen using the visib
 * **GPU Driven:** Performs culling directly on the GPU, avoiding CPU bottlenecks and costly GPU-CPU data transfers (read-backs).
 * **Efficient for Many Objects:** Scales well with a high number of potential occludees.
 * **Handles Dynamic Scenes:** By regenerating the Hi-Z buffer each frame (or frequently), it correctly handles moving occluders and occludees.
-* **Conservative:** The use of bounding boxes and minimum depth values in the Hi-Z buffer ensures that objects are generally not culled incorrectly. False negatives are rare or even completely avoided when implemented correctly. However, the technique may occasionally classify occluded objects as visible, resulting in false positives. This is acceptable and even preferable, since rendering a few unnecessary objects (overdraw) is safer than missing visible ones.
+* **Conservative:** The use of bounding spheres and minimum depth values in the Hi-Z buffer ensures that objects are generally not culled incorrectly. False negatives are rare or even completely avoided when implemented correctly. However, the technique may occasionally classify occluded objects as visible, resulting in false positives. This is acceptable and even preferable, since rendering a few unnecessary objects (overdraw) is safer than missing visible ones.
 * **No Latency:** Because no reprojection is involved, the Hi-Z buffer accurately reflects with the current frame's geometry at all times. This offers a key advantage over older Hi-Z techniques based on reprojection but following a similar overall concept, which could suffer from latency and precision loss in scenarios involving high-velocity motion, object transformations or rapid geometric alterations. By directly deriving the Hi-Z buffer from the present frame, this approach ensures real-time, accurate occlusion without the artifacts inherent in reprojecting previous depth data, crucial for maintaining visual fidelity in demanding scenarios.
 
 ### Disadvantages
 
 * **Overhead:** Requires a Z-prepass (adds draw calls) and compute resources for Hi-Z generation and the query pass. May not be beneficial in simple scenes where occlusion is minimal, but it doesn't hurt either on modern GPUs as they can handle it well.
 * **Memory Usage:** The Hi-Z buffer requires additional memory, especially for high-resolution textures. This can be a concern on lower-end hardware or when many mip levels are used.
-* **Potential Inaccuracy:** Testing against bounding boxes and/or bounding spheres is an approximation, where objects might be marked visible even if technically occluded, especially with complex shapes or poorly fitting bounding boxes. However, this conservative approach is intended to prevent false negatives, making the resulting false positives generally acceptable in real-time rendering, unlike false negatives which would indicate incorrect implementations.
+* **Potential Inaccuracy:** Testing against bounding spheres is an approximation, where objects might be marked visible even if technically occluded, especially with complex elongated shapes or poorly fitting bounding spheres. However, this conservative approach is intended to prevent false negatives, making the resulting false positives generally acceptable in real-time rendering, unlike false negatives which would indicate incorrect implementations.
 * **Complexity:** Implementation requires careful handling of coordinate spaces, depth precision, and GPU synchronization.
 
 ### Conclusion
@@ -232,6 +232,41 @@ To manage instances efficiently, particularly regarding animations and transform
 #### Notes
 
 Indeed, this is a little bit confusing, that two things are called "instance" in the PasVulkan renderer, but they are different things. The first one is the `TpvScene3D.TGroup.TInstance`, which is a unique instance of a model with its own animation state and transformation data, while the second one is the `TpvScene3D.TGroup.TInstance.TRenderInstance`, which represents a specific occurrence of that unique instance in the scene with varying root transformations. This distinction allows for efficient management of model instances and their rendering properties.
+
+#### 4. **Virtual Instances (TVirtualInstanceManager)**
+
+For scenes with many near-identical objects (asteroids, trees, crowd characters …) manually managing one full `TGroup.TInstance` per object would be prohibitively expensive in VRAM and preprocessing time, since every unique animation state requires its own vertex buffer copy. The **Virtual Instance System** solves this by decoupling lightweight user-facing *virtual instances* from the small pool of *non-virtual instances* that own the actual GPU resources:
+
+* **Virtual instances** (`CreateInstance(Virtual:=true)`) — lightweight objects (~few hundred bytes). Each carries a transform, animation state, and scene index. They never own GPU buffers directly.
+* **Non-virtual instances** — a fixed, preallocated pool per group. Each owns the full GPU resources (vertex buffers, joint matrices, etc.) and is recycled rather than freed.
+* **Render instances** — a preallocated pool per non-virtual instance. Used for GPU hardware instancing: multiple virtual instances with the same animation state share one non-virtual instance and are drawn in a single instanced draw call.
+
+Each frame `TVirtualInstanceManager.UpdateAssignments()` runs a two-step greedy assignment:
+
+1. **Diversity pass** — each non-virtual instance is paired with the most *dissimilar* unassigned virtual instance to maximise the range of animation states represented in the pool.
+2. **Instancing pass** — remaining virtual instances are paired with the most *similar* active non-virtual instance, sharing its GPU resources via render-instance hardware instancing.
+
+Similarity is scored from animation time and blend-factor differences, with a temporal coherence bonus (+5.0) for same-frame-as-last-frame assignments and a switching penalty (−1.0) to minimise popping.
+
+For full API details, configuration options, and usage examples see [`docs/scene3d_virtualinstances.md`](scene3d_virtualinstances.md).
+
+### Decal System
+
+The decal system projects textures onto surfaces at runtime without extra geometry or dedicated render passes. Typical uses are bullet holes, scorch marks, dirt, footprints, graffiti, and gameplay indicators.
+
+Each decal is defined by a world-space position, an orientation quaternion, an optional rotation around the forward axis, and a size (width × height in metres). From these, a **world-to-decal transform matrix** is computed once at spawn time and uploaded to the GPU. In the fragment shader, every rendered surface fragment is inverse-transformed into decal space; if it falls inside the unit cube, the decal textures are sampled and blended.
+
+Key aspects of the implementation:
+
+* **Full PBR workflow:** A decal can supply separate textures for albedo, normal map, and ORM (occlusion / roughness / metallic). It modifies all PBR properties of the surface it lands on, not just colour.
+* **Six blend modes:** `AlphaBlend`, `Multiply`, `Overlay`, `Additive`, `JustPBR` (PBR properties only, no albedo), and `JustNormalMap` (normal perturbation only).
+* **Dual lookup strategy:** In the default `LIGHTCLUSTERS` path a compute shader (`frustumclustergridassign.comp`) assigns decals to frustum-space cluster cells each frame; fragment shaders iterate only the decals in their cluster. A BVH skip-tree path is also maintained for ray tracing / path-tracing use cases.
+* **Order-stable rendering:** Decals are stored in an append-only list. Deletion sets the slot to `nil` and defers compaction to `PrepareFrame`, so the relative order of surviving decals never changes and overlap is flicker-free.
+* **Lifetime and fade-out:** Each decal carries an optional lifetime (seconds) and fade-out duration. The engine ages decals in `UpdateDecals`, marks expired ones, and compacts on the next frame.
+* **Pass filtering:** Each decal records which render passes it applies to (mesh, planet surface, grass, etc.), so decals are evaluated only in relevant fragment shaders.
+* **Holder tracking:** Decals can be associated with a scene object (planet, vehicle). If the holder moves, the decal moves with it.
+
+For full API reference, shader integration details, and performance guidance see [`docs/scene3d_decals.md`](scene3d_decals.md).
 
 ### Single Buffer Architecture and Bindless Access
 
