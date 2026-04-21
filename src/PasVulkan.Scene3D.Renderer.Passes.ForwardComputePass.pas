@@ -343,6 +343,7 @@ begin
                                                                   );
    end;
    if fSpaceLinesIndexBuffers[InFlightFrameIndex]<>fInstance.SpaceLinesIndexBuffers[InFlightFrameIndex] then begin
+    fSpaceLinesIndexBuffers[InFlightFrameIndex]:=fInstance.SpaceLinesIndexBuffers[InFlightFrameIndex];
     fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
                                                                    0,
                                                                    1,

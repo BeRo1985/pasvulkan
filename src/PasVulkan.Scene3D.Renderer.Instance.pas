@@ -7197,11 +7197,7 @@ begin
  if aInFlightFrameIndex<0 then begin
   exit;
  end;
- if fScene3D.UsePerInFlightFrameResources then begin
-  fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
- end else begin
-  fSpaceLinesPrimitiveDynamicArrays[0].ClearNoFree;
- end;
+ fSpaceLinesPrimitiveDynamicArrays[aInFlightFrameIndex].ClearNoFree;
 end;
 
 function TpvScene3DRendererInstance.AddSpaceLine(const aInFlightFrameIndex:TpvSizeInt;const aStartPosition,aEndPosition:TpvVector3;const aColor:TpvVector4;const aSize:TpvScalar;const aZMin:TpvScalar=0.0;const aZMax:TpvScalar=Infinity):Boolean;
