@@ -165,6 +165,42 @@ Hi-Z Two-Pass Occlusion Culling is a powerful, GPU-centric technique for improvi
 
 Efficient model data management is critical for modern rendering engines to achieve high performance and flexibility. PasVulkan uses GLTF as its base foundational model format, extending it internally for improved data representation, compatibility, and efficiency. Its key design principles include a single buffer architecture, bindless data structures, and an optimized approach for handling animations and transformations.
 
+Beyond glTF, PasVulkan can also import **Collada (`.dae`)**, **Wavefront OBJ (`.obj`)**, and **FBX (`.fbx`)** files. All three are implemented as fully native Pascal loaders with no third-party libraries, residing in `PasVulkan.FileFormats.DAE.pas`, `PasVulkan.FileFormats.OBJ.pas`, and `PasVulkan.FileFormats.FBX.pas` respectively. Regardless of the source format, the importer converts the data into the same internal representation as glTF, so all downstream systems (meshlet building, LOD, PVMF caching, GPU buffers) work identically for all formats.
+
+### glTF 2.0 Compatibility and Game-Oriented Design
+
+PasVulkan strives to maintain broad glTF 2.0 compatibility while simultaneously being practical for game use. The philosophy is: support the full richness of the Khronos ecosystem wherever possible, but integrate it into a pipeline that performs well in real-time gameplay scenarios.
+
+On the **compatibility side**, the engine parses and applies a wide set of official Khronos extensions:
+
+| Category | Extensions |
+|---|---|
+| **Materials** | `KHR_materials_unlit`, `KHR_materials_pbrSpecularGlossiness`, `KHR_materials_specular`, `KHR_materials_sheen`, `KHR_materials_clearcoat`, `KHR_materials_emissive_strength`, `KHR_materials_ior`, `KHR_materials_iridescence`, `KHR_materials_transmission`, `KHR_materials_diffuse_transmission`, `KHR_materials_volume`, `KHR_materials_anisotropy`, `KHR_materials_dispersion` |
+| **Textures** | `KHR_texture_transform`, `KHR_texture_basisu` (Basis Universal) |
+| **Animation** | `KHR_animation_pointer` (animate any property by JSON pointer) |
+| **Lights** | `KHR_lights_punctual` |
+| **Scene graph** | `KHR_node_visibility` |
+| **LOD** | `MSFT_lod`, `MSFT_screencoverage` |
+
+On the **game-engine side**, several pragmatic choices ensure real-time viability:
+
+* All model data is pre-processed at import time (meshlet building, LOD metadata, bounding spheres, material deduplication) and serialised into the PVMF cache (see below), so nothing expensive happens at runtime.
+* Material and texture deduplication across the entire scene reduces GPU memory and descriptor overhead.
+* Features that are visually compelling but prohibitively expensive (e.g. CVCT voxelisation via geometry shaders) are retained in the codebase for completeness but flagged as non-production-ready.
+* The renderer intentionally avoids G-buffer intermediate stages and deferred shading, keeping the forward+ pipeline lean enough for complex open-world scenes.
+
+### PVMF: Pre-Processed Model Cache Format
+
+Loading a glTF file at runtime is expensive: JSON parsing, mesh attribute decoding (potentially with Draco or Basis Universal), meshlet construction, LOD metadata extraction, and material deduplication can all take significant time for large models. To avoid repeating this work on every game start, PasVulkan defines **PVMF** (PasVulkan Model Format) — a binary cache format.
+
+When a group is first imported from glTF the engine can serialise the fully post-processed internal state (meshes, primitives, meshlets, LOD metadata, materials, textures, animations, skins, nodes, scenes) to a PVMF stream via `TGroup.SaveToStream`. On subsequent launches the engine detects the PVMF header (`'P','V','M','F'` signature + version tag `PVMFVersion`) and calls `TGroup.LoadFromStream`, which deserialises the ready-to-use data directly — no JSON parsing, no meshlet rebuilding, no LOD calculation.
+
+Key properties of PVMF:
+
+* **Version-locked:** The version constant (`PVMFVersion`) is bumped whenever the internal data layout changes. A stale cache file is detected by the version mismatch and triggers a clean re-import from the original glTF.
+* **Stores all pre-computed data:** Meshlets (`MeshletDescriptorBuffer` contents), LOD `TGPULODInfo` structs, bounding spheres, material GPU structs, and texture metadata are all written to the cache, so the comment in the importer reads `// CollectMeshlets; // already loaded from PVMF`.
+* **Not a distribution format:** PVMF is an engine-internal cache. It is not intended to be shipped directly to end users or used as an interchange format between tools.
+
 ### Model Instance Structure
 
 To manage instances efficiently, particularly regarding animations and transformations, PasVulkan organizes model instances into a clear hierarchy:
