@@ -647,7 +647,9 @@ type PpvAudioInt32=^TpvInt32;
       (
        Stopped=0,
        Playing=1,
-       Paused=2
+       Paused=2,
+       Stopping=3,
+       Pausing=4
       );
      PpvAudioSoundMusicState=^TpvAudioSoundMusic;
 
@@ -1036,6 +1038,7 @@ type PpvAudioInt32=^TpvInt32;
        MusicVolume:TpvInt32;
        RampingSamples:TpvInt32;
        RampingStepSamples:TpvInt32;
+       MusicStateRampSamples:TpvInt32;
        AGCActive:LongBool;
        AGC:TpvInt32;
        AGCCounter:TpvInt32;
@@ -3973,10 +3976,21 @@ begin
  end;
  VolLeft:=VolLeft shl 12;
  VolRight:=VolRight shl 12;
- VolumeLeftCurrent:=VolLeft;
- VolumeRightCurrent:=VolRight;
  VolumeLeft:=VolLeft;
  VolumeRight:=VolRight;
+ if AudioEngine.MusicStateRampSamples>0 then begin
+  VolumeLeftCurrent:=0;
+  VolumeRightCurrent:=0;
+  VolumeRampingRemain:=AudioEngine.MusicStateRampSamples;
+  VolumeLeftInc:=VolumeLeft div VolumeRampingRemain;
+  VolumeRightInc:=VolumeRight div VolumeRampingRemain;
+ end else begin
+  VolumeLeftCurrent:=VolLeft;
+  VolumeRightCurrent:=VolRight;
+  VolumeRampingRemain:=0;
+  VolumeLeftInc:=0;
+  VolumeRightInc:=0;
+ end;
  ResamplerPosition:=0;
  if AudioEngine.SampleRate=SampleRate then begin
   ResamplerOriginalIncrement:=ResamplerFixedPointFactor;
@@ -3993,18 +4007,36 @@ end;
 
 procedure TpvAudioSoundMusic.Stop;
 begin
- State:=TpvAudioSoundMusicState.Stopped;
- inc(LastLeft,LastSample.Left);
- inc(LastRight,LastSample.Right);
- LastSample.Left:=0;
- LastSample.Right:=0;
+ if (State=TpvAudioSoundMusicState.Playing) and (AudioEngine.MusicStateRampSamples>0) then begin
+  VolumeRampingRemain:=AudioEngine.MusicStateRampSamples;
+  VolumeLeftInc:=-(VolumeLeftCurrent div VolumeRampingRemain);
+  VolumeRightInc:=-(VolumeRightCurrent div VolumeRampingRemain);
+  VolumeLeft:=0;
+  VolumeRight:=0;
+  State:=TpvAudioSoundMusicState.Stopping;
+ end else begin
+  State:=TpvAudioSoundMusicState.Stopped;
+  inc(LastLeft,LastSample.Left);
+  inc(LastRight,LastSample.Right);
+  LastSample.Left:=0;
+  LastSample.Right:=0;
+ end;
 end;
 
 procedure TpvAudioSoundMusic.Pause;
 begin
  case State of
   TpvAudioSoundMusicState.Playing:begin
-   State:=TpvAudioSoundMusicState.Paused;
+   if AudioEngine.MusicStateRampSamples>0 then begin
+    VolumeRampingRemain:=AudioEngine.MusicStateRampSamples;
+    VolumeLeftInc:=-(VolumeLeftCurrent div VolumeRampingRemain);
+    VolumeRightInc:=-(VolumeRightCurrent div VolumeRampingRemain);
+    VolumeLeft:=0;
+    VolumeRight:=0;
+    State:=TpvAudioSoundMusicState.Pausing;
+   end else begin
+    State:=TpvAudioSoundMusicState.Paused;
+   end;
   end;
   else begin
   end;
@@ -4012,9 +4044,42 @@ begin
 end;
 
 procedure TpvAudioSoundMusic.Resume;
+var Pan,VolLeft,VolRight,MixVolume:TpvInt32;
 begin
  case State of
   TpvAudioSoundMusicState.Paused:begin
+   if AudioEngine.MusicStateRampSamples>0 then begin
+    Pan:=Panning+65536;
+    if Pan<0 then begin
+     Pan:=0;
+    end else if Pan>=131072 then begin
+     Pan:=131071;
+    end;
+    MixVolume:=SARLongint(Volume*AudioEngine.MusicVolume,16);
+    VolLeft:=SARLongint(AudioEngine.PanningLUT[SARLongint(131072-Pan,1)]*MixVolume,15);
+    VolRight:=SARLongint(AudioEngine.PanningLUT[SARLongint(Pan,1)]*MixVolume,15);
+    if VolLeft<0 then begin
+     VolLeft:=0;
+    end else if VolLeft>=4096 then begin
+     VolLeft:=4095;
+    end;
+    if VolRight<0 then begin
+     VolRight:=0;
+    end else if VolRight>=4096 then begin
+     VolRight:=4095;
+    end;
+    VolLeft:=VolLeft shl 12;
+    VolRight:=VolRight shl 12;
+    VolumeLeftCurrent:=0;
+    VolumeRightCurrent:=0;
+    VolumeLeft:=VolLeft;
+    VolumeRight:=VolRight;
+    VolumeRampingRemain:=AudioEngine.MusicStateRampSamples;
+    VolumeLeftInc:=VolumeLeft div VolumeRampingRemain;
+    VolumeRightInc:=VolumeRight div VolumeRampingRemain;
+   end else begin
+    VolumeRampingRemain:=0;
+   end;
    State:=TpvAudioSoundMusicState.Playing;
   end;
   else begin
@@ -4227,8 +4292,15 @@ procedure TpvAudioSoundMusic.MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:Tp
 var Counter,Pan,VolLeft,VolRight:TpvInt32;
     Sample:TpvAudioSoundMusicBufferSample;
     BufferSample:PpvAudioSoundSampleValue;
+    IsAudible:boolean;
 begin
- if (State=TpvAudioSoundMusicState.Playing) or ((VolumeRampingRemain>0) or ((LastLeft<>0) or (LastRight<>0))) then begin
+ IsAudible:=(State in [TpvAudioSoundMusicState.Playing,
+                       TpvAudioSoundMusicState.Stopping,
+                       TpvAudioSoundMusicState.Pausing]) or
+            (VolumeRampingRemain>0) or
+            (LastLeft<>0) or
+            (LastRight<>0);
+ if IsAudible then begin
   Pan:=Panning+65536;
   if Pan<0 then begin
    Pan:=0;
@@ -4252,7 +4324,8 @@ begin
   end;
   VolLeft:=VolLeft shl 12;
   VolRight:=VolRight shl 12;
-  if (VolumeLeft<>VolLeft) or (VolumeRight<>VolRight) then begin
+  if (State=TpvAudioSoundMusicState.Playing) and
+     ((VolumeLeft<>VolLeft) or (VolumeRight<>VolRight)) then begin
    VolumeLeft:=VolLeft;
    VolumeRight:=VolRight;
    if VolumeRampingRemain=0 then begin
@@ -4267,7 +4340,9 @@ begin
   end;
   BufferSample:=@Buffer^[0];
   for Counter:=1 to AudioEngine.BufferSamples do begin
-   if State=TpvAudioSoundMusicState.Playing then begin
+   if State in [TpvAudioSoundMusicState.Playing,
+                TpvAudioSoundMusicState.Stopping,
+                TpvAudioSoundMusicState.Pausing] then begin
     if OutBufferPosition>=OutBufferSize then begin
      Resample;
     end;
@@ -4283,6 +4358,21 @@ begin
     VolRight:=SARLongint(VolumeRightCurrent,12);
     inc(VolumeLeftCurrent,VolumeLeftInc);
     inc(VolumeRightCurrent,VolumeRightInc);
+    if VolumeRampingRemain=0 then begin
+     if State=TpvAudioSoundMusicState.Stopping then begin
+      State:=TpvAudioSoundMusicState.Stopped;
+      inc(LastLeft,LastSample.Left);
+      inc(LastRight,LastSample.Right);
+      LastSample.Left:=0;
+      LastSample.Right:=0;
+      VolumeLeftCurrent:=0;
+      VolumeRightCurrent:=0;
+     end else if State=TpvAudioSoundMusicState.Pausing then begin
+      State:=TpvAudioSoundMusicState.Paused;
+      VolumeLeftCurrent:=0;
+      VolumeRightCurrent:=0;
+     end;
+    end;
    end else begin
     VolLeft:=SARLongint(VolumeLeft,12);
     VolRight:=SARLongint(VolumeRight,12);
@@ -4302,22 +4392,27 @@ begin
    inc(BufferSample);
   end;
   if VolumeRampingRemain=0 then begin
-   VolumeLeftCurrent:=VolumeLeft;
-   VolumeRightCurrent:=VolumeRight;
-   VolumeLeftInc:=0;
-   VolumeRightInc:=0;
+   if State=TpvAudioSoundMusicState.Playing then begin
+    VolumeLeftCurrent:=VolumeLeft;
+    VolumeRightCurrent:=VolumeRight;
+    VolumeLeftInc:=0;
+    VolumeRightInc:=0;
+   end;
   end;
  end;
 end;
 
 function TpvAudioSoundMusic.IsPlaying:boolean;
 begin
- result:=State=TpvAudioSoundMusicState.Playing;
+ result:=State in [TpvAudioSoundMusicState.Playing,
+                   TpvAudioSoundMusicState.Stopping,
+                   TpvAudioSoundMusicState.Pausing];
 end;
 
 function TpvAudioSoundMusic.IsPaused:boolean;
 begin
- result:=State=TpvAudioSoundMusicState.Paused;
+ result:=State in [TpvAudioSoundMusicState.Paused,
+                   TpvAudioSoundMusicState.Pausing];
 end;
 
 constructor TpvAudioSoundSampleResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
@@ -6579,6 +6674,7 @@ begin
  end;
  RampingSamples:=Max(10,(SampleRate*10) div 1000);
  RampingStepSamples:=Min(Max(1,SampleRate div 1000),RampingSamples);
+ MusicStateRampSamples:=Max(1,(SampleRate*10) div 1000);
  TableLengthSize:=1 shl ResamplerCubicSplineFracBits;
  if TableLengthSize>0 then begin
   TableLength:=1/TableLengthSize;
