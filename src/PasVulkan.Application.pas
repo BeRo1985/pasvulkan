@@ -11926,20 +11926,18 @@ begin
       TAcquireVulkanBackBufferState.RecreateSwapChain,
       TAcquireVulkanBackBufferState.RecreateSurface:begin
 
-       if fUpdateWaitsForGPU then begin
-        if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
-         fUpdateThread.WaitForDone;
-        end else begin
-         if assigned(fUpdateJob) then begin
-          try
-           fPasMPInstance.WaitRelease(fUpdateJob);
-          finally
-           fUpdateJob:=nil;
-          end;
+       if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
+        fUpdateThread.WaitForDone;
+       end else begin
+        if assigned(fUpdateJob) then begin
+         try
+          fPasMPInstance.WaitRelease(fUpdateJob);
+         finally
+          fUpdateJob:=nil;
          end;
-         while TPasMPInterlocked.Read(fInUpdateJobFunction) do begin
-          TPasMP.Yield;
-         end;
+        end;
+        while TPasMPInterlocked.Read(fInUpdateJobFunction) do begin
+         TPasMP.Yield;
         end;
        end;
 
@@ -15074,7 +15072,11 @@ begin
              CurrentJobWorkerThread.AreaMask:=CurrentJobWorkerThread.AreaMask and not PasMPAreaMaskRender;
             end;
            finally
-            fPasMPInstance.WaitRelease(fUpdateJob);
+            try
+             fPasMPInstance.WaitRelease(fUpdateJob);
+            finally
+             fUpdateJob:=nil;
+            end; 
            end;
           end;
 
