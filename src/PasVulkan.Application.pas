@@ -1662,6 +1662,8 @@ type EpvApplication=class(Exception)
 
        fStayActiveRegardlessOfVisibility:boolean;
 
+       fWindowMinimizedOrHidden:boolean;
+
        fGraphicsReady:boolean;
 
        fReinitializeGraphics:boolean;
@@ -9009,6 +9011,8 @@ begin
 
  fStayActiveRegardlessOfVisibility:=false;
 
+ fWindowMinimizedOrHidden:=false;
+
  fVulkanRecreateSwapChainOnSuboptimalSurface:=false;
 
  fVulkanDebugging:=false;
@@ -13470,7 +13474,9 @@ begin
  result:=((fCurrentFullScreen=0) or
           ((fFullscreenFocusNeeded and ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags)) or
            ((not fFullscreenFocusNeeded) and ((WindowFlags and FullScreenActiveFlags)=FullScreenActiveFlags)))) and
-         ((WindowFlags and SDL_WINDOW_MINIMIZED)=0);
+         ((WindowFlags and SDL_WINDOW_MINIMIZED)=0) and
+         ((WindowFlags and SDL_WINDOW_HIDDEN)=0) and
+         not fWindowMinimizedOrHidden;
 end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
 const FullScreenFocusActiveFlags=WS_VISIBLE;
@@ -14129,6 +14135,18 @@ begin
         if assigned(fScreen) then begin
          fScreen.Resize(fWidth,fHeight);
         end;
+       end;
+       SDL_WINDOWEVENT_MINIMIZED,SDL_WINDOWEVENT_HIDDEN:begin
+        // Window was minimized or hidden (covers Wayland compositor iconification
+        // which may not set SDL_WINDOW_MINIMIZED reliably).
+        // Reset timing so we do not accumulate a huge delta on restore.
+        fWindowMinimizedOrHidden:=true;
+        fHasLastTime:=false;
+       end;
+       SDL_WINDOWEVENT_RESTORED,SDL_WINDOWEVENT_SHOWN:begin
+        // Window was restored or shown again — reset timing.
+        fWindowMinimizedOrHidden:=false;
+        fHasLastTime:=false;
        end;
       end;
      end;
@@ -15143,12 +15161,14 @@ begin
 
    end else begin
     fDeltaTime:=0;
+    Sleep(1);
    end;
 
   end;
 
  end else begin
   fDeltaTime:=0;
+  Sleep(1);
  end;
 
  if assigned(fPasMPInstance.Profiler) then begin
