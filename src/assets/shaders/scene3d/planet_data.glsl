@@ -49,8 +49,8 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
 
   float selectedInnerRadius;
   float heightFactorExponent;
-  uint reserved1;
-  uint reserved2;
+  uint waterRippleMapResolution; // The resolution of the water ripple ping-pong image
+  uint waterRippleReadIndex; // 0 or 1, selects which of PLANET_TEXTURE_WATERRIPPLEMAP_PING/PONG is the current read target
   
   PlanetMaterial materials[16];
 

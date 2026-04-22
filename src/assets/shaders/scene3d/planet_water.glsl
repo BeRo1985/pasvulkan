@@ -131,13 +131,44 @@ float getWaves(vec2 position, int iterations) {
   return result.x / result.y;
 }
 
+float getWaterRippleHeight(vec2 uv) {
+  // Samples the current water ripple ping-pong image (red channel = ripple height
+  // in world-space units). Returns 0.0 when the ripple subsystem is disabled
+  // (waterRippleMapResolution == 0) so callers can unconditionally add this value.
+  // Only available when planet_data.glsl is included by the caller; otherwise the
+  // ripple contribution is silently zero (e.g. in prepass shaders that do not bind
+  // the planet data SSBO).
+#ifdef PLANET_DATA_GLSL
+  if(planetData.waterRippleMapResolution == 0u){
+    return 0.0;
+  }
+  uint rippleTextureIndex = PLANET_TEXTURE_WATERRIPPLEMAP_PING + (planetData.waterRippleReadIndex & 1u);
+  return texture(uPlanetTextures[rippleTextureIndex], uv).x;
+#else
+  return 0.0;
+#endif
+}
+
+float getWaterRippleHeight(vec3 n) {
+#ifdef PLANET_DATA_GLSL
+  if(planetData.waterRippleMapResolution == 0u){
+    return 0.0;
+  }
+  uint rippleTextureIndex = PLANET_TEXTURE_WATERRIPPLEMAP_PING + (planetData.waterRippleReadIndex & 1u);
+  vec2 uv = octPlanetUnsignedEncode(n) + (vec2(0.5) / vec2(textureSize(uPlanetTextures[rippleTextureIndex], 0).xy));
+  return texture(uPlanetTextures[rippleTextureIndex], uv).x;
+#else
+  return 0.0;
+#endif
+}
+
 float getWaterHeightData(vec2 uv) {
-  return textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // But for the water map, we use bicubic interpolation to get a smoother water surface 
+  return textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x + getWaterRippleHeight(uv); // But for the water map, we use bicubic interpolation to get a smoother water surface 
 }
 
 float getWaterHeightData(vec3 n) {
   vec2 uv = octPlanetUnsignedEncode(n) + (vec2(0.5) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy));
-  return textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // But for the water map, we use bicubic interpolation to get a smoother water surface 
+  return textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x + getWaterRippleHeight(uv); // But for the water map, we use bicubic interpolation to get a smoother water surface 
 }
 
 vec2 getSphereHeightData(vec2 uv) {
@@ -147,7 +178,7 @@ vec2 getSphereHeightData(vec2 uv) {
       planetTopRadius,
       texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
     ),         
-    textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x // But for the water map, we use bicubic interpolation to get a smoother water surface 
+    getWaterHeightData(uv) // But for the water map, we use bicubic interpolation to get a smoother water surface, and it already adds the ripple contribution
   );
 }
 
@@ -173,6 +204,7 @@ float getSphereHeight(vec3 n, int i) {
            texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], n).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
          ) +
          textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], n).x + // But for the water map, we use bicubic interpolation to get a smoother water surface 
+         getWaterRippleHeight(n) + // Additive GPU ripple contribution
          w;
 }
 
@@ -182,7 +214,7 @@ float getSphereHeight(vec2 uv) {
            planetTopRadius,
            texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
          ) +
-         textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // But for the water map, we use bicubic interpolation to get a smoother water surface 
+         getWaterHeightData(uv); // But for the water map, we use bicubic interpolation to get a smoother water surface; this also adds the additive GPU ripple contribution
 }
 
 float getSphereHeight(vec3 n) {
@@ -190,7 +222,7 @@ float getSphereHeight(vec3 n) {
 }
 
 float getSphereHeightEx(vec2 uv) {
-  float h = textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // But for the water map, we use bicubic interpolation to get a smoother water surface 
+  float h = getWaterHeightData(uv); // Bicubic water height + additive GPU ripple contribution
   return (h > 1e-7) 
           ? (mix( 
               planetBottomRadius,

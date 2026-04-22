@@ -163,8 +163,8 @@ type TpvScene3DPlanets=class;
 
              SelectedInnerRadius:TpvFloat;
              HeightFactorExponent:TpvFloat;
-             Reserved1_:TpvUInt32;
-             Reserved2_:TpvUInt32;
+             WaterRippleMapResolution:TpvUInt32;
+             WaterRippleReadIndex:TpvUInt32;
 
              Textures:array[0..15,0..3] of TpvUInt32;
 
@@ -424,6 +424,8 @@ type TpvScene3DPlanets=class;
               fWaterSimulationThreshold:TpvFloat;
               fWaterVisibilityBuffer:TpvVulkanBuffer;
               fBlendMiniMapBuffer:TpvVulkanBuffer;
+              fWaterRippleImages:array[0..1] of TpvScene3DRendererImage2D; // R16G16_SFLOAT ping-pong (r=height, g=velocity) for the GPU ripple subsystem
+              fWaterRippleBufferIndex:TpvUInt32; // 0 or 1; selects the current read target, the opposite slot is the write target
              public
               fHeightMapData:THeightMapData;
               fNormalMapData:TNormalMapData;
@@ -2747,6 +2749,7 @@ type TpvScene3DPlanets=class;
        fAtmosphereMiniMapResolutionShift:TpvInt32;
        fWaterMapResolution:TpvInt32;
        fWaterMapBorder:TpvInt32;
+       fWaterRippleMapResolution:TpvInt32; // GPU ripple ping-pong image resolution. 0 = ripple subsystem disabled.
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
        fTileMapBits:TpvInt32;
@@ -3054,6 +3057,7 @@ type TpvScene3DPlanets=class;
        property AtmosphereMiniMapResolution:TpvInt32 read fAtmosphereMiniMapResolution;
        property WaterMapResolution:TpvInt32 read fWaterMapResolution;
        property WaterMapBorder:TpvInt32 read fWaterMapBorder;
+       property WaterRippleMapResolution:TpvInt32 read fWaterRippleMapResolution;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -3813,6 +3817,11 @@ begin
 
  fWaterBufferIndex:=0;
 
+ fWaterRippleImages[0]:=nil;
+ fWaterRippleImages[1]:=nil;
+
+ fWaterRippleBufferIndex:=0;
+
  fWaterFrameIndex:=0;
 
  fWaterFirst:=true;
@@ -4327,6 +4336,39 @@ begin
                                                           'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterHeightMapImage');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterHeightMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterHeightMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterHeightMapImage.ImageView');
+
+   // Water ripple ping-pong images (GPU ripple subsystem, independent of the CPU TGamePlanetWaterImpactMap
+   // and of the permanent EnqueueWaterModification brush writes on the water height map). R16G16_SFLOAT: r = ripple
+   // height in world-space units, g = ripple velocity. Layout stays in VK_IMAGE_LAYOUT_GENERAL throughout the frame
+   // so that compute writes (injection + simulation) and combined-image-sampler reads from the tess/mesh/fragment
+   // stages can both happen without explicit transitions.
+   fWaterRippleImages[0]:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+                                                           fPlanet.fWaterRippleMapResolution,
+                                                           fPlanet.fWaterRippleMapResolution,
+                                                           VK_FORMAT_R16G16_SFLOAT,
+                                                           true,
+                                                           VK_SAMPLE_COUNT_1_BIT,
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           WaterHeightMapImageSharingMode,
+                                                           WaterHeightMapImageQueueFamilyIndices,
+                                                           pvAllocationGroupIDScene3DPlanetStatic,
+                                                           'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterRippleImages[0]');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterRippleImages[0].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterRippleImages[0].Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterRippleImages[0].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterRippleImages[0].ImageView');
+
+   fWaterRippleImages[1]:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+                                                           fPlanet.fWaterRippleMapResolution,
+                                                           fPlanet.fWaterRippleMapResolution,
+                                                           VK_FORMAT_R16G16_SFLOAT,
+                                                           true,
+                                                           VK_SAMPLE_COUNT_1_BIT,
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           WaterHeightMapImageSharingMode,
+                                                           WaterHeightMapImageQueueFamilyIndices,
+                                                           pvAllocationGroupIDScene3DPlanetStatic,
+                                                           'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterRippleImages[1]');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterRippleImages[1].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterRippleImages[1].Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterRippleImages[1].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterRippleImages[1].ImageView');
 
    fWaterHeightMapBuffers[0]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                      fPlanet.fWaterMapResolution*fPlanet.fWaterMapResolution*SizeOf(TpvFloat),
@@ -4995,6 +5037,9 @@ begin
  FreeAndNil(fBlendMiniMapBuffer);
 
  FreeAndNil(fWaterHeightMapImage);
+
+ FreeAndNil(fWaterRippleImages[0]);
+ FreeAndNil(fWaterRippleImages[1]);
 
  FreeAndNil(fWaterHeightMapBuffers[0]);
  FreeAndNil(fWaterHeightMapBuffers[1]);
@@ -27047,6 +27092,8 @@ begin
 
  fWaterMapBorder:=1;
 
+ fWaterRippleMapResolution:=fWaterMapResolution; // GPU ripple subsystem image resolution; can be overridden per planet. Independent from fWaterMapResolution.
+
  fTileMapResolution:=Min(Max(fHeightMapResolution shr 8,32),fHeightMapResolution);
 
  fTileMapShift:=IntLog2(fHeightMapResolution)-IntLog2(fTileMapResolution);
@@ -27650,14 +27697,20 @@ begin
                           TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
                                                         TpvScene3D(fScene3D).RainStreaksNormalTexture.ImageView.Handle,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                         ]+GetBrushesTexturesDescriptorImageInfos;
+                         ]+GetBrushesTexturesDescriptorImageInfos+
+                          [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                         fData.fWaterRippleImages[0].VulkanImageView.Handle,
+                                                         VK_IMAGE_LAYOUT_GENERAL),
+                           TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
+                                                         fData.fWaterRippleImages[1].VulkanImageView.Handle,
+                                                         VK_IMAGE_LAYOUT_GENERAL)];
 
    try
 
     fPlanetDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPlanetDescriptorPool,TpvScene3D(fScene3D).PlanetDescriptorSetLayout);
     fPlanetDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                    0,
-                                                                   27,
+                                                                   29,
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                    DescriptorImageInfos,
                                                                    [],
@@ -28667,10 +28720,10 @@ begin
 
  result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice,0,true);
 
- // Height map + normal map + blend map + grass map + water map + brushes + precipitation map + atmosphere map + rain texture + rain normal texture
+ // Height map + normal map + blend map + grass map + water map + brushes + precipitation map + atmosphere map + rain texture + rain normal texture + 16 smoothed brushes + 2 water ripple ping-pong images
  result.AddBinding(0,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                   27,
+                   29,
                    ShaderStageFlags,
                    [],
                    TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
@@ -28694,7 +28747,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),27*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),29*aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetDescriptorPool');
@@ -30460,6 +30513,8 @@ begin
    fPlanetData.SelectedBrushRotation:=InFlightFrameData.fBrushRotation*TwoPI;
    fPlanetData.SelectedInnerRadius:=Max(InFlightFrameData.fBrushInnerRadius,1e-6);
    fPlanetData.HeightFactorExponent:=InFlightFrameData.fHeightFactorExponent;
+   fPlanetData.WaterRippleMapResolution:=0; // ripple subsystem infrastructure only (images allocated, descriptor set populated), but the shader gate is kept at 0 so sampling early-outs and the uninitialised image content is never observed. Teil2 will set this to fWaterRippleMapResolution once the TWaterRipple compute pipelines actually write content.
+   fPlanetData.WaterRippleReadIndex:=fData.fWaterRippleBufferIndex and 1;
    fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
