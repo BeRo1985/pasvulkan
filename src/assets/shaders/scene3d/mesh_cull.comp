@@ -9,6 +9,35 @@
 
 //#define MESH_SHADER_DEBUG_EX
 
+// --- Debug toggles to narrow down meshlet/instance flicker (start with master ON, then disable one by one) ---
+#define DEBUG_FORCE_ALL_VISIBLE
+#ifdef DEBUG_FORCE_ALL_VISIBLE
+ #define DEBUG_SKIP_PASS0_PREV_VIS             // Pass 0 (object-level): ignore previous-frame visibility bitmap gate
+ #define DEBUG_SKIP_PASS1_DISTANCE             // Pass 1 (object-level): ignore maximumDistance culling
+ #define DEBUG_SKIP_PASS1_FRUSTUM              // Pass 1 (object-level): ignore frustum culling
+ #define DEBUG_SKIP_PASS1_AREA                 // Pass 1 (object-level): ignore area-too-small culling
+ #define DEBUG_SKIP_PASS1_HIZ                  // Pass 1 (object-level): ignore HiZ depth culling
+ #define DEBUG_FORCE_VISIBILITY_BITMAP         // Pass 1: always mark every object as visible for next frame
+ #define DEBUG_SKIP_MESHLET_FRUSTUM            // Per-meshlet (PASS 1 MESHLET_EXPAND): ignore frustum culling
+ #define DEBUG_SKIP_MESHLET_AREA               // Per-meshlet: ignore area-too-small culling
+ #define DEBUG_SKIP_MESHLET_HIZ                // Per-meshlet: ignore HiZ depth culling
+ #define DEBUG_SKIP_MESHLET_PREV_VIS           // Per-meshlet (PASS 0): ignore previous-frame meshlet visibility gate
+ #define DEBUG_FORCE_MESHLET_VISIBILITY_BITMAP // Per-meshlet (PASS 1): force whole visibility word to all-1s
+#endif
+
+// Re-enable individual checks by undef'ing them here:
+#undef DEBUG_SKIP_PASS0_PREV_VIS
+#undef DEBUG_SKIP_PASS1_DISTANCE
+#undef DEBUG_SKIP_PASS1_FRUSTUM
+#undef DEBUG_SKIP_PASS1_AREA
+#undef DEBUG_SKIP_PASS1_HIZ
+#undef DEBUG_FORCE_VISIBILITY_BITMAP
+#undef DEBUG_SKIP_MESHLET_FRUSTUM
+#undef DEBUG_SKIP_MESHLET_AREA
+#undef DEBUG_SKIP_MESHLET_HIZ
+#undef DEBUG_SKIP_MESHLET_PREV_VIS
+#undef DEBUG_FORCE_MESHLET_VISIBILITY_BITMAP
+
 #ifdef MESH_SHADER_PATH
 #ifndef TASK_GROUP_SIZE
 #define TASK_GROUP_SIZE 32
@@ -479,7 +508,11 @@ void submitMeshletCommands(uint counterIndex,
         if(hasSphere){
           for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
             vec4 viewSpaceSphere = vec4((viewMatrices[viewIndex] * vec4(meshletSphere.xyz, 1.0)).xyz, meshletSphere.w);
+#ifdef DEBUG_SKIP_MESHLET_FRUSTUM
+            bool visible = true;
+#else
             bool visible = frustumCullingSphereTest(frustums[viewIndex], viewSpaceSphere);
+#endif
             if(visible){
 #ifdef MESH_SHADER_DEBUG_EX
               meshletWasFrustumCulled = false;
@@ -487,9 +520,12 @@ void submitMeshletCommands(uint counterIndex,
               vec4 aabb;
               if(projectSphere(viewSpaceSphere.xyz, viewSpaceSphere.w, zNears[viewIndex], uView.views[pushConstants.baseViewIndex + viewIndex].projectionMatrix, aabb, true)){
                 vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
+#ifndef DEBUG_SKIP_MESHLET_AREA
                 if((pushConstants.areaTooSmallThreshold > 0.0) && (max(size.x, size.y) < pushConstants.areaTooSmallThreshold)){
                   visible = false;
-                }else{
+                }else
+#endif
+                {
                   float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1));
                   float sampledRawDepth = textureLod(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x;
                   vec2 depthZ = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
@@ -499,7 +535,9 @@ void submitMeshletCommands(uint counterIndex,
                   )).zw;
                   float depth = -(depthZ.x / depthZ.y);
                   float sphereFront = (-viewSpaceSphere.z) - viewSpaceSphere.w;
+#ifndef DEBUG_SKIP_MESHLET_HIZ
                   visible = sphereFront <= depth;
+#endif
 #ifdef MESH_SHADER_DEBUG_EX
                   if(!visible && i < 3u){
                     debugPrintfEXT("meshletCull REJECT obj=%u ml=%u view=%u sphereFront=%f depth=%f rawD=%f vsZ=%f r=%f aabb=[%f,%f,%f,%f] lod=%f",
@@ -534,7 +572,11 @@ void submitMeshletCommands(uint counterIndex,
             if((mvbBase != 0xffffffffu) && !all(equal(pushConstants.meshletVisibilityBDA, uvec2(0u)))){
               uint mvbLocalOffset = meshletBase - drawInfoItems[meshObjectID].meshletDescriptorBase;
               uint mvbBitIndex = mvbBase + mvbLocalOffset + i;
+#ifdef DEBUG_FORCE_MESHLET_VISIBILITY_BITMAP
+              atomicOr(MeshletVisibilityBuffer(pushConstants.meshletVisibilityBDA).bitmap[pushConstants.meshletVisibilityPartOffset + (mvbBitIndex >> 5u)], 0xffffffffu);
+#else
               atomicOr(MeshletVisibilityBuffer(pushConstants.meshletVisibilityBDA).bitmap[pushConstants.meshletVisibilityPartOffset + (mvbBitIndex >> 5u)], 1u << (mvbBitIndex & 31u));
+#endif
             }
           }
           uint scratchIdx = atomicAdd(scratch.counter, 1u);
@@ -567,6 +609,9 @@ void submitMeshletCommands(uint counterIndex,
         bool useMeshletVisibility = (meshletVisibilityBase != 0xffffffffu) &&
                                     (pushConstants.skipCulling == 0u) &&
                                     !all(equal(pushConstants.meshletVisibilityBDA, uvec2(0u)));
+#ifdef DEBUG_SKIP_MESHLET_PREV_VIS
+        useMeshletVisibility = false;
+#endif
         if(useMeshletVisibility){
           MeshletVisibilityBuffer meshletVisibility = MeshletVisibilityBuffer(pushConstants.meshletVisibilityBDA);
           uint meshletLocalOffset = meshletBase - drawInfoItems[meshObjectID].meshletDescriptorBase;
@@ -692,6 +737,7 @@ void main(){
     }
   }
 
+#ifndef DEBUG_SKIP_PASS0_PREV_VIS
   if((pushConstants.skipCulling == 0u) &&  // If it is the first frame or the like, just don't cull anything
     ((meshObjectID < pushConstants.countMeshObjectIDs) && // Check if the mesh object ID is in the valid range, since
                                                            // new drawIndexedIndirectCommands may have been added 
@@ -701,6 +747,7 @@ void main(){
     // Skip, since it was not visible in the previous frame    
     return; 
   }
+#endif
 
   // LOD selection: rewrite command geometry based on screen coverage
   uint selectedLOD;
@@ -883,6 +930,7 @@ void main(){
     MatrixPairBuffer matrixPairBuffer = MatrixPairBuffer(globalBDAPointers.matrixPairBDA);
     boundingSphere = sphereTransform(boundingSphere, matrixPairBuffer.pairs[drawInfoItems[meshObjectID].matrixID].modelMatrix);
 
+#ifndef DEBUG_SKIP_PASS1_DISTANCE
     // Distance-based culling: skip objects too far from camera
     if(pushConstants.maximumDistance > 0.0){
       vec3 cameraPosition = uView.views[0].inverseViewMatrix[3].xyz;
@@ -891,6 +939,7 @@ void main(){
         cmd0.y = 0u;
       }
     }
+#endif
 
    if(cmd0.y != 0u){
  
@@ -904,7 +953,11 @@ void main(){
       // Frustum visible check, but without testing the far planes, so it is more projection matrix variant independent (reverse z, 
       // infinite far plane, and the like). The CPU culling should already have frustum-culled it away anyway, so this is just a 
       // safety check.
+#ifdef DEBUG_SKIP_PASS1_FRUSTUM
+      bool visible = true;
+#else
       bool visible = frustumCullingSphereTest(frustums[viewIndex], viewSpaceBoundingSphere);
+#endif
 /*    vec4 frustum = fastFrustums[viewIndex];
       bool visible = (((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
                      (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) * frustum.x)) > -viewSpaceBoundingSphere.w) &&
@@ -919,9 +972,12 @@ void main(){
           vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
 
           // Area-based culling: skip objects too small in projection
+#ifndef DEBUG_SKIP_PASS1_AREA
           if((pushConstants.areaTooSmallThreshold > 0.0) && (max(size.x, size.y) < pushConstants.areaTooSmallThreshold)){
             visible = false;
-          }else{
+          }else
+#endif
+          {
 
             float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1)); 
 
@@ -941,7 +997,9 @@ void main(){
 #endif
             float depth = -(depthZ.x / depthZ.y); // flip the sign, because z in view space is negative otherwise
             
+#ifndef DEBUG_SKIP_PASS1_HIZ
             visible = ((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth;
+#endif
 
           }
 
@@ -979,7 +1037,11 @@ void main(){
   applyLOD(cmd0, cmd1.z, cmd1.y, meshObjectID, selectedLOD);
   
   // Mark as visible in any case, independently of being already added in the previous pass 
+#ifdef DEBUG_FORCE_VISIBILITY_BITMAP
+  atomicOr(outputVisiblityBuffer.bitmap[visibilityBufferOffset + (meshObjectID >> 5u)], 0xffffffffu);
+#else
   atomicOr(outputVisiblityBuffer.bitmap[visibilityBufferOffset + (meshObjectID >> 5u)], 1u << (meshObjectID & 31u)); 
+#endif
 
   // Check for instance effects (dissolve/dithered transparency) and route to OIT if needed
   {

@@ -335,6 +335,7 @@ var RenderPass:TpvScene3DRendererRenderPass;
     DescriptorSets:array[0..3] of TVkDescriptorSet;
     CountRanges,TotalCommands:TpvUInt32;
     RangeIndex,BatchRangeOffset,RangeCountCommands:TpvUInt32;
+    PyramidImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -353,6 +354,43 @@ begin
   else begin
    exit;
   end;
+ end;
+
+ // Explicit inter-pass barrier for the HiZ CullDepthPyramid image (not a framegraph
+ // resource, so the framegraph does not emit automatic barriers between
+ // CullDepthPyramidComputePass and this pass). Covers cross-queue / cross-frame
+ // overlap cases when ParallelQueues is enabled.
+ begin
+  FillChar(PyramidImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+  PyramidImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  PyramidImageMemoryBarrier.pNext:=nil;
+  PyramidImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+  PyramidImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+  PyramidImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  PyramidImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  PyramidImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  PyramidImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  case fCullRenderPass of
+   TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+    PyramidImageMemoryBarrier.image:=fInstance.CascadedShadowMapCullDepthPyramidMipmappedArray2DImages[aInFlightFrameIndex].VulkanImage.Handle;
+    PyramidImageMemoryBarrier.subresourceRange.levelCount:=fInstance.CascadedShadowMapCullDepthPyramidMipmappedArray2DImages[aInFlightFrameIndex].MipMapLevels;
+    PyramidImageMemoryBarrier.subresourceRange.layerCount:=TpvScene3DRendererInstance.CountCascadedShadowMapCascades;
+   end;
+   else begin
+    PyramidImageMemoryBarrier.image:=fInstance.CullDepthPyramidMipmappedArray2DImages[aInFlightFrameIndex].VulkanImage.Handle;
+    PyramidImageMemoryBarrier.subresourceRange.levelCount:=fInstance.CullDepthPyramidMipmappedArray2DImages[aInFlightFrameIndex].MipMapLevels;
+    PyramidImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
+   end;
+  end;
+  PyramidImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  PyramidImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+  PyramidImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@PyramidImageMemoryBarrier);
  end;
 
  begin

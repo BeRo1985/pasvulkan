@@ -218,6 +218,17 @@ begin
                                  0,nil);
     aCommandBuffer.CmdResetEvent(fEvents[PreviousInFlightFrameIndex].Handle,
                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT));
+    // Additionally sync current-frame meshlet-bounds-compute dispatch to subsequent consumers (mesh_cull etc.)
+    FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+    MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+    MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      0,
+                                      1,@MemoryBarrier,
+                                      0,nil,
+                                      0,nil);
    end else begin
     FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
     MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
