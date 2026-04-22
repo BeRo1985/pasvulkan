@@ -614,7 +614,15 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     vec3 refraction = vec3(0.0);
 #endif
 
-    refraction = mix(refraction, vec3(waterF0), clamp(1.0 - exp(-waterDepth * 1.0), 0.0, 1.0)); 
+    // Beer-Lambert per-channel absorption attenuating refraction across the vertical water column,
+    // with the deep-water scattering color as the asymptotic floor for fully-attenuated light.
+    // waterAbsorption.w (legacy-fade amount) blends the Beer-Lambert result toward the legacy
+    // mix(refraction, waterF0, 1-exp(-depth)) behavior for compatibility.
+    vec4 waterAbsorption = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.x), unpackHalf2x16(planetData.waterAbsorptionDeepColor.y));
+    vec4 waterDeepColor = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.z), unpackHalf2x16(planetData.waterAbsorptionDeepColor.w));
+    refraction = mix(mix(waterDeepColor.xyz, refraction, exp(-waterAbsorption.xyz * waterDepth)),
+                     mix(refraction, vec3(waterF0), clamp(1.0 - exp(-waterDepth * 1.0), 0.0, 1.0)),
+                     clamp(waterAbsorption.w, 0.0, 1.0));
 
     color.xyz = mix(
       texelFetch(uPassTextures[1], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).xyz,

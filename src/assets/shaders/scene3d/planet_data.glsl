@@ -52,6 +52,8 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
   uint waterRippleMapResolution; // The resolution of the water ripple ping-pong image
   uint waterRippleReadIndex; // 0 or 1, selects which of PLANET_TEXTURE_WATERRIPPLEMAP_PING/PONG is the current read target
   
+  uvec4 waterAbsorptionDeepColor; // xy = 4x16-bit half float vec4 (xyz = Beer-Lambert absorption 1/m, w = legacy-fade amount 0..1), zw = 4x16-bit half float vec4 (xyz = deep water scattering color linear, w = unused)
+
   PlanetMaterial materials[16];
 
 }

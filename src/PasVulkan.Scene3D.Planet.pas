@@ -166,6 +166,9 @@ type TpvScene3DPlanets=class;
              WaterRippleMapResolution:TpvUInt32;
              WaterRippleReadIndex:TpvUInt32;
 
+             WaterAbsorption:TpvHalfFloatVector4; // xyz = per-channel Beer-Lambert absorption coefficient (1/m), w = unused
+             WaterDeepColor:TpvHalfFloatVector4; // xyz = deep water scattering color (linear), w = unused
+
              Textures:array[0..15,0..3] of TpvUInt32;
 
             end;
@@ -2852,6 +2855,9 @@ type TpvScene3DPlanets=class;
        fWaterMapBorder:TpvInt32;
        fWaterRippleMapResolution:TpvInt32; // GPU ripple ping-pong image resolution. 0 = ripple subsystem disabled.
        fSerializeWaterRipples:Boolean; // when true, TSerializedData includes the current ripple image contents so a reload restores the exact ripple state (primarily for test/regression comparisons). Default: false - ripples are transient and normally not persisted.
+       fWaterAbsorption:TpvVector3; // Per-channel Beer-Lambert absorption coefficient (1/m) applied to through-water refraction.
+       fWaterDeepColor:TpvVector3; // Linear scattering color at full depth (limit of attenuation).
+       fWaterLegacyFadeAmount:TpvFloat; // 0 = pure Beer-Lambert, 1 = legacy mix-to-waterF0 look (packed into WaterAbsorption.w).
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
        fTileMapBits:TpvInt32;
@@ -3162,6 +3168,11 @@ type TpvScene3DPlanets=class;
        property WaterMapBorder:TpvInt32 read fWaterMapBorder;
        property WaterRippleMapResolution:TpvInt32 read fWaterRippleMapResolution;
        property SerializeWaterRipples:Boolean read fSerializeWaterRipples write fSerializeWaterRipples;
+      public
+       property WaterAbsorption:TpvVector3 read fWaterAbsorption write fWaterAbsorption;
+       property WaterDeepColor:TpvVector3 read fWaterDeepColor write fWaterDeepColor;
+      published
+       property WaterLegacyFadeAmount:TpvFloat read fWaterLegacyFadeAmount write fWaterLegacyFadeAmount;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -28104,6 +28115,10 @@ begin
 
  fSerializeWaterRipples:=false; // transient by default. Set via SerializeWaterRipples property before Save/Load if exact restore of ripple state is required.
 
+ fWaterAbsorption:=TpvVector3.InlineableCreate(0.45,0.15,0.10); // clear-water tropical defaults (per meter, RGB)
+ fWaterDeepColor:=TpvVector3.InlineableCreate(0.02,0.06,0.10); // dark teal at infinite depth (linear)
+ fWaterLegacyFadeAmount:=0.0; // 0 = pure Beer-Lambert (new), 1 = legacy mix-to-waterF0 look
+
  fTileMapResolution:=Min(Max(fHeightMapResolution shr 8,32),fHeightMapResolution);
 
  fTileMapShift:=IntLog2(fHeightMapResolution)-IntLog2(fTileMapResolution);
@@ -31535,6 +31550,14 @@ begin
     fPlanetData.WaterRippleMapResolution:=0;
    end;
    fPlanetData.WaterRippleReadIndex:=fData.fWaterRippleBufferIndex and 1;
+   fPlanetData.WaterAbsorption.x:=fWaterAbsorption.x;
+   fPlanetData.WaterAbsorption.y:=fWaterAbsorption.y;
+   fPlanetData.WaterAbsorption.z:=fWaterAbsorption.z;
+   fPlanetData.WaterAbsorption.w:=fWaterLegacyFadeAmount;
+   fPlanetData.WaterDeepColor.x:=fWaterDeepColor.x;
+   fPlanetData.WaterDeepColor.y:=fWaterDeepColor.y;
+   fPlanetData.WaterDeepColor.z:=fWaterDeepColor.z;
+   fPlanetData.WaterDeepColor.w:=0.0;
    fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
