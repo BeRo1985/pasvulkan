@@ -1322,6 +1322,92 @@ type TpvScene3DPlanets=class;
                     TargetMipMapLevel:TpvUInt32;
                    end;
                    PDownsamplePushConstants=^TDownsamplePushConstants;
+                   { TWaterRipplesSimulation (nested) }
+                   // GPU water ripple subsystem integrated into the water simulation so that
+                   // timestep-sync and queue-family ownership of the ripple ping-pong images
+                   // are shared with the main water simulation. Independent of the CPU
+                   // TGamePlanetWaterImpactMap and of the long-lived EnqueueWaterModification
+                   // brush writes on the water height map: injection adds Gaussian bumps to
+                   // the current ripple image (r = height, g = velocity), then an explicit
+                   // discrete wave-equation pass propagates them. Both passes run on the water
+                   // simulation queue; the ripple images stay in VK_IMAGE_LAYOUT_GENERAL at
+                   // all times so they can also be sampled from tess/mesh/fragment stages.
+                   TWaterRipplesSimulation=class
+                    public
+                     const MaxSourcesLimit=256;
+                     type TWaterRippleSource=packed record
+                           PositionAngularRadius:TpvVector4; // xyz = normalized sphere direction, w = angular radius (radians)
+                           StrengthVelocity:TpvVector4; // x = height impulse, y = velocity impulse, z,w = reserved
+                          end;
+                          PWaterRippleSource=^TWaterRippleSource;
+                          TWaterRippleSources=array[0..MaxSourcesLimit-1] of TWaterRippleSource;
+                          PWaterRippleSources=^TWaterRippleSources;
+                          TWaterRippleSourceBufferHeader=packed record
+                           Count:TpvUInt32;
+                           Pad0:TpvUInt32;
+                           Pad1:TpvUInt32;
+                           Pad2:TpvUInt32;
+                          end;
+                          PWaterRippleSourceBufferHeader=^TWaterRippleSourceBufferHeader;
+                          TWaterRippleSourceBuffer=packed record
+                           Header:TWaterRippleSourceBufferHeader;
+                           Items:TWaterRippleSources;
+                          end;
+                          PWaterRippleSourceBuffer=^TWaterRippleSourceBuffer;
+                          TInjectionPushConstants=packed record
+                           WaterRippleMapResolution:TpvUInt32;
+                           CountSources:TpvUInt32;
+                          end;
+                          PInjectionPushConstants=^TInjectionPushConstants;
+                          TSimulationPushConstants=packed record
+                           WaterRippleMapResolution:TpvUInt32;
+                           WaveSpeedSquared:TpvFloat;
+                           Damping:TpvFloat;
+                           DeltaTime:TpvFloat;
+                          end;
+                          PSimulationPushConstants=^TSimulationPushConstants;
+                    private
+                     fWaterSimulation:TWaterSimulation;
+                     fPlanet:TpvScene3DPlanet;
+                     fVulkanDevice:TpvVulkanDevice;
+                     fMaxSourcesPerFrame:TpvInt32;
+                     fDamping:TpvFloat;
+                     fWaveSpeed:TpvFloat;
+                     fInitialClearPending:Boolean;
+                     fEnqueuedLock:TPasMPCriticalSection;
+                     fEnqueuedSourceCounts:array[0..MaxInFlightFrames-1] of TpvInt32;
+                     fEnqueuedSources:array[0..MaxInFlightFrames-1] of TWaterRippleSources;
+                     fSourceBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+                     fInjectionComputeShaderModule:TpvVulkanShaderModule;
+                     fInjectionComputeShaderStage:TpvVulkanPipelineShaderStage;
+                     fInjectionDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+                     fInjectionPipelineLayout:TpvVulkanPipelineLayout;
+                     fInjectionPipeline:TpvVulkanComputePipeline;
+                     fInjectionDescriptorPool:TpvVulkanDescriptorPool;
+                     fInjectionDescriptorSets:array[0..MaxInFlightFrames-1,0..1] of TpvVulkanDescriptorSet; // [InFlightFrameIndex,targetRippleImageIndex]
+                     fSimulationComputeShaderModule:TpvVulkanShaderModule;
+                     fSimulationComputeShaderStage:TpvVulkanPipelineShaderStage;
+                     fSimulationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+                     fSimulationPipelineLayout:TpvVulkanPipelineLayout;
+                     fSimulationPipeline:TpvVulkanComputePipeline;
+                     fSimulationDescriptorPool:TpvVulkanDescriptorPool;
+                     fSimulationDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // [sourceRippleImageIndex]
+                    public
+                     constructor Create(const aWaterSimulation:TWaterSimulation); reintroduce;
+                     destructor Destroy; override;
+                     procedure EnqueueSource(const aInFlightFrameIndex:TpvSizeInt;
+                                             const aPosition:TpvVector3;
+                                             const aRadius:TpvFloat;
+                                             const aStrength:TpvFloat;
+                                             const aVelocityStrength:TpvFloat=0.0);
+                     procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                       const aDeltaTime:TpvDouble;
+                                       const aInFlightFrameIndex:TpvSizeInt);
+                    public
+                     property MaxSourcesPerFrame:TpvInt32 read fMaxSourcesPerFrame;
+                     property Damping:TpvFloat read fDamping write fDamping;
+                     property WaveSpeed:TpvFloat read fWaveSpeed write fWaveSpeed;
+                   end;
              private
               fPlanet:TpvScene3DPlanet;
               fVulkanDevice:TpvVulkanDevice;
@@ -1373,6 +1459,7 @@ type TpvScene3DPlanets=class;
               fTimeAccumulator:TpvDouble;
               fLastTimeAccumulator:TpvDouble;
               fTimeStep:TpvDouble;
+              fWaterRipplesSimulation:TWaterRipplesSimulation;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
@@ -1380,6 +1467,7 @@ type TpvScene3DPlanets=class;
               procedure PrepareSimulation(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+              property WaterRipplesSimulation:TWaterRipplesSimulation read fWaterRipplesSimulation;
             end;
             { THeightMapDataInitialization }
             THeightMapDataInitialization=class
@@ -3005,6 +3093,7 @@ type TpvScene3DPlanets=class;
        procedure EnqueuePrecipitationMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueAtmosphereMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
+       procedure EnqueueWaterRipple(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aStrength:TpvScalar);
        procedure PrepareWaterSimulation(const aQueue:TpvVulkanQueue;
                                         const aCommandBuffer:TpvVulkanCommandBuffer;
                                         const aFence:TpvVulkanFence;
@@ -5591,7 +5680,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TData.AcquireWaterOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
-var ImageMemoryBarriers:array[0..0] of TVkImageMemoryBarrier;
+var ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
 begin
 
  if fWaterOwnershipHolderState=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnComputeQueue then begin
@@ -5611,6 +5700,32 @@ begin
                                                                                         0,
                                                                                         1));
 
+   ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(0,
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationQueueFamilyIndex,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        fWaterRippleImages[0].VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        1));
+
+   ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(0,
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationQueueFamilyIndex,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        fWaterRippleImages[1].VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        1));
+
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireWaterOnUniversalQueue',[0.5,0.25,0.25,1.0]);
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
@@ -5627,7 +5742,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     1,@ImageMemoryBarriers[0]);
+                                     3,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -5640,7 +5755,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TData.ReleaseWaterOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
-var ImageMemoryBarriers:array[0..0] of TVkImageMemoryBarrier;
+var ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
 begin
 
  if fWaterOwnershipHolderState in [TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized,TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnUniversalQueue] then begin
@@ -5660,6 +5775,32 @@ begin
                                                                                         0,
                                                                                         1));
 
+   ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        0,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationQueueFamilyIndex,
+                                                        fWaterRippleImages[0].VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        1));
+
+   ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        0,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationQueueFamilyIndex,
+                                                        fWaterRippleImages[1].VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        1));
+
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseWaterOnUniversalQueue',[0.5,0.25,0.25,1.0]);
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
@@ -5676,7 +5817,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     1,@ImageMemoryBarriers[0]);
+                                     3,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -5689,7 +5830,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TData.AcquireWaterOnSimulationQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
-var ImageMemoryBarriers:array[0..0] of TVkImageMemoryBarrier;
+var ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
 begin
 
  if fWaterOwnershipHolderState=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnUniversalQueue then begin
@@ -5709,6 +5850,32 @@ begin
                                                                                         0,
                                                                                         1));
 
+   ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(0,
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationQueueFamilyIndex,
+                                                        fWaterRippleImages[0].VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        1));
+
+   ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(0,
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationQueueFamilyIndex,
+                                                        fWaterRippleImages[1].VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        1));
+
       fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireWaterOnSimulationQueue',[0.5,0.25,0.25,1.0]);
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
@@ -5716,7 +5883,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     1,@ImageMemoryBarriers[0]);
+                                     3,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -5729,7 +5896,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TData.ReleaseWaterOnSimulationQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
-var ImageMemoryBarriers:array[0..0] of TVkImageMemoryBarrier;
+var ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
 begin
 
  if fWaterOwnershipHolderState in [TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized,TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnComputeQueue] then begin
@@ -5749,6 +5916,32 @@ begin
                                                                                         0,
                                                                                         1));
 
+   ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        0,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationQueueFamilyIndex,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        fWaterRippleImages[0].VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        1));
+
+   ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        0,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationQueueFamilyIndex,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        fWaterRippleImages[1].VulkanImage.Handle,
+                                                        TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                        0,
+                                                                                        1,
+                                                                                        0,
+                                                                                        1));
+
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseWaterOnSimulationQueue',[0.5,0.25,0.25,1.0]);
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -5756,7 +5949,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     1,@ImageMemoryBarriers[0]);
+                                     3,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -14858,10 +15051,14 @@ begin
 
  fLastTimeAccumulator:=-1.0;
 
+ fWaterRipplesSimulation:=TWaterRipplesSimulation.Create(self);
+
 end;
 
 destructor TpvScene3DPlanet.TWaterSimulation.Destroy;
 begin
+
+ FreeAndNil(fWaterRipplesSimulation);
 
  FreeAndNil(fDownsamplePipeline);
 
@@ -15416,6 +15613,10 @@ begin
 
   DoInterpolate:=true;
 
+  if assigned(fWaterRipplesSimulation) then begin
+   fWaterRipplesSimulation.Execute(aCommandBuffer,fTimeStep,aInFlightFrameIndex);
+  end;
+
   First:=false;
 
  end;
@@ -15613,6 +15814,510 @@ begin
  fPlanet.fData.fWaterFirst:=false;
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
+{ TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation }
+
+constructor TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.Create(const aWaterSimulation:TWaterSimulation);
+var Index,TargetIndex:TpvSizeInt;
+    Stream:TStream;
+    BufferSize:TVkDeviceSize;
+begin
+
+ inherited Create;
+
+ fWaterSimulation:=aWaterSimulation;
+ fPlanet:=fWaterSimulation.fPlanet;
+ fVulkanDevice:=fWaterSimulation.fVulkanDevice;
+
+ fMaxSourcesPerFrame:=MaxSourcesLimit;
+ fDamping:=0.995;
+ fWaveSpeed:=5.0;
+ fInitialClearPending:=true;
+
+ fEnqueuedLock:=TPasMPCriticalSection.Create;
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fEnqueuedSourceCounts[Index]:=0;
+  FillChar(fEnqueuedSources[Index],SizeOf(TWaterRippleSources),#0);
+ end;
+
+ if not assigned(fVulkanDevice) then begin
+  exit;
+ end;
+
+ // Compute shader modules
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_ripple_injection_comp.spv');
+ try
+  fInjectionComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fInjectionComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fInjectionComputeShaderModule');
+ fInjectionComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fInjectionComputeShaderModule,'main');
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_ripple_simulation_comp.spv');
+ try
+  fSimulationComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fSimulationComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fSimulationComputeShaderModule');
+ fSimulationComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fSimulationComputeShaderModule,'main');
+
+ // Injection descriptor set layout: binding 0 = SSBO, binding 1 = storage image (target)
+ fInjectionDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+ fInjectionDescriptorSetLayout.AddBinding(0,
+                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                          1,
+                                          TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                          [],
+                                          0);
+ fInjectionDescriptorSetLayout.AddBinding(1,
+                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                          1,
+                                          TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                          [],
+                                          0);
+ fInjectionDescriptorSetLayout.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fInjectionDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fInjectionDescriptorSetLayout');
+
+ // Simulation descriptor set layout: binding 0 = storage image (source), binding 1 = storage image (target)
+ fSimulationDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+ fSimulationDescriptorSetLayout.AddBinding(0,
+                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                           [],
+                                           0);
+ fSimulationDescriptorSetLayout.AddBinding(1,
+                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                           [],
+                                           0);
+ fSimulationDescriptorSetLayout.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fSimulationDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fSimulationDescriptorSetLayout');
+
+ // Pipeline layouts
+ fInjectionPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+ fInjectionPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TInjectionPushConstants));
+ fInjectionPipelineLayout.AddDescriptorSetLayout(fInjectionDescriptorSetLayout);
+ fInjectionPipelineLayout.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fInjectionPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fInjectionPipelineLayout');
+
+ fSimulationPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+ fSimulationPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TSimulationPushConstants));
+ fSimulationPipelineLayout.AddDescriptorSetLayout(fSimulationDescriptorSetLayout);
+ fSimulationPipelineLayout.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fSimulationPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fSimulationPipelineLayout');
+
+ // Pipelines
+ fInjectionPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                     pvApplication.VulkanPipelineCache,
+                                                     TVkPipelineCreateFlags(0),
+                                                     fInjectionComputeShaderStage,
+                                                     fInjectionPipelineLayout,
+                                                     nil,
+                                                     0);
+
+ fSimulationPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                      pvApplication.VulkanPipelineCache,
+                                                      TVkPipelineCreateFlags(0),
+                                                      fSimulationComputeShaderStage,
+                                                      fSimulationPipelineLayout,
+                                                      nil,
+                                                      0);
+
+ // Source SSBO ring (one per in-flight frame). 16-byte header + MaxSourcesLimit * 32 bytes per item.
+ BufferSize:=SizeOf(TWaterRippleSourceBuffer);
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fSourceBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                BufferSize,
+                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                fPlanet.fGlobalBufferSharingMode,
+                                                fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                0,
+                                                pvAllocationGroupIDScene3DPlanetStatic,
+                                                'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fSourceBuffers['+IntToStr(Index)+']');
+  fVulkanDevice.DebugUtils.SetObjectName(fSourceBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fSourceBuffers['+IntToStr(Index)+']');
+ end;
+
+ // Descriptor pools + descriptor sets.
+ fInjectionDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                          TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                          MaxInFlightFrames*2);
+ fInjectionDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),MaxInFlightFrames*2);
+ fInjectionDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),MaxInFlightFrames*2);
+ fInjectionDescriptorPool.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fInjectionDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fInjectionDescriptorPool');
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  for TargetIndex:=0 to 1 do begin
+   fInjectionDescriptorSets[Index,TargetIndex]:=TpvVulkanDescriptorSet.Create(fInjectionDescriptorPool,fInjectionDescriptorSetLayout);
+   fInjectionDescriptorSets[Index,TargetIndex].WriteToDescriptorSet(0,
+                                                                    0,
+                                                                    1,
+                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                    [],
+                                                                    [fSourceBuffers[Index].DescriptorBufferInfo],
+                                                                    [],
+                                                                    false);
+   fInjectionDescriptorSets[Index,TargetIndex].WriteToDescriptorSet(1,
+                                                                    0,
+                                                                    1,
+                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                    [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                   fPlanet.fData.fWaterRippleImages[TargetIndex].VulkanImageView.Handle,
+                                                                                                   VK_IMAGE_LAYOUT_GENERAL)],
+                                                                    [],
+                                                                    [],
+                                                                    false);
+   fInjectionDescriptorSets[Index,TargetIndex].Flush;
+   fVulkanDevice.DebugUtils.SetObjectName(fInjectionDescriptorSets[Index,TargetIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fInjectionDescriptorSets['+IntToStr(Index)+','+IntToStr(TargetIndex)+']');
+  end;
+ end;
+
+ fSimulationDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                           TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                           2);
+ fSimulationDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),2*2);
+ fSimulationDescriptorPool.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fSimulationDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fSimulationDescriptorPool');
+
+ for Index:=0 to 1 do begin
+  fSimulationDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fSimulationDescriptorPool,fSimulationDescriptorSetLayout);
+  fSimulationDescriptorSets[Index].WriteToDescriptorSet(0,
+                                                        0,
+                                                        1,
+                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                        [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                       fPlanet.fData.fWaterRippleImages[Index].VulkanImageView.Handle,
+                                                                                       VK_IMAGE_LAYOUT_GENERAL)],
+                                                        [],
+                                                        [],
+                                                        false);
+  fSimulationDescriptorSets[Index].WriteToDescriptorSet(1,
+                                                        0,
+                                                        1,
+                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                        [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                       fPlanet.fData.fWaterRippleImages[Index xor 1].VulkanImageView.Handle,
+                                                                                       VK_IMAGE_LAYOUT_GENERAL)],
+                                                        [],
+                                                        [],
+                                                        false);
+  fSimulationDescriptorSets[Index].Flush;
+  fVulkanDevice.DebugUtils.SetObjectName(fSimulationDescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.fSimulationDescriptorSets['+IntToStr(Index)+']');
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.Destroy;
+var Index,TargetIndex:TpvSizeInt;
+begin
+
+ for Index:=0 to 1 do begin
+  FreeAndNil(fSimulationDescriptorSets[Index]);
+ end;
+ FreeAndNil(fSimulationDescriptorPool);
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  for TargetIndex:=0 to 1 do begin
+   FreeAndNil(fInjectionDescriptorSets[Index,TargetIndex]);
+  end;
+ end;
+ FreeAndNil(fInjectionDescriptorPool);
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fSourceBuffers[Index]);
+ end;
+
+ FreeAndNil(fSimulationPipeline);
+ FreeAndNil(fInjectionPipeline);
+
+ FreeAndNil(fSimulationPipelineLayout);
+ FreeAndNil(fInjectionPipelineLayout);
+
+ FreeAndNil(fSimulationDescriptorSetLayout);
+ FreeAndNil(fInjectionDescriptorSetLayout);
+
+ FreeAndNil(fSimulationComputeShaderStage);
+ FreeAndNil(fSimulationComputeShaderModule);
+
+ FreeAndNil(fInjectionComputeShaderStage);
+ FreeAndNil(fInjectionComputeShaderModule);
+
+ FreeAndNil(fEnqueuedLock);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.EnqueueSource(const aInFlightFrameIndex:TpvSizeInt;
+                                                                                  const aPosition:TpvVector3;
+                                                                                  const aRadius:TpvFloat;
+                                                                                  const aStrength:TpvFloat;
+                                                                                  const aVelocityStrength:TpvFloat);
+var Index:TpvSizeInt;
+    NormalizedPosition:TpvVector3;
+    Length:TpvFloat;
+    AngularRadius:TpvFloat;
+    TopRadius:TpvFloat;
+begin
+ if (aInFlightFrameIndex<0) or (aInFlightFrameIndex>=MaxInFlightFrames) then begin
+  exit;
+ end;
+ Length:=aPosition.Length;
+ if Length<1e-6 then begin
+  exit;
+ end;
+ NormalizedPosition:=aPosition/Length;
+ TopRadius:=fPlanet.fTopRadius;
+ if TopRadius<1e-6 then begin
+  TopRadius:=1.0;
+ end;
+ AngularRadius:=Max(aRadius,1e-4)/TopRadius;
+ fEnqueuedLock.Acquire;
+ try
+  Index:=fEnqueuedSourceCounts[aInFlightFrameIndex];
+  if Index<fMaxSourcesPerFrame then begin
+   fEnqueuedSources[aInFlightFrameIndex,Index].PositionAngularRadius:=TpvVector4.InlineableCreate(NormalizedPosition.x,NormalizedPosition.y,NormalizedPosition.z,AngularRadius);
+   fEnqueuedSources[aInFlightFrameIndex,Index].StrengthVelocity:=TpvVector4.InlineableCreate(aStrength,aVelocityStrength,0.0,0.0);
+   fEnqueuedSourceCounts[aInFlightFrameIndex]:=Index+1;
+  end;
+ finally
+  fEnqueuedLock.Release;
+ end;
+end;
+
+procedure TpvScene3DPlanet.TWaterSimulation.TWaterRipplesSimulation.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                            const aDeltaTime:TpvDouble;
+                                                                            const aInFlightFrameIndex:TpvSizeInt);
+var ReadIndex,WriteIndex:TpvUInt32;
+    CountSources:TpvInt32;
+    MappedPtr:Pointer;
+    BufferPtr:PWaterRippleSourceBuffer;
+    BufferSize:TVkDeviceSize;
+    GroupCount:TpvUInt32;
+    InjectionPushConstants:TInjectionPushConstants;
+    SimulationPushConstants:TSimulationPushConstants;
+    BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    ClearColor:TVkClearColorValue;
+    ClearRange:TVkImageSubresourceRange;
+begin
+
+ if (not assigned(fVulkanDevice)) or
+    (not assigned(fInjectionPipeline)) or
+    (not assigned(fSimulationPipeline)) or
+    (fPlanet.fWaterRippleMapResolution<=0) or
+    (not assigned(fPlanet.fData.fWaterRippleImages[0])) or
+    (not assigned(fPlanet.fData.fWaterRippleImages[1])) then begin
+  exit;
+ end;
+
+ fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterRipplesSimulation',[0.5,0.5,0.75,1.0]);
+
+ // One-time initial clear of both ripple images. Images were created in VK_IMAGE_LAYOUT_GENERAL
+ // but with undefined content; clearing them explicitly guarantees deterministic startup state.
+ if fInitialClearPending then begin
+  fInitialClearPending:=false;
+  FillChar(ClearColor,SizeOf(TVkClearColorValue),#0);
+  ClearRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ClearRange.baseMipLevel:=0;
+  ClearRange.levelCount:=1;
+  ClearRange.baseArrayLayer:=0;
+  ClearRange.layerCount:=1;
+  // Transition GENERAL -> TRANSFER_DST_OPTIMAL for both images
+  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
+                                                       TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fWaterRippleImages[0].VulkanImage.Handle,
+                                                       ClearRange);
+  ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(0,
+                                                       TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fWaterRippleImages[1].VulkanImage.Handle,
+                                                       ClearRange);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    2,@ImageMemoryBarriers[0]);
+  aCommandBuffer.CmdClearColorImage(fPlanet.fData.fWaterRippleImages[0].VulkanImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,@ClearColor,1,@ClearRange);
+  aCommandBuffer.CmdClearColorImage(fPlanet.fData.fWaterRippleImages[1].VulkanImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,@ClearColor,1,@ClearRange);
+  // Transition back TRANSFER_DST_OPTIMAL -> GENERAL
+  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fWaterRippleImages[0].VulkanImage.Handle,
+                                                       ClearRange);
+  ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fWaterRippleImages[1].VulkanImage.Handle,
+                                                       ClearRange);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    2,@ImageMemoryBarriers[0]);
+ end;
+
+ // Copy enqueued sources into the SSBO for this in-flight frame and reset the pending queue.
+ fEnqueuedLock.Acquire;
+ try
+  CountSources:=fEnqueuedSourceCounts[aInFlightFrameIndex];
+  if CountSources>fMaxSourcesPerFrame then begin
+   CountSources:=fMaxSourcesPerFrame;
+  end;
+  MappedPtr:=fSourceBuffers[aInFlightFrameIndex].Memory.MapMemory;
+  if assigned(MappedPtr) then begin
+   try
+    BufferPtr:=PWaterRippleSourceBuffer(MappedPtr);
+    BufferPtr^.Header.Count:=TpvUInt32(CountSources);
+    BufferPtr^.Header.Pad0:=0;
+    BufferPtr^.Header.Pad1:=0;
+    BufferPtr^.Header.Pad2:=0;
+    if CountSources>0 then begin
+     Move(fEnqueuedSources[aInFlightFrameIndex,0],BufferPtr^.Items[0],CountSources*SizeOf(TWaterRippleSource));
+    end;
+    BufferSize:=SizeOf(TWaterRippleSourceBufferHeader)+TVkDeviceSize(CountSources)*SizeOf(TWaterRippleSource);
+    fSourceBuffers[aInFlightFrameIndex].Flush(MappedPtr,0,BufferSize);
+   finally
+    fSourceBuffers[aInFlightFrameIndex].Memory.UnmapMemory;
+   end;
+  end;
+  fEnqueuedSourceCounts[aInFlightFrameIndex]:=0;
+ finally
+  fEnqueuedLock.Release;
+ end;
+
+ ReadIndex:=fPlanet.fData.fWaterRippleBufferIndex and 1;
+ WriteIndex:=ReadIndex xor 1;
+
+ // Barrier: ensure host writes to the SSBO are visible to the compute stage.
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fSourceBuffers[aInFlightFrameIndex].Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE);
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   1,@BufferMemoryBarrier,
+                                   0,nil);
+
+ GroupCount:=(TpvUInt32(fPlanet.fWaterRippleMapResolution)+15) shr 4;
+
+ // Injection pass: stamp enqueued sources into image[ReadIndex] (additive).
+ InjectionPushConstants.WaterRippleMapResolution:=TpvUInt32(fPlanet.fWaterRippleMapResolution);
+ InjectionPushConstants.CountSources:=TpvUInt32(CountSources);
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fInjectionPipeline.Handle);
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fInjectionPipelineLayout.Handle,
+                                      0,
+                                      1,@fInjectionDescriptorSets[aInFlightFrameIndex,ReadIndex].Handle,
+                                      0,nil);
+ aCommandBuffer.CmdPushConstants(fInjectionPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TInjectionPushConstants),
+                                 @InjectionPushConstants);
+ aCommandBuffer.CmdDispatch(GroupCount,GroupCount,1);
+
+ // Barrier: injection writes to image[ReadIndex] must be visible to simulation reads.
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fWaterRippleImages[ReadIndex].VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarriers[0]);
+
+ // Simulation pass: advance the wave equation from image[ReadIndex] into image[WriteIndex].
+ SimulationPushConstants.WaterRippleMapResolution:=TpvUInt32(fPlanet.fWaterRippleMapResolution);
+ SimulationPushConstants.WaveSpeedSquared:=fWaveSpeed*fWaveSpeed;
+ SimulationPushConstants.Damping:=fDamping;
+ SimulationPushConstants.DeltaTime:=TpvFloat(aDeltaTime);
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fSimulationPipeline.Handle);
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fSimulationPipelineLayout.Handle,
+                                      0,
+                                      1,@fSimulationDescriptorSets[ReadIndex].Handle,
+                                      0,nil);
+ aCommandBuffer.CmdPushConstants(fSimulationPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TSimulationPushConstants),
+                                 @SimulationPushConstants);
+ aCommandBuffer.CmdDispatch(GroupCount,GroupCount,1);
+
+ // Swap: the just-written image becomes the new read target for next frame and downstream samplers.
+ fPlanet.fData.fWaterRippleBufferIndex:=WriteIndex;
+
+ // Barrier: simulation writes to image[WriteIndex] must be visible to downstream sampler reads
+ // (tess/mesh/frag stages). Queue-family ownership transfer to the universal queue is handled
+ // afterwards by TData.ReleaseWaterOnSimulationQueue, which now also covers both ripple images.
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fWaterRippleImages[WriteIndex].VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarriers[0]);
+
+ fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
@@ -30513,7 +31218,17 @@ begin
    fPlanetData.SelectedBrushRotation:=InFlightFrameData.fBrushRotation*TwoPI;
    fPlanetData.SelectedInnerRadius:=Max(InFlightFrameData.fBrushInnerRadius,1e-6);
    fPlanetData.HeightFactorExponent:=InFlightFrameData.fHeightFactorExponent;
-   fPlanetData.WaterRippleMapResolution:=0; // ripple subsystem infrastructure only (images allocated, descriptor set populated), but the shader gate is kept at 0 so sampling early-outs and the uninitialised image content is never observed. Teil2 will set this to fWaterRippleMapResolution once the TWaterRipple compute pipelines actually write content.
+   // Ripple compute pipelines write into the ping-pong images. The shader gate stays at 0 
+   // until the initial clear has been recorded by TWaterRipplesSimulation.Execute so that 
+   // the (undefined) initial image content is never observed. Ripples are transient and 
+   // deliberately NOT part of TSerializedData (dampens to zero in seconds, no save value).
+   if assigned(fWaterSimulation) and
+      assigned(fWaterSimulation.fWaterRipplesSimulation) and
+      (not fWaterSimulation.fWaterRipplesSimulation.fInitialClearPending) then begin
+    fPlanetData.WaterRippleMapResolution:=fWaterRippleMapResolution;
+   end else begin
+    fPlanetData.WaterRippleMapResolution:=0;
+   end;
    fPlanetData.WaterRippleReadIndex:=fData.fWaterRippleBufferIndex and 1;
    fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
@@ -30906,6 +31621,13 @@ begin
   WaterModificationItem^.Value:=aValue;
   WaterModificationItem^.BrushIndex:=fData.fSelectedBrush;
   WaterModificationItem^.BrushRotation:=fData.fBrushRotation;
+ end;
+end;
+
+procedure TpvScene3DPlanet.EnqueueWaterRipple(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aStrength:TpvScalar);
+begin
+ if assigned(fWaterSimulation) and assigned(fWaterSimulation.fWaterRipplesSimulation) then begin
+  fWaterSimulation.fWaterRipplesSimulation.EnqueueSource(aInFlightFrameIndex,aPosition,aRadius,aStrength,aStrength);
  end;
 end;
 
