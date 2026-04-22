@@ -23538,7 +23538,7 @@ begin
                                                            1,
                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                            [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRenderer).MipMapMaxFilterSampler.Handle,
-                                                                                          TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImage.VulkanArrayImageView.Handle,
+                                                                                          TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                            [],
                                                            [],
@@ -23605,12 +23605,12 @@ begin
                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                           VK_QUEUE_FAMILY_IGNORED,
                                                           VK_QUEUE_FAMILY_IGNORED,
-                                                          TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImage.VulkanImage.Handle,
+                                                          TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImages[aInFlightFrameIndex].VulkanImage.Handle,
                                                           TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                           0,
-                                                                                          TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImage.MipMapLevels,
+                                                                                          TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImages[aInFlightFrameIndex].MipMapLevels,
                                                                                           0,
-                                                                                          TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImage.Layers));
+                                                                                          TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImages[aInFlightFrameIndex].Layers));
 
      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),

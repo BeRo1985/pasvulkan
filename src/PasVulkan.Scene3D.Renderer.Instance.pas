@@ -766,8 +766,8 @@ type { TpvScene3DRendererInstance }
        fCullDepthArray2DImage:TpvScene3DRendererArray2DImage;
        fCullDepthPyramidMipmappedArray2DImages:TMipmappedArray2DImages;
 //     fAmbientOcclusionDepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
-       fCombinedDepthArray2DImage:TpvScene3DRendererArray2DImage;
-       fDepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
+       fCombinedDepthArray2DImages:TArray2DImages;
+       fDepthMipmappedArray2DImages:TMipmappedArray2DImages;
        fSceneMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
        fFullResSceneMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
        fHUDMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
@@ -1094,8 +1094,8 @@ type { TpvScene3DRendererInstance }
        property CullDepthArray2DImage:TpvScene3DRendererArray2DImage read fCullDepthArray2DImage;
        property CullDepthPyramidMipmappedArray2DImages:TMipmappedArray2DImages read fCullDepthPyramidMipmappedArray2DImages;
 //     property AmbientOcclusionDepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fAmbientOcclusionDepthMipmappedArray2DImage;
-       property CombinedDepthArray2DImage:TpvScene3DRendererArray2DImage read fCombinedDepthArray2DImage;
-       property DepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fDepthMipmappedArray2DImage;
+       property CombinedDepthArray2DImages:TArray2DImages read fCombinedDepthArray2DImages;
+       property DepthMipmappedArray2DImages:TMipmappedArray2DImages read fDepthMipmappedArray2DImages;
        property SceneMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fSceneMipmappedArray2DImage;
        property FullResSceneMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fFullResSceneMipmappedArray2DImage;
        property HUDMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fHUDMipmappedArray2DImage;
@@ -6427,13 +6427,15 @@ begin
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fAmbientOcclusionDepthMipmappedArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fAmbientOcclusionDepthMipmappedArray2DImage.Image');
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fAmbientOcclusionDepthMipmappedArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fAmbientOcclusionDepthMipmappedArray2DImage.ImageView');}
 
-      fCombinedDepthArray2DImage:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,true,pvAllocationGroupIDScene3DSurface,VK_FORMAT_UNDEFINED,VK_SHARING_MODE_EXCLUSIVE,nil,'TpvScene3DRendererInstance.fCombinedDepthArray2DImage');
-      Renderer.VulkanDevice.DebugUtils.SetObjectName(fCombinedDepthArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fCombinedDepthArray2DImage.Image');
-      Renderer.VulkanDevice.DebugUtils.SetObjectName(fCombinedDepthArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fCombinedDepthArray2DImage.ImageView');
+      for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+       fCombinedDepthArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,true,pvAllocationGroupIDScene3DSurface,VK_FORMAT_UNDEFINED,VK_SHARING_MODE_EXCLUSIVE,nil,'TpvScene3DRendererInstance.fCombinedDepthArray2DImages['+IntToStr(InFlightFrameIndex)+']');
+       Renderer.VulkanDevice.DebugUtils.SetObjectName(fCombinedDepthArray2DImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fCombinedDepthArray2DImages['+IntToStr(InFlightFrameIndex)+'].Image');
+       Renderer.VulkanDevice.DebugUtils.SetObjectName(fCombinedDepthArray2DImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fCombinedDepthArray2DImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
 
-      fDepthMipmappedArray2DImage:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface,'TpvScene3DRendererInstance.fDepthMipmappedArray2DImage');
-      Renderer.VulkanDevice.DebugUtils.SetObjectName(fDepthMipmappedArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDepthMipmappedArray2DImage.Image');
-      Renderer.VulkanDevice.DebugUtils.SetObjectName(fDepthMipmappedArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDepthMipmappedArray2DImage.ImageView');
+       fDepthMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface,'TpvScene3DRendererInstance.fDepthMipmappedArray2DImages['+IntToStr(InFlightFrameIndex)+']');
+       Renderer.VulkanDevice.DebugUtils.SetObjectName(fDepthMipmappedArray2DImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDepthMipmappedArray2DImages['+IntToStr(InFlightFrameIndex)+'].Image');
+       Renderer.VulkanDevice.DebugUtils.SetObjectName(fDepthMipmappedArray2DImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDepthMipmappedArray2DImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+      end;
 
       fSceneMipmappedArray2DImage:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R16G16B16A16_SFLOAT{Renderer.OptimizedNonAlphaFormat},VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface,'TpvScene3DRendererInstance.fSceneMipmappedArray2DImage');
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fSceneMipmappedArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fSceneMipmappedArray2DImage.Image');
@@ -7091,8 +7093,10 @@ begin
   for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
    FreeAndNil(fCullDepthPyramidMipmappedArray2DImages[InFlightFrameIndex]);
   end;
-  FreeAndNil(fCombinedDepthArray2DImage);
-  FreeAndNil(fDepthMipmappedArray2DImage);
+  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+   FreeAndNil(fCombinedDepthArray2DImages[InFlightFrameIndex]);
+   FreeAndNil(fDepthMipmappedArray2DImages[InFlightFrameIndex]);
+  end;
 //FreeAndNil(fAmbientOcclusionDepthMipmappedArray2DImage);
   if fSceneMipmappedArray2DImage=fFullResSceneMipmappedArray2DImage then begin
    FreeAndNil(fSceneMipmappedArray2DImage);
