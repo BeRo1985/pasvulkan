@@ -388,7 +388,7 @@ The task shader is bypassed entirely. `mesh_cull.comp` itself performs per-meshl
 
 #### Fallback Path
 
-When mesh shader support is unavailable, PasVulkan falls back transparently to standard `vkCmdDrawIndexedIndirect` using the conventional vertex/index pipeline. No meshlet culling is performed in this path; node-level Hi-Z culling (per TGroup mesh node, independent of meshlets) still applies.
+When mesh shader support is unavailable, PasVulkan falls back transparently to standard `vkCmdDrawIndexedIndirect` using the conventional vertex/index pipeline. No meshlet culling is performed in this path; node-level Hi-Z culling (per TGroup mesh node, independent of meshlets) still applies. Because culling granularity is already at the mesh-node level rather than the whole-object level, this fallback path can achieve culling effectiveness comparable to the mesh-shader path — provided the glTF content is well-subdivided into mesh nodes. Content authors can therefore influence culling quality directly through their scene graph structure, even on hardware without mesh shader support.
 
 ### Missing Features
 
