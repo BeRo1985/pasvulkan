@@ -784,6 +784,8 @@ type TpvScene3DPlanets=class;
                    PWaterHeightMapDataChunkHeader=^TWaterHeightMapDataChunkHeader;
                    TWaterRippleTexel=array[0..1] of TpvHalfFloat; // R16G16_SFLOAT: [0]=height, [1]=velocity
                    PWaterRippleTexel=^TWaterRippleTexel;
+                   TWaterRippleTexelArray=array[0..($7fffffff div SizeOf(TWaterRippleTexel))-1] of TWaterRippleTexel;
+                   PWaterRippleTexelArray=^TWaterRippleTexelArray;
                    TWaterRippleDataChunkHeader=packed record
                     Resolution:TpvUInt32;
                    end;
@@ -820,6 +822,7 @@ type TpvScene3DPlanets=class;
               fAtmosphereMapData:TMemoryStream;
               fWaterHeightMapData:TMemoryStream;
               fWaterRippleData:array[0..1] of TMemoryStream;
+              procedure BilinearResizeRippleImage(const aSrcData:Pointer;const aSrcRes:TpvUInt32;const aDstData:Pointer;const aDstRes:TpvUInt32);
              public 
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
@@ -10382,6 +10385,48 @@ begin
 
 end;
 
+procedure TpvScene3DPlanet.TSerializedData.BilinearResizeRippleImage(const aSrcData:Pointer;const aSrcRes:TpvUInt32;const aDstData:Pointer;const aDstRes:TpvUInt32);
+var DstX,DstY:TpvSizeInt;
+    u,v,fx,fy:TpvFloat;
+    ix,iy:TpvSizeInt;
+    Src00,Src10,Src01,Src11:TWaterRippleTexel;
+    SrcArray:PWaterRippleTexelArray;
+    DstArray:PWaterRippleTexelArray;
+begin
+ SrcArray:=PWaterRippleTexelArray(aSrcData);
+ DstArray:=PWaterRippleTexelArray(aDstData);
+ for DstY:=0 to TpvSizeInt(aDstRes)-1 do begin
+  v:=(DstY+0.5)/aDstRes*aSrcRes-0.5;
+  iy:=Trunc(v);
+  fy:=v-iy;
+  if iy<0 then begin
+   iy:=0;
+   fy:=0.0;
+  end else if iy>=TpvSizeInt(aSrcRes)-1 then begin
+   iy:=TpvSizeInt(aSrcRes)-2;
+   fy:=1.0;
+  end;
+  for DstX:=0 to TpvSizeInt(aDstRes)-1 do begin
+   u:=(DstX+0.5)/aDstRes*aSrcRes-0.5;
+   ix:=Trunc(u);
+   fx:=u-ix;
+   if ix<0 then begin
+    ix:=0;
+    fx:=0.0;
+   end else if ix>=TpvSizeInt(aSrcRes)-1 then begin
+    ix:=TpvSizeInt(aSrcRes)-2;
+    fx:=1.0;
+   end;
+   Src00:=SrcArray^[(iy*TpvSizeInt(aSrcRes))+ix];
+   Src10:=SrcArray^[(iy*TpvSizeInt(aSrcRes))+(ix+1)];
+   Src01:=SrcArray^[((iy+1)*TpvSizeInt(aSrcRes))+ix];
+   Src11:=SrcArray^[((iy+1)*TpvSizeInt(aSrcRes))+(ix+1)];
+   DstArray^[(DstY*TpvSizeInt(aDstRes))+DstX][0]:=TpvHalfFloat(((TpvFloat(Src00[0])*(1.0-fx)+TpvFloat(Src10[0])*fx)*(1.0-fy))+((TpvFloat(Src01[0])*(1.0-fx)+TpvFloat(Src11[0])*fx)*fy));
+   DstArray^[(DstY*TpvSizeInt(aDstRes))+DstX][1]:=TpvHalfFloat(((TpvFloat(Src00[1])*(1.0-fx)+TpvFloat(Src10[1])*fx)*(1.0-fy))+((TpvFloat(Src01[1])*(1.0-fx)+TpvFloat(Src11[1])*fx)*fy));
+  end;
+ end;
+end;
+
 procedure TpvScene3DPlanet.TSerializedData.LoadFromStream(const aStream:TStream);
 var Header:TpvScene3DPlanet.TSerializedData.THeader;
     Chunk:TpvScene3DPlanet.TSerializedData.TChunk;
@@ -10399,6 +10444,8 @@ var Header:TpvScene3DPlanet.TSerializedData.THeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
     WaterRippleDataChunkHeader:TWaterRippleDataChunkHeader;
     RippleImageIndex:TpvSizeInt;
+    RippleTempStream:TMemoryStream;
+    RippleSrcRes,RippleDstRes:TpvUInt32;
     CheckSum:TpvUInt64;
     InData,DecodedInData,OutData:pointer;
     UncompressedStream:TMemoryStream;
@@ -10924,14 +10971,38 @@ begin
 
      aStream.ReadBuffer(WaterRippleDataChunkHeader,SizeOf(TWaterRippleDataChunkHeader));
 
-     fWaterRippleMapResolution:=WaterRippleDataChunkHeader.Resolution;
-
      if WaterRippleDataChunkHeader.Resolution>0 then begin
 
+      RippleSrcRes:=WaterRippleDataChunkHeader.Resolution;
+      RippleDstRes:=TpvUInt32(fPlanet.fWaterRippleMapResolution);
+
+      // Update stored resolution to match what we actually produce
+      fWaterRippleMapResolution:=RippleDstRes;
+
       for RippleImageIndex:=0 to 1 do begin
-       fWaterRippleData[RippleImageIndex].Seek(0,soBeginning);
-       fWaterRippleData[RippleImageIndex].Size:=0;
-       fWaterRippleData[RippleImageIndex].CopyFrom(aStream,WaterRippleDataChunkHeader.Resolution*WaterRippleDataChunkHeader.Resolution*SizeOf(TWaterRippleTexel));
+
+       if RippleSrcRes=RippleDstRes then begin
+
+        // Resolutions match: direct copy
+        fWaterRippleData[RippleImageIndex].Seek(0,soBeginning);
+        fWaterRippleData[RippleImageIndex].Size:=0;
+        fWaterRippleData[RippleImageIndex].CopyFrom(aStream,RippleSrcRes*RippleSrcRes*SizeOf(TWaterRippleTexel));
+
+       end else begin
+
+        // Resolutions differ: read source data into temp buffer, then bilinear-resize into target
+        RippleTempStream:=TMemoryStream.Create;
+        try
+         RippleTempStream.CopyFrom(aStream,RippleSrcRes*RippleSrcRes*SizeOf(TWaterRippleTexel));
+         fWaterRippleData[RippleImageIndex].Seek(0,soBeginning);
+         fWaterRippleData[RippleImageIndex].Size:=RippleDstRes*RippleDstRes*SizeOf(TWaterRippleTexel);
+         BilinearResizeRippleImage(RippleTempStream.Memory,RippleSrcRes,fWaterRippleData[RippleImageIndex].Memory,RippleDstRes);
+        finally
+         FreeAndNil(RippleTempStream);
+        end;
+
+       end;
+
       end;
 
      end;
@@ -16510,7 +16581,7 @@ begin
  SimulationPushConstants.WaterRippleMapResolution:=TpvUInt32(fPlanet.fWaterRippleMapResolution);
  SimulationPushConstants.WaveSpeedSquared:=fWaveSpeed*fWaveSpeed;
  SimulationPushConstants.Damping:=fDamping;
- SimulationPushConstants.DeltaTime:=TpvFloat(aDeltaTime);
+ SimulationPushConstants.DeltaTime:=aDeltaTime;
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fSimulationPipeline.Handle);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                       fSimulationPipelineLayout.Handle,
