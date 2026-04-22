@@ -35,29 +35,37 @@ For hardware raytracing this design is required anyway since BLAS (Bottom‑Leve
 
 In a GPU-driven renderer architecture, where all vertices are preprocessed per frame by a compute shader at the beginning of a frame and stored in a single "everything-in-one-single-buffer," the following problems arise regarding per-instance animations:
 
-1. Preprocessing of Vertex Data per Frame
-The compute shader calculates all vertex data for a specific animation state at the start of each frame and stores it in one large shared buffer. This data remains static and unchanged for the entire frame.
+1. **Preprocessing of Vertex Data per Frame**
 
-2. Static Vertex Data for All Instances
-All subsequent rendering stages, including rasterization, further render passes, and hardware raytracing, access the same preprocessed vertex buffer. Consequently, all instances of the same model share the same animation state within a frame. Different animation states per instance are not possible unless separate mesh copies are created in the buffer for additional animation states, which in turn increases vRAM usage.
+   The compute shader calculates all vertex data for a specific animation state at the start of each frame and stores it in one large shared buffer. This data remains static and unchanged for the entire frame.
 
-3. Reduction of Draw Calls Through the "Everything-in-One-Single-Buffer" Approach
-The "everything-in-one-single-buffer" approach aims to reduce the number of draw calls using bindless data structures. Ideally, a single draw call can render multiple meshes, provided shaders have random access to all material data and textures. Older architectures required separate draw calls for each material and texture group, significantly increasing the number of draw calls and potentially impairing performance.
+2. **Static Vertex Data for All Instances**
 
-4. Support for Hi-Z Two-Pass Occlusion Culling
-The "everything-in-one-single-buffer" approach is a prerequisite for Hi-Z two-pass occlusion culling. The culling compute shader needs access to all objects through a single linear object list with offset references to the respective vertex and index ranges within the large buffer. This enables efficient occlusion culling by quickly determining which objects are visible and which are not. Without a unified buffer, such efficient access would be difficult to achieve.
+   All subsequent rendering stages, including rasterization, further render passes, and hardware raytracing, access the same preprocessed vertex buffer. Consequently, all instances of the same model share the same animation state within a frame. Different animation states per instance are not possible unless separate mesh copies are created in the buffer for additional animation states, which in turn increases vRAM usage.
 
-5. Limitations Imposed by Hardware Raytracing (BLAS)
-Hardware raytracing requires the creation of Bottom-Level Acceleration Structures (BLAS), which rely on static vertex data. Although each BLAS can have its own transformation matrix, this only allows positioning, rotation, or scaling of the entire model, not changes in animation poses. Different animation states would require separate vertex data, which cannot be implemented within a single buffer.
+3. **Reduction of Draw Calls Through the "Everything-in-One-Single-Buffer" Approach**
 
-6. Necessity for Multiple Vertex Data Sets for Different Animation States
-To simultaneously represent different animation states, separate areas within the large buffer must be reserved for each required animation variant. Each "unique instance" with its own animation state thus requires individual preprocessed vertex data. This leads to a significant increase in vRAM usage because the same vertex data must be stored multiple times—for each distinct animation.
+   The "everything-in-one-single-buffer" approach aims to reduce the number of draw calls using bindless data structures. Ideally, a single draw call can render multiple meshes, provided shaders have random access to all material data and textures. Older architectures required separate draw calls for each material and texture group, significantly increasing the number of draw calls and potentially impairing performance.
 
-7. Simplified Calculation of Motion Vectors
-Using a double-buffered "everything-in-one-single-buffer" approach simplifies the calculation of motion vectors. Direct access to the positions from the last and current frames in the shared buffer allows efficient computation of position differences for the motion vector render target. These motion vectors are essential for subsequent post-processing passes like antialiasing and motion blur, as they determine pixel motion direction and speed.
+4. **Support for Hi-Z Two-Pass Occlusion Culling**
 
-8. Comparison with Older Rendering Methods
-In older GPU pipelines, animations and transformations were dynamically recalculated at runtime per render pass and pipeline stage in the vertex shader. Each instance could have its own animation state without additional memory for vertex data. However, this older method led to significant overhead in modern games because each render pass and pipeline stage continuously recalculated animations. Although the current approach with a precomputed large buffer sacrifices flexibility regarding animations per GPU instance—as all instances must use the same set of static vertices—it is often more performant overall.
+   The "everything-in-one-single-buffer" approach is a prerequisite for Hi-Z two-pass occlusion culling. The culling compute shader needs access to all objects through a single linear object list with offset references to the respective vertex and index ranges within the large buffer. This enables efficient occlusion culling by quickly determining which objects are visible and which are not. Without a unified buffer, such efficient access would be difficult to achieve.
+
+5. **Limitations Imposed by Hardware Raytracing (BLAS)**
+
+   Hardware raytracing requires the creation of Bottom-Level Acceleration Structures (BLAS), which rely on static vertex data. Although each BLAS can have its own transformation matrix, this only allows positioning, rotation, or scaling of the entire model, not changes in animation poses. Different animation states would require separate vertex data, which cannot be implemented within a single buffer.
+
+6. **Necessity for Multiple Vertex Data Sets for Different Animation States**
+
+   To simultaneously represent different animation states, separate areas within the large buffer must be reserved for each required animation variant. Each "unique instance" with its own animation state thus requires individual preprocessed vertex data. This leads to a significant increase in vRAM usage because the same vertex data must be stored multiple times—for each distinct animation.
+
+7. **Simplified Calculation of Motion Vectors**
+
+   Using a double-buffered "everything-in-one-single-buffer" approach simplifies the calculation of motion vectors. Direct access to the positions from the last and current frames in the shared buffer allows efficient computation of position differences for the motion vector render target. These motion vectors are essential for subsequent post-processing passes like antialiasing and motion blur, as they determine pixel motion direction and speed.
+
+8. **Comparison with Older Rendering Methods**
+
+   In older GPU pipelines, animations and transformations were dynamically recalculated at runtime per render pass and pipeline stage in the vertex shader. Each instance could have its own animation state without additional memory for vertex data. However, this older method led to significant overhead in modern games because each render pass and pipeline stage continuously recalculated animations. Although the current approach with a precomputed large buffer sacrifices flexibility regarding animations per GPU instance—as all instances must use the same set of static vertices—it is often more performant overall.
 
 ### Summary
 
