@@ -414,6 +414,65 @@ void processLight(const in vec3 lightColor,
 
 } 
 
+// --- Shore foam helpers ----------------------------------------------------
+// Small, self-contained 3D value-noise FBM sampled in local-planet space so
+// the foam pattern stays stable on the sphere surface while being cheap.
+float shoreFoamHash(vec3 p){
+  p = fract(p * vec3(443.8975, 397.2973, 491.1871));
+  p += dot(p, p.yzx + 19.19);
+  return fract((p.x + p.y) * p.z);
+}
+
+float shoreFoamNoise(vec3 p){
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * (3.0 - (2.0 * f));
+  float n000 = shoreFoamHash(i + vec3(0.0, 0.0, 0.0));
+  float n100 = shoreFoamHash(i + vec3(1.0, 0.0, 0.0));
+  float n010 = shoreFoamHash(i + vec3(0.0, 1.0, 0.0));
+  float n110 = shoreFoamHash(i + vec3(1.0, 1.0, 0.0));
+  float n001 = shoreFoamHash(i + vec3(0.0, 0.0, 1.0));
+  float n101 = shoreFoamHash(i + vec3(1.0, 0.0, 1.0));
+  float n011 = shoreFoamHash(i + vec3(0.0, 1.0, 1.0));
+  float n111 = shoreFoamHash(i + vec3(1.0, 1.0, 1.0));
+  return mix(mix(mix(n000, n100, u.x), mix(n010, n110, u.x), u.y),
+             mix(mix(n001, n101, u.x), mix(n011, n111, u.x), u.y),
+             u.z);
+}
+
+float shoreFoamFBM(vec3 p){
+  float f = 0.0;
+  float a = 0.5;
+  for(int i = 0; i < 4; i++){
+    f += shoreFoamNoise(p) * a;
+    p = (p * 2.03) + vec3(17.13, 23.71, 29.17);
+    a *= 0.5;
+  }
+  return f;
+}
+
+// Shared shore-foam overlay. Returns aBaseColor unchanged for waterDepth values above the foam
+// range or when the foam is disabled; otherwise blends the configured foam color on top, using
+// aPlanetSpacePos as the pattern domain so the foam stays locked to the planet surface.
+vec3 applyShoreFoam(vec3 aBaseColor, vec3 aPlanetSpacePos, float aShoreDepth){
+  vec3 result = aBaseColor;
+  vec4 waterShoreFoam0 = vec4(unpackHalf2x16(planetData.waterShoreFoam.x), unpackHalf2x16(planetData.waterShoreFoam.y));
+  vec4 waterShoreFoam1 = vec4(unpackHalf2x16(planetData.waterShoreFoam.z), unpackHalf2x16(planetData.waterShoreFoam.w));
+  if(waterShoreFoam1.w > 0.0){
+    float shoreMask = 1.0 - smoothstep(waterShoreFoam1.x, waterShoreFoam0.w, aShoreDepth);
+    if(shoreMask > 0.0){
+      vec3 foamUV = aPlanetSpacePos * waterShoreFoam1.y;
+      float foamPhase = pushConstants.time * waterShoreFoam1.z;
+      float foamA = shoreFoamFBM(foamUV + vec3(0.0, 0.0, foamPhase));
+      float foamB = shoreFoamFBM((foamUV * 1.73) + vec3(foamPhase * 0.7, -foamPhase * 0.5, 0.0));
+      float foamPattern = clamp((foamA * 1.4) - (foamB * 0.6) - 0.25, 0.0, 1.0);
+      float foamAmount = clamp(shoreMask * foamPattern * waterShoreFoam1.w, 0.0, 1.0);
+      result = mix(result, waterShoreFoam0.xyz, foamAmount);
+    }
+  }
+  return result;
+}
+
 vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
   waterDepth = opaqueDepth - surfaceDepth;
@@ -624,9 +683,16 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
                      mix(refraction, vec3(waterF0), clamp(1.0 - exp(-waterDepth * 1.0), 0.0, 1.0)),
                      clamp(waterAbsorption.w, 0.0, 1.0));
 
+    vec3 waterShade = mix(refraction * waterColor, reflection * waterColor, fresnel) + waterSubscattering;
+#if defined(TESSELLATION)
+    // Shore foam overlay: fades in where the water becomes shallow and saturates near the
+    // waterline. Pattern is a cheap 3D FBM sampled in planet-space (see applyShoreFoam).
+    waterShade = applyShoreFoam(waterShade, inBlock.position, waterDepth);
+#endif
+
     color.xyz = mix(
       texelFetch(uPassTextures[1], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).xyz,
-      mix(refraction * waterColor, reflection * waterColor, fresnel) + waterSubscattering, 
+      waterShade,
       clamp(1.0 - exp(-max(waterHeight, waterDepth) * 6.0), 0.0, 1.0)
       //clamp(1.0 - exp(-mix(waterHeight, waterDepth, max(0.0, dot(normal, viewDirection))) * 6.0), 0.0, 1.0)
     );
@@ -691,6 +757,28 @@ void main(){
 #elif defined(UNDERWATER)
 
   vec4 finalColor = vec4(textureLod(uPassTextures[1], vec3(inBlock.texCoord, gl_ViewIndex), 1.0).xyz * waterBaseColor * waterBaseColor, 1.0);
+
+  // Shore-foam overlay for the underwater fullscreen pass: reconstruct the ground geometry's
+  // planet-space position from the opaque depth buffer and compare against the water surface
+  // height at that sphere direction. Where the two are close, we are at a shallow shore spot and
+  // applyShoreFoam tints the foam color on top of the underwater look.
+  {
+    float rawDepth = texelFetch(uPassTextures[2], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
+    vec4 clipPos = vec4(fma(inBlock.texCoord, vec2(2.0), vec2(-1.0)), rawDepth, 1.0);
+    vec4 viewPos = inverseProjectionMatrix * clipPos;
+    viewPos /= viewPos.w;
+    vec3 worldPos = (inverseViewMatrix * viewPos).xyz;
+    vec3 planetPos = (planetInverseModelMatrix * vec4(worldPos, 1.0)).xyz;
+    float groundRadius = length(planetPos);
+    if(groundRadius > 1e-3){
+      vec3 sphereNormal = planetPos / groundRadius;
+      float waterRadius = getSphereHeightEx(octPlanetUnsignedEncode(sphereNormal));
+      if(waterRadius > 0.0){
+        float shoreDepth = max(0.0, waterRadius - groundRadius);
+        finalColor.xyz = applyShoreFoam(finalColor.xyz, planetPos, shoreDepth);
+      }
+    }
+  }
 
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
 
