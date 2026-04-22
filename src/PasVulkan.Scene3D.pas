@@ -4147,6 +4147,9 @@ type EpvScene3D=class(Exception);
               fInUsage:TPasMPBool32;
               fRaytracingMask:TpvUInt32;
               fCastingShadows:TpvUInt32;
+              fQuickRejectActiveState:TpvUInt8;
+              fQuickRejectRenderInstanceCount:TpvSizeInt;
+              fQuickRejectRenderInstanceHash:TpvUInt64;
              public
               constructor Create(const aSceneInstance:TpvScene3D;
                                  const aGroup:TpvScene3D.TGroup;
@@ -4551,6 +4554,9 @@ type EpvScene3D=class(Exception);
        fRaytracingCountPlanetTiles:TpvSizeInt;
        fRaytracingPlanetListGeneration:TpvUInt64;
        fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJobInFlightFrameIndex:TpvSizeInt;
+       fRaytracingUpdateCameraPosition:TpvVector3;
+       fRaytracingUpdateCameraPositionValid:Boolean;
+       fRaytracingUpdateFrameCounter:TpvUInt64;
       private
        fRaytracing:TpvRaytracing;
        fRaytracingLock:TPasMPMultipleReaderSingleWriterLock;
@@ -6872,6 +6878,12 @@ begin
 
  fCastingShadows:=High(TpvUInt32);
 
+ fQuickRejectActiveState:=$ff;
+
+ fQuickRejectRenderInstanceCount:=-1;
+
+ fQuickRejectRenderInstanceHash:=0;
+
 end;
 
 destructor TpvScene3D.TRaytracingGroupInstanceNode.Destroy;
@@ -6923,6 +6935,14 @@ end;
 function TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
 var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstanceIndex,
     BLASInstanceIndex,IndexOffset,BLASArrayIndex,GeometryIndex,MaxIterations:TpvSizeInt;
+    QuickRejectCountRenderInstances,QuickRejectIndex:TpvSizeInt;
+    QuickRejectActiveState:TpvUInt8;
+    QuickRejectRenderInstanceHash:TpvUInt64;
+    QuickRejectRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
+    DistanceThrottleCenter:TpvVector3;
+    DistanceThrottleDeltaSquared:TpvFloat;
+    DistanceThrottleInterval:TpvUInt64;
+    DistanceThrottleSalt:TpvUInt64;
     InstanceCustomIndex:TpvInt32;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
@@ -6973,6 +6993,86 @@ begin
   end;
   exit;
  end;}
+
+ // Distance-based update throttling. For already-initialized nodes whose geometry, 
+ // raytracing mask, shadow flag and long-term static buffer generation are unchanged 
+ // since the last update, the matrix and render-instance transforms may be allowed to 
+ // lag by a few frames for distant nodes without any visually noticeable effect on 
+ // raytraced shadows or reflections. Interval bins (approx.):
+ //   < 20 m  -> every frame, 20-60 m -> every 4th, 60-200 m -> every 16th,
+ //   > 200 m -> every 64th. Salt distributes the update phase per node to avoid
+ //   thundering-herd update bursts.
+ if fInitialized and
+    (not aForce) and
+    fSceneInstance.fRaytracingUpdateCameraPositionValid and
+    fInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and
+    (fCacheVerticesGeneration=fInstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]) and
+    (fRaytracingMask=fInstanceNode.fInFlightFrameRaytracingMasks[aInFlightFrameIndex]) and
+    ((ord(fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex]) and 1)=fCastingShadows) and
+    (fSceneInstance.fVulkanLongTermStaticBuffer.fGeneration=fVulkanLongTermStaticBufferGeneration) then begin
+  DistanceThrottleCenter:=fInstanceNode.fBoundingBoxes[aInFlightFrameIndex].Center-fSceneInstance.fRaytracingUpdateCameraPosition;
+  DistanceThrottleDeltaSquared:=(DistanceThrottleCenter.x*DistanceThrottleCenter.x)+
+                                (DistanceThrottleCenter.y*DistanceThrottleCenter.y)+
+                                (DistanceThrottleCenter.z*DistanceThrottleCenter.z);
+  if DistanceThrottleDeltaSquared>=sqr(200.0) then begin
+   DistanceThrottleInterval:=64;
+  end else if DistanceThrottleDeltaSquared>=sqr(60.0) then begin
+   DistanceThrottleInterval:=16;
+  end else if DistanceThrottleDeltaSquared>=sqr(20.0) then begin
+   DistanceThrottleInterval:=4;
+  end else begin
+   DistanceThrottleInterval:=1;
+  end;
+  if DistanceThrottleInterval>1 then begin
+   DistanceThrottleSalt:=TpvUInt64(TpvPtrUInt(self))*TpvUInt64($9e3779b97f4a7c15);
+   if ((fSceneInstance.fRaytracingUpdateFrameCounter+DistanceThrottleSalt) and (DistanceThrottleInterval-1))<>0 then begin
+    fInUsage:=true;
+    fGeometryChanged:=false;
+    result:=false;
+    exit;
+   end;
+  end;
+ end;
+
+ // Quick-Reject: if node is initialized and no relevant state has changed, skip 
+ // the expensive BLAS-variant loop and per-render-instance transform update.
+ // Tracks: active+visible+bboxfilled state, raytracing mask, casting-shadows flag,
+ // cache generations (matrix, vertices, long-term static buffer), and a hash over
+ // the per-in-flight-frame render instance list (count, pointers, generations).
+ if fInitialized and not aForce then begin
+  QuickRejectActiveState:=(ord(fInstance.fActives[aInFlightFrameIndex]) and 1) or
+                          ((ord(fInstanceNode.fInFlightFrameVisible[aInFlightFrameIndex]) and 1) shl 1) or
+                          ((ord(fInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]) and 1) shl 2);
+  if (QuickRejectActiveState=fQuickRejectActiveState) and
+     (fInstanceNode.fInFlightFrameRaytracingMasks[aInFlightFrameIndex]=fRaytracingMask) and
+     ((ord(fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex]) and 1)=fCastingShadows) and
+     (fInstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex]=fCacheMatrixGeneration) and
+     (fInstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]=fCacheVerticesGeneration) and
+     (fSceneInstance.fVulkanLongTermStaticBuffer.fGeneration=fVulkanLongTermStaticBufferGeneration) then begin
+   PerInFlightFrameRenderInstanceDynamicArray:=@fInstance.fPointerToPerInFlightFrameRenderInstances[aInFlightFrameIndex];
+   if fInstance.fUseRenderInstances then begin
+    QuickRejectCountRenderInstances:=PerInFlightFrameRenderInstanceDynamicArray^.Count;
+   end else begin
+    QuickRejectCountRenderInstances:=1;
+   end;
+   if QuickRejectCountRenderInstances=fQuickRejectRenderInstanceCount then begin
+    QuickRejectRenderInstanceHash:=TpvUInt64(QuickRejectCountRenderInstances);
+    if fInstance.fUseRenderInstances then begin
+     for QuickRejectIndex:=0 to PerInFlightFrameRenderInstanceDynamicArray^.Count-1 do begin
+      QuickRejectRenderInstance:=@PerInFlightFrameRenderInstanceDynamicArray^.Items[QuickRejectIndex];
+      QuickRejectRenderInstanceHash:=(QuickRejectRenderInstanceHash*TpvUInt64($100000001b3)) xor QuickRejectRenderInstance^.Generation;
+      QuickRejectRenderInstanceHash:=QuickRejectRenderInstanceHash xor TpvUInt64(TpvPtrUInt(QuickRejectRenderInstance^.RenderInstance));
+     end;
+    end;
+    if QuickRejectRenderInstanceHash=fQuickRejectRenderInstanceHash then begin
+     fInUsage:=true;
+     fGeometryChanged:=false;
+     result:=false;
+     exit;
+    end;
+   end;
+  end; 
+ end;
 
  fInUsage:=true;
 
@@ -7417,6 +7517,28 @@ begin
 
   end;
 
+ end;
+
+ // Update tracked state so the next call can short-circuit when nothing has changed. 
+ // Cache generations, mask, and casting-shadows are already updated inside the body
+ // above; here we capture active-state and the render-instance hash in their
+ // post-update form.
+ fQuickRejectActiveState:=(ord(fInstance.fActives[aInFlightFrameIndex]) and 1) or
+                          ((ord(fInstanceNode.fInFlightFrameVisible[aInFlightFrameIndex]) and 1) shl 1) or
+                          ((ord(fInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]) and 1) shl 2);
+ PerInFlightFrameRenderInstanceDynamicArray:=@fInstance.fPointerToPerInFlightFrameRenderInstances[aInFlightFrameIndex];
+ if fInstance.fUseRenderInstances then begin
+  fQuickRejectRenderInstanceCount:=PerInFlightFrameRenderInstanceDynamicArray^.Count;
+ end else begin
+  fQuickRejectRenderInstanceCount:=1;
+ end;
+ fQuickRejectRenderInstanceHash:=TpvUInt64(fQuickRejectRenderInstanceCount);
+ if fInstance.fUseRenderInstances then begin
+  for QuickRejectIndex:=0 to PerInFlightFrameRenderInstanceDynamicArray^.Count-1 do begin
+   QuickRejectRenderInstance:=@PerInFlightFrameRenderInstanceDynamicArray^.Items[QuickRejectIndex];
+   fQuickRejectRenderInstanceHash:=(fQuickRejectRenderInstanceHash*TpvUInt64($100000001b3)) xor QuickRejectRenderInstance^.Generation;
+   fQuickRejectRenderInstanceHash:=fQuickRejectRenderInstanceHash xor TpvUInt64(TpvPtrUInt(QuickRejectRenderInstance^.RenderInstance));
+  end;
  end;
 
  fInitialized:=true;
@@ -33868,6 +33990,12 @@ begin
 
  fRaytracingPlanetListGeneration:=High(TpvUInt64);
 
+ fRaytracingUpdateCameraPosition:=TpvVector3.Null;
+
+ fRaytracingUpdateCameraPositionValid:=false;
+
+ fRaytracingUpdateFrameCounter:=0;
+
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
  if assigned(fVulkanDevice) then begin
@@ -42184,6 +42312,19 @@ begin
 
  BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJobInFlightFrameIndex:=fRaytracing.InFlightFrameIndex;
+
+ // Snapshot primary camera position (for distance-based update throttling) and advance 
+ // the global raytracing-update frame counter. Camera position is taken from the first 
+ // registered renderer instance; if none is present, distance-throttling is disabled 
+ // for this frame.
+ if fRendererInstanceList.Count>0 then begin
+  fRaytracingUpdateCameraPosition:=TpvScene3DRendererInstance(fRendererInstanceList.RawItems[0]).InFlightFrameStates^[fRaytracing.InFlightFrameIndex].MainCameraPosition;
+  fRaytracingUpdateCameraPositionValid:=true;
+ end else begin
+  fRaytracingUpdateCameraPositionValid:=false;
+ end;
+ inc(fRaytracingUpdateFrameCounter);
+
 //fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresCount:=0;
  if fRaytracingGroupInstanceNodeArrayList.Count>0 then begin
 { if assigned(fRaytracingUpdateSimpleParallelJobExecutor) then begin
