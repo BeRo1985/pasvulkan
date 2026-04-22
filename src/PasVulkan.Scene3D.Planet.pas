@@ -782,6 +782,12 @@ type TpvScene3DPlanets=class;
                     Resolution:TpvUInt32;
                    end;
                    PWaterHeightMapDataChunkHeader=^TWaterHeightMapDataChunkHeader;
+                   TWaterRippleTexel=array[0..1] of TpvHalfFloat; // R16G16_SFLOAT: [0]=height, [1]=velocity
+                   PWaterRippleTexel=^TWaterRippleTexel;
+                   TWaterRippleDataChunkHeader=packed record
+                    Resolution:TpvUInt32;
+                   end;
+                   PWaterRippleDataChunkHeader=^TWaterRippleDataChunkHeader;
                const Signature:TSignature=('P','V','P','D'); // PasVulkan Planet Data
                      CompressedSignature:TSignature=('C','O','F','I'); // Compressed File
                      Version:TpvUInt32=1;
@@ -795,6 +801,7 @@ type TpvScene3DPlanets=class;
                      ChunkSignaturePrecipitationAdvectionMapData:TSignature=('P','A','D','T'); // Precipitation Advection Map Data
                      ChunkSignatureAtmosphereMapData:TSignature=('A','M','D','T'); // Atmosphere Map Data
                      ChunkSignatureWaterHeightMapData:TSignature=('W','M','D','T'); // Water Height Map Data
+                     ChunkSignatureWaterRippleData:TSignature=('W','R','P','L'); // Water Ripple Data (ping-pong image content, optional)
              private
               fPlanet:TpvScene3DPlanet;
               fHeightMapResolution:TpvUInt32;
@@ -803,6 +810,7 @@ type TpvScene3DPlanets=class;
               fPrecipitationMapResolution:TpvUInt32;
               fAtmosphereMapResolution:TpvUInt32;
               fWaterMapResolution:TpvUInt32;
+              fWaterRippleMapResolution:TpvUInt32;
               fHeightMapData:TMemoryStream;
               fBlendMapData:TMemoryStream;
               fGrassMapData:TMemoryStream;
@@ -811,6 +819,7 @@ type TpvScene3DPlanets=class;
               fPrecipitationAdvectionMapData:TMemoryStream;
               fAtmosphereMapData:TMemoryStream;
               fWaterHeightMapData:TMemoryStream;
+              fWaterRippleData:array[0..1] of TMemoryStream;
              public 
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
@@ -836,6 +845,7 @@ type TpvScene3DPlanets=class;
               property PrecipitationMapData:TMemoryStream read fPrecipitationMapData;
               property AtmosphereMapData:TMemoryStream read fAtmosphereMapData;
               property WaterHeightMapData:TMemoryStream read fWaterHeightMapData;
+              property WaterRippleMapResolution:TpvUInt32 read fWaterRippleMapResolution write fWaterRippleMapResolution;
             end;
             { TBlendMapInitialization }
             TBlendMapInitialization=class
@@ -2838,6 +2848,7 @@ type TpvScene3DPlanets=class;
        fWaterMapResolution:TpvInt32;
        fWaterMapBorder:TpvInt32;
        fWaterRippleMapResolution:TpvInt32; // GPU ripple ping-pong image resolution. 0 = ripple subsystem disabled.
+       fSerializeWaterRipples:Boolean; // when true, TSerializedData includes the current ripple image contents so a reload restores the exact ripple state (primarily for test/regression comparisons). Default: false - ripples are transient and normally not persisted.
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
        fTileMapBits:TpvInt32;
@@ -3147,6 +3158,7 @@ type TpvScene3DPlanets=class;
        property WaterMapResolution:TpvInt32 read fWaterMapResolution;
        property WaterMapBorder:TpvInt32 read fWaterMapBorder;
        property WaterRippleMapResolution:TpvInt32 read fWaterRippleMapResolution;
+       property SerializeWaterRipples:Boolean read fSerializeWaterRipples write fSerializeWaterRipples;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -8536,6 +8548,8 @@ begin
 
  fWaterMapResolution:=fPlanet.WaterMapResolution;
 
+ fWaterRippleMapResolution:=fPlanet.fWaterRippleMapResolution;
+
  fHeightMapData:=TMemoryStream.Create;
 
  fBlendMapData:=TMemoryStream.Create;
@@ -8552,6 +8566,9 @@ begin
 
  fWaterHeightMapData:=TMemoryStream.Create;
 
+ fWaterRippleData[0]:=TMemoryStream.Create;
+ fWaterRippleData[1]:=TMemoryStream.Create;
+
 end;
 
 destructor TpvScene3DPlanet.TSerializedData.Destroy;
@@ -8564,6 +8581,8 @@ begin
  FreeAndNil(fPrecipitationAdvectionMapData);
  FreeAndNil(fAtmosphereMapData);
  FreeAndNil(fWaterHeightMapData);
+ FreeAndNil(fWaterRippleData[0]);
+ FreeAndNil(fWaterRippleData[1]);
  inherited Destroy;
 end;
 
@@ -8573,6 +8592,7 @@ var TemporaryBuffer:TpvVulkanBuffer;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     BufferImageCopy:TVkBufferImageCopy;
     BufferCopy:TVkBufferCopy;
+    RippleImageIndex:TpvSizeInt;
 begin
 
  if fHeightMapData.Size<>(fHeightMapResolution*fHeightMapResolution*SizeOf(TpvFloat)) then begin
@@ -8607,6 +8627,19 @@ begin
   fWaterHeightMapData.SetSize(fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat));
  end;
 
+ // Ripple data: TWaterRippleTexel (R16G16_SFLOAT) per texel. Only allocated when serialization is enabled and the ripple subsystem is active
+ if fPlanet.fSerializeWaterRipples and (fWaterRippleMapResolution>0) then begin
+  if fWaterRippleData[0].Size<>(fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel)) then begin
+   fWaterRippleData[0].SetSize(fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel));
+  end;
+  if fWaterRippleData[1].Size<>(fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel)) then begin
+   fWaterRippleData[1].SetSize(fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel));
+  end;
+ end else begin
+  fWaterRippleData[0].SetSize(0);
+  fWaterRippleData[1].SetSize(0);
+ end;
+
  TemporaryBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                          Max(
                                           Max(
@@ -8627,7 +8660,10 @@ begin
                                           ),
                                           Max(
                                            fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers,
-                                           fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat)
+                                           Max(
+                                            fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat),
+                                            fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel)
+                                           )
                                           )
                                          ),
                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
@@ -9267,6 +9303,77 @@ begin
 
   end; 
 
+  // Water ripple data (optional): downloads both ping-pong images. Only runs when serialization is enabled and both images exist
+  if fPlanet.fSerializeWaterRipples and
+     (fWaterRippleMapResolution>0) and
+     assigned(fPlanet.fData.fWaterRippleImages[0]) and
+     assigned(fPlanet.fData.fWaterRippleImages[1]) then begin
+
+   for RippleImageIndex:=0 to 1 do begin
+
+    aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    aCommandBuffer.BeginRecording;
+
+    // GENERAL -> TRANSFER_SRC_OPTIMAL
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                     VK_IMAGE_LAYOUT_GENERAL,
+                                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fWaterRippleImages[RippleImageIndex].VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+    BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                               fWaterRippleMapResolution,
+                                               fWaterRippleMapResolution,
+                                               TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                               TVkOffset3D.Create(0,0,0),
+                                               TVkExtent3D.Create(fWaterRippleMapResolution,fWaterRippleMapResolution,1));
+    aCommandBuffer.CmdCopyImageToBuffer(fPlanet.fData.fWaterRippleImages[RippleImageIndex].VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                        TemporaryBuffer.Handle,
+                                        1,
+                                        @BufferImageCopy);
+
+    // TRANSFER_SRC_OPTIMAL -> GENERAL
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_GENERAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fWaterRippleImages[RippleImageIndex].VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+    aCommandBuffer.EndRecording;
+    aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+    // Download the ripple image content from the temporary buffer to the per-image memory stream
+    fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                 aCommandBuffer,
+                                                 aFence,
+                                                 TemporaryBuffer,
+                                                 0,
+                                                 fWaterRippleData[RippleImageIndex].Memory^,
+                                                 fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel));
+
+   end;
+
+  end;
+
  finally
   FreeAndNil(TemporaryBuffer);
  end;
@@ -9279,6 +9386,7 @@ var TemporaryBuffer:TpvVulkanBuffer;
     BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
     BufferImageCopy:TVkBufferImageCopy;
     BufferCopy:TVkBufferCopy;
+    RippleImageIndex:TpvSizeInt;
 begin
 
  TemporaryBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
@@ -9301,7 +9409,10 @@ begin
                                           ),
                                           Max(
                                            fBlendMapResolution*fBlendMapResolution*SizeOf(TpvUInt32)*TpvScene3DPlanet.CountBlendMapLayers,
-                                           fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat)
+                                           Max(
+                                            fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat),
+                                            fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel)
+                                           )
                                           )
                                          ),
                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
@@ -10067,6 +10178,87 @@ begin
 
   end;
 
+  // Water ripple data (optional): uploads both ping-pong images and restores the current read-slot index. Only runs if data is actually present and the resolution matches
+  if fPlanet.fSerializeWaterRipples and
+     (fWaterRippleMapResolution>0) and
+     (fWaterRippleMapResolution=TpvUInt32(fPlanet.fWaterRippleMapResolution)) and
+     (fWaterRippleData[0].Size=fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel)) and
+     (fWaterRippleData[1].Size=fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel)) and
+     assigned(fPlanet.fData.fWaterRippleImages[0]) and
+     assigned(fPlanet.fData.fWaterRippleImages[1]) then begin
+
+   for RippleImageIndex:=0 to 1 do begin
+
+    // Stage the image bytes into the temporary buffer
+    fPlanet.fVulkanDevice.MemoryStaging.Upload(aQueue,
+                                               aCommandBuffer,
+                                               aFence,
+                                               fWaterRippleData[RippleImageIndex].Memory^,
+                                               TemporaryBuffer,
+                                               0,
+                                               fWaterRippleData[RippleImageIndex].Size);
+
+    aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    aCommandBuffer.BeginRecording;
+
+    // GENERAL -> TRANSFER_DST_OPTIMAL
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                     VK_IMAGE_LAYOUT_GENERAL,
+                                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fWaterRippleImages[RippleImageIndex].VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+    BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                               fWaterRippleMapResolution,
+                                               fWaterRippleMapResolution,
+                                               TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                               TVkOffset3D.Create(0,0,0),
+                                               TVkExtent3D.Create(fWaterRippleMapResolution,fWaterRippleMapResolution,1));
+    aCommandBuffer.CmdCopyBufferToImage(TemporaryBuffer.Handle,
+                                        fPlanet.fData.fWaterRippleImages[RippleImageIndex].VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                        1,
+                                        @BufferImageCopy);
+
+    // TRANSFER_DST_OPTIMAL -> GENERAL
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_GENERAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fWaterRippleImages[RippleImageIndex].VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+    aCommandBuffer.EndRecording;
+    aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+   end;
+
+   // Reset read-slot index and mark the images as already initialised, so the first frame after load already uses the restored content
+   fPlanet.fData.fWaterRippleBufferIndex:=0;
+   if assigned(fPlanet.fWaterSimulation) and
+      assigned(fPlanet.fWaterSimulation.fWaterRipplesSimulation) then begin
+    fPlanet.fWaterSimulation.fWaterRipplesSimulation.fInitialClearPending:=false;
+   end;
+
+  end;
+
  finally
   FreeAndNil(TemporaryBuffer);
  end;
@@ -10205,6 +10397,8 @@ var Header:TpvScene3DPlanet.TSerializedData.THeader;
     PrecipitationAdvectionMapDataChunkHeader:TPrecipitationAdvectionMapDataChunkHeader;
     AtmosphereMapDataChunkHeader:TAtmosphereMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
+    WaterRippleDataChunkHeader:TWaterRippleDataChunkHeader;
+    RippleImageIndex:TpvSizeInt;
     CheckSum:TpvUInt64;
     InData,DecodedInData,OutData:pointer;
     UncompressedStream:TMemoryStream;
@@ -10726,6 +10920,22 @@ begin
 
      end; 
 
+    end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureWaterRippleData then begin
+
+     aStream.ReadBuffer(WaterRippleDataChunkHeader,SizeOf(TWaterRippleDataChunkHeader));
+
+     fWaterRippleMapResolution:=WaterRippleDataChunkHeader.Resolution;
+
+     if WaterRippleDataChunkHeader.Resolution>0 then begin
+
+      for RippleImageIndex:=0 to 1 do begin
+       fWaterRippleData[RippleImageIndex].Seek(0,soBeginning);
+       fWaterRippleData[RippleImageIndex].Size:=0;
+       fWaterRippleData[RippleImageIndex].CopyFrom(aStream,WaterRippleDataChunkHeader.Resolution*WaterRippleDataChunkHeader.Resolution*SizeOf(TWaterRippleTexel));
+      end;
+
+     end;
+
     end;
 
     aStream.Seek(NextChunkPosition,soBeginning);
@@ -10755,6 +10965,8 @@ var StartPosition:TpvInt64;
     PrecipitationAdvectionMapDataChunkHeader:TPrecipitationAdvectionMapDataChunkHeader;
     AtmosphereMapDataChunkHeader:TAtmosphereMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
+    WaterRippleDataChunkHeader:TWaterRippleDataChunkHeader;
+    RippleImageIndex:TpvSizeInt;
     InData,OutData:pointer;
     OutStream:TStream;
 begin
@@ -11008,6 +11220,26 @@ begin
     FreeMem(InData);
    end; 
  //OutStream.CopyFrom(fWaterHeightMapData,fWaterHeightMapData.Size);
+
+  end;
+
+  // Water ripple data chunk (optional): only written when serialization is enabled and both ping-pong images have been downloaded
+  if fPlanet.fSerializeWaterRipples and
+     (fWaterRippleMapResolution>0) and
+     (fWaterRippleData[0].Size=fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel)) and
+     (fWaterRippleData[1].Size=fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel)) then begin
+
+   Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignatureWaterRippleData;
+   Chunk.Size:=SizeOf(TWaterRippleDataChunkHeader)+(2*fWaterRippleMapResolution*fWaterRippleMapResolution*SizeOf(TWaterRippleTexel));
+   OutStream.WriteBuffer(Chunk,SizeOf(TChunk));
+
+   WaterRippleDataChunkHeader.Resolution:=fWaterRippleMapResolution;
+   OutStream.WriteBuffer(WaterRippleDataChunkHeader,SizeOf(TWaterRippleDataChunkHeader));
+
+   for RippleImageIndex:=0 to 1 do begin
+    fWaterRippleData[RippleImageIndex].Seek(0,soBeginning);
+    OutStream.CopyFrom(fWaterRippleData[RippleImageIndex],fWaterRippleData[RippleImageIndex].Size);
+   end;
 
   end;
 
@@ -27798,6 +28030,8 @@ begin
  fWaterMapBorder:=1;
 
  fWaterRippleMapResolution:=fWaterMapResolution; // GPU ripple subsystem image resolution; can be overridden per planet. Independent from fWaterMapResolution.
+
+ fSerializeWaterRipples:=false; // transient by default. Set via SerializeWaterRipples property before Save/Load if exact restore of ripple state is required.
 
  fTileMapResolution:=Min(Max(fHeightMapResolution shr 8,32),fHeightMapResolution);
 
