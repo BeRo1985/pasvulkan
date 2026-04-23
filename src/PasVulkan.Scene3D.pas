@@ -3485,8 +3485,11 @@ type EpvScene3D=class(Exception);
                      fModelMatrix:TpvMatrix4x4D;
                      fWorkModelMatrix:TpvMatrix4x4;
 //                   fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
-                     fNodeMatrices:TNodeMatrices;
-                     fMorphTargetVertexWeights:TMorphTargetVertexWeights;
+                     // Per-IFF arrays to avoid CPU race between Update-Thread (writes IFF=N+1)
+                     // and Render-Thread's PrepareFrame (reads IFF=N). Each in-flight frame owns
+                     // its own slot; cross-IFF reads/writes never collide.
+                     fNodeMatricesArray:array[0..MaxInFlightFrames-1] of TNodeMatrices;
+                     fMorphTargetVertexWeightsArray:array[0..MaxInFlightFrames-1] of TMorphTargetVertexWeights;
                      fRenderInstanceLock:TpvInt32;
                      fRenderInstances:TRenderInstances;
                      fPreallocatedRenderInstances:TRenderInstances; // For virtual instance auto-assignment
@@ -3547,7 +3550,8 @@ type EpvScene3D=class(Exception);
                                                                 const aNode:TpvScene3D.TGroup.TNode;
                                                                 const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode;
                                                                 const aRelative:Boolean;
-                                                                const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                                                                const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                                                const aInFlightFrameIndex:TpvSizeInt=-1);
                      procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
 {$ifdef DeferredLightAABBTreeUpdates}
                      procedure AddDeferredLightOperation(const aOperationType:TDeferredLightOperationType;const aLight:TpvScene3D.TLight);
@@ -3590,7 +3594,7 @@ type EpvScene3D=class(Exception);
                      procedure ProcessAnimation(const aAnimationIndex:TpvSizeInt;const aAnimationTime:TpvDouble;const aFactor:TpvFloat);
                      procedure ProcessNode(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty,aMatrixDirty:boolean;const aParentVisible:boolean);
                      function SelectNodeLODLevel(const aNode:TpvScene3D.TGroup.TNode;const aBoundingSphere:TpvSphere;out aScreenCoverage:TpvFloat):TpvInt32;
-                     procedure ProcessSkins;
+                     procedure ProcessSkins(const aInFlightFrameIndex:TpvSizeInt);
                      procedure ProcessBoundingBoxNodeRecursive(const aInFlightFrameIndex:TpvSizeInt;const aNodeIndex:TpvSizeInt);
                      procedure ProcessBoundingSceneBoxNodesWithManualStack(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene);
                      procedure ProcessBoundingSceneBoxNodes(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene);
@@ -3619,14 +3623,17 @@ type EpvScene3D=class(Exception);
                      procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
                      function GetBakedMeshFromSplittedNode(const aNode:TpvScene3D.TGroup.TNode;
                                                            const aRelative:boolean=false;
-                                                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
+                                                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                                           const aInFlightFrameIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
                      function GetBakedMeshFromSplittedNodeList(const aNodes:TpvScene3D.TGroup.TNodes;
                                                                const aRelative:boolean=false;
-                                                               const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
+                                                               const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                                               const aInFlightFrameIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
                      function GetBakedMesh(const aRelative:boolean=false;
                                            const aWithDynamicMeshs:boolean=false;
                                            const aRootNodeIndex:TpvSizeInt=-1;
-                                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
+                                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                           const aInFlightFrameIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
                      function GetCamera(const aNodeIndex:TPasGLTFSizeInt;
                                         out aCameraMatrix:TpvMatrix4x4;
                                         out aViewMatrix:TpvMatrix4x4;
@@ -27079,13 +27086,15 @@ begin
   fPointerAnimationStates[Index]:=@fAnimationStates[Index];
  end;
 
- fNodeMatrices:=nil;
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fNodeMatricesArray[Index]:=nil;
+  fMorphTargetVertexWeightsArray[Index]:=nil;
+ end;
 
- fMorphTargetVertexWeights:=nil;
-
- SetLength(fNodeMatrices,fGroup.fNodes.Count+fGroup.fCountJointNodeMatrices+1);
-
- SetLength(fMorphTargetVertexWeights,Max(Max(fGroup.fMorphTargetCount,fGroup.fCountNodeWeights),1));
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  SetLength(fNodeMatricesArray[Index],fGroup.fNodes.Count+fGroup.fCountJointNodeMatrices+1);
+  SetLength(fMorphTargetVertexWeightsArray[Index],Max(Max(fGroup.fMorphTargetCount,fGroup.fCountNodeWeights),1));
+ end;
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
  end;
@@ -27301,9 +27310,10 @@ begin
 
  fAnimations:=nil;
 
- fNodeMatrices:=nil;
-
- fMorphTargetVertexWeights:=nil;
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fNodeMatricesArray[Index]:=nil;
+  fMorphTargetVertexWeightsArray[Index]:=nil;
+ end;
 
  fAppendageInstance:=nil;
 
@@ -27676,9 +27686,9 @@ begin
 
    fBufferRanges.VulkanJointBlockBufferRange:=fSceneInstance.fVulkanJointBlockBufferRangeAllocator.AllocateBufferRange(fGroup.fJointBlocks.Count);
 
-   fBufferRanges.VulkanNodeMatricesBufferRange:=fSceneInstance.fVulkanNodeMatricesBufferRangeAllocator.AllocateBufferRange(length(fNodeMatrices));
+   fBufferRanges.VulkanNodeMatricesBufferRange:=fSceneInstance.fVulkanNodeMatricesBufferRangeAllocator.AllocateBufferRange(length(fNodeMatricesArray[0]));
 
-   fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange:=fSceneInstance.fVulkanMorphTargetVertexWeightsBufferRangeAllocator.AllocateBufferRange(length(fMorphTargetVertexWeights));
+   fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange:=fSceneInstance.fVulkanMorphTargetVertexWeightsBufferRangeAllocator.AllocateBufferRange(length(fMorphTargetVertexWeightsArray[0]));
 
    fBufferRanges.VulkanMeshletDescriptorBufferRange:=fSceneInstance.fVulkanMeshletDescriptorBufferRangeAllocator.AllocateBufferRange(fGroup.fTotalMeshletCount);
    fBufferRanges.VulkanMeshletVertexBufferRange:=fSceneInstance.fVulkanMeshletVertexBufferRangeAllocator.AllocateBufferRange(fGroup.fTotalMeshletVertexCount);
@@ -28343,14 +28353,14 @@ begin
  inc(aTotalSizeRAM,SizeRAM);
 
  SizeVRAM:=fBufferRanges.VulkanNodeMatricesBufferRange.Size*SizeOf(TpvMatrix4x4)*fSceneInstance.CountInFlightFrames;
- SizeRAM:=length(fNodeMatrices)*SizeOf(TpvMatrix4x4);
- WriteLine('                         Node matrices: '+IntToStr(length(fNodeMatrices))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ SizeRAM:=length(fNodeMatricesArray[0])*SizeOf(TpvMatrix4x4)*fSceneInstance.CountInFlightFrames;
+ WriteLine('                         Node matrices: '+IntToStr(length(fNodeMatricesArray[0]))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
 
  SizeVRAM:=fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Size*SizeOf(TpvFloat)*fSceneInstance.CountInFlightFrames;
- SizeRAM:=length(fMorphTargetVertexWeights)*SizeOf(TpvFloat);
- WriteLine('           Morph target vertex weights: '+IntToStr(length(fMorphTargetVertexWeights))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
+ SizeRAM:=length(fMorphTargetVertexWeightsArray[0])*SizeOf(TpvFloat)*fSceneInstance.CountInFlightFrames;
+ WriteLine('           Morph target vertex weights: '+IntToStr(length(fMorphTargetVertexWeightsArray[0]))+' ('+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM)');
  inc(aTotalSizeVRAM,SizeVRAM);
  inc(aTotalSizeRAM,SizeRAM);
  WriteLine('');
@@ -30802,8 +30812,8 @@ begin
    end;
   end;
  end;
- if Dirty and (InstanceNode.fCacheVerticesDirtyCounter<2) then begin
-  InstanceNode.fCacheVerticesDirtyCounter:=2;
+ if Dirty and (InstanceNode.fCacheVerticesDirtyCounter<fGroup.fSceneInstance.fCountInFlightFrames) then begin
+  InstanceNode.fCacheVerticesDirtyCounter:=fGroup.fSceneInstance.fCountInFlightFrames;
  end;
  if MatrixDirty then begin
   InstanceNode.NewCacheMatrixGeneration;
@@ -30888,18 +30898,19 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.ProcessSkins;
-var SkinIndex,Index:TpvSizeInt;
+procedure TpvScene3D.TGroup.TInstance.ProcessSkins(const aInFlightFrameIndex:TpvSizeInt);
+var SkinIndex,Index,WorkInFlightFrameIndex:TpvSizeInt;
     Skin:TpvScene3D.TGroup.TSkin;
     InstanceSkin:TpvScene3D.TGroup.TInstance.PSkin;
 begin
+ WorkInFlightFrameIndex:=Max(0,aInFlightFrameIndex);
  for SkinIndex:=0 to fGroup.fSkins.Count-1 do begin
   Skin:=fGroup.fSkins[SkinIndex];
   InstanceSkin:=@fSkins[SkinIndex];
   if InstanceSkin^.Used and (Skin.fJoints.Count>0) then begin
    for Index:=0 to Skin.fJoints.Count-1 do begin
     Assert(fGroup.fNodes[Skin.fJoints.ItemArray[Index]].Index=Skin.fJoints.ItemArray[Index]);
-    fNodeMatrices[Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.ItemArray[Index]*fNodes[Skin.fJoints.ItemArray[Index]].fWorkMatrix;
+    fNodeMatricesArray[WorkInFlightFrameIndex][Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.ItemArray[Index]*fNodes[Skin.fJoints.ItemArray[Index]].fWorkMatrix;
    end;
   end;
  end;
@@ -31007,7 +31018,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.ProcessMorphSkinNode(const aInFlightFrameIndex:TpvSizeInt;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode);
-var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex:TpvSizeInt;
+var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex,WorkInFlightFrameIndex:TpvSizeInt;
     MorphTargetVertexIndex:TpvUInt32;
     Mesh:TpvScene3D.TGroup.TMesh;
     Skin:TpvScene3D.TGroup.TSkin;
@@ -31022,6 +31033,7 @@ var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex:TpvSizeInt;
 begin
  Mesh:=aNode.fMesh;
  if assigned(Mesh) then begin
+  WorkInFlightFrameIndex:=Max(0,aInFlightFrameIndex);
   OK:=false;
   Skin:=aNode.fSkin;
   if assigned(Skin) then begin
@@ -31040,7 +31052,7 @@ begin
     MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
     while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
      MorphTargetVertex:=@Group.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
-     Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
+     Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeightsArray[aInFlightFrameIndex][MorphTargetVertex^.Index]);
      MorphTargetVertexIndex:=MorphTargetVertex^.Next;
     end;
     ModelNodeMatrix:=ModelNodeMatrixEx;
@@ -31049,7 +31061,7 @@ begin
      for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
       JointBlock:=@fGroup.fJointBlocks.ItemArray[JointBlockIndex];
       for JointIndex:=0 to 3 do begin
-       Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
+       Matrix:=Matrix+((fNodeMatricesArray[WorkInFlightFrameIndex][JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
       end;
      end;
      ModelNodeMatrix:=Matrix*ModelNodeMatrix;
@@ -31456,7 +31468,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UpdateNodes(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
-var Index:TpvSizeInt;
+var Index,WorkInFlightFrameIndex:TpvSizeInt;
     Dirty:boolean;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
@@ -31494,14 +31506,16 @@ begin
    end;
   end;
 
-  fNodeMatrices[0]:=fWorkModelMatrix;
+  WorkInFlightFrameIndex:=Max(0,aInFlightFrameIndex);
+
+  fNodeMatricesArray[WorkInFlightFrameIndex][0]:=fWorkModelMatrix;
 
   for Index:=0 to fGroup.fNodes.Count-1 do begin
    Node:=fGroup.fNodes[Index];
    InstanceNode:=fNodes.RawItems[Index];
-   fNodeMatrices[Node.Index+1]:=InstanceNode.fWorkMatrix;
+   fNodeMatricesArray[WorkInFlightFrameIndex][Node.Index+1]:=InstanceNode.fWorkMatrix;
    if length(InstanceNode.fWorkWeights)>0 then begin
-    Move(InstanceNode.fWorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode.fWorkWeights)*SizeOf(TpvFloat));
+    Move(InstanceNode.fWorkWeights[0],fMorphTargetVertexWeightsArray[WorkInFlightFrameIndex][Node.fWeightsOffset],length(InstanceNode.fWorkWeights)*SizeOf(TpvFloat));
    end;
   end;
 
@@ -31520,7 +31534,7 @@ begin
 {$ifdef UpdateProfilingTimes}
  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
- ProcessSkins;
+ ProcessSkins(aInFlightFrameIndex);
 {$ifdef UpdateProfilingTimes}
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  fSceneInstance.fInstanceTimeSkinsSum:=fSceneInstance.fInstanceTimeSkinsSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
@@ -31528,7 +31542,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UpdateNodeBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
-var Index:TpvSizeInt;
+var Index,WorkInFlightFrameIndex:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
 {$ifdef UpdateProfilingTimes}
@@ -31539,6 +31553,8 @@ begin
  if assigned(aScene) then begin
 
   if aInFlightFrameIndex>=(-1) then begin
+
+   WorkInFlightFrameIndex:=Max(0,aInFlightFrameIndex);
 
 {$ifdef UpdateProfilingTimes}
    StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -31560,7 +31576,7 @@ begin
       InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fWorkModelMatrix);
       InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
      end else begin
-      InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fNodeMatrices[0]);
+      InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fNodeMatricesArray[WorkInFlightFrameIndex][0]);
       InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
      end;
     end else begin
@@ -31589,7 +31605,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UpdateInstanceBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
-var Index:TpvSizeInt;
+var Index,WorkInFlightFrameIndex:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
 {$ifdef UpdateProfilingTimes}
@@ -31601,9 +31617,11 @@ begin
  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
 
- fBoundingBox:=fGroup.fBoundingBox.HomogenTransform(fNodeMatrices[0]);
+ WorkInFlightFrameIndex:=Max(0,aInFlightFrameIndex);
+
+ fBoundingBox:=fGroup.fBoundingBox.HomogenTransform(fNodeMatricesArray[WorkInFlightFrameIndex][0]);
  if fGroup.fHasStaticBoundingBox then begin
-  fBoundingBox.DirectCombine(fGroup.fStaticBoundingBox.HomogenTransform(fNodeMatrices[0]));
+  fBoundingBox.DirectCombine(fGroup.fStaticBoundingBox.HomogenTransform(fNodeMatricesArray[WorkInFlightFrameIndex][0]));
  end;
  if assigned(aScene) and (aInFlightFrameIndex>=-1) then begin
   for Index:=0 to aScene.fNodes.Count-1 do begin
@@ -31702,13 +31720,15 @@ end;
 
 {$ifdef InstanceUpdateDirtySkip}
 procedure TpvScene3D.TGroup.TInstance.UpdateDirtySkipFastPath(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
-var Index,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
+var Index,PerInFlightFrameRenderInstanceIndex,WorkInFlightFrameIndex:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
     RenderInstanceDirty:boolean;
     PreviousInFlightFrameIndex:TpvSizeInt;
 begin
+
+ WorkInFlightFrameIndex:=Max(0,aInFlightFrameIndex);
 
  // Copy per-InFlightFrame BoundingSphere data from current state
  if fLastUpdateInFlightFrameIndex>=0 then begin
@@ -31723,8 +31743,8 @@ begin
  // Copy per-InFlightFrame BoundingBox from current state
  fBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
 
- // Ensure fNodeMatrices[0] is consistent (fWorkModelMatrix is recomputed every frame)
- fNodeMatrices[0]:=fWorkModelMatrix;
+ // Ensure fNodeMatricesArray[aInFlightFrameIndex][0] is consistent (fWorkModelMatrix is recomputed every frame)
+ fNodeMatricesArray[WorkInFlightFrameIndex][0]:=fWorkModelMatrix;
 
  for Index:=0 to fNodes.Count-1 do begin
   InstanceNode:=fNodes.RawItems[Index];
@@ -31902,7 +31922,7 @@ begin
                               (aInFlightFrameIndex>=0) and
                               (fActives[aInFlightFrameIndex]=IsActive) and
                               (fActiveScenes[aInFlightFrameIndex]=Scene) and
-                              (fNodeMatrices[0]=fWorkModelMatrix) and
+                              (fNodeMatricesArray[aInFlightFrameIndex][0]=fWorkModelMatrix) and
                               (not fSceneInstance.fUpdatedOriginTransform);
 
   if InstanceUpdateDirtySkipped and ActiveAnimationProcessing then begin
@@ -32134,7 +32154,7 @@ begin
                               (aInFlightFrameIndex>=0) and
                               (fActives[aInFlightFrameIndex]=IsActive) and
                               (fActiveScenes[aInFlightFrameIndex]=Scene) and
-                              (fNodeMatrices[0]=fWorkModelMatrix) and
+                              (fNodeMatricesArray[aInFlightFrameIndex][0]=fWorkModelMatrix) and
                               (not fSceneInstance.fUpdatedOriginTransform){ and
                               (fTag<>$4321)};
 
@@ -32183,15 +32203,15 @@ begin
    // The per-InFlightFrame data (BoundingBoxes, BoundingSpheres, PVS indices, AABB-Tree proxies,
    // NodeMatrices in GPU buffer, RenderInstances, etc.) all remain valid from the previous update
    // since the same data was written for this instance on the previous frame's Update call.
-   // The fNodeMatrices[], fMorphTargetVertexWeights[], fWorkMatrix etc. are still current.
+   // The fNodeMatricesArray[], fMorphTargetVertexWeightsArray[], fWorkMatrix etc. are still current.
    // fBoundingBoxes/fBoundingSpheres for this aInFlightFrameIndex will be set from the current
    // (unchanged) state below in the code that always runs.
 
    // Copy per-InFlightFrame BoundingBox from current state
    fBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
 
-   // Ensure fNodeMatrices[0] is consistent (fWorkModelMatrix is recomputed every frame)
-   fNodeMatrices[0]:=fWorkModelMatrix;
+   // Ensure fNodeMatricesArray[aInFlightFrameIndex][0] is consistent (fWorkModelMatrix is recomputed every frame)
+   fNodeMatricesArray[aInFlightFrameIndex][0]:=fWorkModelMatrix;
 
    // Copy per-InFlightFrame BoundingSphere data from current state
    PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
@@ -32418,21 +32438,21 @@ begin
 {$ifdef UpdateProfilingTimes}
     StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
-    ProcessSkins;
+    ProcessSkins(aInFlightFrameIndex);
 {$ifdef UpdateProfilingTimes}
     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     fSceneInstance.fInstanceTimeSkinsSum:=fSceneInstance.fInstanceTimeSkinsSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
 {$endif}
 
-    fNodeMatrices[0]:=fWorkModelMatrix;
+    fNodeMatricesArray[aInFlightFrameIndex][0]:=fWorkModelMatrix;
 
  // StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     for Index:=0 to fGroup.fNodes.Count-1 do begin
      Node:=fGroup.fNodes[Index];
      InstanceNode:=fNodes.RawItems[Index];
-     fNodeMatrices[Node.Index+1]:=InstanceNode.fWorkMatrix;
+     fNodeMatricesArray[aInFlightFrameIndex][Node.Index+1]:=InstanceNode.fWorkMatrix;
      if length(InstanceNode.fWorkWeights)>0 then begin
-      Move(InstanceNode.fWorkWeights[0],fMorphTargetVertexWeights[Node.fWeightsOffset],length(InstanceNode.fWorkWeights)*SizeOf(TpvFloat));
+      Move(InstanceNode.fWorkWeights[0],fMorphTargetVertexWeightsArray[aInFlightFrameIndex][Node.fWeightsOffset],length(InstanceNode.fWorkWeights)*SizeOf(TpvFloat));
      end;
     end;
  // EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -32464,7 +32484,7 @@ begin
         InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fWorkModelMatrix);
         InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
        end else begin
-        InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fNodeMatrices[0]);
+        InstanceNode.fBoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode.fWorkMatrix*fNodeMatricesArray[aInFlightFrameIndex][0]);
         InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=true;
        end;
       end else begin
@@ -32493,9 +32513,9 @@ begin
 {$ifdef UpdateProfilingTimes}
    StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
-   fBoundingBox:=fGroup.fBoundingBox.HomogenTransform(fNodeMatrices[0]);
+   fBoundingBox:=fGroup.fBoundingBox.HomogenTransform(fNodeMatricesArray[aInFlightFrameIndex][0]);
    if fGroup.fHasStaticBoundingBox then begin
-    fBoundingBox.DirectCombine(fGroup.fStaticBoundingBox.HomogenTransform(fNodeMatrices[0]));
+    fBoundingBox.DirectCombine(fGroup.fStaticBoundingBox.HomogenTransform(fNodeMatricesArray[aInFlightFrameIndex][0]));
    end;
    if assigned(Scene) and (aInFlightFrameIndex>=-1) then begin
     for Index:=0 to Scene.fNodes.Count-1 do begin
@@ -32641,11 +32661,11 @@ begin
     assigned(fActiveScenes[aInFlightFrameIndex]) and
     // Skip for headless and virtual instances
     not (fHeadless or fVirtual) then begin
-  if (length(fNodeMatrices)>0) and (length(fNodeMatrices)=fBufferRanges.VulkanNodeMatricesBufferRange.Size) then begin
-   Move(fNodeMatrices[0],fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex].Items[fBufferRanges.VulkanNodeMatricesBufferRange.Offset],length(fNodeMatrices)*SizeOf(TpvMatrix4x4));
+  if (length(fNodeMatricesArray[aInFlightFrameIndex])>0) and (length(fNodeMatricesArray[aInFlightFrameIndex])=fBufferRanges.VulkanNodeMatricesBufferRange.Size) then begin
+   Move(fNodeMatricesArray[aInFlightFrameIndex][0],fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex].Items[fBufferRanges.VulkanNodeMatricesBufferRange.Offset],length(fNodeMatricesArray[aInFlightFrameIndex])*SizeOf(TpvMatrix4x4));
   end;
-  if (length(fMorphTargetVertexWeights)>0) and (length(fMorphTargetVertexWeights)=fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Size) then begin
-   Move(fMorphTargetVertexWeights[0],fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[aInFlightFrameIndex].Items[fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Offset],length(fMorphTargetVertexWeights)*SizeOf(TpvFloat));
+  if (length(fMorphTargetVertexWeightsArray[aInFlightFrameIndex])>0) and (length(fMorphTargetVertexWeightsArray[aInFlightFrameIndex])=fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Size) then begin
+   Move(fMorphTargetVertexWeightsArray[aInFlightFrameIndex][0],fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[aInFlightFrameIndex].Items[fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Offset],length(fMorphTargetVertexWeightsArray[aInFlightFrameIndex])*SizeOf(TpvFloat));
   end;
  end;
 end;
@@ -32736,7 +32756,8 @@ procedure TpvScene3D.TGroup.TInstance.GetBakedMeshProcessMorphSkinNode(const aBa
                                                                        const aNode:TpvScene3D.TGroup.TNode;
                                                                        const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode;
                                                                        const aRelative:Boolean;
-                                                                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                                                                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                                                       const aInFlightFrameIndex:TpvSizeInt=-1);
 type TBakedVertex=record
       Position:TpvVector3;
       Normal:TpvVector3;
@@ -32758,7 +32779,16 @@ var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex,IndexIndex,SideIndex:T
     BakedVertex:PBakedVertex;
     BakedTriangle:TpvScene3D.TBakedMesh.PTriangle;
     TemporaryTriangleIndices:TTemporaryTriangleIndices;
+    ResolvedInFlightFrameIndex:TpvSizeInt;
 begin
+ // Resolve IFF: use caller-supplied slot if valid, otherwise use last-written slot or 0
+ if aInFlightFrameIndex>=0 then begin
+  ResolvedInFlightFrameIndex:=aInFlightFrameIndex;
+ end else if fLastUpdateInFlightFrameIndex>=0 then begin
+  ResolvedInFlightFrameIndex:=fLastUpdateInFlightFrameIndex;
+ end else begin
+  ResolvedInFlightFrameIndex:=0;
+ end;
  BakedVertices:=nil;
  try
   Mesh:=aNode.fMesh;
@@ -32789,8 +32819,8 @@ begin
         MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
         while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
          MorphTargetVertex:=@Group.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
-         Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
-         Normal:=Normal+((MorphTargetVertex^.GetNormal-OriginalNormal)*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
+         Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeightsArray[ResolvedInFlightFrameIndex][MorphTargetVertex^.Index]);
+         Normal:=Normal+((MorphTargetVertex^.GetNormal-OriginalNormal)*fMorphTargetVertexWeightsArray[ResolvedInFlightFrameIndex][MorphTargetVertex^.Index]);
          MorphTargetVertexIndex:=MorphTargetVertex^.Next;
         end;
         Normal:=Normal.Normalize;
@@ -32800,7 +32830,7 @@ begin
          for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
           JointBlock:=@fGroup.fJointBlocks.ItemArray[JointBlockIndex];
           for JointIndex:=0 to 3 do begin
-           Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
+           Matrix:=Matrix+((fNodeMatricesArray[ResolvedInFlightFrameIndex][JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
           end;
          end;
          ModelNodeMatrix:=Matrix*ModelNodeMatrix;
@@ -32858,7 +32888,8 @@ end;
 
 function TpvScene3D.TGroup.TInstance.GetBakedMeshFromSplittedNode(const aNode:TpvScene3D.TGroup.TNode;
                                                                   const aRelative:boolean=false;
-                                                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
+                                                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                                                  const aInFlightFrameIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
 type TNodeStack=TpvDynamicStack<TpvScene3D.TGroup.TNode>;
 var NodeStack:TNodeStack;
     Node,ChildNode:TpvScene3D.TGroup.TNode;
@@ -32873,7 +32904,8 @@ begin
                                      Node,
                                      fNodes.RawItems[Node.Index],
                                      aRelative,
-                                     aMaterialAlphaModes);
+                                     aMaterialAlphaModes,
+                                     aInFlightFrameIndex);
     for ChildNode in Node.fSplittedChildren do begin
      NodeStack.Push(ChildNode);
     end;
@@ -32886,7 +32918,8 @@ end;
 
 function TpvScene3D.TGroup.TInstance.GetBakedMeshFromSplittedNodeList(const aNodes:TpvScene3D.TGroup.TNodes;
                                                                       const aRelative:boolean=false;
-                                                                      const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
+                                                                      const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                                                      const aInFlightFrameIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
 type TNodeStack=TpvDynamicStack<TpvScene3D.TGroup.TNode>;
 var NodeStack:TNodeStack;
     Node,ChildNode:TpvScene3D.TGroup.TNode;
@@ -32903,7 +32936,8 @@ begin
                                      Node,
                                      fNodes.RawItems[Node.Index],
                                      aRelative,
-                                     aMaterialAlphaModes);
+                                     aMaterialAlphaModes,
+                                     aInFlightFrameIndex);
     for ChildNode in Node.fSplittedChildren do begin
      NodeStack.Push(ChildNode);
     end;
@@ -32917,7 +32951,8 @@ end;
 function TpvScene3D.TGroup.TInstance.GetBakedMesh(const aRelative:boolean=false;
                                                   const aWithDynamicMeshs:boolean=false;
                                                   const aRootNodeIndex:TpvSizeInt=-1;
-                                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]):TpvScene3D.TBakedMesh;
+                                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                                  const aInFlightFrameIndex:TpvSizeInt=-1):TpvScene3D.TBakedMesh;
 type TNodeStack=TpvDynamicStack<TpvSizeInt>;
 var Index,NodeIndex:TpvSizeInt;
     NodeStack:TNodeStack;
@@ -32969,7 +33004,8 @@ begin
                                       GroupNode,
                                       GroupInstanceNode,
                                       aRelative,
-                                      aMaterialAlphaModes);
+                                      aMaterialAlphaModes,
+                                      aInFlightFrameIndex);
     end;
    end;
   end;
@@ -34570,7 +34606,8 @@ begin
 
   // Use parallel queue for planet water simulation, when there are dedicated queues for compute and transfer detected and RenderDoc is not detected,
   // because RenderDoc does not support parallel queues while its operatings.
-  fPlanetWaterSimulationUseParallelQueue:=aUseParallelQueues and
+  fPlanetWaterSimulationUseParallelQueue:=//false and
+                                          aUseParallelQueues and
                                           (not fVulkanDevice.PhysicalDevice.RenderDocDetected) and
                                           ((length(fVulkanDevice.UniversalQueues)>=2) or
                                            (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
@@ -40281,6 +40318,8 @@ begin
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
    end;
+
+// fVulkanDevice.WaitIdle; //123
 
    // Clear lodNeeded + LODLevel buffers for current IFF before mesh_cull.comp writes to them
    if fGPULODEnabled then begin
