@@ -156,6 +156,7 @@ layout(set = 3, binding = 2) uniform sampler2DArray uTextureWaterAcceleration;
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
+#include "planet_noise.glsl"
 
 float transmissionFactor = 1.0;
 float volumeThickness = 0.005;
@@ -415,12 +416,17 @@ void processLight(const in vec3 lightColor,
 } 
 
 // --- Shore foam helpers ----------------------------------------------------
+// Uses the shared gradient-noise FBM from planet_noise.glsl so the foam pattern
+// stays stable on the sphere surface while avoiding axis-aligned grid artefacts
+// of naive value-noise.
+
+#define SHORE_FOAM_LEGACY_VALUE_NOISE
+
+#ifdef SHORE_FOAM_LEGACY_VALUE_NOISE
 // Small, self-contained 3D value-noise FBM sampled in local-planet space so
 // the foam pattern stays stable on the sphere surface while being cheap.
 float shoreFoamHash(vec3 p){
-  p = fract(p * vec3(443.8975, 397.2973, 491.1871));
-  p += dot(p, p.yzx + 19.19);
-  return fract((p.x + p.y) * p.z);
+  return hash44ChaCha20(vec4(p, 0.0)).x;
 }
 
 float shoreFoamNoise(vec3 p){
@@ -450,6 +456,7 @@ float shoreFoamFBM(vec3 p){
   }
   return f;
 }
+#endif
 
 // Shared shore-foam overlay. Returns aBaseColor unchanged for waterDepth values above the foam
 // range or when the foam is disabled; otherwise blends the configured foam color on top, using
@@ -463,9 +470,21 @@ vec3 applyShoreFoam(vec3 aBaseColor, vec3 aPlanetSpacePos, float aShoreDepth){
     if(shoreMask > 0.0){
       vec3 foamUV = aPlanetSpacePos * waterShoreFoam1.y;
       float foamPhase = pushConstants.time * waterShoreFoam1.z;
+#ifdef SHORE_FOAM_LEGACY_VALUE_NOISE
       float foamA = shoreFoamFBM(foamUV + vec3(0.0, 0.0, foamPhase));
       float foamB = shoreFoamFBM((foamUV * 1.73) + vec3(foamPhase * 0.7, -foamPhase * 0.5, 0.0));
       float foamPattern = clamp((foamA * 1.4) - (foamB * 0.6) - 0.25, 0.0, 1.0);
+#else
+      // Domain-warp via a cheap low-frequency offset noise to break up any
+      // residual lattice regularity, then sample two decorrelated FBMs and
+      // combine them with a soft smoothstep for an organic foam shape.
+      vec3 warp = vec3(planetGradientNoise(foamUV * 0.5 + vec3(foamPhase, 0.0, 0.0)),
+                       planetGradientNoise(foamUV * 0.5 + vec3(0.0, foamPhase, 0.0)),
+                       planetGradientNoise(foamUV * 0.5 + vec3(0.0, 0.0, foamPhase))) * 0.35;
+      float foamA = planetNoiseFBM((foamUV + warp) + vec3(0.0, 0.0, foamPhase));
+      float foamB = planetNoiseFBM(((foamUV * 1.73) + warp) + vec3(foamPhase * 0.7, -foamPhase * 0.5, 0.0));
+      float foamPattern = smoothstep(0.35, 0.75, foamA - (foamB * 0.4));
+#endif
       float foamAmount = clamp(shoreMask * foamPattern * waterShoreFoam1.w, 0.0, 1.0);
       result = mix(result, waterShoreFoam0.xyz, foamAmount);
     }
@@ -679,7 +698,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     // mix(refraction, waterF0, 1-exp(-depth)) behavior for compatibility.
     vec4 waterAbsorption = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.x), unpackHalf2x16(planetData.waterAbsorptionDeepColor.y));
     vec4 waterDeepColor = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.z), unpackHalf2x16(planetData.waterAbsorptionDeepColor.w));
-    refraction = mix(mix(waterDeepColor.xyz, refraction, exp(-waterAbsorption.xyz * waterDepth)),
+    refraction = mix(mix(refraction, waterDeepColor.xyz, clamp(vec3(1.0) - exp(-waterDepth * waterAbsorption.xyz), vec3(0.0), vec3(1.0))),
                      mix(refraction, vec3(waterF0), clamp(1.0 - exp(-waterDepth * 1.0), 0.0, 1.0)),
                      clamp(waterAbsorption.w, 0.0, 1.0));
 
