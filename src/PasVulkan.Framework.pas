@@ -18814,6 +18814,9 @@ begin
   // Actually submit to the GPU
   fLock.Release;
   try
+{$ifdef PasVulkanQueueDiag}
+   WriteLn('[QueueDiag] TLEm-S  tid=',GetCurrentThreadID,' qfi=',aQueueData.fQueue.fQueueFamilyIndex,' h=',TpvPtrUInt(aQueueData.fQueue.fQueueHandle));
+{$endif}
    result:=fDevice.fDeviceVulkan.QueueSubmit(aQueueData.fQueue.fQueueHandle,1,@SubmitInfo,FenceHandle);
   finally
    fLock.Acquire;
@@ -18829,6 +18832,9 @@ begin
    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
    fLock.Release;
    try
+{$ifdef PasVulkanQueueDiag}
+    WriteLn('[QueueDiag] TLEm-EF tid=',GetCurrentThreadID,' qfi=',aQueueData.fQueue.fQueueFamilyIndex,' h=',TpvPtrUInt(aQueueData.fQueue.fQueueHandle));
+{$endif}
     result:=fDevice.fDeviceVulkan.QueueSubmit(aQueueData.fQueue.fQueueHandle,1,@SubmitInfo,Deferred.fFence);
    finally
     fLock.Acquire;
@@ -19004,6 +19010,9 @@ begin
     QueueData.fDeferredTail:=Deferred;
    end else begin
     // No emulated timeline semaphores, pass through directly
+{$ifdef PasVulkanQueueDiag}
+    WriteLn('[QueueDiag] TLEm-PT tid=',GetCurrentThreadID,' qfi=',aQueue.fQueueFamilyIndex,' h=',TpvPtrUInt(aQueue.fQueueHandle));
+{$endif}
     if Index=(aSubmitCount-1) then begin
      result:=fDevice.fDeviceVulkan.QueueSubmit(aQueue.fQueueHandle,1,Submit,aFence);
     end else begin
@@ -19244,6 +19253,10 @@ procedure TpvVulkanQueue.Submit(const aSubmitCount:TpvUInt32;const aSubmits:PVkS
 var FenceHandle:TVkFence;
 begin
 
+{$ifdef PasVulkanQueueDiag}
+ WriteLn('[QueueDiag] Submit  tid=',GetCurrentThreadID,' qfi=',fQueueFamilyIndex,' h=',TpvPtrUInt(fQueueHandle));
+{$endif}
+
  if assigned(aFence) then begin
   FenceHandle:=aFence.fFenceHandle;
  end else begin
@@ -19260,6 +19273,9 @@ end;
 
 procedure TpvVulkanQueue.BindSparse(const aBindInfoCount:TpvUInt32;const aBindInfo:PVkBindSparseInfo;const aFence:TpvVulkanFence=nil);
 begin
+{$ifdef PasVulkanQueueDiag}
+ WriteLn('[QueueDiag] BindSp  tid=',GetCurrentThreadID,' qfi=',fQueueFamilyIndex,' h=',TpvPtrUInt(fQueueHandle));
+{$endif}
  if assigned(aFence) then begin
   VulkanCheckResult(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,aFence.fFenceHandle));
  end else begin
@@ -19269,6 +19285,9 @@ end;
 
 procedure TpvVulkanQueue.WaitIdle;
 begin
+{$ifdef PasVulkanQueueDiag}
+ WriteLn('[QueueDiag] WaitIdl tid=',GetCurrentThreadID,' qfi=',fQueueFamilyIndex,' h=',TpvPtrUInt(fQueueHandle));
+{$endif}
  VulkanCheckResult(fDevice.fDeviceVulkan.QueueWaitIdle(fQueueHandle));
 end;
 
@@ -22432,6 +22451,9 @@ end;
 function TpvVulkanSwapChain.QueuePresent(const aQueue:TpvVulkanQueue;const aSemaphore:TpvVulkanSemaphore=nil;const aNext:Pointer=nil):TVkResult;
 var PresentInfo:TVkPresentInfoKHR;
 begin
+{$ifdef PasVulkanQueueDiag}
+ WriteLn('[QueueDiag] Present tid=',GetCurrentThreadID,' qfi=',aQueue.fQueueFamilyIndex,' h=',TpvPtrUInt(aQueue.fQueueHandle));
+{$endif}
  FillChar(PresentInfo,SizeOf(TVkPresentInfoKHR),#0);
  PresentInfo.sType:=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
  PresentInfo.pNext:=aNext;
