@@ -688,6 +688,8 @@ begin
 
  fUseMeshShaderPipeline:=fUseMeshShaderPipeline and fScene3D.MeshShaderSupport;
 
+ fScene3D.MeshShaderPipelineActive:=fUseMeshShaderPipeline;
+
  fUseMeshletExpand:=fUseMeshletExpand and fUseMeshShaderPipeline;
 
  fUseMeshletCulling:=fUseMeshletCulling and fUseMeshShaderPipeline;

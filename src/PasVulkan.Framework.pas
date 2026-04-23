@@ -58,7 +58,7 @@ unit PasVulkan.Framework;
   {$ifend}
  {$endif}
 {$endif}
-{$define PasVulkanQueueDiag}
+{-$define PasVulkanQueueDiag}
 
 interface
 
