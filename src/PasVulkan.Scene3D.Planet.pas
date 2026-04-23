@@ -30232,6 +30232,14 @@ begin
 end;
 
 procedure TpvScene3DPlanet.EndUpdate;
+var SubmitInfo:TVkSubmitInfo;
+    TimelineSubmitInfo:TVkTimelineSemaphoreSubmitInfo;
+    WaitSemaphoreHandle,SignalSemaphoreHandle:TVkSemaphore;
+    WaitDstStageFlags:TVkPipelineStageFlags;
+    WaitSemaphoreValue,SignalSemaphoreValue:TpvUInt64;
+    CmdBufHandle:TVkCommandBuffer;
+    UseTimelineWait:boolean;
+    Scene3D:TpvScene3D;
 begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCommandBufferLock);
  try
@@ -30239,12 +30247,42 @@ begin
    dec(fCommandBufferLevel);
    if fCommandBufferLevel=0 then begin
     fVulkanUpdateCommandBuffer.EndRecording;
-    fVulkanUpdateCommandBuffer.Execute(fVulkanUpdateQueue,
-                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                       nil,
-                                       nil,
-                                       fVulkanUpdateFence,
-                                       true);
+    Scene3D:=TpvScene3D(fScene3D);
+    UseTimelineWait:=Scene3D.PlanetWaterSimulationUseParallelQueue and assigned(Scene3D.PlanetWaterSimulationTimelineSemaphore);
+    if UseTimelineWait then begin
+     SignalSemaphoreValue:=Scene3D.AcquirePlanetWaterSimulationTimelineSequence(WaitSemaphoreValue);
+     WaitSemaphoreHandle:=Scene3D.PlanetWaterSimulationTimelineSemaphore.Handle;
+     SignalSemaphoreHandle:=WaitSemaphoreHandle;
+     WaitDstStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+     CmdBufHandle:=fVulkanUpdateCommandBuffer.Handle;
+     FillChar(TimelineSubmitInfo,SizeOf(TVkTimelineSemaphoreSubmitInfo),#0);
+     TimelineSubmitInfo.sType:=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+     TimelineSubmitInfo.pNext:=nil;
+     TimelineSubmitInfo.waitSemaphoreValueCount:=1;
+     TimelineSubmitInfo.pWaitSemaphoreValues:=@WaitSemaphoreValue;
+     TimelineSubmitInfo.signalSemaphoreValueCount:=1;
+     TimelineSubmitInfo.pSignalSemaphoreValues:=@SignalSemaphoreValue;
+     FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+     SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+     SubmitInfo.pNext:=@TimelineSubmitInfo;
+     SubmitInfo.waitSemaphoreCount:=1;
+     SubmitInfo.pWaitSemaphores:=@WaitSemaphoreHandle;
+     SubmitInfo.pWaitDstStageMask:=@WaitDstStageFlags;
+     SubmitInfo.commandBufferCount:=1;
+     SubmitInfo.pCommandBuffers:=@CmdBufHandle;
+     SubmitInfo.signalSemaphoreCount:=1;
+     SubmitInfo.pSignalSemaphores:=@SignalSemaphoreHandle;
+     fVulkanUpdateQueue.Submit(1,@SubmitInfo,fVulkanUpdateFence);
+     fVulkanUpdateFence.WaitFor;
+     fVulkanUpdateFence.Reset;
+    end else begin
+     fVulkanUpdateCommandBuffer.Execute(fVulkanUpdateQueue,
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                        nil,
+                                        nil,
+                                        fVulkanUpdateFence,
+                                        true);
+    end;
    end;
   end;
  finally
@@ -30253,17 +30291,55 @@ begin
 end;
 
 procedure TpvScene3DPlanet.FlushUpdate;
+var SubmitInfo:TVkSubmitInfo;
+    TimelineSubmitInfo:TVkTimelineSemaphoreSubmitInfo;
+    WaitSemaphoreHandle,SignalSemaphoreHandle:TVkSemaphore;
+    WaitDstStageFlags:TVkPipelineStageFlags;
+    WaitSemaphoreValue,SignalSemaphoreValue:TpvUInt64;
+    CmdBufHandle:TVkCommandBuffer;
+    UseTimelineWait:boolean;
+    Scene3D:TpvScene3D;
 begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCommandBufferLock);
  try
   if fCommandBufferLevel=1 then begin
    fVulkanUpdateCommandBuffer.EndRecording;
-   fVulkanUpdateCommandBuffer.Execute(fVulkanUpdateQueue,
-                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                      nil,
-                                      nil,
-                                      fVulkanUpdateFence,
-                                      true);
+   Scene3D:=TpvScene3D(fScene3D);
+   UseTimelineWait:=Scene3D.PlanetWaterSimulationUseParallelQueue and assigned(Scene3D.PlanetWaterSimulationTimelineSemaphore);
+   if UseTimelineWait then begin
+    SignalSemaphoreValue:=Scene3D.AcquirePlanetWaterSimulationTimelineSequence(WaitSemaphoreValue);
+    WaitSemaphoreHandle:=Scene3D.PlanetWaterSimulationTimelineSemaphore.Handle;
+    SignalSemaphoreHandle:=WaitSemaphoreHandle;
+    WaitDstStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+    CmdBufHandle:=fVulkanUpdateCommandBuffer.Handle;
+    FillChar(TimelineSubmitInfo,SizeOf(TVkTimelineSemaphoreSubmitInfo),#0);
+    TimelineSubmitInfo.sType:=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+    TimelineSubmitInfo.pNext:=nil;
+    TimelineSubmitInfo.waitSemaphoreValueCount:=1;
+    TimelineSubmitInfo.pWaitSemaphoreValues:=@WaitSemaphoreValue;
+    TimelineSubmitInfo.signalSemaphoreValueCount:=1;
+    TimelineSubmitInfo.pSignalSemaphoreValues:=@SignalSemaphoreValue;
+    FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    SubmitInfo.pNext:=@TimelineSubmitInfo;
+    SubmitInfo.waitSemaphoreCount:=1;
+    SubmitInfo.pWaitSemaphores:=@WaitSemaphoreHandle;
+    SubmitInfo.pWaitDstStageMask:=@WaitDstStageFlags;
+    SubmitInfo.commandBufferCount:=1;
+    SubmitInfo.pCommandBuffers:=@CmdBufHandle;
+    SubmitInfo.signalSemaphoreCount:=1;
+    SubmitInfo.pSignalSemaphores:=@SignalSemaphoreHandle;
+    fVulkanUpdateQueue.Submit(1,@SubmitInfo,fVulkanUpdateFence);
+    fVulkanUpdateFence.WaitFor;
+    fVulkanUpdateFence.Reset;
+   end else begin
+    fVulkanUpdateCommandBuffer.Execute(fVulkanUpdateQueue,
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                       nil,
+                                       nil,
+                                       fVulkanUpdateFence,
+                                       true);
+   end;
    fVulkanUpdateCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
    fVulkanUpdateCommandBuffer.BeginRecording;
   end;

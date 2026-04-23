@@ -4322,6 +4322,9 @@ type EpvScene3D=class(Exception);
        fPlanetWaterSimulationCommandBuffers:TPlanetWaterSimulationCommandBuffers;
        fPlanetWaterSimulationSemaphores:TPlanetWaterSimulationSemaphores;
        fPlanetWaterSimulationToSignalSemaphores:TVkSemaphoreArray;
+       fPlanetWaterSimulationTimelineSemaphore:TpvVulkanTimelineSemaphore;
+       fPlanetWaterSimulationTimelineCounter:TpvUInt64;
+       fPlanetWaterSimulationTimelineLock:TPasMPSlimReaderWriterLock;
        fMeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout;
        fVulkanStagingQueue:TpvVulkanQueue;
@@ -5106,6 +5109,10 @@ type EpvScene3D=class(Exception);
        property PlanetAtmospherePrecipitationSimulationToSignalSemaphores:TVkSemaphoreArray read fPlanetAtmospherePrecipitationSimulationToSignalSemaphores;
        property PlanetAtmospherePrecipitationSimulationMainThreadSemaphores:TPlanetAtmospherePrecipitationSimulationSemaphores read fPlanetAtmospherePrecipitationSimulationMainThreadSemaphores;
        property PlanetWaterSimulationSemaphores:TPlanetWaterSimulationSemaphores read fPlanetWaterSimulationSemaphores;
+       property PlanetWaterSimulationTimelineSemaphore:TpvVulkanTimelineSemaphore read fPlanetWaterSimulationTimelineSemaphore;
+       property PlanetWaterSimulationTimelineCounter:TpvUInt64 read fPlanetWaterSimulationTimelineCounter;
+       property PlanetWaterSimulationTimelineLock:TPasMPSlimReaderWriterLock read fPlanetWaterSimulationTimelineLock;
+       function AcquirePlanetWaterSimulationTimelineSequence(out aWaitValue:TpvUInt64):TpvUInt64;
       published
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
        property MeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet1Layout;
@@ -34616,6 +34623,11 @@ begin
 
    end;
 
+   fPlanetWaterSimulationTimelineCounter:=0;
+   fPlanetWaterSimulationTimelineLock:=TPasMPSlimReaderWriterLock.Create;
+   fPlanetWaterSimulationTimelineSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
+   fVulkanDevice.DebugUtils.SetObjectName(fPlanetWaterSimulationTimelineSemaphore.Handle,VK_OBJECT_TYPE_SEMAPHORE,'TpvScene3D.fPlanetWaterSimulationTimelineSemaphore');
+
   end else begin
 
    fPlanetWaterSimulationQueue:=nil;
@@ -34632,6 +34644,10 @@ begin
    end;
 
    fPlanetWaterSimulationToSignalSemaphores:=nil;
+
+   fPlanetWaterSimulationTimelineSemaphore:=nil;
+   fPlanetWaterSimulationTimelineLock:=nil;
+   fPlanetWaterSimulationTimelineCounter:=0;
 
   end;
 
@@ -35373,6 +35389,10 @@ begin
   end;
 
   fPlanetWaterSimulationToSignalSemaphores:=nil;
+
+  FreeAndNil(fPlanetWaterSimulationTimelineSemaphore);
+  FreeAndNil(fPlanetWaterSimulationTimelineLock);
+  fPlanetWaterSimulationTimelineCounter:=0;
 
   FreeAndNil(fPlanetWaterSimulationCommandPool);
 
@@ -39981,6 +40001,18 @@ begin
  end; 
 end;
 
+function TpvScene3D.AcquirePlanetWaterSimulationTimelineSequence(out aWaitValue:TpvUInt64):TpvUInt64;
+begin
+ fPlanetWaterSimulationTimelineLock.Acquire;
+ try
+  aWaitValue:=fPlanetWaterSimulationTimelineCounter;
+  inc(fPlanetWaterSimulationTimelineCounter);
+  result:=fPlanetWaterSimulationTimelineCounter;
+ finally
+  fPlanetWaterSimulationTimelineLock.Release;
+ end;
+end;
+
 procedure TpvScene3D.ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
 var PlanetIndex,PassIndex,CountPlanetAtmospherePrecipitationSimulationToSignalSemaphores,CountPlanetWaterSimulationToSignalSemaphores,Index:TpvSizeInt;
     Planet:TpvScene3DPlanet;
@@ -39990,6 +40022,14 @@ var PlanetIndex,PassIndex,CountPlanetAtmospherePrecipitationSimulationToSignalSe
     WaitSemaphoreDstStageFlags:array[0..1] of TVkPipelineStageFlags;
     WaitSemaphoreValues:array[0..1] of TpvUInt64;
     SignalSemaphoreValues:array[0..0] of TpvUInt64;
+    WaterSignalSemaphoreValues:array of TpvUInt64;
+    WaterTimelineSubmitInfo:TVkTimelineSemaphoreSubmitInfo;
+    WaterTimelineSignalValue:TpvUInt64;
+    WaterTimelineWaitValue:TpvUInt64;
+    WaterWaitSemaphoreHandles:array[0..1] of TVkSemaphore;
+    WaterWaitSemaphoreDstStageFlags:array[0..1] of TVkPipelineStageFlags;
+    WaterWaitSemaphoreValues:array[0..1] of TpvUInt64;
+    CountWaterWaitSemaphores:TpvSizeInt;
     TimelineSemaphoreSubmitInfo:TVkTimelineSemaphoreSubmitInfo;
     CountWaitSemaphores:TpvSizeInt;
     PlanetAtmospherePrecipitationSimulationCommandBuffer,PlanetWaterSimulationCommandBuffer,CommandBuffer:TpvVulkanCommandBuffer;
@@ -40174,34 +40214,59 @@ begin
     PlanetWaterSimulationCommandBufferHandle:=PlanetWaterSimulationCommandBuffer.Handle;
 
     CountPlanetWaterSimulationToSignalSemaphores:=1+fRendererInstanceList.Count;
-    if length(fPlanetWaterSimulationToSignalSemaphores)<CountPlanetWaterSimulationToSignalSemaphores then begin
-     SetLength(fPlanetWaterSimulationToSignalSemaphores,CountPlanetWaterSimulationToSignalSemaphores*2);
+    if length(fPlanetWaterSimulationToSignalSemaphores)<(CountPlanetWaterSimulationToSignalSemaphores+1) then begin
+     SetLength(fPlanetWaterSimulationToSignalSemaphores,(CountPlanetWaterSimulationToSignalSemaphores+1)*2);
     end;
     fPlanetWaterSimulationToSignalSemaphores[0]:=fPlanetWaterSimulationSemaphores[aInFlightFrameIndex].Handle;
     for Index:=0 to fRendererInstanceList.Count-1 do begin
      fPlanetWaterSimulationToSignalSemaphores[Index+1]:=TpvScene3DRendererInstance(fRendererInstanceList.RawItems[Index]).WaterSimulationSemaphores[aInFlightFrameIndex].Handle;
     end;
+    fPlanetWaterSimulationToSignalSemaphores[CountPlanetWaterSimulationToSignalSemaphores]:=fPlanetWaterSimulationTimelineSemaphore.Handle;
+
+    WaterTimelineSignalValue:=AcquirePlanetWaterSimulationTimelineSequence(WaterTimelineWaitValue);
+
+    if length(WaterSignalSemaphoreValues)<(CountPlanetWaterSimulationToSignalSemaphores+1) then begin
+     SetLength(WaterSignalSemaphoreValues,(CountPlanetWaterSimulationToSignalSemaphores+1));
+    end;
+    for Index:=0 to CountPlanetWaterSimulationToSignalSemaphores-1 do begin
+     WaterSignalSemaphoreValues[Index]:=0;
+    end;
+    WaterSignalSemaphoreValues[CountPlanetWaterSimulationToSignalSemaphores]:=WaterTimelineSignalValue;
+
+    // Build wait list: always wait on timeline (for TransferTo completion), plus atmosphere binary if present
+    if fEnableAtmosphere and fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
+     WaterWaitSemaphoreHandles[0]:=fPlanetAtmospherePrecipitationSimulationSemaphores[aInFlightFrameIndex].Handle;
+     WaterWaitSemaphoreDstStageFlags[0]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+     WaterWaitSemaphoreValues[0]:=0;
+     WaterWaitSemaphoreHandles[1]:=fPlanetWaterSimulationTimelineSemaphore.Handle;
+     WaterWaitSemaphoreDstStageFlags[1]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+     WaterWaitSemaphoreValues[1]:=WaterTimelineWaitValue;
+     CountWaterWaitSemaphores:=2;
+    end else begin
+     WaterWaitSemaphoreHandles[0]:=fPlanetWaterSimulationTimelineSemaphore.Handle;
+     WaterWaitSemaphoreDstStageFlags[0]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+     WaterWaitSemaphoreValues[0]:=WaterTimelineWaitValue;
+     CountWaterWaitSemaphores:=1;
+    end;
+
+    FillChar(WaterTimelineSubmitInfo,SizeOf(TVkTimelineSemaphoreSubmitInfo),#0);
+    WaterTimelineSubmitInfo.sType:=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+    WaterTimelineSubmitInfo.pNext:=nil;
+    WaterTimelineSubmitInfo.waitSemaphoreValueCount:=CountWaterWaitSemaphores;
+    WaterTimelineSubmitInfo.pWaitSemaphoreValues:=@WaterWaitSemaphoreValues[0];
+    WaterTimelineSubmitInfo.signalSemaphoreValueCount:=CountPlanetWaterSimulationToSignalSemaphores+1;
+    WaterTimelineSubmitInfo.pSignalSemaphoreValues:=@WaterSignalSemaphoreValues[0];
 
     FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
     SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    SubmitInfo.pNext:=nil;
-    if fEnableAtmosphere and fPlanetAtmospherePrecipitationSimulationUseParallelQueue then begin
-     // Wait for atmosphere/precipitation simulation to complete first
-     SubmitInfo.waitSemaphoreCount:=1;
-     SubmitInfo.pWaitSemaphores:=@fPlanetAtmospherePrecipitationSimulationSemaphores[aInFlightFrameIndex].Handle;
-     WaitDstStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-     SubmitInfo.pWaitDstStageMask:=@WaitDstStageFlags;
-    end else begin
-     SubmitInfo.waitSemaphoreCount:=0;
-     SubmitInfo.pWaitSemaphores:=nil;
-     SubmitInfo.pWaitDstStageMask:=nil;
-    end;
+    SubmitInfo.pNext:=@WaterTimelineSubmitInfo;
+    SubmitInfo.waitSemaphoreCount:=CountWaterWaitSemaphores;
+    SubmitInfo.pWaitSemaphores:=@WaterWaitSemaphoreHandles[0];
+    SubmitInfo.pWaitDstStageMask:=@WaterWaitSemaphoreDstStageFlags[0];
     SubmitInfo.commandBufferCount:=1;
     SubmitInfo.pCommandBuffers:=@PlanetWaterSimulationCommandBufferHandle;
-    if CountPlanetWaterSimulationToSignalSemaphores>0 then begin
-     SubmitInfo.signalSemaphoreCount:=CountPlanetWaterSimulationToSignalSemaphores;
-     SubmitInfo.pSignalSemaphores:=@fPlanetWaterSimulationToSignalSemaphores[0];
-    end;
+    SubmitInfo.signalSemaphoreCount:=CountPlanetWaterSimulationToSignalSemaphores+1;
+    SubmitInfo.pSignalSemaphores:=@fPlanetWaterSimulationToSignalSemaphores[0];
 
     fPlanetWaterSimulationQueue.Submit(1,@SubmitInfo,nil);
 
