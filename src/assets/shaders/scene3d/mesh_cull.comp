@@ -131,6 +131,10 @@ layout(push_constant) uniform PushConstants {
   float areaTooSmallThreshold;      // min projected pixel size for culling (<=0.0 = disabled)
   uint alphaModeMask;               // bitmask: (1 << alphaMode) for allowed alpha modes
   uint outputCommandSlotOffset;     // K*N slot offset to subtract when reading input source
+
+#ifdef MESH_CULL_DEBUG_COUNTERS
+  uvec2 debugCountersBDA;           // BDA to debug counters buffer (0 = disabled)
+#endif
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -212,9 +216,13 @@ layout(push_constant) uniform PushConstants {
   
   uint meshletVisibilityPartOffset; // uint32 offset into bitmap for current part (double-buffered)
   float maximumDistance;            // max camera distance for culling (<=0.0 = disabled)
-  float areaTooSmallThreshold;     // min projected pixel size for culling (<=0.0 = disabled)
-  uint alphaModeMask;              // bitmask: (1 << alphaMode) for allowed alpha modes
-  uint outputCommandSlotOffset;    // K*N slot offset to subtract when reading input source
+  float areaTooSmallThreshold;      // min projected pixel size for culling (<=0.0 = disabled)
+  uint alphaModeMask;               // bitmask: (1 << alphaMode) for allowed alpha modes
+  uint outputCommandSlotOffset;     // K*N slot offset to subtract when reading input source
+
+#ifdef MESH_CULL_DEBUG_COUNTERS
+  uvec2 debugCountersBDA;          // BDA to debug counters buffer (0 = disabled)
+#endif
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
@@ -298,6 +306,40 @@ layout(buffer_reference, std430, buffer_reference_align = 4) buffer ScratchBuffe
 layout(buffer_reference, std430, buffer_reference_align = 4) buffer MeshletVisibilityBuffer {
   uint bitmap[];
 };
+
+#ifdef MESH_CULL_DEBUG_COUNTERS
+// Debug counters buffer (gated by MESH_CULL_DEBUG_COUNTERS).
+// Slots (uint):
+//   0 = total invocations that entered main cull path
+//   1 = culled by renderPassMask
+//   2 = culled by alphaModeMask
+//   3 = culled by shadow filter (node/material cast-shadow)
+//   4 = culled by distance
+//   5 = culled by frustum
+//   6 = culled by area-too-small
+//   7 = culled by HiZ
+//   8 = visible (survived all tests)
+//   9 = culled by prev-visibility (Pass0 only)
+//  10 = skipped due to instance effects (Pass0 only)
+//  11 = meshlet total (MESH_SHADER_PATH + MESHLET_EXPAND)
+//  12 = meshlet culled by frustum
+//  13 = meshlet culled by area-too-small
+//  14 = meshlet culled by HiZ
+//  15 = meshlet visible
+layout(buffer_reference, std430, buffer_reference_align = 4) buffer DebugCountersBuffer {
+  uint counters[16];
+};
+
+#define MESH_CULL_DBG_ADD(slot) do { \
+    if((pushConstants.debugCountersBDA.x | pushConstants.debugCountersBDA.y) != 0u){ \
+      DebugCountersBuffer dbg = DebugCountersBuffer(pushConstants.debugCountersBDA); \
+      atomicAdd(dbg.counters[slot], 1u); \
+    } \
+  } while(false)
+#else
+#define MESH_CULL_DBG_ADD(slot)
+#endif
+
 
 #include "projectsphere.glsl"
 
@@ -465,6 +507,9 @@ void submitMeshletCommands(uint counterIndex,
       uint meshletProjectFailed = 0u;
 #endif
       for(uint i = 0u; i < meshletCount; i++){
+#ifdef MESH_CULL_DEBUG_COUNTERS
+        MESH_CULL_DBG_ADD(11u);
+#endif
         MeshletDescriptor desc = MeshletDescriptorBuffer(globalBDAPointers.meshletDescriptorBDA).descriptors[meshletBase + i];
 #ifdef MESH_SHADER_DEBUG_EX
         if(i < 2u){
@@ -476,6 +521,9 @@ void submitMeshletCommands(uint counterIndex,
         }
 #endif
         bool meshletVisible = false;
+#ifdef MESH_CULL_DEBUG_COUNTERS
+        uint meshletLastCullReason = 12u; // default frustum (if hasSphere path rejects)
+#endif
 #ifdef MESH_SHADER_DEBUG_EX
         bool meshletWasFrustumCulled = true;
 #endif
@@ -513,6 +561,11 @@ void submitMeshletCommands(uint counterIndex,
 #else
             bool visible = frustumCullingSphereTest(frustums[viewIndex], viewSpaceSphere);
 #endif
+#ifdef MESH_CULL_DEBUG_COUNTERS
+            if(!visible){
+              meshletLastCullReason = 12u;
+            }
+#endif
             if(visible){
 #ifdef MESH_SHADER_DEBUG_EX
               meshletWasFrustumCulled = false;
@@ -523,6 +576,9 @@ void submitMeshletCommands(uint counterIndex,
 #ifndef DEBUG_SKIP_MESHLET_AREA
                 if((pushConstants.areaTooSmallThreshold > 0.0) && (max(size.x, size.y) < pushConstants.areaTooSmallThreshold)){
                   visible = false;
+#ifdef MESH_CULL_DEBUG_COUNTERS
+                  meshletLastCullReason = 13u;
+#endif
                 }else
 #endif
                 {
@@ -537,6 +593,11 @@ void submitMeshletCommands(uint counterIndex,
                   float sphereFront = (-viewSpaceSphere.z) - viewSpaceSphere.w;
 #ifndef DEBUG_SKIP_MESHLET_HIZ
                   visible = sphereFront <= depth;
+#ifdef MESH_CULL_DEBUG_COUNTERS
+                  if(!visible){
+                    meshletLastCullReason = 14u;
+                  }
+#endif
 #endif
 #ifdef MESH_SHADER_DEBUG_EX
                   if(!visible && i < 3u){
@@ -563,6 +624,9 @@ void submitMeshletCommands(uint counterIndex,
           meshletVisible = true;
         }
         if(meshletVisible){
+#ifdef MESH_CULL_DEBUG_COUNTERS
+          MESH_CULL_DBG_ADD(15u);
+#endif
 #ifdef MESH_SHADER_DEBUG_EX
           meshletVisibleCount++;
 #endif
@@ -587,11 +651,17 @@ void submitMeshletCommands(uint counterIndex,
           }
 #ifdef MESH_SHADER_DEBUG_EX
         }else{
+#ifdef MESH_CULL_DEBUG_COUNTERS
+          MESH_CULL_DBG_ADD(meshletLastCullReason);
+#endif
           if(meshletWasFrustumCulled){
             meshletFrustumCulled++;
           }else{
             meshletHiZCulled++;
           }
+#elif defined(MESH_CULL_DEBUG_COUNTERS)
+        }else{
+          MESH_CULL_DBG_ADD(meshletLastCullReason);
 #endif
         }
       }
@@ -721,11 +791,17 @@ void main(){
 
   // RenderPassMask filter: skip if this draw is not visible in the current render pass
   if((drawInfoItems[meshObjectID].flags & pushConstants.renderPassMask) == 0u){
+#ifdef MESH_CULL_DEBUG_COUNTERS
+    MESH_CULL_DBG_ADD(1u);
+#endif
     return;
   }
 
   // AlphaMode filter: skip if this batch's alpha mode is not allowed for this pass
   if(((1u << batchAlphaMode) & pushConstants.alphaModeMask) == 0u){
+#ifdef MESH_CULL_DEBUG_COUNTERS
+    MESH_CULL_DBG_ADD(2u);
+#endif
     return;
   }
 
@@ -733,9 +809,16 @@ void main(){
   if((pushConstants.flags & FLAG_SHADOW_PASS) != 0u){
     if(((drawInfoItems[meshObjectID].flags & DRAW_INFO_FLAG_NODE_CASTS_SHADOW) == 0u) ||
        ((cmd1.w & DRAW_CMD_FLAG_MATERIAL_CASTS_SHADOW) == 0u)){
+#ifdef MESH_CULL_DEBUG_COUNTERS
+      MESH_CULL_DBG_ADD(3u);
+#endif
       return;
     }
   }
+
+#ifdef MESH_CULL_DEBUG_COUNTERS
+  MESH_CULL_DBG_ADD(0u);
+#endif
 
 #ifndef DEBUG_SKIP_PASS0_PREV_VIS
   if((pushConstants.skipCulling == 0u) &&  // If it is the first frame or the like, just don't cull anything
@@ -745,8 +828,15 @@ void main(){
                                                            // countMeshObjectIDs in contrast to the previous frame
       ((inputVisibilityBuffer.bitmap[visibilityBufferOffset + (meshObjectID >> 5u)] & (1u << (meshObjectID & 31u))) == 0u))){
     // Skip, since it was not visible in the previous frame    
+#ifdef MESH_CULL_DEBUG_COUNTERS
+    MESH_CULL_DBG_ADD(9u);
+#endif
     return; 
   }
+#endif
+
+#ifdef MESH_CULL_DEBUG_COUNTERS
+  MESH_CULL_DBG_ADD(8u);
 #endif
 
   // LOD selection: rewrite command geometry based on screen coverage
@@ -780,6 +870,9 @@ void main(){
           }
 #endif
         }
+#ifdef MESH_CULL_DEBUG_COUNTERS
+        MESH_CULL_DBG_ADD(10u);
+#endif
         return;
       }
     }
@@ -788,6 +881,9 @@ void main(){
   if(((cmd1.w & 2u) | cmd0.w) != 0u){
     // It has instance effects, so it is not a candidate for HiZ depth buffer culling, since it can have holes in the depth buffer through the
     // instance effects, so just pass it through to the next pass as non-added, so that the next pass can handle it properly.
+#ifdef MESH_CULL_DEBUG_COUNTERS
+    MESH_CULL_DBG_ADD(10u);
+#endif
     return;
   }
 
@@ -899,11 +995,17 @@ void main(){
 
   // RenderPassMask filter: skip if this draw is not visible in the current render pass
   if((drawInfoItems[meshObjectID].flags & pushConstants.renderPassMask) == 0u){
+#ifdef MESH_CULL_DEBUG_COUNTERS
+    MESH_CULL_DBG_ADD(1u);
+#endif
     return;
   }
 
   // AlphaMode filter: skip if this batch's alpha mode is not allowed for this pass
   if(((1u << batchAlphaMode) & pushConstants.alphaModeMask) == 0u){
+#ifdef MESH_CULL_DEBUG_COUNTERS
+    MESH_CULL_DBG_ADD(2u);
+#endif
     return;
   }
 
@@ -911,9 +1013,16 @@ void main(){
   if((pushConstants.flags & FLAG_SHADOW_PASS) != 0u){
     if(((drawInfoItems[meshObjectID].flags & DRAW_INFO_FLAG_NODE_CASTS_SHADOW) == 0u) ||
        ((cmd1.w & DRAW_CMD_FLAG_MATERIAL_CASTS_SHADOW) == 0u)){
+#ifdef MESH_CULL_DEBUG_COUNTERS
+      MESH_CULL_DBG_ADD(3u);
+#endif
       return;
     }
   }
+
+#ifdef MESH_CULL_DEBUG_COUNTERS
+  MESH_CULL_DBG_ADD(0u);
+#endif
 
   vec4 boundingSphere = boundingSphereBuffer.boundingSpheres[cmd1.y];
 
@@ -937,6 +1046,9 @@ void main(){
       if(distance(cameraPosition, boundingSphere.xyz) - boundingSphere.w > pushConstants.maximumDistance){
         isDrawIndexedIndirectCommandVisible = false;
         cmd0.y = 0u;
+#ifdef MESH_CULL_DEBUG_COUNTERS
+        MESH_CULL_DBG_ADD(4u);
+#endif
       }
     }
 #endif
@@ -945,6 +1057,10 @@ void main(){
  
     vec2 viewPortSize = vec2(textureSize(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], 0).xy);
     int countLODLevels = textureQueryLevels(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)]);
+
+#ifdef MESH_CULL_DEBUG_COUNTERS
+    uint lastCullReason = 5u; // 5=frustum, 6=area, 7=HiZ (updated per-view)
+#endif
 
     for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
 
@@ -957,6 +1073,11 @@ void main(){
       bool visible = true;
 #else
       bool visible = frustumCullingSphereTest(frustums[viewIndex], viewSpaceBoundingSphere);
+#endif
+#ifdef MESH_CULL_DEBUG_COUNTERS
+      if(!visible){
+        lastCullReason = 5u;
+      }
 #endif
 /*    vec4 frustum = fastFrustums[viewIndex];
       bool visible = (((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
@@ -975,6 +1096,9 @@ void main(){
 #ifndef DEBUG_SKIP_PASS1_AREA
           if((pushConstants.areaTooSmallThreshold > 0.0) && (max(size.x, size.y) < pushConstants.areaTooSmallThreshold)){
             visible = false;
+#ifdef MESH_CULL_DEBUG_COUNTERS
+            lastCullReason = 6u;
+#endif
           }else
 #endif
           {
@@ -999,6 +1123,11 @@ void main(){
             
 #ifndef DEBUG_SKIP_PASS1_HIZ
             visible = ((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth;
+#ifdef MESH_CULL_DEBUG_COUNTERS
+            if(!visible){
+              lastCullReason = 7u;
+            }
+#endif
 #endif
 
           }
@@ -1018,6 +1147,12 @@ void main(){
 
     }
 
+#ifdef MESH_CULL_DEBUG_COUNTERS
+    if(!isDrawIndexedIndirectCommandVisible){
+      MESH_CULL_DBG_ADD(lastCullReason);
+    }
+#endif
+
    } 
 
   }else{
@@ -1031,6 +1166,10 @@ void main(){
   if(!isDrawIndexedIndirectCommandVisible){
     return;
   }
+
+#ifdef MESH_CULL_DEBUG_COUNTERS
+  MESH_CULL_DBG_ADD(8u);
+#endif
 
   // LOD selection: rewrite command geometry based on screen coverage
   uint selectedLOD;

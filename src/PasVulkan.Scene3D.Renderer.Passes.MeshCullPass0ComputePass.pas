@@ -60,6 +60,12 @@ unit PasVulkan.Scene3D.Renderer.Passes.MeshCullPass0ComputePass;
 {$endif}
 {$m+}
 
+// Debug instrumentation: uncomment to enable GPU atomic counters in mesh_cull.comp
+// that count cull reasons per frame for the FinalView pass, read back and logged
+// each frame. Shader SPV is already built with MESH_CULL_DEBUG_COUNTERS; toggling
+// this define only controls the host-side buffer allocation, BDA wiring and log.
+{.$define MeshCullDebugCounters}
+
 interface
 
 uses SysUtils,
@@ -105,6 +111,9 @@ type { TpvScene3DRendererPassesMeshCullPass0ComputePass }
              AreaTooSmallThreshold:TpvFloat;
              AlphaModeMask:TpvUInt32;
              OutputCommandSlotOffset:TpvUInt32; // K*N slot offset subtracted to get input source index
+{$ifdef MeshCullDebugCounters}
+             DebugCountersBDA:TVkDeviceAddress; // BDA to debug counters buffer (0 = disabled)
+{$endif}
             end;
             PPushConstants=^TPushConstants;
             TMeshCullResetPushConstants=packed record
@@ -138,6 +147,10 @@ type { TpvScene3DRendererPassesMeshCullPass0ComputePass }
        fSortPipeline:TpvVulkanComputePipeline;
        fPlanetCullPass:TpvScene3DPlanet.TCullPass;
 //     fPlanetCullPass2:TpvScene3DPlanet.TCullPass;
+{$ifdef MeshCullDebugCounters}
+       fDebugCullCountersBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fLastDebugVisibleCounts:array[0..MaxInFlightFrames-1] of TpvUInt32;
+{$endif}
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aCullRenderPass:TpvScene3DRendererCullRenderPass); reintroduce;
        destructor Destroy; override;
@@ -261,6 +274,35 @@ begin
 
  inherited AcquireVolatileResources;
 
+{$ifdef MeshCullDebugCounters}
+ if fCullRenderPass=TpvScene3DRendererCullRenderPass.FinalView then begin
+  for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
+   fDebugCullCountersBuffers[Index]:=TpvVulkanBuffer.Create(fInstance.Renderer.VulkanDevice,
+                                                            64,
+                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                            [],
+                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            [TpvVulkanBufferFlag.BufferDeviceAddress,TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                            0,
+                                                            pvAllocationGroupIDScene3DDynamic,
+                                                            '3DRendererInstance.MeshCullPass0DebugCountersBuffer'
+                                                           );
+   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fDebugCullCountersBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.MeshCullPass0DebugCountersBuffer');
+   fLastDebugVisibleCounts[Index]:=High(TpvUInt32);
+  end;
+ end;
+{$endif}
+
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3DRendererPassesMeshCullPass0ComputePass.TPushConstants));
  fPipelineLayout.AddDescriptorSetLayout(fInstance.MeshCullPass0ComputeVulkanDescriptorSetLayout);
@@ -326,6 +368,11 @@ begin
  FreeAndNil(fMeshShaderPipeline);
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
+{$ifdef MeshCullDebugCounters}
+ for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fDebugCullCountersBuffers[Index]);
+ end;
+{$endif}
  inherited ReleaseVolatileResources;
 end;
 
@@ -345,9 +392,54 @@ var RenderPass:TpvScene3DRendererRenderPass;
     DescriptorSets:array[0..3] of TVkDescriptorSet;
     CountRanges,TotalCommands:TpvUInt32;
     RangeIndex,BatchRangeOffset,RangeCountCommands:TpvUInt32;
+{$ifdef MeshCullDebugCounters}
+    DebugCountersPtr:PpvUInt32;
+    DebugVisible:TpvUInt32;
+{$endif}
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+
+{$ifdef MeshCullDebugCounters}
+ if (fCullRenderPass=TpvScene3DRendererCullRenderPass.FinalView) and assigned(fDebugCullCountersBuffers[aInFlightFrameIndex]) then begin
+  // Read back previous frame's counters (CPU-safe: fence for this IFF has been waited on)
+  DebugCountersPtr:=PpvUInt32(fDebugCullCountersBuffers[aInFlightFrameIndex].Memory.MapMemory);
+  if assigned(DebugCountersPtr) then begin
+   try
+    fDebugCullCountersBuffers[aInFlightFrameIndex].Memory.InvalidateMappedMemory;
+    DebugVisible:=PpvUInt32(TpvPtrUInt(DebugCountersPtr)+(8*SizeOf(TpvUInt32)))^;
+    if (fLastDebugVisibleCounts[aInFlightFrameIndex]<>High(TpvUInt32)) and
+       (DebugVisible<>fLastDebugVisibleCounts[aInFlightFrameIndex]) then begin
+     pvApplication.Log(LOG_DEBUG,'MeshCullPass0/FinalView',
+      Format('IFF=%d prevVis=%u newVis=%u total=%u rpMask=%u alpha=%u shadow=%u prevVisSkip=%u instFxSkip=%u',
+             [aInFlightFrameIndex,fLastDebugVisibleCounts[aInFlightFrameIndex],DebugVisible,
+              PpvUInt32(TpvPtrUInt(DebugCountersPtr)+( 0*SizeOf(TpvUInt32)))^,
+              PpvUInt32(TpvPtrUInt(DebugCountersPtr)+( 1*SizeOf(TpvUInt32)))^,
+              PpvUInt32(TpvPtrUInt(DebugCountersPtr)+( 2*SizeOf(TpvUInt32)))^,
+              PpvUInt32(TpvPtrUInt(DebugCountersPtr)+( 3*SizeOf(TpvUInt32)))^,
+              PpvUInt32(TpvPtrUInt(DebugCountersPtr)+( 9*SizeOf(TpvUInt32)))^,
+              PpvUInt32(TpvPtrUInt(DebugCountersPtr)+(10*SizeOf(TpvUInt32)))^]));
+    end;
+    fLastDebugVisibleCounts[aInFlightFrameIndex]:=DebugVisible;
+   finally
+    fDebugCullCountersBuffers[aInFlightFrameIndex].Memory.UnmapMemory;
+   end;
+  end;
+  aCommandBuffer.CmdFillBuffer(fDebugCullCountersBuffers[aInFlightFrameIndex].Handle,0,64,0);
+  FillChar(BufferMemoryBarriers[0],SizeOf(TVkBufferMemoryBarrier),#0);
+  BufferMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  BufferMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  BufferMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  BufferMemoryBarriers[0].buffer:=fDebugCullCountersBuffers[aInFlightFrameIndex].Handle;
+  BufferMemoryBarriers[0].offset:=0;
+  BufferMemoryBarriers[0].size:=64;
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,0,nil,1,@BufferMemoryBarriers[0],0,nil);
+ end;
+{$endif}
 
  case fCullRenderPass of
   TpvScene3DRendererCullRenderPass.FinalView:begin
@@ -463,6 +555,21 @@ begin
   end;
 
   if fInstance.Renderer.UseMeshletExpand and assigned(fSortPipeline) then begin
+   // Barrier: previous pass's compute write on ScratchBuffer -> this pass's FillBuffer
+   // (Without this, a WAW hazard exists between mesh_cull passes that share the scratch buffer.)
+   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                          TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          fInstance.MeshCullScratchBuffers[aInFlightFrameIndex].Handle,
+                                                          0,
+                                                          VK_WHOLE_SIZE);
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     0,
+                                     0,nil,
+                                     1,@BufferMemoryBarriers[0],
+                                     0,nil);
    aCommandBuffer.CmdFillBuffer(fInstance.MeshCullScratchBuffers[aInFlightFrameIndex].Handle,0,4,0);
   end;
 
@@ -630,6 +737,13 @@ begin
 
     PushConstants.MaximumDistance:=-1.0;
     PushConstants.AreaTooSmallThreshold:=-1.0;
+
+{$ifdef MeshCullDebugCounters}
+    PushConstants.DebugCountersBDA:=0;
+    if (fCullRenderPass=TpvScene3DRendererCullRenderPass.FinalView) and assigned(fDebugCullCountersBuffers[aInFlightFrameIndex]) then begin
+     PushConstants.DebugCountersBDA:=fDebugCullCountersBuffers[aInFlightFrameIndex].DeviceAddress;
+    end;
+{$endif}
 
     if Part=0 then begin
      PushConstants.OutputCommandSlotOffset:=0;

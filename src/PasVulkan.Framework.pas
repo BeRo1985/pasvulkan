@@ -373,6 +373,7 @@ type EpvVulkanException=class(Exception);
        fEngineName:TpvVulkanCharString;
        fValidation:longbool;
        fShaderPrintfDebugging:boolean;
+       fSynchronizationValidation:boolean;
        fAllocationManager:TpvVulkanAllocationManager;
        fAllocationCallbacks:PVkAllocationCallbacks;
        fAvailableLayers:TpvVulkanAvailableLayers;
@@ -435,6 +436,7 @@ type EpvVulkanException=class(Exception);
        property APIVersion:TpvUInt32 read GetAPIVersion write SetAPIVersion;
        property Validation:longbool read fValidation write fValidation;
        property ShaderPrintfDebugging:boolean read fShaderPrintfDebugging write fShaderPrintfDebugging;
+       property SynchronizationValidation:boolean read fSynchronizationValidation write fSynchronizationValidation;
        property AvailableLayers:TpvVulkanAvailableLayers read fAvailableLayers;
        property AvailableExtensions:TpvVulkanAvailableExtensions read fAvailableExtensions;
        property AvailableLayerNames:TStringList read fAvailableLayerNames;
@@ -8637,6 +8639,8 @@ begin
 
  fShaderPrintfDebugging:=false;
 
+ fSynchronizationValidation:=false;
+
  fExtDebugUtilsEnabled:=false;
 
  fPhysicalDevices:=TpvVulkanPhysicalDeviceList.Create;
@@ -8859,7 +8863,7 @@ var i:TpvInt32;
     InstanceCommands:PVulkanCommands;
     InstanceCreateInfo:TVkInstanceCreateInfo;
     ValidationFeatures:TVkValidationFeaturesEXT;
-    ValidationFeatureEnable:array[0..0] of TVkValidationFeatureEnableEXT;
+    ValidationFeatureEnable:array[0..1] of TVkValidationFeatureEnableEXT;
 begin
 
  if fInstanceHandle=VK_NULL_INSTANCE then begin
@@ -8897,11 +8901,18 @@ begin
    InstanceCreateInfo.ppEnabledExtensionNames:=@fRawEnabledExtensionNameStrings[0];
   end;
   InstanceCreateInfo.pApplicationInfo:=@fApplicationInfo;
-  if fShaderPrintfDebugging then begin
+  if fShaderPrintfDebugging or fSynchronizationValidation then begin
    FillChar(ValidationFeatures,SizeOf(TVkValidationFeaturesEXT),#0);
    ValidationFeatures.sType:=VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-   ValidationFeatures.enabledValidationFeatureCount:=1;
-   ValidationFeatureEnable[0]:=VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT;
+   ValidationFeatures.enabledValidationFeatureCount:=0;
+   if fShaderPrintfDebugging then begin
+    ValidationFeatureEnable[ValidationFeatures.enabledValidationFeatureCount]:=VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT;
+    inc(ValidationFeatures.enabledValidationFeatureCount);
+   end;
+   if fSynchronizationValidation then begin
+    ValidationFeatureEnable[ValidationFeatures.enabledValidationFeatureCount]:=VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT;
+    inc(ValidationFeatures.enabledValidationFeatureCount);
+   end;
    ValidationFeatures.pEnabledValidationFeatures:=@ValidationFeatureEnable;
    ValidationFeatures.pNext:=InstanceCreateInfo.pNext;
    InstanceCreateInfo.pNext:=@ValidationFeatures;

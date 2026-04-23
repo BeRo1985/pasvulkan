@@ -1674,6 +1674,8 @@ type EpvApplication=class(Exception)
 
        fVulkanShaderPrintfDebugging:boolean;
 
+       fVulkanSynchronizationValidation:boolean;
+
        fVulkanValidation:boolean;
 
        fVulkanNVIDIAAfterMath:boolean;
@@ -2376,6 +2378,8 @@ type EpvApplication=class(Exception)
        property VulkanDebugging:boolean read fVulkanDebugging write fVulkanDebugging;
 
        property VulkanShaderPrintfDebugging:boolean read fVulkanShaderPrintfDebugging write fVulkanShaderPrintfDebugging;
+
+       property VulkanSynchronizationValidation:boolean read fVulkanSynchronizationValidation write fVulkanSynchronizationValidation;
 
        property VulkanValidation:boolean read fVulkanValidation write fVulkanValidation;
 
@@ -9019,6 +9023,8 @@ begin
 
  fVulkanShaderPrintfDebugging:=false;
 
+ fVulkanSynchronizationValidation:=false;
+
  fVulkanDebuggingEnabled:=false;
 
  fVulkanPreferDedicatedGPUs:=true;
@@ -10302,6 +10308,7 @@ begin
    VulkanDebugLn('Calling TpvVulkanInstance.Initialize() . . .');
 {$ifend}
    fVulkanInstance.ShaderPrintfDebugging:=fVulkanDebuggingEnabled and fVulkanShaderPrintfDebugging;
+   fVulkanInstance.SynchronizationValidation:=fVulkanDebuggingEnabled and fVulkanValidation and fVulkanSynchronizationValidation;
    fVulkanInstance.Initialize;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
    VulkanDebugLn('Called TpvVulkanInstance.Initialize() . . .');
