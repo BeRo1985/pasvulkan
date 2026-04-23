@@ -58,6 +58,7 @@ unit PasVulkan.Framework;
   {$ifend}
  {$endif}
 {$endif}
+{$define PasVulkanQueueDiag}
 
 interface
 
@@ -12523,6 +12524,9 @@ end;
 
 procedure TpvVulkanDevice.WaitIdle;
 begin
+{$ifdef PasVulkanQueueDiag}
+ WriteLn('[QueueDiag] DevWait us=',QueueDiagTimestampUS,' tid=',GetCurrentThreadID,' dev=',TpvPtrUInt(fDeviceHandle));
+{$endif}
  VulkanCheckResult(fDeviceVulkan.DeviceWaitIdle(fDeviceHandle));
 end;
 
@@ -17954,6 +17958,9 @@ end;
 
 function TpvVulkanFence.WaitFor(const aTimeOut:TpvUInt64=TpvUInt64(TpvInt64(-1))):TVkResult;
 begin
+{$ifdef PasVulkanQueueDiag}
+ WriteLn('[QueueDiag] FenceW1 us=',QueueDiagTimestampUS,' tid=',GetCurrentThreadID,' h=',TpvPtrUInt(fFenceHandle));
+{$endif}
  result:=fDevice.fDeviceVulkan.WaitForFences(fDevice.fDeviceHandle,1,@fFenceHandle,VK_TRUE,aTimeOut);
  if result<VK_SUCCESS then begin
   VulkanCheckResult(result);
@@ -17972,6 +17979,9 @@ begin
    for Index:=0 to length(aFences)-1 do begin
     Handles[Index]:=aFences[Index].fFenceHandle;
    end;
+{$ifdef PasVulkanQueueDiag}
+   WriteLn('[QueueDiag] FenceWN us=',QueueDiagTimestampUS,' tid=',GetCurrentThreadID,' n=',length(aFences),' h0=',TpvPtrUInt(Handles[0]));
+{$endif}
    if aWaitAll then begin
     result:=aFences[0].fDevice.fDeviceVulkan.WaitForFences(aFences[0].fDevice.fDeviceHandle,length(aFences),@Handles[0],VK_TRUE,aTimeOut);
    end else begin
@@ -19822,6 +19832,9 @@ end;
 procedure TpvVulkanCommandBuffer.Execute(const aQueue:TpvVulkanQueue;const aWaitDstStageFlags:TVkPipelineStageFlags;const aWaitSemaphore:TpvVulkanSemaphore=nil;const aSignalSemaphore:TpvVulkanSemaphore=nil;const aFence:TpvVulkanFence=nil;const aDoWaitAndResetFence:boolean=true);
 var SubmitInfo:TVkSubmitInfo;
 begin
+{$ifdef PasVulkanQueueDiag}
+ WriteLn('[QueueDiag] CmdExec us=',QueueDiagTimestampUS,' tid=',GetCurrentThreadID,' qfi=',aQueue.fQueueFamilyIndex,' h=',TpvPtrUInt(aQueue.fQueueHandle));
+{$endif}
  if fLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY then begin
 
   FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
