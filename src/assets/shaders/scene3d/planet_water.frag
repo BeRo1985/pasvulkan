@@ -45,7 +45,7 @@ layout(location = 0) in InBlock {
   float underWater;
   flat uint meshletID;
 } inBlock;
-#elif defined(UNDERWATER)
+#elif defined(UNDERWATER) || defined(WATER_CAUSTICS)
 layout(location = 0) in InBlock {
   vec2 texCoord;
   float underWater;
@@ -62,7 +62,7 @@ layout(location = 0) out vec4 outFragColor;
   layout(location = 1) out vec4 outFragNormalUsed; // xyz = normal, w = 1.0 if normal was used, 0.0 otherwise (by clearing the normal buffer to vec4(0.0))
 #endif
 
-#if !(defined(TESSELLATION) || defined(UNDERWATER))
+#if !(defined(TESSELLATION) || defined(UNDERWATER) || defined(WATER_CAUSTICS))
 #ifdef MSAA
 #ifndef MSAA_FAST
 layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth; // Ignored/Unused in the MSAA_FAST case 
@@ -70,7 +70,7 @@ layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS 
 #else
 layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
 #endif
-#endif // !(defined(TESSELLATION) || defined(UNDERWATER))
+#endif // !(defined(TESSELLATION) || defined(UNDERWATER) || defined(WATER_CAUSTICS))
 
 #if defined(TESSELLATION)
 #define inViewSpacePosition inBlock.viewSpacePosition
@@ -130,7 +130,7 @@ layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0
 
 // Per water render pass descriptor set
 
-#if !(defined(TESSELLATION) || defined(UNDERWATER))
+#if !(defined(TESSELLATION) || defined(UNDERWATER) || defined(WATER_CAUSTICS))
 layout(set = 3, binding = 2) uniform sampler2DArray uTextureWaterAcceleration;
 #endif
 
@@ -202,7 +202,7 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
 mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
 
-#if !(defined(TESSELLATION) || defined(UNDERWATER))
+#if !(defined(TESSELLATION) || defined(UNDERWATER) || defined(WATER_CAUSTICS))
 mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 mat4 inverseViewProjectionMatrix = inverseViewMatrix * inverseProjectionMatrix;
 
@@ -243,6 +243,10 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 #include "planet_textures.glsl"
 
 #include "planet_water.glsl"
+
+#ifdef WATER_CAUSTICS
+#include "planet_caustics.glsl"
+#endif
 
 vec3 safeNormalize(vec3 v){
   return (length(v) > 0.0) ? normalize(v) : vec3(0.0);
@@ -1015,6 +1019,43 @@ void main(){
   }
 
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
+
+#elif defined(WATER_CAUSTICS)
+
+  // Reconstruct the world-space terrain position from the opaque depth buffer.
+  float rawDepth = texelFetch(uPassTextures[2], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
+  vec4 clipPos = vec4(fma(inBlock.texCoord, vec2(2.0), vec2(-1.0)), rawDepth, 1.0);
+  vec4 viewPos = inverseProjectionMatrix * clipPos;
+  viewPos /= viewPos.w;
+  vec3 worldPos = (inverseViewMatrix * viewPos).xyz;
+  vec3 planetPos = (planetInverseModelMatrix * vec4(worldPos, 1.0)).xyz;
+  float groundRadius = length(planetPos);
+
+  if(groundRadius > 1e-3){
+    vec3 sphereNormal = planetPos / groundRadius;
+    float waterRadius = getSphereHeightEx(octPlanetUnsignedEncode(sphereNormal));
+    if(waterRadius > groundRadius){
+      float waterDepth = waterRadius - groundRadius;
+      vec2 cp0 = unpackHalf2x16(planetData.waterDisplaceParams.z);
+      float causticIntensity = cp0.x;
+      if(causticIntensity > 0.0){
+        vec2 cp1 = unpackHalf2x16(planetData.waterDisplaceParams.w);
+        float causticScale = cp0.y;
+        float causticFadeDepth = cp1.x;
+        float causticSpeed = cp1.y;
+        float time = pushConstants.time;
+        float caustic = getCausticIntensity(planetPos, time, causticScale, causticSpeed, causticFadeDepth, waterDepth);
+        // Additive caustic light; alpha=0 so we don't disturb the composite alpha.
+        outFragColor = vec4(causticIntensity * caustic * vec3(0.9, 1.0, 1.0), 0.0);
+      } else {
+        discard;
+      }
+    } else {
+      discard;
+    }
+  } else {
+    discard;
+  }
 
 #else
 #ifdef MULTIVIEW

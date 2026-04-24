@@ -2706,6 +2706,11 @@ type TpvScene3DPlanets=class;
               fUnderwaterFragmentShaderModule:TpvVulkanShaderModule;
               fUnderwaterVertexShaderStage:TpvVulkanPipelineShaderStage;
               fUnderwaterFragmentShaderStage:TpvVulkanPipelineShaderStage;
+              fCausticsVertexShaderModule:TpvVulkanShaderModule;
+              fCausticsFragmentShaderModule:TpvVulkanShaderModule;
+              fCausticsVertexShaderStage:TpvVulkanPipelineShaderStage;
+              fCausticsFragmentShaderStage:TpvVulkanPipelineShaderStage;
+              fCausticsPipeline:TpvVulkanGraphicsPipeline;
               fWaterVertexShaderModule:TpvVulkanShaderModule;
               fWaterTessellationControlShaderModule:TpvVulkanShaderModule;
               fWaterTessellationEvaluationShaderModule:TpvVulkanShaderModule;
@@ -26511,6 +26516,16 @@ begin
 
  fUnderwaterFragmentShaderStage:=nil;
 
+ fCausticsVertexShaderModule:=nil;
+
+ fCausticsFragmentShaderModule:=nil;
+
+ fCausticsVertexShaderStage:=nil;
+
+ fCausticsFragmentShaderStage:=nil;
+
+ fCausticsPipeline:=nil;
+
  fWaterVertexShaderModule:=nil;
 
  fWaterTessellationControlShaderModule:=nil;
@@ -26581,6 +26596,32 @@ begin
  end;
  fVulkanDevice.DebugUtils.SetObjectName(fUnderwaterFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fUnderwaterFragmentShaderModule');
 
+ begin
+  // Load caustics shaders
+  ShaderFileName:='planet_water_caustics';
+  if TpvScene3D(fScene3D).RaytracingActive then begin
+   ShaderFileName:=ShaderFileName+'_raytracing';
+  end else if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+   ShaderFileName:=ShaderFileName+'_bufref';
+  end;
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_vert.spv');
+  try
+   fCausticsVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+  fVulkanDevice.DebugUtils.SetObjectName(fCausticsVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fCausticsVertexShaderModule');
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_frag.spv');
+  try
+   fCausticsFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+  fVulkanDevice.DebugUtils.SetObjectName(fCausticsFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fCausticsFragmentShaderModule');
+ end;
+
  ShaderFileName:='planet_water';
 
  if TpvScene3D(fScene3D).RaytracingActive then begin
@@ -26642,6 +26683,10 @@ begin
  fUnderwaterVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fUnderwaterVertexShaderModule,'main');
 
  fUnderwaterFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fUnderwaterFragmentShaderModule,'main');
+
+ fCausticsVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCausticsVertexShaderModule,'main');
+
+ fCausticsFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCausticsFragmentShaderModule,'main');
 
  fWaterVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fWaterVertexShaderModule,'main');
 
@@ -26741,6 +26786,14 @@ begin
  FreeAndNil(fUnderwaterFragmentShaderModule);
 
  FreeAndNil(fUnderwaterVertexShaderModule);
+
+ FreeAndNil(fCausticsFragmentShaderStage);
+
+ FreeAndNil(fCausticsVertexShaderStage);
+
+ FreeAndNil(fCausticsFragmentShaderModule);
+
+ FreeAndNil(fCausticsVertexShaderModule);
 
  inherited Destroy;
 
@@ -26845,6 +26898,80 @@ begin
   fUnderwaterPipeline.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fUnderwaterPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TWaterRenderPass.fUnderwaterPipeline');
+
+ end;
+
+ begin
+  // Caustics pipeline: additive fullscreen-quad, drawn after underwater, before water surface
+
+  fCausticsPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
+                                                      TpvScene3DRenderer(fRenderer).VulkanPipelineCache,
+                                                      0,
+                                                      [],
+                                                      fPipelineLayout,
+                                                      aRenderPass,
+                                                      0,
+                                                      nil,
+                                                      0);
+
+  fCausticsPipeline.AddStage(fCausticsVertexShaderStage);
+  fCausticsPipeline.AddStage(fCausticsFragmentShaderStage);
+
+  fCausticsPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+  fCausticsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+  fCausticsPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
+  fCausticsPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
+
+  fCausticsPipeline.RasterizationState.DepthClampEnable:=false;
+  fCausticsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+  fCausticsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+  fCausticsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+  fCausticsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+  fCausticsPipeline.RasterizationState.DepthBiasEnable:=false;
+  fCausticsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+  fCausticsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+  fCausticsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+  fCausticsPipeline.RasterizationState.LineWidth:=1.0;
+
+  if TpvScene3DRenderer(fRenderer).SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+   fCausticsPipeline.MultisampleState.RasterizationSamples:=aVulkanSampleCountFlagBits;
+  end else begin
+   fCausticsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+  end;
+  fCausticsPipeline.MultisampleState.SampleShadingEnable:=false;
+  fCausticsPipeline.MultisampleState.MinSampleShading:=0.0;
+  fCausticsPipeline.MultisampleState.CountSampleMasks:=0;
+  fCausticsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+  fCausticsPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+  fCausticsPipeline.ColorBlendState.LogicOpEnable:=false;
+  fCausticsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+  fCausticsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+  fCausticsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+  fCausticsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+  fCausticsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+  // Additive blend: src=ONE dst=ONE for color; src=ZERO dst=ONE for alpha (preserve existing alpha)
+  fCausticsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                                 VK_BLEND_FACTOR_ONE,
+                                                                 VK_BLEND_FACTOR_ONE,
+                                                                 VK_BLEND_OP_ADD,
+                                                                 VK_BLEND_FACTOR_ZERO,
+                                                                 VK_BLEND_FACTOR_ONE,
+                                                                 VK_BLEND_OP_ADD,
+                                                                 TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                 TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                 TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                 TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+  fCausticsPipeline.DepthStencilState.DepthTestEnable:=false;
+  fCausticsPipeline.DepthStencilState.DepthWriteEnable:=false;
+  fCausticsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+  fCausticsPipeline.DepthStencilState.StencilTestEnable:=false;
+
+  fCausticsPipeline.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fCausticsPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TWaterRenderPass.fCausticsPipeline');
 
  end;
 
@@ -27034,6 +27161,8 @@ begin
 
  FreeAndNil(fWaterPipeline);
 
+ FreeAndNil(fCausticsPipeline);
+
  FreeAndNil(fUnderwaterPipeline);
 
  FreeAndNil(fPipelineLayout);
@@ -27143,6 +27272,41 @@ begin
          Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
         end;
 
+        // Caustics: additive fullscreen pass after underwater, before water surface
+        // Re-bind using fPipelineLayout (caustics uses fPipelineLayout, not fWaterMeshPipelineLayout)
+        DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+        DescriptorSets[1]:=aPassDescriptorSet.Handle;
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             fPipelineLayout.Handle,
+                                             0,
+                                             2,
+                                             @DescriptorSets,
+                                             0,
+                                             nil);
+        DescriptorSets[0]:=Planet.fPlanetDescriptorSets[aInFlightFrameIndex].Handle;
+        DescriptorSets[1]:=RendererViewInstance.fWaterRenderDescriptorSets[aInFlightFrameIndex].Handle;
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             fPipelineLayout.Handle,
+                                             2,
+                                             2,
+                                             @DescriptorSets,
+                                             0,
+                                             nil);
+        aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                        0,
+                                        SizeOf(TPushConstants),
+                                        @fPushConstants);
+        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fCausticsPipeline.Handle);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetWaterCaustics');
+        end;
+        aCommandBuffer.CmdDraw(3,1,0,0);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+        end;
+
         // Re-bind sets 0-3 with fWaterMeshPipelineLayout for mesh water draw
         DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
         DescriptorSets[1]:=aPassDescriptorSet.Handle;
@@ -27197,6 +27361,16 @@ begin
         aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fUnderwaterPipeline.Handle);
         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
          Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetUnderwater');
+        end;
+        aCommandBuffer.CmdDraw(3,1,0,0);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+        end;
+
+        // Caustics: additive fullscreen pass after underwater, before water surface
+        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fCausticsPipeline.Handle);
+        if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
+         Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Draw,'PlanetWaterCaustics');
         end;
         aCommandBuffer.CmdDraw(3,1,0,0);
         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin

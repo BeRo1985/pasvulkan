@@ -628,6 +628,14 @@ compileshaderarguments=(
   "-V planet_water.frag -DUNDERWATER -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_underwater_bufref_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DRAYTRACING -o ${tempPath}/planet_water_underwater_raytracing_frag.spv"
 
+  "-V planet_water.vert -DWATER_CAUSTICS -o ${tempPath}/planet_water_caustics_vert.spv"
+  "-V planet_water.vert -DWATER_CAUSTICS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_vert.spv"
+  "-V planet_water.vert -DWATER_CAUSTICS -DRAYTRACING -o ${tempPath}/planet_water_caustics_raytracing_vert.spv"
+
+  "-V planet_water.frag -DWATER_CAUSTICS -o ${tempPath}/planet_water_caustics_frag.spv"
+  "-V planet_water.frag -DWATER_CAUSTICS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_frag.spv"
+  "-V planet_water.frag -DWATER_CAUSTICS -DRAYTRACING -o ${tempPath}/planet_water_caustics_raytracing_frag.spv"
+
   "-V planet_renderpass.vert -o ${tempPath}/planet_renderpass_vert.spv"
   "-V planet_renderpass.vert -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_vert.spv"
   "-V planet_renderpass.vert -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_renderpass_bufref_vert.spv"
