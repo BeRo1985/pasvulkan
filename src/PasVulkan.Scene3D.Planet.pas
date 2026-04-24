@@ -176,6 +176,7 @@ type TpvScene3DPlanets=class;
              WaterShoreFoam1:TpvHalfFloatVector4; // x = foam depth end (shallow; full foam for waterDepth <= end), y = pattern scale (1/unit along inBlock.position), z = scroll speed, w = overall foam intensity (0 = off)
  
              WaterShoreFoamExtra:TpvHalfFloatVector4; // x=breakupLow, y=breakupHigh, zw=unused
+             WaterShoreFoamExtra1:TpvHalfFloatVector4; // padding (fills uvec4 waterShoreFoamExtra yzw)
 
              WaterWaveParams0:TpvHalfFloatVector4; // x=windDirX, y=windDirY, z=windDirZ, w=waveAmplitude (visual strength, 0=disabled)
              WaterWaveParams1:TpvHalfFloatVector4; // x=waveFrequency (rad/m), y=waveSteepness (0..1), z=waveSpeed (rad/s), w=unused
@@ -186,6 +187,7 @@ type TpvScene3DPlanets=class;
              WaterWhitecapParams0:TpvHalfFloatVector4; // xyz=whitecap foam color (linear RGB), w=FBM pattern scale
              WaterWhitecapParams1:TpvHalfFloatVector4; // x=slopeThreshLow, y=slopeThreshHigh, z=FBM breakupLow, w=FBM breakupHigh
              WaterWhitecapParams2:TpvHalfFloatVector4; // x=whitecapFactor (overall intensity), yzw=unused
+             WaterWhitecapParams3:TpvHalfFloatVector4; // padding (fills uvec4 waterWhitecapParams2 yzw)
 
              Textures:array[0..15,0..3] of TpvUInt32;
 
@@ -31767,6 +31769,10 @@ begin
    fPlanetData.WaterShoreFoamExtra.y:=fWaterShoreFoamBreakupHigh;
    fPlanetData.WaterShoreFoamExtra.z:=0.0;
    fPlanetData.WaterShoreFoamExtra.w:=0.0;
+   fPlanetData.WaterShoreFoamExtra1.x:=0.0;
+   fPlanetData.WaterShoreFoamExtra1.y:=0.0;
+   fPlanetData.WaterShoreFoamExtra1.z:=0.0;
+   fPlanetData.WaterShoreFoamExtra1.w:=0.0;
    fPlanetData.WaterWaveParams0.x:=fWaterWindDirection.x;
    fPlanetData.WaterWaveParams0.y:=fWaterWindDirection.y;
    fPlanetData.WaterWaveParams0.z:=fWaterWindDirection.z;
@@ -31795,6 +31801,10 @@ begin
    fPlanetData.WaterWhitecapParams2.y:=0.0;
    fPlanetData.WaterWhitecapParams2.z:=0.0;
    fPlanetData.WaterWhitecapParams2.w:=0.0;
+   fPlanetData.WaterWhitecapParams3.x:=0.0;
+   fPlanetData.WaterWhitecapParams3.y:=0.0;
+   fPlanetData.WaterWhitecapParams3.z:=0.0;
+   fPlanetData.WaterWhitecapParams3.w:=0.0;
    fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
