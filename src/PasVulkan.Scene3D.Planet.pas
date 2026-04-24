@@ -178,6 +178,9 @@ type TpvScene3DPlanets=class;
              WaterWaveParams0:TpvHalfFloatVector4; // x=windDirX, y=windDirY, z=windDirZ, w=waveAmplitude (visual strength, 0=disabled)
              WaterWaveParams1:TpvHalfFloatVector4; // x=waveFrequency (rad/m), y=waveSteepness (0..1), z=waveSpeed (rad/s), w=whitecapFactor (0..1, overall whitecap intensity)
 
+             WaterUVWaveParams0:TpvHalfFloatVector4; // x=uvWaveAmplitude, y=uvWaveFrequency (cycles/UV), z=uvWaveSpeed, w=uvWaveSteepness
+             WaterUVWaveParams1:TpvHalfFloatVector4; // x=uvWaveFactor (0..1), y=waveWindFactor (0..1 wind Gerstner multiplier), zw=unused
+
              Textures:array[0..15,0..3] of TpvUInt32;
 
             end;
@@ -2882,6 +2885,12 @@ type TpvScene3DPlanets=class;
        fWaterWaveSteepness:TpvFloat;   // Gerstner steepness (0 = pure sine, 1 = peaked crests).
        fWaterWaveSpeed:TpvFloat;       // Angular wave propagation speed (rad/s; visual only).
        fWaterWhitecapFactor:TpvFloat;  // Overall whitecap intensity (0 = off, 1 = default, >1 = intense).
+       fWaterUVWaveAmplitude:TpvFloat;  // OctUV-based wave normal strength (0 = off).
+       fWaterUVWaveFrequency:TpvFloat;  // Spatial wave cycles per octahedral UV unit.
+       fWaterUVWaveSpeed:TpvFloat;      // UV wave animation speed (UV units/s).
+       fWaterUVWaveSteepness:TpvFloat;  // UV wave steepness/sharpness.
+       fWaterUVWaveFactor:TpvFloat;     // Overall UV wave contribution multiplier (0=off, 1=full).
+       fWaterWaveWindFactor:TpvFloat;   // Multiplier for wind-based Gerstner contribution (0=off, 1=full).
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
        fTileMapBits:TpvInt32;
@@ -3215,6 +3224,12 @@ type TpvScene3DPlanets=class;
        property WaterWaveSteepness:TpvFloat read fWaterWaveSteepness write fWaterWaveSteepness;
        property WaterWaveSpeed:TpvFloat read fWaterWaveSpeed write fWaterWaveSpeed;
        property WaterWhitecapFactor:TpvFloat read fWaterWhitecapFactor write fWaterWhitecapFactor;
+       property WaterUVWaveAmplitude:TpvFloat read fWaterUVWaveAmplitude write fWaterUVWaveAmplitude;
+       property WaterUVWaveFrequency:TpvFloat read fWaterUVWaveFrequency write fWaterUVWaveFrequency;
+       property WaterUVWaveSpeed:TpvFloat read fWaterUVWaveSpeed write fWaterUVWaveSpeed;
+       property WaterUVWaveSteepness:TpvFloat read fWaterUVWaveSteepness write fWaterUVWaveSteepness;
+       property WaterUVWaveFactor:TpvFloat read fWaterUVWaveFactor write fWaterUVWaveFactor;
+       property WaterWaveWindFactor:TpvFloat read fWaterWaveWindFactor write fWaterWaveWindFactor;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -28175,6 +28190,12 @@ begin
  fWaterWaveSteepness:=0.5; // moderate steepness
  fWaterWaveSpeed:=0.5; // 0.5 rad/s angular propagation speed
  fWaterWhitecapFactor:=1.0; // full whitecap intensity by default
+ fWaterUVWaveAmplitude:=0.1; // subtle omnidirectional UV detail
+ fWaterUVWaveFrequency:=5.0; // 5 wave cycles across the octahedral UV [0,1]
+ fWaterUVWaveSpeed:=0.3; // gentle animation
+ fWaterUVWaveSteepness:=0.5; // moderate steepness
+ fWaterUVWaveFactor:=1.0; // full contribution by default
+ fWaterWaveWindFactor:=1.0; // full wind-wave contribution by default
 
  fTileMapResolution:=Min(Max(fHeightMapResolution shr 8,32),fHeightMapResolution);
 
@@ -31715,6 +31736,14 @@ begin
    fPlanetData.WaterWaveParams1.y:=fWaterWaveSteepness;
    fPlanetData.WaterWaveParams1.z:=fWaterWaveSpeed;
    fPlanetData.WaterWaveParams1.w:=fWaterWhitecapFactor;
+   fPlanetData.WaterUVWaveParams0.x:=fWaterUVWaveAmplitude;
+   fPlanetData.WaterUVWaveParams0.y:=fWaterUVWaveFrequency;
+   fPlanetData.WaterUVWaveParams0.z:=fWaterUVWaveSpeed;
+   fPlanetData.WaterUVWaveParams0.w:=fWaterUVWaveSteepness;
+   fPlanetData.WaterUVWaveParams1.x:=fWaterUVWaveFactor;
+   fPlanetData.WaterUVWaveParams1.y:=fWaterWaveWindFactor;
+   fPlanetData.WaterUVWaveParams1.z:=0.0;
+   fPlanetData.WaterUVWaveParams1.w:=0.0;
    fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
@@ -32153,6 +32182,12 @@ begin
    fWaterWaveSteepness:=TPasJSON.GetNumber(JSONWavesObject.Properties['steepness'],fWaterWaveSteepness);
    fWaterWaveSpeed:=TPasJSON.GetNumber(JSONWavesObject.Properties['speed'],fWaterWaveSpeed);
    fWaterWhitecapFactor:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecapfactor'],fWaterWhitecapFactor);
+   fWaterWaveWindFactor:=TPasJSON.GetNumber(JSONWavesObject.Properties['windfactor'],fWaterWaveWindFactor);
+   fWaterUVWaveAmplitude:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvamplitude'],fWaterUVWaveAmplitude);
+   fWaterUVWaveFrequency:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvfrequency'],fWaterUVWaveFrequency);
+   fWaterUVWaveSpeed:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvspeed'],fWaterUVWaveSpeed);
+   fWaterUVWaveSteepness:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvsteepness'],fWaterUVWaveSteepness);
+   fWaterUVWaveFactor:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvfactor'],fWaterUVWaveFactor);
   end;
  end;
 end;

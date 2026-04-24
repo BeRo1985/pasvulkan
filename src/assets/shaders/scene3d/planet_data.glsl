@@ -60,6 +60,8 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
 
   uvec4 waterWaveParams; // xy = half4(windDirX, windDirY, windDirZ, waveAmplitude), zw = half4(waveFrequency, waveSteepness, waveSpeed, whitecapFactor)
 
+  uvec4 waterUVWaveParams; // xy = half4(uvWaveAmplitude, uvWaveFrequency, uvWaveSpeed, uvWaveSteepness), zw = half4(uvWaveFactor, waveWindFactor, unused, unused)
+
   PlanetMaterial materials[16];
 
 }
