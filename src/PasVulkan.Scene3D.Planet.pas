@@ -2902,6 +2902,7 @@ type TpvScene3DPlanets=class;
        fWaterUVWaveFactor:TpvFloat;     // Overall UV wave contribution multiplier (0=off, 1=full).
        fWaterWaveWindFactor:TpvFloat;   // Multiplier for wind-based Gerstner contribution (0=off, 1=full).
        fWaterUVWaveScale:TpvFloat;      // Oct UV coordinate scale before wave phases (higher = finer ripples).
+       fWaterWaveDisplaceAmplitude:TpvFloat; // Per-vertex height displacement amplitude in meters (0=disabled).
        fWaterWhitecapColor:TpvVector3;  // Whitecap foam color (linear RGB), default white.
        fWaterWhitecapPatternScale:TpvFloat;      // FBM breakup pattern scale, default 24.
        fWaterWhitecapSlopeThreshLow:TpvFloat;    // Heightmap slope where whitecaps begin, default 0.05.
@@ -3250,6 +3251,7 @@ type TpvScene3DPlanets=class;
        property WaterUVWaveFactor:TpvFloat read fWaterUVWaveFactor write fWaterUVWaveFactor;
        property WaterWaveWindFactor:TpvFloat read fWaterWaveWindFactor write fWaterWaveWindFactor;
        property WaterUVWaveScale:TpvFloat read fWaterUVWaveScale write fWaterUVWaveScale;
+       property WaterWaveDisplaceAmplitude:TpvFloat read fWaterWaveDisplaceAmplitude write fWaterWaveDisplaceAmplitude;
       public
        property WaterWhitecapColor:TpvVector3 read fWaterWhitecapColor write fWaterWhitecapColor;
       published
@@ -28227,6 +28229,7 @@ begin
  fWaterUVWaveFactor:=1.0; // full contribution by default
  fWaterWaveWindFactor:=1.0; // full wind-wave contribution by default
  fWaterUVWaveScale:=10.0; // moderate UV scale for visible ripples
+ fWaterWaveDisplaceAmplitude:=0.0; // disabled by default; enable via JSON "waves"."displace"
  fWaterWhitecapColor:=TpvVector3.Create(1.0,1.0,1.0); // white foam
  fWaterWhitecapPatternScale:=24.0;
  fWaterWhitecapSlopeThreshLow:=0.05;
@@ -31788,7 +31791,7 @@ begin
    fPlanetData.WaterUVWaveParams1.x:=fWaterUVWaveFactor;
    fPlanetData.WaterUVWaveParams1.y:=fWaterWaveWindFactor;
    fPlanetData.WaterUVWaveParams1.z:=fWaterUVWaveScale;
-   fPlanetData.WaterUVWaveParams1.w:=0.0;
+   fPlanetData.WaterUVWaveParams1.w:=fWaterWaveDisplaceAmplitude;
    fPlanetData.WaterWhitecapParams0.x:=fWaterWhitecapColor.x;
    fPlanetData.WaterWhitecapParams0.y:=fWaterWhitecapColor.y;
    fPlanetData.WaterWhitecapParams0.z:=fWaterWhitecapColor.z;
@@ -32251,6 +32254,7 @@ begin
    fWaterUVWaveSteepness:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvsteepness'],fWaterUVWaveSteepness);
    fWaterUVWaveFactor:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvfactor'],fWaterUVWaveFactor);
    fWaterUVWaveScale:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvscale'],fWaterUVWaveScale);
+   fWaterWaveDisplaceAmplitude:=TPasJSON.GetNumber(JSONWavesObject.Properties['displace'],fWaterWaveDisplaceAmplitude);
   end;
   JSONItem:=JSONWaterObject.Properties['whitecap'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin

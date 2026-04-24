@@ -468,4 +468,18 @@ bool planetRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxTime, out flo
 
 }
 
+// Compute UV-wave displacement height at a given oct-UV coordinate.
+// Uses the same 4 wave trains as accumulateUVWaveNormal for normal/displacement consistency.
+// Returns unnormalized height sum; caller multiplies by displacement amplitude.
+// freq: uvWaveFrequency, speed: uvWaveSpeed, scale: uvWaveScale
+float computeWaveDisplacement(vec2 uv, float time, float freq, float speed, float scale){
+  vec2 scaledUV = wrapOctahedralCoordinates(uv * scale);
+  float t = time * speed;
+  float h  = sin(freq        * dot(vec2(1.0, 0.0),            scaledUV) - t);
+  h +=       sin(freq * 0.73 * dot(vec2(0.0, 1.0),            scaledUV) - t * 1.1) * 0.6;
+  h +=       sin(freq * 1.4  * dot(vec2(0.707107,  0.707107), scaledUV) - t * 0.8) * 0.35;
+  h +=       sin(freq * 2.1  * dot(vec2(0.707107, -0.707107), scaledUV) - t * 1.3) * 0.2;
+  return h;
+}
+
 #endif // PLANET_WATER_GLSL

@@ -265,6 +265,7 @@ float uvWaveSpeed        = 0.3; // UV wave animation speed (UV units/s)
 float uvWaveSteepness    = 0.5; // UV wave steepness / sharpness
 float uvWaveFactor       = 1.0; // overall UV wave contribution multiplier (0=off, 1=full)
 float uvWaveScale        = 10.0; // UV coordinate scale applied to octUV before wave phases (higher = finer ripples)
+float waveDisplaceAmplitude = 0.0; // per-vertex height displacement amplitude in meters (0=disabled)
 vec3  whitecapColor          = vec3(1.0);  // whitecap foam color (linear RGB)
 float whitecapPatternScale   = 24.0;  // FBM breakup pattern scale
 float whitecapSlopeThreshLow  = 0.05; // heightmap slope where whitecaps begin
@@ -287,6 +288,11 @@ void accumulateUVWaveNormal(vec2 uvDir, float k, float A, vec2 uv, float t, inou
   float phase = k * dot(uvDir, uv) - t;
   float dPhase = A * cos(phase);
   normalOffset -= (dPhase * uvDir.x) * tanU + (dPhase * uvDir.y) * tanV;
+}
+
+// Fragment-local wrapper: same 4 wave trains, uses global uvWave* uniforms.
+float computeWaveDisplacement(vec2 uv, float time){
+  return computeWaveDisplacement(uv, time, uvWaveFrequency, uvWaveSpeed, uvWaveScale);
 }
 
 vec3 getWaterNormal(vec3 position){
@@ -328,6 +334,20 @@ vec3 getWaterNormal(vec3 position){
     float hh = getSphereHeightEx(huv);
     float ih = getSphereHeightEx(iuv);
 
+    // Correct height samples for wave displacement so normals match displaced geometry.
+    if(waveDisplaceAmplitude > 0.0){
+      float disT = pushConstants.time;
+      eh += computeWaveDisplacement(euv, disT) * waveDisplaceAmplitude;
+      if(ah > 0.0){ ah += computeWaveDisplacement(auv, disT) * waveDisplaceAmplitude; }
+      if(bh > 0.0){ bh += computeWaveDisplacement(buv, disT) * waveDisplaceAmplitude; }
+      if(ch > 0.0){ ch += computeWaveDisplacement(cuv, disT) * waveDisplaceAmplitude; }
+      if(dh > 0.0){ dh += computeWaveDisplacement(duv, disT) * waveDisplaceAmplitude; }
+      if(fh > 0.0){ fh += computeWaveDisplacement(fuv, disT) * waveDisplaceAmplitude; }
+      if(gh > 0.0){ gh += computeWaveDisplacement(guv, disT) * waveDisplaceAmplitude; }
+      if(hh > 0.0){ hh += computeWaveDisplacement(huv, disT) * waveDisplaceAmplitude; }
+      if(ih > 0.0){ ih += computeWaveDisplacement(iuv, disT) * waveDisplaceAmplitude; }
+    }
+
     vec3 a = octPlanetUnsignedDecode(auv) * ((ah > 0.0) ? ah : eh);
     vec3 b = octPlanetUnsignedDecode(buv) * ((bh > 0.0) ? bh : eh);
     vec3 c = octPlanetUnsignedDecode(cuv) * ((ch > 0.0) ? ch : eh);
@@ -352,6 +372,7 @@ vec3 getWaterNormal(vec3 position){
 
   }       
 
+#if 0 // Old normal-bending code: replaced by geometry displacement + height-sample correction above.
   // Add Gerstner wave detail normal perturbation (4 wave trains, wind-directed).
   // Controlled by waveWindDir, waveAmplitude, waveFrequency, waveSteepness, waveSpeed
   // which are unpacked from planetData.waterWaveParams in main().
@@ -398,6 +419,7 @@ vec3 getWaterNormal(vec3 position){
     accumulateUVWaveNormal(vec2(0.707107, -0.707107),  uvWaveFrequency * 2.1,  uvWaveAmplitude * 0.2,  scaledUV, t * 1.3,  uvNormalOffset, tanU, tanV);
     normal = normalize(normal + (uvNormalOffset * uvWaveSteepness * uvWaveFactor));
   }
+#endif
 
   return normal;
 #else
@@ -945,16 +967,17 @@ void main(){
     waveSpeed = wp1.z;
     {
       // wp2: (uvWaveAmplitude, uvWaveFrequency, uvWaveSpeed, uvWaveSteepness)
-      // wp3: (uvWaveFactor, waveWindFactor, uvWaveScale, unused)
+      // wp3: (uvWaveFactor, waveWindFactor, uvWaveScale, waveDisplaceAmplitude)
       vec4 wp2 = vec4(unpackHalf2x16(planetData.waterUVWaveParams.x), unpackHalf2x16(planetData.waterUVWaveParams.y));
       vec4 wp3 = vec4(unpackHalf2x16(planetData.waterUVWaveParams.z), unpackHalf2x16(planetData.waterUVWaveParams.w));
       uvWaveAmplitude = wp2.x;
       uvWaveFrequency = wp2.y;
-      uvWaveSpeed     = wp2.z;
+      uvWaveSpeed = wp2.z;
       uvWaveSteepness = wp2.w;
-      uvWaveFactor    = wp3.x;
-      waveWindFactor  = wp3.y;
-      uvWaveScale     = wp3.z;
+      uvWaveFactor = wp3.x;
+      waveWindFactor = wp3.y;
+      uvWaveScale = wp3.z;
+      waveDisplaceAmplitude = wp3.w;
     }
   }
   {
@@ -963,18 +986,18 @@ void main(){
     // wcp1: (slopeThreshLow, slopeThreshHigh, breakupLow, breakupHigh)
     vec4 wcp0 = vec4(unpackHalf2x16(planetData.waterWhitecapParams.x), unpackHalf2x16(planetData.waterWhitecapParams.y));
     vec4 wcp1 = vec4(unpackHalf2x16(planetData.waterWhitecapParams.z), unpackHalf2x16(planetData.waterWhitecapParams.w));
-    whitecapColor          = wcp0.xyz;
-    whitecapPatternScale   = wcp0.w;
-    whitecapSlopeThreshLow  = wcp1.x;
+    whitecapColor = wcp0.xyz;
+    whitecapPatternScale = wcp0.w;
+    whitecapSlopeThreshLow = wcp1.x;
     whitecapSlopeThreshHigh = wcp1.y;
-    whitecapBreakupLow     = wcp1.z;
-    whitecapBreakupHigh    = wcp1.w;
-    waveWhitecapFactor     = unpackHalf2x16(planetData.waterWhitecapParams2.x).x;
+    whitecapBreakupLow = wcp1.z;
+    whitecapBreakupHigh = wcp1.w;
+    waveWhitecapFactor = unpackHalf2x16(planetData.waterWhitecapParams2.x).x;
   }
   {
     // Unpack shore foam breakup thresholds.
     vec2 sfb = unpackHalf2x16(planetData.waterShoreFoamExtra.x);
-    shoreFoamBreakupLow  = sfb.x;
+    shoreFoamBreakupLow = sfb.x;
     shoreFoamBreakupHigh = sfb.y;
   }
 

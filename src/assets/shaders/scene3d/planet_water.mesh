@@ -145,6 +145,17 @@ void main() {
     vec2 sphereHeightData = getSphereHeightData(sphereNormal);
     float sphereHeight = dot(sphereHeightData, vec2(1.0));
 
+    // Wave height displacement (disabled when waveDisplaceAmplitude == 0 in planet data).
+    {
+      vec4 uvwp1 = vec4(unpackHalf2x16(planetData.waterUVWaveParams.z), unpackHalf2x16(planetData.waterUVWaveParams.w));
+      float displaceAmpl = uvwp1.w;
+      if(displaceAmpl > 0.0){
+        vec4 uvwp0 = vec4(unpackHalf2x16(planetData.waterUVWaveParams.x), unpackHalf2x16(planetData.waterUVWaveParams.y));
+        float waveH = computeWaveDisplacement(uv, pushConstants.time, uvwp0.y, uvwp0.z, uvwp1.z) * displaceAmpl;
+        sphereHeight = clamp(sphereHeight + waveH, planetData.bottomRadiusTopRadiusHeightMapScale.x * 0.5, planetData.bottomRadiusTopRadiusHeightMapScale.y);
+      }
+    }
+
     vec3 localPosition = sphereNormal * ((sphereHeight > 1e-6) ? clamp(sphereHeight, planetData.bottomRadiusTopRadiusHeightMapScale.x * 0.5, planetData.bottomRadiusTopRadiusHeightMapScale.y) : 1e-6);
 
     vec3 position = (planetData.modelMatrix * vec4(localPosition, 1.0)).xyz;
