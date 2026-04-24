@@ -265,7 +265,10 @@ float uvWaveSpeed        = 0.3; // UV wave animation speed (UV units/s)
 float uvWaveSteepness    = 0.5; // UV wave steepness / sharpness
 float uvWaveFactor       = 1.0; // overall UV wave contribution multiplier (0=off, 1=full)
 float uvWaveScale        = 10.0; // UV coordinate scale applied to octUV before wave phases (higher = finer ripples)
-float waveDisplaceAmplitude = 0.0; // per-vertex height displacement amplitude in meters (0=disabled)
+float waveDisplaceAmplitude          = 0.0; // per-vertex height displacement amplitude in meters (0=disabled)
+float displaceHeightLowThreshold     = 0.0; // water depth below which displacement fades to 0
+float displaceHeightHighThreshold    = 0.5; // water depth above which displacement is at full strength
+float displaceHeightFactor           = 1.0; // overall multiplier on depth-based displacement fade
 vec3  whitecapColor          = vec3(1.0);  // whitecap foam color (linear RGB)
 float whitecapPatternScale   = 24.0;  // FBM breakup pattern scale
 float whitecapSlopeThreshLow  = 0.05; // heightmap slope where whitecaps begin
@@ -335,17 +338,23 @@ vec3 getWaterNormal(vec3 position){
     float ih = getSphereHeightEx(iuv);
 
     // Correct height samples for wave displacement so normals match displaced geometry.
+    // Uses center water depth for smoothstep (approximation; avoids 8 extra texture reads).
     if(waveDisplaceAmplitude > 0.0){
-      float disT = pushConstants.time;
-      eh += computeWaveDisplacement(euv, disT) * waveDisplaceAmplitude;
-      if(ah > 0.0){ ah += computeWaveDisplacement(auv, disT) * waveDisplaceAmplitude; }
-      if(bh > 0.0){ bh += computeWaveDisplacement(buv, disT) * waveDisplaceAmplitude; }
-      if(ch > 0.0){ ch += computeWaveDisplacement(cuv, disT) * waveDisplaceAmplitude; }
-      if(dh > 0.0){ dh += computeWaveDisplacement(duv, disT) * waveDisplaceAmplitude; }
-      if(fh > 0.0){ fh += computeWaveDisplacement(fuv, disT) * waveDisplaceAmplitude; }
-      if(gh > 0.0){ gh += computeWaveDisplacement(guv, disT) * waveDisplaceAmplitude; }
-      if(hh > 0.0){ hh += computeWaveDisplacement(huv, disT) * waveDisplaceAmplitude; }
-      if(ih > 0.0){ ih += computeWaveDisplacement(iuv, disT) * waveDisplaceAmplitude; }
+      float centerWaterDepth = getSphereHeightData(euv).y;
+      float displacementFactor = smoothstep(displaceHeightLowThreshold, displaceHeightHighThreshold, centerWaterDepth) * displaceHeightFactor;
+      if(displacementFactor > 0.0){
+        float effAmpl = waveDisplaceAmplitude * displacementFactor;
+        float disT = pushConstants.time;
+        eh += computeWaveDisplacement(euv, disT) * effAmpl;
+        if(ah > 0.0){ ah += computeWaveDisplacement(auv, disT) * effAmpl; }
+        if(bh > 0.0){ bh += computeWaveDisplacement(buv, disT) * effAmpl; }
+        if(ch > 0.0){ ch += computeWaveDisplacement(cuv, disT) * effAmpl; }
+        if(dh > 0.0){ dh += computeWaveDisplacement(duv, disT) * effAmpl; }
+        if(fh > 0.0){ fh += computeWaveDisplacement(fuv, disT) * effAmpl; }
+        if(gh > 0.0){ gh += computeWaveDisplacement(guv, disT) * effAmpl; }
+        if(hh > 0.0){ hh += computeWaveDisplacement(huv, disT) * effAmpl; }
+        if(ih > 0.0){ ih += computeWaveDisplacement(iuv, disT) * effAmpl; }
+      }
     }
 
     vec3 a = octPlanetUnsignedDecode(auv) * ((ah > 0.0) ? ah : eh);
@@ -967,7 +976,7 @@ void main(){
     waveSpeed = wp1.z;
     {
       // wp2: (uvWaveAmplitude, uvWaveFrequency, uvWaveSpeed, uvWaveSteepness)
-      // wp3: (uvWaveFactor, waveWindFactor, uvWaveScale, waveDisplaceAmplitude)
+      // wp3: (uvWaveFactor, waveWindFactor, uvWaveScale, unused)
       vec4 wp2 = vec4(unpackHalf2x16(planetData.waterUVWaveParams.x), unpackHalf2x16(planetData.waterUVWaveParams.y));
       vec4 wp3 = vec4(unpackHalf2x16(planetData.waterUVWaveParams.z), unpackHalf2x16(planetData.waterUVWaveParams.w));
       uvWaveAmplitude = wp2.x;
@@ -977,7 +986,12 @@ void main(){
       uvWaveFactor = wp3.x;
       waveWindFactor = wp3.y;
       uvWaveScale = wp3.z;
-      waveDisplaceAmplitude = wp3.w;
+      // dp0: (waveDisplaceAmplitude, displaceHeightLowThreshold, displaceHeightHighThreshold, displaceHeightFactor)
+      vec4 dp0 = vec4(unpackHalf2x16(planetData.waterDisplaceParams.x), unpackHalf2x16(planetData.waterDisplaceParams.y));
+      waveDisplaceAmplitude       = dp0.x;
+      displaceHeightLowThreshold  = dp0.y;
+      displaceHeightHighThreshold = dp0.z;
+      displaceHeightFactor        = dp0.w;
     }
   }
   {

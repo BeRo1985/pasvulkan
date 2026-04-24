@@ -184,6 +184,9 @@ type TpvScene3DPlanets=class;
              WaterUVWaveParams0:TpvHalfFloatVector4; // x=uvWaveAmplitude, y=uvWaveFrequency (cycles/UV), z=uvWaveSpeed, w=uvWaveSteepness
              WaterUVWaveParams1:TpvHalfFloatVector4; // x=uvWaveFactor (0..1), y=waveWindFactor (0..1 wind Gerstner multiplier), z=uvWaveScale (oct UV multiplier), w=unused
 
+             WaterDisplaceParams0:TpvHalfFloatVector4; // x=waveDisplaceAmplitude, y=displaceHeightLowThreshold, z=displaceHeightHighThreshold, w=displaceHeightFactor
+             WaterDisplaceParams1:TpvHalfFloatVector4; // padding (fills uvec4 waterDisplaceParams yzw)
+
              WaterWhitecapParams0:TpvHalfFloatVector4; // xyz=whitecap foam color (linear RGB), w=FBM pattern scale
              WaterWhitecapParams1:TpvHalfFloatVector4; // x=slopeThreshLow, y=slopeThreshHigh, z=FBM breakupLow, w=FBM breakupHigh
              WaterWhitecapParams2:TpvHalfFloatVector4; // x=whitecapFactor (overall intensity), yzw=unused
@@ -2903,6 +2906,9 @@ type TpvScene3DPlanets=class;
        fWaterWaveWindFactor:TpvFloat;   // Multiplier for wind-based Gerstner contribution (0=off, 1=full).
        fWaterUVWaveScale:TpvFloat;      // Oct UV coordinate scale before wave phases (higher = finer ripples).
        fWaterWaveDisplaceAmplitude:TpvFloat; // Per-vertex height displacement amplitude in meters (0=disabled).
+       fWaterDisplaceHeightLowThreshold:TpvFloat;  // Water depth below which displacement fades to 0.
+       fWaterDisplaceHeightHighThreshold:TpvFloat; // Water depth above which displacement is at full strength.
+       fWaterDisplaceHeightFactor:TpvFloat;        // Overall multiplier on the depth-based displacement fade.
        fWaterWhitecapColor:TpvVector3;  // Whitecap foam color (linear RGB), default white.
        fWaterWhitecapPatternScale:TpvFloat;      // FBM breakup pattern scale, default 24.
        fWaterWhitecapSlopeThreshLow:TpvFloat;    // Heightmap slope where whitecaps begin, default 0.05.
@@ -3252,6 +3258,9 @@ type TpvScene3DPlanets=class;
        property WaterWaveWindFactor:TpvFloat read fWaterWaveWindFactor write fWaterWaveWindFactor;
        property WaterUVWaveScale:TpvFloat read fWaterUVWaveScale write fWaterUVWaveScale;
        property WaterWaveDisplaceAmplitude:TpvFloat read fWaterWaveDisplaceAmplitude write fWaterWaveDisplaceAmplitude;
+       property WaterDisplaceHeightLowThreshold:TpvFloat read fWaterDisplaceHeightLowThreshold write fWaterDisplaceHeightLowThreshold;
+       property WaterDisplaceHeightHighThreshold:TpvFloat read fWaterDisplaceHeightHighThreshold write fWaterDisplaceHeightHighThreshold;
+       property WaterDisplaceHeightFactor:TpvFloat read fWaterDisplaceHeightFactor write fWaterDisplaceHeightFactor;
       public
        property WaterWhitecapColor:TpvVector3 read fWaterWhitecapColor write fWaterWhitecapColor;
       published
@@ -28230,6 +28239,9 @@ begin
  fWaterWaveWindFactor:=1.0; // full wind-wave contribution by default
  fWaterUVWaveScale:=10.0; // moderate UV scale for visible ripples
  fWaterWaveDisplaceAmplitude:=0.0; // disabled by default; enable via JSON "waves"."displace"
+ fWaterDisplaceHeightLowThreshold:=0.0;  // fade starts at water depth 0 m
+ fWaterDisplaceHeightHighThreshold:=0.5; // full displacement at 0.5 m depth
+ fWaterDisplaceHeightFactor:=1.0;        // no extra global scaling by default
  fWaterWhitecapColor:=TpvVector3.Create(1.0,1.0,1.0); // white foam
  fWaterWhitecapPatternScale:=24.0;
  fWaterWhitecapSlopeThreshLow:=0.05;
@@ -31791,7 +31803,15 @@ begin
    fPlanetData.WaterUVWaveParams1.x:=fWaterUVWaveFactor;
    fPlanetData.WaterUVWaveParams1.y:=fWaterWaveWindFactor;
    fPlanetData.WaterUVWaveParams1.z:=fWaterUVWaveScale;
-   fPlanetData.WaterUVWaveParams1.w:=fWaterWaveDisplaceAmplitude;
+   fPlanetData.WaterUVWaveParams1.w:=0.0;
+   fPlanetData.WaterDisplaceParams0.x:=fWaterWaveDisplaceAmplitude;
+   fPlanetData.WaterDisplaceParams0.y:=fWaterDisplaceHeightLowThreshold;
+   fPlanetData.WaterDisplaceParams0.z:=fWaterDisplaceHeightHighThreshold;
+   fPlanetData.WaterDisplaceParams0.w:=fWaterDisplaceHeightFactor;
+   fPlanetData.WaterDisplaceParams1.x:=0.0;
+   fPlanetData.WaterDisplaceParams1.y:=0.0;
+   fPlanetData.WaterDisplaceParams1.z:=0.0;
+   fPlanetData.WaterDisplaceParams1.w:=0.0;
    fPlanetData.WaterWhitecapParams0.x:=fWaterWhitecapColor.x;
    fPlanetData.WaterWhitecapParams0.y:=fWaterWhitecapColor.y;
    fPlanetData.WaterWhitecapParams0.z:=fWaterWhitecapColor.z;
@@ -32255,6 +32275,9 @@ begin
    fWaterUVWaveFactor:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvfactor'],fWaterUVWaveFactor);
    fWaterUVWaveScale:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvscale'],fWaterUVWaveScale);
    fWaterWaveDisplaceAmplitude:=TPasJSON.GetNumber(JSONWavesObject.Properties['displace'],fWaterWaveDisplaceAmplitude);
+   fWaterDisplaceHeightLowThreshold:=TPasJSON.GetNumber(JSONWavesObject.Properties['displacelow'],fWaterDisplaceHeightLowThreshold);
+   fWaterDisplaceHeightHighThreshold:=TPasJSON.GetNumber(JSONWavesObject.Properties['displacehigh'],fWaterDisplaceHeightHighThreshold);
+   fWaterDisplaceHeightFactor:=TPasJSON.GetNumber(JSONWavesObject.Properties['displacefactor'],fWaterDisplaceHeightFactor);
   end;
   JSONItem:=JSONWaterObject.Properties['whitecap'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
