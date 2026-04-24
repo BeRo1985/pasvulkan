@@ -623,8 +623,10 @@ float computeWhitecapMask(vec3 position){
 
 // Apply whitecap foam to aBaseColor, lit by the same sky+sun irradiance as
 // shore foam so whitecaps darken at night rather than glowing white.
+// Guard uses waveWhitecapFactor (not waveAmplitude) so geometry displacement
+// amplitude changes don't accidentally disable whitecaps.
 vec3 applyWhitecaps(vec3 aBaseColor, vec3 aPlanetSpacePos){
-  if((waveAmplitude * waveSteepness) <= 0.06){
+  if(waveWhitecapFactor <= 0.0){
     return aBaseColor;
   }
   float mask = computeWhitecapMask(aPlanetSpacePos);
