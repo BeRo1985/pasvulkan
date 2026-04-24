@@ -3129,6 +3129,9 @@ type TpvScene3DPlanets=class;
        procedure EnqueueAtmosphereMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterRipple(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aStrength:TpvScalar);
+       procedure LoadWaterSettings(const aJSONItem:TPasJSONItem);
+       procedure LoadWaterSettingsFromStream(const aStream:TStream);
+       procedure LoadWaterSettingsFromFile(const aFileName:TpvUTF8String);
        procedure PrepareWaterSimulation(const aQueue:TpvVulkanQueue;
                                         const aCommandBuffer:TpvVulkanCommandBuffer;
                                         const aFence:TpvVulkanFence;
@@ -32081,6 +32084,59 @@ procedure TpvScene3DPlanet.EnqueueWaterRipple(const aInFlightFrameIndex:TpvSizeI
 begin
  if assigned(fWaterSimulation) and assigned(fWaterSimulation.fWaterRipplesSimulation) then begin
   fWaterSimulation.fWaterRipplesSimulation.EnqueueSource(aInFlightFrameIndex,aPosition,aRadius,aStrength,aStrength);
+ end;
+end;
+
+procedure TpvScene3DPlanet.LoadWaterSettings(const aJSONItem:TPasJSONItem);
+var JSONRootObject,JSONWaterObject,JSONShoreObject:TPasJSONItemObject;
+    JSONItem:TPasJSONItem;
+begin
+ if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
+  JSONRootObject:=TPasJSONItemObject(aJSONItem);
+  JSONItem:=JSONRootObject.Properties['water'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONWaterObject:=TPasJSONItemObject(JSONItem);
+  end else begin
+   JSONWaterObject:=JSONRootObject;
+  end;
+  fWaterAbsorption:=JSONToVector3(JSONWaterObject.Properties['absorption'],fWaterAbsorption);
+  fWaterDeepColor:=JSONToVector3(JSONWaterObject.Properties['deepcolor'],fWaterDeepColor);
+  fWaterBaseColor:=JSONToVector3(JSONWaterObject.Properties['basecolor'],fWaterBaseColor);
+  fWaterIOR:=TPasJSON.GetNumber(JSONWaterObject.Properties['waterior'],fWaterIOR);
+  fAirIOR:=TPasJSON.GetNumber(JSONWaterObject.Properties['airior'],fAirIOR);
+  fWaterLegacyFadeAmount:=TPasJSON.GetNumber(JSONWaterObject.Properties['legacyfadeamount'],fWaterLegacyFadeAmount);
+  JSONItem:=JSONWaterObject.Properties['shore'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONShoreObject:=TPasJSONItemObject(JSONItem);
+   fWaterShoreFoamColor:=JSONToVector3(JSONShoreObject.Properties['color'],fWaterShoreFoamColor);
+   fWaterShoreFoamDepthStart:=TPasJSON.GetNumber(JSONShoreObject.Properties['depthstart'],fWaterShoreFoamDepthStart);
+   fWaterShoreFoamDepthEnd:=TPasJSON.GetNumber(JSONShoreObject.Properties['depthend'],fWaterShoreFoamDepthEnd);
+   fWaterShoreFoamPatternScale:=TPasJSON.GetNumber(JSONShoreObject.Properties['patternscale'],fWaterShoreFoamPatternScale);
+   fWaterShoreFoamScrollSpeed:=TPasJSON.GetNumber(JSONShoreObject.Properties['scrollspeed'],fWaterShoreFoamScrollSpeed);
+   fWaterShoreFoamIntensity:=TPasJSON.GetNumber(JSONShoreObject.Properties['intensity'],fWaterShoreFoamIntensity);
+  end;
+ end;
+end;
+
+procedure TpvScene3DPlanet.LoadWaterSettingsFromStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=TPasJSON.Parse(aStream);
+ try
+  LoadWaterSettings(JSON);
+ finally
+  FreeAndNil(JSON);
+ end;
+end;
+
+procedure TpvScene3DPlanet.LoadWaterSettingsFromFile(const aFileName:TpvUTF8String);
+var Stream:TFileStream;
+begin
+ Stream:=TFileStream.Create(String(aFileName),fmOpenRead or fmShareDenyWrite);
+ try
+  LoadWaterSettingsFromStream(Stream);
+ finally
+  FreeAndNil(Stream);
  end;
 end;
 
