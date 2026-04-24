@@ -750,8 +750,8 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     // modulated by the sum of IBL diffuse (sky) and per-light shadow-attenuated downwelling
     // irradiance (waterDownwellingIrradiance accumulated in processLight) so the volume stays
     // lighting-consistent (dark at night / in shadow, bright at day).
-    // waterAbsorption.w (legacy-fade amount) blends the Beer-Lambert result toward the legacy
-    // mix(refraction, waterF0, 1-exp(-depth)) behavior for compatibility.
+    // waterAbsorption.w (IOR-based fade amount) blends the Beer-Lambert result toward the PBR-correct
+    // mix(refraction, waterF0, 1-exp(-depth)) IOR-based water volume appearance.
     vec4 waterAbsorption = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.x), unpackHalf2x16(planetData.waterAbsorptionDeepColor.y));
     vec4 waterDeepColor = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.z), unpackHalf2x16(planetData.waterAbsorptionDeepColor.w));
     vec3 waterDeepIrradiance = getIBLDiffuse(underWater ? -normal : normal) + waterDownwellingIrradiance;

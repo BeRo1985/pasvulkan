@@ -166,7 +166,7 @@ type TpvScene3DPlanets=class;
              WaterRippleMapResolution:TpvUInt32;
              WaterRippleReadIndex:TpvUInt32;
 
-             WaterAbsorption:TpvHalfFloatVector4; // xyz = per-channel Beer-Lambert absorption coefficient (1/m), w = legacy-fade amount 0..1
+             WaterAbsorption:TpvHalfFloatVector4; // xyz = per-channel Beer-Lambert absorption coefficient (1/m), w = IOR-based fade amount 0..1
              WaterDeepColor:TpvHalfFloatVector4; // xyz = deep water scattering color (linear), w = unused
 
              WaterBaseColorIORs:TpvHalfFloatVector4; // xyz = water base color (linear), w = unused
@@ -2869,7 +2869,7 @@ type TpvScene3DPlanets=class;
        fWaterBaseColor:TpvVector3; // Linear water base color tint multiplied into the shaded water (surface/volume color).
        fWaterIOR:TpvFloat; // Water index of refraction (e.g. 1.3325 for typical seawater).
        fAirIOR:TpvFloat; // Air index of refraction (e.g. 1.0).
-       fWaterLegacyFadeAmount:TpvFloat; // 0 = pure Beer-Lambert, 1 = legacy mix-to-waterF0 look (packed into WaterAbsorption.w).
+       fWaterIORBasedFadeAmount:TpvFloat; // 0 = pure Beer-Lambert absorption, 1 = PBR-correct IOR-based waterF0 blending (packed into WaterAbsorption.w).
        fWaterShoreFoamColor:TpvVector3; // Linear color of the shore foam overlay.
        fWaterShoreFoamDepthStart:TpvFloat; // Water depth (m) at which foam starts fading in (outer edge, deeper boundary).
        fWaterShoreFoamDepthEnd:TpvFloat; // Water depth (m) at which foam is fully visible (inner edge, near waterline).
@@ -3203,7 +3203,7 @@ type TpvScene3DPlanets=class;
       published
        property WaterIOR:TpvFloat read fWaterIOR write fWaterIOR;
        property AirIOR:TpvFloat read fAirIOR write fAirIOR;
-       property WaterLegacyFadeAmount:TpvFloat read fWaterLegacyFadeAmount write fWaterLegacyFadeAmount;
+       property WaterIORBasedFadeAmount:TpvFloat read fWaterIORBasedFadeAmount write fWaterIORBasedFadeAmount;
        property WaterShoreFoamDepthStart:TpvFloat read fWaterShoreFoamDepthStart write fWaterShoreFoamDepthStart;
        property WaterShoreFoamDepthEnd:TpvFloat read fWaterShoreFoamDepthEnd write fWaterShoreFoamDepthEnd;
        property WaterShoreFoamPatternScale:TpvFloat read fWaterShoreFoamPatternScale write fWaterShoreFoamPatternScale;
@@ -28160,7 +28160,7 @@ begin
  fWaterBaseColor:=TpvVector3.InlineableCreate(0.17157287525381,0.50352221540038,0.90393320739546); // pow(vec3(0.555555,0.777777,1.0),2.5) linear tint (matches previous shader constant)
  fWaterIOR:=1.3325; // typical sea water
  fAirIOR:=1.0;
- fWaterLegacyFadeAmount:=0.0; // 0 = pure Beer-Lambert (new), 1 = legacy mix-to-waterF0 look
+ fWaterIORBasedFadeAmount:=0.0; // 0 = pure Beer-Lambert absorption, 1 = PBR-correct IOR-based waterF0 blending
  fWaterShoreFoamColor:=TpvVector3.InlineableCreate(1.0,1.0,1.0); // neutral white foam
  fWaterShoreFoamDepthStart:=0.8; // foam fades out beyond ~0.8 m water depth
  fWaterShoreFoamDepthEnd:=0.0; // full foam at the waterline
@@ -31683,7 +31683,7 @@ begin
    fPlanetData.WaterAbsorption.x:=fWaterAbsorption.x;
    fPlanetData.WaterAbsorption.y:=fWaterAbsorption.y;
    fPlanetData.WaterAbsorption.z:=fWaterAbsorption.z;
-   fPlanetData.WaterAbsorption.w:=fWaterLegacyFadeAmount;
+   fPlanetData.WaterAbsorption.w:=fWaterIORBasedFadeAmount;
    fPlanetData.WaterDeepColor.x:=fWaterDeepColor.x;
    fPlanetData.WaterDeepColor.y:=fWaterDeepColor.y;
    fPlanetData.WaterDeepColor.z:=fWaterDeepColor.z;
@@ -32130,7 +32130,7 @@ begin
   fWaterBaseColor:=JSONToVector3(JSONWaterObject.Properties['basecolor'],fWaterBaseColor);
   fWaterIOR:=TPasJSON.GetNumber(JSONWaterObject.Properties['waterior'],fWaterIOR);
   fAirIOR:=TPasJSON.GetNumber(JSONWaterObject.Properties['airior'],fAirIOR);
-  fWaterLegacyFadeAmount:=TPasJSON.GetNumber(JSONWaterObject.Properties['legacyfadeamount'],fWaterLegacyFadeAmount);
+  fWaterIORBasedFadeAmount:=TPasJSON.GetNumber(JSONWaterObject.Properties['iorbasedfadeamount'],fWaterIORBasedFadeAmount);
   JSONItem:=JSONWaterObject.Properties['shore'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
    JSONShoreObject:=TPasJSONItemObject(JSONItem);
