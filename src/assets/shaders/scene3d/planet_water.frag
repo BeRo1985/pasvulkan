@@ -413,12 +413,12 @@ void processLight(const in vec3 lightColor,
 
   float mu = dot(lightDirection, -viewDirection);
 
-  waterSubscattering += HenyeyGreenstein(mu, 0.5) * waterColor * lightColor * (1.0 - clamp(exp(-waterDepth * 0.01), 0.0, 1.0));  
+  waterSubscattering += HenyeyGreenstein(mu, 0.5) * waterColor * lightColor * lightLit * (1.0 - clamp(exp(-waterDepth * 0.01), 0.0, 1.0));  
 
   // Downwelling irradiance onto the water surface from above (shadow/visibility-aware via
-  // lightColor from the caller). Uses the water-surface normal; above/below water sign flipping
-  // is already handled by the caller via workNormal.
-  waterDownwellingIrradiance += lightColor * max(0.0, dot(workNormal, lightDirection));
+  // lightLit from the caller, which carries the per-light lightAttenuation including shadows).
+  // Above/below water sign flipping is already handled by the caller via workNormal.
+  waterDownwellingIrradiance += lightColor * lightLit * max(0.0, dot(workNormal, lightDirection));
 
 //waterSubscattering += HenyeyGreenstein(mu, 0.5) * waterColor * lightColor * max(0.0, waterDepth * 0.01);
 
@@ -495,7 +495,11 @@ vec3 applyShoreFoam(vec3 aBaseColor, vec3 aPlanetSpacePos, float aShoreDepth){
       float foamPattern = smoothstep(0.35, 0.75, foamA - (foamB * 0.4));
 #endif
       float foamAmount = clamp(shoreMask * foamPattern * waterShoreFoam1.w, 0.0, 1.0);
-      result = mix(result, waterShoreFoam0.xyz, foamAmount);
+      // Modulate the (typically white) foam color by ambient IBL + shadow-attenuated direct
+      // downwelling irradiance so foam darkens at night / in shadow instead of glowing white.
+      vec3 foamIrradiance = getIBLDiffuse(workNormal) + waterDownwellingIrradiance;
+      vec3 foamLit = waterShoreFoam0.xyz * foamIrradiance;
+      result = mix(result, foamLit, foamAmount);
     }
   }
   return result;
