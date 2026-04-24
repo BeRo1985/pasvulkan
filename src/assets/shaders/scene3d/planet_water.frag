@@ -258,12 +258,8 @@ float waveFrequency = 0.05;
 float waveSteepness = 0.5;
 float waveSpeed = 0.5;
 float waveWhitecapFactor = 1.0;
-float waveWindFactor     = 1.0; // multiplier for wind-based Gerstner normal contribution (0=off, 1=full)
-float uvWaveAmplitude    = 0.0; // octUV-based wave normal strength (0=off)
 float uvWaveFrequency    = 5.0; // spatial wave cycles per octahedral UV unit [0,1]
 float uvWaveSpeed        = 0.3; // UV wave animation speed (UV units/s)
-float uvWaveSteepness    = 0.5; // UV wave steepness / sharpness
-float uvWaveFactor       = 1.0; // overall UV wave contribution multiplier (0=off, 1=full)
 float uvWaveScale        = 10.0; // UV coordinate scale applied to octUV before wave phases (higher = finer ripples)
 float waveDisplaceAmplitude          = 0.0; // per-vertex height displacement amplitude in meters (0=disabled)
 float displaceHeightLowThreshold     = 0.0; // water depth below which displacement fades to 0
@@ -278,24 +274,14 @@ float whitecapBreakupHigh    = 0.75;  // FBM breakup smoothstep high threshold
 float shoreFoamBreakupLow    = 0.35;  // shore foam FBM breakup smoothstep low threshold
 float shoreFoamBreakupHigh   = 0.75;  // shore foam FBM breakup smoothstep high threshold
 
-void accumulateWaveNormal(vec3 d3, float k, float A, vec3 pos, inout vec3 normalOffset){
-  float phase = k * dot(d3, pos) - (waveSpeed * pushConstants.time);
-  normalOffset -= A * cos(phase) * d3;
-}
-
-// Accumulate a single octahedral-UV-space wave onto normalOffset.
-// uvDir: normalised 2D direction in oct UV space, k: wavenumber (cycles per UV unit),
-// A: amplitude, uv: oct UV coords, t: time * uvWaveSpeed,
-// tanU/tanV: sphere tangent vectors aligned with the oct UV +U/+V axes.
-void accumulateUVWaveNormal(vec2 uvDir, float k, float A, vec2 uv, float t, inout vec3 normalOffset, vec3 tanU, vec3 tanV){
-  float phase = k * dot(uvDir, uv) - t;
-  float dPhase = A * cos(phase);
-  normalOffset -= (dPhase * uvDir.x) * tanU + (dPhase * uvDir.y) * tanV;
-}
-
-// Fragment-local wrapper: same 4 wave trains, uses global uvWave* uniforms.
+// Fragment-local UV displacement wrapper using global uvWave* uniforms.
 float computeWaveDisplacement(vec2 uv, float time){
   return computeWaveDisplacement(uv, time, uvWaveFrequency, uvWaveSpeed, uvWaveScale);
+}
+
+// Fragment-local Gerstner displacement wrapper using global wave* uniforms.
+float computeGerstnerDisplacement(vec3 spherePos, float time){
+  return computeGerstnerDisplacement(spherePos, waveWindDir, waveFrequency, waveSpeed, waveSteepness, time);
 }
 
 vec3 getWaterNormal(vec3 position){
@@ -338,22 +324,24 @@ vec3 getWaterNormal(vec3 position){
     float ih = getSphereHeightEx(iuv);
 
     // Correct height samples for wave displacement so normals match displaced geometry.
+    // Combines UV chop (computeWaveDisplacement) and Gerstner swell (computeGerstnerDisplacement).
     // Uses center water depth for smoothstep (approximation; avoids 8 extra texture reads).
-    if(waveDisplaceAmplitude > 0.0){
+    if((waveDisplaceAmplitude > 0.0) || (waveAmplitude > 0.0)){
       float centerWaterDepth = getSphereHeightData(euv).y;
       float displacementFactor = smoothstep(displaceHeightLowThreshold, displaceHeightHighThreshold, centerWaterDepth) * displaceHeightFactor;
       if(displacementFactor > 0.0){
-        float effAmpl = waveDisplaceAmplitude * displacementFactor;
         float disT = pushConstants.time;
-        eh += computeWaveDisplacement(euv, disT) * effAmpl;
-        if(ah > 0.0){ ah += computeWaveDisplacement(auv, disT) * effAmpl; }
-        if(bh > 0.0){ bh += computeWaveDisplacement(buv, disT) * effAmpl; }
-        if(ch > 0.0){ ch += computeWaveDisplacement(cuv, disT) * effAmpl; }
-        if(dh > 0.0){ dh += computeWaveDisplacement(duv, disT) * effAmpl; }
-        if(fh > 0.0){ fh += computeWaveDisplacement(fuv, disT) * effAmpl; }
-        if(gh > 0.0){ gh += computeWaveDisplacement(guv, disT) * effAmpl; }
-        if(hh > 0.0){ hh += computeWaveDisplacement(huv, disT) * effAmpl; }
-        if(ih > 0.0){ ih += computeWaveDisplacement(iuv, disT) * effAmpl; }
+        float uvAmpl = waveDisplaceAmplitude * displacementFactor;
+        float gAmpl  = waveAmplitude         * displacementFactor;
+        eh += computeWaveDisplacement(euv, disT) * uvAmpl + computeGerstnerDisplacement(n * eh, disT) * gAmpl;
+        if(ah > 0.0){ ah += computeWaveDisplacement(auv, disT) * uvAmpl + computeGerstnerDisplacement(octPlanetUnsignedDecode(auv) * ah, disT) * gAmpl; }
+        if(bh > 0.0){ bh += computeWaveDisplacement(buv, disT) * uvAmpl + computeGerstnerDisplacement(octPlanetUnsignedDecode(buv) * bh, disT) * gAmpl; }
+        if(ch > 0.0){ ch += computeWaveDisplacement(cuv, disT) * uvAmpl + computeGerstnerDisplacement(octPlanetUnsignedDecode(cuv) * ch, disT) * gAmpl; }
+        if(dh > 0.0){ dh += computeWaveDisplacement(duv, disT) * uvAmpl + computeGerstnerDisplacement(octPlanetUnsignedDecode(duv) * dh, disT) * gAmpl; }
+        if(fh > 0.0){ fh += computeWaveDisplacement(fuv, disT) * uvAmpl + computeGerstnerDisplacement(octPlanetUnsignedDecode(fuv) * fh, disT) * gAmpl; }
+        if(gh > 0.0){ gh += computeWaveDisplacement(guv, disT) * uvAmpl + computeGerstnerDisplacement(octPlanetUnsignedDecode(guv) * gh, disT) * gAmpl; }
+        if(hh > 0.0){ hh += computeWaveDisplacement(huv, disT) * uvAmpl + computeGerstnerDisplacement(octPlanetUnsignedDecode(huv) * hh, disT) * gAmpl; }
+        if(ih > 0.0){ ih += computeWaveDisplacement(iuv, disT) * uvAmpl + computeGerstnerDisplacement(octPlanetUnsignedDecode(iuv) * ih, disT) * gAmpl; }
       }
     }
 
@@ -380,55 +368,6 @@ vec3 getWaterNormal(vec3 position){
     );   
 
   }       
-
-#if 0 // Old normal-bending code: replaced by geometry displacement + height-sample correction above.
-  // Add Gerstner wave detail normal perturbation (4 wave trains, wind-directed).
-  // Controlled by waveWindDir, waveAmplitude, waveFrequency, waveSteepness, waveSpeed
-  // which are unpacked from planetData.waterWaveParams in main().
-  if((waveAmplitude > 0.0) && (waveFrequency > 0.0) && (waveWindFactor > 0.0)){
-    vec3 sphereN = normalize(position);
-    // Project global wind direction onto the tangent plane at this sphere point.
-    vec3 wd = waveWindDir - (dot(waveWindDir, sphereN) * sphereN);
-    float wdLen = length(wd);
-    if(wdLen > 0.001){
-      wd /= wdLen;
-      vec3 wdB = cross(sphereN, wd);
-      vec3 normalOffset = vec3(0.0);
-      // Wave 1: primary wind direction (full weight)
-      accumulateWaveNormal(wd,                                           waveFrequency,       waveAmplitude,        position, normalOffset);
-      // Wave 2: +30 deg, 0.7x frequency, 0.5x amplitude
-      accumulateWaveNormal((0.866025 * wd) + (0.5      * wdB),          waveFrequency * 0.7, waveAmplitude * 0.5,  position, normalOffset);
-      // Wave 3: -45 deg, 1.3x frequency, 0.35x amplitude
-      accumulateWaveNormal((0.707107 * wd) - (0.707107 * wdB),          waveFrequency * 1.3, waveAmplitude * 0.35, position, normalOffset);
-      // Wave 4: +60 deg, 2.1x frequency, 0.2x amplitude (high-frequency chop)
-      accumulateWaveNormal((0.5      * wd) + (0.866025 * wdB),          waveFrequency * 2.1, waveAmplitude * 0.2,  position, normalOffset);
-      normal = normalize(normal + (normalOffset * waveSteepness * waveWindFactor));
-    }
-  }
-
-  // UV-based (octahedral UV) wave normal perturbation — wind-independent omnidirectional detail.
-  // Driven by uvWaveAmplitude, uvWaveFrequency, uvWaveSpeed, uvWaveSteepness, uvWaveFactor, uvWaveScale
-  // unpacked from planetData.waterUVWaveParams in main().
-  if((uvWaveAmplitude > 0.0) && (uvWaveFrequency > 0.0) && (uvWaveFactor > 0.0)){
-    vec2 octUV = octPlanetUnsignedEncode(n);
-    const float octEps = 1.0 / 2048.0;
-    // Tangent basis from unscaled octUV (sphere surface derivatives, not wave UV).
-    vec3 tanU = normalize(octPlanetUnsignedDecode(vec2(octUV.x + octEps, octUV.y)) - octPlanetUnsignedDecode(vec2(octUV.x - octEps, octUV.y)));
-    vec3 tanV = normalize(octPlanetUnsignedDecode(vec2(octUV.x, octUV.y + octEps)) - octPlanetUnsignedDecode(vec2(octUV.x, octUV.y - octEps)));
-    vec2 scaledUV = wrapOctahedralCoordinates(octUV * uvWaveScale);
-    float t = pushConstants.time * uvWaveSpeed;
-    vec3 uvNormalOffset = vec3(0.0);
-    // Wave 1: along UV U-axis (full weight)
-    accumulateUVWaveNormal(vec2(1.0, 0.0),             uvWaveFrequency,        uvWaveAmplitude,        scaledUV, t,        uvNormalOffset, tanU, tanV);
-    // Wave 2: along UV V-axis, 0.73x frequency, 0.6x amplitude
-    accumulateUVWaveNormal(vec2(0.0, 1.0),             uvWaveFrequency * 0.73, uvWaveAmplitude * 0.6,  scaledUV, t * 1.1,  uvNormalOffset, tanU, tanV);
-    // Wave 3: diagonal UV (+45 deg), 1.4x frequency, 0.35x amplitude
-    accumulateUVWaveNormal(vec2(0.707107, 0.707107),   uvWaveFrequency * 1.4,  uvWaveAmplitude * 0.35, scaledUV, t * 0.8,  uvNormalOffset, tanU, tanV);
-    // Wave 4: diagonal UV (-45 deg), 2.1x frequency, 0.2x amplitude (high-frequency chop)
-    accumulateUVWaveNormal(vec2(0.707107, -0.707107),  uvWaveFrequency * 2.1,  uvWaveAmplitude * 0.2,  scaledUV, t * 1.3,  uvNormalOffset, tanU, tanV);
-    normal = normalize(normal + (uvNormalOffset * uvWaveSteepness * uvWaveFactor));
-  }
-#endif
 
   return normal;
 #else
@@ -963,7 +902,7 @@ void main(){
     ior = waterIOR / airIOR;
   }
   {
-    // Unpack wave parameters for the procedural Gerstner detail pass in getWaterNormal.
+    // Unpack wave parameters for Gerstner swell displacement (tese/mesh + frag normal correction).
     // wp0: (windDirX, windDirY, windDirZ, waveAmplitude)
     // wp1: (waveFrequency, waveSteepness, waveSpeed, unused)
     vec4 wp0 = vec4(unpackHalf2x16(planetData.waterWaveParams.x), unpackHalf2x16(planetData.waterWaveParams.y));
@@ -975,16 +914,12 @@ void main(){
     waveSteepness = wp1.y;
     waveSpeed = wp1.z;
     {
-      // wp2: (uvWaveAmplitude, uvWaveFrequency, uvWaveSpeed, uvWaveSteepness)
-      // wp3: (uvWaveFactor, waveWindFactor, uvWaveScale, unused)
+      // wp2: (unused, uvWaveFrequency, uvWaveSpeed, unused) — only freq/speed/scale used for UV chop
+      // wp3: (unused, unused, uvWaveScale, unused)
       vec4 wp2 = vec4(unpackHalf2x16(planetData.waterUVWaveParams.x), unpackHalf2x16(planetData.waterUVWaveParams.y));
       vec4 wp3 = vec4(unpackHalf2x16(planetData.waterUVWaveParams.z), unpackHalf2x16(planetData.waterUVWaveParams.w));
-      uvWaveAmplitude = wp2.x;
       uvWaveFrequency = wp2.y;
       uvWaveSpeed = wp2.z;
-      uvWaveSteepness = wp2.w;
-      uvWaveFactor = wp3.x;
-      waveWindFactor = wp3.y;
       uvWaveScale = wp3.z;
       // dp0: (waveDisplaceAmplitude, displaceHeightLowThreshold, displaceHeightHighThreshold, displaceHeightFactor)
       vec4 dp0 = vec4(unpackHalf2x16(planetData.waterDisplaceParams.x), unpackHalf2x16(planetData.waterDisplaceParams.y));

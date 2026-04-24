@@ -468,6 +468,28 @@ bool planetRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxTime, out flo
 
 }
 
+// Compute Gerstner-style swell displacement height using global wind direction in sphere space.
+// Spatial variation comes from dot(windDir, spherePos); scale in rad is freq * sphereRadius.
+// windDir: planet-local swell direction (need not be pre-normalised);
+// freq: wave number in rad/m; speed: animation speed (rad/s); steepness: wave-shape factor.
+// Returns unnormalized height sum; caller multiplies by waveAmplitude.
+float computeGerstnerDisplacement(vec3 spherePos, vec3 windDir, float freq, float speed, float steepness, float time){
+  float wdLen = length(windDir);
+  if(wdLen < 1e-3){ return 0.0; }
+  vec3 wd = windDir / wdLen;
+  vec3 sn = normalize(spherePos);
+  vec3 wdBraw = cross(sn, wd);
+  float wdBLen = length(wdBraw);
+  if(wdBLen < 1e-3){ return 0.0; } // windDir collinear with sphere normal — no tangential variation
+  vec3 wdB = wdBraw / wdBLen;
+  float t = time * speed;
+  float h  = sin(freq       * dot(wd,                               spherePos) - t);
+  h +=       sin(freq * 0.7 * dot((0.866025 * wd) + (0.5     * wdB), spherePos) - t * 1.1) * 0.5;
+  h +=       sin(freq * 1.3 * dot((0.707107 * wd) - (0.707107 * wdB), spherePos) - t * 0.8) * 0.35;
+  h +=       sin(freq * 2.1 * dot((0.5      * wd) + (0.866025 * wdB), spherePos) - t * 1.3) * 0.2;
+  return h * steepness;
+}
+
 // Compute UV-wave displacement height at a given oct-UV coordinate.
 // Uses the same 4 wave trains as accumulateUVWaveNormal for normal/displacement consistency.
 // Returns unnormalized height sum; caller multiplies by displacement amplitude.
