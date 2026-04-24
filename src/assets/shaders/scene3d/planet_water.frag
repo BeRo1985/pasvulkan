@@ -271,6 +271,8 @@ float whitecapSlopeThreshLow  = 0.05; // heightmap slope where whitecaps begin
 float whitecapSlopeThreshHigh = 0.20; // heightmap slope where whitecaps are full
 float whitecapBreakupLow     = 0.35;  // FBM breakup smoothstep low threshold
 float whitecapBreakupHigh    = 0.75;  // FBM breakup smoothstep high threshold
+float shoreFoamBreakupLow    = 0.35;  // shore foam FBM breakup smoothstep low threshold
+float shoreFoamBreakupHigh   = 0.75;  // shore foam FBM breakup smoothstep high threshold
 
 void accumulateWaveNormal(vec3 d3, float k, float A, vec3 pos, inout vec3 normalOffset){
   float phase = k * dot(d3, pos) - (waveSpeed * pushConstants.time);
@@ -578,7 +580,7 @@ vec3 applyShoreFoam(vec3 aBaseColor, vec3 aPlanetSpacePos, float aShoreDepth){
                        planetGradientNoise(foamUV * 0.5 + vec3(0.0, 0.0, foamPhase))) * 0.35;
       float foamA = planetNoiseFBM((foamUV + warp) + vec3(0.0, 0.0, foamPhase));
       float foamB = planetNoiseFBM(((foamUV * 1.73) + warp) + vec3(foamPhase * 0.7, -foamPhase * 0.5, 0.0));
-      float foamPattern = smoothstep(0.35, 0.75, foamA - (foamB * 0.4));
+      float foamPattern = smoothstep(shoreFoamBreakupLow, shoreFoamBreakupHigh, foamA - (foamB * 0.4));
 #endif
       float foamAmount = clamp(shoreMask * foamPattern * waterShoreFoam1.w, 0.0, 1.0);
       // Modulate the (typically white) foam color by ambient IBL + shadow-attenuated direct
@@ -932,7 +934,7 @@ void main(){
   {
     // Unpack wave parameters for the procedural Gerstner detail pass in getWaterNormal.
     // wp0: (windDirX, windDirY, windDirZ, waveAmplitude)
-    // wp1: (waveFrequency, waveSteepness, waveSpeed, whitecapFactor)
+    // wp1: (waveFrequency, waveSteepness, waveSpeed, unused)
     vec4 wp0 = vec4(unpackHalf2x16(planetData.waterWaveParams.x), unpackHalf2x16(planetData.waterWaveParams.y));
     vec4 wp1 = vec4(unpackHalf2x16(planetData.waterWaveParams.z), unpackHalf2x16(planetData.waterWaveParams.w));
     float wdLen = length(wp0.xyz);
@@ -941,7 +943,6 @@ void main(){
     waveFrequency = wp1.x;
     waveSteepness = wp1.y;
     waveSpeed = wp1.z;
-    waveWhitecapFactor = wp1.w;
     {
       // wp2: (uvWaveAmplitude, uvWaveFrequency, uvWaveSpeed, uvWaveSteepness)
       // wp3: (uvWaveFactor, waveWindFactor, uvWaveScale, unused)
@@ -968,6 +969,13 @@ void main(){
     whitecapSlopeThreshHigh = wcp1.y;
     whitecapBreakupLow     = wcp1.z;
     whitecapBreakupHigh    = wcp1.w;
+    waveWhitecapFactor     = unpackHalf2x16(planetData.waterWhitecapParams2.x).x;
+  }
+  {
+    // Unpack shore foam breakup thresholds.
+    vec2 sfb = unpackHalf2x16(planetData.waterShoreFoamExtra.x);
+    shoreFoamBreakupLow  = sfb.x;
+    shoreFoamBreakupHigh = sfb.y;
   }
 
 #if defined(TESSELLATION)

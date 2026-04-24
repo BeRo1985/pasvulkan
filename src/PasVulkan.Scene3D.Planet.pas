@@ -174,15 +174,18 @@ type TpvScene3DPlanets=class;
 
              WaterShoreFoam0:TpvHalfFloatVector4; // xyz = foam color (linear), w = foam depth start in meters (deeper cutoff; foam visible where waterDepth < start)
              WaterShoreFoam1:TpvHalfFloatVector4; // x = foam depth end (shallow; full foam for waterDepth <= end), y = pattern scale (1/unit along inBlock.position), z = scroll speed, w = overall foam intensity (0 = off)
+ 
+             WaterShoreFoamExtra:TpvHalfFloatVector4; // x=breakupLow, y=breakupHigh, zw=unused
 
              WaterWaveParams0:TpvHalfFloatVector4; // x=windDirX, y=windDirY, z=windDirZ, w=waveAmplitude (visual strength, 0=disabled)
-             WaterWaveParams1:TpvHalfFloatVector4; // x=waveFrequency (rad/m), y=waveSteepness (0..1), z=waveSpeed (rad/s), w=whitecapFactor (0..1, overall whitecap intensity)
+             WaterWaveParams1:TpvHalfFloatVector4; // x=waveFrequency (rad/m), y=waveSteepness (0..1), z=waveSpeed (rad/s), w=unused
 
              WaterUVWaveParams0:TpvHalfFloatVector4; // x=uvWaveAmplitude, y=uvWaveFrequency (cycles/UV), z=uvWaveSpeed, w=uvWaveSteepness
              WaterUVWaveParams1:TpvHalfFloatVector4; // x=uvWaveFactor (0..1), y=waveWindFactor (0..1 wind Gerstner multiplier), z=uvWaveScale (oct UV multiplier), w=unused
 
              WaterWhitecapParams0:TpvHalfFloatVector4; // xyz=whitecap foam color (linear RGB), w=FBM pattern scale
              WaterWhitecapParams1:TpvHalfFloatVector4; // x=slopeThreshLow, y=slopeThreshHigh, z=FBM breakupLow, w=FBM breakupHigh
+             WaterWhitecapParams2:TpvHalfFloatVector4; // x=whitecapFactor (overall intensity), yzw=unused
 
              Textures:array[0..15,0..3] of TpvUInt32;
 
@@ -2882,6 +2885,8 @@ type TpvScene3DPlanets=class;
        fWaterShoreFoamPatternScale:TpvFloat; // Pattern frequency multiplier applied to inBlock.position for the procedural foam noise.
        fWaterShoreFoamScrollSpeed:TpvFloat; // Animation speed of the foam pattern in pushConstants.time units.
        fWaterShoreFoamIntensity:TpvFloat; // Overall strength of the shore foam (0 = disabled, 1 = full).
+       fWaterShoreFoamBreakupLow:TpvFloat;  // FBM breakup smoothstep low threshold, default 0.35.
+       fWaterShoreFoamBreakupHigh:TpvFloat; // FBM breakup smoothstep high threshold, default 0.75.
        fWaterWindDirection:TpvVector3; // Global wind direction in planet-local space (drives Gerstner wave direction).
        fWaterWaveAmplitude:TpvFloat;   // Normal perturbation visual strength (0 = disabled, 0.3 = moderate).
        fWaterWaveFrequency:TpvFloat;   // Spatial wavenumber (rad/m); wavelength = 2*pi/frequency in meters.
@@ -3229,6 +3234,8 @@ type TpvScene3DPlanets=class;
        property WaterShoreFoamPatternScale:TpvFloat read fWaterShoreFoamPatternScale write fWaterShoreFoamPatternScale;
        property WaterShoreFoamScrollSpeed:TpvFloat read fWaterShoreFoamScrollSpeed write fWaterShoreFoamScrollSpeed;
        property WaterShoreFoamIntensity:TpvFloat read fWaterShoreFoamIntensity write fWaterShoreFoamIntensity;
+       property WaterShoreFoamBreakupLow:TpvFloat read fWaterShoreFoamBreakupLow write fWaterShoreFoamBreakupLow;
+       property WaterShoreFoamBreakupHigh:TpvFloat read fWaterShoreFoamBreakupHigh write fWaterShoreFoamBreakupHigh;
        property WaterWaveAmplitude:TpvFloat read fWaterWaveAmplitude write fWaterWaveAmplitude;
        property WaterWaveFrequency:TpvFloat read fWaterWaveFrequency write fWaterWaveFrequency;
        property WaterWaveSteepness:TpvFloat read fWaterWaveSteepness write fWaterWaveSteepness;
@@ -28203,6 +28210,8 @@ begin
  fWaterShoreFoamPatternScale:=24.0; // pattern repetitions along inBlock.position (local-planet units)
  fWaterShoreFoamScrollSpeed:=0.25; // gentle animation
  fWaterShoreFoamIntensity:=1.0; // enabled by default
+ fWaterShoreFoamBreakupLow:=0.35;
+ fWaterShoreFoamBreakupHigh:=0.75;
  fWaterWindDirection:=TpvVector3.InlineableCreate(1.0,0.0,0.0); // blows along planet X axis
  fWaterWaveAmplitude:=0.3; // moderate directional wave detail
  fWaterWaveFrequency:=0.05; // 0.05 rad/m ~ 125 m wavelength
@@ -31754,6 +31763,10 @@ begin
    fPlanetData.WaterShoreFoam1.y:=fWaterShoreFoamPatternScale;
    fPlanetData.WaterShoreFoam1.z:=fWaterShoreFoamScrollSpeed;
    fPlanetData.WaterShoreFoam1.w:=fWaterShoreFoamIntensity;
+   fPlanetData.WaterShoreFoamExtra.x:=fWaterShoreFoamBreakupLow;
+   fPlanetData.WaterShoreFoamExtra.y:=fWaterShoreFoamBreakupHigh;
+   fPlanetData.WaterShoreFoamExtra.z:=0.0;
+   fPlanetData.WaterShoreFoamExtra.w:=0.0;
    fPlanetData.WaterWaveParams0.x:=fWaterWindDirection.x;
    fPlanetData.WaterWaveParams0.y:=fWaterWindDirection.y;
    fPlanetData.WaterWaveParams0.z:=fWaterWindDirection.z;
@@ -31761,7 +31774,7 @@ begin
    fPlanetData.WaterWaveParams1.x:=fWaterWaveFrequency;
    fPlanetData.WaterWaveParams1.y:=fWaterWaveSteepness;
    fPlanetData.WaterWaveParams1.z:=fWaterWaveSpeed;
-   fPlanetData.WaterWaveParams1.w:=fWaterWhitecapFactor;
+   fPlanetData.WaterWaveParams1.w:=0.0;
    fPlanetData.WaterUVWaveParams0.x:=fWaterUVWaveAmplitude;
    fPlanetData.WaterUVWaveParams0.y:=fWaterUVWaveFrequency;
    fPlanetData.WaterUVWaveParams0.z:=fWaterUVWaveSpeed;
@@ -31778,6 +31791,10 @@ begin
    fPlanetData.WaterWhitecapParams1.y:=fWaterWhitecapSlopeThreshHigh;
    fPlanetData.WaterWhitecapParams1.z:=fWaterWhitecapBreakupLow;
    fPlanetData.WaterWhitecapParams1.w:=fWaterWhitecapBreakupHigh;
+   fPlanetData.WaterWhitecapParams2.x:=fWaterWhitecapFactor;
+   fPlanetData.WaterWhitecapParams2.y:=0.0;
+   fPlanetData.WaterWhitecapParams2.z:=0.0;
+   fPlanetData.WaterWhitecapParams2.w:=0.0;
    fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
@@ -32180,7 +32197,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.LoadWaterSettings(const aJSONItem:TPasJSONItem);
-var JSONRootObject,JSONWaterObject,JSONShoreObject,JSONWavesObject:TPasJSONItemObject;
+var JSONRootObject,JSONWaterObject,JSONShoreObject,JSONWavesObject,JSONWhitecapObject:TPasJSONItemObject;
     JSONItem:TPasJSONItem;
 begin
  if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
@@ -32206,6 +32223,8 @@ begin
    fWaterShoreFoamPatternScale:=TPasJSON.GetNumber(JSONShoreObject.Properties['patternscale'],fWaterShoreFoamPatternScale);
    fWaterShoreFoamScrollSpeed:=TPasJSON.GetNumber(JSONShoreObject.Properties['scrollspeed'],fWaterShoreFoamScrollSpeed);
    fWaterShoreFoamIntensity:=TPasJSON.GetNumber(JSONShoreObject.Properties['intensity'],fWaterShoreFoamIntensity);
+   fWaterShoreFoamBreakupLow:=TPasJSON.GetNumber(JSONShoreObject.Properties['breakuplow'],fWaterShoreFoamBreakupLow);
+   fWaterShoreFoamBreakupHigh:=TPasJSON.GetNumber(JSONShoreObject.Properties['breakuphigh'],fWaterShoreFoamBreakupHigh);
   end;
   JSONItem:=JSONWaterObject.Properties['waves'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
@@ -32215,7 +32234,6 @@ begin
    fWaterWaveFrequency:=TPasJSON.GetNumber(JSONWavesObject.Properties['frequency'],fWaterWaveFrequency);
    fWaterWaveSteepness:=TPasJSON.GetNumber(JSONWavesObject.Properties['steepness'],fWaterWaveSteepness);
    fWaterWaveSpeed:=TPasJSON.GetNumber(JSONWavesObject.Properties['speed'],fWaterWaveSpeed);
-   fWaterWhitecapFactor:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecapfactor'],fWaterWhitecapFactor);
    fWaterWaveWindFactor:=TPasJSON.GetNumber(JSONWavesObject.Properties['windfactor'],fWaterWaveWindFactor);
    fWaterUVWaveAmplitude:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvamplitude'],fWaterUVWaveAmplitude);
    fWaterUVWaveFrequency:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvfrequency'],fWaterUVWaveFrequency);
@@ -32223,12 +32241,17 @@ begin
    fWaterUVWaveSteepness:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvsteepness'],fWaterUVWaveSteepness);
    fWaterUVWaveFactor:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvfactor'],fWaterUVWaveFactor);
    fWaterUVWaveScale:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvscale'],fWaterUVWaveScale);
-   fWaterWhitecapColor:=JSONToVector3(JSONWavesObject.Properties['whitecapcolor'],fWaterWhitecapColor);
-   fWaterWhitecapPatternScale:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecappatternscale'],fWaterWhitecapPatternScale);
-   fWaterWhitecapSlopeThreshLow:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecapslopethreshlow'],fWaterWhitecapSlopeThreshLow);
-   fWaterWhitecapSlopeThreshHigh:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecapslopethreshhigh'],fWaterWhitecapSlopeThreshHigh);
-   fWaterWhitecapBreakupLow:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecapbreakuplow'],fWaterWhitecapBreakupLow);
-   fWaterWhitecapBreakupHigh:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecapbreakuphigh'],fWaterWhitecapBreakupHigh);
+  end;
+  JSONItem:=JSONWaterObject.Properties['whitecap'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONWhitecapObject:=TPasJSONItemObject(JSONItem);
+   fWaterWhitecapFactor:=TPasJSON.GetNumber(JSONWhitecapObject.Properties['factor'],fWaterWhitecapFactor);
+   fWaterWhitecapColor:=JSONToVector3(JSONWhitecapObject.Properties['color'],fWaterWhitecapColor);
+   fWaterWhitecapPatternScale:=TPasJSON.GetNumber(JSONWhitecapObject.Properties['patternscale'],fWaterWhitecapPatternScale);
+   fWaterWhitecapSlopeThreshLow:=TPasJSON.GetNumber(JSONWhitecapObject.Properties['slopethreshlow'],fWaterWhitecapSlopeThreshLow);
+   fWaterWhitecapSlopeThreshHigh:=TPasJSON.GetNumber(JSONWhitecapObject.Properties['slopethreshhigh'],fWaterWhitecapSlopeThreshHigh);
+   fWaterWhitecapBreakupLow:=TPasJSON.GetNumber(JSONWhitecapObject.Properties['breakuplow'],fWaterWhitecapBreakupLow);
+   fWaterWhitecapBreakupHigh:=TPasJSON.GetNumber(JSONWhitecapObject.Properties['breakuphigh'],fWaterWhitecapBreakupHigh);
   end;
  end;
 end;
