@@ -58,7 +58,7 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
 
   uvec4 waterShoreFoam; // xy = 4x16-bit half float vec4 (xyz = foam color linear, w = foam depth start meters), zw = 4x16-bit half float vec4 (x = foam depth end meters, y = pattern scale, z = scroll speed, w = foam intensity 0..1)
 
-  uvec4 waterWaveParams; // xy = half4(windDirX, windDirY, windDirZ, waveAmplitude), zw = half4(waveFrequency, waveSteepness, waveSpeed, unused)
+  uvec4 waterWaveParams; // xy = half4(windDirX, windDirY, windDirZ, waveAmplitude), zw = half4(waveFrequency, waveSteepness, waveSpeed, whitecapFactor)
 
   PlanetMaterial materials[16];
 

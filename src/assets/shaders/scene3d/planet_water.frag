@@ -252,11 +252,12 @@ vec3 safeNormalize(vec3 v){
 // d3: 3D wave direction (unit vector in sphere tangent plane), k: wavenumber (rad/m),
 // A: visual amplitude (normal-space, dimensionless), pos: planet-local position (meters).
 // waveSpeed (global) controls the animation rate.
-vec3  waveWindDir   = vec3(1.0, 0.0, 0.0);
+vec3 waveWindDir = vec3(1.0, 0.0, 0.0);
 float waveAmplitude = 0.0;
 float waveFrequency = 0.05;
 float waveSteepness = 0.5;
-float waveSpeed     = 0.5;
+float waveSpeed = 0.5;
+float waveWhitecapFactor = 1.0;
 
 void accumulateWaveNormal(vec3 d3, float k, float A, vec3 pos, inout vec3 normalOffset){
   float phase = k * dot(d3, pos) - (waveSpeed * pushConstants.time);
@@ -544,6 +545,72 @@ vec3 applyShoreFoam(vec3 aBaseColor, vec3 aPlanetSpacePos, float aShoreDepth){
   return result;
 }
 
+// Whitecap (breaking wave crest) mask: combines Gerstner wave-crest phase
+// detection with an FBM breakup to produce ragged, animated foam patches at
+// wave crests. Returns 0 when amplitude*steepness is below threshold.
+float computeWhitecapMask(vec3 position){
+  float globalCoverage = smoothstep(0.06, 0.4, waveAmplitude * waveSteepness) * max(0.0, waveWhitecapFactor);
+  if(globalCoverage <= 0.0){
+    return 0.0;
+  }
+  vec3 sphereN = normalize(position);
+  vec3 wd = waveWindDir - (dot(waveWindDir, sphereN) * sphereN);
+  float wdLen = length(wd);
+  if(wdLen <= 0.001){
+    return 0.0;
+  }
+  wd /= wdLen;
+  vec3 wdB = cross(sphereN, wd);
+  // Re-use the same 4 wave trains as getWaterNormal for crest detection.
+  // sin(phase)^4 peaks sharply at the wave crest (phase = PI/2 + 2n*PI).
+  float t = pushConstants.time * waveSpeed;
+  float crest;
+  {
+    float phase;
+    float c;
+    // Wave 1: primary wind direction
+    phase  = waveFrequency        * dot(wd,                                          position) - t;
+    c      = max(0.0, sin(phase)); crest  = 1.0  * (c * c * c * c);
+    // Wave 2: +30°, 0.7x frequency
+    phase  = (waveFrequency*0.7)  * dot((0.866025*wd)+(0.5      *wdB),              position) - t;
+    c      = max(0.0, sin(phase)); crest += 0.5  * (c * c * c * c);
+    // Wave 3: -45°, 1.3x frequency
+    phase  = (waveFrequency*1.3)  * dot((0.707107*wd)-(0.707107 *wdB),              position) - t;
+    c      = max(0.0, sin(phase)); crest += 0.35 * (c * c * c * c);
+    // Wave 4: +60°, 2.1x frequency (high-frequency chop)
+    phase  = (waveFrequency*2.1)  * dot((0.5     *wd)+(0.866025 *wdB),              position) - t;
+    c      = max(0.0, sin(phase)); crest += 0.2  * (c * c * c * c);
+    crest /= 2.05; // normalise by sum of weights (1.0+0.5+0.35+0.2)
+  }
+  // FBM breakup pattern: reuse shore foam patternscale for visual consistency.
+  vec4 waterShoreFoam1 = vec4(unpackHalf2x16(planetData.waterShoreFoam.z), unpackHalf2x16(planetData.waterShoreFoam.w));
+  vec3 foamUV    = position * waterShoreFoam1.y;
+  float foamPhase = pushConstants.time * waveSpeed * 0.25;
+  vec3 warp      = vec3(planetGradientNoise(foamUV * 0.5 + vec3(foamPhase,        0.0,          0.0        )),
+                        planetGradientNoise(foamUV * 0.5 + vec3(0.0,              foamPhase,    0.0        )),
+                        planetGradientNoise(foamUV * 0.5 + vec3(0.0,              0.0,          foamPhase  ))) * 0.35;
+  float foamA    = planetNoiseFBM((foamUV + warp) + vec3(0.0, 0.0, foamPhase));
+  float foamB    = planetNoiseFBM(((foamUV * 1.73) + warp) + vec3(foamPhase * 0.7, -foamPhase * 0.5, 0.0));
+  float foamBreakup = smoothstep(0.35, 0.75, foamA - (foamB * 0.4));
+  return clamp(globalCoverage * crest * foamBreakup, 0.0, 1.0);
+}
+
+// Apply whitecap foam to aBaseColor, lit by the same sky+sun irradiance as
+// shore foam so whitecaps darken at night rather than glowing white.
+vec3 applyWhitecaps(vec3 aBaseColor, vec3 aPlanetSpacePos){
+  if((waveAmplitude * waveSteepness) <= 0.06){
+    return aBaseColor;
+  }
+  float mask = computeWhitecapMask(aPlanetSpacePos);
+  if(mask <= 0.0){
+    return aBaseColor;
+  }
+  vec4 waterShoreFoam0 = vec4(unpackHalf2x16(planetData.waterShoreFoam.x), unpackHalf2x16(planetData.waterShoreFoam.y));
+  vec3 foamIrradiance  = getIBLDiffuse(workNormal) + waterDownwellingIrradiance;
+  vec3 foamLit         = waterShoreFoam0.xyz * foamIrradiance;
+  return mix(aBaseColor, foamLit, mask);
+}
+
 vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
   waterDepth = opaqueDepth - surfaceDepth;
@@ -765,6 +832,8 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     // Shore foam overlay: fades in where the water becomes shallow and saturates near the
     // waterline. Pattern is a cheap 3D FBM sampled in planet-space (see applyShoreFoam).
     waterShade = applyShoreFoam(waterShade, inBlock.position, waterDepth);
+    // Whitecap foam on wave crests, driven by waveAmplitude*waveSteepness threshold.
+    waterShade = applyWhitecaps(waterShade, inBlock.position);
 #endif
 
     color.xyz = mix(
@@ -810,15 +879,16 @@ void main(){
   {
     // Unpack wave parameters for the procedural Gerstner detail pass in getWaterNormal.
     // wp0: (windDirX, windDirY, windDirZ, waveAmplitude)
-    // wp1: (waveFrequency, waveSteepness, waveSpeed, unused)
+    // wp1: (waveFrequency, waveSteepness, waveSpeed, whitecapFactor)
     vec4 wp0 = vec4(unpackHalf2x16(planetData.waterWaveParams.x), unpackHalf2x16(planetData.waterWaveParams.y));
     vec4 wp1 = vec4(unpackHalf2x16(planetData.waterWaveParams.z), unpackHalf2x16(planetData.waterWaveParams.w));
     float wdLen = length(wp0.xyz);
-    waveWindDir   = (wdLen > 0.001) ? (wp0.xyz / wdLen) : vec3(1.0, 0.0, 0.0);
+    waveWindDir = (wdLen > 1e-3) ? (wp0.xyz / wdLen) : vec3(1.0, 0.0, 0.0);
     waveAmplitude = wp0.w;
     waveFrequency = wp1.x;
     waveSteepness = wp1.y;
-    waveSpeed     = wp1.z;
+    waveSpeed = wp1.z;
+    waveWhitecapFactor = wp1.w;
   }
 
 #if defined(TESSELLATION)
