@@ -26597,6 +26597,7 @@ begin
  fVulkanDevice.DebugUtils.SetObjectName(fUnderwaterFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fUnderwaterFragmentShaderModule');
 
  begin
+{$ifdef PlanetWaterCausticsFragShader}
   // Load caustics shaders
   ShaderFileName:='planet_water_caustics';
   if TpvScene3D(fScene3D).RaytracingActive then begin
@@ -26620,6 +26621,7 @@ begin
    FreeAndNil(Stream);
   end;
   fVulkanDevice.DebugUtils.SetObjectName(fCausticsFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fCausticsFragmentShaderModule');
+{$endif}
  end;
 
  ShaderFileName:='planet_water';
@@ -26684,9 +26686,11 @@ begin
 
  fUnderwaterFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fUnderwaterFragmentShaderModule,'main');
 
+{$ifdef PlanetWaterCausticsFragShader}
  fCausticsVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCausticsVertexShaderModule,'main');
 
  fCausticsFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCausticsFragmentShaderModule,'main');
+{$endif}
 
  fWaterVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fWaterVertexShaderModule,'main');
 
@@ -26902,6 +26906,7 @@ begin
  end;
 
  begin
+{$ifdef PlanetWaterCausticsFragShader}
   // Caustics pipeline: additive fullscreen-quad, drawn after underwater, before water surface
 
   fCausticsPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
@@ -26972,7 +26977,7 @@ begin
   fCausticsPipeline.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fCausticsPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TWaterRenderPass.fCausticsPipeline');
-
+{$endif}
  end;
 
  begin
@@ -27272,6 +27277,7 @@ begin
          Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
         end;
 
+{$ifdef PlanetWaterCausticsFragShader}
         // Caustics: additive fullscreen pass after underwater, before water surface
         // Re-bind using fPipelineLayout (caustics uses fPipelineLayout, not fWaterMeshPipelineLayout)
         DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
@@ -27306,6 +27312,7 @@ begin
         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
          Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
         end;
+{$endif}
 
         // Re-bind sets 0-3 with fWaterMeshPipelineLayout for mesh water draw
         DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
@@ -27367,6 +27374,7 @@ begin
          Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
         end;
 
+{$ifdef PlanetWaterCausticsFragShader}
         // Caustics: additive fullscreen pass after underwater, before water surface
         aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fCausticsPipeline.Handle);
         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
@@ -27376,6 +27384,7 @@ begin
         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
          Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
         end;
+{$endif}
 
         aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fWaterPipeline.Handle);
         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
