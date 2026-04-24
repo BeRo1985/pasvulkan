@@ -145,8 +145,8 @@ void main() {
     vec2 sphereHeightData = getSphereHeightData(sphereNormal);
     float sphereHeight = dot(sphereHeightData, vec2(1.0));
 
-    // Wave height displacement (disabled when waveDisplaceAmplitude == 0 in planet data).
-    {
+    // Wave height displacement (disabled when waveDisplaceAmplitude == 0 or no water at vertex).
+    if(sphereHeightData.y > 1e-6){
       vec4 uvwp1 = vec4(unpackHalf2x16(planetData.waterUVWaveParams.z), unpackHalf2x16(planetData.waterUVWaveParams.w));
       float displaceAmpl = uvwp1.w;
       if(displaceAmpl > 0.0){
