@@ -265,6 +265,12 @@ float uvWaveSpeed        = 0.3; // UV wave animation speed (UV units/s)
 float uvWaveSteepness    = 0.5; // UV wave steepness / sharpness
 float uvWaveFactor       = 1.0; // overall UV wave contribution multiplier (0=off, 1=full)
 float uvWaveScale        = 10.0; // UV coordinate scale applied to octUV before wave phases (higher = finer ripples)
+vec3  whitecapColor          = vec3(1.0);  // whitecap foam color (linear RGB)
+float whitecapPatternScale   = 24.0;  // FBM breakup pattern scale
+float whitecapSlopeThreshLow  = 0.05; // heightmap slope where whitecaps begin
+float whitecapSlopeThreshHigh = 0.20; // heightmap slope where whitecaps are full
+float whitecapBreakupLow     = 0.35;  // FBM breakup smoothstep low threshold
+float whitecapBreakupHigh    = 0.75;  // FBM breakup smoothstep high threshold
 
 void accumulateWaveNormal(vec3 d3, float k, float A, vec3 pos, inout vec3 normalOffset){
   float phase = k * dot(d3, pos) - (waveSpeed * pushConstants.time);
@@ -589,49 +595,57 @@ vec3 applyShoreFoam(vec3 aBaseColor, vec3 aPlanetSpacePos, float aShoreDepth){
 // detection with an FBM breakup to produce ragged, animated foam patches at
 // wave crests. Returns 0 when amplitude*steepness is below threshold.
 float computeWhitecapMask(vec3 position){
-  float globalCoverage = smoothstep(0.06, 0.4, waveAmplitude * waveSteepness) * max(0.0, waveWhitecapFactor);
+  float globalCoverage = max(0.0, waveWhitecapFactor);
   if(globalCoverage <= 0.0){
     return 0.0;
   }
-  vec3 sphereN = normalize(position);
-  vec3 wd = waveWindDir - (dot(waveWindDir, sphereN) * sphereN);
-  float wdLen = length(wd);
-  if(wdLen <= 0.001){
-    return 0.0;
-  }
-  wd /= wdLen;
-  vec3 wdB = cross(sphereN, wd);
-  // Re-use the same 4 wave trains as getWaterNormal for crest detection.
-  // sin(phase)^4 peaks sharply at the wave crest (phase = PI/2 + 2n*PI).
-  float t = pushConstants.time * waveSpeed;
-  float crest;
-  {
-    float phase;
-    float c;
-    // Wave 1: primary wind direction
-    phase  = waveFrequency        * dot(wd,                                          position) - t;
-    c      = max(0.0, sin(phase)); crest  = 1.0  * (c * c * c * c);
-    // Wave 2: +30°, 0.7x frequency
-    phase  = (waveFrequency*0.7)  * dot((0.866025*wd)+(0.5      *wdB),              position) - t;
-    c      = max(0.0, sin(phase)); crest += 0.5  * (c * c * c * c);
-    // Wave 3: -45°, 1.3x frequency
-    phase  = (waveFrequency*1.3)  * dot((0.707107*wd)-(0.707107 *wdB),              position) - t;
-    c      = max(0.0, sin(phase)); crest += 0.35 * (c * c * c * c);
-    // Wave 4: +60°, 2.1x frequency (high-frequency chop)
-    phase  = (waveFrequency*2.1)  * dot((0.5     *wd)+(0.866025 *wdB),              position) - t;
-    c      = max(0.0, sin(phase)); crest += 0.2  * (c * c * c * c);
-    crest /= 2.05; // normalise by sum of weights (1.0+0.5+0.35+0.2)
-  }
-  // FBM breakup pattern: reuse shore foam patternscale for visual consistency.
-  vec4 waterShoreFoam1 = vec4(unpackHalf2x16(planetData.waterShoreFoam.z), unpackHalf2x16(planetData.waterShoreFoam.w));
-  vec3 foamUV    = position * waterShoreFoam1.y;
+  // Whitecap is driven purely by the gradient of the water simulation heightmap in
+  // sphere-correct (round-planet) tangent space — no wave-phase re-computation.
+  // High water surface slope (steep wave face) => whitecap.
+  vec3 n = normalize(position);
+  vec2 octUV = octPlanetUnsignedEncode(n);
+  const vec2 uvOfs = vec2(1.0 / 4096.0, 0.0);
+  vec2 uv00 = wrapOctahedralCoordinates(octUV - uvOfs.xy);
+  vec2 uv01 = wrapOctahedralCoordinates(octUV + uvOfs.xy);
+  vec2 uv10 = wrapOctahedralCoordinates(octUV - uvOfs.yx);
+  vec2 uv11 = wrapOctahedralCoordinates(octUV + uvOfs.yx);
+  // Water simulation heights at neighbours (pure water height, no terrain offset needed for gradient).
+  float wh00 = getWaterHeightData(uv00);
+  float wh01 = getWaterHeightData(uv01);
+  float wh10 = getWaterHeightData(uv10);
+  float wh11 = getWaterHeightData(uv11);
+  // Total surface heights for sphere-correct 3D distances (terrain + water).
+  float h   = getSphereHeight(octUV);
+  float h00 = getSphereHeightEx(uv00);
+  float h01 = getSphereHeightEx(uv01);
+  float h10 = getSphereHeightEx(uv10);
+  float h11 = getSphereHeightEx(uv11);
+  vec3 p    = n * h;
+  vec3 p00  = octPlanetUnsignedDecode(uv00) * ((h00 > 0.0) ? h00 : h);
+  vec3 p01  = octPlanetUnsignedDecode(uv01) * ((h01 > 0.0) ? h01 : h);
+  vec3 p10  = octPlanetUnsignedDecode(uv10) * ((h10 > 0.0) ? h10 : h);
+  vec3 p11  = octPlanetUnsignedDecode(uv11) * ((h11 > 0.0) ? h11 : h);
+  // Sphere-correct 3D surface distances for gradient normalisation.
+  float distU = max(1e-6, length(p01 - p00));
+  float distV = max(1e-6, length(p11 - p10));
+  // Water height gradient in heightmap tangent space (dimensionless, m/m).
+  float gradU = (wh01 - wh00) / distU;
+  float gradV = (wh11 - wh10) / distV;
+  float gradMag = sqrt((gradU * gradU) + (gradV * gradV));
+  // Threshold: scale steepness thresholds with wave amplitude so the whitecap
+  // coverage adapts automatically when wave settings change.
+  float slopeThreshLow  = whitecapSlopeThreshLow;
+  float slopeThreshHigh = whitecapSlopeThreshHigh;
+  float crest = smoothstep(slopeThreshLow, slopeThreshHigh, gradMag);
+  // FBM breakup pattern: use own whitecap patternscale.
+  vec3 foamUV    = position * whitecapPatternScale;
   float foamPhase = pushConstants.time * waveSpeed * 0.25;
   vec3 warp      = vec3(planetGradientNoise(foamUV * 0.5 + vec3(foamPhase,        0.0,          0.0        )),
                         planetGradientNoise(foamUV * 0.5 + vec3(0.0,              foamPhase,    0.0        )),
                         planetGradientNoise(foamUV * 0.5 + vec3(0.0,              0.0,          foamPhase  ))) * 0.35;
   float foamA    = planetNoiseFBM((foamUV + warp) + vec3(0.0, 0.0, foamPhase));
   float foamB    = planetNoiseFBM(((foamUV * 1.73) + warp) + vec3(foamPhase * 0.7, -foamPhase * 0.5, 0.0));
-  float foamBreakup = smoothstep(0.35, 0.75, foamA - (foamB * 0.4));
+  float foamBreakup = smoothstep(whitecapBreakupLow, whitecapBreakupHigh, foamA - (foamB * 0.4));
   return clamp(globalCoverage * crest * foamBreakup, 0.0, 1.0);
 }
 
@@ -645,9 +659,8 @@ vec3 applyWhitecaps(vec3 aBaseColor, vec3 aPlanetSpacePos){
   if(mask <= 0.0){
     return aBaseColor;
   }
-  vec4 waterShoreFoam0 = vec4(unpackHalf2x16(planetData.waterShoreFoam.x), unpackHalf2x16(planetData.waterShoreFoam.y));
   vec3 foamIrradiance  = getIBLDiffuse(workNormal) + waterDownwellingIrradiance;
-  vec3 foamLit         = waterShoreFoam0.xyz * foamIrradiance;
+  vec3 foamLit         = whitecapColor * foamIrradiance;
   return mix(aBaseColor, foamLit, mask);
 }
 
@@ -942,6 +955,19 @@ void main(){
       waveWindFactor  = wp3.y;
       uvWaveScale     = wp3.z;
     }
+  }
+  {
+    // Unpack whitecap-specific parameters.
+    // wcp0: (colorR, colorG, colorB, patternScale)
+    // wcp1: (slopeThreshLow, slopeThreshHigh, breakupLow, breakupHigh)
+    vec4 wcp0 = vec4(unpackHalf2x16(planetData.waterWhitecapParams.x), unpackHalf2x16(planetData.waterWhitecapParams.y));
+    vec4 wcp1 = vec4(unpackHalf2x16(planetData.waterWhitecapParams.z), unpackHalf2x16(planetData.waterWhitecapParams.w));
+    whitecapColor          = wcp0.xyz;
+    whitecapPatternScale   = wcp0.w;
+    whitecapSlopeThreshLow  = wcp1.x;
+    whitecapSlopeThreshHigh = wcp1.y;
+    whitecapBreakupLow     = wcp1.z;
+    whitecapBreakupHigh    = wcp1.w;
   }
 
 #if defined(TESSELLATION)

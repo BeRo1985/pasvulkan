@@ -181,6 +181,9 @@ type TpvScene3DPlanets=class;
              WaterUVWaveParams0:TpvHalfFloatVector4; // x=uvWaveAmplitude, y=uvWaveFrequency (cycles/UV), z=uvWaveSpeed, w=uvWaveSteepness
              WaterUVWaveParams1:TpvHalfFloatVector4; // x=uvWaveFactor (0..1), y=waveWindFactor (0..1 wind Gerstner multiplier), z=uvWaveScale (oct UV multiplier), w=unused
 
+             WaterWhitecapParams0:TpvHalfFloatVector4; // xyz=whitecap foam color (linear RGB), w=FBM pattern scale
+             WaterWhitecapParams1:TpvHalfFloatVector4; // x=slopeThreshLow, y=slopeThreshHigh, z=FBM breakupLow, w=FBM breakupHigh
+
              Textures:array[0..15,0..3] of TpvUInt32;
 
             end;
@@ -2892,6 +2895,12 @@ type TpvScene3DPlanets=class;
        fWaterUVWaveFactor:TpvFloat;     // Overall UV wave contribution multiplier (0=off, 1=full).
        fWaterWaveWindFactor:TpvFloat;   // Multiplier for wind-based Gerstner contribution (0=off, 1=full).
        fWaterUVWaveScale:TpvFloat;      // Oct UV coordinate scale before wave phases (higher = finer ripples).
+       fWaterWhitecapColor:TpvVector3;  // Whitecap foam color (linear RGB), default white.
+       fWaterWhitecapPatternScale:TpvFloat;      // FBM breakup pattern scale, default 24.
+       fWaterWhitecapSlopeThreshLow:TpvFloat;    // Heightmap slope where whitecaps begin, default 0.05.
+       fWaterWhitecapSlopeThreshHigh:TpvFloat;   // Heightmap slope where whitecaps are full, default 0.20.
+       fWaterWhitecapBreakupLow:TpvFloat;        // FBM breakup smoothstep low threshold, default 0.35.
+       fWaterWhitecapBreakupHigh:TpvFloat;       // FBM breakup smoothstep high threshold, default 0.75.
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
        fTileMapBits:TpvInt32;
@@ -3232,6 +3241,14 @@ type TpvScene3DPlanets=class;
        property WaterUVWaveFactor:TpvFloat read fWaterUVWaveFactor write fWaterUVWaveFactor;
        property WaterWaveWindFactor:TpvFloat read fWaterWaveWindFactor write fWaterWaveWindFactor;
        property WaterUVWaveScale:TpvFloat read fWaterUVWaveScale write fWaterUVWaveScale;
+      public
+       property WaterWhitecapColor:TpvVector3 read fWaterWhitecapColor write fWaterWhitecapColor;
+      published
+       property WaterWhitecapPatternScale:TpvFloat read fWaterWhitecapPatternScale write fWaterWhitecapPatternScale;
+       property WaterWhitecapSlopeThreshLow:TpvFloat read fWaterWhitecapSlopeThreshLow write fWaterWhitecapSlopeThreshLow;
+       property WaterWhitecapSlopeThreshHigh:TpvFloat read fWaterWhitecapSlopeThreshHigh write fWaterWhitecapSlopeThreshHigh;
+       property WaterWhitecapBreakupLow:TpvFloat read fWaterWhitecapBreakupLow write fWaterWhitecapBreakupLow;
+       property WaterWhitecapBreakupHigh:TpvFloat read fWaterWhitecapBreakupHigh write fWaterWhitecapBreakupHigh;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -28199,6 +28216,12 @@ begin
  fWaterUVWaveFactor:=1.0; // full contribution by default
  fWaterWaveWindFactor:=1.0; // full wind-wave contribution by default
  fWaterUVWaveScale:=10.0; // moderate UV scale for visible ripples
+ fWaterWhitecapColor:=TpvVector3.Create(1.0,1.0,1.0); // white foam
+ fWaterWhitecapPatternScale:=24.0;
+ fWaterWhitecapSlopeThreshLow:=0.05;
+ fWaterWhitecapSlopeThreshHigh:=0.20;
+ fWaterWhitecapBreakupLow:=0.35;
+ fWaterWhitecapBreakupHigh:=0.75;
 
  fTileMapResolution:=Min(Max(fHeightMapResolution shr 8,32),fHeightMapResolution);
 
@@ -31747,6 +31770,14 @@ begin
    fPlanetData.WaterUVWaveParams1.y:=fWaterWaveWindFactor;
    fPlanetData.WaterUVWaveParams1.z:=fWaterUVWaveScale;
    fPlanetData.WaterUVWaveParams1.w:=0.0;
+   fPlanetData.WaterWhitecapParams0.x:=fWaterWhitecapColor.x;
+   fPlanetData.WaterWhitecapParams0.y:=fWaterWhitecapColor.y;
+   fPlanetData.WaterWhitecapParams0.z:=fWaterWhitecapColor.z;
+   fPlanetData.WaterWhitecapParams0.w:=fWaterWhitecapPatternScale;
+   fPlanetData.WaterWhitecapParams1.x:=fWaterWhitecapSlopeThreshLow;
+   fPlanetData.WaterWhitecapParams1.y:=fWaterWhitecapSlopeThreshHigh;
+   fPlanetData.WaterWhitecapParams1.z:=fWaterWhitecapBreakupLow;
+   fPlanetData.WaterWhitecapParams1.w:=fWaterWhitecapBreakupHigh;
    fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
@@ -32192,6 +32223,12 @@ begin
    fWaterUVWaveSteepness:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvsteepness'],fWaterUVWaveSteepness);
    fWaterUVWaveFactor:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvfactor'],fWaterUVWaveFactor);
    fWaterUVWaveScale:=TPasJSON.GetNumber(JSONWavesObject.Properties['uvscale'],fWaterUVWaveScale);
+   fWaterWhitecapColor:=JSONToVector3(JSONWavesObject.Properties['whitecapcolor'],fWaterWhitecapColor);
+   fWaterWhitecapPatternScale:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecappatternscale'],fWaterWhitecapPatternScale);
+   fWaterWhitecapSlopeThreshLow:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecapslopethreshlow'],fWaterWhitecapSlopeThreshLow);
+   fWaterWhitecapSlopeThreshHigh:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecapslopethreshhigh'],fWaterWhitecapSlopeThreshHigh);
+   fWaterWhitecapBreakupLow:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecapbreakuplow'],fWaterWhitecapBreakupLow);
+   fWaterWhitecapBreakupHigh:=TPasJSON.GetNumber(JSONWavesObject.Properties['whitecapbreakuphigh'],fWaterWhitecapBreakupHigh);
   end;
  end;
 end;
