@@ -175,6 +175,9 @@ type TpvScene3DPlanets=class;
              WaterShoreFoam0:TpvHalfFloatVector4; // xyz = foam color (linear), w = foam depth start in meters (deeper cutoff; foam visible where waterDepth < start)
              WaterShoreFoam1:TpvHalfFloatVector4; // x = foam depth end (shallow; full foam for waterDepth <= end), y = pattern scale (1/unit along inBlock.position), z = scroll speed, w = overall foam intensity (0 = off)
 
+             WaterWaveParams0:TpvHalfFloatVector4; // x=windDirX, y=windDirY, z=windDirZ, w=waveAmplitude (visual strength, 0=disabled)
+             WaterWaveParams1:TpvHalfFloatVector4; // x=waveFrequency (rad/m), y=waveSteepness (0..1), z=waveSpeed (rad/s), w=unused
+
              Textures:array[0..15,0..3] of TpvUInt32;
 
             end;
@@ -2873,6 +2876,11 @@ type TpvScene3DPlanets=class;
        fWaterShoreFoamPatternScale:TpvFloat; // Pattern frequency multiplier applied to inBlock.position for the procedural foam noise.
        fWaterShoreFoamScrollSpeed:TpvFloat; // Animation speed of the foam pattern in pushConstants.time units.
        fWaterShoreFoamIntensity:TpvFloat; // Overall strength of the shore foam (0 = disabled, 1 = full).
+       fWaterWindDirection:TpvVector3; // Global wind direction in planet-local space (drives Gerstner wave direction).
+       fWaterWaveAmplitude:TpvFloat;   // Normal perturbation visual strength (0 = disabled, 0.3 = moderate).
+       fWaterWaveFrequency:TpvFloat;   // Spatial wavenumber (rad/m); wavelength = 2*pi/frequency in meters.
+       fWaterWaveSteepness:TpvFloat;   // Gerstner steepness (0 = pure sine, 1 = peaked crests).
+       fWaterWaveSpeed:TpvFloat;       // Angular wave propagation speed (rad/s; visual only).
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
        fTileMapBits:TpvInt32;
@@ -3191,6 +3199,7 @@ type TpvScene3DPlanets=class;
        property WaterDeepColor:TpvVector3 read fWaterDeepColor write fWaterDeepColor;
        property WaterBaseColor:TpvVector3 read fWaterBaseColor write fWaterBaseColor;
        property WaterShoreFoamColor:TpvVector3 read fWaterShoreFoamColor write fWaterShoreFoamColor;
+       property WaterWindDirection:TpvVector3 read fWaterWindDirection write fWaterWindDirection;
       published
        property WaterIOR:TpvFloat read fWaterIOR write fWaterIOR;
        property AirIOR:TpvFloat read fAirIOR write fAirIOR;
@@ -3200,6 +3209,10 @@ type TpvScene3DPlanets=class;
        property WaterShoreFoamPatternScale:TpvFloat read fWaterShoreFoamPatternScale write fWaterShoreFoamPatternScale;
        property WaterShoreFoamScrollSpeed:TpvFloat read fWaterShoreFoamScrollSpeed write fWaterShoreFoamScrollSpeed;
        property WaterShoreFoamIntensity:TpvFloat read fWaterShoreFoamIntensity write fWaterShoreFoamIntensity;
+       property WaterWaveAmplitude:TpvFloat read fWaterWaveAmplitude write fWaterWaveAmplitude;
+       property WaterWaveFrequency:TpvFloat read fWaterWaveFrequency write fWaterWaveFrequency;
+       property WaterWaveSteepness:TpvFloat read fWaterWaveSteepness write fWaterWaveSteepness;
+       property WaterWaveSpeed:TpvFloat read fWaterWaveSpeed write fWaterWaveSpeed;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -28154,6 +28167,11 @@ begin
  fWaterShoreFoamPatternScale:=24.0; // pattern repetitions along inBlock.position (local-planet units)
  fWaterShoreFoamScrollSpeed:=0.25; // gentle animation
  fWaterShoreFoamIntensity:=1.0; // enabled by default
+ fWaterWindDirection:=TpvVector3.InlineableCreate(1.0,0.0,0.0); // blows along planet X axis
+ fWaterWaveAmplitude:=0.3; // moderate directional wave detail
+ fWaterWaveFrequency:=0.05; // 0.05 rad/m ~ 125 m wavelength
+ fWaterWaveSteepness:=0.5; // moderate steepness
+ fWaterWaveSpeed:=0.5; // 0.5 rad/s angular propagation speed
 
  fTileMapResolution:=Min(Max(fHeightMapResolution shr 8,32),fHeightMapResolution);
 
@@ -31686,6 +31704,14 @@ begin
    fPlanetData.WaterShoreFoam1.y:=fWaterShoreFoamPatternScale;
    fPlanetData.WaterShoreFoam1.z:=fWaterShoreFoamScrollSpeed;
    fPlanetData.WaterShoreFoam1.w:=fWaterShoreFoamIntensity;
+   fPlanetData.WaterWaveParams0.x:=fWaterWindDirection.x;
+   fPlanetData.WaterWaveParams0.y:=fWaterWindDirection.y;
+   fPlanetData.WaterWaveParams0.z:=fWaterWindDirection.z;
+   fPlanetData.WaterWaveParams0.w:=fWaterWaveAmplitude;
+   fPlanetData.WaterWaveParams1.x:=fWaterWaveFrequency;
+   fPlanetData.WaterWaveParams1.y:=fWaterWaveSteepness;
+   fPlanetData.WaterWaveParams1.z:=fWaterWaveSpeed;
+   fPlanetData.WaterWaveParams1.w:=0.0;
    fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
@@ -32088,7 +32114,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.LoadWaterSettings(const aJSONItem:TPasJSONItem);
-var JSONRootObject,JSONWaterObject,JSONShoreObject:TPasJSONItemObject;
+var JSONRootObject,JSONWaterObject,JSONShoreObject,JSONWavesObject:TPasJSONItemObject;
     JSONItem:TPasJSONItem;
 begin
  if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
@@ -32114,6 +32140,15 @@ begin
    fWaterShoreFoamPatternScale:=TPasJSON.GetNumber(JSONShoreObject.Properties['patternscale'],fWaterShoreFoamPatternScale);
    fWaterShoreFoamScrollSpeed:=TPasJSON.GetNumber(JSONShoreObject.Properties['scrollspeed'],fWaterShoreFoamScrollSpeed);
    fWaterShoreFoamIntensity:=TPasJSON.GetNumber(JSONShoreObject.Properties['intensity'],fWaterShoreFoamIntensity);
+  end;
+  JSONItem:=JSONWaterObject.Properties['waves'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONWavesObject:=TPasJSONItemObject(JSONItem);
+   fWaterWindDirection:=JSONToVector3(JSONWavesObject.Properties['winddir'],fWaterWindDirection);
+   fWaterWaveAmplitude:=TPasJSON.GetNumber(JSONWavesObject.Properties['amplitude'],fWaterWaveAmplitude);
+   fWaterWaveFrequency:=TPasJSON.GetNumber(JSONWavesObject.Properties['frequency'],fWaterWaveFrequency);
+   fWaterWaveSteepness:=TPasJSON.GetNumber(JSONWavesObject.Properties['steepness'],fWaterWaveSteepness);
+   fWaterWaveSpeed:=TPasJSON.GetNumber(JSONWavesObject.Properties['speed'],fWaterWaveSpeed);
   end;
  end;
 end;

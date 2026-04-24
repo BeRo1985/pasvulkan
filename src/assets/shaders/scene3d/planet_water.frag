@@ -248,6 +248,21 @@ vec3 safeNormalize(vec3 v){
   return (length(v) > 0.0) ? normalize(v) : vec3(0.0);
 }
 
+// Accumulate a single Gerstner-style wave's normal gradient onto normalOffset.
+// d3: 3D wave direction (unit vector in sphere tangent plane), k: wavenumber (rad/m),
+// A: visual amplitude (normal-space, dimensionless), pos: planet-local position (meters).
+// waveSpeed (global) controls the animation rate.
+vec3  waveWindDir   = vec3(1.0, 0.0, 0.0);
+float waveAmplitude = 0.0;
+float waveFrequency = 0.05;
+float waveSteepness = 0.5;
+float waveSpeed     = 0.5;
+
+void accumulateWaveNormal(vec3 d3, float k, float A, vec3 pos, inout vec3 normalOffset){
+  float phase = k * dot(d3, pos) - (waveSpeed * pushConstants.time);
+  normalOffset -= A * cos(phase) * d3;
+}
+
 vec3 getWaterNormal(vec3 position){
 
   vec3 n = normalize(position);
@@ -310,6 +325,30 @@ vec3 getWaterNormal(vec3 position){
     );   
 
   }       
+
+  // Add Gerstner wave detail normal perturbation (4 wave trains, wind-directed).
+  // Controlled by waveWindDir, waveAmplitude, waveFrequency, waveSteepness, waveSpeed
+  // which are unpacked from planetData.waterWaveParams in main().
+  if((waveAmplitude > 0.0) && (waveFrequency > 0.0)){
+    vec3 sphereN = normalize(position);
+    // Project global wind direction onto the tangent plane at this sphere point.
+    vec3 wd = waveWindDir - (dot(waveWindDir, sphereN) * sphereN);
+    float wdLen = length(wd);
+    if(wdLen > 0.001){
+      wd /= wdLen;
+      vec3 wdB = cross(sphereN, wd);
+      vec3 normalOffset = vec3(0.0);
+      // Wave 1: primary wind direction (full weight)
+      accumulateWaveNormal(wd,                                           waveFrequency,       waveAmplitude,        position, normalOffset);
+      // Wave 2: +30 deg, 0.7x frequency, 0.5x amplitude
+      accumulateWaveNormal((0.866025 * wd) + (0.5      * wdB),          waveFrequency * 0.7, waveAmplitude * 0.5,  position, normalOffset);
+      // Wave 3: -45 deg, 1.3x frequency, 0.35x amplitude
+      accumulateWaveNormal((0.707107 * wd) - (0.707107 * wdB),          waveFrequency * 1.3, waveAmplitude * 0.35, position, normalOffset);
+      // Wave 4: +60 deg, 2.1x frequency, 0.2x amplitude (high-frequency chop)
+      accumulateWaveNormal((0.5      * wd) + (0.866025 * wdB),          waveFrequency * 2.1, waveAmplitude * 0.2,  position, normalOffset);
+      normal = normalize(normal + (normalOffset * waveSteepness));
+    }
+  }
 
   return normal;
 #else
@@ -767,6 +806,19 @@ void main(){
     float f0 = IOR_TO_F0(waterIOR);
     waterF0 = f0 * f0;
     ior = waterIOR / airIOR;
+  }
+  {
+    // Unpack wave parameters for the procedural Gerstner detail pass in getWaterNormal.
+    // wp0: (windDirX, windDirY, windDirZ, waveAmplitude)
+    // wp1: (waveFrequency, waveSteepness, waveSpeed, unused)
+    vec4 wp0 = vec4(unpackHalf2x16(planetData.waterWaveParams.x), unpackHalf2x16(planetData.waterWaveParams.y));
+    vec4 wp1 = vec4(unpackHalf2x16(planetData.waterWaveParams.z), unpackHalf2x16(planetData.waterWaveParams.w));
+    float wdLen = length(wp0.xyz);
+    waveWindDir   = (wdLen > 0.001) ? (wp0.xyz / wdLen) : vec3(1.0, 0.0, 0.0);
+    waveAmplitude = wp0.w;
+    waveFrequency = wp1.x;
+    waveSteepness = wp1.y;
+    waveSpeed     = wp1.z;
   }
 
 #if defined(TESSELLATION)
