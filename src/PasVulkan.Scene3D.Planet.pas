@@ -169,6 +169,9 @@ type TpvScene3DPlanets=class;
              WaterAbsorption:TpvHalfFloatVector4; // xyz = per-channel Beer-Lambert absorption coefficient (1/m), w = legacy-fade amount 0..1
              WaterDeepColor:TpvHalfFloatVector4; // xyz = deep water scattering color (linear), w = unused
 
+             WaterBaseColorIORs:TpvHalfFloatVector4; // xyz = water base color (linear), w = unused
+             WaterIORs:TpvHalfFloatVector4; // x = waterIOR (e.g. 1.3325), y = airIOR (e.g. 1.0), zw = unused
+
              WaterShoreFoam0:TpvHalfFloatVector4; // xyz = foam color (linear), w = foam depth start in meters (deeper cutoff; foam visible where waterDepth < start)
              WaterShoreFoam1:TpvHalfFloatVector4; // x = foam depth end (shallow; full foam for waterDepth <= end), y = pattern scale (1/unit along inBlock.position), z = scroll speed, w = overall foam intensity (0 = off)
 
@@ -2860,6 +2863,9 @@ type TpvScene3DPlanets=class;
        fSerializeWaterRipples:Boolean; // when true, TSerializedData includes the current ripple image contents so a reload restores the exact ripple state (primarily for test/regression comparisons). Default: false - ripples are transient and normally not persisted.
        fWaterAbsorption:TpvVector3; // Per-channel Beer-Lambert absorption coefficient (1/m) applied to through-water refraction.
        fWaterDeepColor:TpvVector3; // Linear scattering color at full depth (limit of attenuation).
+       fWaterBaseColor:TpvVector3; // Linear water base color tint multiplied into the shaded water (surface/volume color).
+       fWaterIOR:TpvFloat; // Water index of refraction (e.g. 1.3325 for typical seawater).
+       fAirIOR:TpvFloat; // Air index of refraction (e.g. 1.0).
        fWaterLegacyFadeAmount:TpvFloat; // 0 = pure Beer-Lambert, 1 = legacy mix-to-waterF0 look (packed into WaterAbsorption.w).
        fWaterShoreFoamColor:TpvVector3; // Linear color of the shore foam overlay.
        fWaterShoreFoamDepthStart:TpvFloat; // Water depth (m) at which foam starts fading in (outer edge, deeper boundary).
@@ -3180,8 +3186,11 @@ type TpvScene3DPlanets=class;
       public
        property WaterAbsorption:TpvVector3 read fWaterAbsorption write fWaterAbsorption;
        property WaterDeepColor:TpvVector3 read fWaterDeepColor write fWaterDeepColor;
+       property WaterBaseColor:TpvVector3 read fWaterBaseColor write fWaterBaseColor;
        property WaterShoreFoamColor:TpvVector3 read fWaterShoreFoamColor write fWaterShoreFoamColor;
       published
+       property WaterIOR:TpvFloat read fWaterIOR write fWaterIOR;
+       property AirIOR:TpvFloat read fAirIOR write fAirIOR;
        property WaterLegacyFadeAmount:TpvFloat read fWaterLegacyFadeAmount write fWaterLegacyFadeAmount;
        property WaterShoreFoamDepthStart:TpvFloat read fWaterShoreFoamDepthStart write fWaterShoreFoamDepthStart;
        property WaterShoreFoamDepthEnd:TpvFloat read fWaterShoreFoamDepthEnd write fWaterShoreFoamDepthEnd;
@@ -28132,6 +28141,9 @@ begin
 
  fWaterAbsorption:=TpvVector3.InlineableCreate(0.45,0.15,0.10); // clear-water tropical defaults (per meter, RGB)
  fWaterDeepColor:=TpvVector3.InlineableCreate(0.02,0.06,0.10); // dark teal at infinite depth (linear)
+ fWaterBaseColor:=TpvVector3.InlineableCreate(0.17157287525381,0.50352221540038,0.90393320739546); // pow(vec3(0.555555,0.777777,1.0),2.5) linear tint (matches previous shader constant)
+ fWaterIOR:=1.3325; // typical sea water
+ fAirIOR:=1.0;
  fWaterLegacyFadeAmount:=0.0; // 0 = pure Beer-Lambert (new), 1 = legacy mix-to-waterF0 look
  fWaterShoreFoamColor:=TpvVector3.InlineableCreate(1.0,1.0,1.0); // neutral white foam
  fWaterShoreFoamDepthStart:=0.8; // foam fades out beyond ~0.8 m water depth
@@ -31655,6 +31667,14 @@ begin
    fPlanetData.WaterDeepColor.y:=fWaterDeepColor.y;
    fPlanetData.WaterDeepColor.z:=fWaterDeepColor.z;
    fPlanetData.WaterDeepColor.w:=0.0;
+   fPlanetData.WaterBaseColorIORs.x:=fWaterBaseColor.x;
+   fPlanetData.WaterBaseColorIORs.y:=fWaterBaseColor.y;
+   fPlanetData.WaterBaseColorIORs.z:=fWaterBaseColor.z;
+   fPlanetData.WaterBaseColorIORs.w:=0.0;
+   fPlanetData.WaterIORs.x:=fWaterIOR;
+   fPlanetData.WaterIORs.y:=fAirIOR;
+   fPlanetData.WaterIORs.z:=0.0;
+   fPlanetData.WaterIORs.w:=0.0;
    fPlanetData.WaterShoreFoam0.x:=fWaterShoreFoamColor.x;
    fPlanetData.WaterShoreFoam0.y:=fWaterShoreFoamColor.y;
    fPlanetData.WaterShoreFoam0.z:=fWaterShoreFoamColor.z;

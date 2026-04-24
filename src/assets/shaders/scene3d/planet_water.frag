@@ -164,13 +164,12 @@ float volumeAttenuationDistance = 1.0 / 0.0; // +INF
 vec3 volumeAttenuationColor = vec3(1.0); 
 float volumeDispersion = 0.0;
 
-const float airIOR = 1.0; 
-
-const float waterIOR = 1.3325; 
+float airIOR = 1.0;
+float waterIOR = 1.3325;
 
 #define IOR_TO_F0(ior) ((ior - 1.0) * (ior - 1.0)) / ((ior + 1.0) * (ior + 1.0))
 
-const float waterF0 = IOR_TO_F0(waterIOR) * IOR_TO_F0(waterIOR);
+float waterF0 = IOR_TO_F0(waterIOR) * IOR_TO_F0(waterIOR);
 
 const vec3 inModelScale = vec3(1.0); 
 
@@ -392,12 +391,17 @@ float HenyeyGreenstein(float mu, float inG){
 
 #define PROCESSLIGHT processLight 
 
-const vec3 waterBaseColor = pow(vec3(0.555555, 0.777777, 1.0), vec3(2.5));//vec3(0.5, 0.7, 0.9);
+vec3 waterBaseColor = pow(vec3(0.555555, 0.777777, 1.0), vec3(2.5));//vec3(0.5, 0.7, 0.9); // default; overridden from planetData.waterBaseColorIORs in main()
 
 vec3 waterDiffuseColor = vec3(0.0);
 vec3 waterSpecularColor = vec3(0.0);
 
 vec3 waterSubscattering = vec3(0.0);
+
+// Downwelling irradiance reaching the water surface from direct (shadow-attenuated) lights.
+// Accumulated in processLight and combined with IBL diffuse to modulate the deep-water
+// scattering color so the volume stays dark at night / in shadow and bright at day.
+vec3 waterDownwellingIrradiance = vec3(0.0);
 
 vec3 waterColor; //vec3(0.090195, 0.115685, 0.12745);
 
@@ -410,6 +414,11 @@ void processLight(const in vec3 lightColor,
   float mu = dot(lightDirection, -viewDirection);
 
   waterSubscattering += HenyeyGreenstein(mu, 0.5) * waterColor * lightColor * (1.0 - clamp(exp(-waterDepth * 0.01), 0.0, 1.0));  
+
+  // Downwelling irradiance onto the water surface from above (shadow/visibility-aware via
+  // lightColor from the caller). Uses the water-surface normal; above/below water sign flipping
+  // is already handled by the caller via workNormal.
+  waterDownwellingIrradiance += lightColor * max(0.0, dot(workNormal, lightDirection));
 
 //waterSubscattering += HenyeyGreenstein(mu, 0.5) * waterColor * lightColor * max(0.0, waterDepth * 0.01);
 
@@ -694,11 +703,17 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
     // Beer-Lambert per-channel absorption attenuating refraction across the vertical water column,
     // with the deep-water scattering color as the asymptotic floor for fully-attenuated light.
+    // The deep-water color represents multiple-scattered downwelling irradiance, so it is
+    // modulated by the sum of IBL diffuse (sky) and per-light shadow-attenuated downwelling
+    // irradiance (waterDownwellingIrradiance accumulated in processLight) so the volume stays
+    // lighting-consistent (dark at night / in shadow, bright at day).
     // waterAbsorption.w (legacy-fade amount) blends the Beer-Lambert result toward the legacy
     // mix(refraction, waterF0, 1-exp(-depth)) behavior for compatibility.
     vec4 waterAbsorption = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.x), unpackHalf2x16(planetData.waterAbsorptionDeepColor.y));
     vec4 waterDeepColor = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.z), unpackHalf2x16(planetData.waterAbsorptionDeepColor.w));
-    refraction = mix(mix(refraction, waterDeepColor.xyz, clamp(vec3(1.0) - exp(-waterDepth * waterAbsorption.xyz), vec3(0.0), vec3(1.0))),
+    vec3 waterDeepIrradiance = getIBLDiffuse(underWater ? -normal : normal) + waterDownwellingIrradiance;
+    vec3 waterDeepLit = waterDeepColor.xyz * waterDeepIrradiance;
+    refraction = mix(mix(refraction, waterDeepLit, clamp(vec3(1.0) - exp(-waterDepth * waterAbsorption.xyz), vec3(0.0), vec3(1.0))),
                      mix(refraction, vec3(waterF0), clamp(1.0 - exp(-waterDepth * 1.0), 0.0, 1.0)),
                      clamp(waterAbsorption.w, 0.0, 1.0));
 
@@ -737,6 +752,19 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
 
 void main(){
+  {
+    // Unpack configurable water IORs, base color and (re-)derive waterF0 from waterIOR so the
+    // whole shader picks up the per-planet values configured via TpvScene3DPlanet.
+    vec4 baseColor4 = vec4(unpackHalf2x16(planetData.waterBaseColorIORs.x), unpackHalf2x16(planetData.waterBaseColorIORs.y));
+    vec4 iors4 = vec4(unpackHalf2x16(planetData.waterBaseColorIORs.z), unpackHalf2x16(planetData.waterBaseColorIORs.w));
+    waterBaseColor = baseColor4.xyz;
+    waterIOR = (iors4.x > 0.0) ? iors4.x : 1.3325;
+    airIOR = (iors4.y > 0.0) ? iors4.y : 1.0;
+    float f0 = IOR_TO_F0(waterIOR);
+    waterF0 = f0 * f0;
+    ior = waterIOR / airIOR;
+  }
+
 #if defined(TESSELLATION)
  
   workNormal = normalize((planetModelMatrix * vec4(getWaterNormal(inBlock.position), 0.0)).xyz) * ((inBlock.underWater > 0.0) ? -1.0 : 1.0);
