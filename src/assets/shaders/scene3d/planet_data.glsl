@@ -64,7 +64,7 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
 
   uvec4 waterUVWaveParams; // xy = half4(uvWaveAmplitude, uvWaveFrequency, uvWaveSpeed, uvWaveSteepness), zw = half4(uvWaveFactor, waveWindFactor, uvWaveScale, unused)
 
-  uvec4 waterDisplaceParams; // xy = half4(waveDisplaceAmplitude, displaceHeightLowThreshold, displaceHeightHighThreshold, displaceHeightFactor), zw = unused
+  uvec4 waterDisplaceParams; // xy = half4(waveDisplaceAmplitude, displaceHeightLowThreshold, displaceHeightHighThreshold, displaceHeightFactor), zw = half4(causticIntensity, causticScale, causticFadeDepth, causticSpeed)
 
   uvec4 waterWhitecapParams; // xy = half4(colorR, colorG, colorB, patternScale), zw = half4(slopeThreshLow, slopeThreshHigh, breakupLow, breakupHigh)
 

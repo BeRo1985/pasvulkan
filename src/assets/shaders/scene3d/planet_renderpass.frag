@@ -166,6 +166,7 @@ const vec3 inModelScale = vec3(1.0);
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
+#include "planet_caustics.glsl"
 
 #define LIGHTING_GLOBALS
 #include "lighting.glsl"
@@ -624,6 +625,25 @@ void main(){
 
     }
 
+  }
+
+  // Additive underwater light-focus caustic pattern on terrain under water
+  {
+    vec2 cp0xy = unpackHalf2x16(planetData.waterDisplaceParams.z);
+    float causticIntensity = cp0xy.x;
+    if(causticIntensity > 0.0){
+      vec2 cp0zw = unpackHalf2x16(planetData.waterDisplaceParams.w);
+      float causticScale = cp0xy.y;
+      float causticFadeDepth = cp0zw.x;
+      float causticSpeed = cp0zw.y;
+      float waterDepth = texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], sphereNormal).x;
+      if(waterDepth > 0.0){
+        float time = float(pushConstants.timeSeconds) + pushConstants.timeFractionalSecond;
+        float sunFactor = max(0.0, dot(sphereNormal, imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz));
+        float caustic = getCausticIntensity(inBlock.position, time, causticScale, causticSpeed, causticFadeDepth, waterDepth);
+        c.xyz += causticIntensity * caustic * sunFactor * vec3(0.9, 1.0, 1.0);
+      }
+    }
   }
 
 #ifdef WIREFRAME

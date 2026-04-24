@@ -185,7 +185,7 @@ type TpvScene3DPlanets=class;
              WaterUVWaveParams1:TpvHalfFloatVector4; // x=uvWaveFactor (0..1), y=waveWindFactor (0..1 wind Gerstner multiplier), z=uvWaveScale (oct UV multiplier), w=unused
 
              WaterDisplaceParams0:TpvHalfFloatVector4; // x=waveDisplaceAmplitude, y=displaceHeightLowThreshold, z=displaceHeightHighThreshold, w=displaceHeightFactor
-             WaterDisplaceParams1:TpvHalfFloatVector4; // padding (fills uvec4 waterDisplaceParams yzw)
+             WaterCausticParams0:TpvHalfFloatVector4; // x=causticIntensity, y=causticScale, z=causticFadeDepth, w=causticSpeed
 
              WaterWhitecapParams0:TpvHalfFloatVector4; // xyz=whitecap foam color (linear RGB), w=FBM pattern scale
              WaterWhitecapParams1:TpvHalfFloatVector4; // x=slopeThreshLow, y=slopeThreshHigh, z=FBM breakupLow, w=FBM breakupHigh
@@ -2909,6 +2909,10 @@ type TpvScene3DPlanets=class;
        fWaterDisplaceHeightLowThreshold:TpvFloat;  // Water depth below which displacement fades to 0.
        fWaterDisplaceHeightHighThreshold:TpvFloat; // Water depth above which displacement is at full strength.
        fWaterDisplaceHeightFactor:TpvFloat;        // Overall multiplier on the depth-based displacement fade.
+       fWaterCausticIntensity:TpvFloat;  // Caustic pattern intensity (0 = off, default 0.0).
+       fWaterCausticScale:TpvFloat;      // Caustic spatial frequency (inverse position units), default 8.0.
+       fWaterCausticFadeDepth:TpvFloat;  // Depth at which caustics reach 1/e intensity, default 3.0.
+       fWaterCausticSpeed:TpvFloat;      // Caustic animation speed multiplier, default 0.5.
        fWaterWhitecapColor:TpvVector3;  // Whitecap foam color (linear RGB), default white.
        fWaterWhitecapPatternScale:TpvFloat;      // FBM breakup pattern scale, default 24.
        fWaterWhitecapSlopeThreshLow:TpvFloat;    // Heightmap slope where whitecaps begin, default 0.05.
@@ -3261,6 +3265,10 @@ type TpvScene3DPlanets=class;
        property WaterDisplaceHeightLowThreshold:TpvFloat read fWaterDisplaceHeightLowThreshold write fWaterDisplaceHeightLowThreshold;
        property WaterDisplaceHeightHighThreshold:TpvFloat read fWaterDisplaceHeightHighThreshold write fWaterDisplaceHeightHighThreshold;
        property WaterDisplaceHeightFactor:TpvFloat read fWaterDisplaceHeightFactor write fWaterDisplaceHeightFactor;
+       property WaterCausticIntensity:TpvFloat read fWaterCausticIntensity write fWaterCausticIntensity;
+       property WaterCausticScale:TpvFloat read fWaterCausticScale write fWaterCausticScale;
+       property WaterCausticFadeDepth:TpvFloat read fWaterCausticFadeDepth write fWaterCausticFadeDepth;
+       property WaterCausticSpeed:TpvFloat read fWaterCausticSpeed write fWaterCausticSpeed;
       public
        property WaterWhitecapColor:TpvVector3 read fWaterWhitecapColor write fWaterWhitecapColor;
       published
@@ -28242,6 +28250,10 @@ begin
  fWaterDisplaceHeightLowThreshold:=0.0;  // fade starts at water depth 0 m
  fWaterDisplaceHeightHighThreshold:=0.5; // full displacement at 0.5 m depth
  fWaterDisplaceHeightFactor:=1.0;        // no extra global scaling by default
+ fWaterCausticIntensity:=0.0;  // disabled by default; enable via JSON "caustics"."intensity"
+ fWaterCausticScale:=8.0;      // spatial frequency; tune via JSON "caustics"."scale"
+ fWaterCausticFadeDepth:=3.0;  // depth fade distance in position units
+ fWaterCausticSpeed:=0.5;      // animation speed multiplier
  fWaterWhitecapColor:=TpvVector3.Create(1.0,1.0,1.0); // white foam
  fWaterWhitecapPatternScale:=24.0;
  fWaterWhitecapSlopeThreshLow:=0.05;
@@ -31808,10 +31820,10 @@ begin
    fPlanetData.WaterDisplaceParams0.y:=fWaterDisplaceHeightLowThreshold;
    fPlanetData.WaterDisplaceParams0.z:=fWaterDisplaceHeightHighThreshold;
    fPlanetData.WaterDisplaceParams0.w:=fWaterDisplaceHeightFactor;
-   fPlanetData.WaterDisplaceParams1.x:=0.0;
-   fPlanetData.WaterDisplaceParams1.y:=0.0;
-   fPlanetData.WaterDisplaceParams1.z:=0.0;
-   fPlanetData.WaterDisplaceParams1.w:=0.0;
+   fPlanetData.WaterCausticParams0.x:=fWaterCausticIntensity;
+   fPlanetData.WaterCausticParams0.y:=fWaterCausticScale;
+   fPlanetData.WaterCausticParams0.z:=fWaterCausticFadeDepth;
+   fPlanetData.WaterCausticParams0.w:=fWaterCausticSpeed;
    fPlanetData.WaterWhitecapParams0.x:=fWaterWhitecapColor.x;
    fPlanetData.WaterWhitecapParams0.y:=fWaterWhitecapColor.y;
    fPlanetData.WaterWhitecapParams0.z:=fWaterWhitecapColor.z;
@@ -32230,7 +32242,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.LoadWaterSettings(const aJSONItem:TPasJSONItem);
-var JSONRootObject,JSONWaterObject,JSONShoreObject,JSONWavesObject,JSONWhitecapObject:TPasJSONItemObject;
+var JSONRootObject,JSONWaterObject,JSONShoreObject,JSONWavesObject,JSONWhitecapObject,JSONCausticObject:TPasJSONItemObject;
     JSONItem:TPasJSONItem;
 begin
  if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
@@ -32289,6 +32301,14 @@ begin
    fWaterWhitecapSlopeThreshHigh:=TPasJSON.GetNumber(JSONWhitecapObject.Properties['slopethreshhigh'],fWaterWhitecapSlopeThreshHigh);
    fWaterWhitecapBreakupLow:=TPasJSON.GetNumber(JSONWhitecapObject.Properties['breakuplow'],fWaterWhitecapBreakupLow);
    fWaterWhitecapBreakupHigh:=TPasJSON.GetNumber(JSONWhitecapObject.Properties['breakuphigh'],fWaterWhitecapBreakupHigh);
+  end;
+  JSONItem:=JSONWaterObject.Properties['caustics'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONCausticObject:=TPasJSONItemObject(JSONItem);
+   fWaterCausticIntensity:=TPasJSON.GetNumber(JSONCausticObject.Properties['intensity'],fWaterCausticIntensity);
+   fWaterCausticScale:=TPasJSON.GetNumber(JSONCausticObject.Properties['scale'],fWaterCausticScale);
+   fWaterCausticFadeDepth:=TPasJSON.GetNumber(JSONCausticObject.Properties['fadedepth'],fWaterCausticFadeDepth);
+   fWaterCausticSpeed:=TPasJSON.GetNumber(JSONCausticObject.Properties['speed'],fWaterCausticSpeed);
   end;
  end;
 end;
