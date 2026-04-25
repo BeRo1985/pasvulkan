@@ -75,6 +75,7 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
   uvec4 waterWhitecapParams2; // x = half2(whitecapFactor, unused), yzw = unused
 
   uvec4 waterRainSplashParams; // xy = half4(cellSize, amplitude, ringFreq, envSharp), zw = half4(crownSharp, crownAmp, lifetime, waveSpeed)
+  uvec4 waterRainSplashParams2; // xy = half4(normalStrength, unused, unused, unused), zw = unused/padding
 
   PlanetMaterial materials[16];
 

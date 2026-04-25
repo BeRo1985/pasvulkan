@@ -275,6 +275,26 @@ float getWaterRainSplashHeight(vec3 n, float time){
 #endif
 }
 
+// Finite-difference slope of the rain splash height field in UV space.
+// Returns vec2(dH/dU, dH/dV) using a fine step (cellSize/16) to capture the
+// high-frequency ring-wave detail that the coarse 1/4096 normal stencil misses.
+vec2 getWaterRainSplashSlope(vec2 uv, float time){
+#ifdef PLANET_DATA_GLSL
+  vec2 cellAmp = unpackHalf2x16(planetData.waterRainSplashParams.x);
+  if(abs(cellAmp.y) <= 1e-6){
+    return vec2(0.0);
+  }
+  float eps = max(cellAmp.x * (1.0 / 16.0), 1e-5);
+  float hu0 = getWaterRainSplashHeight(wrapOctahedralCoordinates(uv - vec2(eps, 0.0)), time);
+  float hu1 = getWaterRainSplashHeight(wrapOctahedralCoordinates(uv + vec2(eps, 0.0)), time);
+  float hv0 = getWaterRainSplashHeight(wrapOctahedralCoordinates(uv - vec2(0.0, eps)), time);
+  float hv1 = getWaterRainSplashHeight(wrapOctahedralCoordinates(uv + vec2(0.0, eps)), time);
+  return vec2(hu1 - hu0, hv1 - hv0) * (0.5 / eps);
+#else
+  return vec2(0.0);
+#endif
+}
+
 float getWaterHeightData(vec2 uv){
   float h = textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // But for the water map, we use bicubic interpolation to get a smoother water surface
   return h + ((h > 1e-4) ? ((getWaterRippleHeight(uv) + getWaterRainSplashHeight(uv, pushConstants.time)) * smoothstep(1e-4, 1e-3, h)) : 0.0); // Additive GPU ripple + rain splash contribution, but only where water is present to avoid adding unwanted height to dry areas

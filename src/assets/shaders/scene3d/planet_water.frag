@@ -288,6 +288,39 @@ float computeGerstnerDisplacement(vec3 spherePos, float time){
   return computeGerstnerDisplacement(spherePos, waveWindDir, waveFrequency, waveSpeed, waveSteepness, time);
 }
 
+// Adds rain splash normal perturbation on top of a precomputed water normal.
+// Uses analytic finite-difference slope at fine UV step (cellSize/16) and applies as
+// tangent-space perturbation. Masked by local water depth so dry areas stay flat.
+vec3 applyWaterRainSplashNormal(vec3 n, vec3 baseNormal){
+#ifdef PLANET_DATA_GLSL
+  float strength = unpackHalf2x16(planetData.waterRainSplashParams2.x).x;
+  if(strength <= 0.0){
+    return baseNormal;
+  }
+  vec2 euv = octPlanetUnsignedEncode(n);
+  float waterDepth = getSphereHeightData(euv).y;
+  if(waterDepth <= 1e-4){
+    return baseNormal;
+  }
+  vec2 slope = getWaterRainSplashSlope(euv, pushConstants.time) * strength * smoothstep(1e-4, 1e-3, waterDepth);
+  if(dot(slope, slope) <= 1e-12){
+    return baseNormal;
+  }
+  // Build local sphere-tangent basis from neighbouring octahedral UV samples so it
+  // follows the planet curvature instead of assuming flat-earth Y=up.
+  vec2 duv = vec2(1.0) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy);
+  vec3 pu = octPlanetUnsignedDecode(wrapOctahedralCoordinates(euv + vec2(duv.x, 0.0))) -
+            octPlanetUnsignedDecode(wrapOctahedralCoordinates(euv - vec2(duv.x, 0.0)));
+  vec3 pv = octPlanetUnsignedDecode(wrapOctahedralCoordinates(euv + vec2(0.0, duv.y))) -
+            octPlanetUnsignedDecode(wrapOctahedralCoordinates(euv - vec2(0.0, duv.y)));
+  vec3 tangent = normalize(pu - (n * dot(n, pu)));
+  vec3 bitangent = normalize(pv - (n * dot(n, pv)) - (tangent * dot(tangent, pv)));
+  return normalize(baseNormal - (tangent * slope.x) - (bitangent * slope.y));
+#else
+  return baseNormal;
+#endif
+}
+
 vec3 getWaterNormal(vec3 position){
 
   vec3 n = normalize(position);
@@ -373,7 +406,7 @@ vec3 getWaterNormal(vec3 position){
 
   }       
 
-  return normal;
+  return applyWaterRainSplashNormal(n, normal);
 #else
 
   const vec2 uvOfs = vec2(1.0 / 4096.0, 0.0);
@@ -408,7 +441,7 @@ vec3 getWaterNormal(vec3 position){
                           ? normalize(cross(normalize(p01 - p00), p)) 
                           : normalize(p - p10));
 
-  return normalize(cross(tangent, bitangent));
+  return applyWaterRainSplashNormal(n, normalize(cross(tangent, bitangent)));
 #endif
 }
 
