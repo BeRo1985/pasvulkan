@@ -34810,7 +34810,7 @@ begin
                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
-                                              IfThen(fRaytracingActive,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0) or
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT) or
                                               IfThen(fMeshShaderSupport,TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0),
                                               [],
                                               TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT) or

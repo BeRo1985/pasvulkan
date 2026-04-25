@@ -2,12 +2,16 @@
 
 #pragma shader_stage(compute)
 
+#undef DEBUG
+
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_samplerless_texture_functions : enable
+#ifdef DEBUG
 #extension GL_EXT_debug_printf : enable
+#endif
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
@@ -122,6 +126,7 @@ vec3 causticNormal;
 float causticPattern;
 
 void processCausticsLight(const in vec3 colorIntensity, const in vec3 attenuation, const in vec3 lightDir){
+#ifdef DEBUG
   ivec2 px6 = ivec2(gl_GlobalInvocationID.xy);
   ivec2 ext6 = imageSize(uSceneColor).xy;
   if((inViewIndex == 0) && all(equal(px6, ext6 / 2))){
@@ -129,6 +134,7 @@ void processCausticsLight(const in vec3 colorIntensity, const in vec3 attenuatio
     debugPrintfEXT("caustics: PROCESSLIGHT att=%f dotNL=%f ci=%f,%f,%f\n",
                    attenuation.x, dotVal, colorIntensity.x, colorIntensity.y, colorIntensity.z);
   }
+#endif
   causticAccumulatedColor += colorIntensity * attenuation.x * max(0.0, dot(causticNormal, lightDir)) * causticPattern;
 }
 
@@ -152,10 +158,11 @@ void main(){
 
   // Read the opaque terrain depth written by the earlier depth-prepass / mipmap pass.
   float rawDepth = texelFetch(uPassTextures[2], ivec3(px, viewLocalIndex), 0).x;
+#ifdef DEBUG
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
-
     debugPrintfEXT("caustics: px=%d,%d ext=%d,%d rawDepth=%f\n", px.x, px.y, imageExtent.x, imageExtent.y, rawDepth);
   }
+#endif
   if(rawDepth >= 1.0){
     return; // sky / far plane
   }
@@ -187,9 +194,11 @@ void main(){
 
   // Query the water surface radius at this point on the sphere.
   float waterHeight = getSphereHeightEx(octPlanetUnsignedEncode(sphereNormal));
+#ifdef DEBUG
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
     debugPrintfEXT("caustics: groundHeight=%f waterHeight=%f\n", groundHeight, waterHeight);
   }
+#endif
   if(waterHeight <= groundHeight){
     return; // not underwater at this pixel
   }
@@ -198,9 +207,11 @@ void main(){
   // Caustic parameters packed as half-floats in waterDisplaceParams.
   vec2 cp0 = unpackHalf2x16(planetData.waterDisplaceParams.z); // x=intensity, y=scale
   float causticIntensity = cp0.x;
+#ifdef DEBUG
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
     debugPrintfEXT("caustics: waterDepth=%f causticIntensity=%f waterDisplaceParams.z=0x%x\n", waterDepth, causticIntensity, planetData.waterDisplaceParams.z);
   }
+#endif
   if(causticIntensity <= 0.0){
     return;
   }
@@ -213,9 +224,11 @@ void main(){
   causticPattern = getCausticIntensity(planetPosition, pushConstants.time,
                                        causticScale, causticSpeed,
                                        causticFadeDepth, waterDepth);
+#ifdef DEBUG
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
     debugPrintfEXT("caustics: causticPattern=%f time=%f waterDepth=%f\n", causticPattern, pushConstants.time, waterDepth);
   }
+#endif
   if(causticPattern <= 0.0){
     return;
   }
@@ -234,6 +247,7 @@ void main(){
 #include "lighting.glsl"
 #undef LIGHTING_INITIALIZATION
 
+#ifdef DEBUG
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
     uvec3 dbgXYZ = uvec3(uvec2(uvec2(px) / uFrustumClusterGridGlobals.tileSizeZNearZFar.xy),
                          uint(clamp(fma(log2(-viewSpacePosition.z),
@@ -273,6 +287,7 @@ void main(){
                      dbgL.positionRadius.z, dbgL.positionRadius.w);
     }
   }
+#endif
 
 #define LIGHTING_IMPLEMENTATION
 #include "lighting.glsl"
@@ -280,11 +295,13 @@ void main(){
 
   // Additively blend the caustic contribution into the existing scene colour.
   vec4 sceneColor = imageLoad(uSceneColor, ivec3(px, viewLocalIndex));
+#ifdef DEBUG
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
     debugPrintfEXT("caustics: causticAccumulatedColor=%f,%f,%f sceneColor.x=%f\n",
                    causticAccumulatedColor.x, causticAccumulatedColor.y, causticAccumulatedColor.z,
                    sceneColor.x);
   }
+#endif
   sceneColor.xyz += causticIntensity * causticAccumulatedColor * vec3(0.9, 1.0, 1.0);
   imageStore(uSceneColor, ivec3(px, viewLocalIndex), sceneColor);
 
