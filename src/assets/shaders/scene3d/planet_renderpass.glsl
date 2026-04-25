@@ -32,6 +32,12 @@ layout(push_constant) uniform PushConstants {
 
   // Fourth uvec4 
   vec4 jitter;
+
+  // Fifth uvec4
+  float rainIntensity;
+  float paddingWater0;
+  float paddingWater1;
+  float paddingWater2;
   
 } pushConstants;
 

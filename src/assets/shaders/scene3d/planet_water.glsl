@@ -23,15 +23,15 @@
 // the catastrophic cancellation that can occur in the OldSolveQuadraticRoots function. By doing so,
 // this solveQuadraticRoots provides more reliable and accurate results, particularly in edge cases 
 // where precision is crucial.
-bool solveQuadraticRoots(float a, float b, float c, out vec2 t) {
+bool solveQuadraticRoots(float a, float b, float c, out vec2 t){
   float discriminant = (b * b) - ((a * c) * 4.0);
   if(discriminant < 0.0){
     t = vec2(0.0);
     return false;
   }else{
-    if (discriminant == 0.0) {
+    if(discriminant == 0.0){
       t = vec2(((-0.5 * b) / a));
-    } else {
+    }else{
       float q = (b + (sqrt(discriminant) * (b > 0.0 ? 1.0 : -1.0))) * (-0.5);
       t = vec2(q / a, c / q);
       if(t.x > t.y){
@@ -42,7 +42,7 @@ bool solveQuadraticRoots(float a, float b, float c, out vec2 t) {
   }
 }
 #else
-bool solveQuadraticRoots(float a, float b, float c, out vec2 t) {
+bool solveQuadraticRoots(float a, float b, float c, out vec2 t){
   float discriminant = (b * b) - ((a * c) * 4.0);
   if(discriminant < 0.0){
     t = vec2(0.0);
@@ -68,7 +68,7 @@ bool solveQuadraticRoots(float a, float b, float c, out vec2 t) {
 }
 #endif
 
-bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out float time) {
+bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out float time){
   vec3 sphereCenterToRayOrigin = rayOrigin - sphere.xyz;
   vec2 t;
   bool result = solveQuadraticRoots(dot(rayDirection, rayDirection), 
@@ -90,7 +90,7 @@ bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out floa
   return result;
 }
 
-bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out vec2 times) {
+bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out vec2 times){
   vec3 sphereCenterToRayOrigin = rayOrigin - sphere.xyz;
   vec2 t;
   bool result = solveQuadraticRoots(dot(rayDirection, rayDirection), 
@@ -112,13 +112,13 @@ bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out vec2
   return result;
 }
 
-float getWaves(vec2 position, int iterations) {
+float getWaves(vec2 position, int iterations){
   vec2 frequencyTimeMultiplier = vec2(1.0, 2.0);
   float weight = 1.0;
   vec2 result = vec2(0.0);
   float time = pushConstants.time; 
   float r = 0.0; 
-  for(int i = 0; i < iterations; i++) {
+  for(int i = 0; i < iterations; i++){
     vec2 p = sin(vec2(r) + vec2(0.0, 1.5707963267948966));
     vec2 sinCosX = sin((vec2(dot(p, position) * frequencyTimeMultiplier.x) + (time * frequencyTimeMultiplier.y)) + vec2(0.0, 1.5707963267948966));
     vec2 res = exp(sinCosX.x - 1.0) * vec2(1.0, -sinCosX.y);
@@ -131,7 +131,7 @@ float getWaves(vec2 position, int iterations) {
   return result.x / result.y;
 }
 
-float getWaterRippleHeight(vec2 uv) {
+float getWaterRippleHeight(vec2 uv){
   // Samples the current water ripple ping-pong image (red channel = ripple height
   // in world-space units). Returns 0.0 when the ripple subsystem is disabled
   // (waterRippleMapResolution == 0) so callers can unconditionally add this value.
@@ -149,7 +149,7 @@ float getWaterRippleHeight(vec2 uv) {
 #endif
 }
 
-float getWaterRippleHeight(vec3 n) {
+float getWaterRippleHeight(vec3 n){
 #ifdef PLANET_DATA_GLSL
   if(planetData.waterRippleMapResolution == 0u){
     return 0.0;
@@ -162,16 +162,118 @@ float getWaterRippleHeight(vec3 n) {
 #endif
 }
 
-float getWaterHeightData(vec2 uv) {
-  return textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x + getWaterRippleHeight(uv); // But for the water map, we use bicubic interpolation to get a smoother water surface 
+// PCG-style 2D integer hash — returns a pseudo-random uint for a grid cell.
+uint rainDropCellHash(int cx, int cy){
+  uint h = uint((cx * 1664525) + (cy * 22695477) + 12345678);
+  h ^= (h >> 16u);
+  h *= 0x45d9f3bu;
+  h ^= (h >> 16u);
+  return h;
 }
 
-float getWaterHeightData(vec3 n) {
+// Procedural rain splash ring-wave height contribution (Voronoi, UV-space).
+// Returns 0 when rain is disabled (amplitude = 0 or no precipitation).
+// Parameters packed in planetData.waterRainSplashParams as 8×float16:
+//   .xy → cellSize, amplitude, ringFreq, envSharp
+//   .zw → crownSharp, crownAmp, lifetime, waveSpeed
+float getWaterRainSplashHeight(vec2 uv, float time){
+#ifdef PLANET_DATA_GLSL
+  const float oneOver65535 = 1.0 / 65535.0;
+
+  // Early-out: skip all work if splash is disabled (amplitude = 0).
+  vec2 cellAmp = unpackHalf2x16(planetData.waterRainSplashParams.x); // cellSize, amplitude
+  float cellSize = cellAmp.x;
+  float amplitude = cellAmp.y;
+  if(amplitude <= 0.0){
+    return 0.0;
+  }
+
+  // Per-pixel rain intensity: precipitation × atmosphere × global multiplier.
+  float precipitation = clamp(texture(uPlanetTextures[PLANET_TEXTURE_PRECIPITATIONMAP], uv).x, 0.0, 1.0);
+  float atmosphere    = clamp(texture(uPlanetTextures[PLANET_TEXTURE_ATMOSPHEREMAP],    uv).x, 0.0, 1.0);
+  float rain = precipitation * atmosphere * pushConstants.rainIntensity;
+  if(rain <= 0.0){
+    return 0.0;
+  }
+
+  // Unpack remaining tuning parameters.
+  vec2 freqSharp  = unpackHalf2x16(planetData.waterRainSplashParams.y); // ringFreq, envSharp
+  vec2 crownParam = unpackHalf2x16(planetData.waterRainSplashParams.z); // crownSharp, crownAmp
+  vec2 timeParam  = unpackHalf2x16(planetData.waterRainSplashParams.w); // lifetime, waveSpeed
+  float ringFreq   = freqSharp.x;
+  float envSharp   = freqSharp.y;
+  float crownSharp = crownParam.x;
+  float crownAmp   = crownParam.y;
+  float lifetime   = max(timeParam.x, 1e-3);
+  float waveSpeed  = timeParam.y;
+
+  // Decompose UV into Voronoi cell coordinates.
+  vec2 cellUV   = uv / cellSize;
+  vec2 cellBase = floor(cellUV);
+  vec2 cellFrac = fract(cellUV);
+
+  float h = 0.0;
+
+  // Accumulate contributions from the 3×3 neighbourhood of cells.
+  for(int dy = -1; dy <= 1; dy++){
+    for(int dx = -1; dx <= 1; dx++){
+
+      // Hash 1: drop position within cell (jitter, 0..1 range).
+      uint h1 = rainDropCellHash(int(cellBase.x) + dx, int(cellBase.y) + dy);
+      vec2 dropPos = vec2(float(h1 & 0xffffu), float((h1 >> 16u) & 0xffffu)) * oneOver65535;
+
+      // Hash 2: phase offset so drops don't all spawn simultaneously.
+      uint h2 = h1 ^ 0xdeadbeafu;
+      h2 ^= (h2 >> 13u); 
+      h2 *= 0xb5297a4du; 
+      h2 ^= (h2 >> 13u);
+      float birthPhase = float(h2 & 0xffffu) * oneOver65535; // 0..1
+
+      // Hash 3: spawn gate — skip this cell if its density roll exceeds the rain level.
+      uint h3 = h2 ^ 0xc0ffee00u;
+      h3 ^= (h3 >> 15u); 
+      h3 *= 0x1b873593u; 
+      h3 ^= (h3 >> 15u);
+      if((float(h3 & 0xffffu) * oneOver65535) > rain){
+        continue;
+      }
+
+      // Age in [0, 1] cycling every lifetime seconds.
+      float t0  = birthPhase * lifetime;
+      float age  = fract((time - t0) / lifetime);
+      float front = age * waveSpeed; // wavefront radius in UV-space
+
+      // Distance from current pixel to drop centre.
+      vec2 delta = (cellFrac - vec2(float(dx), float(dy))) - dropPos;
+      float r    = length(delta);
+      float dist = r - front; // signed: negative inside ring, positive outside
+
+      // Concentric ring wave: sinusoid × Gaussian envelope × fade-in/out.
+      float env  = exp(-(dist * envSharp) * (dist * envSharp));
+      float fade = (1.0 - age) * smoothstep(0.0, 0.1, age);
+      h += sin(dist * ringFreq) * env * fade;
+
+      // Initial crown plume: radial Gaussian that decays in the first ~8 % of lifetime.
+      h += exp(-r * crownSharp) * crownAmp * (1.0 - smoothstep(0.0, 0.08, age));
+    }
+  }
+
+  return h * amplitude * rain;
+#else
+  return 0.0;
+#endif
+}
+
+float getWaterHeightData(vec2 uv){
+  return textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x + getWaterRippleHeight(uv) + getWaterRainSplashHeight(uv, pushConstants.time); // But for the water map, we use bicubic interpolation to get a smoother water surface
+}
+
+float getWaterHeightData(vec3 n){
   vec2 uv = octPlanetUnsignedEncode(n) + (vec2(0.5) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy));
-  return textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x + getWaterRippleHeight(uv); // But for the water map, we use bicubic interpolation to get a smoother water surface 
+  return textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x + getWaterRippleHeight(uv) + getWaterRainSplashHeight(uv, pushConstants.time); // But for the water map, we use bicubic interpolation to get a smoother water surface
 }
 
-vec2 getSphereHeightData(vec2 uv) {
+vec2 getSphereHeightData(vec2 uv){
   return vec2(
     mix( 
       planetBottomRadius,
@@ -182,7 +284,7 @@ vec2 getSphereHeightData(vec2 uv) {
   );
 }
 
-vec2 getSphereHeightData(vec3 n) {
+vec2 getSphereHeightData(vec3 n){
   vec2 uv = octPlanetUnsignedEncode(n) + (vec2(0.5) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy));
   return vec2(
     mix( 
@@ -194,7 +296,7 @@ vec2 getSphereHeightData(vec3 n) {
   );
 }
 
-float getSphereHeight(vec3 n, int i) {
+float getSphereHeight(vec3 n, int i){
 //vec3 nc = mix(n, vec3(1e-6), lessThan(abs(n), vec3(1e-6)));
 //vec2 uv = vec2((atan(abs(nc.x / nc.z)) / 6.283185307179586476925286766559) + 0.5, acos(n.y) / 3.1415926535897932384626433832795); 
   float w = 0.0;//getWaves(uv * 128.0, i) * 0.01; 
@@ -208,7 +310,7 @@ float getSphereHeight(vec3 n, int i) {
          w;
 }
 
-float getSphereHeight(vec2 uv) {
+float getSphereHeight(vec2 uv){
   return mix( 
            planetBottomRadius,
            planetTopRadius,
@@ -217,11 +319,11 @@ float getSphereHeight(vec2 uv) {
          getWaterHeightData(uv); // But for the water map, we use bicubic interpolation to get a smoother water surface; this also adds the additive GPU ripple contribution
 }
 
-float getSphereHeight(vec3 n) {
+float getSphereHeight(vec3 n){
   return getSphereHeight(n, 12);
 }
 
-float getSphereHeightEx(vec2 uv) {
+float getSphereHeightEx(vec2 uv){
   float h = getWaterHeightData(uv); // Bicubic water height + additive GPU ripple contribution
   return (h > 1e-7) 
           ? (mix( 
@@ -245,7 +347,7 @@ float map(vec3 p){
   return mapEx(p, 12);
 }
 
-vec3 mapNormal(vec3 p) {
+vec3 mapNormal(vec3 p){
   vec2 e = vec2(1e-2, 0.0); // 0.01 meters for now for the epsilon for the normal calculation
   const int i = 37;
   return normalize(
@@ -365,7 +467,7 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
 
 } 
 
-vec3 getRaySphereIntersections(vec4 sphere, vec3 rayOrigin, vec3 rayDirection) {
+vec3 getRaySphereIntersections(vec4 sphere, vec3 rayOrigin, vec3 rayDirection){
 #if 1 
   vec3 sphereCenterToRayOrigin = rayOrigin - sphere.xyz;
   vec2 t;
@@ -394,7 +496,7 @@ bool planetRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxTime, out flo
     float end = outer.y;
 
     if (inner.z > 0.0){
-      if((inner.x < 0.0) && (inner.y > 0.0)) {
+      if((inner.x < 0.0) && (inner.y > 0.0)){
         return false;
       } else if(inner.x > 0.0){
         end = inner.x;
