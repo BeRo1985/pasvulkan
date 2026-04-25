@@ -297,7 +297,13 @@ vec2 getWaterRainSplashSlope(vec2 uv, float time){
 
 float getWaterHeightData(vec2 uv){
   float h = textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // But for the water map, we use bicubic interpolation to get a smoother water surface
-  return h + ((h > 1e-4) ? ((getWaterRippleHeight(uv) + getWaterRainSplashHeight(uv, pushConstants.time)) * smoothstep(1e-4, 1e-3, h)) : 0.0); // Additive GPU ripple + rain splash contribution, but only where water is present to avoid adding unwanted height to dry areas
+#ifdef PLANET_DATA_GLSL
+  vec2 splashDepthThresh = unpackHalf2x16(planetData.waterRainSplashParams2.y); // depthThresholdLow, depthThresholdHigh
+  float splashFade = smoothstep(splashDepthThresh.x, max(splashDepthThresh.y, splashDepthThresh.x + 1e-6), h);
+#else
+  float splashFade = smoothstep(1e-4, 1e-3, h); // Fallback: fade out ripple/splash contribution on shallow water based on fixed depth thresholds when planet data is not available (e.g. in prepass shaders that don't bind the planet data SSBO)
+#endif
+  return h + ((splashFade > 1e-5) ? ((getWaterRippleHeight(uv) + (getWaterRainSplashHeight(uv, pushConstants.time) * splashFade))) : 0.0); // Additive GPU ripple + rain splash contribution, faded out on shallow water via JSON depth thresholds
 }
 
 float getWaterHeightData(vec3 n){

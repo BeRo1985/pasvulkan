@@ -199,7 +199,7 @@ type TpvScene3DPlanets=class;
 
              WaterRainSplashParams0:TpvHalfFloatVector4; // x=cellSize, y=amplitude, z=ringFreq, w=envSharp
              WaterRainSplashParams1:TpvHalfFloatVector4; // x=crownSharp, y=crownAmp, z=lifetime, w=waveSpeed
-             WaterRainSplashParams2:TpvHalfFloatVector4; // x=normalStrength, yzw=unused
+             WaterRainSplashParams2:TpvHalfFloatVector4; // x=normalStrength, y=depthThresholdLow, z=depthThresholdHigh, w=unused
              WaterRainSplashParams3:TpvHalfFloatVector4; // padding (fills second uvec4 of waterRainSplashParams2)
 
              Textures:array[0..15,0..3] of TpvUInt32;
@@ -2984,6 +2984,8 @@ type TpvScene3DPlanets=class;
        fWaterRainSplashDensity:TpvFloat;           // Spawn-density multiplier (0..1) modulating precipitation×atmosphere, default 1.0.
        fWaterRainIntensity:TpvFloat;               // Rain intensity multiplier for water render pass (separate from sim flow rate), default 1.0.
        fWaterRainSplashNormalStrength:TpvFloat;    // Additional normal-perturbation strength multiplier for splash bumps, default 1.0.
+       fWaterRainSplashDepthThresholdLow:TpvFloat; // Water depth (meters) below which rain splash contribution fades out, default 0.0.
+       fWaterRainSplashDepthThresholdHigh:TpvFloat;// Water depth (meters) at which rain splash contribution reaches full strength, default 0.001.
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
        fTileMapBits:TpvInt32;
@@ -3356,6 +3358,8 @@ type TpvScene3DPlanets=class;
        property WaterRainSplashDensity:TpvFloat read fWaterRainSplashDensity write fWaterRainSplashDensity;
        property WaterRainIntensity:TpvFloat read fWaterRainIntensity write fWaterRainIntensity;
        property WaterRainSplashNormalStrength:TpvFloat read fWaterRainSplashNormalStrength write fWaterRainSplashNormalStrength;
+       property WaterRainSplashDepthThresholdLow:TpvFloat read fWaterRainSplashDepthThresholdLow write fWaterRainSplashDepthThresholdLow;
+       property WaterRainSplashDepthThresholdHigh:TpvFloat read fWaterRainSplashDepthThresholdHigh write fWaterRainSplashDepthThresholdHigh;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -28982,6 +28986,8 @@ begin
  fWaterRainSplashDensity:=1.0;
  fWaterRainIntensity:=1.0;
  fWaterRainSplashNormalStrength:=1.0;
+ fWaterRainSplashDepthThresholdLow:=1e-4;
+ fWaterRainSplashDepthThresholdHigh:=1e-3;
 
  fTileMapResolution:=Min(Max(fHeightMapResolution shr 8,32),fHeightMapResolution);
 
@@ -32585,8 +32591,8 @@ begin
    fPlanetData.WaterRainSplashParams1.z:=fWaterRainSplashLifetime;
    fPlanetData.WaterRainSplashParams1.w:=fWaterRainSplashWaveSpeed;
    fPlanetData.WaterRainSplashParams2.x:=fWaterRainSplashNormalStrength;
-   fPlanetData.WaterRainSplashParams2.y:=0.0;
-   fPlanetData.WaterRainSplashParams2.z:=0.0;
+   fPlanetData.WaterRainSplashParams2.y:=fWaterRainSplashDepthThresholdLow;
+   fPlanetData.WaterRainSplashParams2.z:=fWaterRainSplashDepthThresholdHigh;
    fPlanetData.WaterRainSplashParams2.w:=0.0;
    fPlanetData.WaterRainSplashParams3.x:=0.0;
    fPlanetData.WaterRainSplashParams3.y:=0.0;
@@ -33082,6 +33088,8 @@ begin
    fWaterRainSplashDensity:=TPasJSON.GetNumber(JSONRainSplashObject.Properties['density'],fWaterRainSplashDensity);
    fWaterRainIntensity:=TPasJSON.GetNumber(JSONRainSplashObject.Properties['intensity'],fWaterRainIntensity);
    fWaterRainSplashNormalStrength:=TPasJSON.GetNumber(JSONRainSplashObject.Properties['normalstrength'],fWaterRainSplashNormalStrength);
+   fWaterRainSplashDepthThresholdLow:=TPasJSON.GetNumber(JSONRainSplashObject.Properties['depththresholdlow'],fWaterRainSplashDepthThresholdLow);
+   fWaterRainSplashDepthThresholdHigh:=TPasJSON.GetNumber(JSONRainSplashObject.Properties['depththresholdhigh'],fWaterRainSplashDepthThresholdHigh);
   end;
  end;
 end;

@@ -299,10 +299,12 @@ vec3 applyWaterRainSplashNormal(vec3 n, vec3 baseNormal){
   }
   vec2 euv = octPlanetUnsignedEncode(n);
   float waterDepth = getSphereHeightData(euv).y;
-  if(waterDepth <= 1e-4){
+  vec2 splashDepthThresh = unpackHalf2x16(planetData.waterRainSplashParams2.y); // depthThresholdLow, depthThresholdHigh
+  float fade = smoothstep(splashDepthThresh.x, max(splashDepthThresh.y, splashDepthThresh.x + 1e-6), waterDepth);
+  if(fade <= 0.0){
     return baseNormal;
   }
-  vec2 slope = getWaterRainSplashSlope(euv, pushConstants.time) * strength * smoothstep(1e-4, 1e-3, waterDepth);
+  vec2 slope = getWaterRainSplashSlope(euv, pushConstants.time) * strength * fade;
   if(dot(slope, slope) <= 1e-12){
     return baseNormal;
   }
