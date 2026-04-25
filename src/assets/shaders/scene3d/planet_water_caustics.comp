@@ -213,6 +213,9 @@ void main(){
   causticPattern = getCausticIntensity(planetPosition, pushConstants.time,
                                        causticScale, causticSpeed,
                                        causticFadeDepth, waterDepth);
+  if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
+    debugPrintfEXT("caustics: causticPattern=%f time=%f waterDepth=%f\n", causticPattern, pushConstants.time, waterDepth);
+  }
   if(causticPattern <= 0.0){
     return;
   }
@@ -237,6 +240,11 @@ void main(){
 
   // Additively blend the caustic contribution into the existing scene colour.
   vec4 sceneColor = imageLoad(uSceneColor, ivec3(px, viewLocalIndex));
+  if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
+    debugPrintfEXT("caustics: causticAccumulatedColor=%f,%f,%f sceneColor.x=%f\n",
+                   causticAccumulatedColor.x, causticAccumulatedColor.y, causticAccumulatedColor.z,
+                   sceneColor.x);
+  }
   sceneColor.xyz += causticIntensity * causticAccumulatedColor * vec3(0.9, 1.0, 1.0);
   imageStore(uSceneColor, ivec3(px, viewLocalIndex), sceneColor);
 
