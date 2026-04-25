@@ -495,6 +495,8 @@ compileshaderarguments=(
   "-V voxel_mesh_visualization.frag -o ${tempPath}/voxel_mesh_visualization_frag.spv"
 
   "-V planet_water_prepass.comp -o ${tempPath}/planet_water_prepass_comp.spv"
+  "-V planet_water_caustics.comp -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_comp.spv"
+  "-V planet_water_caustics.comp -DRAYTRACING -o ${tempPath}/planet_water_caustics_raytracing_comp.spv"
 
   "-V planet_blendmap_downsample.comp -o ${tempPath}/planet_blendmap_downsample_comp.spv"
 

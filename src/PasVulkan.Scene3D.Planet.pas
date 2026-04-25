@@ -4903,7 +4903,7 @@ begin
                                                         (fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)*SizeOf(TpvScene3DPlanet.TMeshVertex),
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
                                                         TpvScene3D(fPlanet.fScene3D).AccelerationStructureInputBufferUsageFlags or
-                                                        IfThen(TpvScene3D(fPlanet.fScene3D).UseBufferDeviceAddress,TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),0),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
                                                         fPlanet.fGlobalBufferSharingMode,
                                                         fPlanet.fGlobalBufferQueueFamilyIndices,
                                                         0,
@@ -4945,7 +4945,7 @@ begin
                                                           (fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)*SizeOf(TpvScene3DPlanet.TMeshDistance),
                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
                                                           TpvScene3D(fPlanet.fScene3D).AccelerationStructureInputBufferUsageFlags or
-                                                          IfThen(TpvScene3D(fPlanet.fScene3D).UseBufferDeviceAddress,TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),0),
+                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
                                                           fPlanet.fGlobalBufferSharingMode,
                                                           fPlanet.fGlobalBufferQueueFamilyIndices,
                                                           0,
@@ -23893,10 +23893,8 @@ begin
 
   if TpvScene3D(fScene3D).RaytracingActive then begin
    TopLevelKind:='raytracing_';
-  end else if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
-   TopLevelKind:='bufref_';
   end else begin
-   TopLevelKind:='';
+   TopLevelKind:='bufref_';
   end;
 
   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
@@ -25075,11 +25073,7 @@ begin
         fPlanetPushConstants.Flags:=fPlanetPushConstants.Flags or (TpvUInt32(1) shl 5); // PLANET_TERRAIN_FLAG_TASK_LOD
        end;
       end;
-      if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
-       fPlanetPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
-      end else begin
-       fPlanetPushConstants.PlanetData:=0;
-      end;
+      fPlanetPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
       if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
        fPlanetPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter;
       end else begin
@@ -25311,10 +25305,8 @@ begin
       end else begin
        fGrassPushConstants.Jitter:=TpvVector4.Null;
       end;
-{     if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+{     begin
        fGrassPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
-      end else begin
-       fGrassPushConstants.PlanetData:=0;
       end;}
 
       aCommandBuffer.CmdPushConstants(fGrassPipelineLayout.Handle,
@@ -26576,7 +26568,7 @@ begin
 
  if TpvScene3D(fScene3D).RaytracingActive then begin
   ShaderFileName:=ShaderFileName+'_raytracing';
- end else if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+ end else begin
   ShaderFileName:=ShaderFileName+'_bufref';
  end;
 
@@ -26602,7 +26594,7 @@ begin
   ShaderFileName:='planet_water_caustics';
   if TpvScene3D(fScene3D).RaytracingActive then begin
    ShaderFileName:=ShaderFileName+'_raytracing';
-  end else if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+  end else begin
    ShaderFileName:=ShaderFileName+'_bufref';
   end;
 
@@ -26628,7 +26620,7 @@ begin
 
  if TpvScene3D(fScene3D).RaytracingActive then begin
   ShaderFileName:=ShaderFileName+'_raytracing';
- end else if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+ end else begin
   ShaderFileName:=ShaderFileName+'_bufref';
  end;
 
@@ -26705,7 +26697,7 @@ begin
   ShaderFileName:='planet_water';
   if TpvScene3D(fScene3D).RaytracingActive then begin
    ShaderFileName:=ShaderFileName+'_raytracing';
-  end else if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+  end else begin
    ShaderFileName:=ShaderFileName+'_bufref';
   end;
 
@@ -27247,11 +27239,7 @@ begin
 
        fPushConstants.FrameIndex:=aFrameIndex;
        fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
-       if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
-        fPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
-       end else begin
-        fPushConstants.PlanetData:=0;
-       end;
+       fPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
 
        fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter;
 //     fPushConstants.Jitter:=TpvVector4.Null;
@@ -28992,7 +28980,7 @@ begin
                                                                         SizeOf(TpvScene3DPlanet.TPlanetData),
                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                        IfThen(TpvScene3D(fScene3D).UseBufferDeviceAddress,TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),0),
+                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
                                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                         [],
                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
@@ -31923,13 +31911,8 @@ begin
    end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    fPlanetData.WaterMapResolution:=fWaterMapResolution;
-   if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
-    fPlanetData.Vertices:=fData.fVisualMeshVertexBuffers[(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].DeviceAddress;
-    fPlanetData.Indices:=fData.fVisualMeshIndexBuffer.DeviceAddress;
-   end else begin
-    fPlanetData.Vertices:=0;
-    fPlanetData.Indices:=0;
-   end;
+   fPlanetData.Vertices:=fData.fVisualMeshVertexBuffers[(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].DeviceAddress;
+   fPlanetData.Indices:=fData.fVisualMeshIndexBuffer.DeviceAddress;
    fPlanetData.Selected:=InFlightFrameData.SelectedRegion.Vector;
    fPlanetData.SelectedColor.x:=InFlightFrameData.fSelectedColor.x;
    fPlanetData.SelectedColor.y:=InFlightFrameData.fSelectedColor.y;

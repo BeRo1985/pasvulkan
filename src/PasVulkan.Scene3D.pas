@@ -4517,7 +4517,6 @@ type EpvScene3D=class(Exception);
        fBoundingBox:TpvAABB;
        fInFlightFrameBoundingBoxes:TInFlightFrameAABBs;
        fCountInFlightFrames:TpvSizeInt;
-       fUseBufferDeviceAddress:boolean;
        fHasTransmission:boolean;
        fInitialCountVertices:TpvSizeInt;
        fInitialCountIndices:TpvSizeInt;
@@ -5136,7 +5135,6 @@ type EpvScene3D=class(Exception);
        property MeshletBoundsComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshletBoundsComputeVulkanDescriptorSet0Layout;
        property GlobalMeshletVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalMeshletVulkanDescriptorSetLayout;
        property HasTransmission:boolean read fHasTransmission;
-       property UseBufferDeviceAddress:boolean read fUseBufferDeviceAddress write fUseBufferDeviceAddress;
        property BuddyModeAllocation:boolean read fBuddyModeAllocation write fBuddyModeAllocation;
        property SmartMoveDefrag:boolean read fSmartMoveDefrag write fSmartMoveDefrag;
        property SmartResize:boolean read fSmartResize write fSmartResize;
@@ -33936,7 +33934,6 @@ begin
  fTotalActiveMeshletCount:=0;
 
  fHardwareRaytracingSupport:=//false and
-                             aUseBufferDeviceAddress and
                              (fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and
                              (fVulkanDevice.RayQueryFeaturesKHR.rayQuery<>VK_FALSE);
 
@@ -34228,8 +34225,6 @@ begin
  fDebugMeshletSpherePairs.Initialize;
  fDebugMeshletSpherePairsGeneration:=0;
  fDebugMeshletSpherePairsUploadedGeneration:=High(TPasMPUInt64);
-
- fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
 
  fUploaded:=false;
 
@@ -34751,19 +34746,11 @@ begin
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                               []);
   // Materials (binding 5)
-  if fUseBufferDeviceAddress then begin
-   fGlobalVulkanDescriptorSetLayout.AddBinding(5,
-                                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                               1,
-                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                               []);
-  end else begin
-   fGlobalVulkanDescriptorSetLayout.AddBinding(5,
-                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                               1,
-                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                               []);
-  end;
+  fGlobalVulkanDescriptorSetLayout.AddBinding(5,
+                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                              1,
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              []);
   // InstanceDataBuffer (binding 6)
   fGlobalVulkanDescriptorSetLayout.AddBinding(6,
                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -37739,7 +37726,7 @@ begin
 
              end;
 
-             if fUseBufferDeviceAddress then begin
+             begin
 
               DeviceAddress:=fVulkanMaterialDataBuffers[Index].DeviceAddress;
 
@@ -37775,10 +37762,6 @@ begin
                                                               0,
                                                               SizeOf(TVkDeviceAddress),
                                                               TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);}
-
-             end else begin
-
-              fVulkanMaterialUniformBuffers[Index]:=nil;
 
              end;
 
@@ -37939,25 +37922,14 @@ begin
                                                                  [],
                                                                  false);
          // Materials
-         if fUseBufferDeviceAddress then begin
-          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
-                                                                  0,
-                                                                  1,
-                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                                  [],
-                                                                  [fVulkanMaterialUniformBuffers[Index].DescriptorBufferInfo],
-                                                                  [],
-                                                                  false);
-         end else begin
-          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
-                                                                  0,
-                                                                  1,
-                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                  [],
-                                                                  [fVulkanMaterialDataBuffers[Index].DescriptorBufferInfo],
-                                                                  [],
-                                                                  false);
-         end;
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                 [],
+                                                                 [fVulkanMaterialUniformBuffers[Index].DescriptorBufferInfo],
+                                                                 [],
+                                                                 false);
          // InstanceDataBuffer
          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(6,
                                                                  0,
@@ -42403,7 +42375,7 @@ var PlanetIndex,Count:TpvSizeInt;
     MustReupload:boolean;
 begin
 
- if fUseBufferDeviceAddress then begin
+ begin
 
   TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try

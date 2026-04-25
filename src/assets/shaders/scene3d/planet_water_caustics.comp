@@ -1,0 +1,213 @@
+#version 460 core
+
+#pragma shader_stage(compute)
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+#include "bufferreference_definitions.glsl"
+
+// Shims for fragment-shader built-ins used by lighting.glsl / shadows.glsl.
+// Must be defined BEFORE any include that references them.
+#define gl_FragCoord vec4(vec2(gl_GlobalInvocationID.xy) + 0.5, 0.0, 1.0)
+#define gl_ViewIndex int(gl_GlobalInvocationID.z)
+
+// Scene colour as a read/write storage image (rgba16f 2D array for multiview).
+layout(set = 1, binding = 9, rgba16f) uniform image2DArray uSceneColor;
+
+// Module-scope position aliases used by lighting.glsl / shadows.glsl.
+vec3 viewSpacePosition;
+vec3 worldSpacePosition;
+vec3 cameraRelativePosition;
+#define inViewSpacePosition viewSpacePosition
+#define inWorldSpacePosition worldSpacePosition
+#define inCameraRelativePosition cameraRelativePosition
+
+// Global descriptor set (lights, LightBVH, textures, global UBOs …)
+#define PLANETS
+#ifdef RAYTRACING
+  #define USE_MATERIAL_BUFFER_REFERENCE
+#endif
+#include "globaldescriptorset.glsl"
+#undef PLANETS
+
+// Pass descriptor set (views UBO, BRDF, env maps, shadow map, depth/scene images,
+// frustum cluster grid at bindings 6-8)
+#include "mesh_rendering_pass_descriptorset.glsl"
+
+#ifdef FRUSTUMCLUSTERGRID
+layout(set = 1, binding = 6, std140) readonly uniform FrustumClusterGridGlobals {
+  uvec4 tileSizeZNearZFar;
+  vec4 viewRect;
+  uvec4 countLightsViewIndexSizeOffsetedViewIndex;
+  uvec4 clusterSize;
+  vec4 scaleBiasMax;
+} uFrustumClusterGridGlobals;
+
+layout(set = 1, binding = 7, std430) readonly buffer FrustumClusterGridIndexList {
+  uint frustumClusterGridIndexList[];
+};
+
+layout(set = 1, binding = 8, std430) readonly buffer FrustumClusterGridData {
+  uvec4 frustumClusterGridData[]; // x = start light index, y = count lights
+};
+#endif
+
+// Per-planet texture array (set 2, bound from Planet.fPlanetDescriptorSets)
+layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[];
+layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[];
+
+// Push constants for the water render pass variant (64 bytes = 4 uvec4)
+#define globalRaytracingFlags pushConstants.flags
+#define inFrameIndex pushConstants.frameIndex
+#define PLANET_WATER
+#include "planet_renderpass.glsl"
+
+// Per-invocation view index (set in main before dispatching)
+int inViewIndex;
+
+// Lighting helper function declarations
+#define LIGHTING_GLOBALS
+#include "lighting.glsl"
+#undef LIGHTING_GLOBALS
+
+// Dominant IBL direction (not used for caustics but referenced by some paths)
+vec3 imageLightBasedLightDirection = vec3(0.0, 1.0, 0.0);
+
+// Per-invocation view matrices (initialised from gl_ViewIndex shim = gl_GlobalInvocationID.z)
+uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
+mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
+mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
+mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
+mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
+
+// Shadow sampling helpers
+#define NOTEXCOORDS
+#include "shadows.glsl"
+
+// Planet-space globals – initialised per-dispatch in main()
+float planetBottomRadius;
+float planetTopRadius;
+mat4 planetModelMatrix;
+mat4 planetInverseModelMatrix;
+const vec3 planetCenter = vec3(0.0);
+vec3 workNormal; // Surface normal used by shadows.glsl for ray offsets
+
+#include "math.glsl"
+
+#ifdef RAYTRACING
+  #include "raytracing.glsl"
+#endif
+
+#include "octahedral.glsl"
+#include "octahedralmap.glsl"
+#include "planet_textures.glsl"
+#include "planet_water.glsl"
+#include "planet_caustics.glsl"
+
+// Per-light caustic accumulation.  lighting.glsl calls this macro once for each
+// visible light source.  arg2 is vec3(lightAttenuation, …) — use .x for scalar.
+#define PROCESSLIGHT(colorIntensity, attenuation, lightDir) \
+  causticAccum += (colorIntensity) * (attenuation).x * max(0.0, dot(causticNormal, (lightDir))) * causticPattern;
+
+void main() {
+  int viewLocalIndex = int(gl_GlobalInvocationID.z);
+  ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+  if (viewLocalIndex >= int(pushConstants.countViews)) {
+    return;
+  }
+  ivec2 imageExtent = imageSize(uSceneColor).xy;
+  if (any(greaterThanEqual(px, imageExtent))) {
+    return;
+  }
+
+  // Propagate view index so that cluster-grid indexing in lighting.glsl works.
+  inViewIndex = viewLocalIndex;
+
+  // Read the opaque terrain depth written by the earlier depth-prepass / mipmap pass.
+  float rawDepth = texelFetch(uPassTextures[2], ivec3(px, viewLocalIndex), 0).x;
+  if (rawDepth >= 1.0) {
+    return; // sky / far plane
+  }
+
+  // Reconstruct view-space and world-space positions from the hardware depth.
+  vec2 clipXY = fma(vec2(px) + 0.5, vec2(2.0) / vec2(imageExtent), vec2(-1.0));
+  vec4 viewPos4 = inverseProjectionMatrix * vec4(clipXY, rawDepth, 1.0);
+  viewPos4 /= viewPos4.w;
+  vec3 worldPos = (inverseViewMatrix * viewPos4).xyz;
+
+  // Populate the position aliases expected by lighting.glsl / shadows.glsl.
+  viewSpacePosition = viewPos4.xyz;
+  worldSpacePosition = worldPos;
+  cameraRelativePosition = worldPos - inverseViewMatrix[3].xyz;
+
+  // Initialise planet globals from the per-planet buffer-device-address in the push constant.
+  planetBottomRadius = planetData.bottomRadiusTopRadiusHeightMapScale.x;
+  planetTopRadius = planetData.bottomRadiusTopRadiusHeightMapScale.y;
+  planetModelMatrix = planetData.modelMatrix;
+  planetInverseModelMatrix = inverse(planetModelMatrix);
+
+  // Transform world position into the planet's local frame and compute radii.
+  vec3 planetPos = (planetInverseModelMatrix * vec4(worldPos, 1.0)).xyz;
+  float groundRadius = length(planetPos);
+  if (groundRadius < 1e-3) {
+    return;
+  }
+  vec3 sphereNormal = planetPos / groundRadius;
+
+  // Query the water surface radius at this point on the sphere.
+  float waterRadius = getSphereHeightEx(octPlanetUnsignedEncode(sphereNormal));
+  if (waterRadius <= groundRadius) {
+    return; // not underwater at this pixel
+  }
+  float waterDepth = waterRadius - groundRadius;
+
+  // Caustic parameters packed as half-floats in waterDisplaceParams.
+  vec2 cp0 = unpackHalf2x16(planetData.waterDisplaceParams.z); // x=intensity, y=scale
+  float causticIntensity = cp0.x;
+  if (causticIntensity <= 0.0) {
+    return;
+  }
+  float causticScale = cp0.y;
+  vec2 cp1 = unpackHalf2x16(planetData.waterDisplaceParams.w); // x=fadeDepth, y=speed
+  float causticFadeDepth = cp1.x;
+  float causticSpeed = cp1.y;
+
+  // Evaluate the animated Voronoi caustic pattern (includes depth fade).
+  float causticPattern = getCausticIntensity(planetPos, pushConstants.time,
+                                             causticScale, causticSpeed,
+                                             causticFadeDepth, waterDepth);
+  if (causticPattern <= 0.0) {
+    return;
+  }
+
+  // Caustic shading normal is the planet's sphere-surface normal in world space.
+  vec3 causticNormal = normalize((planetModelMatrix * vec4(sphereNormal, 0.0)).xyz);
+  workNormal = causticNormal;
+
+  // Accumulate per-light caustic contributions via PROCESSLIGHT macro.
+  float litIntensity = 1.0;
+  const bool receiveShadows = true;
+  vec3 triangleNormal = causticNormal;
+  vec3 causticAccum = vec3(0.0);
+
+#define LIGHTING_INITIALIZATION
+#include "lighting.glsl"
+#undef LIGHTING_INITIALIZATION
+
+#define LIGHTING_IMPLEMENTATION
+#include "lighting.glsl"
+#undef LIGHTING_IMPLEMENTATION
+
+  // Additively blend the caustic contribution into the existing scene colour.
+  vec4 sceneColor = imageLoad(uSceneColor, ivec3(px, viewLocalIndex));
+  sceneColor.rgb += causticIntensity * causticAccum * vec3(0.9, 1.0, 1.0);
+  imageStore(uSceneColor, ivec3(px, viewLocalIndex), sceneColor);
+
+
+}

@@ -157,7 +157,6 @@ type TpvScene3DRenderer=class;
        fShadowMapSize:TpvInt32;
        fVirtualRealityHUDWidth:TpvInt32;
        fVirtualRealityHUDHeight:TpvInt32;
-       fBufferDeviceAddress:boolean;
        fRaytracingActive:boolean;
        fMeshFragTypeName:TpvUTF8String;
        fMeshFragGlobalIlluminationTypeName:TpvUTF8String;
@@ -258,7 +257,6 @@ type TpvScene3DRenderer=class;
        property ShadowMapSize:TpvInt32 read fShadowMapSize write fShadowMapSize;
        property VirtualRealityHUDWidth:TpvInt32 read fVirtualRealityHUDWidth write fVirtualRealityHUDWidth;
        property VirtualRealityHUDHeight:TpvInt32 read fVirtualRealityHUDHeight write fVirtualRealityHUDHeight;
-       property BufferDeviceAddress:boolean read fBufferDeviceAddress;
        property RaytracingActive:boolean read fRaytracingActive;
        property MeshFragTypeName:TpvUTF8String read fMeshFragTypeName;
        property MeshFragGlobalIlluminationTypeName:TpvUTF8String read fMeshFragGlobalIlluminationTypeName;
@@ -702,8 +700,6 @@ begin
  end;
 
  fShadowMapSize:=Max(16,fShadowMapSize);
-
- fBufferDeviceAddress:=fScene3D.UseBufferDeviceAddress;
 
  fRaytracingActive:=fScene3D.RaytracingActive;
 

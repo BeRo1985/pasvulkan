@@ -1293,6 +1293,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.WaterWaitCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.WaterRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.PlanetWaterCausticsComputePass,
      PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.LockOrderIndependentTransparencyClearCustomPass,
@@ -1420,6 +1421,7 @@ type TpvScene3DRendererInstancePasses=class
        fForwardResolveRenderPass:TpvScene3DRendererPassesForwardResolveRenderPass;
        fWaterWaitCustomPass:TpvScene3DRendererPassesWaterWaitCustomPass;
        fWaterRenderPass:TpvScene3DRendererPassesWaterRenderPass;
+       fPlanetWaterCausticsComputePass:TpvScene3DRendererPassesPlanetWaterCausticsComputePass;
        fForwardRenderMipMapComputePass:TpvScene3DRendererPassesForwardRenderMipMapComputePass;
        fDirectTransparencyRenderPass:TpvScene3DRendererPassesDirectTransparencyRenderPass;
        fDirectTransparencyResolveRenderPass:TpvScene3DRendererPassesDirectTransparencyResolveRenderPass;
@@ -3825,7 +3827,7 @@ begin
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
                                   1
                                  );
 
@@ -4803,15 +4805,20 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
    fWaterExternalWaitingOnSemaphore:=nil;
   end;
 
+  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass:=TpvScene3DRendererPassesPlanetWaterCausticsComputePass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass:=TpvScene3DRendererPassesWaterRenderPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass);
+  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass);
 
  end else begin
 
   TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass:=nil;
   fWaterExternalWaitingOnSemaphore:=nil;
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass:=nil;
 
  end;
 
