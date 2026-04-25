@@ -22641,7 +22641,7 @@ var PlanetIndex,BaseViewIndex,CountViews,CountBufferMemoryBarriers:TpvSizeInt;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
-    BufferMemoryBarriers:array[0..6] of TVkBufferMemoryBarrier;
+    BufferMemoryBarriers:array[0..7] of TVkBufferMemoryBarrier;
     DstPipelineStageFlags:TVkPipelineStageFlags;
     BufferCopy:TVkBufferCopy;
     ModelMatrix:TpvMatrix4x4D;
@@ -22901,13 +22901,14 @@ begin
              inc(CountBufferMemoryBarriers);
             end;
 
-            BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+            BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                            TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                            VK_QUEUE_FAMILY_IGNORED,
                                                                                            VK_QUEUE_FAMILY_IGNORED,
                                                                                            RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
                                                                                            0,
                                                                                            VK_WHOLE_SIZE);
+            inc(CountBufferMemoryBarriers);
 
            end;
            else begin
