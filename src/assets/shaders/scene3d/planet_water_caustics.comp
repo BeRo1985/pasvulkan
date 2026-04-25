@@ -122,6 +122,13 @@ vec3 causticNormal;
 float causticPattern;
 
 void processCausticsLight(const in vec3 colorIntensity, const in vec3 attenuation, const in vec3 lightDir){
+  ivec2 px6 = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 ext6 = imageSize(uSceneColor).xy;
+  if((inViewIndex == 0) && all(equal(px6, ext6 / 2))){
+    float dotVal = dot(causticNormal, lightDir);
+    debugPrintfEXT("caustics: PROCESSLIGHT att=%f dotNL=%f ci=%f,%f,%f\n",
+                   attenuation.x, dotVal, colorIntensity.x, colorIntensity.y, colorIntensity.z);
+  }
   causticAccumulatedColor += colorIntensity * attenuation.x * max(0.0, dot(causticNormal, lightDir)) * causticPattern;
 }
 
@@ -137,7 +144,6 @@ void main(){
   }
   ivec2 imageExtent = imageSize(uSceneColor).xy;
   if(any(greaterThanEqual(px, imageExtent))){
-
     return;
   }
 
@@ -151,7 +157,6 @@ void main(){
     debugPrintfEXT("caustics: px=%d,%d ext=%d,%d rawDepth=%f\n", px.x, px.y, imageExtent.x, imageExtent.y, rawDepth);
   }
   if(rawDepth >= 1.0){
-
     return; // sky / far plane
   }
 
@@ -176,7 +181,6 @@ void main(){
   vec3 planetPosition = (planetInverseModelMatrix * vec4(worldPos, 1.0)).xyz;
   float groundHeight = length(planetPosition);
   if(groundHeight < 1e-3){
-
     return;
   }
   vec3 sphereNormal = planetPosition / groundHeight;
@@ -184,11 +188,9 @@ void main(){
   // Query the water surface radius at this point on the sphere.
   float waterHeight = getSphereHeightEx(octPlanetUnsignedEncode(sphereNormal));
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
-
     debugPrintfEXT("caustics: groundHeight=%f waterHeight=%f\n", groundHeight, waterHeight);
   }
   if(waterHeight <= groundHeight){
-
     return; // not underwater at this pixel
   }
   float waterDepth = waterHeight - groundHeight;
@@ -197,11 +199,9 @@ void main(){
   vec2 cp0 = unpackHalf2x16(planetData.waterDisplaceParams.z); // x=intensity, y=scale
   float causticIntensity = cp0.x;
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
-
     debugPrintfEXT("caustics: waterDepth=%f causticIntensity=%f waterDisplaceParams.z=0x%x\n", waterDepth, causticIntensity, planetData.waterDisplaceParams.z);
   }
   if(causticIntensity <= 0.0){
-
     return;
   }
   float causticScale = cp0.y;
@@ -233,6 +233,46 @@ void main(){
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
 #undef LIGHTING_INITIALIZATION
+
+  if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
+    uvec3 dbgXYZ = uvec3(uvec2(uvec2(px) / uFrustumClusterGridGlobals.tileSizeZNearZFar.xy),
+                         uint(clamp(fma(log2(-viewSpacePosition.z),
+                                        uFrustumClusterGridGlobals.scaleBiasMax.x,
+                                        uFrustumClusterGridGlobals.scaleBiasMax.y),
+                                   0.0, uFrustumClusterGridGlobals.scaleBiasMax.z)));
+    uint dbgIdx = clamp((((dbgXYZ.z * uFrustumClusterGridGlobals.clusterSize.y) + dbgXYZ.y) *
+                           uFrustumClusterGridGlobals.clusterSize.x) + dbgXYZ.x,
+                        0u, uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z) +
+                  (uint(inViewIndex + int(uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.w)) *
+                   uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z);
+    uvec2 dbgData = frustumClusterGridData[dbgIdx].xy;
+    debugPrintfEXT("caustics: clusterXYZ=%d,%d,%d idx=%d count=%d viewZ=%f tileXY=%d,%d clusterSz=%d,%d,%d\n",
+                   dbgXYZ.x, dbgXYZ.y, dbgXYZ.z, dbgIdx, dbgData.y,
+                   viewSpacePosition.z,
+                   uFrustumClusterGridGlobals.tileSizeZNearZFar.x,
+                   uFrustumClusterGridGlobals.tileSizeZNearZFar.y,
+                   uFrustumClusterGridGlobals.clusterSize.x,
+                   uFrustumClusterGridGlobals.clusterSize.y,
+                   uFrustumClusterGridGlobals.clusterSize.z);
+    // Print raw index and direct lights[0] to detect aliasing
+    uint dbgRawIdx0 = frustumClusterGridIndexList[dbgData.x + 0u];
+    uint dbgRawIdx1 = frustumClusterGridIndexList[dbgData.x + 1u];
+    Light dbgL0 = lights[0];
+    debugPrintfEXT("caustics: rawIdx0=%d rawIdx1=%d lights0.type=%d lights0.posR=%f,%f,%f,%f\n",
+                   dbgRawIdx0, dbgRawIdx1,
+                   dbgL0.metaData.x & 0xfu,
+                   dbgL0.positionRadius.x, dbgL0.positionRadius.y,
+                   dbgL0.positionRadius.z, dbgL0.positionRadius.w);
+    for(uint dbgLi = 0u; dbgLi < min(dbgData.y, 2u); dbgLi++){
+      uint dbgRawIdx = frustumClusterGridIndexList[dbgData.x + dbgLi];
+      Light dbgL = lights[dbgRawIdx];
+      uint dbgType = dbgL.metaData.x & 0xfu;
+      debugPrintfEXT("caustics: light[%d](idx=%d) type=%d posR=%f,%f,%f,%f\n",
+                     dbgLi, dbgRawIdx, dbgType,
+                     dbgL.positionRadius.x, dbgL.positionRadius.y,
+                     dbgL.positionRadius.z, dbgL.positionRadius.w);
+    }
+  }
 
 #define LIGHTING_IMPLEMENTATION
 #include "lighting.glsl"
