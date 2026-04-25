@@ -189,6 +189,8 @@ type TpvScene3DPlanets=class;
 
              WaterCausticParams0:TpvHalfFloatVector4; // x=causticIntensity, y=causticScale, z=causticFadeDepth, w=causticSpeed
              WaterCausticParams1:TpvHalfFloatVector4; // x=causticDepthThresholdLow, y=causticDepthThresholdHigh, zw=unused
+             WaterCausticParams2:TpvHalfFloatVector4; // xyz=causticTintColor (linear RGB), w=unused
+             WaterCausticParams3:TpvHalfFloatVector4; // padding (fills uvec4 waterCausticParams2)
 
              WaterWhitecapParams0:TpvHalfFloatVector4; // xyz=whitecap foam color (linear RGB), w=FBM pattern scale
              WaterWhitecapParams1:TpvHalfFloatVector4; // x=slopeThreshLow, y=slopeThreshHigh, z=FBM breakupLow, w=FBM breakupHigh
@@ -2915,51 +2917,52 @@ type TpvScene3DPlanets=class;
        fAtmosphereMiniMapResolutionShift:TpvInt32;
        fWaterMapResolution:TpvInt32;
        fWaterMapBorder:TpvInt32;
-       fWaterRippleMapResolution:TpvInt32; // GPU ripple ping-pong image resolution. 0 = ripple subsystem disabled.
-       fSerializeWaterRipples:Boolean; // when true, TSerializedData includes the current ripple image contents so a reload restores the exact ripple state (primarily for test/regression comparisons). Default: false - ripples are transient and normally not persisted.
-       fWaterAbsorption:TpvVector3; // Per-channel Beer-Lambert absorption coefficient (1/m) applied to through-water refraction.
-       fWaterDeepColor:TpvVector3; // Linear scattering color at full depth (limit of attenuation).
-       fWaterBaseColor:TpvVector3; // Linear water base color tint multiplied into the shaded water (surface/volume color).
-       fWaterIOR:TpvFloat; // Water index of refraction (e.g. 1.3325 for typical seawater).
-       fAirIOR:TpvFloat; // Air index of refraction (e.g. 1.0).
-       fWaterIORBasedFadeAmount:TpvFloat; // 0 = pure Beer-Lambert absorption, 1 = PBR-correct IOR-based waterF0 blending (packed into WaterAbsorption.w).
-       fWaterShoreFoamColor:TpvVector3; // Linear color of the shore foam overlay.
-       fWaterShoreFoamDepthStart:TpvFloat; // Water depth (m) at which foam starts fading in (outer edge, deeper boundary).
-       fWaterShoreFoamDepthEnd:TpvFloat; // Water depth (m) at which foam is fully visible (inner edge, near waterline).
-       fWaterShoreFoamPatternScale:TpvFloat; // Pattern frequency multiplier applied to inBlock.position for the procedural foam noise.
-       fWaterShoreFoamScrollSpeed:TpvFloat; // Animation speed of the foam pattern in pushConstants.time units.
-       fWaterShoreFoamIntensity:TpvFloat; // Overall strength of the shore foam (0 = disabled, 1 = full).
-       fWaterShoreFoamBreakupLow:TpvFloat;  // FBM breakup smoothstep low threshold, default 0.35.
-       fWaterShoreFoamBreakupHigh:TpvFloat; // FBM breakup smoothstep high threshold, default 0.75.
-       fWaterWindDirection:TpvVector3; // Global wind direction in planet-local space (drives Gerstner wave direction).
-       fWaterWaveAmplitude:TpvFloat;   // Normal perturbation visual strength (0 = disabled, 0.3 = moderate).
-       fWaterWaveFrequency:TpvFloat;   // Spatial wavenumber (rad/m); wavelength = 2*pi/frequency in meters.
-       fWaterWaveSteepness:TpvFloat;   // Gerstner steepness (0 = pure sine, 1 = peaked crests).
-       fWaterWaveSpeed:TpvFloat;       // Angular wave propagation speed (rad/s; visual only).
-       fWaterWhitecapFactor:TpvFloat;  // Overall whitecap intensity (0 = off, 1 = default, >1 = intense).
-       fWaterUVWaveAmplitude:TpvFloat;  // OctUV-based wave normal strength (0 = off).
-       fWaterUVWaveFrequency:TpvFloat;  // Spatial wave cycles per octahedral UV unit.
-       fWaterUVWaveSpeed:TpvFloat;      // UV wave animation speed (UV units/s).
-       fWaterUVWaveSteepness:TpvFloat;  // UV wave steepness/sharpness.
-       fWaterUVWaveFactor:TpvFloat;     // Overall UV wave contribution multiplier (0=off, 1=full).
-       fWaterWaveWindFactor:TpvFloat;   // Multiplier for wind-based Gerstner contribution (0=off, 1=full).
-       fWaterUVWaveScale:TpvFloat;      // Oct UV coordinate scale before wave phases (higher = finer ripples).
-       fWaterWaveDisplaceAmplitude:TpvFloat; // Per-vertex height displacement amplitude in meters (0=disabled).
+       fWaterRippleMapResolution:TpvInt32;         // GPU ripple ping-pong image resolution. 0 = ripple subsystem disabled.
+       fSerializeWaterRipples:Boolean;             // when true, TSerializedData includes the current ripple image contents so a reload restores the exact ripple state (primarily for test/regression comparisons). Default: false - ripples are transient and normally not persisted.
+       fWaterAbsorption:TpvVector3;                // Per-channel Beer-Lambert absorption coefficient (1/m) applied to through-water refraction.
+       fWaterDeepColor:TpvVector3;                 // Linear scattering color at full depth (limit of attenuation).
+       fWaterBaseColor:TpvVector3;                 // Linear water base color tint multiplied into the shaded water (surface/volume color).
+       fWaterIOR:TpvFloat;                         // Water index of refraction (e.g. 1.3325 for typical seawater).
+       fAirIOR:TpvFloat;                           // Air index of refraction (e.g. 1.0).
+       fWaterIORBasedFadeAmount:TpvFloat;          // 0 = pure Beer-Lambert absorption, 1 = PBR-correct IOR-based waterF0 blending (packed into WaterAbsorption.w).
+       fWaterShoreFoamColor:TpvVector3;            // Linear color of the shore foam overlay.
+       fWaterShoreFoamDepthStart:TpvFloat;         // Water depth (m) at which foam starts fading in (outer edge, deeper boundary).
+       fWaterShoreFoamDepthEnd:TpvFloat;           // Water depth (m) at which foam is fully visible (inner edge, near waterline).
+       fWaterShoreFoamPatternScale:TpvFloat;       // Pattern frequency multiplier applied to inBlock.position for the procedural foam noise.
+       fWaterShoreFoamScrollSpeed:TpvFloat;        // Animation speed of the foam pattern in pushConstants.time units.
+       fWaterShoreFoamIntensity:TpvFloat;          // Overall strength of the shore foam (0 = disabled, 1 = full).
+       fWaterShoreFoamBreakupLow:TpvFloat;         // FBM breakup smoothstep low threshold, default 0.35.
+       fWaterShoreFoamBreakupHigh:TpvFloat;        // FBM breakup smoothstep high threshold, default 0.75.
+       fWaterWindDirection:TpvVector3;             // Global wind direction in planet-local space (drives Gerstner wave direction).
+       fWaterWaveAmplitude:TpvFloat;               // Normal perturbation visual strength (0 = disabled, 0.3 = moderate).
+       fWaterWaveFrequency:TpvFloat;               // Spatial wavenumber (rad/m); wavelength = 2*pi/frequency in meters.
+       fWaterWaveSteepness:TpvFloat;               // Gerstner steepness (0 = pure sine, 1 = peaked crests).
+       fWaterWaveSpeed:TpvFloat;                   // Angular wave propagation speed (rad/s; visual only).
+       fWaterWhitecapFactor:TpvFloat;              // Overall whitecap intensity (0 = off, 1 = default, >1 = intense).
+       fWaterUVWaveAmplitude:TpvFloat;             // OctUV-based wave normal strength (0 = off).
+       fWaterUVWaveFrequency:TpvFloat;             // Spatial wave cycles per octahedral UV unit.
+       fWaterUVWaveSpeed:TpvFloat;                 // UV wave animation speed (UV units/s).
+       fWaterUVWaveSteepness:TpvFloat;             // UV wave steepness/sharpness.
+       fWaterUVWaveFactor:TpvFloat;                // Overall UV wave contribution multiplier (0=off, 1=full).
+       fWaterWaveWindFactor:TpvFloat;              // Multiplier for wind-based Gerstner contribution (0=off, 1=full).
+       fWaterUVWaveScale:TpvFloat;                 // Oct UV coordinate scale before wave phases (higher = finer ripples).
+       fWaterWaveDisplaceAmplitude:TpvFloat;       // Per-vertex height displacement amplitude in meters (0=disabled).
        fWaterDisplaceHeightLowThreshold:TpvFloat;  // Water depth below which displacement fades to 0.
        fWaterDisplaceHeightHighThreshold:TpvFloat; // Water depth above which displacement is at full strength.
        fWaterDisplaceHeightFactor:TpvFloat;        // Overall multiplier on the depth-based displacement fade.
-       fWaterCausticIntensity:TpvFloat;  // Caustic pattern intensity (0 = off, default 0.0).
-       fWaterCausticScale:TpvFloat;      // Caustic spatial frequency (inverse position units), default 8.0.
-       fWaterCausticFadeDepth:TpvFloat;  // Depth at which caustics reach 1/e intensity, default 3.0.
-       fWaterCausticSpeed:TpvFloat;      // Caustic animation speed multiplier, default 0.5.
-       fWaterCausticDepthThresholdLow:TpvFloat;  // Depth below which caustics fade to 0 (smoothstep low), default 0.0.
-       fWaterCausticDepthThresholdHigh:TpvFloat; // Depth above which caustics are at full strength (smoothstep high), default 1.0.
-       fWaterWhitecapColor:TpvVector3;  // Whitecap foam color (linear RGB), default white.
-       fWaterWhitecapPatternScale:TpvFloat;      // FBM breakup pattern scale, default 24.
-       fWaterWhitecapSlopeThreshLow:TpvFloat;    // Heightmap slope where whitecaps begin, default 0.05.
-       fWaterWhitecapSlopeThreshHigh:TpvFloat;   // Heightmap slope where whitecaps are full, default 0.20.
-       fWaterWhitecapBreakupLow:TpvFloat;        // FBM breakup smoothstep low threshold, default 0.35.
-       fWaterWhitecapBreakupHigh:TpvFloat;       // FBM breakup smoothstep high threshold, default 0.75.
+       fWaterCausticIntensity:TpvFloat;            // Caustic pattern intensity (0 = off, default 0.0).
+       fWaterCausticScale:TpvFloat;                // Caustic spatial frequency (inverse position units), default 8.0.
+       fWaterCausticFadeDepth:TpvFloat;            // Depth at which caustics reach 1/e intensity, default 3.0.
+       fWaterCausticSpeed:TpvFloat;                // Caustic animation speed multiplier, default 0.5.
+       fWaterCausticDepthThresholdLow:TpvFloat;    // Depth below which caustics fade to 0 (smoothstep low), default 0.0.
+       fWaterCausticDepthThresholdHigh:TpvFloat;   // Depth above which caustics are at full strength (smoothstep high), default 1.0.
+       fWaterCausticTintColor:TpvVector3;          // Caustic tint color (linear RGB), default white.
+       fWaterWhitecapColor:TpvVector3;             // Whitecap foam color (linear RGB), default white.
+       fWaterWhitecapPatternScale:TpvFloat;        // FBM breakup pattern scale, default 24.
+       fWaterWhitecapSlopeThreshLow:TpvFloat;      // Heightmap slope where whitecaps begin, default 0.05.
+       fWaterWhitecapSlopeThreshHigh:TpvFloat;     // Heightmap slope where whitecaps are full, default 0.20.
+       fWaterWhitecapBreakupLow:TpvFloat;          // FBM breakup smoothstep low threshold, default 0.35.
+       fWaterWhitecapBreakupHigh:TpvFloat;         // FBM breakup smoothstep high threshold, default 0.75.
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
        fTileMapBits:TpvInt32;
@@ -3313,6 +3316,7 @@ type TpvScene3DPlanets=class;
        property WaterCausticDepthThresholdLow:TpvFloat read fWaterCausticDepthThresholdLow write fWaterCausticDepthThresholdLow;
        property WaterCausticDepthThresholdHigh:TpvFloat read fWaterCausticDepthThresholdHigh write fWaterCausticDepthThresholdHigh;
       public
+       property WaterCausticTintColor:TpvVector3 read fWaterCausticTintColor write fWaterCausticTintColor;
        property WaterWhitecapColor:TpvVector3 read fWaterWhitecapColor write fWaterWhitecapColor;
       published
        property WaterWhitecapPatternScale:TpvFloat read fWaterWhitecapPatternScale write fWaterWhitecapPatternScale;
@@ -28920,6 +28924,7 @@ begin
  fWaterCausticSpeed:=0.5;      // animation speed multiplier
  fWaterCausticDepthThresholdLow:=0.0;   // smoothstep low: caustics start at 0 m depth
  fWaterCausticDepthThresholdHigh:=1.0;  // smoothstep high: full caustics at 1 m depth
+ fWaterCausticTintColor:=TpvVector3.Create(1.0,1.0,1.0); // white tint
  fWaterWhitecapColor:=TpvVector3.Create(1.0,1.0,1.0); // white foam
  fWaterWhitecapPatternScale:=24.0;
  fWaterWhitecapSlopeThreshLow:=0.05;
@@ -32493,6 +32498,14 @@ begin
    fPlanetData.WaterCausticParams1.y:=fWaterCausticDepthThresholdHigh;
    fPlanetData.WaterCausticParams1.z:=0.0;
    fPlanetData.WaterCausticParams1.w:=0.0;
+   fPlanetData.WaterCausticParams2.x:=fWaterCausticTintColor.x;
+   fPlanetData.WaterCausticParams2.y:=fWaterCausticTintColor.y;
+   fPlanetData.WaterCausticParams2.z:=fWaterCausticTintColor.z;
+   fPlanetData.WaterCausticParams2.w:=0.0;
+   fPlanetData.WaterCausticParams3.x:=0.0;
+   fPlanetData.WaterCausticParams3.y:=0.0;
+   fPlanetData.WaterCausticParams3.z:=0.0;
+   fPlanetData.WaterCausticParams3.w:=0.0;
 {$ifdef PlanetWaterCausticsDebug}
    WriteLn('[DEBUG] PlanetData upload WaterCausticParams0: intensity=',fWaterCausticIntensity,' scale=',fWaterCausticScale,' fadeDepth=',fWaterCausticFadeDepth,' speed=',fWaterCausticSpeed);
 {$endif}
@@ -32983,6 +32996,7 @@ begin
    fWaterCausticSpeed:=TPasJSON.GetNumber(JSONCausticObject.Properties['speed'],fWaterCausticSpeed);
    fWaterCausticDepthThresholdLow:=TPasJSON.GetNumber(JSONCausticObject.Properties['depththresholdlow'],fWaterCausticDepthThresholdLow);
    fWaterCausticDepthThresholdHigh:=TPasJSON.GetNumber(JSONCausticObject.Properties['depththresholdhigh'],fWaterCausticDepthThresholdHigh);
+   fWaterCausticTintColor:=JSONToVector3(JSONCausticObject.Properties['tint'],fWaterCausticTintColor);
 {$ifdef PlanetWaterCausticsDebug}
    WriteLn('[DEBUG] WaterCaustics loaded: intensity=',fWaterCausticIntensity,' scale=',fWaterCausticScale,' fadeDepth=',fWaterCausticFadeDepth,' speed=',fWaterCausticSpeed);
 {$endif}

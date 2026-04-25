@@ -304,7 +304,7 @@ void main(){
                    sceneColor.x);
   }
 #endif
-  sceneColor.xyz += causticIntensity * causticAccumulatedColor * vec3(0.9, 1.0, 1.0);
+  sceneColor.xyz += causticIntensity * causticAccumulatedColor * vec3(unpackHalf2x16(planetData.waterCausticParams2.x), unpackHalf2x16(planetData.waterCausticParams2.y).x); // caustic tint color
   imageStore(uSceneColor, ivec3(px, viewLocalIndex), sceneColor);
 
 

@@ -1047,7 +1047,7 @@ void main(){
         float time = pushConstants.time;
         float caustic = getCausticIntensity(planetPos, time, causticScale, causticSpeed, causticFadeDepth, waterDepth, cp2.x, cp2.y);
         // Additive caustic light; alpha=0 so we don't disturb the composite alpha.
-        outFragColor = vec4(causticIntensity * caustic * vec3(0.9, 1.0, 1.0), 0.0);
+        outFragColor = vec4(causticIntensity * caustic * vec3(unpackHalf2x16(planetData.waterCausticParams2.x), unpackHalf2x16(planetData.waterCausticParams2.y).x), 0.0); // caustic tint color
       } else {
         discard;
       }

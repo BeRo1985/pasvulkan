@@ -68,6 +68,8 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
 
   uvec4 waterCausticParams; // xy = half4(causticIntensity, causticScale, causticFadeDepth, causticSpeed), zw = half4(causticDepthThresholdLow, causticDepthThresholdHigh, unused, unused)
 
+  uvec4 waterCausticParams2; // xy = half4(tintR, tintG, tintB, unused), zw = padding
+
   uvec4 waterWhitecapParams; // xy = half4(colorR, colorG, colorB, patternScale), zw = half4(slopeThreshLow, slopeThreshHigh, breakupLow, breakupHigh)
 
   uvec4 waterWhitecapParams2; // x = half2(whitecapFactor, unused), yzw = unused
