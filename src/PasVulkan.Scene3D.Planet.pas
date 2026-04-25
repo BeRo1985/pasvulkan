@@ -26843,7 +26843,10 @@ begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates^[aInFlightFrameIndex];
 
+ WriteLn('[DEBUG] TWaterCaustics.Execute: InFlightFrame=',aInFlightFrameIndex,' FrameIndex=',aFrameIndex,' Ready=',InFlightFrameState^.Ready,' W=',fWidth,' H=',fHeight);
+
  if not InFlightFrameState^.Ready then begin
+  WriteLn('[DEBUG] TWaterCaustics.Execute: early exit - InFlightFrameState not ready');
   exit;
  end;
 
@@ -26871,6 +26874,8 @@ begin
   for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
 
    Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
+
+   WriteLn('[DEBUG] TWaterCaustics.Execute: PlanetIndex=',PlanetIndex,' Assigned=',assigned(Planet),' Ready=',assigned(Planet) and Planet.fReady,' InFlightReady=',assigned(Planet) and Planet.fInFlightFrameReady[aInFlightFrameIndex]);
 
    if assigned(Planet) and Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
 
@@ -26902,6 +26907,14 @@ begin
       PushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
       PushConstants.Jitter:=InFlightFrameState^.Jitter;
 
+      WriteLn('[DEBUG] TWaterCaustics.Execute: Dispatching planet ',PlanetIndex,
+              ' ViewBase=',PushConstants.ViewBaseIndex,' CountViews=',PushConstants.CountViews,
+              ' W=',fWidth,' H=',fHeight,
+              ' CausticIntensity=',Planet.fWaterCausticIntensity,
+              ' CausticScale=',Planet.fWaterCausticScale,
+              ' CausticFadeDepth=',Planet.fWaterCausticFadeDepth,
+              ' CausticSpeed=',Planet.fWaterCausticSpeed);
+
       aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                       0,
@@ -26912,8 +26925,12 @@ begin
                                   Max(1,(fHeight+15) shr 4),
                                   InFlightFrameState^.CountFinalViews);
 
+     end else begin
+      WriteLn('[DEBUG] TWaterCaustics.Execute: Planet ',PlanetIndex,' - no RendererViewInstance for View pass');
      end;
 
+    end else begin
+     WriteLn('[DEBUG] TWaterCaustics.Execute: Planet ',PlanetIndex,' - no RendererInstance found');
     end;
 
    end;
@@ -32447,6 +32464,7 @@ begin
    fPlanetData.WaterCausticParams0.y:=fWaterCausticScale;
    fPlanetData.WaterCausticParams0.z:=fWaterCausticFadeDepth;
    fPlanetData.WaterCausticParams0.w:=fWaterCausticSpeed;
+   WriteLn('[DEBUG] PlanetData upload WaterCausticParams0: intensity=',fWaterCausticIntensity,' scale=',fWaterCausticScale,' fadeDepth=',fWaterCausticFadeDepth,' speed=',fWaterCausticSpeed);
    fPlanetData.WaterWhitecapParams0.x:=fWaterWhitecapColor.x;
    fPlanetData.WaterWhitecapParams0.y:=fWaterWhitecapColor.y;
    fPlanetData.WaterWhitecapParams0.z:=fWaterWhitecapColor.z;
@@ -32932,6 +32950,7 @@ begin
    fWaterCausticScale:=TPasJSON.GetNumber(JSONCausticObject.Properties['scale'],fWaterCausticScale);
    fWaterCausticFadeDepth:=TPasJSON.GetNumber(JSONCausticObject.Properties['fadedepth'],fWaterCausticFadeDepth);
    fWaterCausticSpeed:=TPasJSON.GetNumber(JSONCausticObject.Properties['speed'],fWaterCausticSpeed);
+   WriteLn('[DEBUG] WaterCaustics loaded: intensity=',fWaterCausticIntensity,' scale=',fWaterCausticScale,' fadeDepth=',fWaterCausticFadeDepth,' speed=',fWaterCausticSpeed);
   end;
  end;
 end;

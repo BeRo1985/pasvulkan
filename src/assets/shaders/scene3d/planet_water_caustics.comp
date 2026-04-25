@@ -7,6 +7,7 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_EXT_debug_printf : enable
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
@@ -110,19 +111,28 @@ vec3 workNormal; // Surface normal used by shadows.glsl for ray offsets
 #include "planet_water.glsl"
 #include "planet_caustics.glsl"
 
-// Per-light caustic accumulation.  lighting.glsl calls this macro once for each
-// visible light source.  arg2 is vec3(lightAttenuation, …) — use .x for scalar.
-#define PROCESSLIGHT(colorIntensity, attenuation, lightDir) \
-  causticAccum += (colorIntensity) * (attenuation).x * max(0.0, dot(causticNormal, (lightDir))) * causticPattern;
+// Per-light caustic accumulation called by lighting.glsl via PROCESSLIGHT.
+vec3 causticAccumulatedColor = vec3(0.0);
+vec3 causticNormal;
+float causticPattern;
 
-void main() {
+void processCausticsLight(const in vec3 colorIntensity, const in vec3 attenuation, const in vec3 lightDir){
+  causticAccumulatedColor += colorIntensity * attenuation.x * max(0.0, dot(causticNormal, lightDir)) * causticPattern;
+}
+
+#define PROCESSLIGHT processCausticsLight
+
+void main(){
+
   int viewLocalIndex = int(gl_GlobalInvocationID.z);
   ivec2 px = ivec2(gl_GlobalInvocationID.xy);
-  if (viewLocalIndex >= int(pushConstants.countViews)) {
+  if(viewLocalIndex >= int(pushConstants.countViews)){
+
     return;
   }
   ivec2 imageExtent = imageSize(uSceneColor).xy;
-  if (any(greaterThanEqual(px, imageExtent))) {
+  if(any(greaterThanEqual(px, imageExtent))){
+
     return;
   }
 
@@ -131,7 +141,12 @@ void main() {
 
   // Read the opaque terrain depth written by the earlier depth-prepass / mipmap pass.
   float rawDepth = texelFetch(uPassTextures[2], ivec3(px, viewLocalIndex), 0).x;
-  if (rawDepth >= 1.0) {
+  if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
+
+    debugPrintfEXT("caustics: px=%d,%d ext=%d,%d rawDepth=%f\n", px.x, px.y, imageExtent.x, imageExtent.y, rawDepth);
+  }
+  if(rawDepth >= 1.0){
+
     return; // sky / far plane
   }
 
@@ -153,24 +168,35 @@ void main() {
   planetInverseModelMatrix = inverse(planetModelMatrix);
 
   // Transform world position into the planet's local frame and compute radii.
-  vec3 planetPos = (planetInverseModelMatrix * vec4(worldPos, 1.0)).xyz;
-  float groundRadius = length(planetPos);
-  if (groundRadius < 1e-3) {
+  vec3 planetPosition = (planetInverseModelMatrix * vec4(worldPos, 1.0)).xyz;
+  float groundHeight = length(planetPosition);
+  if(groundHeight < 1e-3){
+
     return;
   }
-  vec3 sphereNormal = planetPos / groundRadius;
+  vec3 sphereNormal = planetPosition / groundHeight;
 
   // Query the water surface radius at this point on the sphere.
-  float waterRadius = getSphereHeightEx(octPlanetUnsignedEncode(sphereNormal));
-  if (waterRadius <= groundRadius) {
+  float waterHeight = getSphereHeightEx(octPlanetUnsignedEncode(sphereNormal));
+  if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
+
+    debugPrintfEXT("caustics: groundHeight=%f waterHeight=%f\n", groundHeight, waterHeight);
+  }
+  if(waterHeight <= groundHeight){
+
     return; // not underwater at this pixel
   }
-  float waterDepth = waterRadius - groundRadius;
+  float waterDepth = waterHeight - groundHeight;
 
   // Caustic parameters packed as half-floats in waterDisplaceParams.
   vec2 cp0 = unpackHalf2x16(planetData.waterDisplaceParams.z); // x=intensity, y=scale
   float causticIntensity = cp0.x;
-  if (causticIntensity <= 0.0) {
+  if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
+
+    debugPrintfEXT("caustics: waterDepth=%f causticIntensity=%f waterDisplaceParams.z=0x%x\n", waterDepth, causticIntensity, planetData.waterDisplaceParams.z);
+  }
+  if(causticIntensity <= 0.0){
+
     return;
   }
   float causticScale = cp0.y;
@@ -179,22 +205,22 @@ void main() {
   float causticSpeed = cp1.y;
 
   // Evaluate the animated Voronoi caustic pattern (includes depth fade).
-  float causticPattern = getCausticIntensity(planetPos, pushConstants.time,
-                                             causticScale, causticSpeed,
-                                             causticFadeDepth, waterDepth);
-  if (causticPattern <= 0.0) {
+  causticPattern = getCausticIntensity(planetPosition, pushConstants.time,
+                                       causticScale, causticSpeed,
+                                       causticFadeDepth, waterDepth);
+  if(causticPattern <= 0.0){
     return;
   }
 
   // Caustic shading normal is the planet's sphere-surface normal in world space.
-  vec3 causticNormal = normalize((planetModelMatrix * vec4(sphereNormal, 0.0)).xyz);
+  causticNormal = normalize((planetModelMatrix * vec4(sphereNormal, 0.0)).xyz);
   workNormal = causticNormal;
 
-  // Accumulate per-light caustic contributions via PROCESSLIGHT macro.
+  // Accumulate per-light caustic contributions via processCausticsLight.
   float litIntensity = 1.0;
   const bool receiveShadows = true;
   vec3 triangleNormal = causticNormal;
-  vec3 causticAccum = vec3(0.0);
+  causticAccumulatedColor = vec3(0.0);
 
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
@@ -206,7 +232,7 @@ void main() {
 
   // Additively blend the caustic contribution into the existing scene colour.
   vec4 sceneColor = imageLoad(uSceneColor, ivec3(px, viewLocalIndex));
-  sceneColor.rgb += causticIntensity * causticAccum * vec3(0.9, 1.0, 1.0);
+  sceneColor.xyz += causticIntensity * causticAccumulatedColor * vec3(0.9, 1.0, 1.0);
   imageStore(uSceneColor, ivec3(px, viewLocalIndex), sceneColor);
 
 
