@@ -2672,28 +2672,28 @@ type TpvScene3DPlanets=class;
               destructor Destroy; override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
             end;
+            { TWaterRenderPassPushConstants }
+            TWaterRenderPassPushConstants=packed record
+             ViewBaseIndex:TpvUInt32;
+             CountViews:TpvUInt32;
+             CountAllViews:TpvUInt32;
+             CountQuadPointsInOneDirection:TpvUInt32;
+
+             ResolutionXY:TpvUInt32;
+             TessellationFactor:TpvFloat;
+             TileMapResolution:TpvUInt32;
+             Flags:TpvUInt32;
+
+             FrameIndex:TpvUInt32;
+             Time:TpvFloat;
+             PlanetData:TVkDeviceAddress;
+
+             Jitter:TpvVector4;
+
+            end;
+            PWaterRenderPassPushConstants=^TWaterRenderPassPushConstants;
             { TWaterRenderPass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance
             TWaterRenderPass=class
-             public
-              type TPushConstants=packed record
-                    ViewBaseIndex:TpvUInt32;
-                    CountViews:TpvUInt32;
-                    CountAllViews:TpvUInt32;
-                    CountQuadPointsInOneDirection:TpvUInt32;
-
-                    ResolutionXY:TpvUInt32;
-                    TessellationFactor:TpvFloat;
-                    TileMapResolution:TpvUInt32;
-                    Flags:TpvUInt32;
-
-                    FrameIndex:TpvUInt32;
-                    Time:TpvFloat;
-                    PlanetData:TVkDeviceAddress;
-
-                    Jitter:TpvVector4;
-
-                   end;
-                   PPushConstants=^TPushConstants;
              private
               fRenderer:TObject;
               fRendererInstance:TObject;
@@ -2731,7 +2731,7 @@ type TpvScene3DPlanets=class;
               fPipelineLayout:TpvVulkanPipelineLayout;
               fUnderwaterPipeline:TpvVulkanGraphicsPipeline;
               fWaterPipeline:TpvVulkanGraphicsPipeline;
-              fPushConstants:TPushConstants;
+              fPushConstants:TWaterRenderPassPushConstants;
               fMSAA:Boolean;
               fPass:TpvSizeInt;
               fWidth:TpvInt32;
@@ -2753,7 +2753,38 @@ type TpvScene3DPlanets=class;
               procedure ReleaseResources;
               procedure Draw(const aInFlightFrameIndex,aFrameIndex:TpvSizeInt;const aRenderPass:TpvScene3DRendererRenderPass;const aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aPassDescriptorSet:TpvVulkanDescriptorSet);
              public
-              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+              property PushConstants:TWaterRenderPassPushConstants read fPushConstants write fPushConstants;
+            end;
+            { TWaterCaustics }
+            TWaterCaustics=class
+             private
+              fRenderer:TObject;
+              fRendererInstance:TObject;
+              fScene3D:TObject;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fPassDescriptorPool:TpvVulkanDescriptorPool;
+              fPassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fIBLDescriptors:array[0..MaxInFlightFrames-1] of TpvScene3DRendererIBLDescriptor;
+              fStorageImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPipeline:TpvVulkanComputePipeline;
+              fWidth,fHeight:TpvInt32;
+             public
+              constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject); reintroduce;
+              destructor Destroy; override;
+              procedure AllocateResources(const aSceneColorImages:TpvVulkanImageDynamicArray;
+                                          const aSceneColorFormat:TVkFormat;
+                                          const aCascadedShadowMapViews:TpvVulkanImageViewDynamicArray;
+                                          const aCascadedShadowMapLayout:TVkImageLayout;
+                                          const aSSAOViews:TpvVulkanImageViewDynamicArray;
+                                          const aSSAOLayout:TVkImageLayout;
+                                          const aCountSurfaceViews:TpvInt32;
+                                          const aWidth,aHeight:TpvInt32);
+              procedure ReleaseResources;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aFrameIndex:TpvSizeInt);
             end;
             { TRendererInstance }
             TRendererInstance=class
@@ -26471,6 +26502,431 @@ begin
  end;
 end;
 
+{ TpvScene3DPlanet.TWaterCaustics }
+
+constructor TpvScene3DPlanet.TWaterCaustics.Create(const aRenderer:TObject;
+                                                   const aRendererInstance:TObject;
+                                                   const aScene3D:TObject);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fRenderer:=aRenderer;
+
+ fRendererInstance:=aRendererInstance;
+
+ fScene3D:=aScene3D;
+
+ fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  if TpvScene3DRendererInstance(fRendererInstance).Scene3D.RaytracingActive then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_caustics_raytracing_comp.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_caustics_bufref_comp.spv');
+  end;
+
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterCaustics.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TWaterCaustics.Destroy;
+begin
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TWaterCaustics.AllocateResources(const aSceneColorImages:TpvVulkanImageDynamicArray;
+                                                            const aSceneColorFormat:TVkFormat;
+                                                            const aCascadedShadowMapViews:TpvVulkanImageViewDynamicArray;
+                                                            const aCascadedShadowMapLayout:TVkImageLayout;
+                                                            const aSSAOViews:TpvVulkanImageViewDynamicArray;
+                                                            const aSSAOLayout:TVkImageLayout;
+                                                            const aCountSurfaceViews:TpvInt32;
+                                                            const aWidth,aHeight:TpvInt32);
+var InFlightFrameIndex:TpvSizeInt;
+    CountInFlightFrames:TpvInt32;
+begin
+
+ fWidth:=aWidth;
+ fHeight:=aHeight;
+
+ CountInFlightFrames:=TpvScene3D(fScene3D).CountInFlightFrames;
+
+ fPassDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+ fPassDescriptorSetLayout.AddBinding(0, // View UBO
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                     1,
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     [],
+                                     0);
+ fPassDescriptorSetLayout.AddBinding(1, // BRDF LUTs
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                     3,
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     [],
+                                     0);
+ fPassDescriptorSetLayout.AddBinding(2, // IBL cubemaps
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                     6,
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     [],
+                                     0);
+ fPassDescriptorSetLayout.AddBinding(3, // Cascaded shadow map UBO
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                     1,
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     [],
+                                     0);
+ fPassDescriptorSetLayout.AddBinding(4, // Cascaded shadow map
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                     1,
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     [],
+                                     0);
+ fPassDescriptorSetLayout.AddBinding(5, // SSAO + scene mip + depth mip
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                     3,
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     [],
+                                     0);
+ fPassDescriptorSetLayout.AddBinding(6, // Frustum cluster grid globals UBO
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                     1,
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     [],
+                                     0);
+ fPassDescriptorSetLayout.AddBinding(7, // Frustum cluster grid index list SSBO
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                     1,
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     [],
+                                     0);
+ fPassDescriptorSetLayout.AddBinding(8, // Frustum cluster grid data SSBO
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                     1,
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     [],
+                                     0);
+ fPassDescriptorSetLayout.AddBinding(9, // Scene color storage image
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                     1,
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     [],
+                                     0);
+ fPassDescriptorSetLayout.Initialize;
+
+ fVulkanDevice.DebugUtils.SetObjectName(fPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterCaustics.fPassDescriptorSetLayout');
+
+ fPassDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                     CountInFlightFrames);
+ fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,13*CountInFlightFrames);
+ fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*CountInFlightFrames);
+ fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2*CountInFlightFrames);
+ fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,CountInFlightFrames);
+ fPassDescriptorPool.Initialize;
+
+ fVulkanDevice.DebugUtils.SetObjectName(fPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterCaustics.fPassDescriptorPool');
+
+ for InFlightFrameIndex:=0 to CountInFlightFrames-1 do begin
+
+  fStorageImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fVulkanDevice,
+                                                                    aSceneColorImages[InFlightFrameIndex],
+                                                                    TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                    aSceneColorFormat,
+                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                    TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                    0,
+                                                                    1,
+                                                                    0,
+                                                                    aCountSurfaceViews
+                                                                   );
+
+   fVulkanDevice.DebugUtils.SetObjectName(fStorageImageViews[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TWaterCaustics.fStorageImageViews['+IntToStr(InFlightFrameIndex)+']');
+
+  fPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPassDescriptorPool,
+                                                                         fPassDescriptorSetLayout);
+
+  fVulkanDevice.DebugUtils.SetObjectName(fPassDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterCaustics.fPassDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+
+  fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                               0,
+                                                               1,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                               [],
+                                                               [TpvScene3DRendererInstance(fRendererInstance).VulkanViewUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                               [],
+                                                               false);
+
+  fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                               0,
+                                                               3,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                               [TpvScene3DRenderer(fRenderer).GGXBRDF.DescriptorImageInfo,
+                                                                TpvScene3DRenderer(fRenderer).CharlieBRDF.DescriptorImageInfo,
+                                                                TpvScene3DRenderer(fRenderer).SheenEBRDF.DescriptorImageInfo],
+                                                               [],
+                                                               [],
+                                                               false);
+
+  fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                               0,
+                                                               6,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                               [TpvScene3DRenderer(fRenderer).ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo,
+                                                                TpvScene3DRenderer(fRenderer).ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo,
+                                                                TpvScene3DRenderer(fRenderer).ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo,
+                                                                TpvScene3DRenderer(fRenderer).ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo,
+                                                                TpvScene3DRenderer(fRenderer).ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo,
+                                                                TpvScene3DRenderer(fRenderer).ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo],
+                                                               [],
+                                                               [],
+                                                               false);
+
+  fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+                                                               0,
+                                                               1,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                               [],
+                                                               [TpvScene3DRendererInstance(fRendererInstance).CascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                               [],
+                                                               false);
+
+  fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                               0,
+                                                               1,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                               [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRenderer).ShadowMapSampler.Handle,
+                                                                                              aCascadedShadowMapViews[InFlightFrameIndex].Handle,
+                                                                                              aCascadedShadowMapLayout)],
+                                                               [],
+                                                               [],
+                                                               false);
+
+  fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                               0,
+                                                               3,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                               [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRenderer).AmbientOcclusionSampler.Handle,
+                                                                                              aSSAOViews[InFlightFrameIndex].Handle,
+                                                                                              aSSAOLayout),
+                                                                TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRenderer).ClampedSampler.Handle,
+                                                                                              TpvScene3DRendererInstance(fRendererInstance).SceneMipmappedArray2DImage.VulkanArrayImageView.Handle,
+                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRenderer).ClampedNearestSampler.Handle,
+                                                                                              TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
+                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                               [],
+                                                               [],
+                                                               false);
+
+  fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
+                                                               0,
+                                                               1,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                               [],
+                                                               [TpvScene3DRendererInstance(fRendererInstance).FrustumClusterGridGlobalsVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                               [],
+                                                               false);
+
+  fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(7,
+                                                               0,
+                                                               1,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                               [],
+                                                               [TpvScene3DRendererInstance(fRendererInstance).FrustumClusterGridIndexListVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                               [],
+                                                               false);
+
+  fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,
+                                                               0,
+                                                               1,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                               [],
+                                                               [TpvScene3DRendererInstance(fRendererInstance).FrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                               [],
+                                                               false);
+
+  fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
+                                                               0,
+                                                               1,
+                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                               [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                              fStorageImageViews[InFlightFrameIndex].Handle,
+                                                                                              VK_IMAGE_LAYOUT_GENERAL)],
+                                                               [],
+                                                               [],
+                                                               false);
+
+  fPassDescriptorSets[InFlightFrameIndex].Flush;
+
+  fIBLDescriptors[InFlightFrameIndex]:=TpvScene3DRendererIBLDescriptor.Create(fVulkanDevice,
+                                                                               fPassDescriptorSets[InFlightFrameIndex],
+                                                                               2,
+                                                                               TpvScene3DRenderer(fRenderer).ClampedSampler.Handle);
+
+ end;
+
+ fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                      0,
+                                      SizeOf(TWaterRenderPassPushConstants));
+ fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout);
+ fPipelineLayout.AddDescriptorSetLayout(fPassDescriptorSetLayout);
+ fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout);
+ fPipelineLayout.Initialize;
+
+ fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterCaustics.fPipelineLayout');
+
+ fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                            pvApplication.VulkanPipelineCache,
+                                            TVkPipelineCreateFlags(0),
+                                            fComputeShaderStage,
+                                            fPipelineLayout,
+                                            nil,
+                                            0);
+
+ fVulkanDevice.DebugUtils.SetObjectName(fPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TWaterCaustics.fPipeline');
+
+end;
+
+procedure TpvScene3DPlanet.TWaterCaustics.ReleaseResources;
+var InFlightFrameIndex:TpvSizeInt;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fPipelineLayout);
+
+ for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
+  FreeAndNil(fIBLDescriptors[InFlightFrameIndex]);
+  FreeAndNil(fPassDescriptorSets[InFlightFrameIndex]);
+  FreeAndNil(fStorageImageViews[InFlightFrameIndex]);
+ end;
+
+ FreeAndNil(fPassDescriptorPool);
+
+ FreeAndNil(fPassDescriptorSetLayout);
+
+end;
+
+procedure TpvScene3DPlanet.TWaterCaustics.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aFrameIndex:TpvSizeInt);
+var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
+    PlanetIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+    PlanetRendererInstance:TpvScene3DPlanet.TRendererInstance;
+    PlanetRendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
+    PushConstants:TWaterRenderPassPushConstants;
+    DescriptorSets:array[0..2] of TVkDescriptorSet;
+begin
+
+ InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates^[aInFlightFrameIndex];
+
+ if not InFlightFrameState^.Ready then begin
+  exit;
+ end;
+
+ TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet Water Caustics',[0.25,0.5,0.75,1.0]);
+
+ fIBLDescriptors[aInFlightFrameIndex].SetFrom(fScene3D,fRendererInstance,aInFlightFrameIndex);
+ fIBLDescriptors[aInFlightFrameIndex].Update(true);
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+ DescriptorSets[1]:=fPassDescriptorSets[aInFlightFrameIndex].Handle;
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      2,
+                                      @DescriptorSets[0],
+                                      0,
+                                      nil);
+
+ TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.AcquireRead;
+ try
+
+  for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
+
+   Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
+
+   if assigned(Planet) and Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
+
+    if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),PlanetRendererInstance) then begin
+
+     if Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,TpvScene3DRendererRenderPass.View),PlanetRendererViewInstance) then begin
+
+      DescriptorSets[2]:=Planet.fPlanetDescriptorSets[aInFlightFrameIndex].Handle;
+
+      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                           fPipelineLayout.Handle,
+                                           2,
+                                           1,
+                                           @DescriptorSets[2],
+                                           0,
+                                           nil);
+
+      FillChar(PushConstants,SizeOf(TWaterRenderPassPushConstants),#0);
+      PushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
+      PushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
+      PushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Count;
+      PushConstants.CountQuadPointsInOneDirection:=64;
+      PushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
+      PushConstants.TessellationFactor:=1.0/4.0;
+      PushConstants.TileMapResolution:=Planet.TileMapResolution;
+      PushConstants.Flags:=TpvScene3DRendererInstance(fRendererInstance).RawRaytracingFlags;
+      PushConstants.FrameIndex:=aFrameIndex;
+      PushConstants.Time:=Modulo(TpvScene3D(fScene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
+      PushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
+      PushConstants.Jitter:=InFlightFrameState^.Jitter;
+
+      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                      0,
+                                      SizeOf(TWaterRenderPassPushConstants),
+                                      @PushConstants);
+
+      aCommandBuffer.CmdDispatch(Max(1,(fWidth+15) shr 4),
+                                  Max(1,(fHeight+15) shr 4),
+                                  InFlightFrameState^.CountFinalViews);
+
+     end;
+
+    end;
+
+   end;
+
+  end;
+
+ finally
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.ReleaseRead;
+ end;
+
+ TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
 { TpvScene3DPlanet.TWaterRenderPass }
 
 constructor TpvScene3DPlanet.TWaterRenderPass.Create(const aRenderer:TObject;
@@ -26812,7 +27268,7 @@ begin
                                       TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                       0,
-                                      SizeOf(TPushConstants));
+                                      SizeOf(TWaterRenderPassPushConstants));
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
  fPipelineLayout.AddDescriptorSetLayout(aPassVulkanDescriptorSetLayout); // Pass descriptor set
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
@@ -27062,7 +27518,7 @@ begin
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                 0,
-                                                SizeOf(TPushConstants));
+                                                SizeOf(TWaterRenderPassPushConstants));
   fWaterMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
   fWaterMeshPipelineLayout.AddDescriptorSetLayout(aPassVulkanDescriptorSetLayout); // Pass descriptor set (views UBO)
   fWaterMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
@@ -27253,7 +27709,7 @@ begin
                                         TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                                         TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                         0,
-                                        SizeOf(TPushConstants),
+                                        SizeOf(TWaterRenderPassPushConstants),
                                         @fPushConstants);
 
         aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fUnderwaterPipeline.Handle);
@@ -27290,7 +27746,7 @@ begin
                                         TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                         TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                         0,
-                                        SizeOf(TPushConstants),
+                                        SizeOf(TWaterRenderPassPushConstants),
                                         @fPushConstants);
         aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fCausticsPipeline.Handle);
         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
@@ -27327,7 +27783,7 @@ begin
                                         TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
                                         TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                         0,
-                                        SizeOf(TPushConstants),
+                                        SizeOf(TWaterRenderPassPushConstants),
                                         @fPushConstants);
 
         aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fWaterMeshPipeline.Handle);
@@ -27350,7 +27806,7 @@ begin
                                         TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                                         TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                         0,
-                                        SizeOf(TPushConstants),
+                                        SizeOf(TWaterRenderPassPushConstants),
                                         @fPushConstants);
 
         aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fUnderwaterPipeline.Handle);
