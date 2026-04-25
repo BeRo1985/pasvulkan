@@ -26,9 +26,14 @@ float getCausticPattern(vec2 uv, float t){
 // speed:      animation speed multiplier
 // fadeDepth:  depth (position units) at which intensity falls to 1/e (~0.37)
 // waterDepth: water column height at this point; <= 0 means dry
-float getCausticIntensity(vec3 pos, float time, float scale, float speed, float fadeDepth, float waterDepth){
-  float fade = exp(-waterDepth / max(fadeDepth, 0.01));
-  return (fade < 1e-3) ? 0.0 : (getCausticPattern(pos.xz * scale, time * speed) * fade);
+float getCausticIntensity(vec3 pos, float time, float scale, float speed, 
+                          float fadeDepth, float waterDepth, 
+                          float depthThresholdLow, float depthThresholdHigh){
+  float fade = exp(-waterDepth / max(fadeDepth, 0.01)) * // exponential depth fade
+               smoothstep(depthThresholdLow, depthThresholdHigh, waterDepth); // depth threshold fade
+  return (fade < 1e-4) 
+           ? 0.0 
+           : (getCausticPattern(pos.xz * scale, time * speed) * fade);
 }
 
 #endif // PLANET_CAUSTICS_GLSL

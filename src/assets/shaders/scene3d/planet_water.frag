@@ -1036,15 +1036,16 @@ void main(){
     float waterRadius = getSphereHeightEx(octPlanetUnsignedEncode(sphereNormal));
     if(waterRadius > groundRadius){
       float waterDepth = waterRadius - groundRadius;
-      vec2 cp0 = unpackHalf2x16(planetData.waterDisplaceParams.z);
+      vec2 cp0 = unpackHalf2x16(planetData.waterCausticParams.x);
       float causticIntensity = cp0.x;
       if(causticIntensity > 0.0){
-        vec2 cp1 = unpackHalf2x16(planetData.waterDisplaceParams.w);
+        vec2 cp1 = unpackHalf2x16(planetData.waterCausticParams.y);
+        vec2 cp2 = unpackHalf2x16(planetData.waterCausticParams.z);
         float causticScale = cp0.y;
         float causticFadeDepth = cp1.x;
         float causticSpeed = cp1.y;
         float time = pushConstants.time;
-        float caustic = getCausticIntensity(planetPos, time, causticScale, causticSpeed, causticFadeDepth, waterDepth);
+        float caustic = getCausticIntensity(planetPos, time, causticScale, causticSpeed, causticFadeDepth, waterDepth, cp2.x, cp2.y);
         // Additive caustic light; alpha=0 so we don't disturb the composite alpha.
         outFragColor = vec4(causticIntensity * caustic * vec3(0.9, 1.0, 1.0), 0.0);
       } else {

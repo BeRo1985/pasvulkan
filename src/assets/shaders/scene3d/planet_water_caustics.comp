@@ -204,26 +204,28 @@ void main(){
   }
   float waterDepth = waterHeight - groundHeight;
 
-  // Caustic parameters packed as half-floats in waterDisplaceParams.
-  vec2 cp0 = unpackHalf2x16(planetData.waterDisplaceParams.z); // x=intensity, y=scale
+  // Caustic parameters packed as half-floats in waterCausticParams.
+  vec2 cp0 = unpackHalf2x16(planetData.waterCausticParams.x); // x=intensity, y=scale
   float causticIntensity = cp0.x;
 #ifdef DEBUG
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
-    debugPrintfEXT("caustics: waterDepth=%f causticIntensity=%f waterDisplaceParams.z=0x%x\n", waterDepth, causticIntensity, planetData.waterDisplaceParams.z);
+    debugPrintfEXT("caustics: waterDepth=%f causticIntensity=%f waterCausticParams.x=0x%x\n", waterDepth, causticIntensity, planetData.waterCausticParams.x);
   }
 #endif
   if(causticIntensity <= 0.0){
     return;
   }
   float causticScale = cp0.y;
-  vec2 cp1 = unpackHalf2x16(planetData.waterDisplaceParams.w); // x=fadeDepth, y=speed
+  vec2 cp1 = unpackHalf2x16(planetData.waterCausticParams.y); // x=fadeDepth, y=speed
   float causticFadeDepth = cp1.x;
   float causticSpeed = cp1.y;
+  vec2 cp2 = unpackHalf2x16(planetData.waterCausticParams.z); // x=depthThresholdLow, y=depthThresholdHigh
 
   // Evaluate the animated Voronoi caustic pattern (includes depth fade).
   causticPattern = getCausticIntensity(planetPosition, pushConstants.time,
                                        causticScale, causticSpeed,
-                                       causticFadeDepth, waterDepth);
+                                       causticFadeDepth, waterDepth,
+                                       cp2.x, cp2.y);
 #ifdef DEBUG
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
     debugPrintfEXT("caustics: causticPattern=%f time=%f waterDepth=%f\n", causticPattern, pushConstants.time, waterDepth);
