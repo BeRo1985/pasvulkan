@@ -2698,10 +2698,10 @@ type TpvScene3DPlanets=class;
 
              Jitter:TpvVector4;
 
-             RainIntensity:TpvFloat;
+             SplashDensity:TpvFloat; // 0..1 spawn-probability multiplier for visual rain splashes
+             RainIntensity:TpvFloat; // Rain intensity multiplier for the water render pass (separate from the simulation flow rate)
              PaddingWater0:TpvFloat;
              PaddingWater1:TpvFloat;
-             PaddingWater2:TpvFloat;
 
             end;
             PWaterRenderPassPushConstants=^TWaterRenderPassPushConstants;
@@ -2979,6 +2979,8 @@ type TpvScene3DPlanets=class;
        fWaterRainSplashCrownAmp:TpvFloat;          // Crown plume amplitude relative to ring, default 0.5.
        fWaterRainSplashLifetime:TpvFloat;          // Drop ring lifetime in seconds, default 0.7.
        fWaterRainSplashWaveSpeed:TpvFloat;         // Ring wavefront speed in UV/s, default 0.025.
+       fWaterRainSplashDensity:TpvFloat;           // Spawn-density multiplier (0..1) modulating precipitation×atmosphere, default 1.0.
+       fWaterRainIntensity:TpvFloat;               // Rain intensity multiplier for water render pass (separate from sim flow rate), default 1.0.
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
        fTileMapBits:TpvInt32;
@@ -3348,6 +3350,8 @@ type TpvScene3DPlanets=class;
        property WaterRainSplashCrownAmp:TpvFloat read fWaterRainSplashCrownAmp write fWaterRainSplashCrownAmp;
        property WaterRainSplashLifetime:TpvFloat read fWaterRainSplashLifetime write fWaterRainSplashLifetime;
        property WaterRainSplashWaveSpeed:TpvFloat read fWaterRainSplashWaveSpeed write fWaterRainSplashWaveSpeed;
+       property WaterRainSplashDensity:TpvFloat read fWaterRainSplashDensity write fWaterRainSplashDensity;
+       property WaterRainIntensity:TpvFloat read fWaterRainIntensity write fWaterRainIntensity;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -26947,10 +26951,10 @@ begin
       PushConstants.Time:=Modulo(TpvScene3D(fScene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
       PushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
       PushConstants.Jitter:=InFlightFrameState^.Jitter;
-      PushConstants.RainIntensity:=Planet.fWaterRainSettings.fRainIntensity;
+      PushConstants.RainIntensity:=Planet.fWaterRainIntensity;
+      PushConstants.SplashDensity:=Planet.fWaterRainSplashDensity;
       PushConstants.PaddingWater0:=0.0;
       PushConstants.PaddingWater1:=0.0;
-      PushConstants.PaddingWater2:=0.0;
 
 {$ifdef PlanetWaterCausticsDebug}
       WriteLn('[DEBUG] TWaterCaustics.Execute: Dispatching planet ',PlanetIndex,
@@ -27768,10 +27772,10 @@ begin
 
        fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter;
 //     fPushConstants.Jitter:=TpvVector4.Null;
-       fPushConstants.RainIntensity:=Planet.fWaterRainSettings.fRainIntensity;
+       fPushConstants.RainIntensity:=Planet.fWaterRainIntensity;
+       fPushConstants.SplashDensity:=Planet.fWaterRainSplashDensity;
        fPushConstants.PaddingWater0:=0.0;
        fPushConstants.PaddingWater1:=0.0;
-       fPushConstants.PaddingWater2:=0.0;
 
        if assigned(fWaterMeshPipeline) then begin
 
@@ -28971,6 +28975,8 @@ begin
  fWaterRainSplashCrownAmp:=0.5;
  fWaterRainSplashLifetime:=0.7;
  fWaterRainSplashWaveSpeed:=0.025;
+ fWaterRainSplashDensity:=1.0;
+ fWaterRainIntensity:=1.0;
 
  fTileMapResolution:=Min(Max(fHeightMapResolution shr 8,32),fHeightMapResolution);
 
@@ -33060,6 +33066,8 @@ begin
    fWaterRainSplashCrownAmp:=TPasJSON.GetNumber(JSONRainSplashObject.Properties['crownamp'],fWaterRainSplashCrownAmp);
    fWaterRainSplashLifetime:=TPasJSON.GetNumber(JSONRainSplashObject.Properties['lifetime'],fWaterRainSplashLifetime);
    fWaterRainSplashWaveSpeed:=TPasJSON.GetNumber(JSONRainSplashObject.Properties['wavespeed'],fWaterRainSplashWaveSpeed);
+   fWaterRainSplashDensity:=TPasJSON.GetNumber(JSONRainSplashObject.Properties['density'],fWaterRainSplashDensity);
+   fWaterRainIntensity:=TPasJSON.GetNumber(JSONRainSplashObject.Properties['intensity'],fWaterRainIntensity);
   end;
  end;
 end;

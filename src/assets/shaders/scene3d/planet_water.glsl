@@ -188,13 +188,15 @@ float getWaterRainSplashHeight(vec2 uv, float time){
     return 0.0;
   }
 
-  // Per-pixel rain intensity: precipitation × atmosphere × global multiplier.
+  // Per-pixel weather wetness from precipitation × atmosphere maps (already 0..1).
   float precipitation = clamp(texture(uPlanetTextures[PLANET_TEXTURE_PRECIPITATIONMAP], uv).x, 0.0, 1.0);
   float atmosphere    = clamp(texture(uPlanetTextures[PLANET_TEXTURE_ATMOSPHEREMAP],    uv).x, 0.0, 1.0);
-  float rain = precipitation * atmosphere * pushConstants.rainIntensity;
-  if(rain <= 0.0){
+  float wetness = precipitation * atmosphere;
+  if(wetness <= 0.0){
     return 0.0;
   }
+  // Global spawn-density multiplier (0..1) from the rain splash JSON setting.
+  float spawnGate = wetness * pushConstants.splashDensity;
 
   // Unpack remaining tuning parameters.
   vec2 freqSharp  = unpackHalf2x16(planetData.waterRainSplashParams.y); // ringFreq, envSharp
@@ -234,7 +236,7 @@ float getWaterRainSplashHeight(vec2 uv, float time){
       h3 ^= (h3 >> 15u); 
       h3 *= 0x1b873593u; 
       h3 ^= (h3 >> 15u);
-      if((float(h3 & 0xffffu) * oneOver65535) > rain){
+      if((float(h3 & 0xffffu) * oneOver65535) > spawnGate){
         continue;
       }
 
@@ -258,7 +260,7 @@ float getWaterRainSplashHeight(vec2 uv, float time){
     }
   }
 
-  return h * amplitude * rain;
+  return h * amplitude * wetness * pushConstants.rainIntensity;
 #else
   return 0.0;
 #endif
