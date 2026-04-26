@@ -3161,6 +3161,7 @@ type TpvScene3DPlanets=class;
        fQueuedUpdatedPrecipitation:Boolean;
        fQueuedUpdatedAtmosphere:Boolean;
        fQueuedDownloadLastTime:TpvHighResolutionTime;
+       fGravity:TpvDouble;
       private
        procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
                                      const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
@@ -3371,6 +3372,7 @@ type TpvScene3DPlanets=class;
        property CountPhysicsMeshLODLevels:TpvSizeInt read fCountPhysicsMeshLODLevels;
        property BottomRadius:TpvFloat read fBottomRadius;
        property TopRadius:TpvFloat read fTopRadius;
+       property Gravity:TpvDouble read fGravity write fGravity;
        property UseHeightMapSmoothing:Boolean read fUseHeightMapSmoothing;
        property Ready:TPasMPBool32 read fReady;
        property Data:TData read fData;
@@ -29176,6 +29178,8 @@ begin
  fUse16Bit:=false;
 
  fUseHeightMapSmoothing:=aUseHeightMapSmoothing;
+
+ fGravity:=9.82;
 
  fUseConcurrentWaterHeightMapImage:=false;
 
