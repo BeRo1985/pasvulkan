@@ -2371,8 +2371,8 @@ begin
     OffsetX:=(CanvasWidth-(TpvPasRISCVEmulatorMachineInstance.ScreenWidth*Scale))*0.5;
     OffsetY:=(CanvasHeight-(TpvPasRISCVEmulatorMachineInstance.ScreenHeight*Scale))*0.5;
     if TFlag.CenterToNearestPixel in fFlags then begin
-     OffsetX:=Trunc(OffsetX+0.5);
-     OffsetY:=Trunc(OffsetY+0.5);
+     OffsetX:=Round(OffsetX);
+     OffsetY:=Round(OffsetY);
     end;
    end else begin
     OffsetX:=0.0;
@@ -2703,9 +2703,12 @@ begin
 
  if TFlag.Centered in fFlags then begin
   if TFlag.CenterToNearestPixel in fFlags then begin
+{  fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateTranslation(-TpvPasRISCVEmulatorMachineInstance.ScreenWidth*0.5,-TpvPasRISCVEmulatorMachineInstance.ScreenHeight*0.5,0.0)*
+                             TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*
+                             TpvMatrix4x4.CreateTranslation(Round(aCanvasWidth*0.5),Round(aCanvasHeight*0.5),0.0);}
    fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*
-                             TpvMatrix4x4.CreateTranslation(Trunc(((aCanvasWidth-(TpvPasRISCVEmulatorMachineInstance.ScreenWidth*Scale))*0.5)+0.5),
-                                                            Trunc(((aCanvasHeight-(TpvPasRISCVEmulatorMachineInstance.ScreenHeight*Scale))*0.5)+0.5),
+                             TpvMatrix4x4.CreateTranslation(Round((aCanvasWidth-(TpvPasRISCVEmulatorMachineInstance.ScreenWidth*Scale))*0.5),
+                                                            Round((aCanvasHeight-(TpvPasRISCVEmulatorMachineInstance.ScreenHeight*Scale))*0.5),
                                                             0.0);
   end else begin
    fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateTranslation(-TpvPasRISCVEmulatorMachineInstance.ScreenWidth*0.5,-TpvPasRISCVEmulatorMachineInstance.ScreenHeight*0.5,0.0)*
