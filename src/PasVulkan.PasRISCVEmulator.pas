@@ -166,6 +166,15 @@ type { TpvPasRISCVEmulatorMachineInstance }
 
      { TpvPasRISCVEmulatorRenderer }
      TpvPasRISCVEmulatorRenderer=class
+      public
+       type TFlag=
+             (
+              Centered,
+              Scaled,
+              ScaleToNearest
+             );
+            PFlag=^TFlag;
+            TFlags=set of TFlag;
       private
        fGraphicsFrameBuffer:TpvPasRISCVEmulatorMachineInstance.TFrameBuffer;
        fSerialConsoleTerminalFrameBuffer:TpvPasRISCVEmulatorMachineInstance.TFrameBuffer;
@@ -198,6 +207,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        fContentGeneration:TpvUInt64;
        fRenderGeneration:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fTextureGeneration:TpvUInt64;
+       fFlags:TFlags;
        procedure DrawBackground(const aSender:TPasTerm);
        procedure DrawCodePoint(const aSender:TPasTerm;const aCodePoint:TPasTerm.TFrameBufferCodePoint;const aColumn,aRow:TPasTermSizeInt);
        procedure DrawCursor(const aSender:TPasTerm;const aColumn,aRow:TPasTermSizeInt);
@@ -241,6 +251,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        procedure SetRenderGeneration(const aIndex:TpvSizeInt;const aValue:TpvUInt64);
       published
        property TextureGeneration:TpvUInt64 read fTextureGeneration write fTextureGeneration;
+       property Flags:TFlags read fFlags write fFlags;
      end;
 
 function MapKeyCodeToHIDKeyCode(const aKeyCode:TpvUInt32):TpvUInt32;
@@ -1820,6 +1831,7 @@ begin
  fSerialConsoleMode:=false;
  fLastSerialConsoleMode:=not fSerialConsoleMode;
  fMouseButtons:=0;
+ fFlags:=[TFlag.Centered,TFlag.Scaled,TFlag.ScaleToNearest];
  fTime:=0.48;
  fTerm:=TPasTerm.Create(80,25);
  fTerm.OnDrawBackground:=DrawBackground;
@@ -2068,6 +2080,8 @@ begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Down:begin
       fSerialConsoleMode:=not fSerialConsoleMode;
+     end;
+     else begin
      end;
     end;
     result:=true;
@@ -2633,14 +2647,31 @@ var Scale:TpvFloat;
 begin
  fVulkanCanvas.Start(aInFlightFrameIndex);
 
- if (aCanvasWidth/aCanvasHeight)<(TpvPasRISCVEmulatorMachineInstance.ScreenWidth/TpvPasRISCVEmulatorMachineInstance.ScreenHeight) then begin
-  Scale:=aCanvasWidth/TpvPasRISCVEmulatorMachineInstance.ScreenWidth;
+ if TFlag.Scaled in fFlags then begin
+  if TFlag.ScaleToNearest in fFlags then begin
+   if (aCanvasWidth/aCanvasHeight)<(TpvPasRISCVEmulatorMachineInstance.ScreenWidth/TpvPasRISCVEmulatorMachineInstance.ScreenHeight) then begin
+    Scale:=Max(1.0,Floor(aCanvasWidth/TpvPasRISCVEmulatorMachineInstance.ScreenWidth));
+   end else begin
+    Scale:=Max(1.0,Floor(aCanvasHeight/TpvPasRISCVEmulatorMachineInstance.ScreenHeight));
+   end;
+  end else begin
+   if (aCanvasWidth/aCanvasHeight)<(TpvPasRISCVEmulatorMachineInstance.ScreenWidth/TpvPasRISCVEmulatorMachineInstance.ScreenHeight) then begin
+    Scale:=aCanvasWidth/TpvPasRISCVEmulatorMachineInstance.ScreenWidth;
+   end else begin
+    Scale:=aCanvasHeight/TpvPasRISCVEmulatorMachineInstance.ScreenHeight;
+   end;
+  end;
  end else begin
-  Scale:=aCanvasHeight/TpvPasRISCVEmulatorMachineInstance.ScreenHeight;
+  Scale:=1.0;
  end;
- fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateTranslation(-TpvPasRISCVEmulatorMachineInstance.ScreenWidth*0.5,-TpvPasRISCVEmulatorMachineInstance.ScreenHeight*0.5,0)*
-                           TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*
-                           TpvMatrix4x4.CreateTranslation(aCanvasWidth*0.5,aCanvasHeight*0.5,0);
+
+ if TFlag.Centered in fFlags then begin
+  fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateTranslation(-TpvPasRISCVEmulatorMachineInstance.ScreenWidth*0.5,-TpvPasRISCVEmulatorMachineInstance.ScreenHeight*0.5,0.0)*
+                            TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*
+                            TpvMatrix4x4.CreateTranslation(aCanvasWidth*0.5,aCanvasHeight*0.5,0);
+ end else begin
+  fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateScale(Scale,Scale,1.0);
+ end;
 
  fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.None;
  fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
