@@ -170,6 +170,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        type TFlag=
              (
               Centered,
+              CenterToNearestPixel,
               Scaled,
               ScaleToNearest
              );
@@ -2369,6 +2370,10 @@ begin
    if TFlag.Centered in fFlags then begin
     OffsetX:=(CanvasWidth-(TpvPasRISCVEmulatorMachineInstance.ScreenWidth*Scale))*0.5;
     OffsetY:=(CanvasHeight-(TpvPasRISCVEmulatorMachineInstance.ScreenHeight*Scale))*0.5;
+    if TFlag.CenterToNearestPixel in fFlags then begin
+     OffsetX:=Trunc(OffsetX+0.5);
+     OffsetY:=Trunc(OffsetY+0.5);
+    end;
    end else begin
     OffsetX:=0.0;
     OffsetY:=0.0;
@@ -2697,9 +2702,16 @@ begin
  end;
 
  if TFlag.Centered in fFlags then begin
-  fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateTranslation(-TpvPasRISCVEmulatorMachineInstance.ScreenWidth*0.5,-TpvPasRISCVEmulatorMachineInstance.ScreenHeight*0.5,0.0)*
-                            TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*
-                            TpvMatrix4x4.CreateTranslation(aCanvasWidth*0.5,aCanvasHeight*0.5,0);
+  if TFlag.CenterToNearestPixel in fFlags then begin
+   fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*
+                             TpvMatrix4x4.CreateTranslation(Trunc(((aCanvasWidth-(TpvPasRISCVEmulatorMachineInstance.ScreenWidth*Scale))*0.5)+0.5),
+                                                            Trunc(((aCanvasHeight-(TpvPasRISCVEmulatorMachineInstance.ScreenHeight*Scale))*0.5)+0.5),
+                                                            0.0);
+  end else begin
+   fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateTranslation(-TpvPasRISCVEmulatorMachineInstance.ScreenWidth*0.5,-TpvPasRISCVEmulatorMachineInstance.ScreenHeight*0.5,0.0)*
+                             TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*
+                             TpvMatrix4x4.CreateTranslation(aCanvasWidth*0.5,aCanvasHeight*0.5,0);
+  end;
  end else begin
   fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateScale(Scale,Scale,1.0);
  end;
