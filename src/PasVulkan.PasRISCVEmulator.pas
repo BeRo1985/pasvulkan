@@ -2327,6 +2327,11 @@ end;
 function TpvPasRISCVEmulatorRenderer.HandlePointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
+    Scale:TpvFloat;
+    OffsetX:TpvFloat;
+    OffsetY:TpvFloat;
+    CanvasWidth:TpvFloat;
+    CanvasHeight:TpvFloat;
 begin
  result:=false;
  if fReady then begin
@@ -2342,9 +2347,35 @@ begin
     end;
    end;
   end else begin
+   CanvasWidth:=pvApplication.Width;
+   CanvasHeight:=pvApplication.Height;
+   if TFlag.Scaled in fFlags then begin
+    if TFlag.ScaleToNearest in fFlags then begin
+     if (CanvasWidth/CanvasHeight)<(TpvPasRISCVEmulatorMachineInstance.ScreenWidth/TpvPasRISCVEmulatorMachineInstance.ScreenHeight) then begin
+      Scale:=Max(1.0,Floor(CanvasWidth/TpvPasRISCVEmulatorMachineInstance.ScreenWidth));
+     end else begin
+      Scale:=Max(1.0,Floor(CanvasHeight/TpvPasRISCVEmulatorMachineInstance.ScreenHeight));
+     end;
+    end else begin
+     if (CanvasWidth/CanvasHeight)<(TpvPasRISCVEmulatorMachineInstance.ScreenWidth/TpvPasRISCVEmulatorMachineInstance.ScreenHeight) then begin
+      Scale:=CanvasWidth/TpvPasRISCVEmulatorMachineInstance.ScreenWidth;
+     end else begin
+      Scale:=CanvasHeight/TpvPasRISCVEmulatorMachineInstance.ScreenHeight;
+     end;
+    end;
+   end else begin
+    Scale:=1.0;
+   end;
+   if TFlag.Centered in fFlags then begin
+    OffsetX:=(CanvasWidth-(TpvPasRISCVEmulatorMachineInstance.ScreenWidth*Scale))*0.5;
+    OffsetY:=(CanvasHeight-(TpvPasRISCVEmulatorMachineInstance.ScreenHeight*Scale))*0.5;
+   end else begin
+    OffsetX:=0.0;
+    OffsetY:=0.0;
+   end;
    if assigned(fMachineInstance.Machine.PS2MouseDevice) then begin
     if (aPointerEvent.RelativePosition.x<>0) or (aPointerEvent.RelativePosition.y<>0) then begin
-     fMachineInstance.Machine.PS2MouseDevice.RelativeMove(round(aPointerEvent.RelativePosition.x),round(aPointerEvent.RelativePosition.y));
+     fMachineInstance.Machine.PS2MouseDevice.RelativeMove(round(aPointerEvent.RelativePosition.x/Scale),round(aPointerEvent.RelativePosition.y/Scale));
     end;
     case aPointerEvent.PointerEventType of
      TpvApplicationInputPointerEventType.Down:begin
@@ -2420,9 +2451,9 @@ begin
       end;
      end;
      if assigned(fMachineInstance.Machine.VirtIOInputTabletDevice) then begin
-      fMachineInstance.Machine.VirtIOInputTabletDevice.HandleMouse(round((aPointerEvent.Position.x/pvApplication.Width)*32767),round((aPointerEvent.Position.y/pvApplication.Height)*32767),0,fMouseButtons);
+      fMachineInstance.Machine.VirtIOInputTabletDevice.HandleMouse(round(((aPointerEvent.Position.x-OffsetX)/(TpvPasRISCVEmulatorMachineInstance.ScreenWidth*Scale))*32767),round(((aPointerEvent.Position.y-OffsetY)/(TpvPasRISCVEmulatorMachineInstance.ScreenHeight*Scale))*32767),0,fMouseButtons);
      end else if assigned(fMachineInstance.Machine.VirtIOInputMouseDevice) then begin
-      fMachineInstance.Machine.VirtIOInputMouseDevice.HandleMouse(round(aPointerEvent.RelativePosition.x),round(aPointerEvent.RelativePosition.y),0,fMouseButtons);
+      fMachineInstance.Machine.VirtIOInputMouseDevice.HandleMouse(round(aPointerEvent.RelativePosition.x/Scale),round(aPointerEvent.RelativePosition.y/Scale),0,fMouseButtons);
      end;
     end;
     TpvApplicationInputPointerEventType.Drag:begin
