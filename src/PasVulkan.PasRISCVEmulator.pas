@@ -132,7 +132,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
       private
        f9PFileSystem:TPasRISCV9PFileSystem;
        fFUSEFileSystem:TPasRISCVFUSEFileSystem;
-       fEthernetDevice:TPasRISCVEthernetDevice;
+//     fEthernetDevice:TPasRISCVEthernetDevice;
        fNextFrameTime:TpvHighResolutionTime;
        fFrameBufferItems:TFrameBufferItems;
        fFrameBufferReadIndex:TpvInt32;
@@ -1545,13 +1545,17 @@ begin
 {$ifend}
  fMachine.VirtIOFSDevice.FileSystem:=fFUSEFileSystem;
 
-{$if defined(fpc) and defined(unix)}
- fEthernetDevice:=TPasRISCVEthernetDeviceTUN.Create;
- TPasRISCVEthernetDeviceTUN(fEthernetDevice).Open('tap0');
+(*{$if defined(fpc) and defined(unix)}
+ if not assigned(fMachine.VirtIONetDevice.EthernetDevice) then begin
+  fEthernetDevice:=TPasRISCVEthernetDeviceTUN.Create;
+  TPasRISCVEthernetDeviceTUN(fEthernetDevice).Open('tap0');
+  fMachine.VirtIONetDevice.EthernetDevice:=fEthernetDevice;
+ end else begin
+  fEthernetDevice:=nil;
+ end;
 {$else}
  fEthernetDevice:=nil;
-{$ifend}
- fMachine.VirtIONetDevice.EthernetDevice:=fEthernetDevice;
+{$ifend}*)
 
  pvApplication.Audio.Lock;
  try
@@ -1580,17 +1584,20 @@ begin
   pvApplication.Audio.Unlock;
  end;
  fMachine.VirtIO9PDevice.FileSystem:=nil;
- begin
+(*begin
   if assigned(fEthernetDevice) then begin
    fEthernetDevice.Shutdown;
   end;
   fMachine.VirtIONetDevice.EthernetDevice:=nil;
+ end;*)
+ if assigned(fMachine.VirtIONetDevice.EthernetDevice) then begin
+  fMachine.VirtIONetDevice.EthernetDevice.Shutdown;
  end;
  FreeAndNil(fMachine);
  FreeAndNil(fMachineConfiguration);
  FreeAndNil(fFUSEFileSystem);
  FreeAndNil(f9PFileSystem);
- FreeAndNil(fEthernetDevice);
+//FreeAndNil(fEthernetDevice);
  fXCacheIntegers:=nil;
  inherited Destroy;
 end;

@@ -277,6 +277,8 @@ float whitecapBreakupLow     = 0.35;  // FBM breakup smoothstep low threshold
 float whitecapBreakupHigh    = 0.75;  // FBM breakup smoothstep high threshold
 float shoreFoamBreakupLow    = 0.35;  // shore foam FBM breakup smoothstep low threshold
 float shoreFoamBreakupHigh   = 0.75;  // shore foam FBM breakup smoothstep high threshold
+float shoreFoamPuddleMinHeight = 0.0005; // puddle suppression: foam fully off below this regional water height
+float shoreFoamPuddleMaxHeight = 0.005;  // puddle suppression: foam fully on above this regional water height
 
 // Fragment-local UV displacement wrapper using global uvWave* uniforms.
 float computeWaveDisplacement(vec2 uv, float time){
@@ -567,12 +569,24 @@ float shoreFoamFBM(vec3 p){
 // Shared shore-foam overlay. Returns aBaseColor unchanged for waterDepth values above the foam
 // range or when the foam is disabled; otherwise blends the configured foam color on top, using
 // aPlanetSpacePos as the pattern domain so the foam stays locked to the planet surface.
+// Foam is suppressed in small isolated water bodies (puddles) by sampling the downsampled
+// water minimap to check the regional average water height.
 vec3 applyShoreFoam(vec3 aBaseColor, vec3 aPlanetSpacePos, float aShoreDepth){
   vec3 result = aBaseColor;
   vec4 waterShoreFoam0 = vec4(unpackHalf2x16(planetData.waterShoreFoam.x), unpackHalf2x16(planetData.waterShoreFoam.y));
   vec4 waterShoreFoam1 = vec4(unpackHalf2x16(planetData.waterShoreFoam.z), unpackHalf2x16(planetData.waterShoreFoam.w));
   if(waterShoreFoam1.w > 0.0){
     float shoreMask = 1.0 - smoothstep(waterShoreFoam1.x, waterShoreFoam0.w, aShoreDepth);
+    if(shoreMask > 0.0){
+      // Suppress foam in puddles: sample the downsampled water minimap to get regional average
+      // water height. Puddles have near-zero regional depth everywhere, so shoreMask would
+      // otherwise equal 1.0 across the whole puddle. Scale down to ~0 when the regional
+      // water height is below the puddle threshold.
+      vec2 miniMapUV = octPlanetUnsignedEncode(normalize(aPlanetSpacePos));
+      float regionalWaterHeight = texture(uPlanetTextures[PLANET_TEXTURE_WATERMAP_MINIMAP], miniMapUV).r;
+      float puddleFactor = smoothstep(shoreFoamPuddleMinHeight, shoreFoamPuddleMaxHeight, regionalWaterHeight);
+      shoreMask *= puddleFactor;
+    }
     if(shoreMask > 0.0){
       vec3 foamUV = aPlanetSpacePos * waterShoreFoam1.y;
       float foamPhase = pushConstants.time * waterShoreFoam1.z;
@@ -989,6 +1003,12 @@ void main(){
     vec2 sfb = unpackHalf2x16(planetData.waterShoreFoamExtra.x);
     shoreFoamBreakupLow = sfb.x;
     shoreFoamBreakupHigh = sfb.y;
+  }
+  {
+    // Unpack puddle foam suppression thresholds.
+    vec2 sfp = unpackHalf2x16(planetData.waterShoreFoamExtra.y);
+    shoreFoamPuddleMinHeight = sfp.x;
+    shoreFoamPuddleMaxHeight = sfp.y;
   }
 
 #if defined(TESSELLATION)
