@@ -1,4 +1,4 @@
-(******************************************************************************
+﻿(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.Framework.pas                  *
@@ -11445,7 +11445,11 @@ begin
       (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) then begin
     Target:=fVulkanPresentLastID-fPresentFrameLatency;
     if fBlocking then begin
+{$ifdef Windows}
+     TimeOut:=1000000000; // one second for to avoid deadlock issue with nvidia
+{$else}
      TimeOut:=High(TpvUInt64);
+{$endif}
     end else begin
      TimeOut:=1; // one nanosecond
     end;
@@ -11470,7 +11474,15 @@ begin
      end;
      VK_ERROR_OUT_OF_DATE_KHR,
      VK_TIMEOUT:begin
-      result:=false;
+      result:=true;
+(*{$ifdef Windows}
+      if IsVisibleToUser then begin
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+       result:=true;
+       exit;
+      end;
+{$endif}
+      result:=false;*)
      end;
      else begin
       Log(LOG_INFO,'TpvApplication.WaitForSwapChainLatency','vkWaitForPresent failed: '+VulkanErrorToString(WaitResult));
