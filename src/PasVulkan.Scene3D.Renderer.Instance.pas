@@ -4805,12 +4805,14 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
    fWaterExternalWaitingOnSemaphore:=nil;
   end;
 
-  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass:=TpvScene3DRendererPassesPlanetWaterCausticsComputePass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass:=TpvScene3DRendererPassesWaterRenderPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass);
+
+  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass:=TpvScene3DRendererPassesPlanetWaterCausticsComputePass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
   TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass);
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass);
 
  end else begin
