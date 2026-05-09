@@ -1866,6 +1866,13 @@ procedure TpvPasRISCVEmulatorRenderer.CreateVulkanResources(const aDevice:TpvVul
 var Index:TpvSizeInt;
 begin
  fVulkanDevice:=aDevice;
+{$ifdef PasRISCVVirtIOGPUVulkanVenus}
+ if assigned(fMachineInstance) and
+    assigned(fMachineInstance.Machine) and
+    assigned(fMachineInstance.Machine.VirtIOGPUDevice) then begin
+  fMachineInstance.Machine.VirtIOGPUDevice.SetVulkanDevice(aDevice);
+ end;
+{$endif}
 
  fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(aDevice,
                                                          aDevice.GraphicsQueueFamilyIndex,
@@ -1961,12 +1968,27 @@ begin
  FreeAndNil(fVulkanGraphicsCommandBufferFence);
  FreeAndNil(fVulkanGraphicsCommandBuffer);
  FreeAndNil(fVulkanGraphicsCommandPool);
+{$ifdef PasRISCVVirtIOGPUVulkanVenus}
+ if assigned(fMachineInstance) and
+    assigned(fMachineInstance.Machine) and
+    assigned(fMachineInstance.Machine.VirtIOGPUDevice) then begin
+  fMachineInstance.Machine.VirtIOGPUDevice.SetVulkanDevice(nil);
+ end;
+{$endif}
  fVulkanDevice:=nil;
 end;
 
 procedure TpvPasRISCVEmulatorRenderer.SetMachineInstance(const aMachineInstance:TpvPasRISCVEmulatorMachineInstance);
 begin
  fMachineInstance:=aMachineInstance;
+{$ifdef PasRISCVVirtIOGPUVulkanVenus}
+ if assigned(fVulkanDevice) and
+    assigned(aMachineInstance) and
+    assigned(aMachineInstance.Machine) and
+    assigned(aMachineInstance.Machine.VirtIOGPUDevice) then begin
+  aMachineInstance.Machine.VirtIOGPUDevice.SetVulkanDevice(fVulkanDevice);
+ end;
+{$endif}
 end;
 
 procedure TpvPasRISCVEmulatorRenderer.ShutdownMachineInstance;
