@@ -141,12 +141,16 @@ type { TpvPasRISCVEmulatorMachineInstance }
       protected
        fMachineConfiguration:TPasRISCV.TConfiguration;
        fMachine:TPasRISCV;
+       fVirtIOGPUVirGL:Boolean;
        procedure ConfigureMachine; virtual; abstract;
        function GetBIOSFileName:TpvRawByteString; virtual; abstract;
        function GetKernelFileName:TpvRawByteString; virtual; abstract;
        function GetINITRDFileName:TpvRawByteString; virtual; abstract;
        function GetVirtIOBlockImageFileName:TpvRawByteString; virtual; abstract;
        function GetNVMeImageFileName:TpvRawByteString; virtual; abstract;
+{$ifdef PasRISCVVirtIOGPUVulkanVenus}
+       procedure OnScanoutUpdate(const aScanoutID:TPasRISCVUInt32;const aPixels:Pointer;const aWidth,aHeight,aStride,aFormat:TPasRISCVUInt32);
+{$endif}
        procedure AfterMachineCreate; virtual;
        procedure PreBoot; virtual;
        procedure ResetFrameBuffer;
@@ -161,6 +165,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        function TransferFrame(const aFrameBuffer:Pointer;out aActive:Boolean):boolean;
        property Machine:TPasRISCV read fMachine;
        property MachineConfiguration:TPasRISCV.TConfiguration read fMachineConfiguration;
+       property VirtIOGPUVirGL:Boolean read fVirtIOGPUVirGL write fVirtIOGPUVirGL;
        property NextFrameTime:TpvHighResolutionTime read fNextFrameTime write fNextFrameTime;
      end;
 
@@ -1473,6 +1478,8 @@ begin
 
  ConfigureMachine;
 
+ fVirtIOGPUVirGL:=fMachineConfiguration.VirtIOGPUVirGL;
+
  fNextFrameTime:=0;
 
  BIOSFile:=GetBIOSFileName;
@@ -1570,6 +1577,11 @@ begin
 
  fMachine.OnReboot:=OnReboot;
  fMachine.OnNewFrame:=OnNewFrame;
+{$ifdef PasRISCVVirtIOGPUVulkanVenus}
+ if assigned(fMachine.VirtIOGPUDevice) then begin
+  fMachine.VirtIOGPUDevice.OnScanoutUpdate:=OnScanoutUpdate;
+ end;
+{$endif}
 
  inherited Create(false);
 end;
@@ -1760,6 +1772,49 @@ begin
   fMachine.FrameBufferDevice.Lock.ReleaseRead;
  end;
 end;
+
+{$ifdef PasRISCVVirtIOGPUVulkanVenus}
+procedure TpvPasRISCVEmulatorMachineInstance.OnScanoutUpdate(const aScanoutID:TPasRISCVUInt32;const aPixels:Pointer;const aWidth,aHeight,aStride,aFormat:TPasRISCVUInt32);
+var LocalReadIndex,LocalWriteIndex:TpvInt32;
+    FrameBufferItem:PFrameBufferItem;
+    SrcRow,DstRow:PByte;
+    Row:TPasRISCVUInt32;
+begin
+ if aScanoutID=0 then begin
+{$if not (defined(CPU386) or defined(CPUx86_64))}
+  TPasMPMemoryBarrier.ReadWrite;
+{$ifend}
+  LocalReadIndex:=fFrameBufferReadIndex;
+{$if defined(CPU386) or defined(CPUx86_64)}
+  TPasMPMemoryBarrier.ReadDependency;
+{$else}
+  TPasMPMemoryBarrier.Read;
+{$ifend}
+  LocalWriteIndex:=(fFrameBufferWriteIndex+1) and 3;
+  if LocalWriteIndex<>LocalReadIndex then begin
+   FrameBufferItem:=@fFrameBufferItems[fFrameBufferWriteIndex];
+   FrameBufferItem^.Width:=aWidth;
+   FrameBufferItem^.Height:=aHeight;
+   FrameBufferItem^.Active:=true;
+   SrcRow:=aPixels;
+   DstRow:=@FrameBufferItem^.Data[0];
+   for Row:=0 to aHeight-1 do begin
+    Move(SrcRow^,DstRow^,aWidth*SizeOf(TPasRISCVUInt32));
+    inc(SrcRow,aStride);
+    inc(DstRow,aWidth*SizeOf(TPasRISCVUInt32));
+   end;
+{$ifdef CPU386}
+   asm
+    mfence
+   end;
+{$else}
+   TPasMPMemoryBarrier.ReadWrite;
+{$endif}
+   fFrameBufferWriteIndex:=LocalWriteIndex;
+  end;
+ end;
+end;
+{$endif}
 
 function TpvPasRISCVEmulatorMachineInstance.TransferFrame(const aFrameBuffer:Pointer;out aActive:Boolean):boolean;
 var LocalReadIndex,LocalWriteIndex,Count,Index:TpvInt32;
