@@ -138,6 +138,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        fFrameBufferReadIndex:TpvInt32;
        fFrameBufferWriteIndex:TpvInt32;
        fXCacheIntegers:TIntegers;
+       fVSockManager:TPasRISCV.TVirtIOVSockDevice.TVSockManager;
       protected
        fMachineConfiguration:TPasRISCV.TConfiguration;
        fMachine:TPasRISCV;
@@ -167,6 +168,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        property MachineConfiguration:TPasRISCV.TConfiguration read fMachineConfiguration;
        property VirtIOGPUVirGL:Boolean read fVirtIOGPUVirGL write fVirtIOGPUVirGL;
        property NextFrameTime:TpvHighResolutionTime read fNextFrameTime write fNextFrameTime;
+       property VSockManager:TPasRISCV.TVirtIOVSockDevice.TVSockManager read fVSockManager;
      end;
 
      { TpvPasRISCVEmulatorRenderer }
@@ -1583,6 +1585,13 @@ begin
  end;
 {$endif}
 
+ if assigned(fMachine.VirtIOVSockDevice) then begin
+  fVSockManager:=TPasRISCV.TVirtIOVSockDevice.TVSockManager.Create(fMachine.VirtIOVSockDevice);
+  fMachine.VirtIOVSockDevice.Manager:=fVSockManager;
+ end else begin
+  fVSockManager:=nil;
+ end;
+
  inherited Create(false);
 end;
 
@@ -1604,6 +1613,15 @@ begin
  end;*)
  if assigned(fMachine.VirtIONetDevice.EthernetDevice) then begin
   fMachine.VirtIONetDevice.EthernetDevice.Shutdown;
+ end;
+ if assigned(fVSockManager) then begin
+  try
+   if assigned(fMachine.VirtIOVSockDevice) then begin
+    fMachine.VirtIOVSockDevice.Manager:=nil;
+   end;
+  finally
+   FreeAndNil(fVSockManager);
+  end;
  end;
  FreeAndNil(fMachine);
  FreeAndNil(fMachineConfiguration);
