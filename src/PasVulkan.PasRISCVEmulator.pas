@@ -129,6 +129,9 @@ type { TpvPasRISCVEmulatorMachineInstance }
             PFrameBufferItem=^TFrameBufferItem;
             TFrameBufferItems=array[0..3] of TFrameBufferItem;
             TIntegers=array of TpvInt32;
+            TVSockTestProtocol=class(TPasRISCV.TVirtIOVSockDevice.TVSockManager.TConnection)
+             public
+            end;
       private
        f9PFileSystem:TPasRISCV9PFileSystem;
        fFUSEFileSystem:TPasRISCVFUSEFileSystem;
