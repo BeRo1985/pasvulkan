@@ -97,6 +97,7 @@ uses SysUtils,
      pthreads,
      {$endif}
      PasVulkan.Types,
+     PasVulkan.Collections,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
@@ -131,7 +132,35 @@ type { TpvPasRISCVEmulatorMachineInstance }
             TIntegers=array of TpvInt32;
             TVSockTestProtocol=class(TPasRISCV.TVirtIOVSockDevice.TVSockManager.TConnection)
              public
+              type TMessageHeader=packed record
+                    Magic:TPasRISCVUInt32;
+                    MsgType:TPasRISCVUInt32;
+                    Length:TPasRISCVUInt32;
+                   end;
+              const MESSAGE_MAGIC=TPasRISCVUInt32($52564d54); // 'RVMT'
+                    MSG_PING=0;
+                    MSG_PONG=1;
+                    MSG_ECHO_REQ=2;
+                    MSG_ECHO_RESP=3;
+                    MSG_INFO_REQ=4;
+                    MSG_INFO_RESP=5;
+                    MSG_DONE=6;
+             private
+              fReceiveBuffer:TPasMPSingleProducerSingleConsumerRingBuffer;
+              fPendingHeader:TMessageHeader;
+              fHasPendingHeader:Boolean;
+             protected
+              procedure OnConnect; override;
+              procedure OnReceive(const aData:Pointer;const aSize:TPasRISCVUInt32;const aFlags:TPasRISCVUInt32); override;
+              procedure OnDisconnect; override;
+             public
+              constructor Create(const aManager:TPasRISCV.TVirtIOVSockDevice.TVSockManager;const aTag:Pointer;const aLocalPort,aRemotePort:TPasRISCVUInt32;const aRemoteCID:TPasRISCVUInt64;const aSocketType:TPasRISCVUInt16); override;
+              destructor Destroy; override;
+              procedure SendMessage(const aMsgType:TPasRISCVUInt32;const aData:Pointer;const aSize:TPasRISCVUInt32);
+              procedure ProcessMessage(const aMsgType:TPasRISCVUInt32;const aData:Pointer;const aSize:TPasRISCVUInt32);
+              procedure ProcessMessages;
             end;
+            TVSockTestProtocolList=TpvObjectGenericList<TVSockTestProtocol>;
       private
        f9PFileSystem:TPasRISCV9PFileSystem;
        fFUSEFileSystem:TPasRISCVFUSEFileSystem;
@@ -142,6 +171,8 @@ type { TpvPasRISCVEmulatorMachineInstance }
        fFrameBufferWriteIndex:TpvInt32;
        fXCacheIntegers:TIntegers;
        fVSockManager:TPasRISCV.TVirtIOVSockDevice.TVSockManager;
+       fActiveTestConnections:TVSockTestProtocolList;
+       fActiveTestConnectionsLock:TPasMPMultipleReaderSingleWriterLock;
       protected
        fMachineConfiguration:TPasRISCV.TConfiguration;
        fMachine:TPasRISCV;
@@ -172,6 +203,8 @@ type { TpvPasRISCVEmulatorMachineInstance }
        property VirtIOGPUVirGL:Boolean read fVirtIOGPUVirGL write fVirtIOGPUVirGL;
        property NextFrameTime:TpvHighResolutionTime read fNextFrameTime write fNextFrameTime;
        property VSockManager:TPasRISCV.TVirtIOVSockDevice.TVSockManager read fVSockManager;
+       property ActiveTestConnections:TVSockTestProtocolList read fActiveTestConnections;
+       property ActiveTestConnectionsLock:TPasMPMultipleReaderSingleWriterLock read fActiveTestConnectionsLock;
      end;
 
      { TpvPasRISCVEmulatorRenderer }
@@ -1470,6 +1503,114 @@ begin
  result.a:=1.0;
 end;
 
+{ TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol }
+
+constructor TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.Create(const aManager:TPasRISCV.TVirtIOVSockDevice.TVSockManager;const aTag:Pointer;const aLocalPort,aRemotePort:TPasRISCVUInt32;const aRemoteCID:TPasRISCVUInt64;const aSocketType:TPasRISCVUInt16);
+begin
+ inherited Create(aManager,aTag,aLocalPort,aRemotePort,aRemoteCID,aSocketType);
+ fReceiveBuffer:=TPasMPSingleProducerSingleConsumerRingBuffer.Create(1 shl 20);
+ fHasPendingHeader:=false;
+ FillChar(fPendingHeader,SizeOf(fPendingHeader),#0);
+end;
+
+destructor TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.Destroy;
+begin
+ FreeAndNil(fReceiveBuffer);
+ inherited Destroy;
+end;
+
+procedure TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.OnConnect;
+begin
+ TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.AcquireWrite;
+ try
+  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnections.Add(self);
+ finally
+  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.ReleaseWrite;
+ end;
+ Accept;
+end;
+
+procedure TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.OnReceive(const aData:Pointer;const aSize:TPasRISCVUInt32;const aFlags:TPasRISCVUInt32);
+begin
+ fReceiveBuffer.WriteAsMuchAsPossible(aData,aSize);
+end;
+
+procedure TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.OnDisconnect;
+begin
+ TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.AcquireWrite;
+ try
+  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnections.Remove(self);
+ finally
+  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.ReleaseWrite;
+ end;
+end;
+
+procedure TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.SendMessage(const aMsgType:TPasRISCVUInt32;const aData:Pointer;const aSize:TPasRISCVUInt32);
+var Header:TMessageHeader;
+begin
+ Header.Magic:=MESSAGE_MAGIC;
+ Header.MsgType:=aMsgType;
+ Header.Length:=aSize;
+ SendData(@Header,SizeOf(Header));
+ if aSize>0 then begin
+  SendData(aData,aSize);
+ end;
+end;
+
+procedure TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.ProcessMessage(const aMsgType:TPasRISCVUInt32;const aData:Pointer;const aSize:TPasRISCVUInt32);
+begin
+ case aMsgType of
+  MSG_PING:begin
+   SendMessage(MSG_PONG,nil,0);
+  end;
+  MSG_ECHO_REQ:begin
+   SendMessage(MSG_ECHO_RESP,aData,aSize);
+  end;
+  MSG_INFO_REQ:begin
+   SendMessage(MSG_INFO_RESP,nil,0);
+  end;
+  MSG_DONE:begin
+   Close;
+  end;
+  else begin
+  end;
+ end;
+end;
+
+procedure TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.ProcessMessages;
+var PayloadBuffer:array of TPasRISCVUInt8;
+    PayloadSize:TPasRISCVUInt32;
+begin
+ repeat
+  if not fHasPendingHeader then begin
+   if fReceiveBuffer.AvailableForRead<SizeOf(TMessageHeader) then begin
+    break;
+   end;
+   fReceiveBuffer.Read(@fPendingHeader,SizeOf(TMessageHeader));
+   if fPendingHeader.Magic<>MESSAGE_MAGIC then begin
+    Close;
+    break;
+   end;
+   fHasPendingHeader:=true;
+  end;
+  PayloadSize:=fPendingHeader.Length;
+  if fReceiveBuffer.AvailableForRead<TPasMPInt32(PayloadSize) then begin
+   break;
+  end;
+  PayloadBuffer:=nil;
+  if PayloadSize>0 then begin
+   SetLength(PayloadBuffer,PayloadSize);
+   fReceiveBuffer.Read(@PayloadBuffer[0],PayloadSize);
+  end;
+  fHasPendingHeader:=false;
+  if PayloadSize>0 then begin
+   ProcessMessage(fPendingHeader.MsgType,@PayloadBuffer[0],PayloadSize);
+  end else begin
+   ProcessMessage(fPendingHeader.MsgType,nil,0);
+  end;
+ until false;
+end;
+
 { TpvPasRISCVEmulatorMachineInstance }
 
 constructor TpvPasRISCVEmulatorMachineInstance.Create;
@@ -1588,8 +1729,13 @@ begin
  end;
 {$endif}
 
+ fActiveTestConnections:=TVSockTestProtocolList.Create(true);
+
+ fActiveTestConnectionsLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+
  if assigned(fMachine.VirtIOVSockDevice) then begin
   fVSockManager:=TPasRISCV.TVirtIOVSockDevice.TVSockManager.Create(fMachine.VirtIOVSockDevice);
+  fVSockManager.RegisterPort(1337,TVSockTestProtocol,self);
   fMachine.VirtIOVSockDevice.Manager:=fVSockManager;
  end else begin
   fVSockManager:=nil;
@@ -1626,6 +1772,8 @@ begin
    FreeAndNil(fVSockManager);
   end;
  end;
+ FreeAndNil(fActiveTestConnections);
+ FreeAndNil(fActiveTestConnectionsLock);
  FreeAndNil(fMachine);
  FreeAndNil(fMachineConfiguration);
  FreeAndNil(fFUSEFileSystem);
@@ -2592,6 +2740,7 @@ end;
 procedure TpvPasRISCVEmulatorRenderer.UpdateEmulatorState;
 var IncomingChars:TpvInt32;
     Updated,FrameBufferActive,FrameBufferGenerationDirty:boolean;
+    VSockTestProtocol:TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol;
 begin
 
  if assigned(fMachineInstance) and
@@ -2655,6 +2804,18 @@ begin
    fFrameBuffers[pvApplication.UpdateInFlightFrameIndex]:=fGraphicsFrameBuffer;
   end;
   inc(fContentGeneration);
+ end;
+
+ if assigned(fMachineInstance.fActiveTestConnectionsLock) and
+    assigned(fMachineInstance.fActiveTestConnections) then begin
+  fMachineInstance.fActiveTestConnectionsLock.AcquireRead;
+  try
+   for VSockTestProtocol in fMachineInstance.fActiveTestConnections do begin
+    VSockTestProtocol.ProcessMessages;
+   end;
+  finally
+   fMachineInstance.fActiveTestConnectionsLock.ReleaseRead;
+  end;
  end;
 
 end;
