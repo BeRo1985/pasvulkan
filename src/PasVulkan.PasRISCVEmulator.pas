@@ -1508,7 +1508,7 @@ end;
 constructor TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.Create(const aManager:TPasRISCV.TVirtIOVSockDevice.TVSockManager;const aTag:Pointer;const aLocalPort,aRemotePort:TPasRISCVUInt32;const aRemoteCID:TPasRISCVUInt64;const aSocketType:TPasRISCVUInt16);
 begin
  inherited Create(aManager,aTag,aLocalPort,aRemotePort,aRemoteCID,aSocketType);
- fReceiveBuffer:=TPasMPSingleProducerSingleConsumerRingBuffer.Create(1 shl 20);
+ fReceiveBuffer:=TPasMPSingleProducerSingleConsumerRingBuffer.Create(4 shl 20);
  fHasPendingHeader:=false;
  FillChar(fPendingHeader,SizeOf(fPendingHeader),#0);
 end;
@@ -1729,7 +1729,7 @@ begin
  end;
 {$endif}
 
- fActiveTestConnections:=TVSockTestProtocolList.Create(true);
+ fActiveTestConnections:=TVSockTestProtocolList.Create(false);
 
  fActiveTestConnectionsLock:=TPasMPMultipleReaderSingleWriterLock.Create;
 
