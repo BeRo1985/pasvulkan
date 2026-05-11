@@ -1578,7 +1578,7 @@ begin
 end;
 
 procedure TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.ProcessMessages;
-var PayloadBuffer:array of TPasRISCVUInt8;
+var PayloadBuffer:TPasRISCVUInt8DynamicArray;
     PayloadSize:TPasRISCVUInt32;
 begin
  repeat
