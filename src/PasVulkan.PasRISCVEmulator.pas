@@ -2738,7 +2738,8 @@ if fReady and not fSerialConsoleMode then begin
 end;
 
 procedure TpvPasRISCVEmulatorRenderer.UpdateEmulatorState;
-var IncomingChars:TpvInt32;
+var Index:TpvSizeInt;
+    IncomingChars:TpvInt32;
     Updated,FrameBufferActive,FrameBufferGenerationDirty:boolean;
     VSockTestProtocol:TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol;
 begin
@@ -2810,8 +2811,11 @@ begin
     assigned(fMachineInstance.fActiveTestConnections) then begin
   fMachineInstance.fActiveTestConnectionsLock.Acquire;
   try
-   for VSockTestProtocol in fMachineInstance.fActiveTestConnections do begin
+   Index:=0;
+   while Index<fMachineInstance.fActiveTestConnections.Count do begin
+    VSockTestProtocol:=fMachineInstance.fActiveTestConnections[Index];
     VSockTestProtocol.ProcessMessages;
+    inc(Index);
    end;
   finally
    fMachineInstance.fActiveTestConnectionsLock.Release;
