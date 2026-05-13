@@ -2811,11 +2811,11 @@ begin
     assigned(fMachineInstance.fActiveTestConnections) then begin
   fMachineInstance.fActiveTestConnectionsLock.Acquire;
   try
-   Index:=0;
-   while Index<fMachineInstance.fActiveTestConnections.Count do begin
+   Index:=fMachineInstance.fActiveTestConnections.Count;
+   while Index>0 do begin
+    dec(Index);
     VSockTestProtocol:=fMachineInstance.fActiveTestConnections[Index];
     VSockTestProtocol.ProcessMessages;
-    inc(Index);
    end;
   finally
    fMachineInstance.fActiveTestConnectionsLock.Release;
