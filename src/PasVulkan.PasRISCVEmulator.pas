@@ -172,7 +172,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        fXCacheIntegers:TIntegers;
        fVSockManager:TPasRISCV.TVirtIOVSockDevice.TVSockManager;
        fActiveTestConnections:TVSockTestProtocolList;
-       fActiveTestConnectionsLock:TPasMPMultipleReaderSingleWriterLock;
+       fActiveTestConnectionsLock:TPasMPCriticalSection;
       protected
        fMachineConfiguration:TPasRISCV.TConfiguration;
        fMachine:TPasRISCV;
@@ -204,7 +204,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        property NextFrameTime:TpvHighResolutionTime read fNextFrameTime write fNextFrameTime;
        property VSockManager:TPasRISCV.TVirtIOVSockDevice.TVSockManager read fVSockManager;
        property ActiveTestConnections:TVSockTestProtocolList read fActiveTestConnections;
-       property ActiveTestConnectionsLock:TPasMPMultipleReaderSingleWriterLock read fActiveTestConnectionsLock;
+       property ActiveTestConnectionsLock:TPasMPCriticalSection read fActiveTestConnectionsLock;
      end;
 
      { TpvPasRISCVEmulatorRenderer }
@@ -1521,11 +1521,11 @@ end;
 
 procedure TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.OnConnect;
 begin
- TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.AcquireWrite;
+ TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.Acquire;
  try
   TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnections.Add(self);
  finally
-  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.ReleaseWrite;
+  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.Release;
  end;
  Accept;
 end;
@@ -1537,11 +1537,11 @@ end;
 
 procedure TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.OnDisconnect;
 begin
- TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.AcquireWrite;
+ TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.Acquire;
  try
   TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnections.Remove(self);
  finally
-  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.ReleaseWrite;
+  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.Release;
  end;
 end;
 
@@ -1731,7 +1731,7 @@ begin
 
  fActiveTestConnections:=TVSockTestProtocolList.Create(false);
 
- fActiveTestConnectionsLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+ fActiveTestConnectionsLock:=TPasMPCriticalSection.Create;
 
  if assigned(fMachine.VirtIOVSockDevice) then begin
   fVSockManager:=TPasRISCV.TVirtIOVSockDevice.TVSockManager.Create(fMachine.VirtIOVSockDevice);
@@ -2808,13 +2808,13 @@ begin
 
  if assigned(fMachineInstance.fActiveTestConnectionsLock) and
     assigned(fMachineInstance.fActiveTestConnections) then begin
-  fMachineInstance.fActiveTestConnectionsLock.AcquireRead;
+  fMachineInstance.fActiveTestConnectionsLock.Acquire;
   try
    for VSockTestProtocol in fMachineInstance.fActiveTestConnections do begin
     VSockTestProtocol.ProcessMessages;
    end;
   finally
-   fMachineInstance.fActiveTestConnectionsLock.ReleaseRead;
+   fMachineInstance.fActiveTestConnectionsLock.Release;
   end;
  end;
 
