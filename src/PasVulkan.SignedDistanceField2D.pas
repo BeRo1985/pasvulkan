@@ -1397,11 +1397,11 @@ begin
    r.NearEdge^.DistanceToPseudoDistance(r.MinDistance,p,r.NearParam);
   end;
 
-  if assigned(r.NearEdge) then begin
+  if assigned(g.NearEdge) then begin
    g.NearEdge^.DistanceToPseudoDistance(g.MinDistance,p,g.NearParam);
   end;
 
-  if assigned(r.NearEdge) then begin
+  if assigned(b.NearEdge) then begin
    b.NearEdge^.DistanceToPseudoDistance(b.MinDistance,p,b.NearParam);
   end;
 
@@ -1425,11 +1425,11 @@ begin
   sr.NearEdge^.DistanceToPseudoDistance(sr.MinDistance,p,sr.NearParam);
  end;
 
- if assigned(r.NearEdge) then begin
+ if assigned(sg.NearEdge) then begin
   sg.NearEdge^.DistanceToPseudoDistance(sg.MinDistance,p,sg.NearParam);
  end;
 
- if assigned(r.NearEdge) then begin
+ if assigned(sb.NearEdge) then begin
   sb.NearEdge^.DistanceToPseudoDistance(sb.MinDistance,p,sb.NearParam);
  end;
 
