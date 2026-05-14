@@ -257,6 +257,12 @@ const pvTTF_PID_Apple=0;
       pvTTF_TT_ERR_UnknownEncodingFormat=12;
       pvTTF_TT_ERR_OutOfBounds=13;
 
+      pvTTF_Axis_wght=TpvUInt32($77676874);
+      pvTTF_Axis_wdth=TpvUInt32($77647468);
+      pvTTF_Axis_ital=TpvUInt32($6974616c);
+      pvTTF_Axis_slnt=TpvUInt32($736c6e74);
+      pvTTF_Axis_opsz=TpvUInt32($6f70737a);
+
       pvTTF_LineCapMode_BUTT=0;
       pvTTF_LineCapMode_SQUARE=1;
       pvTTF_LineCapMode_ROUND=2;
@@ -736,6 +742,39 @@ type EpvTrueTypeFont=class(Exception);
      PpvTrueTypeFontSignedDistanceFieldJobArray=^TpvTrueTypeFontSignedDistanceFieldJobArray;
      TpvTrueTypeFontSignedDistanceFieldJobArray=array[0..65535] of TpvTrueTypeFontSignedDistanceFieldJob;
 
+     TpvTrueTypeFontVariationAxis=record
+      Tag:TpvUInt32;
+      MinValue:TpvDouble;
+      DefaultValue:TpvDouble;
+      MaxValue:TpvDouble;
+     end;
+     PPvTrueTypeFontVariationAxis=^TpvTrueTypeFontVariationAxis;
+     TpvTrueTypeFontVariationAxisArray=array of TpvTrueTypeFontVariationAxis;
+
+     TpvTrueTypeFontAvarSegment=record
+      FromCoord:TpvDouble;
+      ToCoord:TpvDouble;
+     end;
+     PpvTrueTypeFontAvarSegment=^TpvTrueTypeFontAvarSegment;
+     TpvTrueTypeFontAvarSegments=array of TpvTrueTypeFontAvarSegment;
+     TpvTrueTypeFontAvarSegmentsArray=array of TpvTrueTypeFontAvarSegments;
+
+     TpvTrueTypeFontIVSAxisRegion=record
+      StartCoord:TpvDouble;
+      PeakCoord:TpvDouble;
+      EndCoord:TpvDouble;
+     end;
+     PpvTrueTypeFontIVSAxisRegion=^TpvTrueTypeFontIVSAxisRegion;
+     TpvTrueTypeFontIVSRegion=array of TpvTrueTypeFontIVSAxisRegion;
+     TpvTrueTypeFontIVSRegionArray=array of TpvTrueTypeFontIVSRegion;
+
+     TpvTrueTypeFontIVSItemData=record
+      RegionIndices:array of TpvInt32;
+      Deltas:array of array of TpvInt32;
+     end;
+     PpvTrueTypeFontIVSItemData=^TpvTrueTypeFontIVSItemData;
+     TpvTrueTypeFontIVSItemDataArray=array of TpvTrueTypeFontIVSItemData;
+
      TpvTrueTypeFont=class
       private
        fGlyphBuffer:TpvTrueTypeFontGlyphBuffer;
@@ -757,6 +796,16 @@ type EpvTrueTypeFont=class(Exception);
        fLastError:TpvUInt16;
        fPostScriptFlavored:boolean;
        fIsCFF2:boolean;
+       fVariationAxisCount:TpvInt32;
+       fVariationAxes:TpvTrueTypeFontVariationAxisArray;
+       fCFF2DesignCoords:TpvDoubleDynamicArray;
+       fCFF2NormalizedCoords:TpvDoubleDynamicArray;
+       fVariationAvarSegments:TpvTrueTypeFontAvarSegmentsArray;
+       fCFF2IVSBase:TpvUInt32;
+       fCFF2IVSRegions:TpvTrueTypeFontIVSRegionArray;
+       fCFF2IVSItemData:TpvTrueTypeFontIVSItemDataArray;
+       fCFF2RegionScalars:TpvDoubleDynamicArray;
+       fCFF2ActiveVSIndex:TpvInt32;
        fIndexToLocationFormat:TpvInt16;
        fStringCopyright:TpvRawByteString;
        fStringFamily:TpvRawByteString;
@@ -815,6 +864,10 @@ type EpvTrueTypeFont=class(Exception);
        function LoadNAME:TpvInt32;
        function LoadCFF:TpvInt32;
        function LoadCFF2:TpvInt32;
+       function LoadFVAR:TpvInt32;
+       function LoadAVAR:TpvInt32;
+       function NormalizeAxisValue(const aAxisIndex:TpvInt32;const aValue:TpvDouble):TpvDouble;
+       procedure ComputeCFF2RegionScalars;
        function LoadLOCA:TpvInt32;
        function LoadGLYF:TpvInt32;
        function LoadHHEA:TpvInt32;
@@ -869,6 +922,9 @@ type EpvTrueTypeFont=class(Exception);
                                                                      const aTextureArrayWidth:TpvInt32;
                                                                      const aTextureArrayHeight:TpvInt32;
                                                                      const aTextureArrayDepth:TpvInt32);
+       function GetVariationAxisIndex(const aTag:TpvUInt32):TpvInt32;
+       procedure SetVariationAxis(const aTag:TpvUInt32;const aValue:TpvDouble);
+       procedure ResetVariationAxesToDefault;
        property TargetPPI:TpvInt32 read fTargetPPI;
        property Glyphs:TpvTrueTypeFontGlyphs read fGlyphs;
        property CountGlyphs:TpvInt32 read fCountGlyphs;
@@ -902,6 +958,7 @@ type EpvTrueTypeFont=class(Exception);
        property Version:TpvRawByteString read fStringVersion;
        property PostScript:TpvRawByteString read fStringPostScript;
        property Trademark:TpvRawByteString read fStringTrademark;
+       property VariationAxisCount:TpvInt32 read fVariationAxisCount;
      end;
 
 implementation
@@ -5380,6 +5437,9 @@ begin
  fHinting:=false;
  fByteCodeInterpreter:=nil;
  fCFFCodePointToGlyphIndexTable:=nil;
+ fVariationAxisCount:=0;
+ fIsCFF2:=false;
+ fCFF2ActiveVSIndex:=0;
  begin
   SetLength(fGASPRanges,4);
   begin
@@ -5449,6 +5509,10 @@ begin
 
       fPostScriptFlavored:=true;
       fIsCFF2:=true;
+
+      LoadFVAR;
+      LoadAVAR;
+      ResetVariationAxesToDefault;
 
      end else begin
 
@@ -5584,6 +5648,13 @@ begin
  SetLength(fGlyphBuffer.InFontUnitsPoints,0);
  SetLength(fGlyphBuffer.EndPointIndices,0);
  SetLength(fCFFCodePointToGlyphIndexTable,0);
+ SetLength(fVariationAxes,0);
+ SetLength(fCFF2DesignCoords,0);
+ SetLength(fCFF2NormalizedCoords,0);
+ SetLength(fVariationAvarSegments,0);
+ SetLength(fCFF2IVSRegions,0);
+ SetLength(fCFF2IVSItemData,0);
+ SetLength(fCFF2RegionScalars,0);
  inherited Destroy;
 end;
 
@@ -6284,7 +6355,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
        Operands:=nil;
        CountOperands:=0;
       end;
-      0..11,13..21:begin
+      0..11,13..27:begin
        SetLength(Operands,CountOperands);
        if length(DictEntryArray)<(CountDictEntries+1) then begin
         SetLength(DictEntryArray,(CountDictEntries+1)*2);
@@ -7578,6 +7649,7 @@ const CFFScaleFactor=4.0;
       TopDictPrivateOp=18;
       TopDictFontMatrixOp=1207;
       TopDictFDArrayOp=1236;
+      TopDictItemVariationStoreOp=24;
       PrivateDictSubRoutineOp=19;
       PrivateDictDefaultWidthXOp=20;
       PrivateDictNominalWidthXOp=21;
@@ -7613,6 +7685,7 @@ type PIndexDataItem=^TIndexDataItem;
 var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     HeaderFormatMajor,HeaderFormatMinor,HeaderSize,TopDictLength,
     i,j,TopDictCharStrings,TopDictFDArray,
+    TopDictItemVariationStore,
     PrivateDictSubRoutine,PrivateDictDefaultWidthX,PrivateDictNominalWidthX,
     FDPrivateSize,FDPrivateOffset:TpvInt32;
     TopDictFontBBox:array[0..3] of TpvInt32;
@@ -7836,6 +7909,126 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
   end;
   result:=pvTTF_TT_ERR_NoError;
  end;
+ function LoadIVS(const aIVSOffset:TpvUInt32):TpvInt32;
+ var IVSPosition,IVSFormat,VarRegionListOffset,ItemVarDataCount:TpvUInt32;
+     IVSAxisCount,IVSRegionCount,IVSItemCount,IVSWordDeltaCount,IVSRegionIndexCount:TpvUInt32;
+     i,j,k,d:TpvInt32;
+     IVSItemOffsets:array of TpvUInt32;
+     VarRegionListPos,ItemDataPos:TpvUInt32;
+     Start,Peak,Finish:TpvDouble;
+     LongWordFlag:boolean;
+     Delta:TpvInt32;
+ begin
+
+  result:=pvTTF_TT_ERR_NoError;
+
+  fCFF2IVSBase:=aIVSOffset;
+
+  if (TpvInt32(aIVSOffset)+3)>=TpvInt32(length(fFontData)) then begin
+   result:=pvTTF_TT_ERR_CorruptFile;
+   exit;
+  end;
+
+  IVSPosition:=aIVSOffset;
+
+  IVSFormat:=ToWORD(fFontData[IVSPosition],fFontData[IVSPosition+1]);
+  inc(IVSPosition,2);
+
+  if IVSFormat<>1 then begin
+   result:=pvTTF_TT_ERR_InvalidFile;
+   exit;
+  end;
+
+  VarRegionListOffset:=ToLONGWORD(fFontData[IVSPosition],fFontData[IVSPosition+1],fFontData[IVSPosition+2],fFontData[IVSPosition+3]);
+  inc(IVSPosition,4);
+
+  ItemVarDataCount:=ToWORD(fFontData[IVSPosition],fFontData[IVSPosition+1]);
+  inc(IVSPosition,2);
+
+  SetLength(IVSItemOffsets,ItemVarDataCount);
+  for i:=0 to TpvInt32(ItemVarDataCount)-1 do begin
+   IVSItemOffsets[i]:=ToLONGWORD(fFontData[IVSPosition],fFontData[IVSPosition+1],fFontData[IVSPosition+2],fFontData[IVSPosition+3]);
+   inc(IVSPosition,4);
+  end;
+
+  // Parse VariationRegionList
+  VarRegionListPos:=aIVSOffset+VarRegionListOffset;
+  IVSAxisCount:=ToWORD(fFontData[VarRegionListPos],fFontData[VarRegionListPos+1]);
+  inc(VarRegionListPos,2);
+  IVSRegionCount:=ToWORD(fFontData[VarRegionListPos],fFontData[VarRegionListPos+1]);
+  inc(VarRegionListPos,2);
+  SetLength(fCFF2IVSRegions,IVSRegionCount);
+  for i:=0 to TpvInt32(IVSRegionCount)-1 do begin
+   SetLength(fCFF2IVSRegions[i],IVSAxisCount);
+   for j:=0 to TpvInt32(IVSAxisCount)-1 do begin
+    Start:=ToSMALLINT(fFontData[VarRegionListPos],fFontData[VarRegionListPos+1])/16384.0;
+    inc(VarRegionListPos,2);
+    Peak:=ToSMALLINT(fFontData[VarRegionListPos],fFontData[VarRegionListPos+1])/16384.0;
+    inc(VarRegionListPos,2);
+    Finish:=ToSMALLINT(fFontData[VarRegionListPos],fFontData[VarRegionListPos+1])/16384.0;
+    inc(VarRegionListPos,2);
+    fCFF2IVSRegions[i][j].StartCoord:=Start;
+    fCFF2IVSRegions[i][j].PeakCoord:=Peak;
+    fCFF2IVSRegions[i][j].EndCoord:=Finish;
+   end;
+  end;
+
+  // Parse ItemVariationData subtables
+  SetLength(fCFF2IVSItemData,ItemVarDataCount);
+  for i:=0 to TpvInt32(ItemVarDataCount)-1 do begin
+
+   ItemDataPos:=aIVSOffset+IVSItemOffsets[i];
+
+   IVSItemCount:=ToWORD(fFontData[ItemDataPos],fFontData[ItemDataPos+1]);
+   inc(ItemDataPos,2);
+
+   IVSWordDeltaCount:=ToWORD(fFontData[ItemDataPos],fFontData[ItemDataPos+1]);
+   inc(ItemDataPos,2);
+
+   LongWordFlag:=(IVSWordDeltaCount and $8000)<>0;
+
+   IVSWordDeltaCount:=IVSWordDeltaCount and $7FFF;
+
+   IVSRegionIndexCount:=ToWORD(fFontData[ItemDataPos],fFontData[ItemDataPos+1]);
+   inc(ItemDataPos,2);
+
+   SetLength(fCFF2IVSItemData[i].RegionIndices,IVSRegionIndexCount);
+   for j:=0 to TpvInt32(IVSRegionIndexCount)-1 do begin
+    fCFF2IVSItemData[i].RegionIndices[j]:=ToWORD(fFontData[ItemDataPos],fFontData[ItemDataPos+1]);
+    inc(ItemDataPos,2);
+   end;
+
+   // Parse delta rows for each item
+   SetLength(fCFF2IVSItemData[i].Deltas,IVSItemCount);
+   for j:=0 to TpvInt32(IVSItemCount)-1 do begin
+    SetLength(fCFF2IVSItemData[i].Deltas[j],IVSRegionIndexCount);
+    for k:=0 to TpvInt32(IVSRegionIndexCount)-1 do begin
+     if LongWordFlag then begin
+      if k<TpvInt32(IVSWordDeltaCount) then begin
+       Delta:=ToLONGINT(fFontData[ItemDataPos],fFontData[ItemDataPos+1],fFontData[ItemDataPos+2],fFontData[ItemDataPos+3]);
+       inc(ItemDataPos,4);
+      end else begin
+       Delta:=ToSMALLINT(fFontData[ItemDataPos],fFontData[ItemDataPos+1]);
+       inc(ItemDataPos,2);
+      end;
+     end else begin
+      if k<TpvInt32(IVSWordDeltaCount) then begin
+       Delta:=ToSMALLINT(fFontData[ItemDataPos],fFontData[ItemDataPos+1]);
+       inc(ItemDataPos,2);
+      end else begin
+       Delta:=TpvInt8(fFontData[ItemDataPos]);
+       inc(ItemDataPos,1);
+      end;
+     end;
+     fCFF2IVSItemData[i].Deltas[j][k]:=Delta;
+    end;
+   end;
+
+  end;
+
+  IVSItemOffsets:=nil;
+
+ end;
  function LoadCFF2Glyph(var Glyph:TpvTrueTypeFontGlyph;const GlyphPosition,GlyphSize:TpvInt32):TpvInt32;
  type TStack=array of TpvDouble;
  var v,StackSize,CountStems:TpvInt32;
@@ -7959,8 +8152,9 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
    Command^.CommandType:=TpvTrueTypeFontPolygonCommandType.Close;
   end;
   function Execute(const CodePosition,CodeSize:TpvInt32):TpvInt32;
-  var Position,UntilExcludingPosition,CodeIndex:TpvInt32;
-      dx1,dy1,dx2,dy2,dx3,dy3,dx4,dy4,dx5,dy5,dx6,dy6,dx,dy:TpvDouble;
+  var Position,UntilExcludingPosition,CodeIndex,
+      BlendN,BaseIndex,RegionIndex,RegionCount,BlendGlobalRegionIndex:TpvInt32;
+      dx1,dy1,dx2,dy2,dx3,dy3,dx4,dy4,dx5,dy5,dx6,dy6,dx,dy,Delta:TpvDouble;
   begin
    Position:=CodePosition;
    UntilExcludingPosition:=CodePosition+CodeSize;
@@ -8182,13 +8376,26 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
       ClosePath;
      end;
      15:begin
-      // vsindex (CFF2): discard the argument
+      // vsindex (CFF2): set active variation index
+      fCFF2ActiveVSIndex:=trunc(StackPop);
       StackSize:=0;
      end;
      16:begin
-      // blend (CFF2): pop N, keep N base values, discard deltas
-      CodeIndex:=trunc(StackPop);
-      StackSize:=CodeIndex;
+      // blend (CFF2): apply variation deltas to N base values
+      BlendN:=trunc(StackPop);
+      if (fCFF2ActiveVSIndex>=0) and (fCFF2ActiveVSIndex<length(fCFF2IVSItemData)) then begin
+       RegionCount:=length(fCFF2IVSItemData[fCFF2ActiveVSIndex].RegionIndices);
+       for BaseIndex:=0 to BlendN-1 do begin
+        for RegionIndex:=0 to RegionCount-1 do begin
+         BlendGlobalRegionIndex:=fCFF2IVSItemData[fCFF2ActiveVSIndex].RegionIndices[RegionIndex];
+         if (BlendGlobalRegionIndex>=0) and (BlendGlobalRegionIndex<length(fCFF2RegionScalars)) then begin
+          Delta:=Stack[BlendN+BaseIndex*RegionCount+RegionIndex]*fCFF2RegionScalars[BlendGlobalRegionIndex];
+          Stack[BaseIndex]:=Stack[BaseIndex]+Delta;
+         end;
+        end;
+       end;
+      end;
+      StackSize:=BlendN;
      end;
      18:begin
       // hstemhm
@@ -8402,6 +8609,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
   try
    StackSize:=0;
    CountStems:=0;
+   fCFF2ActiveVSIndex:=0;
    x:=0.0;
    y:=0.0;
    Width:=PrivateDictDefaultWidthX;
@@ -8456,6 +8664,7 @@ begin
      TopDictFontMatrix[5]:=0.0;
      TopDictCharStrings:=0;
      TopDictFDArray:=0;
+     TopDictItemVariationStore:=0;
      PrivateDictSubRoutine:=0;
      PrivateDictDefaultWidthX:=0;
      PrivateDictNominalWidthX:=0;
@@ -8557,6 +8766,15 @@ begin
         fMinY:=TopDictFontBBox[1];
         fMaxX:=TopDictFontBBox[2];
         fMaxY:=TopDictFontBBox[3];
+       end;
+       TopDictItemVariationStoreOp:begin
+        if length(DictEntry^.Operands)>=1 then begin
+         if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
+          TopDictItemVariationStore:=DictEntry^.Operands[0].IntegerValue;
+         end else begin
+          TopDictItemVariationStore:=trunc(DictEntry^.Operands[0].FloatValue);
+         end;
+        end;
        end;
        TopDictFontMatrixOp:begin
         if length(DictEntry^.Operands)<6 then begin
@@ -8676,6 +8894,13 @@ begin
       end;
      end;
 
+     if TopDictItemVariationStore>0 then begin
+      result:=LoadIVS(TpvUInt32(TpvInt32(Offset)+TopDictItemVariationStore));
+      if result<>pvTTF_TT_ERR_NoError then begin
+       result:=pvTTF_TT_ERR_NoError;
+      end;
+     end;
+
      if TopDictCharStrings>0 then begin
       Position:=TpvInt32(Offset)+TopDictCharStrings;
       result:=LoadIndex2(TopDictCharStringsIndexData);
@@ -8745,6 +8970,291 @@ begin
   end;
   result:=pvTTF_TT_ERR_NoError;
  end;
+end;
+
+function TpvTrueTypeFont.NormalizeAxisValue(const aAxisIndex:TpvInt32;const aValue:TpvDouble):TpvDouble;
+var MinV,DefV,MaxV,Normalized:TpvDouble;
+    AvarF0,AvarF1,AvarT0,AvarT1:TpvDouble;
+    i:TpvInt32;
+    SegCount:TpvInt32;
+begin
+
+ MinV:=fVariationAxes[aAxisIndex].MinValue;
+ DefV:=fVariationAxes[aAxisIndex].DefaultValue;
+ MaxV:=fVariationAxes[aAxisIndex].MaxValue;
+
+ if aValue<=DefV then begin
+
+  if (DefV-MinV)>0 then begin
+   Normalized:=-(aValue-DefV)/(DefV-MinV);
+  end else begin
+   Normalized:=0.0;
+  end;
+ end else begin
+  if (MaxV-DefV)>0 then begin
+   Normalized:=(aValue-DefV)/(MaxV-DefV);
+  end else begin
+   Normalized:=0.0;
+  end;
+ end;
+
+ if Normalized<-1.0 then begin
+  Normalized:=-1.0;
+ end else if Normalized>1.0 then begin
+  Normalized:=1.0;
+ end;
+
+ // Apply avar piecewise-linear remapping if available
+ if (aAxisIndex<length(fVariationAvarSegments)) and (length(fVariationAvarSegments[aAxisIndex])>1) then begin
+
+  SegCount:=length(fVariationAvarSegments[aAxisIndex]);
+
+  i:=0;
+
+  while i<(SegCount-1) do begin
+   if Normalized<=fVariationAvarSegments[aAxisIndex][i+1].FromCoord then begin
+    break;
+   end;
+   inc(i);
+  end;
+
+  if i>=(SegCount-1) then begin
+   i:=SegCount-2;
+  end;
+
+  AvarF0:=fVariationAvarSegments[aAxisIndex][i].FromCoord;
+  AvarF1:=fVariationAvarSegments[aAxisIndex][i+1].FromCoord;
+
+  AvarT0:=fVariationAvarSegments[aAxisIndex][i].ToCoord;
+  AvarT1:=fVariationAvarSegments[aAxisIndex][i+1].ToCoord;
+
+  if (AvarF1-AvarF0)<>0 then begin
+   Normalized:=AvarT0+(AvarT1-AvarT0)*((Normalized-AvarF0)/(AvarF1-AvarF0));
+  end else begin
+   Normalized:=AvarT0;
+  end;
+
+ end;
+ result:=Normalized;
+end;
+
+procedure TpvTrueTypeFont.ComputeCFF2RegionScalars;
+var i,j:TpvInt32;
+    Scalar,AxisScalar,Peak,Start,Finish,NormCoord:TpvDouble;
+begin
+
+ SetLength(fCFF2RegionScalars,length(fCFF2IVSRegions));
+
+ for i:=0 to length(fCFF2IVSRegions)-1 do begin
+
+  Scalar:=1.0;
+
+  for j:=0 to length(fCFF2IVSRegions[i])-1 do begin
+
+   Peak:=fCFF2IVSRegions[i][j].PeakCoord;
+   Start:=fCFF2IVSRegions[i][j].StartCoord;
+   Finish:=fCFF2IVSRegions[i][j].EndCoord;
+
+   if j<length(fCFF2NormalizedCoords) then begin
+    NormCoord:=fCFF2NormalizedCoords[j];
+   end else begin
+    NormCoord:=0.0;
+   end;
+
+   if Peak=0.0 then begin
+    AxisScalar:=1.0;
+   end else if (NormCoord<Start) or (NormCoord>Finish) then begin
+    AxisScalar:=0.0;
+   end else if NormCoord=Peak then begin
+    AxisScalar:=1.0;
+   end else if NormCoord<Peak then begin
+    if (Peak-Start)<>0 then begin
+     AxisScalar:=(NormCoord-Start)/(Peak-Start);
+    end else begin
+     AxisScalar:=0.0;
+    end;
+   end else begin
+    if (Finish-Peak)<>0 then begin
+     AxisScalar:=(Finish-NormCoord)/(Finish-Peak);
+    end else begin
+     AxisScalar:=0.0;
+    end;
+   end;
+
+   Scalar:=Scalar*AxisScalar;
+
+  end;
+
+  fCFF2RegionScalars[i]:=Scalar;
+
+ end;
+
+end;
+
+function TpvTrueTypeFont.LoadFVAR:TpvInt32;
+var Tag,CheckSum,Offset,Size:TpvUInt32;
+    Position:TpvUInt32;
+    AxesArrayOffset,AxisCount,AxisSize:TpvUInt16;
+    i:TpvInt32;
+begin
+
+ Tag:=ToLONGWORD(TpvUInt8('f'),TpvUInt8('v'),TpvUInt8('a'),TpvUInt8('r'));
+
+ result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
+ if result<>pvTTF_TT_ERR_NoError then begin
+  result:=pvTTF_TT_ERR_NoError;
+  exit;
+ end;
+
+ Position:=Offset;
+
+ // majorVersion (2 bytes) + minorVersion (2 bytes)
+ inc(Position,4);
+
+ AxesArrayOffset:=ToWORD(fFontData[Position],fFontData[Position+1]);
+ inc(Position,2);
+
+ // reserved (2 bytes)
+ inc(Position,2);
+
+ AxisCount:=ToWORD(fFontData[Position],fFontData[Position+1]);
+ inc(Position,2);
+
+ AxisSize:=ToWORD(fFontData[Position],fFontData[Position+1]);
+ inc(Position,2);
+
+ // instanceCount + instanceSize (4 bytes)
+ inc(Position,4);
+
+ fVariationAxisCount:=AxisCount;
+
+ SetLength(fVariationAxes,AxisCount);
+ SetLength(fCFF2DesignCoords,AxisCount);
+ SetLength(fCFF2NormalizedCoords,AxisCount);
+ SetLength(fVariationAvarSegments,AxisCount);
+
+ Position:=Offset+AxesArrayOffset;
+ for i:=0 to AxisCount-1 do begin
+
+  fVariationAxes[i].Tag:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
+  inc(Position,4);
+
+  fVariationAxes[i].MinValue:=ToLONGINT(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3])/65536.0;
+  inc(Position,4);
+
+  fVariationAxes[i].DefaultValue:=ToLONGINT(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3])/65536.0;
+  inc(Position,4);
+
+  fVariationAxes[i].MaxValue:=ToLONGINT(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3])/65536.0;
+  inc(Position,4);
+
+  // flags (2 bytes) + nameID (2 bytes)
+  inc(Position,4);
+
+  fCFF2DesignCoords[i]:=fVariationAxes[i].DefaultValue;
+  if AxisSize>20 then begin
+   inc(Position,AxisSize-20);
+  end;
+
+ end;
+
+ result:=pvTTF_TT_ERR_NoError;
+end;
+
+function TpvTrueTypeFont.LoadAVAR:TpvInt32;
+var Tag,CheckSum,Offset,Size:TpvUInt32;
+    Position:TpvUInt32;
+    AxisCount,PosMapCount:TpvUInt16;
+    i,j:TpvInt32;
+begin
+
+ Tag:=ToLONGWORD(TpvUInt8('a'),TpvUInt8('v'),TpvUInt8('a'),TpvUInt8('r'));
+
+ result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
+ if result<>pvTTF_TT_ERR_NoError then begin
+  result:=pvTTF_TT_ERR_NoError;
+  exit;
+ end;
+
+ Position:=Offset;
+
+ // majorVersion + minorVersion (4 bytes)
+ inc(Position,4);
+
+ // reserved (2 bytes)
+ inc(Position,2);
+
+ AxisCount:=ToWORD(fFontData[Position],fFontData[Position+1]);
+ inc(Position,2);
+
+ for i:=0 to TpvInt32(AxisCount)-1 do begin
+
+  PosMapCount:=ToWORD(fFontData[Position],fFontData[Position+1]);
+  inc(Position,2);
+
+  if i<length(fVariationAvarSegments) then begin
+
+   SetLength(fVariationAvarSegments[i],PosMapCount);
+
+   for j:=0 to TpvInt32(PosMapCount)-1 do begin
+
+    fVariationAvarSegments[i][j].FromCoord:=ToSMALLINT(fFontData[Position],fFontData[Position+1])/16384.0;
+    inc(Position,2);
+
+    fVariationAvarSegments[i][j].ToCoord:=ToSMALLINT(fFontData[Position],fFontData[Position+1])/16384.0;
+    inc(Position,2);
+
+   end;
+
+  end else begin
+   inc(Position,TpvUInt32(PosMapCount)*4);
+  end;
+
+ end;
+
+ result:=pvTTF_TT_ERR_NoError;
+end;
+
+function TpvTrueTypeFont.GetVariationAxisIndex(const aTag:TpvUInt32):TpvInt32;
+var i:TpvInt32;
+begin
+ result:=-1;
+ for i:=0 to fVariationAxisCount-1 do begin
+  if fVariationAxes[i].Tag=aTag then begin
+   result:=i;
+   exit;
+  end;
+ end;
+end;
+
+procedure TpvTrueTypeFont.SetVariationAxis(const aTag:TpvUInt32;const aValue:TpvDouble);
+var AxisIndex:TpvInt32;
+    ClampedValue:TpvDouble;
+begin
+ AxisIndex:=GetVariationAxisIndex(aTag);
+ if AxisIndex<0 then begin
+  exit;
+ end;
+ ClampedValue:=aValue;
+ if ClampedValue<fVariationAxes[AxisIndex].MinValue then begin
+  ClampedValue:=fVariationAxes[AxisIndex].MinValue;
+ end else if ClampedValue>fVariationAxes[AxisIndex].MaxValue then begin
+  ClampedValue:=fVariationAxes[AxisIndex].MaxValue;
+ end;
+ fCFF2DesignCoords[AxisIndex]:=ClampedValue;
+ fCFF2NormalizedCoords[AxisIndex]:=NormalizeAxisValue(AxisIndex,ClampedValue);
+ ComputeCFF2RegionScalars;
+ FillChar(fGlyphLoadedBitmap,SizeOf(fGlyphLoadedBitmap),#0);
+end;
+
+procedure TpvTrueTypeFont.ResetVariationAxesToDefault;
+var i:TpvInt32;
+begin
+ for i:=0 to fVariationAxisCount-1 do begin
+  fCFF2DesignCoords[i]:=fVariationAxes[i].DefaultValue;
+  fCFF2NormalizedCoords[i]:=0.0;
+ end;
+ ComputeCFF2RegionScalars;
 end;
 
 function TpvTrueTypeFont.LoadGLYF:TpvInt32;
