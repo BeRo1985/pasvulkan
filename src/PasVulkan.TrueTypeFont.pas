@@ -756,6 +756,7 @@ type EpvTrueTypeFont=class(Exception);
        fCMapFormat:TpvUInt16;
        fLastError:TpvUInt16;
        fPostScriptFlavored:boolean;
+       fIsCFF2:boolean;
        fIndexToLocationFormat:TpvInt16;
        fStringCopyright:TpvRawByteString;
        fStringFamily:TpvRawByteString;
@@ -813,6 +814,7 @@ type EpvTrueTypeFont=class(Exception);
        function LoadMAXP:TpvInt32;
        function LoadNAME:TpvInt32;
        function LoadCFF:TpvInt32;
+       function LoadCFF2:TpvInt32;
        function LoadLOCA:TpvInt32;
        function LoadGLYF:TpvInt32;
        function LoadHHEA:TpvInt32;
@@ -5442,14 +5444,24 @@ begin
 
     end else begin
 
-     fLastError:=LoadLOCA;
-     if fLastError<>pvTTF_TT_ERR_NoError then begin
-      break;
-     end;
+     fLastError:=LoadCFF2;
+     if fLastError=pvTTF_TT_ERR_NoError then begin
 
-     fLastError:=LoadGLYF;
-     if fLastError<>pvTTF_TT_ERR_NoError then begin
-      break;
+      fPostScriptFlavored:=true;
+      fIsCFF2:=true;
+
+     end else begin
+
+      fLastError:=LoadLOCA;
+      if fLastError<>pvTTF_TT_ERR_NoError then begin
+       break;
+      end;
+
+      fLastError:=LoadGLYF;
+      if fLastError<>pvTTF_TT_ERR_NoError then begin
+       break;
+      end;
+
      end;
 
     end;
@@ -5775,7 +5787,8 @@ begin
    end;
    result:=pvTTF_TT_ERR_NoError;
   end else begin
-   result:=pvTTF_TT_ERR_InvalidFile;
+   // Unknown future OS/2 version: fields stay at defaults, load continues
+   result:=pvTTF_TT_ERR_NoError;
   end;
  end;
 end;
@@ -5835,10 +5848,13 @@ begin
  result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
  if result=pvTTF_TT_Err_NoError then begin
   fCountGlyphs:=ToWORD(fFontData[Offset+4],fFontData[Offset+5]);
-  fMaxTwilightPoints:=ToWORD(fFontData[Offset+16],fFontData[Offset+17]);
-  fMaxStorage:=ToWORD(fFontData[Offset+18],fFontData[Offset+19]);
-  fMaxFunctionDefs:=ToWORD(fFontData[Offset+20],fFontData[Offset+21]);
-  fMaxStackElements:=ToWORD(fFontData[Offset+24],fFontData[Offset+25]);
+  if ToWORD(fFontData[Offset],fFontData[Offset+1])>0 then begin
+   // version 1.0+: full maxp table with TrueType interpreter fields
+   fMaxTwilightPoints:=ToWORD(fFontData[Offset+16],fFontData[Offset+17]);
+   fMaxStorage:=ToWORD(fFontData[Offset+18],fFontData[Offset+19]);
+   fMaxFunctionDefs:=ToWORD(fFontData[Offset+20],fFontData[Offset+21]);
+   fMaxStackElements:=ToWORD(fFontData[Offset+24],fFontData[Offset+25]);
+  end;
   SetLength(fGlyphs,fCountGlyphs);
   if length(fGlyphs)<>fCountGlyphs then begin
    result:=pvTTF_TT_ERR_OutOfMemory;
@@ -6368,8 +6384,9 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
        inc(Position,SizeOf(TpvUInt8));
       end;
       else begin
-       result:=pvTTF_TT_ERR_CorruptFile;
-       exit;
+       // Unknown/reserved operator: discard pending operands and continue per CFF spec
+       Operands:=nil;
+       CountOperands:=0;
       end;
      end;
 
@@ -7068,6 +7085,10 @@ begin
     end;
     HeaderFormatMajor:=fFontData[Position];
     inc(Position,SizeOf(TpvUInt8));
+    if HeaderFormatMajor<>1 then begin
+     result:=pvTTF_TT_ERR_InvalidFile;
+     exit;
+    end;
 
     if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
      result:=pvTTF_TT_ERR_CorruptFile;
@@ -7539,6 +7560,1147 @@ begin
 
    finally
     PrivateDictEntryArray:=nil;
+   end;
+
+  finally
+   TopDictEntryArray:=nil;
+  end;
+
+  result:=pvTTF_TT_ERR_NoError;
+
+ end;
+end;
+
+function TpvTrueTypeFont.LoadCFF2:TpvInt32;
+const CFFScaleFactor=4.0;
+      TopDictFontBBoxOp=5;
+      TopDictCharStringsOp=17;
+      TopDictPrivateOp=18;
+      TopDictFontMatrixOp=1207;
+      TopDictFDArrayOp=1236;
+      PrivateDictSubRoutineOp=19;
+      PrivateDictDefaultWidthXOp=20;
+      PrivateDictNominalWidthXOp=21;
+type PIndexDataItem=^TIndexDataItem;
+     TIndexDataItem=record
+      Position:TpvInt32;
+      Size:TpvInt32;
+     end;
+     TIndexData=array of TIndexDataItem;
+     PNumberKind=^TNumberKind;
+     TNumberKind=
+      (
+       FLOAT,
+       INT
+      );
+     PNumber=^TNumber;
+     TNumber=record
+      case Kind:TNumberKind of
+       TNumberKind.FLOAT:(
+        FloatValue:TpvDouble;
+       );
+       TNumberKind.INT:(
+        IntegerValue:TpvInt64;
+       );
+     end;
+     TNumberArray=array of TNumber;
+     PDictEntry=^TDictEntry;
+     TDictEntry=record
+      Op:TpvInt32;
+      Operands:TNumberArray;
+     end;
+     TDictEntryArray=array of TDictEntry;
+var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
+    HeaderFormatMajor,HeaderFormatMinor,HeaderSize,TopDictLength,
+    i,j,TopDictCharStrings,TopDictFDArray,
+    PrivateDictSubRoutine,PrivateDictDefaultWidthX,PrivateDictNominalWidthX,
+    FDPrivateSize,FDPrivateOffset:TpvInt32;
+    TopDictFontBBox:array[0..3] of TpvInt32;
+    TopDictFontMatrix:array[0..5] of TpvDouble;
+    GlobalSubroutineIndexData,SubroutineIndexData,
+    TopDictCharStringsIndexData,FDArrayIndexData:TIndexData;
+    DictEntry:PDictEntry;
+    CFFGlobalSubroutineBias,CFFSubroutineBias:TpvInt32;
+ function GetCFFSubroutineBias(const SubroutineIndexData:TIndexData):TpvInt32;
+ begin
+  case length(SubroutineIndexData) of
+   0..1239:begin
+    result:=107;
+   end;
+   1240..33899:begin
+    result:=1131;
+   end;
+   else begin
+    result:=32768;
+   end;
+  end;
+ end;
+ function LoadIndex2(out IndexData:TIndexData):TpvInt32;
+ var BaseOffset,Count,OffsetSize,OffsetValue,i,j:TpvInt32;
+     IndexDataItem:PIndexDataItem;
+ begin
+  IndexData:=nil;
+  BaseOffset:=Position;
+  if ((Position+SizeOf(TpvUInt32))-1)>=(Offset+Size) then begin
+   result:=pvTTF_TT_ERR_CorruptFile;
+   exit;
+  end;
+  Count:=TpvInt32(ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]));
+  inc(Position,SizeOf(TpvUInt32));
+  if Count>0 then begin
+   if ((Position+SizeOf(TpvUInt8))-1)>=(Offset+Size) then begin
+    result:=pvTTF_TT_ERR_CorruptFile;
+    exit;
+   end;
+   OffsetSize:=fFontData[Position];
+   inc(Position,SizeOf(TpvUInt8));
+   SetLength(IndexData,Count+1);
+   try
+    for i:=0 to Count do begin
+     OffsetValue:=0;
+     for j:=0 to OffsetSize-1 do begin
+      if ((Position+SizeOf(TpvUInt8))-1)>=(Offset+Size) then begin
+       result:=pvTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      OffsetValue:=(OffsetValue shl 8) or fFontData[Position];
+      inc(Position,SizeOf(TpvUInt8));
+     end;
+     IndexDataItem:=@IndexData[i];
+     IndexDataItem^.Position:=OffsetValue;
+    end;
+    for i:=0 to Count-1 do begin
+     IndexDataItem:=@IndexData[i];
+     IndexDataItem^.Size:=IndexData[i+1].Position-IndexDataItem^.Position;
+    end;
+    for i:=0 to Count do begin
+     inc(IndexData[i].Position,Position-1);
+    end;
+    Position:=IndexData[Count].Position;
+   finally
+    SetLength(IndexData,Count);
+   end;
+  end;
+  result:=pvTTF_TT_ERR_NoError;
+ end;
+ function LoadDict2(const DictPosition,DictSize:TpvInt32;out DictEntryArray:TDictEntryArray):TpvInt32;
+ const FloatStrings:array[0..15] of string=('0','1','2','3','4','5','6','7','8','9','.','e','e-','','-','');
+ var Position,UntilExcludingPosition,Op,CountOperands,CountDictEntries,Value,Code:TpvInt32;
+     Operands:TNumberArray;
+     DictEntry:PDictEntry;
+     FloatString:string;
+ begin
+  Position:=DictPosition;
+  UntilExcludingPosition:=DictPosition+DictSize;
+  CountDictEntries:=0;
+  DictEntryArray:=nil;
+  try
+   Operands:=nil;
+   try
+    CountOperands:=0;
+    while Position<UntilExcludingPosition do begin
+     if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
+      result:=pvTTF_TT_ERR_CorruptFile;
+      exit;
+     end;
+     Op:=fFontData[Position];
+     inc(Position,SizeOf(TpvUInt8));
+     case Op of
+      12:begin
+       SetLength(Operands,CountOperands);
+       if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
+        result:=pvTTF_TT_ERR_CorruptFile;
+        exit;
+       end;
+       Op:=1200+fFontData[Position];
+       inc(Position,SizeOf(TpvUInt8));
+       if length(DictEntryArray)<(CountDictEntries+1) then begin
+        SetLength(DictEntryArray,(CountDictEntries+1)*2);
+       end;
+       DictEntry:=@DictEntryArray[CountDictEntries];
+       inc(CountDictEntries);
+       DictEntry^.Op:=Op;
+       DictEntry^.Operands:=Operands;
+       Operands:=nil;
+       CountOperands:=0;
+      end;
+      0..11,13..21:begin
+       SetLength(Operands,CountOperands);
+       if length(DictEntryArray)<(CountDictEntries+1) then begin
+        SetLength(DictEntryArray,(CountDictEntries+1)*2);
+       end;
+       DictEntry:=@DictEntryArray[CountDictEntries];
+       inc(CountDictEntries);
+       DictEntry^.Op:=Op;
+       DictEntry^.Operands:=Operands;
+       Operands:=nil;
+       CountOperands:=0;
+      end;
+      28:begin
+       if ((Position+SizeOf(TpvUInt16))-1)>=UntilExcludingPosition then begin
+        result:=pvTTF_TT_ERR_CorruptFile;
+        exit;
+       end;
+       if length(Operands)<(CountOperands+1) then begin
+        SetLength(Operands,(CountOperands+1)*2);
+       end;
+       Operands[CountOperands].Kind:=TNumberKind.INT;
+       Operands[CountOperands].IntegerValue:=ToWORD(fFontData[Position],fFontData[Position+1]);
+       inc(CountOperands);
+       inc(Position,SizeOf(TpvUInt16));
+      end;
+      29:begin
+       if ((Position+SizeOf(TpvUInt32))-1)>=UntilExcludingPosition then begin
+        result:=pvTTF_TT_ERR_CorruptFile;
+        exit;
+       end;
+       if length(Operands)<(CountOperands+1) then begin
+        SetLength(Operands,(CountOperands+1)*2);
+       end;
+       Operands[CountOperands].Kind:=TNumberKind.INT;
+       Operands[CountOperands].IntegerValue:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
+       inc(CountOperands);
+       inc(Position,SizeOf(TpvUInt32));
+      end;
+      30:begin
+       FloatString:='';
+       repeat
+        if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
+         result:=pvTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        Value:=fFontData[Position];
+        inc(Position,SizeOf(TpvUInt8));
+        if (Value and $f0)=$f0 then begin
+         break;
+        end else begin
+         FloatString:=FloatString+FloatStrings[Value shr 4];
+         if (Value and $0f)=$0f then begin
+          break;
+         end else begin
+          FloatString:=FloatString+FloatStrings[Value and $f];
+         end;
+        end;
+       until false;
+       if length(Operands)<(CountOperands+1) then begin
+        SetLength(Operands,(CountOperands+1)*2);
+       end;
+       Operands[CountOperands].Kind:=TNumberKind.FLOAT;
+       Val(FloatString,Operands[CountOperands].FloatValue,Code);
+       inc(CountOperands);
+      end;
+      32..246:begin
+       if length(Operands)<(CountOperands+1) then begin
+        SetLength(Operands,(CountOperands+1)*2);
+       end;
+       Operands[CountOperands].Kind:=TNumberKind.INT;
+       Operands[CountOperands].IntegerValue:=Op-139;
+       inc(CountOperands);
+      end;
+      247..250:begin
+       if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
+        result:=pvTTF_TT_ERR_CorruptFile;
+        exit;
+       end;
+       if length(Operands)<(CountOperands+1) then begin
+        SetLength(Operands,(CountOperands+1)*2);
+       end;
+       Operands[CountOperands].Kind:=TNumberKind.INT;
+       Operands[CountOperands].IntegerValue:=(((Op-247) shl 8)+fFontData[Position])+108;
+       inc(CountOperands);
+       inc(Position,SizeOf(TpvUInt8));
+      end;
+      251..254:begin
+       if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
+        result:=pvTTF_TT_ERR_CorruptFile;
+        exit;
+       end;
+       if length(Operands)<(CountOperands+1) then begin
+        SetLength(Operands,(CountOperands+1)*2);
+       end;
+       Operands[CountOperands].Kind:=TNumberKind.INT;
+       Operands[CountOperands].IntegerValue:=((-((Op-251)*256))-fFontData[Position])-108;
+       inc(CountOperands);
+       inc(Position,SizeOf(TpvUInt8));
+      end;
+      else begin
+       // skip unknown/reserved bytes
+      end;
+     end;
+    end;
+   finally
+    Operands:=nil;
+   end;
+  finally
+   SetLength(DictEntryArray,CountDictEntries);
+  end;
+  result:=pvTTF_TT_ERR_NoError;
+ end;
+ function LoadCFF2Glyph(var Glyph:TpvTrueTypeFontGlyph;const GlyphPosition,GlyphSize:TpvInt32):TpvInt32;
+ type TStack=array of TpvDouble;
+ var v,StackSize,CountStems:TpvInt32;
+     Width,x,y,c0x,c0y,c1x,c1y,GlyphMinX,GlyphMinY,GlyphMaxX,GlyphMaxY:TpvDouble;
+     Stack:TStack;
+  function StackShift:TpvDouble;
+  begin
+   if StackSize>0 then begin
+    result:=Stack[0];
+    dec(StackSize);
+    if StackSize>0 then begin
+     Move(Stack[1],Stack[0],StackSize*SizeOf(TpvDouble));
+    end;
+   end else begin
+    result:=0;
+   end;
+  end;
+  function StackPop:TpvDouble;
+  begin
+   if StackSize>0 then begin
+    dec(StackSize);
+    result:=Stack[StackSize];
+   end else begin
+    result:=0;
+   end;
+  end;
+  procedure StackPush(const Value:TpvDouble);
+  begin
+   if length(Stack)<(StackSize+1) then begin
+    SetLength(Stack,(StackSize+1)*2);
+   end;
+   Stack[StackSize]:=Value;
+   inc(StackSize);
+  end;
+  procedure ParseStems;
+  begin
+   inc(CountStems,StackSize shr 1);
+   StackSize:=0;
+  end;
+  procedure MoveTo(aX,aY:TpvDouble);
+  var CommandIndex:TpvInt32;
+      Command:PpvTrueTypeFontPolygonCommand;
+  begin
+   aY:=fMaxY-aY;
+   CommandIndex:=Glyph.PostScriptPolygon.CountCommands;
+   inc(Glyph.PostScriptPolygon.CountCommands);
+   if length(Glyph.PostScriptPolygon.Commands)<Glyph.PostScriptPolygon.CountCommands then begin
+    SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
+   end;
+   Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
+   Command^.CommandType:=TpvTrueTypeFontPolygonCommandType.MoveTo;
+   Command^.Points[0].x:=aX*CFFScaleFactor;
+   Command^.Points[0].y:=aY*CFFScaleFactor;
+   GlyphMinX:=Min(GlyphMinX,aX);
+   GlyphMinY:=Min(GlyphMinY,aY);
+   GlyphMaxX:=Max(GlyphMaxX,aX);
+   GlyphMaxY:=Max(GlyphMaxY,aY);
+  end;
+  procedure LineTo(aX,aY:TpvDouble);
+  var CommandIndex:TpvInt32;
+      Command:PpvTrueTypeFontPolygonCommand;
+  begin
+   aY:=fMaxY-aY;
+   CommandIndex:=Glyph.PostScriptPolygon.CountCommands;
+   inc(Glyph.PostScriptPolygon.CountCommands);
+   if length(Glyph.PostScriptPolygon.Commands)<Glyph.PostScriptPolygon.CountCommands then begin
+    SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
+   end;
+   Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
+   Command^.CommandType:=TpvTrueTypeFontPolygonCommandType.LineTo;
+   Command^.Points[0].x:=aX*CFFScaleFactor;
+   Command^.Points[0].y:=aY*CFFScaleFactor;
+   GlyphMinX:=Min(GlyphMinX,aX);
+   GlyphMinY:=Min(GlyphMinY,aY);
+   GlyphMaxX:=Max(GlyphMaxX,aX);
+   GlyphMaxY:=Max(GlyphMaxY,aY);
+  end;
+  procedure CubicCurveTo(aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble);
+  var CommandIndex:TpvInt32;
+      Command:PpvTrueTypeFontPolygonCommand;
+  begin
+   aC0Y:=fMaxY-aC0Y;
+   aC1Y:=fMaxY-aC1Y;
+   aAY:=fMaxY-aAY;
+   CommandIndex:=Glyph.PostScriptPolygon.CountCommands;
+   inc(Glyph.PostScriptPolygon.CountCommands);
+   if length(Glyph.PostScriptPolygon.Commands)<Glyph.PostScriptPolygon.CountCommands then begin
+    SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
+   end;
+   Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
+   Command^.CommandType:=TpvTrueTypeFontPolygonCommandType.CubicCurveTo;
+   Command^.Points[0].x:=aC0X*CFFScaleFactor;
+   Command^.Points[0].y:=aC0Y*CFFScaleFactor;
+   Command^.Points[1].x:=aC1X*CFFScaleFactor;
+   Command^.Points[1].y:=aC1Y*CFFScaleFactor;
+   Command^.Points[2].x:=aAX*CFFScaleFactor;
+   Command^.Points[2].y:=aAY*CFFScaleFactor;
+   GlyphMinX:=Min(GlyphMinX,aC0X);
+   GlyphMinY:=Min(GlyphMinY,aC0Y);
+   GlyphMaxX:=Max(GlyphMaxX,aC0X);
+   GlyphMaxY:=Max(GlyphMaxY,aC0Y);
+   GlyphMinX:=Min(GlyphMinX,aC1X);
+   GlyphMinY:=Min(GlyphMinY,aC1Y);
+   GlyphMaxX:=Max(GlyphMaxX,aC1X);
+   GlyphMaxY:=Max(GlyphMaxY,aC1Y);
+   GlyphMinX:=Min(GlyphMinX,aAX);
+   GlyphMinY:=Min(GlyphMinY,aAY);
+   GlyphMaxX:=Max(GlyphMaxX,aAX);
+   GlyphMaxY:=Max(GlyphMaxY,aAY);
+  end;
+  procedure ClosePath;
+  var CommandIndex:TpvInt32;
+      Command:PpvTrueTypeFontPolygonCommand;
+  begin
+   CommandIndex:=Glyph.PostScriptPolygon.CountCommands;
+   inc(Glyph.PostScriptPolygon.CountCommands);
+   if length(Glyph.PostScriptPolygon.Commands)<Glyph.PostScriptPolygon.CountCommands then begin
+    SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
+   end;
+   Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
+   Command^.CommandType:=TpvTrueTypeFontPolygonCommandType.Close;
+  end;
+  function Execute(const CodePosition,CodeSize:TpvInt32):TpvInt32;
+  var Position,UntilExcludingPosition,CodeIndex:TpvInt32;
+      dx1,dy1,dx2,dy2,dx3,dy3,dx4,dy4,dx5,dy5,dx6,dy6,dx,dy:TpvDouble;
+  begin
+   Position:=CodePosition;
+   UntilExcludingPosition:=CodePosition+CodeSize;
+   while Position<UntilExcludingPosition do begin
+    if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
+     result:=pvTTF_TT_ERR_CorruptFile;
+     exit;
+    end;
+    v:=fFontData[Position];
+    inc(Position,SizeOf(TpvUInt8));
+    case v of
+     1:begin
+      // hstem
+      ParseStems;
+     end;
+     3:begin
+      // vstem
+      ParseStems;
+     end;
+     4:begin
+      // vmoveto
+      y:=y+StackPop;
+      StackSize:=0;
+      MoveTo(x,y);
+     end;
+     5:begin
+      // rlineto
+      while StackSize>0 do begin
+       x:=x+StackShift;
+       y:=y+StackShift;
+       LineTo(x,y);
+      end;
+     end;
+     6:begin
+      // hlineto
+      while StackSize>0 do begin
+       x:=x+StackShift;
+       LineTo(x,y);
+       if StackSize>0 then begin
+        y:=y+StackShift;
+        LineTo(x,y);
+       end else begin
+        break;
+       end;
+      end;
+     end;
+     7:begin
+      // vlineto
+      while StackSize>0 do begin
+       y:=y+StackShift;
+       LineTo(x,y);
+       if StackSize>0 then begin
+        x:=x+StackShift;
+        LineTo(x,y);
+       end else begin
+        break;
+       end;
+      end;
+     end;
+     8:begin
+      // rrcurveto
+      while StackSize>0 do begin
+       c0x:=x+StackShift;
+       c0y:=y+StackShift;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       x:=c1x+StackShift;
+       y:=c1y+StackShift;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+      end;
+     end;
+     10:begin
+      // callsubr
+      CodeIndex:=trunc(StackPop)+CFFSubroutineBias;
+      if SubroutineIndexData[CodeIndex].Size>0 then begin
+       result:=Execute(SubroutineIndexData[CodeIndex].Position,SubroutineIndexData[CodeIndex].Size);
+       if result<>pvTTF_TT_ERR_NoError then begin
+        exit;
+       end;
+      end;
+     end;
+     11:begin
+      // return
+      result:=pvTTF_TT_ERR_NoError;
+      exit;
+     end;
+     12:begin
+      // escape
+      if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
+       result:=pvTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      v:=fFontData[Position];
+      inc(Position,SizeOf(TpvUInt8));
+      case v of
+       34:begin
+        // hflex
+        dx1:=StackShift;
+        dx2:=StackShift;
+        dy2:=StackShift;
+        dx3:=StackShift;
+        dx4:=StackShift;
+        dx5:=StackShift;
+        dx6:=StackShift;
+        c0x:=x+dx1;
+        c0y:=y+0.0;
+        c1x:=c0x+dx2;
+        c1y:=c0y+dy2;
+        x:=c1x+dx3;
+        y:=c1y+0.0;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+        c0x:=x+dx4;
+        c0y:=y+0.0;
+        c1x:=c0x+dx5;
+        c1y:=c0y-dy2;
+        x:=c1x+dx6;
+        y:=c1y+0.0;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end;
+       35:begin
+        // flex
+        dx1:=StackShift;
+        dy1:=StackShift;
+        dx2:=StackShift;
+        dy2:=StackShift;
+        dx3:=StackShift;
+        dy3:=StackShift;
+        dx4:=StackShift;
+        dy4:=StackShift;
+        dx5:=StackShift;
+        dy5:=StackShift;
+        dx6:=StackShift;
+        dy6:=StackShift;
+        StackShift;
+        c0x:=x+dx1;
+        c0y:=y+dy1;
+        c1x:=c0x+dx2;
+        c1y:=c0y+dy2;
+        x:=c1x+dx3;
+        y:=c1y+dy3;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+        c0x:=x+dx4;
+        c0y:=y+dy4;
+        c1x:=c0x+dx5;
+        c1y:=c0y+dy5;
+        x:=c1x+dx6;
+        y:=c1y+dy6;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end;
+       36:begin
+        // hflex1
+        dx1:=StackShift;
+        dy1:=StackShift;
+        dx2:=StackShift;
+        dy2:=StackShift;
+        dx3:=StackShift;
+        dx4:=StackShift;
+        dx5:=StackShift;
+        dy5:=StackShift;
+        dx6:=StackShift;
+        c0x:=x+dx1;
+        c0y:=y+dy1;
+        c1x:=c0x+dx2;
+        c1y:=c0y+dy2;
+        x:=c1x+dx3;
+        y:=c1y+0.0;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+        c0x:=x+dx4;
+        c0y:=y+0.0;
+        c1x:=c0x+dx5;
+        c1y:=c0y+dy5;
+        x:=c1x+dx6;
+        y:=c1y-(dy1+dy2+dy5);
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end;
+       37:begin
+        // flex1
+        dx1:=StackShift;
+        dy1:=StackShift;
+        dx2:=StackShift;
+        dy2:=StackShift;
+        dx3:=StackShift;
+        dy3:=StackShift;
+        dx4:=StackShift;
+        dy4:=StackShift;
+        dx5:=StackShift;
+        dy5:=StackShift;
+        dx6:=StackShift;
+        dy6:=dx6;
+        dx:=dx1+dx2+dx3+dx4+dx5;
+        dy:=dy1+dy2+dy3+dy4+dy5;
+        if abs(dx)<abs(dy) then begin
+         dx6:=-dx;
+        end else begin
+         dy6:=-dy;
+        end;
+        c0x:=x+dx1;
+        c0y:=y+dy1;
+        c1x:=c0x+dx2;
+        c1y:=c0y+dy2;
+        x:=c1x+dx3;
+        y:=c1y+dy3;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+        c0x:=x+dx4;
+        c0y:=y+dy4;
+        c1x:=c0x+dx5;
+        c1y:=c0y+dy5;
+        x:=c1x+dx6;
+        y:=c1y+dy6;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end;
+       else begin
+        // skip unknown escape opcode
+       end;
+      end;
+     end;
+     14:begin
+      // endchar
+      ClosePath;
+     end;
+     15:begin
+      // vsindex (CFF2): discard the argument
+      StackSize:=0;
+     end;
+     16:begin
+      // blend (CFF2): pop N, keep N base values, discard deltas
+      CodeIndex:=trunc(StackPop);
+      StackSize:=CodeIndex;
+     end;
+     18:begin
+      // hstemhm
+      ParseStems;
+     end;
+     19:begin
+      // hintmask
+      ParseStems;
+      inc(Position,(CountStems+7) shr 3);
+     end;
+     20:begin
+      // cntrmask
+      ParseStems;
+      inc(Position,(CountStems+7) shr 3);
+     end;
+     21:begin
+      // rmoveto
+      y:=y+StackPop;
+      x:=x+StackPop;
+      StackSize:=0;
+      MoveTo(x,y);
+     end;
+     22:begin
+      // hmoveto
+      x:=x+StackPop;
+      StackSize:=0;
+      MoveTo(x,y);
+     end;
+     23:begin
+      // vstemhm
+      ParseStems;
+     end;
+     24:begin
+      // rcurveline
+      while StackSize>2 do begin
+       c0x:=x+StackShift;
+       c0y:=y+StackShift;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       x:=c1x+StackShift;
+       y:=c1y+StackShift;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+      end;
+      x:=x+StackShift;
+      y:=y+StackShift;
+      LineTo(x,y);
+     end;
+     25:begin
+      // rlinecurve
+      while StackSize>6 do begin
+       x:=x+StackShift;
+       y:=y+StackShift;
+       LineTo(x,y);
+      end;
+      c0x:=x+StackShift;
+      c0y:=y+StackShift;
+      c1x:=c0x+StackShift;
+      c1y:=c0y+StackShift;
+      x:=c1x+StackShift;
+      y:=c1y+StackShift;
+      CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+     end;
+     26:begin
+      // vvcurveto
+      if (StackSize and 1)<>0 then begin
+       x:=x+StackShift;
+      end;
+      while StackSize>0 do begin
+       c0x:=x;
+       c0y:=y+StackShift;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       x:=c1x;
+       y:=c1y+StackShift;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+      end;
+     end;
+     27:begin
+      // hhcurveto
+      if (StackSize and 1)<>0 then begin
+       y:=y+StackShift;
+      end;
+      while StackSize>0 do begin
+       c0x:=x+StackShift;
+       c0y:=y;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       x:=c1x+StackShift;
+       y:=c1y;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+      end;
+     end;
+     28:begin
+      // smallint
+      if ((Position+SizeOf(TpvUInt16))-1)>=UntilExcludingPosition then begin
+       result:=pvTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      StackPush(ToSMALLINT(fFontData[Position],fFontData[Position+1]));
+      inc(Position,SizeOf(TpvUInt16));
+     end;
+     29:begin
+      // callgsubnr
+      CodeIndex:=trunc(StackPop)+CFFGlobalSubroutineBias;
+      if GlobalSubroutineIndexData[CodeIndex].Size>0 then begin
+       result:=Execute(GlobalSubroutineIndexData[CodeIndex].Position,GlobalSubroutineIndexData[CodeIndex].Size);
+       if result<>pvTTF_TT_ERR_NoError then begin
+        exit;
+       end;
+      end;
+     end;
+     30:begin
+      // vhcurveto
+      while StackSize>0 do begin
+       c0x:=x;
+       c0y:=y+StackShift;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       x:=c1x+StackShift;
+       if StackSize=1 then begin
+        y:=c1y+StackShift;
+       end else begin
+        y:=c1y;
+       end;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       if StackSize>0 then begin
+        c0x:=x+StackShift;
+        c0y:=y;
+        c1x:=c0x+StackShift;
+        c1y:=c0y+StackShift;
+        y:=c1y+StackShift;
+        if StackSize=1 then begin
+         x:=c1x+StackShift;
+        end else begin
+         x:=c1x;
+        end;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end else begin
+        break;
+       end;
+      end;
+     end;
+     31:begin
+      // hvcurveto
+      while StackSize>0 do begin
+       c0x:=x+StackShift;
+       c0y:=y;
+       c1x:=c0x+StackShift;
+       c1y:=c0y+StackShift;
+       y:=c1y+StackShift;
+       if StackSize=1 then begin
+        x:=c1x+StackShift;
+       end else begin
+        x:=c1x;
+       end;
+       CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       if StackSize>0 then begin
+        c0x:=x;
+        c0y:=y+StackShift;
+        c1x:=c0x+StackShift;
+        c1y:=c0y+StackShift;
+        x:=c1x+StackShift;
+        if StackSize=1 then begin
+         y:=c1y+StackShift;
+        end else begin
+         y:=c1y;
+        end;
+        CubicCurveTo(c0x,c0y,c1x,c1y,x,y);
+       end else begin
+        break;
+       end;
+      end;
+     end;
+     32..246:begin
+      StackPush(v-139);
+     end;
+     247..250:begin
+      if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
+       result:=pvTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      StackPush((((v-247) shl 8)+fFontData[Position])+108);
+      inc(Position,SizeOf(TpvUInt8));
+     end;
+     251..254:begin
+      if ((Position+SizeOf(TpvUInt8))-1)>=UntilExcludingPosition then begin
+       result:=pvTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      StackPush(((-((v-251)*256))-fFontData[Position])-108);
+      inc(Position,SizeOf(TpvUInt8));
+     end;
+     255:begin
+      if ((Position+SizeOf(TpvUInt32))-1)>=UntilExcludingPosition then begin
+       result:=pvTTF_TT_ERR_CorruptFile;
+       exit;
+      end;
+      StackPush(ToLONGINT(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3])/65536.0);
+      inc(Position,SizeOf(TpvUInt32));
+     end
+     else begin
+      result:=pvTTF_TT_ERR_CorruptFile;
+      exit;
+     end;
+    end;
+   end;
+   result:=pvTTF_TT_ERR_NoError;
+  end;
+ begin
+  Stack:=nil;
+  try
+   StackSize:=0;
+   CountStems:=0;
+   x:=0.0;
+   y:=0.0;
+   Width:=PrivateDictDefaultWidthX;
+   GlyphMinX:=MaxDouble;
+   GlyphMinY:=MaxDouble;
+   GlyphMaxX:=-MaxDouble;
+   GlyphMaxY:=-MaxDouble;
+   FillChar(Glyph,SizeOf(TpvTrueTypeFontGlyph),#0);
+   Glyph.PostScriptPolygon.Commands:=nil;
+   Glyph.PostScriptPolygon.CountCommands:=0;
+   try
+    result:=Execute(GlyphPosition,GlyphSize);
+   finally
+    SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands);
+   end;
+   Glyph.AdvanceWidth:=ceil(Width);
+   Glyph.Bounds.XMin:=floor(GlyphMinX);
+   Glyph.Bounds.YMin:=floor(GlyphMinY);
+   Glyph.Bounds.XMax:=ceil(GlyphMaxX);
+   Glyph.Bounds.YMax:=ceil(GlyphMaxY);
+  finally
+   Stack:=nil;
+  end;
+ end;
+var TopDictEntryArray,FDDictEntryArray,PrivateDictEntryArray:TDictEntryArray;
+begin
+ Tag:=ToLONGWORD(TpvUInt8('C'),TpvUInt8('F'),TpvUInt8('F'),TpvUInt8('2'));
+ result:=GetTableDirEntry(Tag,CheckSum,Offset,Size);
+ if result=pvTTF_TT_Err_NoError then begin
+
+  CFFGlobalSubroutineBias:=0;
+  CFFSubroutineBias:=0;
+
+  TopDictEntryArray:=nil;
+  try
+
+   FDDictEntryArray:=nil;
+   try
+
+    PrivateDictEntryArray:=nil;
+    try
+
+     TopDictFontBBox[0]:=0;
+     TopDictFontBBox[1]:=0;
+     TopDictFontBBox[2]:=0;
+     TopDictFontBBox[3]:=0;
+     TopDictFontMatrix[0]:=1e-3;
+     TopDictFontMatrix[1]:=0.0;
+     TopDictFontMatrix[2]:=0.0;
+     TopDictFontMatrix[3]:=0.0;
+     TopDictFontMatrix[4]:=1e-3;
+     TopDictFontMatrix[5]:=0.0;
+     TopDictCharStrings:=0;
+     TopDictFDArray:=0;
+     PrivateDictSubRoutine:=0;
+     PrivateDictDefaultWidthX:=0;
+     PrivateDictNominalWidthX:=0;
+     FDPrivateSize:=0;
+     FDPrivateOffset:=0;
+
+     Position:=Offset;
+     EndOffset:=Offset+Size;
+
+     if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
+      result:=pvTTF_TT_ERR_CorruptFile;
+      exit;
+     end;
+     HeaderFormatMajor:=fFontData[Position];
+     inc(Position,SizeOf(TpvUInt8));
+
+     if HeaderFormatMajor<>2 then begin
+      result:=pvTTF_TT_ERR_InvalidFile;
+      exit;
+     end;
+
+     if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
+      result:=pvTTF_TT_ERR_CorruptFile;
+      exit;
+     end;
+     HeaderFormatMinor:=fFontData[Position];
+     inc(Position,SizeOf(TpvUInt8));
+
+     if ((Position+SizeOf(TpvUInt8))-1)>=EndOffset then begin
+      result:=pvTTF_TT_ERR_CorruptFile;
+      exit;
+     end;
+     HeaderSize:=fFontData[Position];
+     inc(Position,SizeOf(TpvUInt8));
+
+     if ((Position+SizeOf(TpvUInt16))-1)>=EndOffset then begin
+      result:=pvTTF_TT_ERR_CorruptFile;
+      exit;
+     end;
+     TopDictLength:=ToWORD(fFontData[Position],fFontData[Position+1]);
+     inc(Position,SizeOf(TpvUInt16));
+
+     result:=LoadDict2(TpvInt32(Offset)+HeaderSize,TopDictLength,TopDictEntryArray);
+     if result<>pvTTF_TT_ERR_NoError then begin
+      exit;
+     end;
+
+     for i:=0 to length(TopDictEntryArray)-1 do begin
+      DictEntry:=@TopDictEntryArray[i];
+      case DictEntry^.Op of
+       TopDictCharStringsOp:begin
+        if length(DictEntry^.Operands)<1 then begin
+         result:=pvTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
+         TopDictCharStrings:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         TopDictCharStrings:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+       end;
+       TopDictFDArrayOp:begin
+        if length(DictEntry^.Operands)<1 then begin
+         result:=pvTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
+         TopDictFDArray:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         TopDictFDArray:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+       end;
+       TopDictFontBBoxOp:begin
+        if length(DictEntry^.Operands)<4 then begin
+         result:=pvTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
+         TopDictFontBBox[0]:=DictEntry^.Operands[0].IntegerValue;
+        end else begin
+         TopDictFontBBox[0]:=trunc(DictEntry^.Operands[0].FloatValue);
+        end;
+        if DictEntry^.Operands[1].Kind=TNumberKind.INT then begin
+         TopDictFontBBox[1]:=DictEntry^.Operands[1].IntegerValue;
+        end else begin
+         TopDictFontBBox[1]:=trunc(DictEntry^.Operands[1].FloatValue);
+        end;
+        if DictEntry^.Operands[2].Kind=TNumberKind.INT then begin
+         TopDictFontBBox[2]:=DictEntry^.Operands[2].IntegerValue;
+        end else begin
+         TopDictFontBBox[2]:=trunc(DictEntry^.Operands[2].FloatValue);
+        end;
+        if DictEntry^.Operands[3].Kind=TNumberKind.INT then begin
+         TopDictFontBBox[3]:=DictEntry^.Operands[3].IntegerValue;
+        end else begin
+         TopDictFontBBox[3]:=trunc(DictEntry^.Operands[3].FloatValue);
+        end;
+        fMinX:=TopDictFontBBox[0];
+        fMinY:=TopDictFontBBox[1];
+        fMaxX:=TopDictFontBBox[2];
+        fMaxY:=TopDictFontBBox[3];
+       end;
+       TopDictFontMatrixOp:begin
+        if length(DictEntry^.Operands)<6 then begin
+         result:=pvTTF_TT_ERR_CorruptFile;
+         exit;
+        end;
+        for j:=0 to 5 do begin
+         if DictEntry^.Operands[j].Kind=TNumberKind.INT then begin
+          TopDictFontMatrix[j]:=DictEntry^.Operands[j].IntegerValue;
+         end else begin
+          TopDictFontMatrix[j]:=DictEntry^.Operands[j].FloatValue;
+         end;
+        end;
+       end;
+      end;
+     end;
+
+     // Global Subr INDEX follows immediately after Top DICT in the table
+     Position:=TpvInt32(Offset)+HeaderSize+TopDictLength;
+     result:=LoadIndex2(GlobalSubroutineIndexData);
+     if result<>pvTTF_TT_ERR_NoError then begin
+      exit;
+     end;
+     if length(GlobalSubroutineIndexData)>0 then begin
+      for i:=0 to length(GlobalSubroutineIndexData)-1 do begin
+       if ((GlobalSubroutineIndexData[i].Position+GlobalSubroutineIndexData[i].Size)-1)>=TpvInt32(EndOffset) then begin
+        result:=pvTTF_TT_ERR_CorruptFile;
+        exit;
+       end;
+      end;
+     end;
+     CFFGlobalSubroutineBias:=GetCFFSubroutineBias(GlobalSubroutineIndexData);
+
+     if TopDictFDArray>0 then begin
+      Position:=TpvInt32(Offset)+TopDictFDArray;
+      result:=LoadIndex2(FDArrayIndexData);
+      if result<>pvTTF_TT_ERR_NoError then begin
+       exit;
+      end;
+      if length(FDArrayIndexData)>0 then begin
+       result:=LoadDict2(FDArrayIndexData[0].Position,FDArrayIndexData[0].Size,FDDictEntryArray);
+       if result<>pvTTF_TT_ERR_NoError then begin
+        exit;
+       end;
+       for i:=0 to length(FDDictEntryArray)-1 do begin
+        DictEntry:=@FDDictEntryArray[i];
+        if DictEntry^.Op=TopDictPrivateOp then begin
+         if length(DictEntry^.Operands)>=2 then begin
+          if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
+           FDPrivateSize:=DictEntry^.Operands[0].IntegerValue;
+          end else begin
+           FDPrivateSize:=trunc(DictEntry^.Operands[0].FloatValue);
+          end;
+          if DictEntry^.Operands[1].Kind=TNumberKind.INT then begin
+           FDPrivateOffset:=DictEntry^.Operands[1].IntegerValue;
+          end else begin
+           FDPrivateOffset:=trunc(DictEntry^.Operands[1].FloatValue);
+          end;
+         end;
+        end;
+       end;
+      end;
+     end;
+
+     if (FDPrivateSize>0) and (FDPrivateOffset>0) then begin
+      result:=LoadDict2(TpvInt32(Offset)+FDPrivateOffset,FDPrivateSize,PrivateDictEntryArray);
+      if result<>pvTTF_TT_ERR_NoError then begin
+       exit;
+      end;
+      for i:=0 to length(PrivateDictEntryArray)-1 do begin
+       DictEntry:=@PrivateDictEntryArray[i];
+       case DictEntry^.Op of
+        PrivateDictSubRoutineOp:begin
+         if length(DictEntry^.Operands)>=1 then begin
+          if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
+           PrivateDictSubRoutine:=DictEntry^.Operands[0].IntegerValue;
+          end else begin
+           PrivateDictSubRoutine:=trunc(DictEntry^.Operands[0].FloatValue);
+          end;
+         end;
+        end;
+        PrivateDictDefaultWidthXOp:begin
+         if length(DictEntry^.Operands)>=1 then begin
+          if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
+           PrivateDictDefaultWidthX:=DictEntry^.Operands[0].IntegerValue;
+          end else begin
+           PrivateDictDefaultWidthX:=trunc(DictEntry^.Operands[0].FloatValue);
+          end;
+         end;
+        end;
+        PrivateDictNominalWidthXOp:begin
+         if length(DictEntry^.Operands)>=1 then begin
+          if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
+           PrivateDictNominalWidthX:=DictEntry^.Operands[0].IntegerValue;
+          end else begin
+           PrivateDictNominalWidthX:=trunc(DictEntry^.Operands[0].FloatValue);
+          end;
+         end;
+        end;
+       end;
+      end;
+      if PrivateDictSubRoutine<>0 then begin
+       Position:=TpvInt32(Offset)+FDPrivateOffset+PrivateDictSubRoutine;
+       result:=LoadIndex2(SubroutineIndexData);
+       if result<>pvTTF_TT_ERR_NoError then begin
+        exit;
+       end;
+       if length(SubroutineIndexData)>0 then begin
+        for i:=0 to length(SubroutineIndexData)-1 do begin
+         if ((SubroutineIndexData[i].Position+SubroutineIndexData[i].Size)-1)>=TpvInt32(EndOffset) then begin
+          result:=pvTTF_TT_ERR_CorruptFile;
+          exit;
+         end;
+        end;
+       end;
+       CFFSubroutineBias:=GetCFFSubroutineBias(SubroutineIndexData);
+      end;
+     end;
+
+     if TopDictCharStrings>0 then begin
+      Position:=TpvInt32(Offset)+TopDictCharStrings;
+      result:=LoadIndex2(TopDictCharStringsIndexData);
+      if result<>pvTTF_TT_ERR_NoError then begin
+       exit;
+      end;
+      fCountGlyphs:=length(TopDictCharStringsIndexData);
+      SetLength(fGlyphs,fCountGlyphs);
+      for i:=0 to fCountGlyphs-1 do begin
+       result:=LoadCFF2Glyph(fGlyphs[i],TopDictCharStringsIndexData[i].Position,TopDictCharStringsIndexData[i].Size);
+       if result<>pvTTF_TT_ERR_NoError then begin
+        exit;
+       end;
+      end;
+     end else begin
+      result:=pvTTF_TT_ERR_CorruptFile;
+      exit;
+     end;
+
+    finally
+     PrivateDictEntryArray:=nil;
+    end;
+
+   finally
+    FDDictEntryArray:=nil;
    end;
 
   finally
