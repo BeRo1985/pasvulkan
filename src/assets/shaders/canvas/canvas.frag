@@ -546,10 +546,10 @@ float multiSampleGSDF(const in TVEC texCoord){
     centerGradient *= inversesqrt(centerGradientSquaredLength); 
   }
   vec2 Juv = texCoord.xy * textureSize(uTexture, 0).xy,       
-        Jdx = dFdx(Juv), 
-        Jdy = dFdy(Juv),
-        jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
-                                (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
+       Jdx = dFdx(Juv), 
+       Jdy = dFdy(Juv),
+       jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
+                               (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
   vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
 #endif
   vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
