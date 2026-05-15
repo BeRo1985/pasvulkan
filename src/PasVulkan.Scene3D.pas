@@ -974,7 +974,8 @@ type EpvScene3D=class(Exception);
                      DefaultNormalMapTexture=1,
                      DefaultParticleTexture=2,
                      ResourceIESTexture=3,
-                     ResourceTexture=4
+                     ResourceTexture=4,
+                     ExternalTexture=5
                     );
                    THashData=packed record
                     MessageDigest:TDataHashClass.TMessageDigest;
@@ -7684,112 +7685,41 @@ begin
     try
      if (fReferenceCounter>0) and not fDataLoaded then begin
       try
-       TpvReferenceCountedObject.DecRefOrFreeAndNil(fTexture); // to avoid memory leaks already beforehand
-       if assigned(fSceneInstance.fVulkanDevice) then begin
-        HasProceduralTextureImageHook:=(length(fName)>0) and fSceneInstance.fProceduralTextureImageHookStringHashMap.TryGet(fName,ProceduralTextureImageHook);
-        if not HasProceduralTextureImageHook then begin
-         ProceduralTextureImageHook:=ProceduralTextureImageHookDefault;
-        end;
-        if ProceduralTextureImageHook.AllocateTexture or not HasProceduralTextureImageHook then begin
-         fTexture:=TpvVulkanTexture.Create(fSceneInstance.fVulkanDevice);
-         fTexture.DoFreeDataAfterFinish:=false;
-         fTexture.IncRef;
-        end else begin
-         fTexture:=nil;
-        end;
-        if HasProceduralTextureImageHook and assigned(ProceduralTextureImageHook.Hook) then begin
-         if assigned(fTexture) then begin
-          fTexture.Name:='TpvScene3D.TImage["'+fName+'"]';
-          ProceduralTextureImageHookOK:=ProceduralTextureImageHook.Hook(self);
-         end else begin
-          ProceduralTextureImageHookOK:=ProceduralTextureImageHook.Hook(self);
-          if length(fTexture.Name)=0 then begin
-           fTexture.Name:='TpvScene3D.TImage["'+fName+'"]';
-          end;
+       if fKind<>TKind.ExternalTexture then begin
+        TpvReferenceCountedObject.DecRefOrFreeAndNil(fTexture); // to avoid memory leaks already beforehand
+        if assigned(fSceneInstance.fVulkanDevice) then begin
+         HasProceduralTextureImageHook:=(length(fName)>0) and fSceneInstance.fProceduralTextureImageHookStringHashMap.TryGet(fName,ProceduralTextureImageHook);
+         if not HasProceduralTextureImageHook then begin
+          ProceduralTextureImageHook:=ProceduralTextureImageHookDefault;
          end;
-        end else begin
-         ProceduralTextureImageHookOK:=false;
-        end;
-        if not (HasProceduralTextureImageHook and ProceduralTextureImageHookOK) then begin
-         case fKind of
-          TpvScene3D.TImage.TKind.WhiteTexture:begin
-           fTexture.Name:='TpvScene3D.TImage.TKind.WhiteTexture';
-           fTexture.LoadFromMemory(VK_FORMAT_R8G8B8A8_UNORM,
-                                   VK_SAMPLE_COUNT_1_BIT,
-                                   8,
-                                   8,
-                                   0,
-                                   0,
-                                   1,
-                                   0,
-                                   [TpvVulkanTextureUsageFlag.General,
-                                    TpvVulkanTextureUsageFlag.TransferDst,
-                                    TpvVulkanTextureUsageFlag.TransferSrc,
-                                    TpvVulkanTextureUsageFlag.Sampled],
-                                   @WhiteTexturePixels,
-                                   SizeOf(TpvUInt32)*64,
-                                   false,
-                                   false,
-                                   0,
-                                   true,
-                                   true,
-                                   false,
-                                   pvAllocationGroupIDScene3DTexture);
+         if ProceduralTextureImageHook.AllocateTexture or not HasProceduralTextureImageHook then begin
+          fTexture:=TpvVulkanTexture.Create(fSceneInstance.fVulkanDevice);
+          fTexture.DoFreeDataAfterFinish:=false;
+          fTexture.IncRef;
+         end else begin
+          fTexture:=nil;
+         end;
+         if HasProceduralTextureImageHook and assigned(ProceduralTextureImageHook.Hook) then begin
+          if assigned(fTexture) then begin
+           fTexture.Name:='TpvScene3D.TImage["'+fName+'"]';
+           ProceduralTextureImageHookOK:=ProceduralTextureImageHook.Hook(self);
+          end else begin
+           ProceduralTextureImageHookOK:=ProceduralTextureImageHook.Hook(self);
+           if length(fTexture.Name)=0 then begin
+            fTexture.Name:='TpvScene3D.TImage["'+fName+'"]';
+           end;
           end;
-          TpvScene3D.TImage.TKind.DefaultNormalMapTexture:begin
-           fTexture.Name:='TpvScene3D.TImage.TKind.DefaultNormalMapTexture';
-           fTexture.LoadFromMemory(VK_FORMAT_R8G8B8A8_UNORM,
-                                   VK_SAMPLE_COUNT_1_BIT,
-                                   8,
-                                   8,
-                                   0,
-                                   0,
-                                   1,
-                                   0,
-                                   [TpvVulkanTextureUsageFlag.General,
-                                    TpvVulkanTextureUsageFlag.TransferDst,
-                                    TpvVulkanTextureUsageFlag.TransferSrc,
-                                    TpvVulkanTextureUsageFlag.Sampled],
-                                   @DefaultNormalMapTexturePixels,
-                                   SizeOf(TpvUInt32)*64,
-                                   false,
-                                   false,
-                                   0,
-                                   true,
-                                   false,
-                                   false,
-                                   pvAllocationGroupIDScene3DTexture);
-          end;
-          TpvScene3D.TImage.TKind.DefaultParticleTexture:begin
-           fTexture.Name:='TpvScene3D.TImage.TKind.DefaultParticleTexture';
-           w:=64;
-           h:=64;
-           TemporaryPixels:=nil;
-           SetLength(TemporaryPixels,w*h);
-           try
-            for y:=0 to h-1 do begin
-             for x:=0 to w-1 do begin
-              TemporaryPixels[(y*w)+x]:=$00ffffff or
-                             (TpvUInt32(
-                              Min(
-                               Max(
-                                round(
-                                 SmoothStep(1.0,
-                                            0.25,
-                                            TpvVector2.InlineableCreate(
-                                             ((x/w)-0.5)*2.0,
-                                             ((y/h)-0.5)*2.0
-                                            ).Length)*255.0
-                                           ),
-                                 0),
-                                255
-                               )) shl 24);
-             end;
-            end;
+         end else begin
+          ProceduralTextureImageHookOK:=false;
+         end;
+         if not (HasProceduralTextureImageHook and ProceduralTextureImageHookOK) then begin
+          case fKind of
+           TpvScene3D.TImage.TKind.WhiteTexture:begin
+            fTexture.Name:='TpvScene3D.TImage.TKind.WhiteTexture';
             fTexture.LoadFromMemory(VK_FORMAT_R8G8B8A8_UNORM,
                                     VK_SAMPLE_COUNT_1_BIT,
-                                    w,
-                                    h,
+                                    8,
+                                    8,
                                     0,
                                     0,
                                     1,
@@ -7798,8 +7728,32 @@ begin
                                      TpvVulkanTextureUsageFlag.TransferDst,
                                      TpvVulkanTextureUsageFlag.TransferSrc,
                                      TpvVulkanTextureUsageFlag.Sampled],
-                                    @TemporaryPixels[0],
-                                    SizeOf(TpvUInt32)*length(TemporaryPixels),
+                                    @WhiteTexturePixels,
+                                    SizeOf(TpvUInt32)*64,
+                                    false,
+                                    false,
+                                    0,
+                                    true,
+                                    true,
+                                    false,
+                                    pvAllocationGroupIDScene3DTexture);
+           end;
+           TpvScene3D.TImage.TKind.DefaultNormalMapTexture:begin
+            fTexture.Name:='TpvScene3D.TImage.TKind.DefaultNormalMapTexture';
+            fTexture.LoadFromMemory(VK_FORMAT_R8G8B8A8_UNORM,
+                                    VK_SAMPLE_COUNT_1_BIT,
+                                    8,
+                                    8,
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    [TpvVulkanTextureUsageFlag.General,
+                                     TpvVulkanTextureUsageFlag.TransferDst,
+                                     TpvVulkanTextureUsageFlag.TransferSrc,
+                                     TpvVulkanTextureUsageFlag.Sampled],
+                                    @DefaultNormalMapTexturePixels,
+                                    SizeOf(TpvUInt32)*64,
                                     false,
                                     false,
                                     0,
@@ -7807,47 +7761,98 @@ begin
                                     false,
                                     false,
                                     pvAllocationGroupIDScene3DTexture);
-           finally
-            TemporaryPixels:=nil;
            end;
-          end;
-          TpvScene3D.TImage.TKind.ResourceIESTexture:begin
-           fTexture.Name:='TpvScene3D.TImage.TKind.ResourceIESTexture["'+fName+'","'+FileName+'"]';
-           fTexture.LoadFromMemory(VK_FORMAT_R32_SFLOAT,
-                                   VK_SAMPLE_COUNT_1_BIT,
-                                   fIESTexture.Width,
-                                   fIESTexture.Height,
-                                   0,
-                                   0,
-                                   1,
-                                   0,
-                                   [TpvVulkanTextureUsageFlag.General,
-                                    TpvVulkanTextureUsageFlag.TransferDst,
-                                    TpvVulkanTextureUsageFlag.TransferSrc,
-                                    TpvVulkanTextureUsageFlag.Sampled],
-                                   @fIESTexture.Data[0],
-                                   length(fIESTexture.Data)*SizeOf(TpvFloat),
-                                   false,
-                                   false,
-                                   0,
+           TpvScene3D.TImage.TKind.DefaultParticleTexture:begin
+            fTexture.Name:='TpvScene3D.TImage.TKind.DefaultParticleTexture';
+            w:=64;
+            h:=64;
+            TemporaryPixels:=nil;
+            SetLength(TemporaryPixels,w*h);
+            try
+             for y:=0 to h-1 do begin
+              for x:=0 to w-1 do begin
+               TemporaryPixels[(y*w)+x]:=$00ffffff or
+                              (TpvUInt32(
+                               Min(
+                                Max(
+                                 round(
+                                  SmoothStep(1.0,
+                                             0.25,
+                                             TpvVector2.InlineableCreate(
+                                              ((x/w)-0.5)*2.0,
+                                              ((y/h)-0.5)*2.0
+                                             ).Length)*255.0
+                                            ),
+                                  0),
+                                 255
+                                )) shl 24);
+              end;
+             end;
+             fTexture.LoadFromMemory(VK_FORMAT_R8G8B8A8_UNORM,
+                                     VK_SAMPLE_COUNT_1_BIT,
+                                     w,
+                                     h,
+                                     0,
+                                     0,
+                                     1,
+                                     0,
+                                     [TpvVulkanTextureUsageFlag.General,
+                                      TpvVulkanTextureUsageFlag.TransferDst,
+                                      TpvVulkanTextureUsageFlag.TransferSrc,
+                                      TpvVulkanTextureUsageFlag.Sampled],
+                                     @TemporaryPixels[0],
+                                     SizeOf(TpvUInt32)*length(TemporaryPixels),
+                                     false,
+                                     false,
+                                     0,
+                                     true,
+                                     false,
+                                     false,
+                                     pvAllocationGroupIDScene3DTexture);
+            finally
+             TemporaryPixels:=nil;
+            end;
+           end;
+           TpvScene3D.TImage.TKind.ResourceIESTexture:begin
+            fTexture.Name:='TpvScene3D.TImage.TKind.ResourceIESTexture["'+fName+'","'+FileName+'"]';
+            fTexture.LoadFromMemory(VK_FORMAT_R32_SFLOAT,
+                                    VK_SAMPLE_COUNT_1_BIT,
+                                    fIESTexture.Width,
+                                    fIESTexture.Height,
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    [TpvVulkanTextureUsageFlag.General,
+                                     TpvVulkanTextureUsageFlag.TransferDst,
+                                     TpvVulkanTextureUsageFlag.TransferSrc,
+                                     TpvVulkanTextureUsageFlag.Sampled],
+                                    @fIESTexture.Data[0],
+                                    length(fIESTexture.Data)*SizeOf(TpvFloat),
+                                    false,
+                                    false,
+                                    0,
+                                    true,
+                                    false,
+                                    false,
+                                    pvAllocationGroupIDScene3DTexture);
+           end;
+           TpvScene3D.TImage.TKind.ResourceTexture:begin
+            fTexture.Name:='TpvScene3D.TImage["'+fName+'","'+FileName+'"]';
+            fTexture.LoadFromImage(fResourceDataStream,
                                    true,
                                    false,
-                                   false,
+                                   true,
                                    pvAllocationGroupIDScene3DTexture);
-          end;
-          else {TpvScene3D.TImage.TKind.ResourceTexture:}begin
-           fTexture.Name:='TpvScene3D.TImage["'+fName+'","'+FileName+'"]';
-           fTexture.LoadFromImage(fResourceDataStream,
-                                  true,
-                                  false,
-                                  true,
-                                  pvAllocationGroupIDScene3DTexture);
+           end;
+           else {TpvScene3D.TImage.TKind.ExternalTexture:}begin
+           end;
           end;
          end;
         end;
-       end;
-       if assigned(fTexture) and fTexture.HasKTXTexture then begin
-        NeedsMainThreadFinalization:=true;
+        if assigned(fTexture) and fTexture.HasKTXTexture then begin
+         NeedsMainThreadFinalization:=true;
+        end;
        end;
       finally
        fDataLoaded:=true;
@@ -7879,40 +7884,42 @@ begin
      if (fReferenceCounter>0) and not fUploaded then begin
       if assigned(fTexture) and assigned(fSceneInstance.fVulkanDevice) then begin
        try
-        UniversalQueue:=fSceneInstance.fVulkanDevice.UniversalQueue;
-        try
-         UniversalCommandPool:=TpvVulkanCommandPool.Create(fSceneInstance.fVulkanDevice,
-                                                           fSceneInstance.fVulkanDevice.UniversalQueueFamilyIndex,
-                                                           TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+        if fKind<>TKind.ExternalTexture then begin
+         UniversalQueue:=fSceneInstance.fVulkanDevice.UniversalQueue;
          try
-          UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
-                                                                VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+          UniversalCommandPool:=TpvVulkanCommandPool.Create(fSceneInstance.fVulkanDevice,
+                                                            fSceneInstance.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                            TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
           try
-           UniversalFence:=TpvVulkanFence.Create(fSceneInstance.fVulkanDevice);
+           UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                                 VK_COMMAND_BUFFER_LEVEL_PRIMARY);
            try
-            fTexture.Finish(UniversalQueue,
-                            UniversalCommandBuffer,
-                            UniversalFence,
-                            UniversalQueue,
-                            UniversalCommandBuffer,
-                            UniversalFence);
-            if assigned(fTexture.Image) then begin
-             fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3D.TImage["'+trim(fName)+'"].Image');
-            end;
-            if assigned(fTexture.ImageView) then begin
-             fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3D.TImage["'+trim(fName)+'"].ImageView');
+            UniversalFence:=TpvVulkanFence.Create(fSceneInstance.fVulkanDevice);
+            try
+             fTexture.Finish(UniversalQueue,
+                             UniversalCommandBuffer,
+                             UniversalFence,
+                             UniversalQueue,
+                             UniversalCommandBuffer,
+                             UniversalFence);
+             if assigned(fTexture.Image) then begin
+              fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3D.TImage["'+trim(fName)+'"].Image');
+             end;
+             if assigned(fTexture.ImageView) then begin
+              fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3D.TImage["'+trim(fName)+'"].ImageView');
+             end;
+            finally
+             FreeAndNil(UniversalFence);
             end;
            finally
-            FreeAndNil(UniversalFence);
+            FreeAndNil(UniversalCommandBuffer);
            end;
           finally
-           FreeAndNil(UniversalCommandBuffer);
+           FreeAndNil(UniversalCommandPool);
           end;
          finally
-          FreeAndNil(UniversalCommandPool);
+          UniversalQueue:=nil;
          end;
-        finally
-         UniversalQueue:=nil;
         end;
        finally
         fUploaded:=true;
@@ -7936,7 +7943,7 @@ begin
   try
    if fUploaded then begin
     try
-     if assigned(fTexture) then begin
+     if (fKind<>TKind.ExternalTexture) and assigned(fTexture) then begin
       fTexture.Unload;
      end;
     finally
@@ -8121,6 +8128,9 @@ begin
 
    end;
 
+   TpvScene3D.TImage.TKind.ExternalTexture:begin
+   end;
+
    else begin
    end;
 
@@ -8170,6 +8180,9 @@ begin
      aStream.CopyFrom(fResourceDataStream,Size);
     end;
 
+   end;
+
+   TpvScene3D.TImage.TKind.ExternalTexture:begin
    end;
 
    else begin
