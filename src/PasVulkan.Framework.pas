@@ -3174,7 +3174,8 @@ type EpvVulkanException=class(Exception);
                           const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout); overload;
        constructor Create(const aDescriptorPool:TpvVulkanDescriptorPool;
                           const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-                          const aVariableDescriptorCount:TpvUInt32); overload;
+                          const aVariableDescriptorCount:TpvUInt32;
+                          const aExtraNext:Pointer=nil); overload;
        destructor Destroy; override;
        class function Allocate(const aDescriptorPool:TpvVulkanDescriptorPool;
                                const aDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout):TpvVulkanDescriptorSetArray; overload;
@@ -24853,7 +24854,8 @@ end;
 
 constructor TpvVulkanDescriptorSet.Create(const aDescriptorPool:TpvVulkanDescriptorPool;
                                           const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-                                          const aVariableDescriptorCount:TpvUInt32);
+                                          const aVariableDescriptorCount:TpvUInt32;
+                                          const aExtraNext:Pointer);
 var DescriptorSetAllocateInfo:TVkDescriptorSetAllocateInfo;
     DescriptorSetVariableDescriptorCountAllocateInfoEXT:TVkDescriptorSetVariableDescriptorCountAllocateInfoEXT;
     Count:TpvUInt32;
@@ -24894,7 +24896,10 @@ begin
   DescriptorSetVariableDescriptorCountAllocateInfoEXT.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
   DescriptorSetVariableDescriptorCountAllocateInfoEXT.descriptorSetCount:=1;
   DescriptorSetVariableDescriptorCountAllocateInfoEXT.pDescriptorCounts:=@Count;
+  DescriptorSetVariableDescriptorCountAllocateInfoEXT.pNext:=aExtraNext;
   DescriptorSetAllocateInfo.pNext:=@DescriptorSetVariableDescriptorCountAllocateInfoEXT;
+ end else begin
+  DescriptorSetAllocateInfo.pNext:=aExtraNext;
  end;
 
  VulkanCheckResult(fDevice.fDeviceVulkan.AllocateDescriptorSets(fDevice.fDeviceHandle,@DescriptorSetAllocateInfo,@fDescriptorSetHandle));
