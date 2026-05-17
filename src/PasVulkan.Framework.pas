@@ -3121,6 +3121,9 @@ type EpvVulkanException=class(Exception);
        fDescriptorSetLayoutBindingList:TpvVulkanDescriptorSetLayoutBindingList;
        fDescriptorSetLayoutBindingArray:TVkDescriptorSetLayoutBindingArray;
        fExtendedBinding:boolean;
+       fHasVariableDescriptorCountBinding:boolean;
+       fVariableDescriptorBinding:TpvUInt32;
+       fVariableDescriptorUpperBound:TpvUInt32;
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aFlags:TVkDescriptorSetLayoutCreateFlags=0;const aExtendedBinding:boolean=false);
        destructor Destroy; override;
@@ -3134,6 +3137,9 @@ type EpvVulkanException=class(Exception);
        property Device:TpvVulkanDevice read fDevice;
        property Handle:TVkDescriptorSetLayout read fDescriptorSetLayoutHandle;
        property DescriptorSetLayoutBindingList:TpvVulkanDescriptorSetLayoutBindingList read fDescriptorSetLayoutBindingList;
+       property HasVariableDescriptorCountBinding:boolean read fHasVariableDescriptorCountBinding;
+       property VariableDescriptorBinding:TpvUInt32 read fVariableDescriptorBinding;
+       property VariableDescriptorUpperBound:TpvUInt32 read fVariableDescriptorUpperBound;
      end;
 
      PpvVulkanDescriptorSetWriteDescriptorSetMetaData=^TpvVulkanDescriptorSetWriteDescriptorSetMetaData;
@@ -3156,7 +3162,6 @@ type EpvVulkanException=class(Exception);
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fDescriptorSetHandle:TVkDescriptorSet;
-       fDescriptorSetAllocateInfo:TVkDescriptorSetAllocateInfo;
        fCopyDescriptorSetQueue:TVkCopyDescriptorSetArray;
        fCopyDescriptorSetQueueSize:TpvInt32;
        fWriteDescriptorSetQueue:TVkWriteDescriptorSetArray;
@@ -3166,10 +3171,16 @@ type EpvVulkanException=class(Exception);
        fWriteDescriptorSetAccelerationStructureKHRQueueSize:TpvInt32;
       public
        constructor Create(const aDescriptorPool:TpvVulkanDescriptorPool;
-                          const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout);
+                          const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout); overload;
+       constructor Create(const aDescriptorPool:TpvVulkanDescriptorPool;
+                          const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+                          const aVariableDescriptorCount:TpvUInt32); overload;
        destructor Destroy; override;
        class function Allocate(const aDescriptorPool:TpvVulkanDescriptorPool;
-                               const aDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout):TpvVulkanDescriptorSetArray;
+                               const aDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout):TpvVulkanDescriptorSetArray; overload;
+       class function Allocate(const aDescriptorPool:TpvVulkanDescriptorPool;
+                               const aDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout;
+                               const aVariableDescriptorCounts:array of TpvUInt32):TpvVulkanDescriptorSetArray; overload;
        procedure CopyFromDescriptorSet(const aSourceDescriptorSet:TpvVulkanDescriptorSet;
                                        const aSourceBinding:TpvUInt32;
                                        const aSourceArrayElement:TpvUInt32;
@@ -24752,13 +24763,28 @@ begin
   finally
    DescriptorBindingFlags:=nil;
   end;
+  if fExtendedBinding then begin
+   fHasVariableDescriptorCountBinding:=false;
+   fVariableDescriptorBinding:=0;
+   fVariableDescriptorUpperBound:=0;
+   for Index:=0 to fDescriptorSetLayoutBindingList.Count-1 do begin
+    if ((TpvVulkanDescriptorSetLayoutBinding(fDescriptorSetLayoutBindingList[Index]).fBindingFlags and
+         TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT))<>0) and
+       (not fHasVariableDescriptorCountBinding or
+        (TpvVulkanDescriptorSetLayoutBinding(fDescriptorSetLayoutBindingList[Index]).fDescriptorSetLayoutBinding.binding>
+         fVariableDescriptorBinding)) then begin
+     fHasVariableDescriptorCountBinding:=true;
+     fVariableDescriptorBinding:=TpvVulkanDescriptorSetLayoutBinding(fDescriptorSetLayoutBindingList[Index]).fDescriptorSetLayoutBinding.binding;
+     fVariableDescriptorUpperBound:=TpvVulkanDescriptorSetLayoutBinding(fDescriptorSetLayoutBindingList[Index]).fDescriptorSetLayoutBinding.descriptorCount;
+    end;
+   end;
+  end;
  end;
 end;
 
 constructor TpvVulkanDescriptorSet.Create(const aDescriptorPool:TpvVulkanDescriptorPool;
                                           const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout);
-var Index:TpvSizeInt;
-    DescriptorSetLayoutBinding:TpvVulkanDescriptorSetLayoutBinding;
+var DescriptorSetAllocateInfo:TVkDescriptorSetAllocateInfo;
     DescriptorSetVariableDescriptorCountAllocateInfoEXT:TVkDescriptorSetVariableDescriptorCountAllocateInfoEXT;
     Count:TpvUInt32;
 begin
@@ -24782,31 +24808,22 @@ begin
  fWriteDescriptorSetAccelerationStructureKHRQueue:=nil;
  fWriteDescriptorSetAccelerationStructureKHRQueueSize:=0;
 
- FillChar(fDescriptorSetAllocateInfo,SizeOf(TVkDescriptorSetAllocateInfo),#0);
- fDescriptorSetAllocateInfo.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
- fDescriptorSetAllocateInfo.descriptorPool:=fDescriptorPool.fDescriptorPoolHandle;
- fDescriptorSetAllocateInfo.descriptorSetCount:=1;
- fDescriptorSetAllocateInfo.pSetLayouts:=@fDescriptorSetLayout.fDescriptorSetLayoutHandle;
+ FillChar(DescriptorSetAllocateInfo,SizeOf(TVkDescriptorSetAllocateInfo),#0);
+ DescriptorSetAllocateInfo.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+ DescriptorSetAllocateInfo.descriptorPool:=fDescriptorPool.fDescriptorPoolHandle;
+ DescriptorSetAllocateInfo.descriptorSetCount:=1;
+ DescriptorSetAllocateInfo.pSetLayouts:=@fDescriptorSetLayout.fDescriptorSetLayoutHandle;
 
- if fDescriptorSetLayout.fExtendedBinding and (fDescriptorSetLayout.fDescriptorSetLayoutBindingList.Count>0) then begin
-  Count:=0;
-  for Index:=0 to fDescriptorSetLayout.fDescriptorSetLayoutBindingList.Count-1 do begin
-   DescriptorSetLayoutBinding:=TpvVulkanDescriptorSetLayoutBinding(fDescriptorSetLayout.fDescriptorSetLayoutBindingList[Index]);
-   if (DescriptorSetLayoutBinding.BindingFlags and TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT))<>0 then begin
-    Count:=DescriptorSetLayoutBinding.DescriptorCount;
-    break;
-   end;
-  end;
-  if Count>0 then begin
-   FillChar(DescriptorSetVariableDescriptorCountAllocateInfoEXT,SizeOf(TVkDescriptorSetVariableDescriptorCountAllocateInfoEXT),#0);
-   DescriptorSetVariableDescriptorCountAllocateInfoEXT.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
-   DescriptorSetVariableDescriptorCountAllocateInfoEXT.descriptorSetCount:=fDescriptorSetAllocateInfo.descriptorSetCount;
-   DescriptorSetVariableDescriptorCountAllocateInfoEXT.pDescriptorCounts:=@Count;
-   fDescriptorSetAllocateInfo.pNext:=@DescriptorSetVariableDescriptorCountAllocateInfoEXT;
-  end;
+ if fDescriptorSetLayout.fHasVariableDescriptorCountBinding then begin
+  Count:=fDescriptorSetLayout.fVariableDescriptorUpperBound;
+  FillChar(DescriptorSetVariableDescriptorCountAllocateInfoEXT,SizeOf(TVkDescriptorSetVariableDescriptorCountAllocateInfoEXT),#0);
+  DescriptorSetVariableDescriptorCountAllocateInfoEXT.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
+  DescriptorSetVariableDescriptorCountAllocateInfoEXT.descriptorSetCount:=1;
+  DescriptorSetVariableDescriptorCountAllocateInfoEXT.pDescriptorCounts:=@Count;
+  DescriptorSetAllocateInfo.pNext:=@DescriptorSetVariableDescriptorCountAllocateInfoEXT;
  end;
 
- VulkanCheckResult(fDevice.fDeviceVulkan.AllocateDescriptorSets(fDevice.fDeviceHandle,@fDescriptorSetAllocateInfo,@fDescriptorSetHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.AllocateDescriptorSets(fDevice.fDeviceHandle,@DescriptorSetAllocateInfo,@fDescriptorSetHandle));
 
 end;
 
@@ -24831,6 +24848,70 @@ begin
  SetLength(result,length(aDescriptorSetLayouts));
  for Index:=0 to length(aDescriptorSetLayouts)-1 do begin
   result[Index]:=TpvVulkanDescriptorSet.Create(aDescriptorPool,aDescriptorSetLayouts[Index]);
+ end;
+end;
+
+constructor TpvVulkanDescriptorSet.Create(const aDescriptorPool:TpvVulkanDescriptorPool;
+                                          const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+                                          const aVariableDescriptorCount:TpvUInt32);
+var DescriptorSetAllocateInfo:TVkDescriptorSetAllocateInfo;
+    DescriptorSetVariableDescriptorCountAllocateInfoEXT:TVkDescriptorSetVariableDescriptorCountAllocateInfoEXT;
+    Count:TpvUInt32;
+begin
+ inherited Create;
+
+ fDevice:=aDescriptorPool.fDevice;
+
+ fDescriptorPool:=aDescriptorPool;
+
+ fDescriptorSetLayout:=aDescriptorSetLayout;
+
+ fDescriptorSetHandle:=VK_NULL_HANDLE;
+
+ fCopyDescriptorSetQueue:=nil;
+ fCopyDescriptorSetQueueSize:=0;
+
+ fWriteDescriptorSetQueue:=nil;
+ fWriteDescriptorSetQueueMetaData:=nil;
+ fWriteDescriptorSetQueueSize:=0;
+
+ fWriteDescriptorSetAccelerationStructureKHRQueue:=nil;
+ fWriteDescriptorSetAccelerationStructureKHRQueueSize:=0;
+
+ Assert((not fDescriptorSetLayout.fHasVariableDescriptorCountBinding) or
+        (aVariableDescriptorCount<=fDescriptorSetLayout.fVariableDescriptorUpperBound),
+        'TpvVulkanDescriptorSet.Create: aVariableDescriptorCount exceeds layout upper bound');
+
+ FillChar(DescriptorSetAllocateInfo,SizeOf(TVkDescriptorSetAllocateInfo),#0);
+ DescriptorSetAllocateInfo.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+ DescriptorSetAllocateInfo.descriptorPool:=fDescriptorPool.fDescriptorPoolHandle;
+ DescriptorSetAllocateInfo.descriptorSetCount:=1;
+ DescriptorSetAllocateInfo.pSetLayouts:=@fDescriptorSetLayout.fDescriptorSetLayoutHandle;
+
+ if fDescriptorSetLayout.fHasVariableDescriptorCountBinding then begin
+  Count:=aVariableDescriptorCount;
+  FillChar(DescriptorSetVariableDescriptorCountAllocateInfoEXT,SizeOf(TVkDescriptorSetVariableDescriptorCountAllocateInfoEXT),#0);
+  DescriptorSetVariableDescriptorCountAllocateInfoEXT.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
+  DescriptorSetVariableDescriptorCountAllocateInfoEXT.descriptorSetCount:=1;
+  DescriptorSetVariableDescriptorCountAllocateInfoEXT.pDescriptorCounts:=@Count;
+  DescriptorSetAllocateInfo.pNext:=@DescriptorSetVariableDescriptorCountAllocateInfoEXT;
+ end;
+
+ VulkanCheckResult(fDevice.fDeviceVulkan.AllocateDescriptorSets(fDevice.fDeviceHandle,@DescriptorSetAllocateInfo,@fDescriptorSetHandle));
+
+end;
+
+class function TpvVulkanDescriptorSet.Allocate(const aDescriptorPool:TpvVulkanDescriptorPool;
+                                               const aDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout;
+                                               const aVariableDescriptorCounts:array of TpvUInt32):TpvVulkanDescriptorSetArray;
+var Index:TpvInt32;
+begin
+ Assert(length(aVariableDescriptorCounts)=length(aDescriptorSetLayouts),
+        'TpvVulkanDescriptorSet.Allocate: aVariableDescriptorCounts length must equal aDescriptorSetLayouts length');
+ result:=nil;
+ SetLength(result,length(aDescriptorSetLayouts));
+ for Index:=0 to length(aDescriptorSetLayouts)-1 do begin
+  result[Index]:=TpvVulkanDescriptorSet.Create(aDescriptorPool,aDescriptorSetLayouts[Index],aVariableDescriptorCounts[Index]);
  end;
 end;
 
