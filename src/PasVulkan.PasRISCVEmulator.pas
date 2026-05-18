@@ -1521,11 +1521,11 @@ end;
 
 procedure TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.OnConnect;
 begin
- TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.Acquire;
+ TpvPasRISCVEmulatorMachineInstance(Tag).fActiveTestConnectionsLock.Acquire;
  try
-  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnections.Add(self);
+  TpvPasRISCVEmulatorMachineInstance(Tag).fActiveTestConnections.Add(self);
  finally
-  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.Release;
+  TpvPasRISCVEmulatorMachineInstance(Tag).fActiveTestConnectionsLock.Release;
  end;
  Accept;
 end;
@@ -1537,11 +1537,11 @@ end;
 
 procedure TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol.OnDisconnect;
 begin
- TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.Acquire;
+ TpvPasRISCVEmulatorMachineInstance(Tag).fActiveTestConnectionsLock.Acquire;
  try
-  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnections.Remove(self);
+  TpvPasRISCVEmulatorMachineInstance(Tag).fActiveTestConnections.Remove(self);
  finally
-  TpvPasRISCVEmulatorMachineInstance(fTag).fActiveTestConnectionsLock.Release;
+  TpvPasRISCVEmulatorMachineInstance(Tag).fActiveTestConnectionsLock.Release;
  end;
 end;
 
