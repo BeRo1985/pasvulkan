@@ -2699,7 +2699,6 @@ type EpvScene3D=class(Exception);
                      fLODScreenCoverages:TpvFloatDynamicArray;
                      fIsLODVariant:Boolean;
                      fLODPrimaryNodeIndex:TpvSizeInt;
-                     procedure Finish;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
@@ -2707,8 +2706,13 @@ type EpvScene3D=class(Exception);
                      procedure FixUp;
                      procedure SaveToStream(const aStream:TStream);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
+                     procedure Finish;
                     public
                      property LODNodeIndices:TpvScene3D.TSizeIntDynamicArray read fLODNodeIndices;
+                     property Translation:TpvVector3 read fTranslation write fTranslation;
+                     property Rotation:TpvQuaternion read fRotation write fRotation;
+                     property Scale:TpvVector3 read fScale write fScale;
+                     property Matrix:TpvMatrix4x4 read fMatrix write fMatrix;
                     published
                      property Index:TpvSizeInt read fIndex;
                      property Flags:TNodeFlags read fFlags write fFlags;

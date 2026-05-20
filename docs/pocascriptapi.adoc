@@ -8842,6 +8842,1197 @@ MusicManager.clear();
 
 '''''
 
+== Scene3D
+
+=== Overview
+
+The Scene3D API exposes the PasVulkan 3D scene-graph to POCA scripts.  It is
+accessed through the `+engine.scene3d+` object.
+
+NOTE: `+engine.scene3d+` is *not* created by the engine itself — it is
+injected by the *game application* at context initialisation time by calling
+`+InitializePOCAScene3DContext(context, scene3DInstance, engineHash)+`
+(implemented in `+PasVulkan.POCA.Scene3D.pas+`).  In the planetgame1 (Seeds)
+project this call is made in `+UnitGamePOCA.pas+`.  A game that does not call
+`+InitializePOCAScene3DContext+` will not have an `+engine.scene3d+` object at
+all.
+
+All objects returned by the Scene3D API are *ghost objects* with reference-counted
+lifetimes.  Each ghost holds one reference on the underlying engine resource.
+When the POCA garbage collector finalises a ghost the reference is released.
+Calling `.destroy()` releases the reference immediately (the ghost's pointer is
+then nulled so further calls on it are silently ignored).
+
+*Do not* call `+.destroy()+` on ghosts that you still intend to use.  Holding a
+ghost variable alive is enough to keep the resource alive.
+
+'''''
+
+=== engine.scene3d — Scene object
+
+`+engine.scene3d+` is a ghost object injected by the game application (see
+Overview above).  It is the entry point for all Scene3D operations.  All
+factory methods on it return ghost objects that the caller is responsible for
+keeping alive (or explicitly destroying).
+
+'''''
+
+==== engine.scene3d.createImage(width, height, pixels)
+
+*Usage:*
+
+[source,js]
+----
+let img = engine.scene3d.createImage(width, height, pixels);
+----
+
+* *Description:* Creates a `+Scene3DImage+` ghost from an array of packed RGBA8
+  pixel values.  Pixels are encoded as `+0xRRGGBBAA+` 32-bit integers stored in
+  the `+pixels+` array in row-major order.  The underlying image data is stored
+  as QOI internally.
+* *Parameters:*
+** `+width+` (number): Image width in pixels.
+** `+height+` (number): Image height in pixels.
+** `+pixels+` (array): Array of `+width * height+` 32-bit RGBA values.
+* *Return Value:* A `+Scene3DImage+` ghost, or `+null+` on failure.
+* *Notes:* The image is not yet uploaded to the GPU after creation.  Call
+  `+img.upload()+` once per render frame until `+img.isUploaded()+` returns
+  `+true+`, or simply upload before first use.
+* *Example:*
++
+[source,js]
+----
+// 2×2 white image
+let pixels = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF];
+let img = engine.scene3d.createImage(2, 2, pixels);
+----
+
+'''''
+
+==== engine.scene3d.loadImage(path)
+
+*Usage:*
+
+[source,js]
+----
+let img = engine.scene3d.loadImage("textures/rock.png");
+----
+
+* *Description:* Loads an image from the application asset bundle by virtual
+  path.  Supported formats are those understood by the engine (PNG, JPEG, QOI,
+  KTX2, …).  The image is fully loaded and uploaded synchronously during this
+  call.
+* *Parameters:*
+** `+path+` (string): Asset-relative virtual path.
+* *Return Value:* A `+Scene3DImage+` ghost, or `+null+` if the asset does not
+  exist or loading fails.
+
+'''''
+
+==== engine.scene3d.getImageByName(name)
+
+*Usage:*
+
+[source,js]
+----
+let img = engine.scene3d.getImageByName("my_image");
+----
+
+* *Description:* Looks up an already-loaded image by its internal name.
+* *Parameters:*
+** `+name+` (string): The image name (set during creation or loading).
+* *Return Value:* A `+Scene3DImage+` ghost (new owned reference), or `+null+` if
+  no image with that name exists.
+
+'''''
+
+==== engine.scene3d.createSampler([type])
+
+*Usage:*
+
+[source,js]
+----
+let s = engine.scene3d.createSampler();            // default repeat
+let s = engine.scene3d.createSampler('nonrepeat');
+let s = engine.scene3d.createSampler('mipmap');
+let s = engine.scene3d.createSampler('mipmapnonrepeat');
+----
+
+* *Description:* Creates a new `+Scene3DSampler+` ghost with the given filter
+  and wrap preset.
+* *Parameters:*
+** `+type+` (string, optional): One of `+'default'+`, `+'nonrepeat'+`,
+   `+'mipmap'+`, `+'mipmapnonrepeat'+`.  Defaults to `+'default'+` (bilinear,
+   repeat).
+* *Return Value:* A `+Scene3DSampler+` ghost.
+
+'''''
+
+==== engine.scene3d.defaultSampler()
+
+*Usage:*
+
+[source,js]
+----
+let s = engine.scene3d.defaultSampler();
+----
+
+* *Description:* Returns the scene's built-in default sampler (bilinear, repeat
+  wrapping) as an owned ghost reference.
+* *Return Value:* A `+Scene3DSampler+` ghost, or `+null+` if no default sampler
+  exists.
+
+'''''
+
+==== engine.scene3d.defaultNonRepeatSampler()
+
+*Usage:*
+
+[source,js]
+----
+let s = engine.scene3d.defaultNonRepeatSampler();
+----
+
+* *Description:* Returns the scene's built-in default non-repeat sampler
+  (bilinear, clamp-to-edge) as an owned ghost reference.
+* *Return Value:* A `+Scene3DSampler+` ghost, or `+null+` if not available.
+
+'''''
+
+==== engine.scene3d.createTexture(image [, sampler])
+
+*Usage:*
+
+[source,js]
+----
+let tex = engine.scene3d.createTexture(img);
+let tex = engine.scene3d.createTexture(img, sampler);
+----
+
+* *Description:* Creates a `+Scene3DTexture+` ghost by combining a
+  `+Scene3DImage+` and an optional `+Scene3DSampler+`.  When no sampler is
+  supplied the scene's default repeat sampler is used automatically.
+* *Parameters:*
+** `+image+` (`+Scene3DImage+`): The image ghost to attach.
+** `+sampler+` (`+Scene3DSampler+`, optional): A sampler ghost.  Defaults to
+   the scene default.
+* *Return Value:* A `+Scene3DTexture+` ghost, or `+null+` on failure.
+
+'''''
+
+==== engine.scene3d.createTextureFromImage(width, height, pixels)
+
+*Usage:*
+
+[source,js]
+----
+let tex = engine.scene3d.createTextureFromImage(width, height, pixels);
+----
+
+* *Description:* Convenience shortcut that creates an image from a pixel array
+  and immediately wraps it in a texture using the default sampler.  No separate
+  image ghost is returned; the image is owned by the texture.
+* *Parameters:*
+** `+width+` (number): Image width in pixels.
+** `+height+` (number): Image height in pixels.
+** `+pixels+` (array): Array of `+width * height+` packed RGBA8 values
+   (`+0xRRGGBBAA+`).
+* *Return Value:* A `+Scene3DTexture+` ghost, or `+null+` on failure.
+
+'''''
+
+==== engine.scene3d.createMaterial([opts])
+
+*Usage:*
+
+[source,js]
+----
+let mat = engine.scene3d.createMaterial();
+let mat = engine.scene3d.createMaterial({
+  name: 'myMaterial',
+  shadingModel: 'pbr',          // 'pbr' | 'specularGlossiness' | 'unlit'
+  alphaMode:    'opaque',       // 'opaque' | 'mask' | 'blend'
+  alphaCutoff:  0.5,
+  doubleSided:  false,
+  castShadows:  true,
+  receiveShadows: true,
+  noWetness:    false,
+  baseColor:    [1, 1, 1, 1],  // [r, g, b, a]
+  metallic:     0.0,
+  roughness:    0.5,
+  emissive:     [0, 0, 0],     // [r, g, b]
+  baseColorTexture:          tex,
+  normalTexture:             normalTex,
+  metallicRoughnessTexture:  mrTex,
+  occlusionTexture:          aoTex,
+  emissiveTexture:           emTex,
+  hologram: {
+    active:        false,
+    direction:     [0, 1, 0],
+    flickerSpeed:  1.0,
+    flickerMin:    0.5,
+    flickerMax:    1.0,
+    mainColor:     [0, 0.8, 1, 1],
+    rimColor:      [0, 0.5, 1, 1],
+    rimPower:      2.0,
+    rimThreshold:  0.2,
+    scanTiling:    1.0,
+    scanSpeed:     0.5,
+    scanMin:       0.0,
+    scanMax:       1.0,
+    glowTiling:    1.0,
+    glowSpeed:     0.3,
+    glowMin:       0.0,
+    glowMax:       1.0,
+  },
+});
+----
+
+* *Description:* Creates a new `+Scene3DMaterial+` ghost.  All fields in the
+  optional `+opts+` hash are applied atomically before `+FillShaderData+` is
+  called, so no intermediate GPU updates are generated.
+* *Parameters:*
+** `+opts+` (hash, optional): Initial property values.  All keys are optional
+   and use the defaults of the engine material if omitted.
+
+[cols="1,1,3", options="header"]
+|===
+|Key |Type |Description
+
+|`+name+` |string |Internal material name (default: `+'poca_material'+`).
+|`+shadingModel+` |string |`+'pbr'+` (default), `+'specularGlossiness'+`, or `+'unlit'+`.
+|`+alphaMode+` |string |`+'opaque'+` (default), `+'mask'+`, or `+'blend'+`.
+|`+alphaCutoff+` |number |Alpha cutoff threshold for `+'mask'+` mode (default 0.5).
+|`+doubleSided+` |bool |Disable back-face culling (default `+false+`).
+|`+castShadows+` |bool |Whether the material casts shadows (default `+true+`).
+|`+receiveShadows+` |bool |Whether the material receives shadows (default `+true+`).
+|`+noWetness+` |bool |Suppress wetness/rain interaction (default `+false+`).
+|`+baseColor+` |array[4] |Base colour factor `+[r, g, b, a]+` (default `+[1,1,1,1]+`).
+|`+metallic+` |number |Metallic factor 0–1 (default 0).
+|`+roughness+` |number |Roughness factor 0–1 (default 1).
+|`+emissive+` |array[3] |Emissive colour factor `+[r, g, b]+` (default `+[0,0,0]+`).
+|`+baseColorTexture+` |Scene3DTexture |Base colour / albedo texture.
+|`+normalTexture+` |Scene3DTexture |Tangent-space normal map.
+|`+metallicRoughnessTexture+` |Scene3DTexture |Metallic-roughness texture (B=metallic, G=roughness).
+|`+occlusionTexture+` |Scene3DTexture |Ambient-occlusion texture (R channel).
+|`+emissiveTexture+` |Scene3DTexture |Emissive colour texture.
+|`+hologram+` |hash |Hologram sub-object (see hologram table below).
+|===
+
+[cols="1,1,3", options="header"]
+|===
+|Hologram key |Type |Description
+
+|`+active+` |bool |Enable hologram rendering (default `+false+`).
+|`+direction+` |array[3] |Scan/glow direction vector `+[x, y, z]+`.
+|`+flickerSpeed+` |number |Flicker animation speed.
+|`+flickerMin+` |number |Minimum flicker intensity.
+|`+flickerMax+` |number |Maximum flicker intensity.
+|`+mainColor+` |array[4] |Main hologram colour `+[r, g, b, a]+`.
+|`+rimColor+` |array[4] |Rim light colour `+[r, g, b, a]+`.
+|`+rimPower+` |number |Fresnel rim exponent.
+|`+rimThreshold+` |number |Fresnel rim threshold.
+|`+scanTiling+` |number |Scan-line tiling.
+|`+scanSpeed+` |number |Scan-line scroll speed.
+|`+scanMin+` |number |Scan-line intensity minimum.
+|`+scanMax+` |number |Scan-line intensity maximum.
+|`+glowTiling+` |number |Glow tiling.
+|`+glowSpeed+` |number |Glow scroll speed.
+|`+glowMin+` |number |Glow intensity minimum.
+|`+glowMax+` |number |Glow intensity maximum.
+|===
+
+* *Return Value:* A `+Scene3DMaterial+` ghost.
+
+'''''
+
+=== Scene3DImage
+
+A ghost object wrapping a `+TpvScene3D.TImage+`.  Lifecycle is managed via
+reference counting; the ghost holds one reference.
+
+'''''
+
+==== img.upload()
+
+*Usage:*
+
+[source,js]
+----
+img.upload();
+----
+
+* *Description:* Triggers a GPU upload for the image (synchronous staging
+  enqueue).  Due to the render-frame pipeline, the upload may not be visible
+  until the next rendered frame.  Call repeatedly until `+img.isUploaded()+`
+  returns `+true+` if synchronous availability is required.
+* *Return Value:* The image ghost (for method chaining).
+
+'''''
+
+==== img.isUploaded()
+
+*Usage:*
+
+[source,js]
+----
+if (img.isUploaded()) { ... }
+----
+
+* *Description:* Returns `+true+` (`+1+`) if the GPU upload has completed, or
+  `+false+` (`+0+`) if it is still pending.
+* *Return Value:* `+1+` or `+0+`.
+
+'''''
+
+==== img.destroy()
+
+*Usage:*
+
+[source,js]
+----
+img.destroy();
+----
+
+* *Description:* Immediately releases the ghost's reference on the image.  The
+  ghost's internal pointer is nulled; any further method calls on the same
+  variable are silently ignored.
+* *Return Value:* `+null+`.
+
+'''''
+
+=== Scene3DSampler
+
+A ghost object wrapping a `+TpvScene3D.TSampler+`.  Lifecycle is managed via
+reference counting.
+
+'''''
+
+==== sampler.destroy()
+
+*Usage:*
+
+[source,js]
+----
+sampler.destroy();
+----
+
+* *Description:* Immediately releases the ghost's reference on the sampler.
+* *Return Value:* `+null+`.
+
+'''''
+
+=== Scene3DTexture
+
+A ghost object wrapping a `+TpvScene3D.TTexture+`.  Lifecycle is managed via
+reference counting.
+
+'''''
+
+==== tex.destroy()
+
+*Usage:*
+
+[source,js]
+----
+tex.destroy();
+----
+
+* *Description:* Immediately releases the ghost's reference on the texture.
+* *Return Value:* `+null+`.
+
+'''''
+
+=== Scene3DMaterial
+
+A ghost object wrapping a `+TpvScene3D.TMaterial+`.  After any setter call the
+material automatically calls `+FillShaderData+` and notifies the scene of a new
+material data generation so GPU buffers are updated.  Use `+fillShaderData()+`
+explicitly to batch multiple setters and trigger only one GPU update.
+
+'''''
+
+==== mat.setShadingModel(model)
+
+*Usage:*
+
+[source,js]
+----
+mat.setShadingModel('pbr');                // PBR metallic-roughness (default)
+mat.setShadingModel('specularGlossiness'); // PBR specular-glossiness
+mat.setShadingModel('unlit');              // Unlit / no lighting
+----
+
+* *Parameters:*
+** `+model+` (string): `+'pbr'+`, `+'specularGlossiness'+`, or `+'unlit'+`.
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setAlphaMode(mode)
+
+*Usage:*
+
+[source,js]
+----
+mat.setAlphaMode('opaque'); // (default)
+mat.setAlphaMode('mask');
+mat.setAlphaMode('blend');
+----
+
+* *Parameters:*
+** `+mode+` (string): `+'opaque'+`, `+'mask'+`, or `+'blend'+`.
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setAlphaCutoff(value)
+
+*Usage:*
+
+[source,js]
+----
+mat.setAlphaCutoff(0.5);
+----
+
+* *Description:* Sets the alpha cutoff threshold used when `+alphaMode+` is
+  `+'mask'+`.
+* *Parameters:*
+** `+value+` (number): Alpha cutoff 0–1.
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setDoubleSided(value)
+
+*Usage:*
+
+[source,js]
+----
+mat.setDoubleSided(true);
+----
+
+* *Description:* Enables or disables back-face culling.
+* *Parameters:*
+** `+value+` (bool/number): `+true+`/`+1+` = double-sided (no culling).
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setCastShadows(value)
+
+*Usage:*
+
+[source,js]
+----
+mat.setCastShadows(false);
+----
+
+* *Parameters:*
+** `+value+` (bool/number): `+true+`/`+1+` = casts shadows (default).
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setReceiveShadows(value)
+
+*Usage:*
+
+[source,js]
+----
+mat.setReceiveShadows(false);
+----
+
+* *Parameters:*
+** `+value+` (bool/number): `+true+`/`+1+` = receives shadows (default).
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setNoWetness(value)
+
+*Usage:*
+
+[source,js]
+----
+mat.setNoWetness(true);
+----
+
+* *Description:* When `+true+` the material is excluded from rain/wetness
+  effects.
+* *Parameters:*
+** `+value+` (bool/number): `+true+`/`+1+` = suppress wetness.
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setBaseColorFactor(r, g, b, a)
+
+*Usage:*
+
+[source,js]
+----
+mat.setBaseColorFactor(1.0, 0.5, 0.0, 1.0);
+----
+
+* *Description:* Sets the base colour (albedo) factor.
+* *Parameters:*
+** `+r+`, `+g+`, `+b+`, `+a+` (number): RGBA components, each 0–1.
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setMetallicFactor(value)
+
+*Usage:*
+
+[source,js]
+----
+mat.setMetallicFactor(1.0);
+----
+
+* *Parameters:*
+** `+value+` (number): Metallic factor 0–1.
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setRoughnessFactor(value)
+
+*Usage:*
+
+[source,js]
+----
+mat.setRoughnessFactor(0.3);
+----
+
+* *Parameters:*
+** `+value+` (number): Roughness factor 0–1.
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setEmissiveFactor(r, g, b)
+
+*Usage:*
+
+[source,js]
+----
+mat.setEmissiveFactor(1.0, 0.5, 0.0);
+----
+
+* *Description:* Sets the emissive colour factor.  The emissive strength
+  component (w) is not modified.
+* *Parameters:*
+** `+r+`, `+g+`, `+b+` (number): RGB components, each 0–1 (or higher for HDR).
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setBaseColorTexture(tex [, texCoord])
+
+*Usage:*
+
+[source,js]
+----
+mat.setBaseColorTexture(tex);
+mat.setBaseColorTexture(tex, 1); // use UV set 1
+----
+
+* *Description:* Assigns the base colour / albedo texture.
+* *Parameters:*
+** `+tex+` (`+Scene3DTexture+`): The texture ghost.
+** `+texCoord+` (number, optional): UV channel index (default `+0+`).
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setNormalTexture(tex [, scale [, texCoord]])
+
+*Usage:*
+
+[source,js]
+----
+mat.setNormalTexture(normalTex);
+mat.setNormalTexture(normalTex, 2.0);     // double normal strength
+mat.setNormalTexture(normalTex, 1.0, 1);  // UV set 1
+----
+
+* *Description:* Assigns the tangent-space normal map.
+* *Parameters:*
+** `+tex+` (`+Scene3DTexture+`): The normal map texture.
+** `+scale+` (number, optional): Normal map scale/strength (default `+1.0+`).
+** `+texCoord+` (number, optional): UV channel index (default `+0+`).
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setMetallicRoughnessTexture(tex [, texCoord])
+
+*Usage:*
+
+[source,js]
+----
+mat.setMetallicRoughnessTexture(mrTex);
+----
+
+* *Description:* Assigns the metallic-roughness texture (B channel = metallic,
+  G channel = roughness).
+* *Parameters:*
+** `+tex+` (`+Scene3DTexture+`): The texture ghost.
+** `+texCoord+` (number, optional): UV channel index (default `+0+`).
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setOcclusionTexture(tex [, strength [, texCoord]])
+
+*Usage:*
+
+[source,js]
+----
+mat.setOcclusionTexture(aoTex);
+mat.setOcclusionTexture(aoTex, 0.8);     // partial occlusion strength
+mat.setOcclusionTexture(aoTex, 1.0, 1);  // UV set 1
+----
+
+* *Description:* Assigns the ambient-occlusion texture (R channel).
+* *Parameters:*
+** `+tex+` (`+Scene3DTexture+`): The AO texture ghost.
+** `+strength+` (number, optional): Occlusion strength 0–1 (default `+1.0+`).
+** `+texCoord+` (number, optional): UV channel index (default `+0+`).
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setEmissiveTexture(tex [, texCoord])
+
+*Usage:*
+
+[source,js]
+----
+mat.setEmissiveTexture(emTex);
+----
+
+* *Description:* Assigns the emissive texture.
+* *Parameters:*
+** `+tex+` (`+Scene3DTexture+`): The emissive texture ghost.
+** `+texCoord+` (number, optional): UV channel index (default `+0+`).
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.setHologram(opts)
+
+*Usage:*
+
+[source,js]
+----
+mat.setHologram({
+  active:       true,
+  direction:    [0, 1, 0],
+  flickerSpeed: 2.0,
+  flickerMin:   0.6,
+  flickerMax:   1.0,
+  mainColor:    [0, 0.8, 1, 0.9],
+  rimColor:     [0, 0.4, 1, 1],
+  rimPower:     3.0,
+  rimThreshold: 0.15,
+  scanTiling:   2.0,
+  scanSpeed:    0.8,
+  scanMin:      0.0,
+  scanMax:      0.6,
+  glowTiling:   1.0,
+  glowSpeed:    0.3,
+  glowMin:      0.1,
+  glowMax:      0.9,
+});
+----
+
+* *Description:* Applies hologram rendering parameters.  Only the keys present
+  in `+opts+` are modified; omitted keys retain their current values.
+* *Parameters:*
+** `+opts+` (hash): Hologram property hash.  See the hologram key table in
+   `+createMaterial+` for the full list of accepted keys and their types.
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.fillShaderData()
+
+*Usage:*
+
+[source,js]
+----
+mat.fillShaderData();
+----
+
+* *Description:* Explicitly calls `+FillShaderData+` and notifies the scene of a
+  new material data generation, flushing GPU buffers.  Use this after a batch of
+  setter calls to reduce the number of GPU-buffer updates to one.
++
+NOTE: Every individual setter already calls `+fillShaderData+` internally, so
+calling it again after a single setter is redundant.  It is useful only when
+you want to set many properties at once without intermediate GPU flushes
+(though the current implementation still flushes after each setter).
+* *Return Value:* The material ghost (for method chaining).
+
+'''''
+
+==== mat.destroy()
+
+*Usage:*
+
+[source,js]
+----
+mat.destroy();
+----
+
+* *Description:* Immediately releases the ghost's reference on the material.
+  The ghost's internal pointer is nulled; any further method calls on it are
+  silently ignored.
+* *Return Value:* `+null+`.
+
+'''''
+
+=== Scene3D — Full example
+
+[source,js]
+----
+// Load a texture from an asset file
+let img = engine.scene3d.loadImage("textures/metal_basecolor.png");
+
+// Create a texture using the default sampler
+let tex = engine.scene3d.createTexture(img);
+
+// Build a PBR metallic material
+let mat = engine.scene3d.createMaterial({
+  name:      'metalPlate',
+  metallic:  0.9,
+  roughness: 0.2,
+  baseColorTexture: tex,
+});
+
+// … attach mat to a mesh primitive later …
+
+// Explicit cleanup when no longer needed
+mat.destroy();
+tex.destroy();
+img.destroy();
+----
+
+'''''
+
+=== Scene3DGroup
+
+A `Scene3DGroup` represents a procedurally-created 3D object group (equivalent to a glTF scene file).
+Obtained from `engine.scene3d.createGroup(name)`.
+
+Build order: create meshes → create primitives → add vertices/indices → finish primitives → finish meshes → create nodes → set node properties → create scenes → add nodes → add materials → call `group.finish()` → call `group.createInstance()`.
+
+[cols="1,3"]
+|===
+|Method |Description
+
+|`group.createMesh([name])` |Create a new `Scene3DMesh` within this group.
+|`group.createNode([name])` |Create a new `Scene3DNode` within this group.
+|`group.createScene([name])` |Create a new `Scene3DGroupScene` within this group.
+|`group.addMaterial(mat)` |Register a `Scene3DMaterial` with this group; returns integer material index.
+|`group.finish()` |Finalise and upload the group to the GPU. Must be called once before `createInstance()`.
+|`group.createInstance()` |Instantiate the group in the scene; returns a `Scene3DInstance`.
+|`group.getAnimationID(name)` |Look up an animation by name; returns integer index or `-1` if not found.
+|`group.destroy()` |Invalidate the POCA ghost (the group itself is owned by the scene).
+|===
+
+.Example
+[source,javascript]
+----
+let g = engine.scene3d.createGroup('myObject');
+let mat = engine.scene3d.createMaterial({ name: 'red', baseColor: [1,0,0,1] });
+let matIdx = g.addMaterial(mat);
+
+let mesh = g.createMesh('body');
+let prim = mesh.createPrimitive('triangles');
+prim.setMaterial(mat);
+// … add vertices / indices …
+prim.finish();
+mesh.finish();
+
+let node = g.createNode('root');
+node.setMesh(mesh);
+node.setTranslation(0.0, 0.0, 0.0);
+
+let sc = g.createScene('default');
+sc.addNode(node);
+
+g.finish();
+let inst = g.createInstance();
+----
+
+'''''
+
+=== Scene3DMesh
+
+A `Scene3DMesh` is a named mesh within a `Scene3DGroup`. Obtained from `group.createMesh(name)`.
+
+[cols="1,3"]
+|===
+|Method |Description
+
+|`mesh.createPrimitive(['triangles'|'lines'|'points'])` |Create a new `Scene3DPrimitive`. Defaults to `'triangles'`.
+|`mesh.calculateTangentSpace()` |Auto-compute tangents from positions, normals and UVs (call after adding all primitives).
+|`mesh.finish()` |Finalise the mesh (called implicitly by `group.finish()`).
+|`mesh.destroy()` |Invalidate the POCA ghost (mesh lifetime is managed by the group).
+|===
+
+'''''
+
+=== Scene3DPrimitive
+
+A `Scene3DPrimitive` is a draw call within a `Scene3DMesh`. Obtained from `mesh.createPrimitive(topology)`.
+
+[cols="1,3"]
+|===
+|Method |Description
+
+|`prim.setMaterial(mat)` |Attach a `Scene3DMaterial` to this primitive.
+|`prim.addVertex(x,y,z, nx,ny,nz, u0,v0 [,r,g,b,a])` |Append a vertex; normal `(nx,ny,nz)` is oct-encoded internally. Optional RGBA defaults to `(1,1,1,1)`. Returns the integer vertex index.
+|`prim.addIndex(i)` |Append an index into the vertex buffer.
+|`prim.finish()` |Finalise this primitive.
+|`prim.destroy()` |Invalidate the POCA ghost (primitive lifetime is managed by the mesh).
+|===
+
+.Building a triangle
+[source,javascript]
+----
+let prim = mesh.createPrimitive('triangles');
+prim.setMaterial(mat);
+prim.addVertex(  0.0,  1.0, 0.0,   0,0,1,   0.5, 0.0 );
+prim.addVertex( -1.0, -1.0, 0.0,   0,0,1,   0.0, 1.0 );
+prim.addVertex(  1.0, -1.0, 0.0,   0,0,1,   1.0, 1.0 );
+prim.addIndex(0); prim.addIndex(1); prim.addIndex(2);
+prim.finish();
+----
+
+'''''
+
+=== Scene3DNode
+
+A `Scene3DNode` represents a transform node in the scene graph of a `Scene3DGroup`.
+Obtained from `group.createNode(name)`.
+
+[cols="1,3"]
+|===
+|Method |Description
+
+|`node.setMesh(mesh)` |Attach a `Scene3DMesh` to this node.
+|`node.addChild(childNode)` |Add a child `Scene3DNode`.
+|`node.setTranslation(x, y, z)` |Set the node's local translation.
+|`node.setRotation(qx, qy, qz, qw)` |Set the node's local rotation as a quaternion.
+|`node.setScale(sx, sy, sz)` |Set the node's local scale.
+|`node.setMatrix(m00,…,m15)` |Override the full 4×4 transform (16 floats, row-major).
+|`node.setVisible(bool)` |Show/hide this node.
+|`node.setCastShadows(bool)` |Enable/disable shadow casting for this node.
+|`node.finish()` |Finalise the node before calling `group.finish()`.
+|`node.destroy()` |Invalidate the POCA ghost (node lifetime is managed by the group).
+|===
+
+'''''
+
+=== Scene3DGroupScene
+
+A `Scene3DGroupScene` is the root scene list within a `Scene3DGroup` that declares which nodes are top-level.
+Obtained from `group.createScene(name)`.
+
+[cols="1,3"]
+|===
+|Method |Description
+
+|`scene.addNode(node)` |Add a root `Scene3DNode` to this scene.
+|`scene.destroy()` |Invalidate the POCA ghost (scene lifetime is managed by the group).
+|===
+
+NOTE: `scene.finish()` is implicit; called internally by `group.finish()`.
+
+'''''
+
+=== Scene3DLight
+
+A `Scene3DLight` is a standalone dynamic light (point, spot, or directional) placed in the scene.
+Created via `scene3d.createPointLight(...)`, `scene3d.createSpotLight(...)`, or `scene3d.createDirectionalLight(...)`.
+
+The light is owned by POCA — call `light.destroy()` to free it; the GC will also call `Free` automatically.
+Call `light.update()` after changing any property to push the changes to the GPU.
+
+NOTE: `engine.scene3d` is created and managed by the game layer, not the engine directly.
+
+[cols="1,3"]
+|===
+|Method |Description
+
+|`scene3d.createPointLight(x,y,z, r,g,b, intensity, range)` |Create a point light at position `(x,y,z)` with colour `(r,g,b)`, given `intensity` and attenuation `range`. Returns a `Scene3DLight`.
+|`scene3d.createSpotLight(x,y,z, dx,dy,dz, r,g,b, intensity, range, innerDeg, outerDeg)` |Create a spot light at `(x,y,z)` pointing in direction `(dx,dy,dz)`. `innerDeg` / `outerDeg` are the inner/outer cone half-angles in degrees. Returns a `Scene3DLight`.
+|`scene3d.createDirectionalLight(dx,dy,dz, r,g,b, intensity)` |Create a directional light with direction `(dx,dy,dz)`. Returns a `Scene3DLight`.
+|`light.setType(t)` |Change the light type: `1` = Directional, `2` = Point, `3` = Spot. Returns `light`.
+|`light.setPosition(x,y,z)` |Set the translation part of the light's matrix, preserving orientation. Returns `light`.
+|`light.setDirection(dx,dy,dz)` |Recompute the light matrix orientation toward `(dx,dy,dz)`, preserving the current position. Returns `light`.
+|`light.setMatrix(m00,m01,…,m15)` |Set the full 4×4 double-precision light matrix (16 row-major arguments). Returns `light`.
+|`light.setColor(r,g,b)` |Set the light colour. Returns `light`.
+|`light.setIntensity(v)` |Set the light intensity. Returns `light`.
+|`light.setRange(v)` |Set the attenuation range (point/spot lights). Returns `light`.
+|`light.setConeAngles(innerDeg, outerDeg)` |Set inner and outer cone half-angles in degrees (spot lights). Returns `light`.
+|`light.setCastShadows(bool)` |Enable or disable shadow casting. Returns `light`.
+|`light.setVisible(bool)` |Show or hide the light. Returns `light`.
+|`light.update([inFlightFrameIndex])` |Push all property changes to the GPU. Pass the current in-flight frame index, or omit for auto (`-1`). Returns `light`.
+|`light.destroy()` |Free the light and invalidate the POCA ghost.
+|===
+
+.Example
+[source,javascript]
+----
+let pt = engine.scene3d.createPointLight(0.0, 2.0, 0.0,  1.0, 0.9, 0.7,  5.0, 10.0);
+pt.setCastShadows(true);
+pt.update();
+
+let spot = engine.scene3d.createSpotLight(
+  0.0, 5.0, 0.0,   // position
+  0.0, -1.0, 0.0,  // direction (down)
+  1.0, 1.0, 1.0,   // colour
+  8.0, 20.0,       // intensity, range
+  15.0, 30.0       // inner/outer cone degrees
+);
+spot.update();
+
+let sun = engine.scene3d.createDirectionalLight(-0.5, -1.0, -0.5,  1.0, 0.95, 0.8,  3.0);
+sun.update();
+----
+
+'''''
+
+=== Scene3DDecal
+
+A `Scene3DDecal` is a dynamic decal projected onto scene geometry.
+Created via `scene3d.spawnDecal(opts)` (see opts table in the Reference section).
+
+The decal is owned by `TpvScene3D`; the POCA ghost stores a back-pointer only.
+Call `decal.destroy()` to hide the decal early and release the ghost data.
+Never call `Free` on a decal directly.
+
+NOTE: `engine.scene3d` is created and managed by the game layer, not the engine directly.
+
+[cols="1,3"]
+|===
+|Method / Factory |Description
+
+|`scene3d.spawnDecal(opts)` |Spawn a decal; returns a `Scene3DDecal` ghost. Required opts: `position:[x,y,z]`, `size:[w,h]`. Optional: `orientation:[qx,qy,qz,qw]`, `rotation` (rad), texture indices (`albedoTexture`, `normalTexture`, `ormTexture`, `specularTexture`, `emissiveTexture`), `blendMode`, `pbrBlendFactor`, `opacity`, `angleFade`, `edgeFade`, `lifetime`, `fadeOutTime`, `passMesh`, `passPlanet`, `passGrass`.
+|`decal.setVisible(bool)` |Show or hide the decal. Returns `decal`.
+|`decal.setOpacity(f)` |Set opacity (0–1). Returns `decal`.
+|`decal.setPosition(x,y,z)` |Set the world-space position (`TpvVector3D`). Returns `decal`.
+|`decal.setOrientation(qx,qy,qz,qw)` |Set the orientation quaternion. Returns `decal`.
+|`decal.setRotation(f)` |Set extra rotation about the decal normal, in radians. Returns `decal`.
+|`decal.setSize(w,h)` |Set decal width and height; depth defaults to `0.5`. Returns `decal`.
+|`decal.setBlendMode(mode)` |Set blend mode: `'alpha'`, `'multiply'`, `'overlay'`, `'additive'`, `'pbr'`, `'normalmap'`. Returns `decal`.
+|`decal.destroy()` |Mark decal invisible (if still valid), release ghost data.
+|===
+
+.Example
+[source,javascript]
+----
+let d = engine.scene3d.spawnDecal({
+  position:    [10.0, 0.05, 5.0],
+  size:        [1.0, 1.0],
+  albedoTexture: myAlbedoIdx,
+  blendMode:   'alpha',
+  opacity:     0.8,
+  lifetime:    5.0,
+  fadeOutTime: 1.0
+});
+d.setVisible(true);
+----
+
+'''''
+
+=== Scene3DBakedMesh
+
+A `Scene3DBakedMesh` is a CPU-side triangle soup snapshot of a `Scene3DInstance`'s geometry.
+Obtained from `instance.getBakedMesh()`.
+
+The caller owns the `Scene3DBakedMesh` and must call `destroy()` when finished
+to free the underlying memory.
+
+.Scene3DBakedMesh creation
+[cols="1,3"]
+|===
+|POCA call |Description
+
+|`instance.getBakedMesh()` |Bake the instance's current geometry into a triangle mesh; returns a `Scene3DBakedMesh` ghost.
+|===
+
+.Scene3DBakedMesh methods
+[cols="1,3"]
+|===
+|Method |Description
+
+|`bm.raycast(origin, dir)` |Cast a ray against the baked mesh. `origin` and `dir` are `[x,y,z]` arrays. Returns `{distance, position:{x,y,z}, u, v}` for the closest hit, or `null` if no hit.
+|`bm.destroy()` |Free the baked mesh immediately (must be called to avoid memory leaks).
+|===
+
+.Scene3DBakedMesh example
+[source,js]
+----
+let bm = instance.getBakedMesh();
+let hit = bm.raycast([0,10,0], [0,-1,0]);
+if (hit !== null) {
+  console.log("hit at distance " + hit.distance);
+}
+bm.destroy();
+----
+
+'''
+
+.Scene3DScene raycast
+[cols="1,3"]
+|===
+|Method |Description
+
+|`scene3d.raycast(origin, dir, instances)` |Cast a ray against the baked geometry of every `Scene3DInstance` in the `instances` array. Returns `{instance, distance, position:{x,y,z}, u, v}` for the closest overall hit, or `null` if no hit.
+|===
+
+'''''
+
+=== Scene3DParticle — `scene3d.addParticle`
+
+Spawns a fire-and-forget particle. No ghost is returned; the engine recycles slots automatically.
+
+.addParticle — hash-opts form
+[cols="1,1,3"]
+|===
+|Opt |Default |Description
+
+|`position` |required |`[x,y,z]` world position
+|`velocity` |`[0,0,0]` |Initial velocity vector
+|`gravity` |`[0,0,0]` |Gravity acceleration vector
+|`rotationStart` |`0.0` |Start rotation in radians
+|`rotationEnd` |`0.0` |End rotation in radians
+|`sizeStart` |`[1,1]` |Particle size at birth `[w,h]`
+|`sizeEnd` |`[0,0]` |Particle size at death `[w,h]`
+|`colorStart` |`[1,1,1,1]` |RGBA colour at birth
+|`colorEnd` |`[1,1,1,0]` |RGBA colour at death
+|`lifetime` |`1.0` |Particle lifetime in seconds
+|`textureID` |`0` |Texture atlas index
+|`additiveBlending` |`false` |Use additive blending if `true`
+|===
+
+Returns the particle slot index as an integer.
+
+.addParticle — positional form
+[source,js]
+----
+// scene3d.addParticle(position, velocity, gravity, rotStart, rotEnd,
+//                     sizeStart, sizeEnd, colorStart, colorEnd,
+//                     lifetime, textureID, additiveBlending)
+scene3d.addParticle([x,y,z], [0,0,0], [0,-9.8,0], 0, 0,
+                    [0.5,0.5], [0,0], [1,1,1,1], [1,1,1,0],
+                    2.0, 0, false);
+----
+
+.addParticle — hash form
+[source,js]
+----
+scene3d.addParticle({
+  position: [x, y, z],
+  velocity: [vx, vy, vz],
+  gravity:  [0, -9.8, 0],
+  sizeStart: [0.5, 0.5],
+  sizeEnd:   [0.0, 0.0],
+  colorStart: [1, 0.5, 0, 1],
+  colorEnd:   [1, 0.5, 0, 0],
+  lifetime: 1.5,
+  additiveBlending: true
+});
+----
+
+'''''
+
+=== Scene3DInstance
+
+A `Scene3DInstance` is a live copy of a `Scene3DGroup` placed in the scene.
+Obtained from `group.createInstance()`.
+
+The instance owns its own animation state and world transform.
+Call `inst.destroy()` when the object is no longer needed — this releases the Pascal object.
+
+NOTE: `engine.scene3d` (and therefore `group.createInstance()`) is created and managed by the game layer, not the engine directly.
+
+[cols="1,3"]
+|===
+|Method |Description
+
+|`inst.setScene(sceneIdx)` |Select which root scene within the group to render (integer index); returns `inst`.
+|`inst.setActive(bool)` |Show or hide the instance; returns `inst`.
+|`inst.isActive()` |Returns `true` if the instance is currently active.
+|`inst.setModelMatrix(m00,m01,…,m15)` |Set the 4×4 double-precision world transform. Arguments are the 16 matrix elements in row-major order. Returns `inst`.
+|`inst.getModelMatrix()` |Return the current world matrix as a 16-element flat array (row-major doubles).
+|`inst.setAnimation(idx, time [,factor [,additive]])` |Directly set animation `idx` (integer) to the given `time` (seconds), optional blend `factor` (default `1.0`), and optional `additive` flag (default `false`). Returns `inst`.
+|`inst.setAnimationState(idx, {time?, factor?, additive?})` |Partial update via hash — only the keys present in the hash are applied. Returns `inst`.
+|`inst.getAnimation(idx)` |Returns `{factor, time, additive, complete}` hash for animation `idx`.
+|`inst.setAnimationFactor(idx, factor)` |Set the blend weight for animation `idx`. Returns `inst`.
+|`inst.setAnimationTime(idx, t)` |Set the playback position (seconds) for animation `idx`. Returns `inst`.
+|`inst.setAnimationAdditive(idx, bool)` |Set the additive blend flag for animation `idx`. Returns `inst`.
+|`inst.playAnimation(name [,loop [,speed]])` |High-level start: look up animation by `name`, reset time to `0`, set `factor = speed` (default `1.0`), set loop flag (default `false`). Returns `true` on success, `false` if name not found.
+|`inst.stopAnimation(name)` |Stop the named animation: sets its factor and auto-advance speed to `0`. Returns `inst`.
+|`inst.stopAllAnimations()` |Stop all animations on this instance. Returns `inst`.
+|`inst.isAnimationPlaying(name)` |Returns `true` if the named animation has a non-zero blend factor.
+|`inst.getAnimationTime(name)` |Returns the current playback time (seconds) of the named animation, or `null` if not found.
+|`inst.setAnimationTimeByName(name, t)` |Set the playback time of the named animation. Returns `inst`.
+|`inst.updateAnimations()` |Advance all auto-playing animations by wall-clock delta, handle loop wrap-around or stop on completion, then call `Instance.Update()` to push state to the GPU. Returns `inst`. Call this once per frame for each animated instance.
+|`inst.getBakedMesh()` |Not yet implemented — returns `null`.
+|`inst.createRenderInstance()` |Create a new `Scene3DRenderInstance` (GPU render slot) for this instance. Returns the new ghost.
+|`inst.destroy()` |Free the instance and its animation state. Invalidates the POCA ghost.
+|===
+
+.Example
+[source,javascript]
+----
+let inst = g.createInstance();
+inst.setScene(0);
+inst.setActive(true);
+// identity matrix
+inst.setModelMatrix(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1);
+
+// play "walk" animation in a loop
+inst.playAnimation('walk', true, 1.0);
+
+// in the per-frame update function:
+inst.updateAnimations();
+
+let ri = inst.createRenderInstance();
+ri.setActive(true);
+ri.setModelMatrix(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1);
+----
+
+'''''
+
+=== Scene3DRenderInstance
+
+A `Scene3DRenderInstance` is a GPU draw-call slot for a `Scene3DInstance`.
+Each instance can have multiple render instances (e.g., for instanced rendering at different positions).
+Obtained from `inst.createRenderInstance()`.
+
+The render instance is owned by the Pascal `TInstance` — call `ri.remove()` to deregister it;
+do **not** call `Free`. The POCA ghost is invalidated after `remove()`.
+
+[cols="1,3"]
+|===
+|Method |Description
+
+|`ri.setActive(bool)` |Toggle GPU visibility of this render slot. Returns `ri`.
+|`ri.setModelMatrix(m00,m01,…,m15)` |Set the 4×4 double-precision world transform for this render slot (16 row-major doubles). Returns `ri`.
+|`ri.remove()` |Deregister this render instance from the GPU scene. Invalidates the POCA ghost.
+|===
+
+'''''
+
 == Summary
 
 The PasVulkan POCA Script API provides a comprehensive set of types and functions for game development:
@@ -8851,6 +10042,7 @@ The PasVulkan POCA Script API provides a comprehensive set of types and function
 * *Canvas API:* Comprehensive 2D drawing with shapes, text, sprites, and paths
 * *Input API:* Keyboard, mouse, and pointer event handling
 * *Audio API:* Sound effects with polyphony and 3D spatialization, background music playback
+* *Scene3D API:* 3D scene-graph access — images, samplers, textures, materials, groups, meshes, primitives, nodes, and scenes with full PBR and hologram support
 
 All types support operator overloading and provide fluent APIs for method chaining. The Canvas API is hardware-accelerated using Vulkan for high-performance 2D rendering. The Audio API provides both simple 2D and advanced 3D spatial audio capabilities.
 
