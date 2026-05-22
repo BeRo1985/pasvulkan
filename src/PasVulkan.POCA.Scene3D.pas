@@ -1,4 +1,4 @@
-(******************************************************************************
+﻿(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.Framework.pas                  *
@@ -409,7 +409,7 @@ const POCAScene3DTextureGhost:TPOCAGhostType=
 
 const POCAScene3DLightGhost:TPOCAGhostType=
        (
-        Destroy:@POCAScene3DLightGhostDestroy;
+        Destroy:POCAScene3DLightGhostDestroy;
         CanDestroy:nil;
         Mark:nil;
         ExistKey:nil;
@@ -431,7 +431,7 @@ const POCAScene3DGroupLightGhost:TPOCAGhostType=
 
 const POCAScene3DDecalGhost:TPOCAGhostType=
        (
-        Destroy:@POCAScene3DDecalGhostDestroy;
+        Destroy:POCAScene3DDecalGhostDestroy;
         CanDestroy:nil;
         Mark:nil;
         ExistKey:nil;
@@ -442,7 +442,7 @@ const POCAScene3DDecalGhost:TPOCAGhostType=
 
 const POCAScene3DBakedMeshGhost:TPOCAGhostType=
        (
-        Destroy:@POCAScene3DBakedMeshGhostDestroy;
+        Destroy:POCAScene3DBakedMeshGhostDestroy;
         CanDestroy:nil;
         Mark:nil;
         ExistKey:nil;
