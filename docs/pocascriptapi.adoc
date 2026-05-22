@@ -9954,6 +9954,44 @@ scene3d.addParticle({
 
 '''''
 
+=== Scene3DModel (game-side)
+
+`Scene3DModel` is a game-side ghost (Seeds / `UnitGamePOCA.pas`) that wraps a loaded
+`TGameInstanceableModel`. It is obtained by calling `engine.scene3d.loadModel(path)`.
+
+NOTE: This ghost type is only available when running inside the Seeds game engine.
+It uses the game's `TGameInstanceableModels` system, which handles glTF/GLB loading,
+physics collision meshes, and animation.
+
+.Scene3DModel creation
+[cols="1,1,3"]
+|===
+|Function|Returns|Description
+
+|`engine.scene3d.loadModel(path)`|`Scene3DModel`|Load a glTF/GLB asset synchronously. `path` may use the `{models}/…` prefix understood by the asset system.
+|===
+
+.Scene3DModel methods
+[cols="1,1,3"]
+|===
+|Method|Returns|Description
+
+|`model.createInstance()`|`Scene3DInstance`|Wrap the first backing `TGameInstanceableModelInstance` as a `Scene3DInstance` ghost. All transform, animation, and lifecycle methods of `Scene3DInstance` work on the returned value.
+|`model.unload()`|`null`|Immediately free the underlying `TGameInstanceableModel`. The POCA ghost becomes a dangling reference; do not use it afterwards.
+|===
+
+.Scene3DModel example
+[source,javascript]
+----
+let model = engine.scene3d.loadModel('{models}/chess/board.glb');
+let inst = model.createInstance();
+inst.setPosition(0, 0.05, 0);
+// ... use inst ...
+model.unload();
+----
+
+'''''
+
 === Scene3DInstance
 
 A `Scene3DInstance` is a live copy of a `Scene3DGroup` placed in the scene.

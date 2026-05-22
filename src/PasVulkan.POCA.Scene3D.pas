@@ -125,9 +125,21 @@ function POCANewScene3DTextureGhost(const aContext:PPOCAContext;const aTexture:T
 // Creates a POCA ghost for a TMaterial. The ghost owns one reference.
 function POCANewScene3DMaterialGhost(const aContext:PPOCAContext;const aMaterial:TpvScene3D.TMaterial):TPOCAValue;
 
-// Registers all Scene3D ghost types and sets engine.scene3d on aEngineHash.
+// Creates a POCA ghost for a TGroup.TInstance. Lifetime is managed by the caller.
+function POCANewScene3DInstanceGhost(const aContext:PPOCAContext;const aInstance:TpvScene3D.TGroup.TInstance):TPOCAValue;
+
+// Registers all Scene3D ghost types and method hashes.
 // Call once per POCA context after the engine hash is created.
-procedure InitializePOCAScene3DContext(const aContext:PPOCAContext;const aScene3D:TpvScene3D;const aEngineHash:TPOCAValue);
+// Does NOT set engine.scene3d — call RegisterPOCAScene3DGhost separately when Scene3D is available.
+procedure InitializePOCAScene3DContext(const aContext:PPOCAContext;const aEngineHash:TPOCAValue);
+
+// Sets engine.scene3d on aEngineHash to a ghost wrapping aScene3D.
+// Call when TGame (and its Scene3D) is created.
+procedure RegisterPOCAScene3DGhost(const aContext:PPOCAContext;const aScene3D:TpvScene3D;const aEngineHash:TPOCAValue);
+
+// Removes engine.scene3d from aEngineHash.
+// Call when TGame (and its Scene3D) is destroyed.
+procedure UnregisterPOCAScene3DGhost(const aContext:PPOCAContext;const aEngineHash:TPOCAValue);
 
 implementation
 
@@ -3866,7 +3878,7 @@ begin
  result.Num:=ParticleIndex;
 end;
 
-procedure InitializePOCAScene3DContext(const aContext:PPOCAContext;const aScene3D:TpvScene3D;const aEngineHash:TPOCAValue);
+procedure InitializePOCAScene3DContext(const aContext:PPOCAContext;const aEngineHash:TPOCAValue);
 begin
  POCAScene3DSceneGhostPointer:=@POCAScene3DSceneGhost;
  POCAScene3DGroupGhostPointer:=@POCAScene3DGroupGhost;
@@ -3933,10 +3945,6 @@ begin
 
  POCAScene3DBakedMeshGhostHash:=POCANewHash(aContext);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,POCAScene3DBakedMeshGhostHash);
-
- // Register engine.scene3d as the TpvScene3D ghost.
- // All factory methods (createGroup, createMaterial, etc.) are registered on
- POCAHashSetString(aContext,aEngineHash,'scene3d',POCANewScene3DGhost(aContext,aScene3D));
 
  // Image methods
  POCAAddNativeFunction(aContext,POCAScene3DImageGhostHash,'upload',@POCAScene3DImageFunctionUpload,nil,nil);
@@ -4099,6 +4107,16 @@ begin
  // Particle
  POCAAddNativeFunction(aContext,POCAScene3DSceneGhostHash,'addParticle',@POCAScene3DSceneFunctionAddParticle,nil,nil);
 
+end;
+
+procedure RegisterPOCAScene3DGhost(const aContext:PPOCAContext;const aScene3D:TpvScene3D;const aEngineHash:TPOCAValue);
+begin
+ POCAHashSetString(aContext,aEngineHash,'scene3d',POCANewScene3DGhost(aContext,aScene3D));
+end;
+
+procedure UnregisterPOCAScene3DGhost(const aContext:PPOCAContext;const aEngineHash:TPOCAValue);
+begin
+ POCAHashDeleteString(aContext,aEngineHash,'scene3d');
 end;
 
 end.
