@@ -4506,6 +4506,39 @@ The Canvas API provides a comprehensive 2D drawing interface similar to HTML5 Ca
 
 '''''
 
+=== Vector Argument Conventions
+
+Many Canvas (and the helper functions used by Scene3D drawing calls) accept vector parameters. Each such parameter accepts any of the following three forms:
+
+[cols="1,1,1,1",options="header"]
+|===
+| Type | Ghost form | Array form | Hash form
+
+| *Vector2*
+| `+Vector2.create(x,y)+`
+| `+[x, y]+`
+| `+{x:…, y:…}+` (aliases: `+s+`/`+u+` for x; `+t+`/`+v+` for y)
+
+| *Vector3*
+| `+Vector3.create(x,y,z)+`
+| `+[x, y, z]+`
+| `+{x:…, y:…, z:…}+` (aliases: `+r+`,`+g+`,`+b+`)
+
+| *Vector4*
+| `+Vector4.create(x,y,z,w)+`
+| `+[x, y, z, w]+`
+| `+{x:…, y:…, z:…, w:…}+` (aliases: `+r+`,`+g+`,`+b+`,`+a+`)
+
+| *Matrix4x4*
+| `+Matrix4x4.create(…)+`
+| `+[m00, m01, …, m33]+` (16 values, row-major)
+| `+{…}+` (component keys)
+|===
+
+Missing hash keys default to `+0.0+`. Wherever a parameter is documented as `+(Vector2)+`, `+(Vector3)+`, `+(Vector4)+`, or `+(Matrix4x4)+`, all three forms above are accepted.
+
+'''''
+
 === Canvas Dimensions
 
 ==== getWidth()
@@ -4551,13 +4584,15 @@ canvas.clear(color);
 
 * *Description:* Clears the entire canvas with the specified color.
 * *Parameters:*
-** `+color+` (Vector4): The clear color (RGBA).
+** `+color+` (Vector4, array, or hash): The clear color (RGBA). See <<Vector Argument Conventions>>.
 * *Return Value:* The canvas itself (for method chaining).
 * *Example:*
 +
 [source,js]
 ----
-canvas.clear(Vector4.create(0, 0, 0, 1)); // Clear to black
+canvas.clear(Vector4.create(0, 0, 0, 1)); // ghost form
+canvas.clear([0, 0, 0, 1]);               // array form
+canvas.clear({r: 0, g: 0, b: 0, a: 1});  // hash form
 ----
 
 '''''
@@ -4576,7 +4611,7 @@ canvas.drawFilledCircle(centerX, centerY, radius);
 * *Description:* Draws a filled circle.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
+*** `+center+` (Vector2, array, or hash): The center position. See <<Vector Argument Conventions>>.
 *** `+radius+` (number): The circle radius.
 ** or *Option B:*
 *** `+centerX+` (number): The center X coordinate.
@@ -4587,11 +4622,16 @@ canvas.drawFilledCircle(centerX, centerY, radius);
 +
 [source,js]
 ----
-canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red
+canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red (ghost form)
+canvas.setColor([1, 0, 0, 1]);               // Red (array form)
+canvas.setColor({r: 1, g: 0, b: 0, a: 1});  // Red (hash form)
 
-// Using Vector2:
+// Using Vector2 ghost:
 canvas.drawFilledCircle(Vector2.create(100, 100), 50);
-
+// Using array:
+canvas.drawFilledCircle([100, 100], 50);
+// Using hash:
+canvas.drawFilledCircle({x: 100, y: 100}, 50);
 // or using individual numbers:
 canvas.drawFilledCircle(100, 100, 50);
 ----
@@ -4612,7 +4652,7 @@ canvas.drawStrokeCircle(centerX, centerY, radius, strokeWidth);
 * *Description:* Draws a stroked circle outline.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
+*** `+center+` (Vector2, array, or hash): The center position.
 *** `+radius+` (number): The circle radius.
 *** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
 ** or *Option B:*
@@ -4656,8 +4696,8 @@ canvas.drawFilledEllipse(centerX, centerY, radiusX, radiusY);
 * *Description:* Draws a filled ellipse.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
-*** `+radius+` (Vector2): The x and y radii.
+*** `+center+` (Vector2, array, or hash): The center position.
+*** `+radius+` (Vector2, array, or hash): The x and y radii.
 ** or *Option B:*
 *** `+centerX+` (number): The center X coordinate.
 *** `+centerY+` (number): The center Y coordinate.
@@ -4691,8 +4731,8 @@ canvas.drawStrokeEllipse(centerX, centerY, radiusX, radiusY, strokeWidth);
 * *Description:* Draws a stroked ellipse outline.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
-*** `+radius+` (Vector2): The x and y radii.
+*** `+center+` (Vector2, array, or hash): The center position.
+*** `+radius+` (Vector2, array, or hash): The x and y radii.
 *** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
 ** or *Option B:*
 *** `+centerX+` (number): The center X coordinate.
@@ -4728,8 +4768,8 @@ canvas.drawFilledRectangle(x, y, width, height);
 * *Description:* Draws a filled rectangle.
 * *Parameters:*
 ** *Option A:*
-*** `+topLeft+` (Vector2): The top-left corner position.
-*** `+size+` (Vector2): The width and height.
+*** `+topLeft+` (Vector2, array, or hash): The top-left corner position.
+*** `+size+` (Vector2, array, or hash): The width and height.
 ** or *Option B:*
 *** `+x+` (number): The left X coordinate.
 *** `+y+` (number): The top Y coordinate.
@@ -4766,8 +4806,8 @@ canvas.drawFilledRectangleCenter(centerX, centerY, width, height);
 * *Description:* Draws a filled rectangle centered at the specified position.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
-*** `+size+` (Vector2): The width and height.
+*** `+center+` (Vector2, array, or hash): The center position.
+*** `+size+` (Vector2, array, or hash): The width and height.
 ** or *Option B:*
 *** `+centerX+` (number): The center X coordinate.
 *** `+centerY+` (number): The center Y coordinate.
@@ -4801,8 +4841,8 @@ canvas.drawStrokeRectangle(centerX, centerY, boundsX, boundsY, strokeWidth);
 * *Description:* Draws a stroked rectangle outline.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
-*** `+bounds+` (Vector2): Half-width and half-height from center.
+*** `+center+` (Vector2, array, or hash): The center position.
+*** `+bounds+` (Vector2, array, or hash): Half-width and half-height from center.
 *** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
 ** or *Option B:*
 *** `+centerX+` (number): The center X coordinate.
@@ -4838,8 +4878,8 @@ canvas.drawFilledRoundedRectangle(x, y, width, height, radius);
 * *Description:* Draws a filled rounded rectangle.
 * *Parameters:*
 ** *Option A:*
-*** `+topLeft+` (Vector2): The top-left corner position.
-*** `+size+` (Vector2): The width and height.
+*** `+topLeft+` (Vector2, array, or hash): The top-left corner position.
+*** `+size+` (Vector2, array, or hash): The width and height.
 *** `+radius+` (number): The corner radius for all corners.
 ** or *Option B:*
 *** `+x+` (number): The left X coordinate.
@@ -4879,8 +4919,8 @@ canvas.drawFilledRoundedRectangleCenter(centerX, centerY, width, height, radius)
 * *Description:* Draws a filled rounded rectangle centered at the specified position.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
-*** `+size+` (Vector2): The width and height.
+*** `+center+` (Vector2, array, or hash): The center position.
+*** `+size+` (Vector2, array, or hash): The width and height.
 *** `+radius+` (number): The corner radius for all corners.
 ** or *Option B:*
 *** `+centerX+` (number): The center X coordinate.
@@ -4916,8 +4956,8 @@ canvas.drawStrokeRoundedRectangle(x, y, width, height, radius, strokeWidth);
 * *Description:* Draws a stroked rounded rectangle outline.
 * *Parameters:*
 ** *Option A:*
-*** `+topLeft+` (Vector2): The top-left corner position.
-*** `+size+` (Vector2): The width and height.
+*** `+topLeft+` (Vector2, array, or hash): The top-left corner position.
+*** `+size+` (Vector2, array, or hash): The width and height.
 *** `+radius+` (number): The corner radius for all corners.
 *** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
 ** or *Option B:*
@@ -4959,8 +4999,8 @@ canvas.drawStrokeRoundedRectangleCenter(centerX, centerY, boundsX, boundsY, radi
 * *Description:* Draws a stroked rounded rectangle outline centered at the specified position.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
-*** `+bounds+` (Vector2): Half-width and half-height from center.
+*** `+center+` (Vector2, array, or hash): The center position.
+*** `+bounds+` (Vector2, array, or hash): Half-width and half-height from center.
 *** `+radius+` (number): The corner radius for all corners.
 *** `+strokeWidth+` (number): The width of the stroke (default: 1.0).
 ** or *Option B:*
@@ -4998,7 +5038,7 @@ canvas.drawFilledCircleArcRingSegment(centerX, centerY, innerRadius, outerRadius
 * *Description:* Draws a filled circular arc ring segment (like a pie slice).
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
+*** `+center+` (Vector2, array, or hash): The center position.
 *** `+innerRadius+` (number): The inner radius.
 *** `+outerRadius+` (number): The outer radius.
 *** `+startAngle+` (number): The start angle in radians.
@@ -5045,7 +5085,7 @@ canvas.drawStrokeCircleArcRingSegment(centerX, centerY, innerRadius, outerRadius
 * *Description:* Draws a stroked outline of a circular arc ring segment (like the outline of a pie slice).
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
+*** `+center+` (Vector2, array, or hash): The center position.
 *** `+innerRadius+` (number): The inner radius.
 *** `+outerRadius+` (number): The outer radius.
 *** `+startAngle+` (number): The start angle in radians.
@@ -5101,8 +5141,8 @@ canvas.drawTexturedRectangle(texture, x, y, width, height, rotationAngle, textur
 * *Parameters:*
 ** *Option A:*
 *** `+texture+` (Texture): The texture to use.
-*** `+topLeft+` (Vector2): The top-left corner position.
-*** `+size+` (Vector2): The width and height.
+*** `+topLeft+` (Vector2, array, or hash): The top-left corner position.
+*** `+size+` (Vector2, array, or hash): The width and height.
 *** `+rotationAngle+` (number): Rotation angle in radians (default: 0.0).
 *** `+textureArrayLayer+` (number): Texture array layer index (default: 0).
 ** or *Option B:*
@@ -5147,8 +5187,8 @@ canvas.drawTexturedRectangleCenter(texture, centerX, centerY, width, height, rot
 * *Parameters:*
 ** *Option A:*
 *** `+texture+` (Texture): The texture to use.
-*** `+center+` (Vector2): The center position.
-*** `+size+` (Vector2): The width and height.
+*** `+center+` (Vector2, array, or hash): The center position.
+*** `+size+` (Vector2, array, or hash): The width and height.
 *** `+rotationAngle+` (number): Rotation angle in radians (default: 0.0).
 *** `+textureArrayLayer+` (number): Texture array layer index (default: 0).
 ** or *Option B:*
@@ -5193,10 +5233,10 @@ canvas.drawSprite(sprite, srcX, srcY, srcWidth, srcHeight, destX, destY, destWid
 * *Parameters:*
 ** *Option A:*
 *** `+sprite+` (Sprite): The sprite to draw.
-*** `+srcPosition+` (Vector2): The source position in the sprite.
-*** `+srcSize+` (Vector2): The source size to copy from the sprite.
-*** `+destPosition+` (Vector2): The destination position on the canvas.
-*** `+destSize+` (Vector2): The destination size on the canvas.
+*** `+srcPosition+` (Vector2, array, or hash): The source position in the sprite.
+*** `+srcSize+` (Vector2, array, or hash): The source size to copy from the sprite.
+*** `+destPosition+` (Vector2, array, or hash): The destination position on the canvas.
+*** `+destSize+` (Vector2, array, or hash): The destination size on the canvas.
 ** or *Option B:*
 *** `+sprite+` (Sprite): The sprite to draw.
 *** `+srcX+` (number): The source X position in the sprite.
@@ -5240,11 +5280,11 @@ canvas.drawSpriteOriginRotation(sprite, srcX, srcY, srcWidth, srcHeight, destX, 
 * *Parameters:*
 ** *Option A:*
 *** `+sprite+` (Sprite): The sprite to draw.
-*** `+srcPosition+` (Vector2): The source position in the sprite.
-*** `+srcSize+` (Vector2): The source size to copy from the sprite.
-*** `+destPosition+` (Vector2): The destination position on the canvas.
-*** `+destSize+` (Vector2): The destination size on the canvas.
-*** `+origin+` (Vector2): The origin point for rotation (in sprite coordinates).
+*** `+srcPosition+` (Vector2, array, or hash): The source position in the sprite.
+*** `+srcSize+` (Vector2, array, or hash): The source size to copy from the sprite.
+*** `+destPosition+` (Vector2, array, or hash): The destination position on the canvas.
+*** `+destSize+` (Vector2, array, or hash): The destination size on the canvas.
+*** `+origin+` (Vector2, array, or hash): The origin point for rotation (in sprite coordinates).
 *** `+rotation+` (number): The rotation angle in radians.
 ** or *Option B:*
 *** `+sprite+` (Sprite): The sprite to draw.
@@ -5293,7 +5333,7 @@ canvas.drawSpritePosition(sprite, x, y);
 * *Parameters:*
 ** *Option A:*
 *** `+sprite+` (Sprite): The sprite to draw.
-*** `+position+` (Vector2): The position to draw at.
+*** `+position+` (Vector2, array, or hash): The position to draw at.
 ** or *Option B:*
 *** `+sprite+` (Sprite): The sprite to draw.
 *** `+x+` (number): The X coordinate to draw at.
@@ -5329,7 +5369,7 @@ canvas.drawText(text, x, y);
 * *Parameters:*
 ** *Option A:*
 *** `+text+` (string): The text to draw.
-*** `+position+` (Vector2): The position to draw at.
+*** `+position+` (Vector2, array, or hash): The position to draw at.
 ** or *Option B:*
 *** `+text+` (string): The text to draw.
 *** `+x+` (number): The X coordinate to draw at.
@@ -5367,7 +5407,7 @@ canvas.drawTextCodePoint(codePoint, x, y);
 * *Parameters:*
 ** *Option A:*
 *** `+codePoint+` (number): The Unicode code point.
-*** `+position+` (Vector2): The position to draw at.
+*** `+position+` (Vector2, array, or hash): The position to draw at.
 ** or *Option B:*
 *** `+codePoint+` (number): The Unicode code point.
 *** `+x+` (number): The X coordinate to draw at.
@@ -5481,7 +5521,7 @@ canvas.moveTo(x, y);
 * *Description:* Moves the current path position without drawing.
 * *Parameters:*
 ** *Option A:*
-*** `+position+` (Vector2): The position to move to.
+*** `+position+` (Vector2, array, or hash): The position to move to.
 ** or *Option B:*
 *** `+x+` (number): The X coordinate to move to.
 *** `+y+` (number): The Y coordinate to move to.
@@ -5515,7 +5555,7 @@ canvas.lineTo(x, y);
 * *Description:* Draws a line from the current position to the specified position.
 * *Parameters:*
 ** *Option A:*
-*** `+position+` (Vector2): The end position.
+*** `+position+` (Vector2, array, or hash): The end position.
 ** or *Option B:*
 *** `+x+` (number): The end X coordinate.
 *** `+y+` (number): The end Y coordinate.
@@ -5552,8 +5592,8 @@ canvas.quadraticCurveTo(controlX, controlY, endX, endY);
 * *Description:* Draws a quadratic Bézier curve.
 * *Parameters:*
 ** *Option A:*
-*** `+control+` (Vector2): The control point.
-*** `+end+` (Vector2): The end point.
+*** `+control+` (Vector2, array, or hash): The control point.
+*** `+end+` (Vector2, array, or hash): The end point.
 ** or *Option B:*
 *** `+controlX+` (number): The control point X coordinate.
 *** `+controlY+` (number): The control point Y coordinate.
@@ -5592,9 +5632,9 @@ canvas.cubicCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY);
 * *Description:* Draws a cubic Bézier curve.
 * *Parameters:*
 ** *Option A:*
-*** `+control1+` (Vector2): The first control point.
-*** `+control2+` (Vector2): The second control point.
-*** `+end+` (Vector2): The end point.
+*** `+control1+` (Vector2, array, or hash): The first control point.
+*** `+control2+` (Vector2, array, or hash): The second control point.
+*** `+end+` (Vector2, array, or hash): The end point.
 ** or *Option B:*
 *** `+cp1X+` (number): The first control point X coordinate.
 *** `+cp1Y+` (number): The first control point Y coordinate.
@@ -5639,7 +5679,7 @@ canvas.arc(centerX, centerY, radius, startAngle, endAngle, counterClockwise);
 * *Description:* Adds an arc to the current path.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center of the arc.
+*** `+center+` (Vector2, array, or hash): The center of the arc.
 *** `+radius+` (number): The arc radius.
 *** `+startAngle+` (number): The start angle in radians.
 *** `+endAngle+` (number): The end angle in radians.
@@ -5683,8 +5723,8 @@ canvas.arcTo(x1, y1, x2, y2, radius);
 * *Description:* Adds an arc to the current path using control points.
 * *Parameters:*
 ** *Option A:*
-*** `+point1+` (Vector2): The first control point.
-*** `+point2+` (Vector2): The second control point.
+*** `+point1+` (Vector2, array, or hash): The first control point.
+*** `+point2+` (Vector2, array, or hash): The second control point.
 *** `+radius+` (number): The arc radius.
 ** or *Option B:*
 *** `+x1+` (number): The first control point X coordinate.
@@ -5725,8 +5765,8 @@ canvas.ellipse(centerX, centerY, radiusX, radiusY);
 * *Description:* Adds an ellipse to the current path.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center of the ellipse.
-*** `+radius+` (Vector2): The x and y radii.
+*** `+center+` (Vector2, array, or hash): The center of the ellipse.
+*** `+radius+` (Vector2, array, or hash): The x and y radii.
 ** or *Option B:*
 *** `+centerX+` (number): The center X coordinate.
 *** `+centerY+` (number): The center Y coordinate.
@@ -5764,7 +5804,7 @@ canvas.circle(centerX, centerY, radius);
 * *Description:* Adds a circle to the current path.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center of the circle.
+*** `+center+` (Vector2, array, or hash): The center of the circle.
 *** `+radius+` (number): The circle radius.
 ** or *Option B:*
 *** `+centerX+` (number): The center X coordinate.
@@ -5802,8 +5842,8 @@ canvas.rectangle(x, y, width, height);
 * *Description:* Adds a rectangle to the current path.
 * *Parameters:*
 ** *Option A:*
-*** `+topLeft+` (Vector2): The top-left corner.
-*** `+size+` (Vector2): The width and height.
+*** `+topLeft+` (Vector2, array, or hash): The top-left corner.
+*** `+size+` (Vector2, array, or hash): The width and height.
 ** or *Option B:*
 *** `+x+` (number): The left X coordinate.
 *** `+y+` (number): The top Y coordinate.
@@ -5841,8 +5881,8 @@ canvas.rectangleCenter(centerX, centerY, width, height);
 * *Description:* Adds a centered rectangle to the current path.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
-*** `+size+` (Vector2): The width and height.
+*** `+center+` (Vector2, array, or hash): The center position.
+*** `+size+` (Vector2, array, or hash): The width and height.
 ** or *Option B:*
 *** `+centerX+` (number): The center X coordinate.
 *** `+centerY+` (number): The center Y coordinate.
@@ -5880,8 +5920,8 @@ canvas.roundedRectangle(x, y, width, height, radius);
 * *Description:* Adds a rounded rectangle to the current path.
 * *Parameters:*
 ** *Option A:*
-*** `+topLeft+` (Vector2): The top-left corner.
-*** `+size+` (Vector2): The width and height.
+*** `+topLeft+` (Vector2, array, or hash): The top-left corner.
+*** `+size+` (Vector2, array, or hash): The width and height.
 *** `+radius+` (number): The corner radius for all corners.
 ** or *Option B:*
 *** `+x+` (number): The left X coordinate.
@@ -5921,8 +5961,8 @@ canvas.roundedRectangleCenter(centerX, centerY, width, height, radius);
 * *Description:* Adds a centered rounded rectangle to the current path.
 * *Parameters:*
 ** *Option A:*
-*** `+center+` (Vector2): The center position.
-*** `+size+` (Vector2): The width and height.
+*** `+center+` (Vector2, array, or hash): The center position.
+*** `+size+` (Vector2, array, or hash): The width and height.
 *** `+radius+` (number): The corner radius for all corners.
 ** or *Option B:*
 *** `+centerX+` (number): The center X coordinate.
@@ -6172,8 +6212,8 @@ canvas.setClipRect(x, y, width, height);
 * *Description:* Sets the clipping rectangle to restrict rendering to a specific area.
 * *Parameters:*
 ** *Option A:*
-*** `+leftTop+` (Vector2): Top-left corner position.
-*** `+widthHeight+` (Vector2): Width and height.
+*** `+leftTop+` (Vector2, array, or hash): Top-left corner position.
+*** `+widthHeight+` (Vector2, array, or hash): Width and height.
 ** or *Option B:*
 *** `+x+` (number): The left X coordinate.
 *** `+y+` (number): The top Y coordinate.
@@ -6836,7 +6876,7 @@ canvas.setColor(r, g, b, a);
 * *Description:* Sets the current drawing color.
 * *Parameters:*
 ** *Option A:*
-*** `+color+` (Vector4): RGBA color (components 0.0-1.0).
+*** `+color+` (Vector4, array, or hash): RGBA color (components 0.0-1.0). See <<Vector Argument Conventions>>.
 ** or *Option B:*
 *** `+r+` (number): Red component (0.0-1.0).
 *** `+g+` (number): Green component (0.0-1.0).
@@ -6847,8 +6887,9 @@ canvas.setColor(r, g, b, a);
 +
 [source,js]
 ----
-// Using Vector4:
-canvas.setColor(Vector4.create(1, 0, 0, 1)); // Red
+canvas.setColor(Vector4.create(1, 0, 0, 1)); // ghost form
+canvas.setColor([1, 0, 0, 1]);               // array form
+canvas.setColor({r: 1, g: 0, b: 0, a: 1});  // hash form
 
 // or using individual numbers:
 canvas.setColor(1, 0, 0, 1); // Red
@@ -6887,7 +6928,7 @@ canvas.setStartColor(r, g, b, a);
 * *Description:* Sets the gradient start color.
 * *Parameters:*
 ** *Option A:*
-*** `+color+` (Vector4): RGBA color (components 0.0-1.0).
+*** `+color+` (Vector4, array, or hash): RGBA color (components 0.0-1.0). See <<Vector Argument Conventions>>.
 ** or *Option B:*
 *** `+r+` (number): Red component (0.0-1.0).
 *** `+g+` (number): Green component (0.0-1.0).
@@ -6900,8 +6941,8 @@ canvas.setStartColor(r, g, b, a);
 ----
 canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
 
-// Using Vector4:
-canvas.setStartColor(Vector4.create(1, 1, 0, 1)); // Yellow
+canvas.setStartColor(Vector4.create(1, 1, 0, 1)); // ghost form
+canvas.setStartColor([1, 1, 0, 1]);               // array form
 
 // or using individual numbers:
 canvas.setStartColor(1, 1, 0, 1); // Yellow
@@ -6940,7 +6981,7 @@ canvas.setStopColor(r, g, b, a);
 * *Description:* Sets the gradient stop color.
 * *Parameters:*
 ** *Option A:*
-*** `+color+` (Vector4): RGBA color (components 0.0-1.0).
+*** `+color+` (Vector4, array, or hash): RGBA color (components 0.0-1.0). See <<Vector Argument Conventions>>.
 ** or *Option B:*
 *** `+r+` (number): Red component (0.0-1.0).
 *** `+g+` (number): Green component (0.0-1.0).
@@ -6954,7 +6995,6 @@ canvas.setStopColor(r, g, b, a);
 canvas.setFillStyle(Canvas.FillStyle.LinearGradient);
 canvas.setStartColor(Vector4.create(1, 1, 0, 1)); // Yellow
 
-// Using Vector4:
 canvas.setStopColor(Vector4.create(1, 0, 1, 1));  // Magenta
 
 // or using individual numbers:
@@ -6992,7 +7032,7 @@ canvas.setProjectionMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22
 * *Description:* Sets the projection matrix for 3D transforms.
 * *Parameters:*
 ** *Option A:*
-*** `+matrix+` (Matrix4x4): Projection matrix.
+*** `+matrix+` (Matrix4x4, array [16], or hash): Projection matrix. See <<Vector Argument Conventions>>.
 ** or *Option B:*
 *** `+m00, m01, m02, m03+` (numbers): First row of the matrix.
 *** `+m10, m11, m12, m13+` (numbers): Second row of the matrix.
@@ -7050,7 +7090,7 @@ canvas.setViewMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23,
 * *Description:* Sets the view matrix for camera transforms.
 * *Parameters:*
 ** *Option A:*
-*** `+matrix+` (Matrix4x4): View matrix.
+*** `+matrix+` (Matrix4x4, array [16], or hash): View matrix. See <<Vector Argument Conventions>>.
 ** or *Option B:*
 *** `+m00, m01, m02, m03+` (numbers): First row of the matrix.
 *** `+m10, m11, m12, m13+` (numbers): Second row of the matrix.
@@ -7108,7 +7148,7 @@ canvas.setModelMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23
 * *Description:* Sets the model matrix for object transforms.
 * *Parameters:*
 ** *Option A:*
-*** `+matrix+` (Matrix4x4): Model matrix.
+*** `+matrix+` (Matrix4x4, array [16], or hash): Model matrix. See <<Vector Argument Conventions>>.
 ** or *Option B:*
 *** `+m00, m01, m02, m03+` (numbers): First row of the matrix.
 *** `+m10, m11, m12, m13+` (numbers): Second row of the matrix.
@@ -7166,7 +7206,7 @@ canvas.setFillMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23,
 * *Description:* Sets the fill matrix for transforming fill textures/gradients.
 * *Parameters:*
 ** *Option A:*
-*** `+matrix+` (Matrix4x4): Fill transformation matrix.
+*** `+matrix+` (Matrix4x4, array [16], or hash): Fill transformation matrix. See <<Vector Argument Conventions>>.
 ** or *Option B:*
 *** `+m00, m01, m02, m03+` (numbers): First row of the matrix.
 *** `+m10, m11, m12, m13+` (numbers): Second row of the matrix.
@@ -7222,7 +7262,7 @@ canvas.setMaskMatrix(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23,
 * *Description:* Sets the mask matrix for transforming mask textures.
 * *Parameters:*
 ** *Option A:*
-*** `+matrix+` (Matrix4x4): Mask transformation matrix.
+*** `+matrix+` (Matrix4x4, array [16], or hash): Mask transformation matrix. See <<Vector Argument Conventions>>.
 ** or *Option B:*
 *** `+m00, m01, m02, m03+` (numbers): First row of the matrix.
 *** `+m10, m11, m12, m13+` (numbers): Second row of the matrix.
