@@ -297,31 +297,43 @@ procedure POCASetHostData(const aContext:PPOCAContext;const aHostData:PPOCAHostD
 
 function POCANewVector2(const aContext:PPOCAContext;const aVector2:TpvVector2D):TPOCAValue; overload;
 function POCANewVector2(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0):TPOCAValue; overload;
+function POCAIsVector2Value(const aValue:TPOCAValue):Boolean; overload;
+function POCAIsVector2Value(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean; overload;
 function POCAGetVector2Value(const aValue:TPOCAValue):TpvVector2D; overload;
 function POCAGetVector2Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvVector2D; overload;
 
 function POCANewVector3(const aContext:PPOCAContext;const aVector3:TpvVector3D):TPOCAValue; overload;
 function POCANewVector3(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0):TPOCAValue; overload;
+function POCAIsVector3Value(const aValue:TPOCAValue):Boolean; overload;
+function POCAIsVector3Value(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean; overload;
 function POCAGetVector3Value(const aValue:TPOCAValue):TpvVector3D; overload;
 function POCAGetVector3Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvVector3D; overload;
 
 function POCANewVector4(const aContext:PPOCAContext;const aVector4:TpvVector4D):TPOCAValue; overload;
 function POCANewVector4(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0;const aW:TpvDouble=0.0):TPOCAValue; overload;
+function POCAIsVector4Value(const aValue:TPOCAValue):Boolean; overload;
+function POCAIsVector4Value(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean; overload;
 function POCAGetVector4Value(const aValue:TPOCAValue):TpvVector4D; overload;
 function POCAGetVector4Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvVector4D; overload;
 
 function POCANewQuaternion(const aContext:PPOCAContext;const aQuaternion:TpvQuaternionD):TPOCAValue; overload;
 function POCANewQuaternion(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0;const aW:TpvDouble=1.0):TPOCAValue; overload;
+function POCAIsQuaternionValue(const aValue:TPOCAValue):Boolean; overload;
+function POCAIsQuaternionValue(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean; overload;
 function POCAGetQuaternionValue(const aValue:TPOCAValue):TpvQuaternionD; overload;
 function POCAGetQuaternionValue(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvQuaternionD; overload;
 
 function POCANewMatrix3x3(const aContext:PPOCAContext;const aMatrix3x3:TpvMatrix3x3D):TPOCAValue; overload;
 function POCANewMatrix3x3(const aContext:PPOCAContext;const aM00:TpvDouble=1.0;const aM01:TpvDouble=0.0;const aM02:TpvDouble=0.0;const aM10:TpvDouble=0.0;const aM11:TpvDouble=1.0;const aM12:TpvDouble=0.0;const aM20:TpvDouble=0.0;const aM21:TpvDouble=0.0;const aM22:TpvDouble=1.0):TPOCAValue; overload;
+function POCAIsMatrix3x3Value(const aValue:TPOCAValue):Boolean; overload;
+function POCAIsMatrix3x3Value(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean; overload;
 function POCAGetMatrix3x3Value(const aValue:TPOCAValue):TpvMatrix3x3D; overload;
 function POCAGetMatrix3x3Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvMatrix3x3D; overload;
 
 function POCANewMatrix4x4(const aContext:PPOCAContext;const aMatrix4x4:TpvMatrix4x4D):TPOCAValue; overload;
 function POCANewMatrix4x4(const aContext:PPOCAContext;const aM00:TpvDouble=1.0;const aM01:TpvDouble=0.0;const aM02:TpvDouble=0.0;const aM03:TpvDouble=0.0;const aM10:TpvDouble=0.0;const aM11:TpvDouble=1.0;const aM12:TpvDouble=0.0;const aM13:TpvDouble=0.0;const aM20:TpvDouble=0.0;const aM21:TpvDouble=0.0;const aM22:TpvDouble=1.0;const aM23:TpvDouble=0.0;const aM30:TpvDouble=0.0;const aM31:TpvDouble=0.0;const aM32:TpvDouble=0.0;const aM33:TpvDouble=1.0):TPOCAValue; overload;
+function POCAIsMatrix4x4Value(const aValue:TPOCAValue):Boolean; overload;
+function POCAIsMatrix4x4Value(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean; overload;
 function POCAGetMatrix4x4Value(const aValue:TPOCAValue):TpvMatrix4x4D; overload;
 function POCAGetMatrix4x4Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvMatrix4x4D; overload;
 
@@ -514,6 +526,36 @@ end;
 function POCANewVector2(const aContext:PPOCAContext;const aX:TpvDouble;const aY:TpvDouble):TPOCAValue; overload;
 begin
  result:=POCANewVector2(aContext,TpvVector2D.Create(aX,aY));
+end;
+
+function POCAIsVector2Value(const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=2;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAVector2Ghost;
+  end;
+ end;
+end;
+
+function POCAIsVector2Value(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=2;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAVector2Ghost;
+  end;
+ end;
 end;
 
 function POCAGetVector2Value(const aValue:TPOCAValue):TpvVector2D;
@@ -1205,6 +1247,36 @@ end;
 function POCANewVector3(const aContext:PPOCAContext;const aX:TpvDouble;const aY:TpvDouble;const aZ:TpvDouble):TPOCAValue; overload;
 begin
  result:=POCANewVector3(aContext,TpvVector3D.Create(aX,aY,aZ));
+end;
+
+function POCAIsVector3Value(const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=3;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAVector3Ghost;
+  end;
+ end;
+end;
+
+function POCAIsVector3Value(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=3;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAVector3Ghost;
+  end;
+ end;
 end;
 
 function POCAGetVector3Value(const aValue:TPOCAValue):TpvVector3D;
@@ -1932,6 +2004,36 @@ end;
 function POCANewVector4(const aContext:PPOCAContext;const aX:TpvDouble;const aY:TpvDouble;const aZ:TpvDouble;const aW:TpvDouble):TPOCAValue; overload;
 begin
  result:=POCANewVector4(aContext,TpvVector4D.Create(aX,aY,aZ,aW));
+end;
+
+function POCAIsVector4Value(const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=4;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAVector4Ghost;
+  end;
+ end;
+end;
+
+function POCAIsVector4Value(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=4;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAVector4Ghost;
+  end;
+ end;
 end;
 
 function POCAGetVector4Value(const aValue:TPOCAValue):TpvVector4D;
@@ -2682,6 +2784,36 @@ end;
 function POCANewQuaternion(const aContext:PPOCAContext;const aX:TpvDouble;const aY:TpvDouble;const aZ:TpvDouble;const aW:TpvDouble):TPOCAValue; overload;
 begin
  result:=POCANewQuaternion(aContext,TpvQuaternionD.Create(aX,aY,aZ,aW));
+end;
+
+function POCAIsQuaternionValue(const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=4;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAQuaternionGhost;
+  end;
+ end;
+end;
+
+function POCAIsQuaternionValue(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=4;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAQuaternionGhost;
+  end;
+ end;
 end;
 
 function POCAGetQuaternionValue(const aValue:TPOCAValue):TpvQuaternionD;
@@ -3848,6 +3980,36 @@ begin
  result:=POCANewMatrix3x3(aContext,Matrix3x3);
 end;
 
+function POCAIsMatrix3x3Value(const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=9;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAMatrix3x3Ghost;
+  end;
+ end;
+end;
+
+function POCAIsMatrix3x3Value(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=9;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAMatrix3x3Ghost;
+  end;
+ end;
+end;
+
 function POCAGetMatrix3x3Value(const aValue:TPOCAValue):TpvMatrix3x3D;
 begin
  if POCAGhostGetType(aValue)=@POCAMatrix3x3Ghost then begin
@@ -4970,6 +5132,36 @@ begin
  Matrix4x4.RawComponents[3,2]:=aM32;
  Matrix4x4.RawComponents[3,3]:=aM33;
  result:=POCANewMatrix4x4(aContext,Matrix4x4);
+end;
+
+function POCAIsMatrix4x4Value(const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=16;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAMatrix4x4Ghost;
+  end;
+ end;
+end;
+
+function POCAIsMatrix4x4Value(const aContext:PPOCAContext;const aValue:TPOCAValue):Boolean;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   result:=POCAArraySize(aValue)>=16;
+  end;
+  pvtHASH:begin
+   result:=true;
+  end;
+  else begin
+   result:=POCAGhostGetType(aValue)=@POCAMatrix4x4Ghost;
+  end;
+ end;
 end;
 
 function POCAGetMatrix4x4Value(const aValue:TPOCAValue):TpvMatrix4x4D;
