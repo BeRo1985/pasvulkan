@@ -7241,8 +7241,8 @@ begin
   exit;
  end;
 
- if (aCountArguments>0) and (POCAGhostGetType(aArguments^[0])=POCAVector4GhostPointer) then begin
-  Color:=POCAGetVector4Value(aArguments^[0]); 
+ if (aCountArguments>0) and POCAIsVector4Value(aContext,aArguments^[0]) then begin
+  Color:=POCAGetVector4Value(aContext,aArguments^[0]); 
  end else begin
   if aCountArguments>0 then begin
    Color.x:=POCAGetNumberValue(aContext,aArguments^[0]);
@@ -7296,8 +7296,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7352,8 +7352,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7415,8 +7415,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7434,8 +7434,8 @@ begin
  end;
 
  // Check for Radius
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Radius:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Radius:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7482,8 +7482,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7501,8 +7501,8 @@ begin
  end;
 
  // Check for Radius
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Radius:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Radius:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7556,8 +7556,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for LeftTop
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  LeftTop:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  LeftTop:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7575,8 +7575,8 @@ begin
  end;
 
  // Check for WidthHeight
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  WidthHeight:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7622,8 +7622,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7641,8 +7641,8 @@ begin
  end;
 
  // Check for Bounds
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Bounds:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7689,8 +7689,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7708,8 +7708,8 @@ begin
  end;
 
  // Check for Bounds
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Bounds:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7764,8 +7764,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for LeftTop
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  LeftTop:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  LeftTop:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7783,8 +7783,8 @@ begin
  end;
 
  // Check for WidthHeight
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  WidthHeight:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7839,8 +7839,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7858,8 +7858,8 @@ begin
  end;
 
  // Check for Bounds
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Bounds:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7915,8 +7915,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for LeftTop
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  LeftTop:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  LeftTop:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7934,8 +7934,8 @@ begin
  end;
 
  // Check for WidthHeight
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  WidthHeight:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -7999,8 +7999,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8018,8 +8018,8 @@ begin
  end;
 
  // Check for Bounds
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Bounds:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8085,8 +8085,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8177,8 +8177,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[0]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[0]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8283,8 +8283,8 @@ begin
  end;
 
  // Check for LeftTop
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  LeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  LeftTop:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8302,8 +8302,8 @@ begin
  end;
 
  // Check for WidthHeight
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  WidthHeight:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8376,8 +8376,8 @@ begin
  end;
 
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8395,8 +8395,8 @@ begin
  end;
 
  // Check for Bounds
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Bounds:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8469,8 +8469,8 @@ begin
  end;
 
  // Check for SrcLeftTop
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  SrcLeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  SrcLeftTop:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8488,8 +8488,8 @@ begin
  end;
 
  // Check for SrcWidthHeight
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  SrcWidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  SrcWidthHeight:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8507,8 +8507,8 @@ begin
  end;
 
  // Check for DestLeftTop
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  DestLeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  DestLeftTop:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8526,8 +8526,8 @@ begin
  end;
 
  // Check for DestWidthHeight
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  DestWidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  DestWidthHeight:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8586,8 +8586,8 @@ begin
  end;
 
  // Check for SrcLeftTop
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  SrcLeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  SrcLeftTop:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8605,8 +8605,8 @@ begin
  end;
 
  // Check for SrcWidthHeight
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  SrcWidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  SrcWidthHeight:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8624,8 +8624,8 @@ begin
  end;
 
  // Check for DestLeftTop
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  DestLeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  DestLeftTop:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8643,8 +8643,8 @@ begin
  end;
 
  // Check for DestWidthHeight
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  DestWidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  DestWidthHeight:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8662,8 +8662,8 @@ begin
  end;
 
  // Check for Origin
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Origin:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Origin:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8725,8 +8725,8 @@ begin
  end;
 
  // Check for Position
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Position:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8780,8 +8780,8 @@ begin
  end;
 
  // Check for Position
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Position:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -8835,8 +8835,8 @@ begin
  end;
 
  // Check for Position
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Position:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9039,8 +9039,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Position
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Position:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9085,8 +9085,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Position
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Position:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9132,8 +9132,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for ControlPoint
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  ControlPoint:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  ControlPoint:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9151,8 +9151,8 @@ begin
  end;
 
  // Check for Position
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Position:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9199,8 +9199,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for ControlPoint1
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  ControlPoint1:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  ControlPoint1:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9218,8 +9218,8 @@ begin
  end;
 
  // Check for ControlPoint2
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  ControlPoint2:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  ControlPoint2:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9237,8 +9237,8 @@ begin
  end;
 
  // Check for Position
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Position:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Position:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9287,8 +9287,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9366,8 +9366,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Position1
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Position1:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Position1:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9385,8 +9385,8 @@ begin
  end;
 
  // Check for Position2
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Position2:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Position2:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9440,8 +9440,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9459,8 +9459,8 @@ begin
  end;
 
  // Check for Radius
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Radius:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Radius:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9506,8 +9506,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9561,8 +9561,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for LeftTop
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  LeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  LeftTop:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9580,8 +9580,8 @@ begin
  end;
 
  // Check for WidthHeight
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  WidthHeight:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9627,8 +9627,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9646,8 +9646,8 @@ begin
  end;
 
  // Check for Bounds
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Bounds:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9694,8 +9694,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for LeftTop
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  LeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  LeftTop:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9713,8 +9713,8 @@ begin
  end;
 
  // Check for WidthHeight
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  WidthHeight:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9769,8 +9769,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Center
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Center:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Center:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -9788,8 +9788,8 @@ begin
  end;
 
  // Check for Bounds
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  Bounds:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Bounds:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -10078,8 +10078,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for LeftTop
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  LeftTop:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  LeftTop:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -10097,8 +10097,8 @@ begin
  end;
 
  // Check for WidthHeight
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
-  WidthHeight:=POCAGetVector2Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector2Value(aContext,aArguments^[ArgumentIndex]) then begin
+  WidthHeight:=POCAGetVector2Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -11126,8 +11126,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for Color
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector4GhostPointer) then begin
-  Color:=POCAGetVector4Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector4Value(aContext,aArguments^[ArgumentIndex]) then begin
+  Color:=POCAGetVector4Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -11207,8 +11207,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for StartColor
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector4GhostPointer) then begin
-  StartColor:=POCAGetVector4Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector4Value(aContext,aArguments^[ArgumentIndex]) then begin
+  StartColor:=POCAGetVector4Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -11289,8 +11289,8 @@ begin
  ArgumentIndex:=0;
  
  // Check for StopColor
- if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector4GhostPointer) then begin
-  StopColor:=POCAGetVector4Value(aArguments^[ArgumentIndex]);
+ if (ArgumentIndex<aCountArguments) and POCAIsVector4Value(aContext,aArguments^[ArgumentIndex]) then begin
+  StopColor:=POCAGetVector4Value(aContext,aArguments^[ArgumentIndex]);
   inc(ArgumentIndex);
  end else begin
   if ArgumentIndex<aCountArguments then begin
@@ -11327,8 +11327,8 @@ end;
 
 function POCAGetMatrix4x4Argument(aContext:PPOCAContext;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;var aArgumentIndex:TPOCAInt32):TpvMatrix4x4D;
 begin
- if (aArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[aArgumentIndex])=POCAMatrix4x4GhostPointer) then begin
-  result:=POCAGetMatrix4x4Value(aArguments^[aArgumentIndex]);
+ if (aArgumentIndex<aCountArguments) and POCAIsMatrix4x4Value(aContext,aArguments^[aArgumentIndex]) then begin
+  result:=POCAGetMatrix4x4Value(aContext,aArguments^[aArgumentIndex]);
   inc(aArgumentIndex); 
  end else begin
   if aArgumentIndex<aCountArguments then begin
@@ -11432,8 +11432,8 @@ end;
 
 function POCAGetVector3Argument(aContext:PPOCAContext;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;var aArgumentIndex:TPOCAInt32):TpvVector3D;
 begin
- if (aArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[aArgumentIndex])=POCAVector3GhostPointer) then begin
-  result:=POCAGetVector3Value(aArguments^[aArgumentIndex]);
+ if (aArgumentIndex<aCountArguments) and POCAIsVector3Value(aContext,aArguments^[aArgumentIndex]) then begin
+  result:=POCAGetVector3Value(aContext,aArguments^[aArgumentIndex]);
   inc(aArgumentIndex);
  end else begin
   if aArgumentIndex<aCountArguments then begin
