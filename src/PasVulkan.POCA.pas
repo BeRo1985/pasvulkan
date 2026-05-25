@@ -7295,7 +7295,7 @@ begin
 
  ArgumentIndex:=0;
  
- // Check for Centter
+ // Check for Center
  if (ArgumentIndex<aCountArguments) and (POCAGhostGetType(aArguments^[ArgumentIndex])=POCAVector2GhostPointer) then begin
   Center:=POCAGetVector2Value(aArguments^[0]);
   inc(ArgumentIndex);
