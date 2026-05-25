@@ -1381,8 +1381,8 @@ end;
 
 // prim.setMaterial(mat) — set the material on this primitive
 function POCAScene3DPrimitiveFunctionSetMaterial(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Prim:TpvScene3D.TGroup.TMesh.TPrimitive;
-    Mat:TpvScene3D.TMaterial;
+var Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    Material:TpvScene3D.TMaterial;
 begin
  result:=POCAValueNull;
  if POCAGhostGetType(aThis)<>@POCAScene3DPrimitiveGhost then begin
@@ -1391,15 +1391,15 @@ begin
  if (aCountArguments<1) or (POCAGhostGetType(aArguments^[0])<>@POCAScene3DMaterialGhost) then begin
   exit;
  end;
- Prim:=TpvScene3D.TGroup.TMesh.TPrimitive(POCAGhostFastGetPointer(aThis));
- if not assigned(Prim) then begin
+ Primitive:=TpvScene3D.TGroup.TMesh.TPrimitive(POCAGhostFastGetPointer(aThis));
+ if not assigned(Primitive) then begin
   exit;
  end;
- Mat:=TpvScene3D.TMaterial(POCAGhostFastGetPointer(aArguments^[0]));
- if not assigned(Mat) then begin
+ Material:=TpvScene3D.TMaterial(POCAGhostFastGetPointer(aArguments^[0]));
+ if not assigned(Material) then begin
   exit;
  end;
- Prim.Material:=Mat;
+ Primitive.Material:=Material;
  result:=aThis;
 end;
 
