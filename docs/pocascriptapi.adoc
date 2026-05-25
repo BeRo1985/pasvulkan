@@ -9420,12 +9420,17 @@ mat.setNoWetness(true);
 
 [source,js]
 ----
-mat.setBaseColorFactor(1.0, 0.5, 0.0, 1.0);
+mat.setBaseColorFactor(1.0, 0.5, 0.0, 1.0);         // scalar form
+mat.setBaseColorFactor([1.0, 0.5, 0.0, 1.0]);        // array form
+mat.setBaseColorFactor({r: 1.0, g: 0.5, b: 0.0, a: 1.0}); // hash form
+mat.setBaseColorFactor(Vector4.create(1.0, 0.5, 0.0, 1.0)); // ghost form
 ----
 
 * *Description:* Sets the base colour (albedo) factor.
-* *Parameters:*
+* *Parameters (Option A):*
 ** `+r+`, `+g+`, `+b+`, `+a+` (number): RGBA components, each 0–1.
+* *Parameters (Option B):*
+** `+color+` (Vector4, array[4], or hash `{r,g,b,a}`): RGBA colour. See <<Vector Argument Conventions>>.
 * *Return Value:* The material ghost (for method chaining).
 
 '''''
@@ -9466,13 +9471,18 @@ mat.setRoughnessFactor(0.3);
 
 [source,js]
 ----
-mat.setEmissiveFactor(1.0, 0.5, 0.0);
+mat.setEmissiveFactor(1.0, 0.5, 0.0);            // scalar form
+mat.setEmissiveFactor([1.0, 0.5, 0.0]);           // array form
+mat.setEmissiveFactor({r: 1.0, g: 0.5, b: 0.0}); // hash form
+mat.setEmissiveFactor(Vector3.create(1.0, 0.5, 0.0)); // ghost form
 ----
 
 * *Description:* Sets the emissive colour factor.  The emissive strength
   component (w) is not modified.
-* *Parameters:*
+* *Parameters (Option A):*
 ** `+r+`, `+g+`, `+b+` (number): RGB components, each 0–1 (or higher for HDR).
+* *Parameters (Option B):*
+** `+color+` (Vector3, array[3], or hash `{r,g,b}`): RGB colour. See <<Vector Argument Conventions>>.
 * *Return Value:* The material ghost (for method chaining).
 
 '''''
@@ -9795,10 +9805,10 @@ Obtained from `group.createNode(name)`.
 
 |`node.setMesh(mesh)` |Attach a `Scene3DMesh` to this node.
 |`node.addChild(childNode)` |Add a child `Scene3DNode`.
-|`node.setTranslation(x, y, z)` |Set the node's local translation.
-|`node.setRotation(qx, qy, qz, qw)` |Set the node's local rotation as a quaternion.
-|`node.setScale(sx, sy, sz)` |Set the node's local scale.
-|`node.setMatrix(m00,…,m15)` |Override the full 4×4 transform (16 floats, row-major).
+|`node.setTranslation(x, y, z)` |Set the node's local translation. Also accepts a Vector3 ghost, array `[x,y,z]`, or hash `{x,y,z}`.
+|`node.setRotation(qx, qy, qz, qw)` |Set the node's local rotation as a quaternion. Also accepts a Quaternion ghost, array `[x,y,z,w]`, or hash `{x,y,z,w}`.
+|`node.setScale(sx, sy, sz)` |Set the node's local scale. Also accepts a Vector3 ghost, array `[x,y,z]`, or hash `{x,y,z}`.
+|`node.setMatrix(m00,…,m15)` |Override the full 4×4 transform (16 floats, row-major). Also accepts a Matrix4x4 ghost, array `[16]`, or hash.
 |`node.setVisible(bool)` |Show/hide this node.
 |`node.setCastShadows(bool)` |Enable/disable shadow casting for this node.
 |`node.finish()` |Finalise the node before calling `group.finish()`.

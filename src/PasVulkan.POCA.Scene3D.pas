@@ -889,21 +889,31 @@ begin
 end;
 
 // mat.setBaseColorFactor(r, g, b, a)
+// or mat.setBaseColorFactor(Vector4 | array[4] | {r,g,b,a})
 function POCAScene3DMaterialFunctionSetBaseColorFactor(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Mat:TpvScene3D.TMaterial;
+    Color:TpvVector4;
 begin
  result:=POCAValueNull;
  if POCAGhostGetType(aThis)<>@POCAScene3DMaterialGhost then begin
   exit;
  end;
  Mat:=TpvScene3D.TMaterial(POCAGhostFastGetPointer(aThis));
- if not (assigned(Mat) and (aCountArguments>=4)) then begin
+ if not (assigned(Mat) and (aCountArguments>=1)) then begin
   exit;
  end;
- Mat.Data^.PBRMetallicRoughness.BaseColorFactor.x:=POCAGetNumberValue(aContext,aArguments^[0]);
- Mat.Data^.PBRMetallicRoughness.BaseColorFactor.y:=POCAGetNumberValue(aContext,aArguments^[1]);
- Mat.Data^.PBRMetallicRoughness.BaseColorFactor.z:=POCAGetNumberValue(aContext,aArguments^[2]);
- Mat.Data^.PBRMetallicRoughness.BaseColorFactor.w:=POCAGetNumberValue(aContext,aArguments^[3]);
+ if POCAIsVector4Value(aContext,aArguments^[0]) then begin
+  Color:=POCAGetVector4Value(aContext,aArguments^[0]);
+ end else begin
+  if aCountArguments<4 then begin
+   exit;
+  end;
+  Color.x:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Color.y:=POCAGetNumberValue(aContext,aArguments^[1]);
+  Color.z:=POCAGetNumberValue(aContext,aArguments^[2]);
+  Color.w:=POCAGetNumberValue(aContext,aArguments^[3]);
+ end;
+ Mat.Data^.PBRMetallicRoughness.BaseColorFactor:=Color;
  Mat.FillShaderData;
  Mat.SceneInstance.NewMaterialDataGeneration;
  result:=aThis;
@@ -946,20 +956,32 @@ begin
 end;
 
 // mat.setEmissiveFactor(r, g, b)  — w (EmissiveStrength) remains unchanged
+// or mat.setEmissiveFactor(Vector3 | array[3] | {r,g,b})
 function POCAScene3DMaterialFunctionSetEmissiveFactor(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Mat:TpvScene3D.TMaterial;
+    Emissive:TpvVector3;
 begin
  result:=POCAValueNull;
  if POCAGhostGetType(aThis)<>@POCAScene3DMaterialGhost then begin
   exit;
  end;
  Mat:=TpvScene3D.TMaterial(POCAGhostFastGetPointer(aThis));
- if not (assigned(Mat) and (aCountArguments>=3)) then begin
+ if not (assigned(Mat) and (aCountArguments>=1)) then begin
   exit;
  end;
- Mat.Data^.EmissiveFactor.x:=POCAGetNumberValue(aContext,aArguments^[0]);
- Mat.Data^.EmissiveFactor.y:=POCAGetNumberValue(aContext,aArguments^[1]);
- Mat.Data^.EmissiveFactor.z:=POCAGetNumberValue(aContext,aArguments^[2]);
+ if POCAIsVector3Value(aContext,aArguments^[0]) then begin
+  Emissive:=POCAGetVector3Value(aContext,aArguments^[0]);
+  Mat.Data^.EmissiveFactor.x:=Emissive.x;
+  Mat.Data^.EmissiveFactor.y:=Emissive.y;
+  Mat.Data^.EmissiveFactor.z:=Emissive.z;
+ end else begin
+  if aCountArguments<3 then begin
+   exit;
+  end;
+  Mat.Data^.EmissiveFactor.x:=POCAGetNumberValue(aContext,aArguments^[0]);
+  Mat.Data^.EmissiveFactor.y:=POCAGetNumberValue(aContext,aArguments^[1]);
+  Mat.Data^.EmissiveFactor.z:=POCAGetNumberValue(aContext,aArguments^[2]);
+ end;
  Mat.FillShaderData;
  Mat.SceneInstance.NewMaterialDataGeneration;
  result:=aThis;
@@ -1688,6 +1710,7 @@ begin
 end;
 
 // node.setTranslation(x, y, z)
+// or node.setTranslation(Vector3 | array[3] | {x,y,z})
 function POCAScene3DNodeFunctionSetTranslation(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Node:TpvScene3D.TGroup.TNode;
 begin
@@ -1695,20 +1718,28 @@ begin
  if POCAGhostGetType(aThis)<>@POCAScene3DNodeGhost then begin
   exit;
  end;
- if aCountArguments<3 then begin
+ if aCountArguments<1 then begin
   exit;
  end;
  Node:=TpvScene3D.TGroup.TNode(POCAGhostFastGetPointer(aThis));
  if not assigned(Node) then begin
   exit;
  end;
- Node.Translation:=TpvVector3.Create(POCAGetNumberValue(aContext,aArguments^[0]),
-                                      POCAGetNumberValue(aContext,aArguments^[1]),
-                                      POCAGetNumberValue(aContext,aArguments^[2]));
+ if POCAIsVector3Value(aContext,aArguments^[0]) then begin
+  Node.Translation:=POCAGetVector3Value(aContext,aArguments^[0]);
+ end else begin
+  if aCountArguments<3 then begin
+   exit;
+  end;
+  Node.Translation:=TpvVector3.Create(POCAGetNumberValue(aContext,aArguments^[0]),
+                                       POCAGetNumberValue(aContext,aArguments^[1]),
+                                       POCAGetNumberValue(aContext,aArguments^[2]));
+ end;
  result:=aThis;
 end;
 
 // node.setRotation(qx, qy, qz, qw)
+// or node.setRotation(Quaternion | array[4] | {x,y,z,w})
 function POCAScene3DNodeFunctionSetRotation(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Node:TpvScene3D.TGroup.TNode;
 begin
@@ -1716,21 +1747,29 @@ begin
  if POCAGhostGetType(aThis)<>@POCAScene3DNodeGhost then begin
   exit;
  end;
- if aCountArguments<4 then begin
+ if aCountArguments<1 then begin
   exit;
  end;
  Node:=TpvScene3D.TGroup.TNode(POCAGhostFastGetPointer(aThis));
  if not assigned(Node) then begin
   exit;
  end;
- Node.Rotation:=TpvQuaternion.Create(POCAGetNumberValue(aContext,aArguments^[0]),
-                                      POCAGetNumberValue(aContext,aArguments^[1]),
-                                      POCAGetNumberValue(aContext,aArguments^[2]),
-                                      POCAGetNumberValue(aContext,aArguments^[3]));
+ if POCAIsQuaternionValue(aContext,aArguments^[0]) then begin
+  Node.Rotation:=POCAGetQuaternionValue(aContext,aArguments^[0]);
+ end else begin
+  if aCountArguments<4 then begin
+   exit;
+  end;
+  Node.Rotation:=TpvQuaternion.Create(POCAGetNumberValue(aContext,aArguments^[0]),
+                                       POCAGetNumberValue(aContext,aArguments^[1]),
+                                       POCAGetNumberValue(aContext,aArguments^[2]),
+                                       POCAGetNumberValue(aContext,aArguments^[3]));
+ end;
  result:=aThis;
 end;
 
 // node.setScale(sx, sy, sz)
+// or node.setScale(Vector3 | array[3] | {x,y,z})
 function POCAScene3DNodeFunctionSetScale(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Node:TpvScene3D.TGroup.TNode;
 begin
@@ -1738,20 +1777,28 @@ begin
  if POCAGhostGetType(aThis)<>@POCAScene3DNodeGhost then begin
   exit;
  end;
- if aCountArguments<3 then begin
+ if aCountArguments<1 then begin
   exit;
  end;
  Node:=TpvScene3D.TGroup.TNode(POCAGhostFastGetPointer(aThis));
  if not assigned(Node) then begin
   exit;
  end;
- Node.Scale:=TpvVector3.Create(POCAGetNumberValue(aContext,aArguments^[0]),
-                                POCAGetNumberValue(aContext,aArguments^[1]),
-                                POCAGetNumberValue(aContext,aArguments^[2]));
+ if POCAIsVector3Value(aContext,aArguments^[0]) then begin
+  Node.Scale:=POCAGetVector3Value(aContext,aArguments^[0]);
+ end else begin
+  if aCountArguments<3 then begin
+   exit;
+  end;
+  Node.Scale:=TpvVector3.Create(POCAGetNumberValue(aContext,aArguments^[0]),
+                                 POCAGetNumberValue(aContext,aArguments^[1]),
+                                 POCAGetNumberValue(aContext,aArguments^[2]));
+ end;
  result:=aThis;
 end;
 
 // node.setMatrix(m00,m01,...,m15) — set full 4x4 transform (row-major, 16 args)
+// or node.setMatrix(Matrix4x4 | array[16] | hash)
 function POCAScene3DNodeFunctionSetMatrix(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Node:TpvScene3D.TGroup.TNode;
     Mat:TpvMatrix4x4;
@@ -1761,17 +1808,24 @@ begin
  if POCAGhostGetType(aThis)<>@POCAScene3DNodeGhost then begin
   exit;
  end;
- if aCountArguments<16 then begin
+ if aCountArguments<1 then begin
   exit;
  end;
  Node:=TpvScene3D.TGroup.TNode(POCAGhostFastGetPointer(aThis));
  if not assigned(Node) then begin
   exit;
  end;
- for I:=0 to 15 do begin
-  Mat.RawComponents[I shr 2,I and 3]:=POCAGetNumberValue(aContext,aArguments^[I]);
+ if POCAIsMatrix4x4Value(aContext,aArguments^[0]) then begin
+  Node.Matrix:=POCAGetMatrix4x4Value(aContext,aArguments^[0]);
+ end else begin
+  if aCountArguments<16 then begin
+   exit;
+  end;
+  for I:=0 to 15 do begin
+   Mat.RawComponents[I shr 2,I and 3]:=POCAGetNumberValue(aContext,aArguments^[I]);
+  end;
+  Node.Matrix:=Mat;
  end;
- Node.Matrix:=Mat;
  result:=aThis;
 end;
 
