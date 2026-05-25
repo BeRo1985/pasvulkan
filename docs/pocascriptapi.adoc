@@ -8857,14 +8857,19 @@ project this call is made in `+UnitGamePOCA.pas+`.  A game that does not call
 `+InitializePOCAScene3DContext+` will not have an `+engine.scene3d+` object at
 all.
 
-All objects returned by the Scene3D API are *ghost objects* with reference-counted
-lifetimes.  Each ghost holds one reference on the underlying engine resource.
-When the POCA garbage collector finalises a ghost the reference is released.
-Calling `.destroy()` releases the reference immediately (the ghost's pointer is
-then nulled so further calls on it are silently ignored).
+All objects returned by the Scene3D API are *ghost objects*.  A ghost holds
+a *pointer* to the underlying engine resource but does **not** hold an
+independent reference-count on it.  The resource is owned by the scene.
 
-*Do not* call `+.destroy()+` on ghosts that you still intend to use.  Holding a
-ghost variable alive is enough to keep the resource alive.
+When the POCA garbage collector finalises a ghost, only the internal pointer
+is nulled — the engine resource itself is **not** released.  Call `.destroy()`
+on a ghost to explicitly release (DecRef) the resource immediately and null
+the pointer.  Any resource not explicitly destroyed is cleaned up by
+`+TpvScene3D.Destroy+` at scene / game shutdown.
+
+*Do not* call `+.destroy()+` on ghosts that you still intend to use.  Holding
+a ghost variable alive keeps the pointer valid, but the resource stays alive
+regardless (it is owned by the scene).
 
 '''''
 
@@ -9148,8 +9153,9 @@ let mat = engine.scene3d.createMaterial({
 
 === Scene3DImage
 
-A ghost object wrapping a `+TpvScene3D.TImage+`.  Lifecycle is managed via
-reference counting; the ghost holds one reference.
+A ghost object wrapping a `+TpvScene3D.TImage+`.  The ghost holds a pointer
+to the image; the image itself is owned by the scene.  GC-finalised ghosts
+only null their pointer.  Call `+img.destroy()+` to release (DecRef) explicitly.
 
 '''''
 
@@ -9203,8 +9209,9 @@ img.destroy();
 
 === Scene3DSampler
 
-A ghost object wrapping a `+TpvScene3D.TSampler+`.  Lifecycle is managed via
-reference counting.
+A ghost object wrapping a `+TpvScene3D.TSampler+`.  The ghost holds a
+pointer; the sampler is owned by the scene.  GC-finalised ghosts only null
+their pointer.  Call `+sampler.destroy()+` to release explicitly.
 
 '''''
 
@@ -9224,8 +9231,9 @@ sampler.destroy();
 
 === Scene3DTexture
 
-A ghost object wrapping a `+TpvScene3D.TTexture+`.  Lifecycle is managed via
-reference counting.
+A ghost object wrapping a `+TpvScene3D.TTexture+`.  The ghost holds a
+pointer; the texture is owned by the scene.  GC-finalised ghosts only null
+their pointer.  Call `+tex.destroy()+` to release explicitly.
 
 '''''
 
