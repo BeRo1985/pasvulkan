@@ -143,6 +143,8 @@ procedure UnregisterPOCAScene3DGhost(const aContext:PPOCAContext;const aEngineHa
 
 implementation
 
+// --- Shared internal types -------------------------------------------------------
+
 // Per-animation high-level playback state for Scene3DInstance ghosts.
 type TScene3DInstanceAnimState=record
       Speed:TpvDouble;
@@ -196,187 +198,20 @@ begin
  end;
 end;
 
-// Ghost destroy procedures — called by POCA GC when a ghost value is collected.
 
+// --- Image -----------------------------------------------------------------------
+
+// Ghost destroy procedures - called by POCA GC when a ghost value is collected.
 procedure POCAScene3DImageGhostDestroy(const aGhost:PPOCAGhost);
 begin
- if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  TpvScene3D.TImage(aGhost^.Ptr).DecRef;
- end;
-end;
-
-procedure POCAScene3DSamplerGhostDestroy(const aGhost:PPOCAGhost);
-begin
- if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  TpvScene3D.TSampler(aGhost^.Ptr).DecRef;
- end;
-end;
-
-procedure POCAScene3DTextureGhostDestroy(const aGhost:PPOCAGhost);
-begin
- if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  TpvScene3D.TTexture(aGhost^.Ptr).DecRef;
- end;
-end;
-
-procedure POCAScene3DMaterialGhostDestroy(const aGhost:PPOCAGhost);
-begin
- if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  TpvScene3D.TMaterial(aGhost^.Ptr).DecRef;
- end;
-end;
-
-procedure POCAScene3DInstanceGhostDestroy(const aGhost:PPOCAGhost);
-var Data:TScene3DInstanceGhostData;
-begin
- // GC ghost destroy: free only the POCA-internal wrapper, NOT the Scene3D Instance.
- // Use the explicit instance.destroy() API to free the Scene3D object intentionally.
- if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  Data:=TScene3DInstanceGhostData(aGhost^.Ptr);
-  aGhost^.Ptr:=nil;
-  FreeAndNil(Data);
- end;
-end;
-
-procedure POCAScene3DRenderInstanceGhostDestroy(const aGhost:PPOCAGhost);
-begin
- // GC ghost destroy: just null the pointer. Scene3D RenderInstance lifetime is
- // managed externally. Use the explicit ri.remove() API to remove it intentionally.
+ // GC ghost destroy: just null the pointer. Use img.destroy() to DecRef explicitly.
  if assigned(aGhost) then begin
   aGhost^.Ptr:=nil;
  end;
 end;
 
-procedure POCAScene3DLightGhostDestroy(const aGhost:PPOCAGhost);
-begin
- // GC ghost destroy: just null the pointer. Scene3D Light lifetime is managed
- // externally. Use the explicit light.destroy() API to free it intentionally.
- if assigned(aGhost) then begin
-  aGhost^.Ptr:=nil;
- end;
-end;
-
-procedure POCAScene3DDecalGhostDestroy(const aGhost:PPOCAGhost);
-var Data:PScene3DDecalGhostData;
-begin
- if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
-  Data:=PScene3DDecalGhostData(aGhost^.Ptr);
-  aGhost^.Ptr:=nil;
-  Dispose(Data);
- end;
-end;
-
-procedure POCAScene3DBakedMeshGhostDestroy(const aGhost:PPOCAGhost);
-begin
- // GC ghost destroy: just null the pointer. Scene3D BakedMesh lifetime is
- // managed externally. Use the explicit bakedMesh.destroy() API intentionally.
- if assigned(aGhost) then begin
-  aGhost^.Ptr:=nil;
- end;
-end;
-
-// Ghost type const records — addresses used as type identity tokens.
+// Ghost type const records - addresses used as type identity tokens.
 // Destroy: nil for types whose lifetime is managed externally or by the scene.
-
-const POCAScene3DSceneGhost:TPOCAGhostType=
-       (
-        Destroy:nil;    // TpvScene3D lifetime managed by the game, not POCA
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DScene'
-       );
-
-const POCAScene3DGroupGhost:TPOCAGhostType=
-       (
-        Destroy:nil;
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DGroup'
-       );
-
-const POCAScene3DMeshGhost:TPOCAGhostType=
-       (
-        Destroy:nil;    // owned by group
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DMesh'
-       );
-
-const POCAScene3DPrimitiveGhost:TPOCAGhostType=
-       (
-        Destroy:nil;    // owned by mesh
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DPrimitive'
-       );
-
-const POCAScene3DNodeGhost:TPOCAGhostType=
-       (
-        Destroy:nil;    // owned by group
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DNode'
-       );
-
-const POCAScene3DGroupSceneGhost:TPOCAGhostType=
-       (
-        Destroy:nil;    // owned by group
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DGroupScene'
-       );
-
-const POCAScene3DInstanceGhost:TPOCAGhostType=
-       (
-        Destroy:POCAScene3DInstanceGhostDestroy;
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DInstance'
-       );
-
-const POCAScene3DRenderInstanceGhost:TPOCAGhostType=
-       (
-        Destroy:POCAScene3DRenderInstanceGhostDestroy;
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DRenderInstance'
-       );
-
-const POCAScene3DMaterialGhost:TPOCAGhostType=
-       (
-        Destroy:POCAScene3DMaterialGhostDestroy;
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DMaterial'
-       );
-
 const POCAScene3DImageGhost:TPOCAGhostType=
        (
         Destroy:POCAScene3DImageGhostDestroy;
@@ -388,100 +223,11 @@ const POCAScene3DImageGhost:TPOCAGhostType=
         Name:'Scene3DImage'
        );
 
-const POCAScene3DSamplerGhost:TPOCAGhostType=
-       (
-        Destroy:POCAScene3DSamplerGhostDestroy;
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DSampler'
-       );
-
-const POCAScene3DTextureGhost:TPOCAGhostType=
-       (
-        Destroy:POCAScene3DTextureGhostDestroy;
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DTexture'
-       );
-
-const POCAScene3DLightGhost:TPOCAGhostType=
-       (
-        Destroy:POCAScene3DLightGhostDestroy;
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DLight'
-       );
-
-const POCAScene3DGroupLightGhost:TPOCAGhostType=
-       (
-        Destroy:nil;    // owned by group
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DGroupLight'
-       );
-
-const POCAScene3DDecalGhost:TPOCAGhostType=
-       (
-        Destroy:POCAScene3DDecalGhostDestroy;
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DDecal'
-       );
-
-const POCAScene3DBakedMeshGhost:TPOCAGhostType=
-       (
-        Destroy:POCAScene3DBakedMeshGhostDestroy;
-        CanDestroy:nil;
-        Mark:nil;
-        ExistKey:nil;
-        GetKey:nil;
-        SetKey:nil;
-        Name:'Scene3DBakedMesh'
-       );
-
-function POCANewScene3DGhost(const aContext:PPOCAContext;const aScene3D:TpvScene3D):TPOCAValue;
-begin
- result:=POCANewGhost(aContext,@POCAScene3DSceneGhost,aScene3D,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DSceneGhostHash);
-end;
-
-// — Image / Sampler / Texture ghost helpers and methods —
-
 function POCANewScene3DImageGhost(const aContext:PPOCAContext;const aImage:TpvScene3D.TImage):TPOCAValue;
 begin
  result:=POCANewGhost(aContext,@POCAScene3DImageGhost,aImage,nil,pgptRAW);
  POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAScene3DImageGhostHash);
-end;
-
-function POCANewScene3DSamplerGhost(const aContext:PPOCAContext;const aSampler:TpvScene3D.TSampler):TPOCAValue;
-begin
- result:=POCANewGhost(aContext,@POCAScene3DSamplerGhost,aSampler,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DSamplerGhostHash);
-end;
-
-function POCANewScene3DTextureGhost(const aContext:PPOCAContext;const aTexture:TpvScene3D.TTexture):TPOCAValue;
-begin
- result:=POCANewGhost(aContext,@POCAScene3DTextureGhost,aTexture,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DTextureGhostHash);
 end;
 
 // img.upload() — GPU upload (synchronous) + descriptor generation trigger (Q4: one render frame delay)
@@ -540,38 +286,6 @@ begin
  end;
 end;
 
-// sampler.destroy()
-function POCAScene3DSamplerFunctionDestroy(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Ghost:PPOCAGhost;
-    Sampler:TpvScene3D.TSampler;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)=@POCAScene3DSamplerGhost then begin
-  Ghost:=PPOCAGhost(POCAGetValueReferencePointer(aThis));
-  if assigned(Ghost) and assigned(Ghost^.Ptr) then begin
-   Sampler:=TpvScene3D.TSampler(Ghost^.Ptr);
-   Ghost^.Ptr:=nil;
-   Sampler.DecRef;
-  end;
- end;
-end;
-
-// texture.destroy()
-function POCAScene3DTextureFunctionDestroy(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Ghost:PPOCAGhost;
-    Texture:TpvScene3D.TTexture;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)=@POCAScene3DTextureGhost then begin
-  Ghost:=PPOCAGhost(POCAGetValueReferencePointer(aThis));
-  if assigned(Ghost) and assigned(Ghost^.Ptr) then begin
-   Texture:=TpvScene3D.TTexture(Ghost^.Ptr);
-   Ghost^.Ptr:=nil;
-   Texture.DecRef;
-  end;
- end;
-end;
-
 // engine.scene3d.createImage(w, h, pixels)
 // pixels: POCA array of w*h integers; each pixel = R|(G<<8)|(B<<16)|(A<<24)
 // Returns image ghost (owned ref). Call img.upload() to upload to GPU.
@@ -583,7 +297,7 @@ var Scene3D:TpvScene3D;
     PixelData:array of TpvUInt32;
 begin
  result:=POCAValueNull;
- if (aCountArguments<3) or (POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost) then begin
+ if (aCountArguments<3) or (POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer) then begin
   exit;
  end;
  Scene3D:=TpvScene3D(POCAGhostFastGetPointer(aThis));
@@ -621,7 +335,7 @@ var Scene3D:TpvScene3D;
     Stream:TStream;
 begin
  result:=POCAValueNull;
- if (aCountArguments<1) or (POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost) then begin
+ if (aCountArguments<1) or (POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer) then begin
   exit;
  end;
  Scene3D:=TpvScene3D(POCAGhostFastGetPointer(aThis));
@@ -653,7 +367,7 @@ var Scene3D:TpvScene3D;
     Image:TpvScene3D.TImage;
 begin
  result:=POCAValueNull;
- if (aCountArguments<1) or (POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost) then begin
+ if (aCountArguments<1) or (POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer) then begin
   exit;
  end;
  Scene3D:=TpvScene3D(POCAGhostFastGetPointer(aThis));
@@ -668,6 +382,51 @@ begin
  result:=POCANewScene3DImageGhost(aContext,Image);
 end;
 
+
+// --- Sampler ---------------------------------------------------------------------
+
+procedure POCAScene3DSamplerGhostDestroy(const aGhost:PPOCAGhost);
+begin
+ // GC ghost destroy: just null the pointer. Use sampler.destroy() to DecRef explicitly.
+ if assigned(aGhost) then begin
+  aGhost^.Ptr:=nil;
+ end;
+end;
+
+const POCAScene3DSamplerGhost:TPOCAGhostType=
+       (
+        Destroy:POCAScene3DSamplerGhostDestroy;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DSampler'
+       );
+
+function POCANewScene3DSamplerGhost(const aContext:PPOCAContext;const aSampler:TpvScene3D.TSampler):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAScene3DSamplerGhost,aSampler,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DSamplerGhostHash);
+end;
+
+// sampler.destroy()
+function POCAScene3DSamplerFunctionDestroy(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Ghost:PPOCAGhost;
+    Sampler:TpvScene3D.TSampler;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)=@POCAScene3DSamplerGhost then begin
+  Ghost:=PPOCAGhost(POCAGetValueReferencePointer(aThis));
+  if assigned(Ghost) and assigned(Ghost^.Ptr) then begin
+   Sampler:=TpvScene3D.TSampler(Ghost^.Ptr);
+   Ghost^.Ptr:=nil;
+   Sampler.DecRef;
+  end;
+ end;
+end;
+
 // engine.scene3d.createSampler(type)
 // type: 'default' | 'nonrepeat' | 'mipmap' | 'mipmapnonrepeat' (default: 'default')
 function POCAScene3DSceneFunctionCreateSampler(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
@@ -676,7 +435,7 @@ var Scene3D:TpvScene3D;
     SamplerType:TpvUTF8String;
 begin
  result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost then begin
+ if POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer then begin
   exit;
  end;
  Scene3D:=TpvScene3D(POCAGhostFastGetPointer(aThis));
@@ -707,7 +466,7 @@ function POCAScene3DSceneFunctionDefaultSampler(const aContext:PPOCAContext;cons
 var Scene3D:TpvScene3D;
 begin
  result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost then begin
+ if POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer then begin
   exit;
  end;
  Scene3D:=TpvScene3D(POCAGhostFastGetPointer(aThis));
@@ -723,7 +482,7 @@ function POCAScene3DSceneFunctionDefaultNonRepeatSampler(const aContext:PPOCACon
 var Scene3D:TpvScene3D;
 begin
  result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost then begin
+ if POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer then begin
   exit;
  end;
  Scene3D:=TpvScene3D(POCAGhostFastGetPointer(aThis));
@@ -732,6 +491,51 @@ begin
  end;
  Scene3D.DefaultNonRepeatSampler.IncRef;
  result:=POCANewScene3DSamplerGhost(aContext,Scene3D.DefaultNonRepeatSampler);
+end;
+
+
+// --- Texture ---------------------------------------------------------------------
+
+procedure POCAScene3DTextureGhostDestroy(const aGhost:PPOCAGhost);
+begin
+ // GC ghost destroy: just null the pointer. Use texture.destroy() to DecRef explicitly.
+ if assigned(aGhost) then begin
+  aGhost^.Ptr:=nil;
+ end;
+end;
+
+const POCAScene3DTextureGhost:TPOCAGhostType=
+       (
+        Destroy:POCAScene3DTextureGhostDestroy;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DTexture'
+       );
+
+function POCANewScene3DTextureGhost(const aContext:PPOCAContext;const aTexture:TpvScene3D.TTexture):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAScene3DTextureGhost,aTexture,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DTextureGhostHash);
+end;
+
+// texture.destroy()
+function POCAScene3DTextureFunctionDestroy(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Ghost:PPOCAGhost;
+    Texture:TpvScene3D.TTexture;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)=@POCAScene3DTextureGhost then begin
+  Ghost:=PPOCAGhost(POCAGetValueReferencePointer(aThis));
+  if assigned(Ghost) and assigned(Ghost^.Ptr) then begin
+   Texture:=TpvScene3D.TTexture(Ghost^.Ptr);
+   Ghost^.Ptr:=nil;
+   Texture.DecRef;
+  end;
+ end;
 end;
 
 // engine.scene3d.createTexture(image, sampler)
@@ -743,7 +547,7 @@ var Scene3D:TpvScene3D;
     Sampler:TpvScene3D.TSampler;
 begin
  result:=POCAValueNull;
- if (aCountArguments<1) or (POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost) then begin
+ if (aCountArguments<1) or (POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer) then begin
   exit;
  end;
  if POCAGhostGetType(aArguments^[0])<>@POCAScene3DImageGhost then begin
@@ -785,7 +589,7 @@ var Scene3D:TpvScene3D;
     PixelData:array of TpvUInt32;
 begin
  result:=POCAValueNull;
- if (aCountArguments<3) or (POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost) then begin
+ if (aCountArguments<3) or (POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer) then begin
   exit;
  end;
  Scene3D:=TpvScene3D(POCAGhostFastGetPointer(aThis));
@@ -818,7 +622,27 @@ begin
  end;
 end;
 
-// — Material ghost helpers and methods —
+
+// --- Material --------------------------------------------------------------------
+
+procedure POCAScene3DMaterialGhostDestroy(const aGhost:PPOCAGhost);
+begin
+ // GC ghost destroy: just null the pointer. Use material.destroy() to DecRef explicitly.
+ if assigned(aGhost) then begin
+  aGhost^.Ptr:=nil;
+ end;
+end;
+
+const POCAScene3DMaterialGhost:TPOCAGhostType=
+       (
+        Destroy:POCAScene3DMaterialGhostDestroy;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DMaterial'
+       );
 
 function POCANewScene3DMaterialGhost(const aContext:PPOCAContext;const aMaterial:TpvScene3D.TMaterial):TPOCAValue;
 begin
@@ -1379,7 +1203,7 @@ var Scene3D:TpvScene3D;
     Tex:TpvScene3D.TTexture;
 begin
  result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost then begin
+ if POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer then begin
   exit;
  end;
  Scene3D:=TpvScene3D(POCAGhostFastGetPointer(aThis));
@@ -1512,362 +1336,25 @@ begin
  result:=POCANewScene3DMaterialGhost(aContext,Mat);
 end;
 
-// — Group / Mesh / Primitive / Node / GroupScene ghosts —
 
-// helper: wrap a TpvScene3D.TGroup in a ghost (raw ptr, no ref-count needed beyond group lifetime)
-function POCANewScene3DGroupGhost(const aContext:PPOCAContext;const aGroup:TpvScene3D.TGroup):TPOCAValue;
-begin
- result:=POCANewGhost(aContext,@POCAScene3DGroupGhost,aGroup,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DGroupGhostHash);
-end;
+// --- Primitive -------------------------------------------------------------------
 
-function POCANewScene3DMeshGhost(const aContext:PPOCAContext;const aMesh:TpvScene3D.TGroup.TMesh):TPOCAValue;
-begin
- result:=POCANewGhost(aContext,@POCAScene3DMeshGhost,aMesh,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DMeshGhostHash);
-end;
+const POCAScene3DPrimitiveGhost:TPOCAGhostType=
+       (
+        Destroy:nil;    // owned by mesh
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DPrimitive'
+       );
 
 function POCANewScene3DPrimitiveGhost(const aContext:PPOCAContext;const aPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive):TPOCAValue;
 begin
  result:=POCANewGhost(aContext,@POCAScene3DPrimitiveGhost,aPrimitive,nil,pgptRAW);
  POCATemporarySave(aContext,result);
  POCAGhostSetHashValue(result,POCAScene3DPrimitiveGhostHash);
-end;
-
-function POCANewScene3DNodeGhost(const aContext:PPOCAContext;const aNode:TpvScene3D.TGroup.TNode):TPOCAValue;
-begin
- result:=POCANewGhost(aContext,@POCAScene3DNodeGhost,aNode,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DNodeGhostHash);
-end;
-
-function POCANewScene3DGroupSceneGhost(const aContext:PPOCAContext;const aScene:TpvScene3D.TGroup.TScene):TPOCAValue;
-begin
- result:=POCANewGhost(aContext,@POCAScene3DGroupSceneGhost,aScene,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DGroupSceneGhostHash);
-end;
-
-function POCANewScene3DInstanceGhost(const aContext:PPOCAContext;const aInstance:TpvScene3D.TGroup.TInstance):TPOCAValue;
-var Data:TScene3DInstanceGhostData;
-begin
- Data:=TScene3DInstanceGhostData.Create(aInstance);
- result:=POCANewGhost(aContext,@POCAScene3DInstanceGhost,Data,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DInstanceGhostHash);
-end;
-
-function POCANewScene3DRenderInstanceGhost(const aContext:PPOCAContext;const aRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance):TPOCAValue;
-begin
- result:=POCANewGhost(aContext,@POCAScene3DRenderInstanceGhost,aRenderInstance,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DRenderInstanceGhostHash);
-end;
-
-function POCANewScene3DLightGhost(const aContext:PPOCAContext;const aLight:TpvScene3D.TLight):TPOCAValue;
-begin
- result:=POCANewGhost(aContext,@POCAScene3DLightGhost,aLight,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DLightGhostHash);
-end;
-
-function POCANewScene3DDecalGhost(const aContext:PPOCAContext;const aScene3D:TpvScene3D;const aDecal:TpvScene3D.TDecal):TPOCAValue;
-var Data:PScene3DDecalGhostData;
-begin
- New(Data);
- Data^.Scene3D:=aScene3D;
- Data^.Decal:=aDecal;
- result:=POCANewGhost(aContext,@POCAScene3DDecalGhost,Data,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DDecalGhostHash);
-end;
-
-function POCANewScene3DBakedMeshGhost(const aContext:PPOCAContext;const aBakedMesh:TpvScene3D.TBakedMesh):TPOCAValue;
-begin
- result:=POCANewGhost(aContext,@POCAScene3DBakedMeshGhost,aBakedMesh,nil,pgptRAW);
- POCATemporarySave(aContext,result);
- POCAGhostSetHashValue(result,POCAScene3DBakedMeshGhostHash);
-end;
-
-// engine.scene3d.createGroup([name])
-function POCAScene3DSceneFunctionCreateGroup(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Scene3D:TpvScene3D;
-    Group:TpvScene3D.TGroup;
-    Name:TpvUTF8String;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost then begin
-  exit;
- end;
- Scene3D:=TpvScene3D(POCAGhostFastGetPointer(aThis));
- if not assigned(Scene3D) then begin
-  exit;
- end;
- if aCountArguments>=1 then begin
-  Name:=POCAGetStringValue(aContext,aArguments^[0]);
- end else begin
-  Name:='';
- end;
- Group:=Scene3D.CreateGroup(Name);
- if not assigned(Group) then begin
-  exit;
- end;
- result:=POCANewScene3DGroupGhost(aContext,Group);
-end;
-
-// g.createMesh([name]) → Scene3DMesh
-function POCAScene3DGroupFunctionCreateMesh(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Group:TpvScene3D.TGroup;
-    Mesh:TpvScene3D.TGroup.TMesh;
-    Name:TpvUTF8String;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
-  exit;
- end;
- Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
- if not assigned(Group) then begin
-  exit;
- end;
- if aCountArguments>=1 then begin
-  Name:=POCAGetStringValue(aContext,aArguments^[0]);
- end else begin
-  Name:='';
- end;
- Mesh:=Group.CreateMesh(Name);
- if not assigned(Mesh) then begin
-  exit;
- end;
- result:=POCANewScene3DMeshGhost(aContext,Mesh);
-end;
-
-// g.createNode([name]) → Scene3DNode
-function POCAScene3DGroupFunctionCreateNode(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Group:TpvScene3D.TGroup;
-    Node:TpvScene3D.TGroup.TNode;
-    Name:TpvUTF8String;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
-  exit;
- end;
- Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
- if not assigned(Group) then begin
-  exit;
- end;
- if aCountArguments>=1 then begin
-  Name:=POCAGetStringValue(aContext,aArguments^[0]);
- end else begin
-  Name:='';
- end;
- Node:=Group.CreateNode(Name);
- if not assigned(Node) then begin
-  exit;
- end;
- result:=POCANewScene3DNodeGhost(aContext,Node);
-end;
-
-// g.createScene([name]) → Scene3DGroupScene
-function POCAScene3DGroupFunctionCreateScene(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Group:TpvScene3D.TGroup;
-    Scene:TpvScene3D.TGroup.TScene;
-    Name:TpvUTF8String;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
-  exit;
- end;
- Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
- if not assigned(Group) then begin
-  exit;
- end;
- if aCountArguments>=1 then begin
-  Name:=POCAGetStringValue(aContext,aArguments^[0]);
- end else begin
-  Name:='';
- end;
- Scene:=Group.CreateScene(Name);
- if not assigned(Scene) then begin
-  exit;
- end;
- result:=POCANewScene3DGroupSceneGhost(aContext,Scene);
-end;
-
-// g.addMaterial(mat) → material index within group
-function POCAScene3DGroupFunctionAddMaterial(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Group:TpvScene3D.TGroup;
-    Mat:TpvScene3D.TMaterial;
-    MatIndex:TpvSizeInt;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
-  exit;
- end;
- if (aCountArguments<1) or (POCAGhostGetType(aArguments^[0])<>@POCAScene3DMaterialGhost) then begin
-  exit;
- end;
- Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
- if not assigned(Group) then begin
-  exit;
- end;
- Mat:=TpvScene3D.TMaterial(POCAGhostFastGetPointer(aArguments^[0]));
- if not assigned(Mat) then begin
-  exit;
- end;
- MatIndex:=Group.AddMaterial(Mat);
- result:=POCANewNumber(aContext,MatIndex);
-end;
-
-// g.finish() — finalise GPU upload; must be called before createInstance()
-function POCAScene3DGroupFunctionFinish(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Group:TpvScene3D.TGroup;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
-  exit;
- end;
- Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
- if not assigned(Group) then begin
-  exit;
- end;
- Group.Finish;
- result:=aThis;
-end;
-
-// g.createInstance() → Scene3DInstance (must call g.finish() first)
-function POCAScene3DGroupFunctionCreateInstance(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Group:TpvScene3D.TGroup;
-    Instance:TpvScene3D.TGroup.TInstance;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
-  exit;
- end;
- Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
- if not assigned(Group) then begin
-  exit;
- end;
- Instance:=Group.CreateInstance;
- if not assigned(Instance) then begin
-  exit;
- end;
- result:=POCANewScene3DInstanceGhost(aContext,Instance);
-end;
-
-// g.getAnimationID(name) → int (-1 if not found)
-function POCAScene3DGroupFunctionGetAnimationID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Group:TpvScene3D.TGroup;
-begin
- result:=POCANewNumber(aContext,-1);
- if (POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost) or (aCountArguments<1) then begin
-  exit;
- end;
- Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
- if not assigned(Group) then begin
-  exit;
- end;
- result:=POCANewNumber(aContext,Group.GetAnimationID(POCAGetStringValue(aContext,aArguments^[0])));
-end;
-
-// g.destroy() — nulls ghost pointer (group is owned by scene, not ref-counted from POCA)
-function POCAScene3DGroupFunctionDestroy(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Ghost:PPOCAGhost;
-    Group:TpvScene3D.TGroup;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
-  exit;
- end;
- Ghost:=POCAGhostGetPointer(aThis);
- if assigned(Ghost) and assigned(Ghost^.Ptr) then begin
-  Group:=TpvScene3D.TGroup(Ghost^.Ptr);
-  Ghost^.Ptr:=nil;
-  FreeAndNil(Group);
- end;
-end;
-
-// mesh.createPrimitive('triangles'|'lines'|'points') → Scene3DPrimitive
-function POCAScene3DMeshFunctionCreatePrimitive(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Mesh:TpvScene3D.TGroup.TMesh;
-    Prim:TpvScene3D.TGroup.TMesh.TPrimitive;
-    TopStr:TpvUTF8String;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DMeshGhost then begin
-  exit;
- end;
- Mesh:=TpvScene3D.TGroup.TMesh(POCAGhostFastGetPointer(aThis));
- if not assigned(Mesh) then begin
-  exit;
- end;
- Prim:=Mesh.CreatePrimitive;
- if not assigned(Prim) then begin
-  exit;
- end;
- if aCountArguments>=1 then begin
-  TopStr:=POCAGetStringValue(aContext,aArguments^[0]);
-  if TopStr='lines' then begin
-   Prim.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Lines;
-  end else if TopStr='points' then begin
-   Prim.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Points;
-  end else begin
-   Prim.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
-  end;
- end else begin
-  Prim.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
- end;
- result:=POCANewScene3DPrimitiveGhost(aContext,Prim);
-end;
-
-// mesh.calculateTangentSpace()
-function POCAScene3DMeshFunctionCalculateTangentSpace(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Mesh:TpvScene3D.TGroup.TMesh;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DMeshGhost then begin
-  exit;
- end;
- Mesh:=TpvScene3D.TGroup.TMesh(POCAGhostFastGetPointer(aThis));
- if not assigned(Mesh) then begin
-  exit;
- end;
- Mesh.CalculateTangentSpace;
- result:=aThis;
-end;
-
-// mesh.finish()
-function POCAScene3DMeshFunctionFinish(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Mesh:TpvScene3D.TGroup.TMesh;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DMeshGhost then begin
-  exit;
- end;
- Mesh:=TpvScene3D.TGroup.TMesh(POCAGhostFastGetPointer(aThis));
- if not assigned(Mesh) then begin
-  exit;
- end;
- Mesh.Finish;
- result:=aThis;
-end;
-
-// mesh.destroy() — frees the mesh; caller is responsible for not using it afterwards
-function POCAScene3DMeshFunctionDestroy(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Ghost:PPOCAGhost;
-    Mesh:TpvScene3D.TGroup.TMesh;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DMeshGhost then begin
-  exit;
- end;
- Ghost:=POCAGhostGetPointer(aThis);
- if assigned(Ghost) and assigned(Ghost^.Ptr) then begin
-  Mesh:=TpvScene3D.TGroup.TMesh(Ghost^.Ptr);
-  Ghost^.Ptr:=nil;
-  FreeAndNil(Mesh);
- end;
 end;
 
 // prim.setMaterial(mat) — set the material on this primitive
@@ -1986,6 +1473,130 @@ begin
   Ghost^.Ptr:=nil;
   FreeAndNil(Prim);
  end;
+end;
+
+
+// --- Mesh ------------------------------------------------------------------------
+
+const POCAScene3DMeshGhost:TPOCAGhostType=
+       (
+        Destroy:nil;    // owned by group
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DMesh'
+       );
+
+function POCANewScene3DMeshGhost(const aContext:PPOCAContext;const aMesh:TpvScene3D.TGroup.TMesh):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAScene3DMeshGhost,aMesh,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DMeshGhostHash);
+end;
+
+// mesh.createPrimitive('triangles'|'lines'|'points') → Scene3DPrimitive
+function POCAScene3DMeshFunctionCreatePrimitive(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Mesh:TpvScene3D.TGroup.TMesh;
+    Prim:TpvScene3D.TGroup.TMesh.TPrimitive;
+    TopStr:TpvUTF8String;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DMeshGhost then begin
+  exit;
+ end;
+ Mesh:=TpvScene3D.TGroup.TMesh(POCAGhostFastGetPointer(aThis));
+ if not assigned(Mesh) then begin
+  exit;
+ end;
+ Prim:=Mesh.CreatePrimitive;
+ if not assigned(Prim) then begin
+  exit;
+ end;
+ if aCountArguments>=1 then begin
+  TopStr:=POCAGetStringValue(aContext,aArguments^[0]);
+  if TopStr='lines' then begin
+   Prim.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Lines;
+  end else if TopStr='points' then begin
+   Prim.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Points;
+  end else begin
+   Prim.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
+  end;
+ end else begin
+  Prim.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
+ end;
+ result:=POCANewScene3DPrimitiveGhost(aContext,Prim);
+end;
+
+// mesh.calculateTangentSpace()
+function POCAScene3DMeshFunctionCalculateTangentSpace(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Mesh:TpvScene3D.TGroup.TMesh;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DMeshGhost then begin
+  exit;
+ end;
+ Mesh:=TpvScene3D.TGroup.TMesh(POCAGhostFastGetPointer(aThis));
+ if not assigned(Mesh) then begin
+  exit;
+ end;
+ Mesh.CalculateTangentSpace;
+ result:=aThis;
+end;
+
+// mesh.finish()
+function POCAScene3DMeshFunctionFinish(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Mesh:TpvScene3D.TGroup.TMesh;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DMeshGhost then begin
+  exit;
+ end;
+ Mesh:=TpvScene3D.TGroup.TMesh(POCAGhostFastGetPointer(aThis));
+ if not assigned(Mesh) then begin
+  exit;
+ end;
+ Mesh.Finish;
+ result:=aThis;
+end;
+
+// mesh.destroy() — frees the mesh; caller is responsible for not using it afterwards
+function POCAScene3DMeshFunctionDestroy(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Ghost:PPOCAGhost;
+    Mesh:TpvScene3D.TGroup.TMesh;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DMeshGhost then begin
+  exit;
+ end;
+ Ghost:=POCAGhostGetPointer(aThis);
+ if assigned(Ghost) and assigned(Ghost^.Ptr) then begin
+  Mesh:=TpvScene3D.TGroup.TMesh(Ghost^.Ptr);
+  Ghost^.Ptr:=nil;
+  FreeAndNil(Mesh);
+ end;
+end;
+
+
+// --- Node ------------------------------------------------------------------------
+
+const POCAScene3DNodeGhost:TPOCAGhostType=
+       (
+        Destroy:nil;    // owned by group
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DNode'
+       );
+
+function POCANewScene3DNodeGhost(const aContext:PPOCAContext;const aNode:TpvScene3D.TGroup.TNode):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAScene3DNodeGhost,aNode,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DNodeGhostHash);
 end;
 
 // node.setMesh(mesh)
@@ -2195,6 +1806,27 @@ begin
  end;
 end;
 
+
+// --- GroupScene ------------------------------------------------------------------
+
+const POCAScene3DGroupSceneGhost:TPOCAGhostType=
+       (
+        Destroy:nil;    // owned by group
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DGroupScene'
+       );
+
+function POCANewScene3DGroupSceneGhost(const aContext:PPOCAContext;const aScene:TpvScene3D.TGroup.TScene):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAScene3DGroupSceneGhost,aScene,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DGroupSceneGhostHash);
+end;
+
 // scene.addNode(node) — add a root node to this GroupScene
 function POCAScene3DGroupSceneFunctionAddNode(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Scene:TpvScene3D.TGroup.TScene;
@@ -2236,7 +1868,255 @@ begin
  end;
 end;
 
-// Instance methods
+
+// --- BakedMesh -------------------------------------------------------------------
+
+procedure POCAScene3DBakedMeshGhostDestroy(const aGhost:PPOCAGhost);
+begin
+ // GC ghost destroy: just null the pointer. Scene3D BakedMesh lifetime is
+ // managed externally. Use the explicit bakedMesh.destroy() API intentionally.
+ if assigned(aGhost) then begin
+  aGhost^.Ptr:=nil;
+ end;
+end;
+
+const POCAScene3DBakedMeshGhost:TPOCAGhostType=
+       (
+        Destroy:POCAScene3DBakedMeshGhostDestroy;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DBakedMesh'
+       );
+
+function POCANewScene3DBakedMeshGhost(const aContext:PPOCAContext;const aBakedMesh:TpvScene3D.TBakedMesh):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAScene3DBakedMeshGhost,aBakedMesh,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DBakedMeshGhostHash);
+end;
+
+// bm.raycast(origin, direction)
+// origin, direction — POCA arrays [x,y,z]
+// Returns { distance, position:{x,y,z}, u, v } or null
+function POCAScene3DBakedMeshFunctionRaycast(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var BakedMesh:TpvScene3D.TBakedMesh;
+    Origin:TpvVector3;
+    Direction:TpvVector3;
+    TriIdx:TpvSizeInt;
+    HitTime,HitU,HitV:TpvScalar;
+    BestTime,BestU,BestV:TpvScalar;
+    HitPos:TpvVector3;
+    PosHash:TPOCAValue;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DBakedMeshGhost then begin
+  exit;
+ end;
+ BakedMesh:=TpvScene3D.TBakedMesh(POCAGhostFastGetPointer(aThis));
+ if not assigned(BakedMesh) then begin
+  exit;
+ end;
+ if aCountArguments<2 then begin
+  exit;
+ end;
+ Origin.x:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[0],0));
+ Origin.y:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[0],1));
+ Origin.z:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[0],2));
+ Direction.x:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[1],0));
+ Direction.y:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[1],1));
+ Direction.z:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[1],2));
+ BestTime:=-1.0;
+ BestU:=0.0;
+ BestV:=0.0;
+ for TriIdx:=0 to BakedMesh.Triangles.Count-1 do begin
+  HitTime:=0.0;
+  HitU:=0.0;
+  HitV:=0.0;
+  if BakedMesh.Triangles[TriIdx].RayIntersection(Origin,Direction,HitTime,HitU,HitV) then begin
+   if (HitTime>0.0) and ((BestTime<0.0) or (HitTime<BestTime)) then begin
+    BestTime:=HitTime;
+    BestU:=HitU;
+    BestV:=HitV;
+   end;
+  end;
+ end;
+ if BestTime<0.0 then begin
+  exit;
+ end;
+ HitPos.x:=Origin.x+Direction.x*BestTime;
+ HitPos.y:=Origin.y+Direction.y*BestTime;
+ HitPos.z:=Origin.z+Direction.z*BestTime;
+ PosHash:=POCANewHash(aContext);
+ POCAHashSetString(aContext,PosHash,'x',POCANewNumber(aContext,HitPos.x));
+ POCAHashSetString(aContext,PosHash,'y',POCANewNumber(aContext,HitPos.y));
+ POCAHashSetString(aContext,PosHash,'z',POCANewNumber(aContext,HitPos.z));
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'distance',POCANewNumber(aContext,BestTime));
+ POCAHashSetString(aContext,result,'position',PosHash);
+ POCAHashSetString(aContext,result,'u',POCANewNumber(aContext,BestU));
+ POCAHashSetString(aContext,result,'v',POCANewNumber(aContext,BestV));
+end;
+
+// bm.destroy() — frees the TBakedMesh; nulls ghost pointer
+function POCAScene3DBakedMeshFunctionDestroy(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Ghost:PPOCAGhost;
+    BakedMesh:TpvScene3D.TBakedMesh;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DBakedMeshGhost then begin
+  exit;
+ end;
+ Ghost:=POCAGhostGetPointer(aThis);
+ if assigned(Ghost) and assigned(Ghost^.Ptr) then begin
+  BakedMesh:=TpvScene3D.TBakedMesh(Ghost^.Ptr);
+  Ghost^.Ptr:=nil;
+  FreeAndNil(BakedMesh);
+ end;
+end;
+
+
+// --- RenderInstance --------------------------------------------------------------
+
+procedure POCAScene3DRenderInstanceGhostDestroy(const aGhost:PPOCAGhost);
+begin
+ // GC ghost destroy: just null the pointer. Scene3D RenderInstance lifetime is
+ // managed externally. Use the explicit ri.remove() API to remove it intentionally.
+ if assigned(aGhost) then begin
+  aGhost^.Ptr:=nil;
+ end;
+end;
+
+const POCAScene3DRenderInstanceGhost:TPOCAGhostType=
+       (
+        Destroy:POCAScene3DRenderInstanceGhostDestroy;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DRenderInstance'
+       );
+
+function POCANewScene3DRenderInstanceGhost(const aContext:PPOCAContext;const aRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAScene3DRenderInstanceGhost,aRenderInstance,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DRenderInstanceGhostHash);
+end;
+
+// RenderInstance methods
+
+// ri.setActive(bool)
+function POCAScene3DRenderInstanceFunctionSetActive(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var RI:TpvScene3D.TGroup.TInstance.TRenderInstance;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DRenderInstanceGhost then begin
+  exit;
+ end;
+ if aCountArguments<1 then begin
+  exit;
+ end;
+ RI:=TpvScene3D.TGroup.TInstance.TRenderInstance(POCAGhostFastGetPointer(aThis));
+ if not assigned(RI) then begin
+  exit;
+ end;
+ RI.Active:=POCAGetNumberValue(aContext,aArguments^[0])<>0.0;
+ result:=aThis;
+end;
+
+// ri.setModelMatrix(m00,..,m15) — 16 doubles, row-major
+function POCAScene3DRenderInstanceFunctionSetModelMatrix(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var RI:TpvScene3D.TGroup.TInstance.TRenderInstance;
+    Mat:TpvMatrix4x4D;
+    I:TpvInt32;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DRenderInstanceGhost then begin
+  exit;
+ end;
+ if aCountArguments<16 then begin
+  exit;
+ end;
+ RI:=TpvScene3D.TGroup.TInstance.TRenderInstance(POCAGhostFastGetPointer(aThis));
+ if not assigned(RI) then begin
+  exit;
+ end;
+ for I:=0 to 15 do begin
+  Mat.RawComponents[I shr 2,I and 3]:=POCAGetNumberValue(aContext,aArguments^[I]);
+ end;
+ RI.ModelMatrix:=Mat;
+ result:=aThis;
+end;
+
+// ri.remove() — deregisters render instance; nulls ghost pointer (do not Free, owned by instance)
+function POCAScene3DRenderInstanceFunctionRemove(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Ghost:PPOCAGhost;
+    RI:TpvScene3D.TGroup.TInstance.TRenderInstance;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DRenderInstanceGhost then begin
+  exit;
+ end;
+ Ghost:=POCAGhostGetPointer(aThis);
+ if assigned(Ghost) and assigned(Ghost^.Ptr) then begin
+  RI:=TpvScene3D.TGroup.TInstance.TRenderInstance(Ghost^.Ptr);
+  Ghost^.Ptr:=nil;
+  RI.Remove;
+ end;
+end;
+
+
+// --- GroupLight ------------------------------------------------------------------
+
+const POCAScene3DGroupLightGhost:TPOCAGhostType=
+       (
+        Destroy:nil;    // owned by group
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DGroupLight'
+       );
+
+
+// --- Instance --------------------------------------------------------------------
+
+procedure POCAScene3DInstanceGhostDestroy(const aGhost:PPOCAGhost);
+var Data:TScene3DInstanceGhostData;
+begin
+ // GC ghost destroy: free only the POCA-internal wrapper, NOT the Scene3D Instance.
+ // Use the explicit instance.destroy() API to free the Scene3D object intentionally.
+ if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
+  Data:=TScene3DInstanceGhostData(aGhost^.Ptr);
+  aGhost^.Ptr:=nil;
+  FreeAndNil(Data);
+ end;
+end;
+
+const POCAScene3DInstanceGhost:TPOCAGhostType=
+       (
+        Destroy:POCAScene3DInstanceGhostDestroy;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DInstance'
+       );
+
+function POCANewScene3DInstanceGhost(const aContext:PPOCAContext;const aInstance:TpvScene3D.TGroup.TInstance):TPOCAValue;
+var Data:TScene3DInstanceGhostData;
+begin
+ Data:=TScene3DInstanceGhostData.Create(aInstance);
+ result:=POCANewGhost(aContext,@POCAScene3DInstanceGhost,Data,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DInstanceGhostHash);
+end;
 
 // instance.setScene(index) — selects active scene index on the instance
 function POCAScene3DInstanceFunctionSetScene(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
@@ -2785,69 +2665,254 @@ begin
  end;
 end;
 
-// RenderInstance methods
 
-// ri.setActive(bool)
-function POCAScene3DRenderInstanceFunctionSetActive(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var RI:TpvScene3D.TGroup.TInstance.TRenderInstance;
+// --- Group -----------------------------------------------------------------------
+
+const POCAScene3DGroupGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DGroup'
+       );
+
+// helper: wrap a TpvScene3D.TGroup in a ghost (raw ptr, no ref-count needed beyond group lifetime)
+function POCANewScene3DGroupGhost(const aContext:PPOCAContext;const aGroup:TpvScene3D.TGroup):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAScene3DGroupGhost,aGroup,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DGroupGhostHash);
+end;
+
+// engine.scene3d.createGroup([name])
+function POCAScene3DSceneFunctionCreateGroup(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Scene3D:TpvScene3D;
+    Group:TpvScene3D.TGroup;
+    Name:TpvUTF8String;
 begin
  result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DRenderInstanceGhost then begin
+ if POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer then begin
   exit;
  end;
- if aCountArguments<1 then begin
+ Scene3D:=TpvScene3D(POCAGhostFastGetPointer(aThis));
+ if not assigned(Scene3D) then begin
   exit;
  end;
- RI:=TpvScene3D.TGroup.TInstance.TRenderInstance(POCAGhostFastGetPointer(aThis));
- if not assigned(RI) then begin
+ if aCountArguments>=1 then begin
+  Name:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  Name:='';
+ end;
+ Group:=Scene3D.CreateGroup(Name);
+ if not assigned(Group) then begin
   exit;
  end;
- RI.Active:=POCAGetNumberValue(aContext,aArguments^[0])<>0.0;
+ result:=POCANewScene3DGroupGhost(aContext,Group);
+end;
+
+// g.createMesh([name]) → Scene3DMesh
+function POCAScene3DGroupFunctionCreateMesh(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Group:TpvScene3D.TGroup;
+    Mesh:TpvScene3D.TGroup.TMesh;
+    Name:TpvUTF8String;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
+  exit;
+ end;
+ Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
+ if not assigned(Group) then begin
+  exit;
+ end;
+ if aCountArguments>=1 then begin
+  Name:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  Name:='';
+ end;
+ Mesh:=Group.CreateMesh(Name);
+ if not assigned(Mesh) then begin
+  exit;
+ end;
+ result:=POCANewScene3DMeshGhost(aContext,Mesh);
+end;
+
+// g.createNode([name]) → Scene3DNode
+function POCAScene3DGroupFunctionCreateNode(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Group:TpvScene3D.TGroup;
+    Node:TpvScene3D.TGroup.TNode;
+    Name:TpvUTF8String;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
+  exit;
+ end;
+ Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
+ if not assigned(Group) then begin
+  exit;
+ end;
+ if aCountArguments>=1 then begin
+  Name:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  Name:='';
+ end;
+ Node:=Group.CreateNode(Name);
+ if not assigned(Node) then begin
+  exit;
+ end;
+ result:=POCANewScene3DNodeGhost(aContext,Node);
+end;
+
+// g.createScene([name]) → Scene3DGroupScene
+function POCAScene3DGroupFunctionCreateScene(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Group:TpvScene3D.TGroup;
+    Scene:TpvScene3D.TGroup.TScene;
+    Name:TpvUTF8String;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
+  exit;
+ end;
+ Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
+ if not assigned(Group) then begin
+  exit;
+ end;
+ if aCountArguments>=1 then begin
+  Name:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  Name:='';
+ end;
+ Scene:=Group.CreateScene(Name);
+ if not assigned(Scene) then begin
+  exit;
+ end;
+ result:=POCANewScene3DGroupSceneGhost(aContext,Scene);
+end;
+
+// g.addMaterial(mat) → material index within group
+function POCAScene3DGroupFunctionAddMaterial(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Group:TpvScene3D.TGroup;
+    Mat:TpvScene3D.TMaterial;
+    MatIndex:TpvSizeInt;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
+  exit;
+ end;
+ if (aCountArguments<1) or (POCAGhostGetType(aArguments^[0])<>@POCAScene3DMaterialGhost) then begin
+  exit;
+ end;
+ Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
+ if not assigned(Group) then begin
+  exit;
+ end;
+ Mat:=TpvScene3D.TMaterial(POCAGhostFastGetPointer(aArguments^[0]));
+ if not assigned(Mat) then begin
+  exit;
+ end;
+ MatIndex:=Group.AddMaterial(Mat);
+ result:=POCANewNumber(aContext,MatIndex);
+end;
+
+// g.finish() — finalise GPU upload; must be called before createInstance()
+function POCAScene3DGroupFunctionFinish(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Group:TpvScene3D.TGroup;
+begin
+ result:=POCAValueNull;
+ if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
+  exit;
+ end;
+ Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
+ if not assigned(Group) then begin
+  exit;
+ end;
+ Group.Finish;
  result:=aThis;
 end;
 
-// ri.setModelMatrix(m00,..,m15) — 16 doubles, row-major
-function POCAScene3DRenderInstanceFunctionSetModelMatrix(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var RI:TpvScene3D.TGroup.TInstance.TRenderInstance;
-    Mat:TpvMatrix4x4D;
-    I:TpvInt32;
+// g.createInstance() → Scene3DInstance (must call g.finish() first)
+function POCAScene3DGroupFunctionCreateInstance(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Group:TpvScene3D.TGroup;
+    Instance:TpvScene3D.TGroup.TInstance;
 begin
  result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DRenderInstanceGhost then begin
+ if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
   exit;
  end;
- if aCountArguments<16 then begin
+ Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
+ if not assigned(Group) then begin
   exit;
  end;
- RI:=TpvScene3D.TGroup.TInstance.TRenderInstance(POCAGhostFastGetPointer(aThis));
- if not assigned(RI) then begin
+ Instance:=Group.CreateInstance;
+ if not assigned(Instance) then begin
   exit;
  end;
- for I:=0 to 15 do begin
-  Mat.RawComponents[I shr 2,I and 3]:=POCAGetNumberValue(aContext,aArguments^[I]);
- end;
- RI.ModelMatrix:=Mat;
- result:=aThis;
+ result:=POCANewScene3DInstanceGhost(aContext,Instance);
 end;
 
-// ri.remove() — deregisters render instance; nulls ghost pointer (do not Free, owned by instance)
-function POCAScene3DRenderInstanceFunctionRemove(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+// g.getAnimationID(name) → int (-1 if not found)
+function POCAScene3DGroupFunctionGetAnimationID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Group:TpvScene3D.TGroup;
+begin
+ result:=POCANewNumber(aContext,-1);
+ if (POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost) or (aCountArguments<1) then begin
+  exit;
+ end;
+ Group:=TpvScene3D.TGroup(POCAGhostFastGetPointer(aThis));
+ if not assigned(Group) then begin
+  exit;
+ end;
+ result:=POCANewNumber(aContext,Group.GetAnimationID(POCAGetStringValue(aContext,aArguments^[0])));
+end;
+
+// g.destroy() — nulls ghost pointer (group is owned by scene, not ref-counted from POCA)
+function POCAScene3DGroupFunctionDestroy(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Ghost:PPOCAGhost;
-    RI:TpvScene3D.TGroup.TInstance.TRenderInstance;
+    Group:TpvScene3D.TGroup;
 begin
  result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DRenderInstanceGhost then begin
+ if POCAGhostGetType(aThis)<>@POCAScene3DGroupGhost then begin
   exit;
  end;
  Ghost:=POCAGhostGetPointer(aThis);
  if assigned(Ghost) and assigned(Ghost^.Ptr) then begin
-  RI:=TpvScene3D.TGroup.TInstance.TRenderInstance(Ghost^.Ptr);
+  Group:=TpvScene3D.TGroup(Ghost^.Ptr);
   Ghost^.Ptr:=nil;
-  RI.Remove;
+  FreeAndNil(Group);
  end;
 end;
 
-// Light methods and factories
+
+// --- Light -----------------------------------------------------------------------
+
+procedure POCAScene3DLightGhostDestroy(const aGhost:PPOCAGhost);
+begin
+ // GC ghost destroy: just null the pointer. Scene3D Light lifetime is managed
+ // externally. Use the explicit light.destroy() API to free it intentionally.
+ if assigned(aGhost) then begin
+  aGhost^.Ptr:=nil;
+ end;
+end;
+
+const POCAScene3DLightGhost:TPOCAGhostType=
+       (
+        Destroy:POCAScene3DLightGhostDestroy;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DLight'
+       );
+
+function POCANewScene3DLightGhost(const aContext:PPOCAContext;const aLight:TpvScene3D.TLight):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAScene3DLightGhost,aLight,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DLightGhostHash);
+end;
 
 // engine.scene3d.createPointLight(x,y,z, r,g,b, intensity, range) → Scene3DLight
 function POCAScene3DSceneFunctionCreatePointLight(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
@@ -2857,7 +2922,7 @@ var Scene3D:TpvScene3D;
     Col:TpvVector3;
 begin
  result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost then begin
+ if POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer then begin
   exit;
  end;
  if aCountArguments<8 then begin
@@ -2891,7 +2956,7 @@ var Scene3D:TpvScene3D;
     Col:TpvVector3;
 begin
  result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost then begin
+ if POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer then begin
   exit;
  end;
  if aCountArguments<13 then begin
@@ -2936,7 +3001,7 @@ var Scene3D:TpvScene3D;
     Col:TpvVector3;
 begin
  result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost then begin
+ if POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer then begin
   exit;
  end;
  if aCountArguments<7 then begin
@@ -3227,6 +3292,41 @@ begin
  end;
 end;
 
+
+// --- Decal -----------------------------------------------------------------------
+
+procedure POCAScene3DDecalGhostDestroy(const aGhost:PPOCAGhost);
+var Data:PScene3DDecalGhostData;
+begin
+ if assigned(aGhost) and assigned(aGhost^.Ptr) then begin
+  Data:=PScene3DDecalGhostData(aGhost^.Ptr);
+  aGhost^.Ptr:=nil;
+  Dispose(Data);
+ end;
+end;
+
+const POCAScene3DDecalGhost:TPOCAGhostType=
+       (
+        Destroy:POCAScene3DDecalGhostDestroy;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DDecal'
+       );
+
+function POCANewScene3DDecalGhost(const aContext:PPOCAContext;const aScene3D:TpvScene3D;const aDecal:TpvScene3D.TDecal):TPOCAValue;
+var Data:PScene3DDecalGhostData;
+begin
+ New(Data);
+ Data^.Scene3D:=aScene3D;
+ Data^.Decal:=aDecal;
+ result:=POCANewGhost(aContext,@POCAScene3DDecalGhost,Data,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DDecalGhostHash);
+end;
+
 // engine.scene3d.spawnDecal(opts)
 // opts: { position:[x,y,z], orientation:[x,y,z,w], rotation:f, size:[w,h],
 //         albedoTexture, normalTexture, ormTexture, specularTexture, emissiveTexture,
@@ -3250,7 +3350,7 @@ var Scene3D:TpvScene3D;
     Decal:TpvScene3D.TDecal;
 begin
  result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DSceneGhost then begin
+ if POCAGhostGetType(aThis)<>POCAScene3DSceneGhostPointer then begin
   exit;
  end;
  Scene3D:=TpvScene3D(POCAGhostFastGetPointer(aThis));
@@ -3591,83 +3691,25 @@ begin
  end;
 end;
 
-// bm.raycast(origin, direction)
-// origin, direction — POCA arrays [x,y,z]
-// Returns { distance, position:{x,y,z}, u, v } or null
-function POCAScene3DBakedMeshFunctionRaycast(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var BakedMesh:TpvScene3D.TBakedMesh;
-    Origin:TpvVector3;
-    Direction:TpvVector3;
-    TriIdx:TpvSizeInt;
-    HitTime,HitU,HitV:TpvScalar;
-    BestTime,BestU,BestV:TpvScalar;
-    HitPos:TpvVector3;
-    PosHash:TPOCAValue;
-begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DBakedMeshGhost then begin
-  exit;
- end;
- BakedMesh:=TpvScene3D.TBakedMesh(POCAGhostFastGetPointer(aThis));
- if not assigned(BakedMesh) then begin
-  exit;
- end;
- if aCountArguments<2 then begin
-  exit;
- end;
- Origin.x:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[0],0));
- Origin.y:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[0],1));
- Origin.z:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[0],2));
- Direction.x:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[1],0));
- Direction.y:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[1],1));
- Direction.z:=POCAGetNumberValue(aContext,POCAArrayGet(aArguments^[1],2));
- BestTime:=-1.0;
- BestU:=0.0;
- BestV:=0.0;
- for TriIdx:=0 to BakedMesh.Triangles.Count-1 do begin
-  HitTime:=0.0;
-  HitU:=0.0;
-  HitV:=0.0;
-  if BakedMesh.Triangles[TriIdx].RayIntersection(Origin,Direction,HitTime,HitU,HitV) then begin
-   if (HitTime>0.0) and ((BestTime<0.0) or (HitTime<BestTime)) then begin
-    BestTime:=HitTime;
-    BestU:=HitU;
-    BestV:=HitV;
-   end;
-  end;
- end;
- if BestTime<0.0 then begin
-  exit;
- end;
- HitPos.x:=Origin.x+Direction.x*BestTime;
- HitPos.y:=Origin.y+Direction.y*BestTime;
- HitPos.z:=Origin.z+Direction.z*BestTime;
- PosHash:=POCANewHash(aContext);
- POCAHashSetString(aContext,PosHash,'x',POCANewNumber(aContext,HitPos.x));
- POCAHashSetString(aContext,PosHash,'y',POCANewNumber(aContext,HitPos.y));
- POCAHashSetString(aContext,PosHash,'z',POCANewNumber(aContext,HitPos.z));
- result:=POCANewHash(aContext);
- POCAHashSetString(aContext,result,'distance',POCANewNumber(aContext,BestTime));
- POCAHashSetString(aContext,result,'position',PosHash);
- POCAHashSetString(aContext,result,'u',POCANewNumber(aContext,BestU));
- POCAHashSetString(aContext,result,'v',POCANewNumber(aContext,BestV));
-end;
 
-// bm.destroy() — frees the TBakedMesh; nulls ghost pointer
-function POCAScene3DBakedMeshFunctionDestroy(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Ghost:PPOCAGhost;
-    BakedMesh:TpvScene3D.TBakedMesh;
+// --- Scene -----------------------------------------------------------------------
+
+const POCAScene3DSceneGhost:TPOCAGhostType=
+       (
+        Destroy:nil;    // TpvScene3D lifetime managed by the game, not POCA
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'Scene3DScene'
+       );
+
+function POCANewScene3DGhost(const aContext:PPOCAContext;const aScene3D:TpvScene3D):TPOCAValue;
 begin
- result:=POCAValueNull;
- if POCAGhostGetType(aThis)<>@POCAScene3DBakedMeshGhost then begin
-  exit;
- end;
- Ghost:=POCAGhostGetPointer(aThis);
- if assigned(Ghost) and assigned(Ghost^.Ptr) then begin
-  BakedMesh:=TpvScene3D.TBakedMesh(Ghost^.Ptr);
-  Ghost^.Ptr:=nil;
-  FreeAndNil(BakedMesh);
- end;
+ result:=POCANewGhost(aContext,POCAScene3DSceneGhostPointer,aScene3D,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAScene3DSceneGhostHash);
 end;
 
 // engine.scene3d.raycast(origin, direction, instances)
@@ -3900,25 +3942,11 @@ begin
  result.Num:=ParticleIndex;
 end;
 
+
+// --- Context registration --------------------------------------------------------
+
 procedure InitializePOCAScene3DContext(const aContext:PPOCAContext;const aEngineHash:TPOCAValue);
 begin
- POCAScene3DSceneGhostPointer:=@POCAScene3DSceneGhost;
- POCAScene3DGroupGhostPointer:=@POCAScene3DGroupGhost;
- POCAScene3DMeshGhostPointer:=@POCAScene3DMeshGhost;
- POCAScene3DPrimitiveGhostPointer:=@POCAScene3DPrimitiveGhost;
- POCAScene3DNodeGhostPointer:=@POCAScene3DNodeGhost;
- POCAScene3DGroupSceneGhostPointer:=@POCAScene3DGroupSceneGhost;
- POCAScene3DInstanceGhostPointer:=@POCAScene3DInstanceGhost;
- POCAScene3DRenderInstanceGhostPointer:=@POCAScene3DRenderInstanceGhost;
- POCAScene3DMaterialGhostPointer:=@POCAScene3DMaterialGhost;
- POCAScene3DImageGhostPointer:=@POCAScene3DImageGhost;
- POCAScene3DSamplerGhostPointer:=@POCAScene3DSamplerGhost;
- POCAScene3DTextureGhostPointer:=@POCAScene3DTextureGhost;
- POCAScene3DLightGhostPointer:=@POCAScene3DLightGhost;
- POCAScene3DGroupLightGhostPointer:=@POCAScene3DGroupLightGhost;
- POCAScene3DDecalGhostPointer:=@POCAScene3DDecalGhost;
- POCAScene3DBakedMeshGhostPointer:=@POCAScene3DBakedMeshGhost;
-
  // Create method hashes for each ghost type and protect them from GC.
  POCAScene3DSceneGhostHash:=POCANewHash(aContext);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,POCAScene3DSceneGhostHash);
@@ -4141,4 +4169,21 @@ begin
  POCAHashDeleteString(aContext,aEngineHash,'scene3d');
 end;
 
+initialization
+ POCAScene3DSceneGhostPointer:=@POCAScene3DSceneGhost;
+ POCAScene3DGroupGhostPointer:=@POCAScene3DGroupGhost;
+ POCAScene3DMeshGhostPointer:=@POCAScene3DMeshGhost;
+ POCAScene3DPrimitiveGhostPointer:=@POCAScene3DPrimitiveGhost;
+ POCAScene3DNodeGhostPointer:=@POCAScene3DNodeGhost;
+ POCAScene3DGroupSceneGhostPointer:=@POCAScene3DGroupSceneGhost;
+ POCAScene3DInstanceGhostPointer:=@POCAScene3DInstanceGhost;
+ POCAScene3DRenderInstanceGhostPointer:=@POCAScene3DRenderInstanceGhost;
+ POCAScene3DMaterialGhostPointer:=@POCAScene3DMaterialGhost;
+ POCAScene3DImageGhostPointer:=@POCAScene3DImageGhost;
+ POCAScene3DSamplerGhostPointer:=@POCAScene3DSamplerGhost;
+ POCAScene3DTextureGhostPointer:=@POCAScene3DTextureGhost;
+ POCAScene3DLightGhostPointer:=@POCAScene3DLightGhost;
+ POCAScene3DGroupLightGhostPointer:=@POCAScene3DGroupLightGhost;
+ POCAScene3DDecalGhostPointer:=@POCAScene3DDecalGhost;
+ POCAScene3DBakedMeshGhostPointer:=@POCAScene3DBakedMeshGhost;
 end.
