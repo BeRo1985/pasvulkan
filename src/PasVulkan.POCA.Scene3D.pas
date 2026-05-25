@@ -1381,46 +1381,86 @@ begin
  result:=aThis;
 end;
 
-// prim.addVertex(x,y,z, nx,ny,nz, u0,v0 [, r,g,b,a]) → vertex index
+// prim.addVertex(x,y,z [,nx,ny,nz] [,tx,ty,tz] [,u0,v0] [,u1,v1] [,r,g,b,a]) → vertex index
 function POCAScene3DPrimitiveFunctionAddVertex(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
-var Prim:TpvScene3D.TGroup.TMesh.TPrimitive;
+var Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
     Vertex:TpvScene3D.TVertex;
-    Idx:TpvSizeInt;
+    Index:TpvSizeInt;
+    Color:TpvVector4;
 begin
  result:=POCAValueNull;
  if POCAGhostGetType(aThis)<>@POCAScene3DPrimitiveGhost then begin
   exit;
  end;
- if aCountArguments<8 then begin
-  exit;
+ if aCountArguments>0 then begin
+  if POCAGetValueType(aArguments^[0])=pvtHASH then begin
+   Primitive:=TpvScene3D.TGroup.TMesh.TPrimitive(POCAGhostFastGetPointer(aThis));
+   if assigned(Primitive) then begin
+    Vertex:=TpvScene3D.TVertex.Create;
+    Vertex.Position:=POCAGetVector3Value(aContext,POCAHashGetString(aContext,aArguments^[0],'position'));
+    Vertex.NodeIndex:=0;
+    Vertex.SetNormal(POCAGetVector3Value(aContext,POCAHashGetString(aContext,aArguments^[0],'normal')));
+    Vertex.SetTangent(POCAGetVector3Value(aContext,POCAHashGetString(aContext,aArguments^[0],'tangent')));
+    Vertex.TexCoord0:=POCAGetVector2Value(aContext,POCAHashGetString(aContext,aArguments^[0],'texcoord0'));
+    Vertex.TexCoord1:=POCAGetVector2Value(aContext,POCAHashGetString(aContext,aArguments^[0],'texcoord1'));
+    Color:=POCAGetVector4Value(aContext,POCAHashGetString(aContext,aArguments^[0],'color'));
+    Vertex.Color0.x:=Color.x;
+    Vertex.Color0.y:=Color.y;
+    Vertex.Color0.z:=Color.z;
+    Vertex.Color0.w:=Color.w;
+   end;
+  end else if aCountArguments>=3 then begin
+   Primitive:=TpvScene3D.TGroup.TMesh.TPrimitive(POCAGhostFastGetPointer(aThis));
+   if assigned(Primitive) then begin
+    Vertex:=TpvScene3D.TVertex.Create;
+    Vertex.Position.x:=POCAGetNumberValue(aContext,aArguments^[0]);
+    Vertex.Position.y:=POCAGetNumberValue(aContext,aArguments^[1]);
+    Vertex.Position.z:=POCAGetNumberValue(aContext,aArguments^[2]);
+    Vertex.NodeIndex:=0;
+    if aCountArguments>=6 then begin
+     Vertex.SetNormal(TpvVector3.Create(POCAGetNumberValue(aContext,aArguments^[3]),
+                                        POCAGetNumberValue(aContext,aArguments^[4]),
+                                        POCAGetNumberValue(aContext,aArguments^[5])));
+    end else begin
+     Vertex.SetNormal(TpvVector3.Null);
+    end;
+    if aCountArguments>=9 then begin
+     Vertex.SetTangent(TpvVector3.Create(POCAGetNumberValue(aContext,aArguments^[6]),
+                                         POCAGetNumberValue(aContext,aArguments^[7]),
+                                         POCAGetNumberValue(aContext,aArguments^[8])));
+    end else begin
+     Vertex.SetTangent(TpvVector3.Null);
+    end;
+    if aCountArguments>=11 then begin
+     Vertex.TexCoord0.x:=POCAGetNumberValue(aContext,aArguments^[9]);
+     Vertex.TexCoord0.y:=POCAGetNumberValue(aContext,aArguments^[10]);
+    end else begin
+     Vertex.TexCoord0.x:=0.0;
+     Vertex.TexCoord0.y:=0.0;
+    end;
+    if aCountArguments>=13 then begin
+     Vertex.TexCoord1.x:=POCAGetNumberValue(aContext,aArguments^[11]);
+     Vertex.TexCoord1.y:=POCAGetNumberValue(aContext,aArguments^[12]);
+    end else begin
+     Vertex.TexCoord1.x:=0.0;
+     Vertex.TexCoord1.y:=0.0;
+    end;
+    if aCountArguments>=17 then begin
+     Vertex.Color0.r:=POCAGetNumberValue(aContext,aArguments^[13]);
+     Vertex.Color0.g:=POCAGetNumberValue(aContext,aArguments^[14]);
+     Vertex.Color0.b:=POCAGetNumberValue(aContext,aArguments^[15]);
+     Vertex.Color0.a:=POCAGetNumberValue(aContext,aArguments^[16]);
+    end else begin
+     Vertex.Color0.r:=1.0;
+     Vertex.Color0.g:=1.0;
+     Vertex.Color0.b:=1.0;
+     Vertex.Color0.a:=1.0;
+    end;
+    Index:=Primitive.AddVertex(Vertex);
+    result:=POCANewNumber(aContext,Index);
+   end;
+  end;
  end;
- Prim:=TpvScene3D.TGroup.TMesh.TPrimitive(POCAGhostFastGetPointer(aThis));
- if not assigned(Prim) then begin
-  exit;
- end;
- Vertex:=TpvScene3D.TVertex.Create;
- Vertex.Position.x:=POCAGetNumberValue(aContext,aArguments^[0]);
- Vertex.Position.y:=POCAGetNumberValue(aContext,aArguments^[1]);
- Vertex.Position.z:=POCAGetNumberValue(aContext,aArguments^[2]);
- Vertex.NodeIndex:=0;
- Vertex.SetNormal(TpvVector3.Create(POCAGetNumberValue(aContext,aArguments^[3]),
-                                    POCAGetNumberValue(aContext,aArguments^[4]),
-                                    POCAGetNumberValue(aContext,aArguments^[5])));
- Vertex.TexCoord0.x:=POCAGetNumberValue(aContext,aArguments^[6]);
- Vertex.TexCoord0.y:=POCAGetNumberValue(aContext,aArguments^[7]);
- if aCountArguments>=12 then begin
-  Vertex.Color0.r:=POCAGetNumberValue(aContext,aArguments^[8]);
-  Vertex.Color0.g:=POCAGetNumberValue(aContext,aArguments^[9]);
-  Vertex.Color0.b:=POCAGetNumberValue(aContext,aArguments^[10]);
-  Vertex.Color0.a:=POCAGetNumberValue(aContext,aArguments^[11]);
- end else begin
-  Vertex.Color0.r:=1.0;
-  Vertex.Color0.g:=1.0;
-  Vertex.Color0.b:=1.0;
-  Vertex.Color0.a:=1.0;
- end;
- Idx:=Prim.AddVertex(Vertex);
- result:=POCANewNumber(aContext,Idx);
 end;
 
 // prim.addIndex(i) — add index to index buffer

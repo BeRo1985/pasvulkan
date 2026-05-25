@@ -297,27 +297,33 @@ procedure POCASetHostData(const aContext:PPOCAContext;const aHostData:PPOCAHostD
 
 function POCANewVector2(const aContext:PPOCAContext;const aVector2:TpvVector2D):TPOCAValue; overload;
 function POCANewVector2(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0):TPOCAValue; overload;
-function POCAGetVector2Value(const aValue:TPOCAValue):TpvVector2D;
+function POCAGetVector2Value(const aValue:TPOCAValue):TpvVector2D; overload;
+function POCAGetVector2Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvVector2D; overload;
 
 function POCANewVector3(const aContext:PPOCAContext;const aVector3:TpvVector3D):TPOCAValue; overload;
 function POCANewVector3(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0):TPOCAValue; overload;
-function POCAGetVector3Value(const aValue:TPOCAValue):TpvVector3D;
+function POCAGetVector3Value(const aValue:TPOCAValue):TpvVector3D; overload;
+function POCAGetVector3Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvVector3D; overload;
 
 function POCANewVector4(const aContext:PPOCAContext;const aVector4:TpvVector4D):TPOCAValue; overload;
 function POCANewVector4(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0;const aW:TpvDouble=0.0):TPOCAValue; overload;
-function POCAGetVector4Value(const aValue:TPOCAValue):TpvVector4D;
+function POCAGetVector4Value(const aValue:TPOCAValue):TpvVector4D; overload;
+function POCAGetVector4Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvVector4D; overload;
 
 function POCANewQuaternion(const aContext:PPOCAContext;const aQuaternion:TpvQuaternionD):TPOCAValue; overload;
 function POCANewQuaternion(const aContext:PPOCAContext;const aX:TpvDouble=0.0;const aY:TpvDouble=0.0;const aZ:TpvDouble=0.0;const aW:TpvDouble=1.0):TPOCAValue; overload;
-function POCAGetQuaternionValue(const aValue:TPOCAValue):TpvQuaternionD;
+function POCAGetQuaternionValue(const aValue:TPOCAValue):TpvQuaternionD; overload;
+function POCAGetQuaternionValue(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvQuaternionD; overload;
 
 function POCANewMatrix3x3(const aContext:PPOCAContext;const aMatrix3x3:TpvMatrix3x3D):TPOCAValue; overload;
 function POCANewMatrix3x3(const aContext:PPOCAContext;const aM00:TpvDouble=1.0;const aM01:TpvDouble=0.0;const aM02:TpvDouble=0.0;const aM10:TpvDouble=0.0;const aM11:TpvDouble=1.0;const aM12:TpvDouble=0.0;const aM20:TpvDouble=0.0;const aM21:TpvDouble=0.0;const aM22:TpvDouble=1.0):TPOCAValue; overload;
-function POCAGetMatrix3x3Value(const aValue:TPOCAValue):TpvMatrix3x3D;
+function POCAGetMatrix3x3Value(const aValue:TPOCAValue):TpvMatrix3x3D; overload;
+function POCAGetMatrix3x3Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvMatrix3x3D; overload;
 
 function POCANewMatrix4x4(const aContext:PPOCAContext;const aMatrix4x4:TpvMatrix4x4D):TPOCAValue; overload;
 function POCANewMatrix4x4(const aContext:PPOCAContext;const aM00:TpvDouble=1.0;const aM01:TpvDouble=0.0;const aM02:TpvDouble=0.0;const aM03:TpvDouble=0.0;const aM10:TpvDouble=0.0;const aM11:TpvDouble=1.0;const aM12:TpvDouble=0.0;const aM13:TpvDouble=0.0;const aM20:TpvDouble=0.0;const aM21:TpvDouble=0.0;const aM22:TpvDouble=1.0;const aM23:TpvDouble=0.0;const aM30:TpvDouble=0.0;const aM31:TpvDouble=0.0;const aM32:TpvDouble=0.0;const aM33:TpvDouble=1.0):TPOCAValue; overload;
-function POCAGetMatrix4x4Value(const aValue:TPOCAValue):TpvMatrix4x4D;
+function POCAGetMatrix4x4Value(const aValue:TPOCAValue):TpvMatrix4x4D; overload;
+function POCAGetMatrix4x4Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvMatrix4x4D; overload;
 
 function POCANewSprite(const aContext:PPOCAContext;const aSprite:TpvSprite):TPOCAValue;
 function POCAGetSpriteValue(const aValue:TPOCAValue):TpvSprite;
@@ -516,6 +522,50 @@ begin
   result:=PpvVector2D(POCAGhostFastGetPointer(aValue))^;
  end else begin
   result:=TpvVector2D.Create(0.0,0.0);
+ end;
+end;
+
+function POCAGetVector2Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvVector2D;
+var HashValue:TPOCAValue;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   if POCAArraySize(aValue)>=2 then begin
+    result.x:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,0));
+    result.y:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,1));
+   end else begin
+    result:=TpvVector2D.Create(0.0,0.0);
+   end;
+  end;
+  pvtHASH:begin
+   result:=TpvVector2D.Create(0.0,0.0);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'x');
+   if POCAIsValueNull(HashValue) then begin
+    HashValue:=POCAHashGetString(aContext,aValue,'s');
+    if POCAIsValueNull(HashValue) then begin
+     HashValue:=POCAHashGetString(aContext,aValue,'u');
+    end;
+   end;
+   result.x:=POCAGetNumberValue(aContext,HashValue);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'y');
+   if POCAIsValueNull(HashValue) then begin
+    HashValue:=POCAHashGetString(aContext,aValue,'t');
+    if POCAIsValueNull(HashValue) then begin
+     HashValue:=POCAHashGetString(aContext,aValue,'v');
+    end;
+   end;
+   result.y:=POCAGetNumberValue(aContext,HashValue);
+
+  end;
+  else begin
+   if POCAGhostGetType(aValue)=@POCAVector2Ghost then begin
+    result:=PpvVector2D(POCAGhostFastGetPointer(aValue))^;
+   end else begin
+    result:=TpvVector2D.Create(0.0,0.0);
+   end;
+  end;
  end;
 end;
 
@@ -1163,6 +1213,51 @@ begin
   result:=PpvVector3D(POCAGhostFastGetPointer(aValue))^;
  end else begin
   result:=TpvVector3D.Create(0.0,0.0,0.0);
+ end;
+end;
+
+function POCAGetVector3Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvVector3D;
+var HashValue:TPOCAValue;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   if POCAArraySize(aValue)>=3 then begin
+    result.x:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,0));
+    result.y:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,1));
+    result.z:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,2));
+   end else begin
+    result:=TpvVector3D.Create(0.0,0.0,0.0);
+   end;
+  end;
+  pvtHASH:begin
+   result:=TpvVector3D.Create(0.0,0.0,0.0);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'x');
+   if POCAIsValueNull(HashValue) then begin
+    HashValue:=POCAHashGetString(aContext,aValue,'r');
+   end;
+   result.x:=POCAGetNumberValue(aContext,HashValue);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'y');
+   if POCAIsValueNull(HashValue) then begin
+    HashValue:=POCAHashGetString(aContext,aValue,'g');
+   end;
+   result.y:=POCAGetNumberValue(aContext,HashValue);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'z');
+   if POCAIsValueNull(HashValue) then begin
+    HashValue:=POCAHashGetString(aContext,aValue,'b');
+   end;
+   result.z:=POCAGetNumberValue(aContext,HashValue);
+
+  end;
+  else begin
+   if POCAGhostGetType(aValue)=@POCAVector3Ghost then begin
+    result:=PpvVector3D(POCAGhostFastGetPointer(aValue))^;
+   end else begin
+    result:=TpvVector3D.Create(0.0,0.0,0.0);
+   end;
+  end;
  end;
 end;
 
@@ -1845,6 +1940,58 @@ begin
   result:=PpvVector4D(POCAGhostFastGetPointer(aValue))^;
  end else begin
   result:=TpvVector4D.Create(0.0,0.0,0.0,0.0);
+ end;
+end;
+
+function POCAGetVector4Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvVector4D;
+var HashValue:TPOCAValue;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   if POCAArraySize(aValue)>=4 then begin
+    result.x:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,0));
+    result.y:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,1));
+    result.z:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,2));
+    result.w:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,3));
+   end else begin
+    result:=TpvVector4D.Create(0.0,0.0,0.0,0.0);
+   end;
+  end;
+  pvtHASH:begin
+   result:=TpvVector4D.Create(0.0,0.0,0.0,0.0);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'x');
+   if POCAIsValueNull(HashValue) then begin
+    HashValue:=POCAHashGetString(aContext,aValue,'r');
+   end;
+   result.x:=POCAGetNumberValue(aContext,HashValue);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'y');
+   if POCAIsValueNull(HashValue) then begin
+    HashValue:=POCAHashGetString(aContext,aValue,'g');
+   end;
+   result.y:=POCAGetNumberValue(aContext,HashValue);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'z');
+   if POCAIsValueNull(HashValue) then begin
+    HashValue:=POCAHashGetString(aContext,aValue,'b');
+   end;
+   result.z:=POCAGetNumberValue(aContext,HashValue);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'w');
+   if POCAIsValueNull(HashValue) then begin
+    HashValue:=POCAHashGetString(aContext,aValue,'a');
+   end;
+   result.w:=POCAGetNumberValue(aContext,HashValue);
+
+  end;
+  else begin
+   if POCAGhostGetType(aValue)=@POCAVector4Ghost then begin
+    result:=PpvVector4D(POCAGhostFastGetPointer(aValue))^;
+   end else begin
+    result:=TpvVector4D.Create(0.0,0.0,0.0,0.0);
+   end;
+  end;
  end;
 end;
 
@@ -2543,6 +2690,46 @@ begin
   result:=PpvQuaternionD(POCAGhostFastGetPointer(aValue))^;
  end else begin
   result:=TpvQuaternionD.Create(0.0,0.0,0.0,0.0);
+ end;
+end;
+
+function POCAGetQuaternionValue(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvQuaternionD;
+var HashValue:TPOCAValue;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   if POCAArraySize(aValue)>=4 then begin
+    result.x:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,0));
+    result.y:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,1));
+    result.z:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,2));
+    result.w:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,3));
+   end else begin
+    result:=TpvQuaternionD.Create(0.0,0.0,0.0,0.0);
+   end;
+  end;
+  pvtHASH:begin
+   result:=TpvQuaternionD.Create(0.0,0.0,0.0,0.0);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'x');
+   result.x:=POCAGetNumberValue(aContext,HashValue);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'y');
+   result.y:=POCAGetNumberValue(aContext,HashValue);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'z');
+   result.z:=POCAGetNumberValue(aContext,HashValue);
+
+   HashValue:=POCAHashGetString(aContext,aValue,'w');
+   result.w:=POCAGetNumberValue(aContext,HashValue);
+
+  end;
+  else begin
+   if POCAGhostGetType(aValue)=@POCAQuaternionGhost then begin
+    result:=PpvQuaternionD(POCAGhostFastGetPointer(aValue))^;
+   end else begin
+    result:=TpvQuaternionD.Create(0.0,0.0,0.0,0.0);
+   end;
+  end;
  end;
 end;
 
@@ -3670,6 +3857,46 @@ begin
  end;
 end;
 
+function POCAGetMatrix3x3Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvMatrix3x3D;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   if POCAArraySize(aValue)>=9 then begin
+    result.RawComponents[0,0]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,0));
+    result.RawComponents[0,1]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,1));
+    result.RawComponents[0,2]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,2));
+    result.RawComponents[1,0]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,3));
+    result.RawComponents[1,1]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,4));
+    result.RawComponents[1,2]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,5));
+    result.RawComponents[2,0]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,6));
+    result.RawComponents[2,1]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,7));
+    result.RawComponents[2,2]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,8));
+   end else begin
+    result:=TpvMatrix3x3.Create(1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0);
+   end;
+  end;
+  pvtHASH:begin
+   result:=TpvMatrix3x3.Create(1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0);
+   result.RawComponents[0,0]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m00'));
+   result.RawComponents[0,1]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m01'));
+   result.RawComponents[0,2]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m02'));
+   result.RawComponents[1,0]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m10'));
+   result.RawComponents[1,1]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m11'));
+   result.RawComponents[1,2]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m12'));
+   result.RawComponents[2,0]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m20'));
+   result.RawComponents[2,1]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m21'));
+   result.RawComponents[2,2]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m22'));
+  end;
+  else begin
+   if POCAGhostGetType(aValue)=@POCAMatrix3x3Ghost then begin
+    result:=PpvMatrix3x3D(POCAGhostFastGetPointer(aValue))^;
+   end else begin
+    result:=TpvMatrix3x3.Create(1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0);
+   end;
+  end;
+ end;
+end;
+
 function POCAMatrix3x3FunctionCREATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Matrix3x3:TpvMatrix3x3D;
     Matrix4x4:PpvMatrix4x4D;
@@ -4751,6 +4978,60 @@ begin
   result:=PpvMatrix4x4D(POCAGhostFastGetPointer(aValue))^;
  end else begin
   result:=TpvMatrix4x4.Create(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
+ end;
+end;
+
+function POCAGetMatrix4x4Value(const aContext:PPOCAContext;const aValue:TPOCAValue):TpvMatrix4x4D;
+begin
+ case POCAGetValueType(aValue) of
+  pvtARRAY:begin
+   if POCAArraySize(aValue)>=16 then begin
+    result.RawComponents[0,0]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,0));
+    result.RawComponents[0,1]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,1));
+    result.RawComponents[0,2]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,2));
+    result.RawComponents[0,3]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,3));
+    result.RawComponents[1,0]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,4));
+    result.RawComponents[1,1]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,5));
+    result.RawComponents[1,2]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,6));
+    result.RawComponents[1,3]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,7));
+    result.RawComponents[2,0]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,8));
+    result.RawComponents[2,1]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,9));
+    result.RawComponents[2,2]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,10));
+    result.RawComponents[2,3]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,11));
+    result.RawComponents[3,0]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,12));
+    result.RawComponents[3,1]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,13));
+    result.RawComponents[3,2]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,14));
+    result.RawComponents[3,3]:=POCAGetNumberValue(aContext,POCAArrayGet(aValue,15));
+   end else begin
+    result:=TpvMatrix4x4.Create(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
+   end;
+  end;
+  pvtHASH:begin
+   result:=TpvMatrix4x4.Create(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
+   result.RawComponents[0,0]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m00'));
+   result.RawComponents[0,1]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m01'));
+   result.RawComponents[0,2]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m02'));
+   result.RawComponents[0,3]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m03'));
+   result.RawComponents[1,0]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m10'));
+   result.RawComponents[1,1]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m11'));
+   result.RawComponents[1,2]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m12'));
+   result.RawComponents[1,3]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m13'));
+   result.RawComponents[2,0]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m20'));
+   result.RawComponents[2,1]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m21'));
+   result.RawComponents[2,2]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m22'));
+   result.RawComponents[2,3]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m23'));
+   result.RawComponents[3,0]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m30'));
+   result.RawComponents[3,1]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m31'));
+   result.RawComponents[3,2]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m32'));
+   result.RawComponents[3,3]:=POCAGetNumberValue(aContext,POCAHashGetString(aContext,aValue,'m33'));
+  end;
+  else begin
+   if POCAGhostGetType(aValue)=@POCAMatrix4x4Ghost then begin
+    result:=PpvMatrix4x4D(POCAGhostFastGetPointer(aValue))^;
+   end else begin
+    result:=TpvMatrix4x4.Create(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
+   end;
+  end;
  end;
 end;
 

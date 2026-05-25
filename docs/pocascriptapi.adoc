@@ -9704,20 +9704,40 @@ A `Scene3DPrimitive` is a draw call within a `Scene3DMesh`. Obtained from `mesh.
 |Method |Description
 
 |`prim.setMaterial(mat)` |Attach a `Scene3DMaterial` to this primitive.
-|`prim.addVertex(x,y,z, nx,ny,nz, u0,v0 [,r,g,b,a])` |Append a vertex; normal `(nx,ny,nz)` is oct-encoded internally. Optional RGBA defaults to `(1,1,1,1)`. Returns the integer vertex index.
+|`prim.addVertex(x,y,z [,nx,ny,nz] [,tx,ty,tz] [,u0,v0] [,u1,v1] [,r,g,b,a])` a|Append a vertex (positional form). Groups are optional but must be supplied in order. Valid total arg counts: 3, 6, 9, 11, 13, or 17. Normal and tangent are oct-encoded internally. Tangent `(0,0,0)` enables automatic tangent-space via `calculateTangentSpace()`. Color defaults to `(1,1,1,1)`. Returns the integer vertex index.
+|`prim.addVertex({position, normal, tangent, texcoord0, texcoord1, color})` a|Append a vertex (hash/object form). Pass a hash with any of the following keys — all optional: +
+`position` — `Vector3` ghost, `{x,y,z}` / `{r,g,b}` hash, or `[x,y,z]` array +
+`normal` — `Vector3` ghost, `{x,y,z}` / `{r,g,b}` hash, or `[x,y,z]` array +
+`tangent` — `Vector3` ghost, `{x,y,z}` / `{r,g,b}` hash, or `[x,y,z]` array +
+`texcoord0` — `Vector2` ghost, `{x/s/u, y/t/v}` hash, or `[x,y]` array +
+`texcoord1` — `Vector2` ghost, `{x/s/u, y/t/v}` hash, or `[x,y]` array +
+`color` — `Vector4` ghost, `{x/r, y/g, z/b, w/a}` hash, or `[r,g,b,a]` array +
+Returns the integer vertex index.
 |`prim.addIndex(i)` |Append an index into the vertex buffer.
 |`prim.finish()` |Finalise this primitive.
 |`prim.destroy()` |Invalidate the POCA ghost (primitive lifetime is managed by the mesh).
 |===
 
-.Building a triangle
+.Building a triangle (positional form)
 [source,javascript]
 ----
 let prim = mesh.createPrimitive('triangles');
 prim.setMaterial(mat);
-prim.addVertex(  0.0,  1.0, 0.0,   0,0,1,   0.5, 0.0 );
-prim.addVertex( -1.0, -1.0, 0.0,   0,0,1,   0.0, 1.0 );
-prim.addVertex(  1.0, -1.0, 0.0,   0,0,1,   1.0, 1.0 );
+prim.addVertex(  0.0,  1.0, 0.0,   0,0,1,   0,0,0,   0.5, 0.0 );
+prim.addVertex( -1.0, -1.0, 0.0,   0,0,1,   0,0,0,   0.0, 1.0 );
+prim.addVertex(  1.0, -1.0, 0.0,   0,0,1,   0,0,0,   1.0, 1.0 );
+prim.addIndex(0); prim.addIndex(1); prim.addIndex(2);
+prim.finish();
+----
+
+.Building a triangle (hash form)
+[source,javascript]
+----
+let prim = mesh.createPrimitive('triangles');
+prim.setMaterial(mat);
+prim.addVertex({position:[  0.0,  1.0, 0.0], normal:[0,0,1], texcoord0:[0.5, 0.0]});
+prim.addVertex({position:[ -1.0, -1.0, 0.0], normal:[0,0,1], texcoord0:[0.0, 1.0]});
+prim.addVertex({position:[  1.0, -1.0, 0.0], normal:[0,0,1], texcoord0:[1.0, 1.0]});
 prim.addIndex(0); prim.addIndex(1); prim.addIndex(2);
 prim.finish();
 ----
