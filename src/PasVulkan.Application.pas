@@ -569,6 +569,8 @@ type EpvApplication=class(Exception)
 
      TpvApplicationUTF8String={$if declared(UnicodeString)}UTF8String{$else}AnsiString{$ifend};
 
+     TpvApplicationStringList=TpvGenericList<TpvUTF8String>;
+
      TpvApplicationOnStep=procedure(const aVulkanApplication:TpvApplication) of object;
 
      TpvApplicationDisplayOrientation=
@@ -671,7 +673,7 @@ type EpvApplication=class(Exception)
 
      TpvApplicationInputKeyAction=class
       private
-       fApplication:TpvApplication; 
+       fApplication:TpvApplication;
        fID:TpvUInt64;
        fName:TpvUTF8String;
        fDescription:TpvUTF8String;
@@ -685,13 +687,13 @@ type EpvApplication=class(Exception)
        procedure BeforeDestruction; override;
        procedure AddKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
        procedure RemoveKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
-       function HasKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut):boolean;       
+       function HasKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut):boolean;
       published
        property ID:TpvUInt64 read fID write fID;
        property Name:TpvUTF8String read fName write fName;
        property Description:TpvUTF8String read fDescription write fDescription;
        property KeyShortcuts:TpvApplicationInputKeyShortcuts read fKeyShortcuts write fKeyShortcuts;
-     end; 
+     end;
 
      TpvApplicationInputKeyEvent=record
       public
@@ -1231,7 +1233,7 @@ type EpvApplication=class(Exception)
        function GetJoystickByIndex(const aIndex:TpvSizeInt=-1):TpvApplicationJoystick;
       published
        property KeyShortcuts:TpvApplicationInputKeyShortcuts read fKeyShortcuts;
-       property KeyActions:TpvApplicationInputKeyActions read fKeyActions; 
+       property KeyActions:TpvApplicationInputKeyActions read fKeyActions;
      end;
 
      TpvApplicationLifecycleListener=class
@@ -1501,6 +1503,8 @@ type EpvApplication=class(Exception)
        fHasNewWindowTitle:TPasMPBool32;
 
        fPathName:TpvUTF8String;
+
+       fOldPathNames:TpvApplicationStringList;
 
        fCacheStoragePath:TpvUTF8String;
 
@@ -1847,7 +1851,7 @@ type EpvApplication=class(Exception)
        fFrameCounter:TpvInt64;
 
        fUpdateFrameCounter:TpvInt64;
-       
+
        fDrawFrameCounter:TpvInt64;
 
        fDesiredCountInFlightFrames:TpvInt32;
@@ -1964,7 +1968,7 @@ type EpvApplication=class(Exception)
        fInUpdateJobFunction:TPasMPBool32;
 
        fUpdateJob:PPasMPJob;
-       
+
        fDelayedObjectInstanceToFreeArray:TpvApplicationDelayedObjectInstanceToFreeArray;
        fDelayedObjectInstanceToFreeArrayLock:TPasMPCriticalSection;
 
@@ -2124,6 +2128,8 @@ type EpvApplication=class(Exception)
 
        procedure ParseCommandLine;
 
+       procedure ProcessOldPathNames;
+
       public
 
        constructor Create; reintroduce; virtual;
@@ -2263,6 +2269,7 @@ type EpvApplication=class(Exception)
        property WindowTitle:TpvUTF8String read fWindowTitle write SetWindowTitle;
 
        property PathName:TpvUTF8String read fPathName write fPathName;
+       property OldPathNames:TpvApplicationStringList read fOldPathNames;
 
        property SwapChainColorSpace:TpvApplicationSwapChainColorSpace read fSwapChainColorSpace write fSwapChainColorSpace;
 
@@ -2359,7 +2366,7 @@ type EpvApplication=class(Exception)
        property BackgroundResourceLoaderFrameTimeout:TpvInt64 read fBackgroundResourceLoaderFrameTimeout write fBackgroundResourceLoaderFrameTimeout;
 
        property Debugging:boolean read fDebugging;
-       
+
        property Active:boolean read fActive;
 
        property Terminated:boolean read fTerminated;
@@ -2510,7 +2517,7 @@ const pvApplicationInputKeyModifierKeyShortcutMask:TpvApplicationInputKeyModifie
         TpvApplicationInputKeyModifier.CTRL,
         TpvApplicationInputKeyModifier.ALT,
         TpvApplicationInputKeyModifier.META
-       ]; 
+       ];
 
 var pvApplication:TpvApplication=nil;
 
@@ -3016,7 +3023,7 @@ begin
  result:=Trunc((aDateTime-25569.0)*86400.0);
 end;
 {$ifend}
-                                                             
+
 {$if defined(fpc)}
 function DumpExceptionCallStack(e:Exception;aAddr:Pointer;aFrameCount:Longint;aFrames:PPointer):string;
 var i:int32;
@@ -3740,7 +3747,7 @@ begin
   fKeyActions.Add(aAction);
   if aAction.fKeyShortcuts.IndexOf(self)<0 then begin
    aAction.fKeyShortcuts.Add(self);
-  end; 
+  end;
  end;
 end;
 
@@ -3810,7 +3817,7 @@ begin
   fKeyShortcuts.Add(aShortcut);
   if aShortcut.fKeyActions.IndexOf(self)<0 then begin
    aShortcut.fKeyActions.Add(self);
-  end; 
+  end;
  end;
 end;
 
@@ -5284,7 +5291,7 @@ begin
  fKeyShortcutHashMap:=TpvApplicationInputKeyShortcutHashMap.Create(nil);
  fKeyShortcutIDCounter:=0;
  fKeyActions:=TpvApplicationInputKeyActions.Create;
- fKeyActionIDCounter:=0; 
+ fKeyActionIDCounter:=0;
 end;
 
 destructor TpvApplicationInput.Destroy;
@@ -5400,9 +5407,9 @@ begin
  result:=TpvApplicationInputKeyAction.Create(pvApplication,aName,aDescription);
  try
   result.fID:=fKeyActionIDCounter;
- finally 
+ finally
   fKeyActions.Add(result);
- end; 
+ end;
 end;
 
 procedure TpvApplicationInput.RemoveKeyAction(const aKeyAction:TpvApplicationInputKeyAction);
@@ -8849,6 +8856,8 @@ begin
 
  fPathName:='PasVulkanApplication';
 
+ fOldPathNames:=TpvApplicationStringList.Create;
+
  fCacheStoragePath:='';
 
  fLocalStoragePath:='';
@@ -9111,7 +9120,7 @@ begin
  fNextScreen:=nil;
 
  fNextScreenClass:=nil;
- 
+
  fHasNewNextScreen:=false;
 
  fHasLastTime:=false;
@@ -9221,7 +9230,7 @@ end;
 
 destructor TpvApplication.Destroy;
 begin
-  
+
  ClearDelayedObjectsToFree;
 
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
@@ -9250,6 +9259,8 @@ begin
  FreeAndNil(fFiles);
 
  FreeAndNil(fAssets);
+
+ FreeAndNil(fOldPathNames);
 
  FreeAndNil(fDelayedObjectInstanceToFreeArrayLock);
  fDelayedObjectInstanceToFreeArray.Finalize;
@@ -9391,6 +9402,63 @@ begin
  end;
 end;
 
+procedure TpvApplication.ProcessOldPathNames;
+var Index,PartIndex:TpvSizeInt;
+    OldPathName,OldPath,NewPath:TpvUTF8String;
+    OldPaths,NewPaths:array[0..2] of TpvUTF8String;
+begin
+
+ if assigned(fOldPathNames) and (fOldPathNames.Count>0) then begin
+
+  for Index:=0 to fOldPathNames.Count-1 do begin
+
+   OldPathName:=fOldPathNames.Items[Index];
+   if (length(OldPathName)>0) and (OldPathName<>fPathName) then begin
+
+    OldPaths[0]:=TpvUTF8String(ExcludeTrailingPathDelimiter(GetAppDataCacheStoragePath(String(OldPathName))));
+    NewPaths[0]:=ExcludeTrailingPathDelimiter(fCacheStoragePath);
+
+    OldPaths[1]:=TpvUTF8String(ExcludeTrailingPathDelimiter(GetAppDataLocalStoragePath(String(OldPathName))));
+    NewPaths[1]:=ExcludeTrailingPathDelimiter(fLocalStoragePath);
+
+    OldPaths[2]:=TpvUTF8String(ExcludeTrailingPathDelimiter(GetAppDataRoamingStoragePath(String(OldPathName))));
+    NewPaths[2]:=ExcludeTrailingPathDelimiter(fRoamingStoragePath);
+
+    for PartIndex:=0 to 2 do begin
+
+     OldPath:=OldPaths[PartIndex];
+     NewPath:=NewPaths[PartIndex];
+
+     if OldPath<>NewPath then begin
+
+      if (length(OldPath)>0) and DirectoryExists(String(OldPath)) then begin
+
+       if (length(NewPath)>0) and not DirectoryExists(String(NewPath)) then begin
+
+        if not RenameFile(String(OldPath),String(NewPath)) then begin
+
+         if DirectoryExists(String(NewPath)) then begin
+          // Merge contents if target already exists after failed rename
+         end;
+
+        end;
+
+       end;
+
+      end;
+
+     end;
+
+    end;
+
+   end;
+
+  end;
+
+ end;
+
+end;
+
 procedure TpvApplication.ClearDelayedObjectsToFree;
 var Index:TpvSizeInt;
 begin
@@ -9406,7 +9474,7 @@ begin
 end;
 
 procedure TpvApplication.ClearDelayedObjectsToFreeIteration;
-var Index:TpvSizeInt; 
+var Index:TpvSizeInt;
     Item:PpvApplicationDelayedObjectInstanceToFree;
 begin
  fDelayedObjectInstanceToFreeArrayLock.Acquire;
@@ -11605,13 +11673,13 @@ begin
    end else if fFramePacingMode in [TpvApplicationFramePacingMode.Auto,TpvApplicationFramePacingMode.MonitorRefreshRate,TpvApplicationFramePacingMode.PresentIntervalEstimation] then begin
 
     repeat
-     
+
      // Try monitor refresh rate first (unless explicitly PresentIntervalEstimation-only)
      if fFramePacingMode in [TpvApplicationFramePacingMode.Auto,TpvApplicationFramePacingMode.MonitorRefreshRate] then begin
       RefreshRate:=GetNativeRefreshRate;
       if RefreshRate>=1.0 then begin
        fFramePacingEffectiveInterval:=fHighResolutionTimer.FromFloatSeconds(1.0/RefreshRate);
-       break;       
+       break;
       end;
      end;
 
@@ -11661,9 +11729,9 @@ begin
 
      break;
 
-    until false; 
+    until false;
 
-   end; 
+   end;
 
    fFramePacingLastPresentTime:=PacingNow;
 
@@ -12743,12 +12811,12 @@ var FrameTimes:TpvDoubleDynamicArray;
     Index,Count:TpvSizeInt;
     Sum:TpvDouble;
 begin
- 
+
  result:=0.0;
 
  // Don't solely rely on the count of samples. Median is a better measure of central tendency
  // than the mean (average) for frame times, as it is less sensitive to outliers.
- 
+
  if fFrameTimesHistoryCount>0 then begin
 
   FrameTimes:=nil;
@@ -12764,7 +12832,7 @@ begin
     end else begin
      break;
     end;
-   end; 
+   end;
 
    if Count>0 then begin
 
@@ -12785,7 +12853,7 @@ begin
     end;
 
    end else begin
-     
+
     result:=fFrameTimesHistoryDeltaTimes[((fFrameTimesHistoryIndex+FrameTimesHistorySize)-1) and FrameTimesHistoryMask];
 
    end;
@@ -12797,7 +12865,7 @@ begin
  end;
 
 end;
-   
+
 procedure TpvApplication.FramePacingAndFrameRateLimiter;
 var LastTime,NowTime,FrameTime,TargetInterval,SleepDuration,
     LateAmount,Skipped:TpvHighResolutionTime;
@@ -13616,13 +13684,13 @@ begin
       break;
      end;}
     end;
-   end;   
+   end;
 {$else} // Windows
    GameControllerDBFilePath:='C:\Program Files\Steam\steamapps\common\Steamworks SDK Redist\gamecontrollerdb.txt';
    if not FileExists(GameControllerDBFilePath) then begin
     GameControllerDBFilePath:='C:\Program Files (x86)\Steam\steamapps\common\Steamworks SDK Redist\gamecontrollerdb.txt';
    end;
-{$endif}   
+{$endif}
   end;
   if FileExists(GameControllerDBFilePath) then begin
    pvApplication.Log(LOG_VERBOSE,'TpvApplication.UpdateJoysticks','SDL2 game controller database "'+GameControllerDBFilePath+'" used.');
@@ -14588,20 +14656,20 @@ begin
    end;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 
-   // For SDL, we can directly set fullscreen modes without restoring first as SDL handles the 
-   // transitions internally, avoiding common pitfalls. Any necessary intermediate steps are 
+   // For SDL, we can directly set fullscreen modes without restoring first as SDL handles the
+   // transitions internally, avoiding common pitfalls. Any necessary intermediate steps are
    // managed by SDL itself, which simplifies the following code and improves reliability across platforms.
 
    // The result codes of the SDL functions are not checked here, as failures are rare and typically non-critical,
-   // and SDL will often revert to a safe state automatically, so adding them would unnecessarily complicate the code. 
+   // and SDL will often revert to a safe state automatically, so adding them would unnecessarily complicate the code.
 
    if fFullScreen then begin
-    
+
     if fUseRealFullScreen then begin
 
      // Enter real fullscreen
 
-     // Set the desired fullscreen display mode 
+     // Set the desired fullscreen display mode
      if (fFullScreenWidth>0) and (fFullScreenHeight>0) and (fFullScreenRefreshRate>=0) then begin
       OK:=SDL_GetWindowDisplayMode(fSurfaceWindow,@FullscreenDisplayMode)=0;
       if not OK then begin
@@ -14643,9 +14711,9 @@ begin
      if (SDL_GetWindowFlags(fSurfaceWindow) and SDL_WINDOW_FULLSCREEN)=0 then begin
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN);
      end;
-    
+
     end else begin
-    
+
      // Enter fake fullscreen (borderless window maximized to desktop size)
      if (SDL_GetWindowFlags(fSurfaceWindow) and SDL_WINDOW_FULLSCREEN_DESKTOP)=0 then begin
       SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
@@ -14654,7 +14722,7 @@ begin
     end;
 
    end else begin
-    
+
     // Restore windowed mode
     if (SDL_GetWindowFlags(fSurfaceWindow) and (SDL_WINDOW_FULLSCREEN or SDL_WINDOW_FULLSCREEN_DESKTOP))<>0 then begin
      SDL_SetWindowFullscreen(fSurfaceWindow,0);
@@ -14669,7 +14737,7 @@ begin
     SDL_GetWindowSize(fSurfaceWindow,fWidth,fHeight);
    end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
-  
+
    // For Win32, the defensive pattern of always restoring to windowed mode first even
    // before changing fullscreen state to avoid issues is implemented below.
    //
@@ -14677,58 +14745,58 @@ begin
    //
    // Detailed explanation:
    //
-   // The "always restore to windowed first" approach is a common and valid defensive 
+   // The "always restore to windowed first" approach is a common and valid defensive
    // pattern for Windows fullscreen handling. Here's why:
    // Reasons for this approach:
    //
-   // 1. Display mode stack issues: ChangeDisplaySettingsW maintains an internal display mode stack. 
-   //     Going directly from one exclusive mode to another can leave stale entries, causing issues 
+   // 1. Display mode stack issues: ChangeDisplaySettingsW maintains an internal display mode stack.
+   //     Going directly from one exclusive mode to another can leave stale entries, causing issues
    //     when restoring.
    //
-   // 2. Driver quirks: Some GPU drivers (especially older ones, or certain AMD/Intel integrated 
-   //    graphics) don't handle direct mode-to-mode transitions well. They expect the clean sequence: 
+   // 2. Driver quirks: Some GPU drivers (especially older ones, or certain AMD/Intel integrated
+   //    graphics) don't handle direct mode-to-mode transitions well. They expect the clean sequence:
    //    Exclusive => Desktop => New Exclusive.
    //
-   // 3. Window style conflicts: Directly changing from real fullscreen (with changed display mode) 
+   // 3. Window style conflicts: Directly changing from real fullscreen (with changed display mode)
    //    to fake fullscreen (borderless) while keeping popup styles can cause rendering issues or black
    //    screens.
    //
-   // 4. Multi-monitor edge cases: When switching between monitors or when display topology changes, 
+   // 4. Multi-monitor edge cases: When switching between monitors or when display topology changes,
    //    going through windowed mode ensures the window is properly repositioned.
    //
-   // 5. Alt-Tab / Focus loss recovery: If the app lost focus during a previous fullscreen session, 
+   // 5. Alt-Tab / Focus loss recovery: If the app lost focus during a previous fullscreen session,
    //     a clean restore ensures predictable state.
    //
-   // 6. Simplicity and predictability: This pattern simplifies the state management logic, making 
+   // 6. Simplicity and predictability: This pattern simplifies the state management logic, making
    //    it easier to reason about the current window state.
    //
-   // The pattern is used by: 
+   // The pattern is used by:
    //
    // - Many game engines (Unity, Unreal do similar)
    // - SDL internally uses similar logic
    // - DirectX sample code often recommends this
    //
-   // Potential downside: 
+   // Potential downside:
    //
    // - Brief visual flicker during transition (window momentarily visible in windowed state)
    //
    // Alternative approaches:
    //
-   // - Direct mode switching: Attempt to switch directly between exclusive modes. Risky due to 
+   // - Direct mode switching: Attempt to switch directly between exclusive modes. Risky due to
    //   driver quirks and display stack issues.
    //
-   // - Persistent borderless window: Always use fake fullscreen (borderless) to avoid mode 
+   // - Persistent borderless window: Always use fake fullscreen (borderless) to avoid mode
    //   switches. Simpler but may not offer the best performance or compatibility for all apps.
    //   It's also implemented in this code as an option, where fUseRealFullScreen must be false.
    //
-   // - Some engines track whether they're changing mode type (real<=>fake) vs just resolution and 
+   // - Some engines track whether they're changing mode type (real<=>fake) vs just resolution and
    //   only restore when needed
    //
    // - DXGI's SetFullscreenState handles some of this internally for D3D apps
    //
    // Conclusion:
    //
-   // While not strictly required in all cases, restoring to windowed mode first is a robust 
+   // While not strictly required in all cases, restoring to windowed mode first is a robust
    // defensive practice that avoids many common pitfalls with Windows fullscreen handling across
    // different hardware and driver configurations.
 
@@ -14758,7 +14826,7 @@ begin
     end;
    end;
 
-   // Now set the new fullscreen state, when requested  
+   // Now set the new fullscreen state, when requested
    if fFullScreen then begin
     FillChar(MonitorInfo,SizeOf(TMonitorInfo),#0);
     MonitorInfo.cbSize:=SizeOf(TMonitorInfo);
@@ -14820,7 +14888,7 @@ begin
    fCurrentFullScreenWidth:=fFullScreenWidth;
    fCurrentFullScreenHeight:=fFullScreenHeight;
    fCurrentFullScreenRefreshRate:=fFullScreenRefreshRate;
-   // Continue with a new fresh loop iteration to process possible new events, 
+   // Continue with a new fresh loop iteration to process possible new events,
    // like resize events triggered by the fullscreen change, before rendering the next frame
    // with the new settings, for to avoid possible issues.
    continue;
@@ -15113,7 +15181,7 @@ begin
              fPasMPInstance.WaitRelease(fUpdateJob);
             finally
              fUpdateJob:=nil;
-            end; 
+            end;
            end;
           end;
 
@@ -16577,6 +16645,8 @@ begin
 
  fVulkanPipelineCacheFileName:=TpvUTF8String(IncludeTrailingPathDelimiter(String(fCacheStoragePath)))+'vulkan_pipeline_cache.bin';
 
+ ProcessOldPathNames;
+
  ReadConfig;
 
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
@@ -17257,7 +17327,7 @@ procedure TpvApplication.Start;
 begin
 end;
 
-procedure TpvApplication.Stop; 
+procedure TpvApplication.Stop;
 begin
 end;
 
@@ -17502,7 +17572,7 @@ begin
  end;
 end;
 
-procedure TpvApplication.DumpVulkanMemoryManager; 
+procedure TpvApplication.DumpVulkanMemoryManager;
 var StringList:TStringList;
     Index:TpvSizeInt;
     Line:TpvUTF8String;
@@ -17517,13 +17587,13 @@ begin
    end;
   finally
    FreeAndNil(StringList);
-  end; 
- end; 
+  end;
+ end;
 end;
 
 function CompareDisplayModes(const a,b:PpvApplicationDisplayMode):TpvInt32;
 begin
- result:=(a^.Width*a^.Height)-(b^.Width*b^.Height); 
+ result:=(a^.Width*a^.Height)-(b^.Width*b^.Height);
  if result=0 then begin
   result:=a^.RefreshRate-b^.RefreshRate;
  end;
@@ -18831,11 +18901,11 @@ begin
  if pvDebuggerPresent then begin
   pvOutputLogLevel:=LOG_DEBUG; // If a debugger is present, set log level to debug (errors, info, verbose and debug)
  end else begin
-  pvOutputLogLevel:=LOG_INFO; // If no debugger is present, set log level to info (errors and info) 
+  pvOutputLogLevel:=LOG_INFO; // If no debugger is present, set log level to info (errors and info)
  end;
 
  // Parse command line parameters
- Index:=1; 
+ Index:=1;
  Count:=ParamCount;
  while Index<=Count do begin
   Parameter:=LowerCase(ParamStr(Index));
@@ -18863,32 +18933,32 @@ begin
       pvOutputLogLevel:=Value;
      end;
      break;
-    end; 
+    end;
    end;
   end;
  end;
 
-end; 
+end;
 
 initialization
- 
+
  VulkanDisableFloatingPointExceptions;
 
  // Check if a debugger is present
  pvDebuggerPresent:=IsDebuggerPresent;
- 
+
  // Initialize log level
- pvOutputLogLevel:=LOG_DEBUG; 
+ pvOutputLogLevel:=LOG_DEBUG;
  InitializeOutputLogLevel;
 
 {$if defined(Windows) and (defined(Debug) or not defined(Release))}
- 
+
  pvStdOut:=GetStdHandle(Std_Output_Handle);
 
   // Check if a console is existing
  if (pvStdOut=0) or (pvStdOut=Invalid_Handle_Value) then begin
   // If no console is existing and the log level is not none, create a new console
-  if (pvOutputLogLevel>LOG_NONE) and not AttachConsole(ATTACH_PARENT_PROCESS) then begin 
+  if (pvOutputLogLevel>LOG_NONE) and not AttachConsole(ATTACH_PARENT_PROCESS) then begin
    AllocConsole;
   end;
  end;
@@ -18917,8 +18987,8 @@ initialization
 
 {$ifdef Windows}
 {$ifndef PasVulkanUseSDL2}
-  
- // Set timer resolution to 1ms 
+
+ // Set timer resolution to 1ms
  timeBeginPeriod(1);
 
  // Get touchscreen API functions
