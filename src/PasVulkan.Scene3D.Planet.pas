@@ -3440,6 +3440,9 @@ type TpvScene3DPlanets=class;
        procedure LoadWaterSettings(const aJSONItem:TPasJSONItem);
        procedure LoadWaterSettingsFromStream(const aStream:TStream);
        procedure LoadWaterSettingsFromFile(const aFileName:TpvUTF8String);
+       procedure LoadGrassSettings(const aJSONItem:TPasJSONItem);
+       procedure LoadGrassSettingsFromStream(const aStream:TStream);
+       procedure LoadGrassSettingsFromFile(const aFileName:TpvUTF8String);
        procedure PrepareWaterSimulation(const aQueue:TpvVulkanQueue;
                                         const aCommandBuffer:TpvVulkanCommandBuffer;
                                         const aFence:TpvVulkanFence;
@@ -3559,6 +3562,9 @@ type TpvScene3DPlanets=class;
        property WaterRainSplashNormalStrength:TpvFloat read fWaterRainSplashNormalStrength write fWaterRainSplashNormalStrength;
        property WaterRainSplashDepthThresholdLow:TpvFloat read fWaterRainSplashDepthThresholdLow write fWaterRainSplashDepthThresholdLow;
        property WaterRainSplashDepthThresholdHigh:TpvFloat read fWaterRainSplashDepthThresholdHigh write fWaterRainSplashDepthThresholdHigh;
+       property GrassGrowthDuration:TpvFloat read fGrassGrowthDuration write fGrassGrowthDuration;
+       property GrassDecayRate:TpvFloat read fGrassDecayRate write fGrassDecayRate;
+       property GrassWaterThreshold:TpvFloat read fGrassWaterThreshold write fGrassWaterThreshold;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -35300,6 +35306,46 @@ begin
  Stream:=TFileStream.Create(String(aFileName),fmOpenRead or fmShareDenyWrite);
  try
   LoadWaterSettingsFromStream(Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+procedure TpvScene3DPlanet.LoadGrassSettings(const aJSONItem:TPasJSONItem);
+var JSONRootObject,JSONGrassObject:TPasJSONItemObject;
+    JSONItem:TPasJSONItem;
+begin
+ if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
+  JSONRootObject:=TPasJSONItemObject(aJSONItem);
+  JSONItem:=JSONRootObject.Properties['grass'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONGrassObject:=TPasJSONItemObject(JSONItem);
+  end else begin
+   JSONGrassObject:=JSONRootObject;
+  end;
+  fGrassGrowthDuration:=TPasJSON.GetNumber(JSONGrassObject.Properties['growthduration'],fGrassGrowthDuration);
+  fGrassDecayRate:=TPasJSON.GetNumber(JSONGrassObject.Properties['decayrate'],fGrassDecayRate);
+  fGrassWaterThreshold:=TPasJSON.GetNumber(JSONGrassObject.Properties['waterthreshold'],fGrassWaterThreshold);
+ end;
+end;
+
+procedure TpvScene3DPlanet.LoadGrassSettingsFromStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=TPasJSON.Parse(aStream);
+ try
+  LoadGrassSettings(JSON);
+ finally
+  FreeAndNil(JSON);
+ end;
+end;
+
+procedure TpvScene3DPlanet.LoadGrassSettingsFromFile(const aFileName:TpvUTF8String);
+var Stream:TFileStream;
+begin
+ Stream:=TFileStream.Create(String(aFileName),fmOpenRead or fmShareDenyWrite);
+ try
+  LoadGrassSettingsFromStream(Stream);
  finally
   FreeAndNil(Stream);
  end;
