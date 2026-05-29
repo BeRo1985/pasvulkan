@@ -187,7 +187,7 @@ struct AtmosphereParameters {
  
   vec4 MieAbsorption; // w = sun direction Z
   
-  vec4 AbsorptionExtinction; // w = fade factor
+  vec4 AbsorptionExtinction; // w = Fade factor, 0.0 = no atmosphere, 1.0 = full atmosphere
  
   vec4 GroundAlbedo; // w = intensity
  
@@ -211,7 +211,7 @@ struct AtmosphereParameters {
   float maxShadowDistance;
   uint flags;
   float RainAtmosphereCubeMapLuminanceFactor; // Factor to multiply the rain atmosphere luminance by, this is used to adjust the rain atmosphere luminance based on the scene lighting for indirect lighting
-  float unused2;
+  float atmosphereDensityScale; // Multiplier for all scattering/extinction densities; compensates for small-planet shorter optical paths (1.0 = Earth-scale default)
 
   AtmosphereCullingParameters CullingParameters;
 
@@ -583,12 +583,13 @@ MediumSampleRGB sampleMediumRGB(in vec3 WorldPos, in AtmosphereParameters Atmosp
 
   const float viewHeight = max(1e-4, length(WorldPos) - Atmosphere.BottomRadius);
 
-  const float densityMie = exp(Atmosphere.MieDensityExpScale * viewHeight);
-  const float densityRay = exp(Atmosphere.RayleighDensityExpScale * viewHeight);
+  const float densityScale = Atmosphere.atmosphereDensityScale;
+  const float densityMie = exp(Atmosphere.MieDensityExpScale * viewHeight) * densityScale;
+  const float densityRay = exp(Atmosphere.RayleighDensityExpScale * viewHeight) * densityScale;
   const float densityOzo = clamp(viewHeight < Atmosphere.AbsorptionDensity0LayerWidth ?
     fma(Atmosphere.AbsorptionDensity0LinearTerm, viewHeight, Atmosphere.AbsorptionDensity0ConstantTerm) :
     fma(Atmosphere.AbsorptionDensity1LinearTerm, viewHeight, Atmosphere.AbsorptionDensity1ConstantTerm), 
-    0.0, 1.0);
+    0.0, 1.0) * densityScale;
 
   MediumSampleRGB s;
 

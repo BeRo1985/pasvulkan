@@ -456,7 +456,8 @@ type TpvScene3DAtmosphere=class;
               MieExtinction:TpvVector4; // w is unused, for alignment
               AbsorptionExtinction:TpvVector4; // w is unused, for alignment
               GroundAlbedo:TpvVector4; // w is unused, for alignment
-              FadeFactor:TpvFloat;
+              FadeFactor:TpvFloat; // Fade factor for the atmosphere (0.0 = no atmosphere, 1.0 = full atmosphere)
+              AtmosphereDensityScale:TpvFloat; // Multiplier for all scattering/extinction densities; compensates for small-planet shorter optical paths (1.0 = Earth-scale default)
               Intensity:TpvFloat;
               MiePhaseFunctionG:TpvFloat;
               SunAngularRadius:TpvFloat;
@@ -656,7 +657,7 @@ type TpvScene3DAtmosphere=class;
               MaxShadowDistance:TpvFloat;
               Flags:TpvUInt32;
               RainAtmosphereCubeMapLuminanceFactor:TpvFloat;
-              Unused1:TpvInt32;
+              AtmosphereDensityScale:TpvFloat;
 
               AtmosphereCullingParameters:TGPUAtmosphereCullingParameters;
 
@@ -1454,6 +1455,9 @@ begin
  // Fade factor
  FadeFactor:=1.0;
 
+ // Density scale
+ AtmosphereDensityScale:=1.0;
+
  // Intensity 
  Intensity:=1.0;
 
@@ -1538,6 +1542,8 @@ begin
   GroundAlbedo.xyz:=JSONToVector3(JSONRootObject.Properties['groundalbedo'],GroundAlbedo.xyz);
 
   FadeFactor:=TPasJSON.GetNumber(JSONRootObject.Properties['fadefactor'],FadeFactor);
+
+  AtmosphereDensityScale:=TPasJSON.GetNumber(JSONRootObject.Properties['atmospheredensityscale'],AtmosphereDensityScale);
   
   Intensity:=TPasJSON.GetNumber(JSONRootObject.Properties['intensity'],Intensity);
 
@@ -1622,6 +1628,7 @@ begin
  result.Add('topradius',TPasJSONItemNumber.Create(TopRadius));
  result.Add('groundalbedo',Vector3ToJSON(GroundAlbedo.xyz));
  result.Add('fadefactor',TPasJSONItemNumber.Create(FadeFactor));
+ result.Add('atmospheredensityscale',TPasJSONItemNumber.Create(AtmosphereDensityScale));
  result.Add('intensity',TPasJSONItemNumber.Create(Intensity));
  result.Add('rayleighdensity0',SaveDensityLayer(RayleighDensity.Layers[0]));
  result.Add('rayleighdensity1',SaveDensityLayer(RayleighDensity.Layers[1]));
@@ -1933,6 +1940,8 @@ begin
  MaxShadowDistance:=aAtmosphereParameters.MaxShadowDistance;
 
  RainAtmosphereCubeMapLuminanceFactor:=aAtmosphereParameters.RainAtmosphereCubeMapLuminanceFactor;
+
+ AtmosphereDensityScale:=aAtmosphereParameters.AtmosphereDensityScale;
 
  Flags:=0;
 
