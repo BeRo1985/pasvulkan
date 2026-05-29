@@ -32859,7 +32859,7 @@ begin
 
  fGrassWaterThreshold:=0.1;
 
- fGrassSandboxGrowthDuration:=3.0;
+ fGrassSandboxGrowthDuration:=1.0;
 
  fPrecipitationMapInitialization:=TPrecipitationMapInitialization.Create(self);
 
