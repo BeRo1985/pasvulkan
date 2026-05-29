@@ -516,6 +516,14 @@ compileshaderarguments=(
 
   "-V planet_grassagemap_mow.comp -o ${tempPath}/planet_grassagemap_mow_comp.spv"
 
+  "-V planet_grassagemap_sandboxgrowth.comp -o ${tempPath}/planet_grassagemap_sandboxgrowth_comp.spv"
+
+  "-V planet_grassflagsmap_initialization.comp -o ${tempPath}/planet_grassflagsmap_initialization_comp.spv"
+
+  "-V planet_grassflagsmap_modification.comp -o ${tempPath}/planet_grassflagsmap_modification_comp.spv"
+
+  "-V planet_grassflagsmap_flagsupdate.comp -o ${tempPath}/planet_grassflagsmap_flagsupdate_comp.spv"
+
   "-V planet_precipitationmap_initialization.comp -o ${tempPath}/planet_precipitationmap_initialization_comp.spv"
 
   "-V planet_precipitationmap_modification.comp -o ${tempPath}/planet_precipitationmap_modification_comp.spv"

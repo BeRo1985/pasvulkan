@@ -365,6 +365,17 @@ type TpvScene3DPlanets=class;
             PGrassAgeMapUpdateItem=^TGrassAgeMapUpdateItem;
             TGrassAgeMapUpdateItems=TpvDynamicQueue<TGrassAgeMapUpdateItem>;
             TGrassAgeMapUpdatePerInFlightFrameItems=array[0..MaxInFlightFrames-1] of TGrassAgeMapUpdateItems;
+            TGrassFlagsMapModificationItem=packed record
+             PositionRadius:TpvVector4;
+             FlagsSetMask:TpvUInt32;
+             FlagsClearMask:TpvUInt32;
+             InnerRadius:TpvFloat;
+             BrushIndex:TpvUInt32;
+             BrushRotation:TpvFloat;
+            end;
+            PGrassFlagsMapModificationItem=^TGrassFlagsMapModificationItem;
+            TGrassFlagsMapModificationItems=TpvDynamicQueue<TGrassFlagsMapModificationItem>;
+            TGrassFlagsMapModificationPerInFlightFrameItems=array[0..MaxInFlightFrames-1] of TGrassFlagsMapModificationItems;
             TPrecipitationMapModificationItem=packed record
              PositionRadius:TpvVector4;
              InnerRadius:TpvFloat;
@@ -452,6 +463,7 @@ type TpvScene3DPlanets=class;
               fBlendMapImage:TpvScene3DRendererArray2DImage; // R8G8B8A8_UNORM
               fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAT
               fGrassAgeMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
+              fGrassFlagsMapImage:TpvScene3DRendererImage2D; // R32_UINT
               fPrecipitationMapImage:TpvScene3DRendererImage2D; // R8_SNORM
               fPrecipitationMiniMapImage:TpvScene3DRendererImage2D; // R8_SNORM
               fPrecipitationMiniMapBuffer:TpvVulkanBuffer; // R8_SNORM
@@ -530,6 +542,7 @@ type TpvScene3DPlanets=class;
               fBlendMapGeneration:TpvUInt64;
               fGrassMapGeneration:TpvUInt64;
               fGrassAgeMapGeneration:TpvUInt64;
+              fGrassFlagsMapGeneration:TpvUInt64;
               fPrecipitationMapGeneration:TpvUInt64;
               fPrecipitationMiniMapGeneration:TpvUInt64;
               fPrecipitationMiniMapTransferGeneration:TpvUInt64;
@@ -569,6 +582,7 @@ type TpvScene3DPlanets=class;
               fDirtyBlendMap:TPasMPBool32;
               fDirtyGrassMap:TPasMPBool32;
               fDirtyGrassAgeMap:TPasMPBool32;
+              fDirtyGrassFlagsMap:TPasMPBool32;
               fDirtyPrecipitationMap:TPasMPBool32;
               fDirtyAtmosphereMap:TPasMPBool32;
               fMinMaxHeightFactor:TpvVector4;
@@ -634,6 +648,8 @@ type TpvScene3DPlanets=class;
               property NormalMapImage:TpvScene3DRendererMipmapImage2D read fNormalMapImage;
               property BlendMapImage:TpvScene3DRendererArray2DImage read fBlendMapImage;
               property GrassMapImage:TpvScene3DRendererImage2D read fGrassMapImage;
+              property GrassAgeMapImage:TpvScene3DRendererImage2D read fGrassAgeMapImage;
+              property GrassFlagsMapImage:TpvScene3DRendererImage2D read fGrassFlagsMapImage;
               property PrecipitationMapImage:TpvScene3DRendererImage2D read fPrecipitationMapImage;
               property PrecipitationMiniMapImage:TpvScene3DRendererImage2D read fPrecipitationMiniMapImage;
               property PrecipitationMiniMapBuffer:TpvVulkanBuffer read fPrecipitationMiniMapBuffer;
@@ -676,6 +692,7 @@ type TpvScene3DPlanets=class;
               property DirtyBlendMap:TPasMPBool32 read fDirtyBlendMap write fDirtyBlendMap;
               property DirtyGrassMap:TPasMPBool32 read fDirtyGrassMap write fDirtyGrassMap;
               property DirtyGrassAgeMap:TPasMPBool32 read fDirtyGrassAgeMap write fDirtyGrassAgeMap;
+              property DirtyGrassFlagsMap:TPasMPBool32 read fDirtyGrassFlagsMap write fDirtyGrassFlagsMap;
               property DirtyPrecipitationMap:TPasMPBool32 read fDirtyPrecipitationMap write fDirtyPrecipitationMap;
               property DirtyAtmosphereMap:TPasMPBool32 read fDirtyAtmosphereMap write fDirtyAtmosphereMap;
              public
@@ -870,6 +887,7 @@ type TpvScene3DPlanets=class;
                      ChunkSignatureBlendMapData:TSignature=('B','M','D','T'); // Blend Map Data
                      ChunkSignatureGrassMapData:TSignature=('G','M','D','T'); // Grass Map Data
                      ChunkSignatureGrassAgeMapData:TSignature=('G','A','D','T'); // Grass Age Map Data
+                     ChunkSignatureGrassFlagsMapData:TSignature=('G','F','D','T'); // Grass Flags Map Data
                      ChunkSignatureRainMapData:TSignature=('R','M','D','T'); // Rain Map Data
                      ChunkSignaturePrecipitationMapData:TSignature=('P','M','D','T'); // Precipitation Map Data         
                      ChunkSignaturePrecipitationSimulationMapData:TSignature=('P','S','D','T'); // Precipitation Simulation Map Data            
@@ -890,6 +908,7 @@ type TpvScene3DPlanets=class;
               fBlendMapData:TMemoryStream;
               fGrassMapData:TMemoryStream;
               fGrassAgeMapData:TMemoryStream;
+              fGrassFlagsMapData:TMemoryStream;
               fPrecipitationMapData:TMemoryStream;
               fPrecipitationSimulationMapData:TMemoryStream;
               fPrecipitationAdvectionMapData:TMemoryStream;
@@ -920,6 +939,7 @@ type TpvScene3DPlanets=class;
               property HeightMapData:TMemoryStream read fHeightMapData;
               property GrassMapData:TMemoryStream read fGrassMapData;
               property GrassAgeMapData:TMemoryStream read fGrassAgeMapData;
+              property GrassFlagsMapData:TMemoryStream read fGrassFlagsMapData;
               property PrecipitationMapData:TMemoryStream read fPrecipitationMapData;
               property AtmosphereMapData:TMemoryStream read fAtmosphereMapData;
               property WaterHeightMapData:TMemoryStream read fWaterHeightMapData;
@@ -1241,6 +1261,112 @@ type TpvScene3DPlanets=class;
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvFloat);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+            { TGrassAgeMapSandboxGrowth }
+            TGrassAgeMapSandboxGrowth=class
+             public
+              type TPushConstants=packed record
+                    DeltaTime:TpvFloat;
+                    GrowthDuration:TpvFloat;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvFloat);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+            { TGrassFlagsMapInitialization }
+            TGrassFlagsMapInitialization=class
+             public
+              type TPushConstants=packed record
+                    Dummy:TpvUInt32;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+            { TGrassFlagsMapModification }
+            TGrassFlagsMapModification=class
+             public
+              type TPushConstants=packed record
+                    PositionRadius:TpvVector4;
+                    FlagsSetMask:TpvUInt32;
+                    FlagsClearMask:TpvUInt32;
+                    InnerRadius:TpvFloat;
+                    BrushIndex:TpvUInt32;
+                    BrushRotation:TpvFloat;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aItem:TGrassFlagsMapModificationItem);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+            { TGrassFlagsMapFlagsUpdate }
+            TGrassFlagsMapFlagsUpdate=class
+             public
+              type TPushConstants=packed record
+                    Dummy:TpvUInt32;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -3242,6 +3368,11 @@ type TpvScene3DPlanets=class;
        fGrassAgeMapModification:TGrassAgeMapModification;
        fGrassAgeMapMow:TGrassAgeMapMow;
        fGrassAgeMapUpdate:TGrassAgeMapUpdate;
+       fGrassAgeMapSandboxGrowth:TGrassAgeMapSandboxGrowth;
+       fGrassFlagsMapInitialization:TGrassFlagsMapInitialization;
+       fGrassFlagsMapModification:TGrassFlagsMapModification;
+       fGrassFlagsMapFlagsUpdate:TGrassFlagsMapFlagsUpdate;
+       fGrassFlagsMapModificationPerInFlightFrameItems:TGrassFlagsMapModificationPerInFlightFrameItems;
        fPrecipitationMapInitialization:TPrecipitationMapInitialization;
        fPrecipitationMapModification:TPrecipitationMapModification;
        fPrecipitationMapSimulation:TPrecipitationMapSimulation;
@@ -3307,10 +3438,10 @@ type TpvScene3DPlanets=class;
        fGrassMapModificationPerInFlightFrameItems:TGrassMapModificationPerInFlightFrameItems;
        fGrassAgeMapModificationPerInFlightFrameItems:TGrassAgeMapModificationPerInFlightFrameItems;
        fGrassAgeMapMowPerInFlightFrameItems:TGrassAgeMapMowPerInFlightFrameItems;
-       fGrassAgeMapUpdatePerInFlightFrameItems:TGrassAgeMapUpdatePerInFlightFrameItems;
        fGrassGrowthDuration:TpvFloat;
        fGrassDecayRate:TpvFloat;
        fGrassWaterThreshold:TpvFloat;
+       fGrassSandboxGrowthDuration:TpvFloat;
        fPrecipitationMapModificationItems:TPrecipitationMapModificationItems;
        fAtmosphereMapModificationItems:TAtmosphereMapModificationItems;
        fWaterModificationItems:TWaterModificationItems;
@@ -3432,7 +3563,9 @@ type TpvScene3DPlanets=class;
        procedure EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aOnlyIfEmpty:Boolean=false);
        procedure EnqueueGrassAgeMapSet(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aAge:TpvFloat);
        procedure EnqueueGrassAgeMapMow(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aMowAmount:TpvFloat);
-       procedure EnqueueGrassAgeMapUpdate(const aInFlightFrameIndex:TpvSizeInt;const aDeltaTime:TpvFloat);
+       procedure ProcessGrassAgeMapUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+       procedure EnqueueGrassFlagsMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aOuterRadius,aInnerRadius:TpvFloat;const aFlagsSetMask,aFlagsClearMask:TpvUInt32;const aBrushIndex:TpvUInt32=0;const aBrushRotation:TpvFloat=0.0);
+       procedure ProcessGrassFlagsMapFlagsUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure EnqueuePrecipitationMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueAtmosphereMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
@@ -3447,6 +3580,7 @@ type TpvScene3DPlanets=class;
                                         const aCommandBuffer:TpvVulkanCommandBuffer;
                                         const aFence:TpvVulkanFence;
                                         const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessGrassAgeMapSandboxGrowth(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessWaterSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareAtmospherePrecipitationSimulation(const aQueue:TpvVulkanQueue;
                                                           const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -3565,6 +3699,7 @@ type TpvScene3DPlanets=class;
        property GrassGrowthDuration:TpvFloat read fGrassGrowthDuration write fGrassGrowthDuration;
        property GrassDecayRate:TpvFloat read fGrassDecayRate write fGrassDecayRate;
        property GrassWaterThreshold:TpvFloat read fGrassWaterThreshold write fGrassWaterThreshold;
+       property GrassSandboxGrowthDuration:TpvFloat read fGrassSandboxGrowthDuration write fGrassSandboxGrowthDuration;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -4597,6 +4732,20 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassAgeMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassAgeMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassAgeMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassAgeMapImage.ImageView');
 
+   fGrassFlagsMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+                                                         fPlanet.fGrassMapResolution,
+                                                         fPlanet.fGrassMapResolution,
+                                                         VK_FORMAT_R32_UINT,
+                                                         true,
+                                                         VK_SAMPLE_COUNT_1_BIT,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         ImageSharingMode,
+                                                         ImageQueueFamilyIndices,
+                                                         pvAllocationGroupIDScene3DPlanetStatic,
+                                                         'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassFlagsMapImage');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassFlagsMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassFlagsMapImage.Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassFlagsMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassFlagsMapImage.ImageView');
+
    fPrecipitationMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                             fPlanet.fPrecipitationMapResolution,
                                                             fPlanet.fPrecipitationMapResolution,
@@ -4774,6 +4923,7 @@ begin
    fBlendMapImage:=fPlanet.fData.fBlendMapImage;
    fGrassMapImage:=fPlanet.fData.fGrassMapImage;
    fGrassAgeMapImage:=fPlanet.fData.fGrassAgeMapImage;
+   fGrassFlagsMapImage:=fPlanet.fData.fGrassFlagsMapImage;
    fPrecipitationMapImage:=fPlanet.fData.fPrecipitationMapImage;
    fPrecipitationMiniMapImage:=fPlanet.fData.fPrecipitationMiniMapImage;
    fPrecipitationMiniMapBuffer:=fPlanet.fData.fPrecipitationMiniMapBuffer;
@@ -5564,6 +5714,8 @@ begin
 
   FreeAndNil(fGrassAgeMapImage);
 
+  FreeAndNil(fGrassFlagsMapImage);
+
   FreeAndNil(fPrecipitationMapImage);
 
   FreeAndNil(fPrecipitationMiniMapImage);
@@ -5601,6 +5753,10 @@ begin
   fBlendMapImage:=nil;
 
   fGrassMapImage:=nil;
+
+  fGrassAgeMapImage:=nil;
+
+  fGrassFlagsMapImage:=nil;
 
   fPrecipitationMapImage:=nil;
 
@@ -9389,6 +9545,8 @@ begin
 
  fGrassAgeMapData:=TMemoryStream.Create;
 
+ fGrassFlagsMapData:=TMemoryStream.Create;
+
  fPrecipitationMapData:=TMemoryStream.Create;
 
  fPrecipitationSimulationMapData:=TMemoryStream.Create;
@@ -9410,6 +9568,7 @@ begin
  FreeAndNil(fBlendMapData);
  FreeAndNil(fGrassMapData);
  FreeAndNil(fGrassAgeMapData);
+ FreeAndNil(fGrassFlagsMapData);
  FreeAndNil(fPrecipitationMapData);
  FreeAndNil(fPrecipitationSimulationMapData);
  FreeAndNil(fPrecipitationAdvectionMapData);
@@ -9443,6 +9602,10 @@ begin
 
  if fGrassAgeMapData.Size<>(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat)) then begin
   fGrassAgeMapData.SetSize(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+ end;
+
+ if fGrassFlagsMapData.Size<>(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32)) then begin
+  fGrassFlagsMapData.SetSize(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
  end;
 
  if fPrecipitationMapData.Size<>(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvInt8)) then begin
@@ -9865,6 +10028,91 @@ begin
                                                 0,
                                                 fGrassAgeMapData.Memory^,
                                                 fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+
+  end;
+
+  // Grass flags map
+  begin
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,
+                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+   end;
+
+   // Copy the grass flags map to the buffer
+   begin
+
+    BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                               fGrassMapResolution,
+                                               fGrassMapResolution,
+                                               TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                               TVkOffset3D.Create(0,0,0),
+                                               TVkExtent3D.Create(fGrassMapResolution,fGrassMapResolution,1));
+
+    aCommandBuffer.CmdCopyImageToBuffer(fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                        TemporaryBuffer.Handle,
+                                        1,
+                                        @BufferImageCopy);
+   end;
+
+   // Change the layout of the grass flags map image back to shader read only optimal
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                     0,
+                                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+   // Download the buffer of the grass flags map data to fGrassFlagsMapData
+   fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                aCommandBuffer,
+                                                aFence,
+                                                TemporaryBuffer,
+                                                0,
+                                                fGrassFlagsMapData.Memory^,
+                                                fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
 
   end;
 
@@ -10732,6 +10980,98 @@ begin
 
   end;
 
+  if (fGrassFlagsMapData.Size=(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32))) and
+    (fPlanet.fGrassMapResolution=fGrassMapResolution) then begin
+
+   // Upload the grass flags map data from fGrassFlagsMapData to the buffer
+   fPlanet.fVulkanDevice.MemoryStaging.Upload(aQueue,
+                                             aCommandBuffer,
+                                             aFence,
+                                             fGrassFlagsMapData.Memory^,
+                                             TemporaryBuffer,
+                                             0,
+                                             fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
+
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+
+   // Change the layout of the grass flags map image to transfer destination optimal
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,
+                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+   end;
+
+   // Copy the buffer to the grass flags map image
+   begin
+
+    BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                               fGrassMapResolution,
+                                               fGrassMapResolution,
+                                               TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                               TVkOffset3D.Create(0,0,0),
+                                               TVkExtent3D.Create(fGrassMapResolution,fGrassMapResolution,1));
+
+    aCommandBuffer.CmdCopyBufferToImage(TemporaryBuffer.Handle,
+                                        fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                        1,
+                                        @BufferImageCopy);
+
+   end;
+
+   // Change the layout of the grass flags map image back to shader read only optimal
+   begin
+
+    ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                     TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                     0,
+                                                                                     1,
+                                                                                     0,
+                                                                                     1));
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                      0,
+                                      0,nil,
+                                      0,nil,
+                                      1,@ImageMemoryBarrier);
+
+   end;
+
+   aCommandBuffer.EndRecording;
+
+   aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+   inc(fPlanet.fData.fGrassFlagsMapGeneration);
+
+  end;
+
   if (fPrecipitationMapData.Size=(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvInt8))) and
      (fPlanet.fPrecipitationMapResolution=fPrecipitationMapResolution) then begin
 
@@ -11462,6 +11802,7 @@ var Header:TpvScene3DPlanet.TSerializedData.THeader;
     InData,DecodedInData,OutData:pointer;
     UncompressedStream:TMemoryStream;
     GrassAgeMapDataP:PpvFloat;
+    GrassFlagsMapDataP:PpvUInt32;
 begin
 
  fPlanet.fData.fWaterFirst:=true;
@@ -11490,6 +11831,15 @@ begin
   for Index:=0 to (fGrassMapResolution*fGrassMapResolution)-1 do begin
    GrassAgeMapDataP^:=1.0;
    inc(GrassAgeMapDataP);
+  end;
+  // Default GrassFlagsMap to GRASS_FLAG_MANUALLY_PLACED ($01) for backward compat:
+  // existing grass texels already have a placement flag so FlagsUpdate won't reset ages.
+  // Non-grass texels will have their flags cleared by FlagsUpdate on the first frame.
+  fGrassFlagsMapData.SetSize(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
+  GrassFlagsMapDataP:=fGrassFlagsMapData.Memory;
+  for Index:=0 to (fGrassMapResolution*fGrassMapResolution)-1 do begin
+   GrassFlagsMapDataP^:=$01;
+   inc(GrassFlagsMapDataP);
   end;
  end;
 
@@ -11720,6 +12070,30 @@ begin
        end;
       finally
        FreeMem(InData);
+      end;
+
+     end;
+
+    end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureGrassFlagsMapData then begin
+
+     aStream.ReadBuffer(GrassMapDataChunkHeader,SizeOf(TGrassMapDataChunkHeader));
+
+     fGrassFlagsMapData.Seek(0,soBeginning);
+
+     if GrassMapDataChunkHeader.Resolution=fGrassMapResolution then begin
+
+      fGrassFlagsMapData.CopyFrom(aStream,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
+
+     end else begin
+
+      // Resolution mismatch: skip source data and zero-fill; FlagsUpdate rebuilds on next frame
+      aStream.Seek(GrassMapDataChunkHeader.Resolution*GrassMapDataChunkHeader.Resolution*SizeOf(TpvUInt32),soCurrent);
+      GetMem(OutData,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
+      try
+       FillChar(OutData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32),0);
+       fGrassFlagsMapData.WriteBuffer(OutData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
+      finally
+       FreeMem(OutData);
       end;
 
      end;
@@ -12228,8 +12602,32 @@ begin
    end else begin
     GetMem(InData,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
     try
-     FillChar(InData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat),0);
+     FillChar(InData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat),#0);
      OutStream.WriteBuffer(InData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvFloat));
+    finally
+     FreeMem(InData);
+    end;
+   end;
+
+  end;
+
+  begin
+
+   Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignatureGrassFlagsMapData;
+   Chunk.Size:=SizeOf(TGrassMapDataChunkHeader)+(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
+   OutStream.WriteBuffer(Chunk,SizeOf(TChunk));
+
+   GrassMapDataChunkHeader.Resolution:=fGrassMapResolution;
+   OutStream.WriteBuffer(GrassMapDataChunkHeader,SizeOf(TGrassMapDataChunkHeader));
+
+   if fGrassFlagsMapData.Size=(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32)) then begin
+    fGrassFlagsMapData.Seek(0,soBeginning);
+    OutStream.CopyFrom(fGrassFlagsMapData,fGrassFlagsMapData.Size);
+   end else begin
+    GetMem(InData,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
+    try
+     FillChar(InData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32),#0);
+     OutStream.WriteBuffer(InData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
     finally
      FreeMem(InData);
     end;
@@ -14905,6 +15303,12 @@ begin
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
+  fDescriptorSetLayout.AddBinding(3,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
   fDescriptorSetLayout.Initialize;
 
   fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
@@ -14917,7 +15321,7 @@ begin
   fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                   1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),2);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),3);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
   fDescriptorPool.Initialize;
 
@@ -14951,6 +15355,16 @@ begin
                                       [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
                                                                      fPlanet.fData.fWaterMiniMapImage.VulkanImageView.Handle,
                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(3,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                    fPlanet.fData.fGrassFlagsMapImage.VulkanImageView.Handle,
+                                                                    VK_IMAGE_LAYOUT_GENERAL)],
                                       [],
                                       [],
                                       false);
@@ -14995,7 +15409,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TGrassAgeMapUpdate.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvFloat);
-var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+var ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
 begin
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet GrassAgeMapUpdate',[0.25,0.75,0.5,1.0]);
@@ -15026,12 +15440,25 @@ begin
                                                                                       0,
                                                                                       1));
 
+ ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                       TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                       0,
+                                                                                       1,
+                                                                                       0,
+                                                                                       1));
+
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,
                                    0,nil,
                                    0,nil,
-                                   2,@ImageMemoryBarriers[0]);
+                                   3,@ImageMemoryBarriers[0]);
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
@@ -15090,14 +15517,915 @@ begin
                                                                                       0,
                                                                                       1));
 
+ ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                       TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                       0,
+                                                                                       1,
+                                                                                       0,
+                                                                                       1));
+
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
                                    0,
                                    0,nil,
                                    0,nil,
-                                   2,@ImageMemoryBarriers[0]);
+                                   3,@ImageMemoryBarriers[0]);
 
  inc(fPlanet.fData.fGrassAgeMapGeneration);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
+{ TpvScene3DPlanet.TGrassAgeMapSandboxGrowth }
+
+constructor TpvScene3DPlanet.TGrassAgeMapSandboxGrowth.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grassagemap_sandboxgrowth_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TGrassAgeMapSandboxGrowth.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(1,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(2,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TGrassAgeMapSandboxGrowth.fPipelineLayout');
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                  1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),3);
+  fDescriptorPool.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TGrassAgeMapSandboxGrowth.fDescriptorPool');
+
+  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+  fDescriptorSet.WriteToDescriptorSet(0,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fGrassAgeMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(1,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fGrassMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(2,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fGrassFlagsMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.Flush;
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+  fPushConstants.DeltaTime:=1.0;
+  fPushConstants.GrowthDuration:=30.0;
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TGrassAgeMapSandboxGrowth.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fDescriptorSet);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TGrassAgeMapSandboxGrowth.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvFloat);
+var ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
+begin
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet GrassAgeMapSandboxGrowth',[0.25,0.85,0.4,1.0]);
+
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fGrassAgeMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+
+ ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+
+ ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                       TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                       0,
+                                                                                       1,
+                                                                                       0,
+                                                                                       1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   3,@ImageMemoryBarriers[0]);
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fDescriptorSet.Handle,
+                                      0,
+                                      nil);
+
+ fPushConstants.DeltaTime:=aDeltaTime;
+ fPushConstants.GrowthDuration:=fPlanet.fGrassSandboxGrowthDuration;
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);
+
+ if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
+  fPlanet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'GrassAgeMapSandboxGrowth');
+ end;
+ aCommandBuffer.CmdDispatch((fPlanet.fGrassMapResolution+15) shr 4,
+                            (fPlanet.fGrassMapResolution+15) shr 4,
+                            1);
+ if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
+  fPlanet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
+
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fGrassAgeMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+
+ ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+
+ ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                       TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                       0,
+                                                                                       1,
+                                                                                       0,
+                                                                                       1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   3,@ImageMemoryBarriers[0]);
+
+ inc(fPlanet.fData.fGrassAgeMapGeneration);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
+{ TpvScene3DPlanet.TGrassFlagsMapInitialization }
+
+constructor TpvScene3DPlanet.TGrassFlagsMapInitialization.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grassflagsmap_initialization_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TGrassFlagsMapInitialization.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TGrassFlagsMapInitialization.fPipelineLayout');
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                  1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
+  fDescriptorPool.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TGrassFlagsMapInitialization.fDescriptorPool');
+
+  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+  fDescriptorSet.WriteToDescriptorSet(0,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fGrassFlagsMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.Flush;
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+  fPushConstants.Dummy:=0;
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TGrassFlagsMapInitialization.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fDescriptorSet);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TGrassFlagsMapInitialization.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarrier:TVkImageMemoryBarrier;
+begin
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet GrassFlagsMapInitialization',[0.25,0.75,0.5,1.0]);
+
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                  TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                  0,
+                                                                                  1,
+                                                                                  0,
+                                                                                  1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fDescriptorSet.Handle,
+                                      0,
+                                      nil);
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);
+
+ if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
+  fPlanet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'GrassFlagsMapInitialization');
+ end;
+ aCommandBuffer.CmdDispatch((fPlanet.fGrassMapResolution+15) shr 4,
+                            (fPlanet.fGrassMapResolution+15) shr 4,
+                            1);
+ if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
+  fPlanet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
+
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                  TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                  0,
+                                                                                  1,
+                                                                                  0,
+                                                                                  1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);
+
+ inc(fPlanet.fData.fGrassFlagsMapGeneration);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
+{ TpvScene3DPlanet.TGrassFlagsMapModification }
+
+constructor TpvScene3DPlanet.TGrassFlagsMapModification.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grassflagsmap_modification_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TGrassFlagsMapModification.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(1,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                  16,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TGrassFlagsMapModification.fPipelineLayout');
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                  1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
+  fDescriptorPool.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TGrassFlagsMapModification.fDescriptorPool');
+
+  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+  fDescriptorSet.WriteToDescriptorSet(0,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fGrassFlagsMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(1,
+                                      0,
+                                      16,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                      fPlanet.GetBrushesTexturesDescriptorImageInfos,
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.Flush;
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TGrassFlagsMapModification.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fDescriptorSet);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TGrassFlagsMapModification.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aItem:TGrassFlagsMapModificationItem);
+var ImageMemoryBarrier:TVkImageMemoryBarrier;
+begin
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet GrassFlagsMapModification',[0.25,0.75,0.5,1.0]);
+
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                  TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                  0,
+                                                                                  1,
+                                                                                  0,
+                                                                                  1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fDescriptorSet.Handle,
+                                      0,
+                                      nil);
+
+ fPushConstants.PositionRadius:=aItem.PositionRadius;
+ fPushConstants.FlagsSetMask:=aItem.FlagsSetMask;
+ fPushConstants.FlagsClearMask:=aItem.FlagsClearMask;
+ fPushConstants.InnerRadius:=Max(1e-6,aItem.InnerRadius);
+ fPushConstants.BrushIndex:=aItem.BrushIndex;
+ fPushConstants.BrushRotation:=aItem.BrushRotation*TwoPI;
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);
+
+ if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
+  fPlanet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'GrassFlagsMapModification');
+ end;
+ aCommandBuffer.CmdDispatch((fPlanet.fGrassMapResolution+15) shr 4,
+                            (fPlanet.fGrassMapResolution+15) shr 4,
+                            1);
+ if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
+  fPlanet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
+
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                  TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                  0,
+                                                                                  1,
+                                                                                  0,
+                                                                                  1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);
+
+ inc(fPlanet.fData.fGrassFlagsMapGeneration);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
+{ TpvScene3DPlanet.TGrassFlagsMapFlagsUpdate }
+
+constructor TpvScene3DPlanet.TGrassFlagsMapFlagsUpdate.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grassflagsmap_flagsupdate_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TGrassFlagsMapFlagsUpdate.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(1,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(2,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TGrassFlagsMapFlagsUpdate.fPipelineLayout');
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                  1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),3);
+  fDescriptorPool.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TGrassFlagsMapFlagsUpdate.fDescriptorPool');
+
+  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+  fDescriptorSet.WriteToDescriptorSet(0,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fGrassFlagsMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(1,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fGrassMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(2,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                     fPlanet.fData.fGrassAgeMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.Flush;
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+  fPushConstants.Dummy:=0;
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TGrassFlagsMapFlagsUpdate.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fDescriptorSet);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TGrassFlagsMapFlagsUpdate.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
+begin
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet GrassFlagsMapFlagsUpdate',[0.25,0.75,0.5,1.0]);
+
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+ ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+ ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fGrassAgeMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   3,@ImageMemoryBarriers[0]);
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fDescriptorSet.Handle,
+                                      0,
+                                      nil);
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);
+
+ if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
+  fPlanet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'GrassFlagsMapFlagsUpdate');
+ end;
+ aCommandBuffer.CmdDispatch((fPlanet.fGrassMapResolution+15) shr 4,
+                            (fPlanet.fGrassMapResolution+15) shr 4,
+                            1);
+ if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
+  fPlanet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
+
+ ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fGrassFlagsMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+ ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fGrassMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+ ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      fPlanet.fData.fGrassAgeMapImage.VulkanImage.Handle,
+                                                      TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                      0,
+                                                                                      1,
+                                                                                      0,
+                                                                                      1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   3,@ImageMemoryBarriers[0]);
+
+ inc(fPlanet.fData.fGrassFlagsMapGeneration);
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -31517,11 +32845,21 @@ begin
 
  fGrassAgeMapUpdate:=TGrassAgeMapUpdate.Create(self);
 
+ fGrassAgeMapSandboxGrowth:=TGrassAgeMapSandboxGrowth.Create(self);
+
+ fGrassFlagsMapInitialization:=TGrassFlagsMapInitialization.Create(self);
+
+ fGrassFlagsMapModification:=TGrassFlagsMapModification.Create(self);
+
+ fGrassFlagsMapFlagsUpdate:=TGrassFlagsMapFlagsUpdate.Create(self);
+
  fGrassGrowthDuration:=300.0;
 
  fGrassDecayRate:=0.1;
 
  fGrassWaterThreshold:=0.1;
+
+ fGrassSandboxGrowthDuration:=3.0;
 
  fPrecipitationMapInitialization:=TPrecipitationMapInitialization.Create(self);
 
@@ -31692,6 +33030,16 @@ begin
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                    [],
                                                                    [fPlanetDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                   [],
+                                                                   false);
+    fPlanetDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                   [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralNearestSampler.Handle,
+                                                                                                  fInFlightFrameDataList[InFlightFrameIndex].fGrassFlagsMapImage.VulkanImageView.Handle,
+                                                                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                   [],
                                                                    [],
                                                                    false);
     fPlanetDescriptorSets[InFlightFrameIndex].Flush;
@@ -31949,6 +33297,14 @@ begin
  FreeAndNil(fGrassAgeMapMow);
 
  FreeAndNil(fGrassAgeMapUpdate);
+
+ FreeAndNil(fGrassAgeMapSandboxGrowth);
+
+ FreeAndNil(fGrassFlagsMapFlagsUpdate);
+
+ FreeAndNil(fGrassFlagsMapModification);
+
+ FreeAndNil(fGrassFlagsMapInitialization);
 
  FreeAndNil(fBlendMapInitialization);
 
@@ -32716,6 +34072,14 @@ begin
                    [],
                    0);
 
+ // GrassFlagsMap (R32_UINT, nearest sampler, separate binding)
+ result.AddBinding(2,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                   1,
+                   ShaderStageFlags,
+                   [],
+                   0);
+
  result.Initialize;
 
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetDescriptorSetLayout');
@@ -32727,7 +34091,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),31*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),(31+1)*aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetDescriptorPool');
@@ -33320,6 +34684,8 @@ begin
 
      fGrassAgeMapInitialization.Execute(fVulkanUpdateCommandBuffer);
 
+     fGrassFlagsMapInitialization.Execute(fVulkanUpdateCommandBuffer);
+
      fPrecipitationMapInitialization.Execute(fVulkanUpdateCommandBuffer);
 
      fAtmosphereMapInitialization.Execute(fVulkanUpdateCommandBuffer);
@@ -33574,7 +34940,7 @@ var QueueTileIndex,Steps:TpvSizeInt;
     CurrentRaytracingTileQueue:TRaytracingTiles;
     GrassMapModificationItem:TGrassMapModificationItem;
     GrassAgeMapModificationItem:TGrassAgeMapModificationItem;
-    GrassAgeMapUpdateItem:TGrassAgeMapUpdateItem;
+    GrassFlagsMapModificationItem:TGrassFlagsMapModificationItem;
     NowTime:TpvHighResolutionTime;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
 begin
@@ -33749,7 +35115,7 @@ begin
 
  end;
 
- if (aInFlightFrameIndex>=0) and fSimulationActive and not fGrassAgeMapUpdatePerInFlightFrameItems[aInFlightFrameIndex].IsEmpty then begin
+ if (aInFlightFrameIndex>=0) and not fGrassFlagsMapModificationPerInFlightFrameItems[aInFlightFrameIndex].IsEmpty then begin
 
   if assigned(fVulkanDevice) then begin
 
@@ -33757,13 +35123,15 @@ begin
    BeginUpdate;
    try
 
-    while fGrassAgeMapUpdatePerInFlightFrameItems[aInFlightFrameIndex].Dequeue(GrassAgeMapUpdateItem) do begin
-     fGrassAgeMapUpdate.Execute(fVulkanUpdateCommandBuffer,GrassAgeMapUpdateItem.DeltaTime);
+    while fGrassFlagsMapModificationPerInFlightFrameItems[aInFlightFrameIndex].Dequeue(GrassFlagsMapModificationItem) do begin
+     fGrassFlagsMapModification.Execute(fVulkanUpdateCommandBuffer,GrassFlagsMapModificationItem);
     end;
 
    finally
     EndUpdate;
    end;
+
+   UpdatedGrass:=true;
 
   end;
 
@@ -34405,6 +35773,8 @@ begin
      ((InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) or
       (InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration) or
       (InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration) or
+      (InFlightFrameData.fGrassAgeMapGeneration<>fData.fGrassAgeMapGeneration) or
+      (InFlightFrameData.fGrassFlagsMapGeneration<>fData.fGrassFlagsMapGeneration) or
       (InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration) or
       (InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration)) then begin
 
@@ -34440,6 +35810,7 @@ begin
     InFlightFrameData.fBlendMapGeneration:=fData.fBlendMapGeneration;
     InFlightFrameData.fGrassMapGeneration:=fData.fGrassMapGeneration;
     InFlightFrameData.fGrassAgeMapGeneration:=fData.fGrassAgeMapGeneration;
+    InFlightFrameData.fGrassFlagsMapGeneration:=fData.fGrassFlagsMapGeneration;
     InFlightFrameData.fPrecipitationMapGeneration:=fData.fPrecipitationMapGeneration;
     InFlightFrameData.fAtmosphereMapGeneration:=fData.fAtmosphereMapGeneration;
 
@@ -35137,12 +36508,38 @@ begin
  end;
 end;
 
-procedure TpvScene3DPlanet.EnqueueGrassAgeMapUpdate(const aInFlightFrameIndex:TpvSizeInt;const aDeltaTime:TpvFloat);
-var GrassAgeMapUpdateItem:TGrassAgeMapUpdateItem;
+procedure TpvScene3DPlanet.ProcessGrassAgeMapUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) and fSimulationActive then begin
+  fGrassAgeMapUpdate.Execute(aCommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex]);
+ end;
+end;
+
+procedure TpvScene3DPlanet.ProcessGrassAgeMapSandboxGrowth(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) and not fSimulationActive then begin
+  fGrassAgeMapSandboxGrowth.Execute(aCommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex]);
+ end;
+end;
+
+procedure TpvScene3DPlanet.EnqueueGrassFlagsMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aOuterRadius,aInnerRadius:TpvFloat;const aFlagsSetMask,aFlagsClearMask:TpvUInt32;const aBrushIndex:TpvUInt32=0;const aBrushRotation:TpvFloat=0.0);
+var Item:TGrassFlagsMapModificationItem;
 begin
  if aInFlightFrameIndex>=0 then begin
-  GrassAgeMapUpdateItem.DeltaTime:=aDeltaTime;
-  fGrassAgeMapUpdatePerInFlightFrameItems[aInFlightFrameIndex].Enqueue(GrassAgeMapUpdateItem);
+  Item.PositionRadius:=TpvVector4.Create(aPosition.Normalize,aOuterRadius);
+  Item.FlagsSetMask:=aFlagsSetMask;
+  Item.FlagsClearMask:=aFlagsClearMask;
+  Item.InnerRadius:=aInnerRadius;
+  Item.BrushIndex:=aBrushIndex;
+  Item.BrushRotation:=aBrushRotation;
+  fGrassFlagsMapModificationPerInFlightFrameItems[aInFlightFrameIndex].Enqueue(Item);
+ end;
+end;
+
+procedure TpvScene3DPlanet.ProcessGrassFlagsMapFlagsUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
+  fGrassFlagsMapFlagsUpdate.Execute(aCommandBuffer);
  end;
 end;
 
@@ -35326,6 +36723,7 @@ begin
   fGrassGrowthDuration:=TPasJSON.GetNumber(JSONGrassObject.Properties['growthduration'],fGrassGrowthDuration);
   fGrassDecayRate:=TPasJSON.GetNumber(JSONGrassObject.Properties['decayrate'],fGrassDecayRate);
   fGrassWaterThreshold:=TPasJSON.GetNumber(JSONGrassObject.Properties['waterthreshold'],fGrassWaterThreshold);
+  fGrassSandboxGrowthDuration:=TPasJSON.GetNumber(JSONGrassObject.Properties['sandboxgrowthduration'],fGrassSandboxGrowthDuration);
  end;
 end;
 

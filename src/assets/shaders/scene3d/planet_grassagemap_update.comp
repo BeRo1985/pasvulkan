@@ -16,6 +16,8 @@ layout(set = 0, binding = 1, r32f) uniform image2D uImageGrassMap;
 
 layout(set = 0, binding = 2) uniform sampler2D uWaterMiniMap;
 
+layout(set = 0, binding = 3, r32ui) uniform readonly uimage2D uImageGrassFlagsMap;
+
 layout(push_constant) uniform PushConstants {
   float deltaTime;
   float growthDuration;
@@ -27,6 +29,7 @@ layout(push_constant) uniform PushConstants {
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
+#include "planet_grassflagsmap.glsl"
 
 void main(){
 
@@ -40,6 +43,13 @@ void main(){
 
     if(density > 0.0){
 
+      uint flags = imageLoad(uImageGrassFlagsMap, texel).x;
+
+      // FROZEN: skip all age changes
+      if((flags & GRASS_FLAG_FROZEN) != 0u){
+        return;
+      }
+
       vec2 uv = (vec2(texel) + vec2(0.5)) / vec2(texSize);
 
       float water = textureLod(uWaterMiniMap, uv, 0).x;
@@ -47,9 +57,18 @@ void main(){
       float age = imageLoad(uImageGrassAgeMap, texel).x;
 
       if(water >= pushConstants.waterThreshold){
-        age = min(age + pushConstants.deltaTime / pushConstants.growthDuration, 1.0);
+
+        // FERTILIZED: 10x faster growth
+        float effectiveDuration = ((flags & GRASS_FLAG_FERTILIZED) != 0u)
+                                  ? (pushConstants.growthDuration * 0.1)
+                                  : pushConstants.growthDuration;
+
+        age = min(age + pushConstants.deltaTime / effectiveDuration, 1.0);
+
       } else {
+
         age = max(age - pushConstants.decayRate * pushConstants.deltaTime, 0.0);
+
       }
 
       imageStore(uImageGrassAgeMap, texel, vec4(age));

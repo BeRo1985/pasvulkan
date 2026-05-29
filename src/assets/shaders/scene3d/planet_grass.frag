@@ -118,6 +118,8 @@ layout (set = 1, binding = 10, std430) readonly buffer FrustumClusterGridData {
 layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
+layout(set = 2, binding = 2) uniform usampler2D uGrassFlagsMap; // GrassFlagsMap R32UI
+
 #define globalRaytracingFlags pushConstants.raytracingFlags
 
 #include "planet_textures.glsl"
@@ -128,6 +130,7 @@ layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0
 
 #include "planet_wetness.glsl"
 #include "planet_grass.glsl"
+#include "planet_grassflagsmap.glsl"
 
 #define FRAGMENT_SHADER
 
@@ -227,7 +230,23 @@ void main(){
 
   const float fakeSelfShadowing = clamp(inBlock.texCoord.y, 0.1, 1.0); 
 
-  vec4 albedo = vec4(baseColorLinearRGB * fakeSelfShadowing, 1.0);  
+  // Sample GrassFlagsMap using the octahedral UV derived from world-space position
+  vec2 grassFlagsUV = octPlanetUnsignedEncode(normalize(inBlock.worldSpacePosition - pushConstants.modelMatrixPositionScale.xyz));
+  uint grassFragFlags = textureLod(uGrassFlagsMap, grassFlagsUV, 0).x;
+
+  vec3 grassAlbedo = baseColorLinearRGB;
+
+  // BURNED: tint towards dark brown
+  if((grassFragFlags & GRASS_FLAG_BURNED) != 0u){
+    grassAlbedo = mix(grassAlbedo, vec3(0.035, 0.015, 0.003), 0.8);
+  }
+
+  // FROZEN: tint towards white-blue
+  if((grassFragFlags & GRASS_FLAG_FROZEN) != 0u){
+    grassAlbedo = mix(grassAlbedo, vec3(0.7, 0.8, 1.0), 0.7);
+  }
+
+  vec4 albedo = vec4(grassAlbedo * fakeSelfShadowing, 1.0);  
 //vec3 baseColor = albedo.xyz;
   vec4 occlusionRoughnessMetallic = vec4(1.0, 0.3, 0.0, 0.0);
 

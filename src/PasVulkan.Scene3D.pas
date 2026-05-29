@@ -4309,6 +4309,7 @@ type EpvScene3D=class(Exception);
        fDefaultParticleTexture:TTexture;
        fGeneralComputeSampler:TpvVulkanSampler;
        fGeneralRepeatingSampler:TpvVulkanSampler;
+       fGeneralNearestSampler:TpvVulkanSampler;
        fPlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetGrassCullAndMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -4878,6 +4879,12 @@ type EpvScene3D=class(Exception);
                                          const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessPlanetWaterSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessPlanetGrassAgeMapUpdateSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                              const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessPlanetGrassAgeMapSandboxGrowthSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                   const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessPlanetGrassFlagsMapFlagsUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                       const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessAtmosphereSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
                                               const aInFlightFrameIndex:TpvSizeInt;
                                               const aQueueFamilyIndex:TpvInt32=-1);
@@ -5102,6 +5109,7 @@ type EpvScene3D=class(Exception);
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
        property GeneralComputeSampler:TpvVulkanSampler read fGeneralComputeSampler;
        property GeneralRepeatingSampler:TpvVulkanSampler read fGeneralRepeatingSampler;
+       property GeneralNearestSampler:TpvVulkanSampler read fGeneralNearestSampler;
        property RaytracingBLASManager:TpvRaytracing read fRaytracing;
        property RaytracingBLASManagerLock:TPasMPMultipleReaderSingleWriterLock read fRaytracingLock;
        property PlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetDescriptorSetLayout;
@@ -34594,6 +34602,24 @@ begin
                                                   false);
   fVulkanDevice.DebugUtils.SetObjectName(fGeneralRepeatingSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3D.fGeneralRepeatingSampler');
 
+  fGeneralNearestSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+                                                  VK_FILTER_NEAREST,
+                                                  VK_FILTER_NEAREST,
+                                                  VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                                  VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                                  VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                                  VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                                  0.0,
+                                                  false,
+                                                  1.0,
+                                                  false,
+                                                  VK_COMPARE_OP_ALWAYS,
+                                                  0.0,
+                                                  0.0,
+                                                  VK_BORDER_COLOR_INT_TRANSPARENT_BLACK,
+                                                  false);
+  fVulkanDevice.DebugUtils.SetObjectName(fGeneralNearestSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3D.fGeneralNearestSampler');
+
   fPlanetDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetDescriptorSetLayout(fVulkanDevice,fMeshShaderSupport);
 
   fPlanetCullDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetCullDescriptorSetLayout(fVulkanDevice);
@@ -35446,6 +35472,8 @@ begin
  FreeAndNil(fGeneralComputeSampler);
 
  FreeAndNil(fGeneralRepeatingSampler);
+
+ FreeAndNil(fGeneralNearestSampler);
 
  FreeAndNil(fPlanetDescriptorSetLayout);
 
@@ -40477,6 +40505,10 @@ begin
     fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fPlanetWaterSimulationQueue,PlanetWaterSimulationCommandBuffer);
 
+    fVulkanDevice.DebugUtils.CmdBufLabelBegin(PlanetWaterSimulationCommandBuffer,'Planet Grass Age Map Update',[0.25,0.75,0.5,1.0]);
+    ProcessPlanetGrassAgeMapUpdateSimulations(PlanetWaterSimulationCommandBuffer,aInFlightFrameIndex);
+    fVulkanDevice.DebugUtils.CmdBufLabelEnd(PlanetWaterSimulationCommandBuffer);
+
     PlanetWaterSimulationCommandBuffer.EndRecording;
 
     PlanetWaterSimulationCommandBufferHandle:=PlanetWaterSimulationCommandBuffer.Handle;
@@ -40549,6 +40581,20 @@ begin
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
    end;
+
+   if not (fEnableWater and fPlanetWaterSimulationUseParallelQueue) then begin
+    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Grass Age Map Update',[0.25,0.75,0.5,1.0]);
+    ProcessPlanetGrassAgeMapUpdateSimulations(CommandBuffer,aInFlightFrameIndex);
+    fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
+   end;
+
+   fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Grass Age Map Sandbox Growth',[0.25,0.85,0.4,1.0]);
+   ProcessPlanetGrassAgeMapSandboxGrowthSimulations(CommandBuffer,aInFlightFrameIndex);
+   fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
+
+   fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Grass Flags Map Flags Update',[0.3,0.8,0.6,1.0]);
+   ProcessPlanetGrassFlagsMapFlagsUpdate(CommandBuffer,aInFlightFrameIndex);
+   fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
 
 // fVulkanDevice.WaitIdle; //123
 
@@ -42484,6 +42530,60 @@ begin
    if Planet.Ready then begin
     Planet.ProcessAtmospherePrecipitationSimulation(aCommandBuffer,aInFlightFrameIndex);
     Planet.ProcessWaterSimulation(aCommandBuffer,aInFlightFrameIndex);
+   end;
+  end;
+ finally
+  TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
+ end;
+end;
+
+procedure TpvScene3D.ProcessPlanetGrassAgeMapUpdateSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                               const aInFlightFrameIndex:TpvSizeInt);
+var PlanetIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+begin
+ TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
+ try
+  for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+   Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+   if Planet.Ready then begin
+    Planet.ProcessGrassAgeMapUpdate(aCommandBuffer,aInFlightFrameIndex);
+   end;
+  end;
+ finally
+  TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
+ end;
+end;
+
+procedure TpvScene3D.ProcessPlanetGrassAgeMapSandboxGrowthSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                       const aInFlightFrameIndex:TpvSizeInt);
+var PlanetIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+begin
+ TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
+ try
+  for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+   Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+   if Planet.Ready then begin
+    Planet.ProcessGrassAgeMapSandboxGrowth(aCommandBuffer,aInFlightFrameIndex);
+   end;
+  end;
+ finally
+  TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
+ end;
+end;
+
+procedure TpvScene3D.ProcessPlanetGrassFlagsMapFlagsUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                            const aInFlightFrameIndex:TpvSizeInt);
+var PlanetIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+begin
+ TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
+ try
+  for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+   Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+   if Planet.Ready then begin
+    Planet.ProcessGrassFlagsMapFlagsUpdate(aCommandBuffer,aInFlightFrameIndex);
    end;
   end;
  finally
