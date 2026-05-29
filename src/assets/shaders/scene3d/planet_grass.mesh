@@ -219,6 +219,7 @@ shared mat3 normalModelMatrix;
 shared vec3 cameraPosition;
 
 shared float grassDensity;
+shared float grassAge;
 shared uint maxCountBlades;
 
 #if defined(MESH_SHADER_EMULATION)
@@ -406,6 +407,8 @@ void main() {
       //ivec2 texSize = ivec2(textureSize(uPlanetTextures[PLANET_TEXTURE_GRASSMAP], 0).xy);
 
       grassDensity = textureLod(uPlanetTextures[PLANET_TEXTURE_GRASSMAP], (vec2(globalXY) + vec2(0.5)) / vec2(float(pushConstants.tileMapResolution * pushConstants.tileResolution)), 0).x;
+
+      grassAge = textureLod(uPlanetTextures[PLANET_TEXTURE_GRASSAGEMAP], (vec2(globalXY) + vec2(0.5)) / vec2(float(pushConstants.tileMapResolution * pushConstants.tileResolution)), 0).x;
 
       if(grassDensity >= 0.99999){
        
@@ -655,7 +658,8 @@ void main() {
       const vec3 bladeOffset = vec3(offsetDirection.xy, 0.0) * offsetRadius; 
 #endif      
 
-      float bladeHeight = grassHeight * mix(0.25, 1.0, randomFloatData[0].w) * fadeOutFactor;
+      float growthFactor = smoothstep(0.0, 1.0, grassAge);
+      float bladeHeight = grassHeight * mix(0.25, 1.0, randomFloatData[0].w) * fadeOutFactor * growthFactor;
       float bladeLeaning = grassLeaning * mix(0.1, 1.0, randomFloatData[1].x);
 
 #ifdef FineOffseting
