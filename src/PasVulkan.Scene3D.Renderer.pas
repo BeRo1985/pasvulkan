@@ -706,7 +706,7 @@ begin
  fShadowMapSize:=Max(16,fShadowMapSize);
 
  if fCloudsShadowMapSize=0 then begin
-  fCloudsShadowMapSize:=512;
+  fCloudsShadowMapSize:=2048;
  end;
 
  fCloudsShadowMapSize:=Max(16,fCloudsShadowMapSize);
