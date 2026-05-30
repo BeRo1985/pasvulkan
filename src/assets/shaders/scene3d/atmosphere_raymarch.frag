@@ -724,20 +724,24 @@ void main() {
       transmittance = mix(vec3(1.0), transmittance, fadeFactor);
     }
 
-    // Extra distance-based extinction boost: fades far away background objects (asteroids, other space objects, the
-    // starfield) into the atmospheric haze, since the physically correct zenith transmittance alone is too high to
-    // occlude them on a small planet. rayLength is the distance to the background object (+inf for sky/far pixels).
-    // The boost also grows the in-scattering that the extra (virtual) atmosphere would contribute, so distant objects
-    // blend into the haze colour instead of turning black.
-    {
+    // Extra distance-based extinction boost: fades far away background objects (asteroids, other space objects) into
+    // the atmospheric haze, since the physically correct zenith transmittance alone is too high to occlude them on a
+    // small planet. It is only applied to actual scene geometry (needAerialPerspective), never to sky/space/skybox
+    // pixels (depthIsZFar) - otherwise the sky would be tinted and the starfield/skybox would turn black in space.
+    // rayLength is the distance to the background object. The boost also grows the already accumulated in-scattering
+    // (haze) so distant objects blend into the haze colour instead of turning black. To keep the haze hue stable the
+    // in-scattering is scaled by a single scalar luminance ratio rather than a per-channel ratio (a per-channel
+    // L / (1 - T) over-amplifies the red channel - which has the highest transmittance - and shifts the colour to
+    // magenta/purple).
+    if(needAerialPerspective){
       float distantExtinctionBoost = GetDistantExtinctionBoost(uAtmosphereParameters.atmosphereParameters, rayLength);
       if(distantExtinctionBoost > 0.0){
         vec3 boostedTransmittance = transmittance * exp(vec3(-distantExtinctionBoost));
-        // Estimate the equilibrium in-scattered (haze) radiance from the already accumulated single-scattering
-        // (L = Leq * (1 - T)) and re-evaluate it for the boosted optical depth, so the object fades into the sky
-        // colour rather than to black. This is fade-factor invariant since L and (1 - T) are scaled alike.
-        vec3 equilibriumInscattering = inscattering / max(vec3(1e-4), vec3(1.0) - transmittance);
-        inscattering = equilibriumInscattering * (vec3(1.0) - boostedTransmittance);
+        const vec3 luminanceWeights = vec3(0.2126, 0.7152, 0.0722);
+        float opacityBefore = 1.0 - dot(transmittance, luminanceWeights);
+        float opacityAfter = 1.0 - dot(boostedTransmittance, luminanceWeights);
+        float hazeGrow = opacityAfter / max(1e-4, opacityBefore);
+        inscattering *= hazeGrow;
         transmittance = boostedTransmittance;
       }
     }
