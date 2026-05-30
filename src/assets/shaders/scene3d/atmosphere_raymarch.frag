@@ -690,12 +690,15 @@ void main() {
 
   }
 
-  if(cloudsValid){
-    cloudsValid = false;
-    addScatteringSample(cloudsInscattering.xyz, cloudsTransmittance.xyz);
-  }
+  // Note: The volumetric clouds are intentionally NOT added as a scattering sample here anymore. They are the
+  // front-most layer and are instead composited manually further below, AFTER the distant extinction boost has
+  // been applied to the clean atmospheric haze. Otherwise the cloud layer (with its dark transmittance and
+  // cloud-shadowed inscattering) would pollute the boost's haze-masking math, so distant background objects
+  // (asteroids) would stop fading into the haze wherever clouds are in front of them.
+  bool compositeClouds = cloudsValid;
+  cloudsValid = false;
 
-  if(countScatteringSamples > 0){
+  if((countScatteringSamples > 0) || compositeClouds){
 
     vec3 inscattering = vec3(0.0);
     vec3 transmittance = vec3(1.0);
@@ -744,6 +747,16 @@ void main() {
         inscattering *= hazeGrow;
         transmittance = boostedTransmittance;
       }
+    }
+
+    // Composite the volumetric clouds as the front-most layer now, AFTER the distant extinction boost has faded
+    // the distant background objects into the clean atmospheric haze. This keeps the boost independent of the
+    // cloud layer (and its cloud-shadowed inscattering), so distant objects (asteroids) stay equally occluded by
+    // the haze whether or not clouds happen to be in front of them. When there are no clouds at this pixel,
+    // cloudsInscattering/cloudsTransmittance are their identity defaults (0 / 1), so this is a no-op.
+    if(compositeClouds){
+      inscattering = cloudsInscattering.xyz + (inscattering * cloudsTransmittance.xyz);
+      transmittance *= cloudsTransmittance.xyz;
     }
 
     if(atmosphereCullingFactor < 1.0){
