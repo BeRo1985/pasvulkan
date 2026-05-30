@@ -43,30 +43,29 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
 }  
 #endif
 
-float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition){
+#include "octahedral.glsl"
+
+float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition, const in vec3 lightDirection){
   if(!all(equal(globalBDAPointers.cloudsShadowMapBDA, uvec2(0u)))){
     CloudsShadowMapDataBDABuffer csm = CloudsShadowMapDataBDABuffer(globalBDAPointers.cloudsShadowMapBDA);
     if(csm.params.x > 0.5){
-      vec4 csmPos = csm.matrix * vec4(worldSpacePosition, 1.0);
-      vec2 csmUV = csmPos.xy * 0.5 + 0.5;
-      if(all(greaterThanEqual(csmUV, vec2(0.0))) && all(lessThanEqual(csmUV, vec2(1.0)))){
-        vec2 csmSample = texture(uPassTextures[3], vec3(csmUV, 0.0)).rg;
-        float cloudTransmittance = csmSample.r;
-        float cloudBaseT = csmSample.g;
-        float receiverDepth = csmPos.z * csm.params.z;
-        float penumbraRadius = tan(csm.params.y) * max(0.0, receiverDepth - cloudBaseT);
-        if(penumbraRadius > 0.001){
-          float texelSize = 1.0 / float(textureSize(uPassTextures[3], 0).x);
-          float worldToUV = length(vec3(csm.matrix[0][0], csm.matrix[1][0], csm.matrix[2][0])) * 0.5;
-          float pcfRadius = clamp(penumbraRadius * worldToUV, 0.0, 4.0 * texelSize);
-          cloudTransmittance  = texture(uPassTextures[3], vec3(csmUV + vec2( pcfRadius,  0.0), 0.0)).r;
-          cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2(-pcfRadius,  0.0), 0.0)).r;
-          cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2( 0.0,  pcfRadius), 0.0)).r;
-          cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2( 0.0, -pcfRadius), 0.0)).r;
-          cloudTransmittance *= 0.25;
-        }
-        return cloudTransmittance;
+      vec2 csmUV = octEqualAreaSignedEncode(lightDirection) * 0.5 + 0.5;
+      vec2 csmSample = texture(uPassTextures[3], vec3(csmUV, 0.0)).rg;
+      float cloudTransmittance = csmSample.r;
+      float firstHitT = csmSample.g;
+      float receiverDepth = dot(worldSpacePosition - csm.planetCenter.xyz, lightDirection);
+      float penumbraRadius = tan(csm.params.y) * max(0.0, firstHitT - receiverDepth);
+      if(penumbraRadius > 0.001){
+        float texelSize = 1.0 / float(textureSize(uPassTextures[3], 0).x);
+        float receiverDist = max(length(worldSpacePosition - csm.planetCenter.xyz), 1.0);
+        float pcfRadius = clamp(penumbraRadius / (receiverDist * 3.14159), 0.0, 4.0 * texelSize);
+        cloudTransmittance  = texture(uPassTextures[3], vec3(csmUV + vec2( pcfRadius,  0.0), 0.0)).r;
+        cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2(-pcfRadius,  0.0), 0.0)).r;
+        cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2( 0.0,  pcfRadius), 0.0)).r;
+        cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2( 0.0, -pcfRadius), 0.0)).r;
+        cloudTransmittance *= 0.25;
       }
+      return cloudTransmittance;
     }
   }
   return 1.0;
@@ -491,7 +490,7 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition){
 #else
                   lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, effectiveRayDistance);
 #endif
-                  lightAttenuation *= applyCloudShadowMapAttenuation(inWorldSpacePosition.xyz);
+                  lightAttenuation *= applyCloudShadowMapAttenuation(inWorldSpacePosition.xyz, pointToLightDirection);
                   break;
                 }
 #else // !RAYTRACING
@@ -576,7 +575,7 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition){
 
                   lightAttenuation *= clamp(shadow, 0.0, 1.0); // Clamp just for safety, should not be necessary, but don't hurt either.
 
-                  lightAttenuation *= applyCloudShadowMapAttenuation(inWorldSpacePosition.xyz);
+                  lightAttenuation *= applyCloudShadowMapAttenuation(inWorldSpacePosition.xyz, pointToLightDirection);
 
                   break;
                 }

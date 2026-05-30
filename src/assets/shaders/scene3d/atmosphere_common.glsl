@@ -946,16 +946,29 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
 #endif
 
 #ifdef CLOUDS_SHADOW_ENABLED
-    // Cloud shadow map attenuation — project sample point into light space via BDA
+    // Cloud shadow map attenuation — octahedral lookup from planet center
     if(!all(equal(globalBDAPointers.cloudsShadowMapBDA, uvec2(0u)))){
       CloudsShadowMapDataBDABuffer csm = CloudsShadowMapDataBDABuffer(globalBDAPointers.cloudsShadowMapBDA);
       if(csm.params.x > 0.5){
         vec3 worldSpaceP = (Atmosphere.transform * vec4(P, 1.0)).xyz;
-        vec4 lsPos = csm.matrix * vec4(worldSpaceP, 1.0);
-        vec2 lsUV = lsPos.xy * 0.5 + 0.5;
-        if(all(greaterThanEqual(lsUV, vec2(0.0))) && all(lessThanEqual(lsUV, vec2(1.0)))){
-          shadow *= textureLod(uCloudsShadowMap, lsUV, 0.0).r;
+        vec3 sunDir = csm.lightDir.xyz;
+        vec2 octUV = octEqualAreaSignedEncode(sunDir) * 0.5 + 0.5;
+        vec2 csmSample = textureLod(uCloudsShadowMap, octUV, 0.0).rg;
+        float cloudTransmittance = csmSample.r;
+        float firstHitT = csmSample.g;
+        float receiverDepth = dot(worldSpaceP - csm.planetCenter.xyz, sunDir);
+        float penumbraRadius = tan(csm.params.y) * max(0.0, firstHitT - receiverDepth);
+        if(penumbraRadius > 0.001){
+          float texelSize = 1.0 / float(textureSize(uCloudsShadowMap, 0).x);
+          float receiverDist = max(length(worldSpaceP - csm.planetCenter.xyz), 1.0);
+          float pcfRadius = clamp(penumbraRadius / (receiverDist * 3.14159), 0.0, 4.0 * texelSize);
+          cloudTransmittance  = textureLod(uCloudsShadowMap, octUV + vec2( pcfRadius,  0.0), 0.0).r;
+          cloudTransmittance += textureLod(uCloudsShadowMap, octUV + vec2(-pcfRadius,  0.0), 0.0).r;
+          cloudTransmittance += textureLod(uCloudsShadowMap, octUV + vec2( 0.0,  pcfRadius), 0.0).r;
+          cloudTransmittance += textureLod(uCloudsShadowMap, octUV + vec2( 0.0, -pcfRadius), 0.0).r;
+          cloudTransmittance *= 0.25;
         }
+        shadow *= cloudTransmittance;
       }
     }
 #endif

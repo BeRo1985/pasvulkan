@@ -283,10 +283,10 @@ type { TpvScene3DRendererInstance }
             TCascadedShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapVulkanUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TCloudsShadowMapData=packed record
-             Matrix:TpvMatrix4x4;   // light-space view-projection matrix (64 bytes)
-             Params:TpvVector4;     // x=enabled (1.0), y=sunAngularRadius, z=lightFrustumDepthRange (far-near), w=unused (16 bytes)
-             LightDir:TpvVector4;   // xyz=sun direction world space, w=unused (16 bytes)
-            end;                   // Total: 96 bytes
+             PlanetCenter:TpvVector4; // xyz = planet center world position, w = unused (16 bytes)
+             Params:TpvVector4;       // x=enabled (1.0), y=sunAngularRadius, zw=unused (16 bytes)
+             LightDir:TpvVector4;     // xyz=sun direction world space, w=unused (16 bytes)
+            end;                      // Total: 48 bytes
             PCloudsShadowMapData=^TCloudsShadowMapData;
             TCloudsShadowMapVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
@@ -8284,21 +8284,7 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.AddCloudsShadowMapView(const aInFlightFrameIndex:TpvInt32);
-var Index:TpvSizeInt;
-    InFlightFrameState:PInFlightFrameState;
-    Origin,
-    LightForwardVector,
-    LightSideVector,
-    LightUpVector,
-    Extents,
-    Scale:TpvVector3;
-    View:TpvScene3D.TView;
-    zNear,zFar,f:TpvScalar;
-    BoundingBox:TpvAABB;
-    LightViewMatrix,
-    LightProjectionMatrix,
-    LightViewProjectionMatrix:TpvMatrix4x4;
-    AtmosphereSphere:TpvSphere;
+var InFlightFrameState:PInFlightFrameState;
     Atmosphere:TpvScene3DAtmosphere;
     CloudsShadowMapData:TCloudsShadowMapData;
     OK:boolean;
@@ -8310,16 +8296,12 @@ begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
- BoundingBox:=fScene3D.InFlightFrameBoundingBoxes[aInFlightFrameIndex];
-
  OK:=false;
 
  TpvScene3DAtmospheres(fScene3D.Atmospheres).Lock.AcquireRead;
  try
   if TpvScene3DAtmospheres(fScene3D.Atmospheres).Count>0 then begin
    Atmosphere:=TpvScene3DAtmospheres(fScene3D.Atmospheres).Items[0];
-   AtmosphereSphere:=TpvSphere.Create(Atmosphere.AtmosphereParameters.Center.xyz,Max(Atmosphere.AtmosphereParameters.TopRadius,Max(Atmosphere.AtmosphereParameters.VolumetricClouds.LayerLow.EndHeight,Atmosphere.AtmosphereParameters.VolumetricClouds.LayerHigh.EndHeight)));
-   BoundingBox:=AtmosphereSphere.ToAABB;
    OK:=true;
   end;
  finally
@@ -8328,84 +8310,13 @@ begin
 
  if OK then begin
 
-  BoundingBox.Min.x:=floor(BoundingBox.Min.x/1.0)*1.0;
-  BoundingBox.Min.y:=floor(BoundingBox.Min.y/1.0)*1.0;
-  BoundingBox.Min.z:=floor(BoundingBox.Min.z/1.0)*1.0;
-
-  BoundingBox.Max.x:=ceil(BoundingBox.Max.x/1.0)*1.0;
-  BoundingBox.Max.y:=ceil(BoundingBox.Max.y/1.0)*1.0;
-  BoundingBox.Max.z:=ceil(BoundingBox.Max.z/1.0)*1.0;
-
-  Origin:=(BoundingBox.Min+BoundingBox.Max)*0.5;
-
-  LightForwardVector:=-fScene3D.PrimaryShadowMapLightDirections[aInFlightFrameIndex].xyz.Normalize;
- //LightForwardVector:=-Renderer.EnvironmentCubeMap.LightDirection.xyz.Normalize;
-  LightSideVector:=LightForwardVector.Perpendicular;
- {LightSideVector:=TpvVector3.InlineableCreate(-fViews.Items[0].ViewMatrix.RawComponents[0,2],
-                                               -fViews.Items[0].ViewMatrix.RawComponents[1,2],
-                                               -fViews.Items[0].ViewMatrix.RawComponents[2,2]).Normalize;
-  if abs(LightForwardVector.Dot(LightSideVector))>0.5 then begin
-   if abs(LightForwardVector.Dot(TpvVector3.YAxis))<0.9 then begin
-    LightSideVector:=TpvVector3.YAxis;
-   end else begin
-    LightSideVector:=TpvVector3.ZAxis;
-   end;
-  end;}
-  LightUpVector:=(LightForwardVector.Cross(LightSideVector)).Normalize;
-  LightSideVector:=(LightUpVector.Cross(LightForwardVector)).Normalize;
-  LightViewMatrix.RawComponents[0,0]:=LightSideVector.x;
-  LightViewMatrix.RawComponents[0,1]:=LightUpVector.x;
-  LightViewMatrix.RawComponents[0,2]:=LightForwardVector.x;
-  LightViewMatrix.RawComponents[0,3]:=0.0;
-  LightViewMatrix.RawComponents[1,0]:=LightSideVector.y;
-  LightViewMatrix.RawComponents[1,1]:=LightUpVector.y;
-  LightViewMatrix.RawComponents[1,2]:=LightForwardVector.y;
-  LightViewMatrix.RawComponents[1,3]:=0.0;
-  LightViewMatrix.RawComponents[2,0]:=LightSideVector.z;
-  LightViewMatrix.RawComponents[2,1]:=LightUpVector.z;
-  LightViewMatrix.RawComponents[2,2]:=LightForwardVector.z;
-  LightViewMatrix.RawComponents[2,3]:=0.0;
-  LightViewMatrix.RawComponents[3,0]:=-LightSideVector.Dot(Origin);
-  LightViewMatrix.RawComponents[3,1]:=-LightUpVector.Dot(Origin);
-  LightViewMatrix.RawComponents[3,2]:=-LightForwardVector.Dot(Origin);
-  LightViewMatrix.RawComponents[3,3]:=1.0;
-
-  BoundingBox:=BoundingBox.Transform(LightViewMatrix);
-
- {f:=4.0;
-
-  BoundingBox.Min:=BoundingBox.Min*f;
-
-  BoundingBox.Max:=BoundingBox.Max*f;}
-
-  LightProjectionMatrix:=TpvMatrix4x4.CreateOrthoRightHandedZeroToOne(BoundingBox.Min.x,
-                                                                      BoundingBox.Max.x,
-                                                                      BoundingBox.Min.y,
-                                                                      BoundingBox.Max.y,
-                                                                      BoundingBox.Min.z,
-                                                                      BoundingBox.Max.z);
-
-  Extents:=BoundingBox.Max-BoundingBox.Min;
-
-  Scale:=TpvVector3.InlineableCreate(1.0,1.0,1.0)/Extents;
-
-  LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
-
-  View.ProjectionMatrix:=LightProjectionMatrix;
-  View.InverseProjectionMatrix:=View.ProjectionMatrix.Inverse;
-
-  View.ViewMatrix:=LightViewMatrix;
-  View.InverseViewMatrix:=View.ViewMatrix.Inverse;
-
-  InFlightFrameState^.CloudsShadowMapMatrix:=LightViewProjectionMatrix;
   InFlightFrameState^.CloudsShadowMapLightDirection:=fScene3D.PrimaryShadowMapLightDirections[aInFlightFrameIndex].xyz.Normalize;
-
-  InFlightFrameState^.CloudsShadowMapViewIndex:=fViews[aInFlightFrameIndex].Add(View);
+  InFlightFrameState^.CloudsShadowMapViewIndex:=0;
   InFlightFrameState^.CountCloudsShadowMapViews:=1;
 
   if assigned(fCloudsShadowMapVulkanBuffers[aInFlightFrameIndex]) then begin
-   CloudsShadowMapData.Matrix:=LightViewProjectionMatrix;
-   CloudsShadowMapData.Params:=TpvVector4.InlineableCreate(1.0,Atmosphere.AtmosphereParameters.SunAngularRadius,BoundingBox.Max.z-BoundingBox.Min.z,0.0);
+   CloudsShadowMapData.PlanetCenter:=TpvVector4.InlineableCreate(Atmosphere.AtmosphereParameters.Center.xyz,0.0);
+   CloudsShadowMapData.Params:=TpvVector4.InlineableCreate(1.0,Atmosphere.AtmosphereParameters.SunAngularRadius,0.0,0.0);
    CloudsShadowMapData.LightDir:=TpvVector4.InlineableCreate(InFlightFrameState^.CloudsShadowMapLightDirection.x,
                                                              InFlightFrameState^.CloudsShadowMapLightDirection.y,
                                                              InFlightFrameState^.CloudsShadowMapLightDirection.z,

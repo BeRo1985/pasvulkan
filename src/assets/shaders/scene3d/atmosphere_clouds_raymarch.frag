@@ -67,6 +67,10 @@ layout(push_constant, std140) uniform PushConstants {
 
 #include "math.glsl"
 
+#ifdef CLOUDS_SHADOWMAP
+#include "octahedral.glsl"
+#endif
+
 #ifdef SHADOWS
 #define SPECIAL_SHADOWS
 
@@ -1110,6 +1114,18 @@ void main(){
   sideVector = normalize(view.inverseViewMatrix[0].xyz); 
 
   upVector = normalize(view.inverseViewMatrix[1].xyz); 
+
+#ifdef CLOUDS_SHADOWMAP
+  // Octahedral shadow map: rays from planet center in all directions
+  worldPos = vec3(0.0); // planet center in atmosphere-local space
+  worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(octEqualAreaSignedDecode(uv * 2.0 - 1.0), 0.0)).xyz);
+  {
+    vec3 perp = abs(worldDir.z) < 0.9 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+    sideVector = normalize(cross(worldDir, perp));
+    upVector = normalize(cross(sideVector, worldDir));
+  }
+  projectionVectorScale = 1.0;
+#endif
 
 #if !defined(SHADOWMAP) && !defined(CLOUDS_SHADOWMAP)
 #ifdef MSAA

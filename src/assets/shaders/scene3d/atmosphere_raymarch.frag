@@ -76,6 +76,11 @@ vec3 inWorldSpacePosition, workNormal;
 
 #include "shadows.glsl"
 
+#include "octahedral.glsl"
+
+#define CLOUDS_SHADOW_ENABLED
+layout(set = 2, binding = 14) uniform sampler2D uCloudsShadowMap;
+
 #include "atmosphere_common.glsl"
 
 layout(location = 0) in vec2 inTexCoord;
@@ -125,10 +130,7 @@ layout(set = 2, binding = 12) uniform texture2D uCloudsTransmittanceTexture;
 layout(set = 2, binding = 13) uniform texture2D uCloudsDepthTexture;
 #endif
 
-// Cloud shadow map (single 2D, one layer, no multiview) — transmittance R + firstHitT G
-layout(set = 2, binding = 14) uniform sampler2D uCloudsShadowMap;
-
-#define CLOUDS_SHADOW_ENABLED
+// Cloud shadow map — now declared before atmosphere_common.glsl include above
 
 /*
 #ifdef MSAA

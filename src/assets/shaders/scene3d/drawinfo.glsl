@@ -196,11 +196,10 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer No
 };
 
 // Cloud shadow map data, accessed via BDA from globalBDAPointers.cloudsShadowMapBDA
-// x=enabled (1.0 or 0.0), y=sunAngularRadius, z=lightFrustumDepthRange (far-near), w=unused
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer CloudsShadowMapDataBDABuffer {
-  mat4 matrix;    // light-space view-projection matrix
-  vec4 params;    // x = enabled (1.0) or disabled (0.0), y = sunAngularRadius, z = lightFrustumDepthRange (far-near), w = unused
-  vec4 lightDir;  // xyz = sun direction (world space), w = unused
+  vec4 planetCenter; // xyz = planet center world position, w = unused
+  vec4 params;       // x = enabled (1.0) or disabled (0.0), y = sunAngularRadius, zw = unused
+  vec4 lightDir;     // xyz = sun direction (world space), w = unused
 };
 
 // Indirect command metadata for mesh shader path — 32 bytes, matches TGPUDrawMeshTasksIndirectCommand
