@@ -462,6 +462,9 @@ type TpvScene3DAtmosphere=class;
               DistantExtinctionBoostStartDistance:TpvFloat; // Distance (in atmosphere units) from where the extra distance-based extinction boost starts ramping up
               DistantExtinctionBoostFactor:TpvFloat; // Quadratic ramp factor for the distance-based extinction boost, applied to (distance - startDistance)^2
               DistantExtinctionBoostMax:TpvFloat; // Maximum additional optical depth added by the distance-based extinction boost, 0.0 = feature disabled (default)
+              DistantExtinctionBoostPathFadeExpScale:TpvFloat; // Exponent applied to the normalised atmosphere-path-length fade (outside regime); default 2.0
+              DistantExtinctionBoostOutsideFactorExpScale:TpvFloat; // Exponent applied to the inside/outside blending factor; default 2.0
+              DistantExtinctionBoostAltitudeFadeExpScale:TpvFloat; // Exponent applied to the altitude-density fade (inside regime); default 1.0
               Intensity:TpvFloat;
               MiePhaseFunctionG:TpvFloat;
               SunAngularRadius:TpvFloat;
@@ -666,6 +669,10 @@ type TpvScene3DAtmosphere=class;
               DistantExtinctionBoostStartDistance:TpvFloat;
               DistantExtinctionBoostFactor:TpvFloat;
               DistantExtinctionBoostMax:TpvFloat;
+              DistantExtinctionBoostPathFadeExpScale:TpvFloat;
+              DistantExtinctionBoostOutsideFactorExpScale:TpvFloat;
+              DistantExtinctionBoostAltitudeFadeExpScale:TpvFloat;
+              _DistantExtinctionBoostReserved:TpvFloat; // padding to keep AtmosphereCullingParameters (uvec4 → align 16) at a 16-byte-aligned offset
 
               AtmosphereCullingParameters:TGPUAtmosphereCullingParameters;
 
@@ -1483,6 +1490,9 @@ begin
  DistantExtinctionBoostStartDistance:=0.0;
  DistantExtinctionBoostFactor:=0.0;
  DistantExtinctionBoostMax:=0.0;
+ DistantExtinctionBoostPathFadeExpScale:=2.0;
+ DistantExtinctionBoostOutsideFactorExpScale:=2.0;
+ DistantExtinctionBoostAltitudeFadeExpScale:=1.0;
 
  // Intensity 
  Intensity:=1.0;
@@ -1575,6 +1585,9 @@ begin
   DistantExtinctionBoostStartDistance:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionbooststartdistance'],DistantExtinctionBoostStartDistance);
   DistantExtinctionBoostFactor:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionboostfactor'],DistantExtinctionBoostFactor);
   DistantExtinctionBoostMax:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionboostmax'],DistantExtinctionBoostMax);
+  DistantExtinctionBoostPathFadeExpScale:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionboostpathfadeexpscale'],DistantExtinctionBoostPathFadeExpScale);
+  DistantExtinctionBoostOutsideFactorExpScale:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionboostoutsidefactorexpscale'],DistantExtinctionBoostOutsideFactorExpScale);
+  DistantExtinctionBoostAltitudeFadeExpScale:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionboostaltitudefadeexpscale'],DistantExtinctionBoostAltitudeFadeExpScale);
   
   Intensity:=TPasJSON.GetNumber(JSONRootObject.Properties['intensity'],Intensity);
 
@@ -1664,6 +1677,9 @@ begin
  result.Add('distantextinctionbooststartdistance',TPasJSONItemNumber.Create(DistantExtinctionBoostStartDistance));
  result.Add('distantextinctionboostfactor',TPasJSONItemNumber.Create(DistantExtinctionBoostFactor));
  result.Add('distantextinctionboostmax',TPasJSONItemNumber.Create(DistantExtinctionBoostMax));
+ result.Add('distantextinctionboostpathfadeexpscale',TPasJSONItemNumber.Create(DistantExtinctionBoostPathFadeExpScale));
+ result.Add('distantextinctionboostoutsidefactorexpscale',TPasJSONItemNumber.Create(DistantExtinctionBoostOutsideFactorExpScale));
+ result.Add('distantextinctionboostaltitudefadeexpscale',TPasJSONItemNumber.Create(DistantExtinctionBoostAltitudeFadeExpScale));
  result.Add('intensity',TPasJSONItemNumber.Create(Intensity));
  result.Add('rayleighdensity0',SaveDensityLayer(RayleighDensity.Layers[0]));
  result.Add('rayleighdensity1',SaveDensityLayer(RayleighDensity.Layers[1]));
@@ -1983,6 +1999,10 @@ begin
  DistantExtinctionBoostStartDistance:=aAtmosphereParameters.DistantExtinctionBoostStartDistance;
  DistantExtinctionBoostFactor:=aAtmosphereParameters.DistantExtinctionBoostFactor;
  DistantExtinctionBoostMax:=aAtmosphereParameters.DistantExtinctionBoostMax;
+ DistantExtinctionBoostPathFadeExpScale:=aAtmosphereParameters.DistantExtinctionBoostPathFadeExpScale;
+ DistantExtinctionBoostOutsideFactorExpScale:=aAtmosphereParameters.DistantExtinctionBoostOutsideFactorExpScale;
+ DistantExtinctionBoostAltitudeFadeExpScale:=aAtmosphereParameters.DistantExtinctionBoostAltitudeFadeExpScale;
+ _DistantExtinctionBoostReserved:=0.0;
 
  Flags:=0;
 
