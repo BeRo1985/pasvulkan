@@ -126,7 +126,7 @@ begin
                                        fInstance.Renderer.CloudsShadowMapSize,
                                        fInstance.Renderer.CloudsShadowMapSize,
                                        1.0,
-                                       0);
+                                       1);
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
