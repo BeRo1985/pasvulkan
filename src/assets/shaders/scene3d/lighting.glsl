@@ -49,7 +49,7 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition, const in 
   if(!all(equal(globalBDAPointers.cloudsShadowMapBDA, uvec2(0u)))){
     CloudsShadowMapDataBDABuffer csm = CloudsShadowMapDataBDABuffer(globalBDAPointers.cloudsShadowMapBDA);
     if(csm.params.x > 0.5){
-      vec2 csmUV = octEqualAreaUnsignedEncode(lightDirection);
+      vec2 csmUV = octEqualAreaUnsignedEncode(worldSpacePosition);
       vec2 csmSample = texture(uPassTextures[3], vec3(csmUV, 0.0)).rg;
       float cloudTransmittance = csmSample.r;
       float firstHitT = csmSample.g;
