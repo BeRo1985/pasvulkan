@@ -734,7 +734,7 @@ void main() {
     // L / (1 - T) over-amplifies the red channel - which has the highest transmittance - and shifts the colour to
     // magenta/purple).
     if(needAerialPerspective){
-      float distantExtinctionBoost = GetDistantExtinctionBoost(uAtmosphereParameters.atmosphereParameters, rayLength);
+      float distantExtinctionBoost = GetDistantExtinctionBoost(uAtmosphereParameters.atmosphereParameters, rayLength, viewHeight);
       if(distantExtinctionBoost > 0.0){
         vec3 boostedTransmittance = transmittance * exp(vec3(-distantExtinctionBoost));
         const vec3 luminanceWeights = vec3(0.2126, 0.7152, 0.0722);

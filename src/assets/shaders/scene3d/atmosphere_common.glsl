@@ -1082,12 +1082,15 @@ float AerialPerspectiveSliceToDepth(float slice){
 // behind the atmosphere. This compensates for the modest zenith optical depth on small planets, where the physically
 // correct full-column transmittance alone is not enough to occlude distant objects. The boost is a smooth quadratic
 // ramp (zero value and zero slope at the start distance) clamped to a maximum, and is disabled when the maximum is 0.
-float GetDistantExtinctionBoost(const in AtmosphereParameters Atmosphere, const in float distance){
+// It additionally fades out with the camera altitude (using the Rayleigh density falloff), so the effect weakens the
+// further the camera flies up into space, where there is no longer any atmospheric haze between camera and object.
+float GetDistantExtinctionBoost(const in AtmosphereParameters Atmosphere, const in float distance, const in float viewHeight){
   if(Atmosphere.distantExtinctionBoostMax <= 0.0){
     return 0.0;
   }
   float d = max(0.0, min(distance, 1e9) - Atmosphere.distantExtinctionBoostStartDistance); // clamp distance to avoid inf*0 NaN for sky/far pixels
-  return min(d * d * Atmosphere.distantExtinctionBoostFactor, Atmosphere.distantExtinctionBoostMax);
+  float altitudeFade = clamp(exp(Atmosphere.RayleighDensityExpScale * max(0.0, viewHeight - Atmosphere.BottomRadius)), 0.0, 1.0);
+  return min(d * d * Atmosphere.distantExtinctionBoostFactor, Atmosphere.distantExtinctionBoostMax) * altitudeFade;
 }
 
 vec3 GetAtmosphereTransmittance(const in AtmosphereParameters Atmosphere, 
