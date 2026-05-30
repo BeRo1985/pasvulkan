@@ -717,7 +717,13 @@ bool traceVolumetricClouds(vec3 rayOrigin,
     }
 #endif
 
+#ifdef CLOUDS_SHADOWMAP
+    // rayOrigin = worldDir * BottomRadius → normalize = worldDir, but be explicit to avoid
+    // any NaN if BottomRadius is ever 0.
+    vec3 viewNormal = rayDirection;
+#else
     vec3 viewNormal = normalize(rayOrigin);
+#endif
     
     vec2 tMinMax = tTopSolutions;             
 
@@ -1116,9 +1122,10 @@ void main(){
   upVector = normalize(view.inverseViewMatrix[1].xyz); 
 
 #ifdef CLOUDS_SHADOWMAP
-  // Octahedral shadow map: rays from planet center in all directions
-  worldPos = vec3(0.0); // planet center in atmosphere-local space
+  // Octahedral shadow map: rays from planet surface outward in all directions.
+  // Starting at BottomRadius avoids normalize(vec3(0)) = NaN for viewNormal.
   worldDir = normalize((uAtmosphereParameters.atmosphereParameters.inverseTransform * vec4(octEqualAreaSignedDecode(uv * 2.0 - 1.0), 0.0)).xyz);
+  worldPos = worldDir * uAtmosphereParameters.atmosphereParameters.BottomRadius;
   {
     vec3 perp = abs(worldDir.z) < 0.9 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
     sideVector = normalize(cross(worldDir, perp));
@@ -1232,6 +1239,9 @@ void main(){
                         firstHitT);
   if(firstHitT < 0.0){
     firstHitT = 0.0;
+  } else {
+    // rays start at worldDir*BottomRadius; time is surface-relative → convert to center-relative
+    firstHitT += uAtmosphereParameters.atmosphereParameters.BottomRadius;
   }
 #ifdef COMPUTE_SHADER
   imageStore(uDestinationTexture, ivec2(gl_GlobalInvocationID.xy), vec4(cloudTransmittance, firstHitT, 0.0, 0.0));
