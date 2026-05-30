@@ -8316,7 +8316,7 @@ begin
 
   if assigned(fCloudsShadowMapVulkanBuffers[aInFlightFrameIndex]) then begin
    CloudsShadowMapData.PlanetCenter:=TpvVector4.InlineableCreate(Atmosphere.AtmosphereParameters.Center.xyz,0.0);
-   CloudsShadowMapData.Params:=TpvVector4.InlineableCreate(1.0,Atmosphere.AtmosphereParameters.SunAngularRadius,0.0,0.0);
+   CloudsShadowMapData.Params:=TpvVector4.InlineableCreate(1.0,Atmosphere.AtmosphereParameters.SunAngularRadius,Atmosphere.AtmosphereParameters.VolumetricClouds.LayerLow.StartHeight,0.0);
    CloudsShadowMapData.LightDir:=TpvVector4.InlineableCreate(InFlightFrameState^.CloudsShadowMapLightDirection.x,
                                                              InFlightFrameState^.CloudsShadowMapLightDirection.y,
                                                              InFlightFrameState^.CloudsShadowMapLightDirection.z,

@@ -49,22 +49,30 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition, const in 
   if(!all(equal(globalBDAPointers.cloudsShadowMapBDA, uvec2(0u)))){
     CloudsShadowMapDataBDABuffer csm = CloudsShadowMapDataBDABuffer(globalBDAPointers.cloudsShadowMapBDA);
     if(csm.params.x > 0.5){
-      vec2 csmUV = octEqualAreaUnsignedEncode(worldSpacePosition);
-      vec2 csmSample = texture(uPassTextures[3], vec3(csmUV, 0.0)).xy;
-      float cloudTransmittance = csmSample.x;
-      float firstHitT = csmSample.y;
-      float receiverDepth = dot(worldSpacePosition - csm.planetCenter.xyz, lightDirection);
-      float penumbraRadius = tan(csm.params.y) * max(0.0, firstHitT - receiverDepth);
-      if(penumbraRadius > 0.001){
-        float texelSize = 1.0 / float(textureSize(uPassTextures[3], 0).x);
-        float receiverDist = max(length(worldSpacePosition - csm.planetCenter.xyz), 1.0);
-        float pcfRadius = clamp(penumbraRadius / (receiverDist * 3.14159), 0.0, 4.0 * texelSize);
-        cloudTransmittance  = (texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2( pcfRadius,  0.0)), 0.0)).x +
-                               texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2(-pcfRadius,  0.0)), 0.0)).x +
-                               texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2( 0.0,  pcfRadius)), 0.0)).x +
-                               texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2( 0.0, -pcfRadius)), 0.0)).x) * 0.25;
+      vec3 receiverVector = worldSpacePosition - csm.planetCenter.xyz;
+      float receiverRadius = length(receiverVector);
+      vec3 toLight = normalize(lightDirection); // points toward the sun
+      float cloudShellRadius = csm.params.z;    // absolute radius of the cloud layer (from planet center)
+      // Intersect the ray from the receiver toward the sun with the cloud shell sphere, then look up the
+      // cloud transmittance of the radial column at that intersection direction in the octahedral shadow map.
+      float b = dot(receiverVector, toLight);
+      float disc = (b * b) + ((cloudShellRadius * cloudShellRadius) - (receiverRadius * receiverRadius));
+      if((receiverRadius < cloudShellRadius) && (disc > 0.0)){
+        float distanceToCloud = max(0.0, -b + sqrt(disc));
+        vec3 cloudVector = receiverVector + (toLight * distanceToCloud);
+        vec2 csmUV = octEqualAreaUnsignedEncode(cloudVector);
+        float cloudTransmittance = texture(uPassTextures[3], vec3(csmUV, 0.0)).x;
+        float penumbraRadius = tan(csm.params.y) * distanceToCloud;
+        if(penumbraRadius > 0.001){
+          float texelSize = 1.0 / float(textureSize(uPassTextures[3], 0).x);
+          float pcfRadius = clamp(penumbraRadius / (cloudShellRadius * 3.14159), 0.0, 4.0 * texelSize);
+          cloudTransmittance  = (texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2( pcfRadius,  0.0)), 0.0)).x +
+                                 texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2(-pcfRadius,  0.0)), 0.0)).x +
+                                 texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2( 0.0,  pcfRadius)), 0.0)).x +
+                                 texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2( 0.0, -pcfRadius)), 0.0)).x) * 0.25;
+        }
+        return cloudTransmittance;
       }
-      return mix(0.5, 1.0, cloudTransmittance);
     }
   }
   return 1.0;
