@@ -213,9 +213,9 @@ struct AtmosphereParameters {
   float RainAtmosphereCubeMapLuminanceFactor; // Factor to multiply the rain atmosphere luminance by, this is used to adjust the rain atmosphere luminance based on the scene lighting for indirect lighting
   float atmosphereDensityScale; // Multiplier for all scattering/extinction densities; compensates for small-planet shorter optical paths (1.0 = Earth-scale default)
   float aerialPerspectiveScale; // Scale factor for aerial perspective (atmosphere fog between camera and geometry), 0.0 = none, 1.0 = full (default)
-  float _pad0;
-  float _pad1;
-  float _pad2;
+  float distantExtinctionBoostStartDistance; // Distance (in atmosphere units) from where the extra distance-based extinction boost starts ramping up
+  float distantExtinctionBoostFactor; // Quadratic ramp factor for the distance-based extinction boost, applied to (distance - startDistance)^2
+  float distantExtinctionBoostMax; // Maximum additional optical depth added by the distance-based extinction boost, 0.0 = feature disabled (default)
 
   AtmosphereCullingParameters CullingParameters;
 
@@ -1075,6 +1075,19 @@ float AerialPerspectiveDepthToSlice(float depth){
 
 float AerialPerspectiveSliceToDepth(float slice){
   return slice * AP_KM_PER_SLICE;
+}
+
+// Computes the additional optical depth ("extinction boost") applied to far away background objects (e.g. asteroids,
+// other space objects, the starfield) so that they fade into the atmospheric haze instead of staying fully visible
+// behind the atmosphere. This compensates for the modest zenith optical depth on small planets, where the physically
+// correct full-column transmittance alone is not enough to occlude distant objects. The boost is a smooth quadratic
+// ramp (zero value and zero slope at the start distance) clamped to a maximum, and is disabled when the maximum is 0.
+float GetDistantExtinctionBoost(const in AtmosphereParameters Atmosphere, const in float distance){
+  if(Atmosphere.distantExtinctionBoostMax <= 0.0){
+    return 0.0;
+  }
+  float d = max(0.0, min(distance, 1e9) - Atmosphere.distantExtinctionBoostStartDistance); // clamp distance to avoid inf*0 NaN for sky/far pixels
+  return min(d * d * Atmosphere.distantExtinctionBoostFactor, Atmosphere.distantExtinctionBoostMax);
 }
 
 vec3 GetAtmosphereTransmittance(const in AtmosphereParameters Atmosphere, 

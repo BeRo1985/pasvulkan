@@ -724,6 +724,16 @@ void main() {
       transmittance = mix(vec3(1.0), transmittance, fadeFactor);
     }
 
+    // Extra distance-based extinction boost: fades far away background objects (asteroids, other space objects, the
+    // starfield) into the atmospheric haze, since the physically correct zenith transmittance alone is too high to
+    // occlude them on a small planet. rayLength is the distance to the background object (+inf for sky/far pixels).
+    {
+      float distantExtinctionBoost = GetDistantExtinctionBoost(uAtmosphereParameters.atmosphereParameters, rayLength);
+      if(distantExtinctionBoost > 0.0){
+        transmittance *= exp(vec3(-distantExtinctionBoost));
+      }
+    }
+
     if(atmosphereCullingFactor < 1.0){
       inscattering = mix(vec3(0.0), inscattering, atmosphereCullingFactor);
       transmittance = mix(vec3(1.0), transmittance, atmosphereCullingFactor);

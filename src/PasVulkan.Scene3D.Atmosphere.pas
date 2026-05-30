@@ -459,6 +459,9 @@ type TpvScene3DAtmosphere=class;
               FadeFactor:TpvFloat; // Fade factor for the atmosphere (0.0 = no atmosphere, 1.0 = full atmosphere)
               AtmosphereDensityScale:TpvFloat; // Multiplier for all scattering/extinction densities; compensates for small-planet shorter optical paths (1.0 = Earth-scale default)
               AerialPerspectiveScale:TpvFloat; // Scale factor for aerial perspective fog between camera and geometry, 0.0 = none, 1.0 = full (default)
+              DistantExtinctionBoostStartDistance:TpvFloat; // Distance (in atmosphere units) from where the extra distance-based extinction boost starts ramping up
+              DistantExtinctionBoostFactor:TpvFloat; // Quadratic ramp factor for the distance-based extinction boost, applied to (distance - startDistance)^2
+              DistantExtinctionBoostMax:TpvFloat; // Maximum additional optical depth added by the distance-based extinction boost, 0.0 = feature disabled (default)
               Intensity:TpvFloat;
               MiePhaseFunctionG:TpvFloat;
               SunAngularRadius:TpvFloat;
@@ -660,9 +663,9 @@ type TpvScene3DAtmosphere=class;
               RainAtmosphereCubeMapLuminanceFactor:TpvFloat;
               AtmosphereDensityScale:TpvFloat;
               AerialPerspectiveScale:TpvFloat;
-              _Pad0:TpvFloat;
-              _Pad1:TpvFloat;
-              _Pad2:TpvFloat;
+              DistantExtinctionBoostStartDistance:TpvFloat;
+              DistantExtinctionBoostFactor:TpvFloat;
+              DistantExtinctionBoostMax:TpvFloat;
 
               AtmosphereCullingParameters:TGPUAtmosphereCullingParameters;
 
@@ -1476,6 +1479,11 @@ begin
  // Aerial perspective scale
  AerialPerspectiveScale:=1.0;
 
+ // Distance-based extinction boost (disabled by default; opt-in per atmosphere for small planets)
+ DistantExtinctionBoostStartDistance:=0.0;
+ DistantExtinctionBoostFactor:=0.0;
+ DistantExtinctionBoostMax:=0.0;
+
  // Intensity 
  Intensity:=1.0;
 
@@ -1563,6 +1571,10 @@ begin
 
   AtmosphereDensityScale:=TPasJSON.GetNumber(JSONRootObject.Properties['atmospheredensityscale'],AtmosphereDensityScale);
   AerialPerspectiveScale:=TPasJSON.GetNumber(JSONRootObject.Properties['aerialperspectivescale'],AerialPerspectiveScale);
+
+  DistantExtinctionBoostStartDistance:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionbooststartdistance'],DistantExtinctionBoostStartDistance);
+  DistantExtinctionBoostFactor:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionboostfactor'],DistantExtinctionBoostFactor);
+  DistantExtinctionBoostMax:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionboostmax'],DistantExtinctionBoostMax);
   
   Intensity:=TPasJSON.GetNumber(JSONRootObject.Properties['intensity'],Intensity);
 
@@ -1649,6 +1661,9 @@ begin
  result.Add('fadefactor',TPasJSONItemNumber.Create(FadeFactor));
  result.Add('atmospheredensityscale',TPasJSONItemNumber.Create(AtmosphereDensityScale));
  result.Add('aerialperspectivescale',TPasJSONItemNumber.Create(AerialPerspectiveScale));
+ result.Add('distantextinctionbooststartdistance',TPasJSONItemNumber.Create(DistantExtinctionBoostStartDistance));
+ result.Add('distantextinctionboostfactor',TPasJSONItemNumber.Create(DistantExtinctionBoostFactor));
+ result.Add('distantextinctionboostmax',TPasJSONItemNumber.Create(DistantExtinctionBoostMax));
  result.Add('intensity',TPasJSONItemNumber.Create(Intensity));
  result.Add('rayleighdensity0',SaveDensityLayer(RayleighDensity.Layers[0]));
  result.Add('rayleighdensity1',SaveDensityLayer(RayleighDensity.Layers[1]));
@@ -1964,6 +1979,10 @@ begin
  AtmosphereDensityScale:=aAtmosphereParameters.AtmosphereDensityScale;
 
  AerialPerspectiveScale:=aAtmosphereParameters.AerialPerspectiveScale;
+
+ DistantExtinctionBoostStartDistance:=aAtmosphereParameters.DistantExtinctionBoostStartDistance;
+ DistantExtinctionBoostFactor:=aAtmosphereParameters.DistantExtinctionBoostFactor;
+ DistantExtinctionBoostMax:=aAtmosphereParameters.DistantExtinctionBoostMax;
 
  Flags:=0;
 
