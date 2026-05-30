@@ -1102,9 +1102,10 @@ void GetCameraPositionDirection(out vec3 origin,
                                 const in mat4 inverseProjectionMatrix,
                                 const in vec2 uv){ 
 
-#ifdef SHADOWMAP
+#if defined(SHADOWMAP) || defined(CLOUDS_SHADOWMAP)
 
-  // For shadow map rendering, we need to compute the origin and direction of the primary ray in the more safe way, for just to be sure.
+  // For shadow map and cloud shadow map rendering, we need to compute the origin and direction of the primary ray in the more safe way, for just to be sure.
+  // This also correctly handles orthographic projections (used by the cloud shadow map pass).
 
   bool reversedZ = ProjectionMatrixIsReversedZ(projectionMatrix);
 
