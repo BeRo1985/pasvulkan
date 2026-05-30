@@ -8288,6 +8288,7 @@ var InFlightFrameState:PInFlightFrameState;
     Atmosphere:TpvScene3DAtmosphere;
     CloudsShadowMapData:TCloudsShadowMapData;
     OK:boolean;
+    PlanetCenterRenderSpace:TpvVector3;
 begin
 
  if aInFlightFrameIndex<0 then begin
@@ -8315,7 +8316,14 @@ begin
   InFlightFrameState^.CountCloudsShadowMapViews:=1;
 
   if assigned(fCloudsShadowMapVulkanBuffers[aInFlightFrameIndex]) then begin
-   CloudsShadowMapData.PlanetCenter:=TpvVector4.InlineableCreate(Atmosphere.AtmosphereParameters.Center.xyz,0.0);
+   // The cloud shadow map (and its octahedral lookup directions) lives in absolute planet-local space, but the
+   // world positions fed into the lookup (inWorldSpacePosition in lighting.glsl, worldSpaceP in atmosphere_common.glsl)
+   // are in origin-offset render space (the engine uses floating origin offsetting for very large distances, e.g.
+   // when the camera/ship is far out in space). Therefore the planet center must be transformed into the same
+   // origin-offset render space here, otherwise the shadow attenuation breaks once the origin offset is non-zero
+   // (planet shadows vanish and distant space objects wrongly fall inside the cloud shell and receive shadows).
+   PlanetCenterRenderSpace:=fScene3D.InverseOriginTransforms[aInFlightFrameIndex].MulHomogen(Atmosphere.AtmosphereParameters.Center.xyz);
+   CloudsShadowMapData.PlanetCenter:=TpvVector4.InlineableCreate(PlanetCenterRenderSpace,0.0);
    CloudsShadowMapData.Params:=TpvVector4.InlineableCreate(1.0,Atmosphere.AtmosphereParameters.SunAngularRadius,Atmosphere.AtmosphereParameters.VolumetricClouds.LayerLow.StartHeight,0.0);
    CloudsShadowMapData.LightDir:=TpvVector4.InlineableCreate(InFlightFrameState^.CloudsShadowMapLightDirection.x,
                                                              InFlightFrameState^.CloudsShadowMapLightDirection.y,
