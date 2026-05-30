@@ -124,6 +124,12 @@ layout(location = 0) in vec2 inTexCoord;
 layout(location = 0) out vec4 outMSMCoefficients;
 #endif
 
+#elif defined(CLOUDS_SHADOWMAP)
+
+#ifndef COMPUTE_SHADER
+layout(location = 0) out vec2 outCloudsShadowMap; // R = transmittance, G = firstHitT (world-space distance to cloud base)
+#endif
+
 #else
 
 layout(location = 0) out vec4 outInscattering; // w = monochromatic transmittance as alpha
@@ -195,7 +201,11 @@ layout(set = 2, binding = 12, std430) buffer AtmosphereMapMinMaxBuffer {
 } uAtmosphereMapMinMax;
 
 #ifdef COMPUTE_SHADER
+#ifdef CLOUDS_SHADOWMAP
+layout(set = 2, binding = 13, rg32f) uniform image2D uDestinationTexture;
+#else
 layout(set = 2, binding = 13, rgba16) uniform image2D uDestinationTexture;
+#endif
 #endif
 
 #ifdef SHADOWMAP
@@ -633,11 +643,13 @@ vec3 sideVector, upVector;
 
 bool traceVolumetricClouds(vec3 rayOrigin, 
                            vec3 rayDirection, 
-#ifndef SHADOWMAP
+#if !defined(SHADOWMAP) && !defined(CLOUDS_SHADOWMAP)
                            float rayLength, 
 #endif                           
                            ivec2 threadPosition,
-#ifndef SHADOWMAP
+#ifdef CLOUDS_SHADOWMAP
+                           out float cloudTransmittance,
+#elif !defined(SHADOWMAP)
                            out vec3 inscattering,
                            out vec3 transmittance,
 #endif 
@@ -646,6 +658,11 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 #ifdef SHADOWMAP
 
   vec3 transmittance = vec3(1.0);
+
+#elif defined(CLOUDS_SHADOWMAP)
+
+  cloudTransmittance = 1.0;
+  depth = -1.0;
 
 #else
 
@@ -657,7 +674,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 
   vec3 toSunDirection = normalize(getSunDirection(uAtmosphereParameters.atmosphereParameters));
   
-#ifndef SHADOWMAP
+#if !defined(SHADOWMAP) && !defined(CLOUDS_SHADOWMAP)
 
   float cosAngle = dot(rayDirection, toSunDirection);
 
@@ -670,7 +687,11 @@ bool traceVolumetricClouds(vec3 rayOrigin,
   vec3 absorption = uAtmosphereParameters.atmosphereParameters.VolumetricClouds.Absorption.xyz;
   vec3 extinction = absorption + scattering;
 
-#ifndef SHADOWMAP
+#ifdef CLOUDS_SHADOWMAP
+  float monoExtinction = (extinction.x + extinction.y + extinction.z) / 3.0;
+#endif
+
+#if !defined(SHADOWMAP) && !defined(CLOUDS_SHADOWMAP)
 
   vec3 sunColor = uAtmosphereParameters.atmosphereParameters.SolarIlluminance.xyz;
 
@@ -683,7 +704,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 
     float distanceToPlanetCenter = length(rayOrigin);
     
-#ifndef SHADOWMAP
+#if !defined(SHADOWMAP) && !defined(CLOUDS_SHADOWMAP)
     // If the ray is outside the atmosphere, the ray length is set to infinity, so that the ray march code path handles the ray as if 
     // it is in outer space without occluders, for to avoid artefacts at calculating the ray march steps in outer space when 
     // for example asteroids are present.
@@ -702,7 +723,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 
     if((tBottomSolutions.x < 0.0) && (tBottomSolutions.y >= 0.0)){
       // Below clouds
-#ifndef SHADOWMAP
+#if !defined(SHADOWMAP) && !defined(CLOUDS_SHADOWMAP)
       if(rayLength < tBottomSolutions.y){
         return false;
       }
@@ -725,7 +746,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
       }
     }
     
-#ifdef SHADOWMAP    
+#if defined(SHADOWMAP) || defined(CLOUDS_SHADOWMAP)
     tMinMax = max(tMinMax, vec2(0.0));
 #else
     tMinMax = clamp(tMinMax, vec2(0.0), vec2(rayLength));
@@ -735,7 +756,7 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 
       float mipMapLevel = 0.0;
 
-#ifdef SHADOWMAP    
+#if defined(SHADOWMAP) || defined(CLOUDS_SHADOWMAP)
       int countSteps = clamp(int(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.RayMinSteps), 8, 2048);
 #else
       int countSteps = clamp(
@@ -929,6 +950,18 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 
             weightedDepth += vec2(length(position - rayOrigin), 1.0) * density; //min(transmittance.x, min(transmittance.y, transmittance.z)); 
 
+#elif defined(CLOUDS_SHADOWMAP)
+
+            cloudTransmittance *= exp(-max(1e-10, density) * timeStep * monoExtinction);
+
+            if(depth < 0.0){
+              depth = time;
+            }
+
+            if(cloudTransmittance < 1e-4){
+              break;
+            }
+
 #else
 
             float heightFraction = getHeightFractionForPoint(position);
@@ -1001,9 +1034,11 @@ bool traceVolumetricClouds(vec3 rayOrigin,
             
 #endif
 
+#ifndef CLOUDS_SHADOWMAP
             if(all(lessThan(transmittance, vec3(1e-4)))){
               break;
             }
+#endif // !CLOUDS_SHADOWMAP
                    
           }
          
@@ -1026,9 +1061,13 @@ bool traceVolumetricClouds(vec3 rayOrigin,
     
   }
   
+#ifdef CLOUDS_SHADOWMAP
+  return (depth >= 0.0);
+#else
   depth = (weightedDepth.y > 0.0) ? (weightedDepth.x / weightedDepth.y) : uintBitsToFloat(0x7f800000u); 
 
   return weightedDepth.y > 0.0;
+#endif
 
 }
 
@@ -1070,7 +1109,7 @@ void main(){
 
   upVector = normalize(view.inverseViewMatrix[1].xyz); 
 
-#ifndef SHADOWMAP
+#if !defined(SHADOWMAP) && !defined(CLOUDS_SHADOWMAP)
 #ifdef MSAA
   // At MSAA we must find the farthest depth value, since clouds are rendered without MSAA but applied to the opaque pass content with MSAA,
   // so we must find the farthest depth value to avoid or at least minimize artifacts at the merging stage.
@@ -1127,7 +1166,7 @@ void main(){
   lightDirection = -sunDirection;
 #endif
 
-#ifndef SHADOWMAP
+#if !defined(SHADOWMAP) && !defined(CLOUDS_SHADOWMAP)
   bool depthIsZFar = depthBufferValue == GetZFarDepthValue(view.projectionMatrix);
 
   if(depthIsZFar){
@@ -1159,6 +1198,28 @@ void main(){
 #else  
   outMSMCoefficients = encodeMSM16BitCoefficients(depth);
 #endif  
+
+#elif defined(CLOUDS_SHADOWMAP)
+
+  float firstHitT;
+  float cloudTransmittance;
+  traceVolumetricClouds(worldPos,
+                        worldDir,
+#ifdef COMPUTE_SHADER
+                        ivec2(gl_GlobalInvocationID.xy),
+#else
+                        ivec2(gl_FragCoord),
+#endif
+                        cloudTransmittance,
+                        firstHitT);
+  if(firstHitT < 0.0){
+    firstHitT = 0.0;
+  }
+#ifdef COMPUTE_SHADER
+  imageStore(uDestinationTexture, ivec2(gl_GlobalInvocationID.xy), vec4(cloudTransmittance, firstHitT, 0.0, 0.0));
+#else
+  outCloudsShadowMap = vec2(cloudTransmittance, firstHitT);
+#endif
 
 #else
 

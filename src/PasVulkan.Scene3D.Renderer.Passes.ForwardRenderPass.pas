@@ -112,6 +112,7 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fUseDepthPrepass:Boolean;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceCloudsShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceVelocity:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
@@ -215,6 +216,16 @@ inherited Create(aFrameGraph);
                               );
  end else begin
   fResourceSSAO:=nil;
+ end;
+
+ if fInstance.Renderer.Scene3D.EnableAtmosphere then begin
+  fResourceCloudsShadowMap:=AddImageInput('resourcetype_clouds_shadowmap',
+                                          'resource_clouds_shadowmap',
+                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                          []
+                                         );
+ end else begin
+  fResourceCloudsShadowMap:=nil;
  end;
 
  fResourceVelocity:=nil;
@@ -592,7 +603,8 @@ begin
                                                         fInstance.Renderer.Scene3D,
                                                         TpvScene3DPlanet.TRenderPass.TMode.Opaque,
                                                         fResourceCascadedShadowMap,
-                                                        fResourceSSAO);
+                                                        fResourceSSAO,
+                                                        fResourceCloudsShadowMap);
 
 {fPlanetRainStreakRenderPass:=TpvScene3DPlanet.TRainStreakRenderPass.Create(fInstance.Renderer,
                                                                             fInstance,
@@ -847,7 +859,13 @@ begin
    // Duplicate as dummy really non-used opaque texture
    DescriptorImageInfos[1]:=DescriptorImageInfos[0]; // Opaque frame buffer
    DescriptorImageInfos[2]:=DescriptorImageInfos[0]; // Opaque depth buffer
-   DescriptorImageInfos[3]:=DescriptorImageInfos[0]; // Clouds shadow map (replaced with the real texture later, if implemented later, dummy for now)
+   if assigned(fResourceCloudsShadowMap) then begin
+    DescriptorImageInfos[3]:=TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
+                                                           fResourceCloudsShadowMap.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                           fResourceCloudsShadowMap.ResourceTransition.Layout);
+   end else begin
+    DescriptorImageInfos[3]:=DescriptorImageInfos[0]; // Dummy fallback
+   end;
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                       0,
                                                                       Length(DescriptorImageInfos),

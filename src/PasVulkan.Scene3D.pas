@@ -410,7 +410,7 @@ type EpvScene3D=class(Exception);
             TGlobalVulkanInstanceCounts=array[0..MaxInFlightFrames-1] of TPasMPUInt32;
             PGlobalVulkanInstanceCounts=^TGlobalVulkanInstanceCounts;
             { TGPUGlobalBDAPointers }
-            // 104 bytes, single instance in SSBO at binding 7
+            // 112 bytes, single instance in SSBO at binding 7
             // Contains the global buffer device addresses shared by all draws (big-buffer mode).
             // For future per-group buffers, these would move back into TGPUDrawInfo.
             TGPUGlobalBDAPointers=packed record
@@ -429,9 +429,10 @@ type EpvScene3D=class(Exception);
                MeshletPrimitiveDeviceAddress:TVkDeviceAddress;         // + 8 =  88 (BDA to meshlet primitive buffer)
                MeshletBoundingSphereDeviceAddress:TVkDeviceAddress;    // + 8 =  96 (BDA to per-instance meshlet bounding sphere buffer)
                NodeMatricesDeviceAddress:TVkDeviceAddress;             // + 8 = 104 (BDA to per-IFF node matrices buffer)
+               CloudsShadowMapDeviceAddress:TVkDeviceAddress;          // + 8 = 112 (BDA to CloudsShadowMapDataBDABuffer)
               );
               true:(
-               RawData:array[0..103] of TpvUInt8;
+               RawData:array[0..111] of TpvUInt8;
               );
             end;
             PGPUGlobalBDAPointers=^TGPUGlobalBDAPointers;
@@ -4850,6 +4851,7 @@ type EpvScene3D=class(Exception);
 //     procedure FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadFrameData(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+       procedure SetCloudsShadowMapDeviceAddress(const aInFlightFrameIndex:TpvSizeInt;const aDeviceAddress:TVkDeviceAddress);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                          const aRendererInstance:TObject;
                          const aRenderPass:TpvScene3DRendererRenderPass;
@@ -41823,6 +41825,10 @@ begin
    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].NodeMatricesDeviceAddress:=0;
   end;
 
+  // CloudsShadowMapDeviceAddress is injected from RendererInstance via SetCloudsShadowMapDeviceAddress()
+  // Initialize to 0 here only if it hasn't been set yet this frame (field persists from prior frame setup)
+  // The actual value is set by TpvScene3DRendererInstance.AddCloudsShadowMapView()
+
 {$ifdef MeshShaderDebug}
   if aInFlightFrameIndex=0 then begin
    WriteLn('[DEBUG-MS] BDA IFF=',aInFlightFrameIndex,
@@ -41963,6 +41969,11 @@ begin
  if assigned(fVulkanDevice) and assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) and (fInFlightFrameDataTransferQueues[aInFlightFrameIndex].QueueItems.Count>0) then begin
   fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Flush(aCommandBuffer);
  end;
+end;
+
+procedure TpvScene3D.SetCloudsShadowMapDeviceAddress(const aInFlightFrameIndex:TpvSizeInt;const aDeviceAddress:TVkDeviceAddress);
+begin
+ fGlobalVulkanBDAPointersData[aInFlightFrameIndex].CloudsShadowMapDeviceAddress:=aDeviceAddress;
 end;
 
 procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;

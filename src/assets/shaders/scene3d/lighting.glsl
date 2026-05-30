@@ -545,6 +545,36 @@ float applyLightIESProfile(const in Light light, const in vec3 pointToLightDirec
                   } 
 
                   lightAttenuation *= clamp(shadow, 0.0, 1.0); // Clamp just for safety, should not be necessary, but don't hurt either.
+
+                  // Cloud shadow map attenuation (via BDA, no descriptor set changes needed)
+                  if(!all(equal(globalBDAPointers.cloudsShadowMapBDA, uvec2(0u)))){
+                    CloudsShadowMapDataBDABuffer csm = CloudsShadowMapDataBDABuffer(globalBDAPointers.cloudsShadowMapBDA);
+                    if(csm.params.x > 0.5){
+                      vec4 csmPos = csm.matrix * vec4(inWorldSpacePosition.xyz, 1.0);
+                      vec2 csmUV = csmPos.xy * 0.5 + 0.5;
+                      if(all(greaterThanEqual(csmUV, vec2(0.0))) && all(lessThanEqual(csmUV, vec2(1.0)))){
+                        vec2 csmSample = texture(uPassTextures[3], vec3(csmUV, 0.0)).rg;
+                        float cloudTransmittance = csmSample.r;
+                        float cloudBaseT = csmSample.g;
+                        // Receiver depth from near plane in world units (ortho projection: clip z * depthRange)
+                        float receiverDepth = csmPos.z * csm.params.z;
+                        float penumbraRadius = tan(csm.params.y) * max(0.0, receiverDepth - cloudBaseT);
+                        if(penumbraRadius > 0.001){
+                          // 4-tap PCF — convert world-space penumbraRadius to UV offset via VP matrix row-0 scale
+                          float texelSize = 1.0 / float(textureSize(uPassTextures[3], 0).x);
+                          float worldToUV = length(vec3(csm.matrix[0][0], csm.matrix[1][0], csm.matrix[2][0])) * 0.5;
+                          float pcfRadius = clamp(penumbraRadius * worldToUV, 0.0, 4.0 * texelSize);
+                          cloudTransmittance  = texture(uPassTextures[3], vec3(csmUV + vec2( pcfRadius,  0.0), 0.0)).r;
+                          cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2(-pcfRadius,  0.0), 0.0)).r;
+                          cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2( 0.0,  pcfRadius), 0.0)).r;
+                          cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2( 0.0, -pcfRadius), 0.0)).r;
+                          cloudTransmittance *= 0.25;
+                        }
+                        lightAttenuation *= cloudTransmittance;
+                      }
+                    }
+                  }
+
                   break;
                 }
 #endif // RAYTRACING

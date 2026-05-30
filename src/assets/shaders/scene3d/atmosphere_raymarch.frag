@@ -125,6 +125,11 @@ layout(set = 2, binding = 12) uniform texture2D uCloudsTransmittanceTexture;
 layout(set = 2, binding = 13) uniform texture2D uCloudsDepthTexture;
 #endif
 
+// Cloud shadow map (single 2D, one layer, no multiview) — transmittance R + firstHitT G
+layout(set = 2, binding = 14) uniform sampler2D uCloudsShadowMap;
+
+#define CLOUDS_SHADOW_ENABLED
+
 /*
 #ifdef MSAA
 layout(input_attachment_index = 0, set = 2, binding = 0) uniform subpassInputMS uSubpassDepth;

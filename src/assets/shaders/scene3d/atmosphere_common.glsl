@@ -945,6 +945,21 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
     shadow = getShadow(Atmosphere, P);
 #endif
 
+#ifdef CLOUDS_SHADOW_ENABLED
+    // Cloud shadow map attenuation — project sample point into light space via BDA
+    if(!all(equal(globalBDAPointers.cloudsShadowMapBDA, uvec2(0u)))){
+      CloudsShadowMapDataBDABuffer csm = CloudsShadowMapDataBDABuffer(globalBDAPointers.cloudsShadowMapBDA);
+      if(csm.params.x > 0.5){
+        vec3 worldSpaceP = (Atmosphere.transform * vec4(P, 1.0)).xyz;
+        vec4 lsPos = csm.matrix * vec4(worldSpaceP, 1.0);
+        vec2 lsUV = lsPos.xy * 0.5 + 0.5;
+        if(all(greaterThanEqual(lsUV, vec2(0.0))) && all(lessThanEqual(lsUV, vec2(1.0)))){
+          shadow *= textureLod(uCloudsShadowMap, lsUV, 0.0).r;
+        }
+      }
+    }
+#endif
+
     vec3 S = globalL * ((earthShadow * shadow * TransmittanceToSun * PhaseTimesScattering) + (multiScatteredLuminance * medium.scattering));
 
     // When using the power serie to accumulate all sattering order, serie r must be <1 for a serie to converge.

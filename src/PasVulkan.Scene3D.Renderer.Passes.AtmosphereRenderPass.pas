@@ -86,6 +86,7 @@ type { TpvScene3DRendererPassesAtmosphereRenderPass }
        fInstance:TpvScene3DRendererInstance;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceCloudsShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceCloudsInscattering:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceCloudsTransmittance:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceCloudsDepth:TpvFrameGraph.TPass.TUsedImageResource;
@@ -151,6 +152,12 @@ begin
                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                            []
                                           );
+
+ fResourceCloudsShadowMap:=AddImageInput('resourcetype_clouds_shadowmap',
+                                         'resource_clouds_shadowmap',
+                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                         []
+                                        );
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
@@ -585,6 +592,7 @@ begin
                                                            fResourceCloudsInscattering.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                            fResourceCloudsTransmittance.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                            fResourceCloudsDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
+                                                           fResourceCloudsShadowMap.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                            fInstance,
                                                            fPushConstants);
 

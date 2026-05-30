@@ -282,6 +282,13 @@ type { TpvScene3DRendererInstance }
             PCascadedShadowMapUniformBuffer=^TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapUniformBuffers=array[0..MaxInFlightFrames-1] of TCascadedShadowMapUniformBuffer;
             TCascadedShadowMapVulkanUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TCloudsShadowMapData=packed record
+             Matrix:TpvMatrix4x4;   // light-space view-projection matrix (64 bytes)
+             Params:TpvVector4;     // x=enabled (1.0), y=sunAngularRadius, z=lightFrustumDepthRange (far-near), w=unused (16 bytes)
+             LightDir:TpvVector4;   // xyz=sun direction world space, w=unused (16 bytes)
+            end;                   // Total: 96 bytes
+            PCloudsShadowMapData=^TCloudsShadowMapData;
+            TCloudsShadowMapVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             { TPrepareDrawRenderInstanceFillTask }
             TPrepareDrawRenderInstanceFillTask=record
@@ -737,6 +744,7 @@ type { TpvScene3DRendererInstance }
        fInFlightFrameCascadedShadowMaps:TInFlightFrameCascadedShadowMaps;
        fCascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers;
        fCascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers;
+       fCloudsShadowMapVulkanBuffers:TCloudsShadowMapVulkanBuffers;
       private
        fCountLockOrderIndependentTransparencyLayers:TpvInt32;
        fLockOrderIndependentTransparentUniformBuffer:TLockOrderIndependentTransparentUniformBuffer;
@@ -1287,6 +1295,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.ForwardComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AtmosphereCloudRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AtmosphereCloudShadowRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AtmosphereRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.RainRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardResolveRenderPass,
@@ -1416,6 +1425,7 @@ type TpvScene3DRendererInstancePasses=class
        fForwardComputePass:TpvScene3DRendererPassesForwardComputePass;
        fForwardRenderPass:TpvScene3DRendererPassesForwardRenderPass;
        fAtmosphereCloudRenderPass:TpvScene3DRendererPassesAtmosphereCloudRenderPass;
+       fAtmosphereCloudShadowRenderPass:TpvScene3DRendererPassesAtmosphereCloudShadowRenderPass;
        fAtmosphereRenderPass:TpvScene3DRendererPassesAtmosphereRenderPass;
        fRainRenderPass:TpvScene3DRendererPassesRainRenderPass;
        fForwardResolveRenderPass:TpvScene3DRendererPassesForwardResolveRenderPass;
@@ -2377,6 +2387,8 @@ begin
 
  FillChar(fCascadedShadowMapVulkanUniformBuffers,SizeOf(TCascadedShadowMapVulkanUniformBuffers),#0);
 
+ FillChar(fCloudsShadowMapVulkanBuffers,SizeOf(TCloudsShadowMapVulkanBuffers),#0);
+
  FillChar(fInFlightFrameCascadedRadianceHintVolumeImages,SizeOf(TInFlightFrameCascadedRadianceHintVolumeImages),#0);
 
  FillChar(fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages,SizeOf(TInFlightFrameCascadedRadianceHintVolumeImages),#0);
@@ -2441,6 +2453,29 @@ begin
                                                                                      pvAllocationGroupIDScene3DStatic,
                                                                                      'TpvScene3DRendererInstance.fCascadedShadowMapVulkanUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
   Renderer.VulkanDevice.DebugUtils.SetObjectName(fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fCascadedShadowMapVulkanUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fCloudsShadowMapVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                            SizeOf(TCloudsShadowMapData),
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
+                                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                            [],
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            0,
+                                                                            [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                            0,
+                                                                            pvAllocationGroupIDScene3DStatic,
+                                                                            'TpvScene3DRendererInstance.fCloudsShadowMapVulkanBuffers['+IntToStr(InFlightFrameIndex)+']');
+  Renderer.VulkanDevice.DebugUtils.SetObjectName(fCloudsShadowMapVulkanBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fCloudsShadowMapVulkanBuffers['+IntToStr(InFlightFrameIndex)+']');
  end;
 
  case Renderer.TransparencyMode of
@@ -2751,6 +2786,10 @@ begin
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]);
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fCloudsShadowMapVulkanBuffers[InFlightFrameIndex]);
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
@@ -3871,6 +3910,16 @@ begin
                                   1
                                  );
 
+ fFrameGraph.AddImageResourceType('resourcetype_clouds_shadowmap',
+                                  false,
+                                  VK_FORMAT_R32G32_SFLOAT,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,Renderer.CloudsShadowMapSize,Renderer.CloudsShadowMapSize,1.0,0),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
  case Renderer.AntialiasingMode of
   TpvScene3DRendererAntialiasingMode.SMAAT2x:begin
    fFrameGraph.AddImageResourceType('resourcetype_color_temporal_antialiasing',
@@ -4685,6 +4734,9 @@ begin
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
  end;
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass);
+ end;
 {TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass);
@@ -4729,6 +4781,10 @@ begin
 
  if fScene3D.EnableAtmosphere then begin
 
+  TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass:=TpvScene3DRendererPassesAtmosphereCloudShadowRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+  TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCullDepthRenderPass);
+
   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudRenderPass:=TpvScene3DRendererPassesAtmosphereCloudRenderPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
@@ -4756,6 +4812,7 @@ begin
  end else begin
 
   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudRenderPass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass:=nil;
   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass:=nil;
   TpvScene3DRendererInstancePasses(fPasses).fRainRenderPass:=nil;
 
@@ -8243,6 +8300,7 @@ var Index:TpvSizeInt;
     LightViewProjectionMatrix:TpvMatrix4x4;
     AtmosphereSphere:TpvSphere;
     Atmosphere:TpvScene3DAtmosphere;
+    CloudsShadowMapData:TCloudsShadowMapData;
     OK:boolean;
 begin
 
@@ -8345,10 +8403,27 @@ begin
   InFlightFrameState^.CloudsShadowMapViewIndex:=fViews[aInFlightFrameIndex].Add(View);
   InFlightFrameState^.CountCloudsShadowMapViews:=1;
 
+  if assigned(fCloudsShadowMapVulkanBuffers[aInFlightFrameIndex]) then begin
+   CloudsShadowMapData.Matrix:=LightViewProjectionMatrix;
+   CloudsShadowMapData.Params:=TpvVector4.InlineableCreate(1.0,Atmosphere.AtmosphereParameters.SunAngularRadius,BoundingBox.Max.z-BoundingBox.Min.z,0.0);
+   CloudsShadowMapData.LightDir:=TpvVector4.InlineableCreate(InFlightFrameState^.CloudsShadowMapLightDirection.x,
+                                                             InFlightFrameState^.CloudsShadowMapLightDirection.y,
+                                                             InFlightFrameState^.CloudsShadowMapLightDirection.z,
+                                                             0.0);
+   fCloudsShadowMapVulkanBuffers[aInFlightFrameIndex].UpdateData(CloudsShadowMapData,0,SizeOf(TCloudsShadowMapData));
+   fScene3D.SetCloudsShadowMapDeviceAddress(aInFlightFrameIndex,fCloudsShadowMapVulkanBuffers[aInFlightFrameIndex].DeviceAddress);
+  end;
+
  end else begin
 
   InFlightFrameState^.CloudsShadowMapViewIndex:=0;
   InFlightFrameState^.CountCloudsShadowMapViews:=0;
+
+  if assigned(fCloudsShadowMapVulkanBuffers[aInFlightFrameIndex]) then begin
+   FillChar(CloudsShadowMapData,SizeOf(TCloudsShadowMapData),#0);
+   fCloudsShadowMapVulkanBuffers[aInFlightFrameIndex].UpdateData(CloudsShadowMapData,0,SizeOf(TCloudsShadowMapData));
+  end;
+  fScene3D.SetCloudsShadowMapDeviceAddress(aInFlightFrameIndex,0);
 
  end;
 
@@ -9428,6 +9503,14 @@ begin
  end else begin
   InFlightFrameState^.CascadedShadowMapViewIndex:=-1;
   InFlightFrameState^.CountCascadedShadowMapViews:=0;
+ end;
+
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass) then begin
+  AddCloudsShadowMapView(aInFlightFrameIndex);
+ end else begin
+  InFlightFrameState^.CloudsShadowMapViewIndex:=-1;
+  InFlightFrameState^.CountCloudsShadowMapViews:=0;
+  fScene3D.SetCloudsShadowMapDeviceAddress(aInFlightFrameIndex,0);
  end;
 
  InFlightFrameState^.CountViews:=fViews[aInFlightFrameIndex].Count;

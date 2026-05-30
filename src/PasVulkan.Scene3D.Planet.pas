@@ -2740,6 +2740,7 @@ type TpvScene3DPlanets=class;
               fHeight:TpvInt32;
               fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
               fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
+              fResourceCloudsShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
               fPreviousTime:TpvFloat;
              public
               constructor Create(const aRenderer:TObject;
@@ -2747,7 +2748,8 @@ type TpvScene3DPlanets=class;
                                  const aScene3D:TObject;
                                  const aMode:TpvScene3DPlanet.TRenderPass.TMode;
                                  const aResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
-                                 const aResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource); reintroduce;
+                                 const aResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
+                                 const aResourceCloudsShadowMap:TpvFrameGraph.TPass.TUsedImageResource=nil); reintroduce;
               destructor Destroy; override;
               procedure AllocateResources(const aRenderPass:TpvVulkanRenderPass;
                                           const aWidth:TpvInt32;
@@ -27314,7 +27316,8 @@ constructor TpvScene3DPlanet.TRenderPass.Create(const aRenderer:TObject;
                                                 const aScene3D:TObject;
                                                 const aMode:TpvScene3DPlanet.TRenderPass.TMode;
                                                 const aResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
-                                                const aResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource);
+                                                const aResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
+                                                const aResourceCloudsShadowMap:TpvFrameGraph.TPass.TUsedImageResource=nil);
 var Stream:TStream;
     Kind:TpvUTF8String;
     TopLevelKind:TpvUTF8String;
@@ -27328,13 +27331,15 @@ begin
 
  fScene3D:=aScene3D;
 
+ fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+
  fMode:=aMode;
 
  fResourceCascadedShadowMap:=aResourceCascadedShadowMap;
 
  fResourceSSAO:=aResourceSSAO;
 
- fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+ fResourceCloudsShadowMap:=aResourceCloudsShadowMap;
 
  fPreviousTime:=Infinity;
 
@@ -27643,7 +27648,7 @@ begin
 
   fDescriptorSetLayout.AddBinding(5,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                  2,
+                                  4,
                                   fShaderStageFlags,
                                   [],
                                   0);
@@ -27789,6 +27794,9 @@ procedure TpvScene3DPlanet.TRenderPass.AllocateResources(const aRenderPass:TpvVu
                                                          const aHeight:TpvInt32;
                                                          const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits);
 var InFlightFrameIndex:TpvSizeInt;
+    CloudsShadowImageInfo:TVkDescriptorImageInfo;
+    SSAOImageInfo:TVkDescriptorImageInfo;
+    DummyImageInfo:TVkDescriptorImageInfo;
 begin
 
  fWidth:=aWidth;
@@ -27798,7 +27806,7 @@ begin
                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                  TpvScene3D(fScene3D).CountInFlightFrames);
  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),3*TpvScene3D(fScene3D).CountInFlightFrames);
- fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),13*TpvScene3D(fScene3D).CountInFlightFrames);
+ fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),15*TpvScene3D(fScene3D).CountInFlightFrames);
  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),3*TpvScene3D(fScene3D).CountInFlightFrames);
  fDescriptorPool.Initialize;
  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TRenderPass.fDescriptorPool');
@@ -27867,38 +27875,34 @@ begin
                                                             [],
                                                             false);
   end;
+  DummyImageInfo:=TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.AmbientOcclusionSampler.Handle,
+                                                 TpvScene3DRendererInstance(fRendererInstance).Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
+                                                 TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
   if TpvScene3DRendererInstance(fRendererInstance).Renderer.ScreenSpaceAmbientOcclusion and assigned(fResourceSSAO) then begin
-   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
-                                                            0,
-                                                            2,
-                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                            [TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.AmbientOcclusionSampler.Handle,
-                                                                                           fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                           fResourceSSAO.ResourceTransition.Layout),// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                             // Duplicate as dummy really non-used opaque texture
-                                                             TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.AmbientOcclusionSampler.Handle,
-                                                                                           fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                           fResourceSSAO.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
-                                                            [],
-                                                            [],
-                                                            false);
+   SSAOImageInfo:=TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.AmbientOcclusionSampler.Handle,
+                                                fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                fResourceSSAO.ResourceTransition.Layout);
   end else begin
-   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
-                                                            0,
-                                                            2,
-                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                            [TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.AmbientOcclusionSampler.Handle,
-                                                                                           TpvScene3DRendererInstance(fRendererInstance).Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
-                                                                                           TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)),
-                                                             // Duplicate as dummy really non-used opaque texture
-                                                             TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.AmbientOcclusionSampler.Handle,
-                                                                                           TpvScene3DRendererInstance(fRendererInstance).Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
-                                                                                           TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
-                                                            ],
-                                                            [],
-                                                            [],
-                                                            false);
+   SSAOImageInfo:=DummyImageInfo;
   end;
+  if assigned(fResourceCloudsShadowMap) then begin
+   CloudsShadowImageInfo:=TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.AmbientOcclusionSampler.Handle,
+                                                        fResourceCloudsShadowMap.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                        fResourceCloudsShadowMap.ResourceTransition.Layout);
+  end else begin
+   CloudsShadowImageInfo:=DummyImageInfo;
+  end;
+  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                           0,
+                                                           4,
+                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                           [SSAOImageInfo,     // Slot 0: SSAO
+                                                            DummyImageInfo,    // Slot 1: dummy opaque
+                                                            DummyImageInfo,    // Slot 2: dummy depth
+                                                            CloudsShadowImageInfo], // Slot 3: cloud shadow map
+                                                           [],
+                                                           [],
+                                                           false);
   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
                                                            0,
                                                            1,
