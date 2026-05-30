@@ -39289,8 +39289,17 @@ begin
 
  fCountInFrameFrameLights[aInFlightFrameIndex]:=0;
 
- fUpdatedOriginTransform:=fLastOriginTransform<>fOriginTransform;
- if fUpdatedOriginTransform then begin
+ // Floating-origin offsetting: the origin transform can change between frames (it snaps in coarse steps as the
+ // camera/ship flies far out into space). With multiple in-flight frames (double/triple buffering) only one IFF
+ // is processed per frame, so a single global "changed this frame" flag would let the origin change be seen by
+ // just one IFF; the other IFFs would keep their cached model/previous-model matrices in the old origin-offset
+ // space and, once reprocessed with the flag already cleared, take the skip path and reuse stale data. That
+ // mismatch between the stale previous-frame data (old offset) and the current data (new offset) is exactly what
+ // makes static objects subpixel-flicker under TAA when flying out and back. Therefore detect the change per IFF
+ // by comparing this IFF's previously applied origin transform (still stored in fOriginTransforms[] until it is
+ // overwritten below) against the current one, so every IFF reliably refreshes its data after an origin change.
+ fUpdatedOriginTransform:=fOriginTransforms[aInFlightFrameIndex]<>fOriginTransform;
+ if fLastOriginTransform<>fOriginTransform then begin
   fLastOriginTransform:=fOriginTransform;
  end;
 
