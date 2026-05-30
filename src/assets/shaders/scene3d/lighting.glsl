@@ -51,8 +51,8 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition, const in 
     if(csm.params.x > 0.5){
       vec2 csmUV = octEqualAreaUnsignedEncode(worldSpacePosition);
       vec2 csmSample = texture(uPassTextures[3], vec3(csmUV, 0.0)).xy;
-      float cloudTransmittance = csmSample.r;
-      float firstHitT = csmSample.g;
+      float cloudTransmittance = csmSample.x;
+      float firstHitT = csmSample.y;
       float receiverDepth = dot(worldSpacePosition - csm.planetCenter.xyz, lightDirection);
       float penumbraRadius = tan(csm.params.y) * max(0.0, firstHitT - receiverDepth);
       if(penumbraRadius > 0.001){
@@ -64,7 +64,7 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition, const in 
                                texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2( 0.0,  pcfRadius)), 0.0)).x +
                                texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2( 0.0, -pcfRadius)), 0.0)).x) * 0.25;
       }
-      return mix(0.75, 1.0, cloudTransmittance);
+      return mix(0.5, 1.0, cloudTransmittance);
     }
   }
   return 1.0;
