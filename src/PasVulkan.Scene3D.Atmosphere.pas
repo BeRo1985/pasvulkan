@@ -458,6 +458,7 @@ type TpvScene3DAtmosphere=class;
               GroundAlbedo:TpvVector4; // w is unused, for alignment
               FadeFactor:TpvFloat; // Fade factor for the atmosphere (0.0 = no atmosphere, 1.0 = full atmosphere)
               AtmosphereDensityScale:TpvFloat; // Multiplier for all scattering/extinction densities; compensates for small-planet shorter optical paths (1.0 = Earth-scale default)
+              AerialPerspectiveScale:TpvFloat; // Scale factor for aerial perspective fog between camera and geometry, 0.0 = none, 1.0 = full (default)
               Intensity:TpvFloat;
               MiePhaseFunctionG:TpvFloat;
               SunAngularRadius:TpvFloat;
@@ -658,6 +659,10 @@ type TpvScene3DAtmosphere=class;
               Flags:TpvUInt32;
               RainAtmosphereCubeMapLuminanceFactor:TpvFloat;
               AtmosphereDensityScale:TpvFloat;
+              AerialPerspectiveScale:TpvFloat;
+              _Pad0:TpvFloat;
+              _Pad1:TpvFloat;
+              _Pad2:TpvFloat;
 
               AtmosphereCullingParameters:TGPUAtmosphereCullingParameters;
 
@@ -1468,6 +1473,9 @@ begin
  // Density scale
  AtmosphereDensityScale:=1.0;
 
+ // Aerial perspective scale
+ AerialPerspectiveScale:=1.0;
+
  // Intensity 
  Intensity:=1.0;
 
@@ -1554,6 +1562,7 @@ begin
   FadeFactor:=TPasJSON.GetNumber(JSONRootObject.Properties['fadefactor'],FadeFactor);
 
   AtmosphereDensityScale:=TPasJSON.GetNumber(JSONRootObject.Properties['atmospheredensityscale'],AtmosphereDensityScale);
+  AerialPerspectiveScale:=TPasJSON.GetNumber(JSONRootObject.Properties['aerialperspectivescale'],AerialPerspectiveScale);
   
   Intensity:=TPasJSON.GetNumber(JSONRootObject.Properties['intensity'],Intensity);
 
@@ -1639,6 +1648,7 @@ begin
  result.Add('groundalbedo',Vector3ToJSON(GroundAlbedo.xyz));
  result.Add('fadefactor',TPasJSONItemNumber.Create(FadeFactor));
  result.Add('atmospheredensityscale',TPasJSONItemNumber.Create(AtmosphereDensityScale));
+ result.Add('aerialperspectivescale',TPasJSONItemNumber.Create(AerialPerspectiveScale));
  result.Add('intensity',TPasJSONItemNumber.Create(Intensity));
  result.Add('rayleighdensity0',SaveDensityLayer(RayleighDensity.Layers[0]));
  result.Add('rayleighdensity1',SaveDensityLayer(RayleighDensity.Layers[1]));
@@ -1952,6 +1962,8 @@ begin
  RainAtmosphereCubeMapLuminanceFactor:=aAtmosphereParameters.RainAtmosphereCubeMapLuminanceFactor;
 
  AtmosphereDensityScale:=aAtmosphereParameters.AtmosphereDensityScale;
+
+ AerialPerspectiveScale:=aAtmosphereParameters.AerialPerspectiveScale;
 
  Flags:=0;
 

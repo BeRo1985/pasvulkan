@@ -212,6 +212,10 @@ struct AtmosphereParameters {
   uint flags;
   float RainAtmosphereCubeMapLuminanceFactor; // Factor to multiply the rain atmosphere luminance by, this is used to adjust the rain atmosphere luminance based on the scene lighting for indirect lighting
   float atmosphereDensityScale; // Multiplier for all scattering/extinction densities; compensates for small-planet shorter optical paths (1.0 = Earth-scale default)
+  float aerialPerspectiveScale; // Scale factor for aerial perspective (atmosphere fog between camera and geometry), 0.0 = none, 1.0 = full (default)
+  float _pad0;
+  float _pad1;
+  float _pad2;
 
   AtmosphereCullingParameters CullingParameters;
 

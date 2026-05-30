@@ -569,6 +569,12 @@ void main() {
         vec3 transmittance = vec3(inscattering.w); // convert from monochromatic transmittance, not optimal but better than nothing
 #endif
 
+        {
+          float apScale = clamp(uAtmosphereParameters.atmosphereParameters.aerialPerspectiveScale, 0.0, 1.0);
+          inscattering.xyz *= apScale;
+          transmittance = mix(vec3(1.0), transmittance, apScale);
+        }
+
         addScatteringSample(mix(vec3(0.0), inscattering.xyz, atmosphereCullingFactor), mix(vec3(1.0), transmittance.xyz, atmosphereCullingFactor));
 
         applyFastCloudIntegration = true;
