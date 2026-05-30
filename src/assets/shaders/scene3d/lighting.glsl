@@ -50,7 +50,7 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition, const in 
     CloudsShadowMapDataBDABuffer csm = CloudsShadowMapDataBDABuffer(globalBDAPointers.cloudsShadowMapBDA);
     if(csm.params.x > 0.5){
       vec2 csmUV = octEqualAreaUnsignedEncode(worldSpacePosition);
-      vec2 csmSample = texture(uPassTextures[3], vec3(csmUV, 0.0)).rg;
+      vec2 csmSample = texture(uPassTextures[3], vec3(csmUV, 0.0)).xy;
       float cloudTransmittance = csmSample.r;
       float firstHitT = csmSample.g;
       float receiverDepth = dot(worldSpacePosition - csm.planetCenter.xyz, lightDirection);
@@ -59,13 +59,12 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition, const in 
         float texelSize = 1.0 / float(textureSize(uPassTextures[3], 0).x);
         float receiverDist = max(length(worldSpacePosition - csm.planetCenter.xyz), 1.0);
         float pcfRadius = clamp(penumbraRadius / (receiverDist * 3.14159), 0.0, 4.0 * texelSize);
-        cloudTransmittance  = texture(uPassTextures[3], vec3(csmUV + vec2( pcfRadius,  0.0), 0.0)).r;
-        cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2(-pcfRadius,  0.0), 0.0)).r;
-        cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2( 0.0,  pcfRadius), 0.0)).r;
-        cloudTransmittance += texture(uPassTextures[3], vec3(csmUV + vec2( 0.0, -pcfRadius), 0.0)).r;
-        cloudTransmittance *= 0.25;
+        cloudTransmittance  = (texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2( pcfRadius,  0.0)), 0.0)).x +
+                               texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2(-pcfRadius,  0.0)), 0.0)).x +
+                               texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2( 0.0,  pcfRadius)), 0.0)).x +
+                               texture(uPassTextures[3], vec3(wrapOctahedralCoordinates(csmUV + vec2( 0.0, -pcfRadius)), 0.0)).x) * 0.25;
       }
-      return cloudTransmittance;
+      return mix(0.75, 1.0, cloudTransmittance);
     }
   }
   return 1.0;
