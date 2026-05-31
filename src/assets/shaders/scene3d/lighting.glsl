@@ -497,7 +497,10 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition, const in 
 #else
                   lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, pointToLightDirection, rayOffset, effectiveRayDistance);
 #endif
-                  lightAttenuation *= applyCloudShadowMapAttenuation(inWorldSpacePosition.xyz, pointToLightDirection);
+                  if(lightType == 4u){
+                    // Only apply cloud shadow map attenuation for primary directional lights.
+                    lightAttenuation *= applyCloudShadowMapAttenuation(inWorldSpacePosition.xyz, pointToLightDirection);
+                  }
                   break;
                 }
 #else // !RAYTRACING
