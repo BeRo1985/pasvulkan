@@ -257,6 +257,7 @@ begin
 
  /// --
 
+(* Particle voxelization disabled: shader interface mismatch (Vec3 vert->geom, missing geom->frag output). TODO: fix particle_voxelization shaders.
  if fInstance.Renderer.Scene3D.RaytracingActive then begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_vert.spv');
  end else begin
@@ -269,61 +270,61 @@ begin
   Stream.Free;
  end;
 
-{if fInstance.Renderer.Scene3D.RaytracingActive then begin
-  case fInstance.Renderer.GlobalIlluminationVoxelCountCascades of
-   1:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_1_geom.spv');
+ {if fInstance.Renderer.Scene3D.RaytracingActive then begin
+   case fInstance.Renderer.GlobalIlluminationVoxelCountCascades of
+    1:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_1_geom.spv');
+    end;
+    2:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_2_geom.spv');
+    end;
+    3:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_3_geom.spv');
+    end;
+    4:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_4_geom.spv');
+    end;
+    5:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_5_geom.spv');
+    end;
+    6:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_6_geom.spv');
+    end;
+    7:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_7_geom.spv');
+    end;
+    else begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_8_geom.spv');
+    end;
    end;
-   2:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_2_geom.spv');
-   end;
-   3:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_3_geom.spv');
-   end;
-   4:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_4_geom.spv');
-   end;
-   5:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_5_geom.spv');
-   end;
-   6:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_6_geom.spv');
-   end;
-   7:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_7_geom.spv');
-   end;
-   else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_8_geom.spv');
+  end else}begin
+   case fInstance.Renderer.GlobalIlluminationVoxelCountCascades of
+    1:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_1_geom.spv');
+    end;
+    2:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_2_geom.spv');
+    end;
+    3:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_3_geom.spv');
+    end;
+    4:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_4_geom.spv');
+    end;
+    5:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_5_geom.spv');
+    end;
+    6:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_6_geom.spv');
+    end;
+    7:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_7_geom.spv');
+    end;
+    else begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_8_geom.spv');
+    end;
    end;
   end;
- end else}begin
-  case fInstance.Renderer.GlobalIlluminationVoxelCountCascades of
-   1:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_1_geom.spv');
-   end;
-   2:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_2_geom.spv');
-   end;
-   3:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_3_geom.spv');
-   end;
-   4:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_4_geom.spv');
-   end;
-   5:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_5_geom.spv');
-   end;
-   6:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_6_geom.spv');
-   end;
-   7:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_7_geom.spv');
-   end;
-   else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_8_geom.spv');
-   end;
-  end;
- end;
  try
   fParticleGeometryShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
   FrameGraph.VulkanDevice.DebugUtils.SetObjectName(fParticleGeometryShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'fParticleGeometryShaderModule');
@@ -348,7 +349,8 @@ begin
  fVulkanPipelineShaderStageParticleGeometry:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_GEOMETRY_BIT,fParticleGeometryShaderModule,'main');
 
  fVulkanPipelineShaderStageParticleFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fParticleFragmentShaderModule,'main');
-//ParticleFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageParticleFragment);
+ //ParticleFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageParticleFragment);
+*)
 
 end;
 
@@ -685,6 +687,7 @@ begin
 
  end;
 
+(* Particle voxelization pipeline disabled: shader interface mismatch. TODO: fix particle_voxelization shaders.
  VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
                                                           fInstance.Renderer.VulkanPipelineCache,
                                                           0,
@@ -758,6 +761,7 @@ begin
  finally
   fVulkanParticleGraphicsPipeline:=VulkanGraphicsPipeline;
  end;
+*)
 
 end;
 
@@ -837,7 +841,8 @@ begin
                                    false,
                                    @fMeshShaderGraphicsPipelines);
 
-  fInstance.Renderer.Scene3D.DrawParticles(fInstance,
+  // Particle voxelization disabled: shader interface mismatch. TODO: fix particle_voxelization shaders.
+{ fInstance.Renderer.Scene3D.DrawParticles(fInstance,
                                            fVulkanParticleGraphicsPipeline,
                                            -1,
                                            aInFlightFrameIndex,
@@ -847,7 +852,7 @@ begin
                                            FrameGraph.DrawFrameIndex,
                                            aCommandBuffer,
                                            fVulkanPipelineLayout,
-                                           OnSetRenderPassResources);
+                                           OnSetRenderPassResources);}
 
  end;
 

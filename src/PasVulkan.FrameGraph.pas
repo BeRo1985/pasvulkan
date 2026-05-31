@@ -5464,6 +5464,8 @@ type TEventBeforeAfter=(Event,Before,After);
      OtherResourceTransition:TResourceTransition;
      Resource:TResource;
      WorkPasses:array[0..1] of TPass;
+     RecursionMessage:TpvRawByteString;
+     CyclePass:TPass;
  begin
   // Construct the directed acyclic graph by doing a modified-DFS-based topological sort at the same time
   Stack.Initialize;
@@ -5484,7 +5486,13 @@ type TEventBeforeAfter=(Event,Before,After);
     case StackItem.Action of
      TAction.Process:begin
       if TPass.TFlag.TemporaryMarked in Pass.fFlags then begin
-       raise EpvFrameGraphRecursion.Create('Recursion detected');
+       RecursionMessage:='Recursion detected at pass "'+Pass.fName+'"; cycle path passes (all currently temporary-marked):';
+       for CyclePass in fPasses do begin
+        if TPass.TFlag.TemporaryMarked in CyclePass.fFlags then begin
+         RecursionMessage:=RecursionMessage+' "'+CyclePass.fName+'"';
+        end;
+       end;
+       raise EpvFrameGraphRecursion.Create(String(RecursionMessage));
       end;
       Include(Pass.fFlags,TPass.TFlag.TemporaryMarked);
       if not (TPass.TFlag.PermanentlyMarked in Pass.fFlags) then begin
