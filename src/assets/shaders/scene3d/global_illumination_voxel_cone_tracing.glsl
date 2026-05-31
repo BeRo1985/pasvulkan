@@ -17,9 +17,9 @@ const float CVCT_INDIRECT_DIST_K = 0.01;
 #define CVCT_ROUGHNESSTOVOXELCONETRACINGAPERTUREANGLE_METHOD 0
 float cvctRoughnessToVoxelConeTracingApertureAngle(float roughness){
   roughness = clamp(roughness, 0.0, 1.0);
-#if ROUGHNESSTOVOXELCONETRACINGAPERTUREANGLE_METHOD == 0
+#if CVCT_ROUGHNESSTOVOXELCONETRACINGAPERTUREANGLE_METHOD == 0
   return tan(0.0003474660443456835 + (roughness * (1.3331290497744692 - (roughness * 0.5040552688878546))));
-#elif ROUGHNESSTOVOXELCONETRACINGAPERTUREANGLE_METHOD == 1
+#elif CVCT_ROUGHNESSTOVOXELCONETRACINGAPERTUREANGLE_METHOD == 1
   return tan(acos(pow(0.244, 1.0 / (clamp(2.0 / max(1e-4, (roughness * roughness)) - 2.0, 4.0, 1024.0 * 16.0) + 1.0))));
 #else
   return clamp(tan((PI * (0.5 * 0.75)) * max(0.0, roughness)), 0.00174533102, 3.14159265359);
@@ -304,9 +304,9 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
     // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
     ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(cascadeIndex * 6);
-    accumulator += (1.0 - accumulator) * ((textureLod(uVoxelGridRadiance[textureIndices.x], cascadePosition, mipMapLevel) * directionWeights.x) +
-                                          (textureLod(uVoxelGridRadiance[textureIndices.y], cascadePosition, mipMapLevel) * directionWeights.y) +
-                                          (textureLod(uVoxelGridRadiance[textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z));
+    accumulator += (1.0 - accumulator.w) * ((textureLod(uVoxelGridRadiance[textureIndices.x], cascadePosition, mipMapLevel) * directionWeights.x) +
+                                           (textureLod(uVoxelGridRadiance[textureIndices.y], cascadePosition, mipMapLevel) * directionWeights.y) +
+                                           (textureLod(uVoxelGridRadiance[textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z));
 
     // Move the position forward
     dist += max(diameter, voxelGridData.oneOverGridSizes[cascadeIndex >> 2u][cascadeIndex & 3u]) * voxelGridData.cascadeToWorldScales[cascadeIndex >> 2u][cascadeIndex & 3u];
