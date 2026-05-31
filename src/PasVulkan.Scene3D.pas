@@ -3523,6 +3523,7 @@ type EpvScene3D=class(Exception);
                      fCacheVerticesNodeDirtyBitmap:TpvUInt32DynamicArray;
                      fRaytracingMask:TpvUInt8;
                      fCastingShadows:Boolean;
+                     fRaytracingBLASDistanceThrottlingEnabled:Boolean;
                      fApplyCameraRelativeTransform:TPasMPBool32;
                      fProcessState:TPasMPUInt32;
                      fTag:TpvUInt64;
@@ -3679,6 +3680,7 @@ type EpvScene3D=class(Exception);
                      property Lights:TpvScene3D.TGroup.TInstance.TLights read fLights;
                      property RaytracingMask:TpvUInt8 read fRaytracingMask write fRaytracingMask;
                      property CastingShadows:Boolean read fCastingShadows write fCastingShadows;
+                     property RaytracingBLASDistanceThrottlingEnabled:Boolean read fRaytracingBLASDistanceThrottlingEnabled write fRaytracingBLASDistanceThrottlingEnabled;
                      property Tag:TpvUInt64 read fTag write fTag;
                     public
                      property Nodes:TpvScene3D.TGroup.TInstance.TNodes read fNodes;
@@ -7040,6 +7042,7 @@ begin
  //   thundering-herd update bursts.
  if fInitialized and
     (not aForce) and
+    fInstance.fRaytracingBLASDistanceThrottlingEnabled and
     fSceneInstance.fRaytracingUpdateCameraPositionValid and
     fInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and
     (fCacheVerticesGeneration=fInstanceNode.fCacheVerticesGenerations[aInFlightFrameIndex]) and
@@ -7047,9 +7050,7 @@ begin
     ((ord(fInstanceNode.fInFlightFrameCastingShadows[aInFlightFrameIndex]) and 1)=fCastingShadows) and
     (fSceneInstance.fVulkanLongTermStaticBuffer.fGeneration=fVulkanLongTermStaticBufferGeneration) then begin
   DistanceThrottleCenter:=fInstanceNode.fBoundingBoxes[aInFlightFrameIndex].Center-fSceneInstance.fRaytracingUpdateCameraPosition;
-  DistanceThrottleDeltaSquared:=(DistanceThrottleCenter.x*DistanceThrottleCenter.x)+
-                                (DistanceThrottleCenter.y*DistanceThrottleCenter.y)+
-                                (DistanceThrottleCenter.z*DistanceThrottleCenter.z);
+  DistanceThrottleDeltaSquared:=DistanceThrottleCenter.SquaredLength;
   if DistanceThrottleDeltaSquared>=sqr(200.0) then begin
    DistanceThrottleInterval:=64;
   end else if DistanceThrottleDeltaSquared>=sqr(60.0) then begin
@@ -26877,6 +26878,8 @@ begin
  fRaytracingMask:=$ff;
 
  fCastingShadows:=true;
+
+ fRaytracingBLASDistanceThrottlingEnabled:=false;
 
  fScene:=-1;
 
