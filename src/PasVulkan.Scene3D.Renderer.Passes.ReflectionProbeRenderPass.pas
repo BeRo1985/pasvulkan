@@ -92,6 +92,7 @@ type { TpvScene3DRendererPassesReflectionProbeRenderPass }
        fVulkanRenderPass:TpvVulkanRenderPass;
        fInstance:TpvScene3DRendererInstance;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceCloudsShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fMeshVertexShaderModule:TpvVulkanShaderModule;
@@ -158,6 +159,16 @@ inherited Create(aFrameGraph);
                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                            []
                                           );
+
+ if fInstance.Renderer.Scene3D.EnableAtmosphere then begin
+  fResourceCloudsShadowMap:=AddImageInput('resourcetype_clouds_shadowmap',
+                                          'resource_clouds_shadowmap',
+                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                          []
+                                         );
+ end else begin
+  fResourceCloudsShadowMap:=nil;
+ end;
 
  fResourceColor:=AddImageOutput('resourcetype_reflectionprobe_color',
                                 'resource_reflectionprobe_color', //_optimized_non_alpha
@@ -371,6 +382,7 @@ var InFlightFrameIndex:TpvSizeInt;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
     VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
+    DescriptorImageInfos:array of TVkDescriptorImageInfo;
 begin
 
  inherited AcquireVolatileResources;
@@ -413,7 +425,7 @@ begin
                                              []);
  fPassVulkanDescriptorSetLayout.AddBinding(5,
                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                             2,
+                                             4,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              [],
                                              TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
@@ -435,7 +447,7 @@ begin
  fPassVulkanDescriptorSetLayout.Initialize;
 
  fPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
- fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,13*fInstance.Renderer.CountInFlightFrames);
+ fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,15*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.Initialize;
@@ -492,21 +504,34 @@ begin
                                                                        [],
                                                                        [],
                                                                        false);
-  fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
-                                                                       0,
-                                                                       2,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                       [TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
-                                                                                                      fInstance.Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
-                                                                                                      TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)),
-                                                                        // Duplicate as dummy really non-used opaque texture
-                                                                        TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
-                                                                                                      fInstance.Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
-                                                                                                      TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
-                                                                       ],
-                                                                       [],
-                                                                       [],
-                                                                       false);
+  DescriptorImageInfos:=nil;
+  try
+   // 0 = SSAO, 1 = Opaque frame buffer, 2 = Opaque depth buffer, 3 = Clouds shadow map
+   SetLength(DescriptorImageInfos,4);
+   DescriptorImageInfos[0]:=TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
+                                                          fInstance.Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
+                                                          TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+   // Duplicate as dummy really non-used opaque textures
+   DescriptorImageInfos[1]:=DescriptorImageInfos[0];
+   DescriptorImageInfos[2]:=DescriptorImageInfos[0];
+   if assigned(fResourceCloudsShadowMap) then begin
+    DescriptorImageInfos[3]:=TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
+                                                           fResourceCloudsShadowMap.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                           fResourceCloudsShadowMap.ResourceTransition.Layout);
+   end else begin
+    DescriptorImageInfos[3]:=DescriptorImageInfos[0]; // Dummy fallback
+   end;
+   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                                      0,
+                                                                      Length(DescriptorImageInfos),
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                      DescriptorImageInfos,
+                                                                      [],
+                                                                      [],
+                                                                      false);
+  finally
+   DescriptorImageInfos:=nil;
+  end;
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
                                                                        0,
                                                                        1,
