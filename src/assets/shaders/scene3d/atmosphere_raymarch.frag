@@ -716,13 +716,13 @@ void main() {
     // Back to front
     for(int scatteringSampleIndex = 0; scatteringSampleIndex < countScatteringSamples; scatteringSampleIndex++){
       mat2x3 scatteringSample = scatteringSamples[scatteringSampleIndex];
-        inscattering = (inscattering * scatteringSample[1]) + scatteringSample[0];
-        transmittance *= scatteringSample[1];
+      inscattering = (inscattering * scatteringSample[1]) + scatteringSample[0];
+      transmittance *= scatteringSample[1];
     }
 #endif
 
+    float fadeFactor = clamp(uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w, 0.0, 1.0);
     {
-      float fadeFactor = clamp(uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w, 0.0, 1.0);
       inscattering *= fadeFactor;
       transmittance = mix(vec3(1.0), transmittance, fadeFactor);
     }
@@ -752,11 +752,16 @@ void main() {
     // Composite the volumetric clouds as the front-most layer now, AFTER the distant extinction boost has faded
     // the distant background objects into the clean atmospheric haze. This keeps the boost independent of the
     // cloud layer (and its cloud-shadowed inscattering), so distant objects (asteroids) stay equally occluded by
-    // the haze whether or not clouds happen to be in front of them. When there are no clouds at this pixel,
-    // cloudsInscattering/cloudsTransmittance are their identity defaults (0 / 1), so this is a no-op.
+    // the haze whether or not clouds happen to be in front of them. The same atmosphere fadeFactor that is applied
+    // to the atmospheric in-scattering/transmittance above is also applied to the cloud layer here, since the
+    // clouds used to be part of the resolved scattering samples and were faded together with the atmosphere.
+    // When there are no clouds at this pixel, cloudsInscattering/cloudsTransmittance are their identity
+    // defaults (0 / 1), so this is a no-op.
     if(compositeClouds){
-      inscattering = cloudsInscattering.xyz + (inscattering * cloudsTransmittance.xyz);
-      transmittance *= cloudsTransmittance.xyz;
+      vec3 fadedCloudsInscattering = cloudsInscattering.xyz * fadeFactor;
+      vec3 fadedCloudsTransmittance = mix(vec3(1.0), cloudsTransmittance.xyz, fadeFactor);
+      inscattering = fadedCloudsInscattering + (inscattering * fadedCloudsTransmittance);
+      transmittance *= fadedCloudsTransmittance;
     }
 
     if(atmosphereCullingFactor < 1.0){
