@@ -82,7 +82,7 @@ float rcpSinFromCos(const in float cosAngle){
 vec3 getViewClampedNormal(vec3 normal, const in vec3 viewDirection, out float NdotV){
   NdotV = dot(normal, viewDirection);
   if(NdotV < 0.0){
-    normal = (normal - (viewDirection * NdotV)) * rcpSinFromCos(NdotV); 
+    normal = (normal - (viewDirection * NdotV)) * rcpSinFromCos(NdotV);
     NdotV = 0.0;
   }
   return normal;
