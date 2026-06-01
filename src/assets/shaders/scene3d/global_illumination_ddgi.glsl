@@ -53,8 +53,12 @@
   #define DDGI_SH_MUL SHC3CoefficientsL2Mul
   #define DDGI_SH_LERP SHC3CoefficientsL2Lerp
   #define DDGI_SH_PROJECT ProjectOntoSHC3CoefficientsL2
+  #define DDGI_SH_SUB SHC3CoefficientsL2Sub
   #define DDGI_SH_CONVOLVE_COSINE SHC3CoefficientsL2ConvolveWithCosineLobe
   #define DDGI_SH_EVALUATE EvaluateSHC3CoefficientsL2
+  // Dominant light direction/intensity live in the L0/L1 bands, so the "approximate" method extracts them from the L1
+  // reduction (identical to the L1 path); the full L2 detail stays in the residual.
+  #define DDGI_SH_APPROX_DOMINANT(sh, dir, color) SHC3CoefficientsL1ApproximateDirectionalLight(SHC3CoefficientsL1FromL2(sh), dir, color)
   #define DDGI_SH_EXTRACT_DOMINANT SHC3CoefficientsL2ExtractAndSubtractDominantAmbientAndDirectionalLights
 #elif GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
   #define DDGI_SH_IMAGE_COUNT 3
@@ -64,10 +68,19 @@
   #define DDGI_SH_MUL SHC3CoefficientsL1Mul
   #define DDGI_SH_LERP SHC3CoefficientsL1Lerp
   #define DDGI_SH_PROJECT ProjectOntoSHC3CoefficientsL1
+  #define DDGI_SH_SUB SHC3CoefficientsL1Sub
   #define DDGI_SH_CONVOLVE_COSINE SHC3CoefficientsL1ConvolveWithCosineLobe
   #define DDGI_SH_EVALUATE EvaluateSHC3CoefficientsL1
+  #define DDGI_SH_APPROX_DOMINANT(sh, dir, color) SHC3CoefficientsL1ApproximateDirectionalLight(sh, dir, color)
   #define DDGI_SH_EXTRACT_DOMINANT SHC3CoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights
 #endif
+
+// Dominant-light extraction method for the SH shading path (mesh.frag), compile-time switchable for comparison.
+// When GI_DDGI_SH_APPROXIMATE_DOMINANT is defined (the DEFAULT): SHC3CoefficientsL1ApproximateDirectionalLight + residual
+// SH with the DC kept (matches the original / HEAD~1 look), applied to both L1 and L2 (L2 extracts from the L1 reduction).
+// #undef it (or comment out the line below) to switch to SHC3CoefficientsL{1,2}ExtractAndSubtractDominantAmbientAnd-
+// DirectionalLights (separate uniform ambient + DC-zeroed residual + per-direction roughness estimate) — a different fit.
+#define GI_DDGI_SH_APPROXIMATE_DOMINANT
 
 // --- Probe field dimensions -------------------------------------------------------------------------------------------
 #ifndef GI_DDGI_CASCADES

@@ -957,26 +957,42 @@ void main() {
       }
 #elif defined(GLOBAL_ILLUMINATION_DDGI)
   #if GI_DDGI_STORAGE_IS_SH
-      // SH storage (L1 or L2): sample the radiance SH field, extract its dominant ambient + directional light. The
-      // directional part is shaded analytically by doSingleLight (proper specular), the uniform ambient and the residual
-      // higher-order bands are added as diffuse — mirroring the cascaded radiance hints path. The environment IBL block
-      // below is disabled for this variant (see its #if guard); the specular comes from the extracted dominant light.
+      // SH storage (L1 or L2): sample the radiance SH field, extract its dominant directional light (shaded analytically
+      // by doSingleLight, so it contributes proper specular) and add the remaining residual SH as diffuse — mirroring the
+      // cascaded radiance hints path. The environment IBL block below is disabled for this variant (see its #if guard);
+      // the specular comes from the extracted dominant light instead.
       {
         float ddgiSkyVisibility;
         DDGI_SH_TYPE ddgiRadianceSH = ddgiSampleRadianceSH(inWorldSpacePosition.xyz, normal.xyz, viewDirection, ddgiSkyVisibility);
-        // Extract+subtract the dominant ambient & directional light in place; ddgiRadianceSH becomes the residual
-        // (DC zeroed, dominant subtracted). shDominantColor is the directional light intensity for the analytic BRDF.
-        vec3 shAmbient, shDominantDirection, shDominantColor;
+        vec3 shDominantDirectionalLightColor, shDominantDirectionalLightDirection;
+#ifdef GI_DDGI_SH_APPROXIMATE_DOMINANT
+        // Default (= HEAD~1, applied to L1 and L2): approximate dominant directional light + residual SH (DC kept).
+        // The dominant light direction/intensity live in the L0/L1 bands, so the L2 variant extracts them from the L1
+        // reduction (identical method to L1); the full L2 detail is preserved in the residual below.
+#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
+        SHC3CoefficientsL1ApproximateDirectionalLight(SHC3CoefficientsL1FromL2(ddgiRadianceSH), shDominantDirectionalLightDirection, shDominantDirectionalLightColor);
+#else
+        SHC3CoefficientsL1ApproximateDirectionalLight(ddgiRadianceSH, shDominantDirectionalLightDirection, shDominantDirectionalLightColor);
+#endif
+        // Residual SH = field minus the extracted dominant light, so it is not double-counted in the diffuse term.
+        DDGI_SH_TYPE shResidual = DDGI_SH_SUB(ddgiRadianceSH, DDGI_SH_PROJECT(shDominantDirectionalLightDirection, shDominantDirectionalLightColor));
+        vec3 shResidualDiffuse = max(vec3(0.0), DDGI_SH_EVALUATE(DDGI_SH_CONVOLVE_COSINE(shResidual), normal.xyz));
+        if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
+          colorOutput += shResidualDiffuse * baseColor.xyz * diffuseOcclusion * OneOverPI;
+        }
+#else
+        // Alternative (= HEAD): native extract-and-subtract -> uniform ambient + DC-zeroed residual + dominant light.
+        vec3 shAmbient;
         float shModifiedSqrtRoughness;
-        DDGI_SH_EXTRACT_DOMINANT(ddgiRadianceSH, shAmbient, shDominantDirection, shDominantColor, sqrt(clamp(perceptualRoughness, 0.0, 1.0)), shModifiedSqrtRoughness);
-        // Diffuse = uniform ambient (albedo * L_ambient) + residual directional bands (albedo/PI * irradiance).
+        DDGI_SH_EXTRACT_DOMINANT(ddgiRadianceSH, shAmbient, shDominantDirectionalLightDirection, shDominantDirectionalLightColor, sqrt(clamp(perceptualRoughness, 0.0, 1.0)), shModifiedSqrtRoughness);
         vec3 shResidualDiffuse = max(vec3(0.0), DDGI_SH_EVALUATE(DDGI_SH_CONVOLVE_COSINE(ddgiRadianceSH), normal.xyz));
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
           colorOutput += fma(shResidualDiffuse, vec3(OneOverPI), max(vec3(0.0), shAmbient)) * baseColor.xyz * diffuseOcclusion;
         }
-        doSingleLight(shDominantColor,                                    //
+#endif
+        doSingleLight(shDominantDirectionalLightColor,                    //
                       vec3(specularOcclusion),                            //
-                      -shDominantDirection,                               //
+                      -shDominantDirectionalLightDirection,               //
                       normal.xyz,                                         //
                       baseColor.xyz,                                      //
                       F0Dielectric,                                       //
