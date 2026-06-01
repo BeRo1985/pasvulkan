@@ -72,9 +72,12 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
+
+const TpvScene3DRendererPassesGlobalIlluminationDDGIComputePassMaxPlanetTextures=32; // descriptor array size for the per-planet blend/grass maps (set 2), indexed by planet object index
 
 type { TpvScene3DRendererPassesGlobalIlluminationDDGIComputePass }
      // Single combined compute pass that runs the whole per-frame DDGI probe update: trace rays against the scene TLAS,
@@ -87,7 +90,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIComputePass }
              RandomRotation1:TpvVector4; // mat3 column 1 in xyz
              RandomRotation2:TpvVector4; // mat3 column 2 in xyz
              Params:TpvUInt32Vector4;    // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-             Blend:TpvVector4;           // x = hysteresis
+             Blend:TpvVector4;           // x = hysteresis, yzw = unused
             end;
             PPushConstants=^TPushConstants;
       private
@@ -103,6 +106,11 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIComputePass }
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fPlanetTexturesDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fPlanetTexturesDescriptorPool:TpvVulkanDescriptorPool;
+       fPlanetTexturesDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fBlendInfos:TVkDescriptorImageInfoArray; // cached scratch for the planet blend map descriptor writes, grown power-of-two
+       fGrassInfos:TVkDescriptorImageInfoArray; // cached scratch for the planet grass map descriptor writes, grown power-of-two
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipelineTrace:TpvVulkanComputePipeline;
        fPipelineIrradianceUpdate:TpvVulkanComputePipeline;
@@ -193,12 +201,28 @@ begin
  fVulkanDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.Initialize;
 
+ // Set 2 = per-planet octahedral blend/grass maps, bindless, indexed by planet object index (== the index used to fetch
+ // PlanetData). Partially bound: only the slots of existing planets are written; the trace shader only ever samples the
+ // slot of a planet it actually hit. The full planet material layer blend is reproduced in gi_rt_gather.glsl.
+ fPlanetTexturesDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice,0,true);
+ fPlanetTexturesDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3DRendererPassesGlobalIlluminationDDGIComputePassMaxPlanetTextures,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[],TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
+ fPlanetTexturesDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3DRendererPassesGlobalIlluminationDDGIComputePassMaxPlanetTextures,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[],TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
+ fPlanetTexturesDescriptorSetLayout.Initialize;
+
+ fPlanetTexturesDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
+                                                               TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                               fInstance.Renderer.CountInFlightFrames);
+ fPlanetTexturesDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*2*TpvScene3DRendererPassesGlobalIlluminationDDGIComputePassMaxPlanetTextures);
+ fPlanetTexturesDescriptorPool.Initialize;
+
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
  // Set 0 = the scene's global descriptor set (TLAS, lights, materials, textures) for the ray query in the trace stage.
  fPipelineLayout.AddDescriptorSetLayout(fInstance.Scene3D.GlobalVulkanDescriptorSetLayout);
  // Set 1 = the DDGI probe resources.
  fPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
+ // Set 2 = the per-planet blend/grass maps.
+ fPipelineLayout.AddDescriptorSetLayout(fPlanetTexturesDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
  fPipelineTrace:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,fInstance.Renderer.VulkanPipelineCache,0,fVulkanPipelineShaderStageComputeTrace,fPipelineLayout,nil,0);
@@ -227,6 +251,9 @@ begin
 
   IrradianceImageInfos:=nil;
 
+  // The planet-texture set is created empty here and (re)populated each frame in Update() from the planet list.
+  fPlanetTexturesDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPlanetTexturesDescriptorPool,fPlanetTexturesDescriptorSetLayout);
+
  end;
 
 end;
@@ -241,21 +268,77 @@ begin
  FreeAndNil(fPipelineLayout);
  for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
+  FreeAndNil(fPlanetTexturesDescriptorSets[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
+ FreeAndNil(fPlanetTexturesDescriptorSetLayout);
+ FreeAndNil(fPlanetTexturesDescriptorPool);
+ fBlendInfos:=nil;
+ fGrassInfos:=nil;
  inherited ReleaseVolatileResources;
 end;
 
+// Populate the per-planet blend/grass map set for the given in-flight frame from the scene's planet list. The slot index
+// is the planet's list index, which equals the planet object index used by the ray tracing geometry (and to fetch
+// PlanetData), so uGIPlanetBlendMaps[objectIndex] / uGIPlanetGrassMaps[objectIndex] match the planet that was hit.
 procedure TpvScene3DRendererPassesGlobalIlluminationDDGIComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+var Planets:TpvScene3DPlanets;
+    Planet:TpvScene3DPlanet;
+    PlanetIndex,Count,Capacity:TpvSizeInt;
+    Sampler:TpvVulkanSampler;
+    Data:TpvScene3DPlanet.TData;
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
+
+ if not assigned(fPlanetTexturesDescriptorSets[aUpdateInFlightFrameIndex]) then begin
+  exit;
+ end;
+
+ Sampler:=fInstance.Scene3D.GeneralComputeSampler; // linear, clamp-to-edge - the same sampler the planet render pass uses for these maps
+
+ Count:=0;
+ Planets:=TpvScene3DPlanets(fInstance.Scene3D.Planets);
+ Planets.Lock.AcquireRead;
+ try
+  for PlanetIndex:=0 to Min(Planets.Count,TpvScene3DRendererPassesGlobalIlluminationDDGIComputePassMaxPlanetTextures)-1 do begin
+   Planet:=Planets.Items[PlanetIndex];
+   Data:=Planet.InFlightFrameDataList[aUpdateInFlightFrameIndex];
+   if Planet.Ready and assigned(Data) and assigned(Data.BlendMapImage) and assigned(Data.GrassMapImage) then begin
+    // Grow the cached scratch arrays power-of-two-wise only when they are too small, so the common case does no realloc.
+    if length(fBlendInfos)<=Count then begin
+     Capacity:=RoundUpToPowerOfTwoSizeUInt(Count+1);
+     SetLength(fBlendInfos,Capacity);
+     SetLength(fGrassInfos,Capacity);
+    end;
+    fBlendInfos[Count]:=TVkDescriptorImageInfo.Create(Sampler.Handle,
+                                                      Data.BlendMapImage.VulkanArrayImageView.Handle,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    fGrassInfos[Count]:=TVkDescriptorImageInfo.Create(Sampler.Handle,
+                                                      Data.GrassMapImage.VulkanImageView.Handle,
+                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    inc(Count);
+   end else begin
+    break; // a gap (non-ready planet) would desync the slot<->objectIndex mapping; stop at the first gap, matching the contiguous ready-planet assumption of the RT planet data array
+   end;
+  end;
+ finally
+  Planets.Lock.ReleaseRead;
+ end;
+
+ // WriteToDescriptorSet uses the explicit descriptor count (Count), so passing the larger cached arrays is fine - only
+ // the first Count entries are read, and the array memory stays valid until the Flush below.
+ if Count>0 then begin
+  fPlanetTexturesDescriptorSets[aUpdateInFlightFrameIndex].WriteToDescriptorSet(0,0,Count,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),fBlendInfos,[],[],false);
+  fPlanetTexturesDescriptorSets[aUpdateInFlightFrameIndex].WriteToDescriptorSet(1,0,Count,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),fGrassInfos,[],[],false);
+  fPlanetTexturesDescriptorSets[aUpdateInFlightFrameIndex].Flush;
+ end;
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationDDGIComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 const TotalProbes=TpvScene3DRendererInstance.CountGlobalIlluminationDDGICascades*TpvScene3DRendererInstance.GlobalIlluminationDDGIProbesPerCascade;
 var PushConstants:TPushConstants;
-    DescriptorSets:array[0..1] of TVkDescriptorSet;
+    DescriptorSets:array[0..2] of TVkDescriptorSet;
     Quaternion:TpvQuaternion;
     RotationMatrix:TpvMatrix3x3;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
@@ -300,7 +383,8 @@ begin
 
  DescriptorSets[0]:=fInstance.Scene3D.GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
  DescriptorSets[1]:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;
- aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineLayout.Handle,0,2,@DescriptorSets[0],0,nil);
+ DescriptorSets[2]:=fPlanetTexturesDescriptorSets[aInFlightFrameIndex].Handle;
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineLayout.Handle,0,3,@DescriptorSets[0],0,nil);
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants),@PushConstants);
 
  // 1) Trace: one thread per (ray, probe). local_size_x = 32.

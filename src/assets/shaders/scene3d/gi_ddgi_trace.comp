@@ -28,6 +28,10 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 // Sky on miss: TODO sample the environment; for now closed-scene ambient is zero. The trace pass may later bind the sky.
 #define GI_GATHER_SKY(dir) vec3(0.0)
+// Per-planet blend/grass maps (bindless, indexed by planet object index) on set 2, so planet hits get the full material
+// layer blend instead of just the default ground material.
+#define GI_GATHER_PLANET_TEXTURES
+#define GI_GATHER_PLANET_TEXTURES_SET 2
 #include "gi_rt_gather.glsl"
 
 // DDGI probe field definition (UBO + addressing). No sampling needed here (multi-bounce feedback handled below if enabled).

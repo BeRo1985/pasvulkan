@@ -69,6 +69,90 @@ struct GIGatherSurface {
 //  material so we can shade it (base color + emissive). It runs the alpha-handling proceed loop so cut-out / blended
 //  geometry behaves the same as in the rasterization path.
 // ---------------------------------------------------------------------------------------------------------------------
+
+// Planet surface albedo for the ray-traced gather.
+//
+// All planet geometry/material data comes through the PlanetData buffer reference (BDA) and the global bindless texture
+// array (u2DTextures). The material LAYER WEIGHTS, however, live in the per-planet blend map (a 2-layer octahedral 2D
+// array) and grass map - which are not in the global texture array. When GI_GATHER_PLANET_TEXTURES is enabled, those
+// maps are provided bindlessly via a dedicated descriptor set, indexed by the planet object index (== the same index
+// used to fetch PlanetData), and we reproduce the planet render pass' material blend (up to 8 weighted layers + default
+// ground + grass). Without that define we fall back to the default ground material (materials[15]) only.
+#ifdef GI_GATHER_PLANET_TEXTURES
+  #ifndef GI_GATHER_PLANET_TEXTURES_SET
+    #define GI_GATHER_PLANET_TEXTURES_SET 2
+  #endif
+  layout(set = GI_GATHER_PLANET_TEXTURES_SET, binding = 0) uniform sampler2DArray uGIPlanetBlendMaps[]; // per planet, 2 layers = 8 material layer weights
+  layout(set = GI_GATHER_PLANET_TEXTURES_SET, binding = 1) uniform sampler2D uGIPlanetGrassMaps[];      // per planet, grass coverage
+#endif
+
+// Triplanar albedo of a single planet material: three axis-projected taps from the global bindless texture array at
+// LOD 0, weighted by the (already normalized) triplanar blend weights.
+vec3 giPlanetMaterialAlbedo(const in PlanetMaterial material, const in vec3 triplanarPosition, const in vec3 weights){
+  float scale = abs(GetPlanetMaterialScale(material)); // a negative scale selects the raster anti-tiling path; magnitude is what matters for the LOD0 sample
+  uint albedoTextureIndex = (GetPlanetMaterialAlbedoTextureIndex(material) << 1u) | 1u; // | 1 selects the sRGB texture view variant
+  vec3 p = triplanarPosition * scale;
+  return (textureLod(u2DTextures[nonuniformEXT(albedoTextureIndex)], p.yz, 0.0).xyz * weights.x) +
+         (textureLod(u2DTextures[nonuniformEXT(albedoTextureIndex)], p.zx, 0.0).xyz * weights.y) +
+         (textureLod(u2DTextures[nonuniformEXT(albedoTextureIndex)], p.xy, 0.0).xyz * weights.z);
+}
+
+vec3 giPlanetAlbedo(const in PlanetData planetData, const in uint planetIndex, const in vec3 objectPosition, const in vec3 objectNormal){
+  vec3 triplanarPosition = (planetData.triplanarMatrix * vec4(objectPosition, 1.0)).xyz;
+  vec3 triplanarNormal = normalize((planetData.triplanarNormalMatrix * vec4(objectNormal, 0.0)).xyz);
+  vec3 weights = pow(abs(triplanarNormal), vec3(6.0));
+  weights /= max((weights.x + weights.y) + weights.z, 1e-6);
+
+#ifdef GI_GATHER_PLANET_TEXTURES
+
+  // Octahedral sphere normal = the object-space (sphere) position direction, exactly as the planet shaders address the maps.
+  vec3 sphereNormal = normalize(objectPosition);
+  mat2x4 layerWeights = mat2x4(
+    texturePlanetOctahedralMapArray(uGIPlanetBlendMaps[nonuniformEXT(planetIndex)], sphereNormal, 0),
+    texturePlanetOctahedralMapArray(uGIPlanetBlendMaps[nonuniformEXT(planetIndex)], sphereNormal, 1)
+  );
+  float grass = clamp(texturePlanetOctahedralMap(uGIPlanetGrassMaps[nonuniformEXT(planetIndex)], sphereNormal).x, 0.0, 1.0);
+
+  // Mirror the planet render pass blend: up to 8 weighted material layers, then the default ground material fills the
+  // remaining weight, then the grass material is overlaid. (Albedo only - GI does not need normal/roughness/occlusion.)
+  vec3 albedo = vec3(0.0);
+  float weightSum = 0.0;
+  for(int top = 0; top < 2; top++){
+    vec4 w4 = layerWeights[top];
+    for(int bot = 0; bot < 4; bot++){
+      float weight = w4[bot];
+      if(weight > 0.0){
+        albedo += giPlanetMaterialAlbedo(planetData.materials[(top << 2) | bot], triplanarPosition, weights) * weight;
+        weightSum += weight;
+      }
+    }
+  }
+  float defaultWeight = clamp(1.0 - weightSum, 0.0, 1.0);
+  if(defaultWeight > 0.0){
+    albedo += giPlanetMaterialAlbedo(planetData.materials[15], triplanarPosition, weights) * defaultWeight;
+    weightSum += defaultWeight;
+  }
+  if(grass > 0.0){
+    if(weightSum > 0.0){
+      albedo *= 1.0 / max(1e-7, weightSum);
+      weightSum = 1.0;
+    }
+    float f = pow(1.0 - grass, 16.0);
+    albedo *= f;
+    weightSum *= f;
+    albedo += giPlanetMaterialAlbedo(planetData.materials[14], triplanarPosition, weights) * grass;
+    weightSum += grass;
+  }
+  return (weightSum > 0.0) ? (albedo / weightSum) : vec3(0.0);
+
+#else
+
+  // No per-planet maps available: just the default ground material.
+  return giPlanetMaterialAlbedo(planetData.materials[15], triplanarPosition, weights);
+
+#endif
+}
+
 GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction, const in float tMin, const in float tMax, const in uint cullMask){
 
   GIGatherSurface s;
@@ -172,7 +256,7 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
 
     }
 
-    case 2u:{ // Planet - geometry only; planet materials are not unpacked here, use a neutral albedo. TODO: planet material.
+    case 2u:{ // Planet. Geometry and the default-ground material albedo are unpacked from the planet data buffer reference (BDA).
 
       mat4x3 objectToWorld = rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true);
 
@@ -187,24 +271,30 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
         raytracingPlanetIndices.planetIndices[indexOffset + 2u]
       );
 
-      vec3 vertexPositionArray[3] = vec3[3](
-        objectToWorld * vec4(uintBitsToFloat(raytracingPlanetVertices.planetVertices[indices.x].xyz), 1.0),
-        objectToWorld * vec4(uintBitsToFloat(raytracingPlanetVertices.planetVertices[indices.y].xyz), 1.0),
-        objectToWorld * vec4(uintBitsToFloat(raytracingPlanetVertices.planetVertices[indices.z].xyz), 1.0)
+      // Object (sphere) space positions/normals - kept in object space because the triplanar material projection is
+      // defined in that space (planetData.triplanarMatrix), just like the planet vertex shader does it.
+      vec3 objectPositionArray[3] = vec3[3](
+        uintBitsToFloat(raytracingPlanetVertices.planetVertices[indices.x].xyz),
+        uintBitsToFloat(raytracingPlanetVertices.planetVertices[indices.y].xyz),
+        uintBitsToFloat(raytracingPlanetVertices.planetVertices[indices.z].xyz)
       );
 
-      vec3 vertexNormalArray[3] = vec3[3](
-        normalize(objectToWorld * vec4(octSignedDecode(unpackSnorm2x16(raytracingPlanetVertices.planetVertices[indices.x].w)), 0.0)),
-        normalize(objectToWorld * vec4(octSignedDecode(unpackSnorm2x16(raytracingPlanetVertices.planetVertices[indices.y].w)), 0.0)),
-        normalize(objectToWorld * vec4(octSignedDecode(unpackSnorm2x16(raytracingPlanetVertices.planetVertices[indices.z].w)), 0.0))
+      vec3 objectNormalArray[3] = vec3[3](
+        octSignedDecode(unpackSnorm2x16(raytracingPlanetVertices.planetVertices[indices.x].w)),
+        octSignedDecode(unpackSnorm2x16(raytracingPlanetVertices.planetVertices[indices.y].w)),
+        octSignedDecode(unpackSnorm2x16(raytracingPlanetVertices.planetVertices[indices.z].w))
       );
 
-      s.position = (barycentrics.x * vertexPositionArray[0]) + (barycentrics.y * vertexPositionArray[1]) + (barycentrics.z * vertexPositionArray[2]);
-      s.normal = normalize((barycentrics.x * vertexNormalArray[0]) + (barycentrics.y * vertexNormalArray[1]) + (barycentrics.z * vertexNormalArray[2]));
+      vec3 objectPosition = (barycentrics.x * objectPositionArray[0]) + (barycentrics.y * objectPositionArray[1]) + (barycentrics.z * objectPositionArray[2]);
+      vec3 objectNormal = normalize((barycentrics.x * objectNormalArray[0]) + (barycentrics.y * objectNormalArray[1]) + (barycentrics.z * objectNormalArray[2]));
+
+      s.position = objectToWorld * vec4(objectPosition, 1.0);
+      s.normal = normalize(objectToWorld * vec4(objectNormal, 0.0));
       if(dot(s.normal, direction) > 0.0){
         s.normal = -s.normal;
       }
-      s.albedo = GI_GATHER_DEFAULT_PLANET_ALBEDO;
+
+      s.albedo = giPlanetAlbedo(planetData, geometryItem.objectIndex, objectPosition, objectNormal);
       s.emission = vec3(0.0);
 
       break;
