@@ -966,7 +966,7 @@ void main() {
       vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
       iblResultColor = fma(iblResultColor, vec3(iblAlbedoSheenScaling), iblSheen); // Sheen modulation
       iblResultColor = mix(iblResultColor, iblClearcoatBRDF, clearcoatFactor * clearcoatFresnel); // Clearcoat modulation
-      colorOutput += iblResultColor; // Add to the color output
+      colorOutput += iblResultColor * iblWeight; // Add to the color output; iblWeight (= 1 - voxel cone tracing diffuse occlusion) suppresses the environment IBL where the voxel cone tracing already gathered near-field indirect light and occlusion, so the VCT global illumination actually contributes instead of being drowned out by full-strength IBL. For non-VCT paths iblWeight is 1.0.
 #endif
 #endif
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
