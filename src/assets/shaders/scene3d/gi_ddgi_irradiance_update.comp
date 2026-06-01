@@ -12,17 +12,12 @@
 
 /* clang-format off */
 
-#define GI_DDGI_STORAGE_SH_VALUE 0
-#define GI_DDGI_STORAGE_OCT_VALUE 1
-#ifndef GI_DDGI_STORAGE
-  #define GI_DDGI_STORAGE GI_DDGI_STORAGE_SH_VALUE
-#endif
-
+// Storage mode (GI_DDGI_STORAGE), GI_DDGI_STORAGE_IS_SH and the DDGI_SH_* type aliases come from this include.
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
 
-#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
+#if GI_DDGI_STORAGE_IS_SH
   #include "sphericalharmonics.glsl"
   layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in; // one thread per probe
 #else
@@ -32,9 +27,9 @@
 // Per-ray radiance + hit distance from the trace pass.
 layout(set = 1, binding = 1, rgba16f) uniform readonly image2D uDDGIRayData;
 
-#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
-  // L1 RGB SH packed into three RGBA16F 3D images: see global_illumination_ddgi.glsl for the packing.
-  layout(set = 1, binding = 2, rgba16f) uniform image3D uDDGIIrradianceSH[3];
+#if GI_DDGI_STORAGE_IS_SH
+  // RGB SH packed into DDGI_SH_IMAGE_COUNT RGBA16F 3D images (L1 = 3, L2 = 7): see ddgiLoadSH/ddgiStoreSH for the packing.
+  layout(set = 1, binding = 2, rgba16f) uniform image3D uDDGIIrradianceSH[DDGI_SH_IMAGE_COUNT];
 #else
   layout(set = 1, binding = 2, rgba16f) uniform image2D uDDGIIrradianceOct;
 #endif
@@ -49,23 +44,41 @@ layout(push_constant) uniform PushConstants {
 
 const float GI_DDGI_FOUR_PI = 12.566370614359172;
 
-#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
+#if GI_DDGI_STORAGE_IS_SH
 
 ivec3 ddgiSHTexelCoord(const in ivec3 probeCoord, const in int cascadeIndex){
   return ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
 }
 
-SHC3CoefficientsL1 ddgiLoadSH(const in ivec3 texel){
+// Packing of the RGB SH coefficients into the RGBA16F image set. L1 (4 coeffs) uses 3 images, L2 (9 coeffs) uses 7;
+// the first three images are identical between the two, the L2 ones append c4..c8 in the same interleaved pattern.
+DDGI_SH_TYPE ddgiLoadSH(const in ivec3 texel){
   vec4 a = imageLoad(uDDGIIrradianceSH[0], texel);
   vec4 b = imageLoad(uDDGIIrradianceSH[1], texel);
   vec4 c = imageLoad(uDDGIIrradianceSH[2], texel);
+#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
+  vec4 d = imageLoad(uDDGIIrradianceSH[3], texel);
+  vec4 e = imageLoad(uDDGIIrradianceSH[4], texel);
+  vec4 f = imageLoad(uDDGIIrradianceSH[5], texel);
+  vec4 g = imageLoad(uDDGIIrradianceSH[6], texel);
+  return SHC3CoefficientsL2Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w),
+                                  vec3(d.x, d.y, d.z), vec3(d.w, e.x, e.y), vec3(e.z, e.w, f.x), vec3(f.y, f.z, f.w),
+                                  vec3(g.x, g.y, g.z));
+#else
   return SHC3CoefficientsL1Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w));
+#endif
 }
 
-void ddgiStoreSH(const in ivec3 texel, const in SHC3CoefficientsL1 sh){
+void ddgiStoreSH(const in ivec3 texel, const in DDGI_SH_TYPE sh){
   imageStore(uDDGIIrradianceSH[0], texel, vec4(sh.coefficients[0].xyz, sh.coefficients[1].x));
   imageStore(uDDGIIrradianceSH[1], texel, vec4(sh.coefficients[1].yz, sh.coefficients[2].xy));
   imageStore(uDDGIIrradianceSH[2], texel, vec4(sh.coefficients[2].z, sh.coefficients[3].xyz));
+#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
+  imageStore(uDDGIIrradianceSH[3], texel, vec4(sh.coefficients[4].xyz, sh.coefficients[5].x));
+  imageStore(uDDGIIrradianceSH[4], texel, vec4(sh.coefficients[5].yz, sh.coefficients[6].xy));
+  imageStore(uDDGIIrradianceSH[5], texel, vec4(sh.coefficients[6].z, sh.coefficients[7].xyz));
+  imageStore(uDDGIIrradianceSH[6], texel, vec4(sh.coefficients[8].xyz, 0.0));
+#endif
 }
 
 void main(){
@@ -83,24 +96,24 @@ void main(){
 
   uint raysPerProbe = pushConstants.params.w;
 
-  SHC3CoefficientsL1 sh = SHC3CoefficientsL1Zero();
+  DDGI_SH_TYPE sh = DDGI_SH_ZERO();
   for(uint r = 0u; r < raysPerProbe; r++){
     vec3 rayDirection = ddgiRayDirection(int(r), randomRotation);
     vec3 radiance = imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).rgb;
-    sh = SHC3CoefficientsL1Add(sh, ProjectOntoSHC3CoefficientsL1(rayDirection, radiance));
+    sh = DDGI_SH_ADD(sh, DDGI_SH_PROJECT(rayDirection, radiance));
   }
   // Monte-Carlo estimator over the uniform sphere: c_lm = (4*pi / N) * sum(L * Y_lm).
-  sh = SHC3CoefficientsL1Mul(sh, GI_DDGI_FOUR_PI / float(raysPerProbe));
+  sh = DDGI_SH_MUL(sh, GI_DDGI_FOUR_PI / float(raysPerProbe));
 
   ivec3 texel = ddgiSHTexelCoord(probeCoord, cascadeIndex);
   // The probe images are not cleared on allocation, so guard against uninitialized NaN/Inf memory which would otherwise
   // lock in permanently through the temporal hysteresis blend; on the first (non-finite) read just take the new value.
-  SHC3CoefficientsL1 previous = ddgiLoadSH(texel);
+  DDGI_SH_TYPE previous = ddgiLoadSH(texel);
   vec3 finiteCheck = ((previous.coefficients[0] + previous.coefficients[1]) + previous.coefficients[2]) + previous.coefficients[3];
   if(any(isnan(finiteCheck)) || any(isinf(finiteCheck))){
     ddgiStoreSH(texel, sh);
   }else{
-    ddgiStoreSH(texel, SHC3CoefficientsL1Lerp(sh, previous, pushConstants.blend.x));
+    ddgiStoreSH(texel, DDGI_SH_LERP(sh, previous, pushConstants.blend.x));
   }
 }
 

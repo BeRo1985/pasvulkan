@@ -70,15 +70,25 @@ layout(set = 1, binding = 1, rgba16f) uniform writeonly image2D uDDGIRayData;
 // (declared by global_illumination_ddgi.glsl) are backed by these storage images via imageLoad. Both irradiance storage
 // variants are supported so multi-bounce works regardless of the GI_DDGI_STORAGE the field was built with.
 
-#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
-layout(set = 1, binding = 2, rgba16f) uniform readonly image3D uDDGIIrradianceSHRead[3];
+#if GI_DDGI_STORAGE_IS_SH
+layout(set = 1, binding = 2, rgba16f) uniform readonly image3D uDDGIIrradianceSHRead[DDGI_SH_IMAGE_COUNT];
 
-SHC3CoefficientsL1 ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
+DDGI_SH_TYPE ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
   ivec3 texel = ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
   vec4 a = imageLoad(uDDGIIrradianceSHRead[0], texel);
   vec4 b = imageLoad(uDDGIIrradianceSHRead[1], texel);
   vec4 c = imageLoad(uDDGIIrradianceSHRead[2], texel);
+#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
+  vec4 d = imageLoad(uDDGIIrradianceSHRead[3], texel);
+  vec4 e = imageLoad(uDDGIIrradianceSHRead[4], texel);
+  vec4 f = imageLoad(uDDGIIrradianceSHRead[5], texel);
+  vec4 g = imageLoad(uDDGIIrradianceSHRead[6], texel);
+  return SHC3CoefficientsL2Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w),
+                                  vec3(d.x, d.y, d.z), vec3(d.w, e.x, e.y), vec3(e.z, e.w, f.x), vec3(f.y, f.z, f.w),
+                                  vec3(g.x, g.y, g.z));
+#else
   return SHC3CoefficientsL1Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w));
+#endif
 }
 #else
 layout(set = 1, binding = 2, rgba16f) uniform readonly image2D uDDGIIrradianceOctRead;

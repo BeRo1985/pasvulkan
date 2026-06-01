@@ -23,16 +23,50 @@
 #include "octahedral.glsl" // octEncode / octDecode (unit vector <-> [-1,1]^2 signed octahedral mapping)
 
 // --- Storage mode -----------------------------------------------------------------------------------------------------
-#define GI_DDGI_STORAGE_SH_VALUE 0
-#define GI_DDGI_STORAGE_OCT_VALUE 1
+#define GI_DDGI_STORAGE_OCT_VALUE 0  // octahedral irradiance atlas (1 RGBA16F image)
+#define GI_DDGI_STORAGE_SH_VALUE 1   // L1 RGB spherical harmonics (4 coefficients, 3 RGBA16F images)
+#define GI_DDGI_STORAGE_L2_VALUE 2   // L2 RGB spherical harmonics (9 coefficients, 7 RGBA16F images)
 #ifndef GI_DDGI_STORAGE
-  #define GI_DDGI_STORAGE GI_DDGI_STORAGE_SH_VALUE
+  #define GI_DDGI_STORAGE GI_DDGI_STORAGE_L2_VALUE
 #endif
 
 // Convenience define mirroring GI_DDGI_STORAGE for consumers that select via defined()/!defined() (e.g. mesh.frag's
-// IBL block, which is kept for octahedral storage but replaced by the SH dominant-light path for SH storage).
+// IBL block, which is kept for octahedral storage but replaced by the SH dominant-light path for both SH storage modes).
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_OCT_VALUE
   #define GLOBAL_ILLUMINATION_DDGI_OCT_STORAGE
+#endif
+
+// Both L1 and L2 are spherical-harmonics storage (3D image triplet/septuplet); octahedral is the odd one out.
+#if (GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE) || (GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE)
+  #define GI_DDGI_STORAGE_IS_SH 1
+#else
+  #define GI_DDGI_STORAGE_IS_SH 0
+#endif
+
+// Storage-order-agnostic spherical-harmonics aliases: the sampling/update/shading code is written once against these
+// (DDGI_SH_*), only the per-texel (un)packing of the coefficients into the RGBA16F image set is storage-specific.
+#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
+  #define DDGI_SH_IMAGE_COUNT 7
+  #define DDGI_SH_TYPE SHC3CoefficientsL2
+  #define DDGI_SH_ZERO SHC3CoefficientsL2Zero
+  #define DDGI_SH_ADD SHC3CoefficientsL2Add
+  #define DDGI_SH_MUL SHC3CoefficientsL2Mul
+  #define DDGI_SH_LERP SHC3CoefficientsL2Lerp
+  #define DDGI_SH_PROJECT ProjectOntoSHC3CoefficientsL2
+  #define DDGI_SH_CONVOLVE_COSINE SHC3CoefficientsL2ConvolveWithCosineLobe
+  #define DDGI_SH_EVALUATE EvaluateSHC3CoefficientsL2
+  #define DDGI_SH_EXTRACT_DOMINANT SHC3CoefficientsL2ExtractAndSubtractDominantAmbientAndDirectionalLights
+#elif GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
+  #define DDGI_SH_IMAGE_COUNT 3
+  #define DDGI_SH_TYPE SHC3CoefficientsL1
+  #define DDGI_SH_ZERO SHC3CoefficientsL1Zero
+  #define DDGI_SH_ADD SHC3CoefficientsL1Add
+  #define DDGI_SH_MUL SHC3CoefficientsL1Mul
+  #define DDGI_SH_LERP SHC3CoefficientsL1Lerp
+  #define DDGI_SH_PROJECT ProjectOntoSHC3CoefficientsL1
+  #define DDGI_SH_CONVOLVE_COSINE SHC3CoefficientsL1ConvolveWithCosineLobe
+  #define DDGI_SH_EVALUATE EvaluateSHC3CoefficientsL1
+  #define DDGI_SH_EXTRACT_DOMINANT SHC3CoefficientsL1ExtractAndSubtractDominantAmbientAndDirectionalLights
 #endif
 
 // --- Probe field dimensions -------------------------------------------------------------------------------------------
@@ -174,21 +208,21 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 #ifdef GLOBAL_ILLUMINATION_DDGI_SAMPLE
 
   // Irradiance storage.
-  #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
-    // L1 RGB spherical harmonics packed into 3 RGBA16F 3D textures per cascade.
-    //   tex0 = (c0.rgb, c1.r), tex1 = (c1.gb, c2.rg), tex2 = (c2.b, c3.rgb)
-    // The 3D texture coordinate addresses the probe lattice (size = probe counts, with the cascade stacked along Z).
+  #if GI_DDGI_STORAGE_IS_SH
+    // RGB spherical harmonics packed into DDGI_SH_IMAGE_COUNT RGBA16F 3D textures per cascade (L1 = 3, L2 = 7); see the
+    // consumer's ddgiLoadIrradianceSH for the exact (un)packing. The 3D texture coordinate addresses the probe lattice
+    // (size = probe counts, with the cascade stacked along Z).
     #include "sphericalharmonics.glsl"
 
     // Defined by each consumer against its own resources: the probe update shader loads from a storage image, the
-    // shading pass loads from a sampled texture. Returns the stored *radiance* L1 SH of the probe.
-    SHC3CoefficientsL1 ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex);
+    // shading pass loads from a sampled texture. Returns the stored *radiance* SH (L1 or L2) of the probe.
+    DDGI_SH_TYPE ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex);
 
     // Evaluate the diffuse irradiance E(n) for a normal direction: convolve the stored radiance SH with the clamped
     // cosine lobe and evaluate it in the normal direction. The caller multiplies by albedo/PI to get outgoing radiance.
     vec3 ddgiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal){
-      SHC3CoefficientsL1 sh = SHC3CoefficientsL1ConvolveWithCosineLobe(ddgiLoadIrradianceSH(probeCoord, cascadeIndex));
-      return max(vec3(0.0), EvaluateSHC3CoefficientsL1(sh, normalize(normal)));
+      DDGI_SH_TYPE sh = DDGI_SH_CONVOLVE_COSINE(ddgiLoadIrradianceSH(probeCoord, cascadeIndex));
+      return max(vec3(0.0), DDGI_SH_EVALUATE(sh, normalize(normal)));
     }
   #else
     // Octahedral irradiance atlas (RGBA16F).
@@ -306,20 +340,20 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
     return result;
   }
 
-  #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
+  #if GI_DDGI_STORAGE_IS_SH
   // ---------------------------------------------------------------------------------------------------------------------
-  //  Same sampling as ddgiSampleIrradiance* but returning the blended *radiance* L1 SH (pre cosine-lobe) instead of the
-  //  evaluated diffuse irradiance. The SH-storage shading path uses this to extract a dominant directional light (proper
-  //  specular via the analytic BRDF) plus a residual ambient SH (diffuse), mirroring the cascaded radiance hints path.
+  //  Same sampling as ddgiSampleIrradiance* but returning the blended *radiance* SH (L1 or L2, pre cosine-lobe) instead of
+  //  the evaluated diffuse irradiance. The SH-storage shading path uses this to extract a dominant directional light
+  //  (proper specular via the analytic BRDF) plus a residual ambient SH (diffuse), mirroring the cascaded radiance hints.
   // ---------------------------------------------------------------------------------------------------------------------
-  SHC3CoefficientsL1 ddgiSampleRadianceSHInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in int cascadeIndex, out float skyVisibility){
+  DDGI_SH_TYPE ddgiSampleRadianceSHInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in int cascadeIndex, out float skyVisibility){
     vec3 gridCoord = ddgiWorldToProbeGrid(worldPosition, cascadeIndex);
     ivec3 baseProbe = ivec3(floor(gridCoord));
     vec3 frac = gridCoord - vec3(baseProbe);
 
     vec3 biasedPosition = worldPosition;
 
-    SHC3CoefficientsL1 sumSH = SHC3CoefficientsL1Zero();
+    DDGI_SH_TYPE sumSH = DDGI_SH_ZERO();
     float sumSkyVisibility = 0.0;
     float sumWeight = 0.0;
 
@@ -357,16 +391,16 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
       weight = max(weight, 1e-6);
 
-      sumSH = SHC3CoefficientsL1Add(sumSH, SHC3CoefficientsL1Mul(ddgiLoadIrradianceSH(probeCoord, cascadeIndex), weight));
+      sumSH = DDGI_SH_ADD(sumSH, DDGI_SH_MUL(ddgiLoadIrradianceSH(probeCoord, cascadeIndex), weight));
       sumSkyVisibility += ddgiSampleVisibility(probeCoord, cascadeIndex, normal).z * weight;
       sumWeight += weight;
     }
 
     skyVisibility = (sumWeight > 0.0) ? clamp(sumSkyVisibility / sumWeight, 0.0, 1.0) : 0.0;
-    return (sumWeight > 0.0) ? SHC3CoefficientsL1Mul(sumSH, 1.0 / sumWeight) : SHC3CoefficientsL1Zero();
+    return (sumWeight > 0.0) ? DDGI_SH_MUL(sumSH, 1.0 / sumWeight) : DDGI_SH_ZERO();
   }
 
-  SHC3CoefficientsL1 ddgiSampleRadianceSH(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, out float skyVisibility){
+  DDGI_SH_TYPE ddgiSampleRadianceSH(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, out float skyVisibility){
     int cascadeIndex = 0;
     while(((cascadeIndex + 1) < GI_DDGI_CASCADES) &&
           (any(lessThan(worldPosition, ddgiData.ddgiCascadeAABBMin[cascadeIndex].xyz)) ||
@@ -374,7 +408,7 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       cascadeIndex++;
     }
 
-    SHC3CoefficientsL1 result = SHC3CoefficientsL1Zero();
+    DDGI_SH_TYPE result = DDGI_SH_ZERO();
     float sumSkyVisibility = 0.0;
     float sumWeight = 0.0;
     float current = 1.0;
@@ -396,7 +430,7 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       }
       if(weight > 1e-6){
         float cascadeSkyVisibility;
-        result = SHC3CoefficientsL1Add(result, SHC3CoefficientsL1Mul(ddgiSampleRadianceSHInCascade(worldPosition, normal, viewDirection, c, cascadeSkyVisibility), weight));
+        result = DDGI_SH_ADD(result, DDGI_SH_MUL(ddgiSampleRadianceSHInCascade(worldPosition, normal, viewDirection, c, cascadeSkyVisibility), weight));
         sumSkyVisibility += cascadeSkyVisibility * weight;
         sumWeight += weight;
       }
@@ -407,7 +441,7 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
     skyVisibility = (sumWeight > 0.0) ? clamp(sumSkyVisibility / sumWeight, 0.0, 1.0) : 1.0;
     return result;
   }
-  #endif // GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
+  #endif // GI_DDGI_STORAGE_IS_SH
 
 #endif // GLOBAL_ILLUMINATION_DDGI_SAMPLE
 

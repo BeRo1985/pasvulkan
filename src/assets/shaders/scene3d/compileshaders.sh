@@ -1,6 +1,6 @@
 #!/bin/bash
 
-################################################################################################################### 
+###################################################################################################################
 #### This script compiles all necessary shaders for the Scene3D sub-framework-part of the PasVulkan framework. ####
 ###################################################################################################################
 
@@ -10,11 +10,11 @@
 
 # No ZIP, since SPK has been introduced and has better compression due to no sliding window dictionary but instead full window dictionary,
 # where repeated data is stored only once and referenced by pointers in a better way than inflate/deflate's sliding window dictionary
-USEZIP=0 
+USEZIP=0
 
 # No bin2c, since raw resources are now used (Windows resource files, even for Linux and other *nix platforms with the help of
-# FPC'S RTL-side Windows resource file support and API emulation)   
-USEBIN2C=0 
+# FPC'S RTL-side Windows resource file support and API emulation)
+USEBIN2C=0
 
 # Delete the temporary files after compilation
 DELETEAFTERCOMPILE=1
@@ -22,12 +22,13 @@ DELETEAFTERCOMPILE=1
 # Debug mode, if set to 1, debug information will generated and written into the spirv files
 DEBUG=1
 
-# DDGI irradiance storage mode for the dynamic diffuse global illumination shaders: 0 = L1 spherical harmonics (default),
-# 1 = octahedral atlas. This MUST match GlobalIlluminationDDGIStorageOctahedral in
-# PasVulkan.Scene3D.Renderer.Instance.pas (false => 0, true => 1), otherwise the descriptor layouts / image view types
-# of the DDGI compute shaders and the globalillumination_ddgi mesh fragment variant won't match the Pascal side.
-DDGI_STORAGE=0
-if [ "$DDGI_STORAGE" -ne 0 ]; then DDGI_STORAGE_DEFINE="-DGI_DDGI_STORAGE=${DDGI_STORAGE}"; else DDGI_STORAGE_DEFINE=""; fi
+# DDGI irradiance storage mode for the dynamic diffuse global illumination shaders: 0 = octahedral atlas (1 image),
+# 1 = L1 spherical harmonics (3 images), 2 = L2 spherical harmonics (7 images, default — for testing/comparison). This MUST match
+# GlobalIlluminationDDGIStorageMode in PasVulkan.Scene3D.Renderer.Instance.pas, otherwise the descriptor layouts / image
+# counts / view types of the DDGI compute shaders and the globalillumination_ddgi mesh fragment variant won't match the
+# Pascal side. The define is always passed explicitly (the shader's own default differs), so keep the two in sync.
+DDGI_STORAGE=1
+DDGI_STORAGE_DEFINE="-DGI_DDGI_STORAGE=${DDGI_STORAGE}"
 
 #############################################
 #            Initialization code            #
@@ -42,7 +43,7 @@ if [ "${BASH_VERSINFO[0]}" -gt 4 ]; then
 elif [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -ge 1 ]; then
   bashVersionEqualOrGreaterThan4_1=1
 else
-  bashVersionEqualOrGreaterThan4_1=0  
+  bashVersionEqualOrGreaterThan4_1=0
 fi
 
 # Get our current directory
@@ -71,7 +72,7 @@ fi
 #############################################
 
 compileshaderarguments=(
-  
+
   "-V downsample.comp -DR11G11B10F -DMIPMAPLEVEL=0 -o ${tempPath}/downsample_r11g11b10f_level0_comp.spv"
   "-V downsample.comp -DR11G11B10F -DMIPMAPLEVEL=1 -o ${tempPath}/downsample_r11g11b10f_level1_comp.spv"
   "-V downsample.comp -DR11G11B10F -DMIPMAPLEVEL=2 -o ${tempPath}/downsample_r11g11b10f_level2_comp.spv"
@@ -103,7 +104,7 @@ compileshaderarguments=(
   "-V downsample_culldepthpyramid.comp -DREDUCTION -DMULTIVIEW -o ${tempPath}/downsample_culldepthpyramid_multiview_reduction_comp.spv"
   "-V downsample_culldepthpyramid.comp -DREDUCTION -DREVERSEDZ -o ${tempPath}/downsample_culldepthpyramid_reversedz_reduction_comp.spv"
   "-V downsample_culldepthpyramid.comp -DREDUCTION -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/downsample_culldepthpyramid_multiview_reversedz_reduction_comp.spv"
-  
+
   #"-V downsample_depth_old.comp -DMIPMAPLEVEL=0 -o ${tempPath}/downsample_depth_old_level0_comp.spv"
   #"-V downsample_depth_old.comp -DMIPMAPLEVEL=0 -DREVERSEDZ -o ${tempPath}/downsample_depth_old_reversedz_level0_comp.spv"
   #"-V downsample_depth_old.comp -DMIPMAPLEVEL=0 -DMSAA -o ${tempPath}/downsample_depth_old_msaa_level0_comp.spv"
@@ -116,7 +117,7 @@ compileshaderarguments=(
   #"-V downsample_depth_old.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -o ${tempPath}/downsample_depth_old_multiview_level1_comp.spv"
   #"-V downsample_depth_old.comp -DMIPMAPLEVEL=1 -DREVERSEDZ -o ${tempPath}/downsample_depth_old_reversedz_level1_comp.spv"
   #"-V downsample_depth_old.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/downsample_depth_old_multiview_reversedz_level1_comp.spv"
-  
+
   "-V downsample_depth.comp -DFIRSTPASS -o ${tempPath}/downsample_depth_firstpass_comp.spv"
   "-V downsample_depth.comp -DFIRSTPASS -DREVERSEDZ -o ${tempPath}/downsample_depth_reversedz_firstpass_comp.spv"
   "-V downsample_depth.comp -DFIRSTPASS -DMSAA -o ${tempPath}/downsample_depth_msaa_firstpass_comp.spv"
@@ -129,7 +130,7 @@ compileshaderarguments=(
   "-V downsample_depth.comp -DREDUCTION -DMULTIVIEW -o ${tempPath}/downsample_depth_multiview_reduction_comp.spv"
   "-V downsample_depth.comp -DREDUCTION -DREVERSEDZ -o ${tempPath}/downsample_depth_reversedz_reduction_comp.spv"
   "-V downsample_depth.comp -DREDUCTION -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/downsample_depth_multiview_reversedz_reduction_comp.spv"
-  
+
   "-V downsample_ambientocclusion_gtao_depth.comp -DFIRSTPASS -o ${tempPath}/downsample_ambientocclusion_gtao_depth_firstpass_comp.spv"
   "-V downsample_ambientocclusion_gtao_depth.comp -DFIRSTPASS -DMSAA -o ${tempPath}/downsample_ambientocclusion_gtao_depth_msaa_firstpass_comp.spv"
   "-V downsample_ambientocclusion_gtao_depth.comp -DFIRSTPASS -DMULTIVIEW -o ${tempPath}/downsample_ambientocclusion_gtao_depth_multiview_firstpass_comp.spv"
@@ -143,16 +144,16 @@ compileshaderarguments=(
 
   "-V downsample_cubemap.comp -o ${tempPath}/downsample_cubemap_rgba8_comp.spv"
   "-V downsample_cubemap.comp -DUSE_RGB9E5 -o ${tempPath}/downsample_cubemap_rgb9e5_comp.spv"
-  "-V downsample_cubemap.comp -DUSE_R11G11B10F -o ${tempPath}/downsample_cubemap_r11g11b10f_comp.spv" 
+  "-V downsample_cubemap.comp -DUSE_R11G11B10F -o ${tempPath}/downsample_cubemap_r11g11b10f_comp.spv"
   "-V downsample_cubemap.comp -DUSE_RGBA16F -o ${tempPath}/downsample_cubemap_rgba16f_comp.spv"
-  "-V downsample_cubemap.comp -DUSE_RGBA32F -o ${tempPath}/downsample_cubemap_rgba32f_comp.spv"  
+  "-V downsample_cubemap.comp -DUSE_RGBA32F -o ${tempPath}/downsample_cubemap_rgba32f_comp.spv"
 
   "-V downsample_3d.comp -o ${tempPath}/downsample_3d_rgba8_comp.spv"
   "-V downsample_3d.comp -DUSE_RGB9E5 -o ${tempPath}/downsample_3d_rgb9e5_comp.spv"
-  "-V downsample_3d.comp -DUSE_R11G11B10F -o ${tempPath}/downsample_3d_r11g11b10f_comp.spv" 
+  "-V downsample_3d.comp -DUSE_R11G11B10F -o ${tempPath}/downsample_3d_r11g11b10f_comp.spv"
   "-V downsample_3d.comp -DUSE_RGBA16F -o ${tempPath}/downsample_3d_rgba16f_comp.spv"
-  "-V downsample_3d.comp -DUSE_RGBA32F -o ${tempPath}/downsample_3d_rgba32f_comp.spv"  
-    
+  "-V downsample_3d.comp -DUSE_RGBA32F -o ${tempPath}/downsample_3d_rgba32f_comp.spv"
+
   "-V dof_autofocus.comp -o ${tempPath}/dof_autofocus_comp.spv"
   "-V dof_bokeh.comp -o ${tempPath}/dof_bokeh_comp.spv"
   "-V dof_prepare.frag -o ${tempPath}/dof_prepare_frag.spv"
@@ -170,13 +171,13 @@ compileshaderarguments=(
 
   "-V luminance_average.comp -o ${tempPath}/luminance_average_comp.spv"
 
-  "-V luminance_adaptation.frag -o ${tempPath}/luminance_adaptation_frag.spv" 
+  "-V luminance_adaptation.frag -o ${tempPath}/luminance_adaptation_frag.spv"
 
   "-V frustumclustergridbuild.comp -o ${tempPath}/frustumclustergridbuild_comp.spv"
   "-V frustumclustergridbuild.comp -DREVERSEDZ -o ${tempPath}/frustumclustergridbuild_reversedz_comp.spv"
 
   "-V frustumclustergridassign.comp -o ${tempPath}/frustumclustergridassign_comp.spv"
-  
+
   "-V lens_upsample.comp -DR11G11B10F -o ${tempPath}/lens_upsample_r11g11b10f_comp.spv"
   "-V lens_upsample.comp -DRGBA16F -o ${tempPath}/lens_upsample_rgba16f_comp.spv"
   "-V lens_upsample.comp -DR11G11B10F -DMULTIVIEW -o ${tempPath}/lens_upsample_r11g11b10f_multiview_comp.spv"
@@ -236,7 +237,7 @@ compileshaderarguments=(
   "-V gi_voxel_radiance_transfer.comp -DUSESHADERBUFFERFLOAT32ATOMICADD -o ${tempPath}/gi_voxel_radiance_transfer_float_comp.spv"
 
   "-V gi_voxel_radiance_mipmap.comp -o ${tempPath}/gi_voxel_radiance_mipmap_comp.spv"
-  
+
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=1 -o ${tempPath}/mesh_voxelization_1_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=2 -o ${tempPath}/mesh_voxelization_2_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=3 -o ${tempPath}/mesh_voxelization_3_geom.spv"
@@ -245,7 +246,7 @@ compileshaderarguments=(
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=6 -o ${tempPath}/mesh_voxelization_6_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=7 -o ${tempPath}/mesh_voxelization_7_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=8 -o ${tempPath}/mesh_voxelization_8_geom.spv"
-   
+
   "-V mesh_voxelization.comp -o ${tempPath}/mesh_voxelization_comp.spv"
 
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=1 -o ${tempPath}/particle_voxelization_1_geom.spv"
@@ -256,21 +257,21 @@ compileshaderarguments=(
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=6 -o ${tempPath}/particle_voxelization_6_geom.spv"
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=7 -o ${tempPath}/particle_voxelization_7_geom.spv"
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=8 -o ${tempPath}/particle_voxelization_8_geom.spv"
-  
+
   "-V mboit_resolve.frag -o ${tempPath}/mboit_resolve_frag.spv"
   "-V mboit_resolve.frag -DWATER -o ${tempPath}/mboit_resolve_water_frag.spv"
   "-V mboit_resolve.frag -DMSAA -o ${tempPath}/mboit_resolve_msaa_frag.spv"
   "-V mboit_resolve.frag -DMSAA -DWATER -o ${tempPath}/mboit_resolve_water_msaa_frag.spv"
   "-V mboit_resolve.frag -DMSAA -DNO_MSAA_WATER -o ${tempPath}/mboit_resolve_msaa_no_msaa_water_frag.spv"
   "-V mboit_resolve.frag -DMSAA -DWATER -DNO_MSAA_WATER -o ${tempPath}/mboit_resolve_water_msaa_no_msaa_water_frag.spv"
-  
+
   "-V wboit_resolve.frag -o ${tempPath}/wboit_resolve_frag.spv"
   "-V wboit_resolve.frag -DWATER -o ${tempPath}/wboit_resolve_water_frag.spv"
   "-V wboit_resolve.frag -DMSAA -o ${tempPath}/wboit_resolve_msaa_frag.spv"
   "-V wboit_resolve.frag -DMSAA -DWATER -o ${tempPath}/wboit_resolve_water_msaa_frag.spv"
   "-V wboit_resolve.frag -DMSAA -DNO_MSAA_WATER -o ${tempPath}/wboit_resolve_msaa_no_msaa_water_frag.spv"
   "-V wboit_resolve.frag -DMSAA -DWATER -DNO_MSAA_WATER -o ${tempPath}/wboit_resolve_water_msaa_no_msaa_water_frag.spv"
-  
+
   "-V lockoit_resolve.frag -o ${tempPath}/lockoit_resolve_frag.spv"
   "-V lockoit_resolve.frag -DWATER -o ${tempPath}/lockoit_resolve_water_frag.spv"
   "-V lockoit_resolve.frag -DREVERSEDZ -o ${tempPath}/lockoit_resolve_reversedz_frag.spv"
@@ -300,19 +301,19 @@ compileshaderarguments=(
 
   "-V blend_resolve.frag -o ${tempPath}/blend_resolve_frag.spv"
   "-V blend_resolve.frag -DWATER -o ${tempPath}/blend_resolve_water_frag.spv"
-  "-V blend_resolve.frag -DMSAA -o ${tempPath}/blend_resolve_msaa_frag.spv"  
-  "-V blend_resolve.frag -DMSAA -DWATER -o ${tempPath}/blend_resolve_water_msaa_frag.spv"  
+  "-V blend_resolve.frag -DMSAA -o ${tempPath}/blend_resolve_msaa_frag.spv"
+  "-V blend_resolve.frag -DMSAA -DWATER -o ${tempPath}/blend_resolve_water_msaa_frag.spv"
   "-V blend_resolve.frag -DMSAA -DNO_MSAA_WATER -o ${tempPath}/blend_resolve_msaa_no_msaa_water_frag.spv"
   "-V blend_resolve.frag -DMSAA -DWATER -DNO_MSAA_WATER -o ${tempPath}/blend_resolve_water_msaa_no_msaa_water_frag.spv"
 
   "-V brdf_charlie.frag -o ${tempPath}/brdf_charlie_frag.spv"
   "-V brdf_ggx.frag -o ${tempPath}/brdf_ggx_frag.spv"
-  
+
   "-V brdf_sheen_e.frag -o ${tempPath}/brdf_sheen_e_frag.spv"
   "-V brdf_sheen_e.frag -DFAST -o ${tempPath}/brdf_sheen_e_fast_frag.spv"
-    
+
   "-V fullscreen.vert -o ${tempPath}/fullscreen_vert.spv"
-  
+
   "-V cubemap.vert -o ${tempPath}/cubemap_vert.spv"
   "-V cubemap_cubemap.comp -o ${tempPath}/cubemap_cubemap_comp.spv"
   "-V cubemap_cubemap.comp -DUSE_RGB9E5 -o ${tempPath}/cubemap_cubemap_rgb9e5_comp.spv"
@@ -375,25 +376,25 @@ compileshaderarguments=(
   "-V cubemap_filter.comp -DUSE_RGBA16F -o ${tempPath}/cubemap_filter_rgba16f_comp.spv"
   "-V cubemap_filter.comp -DUSE_RGBA32F -o ${tempPath}/cubemap_filter_rgba32f_comp.spv"
   "-V cubemap_filter.comp -DUSE_RGBA8 -o ${tempPath}/cubemap_filter_rgba8_comp.spv"
-    
+
   "-V passthrough.vert -o ${tempPath}/passthrough_vert.spv"
-  
+
   "-V dummy.frag -o ${tempPath}/dummy_frag.spv"
 
   #"-V dithering.frag -o ${tempPath}/dithering_frag.spv"
 
   "-V debug_blit.frag -o ${tempPath}/debug_blit_frag.spv"
-  
+
   "-V skybox.vert -o ${tempPath}/skybox_vert.spv"
   "-V skybox.vert -DSKYBOX_CACHED_REPROJECTION -DSKYBOX_CACHED_REPROJECTION_RGBA16F -o ${tempPath}/skybox_cached_vert.spv"
   "-V skybox.frag -o ${tempPath}/skybox_frag.spv"
   "-V skybox.frag -DSKYBOX_CACHED_REPROJECTION -DSKYBOX_CACHED_REPROJECTION_RGBA16F -o ${tempPath}/skybox_cached_rgba16f_frag.spv"
   "-V skybox.frag -DSKYBOX_CACHED_REPROJECTION -DSKYBOX_CACHED_REPROJECTION_RGB9E5 -o ${tempPath}/skybox_cached_rgb9e5_frag.spv"
-  
+
   "-V skybox_realtime.frag -o ${tempPath}/skybox_realtime_frag.spv"
-  
+
   "-V tonemapping.frag -o ${tempPath}/tonemapping_frag.spv"
-  
+
   "-V antialiasing_dsaa.frag -o ${tempPath}/antialiasing_dsaa_frag.spv"
   "-V antialiasing_fxaa.frag -o ${tempPath}/antialiasing_fxaa_frag.spv"
   "-V antialiasing_taa.frag -o ${tempPath}/antialiasing_taa_frag.spv"
@@ -401,18 +402,18 @@ compileshaderarguments=(
 
   "-V antialiasing_smaa_temporal_resolve.vert -o ${tempPath}/antialiasing_smaa_temporal_resolve_vert.spv"
   "-V antialiasing_smaa_temporal_resolve.frag -o ${tempPath}/antialiasing_smaa_temporal_resolve_frag.spv"
-  
+
   "-V antialiasing_smaa_blend.vert -o ${tempPath}/antialiasing_smaa_blend_vert.spv"
   "-V antialiasing_smaa_blend.frag -o ${tempPath}/antialiasing_smaa_blend_frag.spv"
   "-V antialiasing_smaa_blend.frag -DSMAA_REPROJECTION=1 -o ${tempPath}/antialiasing_smaa_blend_reprojection_frag.spv"
-  
+
   "-V antialiasing_smaa_edges.vert -o ${tempPath}/antialiasing_smaa_edges_vert.spv"
   "-V antialiasing_smaa_edges.frag -o ${tempPath}/antialiasing_smaa_edges_color_frag.spv"
   "-V antialiasing_smaa_edges.frag -DLUMA -o ${tempPath}/antialiasing_smaa_edges_luma_frag.spv"
-  
+
   "-V antialiasing_smaa_weights.vert -o ${tempPath}/antialiasing_smaa_weights_vert.spv"
   "-V antialiasing_smaa_weights.frag -o ${tempPath}/antialiasing_smaa_weights_frag.spv"
-  
+
   "-V blit.frag -o ${tempPath}/blit_frag.spv"
 
   "-V blit.frag -DMSAA -o ${tempPath}/blit_msaa_frag.spv"
@@ -420,10 +421,10 @@ compileshaderarguments=(
   "-V framebuffer_blit.frag -o ${tempPath}/framebuffer_blit_frag.spv"
 
   "-V msaa_resolve.frag -o ${tempPath}/msaa_resolve_frag.spv"
-  
+
   "-V msm_blur.frag -o ${tempPath}/msm_blur_frag.spv"
   "-V msm_blur.vert -o ${tempPath}/msm_blur_vert.spv"
-  
+
   "-V msm_resolve.frag -o ${tempPath}/msm_resolve_frag.spv"
   "-V msm_resolve.frag -DMSAA -o ${tempPath}/msm_resolve_msaa_frag.spv"
   "-V msm_resolve.vert -o ${tempPath}/msm_resolve_vert.spv"
@@ -470,12 +471,12 @@ compileshaderarguments=(
   "-V cnn_pixel_shuffle.comp -o ${tempPath}/cnn_pixel_shuffle_comp.spv"
   "-V cnn_image_to_buffer.comp -o ${tempPath}/cnn_image_to_buffer_comp.spv"
   "-V cnn_buffer_to_image.comp -o ${tempPath}/cnn_buffer_to_image_comp.spv"
-   
+
   "-V cubemap_sphericalharmonics.comp -o ${tempPath}/cubemap_sphericalharmonics_comp.spv"
-  
-  "-V cubemap_sphericalharmonics_accumulation.comp -o ${tempPath}/cubemap_sphericalharmonics_accumulation_comp.spv" 
+
+  "-V cubemap_sphericalharmonics_accumulation.comp -o ${tempPath}/cubemap_sphericalharmonics_accumulation_comp.spv"
   "-V cubemap_sphericalharmonics_accumulation.comp -DUSE_ATOMIC_FLOATS -o ${tempPath}/cubemap_sphericalharmonics_accumulation_atomicfloats_comp.spv"
-  
+
   "-V cubemap_sphericalharmonics_normalization.comp -o ${tempPath}/cubemap_sphericalharmonics_normalization_comp.spv"
 
   "-V cubemap_sphericalharmonics_extract_metadata.comp -o ${tempPath}/cubemap_sphericalharmonics_extract_metadata_comp.spv"
@@ -487,7 +488,7 @@ compileshaderarguments=(
   "-V gi_cascaded_radiance_hints_inject_cached.comp -o ${tempPath}/gi_cascaded_radiance_hints_inject_cached_comp.spv"
 
   "-V gi_cascaded_radiance_hints_inject_sky.comp -o ${tempPath}/gi_cascaded_radiance_hints_inject_sky_comp.spv"
-  
+
   "-V gi_cascaded_radiance_hints_inject_rsm.comp -o ${tempPath}/gi_cascaded_radiance_hints_inject_rsm_comp.spv"
 
   "-V gi_cascaded_radiance_hints_bounce.comp -o ${tempPath}/gi_cascaded_radiance_hints_bounce_comp.spv"
@@ -584,7 +585,7 @@ compileshaderarguments=(
   "-V planet_heightmap_random_initialization.comp -o ${tempPath}/planet_heightmap_random_initialization_comp.spv"
 
   "-V planet_heightmap_data_initialization.comp -o ${tempPath}/planet_heightmap_data_initialization_comp.spv"
-  
+
   "-V planet_heightmap_flatten.comp -o ${tempPath}/planet_heightmap_flatten_comp.spv"
 
   "-V planet_heightmap_modification.comp -o ${tempPath}/planet_heightmap_modification_comp.spv"
@@ -625,7 +626,7 @@ compileshaderarguments=(
 
   "-V planet_water_ripple_injection.comp -o ${tempPath}/planet_water_ripple_injection_comp.spv"
   "-V planet_water_ripple_simulation.comp -o ${tempPath}/planet_water_ripple_simulation_comp.spv"
-  
+
 #  "-V planet_water_simulation.comp -DOUTFLOW -o ${tempPath}/planet_water_simulation_outflow_comp.spv"
 #  "-V planet_water_simulation.comp -o ${tempPath}/planet_water_simulation_waterheight_comp.spv"
 
@@ -640,11 +641,11 @@ compileshaderarguments=(
   "-V planet_water_interpolation.comp -DOUTFLOW -o ${tempPath}/planet_water_interpolation_comp.spv"
 
   "-V planet_water_downsample.comp -o ${tempPath}/planet_water_downsample_comp.spv"
-  
+
   "-V planet_water_downsampledtexture.comp -o ${tempPath}/planet_water_downsampledtexture_comp.spv"
-  
+
   "-V planet_water_cull.comp -o ${tempPath}/planet_water_cull_comp.spv"
-  
+
   "-V planet_water.vert -DTESSELLATION -o ${tempPath}/planet_water_vert.spv"
   "-V planet_water.vert -DTESSELLATION -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_bufref_vert.spv"
   "-V planet_water.vert -DTESSELLATION -DRAYTRACING -o ${tempPath}/planet_water_raytracing_vert.spv"
@@ -660,7 +661,7 @@ compileshaderarguments=(
   "-V planet_water.vert -DUNDERWATER -o ${tempPath}/planet_water_underwater_vert.spv"
   "-V planet_water.vert -DUNDERWATER -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_underwater_bufref_vert.spv"
   "-V planet_water.vert -DUNDERWATER -DRAYTRACING -o ${tempPath}/planet_water_underwater_raytracing_vert.spv"
-  
+
   "-V planet_water.frag -DUNDERWATER -o ${tempPath}/planet_water_underwater_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_underwater_bufref_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DRAYTRACING -o ${tempPath}/planet_water_underwater_raytracing_frag.spv"
@@ -704,9 +705,9 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_rsm_frag.spv"
-   
+
   # Grass on planets
-  
+
   #"-V planet_grass_cull_and_mesh_generation.comp -o ${tempPath}/planet_grass_cull_and_mesh_generation_comp.spv"
 
   #"-V planet_grass.comp -o ${tempPath}/planet_grass.spv"
@@ -775,7 +776,7 @@ compileshaderarguments=(
   "-V planet_grass.vert -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_vert.spv"
   "-V planet_grass.vert -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_vert.spv"
   "-V planet_grass.vert -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_vert.spv"
-    
+
   #"-V planet_grass.frag -o ${tempPath}/planet_grass_frag.spv"                                   # unused: BDA always active
   #"-V planet_grass.frag -DVELOCITY -o ${tempPath}/planet_grass_velocity_frag.spv"               # unused: BDA always active
   #"-V planet_grass.frag -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_frag.spv"             # unused: BDA always active
@@ -806,7 +807,7 @@ compileshaderarguments=(
   "-V atmosphere_transmittancelut.comp -o ${tempPath}/atmosphere_transmittancelut_comp.spv"
   "-V atmosphere_multiscattering.comp -o ${tempPath}/atmosphere_multiscattering_comp.spv"
   "-V atmosphere_skyviewlut.comp -o ${tempPath}/atmosphere_skyviewlut_comp.spv"
-  "-V atmosphere_skyluminancelut.comp -o ${tempPath}/atmosphere_skyluminancelut_comp.spv"                                                      
+  "-V atmosphere_skyluminancelut.comp -o ${tempPath}/atmosphere_skyluminancelut_comp.spv"
   "-V atmosphere_cameravolume.comp -o ${tempPath}/atmosphere_cameravolume_comp.spv"
   "-V atmosphere_cubemap.comp -o ${tempPath}/atmosphere_cubemap_comp.spv"
   "-V atmosphere_cubemap.comp -DUSE_RGBA8 -o ${tempPath}/atmosphere_cubemap_rgba8_comp.spv"
@@ -845,7 +846,7 @@ compileshaderarguments=(
   "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DDUALBLEND -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_dualblend_msaa_frag.spv"
   "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DDUALBLEND -DMULTIVIEW -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_dualblend_multiview_frag.spv"
   "-V atmosphere_raymarch.frag --target-env vulkan1.2 -DSHADOWS -DRAYTRACING -DDUALBLEND -DMULTIVIEW -DMSAA -o ${tempPath}/atmosphere_raymarch_shadows_raytracing_dualblend_multiview_msaa_frag.spv"
-  
+
   # Clouds noise
   "-V atmosphere_clouds_noise_curl.comp -o ${tempPath}/atmosphere_clouds_noise_curl_comp.spv"
   "-V atmosphere_clouds_noise_detail.comp -o ${tempPath}/atmosphere_clouds_noise_detail_comp.spv"
@@ -926,26 +927,26 @@ addParticleFragmentShadingTransparencyVariants(){
 }
 
 addParticleFragmentShadingAntialiasingVariants(){
-  
+
   # No antialiasing or temporal antialiasing
   addParticleFragmentShadingTransparencyVariants "${1}" "$2"
 
   # MSAA (Multi-sample anti-aliasing)
-  addParticleFragmentShadingTransparencyVariants "${1}_msaa" "$2 -DMSAA"  
+  addParticleFragmentShadingTransparencyVariants "${1}_msaa" "$2 -DMSAA"
 
 }
 
-# Add particle fragment shader variants with different voxelization modes 
+# Add particle fragment shader variants with different voxelization modes
 addParticleFragmentVoxelizationVariants(){
-    
+
   # Voxelization
   addParticleFragmentShader "${1}_voxelization" "$2 -DVOXELIZATION"
-    
+
 }
 
 # Add particle fragment shader variants with different techniques (if any)
 addParticleFragmentVariants(){
-  
+
   addParticleFragmentShadingAntialiasingVariants "${1}" "$2"
 
   addParticleFragmentShadingAntialiasingVariants "${1}_raytracing" "$2 -DRAYTRACING" # Raytracing
@@ -953,7 +954,7 @@ addParticleFragmentVariants(){
   addParticleFragmentVoxelizationVariants "${1}" "$2"
 
   addParticleFragmentVoxelizationVariants "${1}_raytracing" "$2 -DRAYTRACING" # Raytracing
-  
+
 }
 
 addParticleFragmentVariants "particle" ""
@@ -968,7 +969,7 @@ addPlanetWaterFragmentShader(){
 
 # Add planet water fragment shader variants with different discard techniques (if any)
 addPlanetWaterFragmentShadingDiscardVariants(){
-  
+
   # No antialiasing or temporal antialiasing
   addPlanetWaterFragmentShader "${1}" "$2"
 
@@ -979,15 +980,15 @@ addPlanetWaterFragmentShadingDiscardVariants(){
 
 # Add planet water fragment shader variants with different transparency techniques (if any)
 addPlanetWaterFragmentShadingAntialiasingVariants(){
-  
+
   # No antialiasing or temporal antialiasing
   addPlanetWaterFragmentShadingDiscardVariants "${1}" "$2"
 
   # MSAA (Multi-sample anti-aliasing)
-  addPlanetWaterFragmentShadingDiscardVariants "${1}_msaa" "$2 -DMSAA"  
+  addPlanetWaterFragmentShadingDiscardVariants "${1}_msaa" "$2 -DMSAA"
 
   # MSAA (Multi-sample anti-aliasing)
-  addPlanetWaterFragmentShadingDiscardVariants "${1}_msaa_fast" "$2 -DMSAA -DMSAA_FAST"  
+  addPlanetWaterFragmentShadingDiscardVariants "${1}_msaa_fast" "$2 -DMSAA -DMSAA_FAST"
 
 }
 
@@ -1001,11 +1002,11 @@ addPlanetWaterFragmentShadingShadowVariants(){
 
 # Add planet water fragment shader variants with different techniques (if any)
 addPlanetWaterFragmentVariants(){
-  
+
   addPlanetWaterFragmentShadingShadowVariants "${1}" "$2"
 
   addPlanetWaterFragmentShadingShadowVariants "${1}_raytracing" "$2 -DRAYTRACING" # Raytracing
-  
+
 }
 
 addPlanetWaterFragmentVariants "planet_water" "-DTESSELLATION"
@@ -1041,7 +1042,7 @@ addMeshFragmentShadingOITAlphaTestVariants(){
 # Add mesh fragment shader variants with different transparency techniques (if any)
 addMeshFragmentShadingTransparencyVariants(){
 
-  # No blending   
+  # No blending
   addMeshFragmentShadingVelocityVariants "$1" "$2"
 
   if [[ $2 != *"ENVMAP"* ]]; then
@@ -1054,13 +1055,13 @@ addMeshFragmentShadingTransparencyVariants(){
 
     # MBOIT (Moment-Based order independent transparency)
     addMeshFragmentShadingOITAlphaTestVariants "${1}_mboit_pass1" "$2 -DMBOIT -DMBOITPASS1"
-    addMeshFragmentShadingOITAlphaTestVariants "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS2" 
+    addMeshFragmentShadingOITAlphaTestVariants "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS2"
 
     # LoopOIT (Multi-pass order independent transparency)
     addMeshFragmentShadingOITAlphaTestVariants "${1}_loopoit_pass1" "$2 -DLOOPOIT -DLOOPOIT_PASS1 -DDEPTHONLY"
     addMeshFragmentShadingOITAlphaTestVariants "${1}_loopoit_pass2" "$2 -DLOOPOIT -DLOOPOIT_PASS2"
 
-    # LockOIT (Order independent transparency with spinlock/interlock, depending on the GPU capabilities)  
+    # LockOIT (Order independent transparency with spinlock/interlock, depending on the GPU capabilities)
     addMeshFragmentShadingOITAlphaTestVariants "${1}_spinlock_lockoit" "$2 -DLOCKOIT -DSPINLOCK"
     addMeshFragmentShadingOITAlphaTestVariants "${1}_interlock_lockoit" "$2 -DLOCKOIT -DINTERLOCK"
 
@@ -1068,7 +1069,7 @@ addMeshFragmentShadingTransparencyVariants(){
     addMeshFragmentShadingOITAlphaTestVariants "${1}_spinlock_dfaoit" "$2 -DDFAOIT -DSPINLOCK"
     addMeshFragmentShadingOITAlphaTestVariants "${1}_interlock_dfaoit" "$2 -DDFAOIT -DINTERLOCK"
 
-  fi  
+  fi
 
 }
 
@@ -1082,59 +1083,59 @@ addMeshFragmentShadingShadowVariants(){
 
 # Add mesh fragment shader variants either with or without wetness map usage
 addMeshFragmentShadingWetnessVariants(){
-  
+
   # No usage of wetness map
   addMeshFragmentShadingShadowVariants "${1}" "$2"
 
   if [[ $2 != *"ENVMAP"* ]]; then
 
     # Usage of wetness map
-    addMeshFragmentShadingShadowVariants "${1}_wetness" "$2 -DWETNESS"  
+    addMeshFragmentShadingShadowVariants "${1}_wetness" "$2 -DWETNESS"
 
   fi
-  
+
 }
 
 # Add mesh fragment shader variants with different antialiasing techniques (if any)
 addMeshFragmentShadingAntialiasingVariants(){
-  
+
   # No antialiasing or temporal antialiasing
   addMeshFragmentShadingWetnessVariants "${1}" "$2"
 
   if [[ $2 != *"ENVMAP"* ]]; then
 
     # MSAA (Multi-sample anti-aliasing)
-    addMeshFragmentShadingWetnessVariants "${1}_msaa" "$2 -DMSAA"  
+    addMeshFragmentShadingWetnessVariants "${1}_msaa" "$2 -DMSAA"
 
   fi
-  
+
 }
 
 # Add mesh fragment shader variants with different global illumination techniques (if any)
 addMeshFragmentShadingGlobalIlluminationVariants(){
-  
+
   # No global illumination
   addMeshFragmentShadingAntialiasingVariants "${1}" "$2"
 
   # Cascaded radiance hints
   addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_cascaded_radiance_hints" "$2 -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS"
-  
+
   # Cascaded voxel cone tracing
   addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_cascaded_voxel_cone_tracing" "$2 -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING"
 
   addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_ddgi" "$2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE}"
-  
+
 }
 
-# Add mesh fragment shader depth only with different alphatest variants 
+# Add mesh fragment shader depth only with different alphatest variants
 addMeshFragmentDepthOnlyAlphaTestVariants(){
-  
+
   # No alpha test
   addMeshFragmentShader "${1}" "$2"
 
   # Alpha test
   addMeshFragmentShader "${1}_alphatest" "$2 -DALPHATEST"
-  
+
   # Alpha test with demote
   addMeshFragmentShader "${1}_alphatest_demote" "$2 -DALPHATEST -DUSEDEMOTE"
 
@@ -1167,28 +1168,28 @@ addMeshFragmentVoxelizationAlphaVariants(){
   addMeshFragmentShader "${1}_alphatest_nodiscard" "$2 -DALPHATEST -DNODISCARD"
 }
 
-# Add mesh fragment shader variants with different temporary voxel storage techniques 
-addMeshFragmentVoxelizationVariants(){  
-  addMeshFragmentVoxelizationAlphaVariants "$1" "$2" 
-}  
+# Add mesh fragment shader variants with different temporary voxel storage techniques
+addMeshFragmentVoxelizationVariants(){
+  addMeshFragmentVoxelizationAlphaVariants "$1" "$2"
+}
 
 # Add mesh fragment shader variants with different pass targets
 addMeshFragmentPassTargetVariants(){
-  
+
   # Depth only stuff
-  addMeshFragmentDepthOnlyVariants "${1}_depth" "$2 -DDEPTHONLY"  
+  addMeshFragmentDepthOnlyVariants "${1}_depth" "$2 -DDEPTHONLY"
 
   # -DFRUSTUMCLUSTERGRID -DLIGHTCLUSTERS
 
   # The reflective shadow map stuff
-  addMeshFragmentReflectiveShadowMapVariants "${1}_rsm" "$2 -DDECALS -DLIGHTS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT"  
+  addMeshFragmentReflectiveShadowMapVariants "${1}_rsm" "$2 -DDECALS -DLIGHTS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT"
 
   # The voxelization stuff
-  addMeshFragmentVoxelizationVariants "${1}_voxelization" "$2 -DVOXELIZATION"  
+  addMeshFragmentVoxelizationVariants "${1}_voxelization" "$2 -DVOXELIZATION"
 
   # The actual shading stuff
-  addMeshFragmentShadingGlobalIlluminationVariants "${1}_shading" "$2 -DDECALS -DLIGHTS -DSHADOWS"  
-    
+  addMeshFragmentShadingGlobalIlluminationVariants "${1}_shading" "$2 -DDECALS -DLIGHTS -DSHADOWS"
+
   # The environment map stuff
   #addMeshFragmentShadingGlobalIlluminationVariants "${1}_envmap" "$2 -DDECALS -DLIGHTS -DSHADOWS -DENVMAP"
 
@@ -1196,14 +1197,14 @@ addMeshFragmentPassTargetVariants(){
 
 # Add mesh fragment shader variants with different material source
 addMeshFragmentMaterialSourceVariants(){
-  
+
   # Material access per buffer references (pointer-like raw access inside shaders)
   addMeshFragmentPassTargetVariants "${1}_matbufref" "$2 -DUSE_MATERIAL_BUFFER_REFERENCE"
 
   # Material access per buffer references with raytracing support
   addMeshFragmentPassTargetVariants "${1}_matbufref_raytracing" "$2 -DUSE_MATERIAL_BUFFER_REFERENCE -DRAYTRACING"
 
-} 
+}
 
 addMeshFragmentMaterialSourceVariants "mesh" ""
 
@@ -1232,7 +1233,7 @@ cp -f "${originalDirectory}/model_4x_srgb_mid.bin" "${tempPath}/model_4x_srgb_mi
 cp -f "${originalDirectory}/model_4x_srgb_high.bin" "${tempPath}/model_4x_srgb_high.bin" || exit 1
 
 #############################################
-#   Deduplication code for shader binaries  # 
+#   Deduplication code for shader binaries  #
 #############################################
 
 deduplicate_spv_files() {
@@ -1270,9 +1271,9 @@ deduplicate_spv_files() {
         if [ $is_first_entry -eq 0 ]; then
           echo -n "," >> "${tempPath}/virtualsymlinks.json"
         else
-          is_first_entry=0 
+          is_first_entry=0
         fi
-        
+
         # Escape special JSON characters in filenames (basic version, might need enhancement based on filename specifics)
         json_key=$(echo "$file" | sed 's/"/\\"/g')
         json_value=$(echo "${checksums[$checksum]}" | sed 's/"/\\"/g')
@@ -1282,7 +1283,7 @@ deduplicate_spv_files() {
 
         # Delete the duplicate file
         rm "$file"
-      
+
       fi
     fi
   done
@@ -1301,7 +1302,7 @@ function pwait() {
     if [ $(jobs -p -r | wc -l) -ge $1 ]; then
       wait -n # Wait for any job to finish
     fi
-  else  
+  else
     while [ $(jobs -p -r | wc -l) -ge $1 ]; do
       sleep 0.01s
     done
@@ -1313,7 +1314,7 @@ function throttleWait() {
   # If there are more than a CPU core
   if [ ${countCPUCores} -gt 1 ]; then
     # A bit less than the number of logical CPU cores to leave some room for other processes
-    pwait $((${countCPUCores}-1)) 
+    pwait $((${countCPUCores}-1))
   else
     # If there is only one logical CPU core, wait just for any job to finish
     wait
@@ -1339,14 +1340,14 @@ echo "Compiling . . ."
 for index in ${!compileshaderarguments[@]}; do
   parameters=${compileshaderarguments[$index]}
   # echo "Processing $parameters . . ."
-  (     
+  (
     # Add -g to the parameters if DEBUG is set to 1, for to add debug information to the shader binary
-    if [ $DEBUG -eq 1 ]; then    
+    if [ $DEBUG -eq 1 ]; then
       parameters="-g $parameters"
     fi
-    # If -DRAYTRACING is in the parameters, add --target-env vulkan1.2 to the parameters 
+    # If -DRAYTRACING is in the parameters, add --target-env vulkan1.2 to the parameters
     if [[ $parameters == *"-DRAYTRACING"* ]]; then
-      # but not for mesh.comp, due to a bug in the NVIDIA driver while GPU-assisted validation is enabled (it crashes the driver then) 
+      # but not for mesh.comp, due to a bug in the NVIDIA driver while GPU-assisted validation is enabled (it crashes the driver then)
       if [[ $parameters != *"mesh.comp"* ]]; then
         parameters="$parameters --target-env vulkan1.2"
       fi
@@ -1357,13 +1358,13 @@ for index in ${!compileshaderarguments[@]}; do
       echo "Error encountered. Stopping compilation."
       kill -s TERM 0
       exit 1
-    fi     
-  ) & 
+    fi
+  ) &
   #pids+=("$!")
   throttleWait
 done
 
-wait 
+wait
 
 # Optimize all shaders
 
@@ -1373,7 +1374,7 @@ wait
 #   (
 #     ${spirvOptPath} -O ${compileshaderarguments[$index]} -o ${compileshaderarguments[$index]}.opt
      #>/dev/null
-#   ) & 
+#   ) &
 #done
 
 # Deduplicate possible duplicate shader binaries
@@ -1420,7 +1421,7 @@ if [ $USEZIP -eq 1 ]; then
 
     # Parallel compression of each file in toCompressFiles array
     for file in "${toCompressFiles[@]}"; do
-      ( 
+      (
         zip -9 "${zip_temp_dir}/${file}.zip" "${file}"
       ) &
       throttleWait
@@ -1444,7 +1445,7 @@ if [ $USEZIP -eq 1 ]; then
     zip -m9 scene3dshaders.zip "${toCompressFiles[@]}"
 
   fi
- 
+
 else
 
   # Write toCompressFiles to a temporary file line-wise
@@ -1494,7 +1495,7 @@ if [ $USEBIN2C -eq 1 ]; then
     throttleWait
 
     # Compile for x86-64 Linux
-    clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_linux.o & 
+    clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_linux.o &
     throttleWait
 
     # Compile for x86-32 Windows
@@ -1547,7 +1548,7 @@ if [ $USEBIN2C -eq 1 ]; then
     throttleWait
 
     # Compile for x86-64 Linux
-    clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_64_linux.o & 
+    clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_64_linux.o &
     throttleWait
 
     # Compile for x86-32 Windows
@@ -1585,8 +1586,8 @@ if [ $USEBIN2C -eq 1 ]; then
     # Compile for AArch64 Android
     clang -c -target aarch64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_aarch64_android.o &
     throttleWait
-    
-  fi  
+
+  fi
 
   # Wait for all compilation jobs to finish
   wait
@@ -1601,7 +1602,7 @@ else
   windres -J rc -O res scene3dshaders.rc scene3dshaders.res
 
 fi
- 
+
 # Delete the temporary directory
 if [ $DELETEAFTERCOMPILE -eq 1 ]; then
   echo "Deleting temporary directory ${tempPath} . . ."

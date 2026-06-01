@@ -116,22 +116,25 @@ type { TpvScene3DRendererInstance }
                                                           GlobalIlluminationRadiantHintVolumeSize)*
                                                          GlobalIlluminationRadiantHintVolumeSize;
              // DDGI (dynamic diffuse global illumination) probe field. Must match the GI_DDGI_* defines in
-             // global_illumination_ddgi.glsl. Irradiance default storage = L1 spherical harmonics (3 RGBA16F 3D images).
+             // global_illumination_ddgi.glsl. Irradiance default storage = L2 spherical harmonics (7 RGBA16F 3D images).
              CountGlobalIlluminationDDGICascades=4;
              GlobalIlluminationDDGIProbeCountX=16;
              GlobalIlluminationDDGIProbeCountY=16;
              GlobalIlluminationDDGIProbeCountZ=16;
              GlobalIlluminationDDGIProbesPerCascade=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ;
              GlobalIlluminationDDGIRaysPerProbe=128;
-             GlobalIlluminationDDGISHImageCount=3;
              GlobalIlluminationDDGIIrradianceOctSize=8;
              GlobalIlluminationDDGIVisibilityOctSize=16;
              GlobalIlluminationDDGIIrradianceOctFull=GlobalIlluminationDDGIIrradianceOctSize+2;
              GlobalIlluminationDDGIVisibilityOctFull=GlobalIlluminationDDGIVisibilityOctSize+2;
-             // Irradiance storage mode: false = L1 spherical harmonics (3 RGBA16F 3D images), true = octahedral atlas
-             // (1 RGBA16F 2D image). This is a compile-time choice and MUST match the GI_DDGI_STORAGE the DDGI compute
-             // shaders AND the globalillumination_ddgi mesh fragment variant are built with (see compileshaders.sh).
-             GlobalIlluminationDDGIStorageOctahedral=false;
+             // Irradiance storage mode: 0 = octahedral atlas (1 RGBA16F 2D image), 1 = L1 spherical harmonics
+             // (3 RGBA16F 3D images), 2 = L2 spherical harmonics (7 RGBA16F 3D images). Compile-time choice; MUST match the
+             // GI_DDGI_STORAGE (= DDGI_STORAGE in compileshaders.sh) the DDGI compute shaders AND the globalillumination_ddgi
+             // mesh fragment variant are built with, otherwise the descriptor image counts / view types mismatch.
+             GlobalIlluminationDDGIStorageMode=1;
+             GlobalIlluminationDDGIStorageOctahedral=(GlobalIlluminationDDGIStorageMode=0);
+             // SH image count: L2 = 7, L1 = 3 (and 3 as the unused placeholder size for the octahedral mode).
+             GlobalIlluminationDDGISHImageCount=(7*Ord(GlobalIlluminationDDGIStorageMode=2))+(3*Ord(GlobalIlluminationDDGIStorageMode<>2));
              GlobalIlluminationDDGIIrradianceImageCount=(GlobalIlluminationDDGISHImageCount*(1-Ord(GlobalIlluminationDDGIStorageOctahedral)))+(1*Ord(GlobalIlluminationDDGIStorageOctahedral));
              GlobalIlluminationDDGIIrradianceAtlasWidth=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIIrradianceOctFull;
              GlobalIlluminationDDGIIrradianceAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIIrradianceOctFull;
