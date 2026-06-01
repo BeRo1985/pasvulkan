@@ -19,7 +19,7 @@
 layout(local_size_x = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_y = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_z = 1) in;
 
 layout(set = 1, binding = 1, rgba16f) uniform readonly image2D uDDGIRayData;
-layout(set = 1, binding = 3, rg16f) uniform image2D uDDGIVisibilityOct;
+layout(set = 1, binding = 3, rgba16f) uniform image2D uDDGIVisibilityOct; // x = mean dist, y = mean dist^2, z = sky visibility
 
 layout(push_constant) uniform PushConstants {
   vec4 randomRotation0;
@@ -54,23 +54,29 @@ void main(){
 
   float sumDist = 0.0;
   float sumDist2 = 0.0;
+  float sumSky = 0.0; // weighted fraction of rays in this direction that escaped to the sky (missed geometry)
   float sumWeight = 0.0;
   for(uint r = 0u; r < raysPerProbe; r++){
     vec3 rayDirection = ddgiRayDirection(int(r), randomRotation);
     float weight = pow(max(0.0, dot(texelDirection, rayDirection)), sharpness);
     if(weight > 0.0){
-      float dist = min(imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).a, maxRayDistance);
+      float rawDist = imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).a;
+      float dist = min(rawDist, maxRayDistance);
+      // The trace stores maxRayDistance as the hit distance on a miss, so a ray that reached (or exceeded) it saw the sky.
+      float missedToSky = (rawDist >= (maxRayDistance * 0.999)) ? 1.0 : 0.0;
       sumDist += dist * weight;
       sumDist2 += (dist * dist) * weight;
+      sumSky += missedToSky * weight;
       sumWeight += weight;
     }
   }
 
-  vec2 moments = (sumWeight > 1e-6) ? vec2(sumDist / sumWeight, sumDist2 / sumWeight) : vec2(maxRayDistance, maxRayDistance * maxRayDistance);
+  vec3 moments = (sumWeight > 1e-6) ? vec3(sumDist / sumWeight, sumDist2 / sumWeight, sumSky / sumWeight)
+                                    : vec3(maxRayDistance, maxRayDistance * maxRayDistance, 1.0);
 
   ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_VISIBILITY_OCT_FULL) + localTexel;
-  vec2 previous = imageLoad(uDDGIVisibilityOct, atlasTexel).rg;
+  vec3 previous = imageLoad(uDDGIVisibilityOct, atlasTexel).rgb;
   // Guard against uninitialized NaN/Inf (images are not cleared) which would otherwise lock in through the hysteresis.
   float blendT = (any(isnan(previous)) || any(isinf(previous))) ? 0.0 : pushConstants.blend.x;
-  imageStore(uDDGIVisibilityOct, atlasTexel, vec4(mix(moments, previous, blendT), 0.0, 0.0));
+  imageStore(uDDGIVisibilityOct, atlasTexel, vec4(mix(moments, previous, blendT), 0.0));
 }

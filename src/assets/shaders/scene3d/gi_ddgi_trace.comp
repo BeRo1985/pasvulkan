@@ -90,12 +90,12 @@ vec3 ddgiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex
 }
 #endif
 
-layout(set = 1, binding = 3, rg16f) uniform readonly image2D uDDGIVisibilityRead;
+layout(set = 1, binding = 3, rgba16f) uniform readonly image2D uDDGIVisibilityRead;
 
-vec2 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction){
+vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction){
   vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, direction, GI_DDGI_VISIBILITY_OCT_SIZE, GI_DDGI_VISIBILITY_OCT_FULL);
   ivec2 texel = ivec2(uv * vec2(ddgiAtlasSize(GI_DDGI_VISIBILITY_OCT_FULL))); // point sample (no bilinear) is fine for the secondary feedback term
-  return imageLoad(uDDGIVisibilityRead, texel).rg;
+  return imageLoad(uDDGIVisibilityRead, texel).rgb; // x = mean dist, y = mean dist^2, z = sky visibility
 }
 #endif
 
@@ -139,7 +139,8 @@ void main(){
   if(surface.hit){
     vec3 previousFrameIndirect = vec3(0.0);
 #if GI_DDGI_MULTIBOUNCE
-    previousFrameIndirect = ddgiSampleIrradiance(surface.position, surface.normal, -rayDirection) * pushConstants.blend.y;
+    float skyVisibilityUnused;
+    previousFrameIndirect = ddgiSampleIrradiance(surface.position, surface.normal, -rayDirection, skyVisibilityUnused) * pushConstants.blend.y;
     // The probe field is not cleared on allocation; ignore non-finite feedback from uninitialized texels so NaN/Inf
     // cannot enter the ray data and lock into the probe field through the temporal blend.
     if(any(isnan(previousFrameIndirect)) || any(isinf(previousFrameIndirect))){

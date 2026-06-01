@@ -259,9 +259,9 @@ layout(set = 1, binding = 10) uniform sampler2D uRainTextures[]; // 0 = rain tex
 
   layout(set = 2, binding = 2) uniform sampler2D uDDGIVisibility;
 
-  vec2 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction){
+  vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction){
     vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, direction, GI_DDGI_VISIBILITY_OCT_SIZE, GI_DDGI_VISIBILITY_OCT_FULL);
-    return textureLod(uDDGIVisibility, uv, 0.0).rg;
+    return textureLod(uDDGIVisibility, uv, 0.0).rgb; // x = mean dist, y = mean dist^2, z = sky visibility
   }
 
 #endif
@@ -945,17 +945,15 @@ void main() {
         }
       }
 #elif defined(GLOBAL_ILLUMINATION_DDGI)
-      // The environment IBL diffuse is replaced by the probe field (which now also captures the sky via ray misses, so it
-      // is correctly occluded). DDGI has no specular, so the environment IBL specular is kept but occluded so it is not
-      // applied full-strength in shadowed/enclosed spots. TODO: replace specularOcclusion with a per-probe sky-visibility
-      // factor ("IBL factor") for a more accurate "IBL only where the sky is actually visible".
-      float iblWeight = specularOcclusion;
-      {
-        if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-          // ddgiSampleIrradiance returns the diffuse irradiance E(n); outgoing diffuse = (albedo/PI) * E.
-          vec3 irradiance = ddgiSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, viewDirection);
-          colorOutput += irradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
-        }
+      // ddgiSampleIrradiance returns the diffuse irradiance E(n) (outgoing diffuse = albedo/PI * E) plus a sky-visibility
+      // factor from the probes. The probe field replaces the environment IBL diffuse; the environment IBL specular is kept
+      // but occluded by the probe sky-visibility (long-range "is the sky actually visible here", which the short-range
+      // per-pixel AO misses) combined with that AO.
+      float ddgiSkyVisibility;
+      vec3 ddgiIrradiance = ddgiSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, viewDirection, ddgiSkyVisibility);
+      float iblWeight = ddgiSkyVisibility * specularOcclusion;
+      if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
+        colorOutput += ddgiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
       }
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)

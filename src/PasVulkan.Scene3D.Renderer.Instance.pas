@@ -3498,7 +3498,7 @@ begin
     fGlobalIlluminationDDGIVisibilityImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
                                                                                                   GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIVisibilityOctFull,
                                                                                                   GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIVisibilityOctFull,
-                                                                                                  VK_FORMAT_R16G16_SFLOAT,
+                                                                                                  VK_FORMAT_R16G16B16A16_SFLOAT, // x = mean dist, y = mean dist^2, z = sky visibility (IBL occlusion)
                                                                                                   true,
                                                                                                   VK_SAMPLE_COUNT_1_BIT,
                                                                                                   VK_IMAGE_LAYOUT_GENERAL,

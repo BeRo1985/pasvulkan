@@ -189,14 +189,15 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
     vec3 ddgiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal);
   #endif
 
-  // Visibility (mean distance, mean distance squared) octahedral atlas (RG16F).
-  vec2 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction);
+  // Visibility octahedral atlas (RGBA16F): x = mean distance, y = mean distance squared (Chebyshev), z = sky visibility
+  // (fraction of probe rays in that direction that escaped to the sky / missed geometry, used as the IBL occlusion factor).
+  vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction);
 
   // ---------------------------------------------------------------------------------------------------------------------
   //  Sample the irradiance field at a world position for a surface with the given normal, with Chebyshev visibility
   //  weighting (the DDGI leak-reduction term) and trilinear + backface weighting. Returns diffuse irradiance.
   // ---------------------------------------------------------------------------------------------------------------------
-  vec3 ddgiSampleIrradianceInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in int cascadeIndex){
+  vec3 ddgiSampleIrradianceInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in int cascadeIndex, out float skyVisibility){
     vec3 gridCoord = ddgiWorldToProbeGrid(worldPosition, cascadeIndex);
     ivec3 baseProbe = ivec3(floor(gridCoord));
     vec3 frac = gridCoord - vec3(baseProbe);
@@ -205,6 +206,7 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
     vec3 biasedPosition = worldPosition + (normal * 0.0) + (viewDirection * 0.0);
 
     vec3 sumIrradiance = vec3(0.0);
+    float sumSkyVisibility = 0.0;
     float sumWeight = 0.0;
 
     for(int i = 0; i < 8; i++){
@@ -224,7 +226,8 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
       // Chebyshev visibility test against the probe's stored octahedral depth statistics.
       float distToProbe = length(probeToPoint);
-      vec2 moments = ddgiSampleVisibility(probeCoord, cascadeIndex, normalize(probeToPoint));
+      vec3 vis = ddgiSampleVisibility(probeCoord, cascadeIndex, normalize(probeToPoint));
+      vec2 moments = vis.xy;
       float meanDist = moments.x;
       float chebyshev = 1.0;
       if(distToProbe > meanDist){
@@ -244,14 +247,18 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       weight = max(weight, 1e-6);
 
       sumIrradiance += ddgiEvaluateIrradiance(probeCoord, cascadeIndex, normal) * weight;
+      // Sky visibility for IBL occlusion: how open the surface hemisphere (normal direction) is to the sky at this probe.
+      sumSkyVisibility += ddgiSampleVisibility(probeCoord, cascadeIndex, normal).z * weight;
       sumWeight += weight;
     }
 
+    skyVisibility = (sumWeight > 0.0) ? clamp(sumSkyVisibility / sumWeight, 0.0, 1.0) : 0.0;
     return (sumWeight > 0.0) ? (sumIrradiance / sumWeight) : vec3(0.0);
   }
 
-  // Select cascade by AABB containment with fade-based blending between cascades, then sample. Returns diffuse irradiance.
-  vec3 ddgiSampleIrradiance(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection){
+  // Select cascade by AABB containment with fade-based blending between cascades, then sample. Returns diffuse irradiance;
+  // skyVisibility (out) is the IBL occlusion factor (1 = fully open to the sky, 0 = enclosed), 1 outside all cascades.
+  vec3 ddgiSampleIrradiance(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, out float skyVisibility){
     int cascadeIndex = 0;
     while(((cascadeIndex + 1) < GI_DDGI_CASCADES) &&
           (any(lessThan(worldPosition, ddgiData.ddgiCascadeAABBMin[cascadeIndex].xyz)) ||
@@ -260,6 +267,8 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
     }
 
     vec3 result = vec3(0.0);
+    float sumSkyVisibility = 0.0;
+    float sumWeight = 0.0;
     float current = 1.0;
     for(int c = cascadeIndex; c < GI_DDGI_CASCADES; c++){
       float weight;
@@ -278,12 +287,16 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
         break;
       }
       if(weight > 1e-6){
-        result += ddgiSampleIrradianceInCascade(worldPosition, normal, viewDirection, c) * weight;
+        float cascadeSkyVisibility;
+        result += ddgiSampleIrradianceInCascade(worldPosition, normal, viewDirection, c, cascadeSkyVisibility) * weight;
+        sumSkyVisibility += cascadeSkyVisibility * weight;
+        sumWeight += weight;
       }
       if(current < 1e-6){
         break;
       }
     }
+    skyVisibility = (sumWeight > 0.0) ? clamp(sumSkyVisibility / sumWeight, 0.0, 1.0) : 1.0;
     return result;
   }
 
