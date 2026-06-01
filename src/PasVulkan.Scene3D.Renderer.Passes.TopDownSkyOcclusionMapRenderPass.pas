@@ -304,6 +304,7 @@ begin
  fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fPassVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fVulkanPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TopDownSkyOcclusionMap.PipelineLayout');
 
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
@@ -422,6 +423,8 @@ begin
      VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
 
      VulkanGraphicsPipeline.Initialize;
+
+     fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(VulkanGraphicsPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TopDownSkyOcclusionMap.GfxPipeline[alpha'+IntToStr(ord(AlphaMode))+',topo'+IntToStr(ord(PrimitiveTopology))+',cull'+IntToStr(ord(FaceCullingMode))+']');
 
      VulkanGraphicsPipeline.FreeMemory;
 
@@ -547,6 +550,8 @@ begin
 
      VulkanGraphicsPipeline.Initialize;
 
+     fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(VulkanGraphicsPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TopDownSkyOcclusionMap.MeshPipeline[alpha'+IntToStr(ord(AlphaMode))+',cull'+IntToStr(ord(FaceCullingMode))+']');
+
      VulkanGraphicsPipeline.FreeMemory;
 
     finally
@@ -604,6 +609,13 @@ procedure TpvScene3DRendererPassesTopDownSkyOcclusionMapRenderPass.OnSetRenderPa
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                       fVulkanPipelineLayout.Handle,
+                                       1,
+                                       1,
+                                       @fPassVulkanDescriptorSets[aInFlightFrameIndex].Handle,
+                                       0,
+                                       nil);
  end;
 end;
 
