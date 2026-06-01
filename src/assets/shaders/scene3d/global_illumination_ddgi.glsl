@@ -29,6 +29,12 @@
   #define GI_DDGI_STORAGE GI_DDGI_STORAGE_SH_VALUE
 #endif
 
+// Convenience define mirroring GI_DDGI_STORAGE for consumers that select via defined()/!defined() (e.g. mesh.frag's
+// IBL block, which is kept for octahedral storage but replaced by the SH dominant-light path for SH storage).
+#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_OCT_VALUE
+  #define GLOBAL_ILLUMINATION_DDGI_OCT_STORAGE
+#endif
+
 // --- Probe field dimensions -------------------------------------------------------------------------------------------
 #ifndef GI_DDGI_CASCADES
   #define GI_DDGI_CASCADES 4
@@ -299,6 +305,109 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
     skyVisibility = (sumWeight > 0.0) ? clamp(sumSkyVisibility / sumWeight, 0.0, 1.0) : 1.0;
     return result;
   }
+
+  #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
+  // ---------------------------------------------------------------------------------------------------------------------
+  //  Same sampling as ddgiSampleIrradiance* but returning the blended *radiance* L1 SH (pre cosine-lobe) instead of the
+  //  evaluated diffuse irradiance. The SH-storage shading path uses this to extract a dominant directional light (proper
+  //  specular via the analytic BRDF) plus a residual ambient SH (diffuse), mirroring the cascaded radiance hints path.
+  // ---------------------------------------------------------------------------------------------------------------------
+  SHC3CoefficientsL1 ddgiSampleRadianceSHInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in int cascadeIndex, out float skyVisibility){
+    vec3 gridCoord = ddgiWorldToProbeGrid(worldPosition, cascadeIndex);
+    ivec3 baseProbe = ivec3(floor(gridCoord));
+    vec3 frac = gridCoord - vec3(baseProbe);
+
+    vec3 biasedPosition = worldPosition;
+
+    SHC3CoefficientsL1 sumSH = SHC3CoefficientsL1Zero();
+    float sumSkyVisibility = 0.0;
+    float sumWeight = 0.0;
+
+    for(int i = 0; i < 8; i++){
+      ivec3 offset = ivec3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
+      ivec3 probeCoord = clamp(baseProbe + offset, ivec3(0), uDDGIProbeCounts - ivec3(1));
+
+      vec3 trilinear = mix(vec3(1.0) - frac, frac, vec3(offset));
+      float weight = trilinear.x * trilinear.y * trilinear.z;
+
+      vec3 probeWorld = ddgiProbeGridToWorld(probeCoord, cascadeIndex);
+      vec3 probeToPoint = biasedPosition - probeWorld;
+      vec3 dirToProbe = normalize(-probeToPoint);
+
+      float wrap = (dot(dirToProbe, normal) + 1.0) * 0.5;
+      weight *= (wrap * wrap) + 0.2;
+
+      float distToProbe = length(probeToPoint);
+      vec3 vis = ddgiSampleVisibility(probeCoord, cascadeIndex, normalize(probeToPoint));
+      vec2 moments = vis.xy;
+      float meanDist = moments.x;
+      float chebyshev = 1.0;
+      if(distToProbe > meanDist){
+        float variance = abs((meanDist * meanDist) - moments.y);
+        float d = distToProbe - meanDist;
+        chebyshev = variance / (variance + (d * d));
+        chebyshev = max(0.0, chebyshev * chebyshev * chebyshev);
+      }
+      weight *= chebyshev;
+
+      const float crushThreshold = 0.2;
+      if(weight < crushThreshold){
+        weight *= (weight * weight) * (1.0 / (crushThreshold * crushThreshold));
+      }
+
+      weight = max(weight, 1e-6);
+
+      sumSH = SHC3CoefficientsL1Add(sumSH, SHC3CoefficientsL1Mul(ddgiLoadIrradianceSH(probeCoord, cascadeIndex), weight));
+      sumSkyVisibility += ddgiSampleVisibility(probeCoord, cascadeIndex, normal).z * weight;
+      sumWeight += weight;
+    }
+
+    skyVisibility = (sumWeight > 0.0) ? clamp(sumSkyVisibility / sumWeight, 0.0, 1.0) : 0.0;
+    return (sumWeight > 0.0) ? SHC3CoefficientsL1Mul(sumSH, 1.0 / sumWeight) : SHC3CoefficientsL1Zero();
+  }
+
+  SHC3CoefficientsL1 ddgiSampleRadianceSH(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, out float skyVisibility){
+    int cascadeIndex = 0;
+    while(((cascadeIndex + 1) < GI_DDGI_CASCADES) &&
+          (any(lessThan(worldPosition, ddgiData.ddgiCascadeAABBMin[cascadeIndex].xyz)) ||
+           any(greaterThan(worldPosition, ddgiData.ddgiCascadeAABBMax[cascadeIndex].xyz)))){
+      cascadeIndex++;
+    }
+
+    SHC3CoefficientsL1 result = SHC3CoefficientsL1Zero();
+    float sumSkyVisibility = 0.0;
+    float sumWeight = 0.0;
+    float current = 1.0;
+    for(int c = cascadeIndex; c < GI_DDGI_CASCADES; c++){
+      float weight;
+      if(c == (GI_DDGI_CASCADES - 1)){
+        weight = current;
+        current = 0.0;
+      }else if(all(greaterThanEqual(worldPosition, ddgiData.ddgiCascadeAABBMin[c].xyz)) &&
+               all(lessThanEqual(worldPosition, ddgiData.ddgiCascadeAABBMax[c].xyz))){
+        vec3 fade = smoothstep(ddgiData.ddgiCascadeAABBFadeStart[c].xyz,
+                               ddgiData.ddgiCascadeAABBFadeEnd[c].xyz,
+                               abs(worldPosition - ddgiData.ddgiCascadeAABBCenter[c].xyz));
+        float f = 1.0 - clamp(max(max(fade.x, fade.y), fade.z), 0.0, 1.0);
+        weight = current * f;
+        current *= 1.0 - f;
+      }else{
+        break;
+      }
+      if(weight > 1e-6){
+        float cascadeSkyVisibility;
+        result = SHC3CoefficientsL1Add(result, SHC3CoefficientsL1Mul(ddgiSampleRadianceSHInCascade(worldPosition, normal, viewDirection, c, cascadeSkyVisibility), weight));
+        sumSkyVisibility += cascadeSkyVisibility * weight;
+        sumWeight += weight;
+      }
+      if(current < 1e-6){
+        break;
+      }
+    }
+    skyVisibility = (sumWeight > 0.0) ? clamp(sumSkyVisibility / sumWeight, 0.0, 1.0) : 1.0;
+    return result;
+  }
+  #endif // GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
 
 #endif // GLOBAL_ILLUMINATION_DDGI_SAMPLE
 
