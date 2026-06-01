@@ -1041,9 +1041,9 @@ begin
         VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
        end;
        TpvScene3D.TFaceCullingMode.Inversed:begin
-        // TEST (mirror normal fix): renders the SAME triangles as (BACK,CW) but flips gl_FrontFacing to false,
-        // so the adjugate normal flip on negative-determinant meshes is compensated by frontFacingSign like in
-        // the double-sided path. Revert to (BACK,CW) if this does not fix the mirrored (left) wheels.
+        // mirror normal fix: renders the SAME triangles as (BACK,CW) but flips gl_FrontFacing to false, so the
+        // adjugate normal flip on negative-determinant (single-sided mirrored) meshes is compensated by
+        // frontFacingSign exactly like in the double-sided (None) path.
         VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_FRONT_BIT);
         VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
        end;
@@ -1238,9 +1238,9 @@ begin
         VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
        end;
        TpvScene3D.TFaceCullingMode.Inversed:begin
-        // TEST (mirror normal fix): renders the SAME triangles as (BACK,CW) but flips gl_FrontFacing to false,
-        // so the adjugate normal flip on negative-determinant meshes is compensated by frontFacingSign like in
-        // the double-sided path. Revert to (BACK,CW) if this does not fix the mirrored (left) wheels.
+        // mirror normal fix: renders the SAME triangles as (BACK,CW) but flips gl_FrontFacing to false, so the
+        // adjugate normal flip on negative-determinant (single-sided mirrored) meshes is compensated by
+        // frontFacingSign exactly like in the double-sided (None) path.
         VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_FRONT_BIT);
         VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
        end;
