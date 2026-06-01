@@ -91,7 +91,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIComputePass }
              RandomRotation1:TpvVector4; // mat3 column 1 in xyz
              RandomRotation2:TpvVector4; // mat3 column 2 in xyz
              Params:TpvUInt32Vector4;    // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-             Blend:TpvVector4;           // x = hysteresis, yzw = unused
+             Blend:TpvVector4;           // x = hysteresis, y = multi-bounce strength, z = firstFrame (1 = ignore the uninitialized previous probe data this frame), w = unused
             end;
             PPushConstants=^TPushConstants;
       private
@@ -113,6 +113,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIComputePass }
        fBlendInfos:TVkDescriptorImageInfoArray; // cached scratch for the planet blend map descriptor writes, grown power-of-two
        fGrassInfos:TVkDescriptorImageInfoArray; // cached scratch for the planet grass map descriptor writes, grown power-of-two
        fIBLDescriptors:array[0..MaxInFlightFrames-1] of TpvScene3DRendererIBLDescriptor; // fills set 1 binding 4 (6 env cubemaps: env A skybox/probe + env B atmosphere) for sky-on-miss
+       fFirstFrames:array[0..MaxInFlightFrames-1] of boolean; // per in-flight slot: true until that slot's probe images have been written once (they are not cleared on allocation); drives the firstFrame push constant
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipelineTrace:TpvVulkanComputePipeline;
        fPipelineIrradianceUpdate:TpvVulkanComputePipeline;
@@ -188,6 +189,12 @@ var InFlightFrameIndex,SHImageIndex:TpvInt32;
 begin
 
  inherited AcquireVolatileResources;
+
+ // The probe images (allocated alongside these volatile resources) are not cleared, so mark every in-flight slot as
+ // "first frame" until it has been written once; the first write then ignores the uninitialized previous data.
+ for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  fFirstFrames[InFlightFrameIndex]:=true;
+ end;
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -407,8 +414,16 @@ begin
  PushConstants.Params.y:=TpvScene3DRendererInstance.CountGlobalIlluminationDDGICascades;
  PushConstants.Params.z:=TpvScene3DRendererInstance.GlobalIlluminationDDGIProbesPerCascade;
  PushConstants.Params.w:=TpvScene3DRendererInstance.GlobalIlluminationDDGIRaysPerProbe;
- // x = temporal hysteresis for the probe integration, y = multi-bounce feedback strength (0 = first bounce only, 1 = full).
- PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,1.0,0.0,0.0);
+ // x = temporal hysteresis for the probe integration, y = multi-bounce feedback strength (0 = first bounce only, 1 = full),
+ // z = firstFrame flag. On the first use of this in-flight slot the probe images are still uninitialized garbage, so we
+ // ignore the previous data in the temporal blend (z=1) and skip the multi-bounce feedback (y=0, the previous frame's
+ // field is garbage too), giving a clean first integrated frame instead of the occasional white/garbage startup frames.
+ if fFirstFrames[aInFlightFrameIndex] then begin
+  fFirstFrames[aInFlightFrameIndex]:=false;
+  PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,0.0,1.0,0.0);
+ end else begin
+  PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,1.0,0.0,0.0);
+ end;
 
  // Make sure the host/transfer write of the uniform buffer is visible to the compute shaders.
  BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),

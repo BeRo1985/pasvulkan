@@ -109,8 +109,10 @@ void main(){
   // The probe images are not cleared on allocation, so guard against uninitialized NaN/Inf memory which would otherwise
   // lock in permanently through the temporal hysteresis blend; on the first (non-finite) read just take the new value.
   DDGI_SH_TYPE previous = ddgiLoadSH(texel);
+  // On the firstFrame flag (blend.z) the previous probe data is uninitialized garbage, so take the freshly projected SH.
+  bool firstFrame = pushConstants.blend.z > 0.5;
   vec3 finiteCheck = ((previous.coefficients[0] + previous.coefficients[1]) + previous.coefficients[2]) + previous.coefficients[3];
-  if(any(isnan(finiteCheck)) || any(isinf(finiteCheck))){
+  if(firstFrame || any(isnan(finiteCheck)) || any(isinf(finiteCheck))){
     ddgiStoreSH(texel, sh);
   }else{
     ddgiStoreSH(texel, DDGI_SH_LERP(sh, previous, pushConstants.blend.x));
@@ -153,8 +155,10 @@ void main(){
 
   ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_IRRADIANCE_OCT_FULL) + localTexel;
   vec3 previous = imageLoad(uDDGIIrradianceOct, atlasTexel).rgb;
-  // Guard against uninitialized NaN/Inf (images are not cleared) which would otherwise lock in through the hysteresis.
-  float blendT = (any(isnan(previous)) || any(isinf(previous))) ? 0.0 : pushConstants.blend.x;
+  // Guard against uninitialized NaN/Inf (images are not cleared) which would otherwise lock in through the hysteresis;
+  // on the firstFrame flag (blend.z) the previous data is uninitialized garbage, so always take the freshly computed value.
+  bool firstFrame = pushConstants.blend.z > 0.5;
+  float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : pushConstants.blend.x;
   imageStore(uDDGIIrradianceOct, atlasTexel, vec4(mix(irradiance, previous, blendT), 1.0));
 }
 
