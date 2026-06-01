@@ -19,8 +19,15 @@ USEBIN2C=0
 # Delete the temporary files after compilation
 DELETEAFTERCOMPILE=1
 
-# Debug mode, if set to 1, debug information will generated and written into the spirv files 
+# Debug mode, if set to 1, debug information will generated and written into the spirv files
 DEBUG=1
+
+# DDGI irradiance storage mode for the dynamic diffuse global illumination shaders: 0 = L1 spherical harmonics (default),
+# 1 = octahedral atlas. This MUST match GlobalIlluminationDDGIStorageOctahedral in
+# PasVulkan.Scene3D.Renderer.Instance.pas (false => 0, true => 1), otherwise the descriptor layouts / image view types
+# of the DDGI compute shaders and the globalillumination_ddgi mesh fragment variant won't match the Pascal side.
+DDGI_STORAGE=0
+if [ "$DDGI_STORAGE" -ne 0 ]; then DDGI_STORAGE_DEFINE="-DGI_DDGI_STORAGE=${DDGI_STORAGE}"; else DDGI_STORAGE_DEFINE=""; fi
 
 #############################################
 #            Initialization code            #
@@ -490,10 +497,10 @@ compileshaderarguments=(
   # gi_ddgi_trace.comp traces rays via ray query (it includes raytracing.glsl), so it needs the ray tracing SPIR-V target.
   # RAYTRACING is #defined inside the shader (not via -D) to avoid a macro redefinition clash, so the auto target-env
   # logic below (which keys off "-DRAYTRACING") does not trigger here; set the target explicitly.
-  "-V gi_ddgi_trace.comp --target-env vulkan1.2 -o ${tempPath}/gi_ddgi_trace_comp.spv"
-  "-V gi_ddgi_irradiance_update.comp -o ${tempPath}/gi_ddgi_irradiance_update_comp.spv"
-  "-V gi_ddgi_visibility_update.comp -o ${tempPath}/gi_ddgi_visibility_update_comp.spv"
-  "-V gi_ddgi_border_update.comp -o ${tempPath}/gi_ddgi_border_update_comp.spv"
+  "-V gi_ddgi_trace.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} -o ${tempPath}/gi_ddgi_trace_comp.spv"
+  "-V gi_ddgi_irradiance_update.comp ${DDGI_STORAGE_DEFINE} -o ${tempPath}/gi_ddgi_irradiance_update_comp.spv"
+  "-V gi_ddgi_visibility_update.comp ${DDGI_STORAGE_DEFINE} -o ${tempPath}/gi_ddgi_visibility_update_comp.spv"
+  "-V gi_ddgi_border_update.comp ${DDGI_STORAGE_DEFINE} -o ${tempPath}/gi_ddgi_border_update_comp.spv"
 
   "-V voxel_visualization.vert -o ${tempPath}/voxel_visualization_vert.spv"
   "-V voxel_visualization.frag -o ${tempPath}/voxel_visualization_frag.spv"
@@ -1115,7 +1122,7 @@ addMeshFragmentShadingGlobalIlluminationVariants(){
   # Cascaded voxel cone tracing
   addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_cascaded_voxel_cone_tracing" "$2 -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING"
 
-  addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_ddgi" "$2 -DGLOBAL_ILLUMINATION_DDGI"
+  addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_ddgi" "$2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE}"
   
 }
 

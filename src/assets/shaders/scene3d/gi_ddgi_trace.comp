@@ -55,11 +55,13 @@ layout(set = 1, binding = 1, rgba16f) uniform writeonly image2D uDDGIRayData;
 #if GI_DDGI_MULTIBOUNCE
 // Read-only views of the probe field this in-flight slot still holds from the PREVIOUS frame (the irradiance/visibility
 // update stages overwrite these images only after this trace stage), used as the feedback term. Same bindings as the
-// update stages write (set 1, bindings 2 and 3), just declared read-only here.
-layout(set = 1, binding = 2, rgba16f) uniform readonly image3D uDDGIIrradianceSHRead[3];
-layout(set = 1, binding = 3, rg16f) uniform readonly image2D uDDGIVisibilityRead;
+// update stages write (set 1, bindings 2 and 3), just declared read-only here. The probe sampling function bodies
+// (declared by global_illumination_ddgi.glsl) are backed by these storage images via imageLoad. Both irradiance storage
+// variants are supported so multi-bounce works regardless of the GI_DDGI_STORAGE the field was built with.
 
-// Probe sampling function bodies (declared by global_illumination_ddgi.glsl) backed by the storage images via imageLoad.
+#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
+layout(set = 1, binding = 2, rgba16f) uniform readonly image3D uDDGIIrradianceSHRead[3];
+
 SHC3CoefficientsL1 ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
   ivec3 texel = ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
   vec4 a = imageLoad(uDDGIIrradianceSHRead[0], texel);
@@ -67,6 +69,17 @@ SHC3CoefficientsL1 ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int 
   vec4 c = imageLoad(uDDGIIrradianceSHRead[2], texel);
   return SHC3CoefficientsL1Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w));
 }
+#else
+layout(set = 1, binding = 2, rgba16f) uniform readonly image2D uDDGIIrradianceOctRead;
+
+vec3 ddgiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal){
+  vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, normal, GI_DDGI_IRRADIANCE_OCT_SIZE, GI_DDGI_IRRADIANCE_OCT_FULL);
+  ivec2 texel = ivec2(uv * vec2(ddgiAtlasSize(GI_DDGI_IRRADIANCE_OCT_FULL)));
+  return max(vec3(0.0), imageLoad(uDDGIIrradianceOctRead, texel).rgb);
+}
+#endif
+
+layout(set = 1, binding = 3, rg16f) uniform readonly image2D uDDGIVisibilityRead;
 
 vec2 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction){
   vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, direction, GI_DDGI_VISIBILITY_OCT_SIZE, GI_DDGI_VISIBILITY_OCT_FULL);

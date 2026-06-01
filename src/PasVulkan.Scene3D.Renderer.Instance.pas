@@ -128,6 +128,15 @@ type { TpvScene3DRendererInstance }
              GlobalIlluminationDDGIVisibilityOctSize=16;
              GlobalIlluminationDDGIIrradianceOctFull=GlobalIlluminationDDGIIrradianceOctSize+2;
              GlobalIlluminationDDGIVisibilityOctFull=GlobalIlluminationDDGIVisibilityOctSize+2;
+             // Irradiance storage mode: false = L1 spherical harmonics (3 RGBA16F 3D images), true = octahedral atlas
+             // (1 RGBA16F 2D image). This is a compile-time choice and MUST match the GI_DDGI_STORAGE the DDGI compute
+             // shaders AND the globalillumination_ddgi mesh fragment variant are built with (see compileshaders.sh).
+             GlobalIlluminationDDGIStorageOctahedral=false;
+             GlobalIlluminationDDGIIrradianceImageCount=(GlobalIlluminationDDGISHImageCount*(1-Ord(GlobalIlluminationDDGIStorageOctahedral)))+(1*Ord(GlobalIlluminationDDGIStorageOctahedral));
+             GlobalIlluminationDDGIIrradianceAtlasWidth=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIIrradianceOctFull;
+             GlobalIlluminationDDGIIrradianceAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIIrradianceOctFull;
+             GlobalIlluminationDDGIVisibilityAtlasWidth=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIVisibilityOctFull;
+             GlobalIlluminationDDGIVisibilityAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIVisibilityOctFull;
              MaxMultiIndirectDrawCalls=65536; //1048576; // as worst case
              InitialCountSolidPrimitives=1 shl 10;
              MaxSolidPrimitives=1 shl 20;
@@ -732,7 +741,8 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationDDGICascadedVolumes:TCascadedVolumes;
        fGlobalIlluminationDDGIUniformBufferDataArray:TGlobalIlluminationDDGIUniformBufferDataArray;
        fGlobalIlluminationDDGIUniformBuffers:TGlobalIlluminationDDGIUniformBuffers;
-       fGlobalIlluminationDDGIIrradianceImages:TGlobalIlluminationDDGIIrradianceImages;
+       fGlobalIlluminationDDGIIrradianceImages:TGlobalIlluminationDDGIIrradianceImages;        // SH storage: 3 RGBA16F 3D images per frame
+       fGlobalIlluminationDDGIIrradianceOctImages:TGlobalIlluminationDDGIImage2Ds;             // octahedral storage: 1 RGBA16F 2D atlas per frame
        fGlobalIlluminationDDGIVisibilityImages:TGlobalIlluminationDDGIImage2Ds;
        fGlobalIlluminationDDGIRayDataImages:TGlobalIlluminationDDGIImage2Ds;
        fGlobalIlluminationDDGIDescriptorPool:TpvVulkanDescriptorPool;
@@ -1077,6 +1087,7 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers read fGlobalIlluminationRadianceHintsUniformBuffers;
        property GlobalIlluminationDDGIUniformBuffers:TGlobalIlluminationDDGIUniformBuffers read fGlobalIlluminationDDGIUniformBuffers;
        property GlobalIlluminationDDGIIrradianceImages:TGlobalIlluminationDDGIIrradianceImages read fGlobalIlluminationDDGIIrradianceImages;
+       property GlobalIlluminationDDGIIrradianceOctImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIIrradianceOctImages;
        property GlobalIlluminationDDGIVisibilityImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIVisibilityImages;
        property GlobalIlluminationDDGIRayDataImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIRayDataImages;
        property GlobalIlluminationDDGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationDDGIDescriptorSetLayout;
@@ -2456,6 +2467,7 @@ begin
  fGlobalIlluminationDDGICascadedVolumes:=nil;
  FillChar(fGlobalIlluminationDDGIUniformBuffers,SizeOf(TGlobalIlluminationDDGIUniformBuffers),#0);
  FillChar(fGlobalIlluminationDDGIIrradianceImages,SizeOf(TGlobalIlluminationDDGIIrradianceImages),#0);
+ FillChar(fGlobalIlluminationDDGIIrradianceOctImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
  FillChar(fGlobalIlluminationDDGIVisibilityImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
  FillChar(fGlobalIlluminationDDGIRayDataImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
  fGlobalIlluminationDDGIDescriptorPool:=nil;
@@ -2875,6 +2887,7 @@ begin
   for ImageIndex:=0 to GlobalIlluminationDDGISHImageCount-1 do begin
    FreeAndNil(fGlobalIlluminationDDGIIrradianceImages[InFlightFrameIndex,ImageIndex]);
   end;
+  FreeAndNil(fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIVisibilityImages[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIRayDataImages[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex]);
@@ -3454,16 +3467,32 @@ begin
                                                                                       pvAllocationGroupIDScene3DStatic,
                                                                                       'TpvScene3DRendererInstance.fGlobalIlluminationDDGIUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
 
-    for ImageIndex:=0 to GlobalIlluminationDDGISHImageCount-1 do begin
-     fGlobalIlluminationDDGIIrradianceImages[InFlightFrameIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(fScene3D.VulkanDevice,
-                                                                                                              GlobalIlluminationDDGIProbeCountX,
-                                                                                                              GlobalIlluminationDDGIProbeCountY,
-                                                                                                              GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades,
-                                                                                                              VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                                                                              VK_SAMPLE_COUNT_1_BIT,
-                                                                                                              VK_IMAGE_LAYOUT_GENERAL,
-                                                                                                              pvAllocationGroupIDScene3DStatic,
-                                                                                                              'TpvScene3DRendererInstance.fGlobalIlluminationDDGIIrradianceImages['+IntToStr(InFlightFrameIndex)+','+IntToStr(ImageIndex)+']');
+    if GlobalIlluminationDDGIStorageOctahedral then begin
+     // Octahedral irradiance: a single RGBA16F 2D atlas (probe tiles with guard bands).
+     fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
+                                                                                                      GlobalIlluminationDDGIIrradianceAtlasWidth,
+                                                                                                      GlobalIlluminationDDGIIrradianceAtlasHeight,
+                                                                                                      VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                      true,
+                                                                                                      VK_SAMPLE_COUNT_1_BIT,
+                                                                                                      VK_IMAGE_LAYOUT_GENERAL,
+                                                                                                      VK_SHARING_MODE_EXCLUSIVE,
+                                                                                                      nil,
+                                                                                                      pvAllocationGroupIDScene3DStatic,
+                                                                                                      'TpvScene3DRendererInstance.fGlobalIlluminationDDGIIrradianceOctImages['+IntToStr(InFlightFrameIndex)+']');
+    end else begin
+     // L1 spherical harmonics irradiance: three RGBA16F 3D images (probe lattice, cascades stacked along Z).
+     for ImageIndex:=0 to GlobalIlluminationDDGISHImageCount-1 do begin
+      fGlobalIlluminationDDGIIrradianceImages[InFlightFrameIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(fScene3D.VulkanDevice,
+                                                                                                               GlobalIlluminationDDGIProbeCountX,
+                                                                                                               GlobalIlluminationDDGIProbeCountY,
+                                                                                                               GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades,
+                                                                                                               VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                                                                               VK_IMAGE_LAYOUT_GENERAL,
+                                                                                                               pvAllocationGroupIDScene3DStatic,
+                                                                                                               'TpvScene3DRendererInstance.fGlobalIlluminationDDGIIrradianceImages['+IntToStr(InFlightFrameIndex)+','+IntToStr(ImageIndex)+']');
+     end;
     end;
 
     fGlobalIlluminationDDGIVisibilityImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
@@ -3497,23 +3526,30 @@ begin
                                                                          TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                          Renderer.CountInFlightFrames);
    fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames);
-   fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*(GlobalIlluminationDDGISHImageCount+1));
+   fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*(GlobalIlluminationDDGIIrradianceImageCount+1));
    fGlobalIlluminationDDGIDescriptorPool.Initialize;
 
+   // Binding 1 holds the irradiance: 3 sampler3D (SH) or 1 sampler2D (octahedral). Binding 2 the octahedral visibility.
    fGlobalIlluminationDDGIDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
-   fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,GlobalIlluminationDDGISHImageCount,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
+   fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,GlobalIlluminationDDGIIrradianceImageCount,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
    fGlobalIlluminationDDGIDescriptorSetLayout.Initialize;
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
     GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray:=nil;
     try
-     SetLength(GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray,GlobalIlluminationDDGISHImageCount);
-     for ImageIndex:=0 to GlobalIlluminationDDGISHImageCount-1 do begin
-      GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray[ImageIndex]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
-                                                                                                            fGlobalIlluminationDDGIIrradianceImages[InFlightFrameIndex,ImageIndex].VulkanImageView.Handle,
-                                                                                                            VK_IMAGE_LAYOUT_GENERAL);
+     SetLength(GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray,GlobalIlluminationDDGIIrradianceImageCount);
+     if GlobalIlluminationDDGIStorageOctahedral then begin
+      GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray[0]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
+                                                                                                    fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex].VulkanImageView.Handle,
+                                                                                                    VK_IMAGE_LAYOUT_GENERAL);
+     end else begin
+      for ImageIndex:=0 to GlobalIlluminationDDGISHImageCount-1 do begin
+       GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray[ImageIndex]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
+                                                                                                             fGlobalIlluminationDDGIIrradianceImages[InFlightFrameIndex,ImageIndex].VulkanImageView.Handle,
+                                                                                                             VK_IMAGE_LAYOUT_GENERAL);
+      end;
      end;
      fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalIlluminationDDGIDescriptorPool,fGlobalIlluminationDDGIDescriptorSetLayout);
      fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),[],[fGlobalIlluminationDDGIUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false);

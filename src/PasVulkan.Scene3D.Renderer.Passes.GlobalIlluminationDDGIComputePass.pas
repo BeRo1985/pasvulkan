@@ -191,13 +191,13 @@ begin
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(1+TpvScene3DRendererInstance.GlobalIlluminationDDGISHImageCount+1));
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(1+TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount+1));
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
- fVulkanDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3DRendererInstance.GlobalIlluminationDDGISHImageCount,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+ fVulkanDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.Initialize;
 
@@ -232,12 +232,19 @@ begin
 
  for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
 
+  // Binding 2 = irradiance storage: 3 SH 3D images or 1 octahedral 2D atlas, matching GlobalIlluminationDDGIStorageOctahedral.
   IrradianceImageInfos:=nil;
-  SetLength(IrradianceImageInfos,TpvScene3DRendererInstance.GlobalIlluminationDDGISHImageCount);
-  for SHImageIndex:=0 to TpvScene3DRendererInstance.GlobalIlluminationDDGISHImageCount-1 do begin
-   IrradianceImageInfos[SHImageIndex]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                     fInstance.GlobalIlluminationDDGIIrradianceImages[InFlightFrameIndex,SHImageIndex].VulkanImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_GENERAL);
+  SetLength(IrradianceImageInfos,TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount);
+  if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
+   IrradianceImageInfos[0]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                          fInstance.GlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex].VulkanImageView.Handle,
+                                                          VK_IMAGE_LAYOUT_GENERAL);
+  end else begin
+   for SHImageIndex:=0 to TpvScene3DRendererInstance.GlobalIlluminationDDGISHImageCount-1 do begin
+    IrradianceImageInfos[SHImageIndex]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                      fInstance.GlobalIlluminationDDGIIrradianceImages[InFlightFrameIndex,SHImageIndex].VulkanImageView.Handle,
+                                                                      VK_IMAGE_LAYOUT_GENERAL);
+   end;
   end;
 
   fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,fVulkanDescriptorSetLayout);
