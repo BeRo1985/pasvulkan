@@ -395,7 +395,8 @@ begin
  end else begin
   PushConstants.Mode:=0; // HDR => No tone mapping, just color grading if all.
  end;
- if fInstance.DrawMeshletDebugColors and fInstance.Renderer.UseMeshShaderPipeline then begin
+ if (fInstance.DrawMeshletDebugColors and fInstance.Renderer.UseMeshShaderPipeline) or
+    fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
   PushConstants.DebugBypass:=1;
  end else begin
   PushConstants.DebugBypass:=0;

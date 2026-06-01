@@ -406,7 +406,8 @@ begin
  end else begin
   PushConstants.Mode:=0;
  end;
- if fInstance.DrawMeshletDebugColors and fInstance.Renderer.UseMeshShaderPipeline then begin
+ if (fInstance.DrawMeshletDebugColors and fInstance.Renderer.UseMeshShaderPipeline) or
+    fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
   PushConstants.Mode:=0;
  end;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,

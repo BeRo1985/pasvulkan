@@ -387,7 +387,8 @@ procedure TpvScene3DRendererPassesLuminanceAdaptationRenderPass.Execute(const aC
 var PushConstants:TpvScene3DRendererPassesLuminanceAdaptationRenderPass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- if fInstance.DrawMeshletDebugColors and fInstance.Renderer.UseMeshShaderPipeline then begin
+ if (fInstance.DrawMeshletDebugColors and fInstance.Renderer.UseMeshShaderPipeline) or
+    fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
   PushConstants.DebugBypass:=1;
  end else begin
   PushConstants.DebugBypass:=0;
