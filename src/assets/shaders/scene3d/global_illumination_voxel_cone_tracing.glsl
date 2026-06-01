@@ -315,12 +315,17 @@ vec4 cvctTraceRadianceCone(vec3 from,
                                     abs(position - voxelGridData.cascadeCenterHalfExtents[cascadeIndex].xyz));
       float cascadeBlend = max(max(fadeFactors.x, fadeFactors.y), fadeFactors.z);
       if(cascadeBlend > 0.0){
-        vec3 nextCascadePosition = cvctWorldToTextureSpace(position, uint(cascadeIndex) + 1u);
-        ivec3 nextTextureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3((cascadeIndex + 1) * 6);
+        uint nextCascadeIndex = uint(cascadeIndex) + 1u;
+        vec3 nextCascadePosition = cvctWorldToTextureSpace(position, nextCascadeIndex);
+        ivec3 nextTextureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(nextCascadeIndex) * 6);
+        // Recompute diameter and mip map level in the next (coarser) cascade's own normalized space,
+        // since it covers a larger world extent the same world-space cone diameter maps to a finer mip there
+        float nextDiameter = max(voxelGridData.oneOverGridSizes[nextCascadeIndex >> 2u][nextCascadeIndex & 3u] * 0.5, doubledAperture * (dist * voxelGridData.worldToCascadeScales[nextCascadeIndex >> 2u][nextCascadeIndex & 3u]));
+        float nextMipMapLevel = max(0.0, log2((nextDiameter * voxelGridData.gridSizes[nextCascadeIndex >> 2u][nextCascadeIndex & 3u])));
         radianceSample = mix(radianceSample,
-                             (textureLod(uVoxelGridRadiance[nextTextureIndices.x], nextCascadePosition, mipMapLevel) * directionWeights.x) +
-                             (textureLod(uVoxelGridRadiance[nextTextureIndices.y], nextCascadePosition, mipMapLevel) * directionWeights.y) +
-                             (textureLod(uVoxelGridRadiance[nextTextureIndices.z], nextCascadePosition, mipMapLevel) * directionWeights.z),
+                             (textureLod(uVoxelGridRadiance[nextTextureIndices.x], nextCascadePosition, nextMipMapLevel) * directionWeights.x) +
+                             (textureLod(uVoxelGridRadiance[nextTextureIndices.y], nextCascadePosition, nextMipMapLevel) * directionWeights.y) +
+                             (textureLod(uVoxelGridRadiance[nextTextureIndices.z], nextCascadePosition, nextMipMapLevel) * directionWeights.z),
                              cascadeBlend);
       }
     }

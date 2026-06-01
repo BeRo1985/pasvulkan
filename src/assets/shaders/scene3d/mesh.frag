@@ -991,7 +991,7 @@ void main() {
 #endif
 #elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
 #if 0
-      color.xyz += cvctCascadeVisualizationColor(inWorldSpacePosition).xyz;
+      color.xyz += cvctGlobalIlluminationCascadeVisualizationColor(inWorldSpacePosition).xyz;
 #endif
 #endif
 /*    color.xyz += specularOutput;
