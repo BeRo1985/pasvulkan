@@ -945,7 +945,11 @@ void main() {
         }
       }
 #elif defined(GLOBAL_ILLUMINATION_DDGI)
-      float iblWeight = 1.0; // DDGI only provides diffuse indirect; the environment IBL specular below is kept (iblWeight stays 1).
+      // The environment IBL diffuse is replaced by the probe field (which now also captures the sky via ray misses, so it
+      // is correctly occluded). DDGI has no specular, so the environment IBL specular is kept but occluded so it is not
+      // applied full-strength in shadowed/enclosed spots. TODO: replace specularOcclusion with a per-probe sky-visibility
+      // factor ("IBL factor") for a more accurate "IBL only where the sky is actually visible".
+      float iblWeight = specularOcclusion;
       {
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
           // ddgiSampleIrradiance returns the diffuse irradiance E(n); outgoing diffuse = (albedo/PI) * E.
@@ -954,7 +958,7 @@ void main() {
         }
       }
 #endif
-#if !defined(REFLECTIVESHADOWMAPOUTPUT) 
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if !(defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS))
 #if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DDGI)
 //    float iblWeight = 1.0; // already declared in the global illumination branch above
@@ -962,7 +966,7 @@ void main() {
       float iblWeight = 1.0; // for future sky occulsion
 #endif
 #if defined(GLOBAL_ILLUMINATION_DDGI)
-      vec3 iblDiffuse = vec3(0.0); // DDGI replaces the environment IBL diffuse term (added to colorOutput above); IBL specular is kept
+      vec3 iblDiffuse = vec3(0.0); // DDGI replaces the environment IBL diffuse term (the probe field carries the sky via ray misses); IBL specular is kept but occluded via iblWeight
 #else
       vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
 #endif

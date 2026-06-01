@@ -93,8 +93,15 @@ void main(){
   sh = SHC3CoefficientsL1Mul(sh, GI_DDGI_FOUR_PI / float(raysPerProbe));
 
   ivec3 texel = ddgiSHTexelCoord(probeCoord, cascadeIndex);
+  // The probe images are not cleared on allocation, so guard against uninitialized NaN/Inf memory which would otherwise
+  // lock in permanently through the temporal hysteresis blend; on the first (non-finite) read just take the new value.
   SHC3CoefficientsL1 previous = ddgiLoadSH(texel);
-  ddgiStoreSH(texel, SHC3CoefficientsL1Lerp(sh, previous, pushConstants.blend.x));
+  vec3 finiteCheck = ((previous.coefficients[0] + previous.coefficients[1]) + previous.coefficients[2]) + previous.coefficients[3];
+  if(any(isnan(finiteCheck)) || any(isinf(finiteCheck))){
+    ddgiStoreSH(texel, sh);
+  }else{
+    ddgiStoreSH(texel, SHC3CoefficientsL1Lerp(sh, previous, pushConstants.blend.x));
+  }
 }
 
 #else // GI_DDGI_STORAGE_OCT
@@ -133,7 +140,9 @@ void main(){
 
   ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_IRRADIANCE_OCT_FULL) + localTexel;
   vec3 previous = imageLoad(uDDGIIrradianceOct, atlasTexel).rgb;
-  imageStore(uDDGIIrradianceOct, atlasTexel, vec4(mix(irradiance, previous, pushConstants.blend.x), 1.0));
+  // Guard against uninitialized NaN/Inf (images are not cleared) which would otherwise lock in through the hysteresis.
+  float blendT = (any(isnan(previous)) || any(isinf(previous))) ? 0.0 : pushConstants.blend.x;
+  imageStore(uDDGIIrradianceOct, atlasTexel, vec4(mix(irradiance, previous, blendT), 1.0));
 }
 
 #endif

@@ -75,7 +75,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
-     PasVulkan.Scene3D.Renderer.Instance;
+     PasVulkan.Scene3D.Renderer.Instance,
+     PasVulkan.Scene3D.Renderer.IBLDescriptor;
 
 const TpvScene3DRendererPassesGlobalIlluminationDDGIComputePassMaxPlanetTextures=32; // descriptor array size for the per-planet blend/grass maps (set 2), indexed by planet object index
 
@@ -111,6 +112,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIComputePass }
        fPlanetTexturesDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fBlendInfos:TVkDescriptorImageInfoArray; // cached scratch for the planet blend map descriptor writes, grown power-of-two
        fGrassInfos:TVkDescriptorImageInfoArray; // cached scratch for the planet grass map descriptor writes, grown power-of-two
+       fIBLDescriptors:array[0..MaxInFlightFrames-1] of TpvScene3DRendererIBLDescriptor; // fills set 1 binding 4 (6 env cubemaps: env A skybox/probe + env B atmosphere) for sky-on-miss
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipelineTrace:TpvVulkanComputePipeline;
        fPipelineIrradianceUpdate:TpvVulkanComputePipeline;
@@ -192,6 +194,7 @@ begin
                                                        fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(1+TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount+1));
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*6); // 6 environment cubemaps (env A + env B) for sky-on-miss, mirroring the mesh IBL set
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -199,6 +202,7 @@ begin
  fVulkanDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+ fVulkanDescriptorSetLayout.AddBinding(4,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,6,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]); // 6 environment cubemaps (env A + env B) for sky-on-miss
  fVulkanDescriptorSetLayout.Initialize;
 
  // Set 2 = per-planet octahedral blend/grass maps, bindless, indexed by planet object index (== the index used to fetch
@@ -254,9 +258,27 @@ begin
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,length(IrradianceImageInfos),TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),IrradianceImageInfos,[],[],false);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIVisibilityImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
+  // Initial placeholder write for binding 4 (the 6 environment cubemaps) so the initial Flush has a fully written set,
+  // just like the forward render pass does; the IBL descriptor helper below overwrites it with the correct env A + env B
+  // (atmosphere) maps and refreshes it each frame.
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,0,6,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                 [fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo,
+                                                                  fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo,
+                                                                  fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo,
+                                                                  fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo,
+                                                                  fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo,
+                                                                  fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo],[],[],false);
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
   IrradianceImageInfos:=nil;
+
+  // Set 1 binding 4 = the 6 environment cubemaps for sky-on-miss, owned by an IBL descriptor helper. SetFrom picks env A
+  // (reflection probe or skybox env map) and env B (the atmosphere cubemaps when an atmosphere is visible, else the env
+  // map), exactly like the mesh shading IBL - so the getIBLDiffuse-mirroring dual blend in the trace is correct including
+  // the atmosphere. It is refreshed each frame in Update().
+  fIBLDescriptors[InFlightFrameIndex]:=TpvScene3DRendererIBLDescriptor.Create(fInstance.Renderer.VulkanDevice,fVulkanDescriptorSets[InFlightFrameIndex],4,fInstance.Renderer.ClampedSampler.Handle);
+  fIBLDescriptors[InFlightFrameIndex].SetFrom(fInstance.Scene3D,fInstance,InFlightFrameIndex);
+  fIBLDescriptors[InFlightFrameIndex].Update(true);
 
   // The planet-texture set is created empty here and (re)populated each frame in Update() from the planet list.
   fPlanetTexturesDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPlanetTexturesDescriptorPool,fPlanetTexturesDescriptorSetLayout);
@@ -274,6 +296,7 @@ begin
  FreeAndNil(fPipelineBorderUpdate);
  FreeAndNil(fPipelineLayout);
  for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fIBLDescriptors[InFlightFrameIndex]);
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fPlanetTexturesDescriptorSets[InFlightFrameIndex]);
  end;
@@ -297,6 +320,13 @@ var Planets:TpvScene3DPlanets;
     Data:TpvScene3DPlanet.TData;
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
+
+ // Refresh the environment cubemaps (env A skybox/probe + env B atmosphere) for this in-flight frame; only re-writes the
+ // descriptor when an image view actually changed (the IBL descriptor tracks dirtiness internally).
+ if assigned(fIBLDescriptors[aUpdateInFlightFrameIndex]) then begin
+  fIBLDescriptors[aUpdateInFlightFrameIndex].SetFrom(fInstance.Scene3D,fInstance,aUpdateInFlightFrameIndex);
+  fIBLDescriptors[aUpdateInFlightFrameIndex].Update(true);
+ end;
 
  if not assigned(fPlanetTexturesDescriptorSets[aUpdateInFlightFrameIndex]) then begin
   exit;

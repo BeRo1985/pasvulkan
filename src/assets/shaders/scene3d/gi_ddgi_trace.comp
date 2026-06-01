@@ -26,8 +26,19 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 #include "globaldescriptorset.glsl"
 #include "raytracing.glsl"
 
-// Sky on miss: TODO sample the environment; for now closed-scene ambient is zero. The trace pass may later bind the sky.
-#define GI_GATHER_SKY(dir) vec3(0.0)
+// Sky on ray miss. The environment maps mirror the mesh shading IBL set (mesh_rendering_pass_descriptorset.glsl set 1
+// binding 2): [0..2] = env A (GGX/Charlie/Lambertian), [3..5] = env B (the atmosphere-inclusive set when planets/atmosphere
+// are active). GI_GATHER_SKY mirrors getIBLDiffuse() from pbr.glsl exactly: the sky diffuse irradiance in the ray
+// direction, dual-blended by env B's alpha (= per-texel atmosphere existence; 0 where there is no/partial atmosphere, and
+// the whole dual term is a no-op when no planet/atmosphere is active). Integrating this per missed ray bakes the sky into
+// the probe irradiance, correctly occluded (a probe whose rays mostly hit geometry sees little sky).
+layout(set = 1, binding = 4) uniform samplerCube uDDGIEnvironmentMaps[6];
+vec3 ddgiGatherSky(const in vec3 dir){
+  vec3 irradiance = textureLod(uDDGIEnvironmentMaps[2], dir, 0.0).xyz;       // Lambertian (diffuse irradiance), env A
+  vec4 envB = textureLod(uDDGIEnvironmentMaps[5], dir, 0.0);                  // Lambertian, env B (atmosphere); w = coverage
+  return mix(irradiance, envB.xyz, envB.w);
+}
+#define GI_GATHER_SKY(dir) ddgiGatherSky(dir)
 // Per-planet blend/grass maps (bindless, indexed by planet object index) on set 2, so planet hits get the full material
 // layer blend instead of just the default ground material.
 #define GI_GATHER_PLANET_TEXTURES
@@ -129,10 +140,20 @@ void main(){
     vec3 previousFrameIndirect = vec3(0.0);
 #if GI_DDGI_MULTIBOUNCE
     previousFrameIndirect = ddgiSampleIrradiance(surface.position, surface.normal, -rayDirection) * pushConstants.blend.y;
+    // The probe field is not cleared on allocation; ignore non-finite feedback from uninitialized texels so NaN/Inf
+    // cannot enter the ray data and lock into the probe field through the temporal blend.
+    if(any(isnan(previousFrameIndirect)) || any(isinf(previousFrameIndirect))){
+      previousFrameIndirect = vec3(0.0);
+    }
 #endif
     radiance = giGatherShadeHit(surface, previousFrameIndirect);
   }else{
     radiance = GI_GATHER_SKY(rayDirection);
+  }
+
+  // Final safety net: never write NaN/Inf into the ray data (would otherwise propagate into the probe field).
+  if(any(isnan(radiance)) || any(isinf(radiance))){
+    radiance = vec3(0.0);
   }
 
   float storedDistance = (surface.hitDistance >= 0.0) ? surface.hitDistance : tMax;
