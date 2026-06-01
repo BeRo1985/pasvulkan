@@ -370,7 +370,8 @@ begin
  PushConstants.Params.y:=TpvScene3DRendererInstance.CountGlobalIlluminationDDGICascades;
  PushConstants.Params.z:=TpvScene3DRendererInstance.GlobalIlluminationDDGIProbesPerCascade;
  PushConstants.Params.w:=TpvScene3DRendererInstance.GlobalIlluminationDDGIRaysPerProbe;
- PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,0.0,0.0,0.0);
+ // x = temporal hysteresis for the probe integration, y = multi-bounce feedback strength (0 = first bounce only, 1 = full).
+ PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,1.0,0.0,0.0);
 
  // Make sure the host/transfer write of the uniform buffer is visible to the compute shaders.
  BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),

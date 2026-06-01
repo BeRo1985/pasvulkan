@@ -30,8 +30,14 @@ layout(local_size_x = GI_DDGI_VISIBILITY_OCT_FULL, local_size_y = GI_DDGI_VISIBI
 #endif
 layout(set = 1, binding = 3, rg16f) uniform image2D uDDGIVisibilityOct;
 
+// Must match the shared push constant layout the pass pushes for all DDGI stages (only params is used here, but the
+// preceding fields must be present so params sits at the correct offset).
 layout(push_constant) uniform PushConstants {
+  vec4 randomRotation0;
+  vec4 randomRotation1;
+  vec4 randomRotation2;
   uvec4 params;     // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
+  vec4 blend;
 } pushConstants;
 
 // Tile-local source interior texel for a border texel t in [0, full-1], using the octahedral wrap rule. Returns false

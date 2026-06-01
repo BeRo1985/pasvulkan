@@ -34,19 +34,53 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 #define GI_GATHER_PLANET_TEXTURES_SET 2
 #include "gi_rt_gather.glsl"
 
-// DDGI probe field definition (UBO + addressing). No sampling needed here (multi-bounce feedback handled below if enabled).
+// Optional multi-bounce: sample the previous frame's irradiance field at each ray hit and feed it back as the indirect
+// term, giving "infinite" diffuse bounces. Compile-time toggle (default on) plus a runtime strength (push constant
+// blend.y, 0 = effectively first-bounce only). Only the L1 SH storage variant is supported for the feedback read.
+#ifndef GI_DDGI_MULTIBOUNCE
+  #define GI_DDGI_MULTIBOUNCE 1
+#endif
+
+// DDGI probe field definition (UBO + addressing). With multi-bounce we also enable the probe sampling path.
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+#if GI_DDGI_MULTIBOUNCE
+  #define GLOBAL_ILLUMINATION_DDGI_SAMPLE
+#endif
 #include "global_illumination_ddgi.glsl"
 
 // Per-ray output: rgb = radiance towards the probe, a = hit distance (= max ray distance on a miss).
 layout(set = 1, binding = 1, rgba16f) uniform writeonly image2D uDDGIRayData;
+
+#if GI_DDGI_MULTIBOUNCE
+// Read-only views of the probe field this in-flight slot still holds from the PREVIOUS frame (the irradiance/visibility
+// update stages overwrite these images only after this trace stage), used as the feedback term. Same bindings as the
+// update stages write (set 1, bindings 2 and 3), just declared read-only here.
+layout(set = 1, binding = 2, rgba16f) uniform readonly image3D uDDGIIrradianceSHRead[3];
+layout(set = 1, binding = 3, rg16f) uniform readonly image2D uDDGIVisibilityRead;
+
+// Probe sampling function bodies (declared by global_illumination_ddgi.glsl) backed by the storage images via imageLoad.
+SHC3CoefficientsL1 ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
+  ivec3 texel = ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
+  vec4 a = imageLoad(uDDGIIrradianceSHRead[0], texel);
+  vec4 b = imageLoad(uDDGIIrradianceSHRead[1], texel);
+  vec4 c = imageLoad(uDDGIIrradianceSHRead[2], texel);
+  return SHC3CoefficientsL1Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w));
+}
+
+vec2 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction){
+  vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, direction, GI_DDGI_VISIBILITY_OCT_SIZE, GI_DDGI_VISIBILITY_OCT_FULL);
+  ivec2 texel = ivec2(uv * vec2(ddgiAtlasSize(GI_DDGI_VISIBILITY_OCT_FULL))); // point sample (no bilinear) is fine for the secondary feedback term
+  return imageLoad(uDDGIVisibilityRead, texel).rg;
+}
+#endif
 
 layout(push_constant) uniform PushConstants {
   vec4 randomRotation0; // mat3 column 0 (xyz)
   vec4 randomRotation1; // mat3 column 1 (xyz)
   vec4 randomRotation2; // mat3 column 2 (xyz)
   uvec4 params;         // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
+  vec4 blend;           // x = hysteresis (used by the update stages), y = multi-bounce feedback strength
 } pushConstants;
 
 void main(){
@@ -73,12 +107,22 @@ void main(){
   float tMin = 1e-3;
   float tMax = max(ddgiData.ddgiCascadeCellSizes[cascadeIndex].w, 1e-2);
 
-  // First-bounce only for now; multi-bounce feedback (previousFrameIndirect) can be supplied once probe sampling is
-  // wired into this pass as well. Emissive meshes and all analytic lights are already accounted for in the gather layer.
-  float hitDistance;
-  vec3 radiance = giGatherTraceRadiance(probePosition, rayDirection, tMin, tMax, CULLMASK_ALL, vec3(0.0), hitDistance);
+  // Trace the ray and shade the hit. Emissive meshes and all analytic lights are accounted for in the gather layer; the
+  // optional multi-bounce feedback samples the previous frame's irradiance field at the hit point.
+  GIGatherSurface surface = giGatherClosestHit(probePosition, rayDirection, tMin, tMax, CULLMASK_ALL);
 
-  float storedDistance = (hitDistance >= 0.0) ? hitDistance : tMax;
+  vec3 radiance;
+  if(surface.hit){
+    vec3 previousFrameIndirect = vec3(0.0);
+#if GI_DDGI_MULTIBOUNCE
+    previousFrameIndirect = ddgiSampleIrradiance(surface.position, surface.normal, -rayDirection) * pushConstants.blend.y;
+#endif
+    radiance = giGatherShadeHit(surface, previousFrameIndirect);
+  }else{
+    radiance = GI_GATHER_SKY(rayDirection);
+  }
+
+  float storedDistance = (surface.hitDistance >= 0.0) ? surface.hitDistance : tMax;
 
   imageStore(uDDGIRayData, ivec2(int(rayIndex), int(globalProbeIndex)), vec4(radiance, storedDistance));
 }
