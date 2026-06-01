@@ -1,0 +1,74 @@
+#version 460 core
+
+// DDGI visibility integration pass.
+//
+// Integrates the per-ray hit distances from gi_ddgi_trace.comp into each probe's octahedral visibility tile, storing the
+// mean distance and mean squared distance (RG16F) used by the Chebyshev visibility test in the sampling code. One
+// workgroup per probe, one thread per interior visibility texel. Always octahedral, independent of the irradiance
+// storage mode.
+
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_GOOGLE_include_directive : require
+
+/* clang-format off */
+
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+#include "global_illumination_ddgi.glsl"
+
+layout(local_size_x = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_y = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_z = 1) in;
+
+layout(set = 1, binding = 1, rgba16f) uniform readonly image2D uDDGIRayData;
+layout(set = 1, binding = 3, rg16f) uniform image2D uDDGIVisibilityOct;
+
+layout(push_constant) uniform PushConstants {
+  vec4 randomRotation0;
+  vec4 randomRotation1;
+  vec4 randomRotation2;
+  uvec4 params;     // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
+  vec4 blend;       // x = hysteresis (0..1)
+} pushConstants;
+
+void main(){
+  uint globalProbeIndex = gl_WorkGroupID.x;
+  uint totalProbes = pushConstants.params.y * pushConstants.params.z;
+  if(globalProbeIndex >= totalProbes){
+    return;
+  }
+
+  int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
+  int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
+  ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade);
+
+  ivec2 localTexel = ivec2(gl_LocalInvocationID.xy);
+  vec2 uv = (vec2(localTexel) + vec2(0.5)) / float(GI_DDGI_VISIBILITY_OCT_SIZE);
+  vec3 texelDirection = octDecode(fma(uv, vec2(2.0), vec2(-1.0)));
+
+  mat3 randomRotation = mat3(pushConstants.randomRotation0.xyz, pushConstants.randomRotation1.xyz, pushConstants.randomRotation2.xyz);
+  uint raysPerProbe = pushConstants.params.w;
+
+  // Sharper directional weighting than for irradiance, so the depth statistics stay local to the texel direction.
+  const float sharpness = GI_DDGI_VISIBILITY_SHARPNESS;
+
+  float maxRayDistance = max(ddgiData.ddgiCascadeCellSizes[cascadeIndex].w, 1e-2);
+
+  float sumDist = 0.0;
+  float sumDist2 = 0.0;
+  float sumWeight = 0.0;
+  for(uint r = 0u; r < raysPerProbe; r++){
+    vec3 rayDirection = ddgiRayDirection(int(r), randomRotation);
+    float weight = pow(max(0.0, dot(texelDirection, rayDirection)), sharpness);
+    if(weight > 0.0){
+      float dist = min(imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).a, maxRayDistance);
+      sumDist += dist * weight;
+      sumDist2 += (dist * dist) * weight;
+      sumWeight += weight;
+    }
+  }
+
+  vec2 moments = (sumWeight > 1e-6) ? vec2(sumDist / sumWeight, sumDist2 / sumWeight) : vec2(maxRayDistance, maxRayDistance * maxRayDistance);
+
+  ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_VISIBILITY_OCT_FULL) + localTexel;
+  vec2 previous = imageLoad(uDDGIVisibilityOct, atlasTexel).rg;
+  imageStore(uDDGIVisibilityOct, atlasTexel, vec4(mix(moments, previous, pushConstants.blend.x), 0.0, 0.0));
+}

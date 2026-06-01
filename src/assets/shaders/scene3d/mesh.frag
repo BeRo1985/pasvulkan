@@ -229,6 +229,41 @@ layout(set = 1, binding = 10) uniform sampler2D uRainTextures[]; // 0 = rain tex
 
   #include "global_illumination_voxel_cone_tracing.glsl"
 
+#elif defined(GLOBAL_ILLUMINATION_DDGI)
+
+  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 2
+  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+  #define GLOBAL_ILLUMINATION_DDGI_SAMPLE
+  #include "global_illumination_ddgi.glsl"
+
+  // Probe data (filled by the DDGI update passes). Visibility is always an octahedral atlas; irradiance is either an L1
+  // SH 3D-image triplet (default) or an octahedral atlas, matching the storage mode the update passes were built with.
+  #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
+    layout(set = 2, binding = 1) uniform sampler3D uDDGIIrradianceSH[3];
+
+    SHC3CoefficientsL1 ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
+      ivec3 texel = ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
+      vec4 a = texelFetch(uDDGIIrradianceSH[0], texel, 0);
+      vec4 b = texelFetch(uDDGIIrradianceSH[1], texel, 0);
+      vec4 c = texelFetch(uDDGIIrradianceSH[2], texel, 0);
+      return SHC3CoefficientsL1Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w));
+    }
+  #else
+    layout(set = 2, binding = 1) uniform sampler2D uDDGIIrradianceOct;
+
+    vec3 ddgiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal){
+      vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, normal, GI_DDGI_IRRADIANCE_OCT_SIZE, GI_DDGI_IRRADIANCE_OCT_FULL);
+      return max(vec3(0.0), textureLod(uDDGIIrradianceOct, uv, 0.0).rgb);
+    }
+  #endif
+
+  layout(set = 2, binding = 2) uniform sampler2D uDDGIVisibility;
+
+  vec2 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction){
+    vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, direction, GI_DDGI_VISIBILITY_OCT_SIZE, GI_DDGI_VISIBILITY_OCT_FULL);
+    return textureLod(uDDGIVisibility, uv, 0.0).rg;
+  }
+
 #endif
 
 #ifndef VOXELIZATION
@@ -909,15 +944,28 @@ void main() {
           colorOutput += cvctIndirectSpecularLight(inWorldSpacePosition.xyz, normal.xyz, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * F0Dielectric * specularOcclusion * OneOverPI;
         }
       }
+#elif defined(GLOBAL_ILLUMINATION_DDGI)
+      float iblWeight = 1.0; // DDGI only provides diffuse indirect; the environment IBL specular below is kept (iblWeight stays 1).
+      {
+        if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
+          // ddgiSampleIrradiance returns the diffuse irradiance E(n); outgoing diffuse = (albedo/PI) * E.
+          vec3 irradiance = ddgiSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, viewDirection);
+          colorOutput += irradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
+        }
+      }
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT) 
 #if !(defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS))
-#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
-//    float iblWeight = 1.0; 
+#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DDGI)
+//    float iblWeight = 1.0; // already declared in the global illumination branch above
 #else
-      float iblWeight = 1.0; // for future sky occulsion 
+      float iblWeight = 1.0; // for future sky occulsion
 #endif
-      vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz; 
+#if defined(GLOBAL_ILLUMINATION_DDGI)
+      vec3 iblDiffuse = vec3(0.0); // DDGI replaces the environment IBL diffuse term (added to colorOutput above); IBL specular is kept
+#else
+      vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
+#endif
 
       // Diffuse transmission
       if ((flags & (1u << 16u)) != 0u) {

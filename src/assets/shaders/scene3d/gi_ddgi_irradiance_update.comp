@@ -1,0 +1,139 @@
+#version 460 core
+
+// DDGI irradiance integration pass.
+//
+// Integrates the per-ray radiance produced by gi_ddgi_trace.comp into each probe's irradiance representation, blended
+// temporally against the previous frame's data (hysteresis). Two storage variants, selected at compile time:
+//   GI_DDGI_STORAGE_SH  : irradiance as L1 RGB spherical harmonics in three RGBA16F 3D images (one thread per probe).
+//   GI_DDGI_STORAGE_OCT : irradiance as an octahedral tile in one RGBA16F 2D atlas (one thread per interior texel).
+
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_GOOGLE_include_directive : require
+
+/* clang-format off */
+
+#define GI_DDGI_STORAGE_SH_VALUE 0
+#define GI_DDGI_STORAGE_OCT_VALUE 1
+#ifndef GI_DDGI_STORAGE
+  #define GI_DDGI_STORAGE GI_DDGI_STORAGE_SH_VALUE
+#endif
+
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+#include "global_illumination_ddgi.glsl"
+
+#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
+  #include "sphericalharmonics.glsl"
+  layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in; // one thread per probe
+#else
+  layout(local_size_x = GI_DDGI_IRRADIANCE_OCT_SIZE, local_size_y = GI_DDGI_IRRADIANCE_OCT_SIZE, local_size_z = 1) in; // one thread per interior texel
+#endif
+
+// Per-ray radiance + hit distance from the trace pass.
+layout(set = 1, binding = 1, rgba16f) uniform readonly image2D uDDGIRayData;
+
+#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
+  // L1 RGB SH packed into three RGBA16F 3D images: see global_illumination_ddgi.glsl for the packing.
+  layout(set = 1, binding = 2, rgba16f) uniform image3D uDDGIIrradianceSH[3];
+#else
+  layout(set = 1, binding = 2, rgba16f) uniform image2D uDDGIIrradianceOct;
+#endif
+
+layout(push_constant) uniform PushConstants {
+  vec4 randomRotation0;
+  vec4 randomRotation1;
+  vec4 randomRotation2;
+  uvec4 params;     // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
+  vec4 blend;       // x = hysteresis (0..1), y = unused, z = unused, w = unused
+} pushConstants;
+
+const float GI_DDGI_FOUR_PI = 12.566370614359172;
+
+#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_SH_VALUE
+
+ivec3 ddgiSHTexelCoord(const in ivec3 probeCoord, const in int cascadeIndex){
+  return ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
+}
+
+SHC3CoefficientsL1 ddgiLoadSH(const in ivec3 texel){
+  vec4 a = imageLoad(uDDGIIrradianceSH[0], texel);
+  vec4 b = imageLoad(uDDGIIrradianceSH[1], texel);
+  vec4 c = imageLoad(uDDGIIrradianceSH[2], texel);
+  return SHC3CoefficientsL1Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w));
+}
+
+void ddgiStoreSH(const in ivec3 texel, const in SHC3CoefficientsL1 sh){
+  imageStore(uDDGIIrradianceSH[0], texel, vec4(sh.coefficients[0].xyz, sh.coefficients[1].x));
+  imageStore(uDDGIIrradianceSH[1], texel, vec4(sh.coefficients[1].yz, sh.coefficients[2].xy));
+  imageStore(uDDGIIrradianceSH[2], texel, vec4(sh.coefficients[2].z, sh.coefficients[3].xyz));
+}
+
+void main(){
+  uint globalProbeIndex = gl_GlobalInvocationID.x;
+  uint totalProbes = pushConstants.params.y * pushConstants.params.z;
+  if(globalProbeIndex >= totalProbes){
+    return;
+  }
+
+  int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
+  int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
+  ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade);
+
+  mat3 randomRotation = mat3(pushConstants.randomRotation0.xyz, pushConstants.randomRotation1.xyz, pushConstants.randomRotation2.xyz);
+
+  uint raysPerProbe = pushConstants.params.w;
+
+  SHC3CoefficientsL1 sh = SHC3CoefficientsL1Zero();
+  for(uint r = 0u; r < raysPerProbe; r++){
+    vec3 rayDirection = ddgiRayDirection(int(r), randomRotation);
+    vec3 radiance = imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).rgb;
+    sh = SHC3CoefficientsL1Add(sh, ProjectOntoSHC3CoefficientsL1(rayDirection, radiance));
+  }
+  // Monte-Carlo estimator over the uniform sphere: c_lm = (4*pi / N) * sum(L * Y_lm).
+  sh = SHC3CoefficientsL1Mul(sh, GI_DDGI_FOUR_PI / float(raysPerProbe));
+
+  ivec3 texel = ddgiSHTexelCoord(probeCoord, cascadeIndex);
+  SHC3CoefficientsL1 previous = ddgiLoadSH(texel);
+  ddgiStoreSH(texel, SHC3CoefficientsL1Lerp(sh, previous, pushConstants.blend.x));
+}
+
+#else // GI_DDGI_STORAGE_OCT
+
+void main(){
+  uint globalProbeIndex = gl_WorkGroupID.x;
+  uint totalProbes = pushConstants.params.y * pushConstants.params.z;
+  if(globalProbeIndex >= totalProbes){
+    return;
+  }
+
+  int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
+  int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
+  ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade);
+
+  ivec2 localTexel = ivec2(gl_LocalInvocationID.xy);
+
+  // Direction this interior texel represents (octahedral mapping of the [0,1]^2 tile).
+  vec2 uv = (vec2(localTexel) + vec2(0.5)) / float(GI_DDGI_IRRADIANCE_OCT_SIZE);
+  vec3 texelDirection = octDecode(fma(uv, vec2(2.0), vec2(-1.0)));
+
+  mat3 randomRotation = mat3(pushConstants.randomRotation0.xyz, pushConstants.randomRotation1.xyz, pushConstants.randomRotation2.xyz);
+  uint raysPerProbe = pushConstants.params.w;
+
+  vec3 sum = vec3(0.0);
+  float sumWeight = 0.0;
+  for(uint r = 0u; r < raysPerProbe; r++){
+    vec3 rayDirection = ddgiRayDirection(int(r), randomRotation);
+    float weight = max(0.0, dot(texelDirection, rayDirection));
+    if(weight > 0.0){
+      sum += imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).rgb * weight;
+      sumWeight += weight;
+    }
+  }
+  vec3 irradiance = (sumWeight > 1e-6) ? (sum / sumWeight) : vec3(0.0);
+
+  ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_IRRADIANCE_OCT_FULL) + localTexel;
+  vec3 previous = imageLoad(uDDGIIrradianceOct, atlasTexel).rgb;
+  imageStore(uDDGIIrradianceOct, atlasTexel, vec4(mix(irradiance, previous, pushConstants.blend.x), 1.0));
+}
+
+#endif

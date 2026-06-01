@@ -1185,12 +1185,26 @@ begin
   fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
  end;
 
+ // DDGI and surfel-based global illumination both require hardware ray tracing. If it is not available, fall back to cascaded radiance hints, which is
+ // the closest non-ray-traced equivalent (it also stores spherical harmonics in a cascaded volume).
+ if (not fRaytracingActive) and
+    (fGlobalIlluminationMode in [TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination,
+                                 TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination]) then begin
+  fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
+ end;
+
  case fGlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_radiance_hints_';
   end;
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
    fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_voxel_cone_tracing_';
+  end;
+  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
+   fMeshFragGlobalIlluminationTypeName:='globalillumination_ddgi_';
+  end;
+  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:begin
+   fMeshFragGlobalIlluminationTypeName:='globalillumination_surfel_';
   end;
   else begin
    fMeshFragGlobalIlluminationTypeName:='';

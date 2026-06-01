@@ -1,0 +1,80 @@
+#version 460 core
+
+// DDGI probe ray tracing pass.
+//
+// For every probe of every cascade it traces GI_DDGI_RAYS_PER_PROBE rays against the scene TLAS and stores, per ray,
+// the shaded radiance towards the probe plus the hit distance. The probe update passes then integrate this ray data
+// into the irradiance and visibility probe data structures. Ray directions are generated deterministically (spherical
+// Fibonacci rotated by a per-frame random rotation) so the update passes can reconstruct them without a direction buffer.
+
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_ray_query : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference_uvec2 : require
+
+/* clang-format off */
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+// The gather layer needs the engine's global descriptor set (TLAS, lights, materials, textures) and the ray helpers.
+#define RAYTRACING
+#define LIGHTS
+#define USE_MATERIAL_BUFFER_REFERENCE
+#define USE_BUFFER_REFERENCE
+
+#include "globaldescriptorset.glsl"
+#include "raytracing.glsl"
+
+// Sky on miss: TODO sample the environment; for now closed-scene ambient is zero. The trace pass may later bind the sky.
+#define GI_GATHER_SKY(dir) vec3(0.0)
+#include "gi_rt_gather.glsl"
+
+// DDGI probe field definition (UBO + addressing). No sampling needed here (multi-bounce feedback handled below if enabled).
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+#include "global_illumination_ddgi.glsl"
+
+// Per-ray output: rgb = radiance towards the probe, a = hit distance (= max ray distance on a miss).
+layout(set = 1, binding = 1, rgba16f) uniform writeonly image2D uDDGIRayData;
+
+layout(push_constant) uniform PushConstants {
+  vec4 randomRotation0; // mat3 column 0 (xyz)
+  vec4 randomRotation1; // mat3 column 1 (xyz)
+  vec4 randomRotation2; // mat3 column 2 (xyz)
+  uvec4 params;         // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
+} pushConstants;
+
+void main(){
+
+  uint rayIndex = gl_GlobalInvocationID.x;
+  uint globalProbeIndex = gl_GlobalInvocationID.y;
+
+  uint raysPerProbe = pushConstants.params.w;
+  uint totalProbes = pushConstants.params.y * pushConstants.params.z;
+
+  if((rayIndex >= raysPerProbe) || (globalProbeIndex >= totalProbes)){
+    return;
+  }
+
+  int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
+  int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
+  ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade);
+
+  vec3 probePosition = ddgiProbeGridToWorld(probeCoord, cascadeIndex);
+
+  mat3 randomRotation = mat3(pushConstants.randomRotation0.xyz, pushConstants.randomRotation1.xyz, pushConstants.randomRotation2.xyz);
+  vec3 rayDirection = ddgiRayDirection(int(rayIndex), randomRotation);
+
+  float tMin = 1e-3;
+  float tMax = max(ddgiData.ddgiCascadeCellSizes[cascadeIndex].w, 1e-2);
+
+  // First-bounce only for now; multi-bounce feedback (previousFrameIndirect) can be supplied once probe sampling is
+  // wired into this pass as well. Emissive meshes and all analytic lights are already accounted for in the gather layer.
+  float hitDistance;
+  vec3 radiance = giGatherTraceRadiance(probePosition, rayDirection, tMin, tMax, CULLMASK_ALL, vec3(0.0), hitDistance);
+
+  float storedDistance = (hitDistance >= 0.0) ? hitDistance : tMax;
+
+  imageStore(uDDGIRayData, ivec2(int(rayIndex), int(globalProbeIndex)), vec4(radiance, storedDistance));
+}

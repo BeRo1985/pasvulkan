@@ -485,6 +485,16 @@ compileshaderarguments=(
 
   "-V gi_cascaded_radiance_hints_bounce.comp -o ${tempPath}/gi_cascaded_radiance_hints_bounce_comp.spv"
 
+  # DDGI (dynamic diffuse global illumination). Storage mode defaults to L1 spherical harmonics (GI_DDGI_STORAGE = 0);
+  # build the octahedral irradiance variants by adding -DGI_DDGI_STORAGE=1 (and matching the shading variant below).
+  # gi_ddgi_trace.comp traces rays via ray query (it includes raytracing.glsl), so it needs the ray tracing SPIR-V target.
+  # RAYTRACING is #defined inside the shader (not via -D) to avoid a macro redefinition clash, so the auto target-env
+  # logic below (which keys off "-DRAYTRACING") does not trigger here; set the target explicitly.
+  "-V gi_ddgi_trace.comp --target-env vulkan1.2 -o ${tempPath}/gi_ddgi_trace_comp.spv"
+  "-V gi_ddgi_irradiance_update.comp -o ${tempPath}/gi_ddgi_irradiance_update_comp.spv"
+  "-V gi_ddgi_visibility_update.comp -o ${tempPath}/gi_ddgi_visibility_update_comp.spv"
+  "-V gi_ddgi_border_update.comp -o ${tempPath}/gi_ddgi_border_update_comp.spv"
+
   "-V voxel_visualization.vert -o ${tempPath}/voxel_visualization_vert.spv"
   "-V voxel_visualization.frag -o ${tempPath}/voxel_visualization_frag.spv"
   "-V voxel_visualization.frag -DUSEDEMOTE -o ${tempPath}/voxel_visualization_demote_frag.spv"
@@ -1104,6 +1114,8 @@ addMeshFragmentShadingGlobalIlluminationVariants(){
   
   # Cascaded voxel cone tracing
   addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_cascaded_voxel_cone_tracing" "$2 -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING"
+
+  addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_ddgi" "$2 -DGLOBAL_ILLUMINATION_DDGI"
   
 }
 
