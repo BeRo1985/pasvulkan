@@ -1706,6 +1706,7 @@ type EpvScene3D=class(Exception);
               property LightItems:TLightItems read fLightItems;
               property LightMetaInfoVulkanBuffer:TpvVulkanBuffer read fLightMetaInfoVulkanBuffer;
               property LightItemsVulkanBuffer:TpvVulkanBuffer read fLightItemsVulkanBuffer;
+              property LightTreeVulkanBuffer:TpvVulkanBuffer read fLightTreeVulkanBuffer;
             end;
             PLightBuffer=^TLightBuffer;
             TLightBuffers=array[0..MaxInFlightFrames-1] of TLightBuffer;
