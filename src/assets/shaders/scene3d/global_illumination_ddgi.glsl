@@ -325,14 +325,13 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       vec3 vis = ddgiSampleVisibility(physProbeCoord, cascadeIndex, normalize(probeToPoint));
       vec2 moments = vis.xy;
       float meanDist = moments.x;
-      float chebyshev = 1.0;
       if(distToProbe > meanDist){
         float variance = abs((meanDist * meanDist) - moments.y);
         float d = distToProbe - meanDist;
-        chebyshev = variance / (variance + (d * d));
+        float chebyshev = variance / (variance + (d * d));
         chebyshev = max(0.0, chebyshev * chebyshev * chebyshev); // sharpen
+        weight *= chebyshev;
       }
-      weight *= chebyshev;
 
       // Avoid zero contribution everywhere by keeping a tiny epsilon, then apply a small power to crush near-zero weights.
       const float crushThreshold = 0.2;
@@ -343,13 +342,22 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       weight = max(weight, 1e-6);
 
       sumIrradiance += ddgiEvaluateIrradiance(physProbeCoord, cascadeIndex, normal) * weight;
+
       // Sky visibility for IBL occlusion: how open the surface hemisphere (normal direction) is to the sky at this probe.
       sumSkyVisibility += ddgiSampleVisibility(physProbeCoord, cascadeIndex, normal).z * weight;
+
       sumWeight += weight;
+
     }
 
-    skyVisibility = (sumWeight > 0.0) ? clamp(sumSkyVisibility / sumWeight, 0.0, 1.0) : 0.0;
-    return (sumWeight > 0.0) ? (sumIrradiance / sumWeight) : vec3(0.0);
+    if(sumWeight > 0.0){
+      skyVisibility = clamp(sumSkyVisibility / sumWeight, 0.0, 1.0);
+      return sumIrradiance / sumWeight;
+    } else {
+      skyVisibility = 0.0;
+      return vec3(0.0);
+    }
+
   }
 
   // Select cascade by AABB containment with fade-based blending between cascades, then sample. Returns diffuse irradiance;
