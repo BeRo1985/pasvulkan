@@ -76,11 +76,22 @@ void main(){
                                     : vec3(maxRayDistance, maxRayDistance * maxRayDistance, 1.0);
 
   ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_VISIBILITY_OCT_FULL) + localTexel;
-  vec3 previous = imageLoad(uDDGIVisibilityOct, atlasTexel).rgb;
+  vec4 previousFull = imageLoad(uDDGIVisibilityOct, atlasTexel);
+  vec3 previous = previousFull.rgb;
   // Guard against uninitialized NaN/Inf (images are not cleared) and discard stale history: on the firstFrame flag
   // (blend.z) the previous data is uninitialized garbage, and on a probe that just toroidally scrolled into the volume
   // its stored history belongs to a different world cell — in both cases take the freshly computed value.
   bool firstFrame = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
-  float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : pushConstants.blend.x;
-  imageStore(uDDGIVisibilityOct, atlasTexel, vec4(mix(moments, previous, blendT), 0.0));
+#if GI_DDGI_PROBE_AGE_WARMUP
+  // Per-probe age (frames since (re)init) lives in the free w channel: reset on firstFrame/scroll-in, else +1 (capped). It
+  // drives a faster hysteresis right after init so the probe converges in a few frames; the irradiance update reads this
+  // same w for its matching ramp.
+  float probeAge = firstFrame ? 0.0 : min(previousFull.a + 1.0, GI_DDGI_WARMUP_FRAMES);
+  float hysteresis = ddgiWarmupHysteresis(probeAge);
+#else
+  float probeAge = 0.0;
+  float hysteresis = pushConstants.blend.x;
+#endif
+  float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : hysteresis;
+  imageStore(uDDGIVisibilityOct, atlasTexel, vec4(mix(moments, previous, blendT), probeAge));
 }

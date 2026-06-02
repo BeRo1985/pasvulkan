@@ -342,6 +342,12 @@ begin
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineIrradianceUpdate.Handle);
  aCommandBuffer.CmdDispatch((TotalProbes+63) shr 6,1,1);
 
+ // With the per-probe warmup the irradiance pass reads the visibility image's w (per-probe age); serialize so that read
+ // completes before the visibility pass below overwrites it (WAR). Off by default -> no extra barrier for the planet game.
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeAgeWarmup then begin
+  FullMemoryBarrier;
+ end;
+
  // Visibility integration: one workgroup per probe (octahedral tile). local_size = 16x16.
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineVisibilityUpdate.Handle);
  aCommandBuffer.CmdDispatch(TotalProbes,1,1);

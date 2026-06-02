@@ -168,6 +168,29 @@
 #define GI_DDGI_PROBE_STATE_INACTIVE 0.0
 #define GI_DDGI_PROBE_STATE_ACTIVE   1.0
 
+// Per-probe convergence warmup (default off). When on, each probe ramps its temporal hysteresis from GI_DDGI_WARMUP_START_
+// HYSTERESIS up to GI_DDGI_STEADY_HYSTERESIS over its first GI_DDGI_WARMUP_FRAMES frames of life, so a freshly-initialized or
+// toroidally-scrolled-in probe converges in a few frames instead of ~100 (kills the scroll-in flicker during fast camera
+// motion). The per-probe age (frames since (re)init) is stored in the FREE w channel of the visibility image: the visibility
+// update owns/increments it (reset on firstFrame / scroll-in), the irradiance update reads it back. Must match
+// GlobalIlluminationDDGIProbeAgeWarmup on the Pascal side (which gates the extra irradiance<->visibility barrier).
+#ifndef GI_DDGI_PROBE_AGE_WARMUP
+  #define GI_DDGI_PROBE_AGE_WARMUP 0
+#endif
+#ifndef GI_DDGI_WARMUP_FRAMES
+  #define GI_DDGI_WARMUP_FRAMES 16.0
+#endif
+#ifndef GI_DDGI_WARMUP_START_HYSTERESIS
+  #define GI_DDGI_WARMUP_START_HYSTERESIS 0.7
+#endif
+#ifndef GI_DDGI_STEADY_HYSTERESIS
+  #define GI_DDGI_STEADY_HYSTERESIS 0.97
+#endif
+// Hysteresis for a probe of the given age (frames since (re)init): low right after init, easing up to the steady value.
+float ddgiWarmupHysteresis(const in float age){
+  return mix(GI_DDGI_WARMUP_START_HYSTERESIS, GI_DDGI_STEADY_HYSTERESIS, min(age / GI_DDGI_WARMUP_FRAMES, 1.0));
+}
+
 // First ray index the irradiance/visibility integration uses. With relocation enabled the first GI_DDGI_FIXED_RAYS rays
 // are the FIXED rays (unrotated, used only by the relocation + classification passes for geometry sampling), so the probe
 // blend skips them — exactly RTXGI's `rayIndex = NUM_FIXED_RAYS` when relocation/classification is enabled.

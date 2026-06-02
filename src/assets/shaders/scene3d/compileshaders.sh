@@ -38,6 +38,13 @@ DDGI_STORAGE_DEFINE="-DGI_DDGI_STORAGE=${DDGI_STORAGE}"
 DDGI_PROBE_RELOCATION=1
 DDGI_PROBE_RELOCATION_DEFINE="-DGI_DDGI_PROBE_RELOCATION=${DDGI_PROBE_RELOCATION}"
 
+# Per-probe convergence warmup (0 = off, 1 = on; default OFF). When on, each probe ramps its temporal hysteresis up over its
+# first frames of life (faster convergence for freshly scrolled-in probes during fast camera motion). Only the irradiance +
+# visibility update shaders use it; MUST match GlobalIlluminationDDGIProbeAgeWarmup in Instance.pas (which gates the extra
+# irradiance<->visibility barrier in the probe-update pass). Off by default so the planet game (main project) is unaffected.
+DDGI_PROBE_AGE_WARMUP=0
+DDGI_PROBE_AGE_WARMUP_DEFINE="-DGI_DDGI_PROBE_AGE_WARMUP=${DDGI_PROBE_AGE_WARMUP}"
+
 # Surfel GI radiance storage mode: 0 = octahedral irradiance atlas (per surfel), 1 = L1 spherical harmonics (default),
 # 2 = L2 spherical harmonics. MUST match the Surfel pool record size on the Pascal side (the per-surfel payload size
 # depends on this). Always passed explicitly to the surfel compute passes AND the globalillumination_surfel consumers.
@@ -513,8 +520,8 @@ compileshaderarguments=(
   # RAYTRACING is #defined inside the shader (not via -D) to avoid a macro redefinition clash, so the auto target-env
   # logic below (which keys off "-DRAYTRACING") does not trigger here; set the target explicitly.
   "-V gi_ddgi_trace.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_trace_comp.spv"
-  "-V gi_ddgi_irradiance_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_irradiance_update_comp.spv"
-  "-V gi_ddgi_visibility_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_visibility_update_comp.spv"
+  "-V gi_ddgi_irradiance_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${DDGI_PROBE_AGE_WARMUP_DEFINE} -o ${tempPath}/gi_ddgi_irradiance_update_comp.spv"
+  "-V gi_ddgi_visibility_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${DDGI_PROBE_AGE_WARMUP_DEFINE} -o ${tempPath}/gi_ddgi_visibility_update_comp.spv"
   "-V gi_ddgi_border_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_border_update_comp.spv"
   # Probe relocation + classification (RTXGI-style). Traces fixed rays via ray query (includes raytracing.glsl), hence the
   # explicit ray-tracing SPIR-V target like the DDGI trace. Built with the same DDGI_PROBE_RELOCATION_DEFINE as the rest;
