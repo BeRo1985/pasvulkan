@@ -520,8 +520,10 @@ compileshaderarguments=(
   # RAYTRACING is #defined inside the shader (not via -D) to avoid a macro redefinition clash, so the auto target-env
   # logic below (which keys off "-DRAYTRACING") does not trigger here; set the target explicitly.
   "-V gi_ddgi_trace.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_trace_comp.spv"
-  "-V gi_ddgi_irradiance_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${DDGI_PROBE_AGE_WARMUP_DEFINE} -o ${tempPath}/gi_ddgi_irradiance_update_comp.spv"
-  "-V gi_ddgi_visibility_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${DDGI_PROBE_AGE_WARMUP_DEFINE} -o ${tempPath}/gi_ddgi_visibility_update_comp.spv"
+  # irradiance/visibility update read the ray-data via the DDGI master BDA buffer (gi_ddgi_master.glsl) -> need the
+  # buffer_reference SPIR-V target even though they don't ray-trace.
+  "-V gi_ddgi_irradiance_update.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${DDGI_PROBE_AGE_WARMUP_DEFINE} -o ${tempPath}/gi_ddgi_irradiance_update_comp.spv"
+  "-V gi_ddgi_visibility_update.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${DDGI_PROBE_AGE_WARMUP_DEFINE} -o ${tempPath}/gi_ddgi_visibility_update_comp.spv"
   "-V gi_ddgi_border_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_border_update_comp.spv"
   # Probe relocation + classification (RTXGI-style). Traces fixed rays via ray query (includes raytracing.glsl), hence the
   # explicit ray-tracing SPIR-V target like the DDGI trace. Built with the same DDGI_PROBE_RELOCATION_DEFINE as the rest;
