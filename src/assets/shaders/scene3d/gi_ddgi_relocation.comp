@@ -56,7 +56,7 @@ void main(){
   vec3 offset = firstFrame ? vec3(0.0) : probeData.xyz;
 
   float closestBackfaceDist = 1e30; vec3 closestBackfaceDir = vec3(0.0);
-  float closestFrontfaceDist = 1e30;
+  float closestFrontfaceDist = 1e30; vec3 closestFrontfaceDir = vec3(0.0);
   float farthestFrontfaceDist = 0.0; vec3 farthestFrontfaceDir = vec3(0.0);
   int backfaceCount = 0;
 
@@ -73,7 +73,10 @@ void main(){
       }
     }else{
       // Frontface hit or sky miss (large positive distance).
-      closestFrontfaceDist = min(closestFrontfaceDist, signedDist);
+      if(signedDist < closestFrontfaceDist){
+        closestFrontfaceDist = signedDist;
+        closestFrontfaceDir = dir;
+      }
       if(signedDist > farthestFrontfaceDist){
         farthestFrontfaceDist = signedDist;
         farthestFrontfaceDir = dir;
@@ -84,20 +87,39 @@ void main(){
   float backfaceFraction = float(backfaceCount) / float(GI_DDGI_FIXED_RAYS);
   float minFrontface = GI_DDGI_PROBE_MIN_FRONTFACE * cellSize;
 
+  // RTXGI ProbeRelocationCS controller: compute a CANDIDATE offset (relative to the current one) and only commit it if it
+  // stays inside the max-offset ellipsoid. The three branches are mutually exclusive; the sentinel means "no move this
+  // frame, keep the current offset". This structure (back-to-zero drift + directional guard + accept-instead-of-clamp) is
+  // what makes the relocation converge to a stable minimal offset instead of oscillating.
+  vec3 fullOffset = vec3(1e27); // sentinel = no candidate
+
   if((backfaceFraction > GI_DDGI_PROBE_BACKFACE_THRESHOLD) && (closestBackfaceDist < 1e29)){
-    // Probe is inside geometry: push it out along the closest backface direction, just past the surface.
-    offset += closestBackfaceDir * (closestBackfaceDist + (minFrontface * 0.5));
-  }else if((closestFrontfaceDist < minFrontface) && (closestFrontfaceDist < 1e29)){
-    // Too close to a front-facing surface: move towards the most open direction (capped).
-    offset += farthestFrontfaceDir * min(farthestFrontfaceDist, cellSize);
+    // Probe is inside geometry: push it out past the closest backface, leaving half a min-frontface of clearance.
+    fullOffset = offset + (closestBackfaceDir * (closestBackfaceDist + (minFrontface * 0.5)));
+  }else if(closestFrontfaceDist < minFrontface){
+    // Too close to a front-facing surface: only move towards the most open direction if it actually points AWAY from the
+    // nearest surface (dot <= 0); otherwise moving would just shove the probe into the opposite wall and oscillate.
+    if(dot(closestFrontfaceDir, farthestFrontfaceDir) <= 0.0){
+      fullOffset = offset + (farthestFrontfaceDir * min(farthestFrontfaceDist, cellSize));
+    }
+  }else{
+    // Comfortable / open space: drift the offset back towards zero (never overshooting it) so a probe does not stay stuck
+    // at a stale relocation once the geometry around it has cleared.
+    float currentOffsetLength = length(offset);
+    if(currentOffsetLength > 1e-4){
+      float moveBackMargin = min(closestFrontfaceDist - minFrontface, currentOffsetLength);
+      fullOffset = offset + ((-offset / currentOffsetLength) * moveBackMargin);
+    }
   }
 
-  // Clamp the offset to the ellipsoid |offset / cellSize| <= GI_DDGI_PROBE_MAX_OFFSET.
-  vec3 normalizedOffset = offset / cellSize;
-  float offsetSq = dot(normalizedOffset, normalizedOffset);
-  float maxOffsetSq = GI_DDGI_PROBE_MAX_OFFSET * GI_DDGI_PROBE_MAX_OFFSET;
-  if(offsetSq > maxOffsetSq){
-    offset = (normalizedOffset * inversesqrt(offsetSq)) * (GI_DDGI_PROBE_MAX_OFFSET * cellSize);
+  // Commit the candidate only if it stays inside the |offset / cellSize| <= GI_DDGI_PROBE_MAX_OFFSET ellipsoid; otherwise
+  // keep the previous offset (clamping to the boundary instead would leave the probe sitting on the rim and jittering). A
+  // probe that would need to move further than this to escape geometry stays put and gets marked INACTIVE by classification.
+  if(fullOffset.x < 1e26){
+    vec3 normalizedOffset = fullOffset / cellSize;
+    if(dot(normalizedOffset, normalizedOffset) < (GI_DDGI_PROBE_MAX_OFFSET * GI_DDGI_PROBE_MAX_OFFSET)){
+      offset = fullOffset;
+    }
   }
 
   imageStore(uDDGIProbeData, texel, vec4(offset, probeData.w)); // preserve state (w), owned by the classification pass
