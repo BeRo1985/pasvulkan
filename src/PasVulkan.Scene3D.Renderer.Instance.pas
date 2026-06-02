@@ -148,9 +148,9 @@ type { TpvScene3DRendererInstance }
              GlobalIlluminationDDGIProbeRelocation=true;
              // Per-probe convergence warmup. MUST match GI_DDGI_PROBE_AGE_WARMUP (= DDGI_PROBE_AGE_WARMUP in compileshaders.sh).
              // Only gates an extra irradiance<->visibility barrier in the probe-update pass (the warmup itself is shader-side,
-             // per-probe age stored in the visibility image's w channel). Default OFF — the planet game (main project) is
-             // unaffected; intended for fast-camera cases (kart game) where probes toroidally scroll in constantly.
-             GlobalIlluminationDDGIProbeAgeWarmup=false;
+             // per-probe age stored in the visibility image's w channel). Intended for fast-camera cases where probes
+             // toroidally scroll in constantly.
+             GlobalIlluminationDDGIProbeAgeWarmup=true;
              // Surfel-based global illumination. Must match the GI_SURFEL_* defines in global_illumination_surfel.glsl
              // (and SURFEL_STORAGE in compileshaders.sh). The persistent surfel pool is indexed by a world-space hash grid.
              GlobalIlluminationSurfelMaxCount=65536;                 // surfel pool capacity

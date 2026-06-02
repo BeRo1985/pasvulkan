@@ -38,11 +38,11 @@ DDGI_STORAGE_DEFINE="-DGI_DDGI_STORAGE=${DDGI_STORAGE}"
 DDGI_PROBE_RELOCATION=1
 DDGI_PROBE_RELOCATION_DEFINE="-DGI_DDGI_PROBE_RELOCATION=${DDGI_PROBE_RELOCATION}"
 
-# Per-probe convergence warmup (0 = off, 1 = on; default OFF). When on, each probe ramps its temporal hysteresis up over its
-# first frames of life (faster convergence for freshly scrolled-in probes during fast camera motion). Only the irradiance +
-# visibility update shaders use it; MUST match GlobalIlluminationDDGIProbeAgeWarmup in Instance.pas (which gates the extra
-# irradiance<->visibility barrier in the probe-update pass). Off by default so the planet game (main project) is unaffected.
-DDGI_PROBE_AGE_WARMUP=0
+# Per-probe convergence warmup (0 = off, 1 = on). When on, each probe ramps its temporal hysteresis up over its first
+# frames of life (faster convergence for freshly scrolled-in probes during fast camera motion). Only the irradiance +
+# visibility update shaders use it; MUST match GlobalIlluminationDDGIProbeAgeWarmup in Instance.pas (which gates the
+# extra irradiance<->visibility barrier in the probe-update pass).
+DDGI_PROBE_AGE_WARMUP=1
 DDGI_PROBE_AGE_WARMUP_DEFINE="-DGI_DDGI_PROBE_AGE_WARMUP=${DDGI_PROBE_AGE_WARMUP}"
 
 # Surfel GI radiance storage mode: 0 = octahedral irradiance atlas (per surfel), 1 = L1 spherical harmonics (default),
