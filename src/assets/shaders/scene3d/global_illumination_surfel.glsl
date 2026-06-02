@@ -22,6 +22,7 @@
 // =====================================================================================================================
 
 #include "sphericalharmonics.glsl"
+#include "octahedral.glsl"
 
 // --- Compile-time capacity / hashing configuration (must match the Pascal-side allocation) --------------------------
 
@@ -42,15 +43,111 @@
 // Surfel "alive" flag bit.
 #define GI_SURFEL_FLAG_ALIVE 1u
 
-// --- Surfel record (std430, 64 bytes) -------------------------------------------------------------------------------
-// Layout mirrored by the Pascal record TpvScene3DRendererInstanceSurfel.
+// --- Compile-time radiance storage representation (mirrors GI_DDGI_STORAGE) -----------------------------------------
+// Each surfel caches its incident radiance as either an octahedral irradiance atlas, an L1 RGB SH probe, or an L2 RGB
+// SH probe. L1/L2 share all code through the SURFEL_SH_* aliases (same trick as the DDGI DDGI_SH_* macros); OCT is a
+// separate small per-surfel octahedral grid. The chosen mode sets the per-surfel payload size (GI_SURFEL_PAYLOAD_UVEC2_COUNT),
+// which the Pascal side must mirror when allocating the surfel pool.
+#define GI_SURFEL_STORAGE_OCT_VALUE 0  // per-surfel octahedral irradiance atlas (GI_SURFEL_OCT_SIZE^2 RGB texels)
+#define GI_SURFEL_STORAGE_L1_VALUE  1  // L1 RGB spherical harmonics (4 coefficients)
+#define GI_SURFEL_STORAGE_L2_VALUE  2  // L2 RGB spherical harmonics (9 coefficients)
+
+#ifndef GI_SURFEL_STORAGE
+  #define GI_SURFEL_STORAGE GI_SURFEL_STORAGE_L1_VALUE
+#endif
+
+#if (GI_SURFEL_STORAGE == GI_SURFEL_STORAGE_L1_VALUE) || (GI_SURFEL_STORAGE == GI_SURFEL_STORAGE_L2_VALUE)
+  #define GI_SURFEL_STORAGE_IS_SH 1
+#else
+  #define GI_SURFEL_STORAGE_IS_SH 0
+#endif
+
+#if GI_SURFEL_STORAGE == GI_SURFEL_STORAGE_L2_VALUE
+  #define SURFEL_SH_TYPE      SHC3CoefficientsL2
+  #define SURFEL_SH_ZERO      SHC3CoefficientsL2Zero
+  #define SURFEL_SH_ADD       SHC3CoefficientsL2Add
+  #define SURFEL_SH_MUL       SHC3CoefficientsL2Mul
+  #define SURFEL_SH_DIV       SHC3CoefficientsL2Div
+  #define SURFEL_SH_LERP      SHC3CoefficientsL2Lerp
+  #define SURFEL_SH_PROJECT   ProjectOntoSHC3CoefficientsL2
+  #define SURFEL_SH_IRRADIANCE SHC3CoefficientsL2CalculateIrradiance
+  #define GI_SURFEL_PAYLOAD_UVEC2_COUNT 7  // 9 RGB coeffs = 27 halves -> 28 halves -> 7 uvec2 (4 halves each)
+#elif GI_SURFEL_STORAGE == GI_SURFEL_STORAGE_L1_VALUE
+  #define SURFEL_SH_TYPE      SHC3CoefficientsL1
+  #define SURFEL_SH_ZERO      SHC3CoefficientsL1Zero
+  #define SURFEL_SH_ADD       SHC3CoefficientsL1Add
+  #define SURFEL_SH_MUL       SHC3CoefficientsL1Mul
+  #define SURFEL_SH_DIV       SHC3CoefficientsL1Div
+  #define SURFEL_SH_LERP      SHC3CoefficientsL1Lerp
+  #define SURFEL_SH_PROJECT   ProjectOntoSHC3CoefficientsL1
+  #define SURFEL_SH_IRRADIANCE SHC3CoefficientsL1CalculateIrradiance
+  #define GI_SURFEL_PAYLOAD_UVEC2_COUNT 3  // 4 RGB coeffs = 12 halves -> 3 uvec2
+#else // GI_SURFEL_STORAGE_OCT_VALUE
+  #ifndef GI_SURFEL_OCT_SIZE
+    #define GI_SURFEL_OCT_SIZE 4
+  #endif
+  // One uvec2 per RGB texel (texel-aligned packing: .x = packHalf(R,G), .y = packHalf(B,0)).
+  #define GI_SURFEL_PAYLOAD_UVEC2_COUNT ((GI_SURFEL_OCT_SIZE) * (GI_SURFEL_OCT_SIZE))
+#endif
+
+// --- Surfel record (std430) -----------------------------------------------------------------------------------------
+// Layout mirrored by the Pascal record TpvScene3DRendererInstanceSurfel; the payload size depends on GI_SURFEL_STORAGE
+// (L1 = 3, L2 = 7, OCT = ceil(N^2*3/4) uvec2). Base record = 16 + 16 + payload*8 + 8 bytes.
 struct Surfel {
   vec4 positionRadius;   // xyz = world position (meters), w = radius (meters)
   vec4 normalCount;      // xyz = world-space surface normal, w = accumulated sample count (as float)
-  uvec2 sh[3];           // packed SHC3CoefficientsL1 — L1 RGB radiance SH (half-float packed; 24 bytes)
+  uvec2 payload[GI_SURFEL_PAYLOAD_UVEC2_COUNT]; // packed radiance: SH (L1/L2) or octahedral irradiance atlas (half-float)
   uint lastFrame;        // frame index this surfel was last touched (for recycling stale surfels)
   uint flags;            // GI_SURFEL_FLAG_* bits
 };
+
+// --- Payload (un)packing helpers ------------------------------------------------------------------------------------
+
+#if GI_SURFEL_STORAGE_IS_SH
+
+// Decode the SH probe stored in a surfel's payload.
+SURFEL_SH_TYPE surfelLoadSH(const in Surfel surfel){
+#if GI_SURFEL_STORAGE == GI_SURFEL_STORAGE_L2_VALUE
+  float v[28];
+  for(int i = 0; i < 7; i++){
+    vec2 a = unpackHalf2x16(surfel.payload[i].x);
+    vec2 b = unpackHalf2x16(surfel.payload[i].y);
+    v[(i * 4) + 0] = a.x; v[(i * 4) + 1] = a.y; v[(i * 4) + 2] = b.x; v[(i * 4) + 3] = b.y;
+  }
+  return SHC3CoefficientsL2Create(vec3(v[0], v[1], v[2]),    vec3(v[3], v[4], v[5]),    vec3(v[6], v[7], v[8]),
+                                  vec3(v[9], v[10], v[11]),  vec3(v[12], v[13], v[14]), vec3(v[15], v[16], v[17]),
+                                  vec3(v[18], v[19], v[20]), vec3(v[21], v[22], v[23]), vec3(v[24], v[25], v[26]));
+#else
+  return SHC3CoefficientsL1Unpack(PackedSHC3CoefficientsL1(uvec2[3](surfel.payload[0], surfel.payload[1], surfel.payload[2])));
+#endif
+}
+
+#endif // GI_SURFEL_STORAGE_IS_SH
+
+#if !GI_SURFEL_STORAGE_IS_SH
+
+// Octahedral irradiance atlas helpers (one uvec2 per RGB texel; texel index = y*N + x).
+vec3 surfelOctLoadTexel(const in Surfel surfel, const in int texelIndex){
+  vec2 rg = unpackHalf2x16(surfel.payload[texelIndex].x);
+  vec2 ba = unpackHalf2x16(surfel.payload[texelIndex].y);
+  return vec3(rg.x, rg.y, ba.x);
+}
+
+// World direction at the centre of an octahedral atlas texel.
+vec3 surfelOctTexelDirection(const in int x, const in int y){
+  vec2 uv = (vec2(float(x), float(y)) + vec2(0.5)) / float(GI_SURFEL_OCT_SIZE); // [0,1]
+  return normalize(octSignedDecode(fma(uv, vec2(2.0), vec2(-1.0))));            // -> [-1,1] -> S^2
+}
+
+// Sample the surfel's octahedral irradiance atlas in a direction (bilinear, with wrap-correct edge clamping skipped for
+// simplicity — the atlas is tiny and irradiance is smooth, so nearest-with-clamp is visually sufficient).
+vec3 surfelOctSample(const in Surfel surfel, const in vec3 direction){
+  vec2 uv = fma(octSignedEncode(normalize(direction)), vec2(0.5), vec2(0.5)); // [-1,1] -> [0,1]
+  ivec2 texel = clamp(ivec2(uv * float(GI_SURFEL_OCT_SIZE)), ivec2(0), ivec2(GI_SURFEL_OCT_SIZE - 1));
+  return surfelOctLoadTexel(surfel, (texel.y * GI_SURFEL_OCT_SIZE) + texel.x);
+}
+
+#endif // !GI_SURFEL_STORAGE_IS_SH
 
 // --- Surfel uniform parameters (std140 UBO) -------------------------------------------------------------------------
 // Layout mirrored by the Pascal record TpvScene3DRendererInstanceSurfelUniformBufferData.
@@ -117,7 +214,11 @@ vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal)
   uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
   uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
 
-  SHC3CoefficientsL1 accumSH = SHC3CoefficientsL1Zero();
+#if GI_SURFEL_STORAGE_IS_SH
+  SURFEL_SH_TYPE accumSH = SURFEL_SH_ZERO();
+#else
+  vec3 accumIrradiance = vec3(0.0);
+#endif
   float accumWeight = 0.0;
 
   for(uint i = 0u; i < count; i++){
@@ -152,8 +253,11 @@ vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal)
       continue;
     }
 
-    SHC3CoefficientsL1 sh = SHC3CoefficientsL1Unpack(PackedSHC3CoefficientsL1(uvec2[3](surfel.sh[0], surfel.sh[1], surfel.sh[2])));
-    accumSH = SHC3CoefficientsL1Add(accumSH, SHC3CoefficientsL1Mul(sh, weight));
+#if GI_SURFEL_STORAGE_IS_SH
+    accumSH = SURFEL_SH_ADD(accumSH, SURFEL_SH_MUL(surfelLoadSH(surfel), weight));
+#else
+    accumIrradiance += surfelOctSample(surfel, normal) * weight; // per-surfel oct atlas already stores irradiance
+#endif
     accumWeight += weight;
   }
 
@@ -161,8 +265,12 @@ vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal)
     return vec3(0.0);
   }
 
-  accumSH = SHC3CoefficientsL1Div(accumSH, accumWeight);
-  return max(vec3(0.0), SHC3CoefficientsL1CalculateIrradiance(accumSH, normal)); // cosine-convolved evaluation -> irradiance E
+#if GI_SURFEL_STORAGE_IS_SH
+  accumSH = SURFEL_SH_DIV(accumSH, accumWeight);
+  return max(vec3(0.0), SURFEL_SH_IRRADIANCE(accumSH, normal)); // cosine-convolved evaluation -> irradiance E
+#else
+  return max(vec3(0.0), accumIrradiance / accumWeight);
+#endif
 }
 
 #endif // GLOBAL_ILLUMINATION_SURFEL_SAMPLE
@@ -290,7 +398,11 @@ vec3 giSurfelGatherIrradiance(const in vec3 worldPosition, const in vec3 normal)
   uint cell = giSurfelCellHash(giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w));
   uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
   uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
-  SHC3CoefficientsL1 accumSH = SHC3CoefficientsL1Zero();
+#if GI_SURFEL_STORAGE_IS_SH
+  SURFEL_SH_TYPE accumSH = SURFEL_SH_ZERO();
+#else
+  vec3 accumIrradiance = vec3(0.0);
+#endif
   float accumWeight = 0.0;
   for(uint i = 0u; i < count; i++){
     uint surfelIndex = surfelGridCells[base + i];
@@ -317,16 +429,49 @@ vec3 giSurfelGatherIrradiance(const in vec3 worldPosition, const in vec3 normal)
     if(weight <= 0.0){
       continue;
     }
-    SHC3CoefficientsL1 sh = SHC3CoefficientsL1Unpack(PackedSHC3CoefficientsL1(uvec2[3](surfel.sh[0], surfel.sh[1], surfel.sh[2])));
-    accumSH = SHC3CoefficientsL1Add(accumSH, SHC3CoefficientsL1Mul(sh, weight));
+#if GI_SURFEL_STORAGE_IS_SH
+    accumSH = SURFEL_SH_ADD(accumSH, SURFEL_SH_MUL(surfelLoadSH(surfel), weight));
+#else
+    accumIrradiance += surfelOctSample(surfel, normal) * weight;
+#endif
     accumWeight += weight;
   }
   if(accumWeight <= 0.0){
     return vec3(0.0);
   }
-  accumSH = SHC3CoefficientsL1Div(accumSH, accumWeight);
-  return max(vec3(0.0), SHC3CoefficientsL1CalculateIrradiance(accumSH, normal));
+#if GI_SURFEL_STORAGE_IS_SH
+  accumSH = SURFEL_SH_DIV(accumSH, accumWeight);
+  return max(vec3(0.0), SURFEL_SH_IRRADIANCE(accumSH, normal));
+#else
+  return max(vec3(0.0), accumIrradiance / accumWeight);
+#endif
 }
+
+// --- Surfel payload writers (compute-side) --------------------------------------------------------------------------
+
+#if GI_SURFEL_STORAGE_IS_SH
+void surfelStoreSH(const in uint surfelIndex, const in SURFEL_SH_TYPE sh){
+#if GI_SURFEL_STORAGE == GI_SURFEL_STORAGE_L2_VALUE
+  float v[28];
+  for(int c = 0; c < 9; c++){ v[(c * 3) + 0] = sh.coefficients[c].r; v[(c * 3) + 1] = sh.coefficients[c].g; v[(c * 3) + 2] = sh.coefficients[c].b; }
+  v[27] = 0.0;
+  for(int i = 0; i < 7; i++){
+    surfels[surfelIndex].payload[i] = uvec2(packHalf2x16(vec2(v[(i * 4) + 0], v[(i * 4) + 1])),
+                                            packHalf2x16(vec2(v[(i * 4) + 2], v[(i * 4) + 3])));
+  }
+#else
+  PackedSHC3CoefficientsL1 packed = SHC3CoefficientsL1Pack(sh);
+  surfels[surfelIndex].payload[0] = packed.coefficients[0];
+  surfels[surfelIndex].payload[1] = packed.coefficients[1];
+  surfels[surfelIndex].payload[2] = packed.coefficients[2];
+#endif
+}
+#else
+void surfelOctStoreTexel(const in uint surfelIndex, const in int texelIndex, const in vec3 irradiance){
+  surfels[surfelIndex].payload[texelIndex] = uvec2(packHalf2x16(vec2(irradiance.x, irradiance.y)),
+                                                   packHalf2x16(vec2(irradiance.z, 0.0)));
+}
+#endif
 
 #endif // GLOBAL_ILLUMINATION_SURFEL_COMPUTE
 

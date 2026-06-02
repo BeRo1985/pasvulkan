@@ -105,9 +105,9 @@ void main(){
   Surfel surfel;
   surfel.positionRadius = vec4(worldPosition, surfelData.params.x);
   surfel.normalCount = vec4(worldNormal, 0.0);
-  surfel.sh[0] = uvec2(0u);
-  surfel.sh[1] = uvec2(0u);
-  surfel.sh[2] = uvec2(0u);
+  for(int k = 0; k < GI_SURFEL_PAYLOAD_UVEC2_COUNT; k++){
+    surfel.payload[k] = uvec2(0u); // zero SH / octahedral atlas; the trace pass fills it
+  }
   surfel.lastFrame = pushConstants.params.z;
   surfel.flags = GI_SURFEL_FLAG_ALIVE;
   surfels[surfelIndex] = surfel;

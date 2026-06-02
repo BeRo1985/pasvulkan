@@ -92,7 +92,7 @@ void main(){
   vec3 tangent, bitangent;
   surfelOrthonormalBasis(normal, tangent, bitangent);
 
-  uint raysPerSurfel = max(pushConstants.params.y, 1u);
+  uint raysPerSurfel = clamp(pushConstants.params.y, 1u, uint(GI_SURFEL_RAYS_PER_SURFEL));
   uint frameIndex = pushConstants.params.x;
   float tMax = max(pushConstants.misc.x, 1e-2);
   float multibounceStrength = pushConstants.misc.y;
@@ -101,7 +101,12 @@ void main(){
   vec2 jitter = vec2(surfelHashF((surfelIndex * 747796405u) + (frameIndex * 2891336453u)),
                      surfelHashF((surfelIndex * 2654435761u) ^ (frameIndex * 40503u)));
 
-  SHC3CoefficientsL1 radianceSH = SHC3CoefficientsL1Zero();
+#if GI_SURFEL_STORAGE_IS_SH
+  SURFEL_SH_TYPE radianceSH = SURFEL_SH_ZERO();
+#else
+  vec3 rayDirections[GI_SURFEL_RAYS_PER_SURFEL];
+  vec3 rayRadiances[GI_SURFEL_RAYS_PER_SURFEL];
+#endif
 
   for(uint j = 0u; j < raysPerSurfel; j++){
     // Uniform hemisphere sampling (avoids the 1/cos blow-up of cosine sampling at grazing angles).
@@ -131,22 +136,42 @@ void main(){
       radiance = vec3(0.0);
     }
 
-    // Project the sampled radiance into the L1 SH (uniform hemisphere -> 2*PI solid angle per sample).
-    radianceSH = SHC3CoefficientsL1Add(radianceSH, ProjectOntoSHC3CoefficientsL1(dir, radiance));
+#if GI_SURFEL_STORAGE_IS_SH
+    // Project the sampled radiance into the SH (uniform hemisphere -> 2*PI solid angle per sample).
+    radianceSH = SURFEL_SH_ADD(radianceSH, SURFEL_SH_PROJECT(dir, radiance));
+#else
+    rayDirections[j] = dir;
+    rayRadiances[j] = radiance;
+#endif
   }
-  radianceSH = SHC3CoefficientsL1Mul(radianceSH, 6.2831853071795864 / float(raysPerSurfel));
+#if GI_SURFEL_STORAGE_IS_SH
+  radianceSH = SURFEL_SH_MUL(radianceSH, 6.2831853071795864 / float(raysPerSurfel));
+#endif
 
   // Temporal running average: converge quickly while young, then stick at the hysteresis floor.
   float count = surfel.normalCount.w;
   float alpha = max(1.0 / (count + 1.0), 1.0 - clamp(pushConstants.misc.z, 0.0, 0.999));
 
-  SHC3CoefficientsL1 prevSH = SHC3CoefficientsL1Unpack(PackedSHC3CoefficientsL1(uvec2[3](surfel.sh[0], surfel.sh[1], surfel.sh[2])));
-  SHC3CoefficientsL1 newSH = SHC3CoefficientsL1Lerp(prevSH, radianceSH, alpha);
-
-  PackedSHC3CoefficientsL1 packed = SHC3CoefficientsL1Pack(newSH);
-  surfels[surfelIndex].sh[0] = packed.coefficients[0];
-  surfels[surfelIndex].sh[1] = packed.coefficients[1];
-  surfels[surfelIndex].sh[2] = packed.coefficients[2];
+#if GI_SURFEL_STORAGE_IS_SH
+  surfelStoreSH(surfelIndex, SURFEL_SH_LERP(surfelLoadSH(surfel), radianceSH, alpha));
+#else
+  // Octahedral irradiance: each texel = cosine(=max(0,dot))-weighted average of the ray radiances in its direction.
+  for(int ty = 0; ty < GI_SURFEL_OCT_SIZE; ty++){
+    for(int tx = 0; tx < GI_SURFEL_OCT_SIZE; tx++){
+      vec3 texelDir = surfelOctTexelDirection(tx, ty);
+      vec3 sum = vec3(0.0);
+      float wsum = 0.0;
+      for(uint j = 0u; j < raysPerSurfel; j++){
+        float w = max(0.0, dot(texelDir, rayDirections[j]));
+        sum += rayRadiances[j] * w;
+        wsum += w;
+      }
+      int t = (ty * GI_SURFEL_OCT_SIZE) + tx;
+      vec3 newIrr = (wsum > 0.0) ? (sum / wsum) : vec3(0.0);
+      surfelOctStoreTexel(surfelIndex, t, mix(surfelOctLoadTexel(surfel, t), newIrr, alpha));
+    }
+  }
+#endif
   surfels[surfelIndex].normalCount.w = min(count + 1.0, float(GI_SURFEL_MAX_ACCUM));
   surfels[surfelIndex].lastFrame = frameIndex;
 }
