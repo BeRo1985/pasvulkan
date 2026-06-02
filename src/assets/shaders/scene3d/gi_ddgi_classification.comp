@@ -16,8 +16,8 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
 
-layout(set = 1, binding = 1, rgba16f) uniform readonly image2D uDDGIRayData; // fixed rays: a = signed distance (neg=backface)
-layout(set = 1, binding = 5, rgba16f) uniform image3D uDDGIProbeData;        // xyz = offset (relocation), w = state (this pass)
+layout(set = 1, binding = 1, rgba32f) uniform readonly image2D uDDGIRayData; // F32x4; fixed rays: a = signed distance (neg=backface)
+layout(set = 1, binding = 5, rgba32f) uniform image3D uDDGIProbeData;        // F32x4: xyz = offset (relocation), w = state (this pass)
 
 layout(push_constant) uniform PushConstants {
   vec4 randomRotation0;

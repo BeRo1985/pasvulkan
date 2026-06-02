@@ -19,7 +19,7 @@
 
 layout(local_size_x = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_y = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_z = 1) in;
 
-layout(set = 1, binding = 1, rgba16f) uniform readonly image2D uDDGIRayData;
+layout(set = 1, binding = 1, rgba32f) uniform readonly image2D uDDGIRayData; // F32x4 (must match the trace's ray-data format)
 layout(set = 1, binding = 3, rgba16f) uniform image2D uDDGIVisibilityOct; // x = mean dist, y = mean dist^2, z = sky visibility
 
 layout(push_constant) uniform PushConstants {

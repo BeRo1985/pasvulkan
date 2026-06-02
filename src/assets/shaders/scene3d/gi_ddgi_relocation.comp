@@ -21,10 +21,10 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 // Ray data written by the trace this frame: rgb = radiance (0 for fixed rays), a = distance. For the FIXED rays (index <
 // GI_DDGI_FIXED_RAYS) the distance is SIGNED (negative = backface) and UNCLAMPED. Binding 1 in the shared DDGI compute set.
-layout(set = 1, binding = 1, rgba16f) uniform readonly image2D uDDGIRayData;
+layout(set = 1, binding = 1, rgba32f) uniform readonly image2D uDDGIRayData; // F32x4 (must match the trace's ray-data format)
 
 // Probe data: xyz = relocation offset (this pass), w = state (classification pass). Read-modify-write to preserve w.
-layout(set = 1, binding = 5, rgba16f) uniform image3D uDDGIProbeData;
+layout(set = 1, binding = 5, rgba32f) uniform image3D uDDGIProbeData; // F32x4: world-space offset needs full precision
 
 layout(push_constant) uniform PushConstants {
   vec4 randomRotation0;

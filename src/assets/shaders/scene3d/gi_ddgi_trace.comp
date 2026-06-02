@@ -62,7 +62,7 @@ vec3 ddgiGatherSky(const in vec3 dir){
 #include "gi_ddgi_raydata.glsl" // shared ray-data contract: ddgiTraceRayDirection / ddgiEncodeRayData / ddgiRayIsFixed
 
 // Per-ray output: rgb = radiance towards the probe, a = hit distance (= max ray distance on a miss).
-layout(set = 1, binding = 1, rgba16f) uniform writeonly image2D uDDGIRayData;
+layout(set = 1, binding = 1, rgba32f) uniform writeonly image2D uDDGIRayData; // F32x4 (RTXGI-style): the distance (a) feeds relocation/classification + the Chebyshev moments, so keep it full precision
 
 #if GI_DDGI_MULTIBOUNCE
 // Read-only views of the probe field this in-flight slot still holds from the PREVIOUS frame (the irradiance/visibility
@@ -113,7 +113,7 @@ vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, 
 #if GI_DDGI_PROBE_RELOCATION
 // Probe data (xyz = relocation offset, w = state) written by gi_ddgi_relocation.comp this frame; read here for this
 // probe's relocated ray origin, and (if multi-bounce is on) by the probe-sampling functions via ddgiLoadProbeData.
-layout(set = 1, binding = 5, rgba16f) uniform readonly image3D uDDGIProbeDataRead;
+layout(set = 1, binding = 5, rgba32f) uniform readonly image3D uDDGIProbeDataRead; // F32x4: world-space relocation offset needs full precision (fp16 would quantize/dither)
 vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
   return imageLoad(uDDGIProbeDataRead, ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z)));
 }

@@ -26,7 +26,7 @@
 #endif
 
 // Per-ray radiance + hit distance from the trace pass.
-layout(set = 1, binding = 1, rgba16f) uniform readonly image2D uDDGIRayData;
+layout(set = 1, binding = 1, rgba32f) uniform readonly image2D uDDGIRayData; // F32x4 (must match the trace's ray-data format)
 
 #if GI_DDGI_STORAGE_IS_SH
   // RGB SH packed into DDGI_SH_IMAGE_COUNT RGBA16F 3D images (L1 = 3, L2 = 7): see ddgiLoadSH/ddgiStoreSH for the packing.

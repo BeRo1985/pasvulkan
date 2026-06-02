@@ -3658,7 +3658,7 @@ begin
     fGlobalIlluminationDDGIRayDataImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
                                                                                                GlobalIlluminationDDGIRaysPerProbe,
                                                                                                CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIProbesPerCascade,
-                                                                                               VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                               VK_FORMAT_R32G32B32A32_SFLOAT, // F32x4 (RTXGI-style): radiance + full-precision distance (relocation/classification + Chebyshev input)
                                                                                                true,
                                                                                                VK_SAMPLE_COUNT_1_BIT,
                                                                                                VK_IMAGE_LAYOUT_GENERAL,
@@ -3675,7 +3675,7 @@ begin
                                                                                                   GlobalIlluminationDDGIProbeCountX,
                                                                                                   GlobalIlluminationDDGIProbeCountY,
                                                                                                   GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades,
-                                                                                                  VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                  VK_FORMAT_R32G32B32A32_SFLOAT, // F32x4 (RTXGI-style): world-space relocation offset needs full precision (fp16 dithers)
                                                                                                   VK_SAMPLE_COUNT_1_BIT,
                                                                                                   VK_IMAGE_LAYOUT_GENERAL,
                                                                                                   pvAllocationGroupIDScene3DStatic,
