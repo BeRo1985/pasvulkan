@@ -140,6 +140,23 @@ type { TpvScene3DRendererInstance }
              GlobalIlluminationDDGIIrradianceAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIIrradianceOctFull;
              GlobalIlluminationDDGIVisibilityAtlasWidth=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIVisibilityOctFull;
              GlobalIlluminationDDGIVisibilityAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIVisibilityOctFull;
+             // Surfel-based global illumination. Must match the GI_SURFEL_* defines in global_illumination_surfel.glsl
+             // (and SURFEL_STORAGE in compileshaders.sh). The persistent surfel pool is indexed by a world-space hash grid.
+             GlobalIlluminationSurfelMaxCount=65536;                 // surfel pool capacity
+             GlobalIlluminationSurfelHashCellCount=131072;           // hash buckets; MUST be a power of two (>= ~2x the pool)
+             GlobalIlluminationSurfelMaxPerCell=32;                  // surfel index slots stored per hash cell
+             GlobalIlluminationSurfelRaysPerSurfel=32;               // rays traced per surfel per frame (<= GI_SURFEL_RAYS_PER_SURFEL)
+             // Radiance storage: 0 = octahedral atlas (per surfel), 1 = L1 SH (default), 2 = L2 SH. MUST match SURFEL_STORAGE.
+             GlobalIlluminationSurfelStorageMode=1;
+             GlobalIlluminationSurfelOctSize=4;                      // octahedral atlas edge (only used when storage mode = 0)
+             GlobalIlluminationSurfelStorageIsSH=(GlobalIlluminationSurfelStorageMode<>0);
+             // Per-surfel payload size in uvec2 units: L1 = 3, L2 = 7, OCT = N*N (one uvec2 per RGB texel).
+             GlobalIlluminationSurfelPayloadUVec2Count=(7*Ord(GlobalIlluminationSurfelStorageMode=2))+
+                                                       (3*Ord(GlobalIlluminationSurfelStorageMode=1))+
+                                                       ((GlobalIlluminationSurfelOctSize*GlobalIlluminationSurfelOctSize)*Ord(GlobalIlluminationSurfelStorageMode=0));
+             // GLSL std430 Surfel stride: positionRadius(16) + normalCount(16) + payload(count*8) + lastFrame/flags(8),
+             // rounded up to the 16-byte struct alignment (matters for the octahedral mode whose payload is not a multiple of 16).
+             GlobalIlluminationSurfelRecordSize=((40+(GlobalIlluminationSurfelPayloadUVec2Count*8)+15) div 16)*16;
              MaxMultiIndirectDrawCalls=65536; //1048576; // as worst case
              InitialCountSolidPrimitives=1 shl 10;
              MaxSolidPrimitives=1 shl 20;
@@ -390,6 +407,18 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationDDGIIrradianceImages=array[0..MaxInFlightFrames-1,0..GlobalIlluminationDDGISHImageCount-1] of TpvScene3DRendererImage3D;
             TGlobalIlluminationDDGIImage2Ds=array[0..MaxInFlightFrames-1] of TpvScene3DRendererImage2D;
             TGlobalIlluminationDDGIDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+            // Surfel GI: the UBO (per in-flight frame, CPU-written) mirrors the SurfelUniforms std140 layout in the shader.
+            // The pool / grid / stats / free-list are single persistent GPU-only SSBOs (the surfel state accumulates across
+            // frames; within one queue the GPU executes frame N fully before N+1, so no per-in-flight duplication is needed).
+            TGlobalIlluminationSurfelUniformBufferData=record
+             CameraPositionCellSize:TpvVector4; // xyz = camera world position, w = base hash cell size
+             CountsFrame:TpvUInt32Vector4;      // x = maxSurfels, y = hashCellCount, z = maxPerCell, w = frameIndex
+             Params:TpvVector4;                 // x = surfel radius, y = hysteresis, z = recycle frame age, w = spawn coverage threshold
+            end;
+            PGlobalIlluminationSurfelUniformBufferData=^TGlobalIlluminationSurfelUniformBufferData;
+            TGlobalIlluminationSurfelUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationSurfelUniformBufferData;
+            TGlobalIlluminationSurfelUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TGlobalIlluminationSurfelDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TGlobalIlluminationRadianceHintsRSMUniformBufferData=record
              WorldToReflectiveShadowMapMatrix:TpvMatrix4x4;
              ReflectiveShadowMapToWorldMatrix:TpvMatrix4x4;
@@ -753,6 +782,17 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationDDGIDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalIlluminationDDGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalIlluminationDDGIDescriptorSets:TGlobalIlluminationDDGIDescriptorSets;
+       // Surfel GI resources. UBO per in-flight frame; the pool/grid/stats/free-list are single persistent SSBOs.
+       fGlobalIlluminationSurfelUniformBufferDataArray:TGlobalIlluminationSurfelUniformBufferDataArray;
+       fGlobalIlluminationSurfelUniformBuffers:TGlobalIlluminationSurfelUniformBuffers;
+       fGlobalIlluminationSurfelPoolBuffer:TpvVulkanBuffer;          // GI_SURFEL_MAX_COUNT * GlobalIlluminationSurfelRecordSize
+       fGlobalIlluminationSurfelGridCellBuffer:TpvVulkanBuffer;      // hashCellCount * maxPerCell * uint
+       fGlobalIlluminationSurfelGridCellCountBuffer:TpvVulkanBuffer; // hashCellCount * uint
+       fGlobalIlluminationSurfelStatsBuffer:TpvVulkanBuffer;         // 4 * uint (spawn cursor, alive count, free counts[2])
+       fGlobalIlluminationSurfelFreeListBuffer:TpvVulkanBuffer;      // 2 * GI_SURFEL_MAX_COUNT * uint (parity banks)
+       fGlobalIlluminationSurfelDescriptorPool:TpvVulkanDescriptorPool;
+       fGlobalIlluminationSurfelDescriptorSetLayout:TpvVulkanDescriptorSetLayout;   // shading-side (set 2 mesh / set 4 planet): UBO + pool + grid cells + grid counts
+       fGlobalIlluminationSurfelDescriptorSets:TGlobalIlluminationSurfelDescriptorSets;
        fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray:TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
        fGlobalIlluminationRadianceHintsRSMUniformBuffers:TGlobalIlluminationRadianceHintsRSMUniformBuffers;
        fGlobalIlluminationRadianceHintsCascadedVolumes:TCascadedVolumes;
@@ -1097,6 +1137,14 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationDDGIRayDataImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIRayDataImages;
        property GlobalIlluminationDDGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationDDGIDescriptorSetLayout;
        property GlobalIlluminationDDGIDescriptorSets:TGlobalIlluminationDDGIDescriptorSets read fGlobalIlluminationDDGIDescriptorSets;
+       property GlobalIlluminationSurfelUniformBuffers:TGlobalIlluminationSurfelUniformBuffers read fGlobalIlluminationSurfelUniformBuffers;
+       property GlobalIlluminationSurfelPoolBuffer:TpvVulkanBuffer read fGlobalIlluminationSurfelPoolBuffer;
+       property GlobalIlluminationSurfelGridCellBuffer:TpvVulkanBuffer read fGlobalIlluminationSurfelGridCellBuffer;
+       property GlobalIlluminationSurfelGridCellCountBuffer:TpvVulkanBuffer read fGlobalIlluminationSurfelGridCellCountBuffer;
+       property GlobalIlluminationSurfelStatsBuffer:TpvVulkanBuffer read fGlobalIlluminationSurfelStatsBuffer;
+       property GlobalIlluminationSurfelFreeListBuffer:TpvVulkanBuffer read fGlobalIlluminationSurfelFreeListBuffer;
+       property GlobalIlluminationSurfelDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationSurfelDescriptorSetLayout;
+       property GlobalIlluminationSurfelDescriptorSets:TGlobalIlluminationSurfelDescriptorSets read fGlobalIlluminationSurfelDescriptorSets;
        property GlobalIlluminationRadianceHintsRSMUniformBufferDataArray:TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray read fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
        property GlobalIlluminationRadianceHintsRSMUniformBuffers:TGlobalIlluminationRadianceHintsRSMUniformBuffers read fGlobalIlluminationRadianceHintsRSMUniformBuffers;
        property GlobalIlluminationRadianceHintsDescriptorPool:TpvVulkanDescriptorPool read fGlobalIlluminationRadianceHintsDescriptorPool;
@@ -2481,6 +2529,16 @@ begin
  fGlobalIlluminationDDGIDescriptorSetLayout:=nil;
  FillChar(fGlobalIlluminationDDGIDescriptorSets,SizeOf(TGlobalIlluminationDDGIDescriptorSets),#0);
 
+ FillChar(fGlobalIlluminationSurfelUniformBuffers,SizeOf(TGlobalIlluminationSurfelUniformBuffers),#0);
+ fGlobalIlluminationSurfelPoolBuffer:=nil;
+ fGlobalIlluminationSurfelGridCellBuffer:=nil;
+ fGlobalIlluminationSurfelGridCellCountBuffer:=nil;
+ fGlobalIlluminationSurfelStatsBuffer:=nil;
+ fGlobalIlluminationSurfelFreeListBuffer:=nil;
+ fGlobalIlluminationSurfelDescriptorPool:=nil;
+ fGlobalIlluminationSurfelDescriptorSetLayout:=nil;
+ FillChar(fGlobalIlluminationSurfelDescriptorSets,SizeOf(TGlobalIlluminationSurfelDescriptorSets),#0);
+
  fGlobalIlluminationRadianceHintsDescriptorPool:=nil;
 
  fGlobalIlluminationRadianceHintsDescriptorSetLayout:=nil;
@@ -2903,6 +2961,18 @@ begin
  FreeAndNil(fGlobalIlluminationDDGIDescriptorSetLayout);
  FreeAndNil(fGlobalIlluminationDDGIDescriptorPool);
  FreeAndNil(fGlobalIlluminationDDGICascadedVolumes);
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fGlobalIlluminationSurfelDescriptorSets[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationSurfelUniformBuffers[InFlightFrameIndex]);
+ end;
+ FreeAndNil(fGlobalIlluminationSurfelDescriptorSetLayout);
+ FreeAndNil(fGlobalIlluminationSurfelDescriptorPool);
+ FreeAndNil(fGlobalIlluminationSurfelPoolBuffer);
+ FreeAndNil(fGlobalIlluminationSurfelGridCellBuffer);
+ FreeAndNil(fGlobalIlluminationSurfelGridCellCountBuffer);
+ FreeAndNil(fGlobalIlluminationSurfelStatsBuffer);
+ FreeAndNil(fGlobalIlluminationSurfelFreeListBuffer);
 
  FreeAndNil(fGlobalIlluminationRadianceHintsCascadedVolumes);
 

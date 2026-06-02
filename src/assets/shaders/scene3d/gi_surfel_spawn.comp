@@ -13,20 +13,20 @@
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-// Surfel buffers on set 0 (the spawn pass does not trace, so it needs no global scene descriptor set).
+// Surfel buffers on set 1 (unified surfel pipeline layout; set 0 = global scene, set 2 = planet textures, both unused here).
 #define GLOBAL_ILLUMINATION_SURFEL_COMPUTE
-#define GI_SURFEL_DESCRIPTOR_SET 0
+#define GI_SURFEL_DESCRIPTOR_SET 1
 #include "global_illumination_surfel.glsl"
 
-// View matrices + primary-view depth on set 1.
-layout(set = 1, binding = 0, std140) uniform SurfelSpawnViewBuffer {
+// View matrices + primary-view depth on set 3 (the spawn-specific inputs).
+layout(set = 3, binding = 0, std140) uniform SurfelSpawnViewBuffer {
   mat4 viewMatrix;
   mat4 projectionMatrix;
   mat4 inverseViewMatrix;
   mat4 inverseProjectionMatrix;
 } spawnView;
 
-layout(set = 1, binding = 1) uniform sampler2DArray uSurfelSpawnDepth;
+layout(set = 3, binding = 1) uniform sampler2DArray uSurfelSpawnDepth;
 
 layout(push_constant) uniform PushConstants {
   uvec4 params; // x = view layer index, y = tile stride (pixels per spawn candidate), z = frameIndex, w = unused
