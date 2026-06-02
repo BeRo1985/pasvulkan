@@ -160,8 +160,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationDDGITraceComputePass.AcquireVolatileResources;
-var InFlightFrameIndex,SHImageIndex:TpvInt32;
-    IrradianceImageInfos:TVkDescriptorImageInfoArray;
+var InFlightFrameIndex:TpvInt32;
 begin
 
  inherited AcquireVolatileResources;
@@ -170,7 +169,11 @@ begin
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount+1)); // irradiance (read) + visibility (read); ray-data is now a BDA buffer (no image binding)
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*2); // binding 2 = oct irradiance read + binding 3 = visibility read
+ end else begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames); // binding 3 = visibility read only (SH irradiance is a BDA buffer via the master)
+ end;
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*6);
  fVulkanDescriptorPool.Initialize;
 
@@ -178,7 +181,9 @@ begin
  // 6 environment cubemaps (sky-on-miss). Ray-data is now a BDA buffer via the master push constant (binding 1 freed).
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
- fVulkanDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
+  fVulkanDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]); // oct irradiance read (multi-bounce); SH irradiance is a BDA buffer via the master
+ end;
  fVulkanDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(4,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,6,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  // probe-data (formerly binding 5) is now reached via the master push constant (BDA buffer), no image binding.
@@ -207,20 +212,13 @@ begin
 
  for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
 
-  IrradianceImageInfos:=nil;
-  SetLength(IrradianceImageInfos,TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount);
-  if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
-   IrradianceImageInfos[0]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL);
-  end else begin
-   for SHImageIndex:=0 to TpvScene3DRendererInstance.GlobalIlluminationDDGISHImageCount-1 do begin
-    IrradianceImageInfos[SHImageIndex]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIIrradianceImages[InFlightFrameIndex,SHImageIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL);
-   end;
-  end;
-
   fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,fVulkanDescriptorSetLayout);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),[],[fInstance.GlobalIlluminationDDGIUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false);
-  // binding 1 (ray-data) removed: ray-data is now a BDA buffer reached via the master push constant.
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,length(IrradianceImageInfos),TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),IrradianceImageInfos,[],[],false);
+  // binding 1 (ray-data) + SH irradiance are BDA buffers reached via the master push constant; binding 2 = oct irradiance only.
+  if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
+  end;
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIVisibilityImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,0,6,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -232,8 +230,6 @@ begin
                                                                   fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo],[],[],false);
   // probe-data (formerly binding 5) is now reached via the master push constant (BDA buffer), no descriptor write.
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
-
-  IrradianceImageInfos:=nil;
 
   fIBLDescriptors[InFlightFrameIndex]:=TpvScene3DRendererIBLDescriptor.Create(fInstance.Renderer.VulkanDevice,fVulkanDescriptorSets[InFlightFrameIndex],4,fInstance.Renderer.ClampedSampler.Handle);
   fIBLDescriptors[InFlightFrameIndex].SetFrom(fInstance.Scene3D,fInstance,InFlightFrameIndex);

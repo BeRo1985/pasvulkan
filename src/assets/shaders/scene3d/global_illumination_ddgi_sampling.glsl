@@ -24,19 +24,27 @@
 #include "global_illumination_ddgi.glsl"
 #include "gi_ddgi_master.glsl" // DDGI master BDA buffer (probe-data + SH-irradiance sub-buffers reached through it)
 
+// DDGI master (BDA): the point-access sub-buffers (probe-data, SH-irradiance) are reached through here. Tiny UBO in the DDGI
+// descriptor set at binding 3 (freed from the old probe-data sampler), always present. The UBO holds the master buffer's
+// CONTENT directly (the 3 sub-pointers) — NOT a pointer-to-master — so the fields are read as-is (the compute passes instead
+// push the master's device address and dereference it; the byte layout matches: 3 × uint64). Declared before the consumers.
+layout(set = DDGI_DESCRIPTOR_SET, binding = 3, std140) uniform DDGIMasterRef {
+  DDGIRayDataBuffer rayData;
+  DDGIProbeDataBuffer probeData;
+  DDGIIrradianceSHBuffer irradianceSH;
+} uDDGIMasterRef;
+
 #if GI_DDGI_STORAGE_IS_SH
-  // RGB spherical harmonics packed into DDGI_SH_IMAGE_COUNT RGBA16F 3D textures (L1 = 3, L2 = 7).
-  layout(set = DDGI_DESCRIPTOR_SET, binding = 1) uniform sampler3D uDDGIIrradianceSH[DDGI_SH_IMAGE_COUNT];
+  // RGB spherical harmonics: DDGI_SH_IMAGE_COUNT packed vec4 per probe in the master's irradianceSH BDA buffer (no sampler).
   DDGI_SH_TYPE ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
-    ivec3 texel = ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
-    vec4 a = texelFetch(uDDGIIrradianceSH[0], texel, 0);
-    vec4 b = texelFetch(uDDGIIrradianceSH[1], texel, 0);
-    vec4 c = texelFetch(uDDGIIrradianceSH[2], texel, 0);
+    vec4 a = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 0)];
+    vec4 b = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 1)];
+    vec4 c = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 2)];
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-    vec4 d = texelFetch(uDDGIIrradianceSH[3], texel, 0);
-    vec4 e = texelFetch(uDDGIIrradianceSH[4], texel, 0);
-    vec4 f = texelFetch(uDDGIIrradianceSH[5], texel, 0);
-    vec4 g = texelFetch(uDDGIIrradianceSH[6], texel, 0);
+    vec4 d = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 3)];
+    vec4 e = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 4)];
+    vec4 f = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 5)];
+    vec4 g = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 6)];
     return SHC3CoefficientsL2Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w),
                                     vec3(d.x, d.y, d.z), vec3(d.w, e.x, e.y), vec3(e.z, e.w, f.x), vec3(f.y, f.z, f.w),
                                     vec3(g.x, g.y, g.z));
@@ -57,16 +65,6 @@ vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, 
   vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, direction, GI_DDGI_VISIBILITY_OCT_SIZE, GI_DDGI_VISIBILITY_OCT_FULL);
   return textureLod(uDDGIVisibility, uv, 0.0).rgb; // x = mean dist, y = mean dist^2, z = sky visibility
 }
-
-// DDGI master (BDA): the point-access sub-buffers (probe-data, and SH-irradiance from phase 3) are reached through here.
-// Tiny UBO in the DDGI descriptor set at binding 3 (freed from the old probe-data sampler), always present. The UBO holds
-// the master buffer's CONTENT directly (the 3 sub-pointers) — NOT a pointer-to-master — so the fields are read as-is (the
-// compute passes instead push the master's device address and dereference it; the byte layout matches: 3 × uint64).
-layout(set = DDGI_DESCRIPTOR_SET, binding = 3, std140) uniform DDGIMasterRef {
-  DDGIRayDataBuffer rayData;
-  DDGIProbeDataBuffer probeData;
-  DDGIIrradianceSHBuffer irradianceSH;
-} uDDGIMasterRef;
 
 #if GI_DDGI_PROBE_RELOCATION
 // Per-probe data (xyz = world-space relocation offset, w = state) lives in the master's probe-data BDA buffer.

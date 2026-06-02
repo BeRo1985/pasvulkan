@@ -30,8 +30,7 @@
 // Per-ray radiance + hit distance from the trace pass.
 
 #if GI_DDGI_STORAGE_IS_SH
-  // RGB SH packed into DDGI_SH_IMAGE_COUNT RGBA16F 3D images (L1 = 3, L2 = 7): see ddgiLoadSH/ddgiStoreSH for the packing.
-  layout(set = 1, binding = 2, rgba16f) uniform image3D uDDGIIrradianceSH[DDGI_SH_IMAGE_COUNT];
+  // RGB SH now lives in the master's irradianceSH BDA buffer (DDGI_SH_IMAGE_COUNT packed vec4 per probe); no image binding.
 #else
   layout(set = 1, binding = 2, rgba16f) uniform image2D uDDGIIrradianceOct;
 #endif
@@ -61,21 +60,18 @@ const float GI_DDGI_FOUR_PI = 12.566370614359172;
 
 #if GI_DDGI_STORAGE_IS_SH
 
-ivec3 ddgiSHTexelCoord(const in ivec3 probeCoord, const in int cascadeIndex){
-  return ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
-}
-
-// Packing of the RGB SH coefficients into the RGBA16F image set. L1 (4 coeffs) uses 3 images, L2 (9 coeffs) uses 7;
-// the first three images are identical between the two, the L2 ones append c4..c8 in the same interleaved pattern.
-DDGI_SH_TYPE ddgiLoadSH(const in ivec3 texel){
-  vec4 a = imageLoad(uDDGIIrradianceSH[0], texel);
-  vec4 b = imageLoad(uDDGIIrradianceSH[1], texel);
-  vec4 c = imageLoad(uDDGIIrradianceSH[2], texel);
+// Packing of the RGB SH coefficients into the DDGI_SH_IMAGE_COUNT packed vec4 of the master's irradianceSH BDA buffer.
+// L1 (4 coeffs) uses 3 vec4, L2 (9 coeffs) uses 7; the first three are identical between the two, the L2 ones append c4..c8
+// in the same interleaved pattern. (Same packing as the old SH image set, just sourced from / written to the buffer.)
+DDGI_SH_TYPE ddgiLoadSH(const in ivec3 probeCoord, const in int cascadeIndex){
+  vec4 a = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 0);
+  vec4 b = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 1);
+  vec4 c = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 2);
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-  vec4 d = imageLoad(uDDGIIrradianceSH[3], texel);
-  vec4 e = imageLoad(uDDGIIrradianceSH[4], texel);
-  vec4 f = imageLoad(uDDGIIrradianceSH[5], texel);
-  vec4 g = imageLoad(uDDGIIrradianceSH[6], texel);
+  vec4 d = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 3);
+  vec4 e = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 4);
+  vec4 f = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 5);
+  vec4 g = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 6);
   return SHC3CoefficientsL2Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w),
                                   vec3(d.x, d.y, d.z), vec3(d.w, e.x, e.y), vec3(e.z, e.w, f.x), vec3(f.y, f.z, f.w),
                                   vec3(g.x, g.y, g.z));
@@ -84,15 +80,15 @@ DDGI_SH_TYPE ddgiLoadSH(const in ivec3 texel){
 #endif
 }
 
-void ddgiStoreSH(const in ivec3 texel, const in DDGI_SH_TYPE sh){
-  imageStore(uDDGIIrradianceSH[0], texel, vec4(sh.coefficients[0].xyz, sh.coefficients[1].x));
-  imageStore(uDDGIIrradianceSH[1], texel, vec4(sh.coefficients[1].yz, sh.coefficients[2].xy));
-  imageStore(uDDGIIrradianceSH[2], texel, vec4(sh.coefficients[2].z, sh.coefficients[3].xyz));
+void ddgiStoreSH(const in ivec3 probeCoord, const in int cascadeIndex, const in DDGI_SH_TYPE sh){
+  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 0, vec4(sh.coefficients[0].xyz, sh.coefficients[1].x));
+  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 1, vec4(sh.coefficients[1].yz, sh.coefficients[2].xy));
+  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 2, vec4(sh.coefficients[2].z, sh.coefficients[3].xyz));
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-  imageStore(uDDGIIrradianceSH[3], texel, vec4(sh.coefficients[4].xyz, sh.coefficients[5].x));
-  imageStore(uDDGIIrradianceSH[4], texel, vec4(sh.coefficients[5].yz, sh.coefficients[6].xy));
-  imageStore(uDDGIIrradianceSH[5], texel, vec4(sh.coefficients[6].z, sh.coefficients[7].xyz));
-  imageStore(uDDGIIrradianceSH[6], texel, vec4(sh.coefficients[8].xyz, 0.0));
+  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 3, vec4(sh.coefficients[4].xyz, sh.coefficients[5].x));
+  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 4, vec4(sh.coefficients[5].yz, sh.coefficients[6].xy));
+  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 5, vec4(sh.coefficients[6].z, sh.coefficients[7].xyz));
+  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 6, vec4(sh.coefficients[8].xyz, 0.0));
 #endif
 }
 
@@ -122,10 +118,9 @@ void main(){
   // (GI_DDGI_RAY_START > 0), so divide by the integrated count, not the full raysPerProbe (else the irradiance is too dark).
   sh = DDGI_SH_MUL(sh, GI_DDGI_FOUR_PI / float(raysPerProbe - GI_DDGI_RAY_START));
 
-  ivec3 texel = ddgiSHTexelCoord(probeCoord, cascadeIndex);
-  // The probe images are not cleared on allocation, so guard against uninitialized NaN/Inf memory which would otherwise
+  // The probe buffer is not cleared on allocation, so guard against uninitialized NaN/Inf memory which would otherwise
   // lock in permanently through the temporal hysteresis blend; on the first (non-finite) read just take the new value.
-  DDGI_SH_TYPE previous = ddgiLoadSH(texel);
+  DDGI_SH_TYPE previous = ddgiLoadSH(probeCoord, cascadeIndex);
   // Discard stale previous SH: firstFrame (blend.z) = uninitialized garbage; or the probe just toroidally scrolled into
   // the volume (its stored SH belongs to a different world cell). Either way take the freshly projected SH.
   bool firstFrame = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
@@ -136,9 +131,9 @@ void main(){
 #endif
   vec3 finiteCheck = ((previous.coefficients[0] + previous.coefficients[1]) + previous.coefficients[2]) + previous.coefficients[3];
   if(firstFrame || any(isnan(finiteCheck)) || any(isinf(finiteCheck))){
-    ddgiStoreSH(texel, sh);
+    ddgiStoreSH(probeCoord, cascadeIndex, sh);
   }else{
-    ddgiStoreSH(texel, DDGI_SH_LERP(sh, previous, hysteresis));
+    ddgiStoreSH(probeCoord, cascadeIndex, DDGI_SH_LERP(sh, previous, hysteresis));
   }
 }
 

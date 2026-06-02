@@ -51,4 +51,18 @@ void ddgiStoreProbeDataBuffer(const in DDGIMaster aMaster, const in ivec3 probeC
   aMaster.probeData.data[ddgiProbeDataIndex(probeCoord, cascadeIndex)] = aValue;
 }
 
+#ifdef DDGI_SH_IMAGE_COUNT
+// SH-irradiance (SH storage only): DDGI_SH_IMAGE_COUNT packed vec4 per probe, interleaved (probe-major). Index =
+// probeLinear * DDGI_SH_IMAGE_COUNT + i. Same per-probe flattening as ddgiProbeDataIndex / the old SH 3D-image texel.
+uint ddgiSHBufferIndex(const in ivec3 probeCoord, const in int cascadeIndex, const in int i){
+  return (ddgiProbeDataIndex(probeCoord, cascadeIndex) * uint(DDGI_SH_IMAGE_COUNT)) + uint(i);
+}
+vec4 ddgiLoadSHVec4(const in DDGIMaster aMaster, const in ivec3 probeCoord, const in int cascadeIndex, const in int i){
+  return aMaster.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, i)];
+}
+void ddgiStoreSHVec4(const in DDGIMaster aMaster, const in ivec3 probeCoord, const in int cascadeIndex, const in int i, const in vec4 aValue){
+  aMaster.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, i)] = aValue;
+}
+#endif
+
 #endif // GI_DDGI_MASTER_GLSL
