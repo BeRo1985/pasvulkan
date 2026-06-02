@@ -47,8 +47,23 @@ void main(){
   }
 
   float backfaceFraction = float(backfaceCount) / float(GI_DDGI_FIXED_RAYS);
-  float state = (backfaceFraction > GI_DDGI_PROBE_BACKFACE_THRESHOLD) ? GI_DDGI_PROBE_STATE_INACTIVE : GI_DDGI_PROBE_STATE_ACTIVE;
 
   vec4 probeData = imageLoad(uDDGIProbeData, texel);
+
+  // Classification hysteresis: a deadband around the threshold stops a borderline probe from flip-flopping ACTIVE<->INACTIVE
+  // every frame (which pops it in/out of the shading gather -> flicker). Only flip when the backface fraction is clearly
+  // over/under; inside the band keep the previous state. On this slot's first frame / a probe that just toroidally scrolled
+  // in there is no valid previous state (w is uninitialized garbage / for another cell), so fall back to the plain threshold.
+  bool noHistory = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
+  float state;
+  if(backfaceFraction > (GI_DDGI_PROBE_BACKFACE_THRESHOLD + GI_DDGI_PROBE_BACKFACE_HYSTERESIS)){
+    state = GI_DDGI_PROBE_STATE_INACTIVE; // clearly inside geometry
+  }else if(backfaceFraction < (GI_DDGI_PROBE_BACKFACE_THRESHOLD - GI_DDGI_PROBE_BACKFACE_HYSTERESIS)){
+    state = GI_DDGI_PROBE_STATE_ACTIVE;   // clearly in open space
+  }else{
+    state = noHistory ? ((backfaceFraction > GI_DDGI_PROBE_BACKFACE_THRESHOLD) ? GI_DDGI_PROBE_STATE_INACTIVE : GI_DDGI_PROBE_STATE_ACTIVE)
+                      : probeData.w;      // in the deadband: hold the previous classification
+  }
+
   imageStore(uDDGIProbeData, texel, vec4(probeData.xyz, state)); // preserve offset (xyz), owned by the relocation pass
 }

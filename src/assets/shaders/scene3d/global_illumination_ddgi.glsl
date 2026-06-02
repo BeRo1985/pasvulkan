@@ -162,6 +162,9 @@
 #ifndef GI_DDGI_PROBE_BACKFACE_THRESHOLD    // fixed-ray backface fraction above which a probe counts as inside geometry
   #define GI_DDGI_PROBE_BACKFACE_THRESHOLD 0.25
 #endif
+#ifndef GI_DDGI_PROBE_BACKFACE_HYSTERESIS   // deadband half-width around the threshold: classification only flips ACTIVE<->
+  #define GI_DDGI_PROBE_BACKFACE_HYSTERESIS 0.05  // INACTIVE outside [threshold-h, threshold+h], else keeps the previous state
+#endif
 #define GI_DDGI_PROBE_STATE_INACTIVE 0.0
 #define GI_DDGI_PROBE_STATE_ACTIVE   1.0
 
