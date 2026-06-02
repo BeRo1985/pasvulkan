@@ -197,10 +197,7 @@ begin
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount+1)); // irradiance (write) + visibility (write); ray-data is now a BDA buffer (no image binding)
- if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
-  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames); // binding 5 = probe-data (relocation/classification RMW)
- end;
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount+1)); // irradiance (write) + visibility (write); ray-data + probe-data are now BDA buffers (no image binding)
  fVulkanDescriptorPool.Initialize;
 
  // Set 1 = DDGI resources used by the blend: UBO, irradiance (write), visibility (write). Ray-data is now a BDA buffer via
@@ -209,11 +206,8 @@ begin
  fVulkanDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
- if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
-  // Binding 5 = probe-data (xyz = relocation offset, w = state), read-modify-written by the relocation + classification
-  // pipelines. Matches gi_ddgi_relocation.comp / gi_ddgi_classification.comp (set 1 binding 5).
-  fVulkanDescriptorSetLayout.AddBinding(5,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
- end;
+ // probe-data (formerly binding 5) is now read-modify-written via the master push constant (BDA buffer) by the relocation/
+ // classification pipelines, no image binding.
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -250,10 +244,7 @@ begin
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,length(IrradianceImageInfos),TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),IrradianceImageInfos,[],[],false);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIVisibilityImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
-  if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
-   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIProbeDataImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
-  end;
+  // probe-data (formerly binding 5) is now read-modify-written via the master push constant (BDA buffer), no descriptor write.
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
   IrradianceImageInfos:=nil;

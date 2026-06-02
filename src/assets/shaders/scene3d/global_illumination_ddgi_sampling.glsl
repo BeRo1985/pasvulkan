@@ -22,6 +22,7 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #define GLOBAL_ILLUMINATION_DDGI_SAMPLE
 #include "global_illumination_ddgi.glsl"
+#include "gi_ddgi_master.glsl" // DDGI master BDA buffer (probe-data + SH-irradiance sub-buffers reached through it)
 
 #if GI_DDGI_STORAGE_IS_SH
   // RGB spherical harmonics packed into DDGI_SH_IMAGE_COUNT RGBA16F 3D textures (L1 = 3, L2 = 7).
@@ -57,12 +58,20 @@ vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, 
   return textureLod(uDDGIVisibility, uv, 0.0).rgb; // x = mean dist, y = mean dist^2, z = sky visibility
 }
 
+// DDGI master (BDA): the point-access sub-buffers (probe-data, and SH-irradiance from phase 3) are reached through here.
+// Tiny UBO in the DDGI descriptor set at binding 3 (freed from the old probe-data sampler), always present. The UBO holds
+// the master buffer's CONTENT directly (the 3 sub-pointers) — NOT a pointer-to-master — so the fields are read as-is (the
+// compute passes instead push the master's device address and dereference it; the byte layout matches: 3 × uint64).
+layout(set = DDGI_DESCRIPTOR_SET, binding = 3, std140) uniform DDGIMasterRef {
+  DDGIRayDataBuffer rayData;
+  DDGIProbeDataBuffer probeData;
+  DDGIIrradianceSHBuffer irradianceSH;
+} uDDGIMasterRef;
+
 #if GI_DDGI_PROBE_RELOCATION
-// Per-probe data (xyz = world-space relocation offset, w = state) written by gi_ddgi_relocation.comp. One texel per probe;
-// cascades are stacked along Z like the SH irradiance images.
-layout(set = DDGI_DESCRIPTOR_SET, binding = 3) uniform sampler3D uDDGIProbeData;
+// Per-probe data (xyz = world-space relocation offset, w = state) lives in the master's probe-data BDA buffer.
 vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
-  return texelFetch(uDDGIProbeData, ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z)), 0);
+  return uDDGIMasterRef.probeData.data[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
 }
 #endif
 

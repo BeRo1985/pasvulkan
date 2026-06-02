@@ -111,23 +111,24 @@ vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, 
 }
 #endif
 
-#if GI_DDGI_PROBE_RELOCATION
-// Probe data (xyz = relocation offset, w = state) written by gi_ddgi_relocation.comp this frame; read here for this
-// probe's relocated ray origin, and (if multi-bounce is on) by the probe-sampling functions via ddgiLoadProbeData.
-layout(set = 1, binding = 5, rgba32f) uniform readonly image3D uDDGIProbeDataRead; // F32x4: world-space relocation offset needs full precision (fp16 would quantize/dither)
-vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
-  return imageLoad(uDDGIProbeDataRead, ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z)));
-}
-#endif
-
 layout(push_constant) uniform PushConstants {
   vec4 randomRotation0; // mat3 column 0 (xyz)
   vec4 randomRotation1; // mat3 column 1 (xyz)
   vec4 randomRotation2; // mat3 column 2 (xyz)
   uvec4 params;         // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
   vec4 blend;           // x = hysteresis (used by the update stages), y = multi-bounce feedback strength
-  DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data sub-buffer); 8 bytes, appended after blend
+  DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data + probe-data sub-buffers); 8 bytes, appended after blend
 } pushConstants;
+
+#if GI_DDGI_PROBE_RELOCATION
+// Probe data (xyz = relocation offset, w = state) lives in the master's probe-data BDA buffer (written by the relocation/
+// classification passes). Used here for this probe's relocated ray origin and by the probe-sampling functions (multi-bounce).
+// Defined after the push constant since it dereferences the master pointer; the prototype in global_illumination_ddgi.glsl
+// lets the sampling functions (compiled above) call it.
+vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
+  return ddgiLoadProbeDataBuffer(pushConstants.ddgiMaster, probeCoord, cascadeIndex);
+}
+#endif
 
 void main(){
 

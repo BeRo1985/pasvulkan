@@ -25,7 +25,6 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 // GI_DDGI_FIXED_RAYS) the distance is SIGNED (negative = backface) and UNCLAMPED. Binding 1 in the shared DDGI compute set.
 
 // Probe data: xyz = relocation offset (this pass), w = state (classification pass). Read-modify-write to preserve w.
-layout(set = 1, binding = 5, rgba32f) uniform image3D uDDGIProbeData; // F32x4: world-space offset needs full precision
 
 layout(push_constant) uniform PushConstants {
   vec4 randomRotation0;
@@ -46,11 +45,10 @@ void main(){
   int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
   int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
   ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade); // physical storage slot
-  ivec3 texel = ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
 
   float cellSize = ddgiData.ddgiCascadeCellSizes[cascadeIndex].x;
 
-  vec4 probeData = imageLoad(uDDGIProbeData, texel);
+  vec4 probeData = ddgiLoadProbeDataBuffer(pushConstants.ddgiMaster, probeCoord, cascadeIndex);
   // Start from the previously accumulated offset, except when it is invalid: the image is not cleared on allocation, so on
   // this slot's first frame (blend.z) it is uninitialized garbage; and a probe that just toroidally scrolled in carries an
   // offset for a different world cell. In both cases restart from zero.
@@ -124,5 +122,5 @@ void main(){
     }
   }
 
-  imageStore(uDDGIProbeData, texel, vec4(offset, probeData.w)); // preserve state (w), owned by the classification pass
+  ddgiStoreProbeDataBuffer(pushConstants.ddgiMaster, probeCoord, cascadeIndex, vec4(offset, probeData.w)); // preserve state (w), owned by the classification pass
 }

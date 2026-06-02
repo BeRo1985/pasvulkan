@@ -808,7 +808,7 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationDDGIVisibilityImages:TGlobalIlluminationDDGIImage2Ds;
        fGlobalIlluminationDDGIRayDataBuffers:TGlobalIlluminationDDGIBuffers;                    // BDA storage buffer (rgb = radiance, a = distance), per in-flight frame
        fGlobalIlluminationDDGIMasterBuffers:TGlobalIlluminationDDGIBuffers;                     // BDA master (sub-buffer pointers), per in-flight frame, host-visible
-       fGlobalIlluminationDDGIProbeDataImages:TGlobalIlluminationDDGIImage3Ds;                  // relocation only: xyz = probe offset, w = active state (per probe, 3D image)
+       fGlobalIlluminationDDGIProbeDataBuffers:TGlobalIlluminationDDGIBuffers;                  // relocation only: BDA buffer, vec4 per probe (xyz = offset, w = active state)
        fGlobalIlluminationDDGIDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalIlluminationDDGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalIlluminationDDGIDescriptorSets:TGlobalIlluminationDDGIDescriptorSets;
@@ -1167,7 +1167,7 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationDDGIVisibilityImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIVisibilityImages;
        property GlobalIlluminationDDGIRayDataBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIRayDataBuffers;
        property GlobalIlluminationDDGIMasterBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIMasterBuffers;
-       property GlobalIlluminationDDGIProbeDataImages:TGlobalIlluminationDDGIImage3Ds read fGlobalIlluminationDDGIProbeDataImages;
+       property GlobalIlluminationDDGIProbeDataBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIProbeDataBuffers;
        property GlobalIlluminationDDGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationDDGIDescriptorSetLayout;
        property GlobalIlluminationDDGIDescriptorSets:TGlobalIlluminationDDGIDescriptorSets read fGlobalIlluminationDDGIDescriptorSets;
        function GetGlobalIlluminationDDGIFirstFrame(const aInFlightFrameIndex:TpvSizeInt):boolean;
@@ -2604,7 +2604,7 @@ begin
  FillChar(fGlobalIlluminationDDGIVisibilityImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
  FillChar(fGlobalIlluminationDDGIRayDataBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
  FillChar(fGlobalIlluminationDDGIMasterBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
- FillChar(fGlobalIlluminationDDGIProbeDataImages,SizeOf(TGlobalIlluminationDDGIImage3Ds),#0);
+ FillChar(fGlobalIlluminationDDGIProbeDataBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
  fGlobalIlluminationDDGIDescriptorPool:=nil;
  fGlobalIlluminationDDGIDescriptorSetLayout:=nil;
  FillChar(fGlobalIlluminationDDGIDescriptorSets,SizeOf(TGlobalIlluminationDDGIDescriptorSets),#0);
@@ -3036,7 +3036,7 @@ begin
   FreeAndNil(fGlobalIlluminationDDGIVisibilityImages[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationDDGIProbeDataImages[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIUniformBuffers[InFlightFrameIndex]);
  end;
@@ -3693,7 +3693,7 @@ begin
     // push constant. Phase 1 sets only the ray-data pointer (probe-data + SH-irradiance follow in later phases).
     fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                      SizeOf(TGlobalIlluminationDDGIMasterData),
-                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                      [],
                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
@@ -3703,24 +3703,31 @@ begin
                                                                                      0,
                                                                                      pvAllocationGroupIDScene3DStatic,
                                                                                      'TpvScene3DRendererInstance.fGlobalIlluminationDDGIMasterBuffers['+IntToStr(InFlightFrameIndex)+']');
-    FillChar(GlobalIlluminationDDGIMasterData,SizeOf(GlobalIlluminationDDGIMasterData),#0);
-    GlobalIlluminationDDGIMasterData.RayData:=fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex].DeviceAddress; // probe-data + SH stay 0 until their phase
-    fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].UpdateData(GlobalIlluminationDDGIMasterData,0,SizeOf(GlobalIlluminationDDGIMasterData));
-
-    // Probe relocation data: one RGBA16F 3D image per in-flight frame (probe lattice, cascades stacked along Z, same layout
-    // as the SH irradiance images). xyz = relocation offset (gi_ddgi_relocation.comp), w = active state (gi_ddgi_classification.comp).
-    // Written/read as a storage image by the trace + probe-update compute passes and sampled (sampler3D) by the shading set.
+    // Probe relocation data: a BDA storage buffer, vec4 per probe (xyz = relocation offset, w = active state). Written by the
+    // relocation/classification passes, read by the trace + the shading consumers via the master. Allocated only when probe
+    // relocation is on (full F32 precision; the world-space offset would dither in fp16).
     if GlobalIlluminationDDGIProbeRelocation then begin
-     fGlobalIlluminationDDGIProbeDataImages[InFlightFrameIndex]:=TpvScene3DRendererImage3D.Create(fScene3D.VulkanDevice,
-                                                                                                  GlobalIlluminationDDGIProbeCountX,
-                                                                                                  GlobalIlluminationDDGIProbeCountY,
-                                                                                                  GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades,
-                                                                                                  VK_FORMAT_R32G32B32A32_SFLOAT, // F32x4 (RTXGI-style): world-space relocation offset needs full precision (fp16 dithers)
-                                                                                                  VK_SAMPLE_COUNT_1_BIT,
-                                                                                                  VK_IMAGE_LAYOUT_GENERAL,
-                                                                                                  pvAllocationGroupIDScene3DStatic,
-                                                                                                  'TpvScene3DRendererInstance.fGlobalIlluminationDDGIProbeDataImages['+IntToStr(InFlightFrameIndex)+']');
+     fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                         TpvSizeInt(CountGlobalIlluminationDDGICascades)*TpvSizeInt(GlobalIlluminationDDGIProbesPerCascade)*SizeOf(TpvVector4),
+                                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                         [],
+                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                         0,0,0,0,0,0,0,
+                                                                                         [TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                                                         0,
+                                                                                         pvAllocationGroupIDScene3DStatic,
+                                                                                         'TpvScene3DRendererInstance.fGlobalIlluminationDDGIProbeDataBuffers['+IntToStr(InFlightFrameIndex)+']');
     end;
+
+    // Fill the master pointers now that all of this slot's sub-buffers exist. probe-data = 0 when relocation is off; the
+    // SH-irradiance pointer stays 0 until phase 3.
+    FillChar(GlobalIlluminationDDGIMasterData,SizeOf(GlobalIlluminationDDGIMasterData),#0);
+    GlobalIlluminationDDGIMasterData.RayData:=fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex].DeviceAddress;
+    if GlobalIlluminationDDGIProbeRelocation then begin
+     GlobalIlluminationDDGIMasterData.ProbeData:=fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex].DeviceAddress;
+    end;
+    fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].UpdateData(GlobalIlluminationDDGIMasterData,0,SizeOf(GlobalIlluminationDDGIMasterData));
 
    end;
 
@@ -3728,11 +3735,8 @@ begin
    fGlobalIlluminationDDGIDescriptorPool:=TpvVulkanDescriptorPool.Create(Renderer.VulkanDevice,
                                                                          TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                          Renderer.CountInFlightFrames);
-   fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames);
+   fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames*2); // binding 0 = globals UBO, binding 3 = DDGI master pointer UBO
    fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*(GlobalIlluminationDDGIIrradianceImageCount+1));
-   if GlobalIlluminationDDGIProbeRelocation then begin
-    fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames); // binding 3 = probe-data (sampler3D)
-   end;
    fGlobalIlluminationDDGIDescriptorPool.Initialize;
 
    // Binding 1 holds the irradiance: 3 sampler3D (SH) or 1 sampler2D (octahedral). Binding 2 the octahedral visibility.
@@ -3740,11 +3744,10 @@ begin
    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,GlobalIlluminationDDGIIrradianceImageCount,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
-   if GlobalIlluminationDDGIProbeRelocation then begin
-    // Binding 3 = probe-data (sampler3D): xyz = relocation offset, w = active state. Matches the GI_DDGI_PROBE_RELOCATION
-    // block in global_illumination_ddgi_sampling.glsl. Shared by the mesh.frag (set 2) and planet (set 4) consumers.
-    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
-   end;
+   // Binding 3 = DDGI master pointer (tiny UBO): the point-access sub-buffers (probe-data, and SH-irradiance from phase 3)
+   // are reached through it (BDA). Matches DDGIMasterRef in global_illumination_ddgi_sampling.glsl. Shared by the mesh.frag
+   // (set 2) and planet (set 4) consumers. Always present.
+   fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
    fGlobalIlluminationDDGIDescriptorSetLayout.Initialize;
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
@@ -3767,10 +3770,7 @@ begin
      fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,0,length(GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray),TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray,[],[],false);
      fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                     [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIVisibilityImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
-     if GlobalIlluminationDDGIProbeRelocation then begin
-      fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                     [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIProbeDataImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
-     end;
+     fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),[],[fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false);
      fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].Flush;
     finally
      GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray:=nil;

@@ -39,4 +39,16 @@ void ddgiStoreRay(const in DDGIMaster aMaster, const in uint globalProbeIndex, c
   aMaster.rayData.data[ddgiRayDataIndex(globalProbeIndex, rayIndex, raysPerProbe)] = aValue;
 }
 
+// Probe-data linear index (one vec4 per physical probe slot): matches the old 3D image addressing
+// ivec3(probeCoord.xy, probeCoord.z + cascade*GI_DDGI_PROBES_Z) flattened row-major (x fastest).  (phase 3 onward via master)
+uint ddgiProbeDataIndex(const in ivec3 probeCoord, const in int cascadeIndex){
+  return uint(probeCoord.x + (probeCoord.y * GI_DDGI_PROBES_X) + ((probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z)) * GI_DDGI_PROBES_X * GI_DDGI_PROBES_Y));
+}
+vec4 ddgiLoadProbeDataBuffer(const in DDGIMaster aMaster, const in ivec3 probeCoord, const in int cascadeIndex){
+  return aMaster.probeData.data[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
+}
+void ddgiStoreProbeDataBuffer(const in DDGIMaster aMaster, const in ivec3 probeCoord, const in int cascadeIndex, const in vec4 aValue){
+  aMaster.probeData.data[ddgiProbeDataIndex(probeCoord, cascadeIndex)] = aValue;
+}
+
 #endif // GI_DDGI_MASTER_GLSL

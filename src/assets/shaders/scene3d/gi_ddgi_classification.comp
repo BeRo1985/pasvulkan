@@ -18,7 +18,6 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 #include "global_illumination_ddgi.glsl"
 #include "gi_ddgi_master.glsl"
 
-layout(set = 1, binding = 5, rgba32f) uniform image3D uDDGIProbeData;        // F32x4: xyz = offset (relocation), w = state (this pass)
 
 layout(push_constant) uniform PushConstants {
   vec4 randomRotation0;
@@ -39,7 +38,6 @@ void main(){
   int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
   int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
   ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade);
-  ivec3 texel = ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
 
   int backfaceCount = 0;
   for(int i = 0; i < GI_DDGI_FIXED_RAYS; i++){
@@ -50,7 +48,7 @@ void main(){
 
   float backfaceFraction = float(backfaceCount) / float(GI_DDGI_FIXED_RAYS);
 
-  vec4 probeData = imageLoad(uDDGIProbeData, texel);
+  vec4 probeData = ddgiLoadProbeDataBuffer(pushConstants.ddgiMaster, probeCoord, cascadeIndex);
 
   // Classification hysteresis: a deadband around the threshold stops a borderline probe from flip-flopping ACTIVE<->INACTIVE
   // every frame (which pops it in/out of the shading gather -> flicker). Only flip when the backface fraction is clearly
@@ -67,5 +65,5 @@ void main(){
                       : probeData.w;      // in the deadband: hold the previous classification
   }
 
-  imageStore(uDDGIProbeData, texel, vec4(probeData.xyz, state)); // preserve offset (xyz), owned by the relocation pass
+  ddgiStoreProbeDataBuffer(pushConstants.ddgiMaster, probeCoord, cascadeIndex, vec4(probeData.xyz, state)); // preserve offset (xyz), owned by the relocation pass
 }
