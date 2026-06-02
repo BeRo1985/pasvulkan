@@ -10,6 +10,7 @@
 // classification pass.
 
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_buffer_reference : require
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -18,10 +19,10 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
 #include "gi_ddgi_raydata.glsl"
+#include "gi_ddgi_master.glsl"
 
 // Ray data written by the trace this frame: rgb = radiance (0 for fixed rays), a = distance. For the FIXED rays (index <
 // GI_DDGI_FIXED_RAYS) the distance is SIGNED (negative = backface) and UNCLAMPED. Binding 1 in the shared DDGI compute set.
-layout(set = 1, binding = 1, rgba32f) uniform readonly image2D uDDGIRayData; // F32x4 (must match the trace's ray-data format)
 
 // Probe data: xyz = relocation offset (this pass), w = state (classification pass). Read-modify-write to preserve w.
 layout(set = 1, binding = 5, rgba32f) uniform image3D uDDGIProbeData; // F32x4: world-space offset needs full precision
@@ -32,6 +33,7 @@ layout(push_constant) uniform PushConstants {
   vec4 randomRotation2;
   uvec4 params; // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
   vec4 blend;
+  DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data sub-buffer)
 } pushConstants;
 
 void main(){
@@ -61,7 +63,7 @@ void main(){
   int backfaceCount = 0;
 
   for(int i = 0; i < GI_DDGI_FIXED_RAYS; i++){
-    float signedDist = imageLoad(uDDGIRayData, ivec2(i, int(globalProbeIndex))).a;
+    float signedDist = ddgiLoadRay(pushConstants.ddgiMaster, globalProbeIndex, uint(i), pushConstants.params.w).a;
     vec3 dir = ddgiTraceRayDirection(uint(i), mat3(1.0));
     if(signedDist < 0.0){
       // Backface hit (probe behind this surface).

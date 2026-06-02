@@ -89,6 +89,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIProbeUpdateComputePass }
              RandomRotation2:TpvVector4;
              Params:TpvUInt32Vector4;    // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
              Blend:TpvVector4;           // x = hysteresis, z = firstFrame (1 = ignore the uninitialized previous probe data); y/w unused here
+             Master:TVkDeviceAddress;    // BDA pointer to the DDGI master buffer (ray-data sub-buffer); appended after Blend (8-byte aligned)
             end;
             PPushConstants=^TPushConstants;
       private
@@ -196,17 +197,16 @@ begin
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(1+TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount+1));
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount+1)); // irradiance (write) + visibility (write); ray-data is now a BDA buffer (no image binding)
  if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
   fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames); // binding 5 = probe-data (relocation/classification RMW)
  end;
  fVulkanDescriptorPool.Initialize;
 
- // Set 1 = DDGI resources used by the blend: UBO, ray-data (read), irradiance (write), visibility (write). Same bindings
- // the gi_ddgi_*_update.comp shaders declare (set 1).
+ // Set 1 = DDGI resources used by the blend: UBO, irradiance (write), visibility (write). Ray-data is now a BDA buffer via
+ // the master push constant (binding 1 freed). Same bindings the gi_ddgi_*_update.comp shaders declare (set 1).
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
- fVulkanDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
@@ -246,8 +246,7 @@ begin
 
   fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,fVulkanDescriptorSetLayout);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),[],[fInstance.GlobalIlluminationDDGIUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false);
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIRayDataImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
+  // binding 1 (ray-data) removed: ray-data is now a BDA buffer reached via the master push constant.
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,length(IrradianceImageInfos),TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),IrradianceImageInfos,[],[],false);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIVisibilityImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
@@ -332,6 +331,7 @@ begin
  if fWarmupFrameCounts[aInFlightFrameIndex]<WarmupFrames then begin
   inc(fWarmupFrameCounts[aInFlightFrameIndex]);
  end;
+ PushConstants.Master:=fInstance.GlobalIlluminationDDGIMasterBuffers[aInFlightFrameIndex].DeviceAddress; // BDA pointer to the ray-data sub-buffer (shared by irradiance/visibility/relocation/classification)
 
  // The ray-data was published by the trace pass (its final barrier + the frame-graph ordering make the writes visible).
  DescriptorSet:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;

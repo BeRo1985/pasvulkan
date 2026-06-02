@@ -9,14 +9,15 @@
 // which the relocation pass owns. Runs after the relocation pass.
 
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_buffer_reference : require
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
+#include "gi_ddgi_master.glsl"
 
-layout(set = 1, binding = 1, rgba32f) uniform readonly image2D uDDGIRayData; // F32x4; fixed rays: a = signed distance (neg=backface)
 layout(set = 1, binding = 5, rgba32f) uniform image3D uDDGIProbeData;        // F32x4: xyz = offset (relocation), w = state (this pass)
 
 layout(push_constant) uniform PushConstants {
@@ -25,6 +26,7 @@ layout(push_constant) uniform PushConstants {
   vec4 randomRotation2;
   uvec4 params; // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
   vec4 blend;
+  DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data sub-buffer)
 } pushConstants;
 
 void main(){
@@ -41,7 +43,7 @@ void main(){
 
   int backfaceCount = 0;
   for(int i = 0; i < GI_DDGI_FIXED_RAYS; i++){
-    if(imageLoad(uDDGIRayData, ivec2(i, int(globalProbeIndex))).a < 0.0){
+    if(ddgiLoadRay(pushConstants.ddgiMaster, globalProbeIndex, uint(i), pushConstants.params.w).a < 0.0){
       backfaceCount++;
     }
   }

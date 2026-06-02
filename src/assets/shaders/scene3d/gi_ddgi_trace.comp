@@ -60,9 +60,10 @@ vec3 ddgiGatherSky(const in vec3 dir){
 #endif
 #include "global_illumination_ddgi.glsl"
 #include "gi_ddgi_raydata.glsl" // shared ray-data contract: ddgiTraceRayDirection / ddgiEncodeRayData / ddgiRayIsFixed
+#include "gi_ddgi_master.glsl"  // DDGI master BDA buffer (ray-data lives in a storage buffer, not an image)
 
-// Per-ray output: rgb = radiance towards the probe, a = hit distance (= max ray distance on a miss).
-layout(set = 1, binding = 1, rgba32f) uniform writeonly image2D uDDGIRayData; // F32x4 (RTXGI-style): the distance (a) feeds relocation/classification + the Chebyshev moments, so keep it full precision
+// Per-ray output (rgb = radiance towards the probe, a = hit distance / signed for fixed rays) now lives in the master's
+// ray-data BDA storage buffer (full precision, no image-format cap), written via ddgiStoreRay below.
 
 #if GI_DDGI_MULTIBOUNCE
 // Read-only views of the probe field this in-flight slot still holds from the PREVIOUS frame (the irradiance/visibility
@@ -125,6 +126,7 @@ layout(push_constant) uniform PushConstants {
   vec4 randomRotation2; // mat3 column 2 (xyz)
   uvec4 params;         // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
   vec4 blend;           // x = hysteresis (used by the update stages), y = multi-bounce feedback strength
+  DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data sub-buffer); 8 bytes, appended after blend
 } pushConstants;
 
 void main(){
@@ -199,6 +201,6 @@ void main(){
 
   // Encode per the shared ray-data contract (fixed -> signed/unclamped distance, no radiance; random -> shaded radiance +
   // backface-shortened, locally-clamped distance).
-  imageStore(uDDGIRayData, ivec2(int(rayIndex), int(globalProbeIndex)),
-             ddgiEncodeRayData(rayIndex, radiance, surface.hit, surface.backface, surface.hitDistance, tMax, cellSize));
+  ddgiStoreRay(pushConstants.ddgiMaster, globalProbeIndex, rayIndex, raysPerProbe,
+               ddgiEncodeRayData(rayIndex, radiance, surface.hit, surface.backface, surface.hitDistance, tMax, cellSize));
 }

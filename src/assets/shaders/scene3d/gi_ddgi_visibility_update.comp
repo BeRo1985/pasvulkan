@@ -9,6 +9,7 @@
 
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_buffer_reference : require
 
 /* clang-format off */
 
@@ -16,10 +17,10 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
 #include "gi_ddgi_raydata.glsl"
+#include "gi_ddgi_master.glsl"
 
 layout(local_size_x = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_y = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_z = 1) in;
 
-layout(set = 1, binding = 1, rgba32f) uniform readonly image2D uDDGIRayData; // F32x4 (must match the trace's ray-data format)
 layout(set = 1, binding = 3, rgba16f) uniform image2D uDDGIVisibilityOct; // x = mean dist, y = mean dist^2, z = sky visibility
 
 layout(push_constant) uniform PushConstants {
@@ -28,6 +29,7 @@ layout(push_constant) uniform PushConstants {
   vec4 randomRotation2;
   uvec4 params;     // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
   vec4 blend;       // x = hysteresis (0..1)
+  DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data sub-buffer)
 } pushConstants;
 
 void main(){
@@ -61,7 +63,7 @@ void main(){
     vec3 rayDirection = ddgiTraceRayDirection(r, randomRotation);
     float weight = pow(max(0.0, dot(texelDirection, rayDirection)), sharpness);
     if(weight > 0.0){
-      float rawDist = imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).a;
+      float rawDist = ddgiLoadRay(pushConstants.ddgiMaster, globalProbeIndex, r, raysPerProbe).a;
       float dist = min(rawDist, maxRayDistance);
       // The trace stores maxRayDistance as the hit distance on a miss, so a ray that reached (or exceeded) it saw the sky.
       float missedToSky = (rawDist >= (maxRayDistance * 0.999)) ? 1.0 : 0.0;

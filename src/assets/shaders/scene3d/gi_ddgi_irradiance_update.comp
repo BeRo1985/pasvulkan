@@ -9,6 +9,7 @@
 
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_buffer_reference : require
 
 /* clang-format off */
 
@@ -17,6 +18,7 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
 #include "gi_ddgi_raydata.glsl"
+#include "gi_ddgi_master.glsl"
 
 #if GI_DDGI_STORAGE_IS_SH
   #include "sphericalharmonics.glsl"
@@ -26,7 +28,6 @@
 #endif
 
 // Per-ray radiance + hit distance from the trace pass.
-layout(set = 1, binding = 1, rgba32f) uniform readonly image2D uDDGIRayData; // F32x4 (must match the trace's ray-data format)
 
 #if GI_DDGI_STORAGE_IS_SH
   // RGB SH packed into DDGI_SH_IMAGE_COUNT RGBA16F 3D images (L1 = 3, L2 = 7): see ddgiLoadSH/ddgiStoreSH for the packing.
@@ -53,6 +54,7 @@ layout(push_constant) uniform PushConstants {
   vec4 randomRotation2;
   uvec4 params;     // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
   vec4 blend;       // x = hysteresis (0..1), y = unused, z = unused, w = unused
+  DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data sub-buffer)
 } pushConstants;
 
 const float GI_DDGI_FOUR_PI = 12.566370614359172;
@@ -112,7 +114,7 @@ void main(){
   DDGI_SH_TYPE sh = DDGI_SH_ZERO();
   for(uint r = GI_DDGI_RAY_START; r < raysPerProbe; r++){
     vec3 rayDirection = ddgiTraceRayDirection(r, randomRotation);
-    vec3 radiance = imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).rgb;
+    vec3 radiance = ddgiLoadRay(pushConstants.ddgiMaster, globalProbeIndex, r, raysPerProbe).rgb;
     sh = DDGI_SH_ADD(sh, DDGI_SH_PROJECT(rayDirection, radiance));
   }
   // Monte-Carlo estimator over the uniform sphere: c_lm = (4*pi / N) * sum(L * Y_lm), where N is the number of rays actually
@@ -168,7 +170,7 @@ void main(){
     vec3 rayDirection = ddgiTraceRayDirection(r, randomRotation);
     float weight = max(0.0, dot(texelDirection, rayDirection));
     if(weight > 0.0){
-      sum += imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).rgb * weight;
+      sum += ddgiLoadRay(pushConstants.ddgiMaster, globalProbeIndex, r, raysPerProbe).rgb * weight;
       sumWeight += weight;
     }
   }
