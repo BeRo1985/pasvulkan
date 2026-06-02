@@ -503,6 +503,14 @@ compileshaderarguments=(
   "-V gi_ddgi_visibility_update.comp ${DDGI_STORAGE_DEFINE} -o ${tempPath}/gi_ddgi_visibility_update_comp.spv"
   "-V gi_ddgi_border_update.comp ${DDGI_STORAGE_DEFINE} -o ${tempPath}/gi_ddgi_border_update_comp.spv"
 
+  # Surfel GI compute passes (per-frame order: clear -> grid build -> spawn -> trace -> recycle). gi_surfel_trace.comp
+  # traces rays via ray query (includes raytracing.glsl), hence the explicit ray-tracing SPIR-V target like the DDGI trace.
+  "-V gi_surfel_clear.comp --target-env vulkan1.2 -o ${tempPath}/gi_surfel_clear_comp.spv"
+  "-V gi_surfel_grid_build.comp --target-env vulkan1.2 -o ${tempPath}/gi_surfel_grid_build_comp.spv"
+  "-V gi_surfel_spawn.comp --target-env vulkan1.2 -o ${tempPath}/gi_surfel_spawn_comp.spv"
+  "-V gi_surfel_trace.comp --target-env vulkan1.2 -o ${tempPath}/gi_surfel_trace_comp.spv"
+  "-V gi_surfel_recycle.comp --target-env vulkan1.2 -o ${tempPath}/gi_surfel_recycle_comp.spv"
+
   "-V voxel_visualization.vert -o ${tempPath}/voxel_visualization_vert.spv"
   "-V voxel_visualization.frag -o ${tempPath}/voxel_visualization_frag.spv"
   "-V voxel_visualization.frag -DUSEDEMOTE -o ${tempPath}/voxel_visualization_demote_frag.spv"
@@ -1154,6 +1162,9 @@ addMeshFragmentShadingGlobalIlluminationVariants(){
   addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_cascaded_voxel_cone_tracing" "$2 -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING"
 
   addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_ddgi" "$2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE}"
+
+  # Surfel global illumination
+  addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_surfel" "$2 -DGLOBAL_ILLUMINATION_SURFEL"
 
 }
 

@@ -234,6 +234,12 @@ layout(set = 1, binding = 10) uniform sampler2D uRainTextures[]; // 0 = rain tex
   #define DDGI_DESCRIPTOR_SET 2
   #include "global_illumination_ddgi_sampling.glsl"
 
+#elif defined(GLOBAL_ILLUMINATION_SURFEL)
+
+  #define GLOBAL_ILLUMINATION_SURFEL_SAMPLE
+  #define GI_SURFEL_DESCRIPTOR_SET 2
+  #include "global_illumination_surfel.glsl"
+
 #endif
 
 #ifndef VOXELIZATION
@@ -984,16 +990,25 @@ void main() {
         colorOutput += ddgiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
       }
   #endif
+#elif defined(GLOBAL_ILLUMINATION_SURFEL)
+      // Surfel GI: gather the nearby surfels from the world hash grid, blend their SH and evaluate the diffuse irradiance
+      // E(n) (outgoing diffuse = albedo/PI * E). The surfel field replaces the environment IBL diffuse; the environment
+      // IBL specular is kept (block below).
+      float iblWeight = 1.0;
+      if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
+        vec3 surfelIrradiance = giSurfelSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz);
+        colorOutput += surfelIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
+      }
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if !(defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || (defined(GLOBAL_ILLUMINATION_DDGI) && !defined(GLOBAL_ILLUMINATION_DDGI_OCT_STORAGE)))
-#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DDGI)
+#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DDGI) || defined(GLOBAL_ILLUMINATION_SURFEL)
 //    float iblWeight = 1.0; // already declared in the global illumination branch above
 #else
       float iblWeight = 1.0; // for future sky occulsion
 #endif
-#if defined(GLOBAL_ILLUMINATION_DDGI)
-      vec3 iblDiffuse = vec3(0.0); // DDGI replaces the environment IBL diffuse term (the probe field carries the sky via ray misses); IBL specular is kept but occluded via iblWeight
+#if defined(GLOBAL_ILLUMINATION_DDGI) || defined(GLOBAL_ILLUMINATION_SURFEL)
+      vec3 iblDiffuse = vec3(0.0); // DDGI / surfel GI replaces the environment IBL diffuse term (the field carries the sky via ray misses); IBL specular is kept but occluded via iblWeight
 #else
       vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
 #endif
