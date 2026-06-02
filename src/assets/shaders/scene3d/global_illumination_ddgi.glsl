@@ -137,7 +137,8 @@ layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = GLOBAL_ILLUMINATI
   vec4 ddgiCascadeAABBCenter[GI_DDGI_CASCADES];     // xyz = AABB center (for cascade fade computation)
   vec4 ddgiCascadeAABBFadeStart[GI_DDGI_CASCADES];  // xyz = distance from center where this cascade begins to fade out
   vec4 ddgiCascadeAABBFadeEnd[GI_DDGI_CASCADES];    // xyz = distance from center where this cascade is fully faded out
-  ivec4 ddgiCascadeProbeScroll[GI_DDGI_CASCADES];   // xyz = toroidal scroll offset in probe units, w = valid flag
+  ivec4 ddgiCascadeProbeScroll[GI_DDGI_CASCADES];     // xyz = base cell offset floor(AABBMin/cellSize) (this frame), w = scrolling enabled (1) / disabled (0)
+  ivec4 ddgiCascadeProbeScrollPrev[GI_DDGI_CASCADES]; // xyz = base cell offset of the previous update of this in-flight slot (for re-initializing scrolled-in probes)
 } ddgiData;
 #endif
 
@@ -147,14 +148,15 @@ layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = GLOBAL_ILLUMINATI
 
 // World position -> continuous probe-grid coordinate within a cascade (0..probeCounts-1 spans the AABB).
 #ifdef GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET
+// Probe spacing is exactly cellSize (= the AABB snap increment), so the lattice stays aligned to the world cell grid as
+// the volume snaps/scrolls; probe (i,j,k) sits at AABBMin + (i,j,k)*cellSize (the last probe leaves a one-cell margin
+// before AABBMax, which is what the cascade fade band uses).
 vec3 ddgiWorldToProbeGrid(const in vec3 worldPosition, const in int cascadeIndex){
-  vec3 normalized = (worldPosition - ddgiData.ddgiCascadeAABBMin[cascadeIndex].xyz) * ddgiData.ddgiCascadeAABBScale[cascadeIndex].xyz;
-  return normalized * vec3(uDDGIProbeCounts - ivec3(1));
+  return (worldPosition - ddgiData.ddgiCascadeAABBMin[cascadeIndex].xyz) / ddgiData.ddgiCascadeCellSizes[cascadeIndex].xyz;
 }
 
 vec3 ddgiProbeGridToWorld(const in ivec3 probeCoord, const in int cascadeIndex){
-  vec3 t = vec3(probeCoord) / vec3(uDDGIProbeCounts - ivec3(1));
-  return mix(ddgiData.ddgiCascadeAABBMin[cascadeIndex].xyz, ddgiData.ddgiCascadeAABBMax[cascadeIndex].xyz, t);
+  return ddgiData.ddgiCascadeAABBMin[cascadeIndex].xyz + (vec3(probeCoord) * ddgiData.ddgiCascadeCellSizes[cascadeIndex].xyz);
 }
 #endif
 
@@ -170,6 +172,46 @@ ivec3 ddgiProbeCoordFromIndex(const in int probeIndex){
   int z = probeIndex / (GI_DDGI_PROBES_X * GI_DDGI_PROBES_Y);
   return ivec3(x, y, z);
 }
+
+// --- Toroidal (clipmap) probe scrolling -------------------------------------------------------------------------------
+// The cascade AABB snaps to whole cell-size increments as it follows the camera. To keep a world-fixed probe's temporal
+// history on the same storage texel as the volume scrolls, the *logical* probe coordinate (the lattice position within
+// the current AABB, 0..count-1) and the *physical* storage slot differ by the cascade's base-cell offset, toroidally:
+//   physical = (logical + baseCell) mod count   <=>   logical = (physical - baseCell) mod count.
+// A world cell W = baseCell + logical; a physical slot keeps representing the same world cell while it stays inside the
+// volume, and only "scrolls in" (gets a new world cell, so its history must be reset) at the leading edges.
+#ifdef GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET
+ivec3 ddgiProbeBaseCell(const in int cascadeIndex){
+  return (ddgiData.ddgiCascadeProbeScroll[cascadeIndex].w != 0) ? ddgiData.ddgiCascadeProbeScroll[cascadeIndex].xyz : ivec3(0);
+}
+
+ivec3 ddgiProbeBaseCellPrev(const in int cascadeIndex){
+  return (ddgiData.ddgiCascadeProbeScroll[cascadeIndex].w != 0) ? ddgiData.ddgiCascadeProbeScrollPrev[cascadeIndex].xyz : ivec3(0);
+}
+
+// Physical storage coordinate for a logical probe coordinate (used when sampling/reading the field).
+ivec3 ddgiProbePhysicalCoord(const in ivec3 logicalCoord, const in int cascadeIndex){
+  ivec3 c = uDDGIProbeCounts;
+  return (((logicalCoord + ddgiProbeBaseCell(cascadeIndex)) % c) + c) % c;
+}
+
+// Logical probe coordinate for a physical storage slot (used by the update passes that iterate physical slots).
+ivec3 ddgiProbeLogicalCoord(const in ivec3 physicalCoord, const in int cascadeIndex){
+  ivec3 c = uDDGIProbeCounts;
+  return (((physicalCoord - ddgiProbeBaseCell(cascadeIndex)) % c) + c) % c;
+}
+
+// True if a physical slot now maps to a different world cell than at the previous update of this in-flight slot, i.e. it
+// just scrolled into the volume and its stored history is stale and must be discarded.
+bool ddgiProbeScrolledIn(const in ivec3 physicalCoord, const in int cascadeIndex){
+  ivec3 c = uDDGIProbeCounts;
+  ivec3 base = ddgiProbeBaseCell(cascadeIndex);
+  ivec3 basePrev = ddgiProbeBaseCellPrev(cascadeIndex);
+  ivec3 worldCell     = base     + ((((physicalCoord - base)     % c) + c) % c);
+  ivec3 worldCellPrev = basePrev + ((((physicalCoord - basePrev) % c) + c) % c);
+  return any(notEqual(worldCell, worldCellPrev));
+}
+#endif
 
 // Evenly distributed direction on the unit sphere (spherical Fibonacci / golden spiral) for ray index i of n.
 vec3 ddgiSphericalFibonacci(const in float i, const in float n){
@@ -264,7 +306,8 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
     for(int i = 0; i < 8; i++){
       ivec3 offset = ivec3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
-      ivec3 probeCoord = clamp(baseProbe + offset, ivec3(0), uDDGIProbeCounts - ivec3(1));
+      ivec3 probeCoord = clamp(baseProbe + offset, ivec3(0), uDDGIProbeCounts - ivec3(1)); // logical (lattice) coord
+      ivec3 physProbeCoord = ddgiProbePhysicalCoord(probeCoord, cascadeIndex);              // toroidal storage slot for reads
 
       vec3 trilinear = mix(vec3(1.0) - frac, frac, vec3(offset));
       float weight = trilinear.x * trilinear.y * trilinear.z;
@@ -279,7 +322,7 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
       // Chebyshev visibility test against the probe's stored octahedral depth statistics.
       float distToProbe = length(probeToPoint);
-      vec3 vis = ddgiSampleVisibility(probeCoord, cascadeIndex, normalize(probeToPoint));
+      vec3 vis = ddgiSampleVisibility(physProbeCoord, cascadeIndex, normalize(probeToPoint));
       vec2 moments = vis.xy;
       float meanDist = moments.x;
       float chebyshev = 1.0;
@@ -299,9 +342,9 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
       weight = max(weight, 1e-6);
 
-      sumIrradiance += ddgiEvaluateIrradiance(probeCoord, cascadeIndex, normal) * weight;
+      sumIrradiance += ddgiEvaluateIrradiance(physProbeCoord, cascadeIndex, normal) * weight;
       // Sky visibility for IBL occlusion: how open the surface hemisphere (normal direction) is to the sky at this probe.
-      sumSkyVisibility += ddgiSampleVisibility(probeCoord, cascadeIndex, normal).z * weight;
+      sumSkyVisibility += ddgiSampleVisibility(physProbeCoord, cascadeIndex, normal).z * weight;
       sumWeight += weight;
     }
 
@@ -372,7 +415,8 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
     for(int i = 0; i < 8; i++){
       ivec3 offset = ivec3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
-      ivec3 probeCoord = clamp(baseProbe + offset, ivec3(0), uDDGIProbeCounts - ivec3(1));
+      ivec3 probeCoord = clamp(baseProbe + offset, ivec3(0), uDDGIProbeCounts - ivec3(1)); // logical (lattice) coord
+      ivec3 physProbeCoord = ddgiProbePhysicalCoord(probeCoord, cascadeIndex);              // toroidal storage slot for reads
 
       vec3 trilinear = mix(vec3(1.0) - frac, frac, vec3(offset));
       float weight = trilinear.x * trilinear.y * trilinear.z;
@@ -385,7 +429,7 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       weight *= (wrap * wrap) + 0.2;
 
       float distToProbe = length(probeToPoint);
-      vec3 vis = ddgiSampleVisibility(probeCoord, cascadeIndex, normalize(probeToPoint));
+      vec3 vis = ddgiSampleVisibility(physProbeCoord, cascadeIndex, normalize(probeToPoint));
       vec2 moments = vis.xy;
       float meanDist = moments.x;
       float chebyshev = 1.0;
@@ -404,8 +448,8 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
       weight = max(weight, 1e-6);
 
-      sumSH = DDGI_SH_ADD(sumSH, DDGI_SH_MUL(ddgiLoadIrradianceSH(probeCoord, cascadeIndex), weight));
-      sumSkyVisibility += ddgiSampleVisibility(probeCoord, cascadeIndex, normal).z * weight;
+      sumSH = DDGI_SH_ADD(sumSH, DDGI_SH_MUL(ddgiLoadIrradianceSH(physProbeCoord, cascadeIndex), weight));
+      sumSkyVisibility += ddgiSampleVisibility(physProbeCoord, cascadeIndex, normal).z * weight;
       sumWeight += weight;
     }
 

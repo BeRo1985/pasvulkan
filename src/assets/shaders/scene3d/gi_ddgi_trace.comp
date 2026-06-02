@@ -131,9 +131,11 @@ void main(){
 
   int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
   int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
-  ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade);
+  ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade); // physical storage slot
 
-  vec3 probePosition = ddgiProbeGridToWorld(probeCoord, cascadeIndex);
+  // Toroidal scrolling: the iterated slot is physical; its world position comes from the logical lattice coordinate.
+  ivec3 logicalProbeCoord = ddgiProbeLogicalCoord(probeCoord, cascadeIndex);
+  vec3 probePosition = ddgiProbeGridToWorld(logicalProbeCoord, cascadeIndex);
 
   mat3 randomRotation = mat3(pushConstants.randomRotation0.xyz, pushConstants.randomRotation1.xyz, pushConstants.randomRotation2.xyz);
   vec3 rayDirection = ddgiRayDirection(int(rayIndex), randomRotation);

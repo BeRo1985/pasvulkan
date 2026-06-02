@@ -76,9 +76,10 @@ void main(){
 
   ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_VISIBILITY_OCT_FULL) + localTexel;
   vec3 previous = imageLoad(uDDGIVisibilityOct, atlasTexel).rgb;
-  // Guard against uninitialized NaN/Inf (images are not cleared) which would otherwise lock in through the hysteresis;
-  // on the firstFrame flag (blend.z) the previous data is uninitialized garbage, so always take the freshly computed value.
-  bool firstFrame = pushConstants.blend.z > 0.5;
+  // Guard against uninitialized NaN/Inf (images are not cleared) and discard stale history: on the firstFrame flag
+  // (blend.z) the previous data is uninitialized garbage, and on a probe that just toroidally scrolled into the volume
+  // its stored history belongs to a different world cell — in both cases take the freshly computed value.
+  bool firstFrame = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
   float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : pushConstants.blend.x;
   imageStore(uDDGIVisibilityOct, atlasTexel, vec4(mix(moments, previous, blendT), 0.0));
 }

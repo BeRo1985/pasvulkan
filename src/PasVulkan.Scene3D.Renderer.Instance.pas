@@ -381,7 +381,8 @@ type { TpvScene3DRendererInstance }
              AABBCenter:array[0..CountGlobalIlluminationDDGICascades-1] of TpvVector4;
              AABBFadeStart:array[0..CountGlobalIlluminationDDGICascades-1] of TpvVector4;
              AABBFadeEnd:array[0..CountGlobalIlluminationDDGICascades-1] of TpvVector4;
-             ProbeScroll:array[0..CountGlobalIlluminationDDGICascades-1] of TIntVector4;
+             ProbeScroll:array[0..CountGlobalIlluminationDDGICascades-1] of TIntVector4;      // xyz = base cell floor(AABBMin/cellSize) this frame, w = scrolling enabled
+             ProbeScrollPrev:array[0..CountGlobalIlluminationDDGICascades-1] of TIntVector4;  // xyz = base cell at the previous update of this in-flight slot (toroidal re-init)
             end;
             PGlobalIlluminationDDGIUniformBufferData=^TGlobalIlluminationDDGIUniformBufferData;
             TGlobalIlluminationDDGIUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationDDGIUniformBufferData;
@@ -742,6 +743,7 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray;
        fGlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers;
        fGlobalIlluminationDDGICascadedVolumes:TCascadedVolumes;
+       fGlobalIlluminationDDGIProbeBaseCells:array[0..MaxInFlightFrames-1,0..CountGlobalIlluminationDDGICascades-1] of TpvVector3; // per in-flight slot per cascade: rounded baseCell of the previous update, for toroidal scroll re-init
        fGlobalIlluminationDDGIUniformBufferDataArray:TGlobalIlluminationDDGIUniformBufferDataArray;
        fGlobalIlluminationDDGIUniformBuffers:TGlobalIlluminationDDGIUniformBuffers;
        fGlobalIlluminationDDGIIrradianceImages:TGlobalIlluminationDDGIIrradianceImages;        // SH storage: 3 RGBA16F 3D images per frame
@@ -2466,6 +2468,8 @@ begin
  fGlobalIlluminationRadianceHintsCascadedVolumes:=nil;
 
  FillChar(fGlobalIlluminationRadianceHintsDescriptorSets,SizeOf(TGlobalIlluminationRadianceHintsDescriptorSets),#0);
+
+ FillChar(fGlobalIlluminationDDGIProbeBaseCells,SizeOf(fGlobalIlluminationDDGIProbeBaseCells),#0);
 
  fGlobalIlluminationDDGICascadedVolumes:=nil;
  FillChar(fGlobalIlluminationDDGIUniformBuffers,SizeOf(TGlobalIlluminationDDGIUniformBuffers),#0);
@@ -8052,6 +8056,7 @@ var CascadeIndex:TpvSizeInt;
     Cascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
     Extent:TpvVector3;
     s:TpvScalar;
+    BaseCell,PrevBaseCell:TpvVector3;
 begin
 
  if aInFlightFrameIndex<0 then begin
@@ -8074,10 +8079,21 @@ begin
   DDGIData^.AABBCenter[CascadeIndex]:=TpvVector4.InlineableCreate(((Cascade.fAABB.Min+Cascade.fAABB.Max)*0.5)+Cascade.fOffset,0.0);
   DDGIData^.AABBFadeStart[CascadeIndex]:=TpvVector4.InlineableCreate((Extent*0.5)-(Cascade.fSnapSize+TpvVector3.InlineableCreate(s,s,s)),0.0);
   DDGIData^.AABBFadeEnd[CascadeIndex]:=TpvVector4.InlineableCreate((Extent*0.5)-Cascade.fSnapSize,0.0);
-  DDGIData^.ProbeScroll[CascadeIndex].x:=0;
-  DDGIData^.ProbeScroll[CascadeIndex].y:=0;
-  DDGIData^.ProbeScroll[CascadeIndex].z:=0;
-  DDGIData^.ProbeScroll[CascadeIndex].w:=1;
+  // Toroidal scroll base cell: AABBMin is snapped to whole cellSize increments, so floor(AABBMin/cellSize) is the integer
+  // world-cell offset of the cascade min corner. The shader maps logical<->physical probe slots by this (mod probeCount),
+  // keeping a world-fixed probe's history on the same texel as the volume scrolls; the previous value (per in-flight slot)
+  // lets the shader re-initialize probes that just scrolled in.
+  BaseCell:=(Cascade.fAABB.Min/Cascade.fCellSize).Round;
+  PrevBaseCell:=fGlobalIlluminationDDGIProbeBaseCells[aInFlightFrameIndex,CascadeIndex];
+  DDGIData^.ProbeScroll[CascadeIndex].x:=Trunc(BaseCell.x);
+  DDGIData^.ProbeScroll[CascadeIndex].y:=Trunc(BaseCell.y);
+  DDGIData^.ProbeScroll[CascadeIndex].z:=Trunc(BaseCell.z);
+  DDGIData^.ProbeScroll[CascadeIndex].w:=1; // scrolling enabled
+  DDGIData^.ProbeScrollPrev[CascadeIndex].x:=Trunc(PrevBaseCell.x);
+  DDGIData^.ProbeScrollPrev[CascadeIndex].y:=Trunc(PrevBaseCell.y);
+  DDGIData^.ProbeScrollPrev[CascadeIndex].z:=Trunc(PrevBaseCell.z);
+  DDGIData^.ProbeScrollPrev[CascadeIndex].w:=0;
+  fGlobalIlluminationDDGIProbeBaseCells[aInFlightFrameIndex,CascadeIndex]:=BaseCell;
  end;
 
 end;
