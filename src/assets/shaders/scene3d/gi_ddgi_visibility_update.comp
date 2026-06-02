@@ -15,6 +15,7 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
+#include "gi_ddgi_raydata.glsl"
 
 layout(local_size_x = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_y = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_z = 1) in;
 
@@ -56,8 +57,8 @@ void main(){
   float sumDist2 = 0.0;
   float sumSky = 0.0; // weighted fraction of rays in this direction that escaped to the sky (missed geometry)
   float sumWeight = 0.0;
-  for(uint r = 0u; r < raysPerProbe; r++){
-    vec3 rayDirection = ddgiRayDirection(int(r), randomRotation);
+  for(uint r = GI_DDGI_RAY_START; r < raysPerProbe; r++){
+    vec3 rayDirection = ddgiTraceRayDirection(r, randomRotation);
     float weight = pow(max(0.0, dot(texelDirection, rayDirection)), sharpness);
     if(weight > 0.0){
       float rawDist = imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).a;

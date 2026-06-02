@@ -53,17 +53,24 @@ vec4 ddgiEncodeRayData(const in uint rayIndex,
                        const in float aCellSize){
 #if GI_DDGI_PROBE_RELOCATION
   if(rayIndex < uint(GI_DDGI_FIXED_RAYS)){
-    // Fixed ray: signed (negative = backface), unclamped distance; no radiance (not blended).
+    // Fixed ray: only the geometry distance matters (consumed by the relocation + classification passes). Store it SIGNED
+    // (negative = backface hit) and UNCLAMPED, with no shading and no backface shortening; the probe blend skips it.
     return vec4(0.0, 0.0, 0.0, aHit ? (aBackface ? -aHitDistance : aHitDistance) : aMissDistance);
   }
 #endif
-  // Random ray: shaded radiance + backface-shortened, locally-clamped distance.
-  float dist = aHit ? aHitDistance : aMissDistance;
+  // Random ray: shaded radiance in rgb (integrated by the irradiance blend) + the distance in a (feeds the mean/mean^2
+  // visibility statistics for the Chebyshev test).
+  float storedDistance = aHit ? aHitDistance : aMissDistance;
+  // Shorten backface-hit distances (à la Majercik's DDGI optimization) so a probe just behind a thin slab records it as a
+  // close occluder in the mean/mean^2 depth statistics — the Chebyshev test then blocks the leak to the other side.
   if(aHit && aBackface){
-    dist *= 0.2; // Majercik: register a thin slab right behind the probe as a near occluder for the Chebyshev test
+    storedDistance *= 0.2; // Majercik: register a thin slab right behind the probe as a near occluder for the Chebyshev test
   }
-  dist = min(dist, GI_DDGI_VISIBILITY_MAX_DISTANCE_SCALE * aCellSize);
-  return vec4(aShadedRadiance, dist);
+  // Clamp the stored visibility distance to a local scale (~1.5 * cell size, mirroring RTXGI's probeMaxRayDistance) so far
+  // hits and sky misses don't inflate the mean/mean^2 statistics and mask nearby thin-slab occluders. The radiance is
+  // unaffected (it still gathers light from the full ray length); only this depth channel is clamped.
+  storedDistance = min(storedDistance, GI_DDGI_VISIBILITY_MAX_DISTANCE_SCALE * aCellSize);
+  return vec4(aShadedRadiance, storedDistance);
 }
 
 #endif // GI_DDGI_RAYDATA_GLSL

@@ -16,6 +16,7 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
+#include "gi_ddgi_raydata.glsl"
 
 #if GI_DDGI_STORAGE_IS_SH
   #include "sphericalharmonics.glsl"
@@ -97,13 +98,15 @@ void main(){
   uint raysPerProbe = pushConstants.params.w;
 
   DDGI_SH_TYPE sh = DDGI_SH_ZERO();
-  for(uint r = 0u; r < raysPerProbe; r++){
-    vec3 rayDirection = ddgiRayDirection(int(r), randomRotation);
+  for(uint r = GI_DDGI_RAY_START; r < raysPerProbe; r++){
+    vec3 rayDirection = ddgiTraceRayDirection(r, randomRotation);
     vec3 radiance = imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).rgb;
     sh = DDGI_SH_ADD(sh, DDGI_SH_PROJECT(rayDirection, radiance));
   }
-  // Monte-Carlo estimator over the uniform sphere: c_lm = (4*pi / N) * sum(L * Y_lm).
-  sh = DDGI_SH_MUL(sh, GI_DDGI_FOUR_PI / float(raysPerProbe));
+  // Monte-Carlo estimator over the uniform sphere: c_lm = (4*pi / N) * sum(L * Y_lm), where N is the number of rays actually
+  // integrated (the random rays). With relocation enabled the first GI_DDGI_FIXED_RAYS rays are fixed/unshaded and skipped
+  // (GI_DDGI_RAY_START > 0), so divide by the integrated count, not the full raysPerProbe (else the irradiance is too dark).
+  sh = DDGI_SH_MUL(sh, GI_DDGI_FOUR_PI / float(raysPerProbe - GI_DDGI_RAY_START));
 
   ivec3 texel = ddgiSHTexelCoord(probeCoord, cascadeIndex);
   // The probe images are not cleared on allocation, so guard against uninitialized NaN/Inf memory which would otherwise
@@ -144,8 +147,8 @@ void main(){
 
   vec3 sum = vec3(0.0);
   float sumWeight = 0.0;
-  for(uint r = 0u; r < raysPerProbe; r++){
-    vec3 rayDirection = ddgiRayDirection(int(r), randomRotation);
+  for(uint r = GI_DDGI_RAY_START; r < raysPerProbe; r++){
+    vec3 rayDirection = ddgiTraceRayDirection(r, randomRotation);
     float weight = max(0.0, dot(texelDirection, rayDirection));
     if(weight > 0.0){
       sum += imageLoad(uDDGIRayData, ivec2(int(r), int(globalProbeIndex))).rgb * weight;

@@ -17,6 +17,7 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
+#include "gi_ddgi_raydata.glsl"
 
 // Ray data written by the trace this frame: rgb = radiance (0 for fixed rays), a = distance. For the FIXED rays (index <
 // GI_DDGI_FIXED_RAYS) the distance is SIGNED (negative = backface) and UNCLAMPED. Binding 1 in the shared DDGI compute set.
@@ -48,7 +49,11 @@ void main(){
   float cellSize = ddgiData.ddgiCascadeCellSizes[cascadeIndex].x;
 
   vec4 probeData = imageLoad(uDDGIProbeData, texel);
-  vec3 offset = ddgiProbeScrolledIn(probeCoord, cascadeIndex) ? vec3(0.0) : probeData.xyz;
+  // Start from the previously accumulated offset, except when it is invalid: the image is not cleared on allocation, so on
+  // this slot's first frame (blend.z) it is uninitialized garbage; and a probe that just toroidally scrolled in carries an
+  // offset for a different world cell. In both cases restart from zero.
+  bool firstFrame = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
+  vec3 offset = firstFrame ? vec3(0.0) : probeData.xyz;
 
   float closestBackfaceDist = 1e30; vec3 closestBackfaceDir = vec3(0.0);
   float closestFrontfaceDist = 1e30;
@@ -57,7 +62,7 @@ void main(){
 
   for(int i = 0; i < GI_DDGI_FIXED_RAYS; i++){
     float signedDist = imageLoad(uDDGIRayData, ivec2(i, int(globalProbeIndex))).a;
-    vec3 dir = ddgiSphericalFibonacci(float(i), float(GI_DDGI_FIXED_RAYS));
+    vec3 dir = ddgiTraceRayDirection(uint(i), mat3(1.0));
     if(signedDist < 0.0){
       // Backface hit (probe behind this surface).
       float d = -signedDist;

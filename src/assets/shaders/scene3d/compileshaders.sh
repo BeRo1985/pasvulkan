@@ -30,6 +30,14 @@ DEBUG=1
 DDGI_STORAGE=2
 DDGI_STORAGE_DEFINE="-DGI_DDGI_STORAGE=${DDGI_STORAGE}"
 
+# RTXGI-style probe relocation + classification (0 = off, 1 = on). When on, the trace traces GI_DDGI_FIXED_RAYS fixed rays
+# for the relocation/classification compute passes, the irradiance/visibility blend integrates only the remaining random
+# rays, and the trace/sampling shaders bind the per-probe probe-data image (relocation offset + active state). This MUST
+# match GlobalIlluminationDDGIProbeRelocation in PasVulkan.Scene3D.Renderer.Instance.pas, otherwise the descriptor binding
+# counts (compute set binding 5 + shading set binding 3) won't line up with the Pascal side. Passed to every DDGI shader.
+DDGI_PROBE_RELOCATION=1
+DDGI_PROBE_RELOCATION_DEFINE="-DGI_DDGI_PROBE_RELOCATION=${DDGI_PROBE_RELOCATION}"
+
 # Surfel GI radiance storage mode: 0 = octahedral irradiance atlas (per surfel), 1 = L1 spherical harmonics (default),
 # 2 = L2 spherical harmonics. MUST match the Surfel pool record size on the Pascal side (the per-surfel payload size
 # depends on this). Always passed explicitly to the surfel compute passes AND the globalillumination_surfel consumers.
@@ -504,10 +512,15 @@ compileshaderarguments=(
   # gi_ddgi_trace.comp traces rays via ray query (it includes raytracing.glsl), so it needs the ray tracing SPIR-V target.
   # RAYTRACING is #defined inside the shader (not via -D) to avoid a macro redefinition clash, so the auto target-env
   # logic below (which keys off "-DRAYTRACING") does not trigger here; set the target explicitly.
-  "-V gi_ddgi_trace.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} -o ${tempPath}/gi_ddgi_trace_comp.spv"
-  "-V gi_ddgi_irradiance_update.comp ${DDGI_STORAGE_DEFINE} -o ${tempPath}/gi_ddgi_irradiance_update_comp.spv"
-  "-V gi_ddgi_visibility_update.comp ${DDGI_STORAGE_DEFINE} -o ${tempPath}/gi_ddgi_visibility_update_comp.spv"
-  "-V gi_ddgi_border_update.comp ${DDGI_STORAGE_DEFINE} -o ${tempPath}/gi_ddgi_border_update_comp.spv"
+  "-V gi_ddgi_trace.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_trace_comp.spv"
+  "-V gi_ddgi_irradiance_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_irradiance_update_comp.spv"
+  "-V gi_ddgi_visibility_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_visibility_update_comp.spv"
+  "-V gi_ddgi_border_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_border_update_comp.spv"
+  # Probe relocation + classification (RTXGI-style). Traces fixed rays via ray query (includes raytracing.glsl), hence the
+  # explicit ray-tracing SPIR-V target like the DDGI trace. Built with the same DDGI_PROBE_RELOCATION_DEFINE as the rest;
+  # only dispatched when GlobalIlluminationDDGIProbeRelocation is true on the Pascal side (the matching toggle).
+  "-V gi_ddgi_relocation.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_relocation_comp.spv"
+  "-V gi_ddgi_classification.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_classification_comp.spv"
 
   # Surfel GI compute passes (per-frame order: clear -> grid build -> spawn -> trace -> recycle). gi_surfel_trace.comp
   # traces rays via ray query (includes raytracing.glsl), hence the explicit ray-tracing SPIR-V target like the DDGI trace.
@@ -682,7 +695,7 @@ compileshaderarguments=(
   # DDGI (RT-based GI) variant of the underwater fullscreen pass — RT only, 'ddgi' segment last; DDGI feeds the shore-foam
   # ambient term here (the underwater base color is refracted scene color, already lit). WATER_CAUSTICS gets no DDGI variant:
   # that pass is purely additive refracted-sun light with no diffuse/ambient term for the probe field to feed.
-  "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_underwater_raytracing_ddgi_frag.spv"
+  "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_water_underwater_raytracing_ddgi_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_SURFEL ${SURFEL_STORAGE_DEFINE} -o ${tempPath}/planet_water_underwater_raytracing_surfel_frag.spv"
 
   "-V planet_water.vert -DWATER_CAUSTICS -o ${tempPath}/planet_water_caustics_vert.spv"
@@ -714,14 +727,14 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_frag.spv"
   # DDGI (RT-based global illumination) variants — only for RT GI modes, hence combined with raytracing_/bufref_; the 'ddgi_'
   # Kind segment sits last (matches the Planet.pas naming, Kind:='ddgi_'). Built per DDGI storage mode (DDGI_STORAGE_DEFINE).
-  "-V planet_renderpass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_velocity_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_wireframe_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_bufref_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_bufref_velocity_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_velocity_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_wireframe_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_renderpass_bufref_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_renderpass_bufref_velocity_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_ddgi_frag.spv"
   # Surfel GI variants (RT-based GI; 'surfel_' Kind segment last, matches Planet.pas Kind:='surfel_').
   "-V planet_renderpass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_SURFEL ${SURFEL_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_surfel_frag.spv"
   "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_SURFEL ${SURFEL_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_velocity_surfel_frag.spv"
@@ -828,14 +841,14 @@ compileshaderarguments=(
   "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_frag.spv"
   "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_frag.spv"
   # DDGI (RT-based GI) variants — only for RT GI modes; 'ddgi_' Kind segment last (matches Planet.pas). Per DDGI storage mode.
-  "-V planet_grass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_raytracing_ddgi_frag.spv"
-  "-V planet_grass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_raytracing_velocity_ddgi_frag.spv"
-  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_raytracing_wireframe_ddgi_frag.spv"
-  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_ddgi_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_bufref_ddgi_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_bufref_velocity_ddgi_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_ddgi_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_velocity_ddgi_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_grass_raytracing_ddgi_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_grass_raytracing_velocity_ddgi_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_grass_raytracing_wireframe_ddgi_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_ddgi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_grass_bufref_ddgi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_grass_bufref_velocity_ddgi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_ddgi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_velocity_ddgi_frag.spv"
   # Surfel GI variants ('surfel_' Kind segment last, matches Planet.pas Kind:='surfel_').
   "-V planet_grass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_SURFEL ${SURFEL_STORAGE_DEFINE} -o ${tempPath}/planet_grass_raytracing_surfel_frag.spv"
   "-V planet_grass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_SURFEL ${SURFEL_STORAGE_DEFINE} -o ${tempPath}/planet_grass_raytracing_velocity_surfel_frag.spv"
@@ -1070,9 +1083,9 @@ addPlanetWaterFragmentVariants "planet_water" "-DTESSELLATION"
 # DDGI (RT-based global illumination) variants of the main water surface — only the raytracing path gets GI (DDGI is RT only),
 # and only the main surface (UNDERWATER / WATER_CAUSTICS deliberately excluded). The 'ddgi' segment sits last, matching the
 # Planet.pas name assembly (planet_water[_raytracing][_msaa|_msaa_fast]_ddgi_frag.spv). Built per DDGI storage mode.
-addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_ddgi_frag.spv"
-addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_ddgi_frag.spv"
-addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DMSAA_FAST -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_fast_ddgi_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_water_raytracing_ddgi_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_ddgi_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DMSAA_FAST -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_fast_ddgi_frag.spv"
 addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DGLOBAL_ILLUMINATION_SURFEL ${SURFEL_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_surfel_frag.spv"
 addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DGLOBAL_ILLUMINATION_SURFEL ${SURFEL_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_surfel_frag.spv"
 addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DMSAA_FAST -DGLOBAL_ILLUMINATION_SURFEL ${SURFEL_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_fast_surfel_frag.spv"
@@ -1189,7 +1202,7 @@ addMeshFragmentShadingGlobalIlluminationVariants(){
   # Cascaded voxel cone tracing
   addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_cascaded_voxel_cone_tracing" "$2 -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING"
 
-  addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_ddgi" "$2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE}"
+  addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_ddgi" "$2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE}"
 
   # Surfel global illumination
   addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_surfel" "$2 -DGLOBAL_ILLUMINATION_SURFEL ${SURFEL_STORAGE_DEFINE}"

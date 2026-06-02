@@ -141,6 +141,39 @@
   #define GI_DDGI_VISIBILITY_MAX_DISTANCE_SCALE 1.5
 #endif
 
+// --- Probe relocation + classification (RTXGI-style, compile-time toggle) ---------------------------------------------
+// When enabled, a per-probe "probe data" image stores xyz = world-space relocation offset (probe pushed out of geometry,
+// |offset| <= GI_DDGI_PROBE_MAX_OFFSET * cellSize) and w = state (0 = inactive/inside geometry or empty space -> skipped
+// while shading, 1 = active). A dedicated compute pass (gi_ddgi_relocation.comp) traces GI_DDGI_FIXED_RAYS fixed directions
+// per probe to compute these. The trace origin and the sampler probe world position both add the offset; the sampler skips
+// inactive probes. DEFAULT OFF until the Pascal side (probe-data image + relocation pass + descriptor binding) is wired.
+#ifndef GI_DDGI_PROBE_RELOCATION
+  #define GI_DDGI_PROBE_RELOCATION 0
+#endif
+#ifndef GI_DDGI_FIXED_RAYS
+  #define GI_DDGI_FIXED_RAYS 32
+#endif
+#ifndef GI_DDGI_PROBE_MAX_OFFSET            // max relocation offset as a fraction of cell size (RTXGI: 0.45, ellipsoid)
+  #define GI_DDGI_PROBE_MAX_OFFSET 0.45
+#endif
+#ifndef GI_DDGI_PROBE_MIN_FRONTFACE         // keep this much clear space (in cell sizes) in front of a probe
+  #define GI_DDGI_PROBE_MIN_FRONTFACE 1.0
+#endif
+#ifndef GI_DDGI_PROBE_BACKFACE_THRESHOLD    // fixed-ray backface fraction above which a probe counts as inside geometry
+  #define GI_DDGI_PROBE_BACKFACE_THRESHOLD 0.25
+#endif
+#define GI_DDGI_PROBE_STATE_INACTIVE 0.0
+#define GI_DDGI_PROBE_STATE_ACTIVE   1.0
+
+// First ray index the irradiance/visibility integration uses. With relocation enabled the first GI_DDGI_FIXED_RAYS rays
+// are the FIXED rays (unrotated, used only by the relocation + classification passes for geometry sampling), so the probe
+// blend skips them — exactly RTXGI's `rayIndex = NUM_FIXED_RAYS` when relocation/classification is enabled.
+#if GI_DDGI_PROBE_RELOCATION
+  #define GI_DDGI_RAY_START uint(GI_DDGI_FIXED_RAYS)
+#else
+  #define GI_DDGI_RAY_START 0u
+#endif
+
 const ivec3 uDDGIProbeCounts = ivec3(GI_DDGI_PROBES_X, GI_DDGI_PROBES_Y, GI_DDGI_PROBES_Z);
 
 // --- Uniform data -----------------------------------------------------------------------------------------------------
@@ -307,6 +340,12 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
   // (fraction of probe rays in that direction that escaped to the sky / missed geometry, used as the IBL occlusion factor).
   vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction);
 
+#if GI_DDGI_PROBE_RELOCATION
+  // Probe data (xyz = world-space relocation offset, w = state) for the physical probe slot. Provided by the consumer
+  // (sampler3D in the shading path / image3D in the trace), like ddgiSampleVisibility above.
+  vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex);
+#endif
+
   // ---------------------------------------------------------------------------------------------------------------------
   //  Sample the irradiance field at a world position for a surface with the given normal, with Chebyshev visibility
   //  weighting (the DDGI leak-reduction term) and trilinear + backface weighting. Returns diffuse irradiance.
@@ -333,6 +372,13 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       float weight = trilinear.x * trilinear.y * trilinear.z;
 
       vec3 probeWorld = ddgiProbeGridToWorld(probeCoord, cascadeIndex);
+#if GI_DDGI_PROBE_RELOCATION
+      vec4 probeData = ddgiLoadProbeData(physProbeCoord, cascadeIndex);
+      if(probeData.w < 0.5){
+        continue; // inactive probe (classified inside geometry / empty space) — skip it in the gather
+      }
+      probeWorld += probeData.xyz; // relocation offset (probe pushed out of geometry)
+#endif
       vec3 probeToPoint = biasedPosition - probeWorld;
       vec3 dirToProbe = normalize(-probeToPoint);
 
@@ -451,6 +497,13 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       float weight = trilinear.x * trilinear.y * trilinear.z;
 
       vec3 probeWorld = ddgiProbeGridToWorld(probeCoord, cascadeIndex);
+#if GI_DDGI_PROBE_RELOCATION
+      vec4 probeData = ddgiLoadProbeData(physProbeCoord, cascadeIndex);
+      if(probeData.w < 0.5){
+        continue; // inactive probe (classified inside geometry / empty space) — skip it in the gather
+      }
+      probeWorld += probeData.xyz; // relocation offset (probe pushed out of geometry)
+#endif
       vec3 probeToPoint = biasedPosition - probeWorld;
       vec3 dirToProbe = normalize(-probeToPoint);
 

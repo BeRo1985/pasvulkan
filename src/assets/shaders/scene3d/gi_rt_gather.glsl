@@ -421,6 +421,24 @@ vec3 giGatherTraceRadiance(const in vec3 origin, const in vec3 direction, const 
   return giGatherShadeHit(surface, previousFrameIndirect);
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+//  Swappable closest-hit trace backend. The trace producers (DDGI / surfel) call giTraceClosestHit() instead of a fixed
+//  implementation, so the ray-vs-scene query can be swapped at compile time. The default is the hardware ray-query
+//  backend (giGatherClosestHit, above); a future SDF backend would #define GI_TRACE_BACKEND = GI_TRACE_BACKEND_SDF and
+//  provide its own giTraceClosestHit returning a GIGatherSurface. (A ray-generation/closest-hit RT-pipeline producer is a
+//  different shader stage and lives in its own pass; it produces the same ray-data and needs no backend macro here.)
+// ---------------------------------------------------------------------------------------------------------------------
+#define GI_TRACE_BACKEND_RAYQUERY 0
+#define GI_TRACE_BACKEND_SDF      1
+#ifndef GI_TRACE_BACKEND
+  #define GI_TRACE_BACKEND GI_TRACE_BACKEND_RAYQUERY
+#endif
+#if GI_TRACE_BACKEND == GI_TRACE_BACKEND_RAYQUERY
+GIGatherSurface giTraceClosestHit(const in vec3 origin, const in vec3 direction, const in float tMin, const in float tMax, const in uint cullMask){
+  return giGatherClosestHit(origin, direction, tMin, tMax, cullMask);
+}
+#endif
+
 #endif // RAYTRACING
 
 #endif // GI_RT_GATHER_GLSL

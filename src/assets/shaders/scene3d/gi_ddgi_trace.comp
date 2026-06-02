@@ -59,6 +59,7 @@ vec3 ddgiGatherSky(const in vec3 dir){
   #define GLOBAL_ILLUMINATION_DDGI_SAMPLE
 #endif
 #include "global_illumination_ddgi.glsl"
+#include "gi_ddgi_raydata.glsl" // shared ray-data contract: ddgiTraceRayDirection / ddgiEncodeRayData / ddgiRayIsFixed
 
 // Per-ray output: rgb = radiance towards the probe, a = hit distance (= max ray distance on a miss).
 layout(set = 1, binding = 1, rgba16f) uniform writeonly image2D uDDGIRayData;
@@ -109,6 +110,15 @@ vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, 
 }
 #endif
 
+#if GI_DDGI_PROBE_RELOCATION
+// Probe data (xyz = relocation offset, w = state) written by gi_ddgi_relocation.comp this frame; read here for this
+// probe's relocated ray origin, and (if multi-bounce is on) by the probe-sampling functions via ddgiLoadProbeData.
+layout(set = 1, binding = 5, rgba16f) uniform readonly image3D uDDGIProbeDataRead;
+vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
+  return imageLoad(uDDGIProbeDataRead, ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z)));
+}
+#endif
+
 layout(push_constant) uniform PushConstants {
   vec4 randomRotation0; // mat3 column 0 (xyz)
   vec4 randomRotation1; // mat3 column 1 (xyz)
@@ -136,57 +146,59 @@ void main(){
   // Toroidal scrolling: the iterated slot is physical; its world position comes from the logical lattice coordinate.
   ivec3 logicalProbeCoord = ddgiProbeLogicalCoord(probeCoord, cascadeIndex);
   vec3 probePosition = ddgiProbeGridToWorld(logicalProbeCoord, cascadeIndex);
+#if GI_DDGI_PROBE_RELOCATION
+  // Trace from the relocated probe position (the relocation pass pushed it out of any geometry it was embedded in), so the
+  // gathered irradiance/visibility match the position the shading sampler reads it back at. The probe-data image is not
+  // cleared on allocation, so on this slot's first frame (blend.z) it still holds uninitialized garbage -> skip the offset
+  // until the relocation pass has written a (clamped) value at least once.
+  if(pushConstants.blend.z < 0.5){
+    probePosition += ddgiLoadProbeData(probeCoord, cascadeIndex).xyz;
+  }
+#endif
 
   mat3 randomRotation = mat3(pushConstants.randomRotation0.xyz, pushConstants.randomRotation1.xyz, pushConstants.randomRotation2.xyz);
-  vec3 rayDirection = ddgiRayDirection(int(rayIndex), randomRotation);
+  vec3 rayDirection = ddgiTraceRayDirection(rayIndex, randomRotation); // contract: fixed (unrotated) vs random (rotated)
 
   float tMin = 1e-3;
   float tMax = max(ddgiData.ddgiCascadeCellSizes[cascadeIndex].w, 1e-2);
+  float cellSize = ddgiData.ddgiCascadeCellSizes[cascadeIndex].x;
 
-  // Trace the ray and shade the hit. Emissive meshes and all analytic lights are accounted for in the gather layer; the
-  // optional multi-bounce feedback samples the previous frame's irradiance field at the hit point.
-  GIGatherSurface surface = giGatherClosestHit(probePosition, rayDirection, tMin, tMax, CULLMASK_ALL);
+  // Trace via the swappable backend (ray-query by default). Emissive meshes + all analytic lights + ray-traced shadows are
+  // handled in the gather layer; optional multi-bounce feedback samples the previous frame's irradiance field at the hit.
+  GIGatherSurface surface = giTraceClosestHit(probePosition, rayDirection, tMin, tMax, CULLMASK_ALL);
 
-  vec3 radiance;
-  if(surface.hit){
-    if(surface.backface){
-      // Backface hit: the probe sits behind/inside this surface (e.g. embedded in a thin ceiling/floor slab). Treat it as
-      // absorptive (black) so the probe does not accumulate light it should not see — the key fix against emissive panels
-      // bleeding through thin geometry to the other side. The stored distance is additionally shortened below so the
-      // visibility (Chebyshev) test registers this slab as a near occluder.
-      radiance = vec3(0.0);
-    }else{
-      vec3 previousFrameIndirect = vec3(0.0);
+  // Shade only the random (blended) rays; fixed rays carry no radiance (the contract encodes only their signed distance).
+  vec3 radiance = vec3(0.0);
+  if(!ddgiRayIsFixed(rayIndex)){
+    if(surface.hit){
+      if(surface.backface){
+        // Backface hit: the probe sits behind/inside this surface (e.g. embedded in a thin ceiling/floor slab). Treat it as
+        // absorptive (black) so the probe does not accumulate light it should not see — the key fix against emissive panels
+        // bleeding through thin geometry to the other side. The stored distance is additionally shortened in the ray-data
+        // encode (gi_ddgi_raydata.glsl) so the visibility (Chebyshev) test registers this slab as a near occluder.
+        radiance = vec3(0.0);
+      }else{
+        vec3 previousFrameIndirect = vec3(0.0);
 #if GI_DDGI_MULTIBOUNCE
-      float skyVisibilityUnused;
-      previousFrameIndirect = ddgiSampleIrradiance(surface.position, surface.normal, -rayDirection, skyVisibilityUnused) * pushConstants.blend.y;
-      // The probe field is not cleared on allocation; ignore non-finite feedback from uninitialized texels so NaN/Inf
-      // cannot enter the ray data and lock into the probe field through the temporal blend.
-      if(any(isnan(previousFrameIndirect)) || any(isinf(previousFrameIndirect))){
-        previousFrameIndirect = vec3(0.0);
-      }
+        float skyVisibilityUnused;
+        previousFrameIndirect = ddgiSampleIrradiance(surface.position, surface.normal, -rayDirection, skyVisibilityUnused) * pushConstants.blend.y;
+        // The probe field is not cleared on allocation; ignore non-finite feedback so NaN/Inf cannot lock into the field.
+        if(any(isnan(previousFrameIndirect)) || any(isinf(previousFrameIndirect))){
+          previousFrameIndirect = vec3(0.0);
+        }
 #endif
-      radiance = giGatherShadeHit(surface, previousFrameIndirect);
+        radiance = giGatherShadeHit(surface, previousFrameIndirect);
+      }
+    }else{
+      radiance = GI_GATHER_SKY(rayDirection);
     }
-  }else{
-    radiance = GI_GATHER_SKY(rayDirection);
+    if(any(isnan(radiance)) || any(isinf(radiance))){
+      radiance = vec3(0.0);
+    }
   }
 
-  // Final safety net: never write NaN/Inf into the ray data (would otherwise propagate into the probe field).
-  if(any(isnan(radiance)) || any(isinf(radiance))){
-    radiance = vec3(0.0);
-  }
-
-  float storedDistance = (surface.hitDistance >= 0.0) ? surface.hitDistance : tMax;
-  // Shorten backface-hit distances (à la Majercik's DDGI optimization) so a probe just behind a thin slab records it as a
-  // close occluder in the mean/mean^2 depth statistics — the Chebyshev test then blocks the leak to the other side.
-  if(surface.hit && surface.backface){
-    storedDistance *= 0.2;
-  }
-  // Clamp the stored visibility distance to a local scale (~1.5 * cell size, mirroring RTXGI's probeMaxRayDistance) so far
-  // hits and sky misses don't inflate the mean/mean^2 statistics and mask nearby thin-slab occluders. The radiance above
-  // is unaffected (it still gathers light from the full ray length); only this depth channel is clamped.
-  storedDistance = min(storedDistance, GI_DDGI_VISIBILITY_MAX_DISTANCE_SCALE * ddgiData.ddgiCascadeCellSizes[cascadeIndex].x);
-
-  imageStore(uDDGIRayData, ivec2(int(rayIndex), int(globalProbeIndex)), vec4(radiance, storedDistance));
+  // Encode per the shared ray-data contract (fixed -> signed/unclamped distance, no radiance; random -> shaded radiance +
+  // backface-shortened, locally-clamped distance).
+  imageStore(uDDGIRayData, ivec2(int(rayIndex), int(globalProbeIndex)),
+             ddgiEncodeRayData(rayIndex, radiance, surface.hit, surface.backface, surface.hitDistance, tMax, cellSize));
 }

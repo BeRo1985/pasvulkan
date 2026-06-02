@@ -96,9 +96,13 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIProbeUpdateComputePass }
        fComputeShaderModuleIrradianceUpdate:TpvVulkanShaderModule;
        fComputeShaderModuleVisibilityUpdate:TpvVulkanShaderModule;
        fComputeShaderModuleBorderUpdate:TpvVulkanShaderModule;
+       fComputeShaderModuleRelocation:TpvVulkanShaderModule;       // relocation only (GlobalIlluminationDDGIProbeRelocation)
+       fComputeShaderModuleClassification:TpvVulkanShaderModule;   // relocation only
        fVulkanPipelineShaderStageComputeIrradianceUpdate:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageComputeVisibilityUpdate:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageComputeBorderUpdate:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageComputeRelocation:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageComputeClassification:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
@@ -106,6 +110,8 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIProbeUpdateComputePass }
        fPipelineIrradianceUpdate:TpvVulkanComputePipeline;
        fPipelineVisibilityUpdate:TpvVulkanComputePipeline;
        fPipelineBorderUpdate:TpvVulkanComputePipeline;
+       fPipelineRelocation:TpvVulkanComputePipeline;       // relocation only
+       fPipelineClassification:TpvVulkanComputePipeline;   // relocation only
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -152,6 +158,13 @@ begin
  fVulkanPipelineShaderStageComputeIrradianceUpdate:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModuleIrradianceUpdate,'main');
  fVulkanPipelineShaderStageComputeVisibilityUpdate:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModuleVisibilityUpdate,'main');
  fVulkanPipelineShaderStageComputeBorderUpdate:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModuleBorderUpdate,'main');
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
+  // RTXGI-style relocation + classification: read-only consumers of the trace's fixed rays, run after the blend/border.
+  fComputeShaderModuleRelocation:=Load('gi_ddgi_relocation_comp.spv');
+  fComputeShaderModuleClassification:=Load('gi_ddgi_classification_comp.spv');
+  fVulkanPipelineShaderStageComputeRelocation:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModuleRelocation,'main');
+  fVulkanPipelineShaderStageComputeClassification:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModuleClassification,'main');
+ end;
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationDDGIProbeUpdateComputePass.ReleasePersistentResources;
@@ -159,9 +172,13 @@ begin
  FreeAndNil(fVulkanPipelineShaderStageComputeIrradianceUpdate);
  FreeAndNil(fVulkanPipelineShaderStageComputeVisibilityUpdate);
  FreeAndNil(fVulkanPipelineShaderStageComputeBorderUpdate);
+ FreeAndNil(fVulkanPipelineShaderStageComputeRelocation);
+ FreeAndNil(fVulkanPipelineShaderStageComputeClassification);
  FreeAndNil(fComputeShaderModuleIrradianceUpdate);
  FreeAndNil(fComputeShaderModuleVisibilityUpdate);
  FreeAndNil(fComputeShaderModuleBorderUpdate);
+ FreeAndNil(fComputeShaderModuleRelocation);
+ FreeAndNil(fComputeShaderModuleClassification);
  inherited ReleasePersistentResources;
 end;
 
@@ -177,6 +194,9 @@ begin
                                                        fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(1+TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount+1));
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames); // binding 5 = probe-data (relocation/classification RMW)
+ end;
  fVulkanDescriptorPool.Initialize;
 
  // Set 1 = DDGI resources used by the blend: UBO, ray-data (read), irradiance (write), visibility (write). Same bindings
@@ -186,6 +206,11 @@ begin
  fVulkanDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
+  // Binding 5 = probe-data (xyz = relocation offset, w = state), read-modify-written by the relocation + classification
+  // pipelines. Matches gi_ddgi_relocation.comp / gi_ddgi_classification.comp (set 1 binding 5).
+  fVulkanDescriptorSetLayout.AddBinding(5,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+ end;
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -199,6 +224,10 @@ begin
  fPipelineIrradianceUpdate:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,fInstance.Renderer.VulkanPipelineCache,0,fVulkanPipelineShaderStageComputeIrradianceUpdate,fPipelineLayout,nil,0);
  fPipelineVisibilityUpdate:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,fInstance.Renderer.VulkanPipelineCache,0,fVulkanPipelineShaderStageComputeVisibilityUpdate,fPipelineLayout,nil,0);
  fPipelineBorderUpdate:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,fInstance.Renderer.VulkanPipelineCache,0,fVulkanPipelineShaderStageComputeBorderUpdate,fPipelineLayout,nil,0);
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
+  fPipelineRelocation:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,fInstance.Renderer.VulkanPipelineCache,0,fVulkanPipelineShaderStageComputeRelocation,fPipelineLayout,nil,0);
+  fPipelineClassification:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,fInstance.Renderer.VulkanPipelineCache,0,fVulkanPipelineShaderStageComputeClassification,fPipelineLayout,nil,0);
+ end;
 
  for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
 
@@ -219,6 +248,10 @@ begin
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,length(IrradianceImageInfos),TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),IrradianceImageInfos,[],[],false);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIVisibilityImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
+  if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIProbeDataImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
+  end;
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
   IrradianceImageInfos:=nil;
@@ -233,6 +266,8 @@ begin
  FreeAndNil(fPipelineIrradianceUpdate);
  FreeAndNil(fPipelineVisibilityUpdate);
  FreeAndNil(fPipelineBorderUpdate);
+ FreeAndNil(fPipelineRelocation);
+ FreeAndNil(fPipelineClassification);
  FreeAndNil(fPipelineLayout);
  for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
@@ -298,6 +333,21 @@ begin
  // Border / guard band copy for the octahedral atlas(es). One workgroup per probe.
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineBorderUpdate.Handle);
  aCommandBuffer.CmdDispatch(TotalProbes,1,1);
+
+ // RTXGI-style probe relocation + classification (read-only consumers of the trace's fixed rays; no re-tracing). They run
+ // after the blend/border and read-modify-write the probe-data image: relocation writes the offset (xyz), classification the
+ // active state (w). They touch a different resource than the border (atlases), so no barrier is needed before relocation;
+ // a barrier between the two serializes the probe-data RMW. The final publish barrier below also makes the probe-data
+ // visible to the shading samplers (binding 3) and to next frame's trace (relocated ray origin).
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
+  // Probe relocation: one thread per probe (local_size_x = 64). Pushes each probe out of any geometry it is embedded in.
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineRelocation.Handle);
+  aCommandBuffer.CmdDispatch((TotalProbes+63) shr 6,1,1);
+  FullMemoryBarrier; // classification reads the offset (xyz) the relocation pass just wrote and sets the state (w)
+  // Probe classification: one thread per probe. Marks probes mostly seeing backfaces (inside geometry) as INACTIVE.
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineClassification.Handle);
+  aCommandBuffer.CmdDispatch((TotalProbes+63) shr 6,1,1);
+ end;
 
  // Publish the probe writes to every later shader stage that samples them (mesh/planet fragment shaders).
  FinalMemoryBarrier:=TVkMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),

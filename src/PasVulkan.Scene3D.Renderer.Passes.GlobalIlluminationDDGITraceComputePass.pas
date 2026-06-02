@@ -171,6 +171,9 @@ begin
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(1+TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount+1));
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*6);
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames); // binding 5 = probe-data (relocated ray origin)
+ end;
  fVulkanDescriptorPool.Initialize;
 
  // Set 1 = DDGI resources used by the trace: UBO, ray-data (write), irradiance (read for multi-bounce), visibility (read
@@ -181,6 +184,11 @@ begin
  fVulkanDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,TpvScene3DRendererInstance.GlobalIlluminationDDGIIrradianceImageCount,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
  fVulkanDescriptorSetLayout.AddBinding(4,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,6,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
+  // Binding 5 = probe-data (relocation offset + state), read-only here for the relocated ray origin. Written by the
+  // relocation/classification passes; matches the GI_DDGI_PROBE_RELOCATION block in gi_ddgi_trace.comp.
+  fVulkanDescriptorSetLayout.AddBinding(5,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+ end;
  fVulkanDescriptorSetLayout.Initialize;
 
  // Set 2 = per-planet octahedral blend/grass maps (bindless, partially bound), indexed by planet object index.
@@ -230,6 +238,10 @@ begin
                                                                   fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo,
                                                                   fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo,
                                                                   fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo],[],[],false);
+  if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIProbeDataImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
+  end;
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
   IrradianceImageInfos:=nil;

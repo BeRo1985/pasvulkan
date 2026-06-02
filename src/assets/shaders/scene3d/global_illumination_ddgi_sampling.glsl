@@ -57,4 +57,13 @@ vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, 
   return textureLod(uDDGIVisibility, uv, 0.0).rgb; // x = mean dist, y = mean dist^2, z = sky visibility
 }
 
+#if GI_DDGI_PROBE_RELOCATION
+// Per-probe data (xyz = world-space relocation offset, w = state) written by gi_ddgi_relocation.comp. One texel per probe;
+// cascades are stacked along Z like the SH irradiance images.
+layout(set = DDGI_DESCRIPTOR_SET, binding = 3) uniform sampler3D uDDGIProbeData;
+vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
+  return texelFetch(uDDGIProbeData, ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z)), 0);
+}
+#endif
+
 #endif // GLOBAL_ILLUMINATION_DDGI_SAMPLING_GLSL
