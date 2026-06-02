@@ -27,13 +27,13 @@ DEBUG=1
 # GlobalIlluminationDDGIStorageMode in PasVulkan.Scene3D.Renderer.Instance.pas, otherwise the descriptor layouts / image
 # counts / view types of the DDGI compute shaders and the globalillumination_ddgi mesh fragment variant won't match the
 # Pascal side. The define is always passed explicitly (the shader's own default differs), so keep the two in sync.
-DDGI_STORAGE=1
+DDGI_STORAGE=2
 DDGI_STORAGE_DEFINE="-DGI_DDGI_STORAGE=${DDGI_STORAGE}"
 
 # Surfel GI radiance storage mode: 0 = octahedral irradiance atlas (per surfel), 1 = L1 spherical harmonics (default),
 # 2 = L2 spherical harmonics. MUST match the Surfel pool record size on the Pascal side (the per-surfel payload size
 # depends on this). Always passed explicitly to the surfel compute passes AND the globalillumination_surfel consumers.
-SURFEL_STORAGE=1
+SURFEL_STORAGE=2
 SURFEL_STORAGE_DEFINE="-DGI_SURFEL_STORAGE=${SURFEL_STORAGE}"
 
 #############################################

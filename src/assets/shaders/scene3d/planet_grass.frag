@@ -395,7 +395,7 @@ void main(){
     colorOutput += ddgiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
   }
   vec3 iblDiffuse = vec3(0.0);
-  float ddgiIblWeight = ddgiSkyVisibility * specularOcclusion;
+  float ddgiIblWeight = ddgiSkyVisibility;
 #elif defined(GLOBAL_ILLUMINATION_SURFEL)
   // RT GI: surfel-field diffuse (replaces IBL diffuse); IBL specular kept.
   if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){

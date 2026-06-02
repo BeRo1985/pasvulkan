@@ -131,7 +131,7 @@ type { TpvScene3DRendererInstance }
              // (3 RGBA16F 3D images), 2 = L2 spherical harmonics (7 RGBA16F 3D images). Compile-time choice; MUST match the
              // GI_DDGI_STORAGE (= DDGI_STORAGE in compileshaders.sh) the DDGI compute shaders AND the globalillumination_ddgi
              // mesh fragment variant are built with, otherwise the descriptor image counts / view types mismatch.
-             GlobalIlluminationDDGIStorageMode=1;
+             GlobalIlluminationDDGIStorageMode=2;
              GlobalIlluminationDDGIStorageOctahedral=(GlobalIlluminationDDGIStorageMode=0);
              // SH image count: L2 = 7, L1 = 3 (and 3 as the unused placeholder size for the octahedral mode).
              GlobalIlluminationDDGISHImageCount=(7*Ord(GlobalIlluminationDDGIStorageMode=2))+(3*Ord(GlobalIlluminationDDGIStorageMode<>2));
@@ -147,7 +147,7 @@ type { TpvScene3DRendererInstance }
              GlobalIlluminationSurfelMaxPerCell=32;                  // surfel index slots stored per hash cell
              GlobalIlluminationSurfelRaysPerSurfel=32;               // rays traced per surfel per frame (<= GI_SURFEL_RAYS_PER_SURFEL)
              // Radiance storage: 0 = octahedral atlas (per surfel), 1 = L1 SH (default), 2 = L2 SH. MUST match SURFEL_STORAGE.
-             GlobalIlluminationSurfelStorageMode=1;
+             GlobalIlluminationSurfelStorageMode=2;
              GlobalIlluminationSurfelOctSize=4;                      // octahedral atlas edge (only used when storage mode = 0)
              GlobalIlluminationSurfelStorageIsSH=(GlobalIlluminationSurfelStorageMode<>0);
              // Per-surfel payload size in uvec2 units: L1 = 3, L2 = 7, OCT = N*N (one uvec2 per RGB texel).

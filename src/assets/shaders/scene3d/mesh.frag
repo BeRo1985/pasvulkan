@@ -931,7 +931,7 @@ void main() {
         DDGI_SH_TYPE ddgiRadianceSH = ddgiSampleRadianceSH(inWorldSpacePosition.xyz, normal.xyz, viewDirection, ddgiSkyVisibility);
         vec3 shDominantDirectionalLightColor, shDominantDirectionalLightDirection;
 #ifdef GI_DDGI_SH_APPROXIMATE_DOMINANT
-        // Default (= HEAD~1, applied to L1 and L2): approximate dominant directional light + residual SH (DC kept).
+        // Default (applied to L1 and L2): approximate dominant directional light + residual SH (DC kept).
         // The dominant light direction/intensity live in the L0/L1 bands, so the L2 variant extracts them from the L1
         // reduction (identical method to L1); the full L2 detail is preserved in the residual below.
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
@@ -946,7 +946,7 @@ void main() {
           colorOutput += shResidualDiffuse * baseColor.xyz * diffuseOcclusion * OneOverPI;
         }
 #else
-        // Alternative (= HEAD): native extract-and-subtract -> uniform ambient + DC-zeroed residual + dominant light.
+        // Alternative: native extract-and-subtract -> uniform ambient + DC-zeroed residual + dominant light.
         vec3 shAmbient;
         float shModifiedSqrtRoughness;
         DDGI_SH_EXTRACT_DOMINANT(ddgiRadianceSH, shAmbient, shDominantDirectionalLightDirection, shDominantDirectionalLightColor, sqrt(clamp(perceptualRoughness, 0.0, 1.0)), shModifiedSqrtRoughness);
@@ -985,7 +985,7 @@ void main() {
       // sky actually visible here", which the short-range per-pixel AO misses) combined with that AO.
       float ddgiSkyVisibility;
       vec3 ddgiIrradiance = ddgiSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, viewDirection, ddgiSkyVisibility);
-      float iblWeight = ddgiSkyVisibility * specularOcclusion;
+      float iblWeight = ddgiSkyVisibility;
       if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
         colorOutput += ddgiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
       }
