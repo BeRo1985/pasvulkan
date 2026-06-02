@@ -149,17 +149,25 @@ void main(){
 
   vec3 radiance;
   if(surface.hit){
-    vec3 previousFrameIndirect = vec3(0.0);
+    if(surface.backface){
+      // Backface hit: the probe sits behind/inside this surface (e.g. embedded in a thin ceiling/floor slab). Treat it as
+      // absorptive (black) so the probe does not accumulate light it should not see — the key fix against emissive panels
+      // bleeding through thin geometry to the other side. The stored distance is additionally shortened below so the
+      // visibility (Chebyshev) test registers this slab as a near occluder.
+      radiance = vec3(0.0);
+    }else{
+      vec3 previousFrameIndirect = vec3(0.0);
 #if GI_DDGI_MULTIBOUNCE
-    float skyVisibilityUnused;
-    previousFrameIndirect = ddgiSampleIrradiance(surface.position, surface.normal, -rayDirection, skyVisibilityUnused) * pushConstants.blend.y;
-    // The probe field is not cleared on allocation; ignore non-finite feedback from uninitialized texels so NaN/Inf
-    // cannot enter the ray data and lock into the probe field through the temporal blend.
-    if(any(isnan(previousFrameIndirect)) || any(isinf(previousFrameIndirect))){
-      previousFrameIndirect = vec3(0.0);
-    }
+      float skyVisibilityUnused;
+      previousFrameIndirect = ddgiSampleIrradiance(surface.position, surface.normal, -rayDirection, skyVisibilityUnused) * pushConstants.blend.y;
+      // The probe field is not cleared on allocation; ignore non-finite feedback from uninitialized texels so NaN/Inf
+      // cannot enter the ray data and lock into the probe field through the temporal blend.
+      if(any(isnan(previousFrameIndirect)) || any(isinf(previousFrameIndirect))){
+        previousFrameIndirect = vec3(0.0);
+      }
 #endif
-    radiance = giGatherShadeHit(surface, previousFrameIndirect);
+      radiance = giGatherShadeHit(surface, previousFrameIndirect);
+    }
   }else{
     radiance = GI_GATHER_SKY(rayDirection);
   }
@@ -170,6 +178,15 @@ void main(){
   }
 
   float storedDistance = (surface.hitDistance >= 0.0) ? surface.hitDistance : tMax;
+  // Shorten backface-hit distances (à la Majercik's DDGI optimization) so a probe just behind a thin slab records it as a
+  // close occluder in the mean/mean^2 depth statistics — the Chebyshev test then blocks the leak to the other side.
+  if(surface.hit && surface.backface){
+    storedDistance *= 0.2;
+  }
+  // Clamp the stored visibility distance to a local scale (~1.5 * cell size, mirroring RTXGI's probeMaxRayDistance) so far
+  // hits and sky misses don't inflate the mean/mean^2 statistics and mask nearby thin-slab occluders. The radiance above
+  // is unaffected (it still gathers light from the full ray length); only this depth channel is clamped.
+  storedDistance = min(storedDistance, GI_DDGI_VISIBILITY_MAX_DISTANCE_SCALE * ddgiData.ddgiCascadeCellSizes[cascadeIndex].x);
 
   imageStore(uDDGIRayData, ivec2(int(rayIndex), int(globalProbeIndex)), vec4(radiance, storedDistance));
 }

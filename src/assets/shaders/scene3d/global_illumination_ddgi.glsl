@@ -122,6 +122,25 @@
   #define GI_DDGI_VISIBILITY_SHARPNESS 8.0
 #endif
 
+// Surface bias when sampling the probe field (mirrors RTXGI probeNormalBias/probeViewBias): the shading point is offset
+// along its normal and towards the camera before the probe interpolation + Chebyshev test, which reduces both probe
+// self-shadowing and light leaking through thin geometry. Expressed as a fraction of the cascade cell size (probe spacing),
+// so it scales with cascade resolution. Tunable; too large makes the GI "slip"/over-darken near edges.
+#ifndef GI_DDGI_NORMAL_BIAS
+  #define GI_DDGI_NORMAL_BIAS 0.3
+#endif
+#ifndef GI_DDGI_VIEW_BIAS
+  #define GI_DDGI_VIEW_BIAS 0.1
+#endif
+
+// Upper bound for the distance written into the visibility (mean / mean^2) statistics, as a multiple of the cascade cell
+// size — mirrors RTXGI's probeMaxRayDistance = length(probeSpacing) * 1.5. Keeps the depth statistics on a local scale so
+// far hits / sky misses don't inflate the mean and mask a nearby thin-slab occluder (which would otherwise leak). Only
+// the stored DISTANCE is clamped; the ray's radiance still gathers light from the full ray length.
+#ifndef GI_DDGI_VISIBILITY_MAX_DISTANCE_SCALE
+  #define GI_DDGI_VISIBILITY_MAX_DISTANCE_SCALE 1.5
+#endif
+
 const ivec3 uDDGIProbeCounts = ivec3(GI_DDGI_PROBES_X, GI_DDGI_PROBES_Y, GI_DDGI_PROBES_Z);
 
 // --- Uniform data -----------------------------------------------------------------------------------------------------
@@ -297,8 +316,9 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
     ivec3 baseProbe = ivec3(floor(gridCoord));
     vec3 frac = gridCoord - vec3(baseProbe);
 
-    // Bias the sample position slightly along the normal and away from the view to reduce self-shadowing of the probes.
-    vec3 biasedPosition = worldPosition + (normal * 0.0) + (viewDirection * 0.0);
+    // Surface bias (along normal + towards camera, scaled by the cascade cell size) to reduce probe self-shadowing AND
+    // light leaking through thin geometry; the Chebyshev distToProbe below is measured from this lifted position.
+    vec3 biasedPosition = worldPosition + ((normal * GI_DDGI_NORMAL_BIAS) + (viewDirection * GI_DDGI_VIEW_BIAS)) * ddgiData.ddgiCascadeCellSizes[cascadeIndex].x;
 
     vec3 sumIrradiance = vec3(0.0);
     float sumSkyVisibility = 0.0;
@@ -415,7 +435,8 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
     ivec3 baseProbe = ivec3(floor(gridCoord));
     vec3 frac = gridCoord - vec3(baseProbe);
 
-    vec3 biasedPosition = worldPosition;
+    // Surface bias (see ddgiSampleIrradianceInCascade): lift along normal + towards camera, scaled by the cell size.
+    vec3 biasedPosition = worldPosition + ((normal * GI_DDGI_NORMAL_BIAS) + (viewDirection * GI_DDGI_VIEW_BIAS)) * ddgiData.ddgiCascadeCellSizes[cascadeIndex].x;
 
     DDGI_SH_TYPE sumSH = DDGI_SH_ZERO();
     float sumSkyVisibility = 0.0;

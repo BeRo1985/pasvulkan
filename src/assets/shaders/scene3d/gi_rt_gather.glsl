@@ -60,6 +60,9 @@ struct GIGatherSurface {
   vec3 emission;     // emissive radiance, linear
   float hitDistance; // distance from ray origin to hit; negative when the ray missed
   bool hit;          // true when the ray hit geometry, false on a sky/environment miss
+  bool backface;     // true when the ray hit the back side of the surface (shading normal pointed along the ray before
+                     // it was flipped) — i.e. the ray origin is behind/inside this surface. Used by the DDGI trace to
+                     // treat such hits as occluders (shortened distance) and absorptive (black), preventing leaks.
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -162,6 +165,7 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
   s.emission = vec3(0.0);
   s.hitDistance = -1.0;
   s.hit = false;
+  s.backface = false;
 
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, 0u, cullMask, origin, tMin, direction, tMax);
@@ -224,7 +228,8 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
 
       s.position = (barycentrics.x * vertexPositionArray[0]) + (barycentrics.y * vertexPositionArray[1]) + (barycentrics.z * vertexPositionArray[2]);
       s.normal = normalize((barycentrics.x * vertexNormalArray[0]) + (barycentrics.y * vertexNormalArray[1]) + (barycentrics.z * vertexNormalArray[2]));
-      if(dot(s.normal, direction) > 0.0){
+      s.backface = dot(s.normal, direction) > 0.0; // ray hit the back side -> origin is behind this surface
+      if(s.backface){
         s.normal = -s.normal;
       }
 
@@ -290,7 +295,8 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
 
       s.position = objectToWorld * vec4(objectPosition, 1.0);
       s.normal = normalize(objectToWorld * vec4(objectNormal, 0.0));
-      if(dot(s.normal, direction) > 0.0){
+      s.backface = dot(s.normal, direction) > 0.0; // ray hit the back side -> origin is behind this surface
+      if(s.backface){
         s.normal = -s.normal;
       }
 
