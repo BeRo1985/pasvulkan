@@ -165,6 +165,11 @@ layout(set = 2, binding = 2) uniform usampler2D uGrassFlagsMap; // GrassFlagsMap
   // textures, grass cull/mesh-gen). Mirrors planet_renderpass.frag / mesh.frag.
   #define DDGI_DESCRIPTOR_SET 4
   #include "global_illumination_ddgi_sampling.glsl"
+#elif defined(GLOBAL_ILLUMINATION_SURFEL)
+  // Surfel GI shares the same fixed dedicated set 4 as DDGI (mutually exclusive RT GI build variants).
+  #define GLOBAL_ILLUMINATION_SURFEL_SAMPLE
+  #define GI_SURFEL_DESCRIPTOR_SET 4
+  #include "global_illumination_surfel.glsl"
 #endif
 
 vec3 imageLightBasedLightDirection = imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
@@ -391,6 +396,14 @@ void main(){
   }
   vec3 iblDiffuse = vec3(0.0);
   float ddgiIblWeight = ddgiSkyVisibility * specularOcclusion;
+#elif defined(GLOBAL_ILLUMINATION_SURFEL)
+  // RT GI: surfel-field diffuse (replaces IBL diffuse); IBL specular kept.
+  if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
+    vec3 surfelIrradiance = giSurfelSampleIrradiance(inWorldSpacePosition, normal);
+    colorOutput += surfelIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
+  }
+  vec3 iblDiffuse = vec3(0.0);
+  const float ddgiIblWeight = 1.0;
 #else
   vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
   const float ddgiIblWeight = 1.0;

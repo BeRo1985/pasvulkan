@@ -677,6 +677,7 @@ compileshaderarguments=(
   # ambient term here (the underwater base color is refracted scene color, already lit). WATER_CAUSTICS gets no DDGI variant:
   # that pass is purely additive refracted-sun light with no diffuse/ambient term for the probe field to feed.
   "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_underwater_raytracing_ddgi_frag.spv"
+  "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_water_underwater_raytracing_surfel_frag.spv"
 
   "-V planet_water.vert -DWATER_CAUSTICS -o ${tempPath}/planet_water_caustics_vert.spv"
   "-V planet_water.vert -DWATER_CAUSTICS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_vert.spv"
@@ -715,6 +716,15 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_bufref_velocity_ddgi_frag.spv"
   "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_ddgi_frag.spv"
   "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_ddgi_frag.spv"
+  # Surfel GI variants (RT-based GI; 'surfel_' Kind segment last, matches Planet.pas Kind:='surfel_').
+  "-V planet_renderpass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_renderpass_raytracing_surfel_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_renderpass_raytracing_velocity_surfel_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_renderpass_raytracing_wireframe_surfel_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_surfel_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_renderpass_bufref_surfel_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_renderpass_bufref_velocity_surfel_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_renderpass_bufref_wireframe_surfel_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_surfel_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_renderpass_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_renderpass_wireframe_rsm_frag.spv"
@@ -820,6 +830,15 @@ compileshaderarguments=(
   "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_bufref_velocity_ddgi_frag.spv"
   "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_ddgi_frag.spv"
   "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_velocity_ddgi_frag.spv"
+  # Surfel GI variants ('surfel_' Kind segment last, matches Planet.pas Kind:='surfel_').
+  "-V planet_grass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_grass_raytracing_surfel_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_grass_raytracing_velocity_surfel_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_grass_raytracing_wireframe_surfel_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_surfel_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_grass_bufref_surfel_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_grass_bufref_velocity_surfel_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_grass_bufref_wireframe_surfel_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_grass_bufref_wireframe_velocity_surfel_frag.spv"
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_grass_rsm_frag.spv"                                  # unused: BDA always active
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_grass_velocity_rsm_frag.spv"              # unused: BDA always active
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_rsm_frag.spv"            # unused: BDA always active
@@ -1048,6 +1067,9 @@ addPlanetWaterFragmentVariants "planet_water" "-DTESSELLATION"
 addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_ddgi_frag.spv"
 addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_ddgi_frag.spv"
 addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DMSAA_FAST -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_fast_ddgi_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_water_raytracing_surfel_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_water_raytracing_msaa_surfel_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DMSAA_FAST -DGLOBAL_ILLUMINATION_SURFEL -o ${tempPath}/planet_water_raytracing_msaa_fast_surfel_frag.spv"
 
 #############################################
 #               Mesh shaders                #

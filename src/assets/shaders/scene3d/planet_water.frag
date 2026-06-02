@@ -256,6 +256,11 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
   #define DDGI_DESCRIPTOR_SET 4
   #include "global_illumination_ddgi_sampling.glsl"
   #define WATER_DDGI 1
+#elif defined(GLOBAL_ILLUMINATION_SURFEL) && !defined(WATER_CAUSTICS)
+  #define GLOBAL_ILLUMINATION_SURFEL_SAMPLE
+  #define GI_SURFEL_DESCRIPTOR_SET 4
+  #include "global_illumination_surfel.glsl"
+  #define WATER_SURFEL 1
 #endif
 
 // Diffuse ambient irradiance for the water surface at a given world position, in getIBLDiffuse()'s "ready to multiply by
@@ -267,6 +272,11 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 #if defined(WATER_DDGI)
 vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
   return ddgiSampleIrradiance(worldPosition, n, viewDirection, skyVisibility) * OneOverPI;
+}
+#elif defined(WATER_SURFEL)
+vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
+  skyVisibility = 1.0;
+  return giSurfelSampleIrradiance(worldPosition, n) * OneOverPI;
 }
 #else
 vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){

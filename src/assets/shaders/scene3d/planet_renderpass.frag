@@ -187,6 +187,11 @@ const vec3 inModelScale = vec3(1.0);
   // Surfel reuse the same set), mirroring mesh.frag's dedicated DDGI set.
   #define DDGI_DESCRIPTOR_SET 4
   #include "global_illumination_ddgi_sampling.glsl"
+#elif defined(GLOBAL_ILLUMINATION_SURFEL)
+  // Surfel GI shares the same fixed dedicated set 4 as DDGI (the two RT GI modes are mutually exclusive build variants).
+  #define GLOBAL_ILLUMINATION_SURFEL_SAMPLE
+  #define GI_SURFEL_DESCRIPTOR_SET 4
+  #include "global_illumination_surfel.glsl"
 #endif
 
 vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0); // imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
@@ -558,6 +563,14 @@ void main(){
   }
   vec3 iblDiffuse = vec3(0.0);
   float ddgiIblWeight = ddgiSkyVisibility;
+#elif defined(GLOBAL_ILLUMINATION_SURFEL)
+  // RT GI: surfel field provides the diffuse indirect (replacing the environment IBL diffuse); the IBL specular is kept.
+  if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
+    vec3 surfelIrradiance = giSurfelSampleIrradiance(inWorldSpacePosition, normal);
+    colorOutput += surfelIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
+  }
+  vec3 iblDiffuse = vec3(0.0);
+  const float ddgiIblWeight = 1.0;
 #else
   vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
   const float ddgiIblWeight = 1.0;
