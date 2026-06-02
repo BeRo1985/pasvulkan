@@ -159,6 +159,14 @@ layout(set = 2, binding = 2) uniform usampler2D uGrassFlagsMap; // GrassFlagsMap
 
 #include "roughness.glsl"
 
+#if defined(GLOBAL_ILLUMINATION_DDGI)
+  // DDGI probe field for ray-tracing-based global illumination — only for the RT GI modes (DDGI now, Surfel later), never
+  // CRH/VCT. GI lives at the fixed dedicated set 4 (the grass pipeline uses sets 0..3: global, mesh-rendering-pass, planet
+  // textures, grass cull/mesh-gen). Mirrors planet_renderpass.frag / mesh.frag.
+  #define DDGI_DESCRIPTOR_SET 4
+  #include "global_illumination_ddgi_sampling.glsl"
+#endif
+
 vec3 imageLightBasedLightDirection = imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
 
 vec3 viewDirection = normalize(-inBlock.cameraRelativePosition);
@@ -374,7 +382,19 @@ void main(){
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
 
+#if defined(GLOBAL_ILLUMINATION_DDGI)
+  // RT GI: probe-field diffuse (replaces IBL diffuse); IBL specular kept but occluded by probe sky-visibility · AO.
+  float ddgiSkyVisibility;
+  vec3 ddgiIrradiance = ddgiSampleIrradiance(inWorldSpacePosition, normal, viewDirection, ddgiSkyVisibility);
+  if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
+    colorOutput += ddgiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
+  }
+  vec3 iblDiffuse = vec3(0.0);
+  float ddgiIblWeight = ddgiSkyVisibility * specularOcclusion;
+#else
   vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
+  const float ddgiIblWeight = 1.0;
+#endif
   vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
   vec3 iblSpecularDielectric = iblSpecularMetal;
   vec3 iblMetalFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
@@ -382,7 +402,7 @@ void main(){
   vec3 iblDielectricFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, F0Dielectric, specularWeight);
   vec3 iblDielectricBRDF = mix(iblDiffuse * diffuseOcclusion, iblSpecularDielectric * specularOcclusion, iblDielectricFresnel);
   vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
-  colorOutput += iblResultColor;
+  colorOutput += iblResultColor * ddgiIblWeight;
       
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
   vec4 c = vec4(colorOutput, 1.0);

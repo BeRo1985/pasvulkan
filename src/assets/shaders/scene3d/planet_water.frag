@@ -248,6 +248,35 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 #include "planet_caustics.glsl"
 #endif
 
+// DDGI probe field for ray-tracing-based global illumination, gated to RT GI modes (DDGI now, Surfel later) — never
+// CRH/VCT. Only wired into the main water-surface path: the UNDERWATER / WATER_CAUSTICS variants lack the set-3 surface
+// environment and diffuse GI there is not meaningful, so they fall back to environment IBL. GI lives at the fixed
+// dedicated set 4 (the water surface pipeline uses sets 0..3), mirroring planet_renderpass.frag / planet_grass.frag.
+#if defined(GLOBAL_ILLUMINATION_DDGI) && !(defined(UNDERWATER) || defined(WATER_CAUSTICS))
+  #define DDGI_DESCRIPTOR_SET 4
+  #include "global_illumination_ddgi_sampling.glsl"
+  #define WATER_DDGI 1
+#endif
+
+// Diffuse ambient irradiance for the water surface, in getIBLDiffuse()'s "ready to multiply by albedo" convention.
+// Under the DDGI build variant it comes from the probe field (replacing the environment IBL diffuse); otherwise it is the
+// environment IBL diffuse. The specular reflection path stays IBL either way (water reflections are wanted). inWorldSpacePosition
+// and viewDirection are file-scope. The skyVisibility overload exposes the probe long-range sky term for callers that want it.
+#if defined(WATER_DDGI)
+vec3 waterDiffuseAmbient(const in vec3 n, out float skyVisibility){
+  return ddgiSampleIrradiance(inWorldSpacePosition, n, viewDirection, skyVisibility) * OneOverPI;
+}
+#else
+vec3 waterDiffuseAmbient(const in vec3 n, out float skyVisibility){
+  skyVisibility = 1.0;
+  return getIBLDiffuse(n);
+}
+#endif
+vec3 waterDiffuseAmbient(const in vec3 n){
+  float skyVisibility;
+  return waterDiffuseAmbient(n, skyVisibility);
+}
+
 vec3 safeNormalize(vec3 v){
   return (length(v) > 0.0) ? normalize(v) : vec3(0.0);
 }
@@ -608,7 +637,7 @@ vec3 applyShoreFoam(vec3 aBaseColor, vec3 aPlanetSpacePos, float aShoreDepth){
       float foamAmount = clamp(shoreMask * foamPattern * waterShoreFoam1.w, 0.0, 1.0);
       // Modulate the (typically white) foam color by ambient IBL + shadow-attenuated direct
       // downwelling irradiance so foam darkens at night / in shadow instead of glowing white.
-      vec3 foamIrradiance = getIBLDiffuse(workNormal) + waterDownwellingIrradiance;
+      vec3 foamIrradiance = waterDiffuseAmbient(workNormal) + waterDownwellingIrradiance;
       vec3 foamLit = waterShoreFoam0.xyz * foamIrradiance;
       result = mix(result, foamLit, foamAmount);
     }
@@ -686,7 +715,7 @@ vec3 applyWhitecaps(vec3 aBaseColor, vec3 aPlanetSpacePos){
   if(mask <= 0.0){
     return aBaseColor;
   }
-  vec3 foamIrradiance  = getIBLDiffuse(workNormal) + waterDownwellingIrradiance;
+  vec3 foamIrradiance  = waterDiffuseAmbient(workNormal) + waterDownwellingIrradiance;
   vec3 foamLit         = whitecapColor * foamIrradiance;
   return mix(aBaseColor, foamLit, mask);
 }
@@ -846,7 +875,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
 
-    vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
+    vec3 iblDiffuse = waterDiffuseAmbient(normal) * baseColor.xyz;
     vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
     vec3 iblSpecularDielectric = iblSpecularMetal;
     vec3 iblMetalFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
@@ -901,7 +930,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     // mix(refraction, waterF0, 1-exp(-depth)) IOR-based water volume appearance.
     vec4 waterAbsorption = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.x), unpackHalf2x16(planetData.waterAbsorptionDeepColor.y));
     vec4 waterDeepColor = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.z), unpackHalf2x16(planetData.waterAbsorptionDeepColor.w));
-    vec3 waterDeepIrradiance = getIBLDiffuse(underWater ? -normal : normal) + waterDownwellingIrradiance;
+    vec3 waterDeepIrradiance = waterDiffuseAmbient(underWater ? -normal : normal) + waterDownwellingIrradiance;
     vec3 waterDeepLit = waterDeepColor.xyz * waterDeepIrradiance;
     refraction = mix(mix(refraction, waterDeepLit, clamp(vec3(1.0) - exp(-waterDepth * waterAbsorption.xyz), vec3(0.0), vec3(1.0))),
                      mix(refraction, vec3(waterF0), clamp(1.0 - exp(-waterDepth * 1.0), 0.0, 1.0)),

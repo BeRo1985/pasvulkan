@@ -799,6 +799,15 @@ compileshaderarguments=(
   "-V planet_grass.frag -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_frag.spv"
   "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_frag.spv"
   "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_frag.spv"
+  # DDGI (RT-based GI) variants — only for RT GI modes; 'ddgi_' Kind segment last (matches Planet.pas). Per DDGI storage mode.
+  "-V planet_grass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_raytracing_ddgi_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_raytracing_velocity_ddgi_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_raytracing_wireframe_ddgi_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_ddgi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_bufref_ddgi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_bufref_velocity_ddgi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_ddgi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_velocity_ddgi_frag.spv"
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_grass_rsm_frag.spv"                                  # unused: BDA always active
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_grass_velocity_rsm_frag.spv"              # unused: BDA always active
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_rsm_frag.spv"            # unused: BDA always active
@@ -1020,6 +1029,13 @@ addPlanetWaterFragmentVariants(){
 }
 
 addPlanetWaterFragmentVariants "planet_water" "-DTESSELLATION"
+
+# DDGI (RT-based global illumination) variants of the main water surface — only the raytracing path gets GI (DDGI is RT only),
+# and only the main surface (UNDERWATER / WATER_CAUSTICS deliberately excluded). The 'ddgi' segment sits last, matching the
+# Planet.pas name assembly (planet_water[_raytracing][_msaa|_msaa_fast]_ddgi_frag.spv). Built per DDGI storage mode.
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_ddgi_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_ddgi_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DMSAA_FAST -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_fast_ddgi_frag.spv"
 
 #############################################
 #               Mesh shaders                #

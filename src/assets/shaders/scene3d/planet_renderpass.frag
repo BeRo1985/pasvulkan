@@ -185,43 +185,8 @@ const vec3 inModelScale = vec3(1.0);
   // textures, and set 3 may hold path-specific data: terrain-mesh SSBO in the mesh-shader path, empty placeholder in the
   // vertex path). GI therefore lives at a fixed dedicated set 4 across all planet pipelines (future RT GI modes like
   // Surfel reuse the same set), mirroring mesh.frag's dedicated DDGI set.
-  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 4
-  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
-  #define GLOBAL_ILLUMINATION_DDGI_SAMPLE
-  #include "global_illumination_ddgi.glsl"
-
-  #if GI_DDGI_STORAGE_IS_SH
-    layout(set = 4, binding = 1) uniform sampler3D uDDGIIrradianceSH[DDGI_SH_IMAGE_COUNT];
-    DDGI_SH_TYPE ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
-      ivec3 texel = ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
-      vec4 a = texelFetch(uDDGIIrradianceSH[0], texel, 0);
-      vec4 b = texelFetch(uDDGIIrradianceSH[1], texel, 0);
-      vec4 c = texelFetch(uDDGIIrradianceSH[2], texel, 0);
-#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-      vec4 d = texelFetch(uDDGIIrradianceSH[3], texel, 0);
-      vec4 e = texelFetch(uDDGIIrradianceSH[4], texel, 0);
-      vec4 f = texelFetch(uDDGIIrradianceSH[5], texel, 0);
-      vec4 g = texelFetch(uDDGIIrradianceSH[6], texel, 0);
-      return SHC3CoefficientsL2Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w),
-                                      vec3(d.x, d.y, d.z), vec3(d.w, e.x, e.y), vec3(e.z, e.w, f.x), vec3(f.y, f.z, f.w),
-                                      vec3(g.x, g.y, g.z));
-#else
-      return SHC3CoefficientsL1Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w));
-#endif
-    }
-  #else
-    layout(set = 4, binding = 1) uniform sampler2D uDDGIIrradianceOct;
-    vec3 ddgiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal){
-      vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, normal, GI_DDGI_IRRADIANCE_OCT_SIZE, GI_DDGI_IRRADIANCE_OCT_FULL);
-      return max(vec3(0.0), textureLod(uDDGIIrradianceOct, uv, 0.0).rgb);
-    }
-  #endif
-
-  layout(set = 4, binding = 2) uniform sampler2D uDDGIVisibility;
-  vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction){
-    vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, direction, GI_DDGI_VISIBILITY_OCT_SIZE, GI_DDGI_VISIBILITY_OCT_FULL);
-    return textureLod(uDDGIVisibility, uv, 0.0).rgb; // x = mean dist, y = mean dist^2, z = sky visibility
-  }
+  #define DDGI_DESCRIPTOR_SET 4
+  #include "global_illumination_ddgi_sampling.glsl"
 #endif
 
 vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0); // imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
