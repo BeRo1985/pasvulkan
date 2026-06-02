@@ -106,6 +106,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIProbeUpdateComputePass }
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fWarmupFrameCounts:array[0..MaxInFlightFrames-1] of TpvInt32; // per in-flight slot: frames since (re)init, for the convergence warmup hysteresis ramp
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipelineIrradianceUpdate:TpvVulkanComputePipeline;
        fPipelineVisibilityUpdate:TpvVulkanComputePipeline;
@@ -188,6 +189,8 @@ var InFlightFrameIndex,SHImageIndex:TpvInt32;
 begin
 
  inherited AcquireVolatileResources;
+
+ FillChar(fWarmupFrameCounts,SizeOf(fWarmupFrameCounts),#0); // every slot restarts the convergence warmup on (re)acquire
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -279,11 +282,17 @@ end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationDDGIProbeUpdateComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 const TotalProbes=TpvScene3DRendererInstance.CountGlobalIlluminationDDGICascades*TpvScene3DRendererInstance.GlobalIlluminationDDGIProbesPerCascade;
+      // Convergence warmup: for a slot's first WarmupFrames updates, ramp the temporal hysteresis from WarmupStartHysteresis
+      // up to SteadyHysteresis, so freshly (re)initialized probes settle in a few frames instead of ~100 (less startup flicker).
+      WarmupFrames=16;
+      WarmupStartHysteresis=0.7;
+      SteadyHysteresis=0.97;
 var PushConstants:TPushConstants;
     DescriptorSet:TVkDescriptorSet;
     Quaternion:TpvQuaternion;
     RotationMatrix:TpvMatrix3x3;
     FinalMemoryBarrier:TVkMemoryBarrier;
+    WarmupT,Hysteresis:TpvFloat;
  procedure FullMemoryBarrier;
  var MemoryBarrier:TVkMemoryBarrier;
  begin
@@ -311,9 +320,17 @@ begin
  // x = temporal hysteresis; z = firstFrame flag (this slot's probe images are still uninitialized -> discard the previous
  // data in the temporal blend this frame). Shared first-frame state with the trace pass; flipped false after writing.
  if fInstance.GlobalIlluminationDDGIFirstFrames[aInFlightFrameIndex] then begin
-  PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,0.0,1.0,0.0);
+  // First frame of this slot: take the raw value (z=1, hysteresis irrelevant) and (re)start the convergence warmup.
+  fWarmupFrameCounts[aInFlightFrameIndex]:=0;
+  PushConstants.Blend:=TpvVector4.InlineableCreate(SteadyHysteresis,0.0,1.0,0.0);
  end else begin
-  PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,1.0,0.0,0.0);
+  // Warmup ramp: low hysteresis right after init (probes converge fast) easing up to the steady value over WarmupFrames.
+  WarmupT:=Min(fWarmupFrameCounts[aInFlightFrameIndex]/WarmupFrames,1.0);
+  Hysteresis:=(WarmupStartHysteresis*(1.0-WarmupT))+(SteadyHysteresis*WarmupT);
+  PushConstants.Blend:=TpvVector4.InlineableCreate(Hysteresis,1.0,0.0,0.0);
+ end;
+ if fWarmupFrameCounts[aInFlightFrameIndex]<WarmupFrames then begin
+  inc(fWarmupFrameCounts[aInFlightFrameIndex]);
  end;
 
  // The ray-data was published by the trace pass (its final barrier + the frame-graph ordering make the writes visible).
