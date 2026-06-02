@@ -39,16 +39,20 @@ void main(){
   int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
   ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade);
 
+  // Hoist the master->sub-pointer derefs once.
+  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData;
+  DDGIProbeDataBuffer probeDataBuf = pushConstants.ddgiMaster.probeData;
+
   int backfaceCount = 0;
   for(int i = 0; i < GI_DDGI_FIXED_RAYS; i++){
-    if(ddgiLoadRay(pushConstants.ddgiMaster, globalProbeIndex, uint(i), pushConstants.params.w).a < 0.0){
+    if(ddgiLoadRay(rayData, globalProbeIndex, uint(i), pushConstants.params.w).a < 0.0){
       backfaceCount++;
     }
   }
 
   float backfaceFraction = float(backfaceCount) / float(GI_DDGI_FIXED_RAYS);
 
-  vec4 probeData = ddgiLoadProbeDataBuffer(pushConstants.ddgiMaster, probeCoord, cascadeIndex);
+  vec4 probeData = ddgiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex);
 
   // Classification hysteresis: a deadband around the threshold stops a borderline probe from flip-flopping ACTIVE<->INACTIVE
   // every frame (which pops it in/out of the shading gather -> flicker). Only flip when the backface fraction is clearly
@@ -65,5 +69,5 @@ void main(){
                       : probeData.w;      // in the deadband: hold the previous classification
   }
 
-  ddgiStoreProbeDataBuffer(pushConstants.ddgiMaster, probeCoord, cascadeIndex, vec4(probeData.xyz, state)); // preserve offset (xyz), owned by the relocation pass
+  ddgiStoreProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex, vec4(probeData.xyz, state)); // preserve offset (xyz), owned by the relocation pass
 }

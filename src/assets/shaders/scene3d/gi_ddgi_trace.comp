@@ -109,7 +109,8 @@ layout(push_constant) uniform PushConstants {
 // Defined after the push constant since it dereferences the master pointer; the prototype in global_illumination_ddgi.glsl
 // lets the sampling functions (compiled above) call it.
 vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
-  return ddgiLoadProbeDataBuffer(pushConstants.ddgiMaster, probeCoord, cascadeIndex);
+  DDGIProbeDataBuffer pd = pushConstants.ddgiMaster.probeData; // launder through a local (readonly master field -> non-readonly ref) + hoist
+  return ddgiLoadProbeDataBuffer(pd, probeCoord, cascadeIndex);
 }
 #endif
 
@@ -117,14 +118,15 @@ vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
 // Previous-frame SH irradiance (multi-bounce feedback) from the master's irradianceSH BDA buffer. Same packing as the update
 // pass writes; defined after the push constant (dereferences the master), prototyped in global_illumination_ddgi.glsl.
 DDGI_SH_TYPE ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
-  vec4 a = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 0);
-  vec4 b = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 1);
-  vec4 c = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 2);
+  DDGIIrradianceSHBuffer shBuf = pushConstants.ddgiMaster.irradianceSH; // hoist the master->sub-pointer deref once
+  vec4 a = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 0);
+  vec4 b = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 1);
+  vec4 c = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 2);
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-  vec4 d = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 3);
-  vec4 e = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 4);
-  vec4 f = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 5);
-  vec4 g = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 6);
+  vec4 d = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 3);
+  vec4 e = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 4);
+  vec4 f = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 5);
+  vec4 g = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 6);
   return SHC3CoefficientsL2Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w),
                                   vec3(d.x, d.y, d.z), vec3(d.w, e.x, e.y), vec3(e.z, e.w, f.x), vec3(f.y, f.z, f.w),
                                   vec3(g.x, g.y, g.z));
@@ -206,6 +208,7 @@ void main(){
 
   // Encode per the shared ray-data contract (fixed -> signed/unclamped distance, no radiance; random -> shaded radiance +
   // backface-shortened, locally-clamped distance).
-  ddgiStoreRay(pushConstants.ddgiMaster, globalProbeIndex, rayIndex, raysPerProbe,
+  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData; // launder through a local (readonly master field -> non-readonly ref)
+  ddgiStoreRay(rayData, globalProbeIndex, rayIndex, raysPerProbe,
                ddgiEncodeRayData(rayIndex, radiance, surface.hit, surface.backface, surface.hitDistance, tMax, cellSize));
 }

@@ -55,6 +55,7 @@ void main(){
 
   float maxRayDistance = max(ddgiData.ddgiCascadeCellSizes[cascadeIndex].w, 1e-2);
 
+  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData; // hoist the master->sub-pointer deref out of the ray loop
   float sumDist = 0.0;
   float sumDist2 = 0.0;
   float sumSky = 0.0; // weighted fraction of rays in this direction that escaped to the sky (missed geometry)
@@ -63,7 +64,7 @@ void main(){
     vec3 rayDirection = ddgiTraceRayDirection(r, randomRotation);
     float weight = pow(max(0.0, dot(texelDirection, rayDirection)), sharpness);
     if(weight > 0.0){
-      float rawDist = ddgiLoadRay(pushConstants.ddgiMaster, globalProbeIndex, r, raysPerProbe).a;
+      float rawDist = ddgiLoadRay(rayData, globalProbeIndex, r, raysPerProbe).a;
       float dist = min(rawDist, maxRayDistance);
       // The trace stores maxRayDistance as the hit distance on a miss, so a ray that reached (or exceeded) it saw the sky.
       float missedToSky = (rawDist >= (maxRayDistance * 0.999)) ? 1.0 : 0.0;

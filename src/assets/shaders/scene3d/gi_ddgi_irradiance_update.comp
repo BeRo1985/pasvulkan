@@ -64,14 +64,15 @@ const float GI_DDGI_FOUR_PI = 12.566370614359172;
 // L1 (4 coeffs) uses 3 vec4, L2 (9 coeffs) uses 7; the first three are identical between the two, the L2 ones append c4..c8
 // in the same interleaved pattern. (Same packing as the old SH image set, just sourced from / written to the buffer.)
 DDGI_SH_TYPE ddgiLoadSH(const in ivec3 probeCoord, const in int cascadeIndex){
-  vec4 a = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 0);
-  vec4 b = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 1);
-  vec4 c = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 2);
+  DDGIIrradianceSHBuffer shBuf = pushConstants.ddgiMaster.irradianceSH; // hoist the master->sub-pointer deref once
+  vec4 a = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 0);
+  vec4 b = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 1);
+  vec4 c = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 2);
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-  vec4 d = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 3);
-  vec4 e = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 4);
-  vec4 f = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 5);
-  vec4 g = ddgiLoadSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 6);
+  vec4 d = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 3);
+  vec4 e = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 4);
+  vec4 f = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 5);
+  vec4 g = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 6);
   return SHC3CoefficientsL2Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w),
                                   vec3(d.x, d.y, d.z), vec3(d.w, e.x, e.y), vec3(e.z, e.w, f.x), vec3(f.y, f.z, f.w),
                                   vec3(g.x, g.y, g.z));
@@ -81,14 +82,15 @@ DDGI_SH_TYPE ddgiLoadSH(const in ivec3 probeCoord, const in int cascadeIndex){
 }
 
 void ddgiStoreSH(const in ivec3 probeCoord, const in int cascadeIndex, const in DDGI_SH_TYPE sh){
-  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 0, vec4(sh.coefficients[0].xyz, sh.coefficients[1].x));
-  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 1, vec4(sh.coefficients[1].yz, sh.coefficients[2].xy));
-  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 2, vec4(sh.coefficients[2].z, sh.coefficients[3].xyz));
+  DDGIIrradianceSHBuffer shBuf = pushConstants.ddgiMaster.irradianceSH; // hoist the master->sub-pointer deref once
+  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 0, vec4(sh.coefficients[0].xyz, sh.coefficients[1].x));
+  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 1, vec4(sh.coefficients[1].yz, sh.coefficients[2].xy));
+  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 2, vec4(sh.coefficients[2].z, sh.coefficients[3].xyz));
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 3, vec4(sh.coefficients[4].xyz, sh.coefficients[5].x));
-  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 4, vec4(sh.coefficients[5].yz, sh.coefficients[6].xy));
-  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 5, vec4(sh.coefficients[6].z, sh.coefficients[7].xyz));
-  ddgiStoreSHVec4(pushConstants.ddgiMaster, probeCoord, cascadeIndex, 6, vec4(sh.coefficients[8].xyz, 0.0));
+  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 3, vec4(sh.coefficients[4].xyz, sh.coefficients[5].x));
+  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 4, vec4(sh.coefficients[5].yz, sh.coefficients[6].xy));
+  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 5, vec4(sh.coefficients[6].z, sh.coefficients[7].xyz));
+  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 6, vec4(sh.coefficients[8].xyz, 0.0));
 #endif
 }
 
@@ -107,10 +109,11 @@ void main(){
 
   uint raysPerProbe = pushConstants.params.w;
 
+  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData; // hoist the master->sub-pointer deref out of the ray loop
   DDGI_SH_TYPE sh = DDGI_SH_ZERO();
   for(uint r = GI_DDGI_RAY_START; r < raysPerProbe; r++){
     vec3 rayDirection = ddgiTraceRayDirection(r, randomRotation);
-    vec3 radiance = ddgiLoadRay(pushConstants.ddgiMaster, globalProbeIndex, r, raysPerProbe).rgb;
+    vec3 radiance = ddgiLoadRay(rayData, globalProbeIndex, r, raysPerProbe).rgb;
     sh = DDGI_SH_ADD(sh, DDGI_SH_PROJECT(rayDirection, radiance));
   }
   // Monte-Carlo estimator over the uniform sphere: c_lm = (4*pi / N) * sum(L * Y_lm), where N is the number of rays actually
@@ -159,13 +162,14 @@ void main(){
   mat3 randomRotation = mat3(pushConstants.randomRotation0.xyz, pushConstants.randomRotation1.xyz, pushConstants.randomRotation2.xyz);
   uint raysPerProbe = pushConstants.params.w;
 
+  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData; // hoist the master->sub-pointer deref out of the ray loop
   vec3 sum = vec3(0.0);
   float sumWeight = 0.0;
   for(uint r = GI_DDGI_RAY_START; r < raysPerProbe; r++){
     vec3 rayDirection = ddgiTraceRayDirection(r, randomRotation);
     float weight = max(0.0, dot(texelDirection, rayDirection));
     if(weight > 0.0){
-      sum += ddgiLoadRay(pushConstants.ddgiMaster, globalProbeIndex, r, raysPerProbe).rgb * weight;
+      sum += ddgiLoadRay(rayData, globalProbeIndex, r, raysPerProbe).rgb * weight;
       sumWeight += weight;
     }
   }

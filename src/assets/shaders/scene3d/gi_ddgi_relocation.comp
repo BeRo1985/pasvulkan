@@ -48,7 +48,11 @@ void main(){
 
   float cellSize = ddgiData.ddgiCascadeCellSizes[cascadeIndex].x;
 
-  vec4 probeData = ddgiLoadProbeDataBuffer(pushConstants.ddgiMaster, probeCoord, cascadeIndex);
+  // Hoist the master->sub-pointer derefs once.
+  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData;
+  DDGIProbeDataBuffer probeDataBuf = pushConstants.ddgiMaster.probeData;
+
+  vec4 probeData = ddgiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex);
   // Start from the previously accumulated offset, except when it is invalid: the image is not cleared on allocation, so on
   // this slot's first frame (blend.z) it is uninitialized garbage; and a probe that just toroidally scrolled in carries an
   // offset for a different world cell. In both cases restart from zero.
@@ -61,7 +65,7 @@ void main(){
   int backfaceCount = 0;
 
   for(int i = 0; i < GI_DDGI_FIXED_RAYS; i++){
-    float signedDist = ddgiLoadRay(pushConstants.ddgiMaster, globalProbeIndex, uint(i), pushConstants.params.w).a;
+    float signedDist = ddgiLoadRay(rayData, globalProbeIndex, uint(i), pushConstants.params.w).a;
     vec3 dir = ddgiTraceRayDirection(uint(i), mat3(1.0));
     if(signedDist < 0.0){
       // Backface hit (probe behind this surface).
@@ -122,5 +126,5 @@ void main(){
     }
   }
 
-  ddgiStoreProbeDataBuffer(pushConstants.ddgiMaster, probeCoord, cascadeIndex, vec4(offset, probeData.w)); // preserve state (w), owned by the classification pass
+  ddgiStoreProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex, vec4(offset, probeData.w)); // preserve state (w), owned by the classification pass
 }
