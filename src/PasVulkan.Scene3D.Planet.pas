@@ -2726,6 +2726,7 @@ type TpvScene3DPlanets=class;
               fTerrainMeshShaderStageFlags:TVkShaderStageFlags;
               fGrassFragmentShaderStage:TpvVulkanPipelineShaderStage;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fEmptyDescriptorSetLayout:TpvVulkanDescriptorSetLayout; // 0-binding placeholder so the vertex-path terrain pipeline layout can host the DDGI set at the same fixed set index (4) as the mesh-shader path
               fDescriptorPool:TpvVulkanDescriptorPool;
               fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fIBLDescriptors:array[0..MaxInFlightFrames-1] of TpvScene3DRendererIBLDescriptor;
@@ -27506,7 +27507,15 @@ begin
 
    else begin
 
-    Kind:='';
+    // DDGI (RT-based GI): the 'ddgi_' Kind selects the planet_renderpass DDGI frag variant (samples the probe field at
+    // set 4). Only for the RT GI modes (DDGI now, Surfel later) — never CRH/VCT. Reset to '' before the grass frag below,
+    // since the grass DDGI variant is wired in a separate step.
+    if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
+       assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
+     Kind:='ddgi_'; // matches the same condition used for the set-4 pipeline-layout + draw bind below, so they stay consistent
+    end else begin
+     Kind:='';
+    end;
 
     if fVulkanDevice.FragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE then begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
@@ -27526,6 +27535,8 @@ begin
     finally
      FreeAndNil(Stream);
     end;
+
+    Kind:=''; // grass DDGI frag variant is wired in a separate step -> always the non-DDGI grass frag for now
 
     if fVulkanDevice.FragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE then begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
@@ -27692,13 +27703,25 @@ begin
 
   fDescriptorSetLayout.Initialize;
 
+  // Empty 0-binding placeholder so the vertex-path terrain pipeline layout can host the DDGI set at the same fixed set
+  // index (4) as the mesh-shader path (whose set 3 is the terrain-mesh SSBO; the vertex path has no set 3).
+  fEmptyDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fEmptyDescriptorSetLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fEmptyDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TRenderPass.fEmptyDescriptorSetLayout');
+
   fPlanetPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
   fPlanetPipelineLayout.AddPushConstantRange(fShaderStageFlags,
                                              0,
                                              SizeOf(TPlanetPushConstants));
-  fPlanetPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
-  fPlanetPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout); // Global planet descriptor set
-  fPlanetPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
+  fPlanetPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // set 0 = global scene descriptor set
+  fPlanetPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout); // set 1 = global planet descriptor set
+  fPlanetPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // set 2 = per planet descriptor set
+  // RT GI (DDGI): the DDGI frag samples the probe field at the fixed set 4; fill set 3 with the empty placeholder here.
+  if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
+     assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
+   fPlanetPipelineLayout.AddDescriptorSetLayout(fEmptyDescriptorSetLayout); // set 3 = empty placeholder (terrain-mesh SSBO slot, unused in the vertex path)
+   fPlanetPipelineLayout.AddDescriptorSetLayout(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout); // set 4 = DDGI probe field
+  end;
   fPlanetPipelineLayout.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fPlanetPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TRenderPass.fPlanetPipelineLayout');
 
@@ -27725,7 +27748,12 @@ begin
    fTerrainMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
    fTerrainMeshPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout); // Views UBO + pass resources
    fTerrainMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
-   fTerrainMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetTerrainMeshDescriptorSetLayout); // Terrain mesh SSBO
+   fTerrainMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetTerrainMeshDescriptorSetLayout); // set 3 = Terrain mesh SSBO
+   // RT GI (DDGI): the DDGI frag samples the probe field at the fixed set 4 (same index as the vertex path).
+   if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
+      assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
+    fTerrainMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout); // set 4 = DDGI probe field
+   end;
    fTerrainMeshPipelineLayout.Initialize;
    fVulkanDevice.DebugUtils.SetObjectName(fTerrainMeshPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TRenderPass.fTerrainMeshPipelineLayout');
   end else begin
@@ -27752,6 +27780,8 @@ begin
  FreeAndNil(fPlanetPipelineLayout);
 
  FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fEmptyDescriptorSetLayout);
 
  FreeAndNil(fGrassFragmentShaderStage);
 
@@ -28463,6 +28493,29 @@ begin
                                             @Planet.fPlanetDescriptorSets[aInFlightFrameIndex].Handle,
                                             0,
                                             nil);
+      end;
+
+      // RT GI (DDGI): bind the probe field at the fixed set 4 (matches the DDGI frag variant; same set index for both
+      // the mesh-shader and vertex terrain pipeline layouts). Only when DDGI is the active GI mode.
+      if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
+         assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
+       if UseTerrainMeshShader then begin
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             fTerrainMeshPipelineLayout.Handle,
+                                             4,
+                                             1,
+                                             @TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle,
+                                             0,
+                                             nil);
+       end else begin
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             fPlanetPipelineLayout.Handle,
+                                             4,
+                                             1,
+                                             @TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle,
+                                             0,
+                                             nil);
+       end;
       end;
 
       ViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ViewMatrix;

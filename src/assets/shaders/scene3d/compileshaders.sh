@@ -693,6 +693,16 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_frag.spv"
   "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_frag.spv"
   "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_frag.spv"
+  # DDGI (RT-based global illumination) variants — only for RT GI modes, hence combined with raytracing_/bufref_; the 'ddgi_'
+  # Kind segment sits last (matches the Planet.pas naming, Kind:='ddgi_'). Built per DDGI storage mode (DDGI_STORAGE_DEFINE).
+  "-V planet_renderpass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_velocity_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_wireframe_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_bufref_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_bufref_velocity_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_ddgi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_ddgi_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_renderpass_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_renderpass_wireframe_rsm_frag.spv"
