@@ -249,32 +249,34 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 #endif
 
 // DDGI probe field for ray-tracing-based global illumination, gated to RT GI modes (DDGI now, Surfel later) — never
-// CRH/VCT. Only wired into the main water-surface path: the UNDERWATER / WATER_CAUSTICS variants lack the set-3 surface
-// environment and diffuse GI there is not meaningful, so they fall back to environment IBL. GI lives at the fixed
-// dedicated set 4 (the water surface pipeline uses sets 0..3), mirroring planet_renderpass.frag / planet_grass.frag.
-#if defined(GLOBAL_ILLUMINATION_DDGI) && !(defined(UNDERWATER) || defined(WATER_CAUSTICS))
+// CRH/VCT. Wired into the main water surface AND the underwater fullscreen pass (shore-foam ambient); WATER_CAUSTICS is
+// excluded because that pass is purely additive refracted-sun light with no diffuse/ambient term for DDGI to feed. GI
+// lives at the fixed dedicated set 4 (the water pipelines use sets 0..3), mirroring planet_renderpass.frag / planet_grass.frag.
+#if defined(GLOBAL_ILLUMINATION_DDGI) && !defined(WATER_CAUSTICS)
   #define DDGI_DESCRIPTOR_SET 4
   #include "global_illumination_ddgi_sampling.glsl"
   #define WATER_DDGI 1
 #endif
 
-// Diffuse ambient irradiance for the water surface, in getIBLDiffuse()'s "ready to multiply by albedo" convention.
-// Under the DDGI build variant it comes from the probe field (replacing the environment IBL diffuse); otherwise it is the
-// environment IBL diffuse. The specular reflection path stays IBL either way (water reflections are wanted). inWorldSpacePosition
-// and viewDirection are file-scope. The skyVisibility overload exposes the probe long-range sky term for callers that want it.
+// Diffuse ambient irradiance for the water surface at a given world position, in getIBLDiffuse()'s "ready to multiply by
+// albedo" convention. Under the DDGI build variant it comes from the probe field (replacing the environment IBL diffuse);
+// otherwise it is the environment IBL diffuse (which ignores the position). The specular reflection path stays IBL either
+// way (water reflections are wanted). An explicit world position is taken because the underwater fullscreen pass has no
+// per-fragment surface position (the file-scope inWorldSpacePosition is only valid on the tessellated surface) — the
+// underwater shore-foam caller reconstructs the world position from the depth buffer instead. viewDirection is file-scope.
 #if defined(WATER_DDGI)
-vec3 waterDiffuseAmbient(const in vec3 n, out float skyVisibility){
-  return ddgiSampleIrradiance(inWorldSpacePosition, n, viewDirection, skyVisibility) * OneOverPI;
+vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
+  return ddgiSampleIrradiance(worldPosition, n, viewDirection, skyVisibility) * OneOverPI;
 }
 #else
-vec3 waterDiffuseAmbient(const in vec3 n, out float skyVisibility){
+vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
   skyVisibility = 1.0;
   return getIBLDiffuse(n);
 }
 #endif
-vec3 waterDiffuseAmbient(const in vec3 n){
+vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n){
   float skyVisibility;
-  return waterDiffuseAmbient(n, skyVisibility);
+  return waterDiffuseAmbient(worldPosition, n, skyVisibility);
 }
 
 vec3 safeNormalize(vec3 v){
@@ -637,7 +639,7 @@ vec3 applyShoreFoam(vec3 aBaseColor, vec3 aPlanetSpacePos, float aShoreDepth){
       float foamAmount = clamp(shoreMask * foamPattern * waterShoreFoam1.w, 0.0, 1.0);
       // Modulate the (typically white) foam color by ambient IBL + shadow-attenuated direct
       // downwelling irradiance so foam darkens at night / in shadow instead of glowing white.
-      vec3 foamIrradiance = waterDiffuseAmbient(workNormal) + waterDownwellingIrradiance;
+      vec3 foamIrradiance = waterDiffuseAmbient((planetModelMatrix * vec4(aPlanetSpacePos, 1.0)).xyz, workNormal) + waterDownwellingIrradiance;
       vec3 foamLit = waterShoreFoam0.xyz * foamIrradiance;
       result = mix(result, foamLit, foamAmount);
     }
@@ -715,7 +717,7 @@ vec3 applyWhitecaps(vec3 aBaseColor, vec3 aPlanetSpacePos){
   if(mask <= 0.0){
     return aBaseColor;
   }
-  vec3 foamIrradiance  = waterDiffuseAmbient(workNormal) + waterDownwellingIrradiance;
+  vec3 foamIrradiance  = waterDiffuseAmbient((planetModelMatrix * vec4(aPlanetSpacePos, 1.0)).xyz, workNormal) + waterDownwellingIrradiance;
   vec3 foamLit         = whitecapColor * foamIrradiance;
   return mix(aBaseColor, foamLit, mask);
 }
@@ -875,7 +877,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
 
-    vec3 iblDiffuse = waterDiffuseAmbient(normal) * baseColor.xyz;
+    vec3 iblDiffuse = waterDiffuseAmbient(inWorldSpacePosition, normal) * baseColor.xyz;
     vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
     vec3 iblSpecularDielectric = iblSpecularMetal;
     vec3 iblMetalFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
@@ -930,7 +932,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     // mix(refraction, waterF0, 1-exp(-depth)) IOR-based water volume appearance.
     vec4 waterAbsorption = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.x), unpackHalf2x16(planetData.waterAbsorptionDeepColor.y));
     vec4 waterDeepColor = vec4(unpackHalf2x16(planetData.waterAbsorptionDeepColor.z), unpackHalf2x16(planetData.waterAbsorptionDeepColor.w));
-    vec3 waterDeepIrradiance = waterDiffuseAmbient(underWater ? -normal : normal) + waterDownwellingIrradiance;
+    vec3 waterDeepIrradiance = waterDiffuseAmbient(inWorldSpacePosition, underWater ? -normal : normal) + waterDownwellingIrradiance;
     vec3 waterDeepLit = waterDeepColor.xyz * waterDeepIrradiance;
     refraction = mix(mix(refraction, waterDeepLit, clamp(vec3(1.0) - exp(-waterDepth * waterAbsorption.xyz), vec3(0.0), vec3(1.0))),
                      mix(refraction, vec3(waterF0), clamp(1.0 - exp(-waterDepth * 1.0), 0.0, 1.0)),
@@ -1097,6 +1099,11 @@ void main(){
       float waterRadius = getSphereHeightEx(octPlanetUnsignedEncode(sphereNormal));
       if(waterRadius > 0.0){
         float shoreDepth = max(0.0, waterRadius - groundRadius);
+        // The global workNormal/viewDirection are only set on the tessellated surface, not in this fullscreen pass, but
+        // applyShoreFoam's ambient lookup (waterDiffuseAmbient -> IBL or DDGI) reads them. Use the world-space surface
+        // up-normal at the shore point and the direction toward the camera so the DDGI/IBL diffuse stays well-defined.
+        workNormal = normalize((planetModelMatrix * vec4(sphereNormal, 0.0)).xyz);
+        viewDirection = normalize(inverseViewMatrix[3].xyz - worldPos);
         finalColor.xyz = applyShoreFoam(finalColor.xyz, planetPos, shoreDepth);
       }
     }

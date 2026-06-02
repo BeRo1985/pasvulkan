@@ -17,7 +17,7 @@
 
 #define PLANET_RENDERPASS_FRAGMENT_SHADER
 
-#define LIGHTS 
+#define LIGHTS
 #define SHADOWS
 
 #define LIGHTCLUSTERS
@@ -29,7 +29,7 @@
 
 #define MSAA_RAYOFFSET_WORKAROUND
 
-#if defined(WIREFRAME) 
+#if defined(WIREFRAME)
 layout(location = 0) pervertexEXT in vec3 inWorldSpacePositionPerVertex[];
 #else
 layout(location = 0) in vec3 inWorldSpacePosition;
@@ -50,7 +50,7 @@ layout(location = 2) in InBlock {
 #ifdef VELOCITY
   vec4 previousClipSpace;
   vec4 currentClipSpace;
-#endif  
+#endif
 } inBlock;
 
 #define inViewSpacePosition inBlock.viewSpacePosition
@@ -59,7 +59,7 @@ layout(location = 2) in InBlock {
 
 //#define inWorldSpacePosition inBlock.worldSpacePosition
 
-#if defined(WIREFRAME) 
+#if defined(WIREFRAME)
 vec3 inWorldSpacePosition = (inWorldSpacePositionPerVertex[0] * gl_BaryCoordEXT.x) + (inWorldSpacePositionPerVertex[1] * gl_BaryCoordEXT.y) + (inWorldSpacePositionPerVertex[2] * gl_BaryCoordEXT.z);
 #endif
 
@@ -80,7 +80,7 @@ layout(location = 0) in InBlock {
 #ifdef VELOCITY
   vec4 previousClipSpace;
   vec4 currentClipSpace;
-#endif  
+#endif
 } inBlock;
 
 #define inViewSpacePosition inBlock.viewSpacePosition
@@ -109,7 +109,7 @@ layout(location = 0) out vec4 outFragColor;
 // Pass descriptor set
 
 #include "mesh_rendering_pass_descriptorset.glsl"
-  
+
 layout(set = 1, binding = 6, std430) readonly buffer ImageBasedSphericalHarmonicsMetaData {
   vec4 dominantLightDirection;
   vec4 dominantLightColor;
@@ -118,7 +118,7 @@ layout(set = 1, binding = 6, std430) readonly buffer ImageBasedSphericalHarmonic
 
 #ifdef FRUSTUMCLUSTERGRID
 layout (set = 1, binding = 8, std140) readonly uniform FrustumClusterGridGlobals {
-  uvec4 tileSizeZNearZFar; 
+  uvec4 tileSizeZNearZFar;
   vec4 viewRect;
   uvec4 countLightsViewIndexSizeOffsetedViewIndex;
   uvec4 clusterSize;
@@ -136,7 +136,7 @@ layout (set = 1, binding = 10, std430) readonly buffer FrustumClusterGridData {
 
 // Per planet descriptor set
 
-// Aliased textures, because some are array textures and some are not 
+// Aliased textures, because some are array textures and some are not
 layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map, 5 = brushes, 6 = rain map, 7 = atmosphere map
 layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map, 5 = brushes, 6 = rain map, 7 = atmosphere map
 
@@ -155,7 +155,7 @@ layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0
 
 #define FRAGMENT_SHADER
 
-const vec3 inModelScale = vec3(1.0); 
+const vec3 inModelScale = vec3(1.0);
 
 #include "math.glsl"
 
@@ -165,7 +165,7 @@ const vec3 inModelScale = vec3(1.0);
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
-#include "tangentspacebasis.glsl" 
+#include "tangentspacebasis.glsl"
 
 #define LIGHTING_GLOBALS
 #include "lighting.glsl"
@@ -199,37 +199,37 @@ mat3 tangentSpaceBasis; // tangent, bitangent, normal
 vec3 tangentSpaceViewDirection;
 vec2 tangentSpaceViewDirectionXYOverZ;
 
-#ifdef WIREFRAME 
+#ifdef WIREFRAME
 float edgeFactor(){
   const float sqrt0d5Mul0d5 = 0.3535533905932738; // sqrt(0.5) * 0.5 - Half of the length of the diagonal of a square with a side length of 1.0
-  const vec3 edge = gl_BaryCoordEXT, 
-             edgeDX = dFdxFine(edge), 
-             edgeDY = dFdyFine(edge), 
+  const vec3 edge = gl_BaryCoordEXT,
+             edgeDX = dFdxFine(edge),
+             edgeDY = dFdyFine(edge),
              edgeDXY = sqrt((edgeDX * edgeDX) + (edgeDY * edgeDY)),
              edgeRemapped = smoothstep(vec3(0.0), edgeDXY * sqrt0d5Mul0d5, fma(edgeDXY, vec3(-sqrt0d5Mul0d5), edge));
   return 1.0 - min(min(edgeRemapped.x, edgeRemapped.y), edgeRemapped.z);
-}   
+}
 #endif
 
-void parallaxMapping(){  
+void parallaxMapping(){
 
-  // Not the common known parallax mapping, since it doesn't work in tangent space but in world space, due to the fact that 
+  // Not the common known parallax mapping, since it doesn't work in tangent space but in world space, due to the fact that
   // layered multiplanar (bi-/triplanar) mapping is used, which would be very difficult to implement in tangent space.
-  // Therefore it is a bit more like raymarching than parallax mapping in the common sense. 
+  // Therefore it is a bit more like raymarching than parallax mapping in the common sense.
 
-  const float OFFSET_SCALE = 1.0; 
+  const float OFFSET_SCALE = 1.0;
   const float PARALLAX_SCALE = 0.5;
-  const float OFFSET_BIAS = 0.0; 
+  const float OFFSET_BIAS = 0.0;
   const int COUNT_FIRST_ITERATIONS = 12;
-  const int COUNT_SECOND_ITERATIONS = 4; 
+  const int COUNT_SECOND_ITERATIONS = 4;
 
   vec3 rayDirection = normalize(inCameraRelativePosition);
 
-#if 1 
+#if 1
   vec3 displacementVector = rayDirection - (tangentSpaceBasis[2] * dot(tangentSpaceBasis[2], rayDirection));
   displacementVector /= (abs(dot(displacementVector, rayDirection))) + OFFSET_SCALE;
 #else
-  vec3 displacementVector = rayDirection; // just the ray direction because bi-/triplanar mapping uses the position in world space for the texture lookup 
+  vec3 displacementVector = rayDirection; // just the ray direction because bi-/triplanar mapping uses the position in world space for the texture lookup
 #endif
 
   vec4 offsetVector = vec4(displacementVector * PARALLAX_SCALE, -1.0) / float(COUNT_FIRST_ITERATIONS);
@@ -239,35 +239,35 @@ void parallaxMapping(){
 
   vec4 lastOffsetBest = offsetBest;
 
-  // First do a linear search to find a good starting point 
+  // First do a linear search to find a good starting point
   [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_FIRST_ITERATIONS; iterationIndex++){
     multiplanarP = offsetBest.xyz;
     if((height = getLayeredMultiplanarHeight()) < offsetBest.w){
       lastOffsetBest = offsetBest;
       offsetBest += offsetVector;
-    }else{ 
+    }else{
       break;
-    }    
+    }
   }
 
 #if 0
 
   offsetBest -= offsetVector;
 
-  // Now do a binary search to find the best offset 
+  // Now do a binary search to find the best offset
   [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_SECOND_ITERATIONS; iterationIndex++){
-    multiplanarP = (lastOffsetBest = (offsetBest += (offsetVector *= 0.5))).xyz;    
+    multiplanarP = (lastOffsetBest = (offsetBest += (offsetVector *= 0.5))).xyz;
     offsetBest -= ((offsetBest.w < (height = getLayeredMultiplanarHeight())) ? 1.0 : 0.0) * offsetVector;
   }
 
 #else
 
-  // Now do a binary search to find the best offset 
+  // Now do a binary search to find the best offset
   [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_SECOND_ITERATIONS; iterationIndex++, offsetVector *= 0.5){
     multiplanarP = (lastOffsetBest = offsetBest).xyz;
-    offsetBest += offsetVector * (step(height = getLayeredMultiplanarHeight(), offsetBest.w) - 0.5);    
+    offsetBest += offsetVector * (step(height = getLayeredMultiplanarHeight(), offsetBest.w) - 0.5);
   }
-  
+
 #endif
 
   // Mix the last and the best offset to get a smooth transition between the two
@@ -292,14 +292,14 @@ vec3 workNormal;
 void main(){
 
   layerMaterialSetup(sphereNormal);
-  
+
   layerMaterialWeights = mat2x4(
     texturePlanetOctahedralMapArray(uPlanetArrayTextures[PLANET_TEXTURE_BLENDMAP], sphereNormal, 0),
     texturePlanetOctahedralMapArray(uPlanetArrayTextures[PLANET_TEXTURE_BLENDMAP], sphereNormal, 1)
   );
 
   layerMaterialGrass = clamp(texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_GRASSMAP], sphereNormal).x, 0.0, 1.0);
-  
+
   vec4 wetness = getWetness(sphereNormal);
 
 #ifdef EXTERNAL_VERTICES
@@ -317,7 +317,7 @@ void main(){
 #ifdef WIREFRAME
   vec3 triangleNormal = normalize(
                           cross(
-                            inWorldSpacePositionPerVertex[1] - inWorldSpacePositionPerVertex[0], 
+                            inWorldSpacePositionPerVertex[1] - inWorldSpacePositionPerVertex[0],
                             inWorldSpacePositionPerVertex[2] - inWorldSpacePositionPerVertex[0]
                           )
                         );
@@ -327,7 +327,7 @@ void main(){
 #endif
 
   tangentSpaceBasis = mat3(workTangent, workBitangent, workNormal);
- 
+
   tangentSpaceViewDirection = normalize(tangentSpaceBasis * viewDirection);
   tangentSpaceViewDirectionXYOverZ = tangentSpaceViewDirection.xy / tangentSpaceViewDirection.z;
 
@@ -346,12 +346,12 @@ void main(){
     float weightSum = 0.0;
     float maxWeight = 0.0;
     [[unroll]] for(int layerTopLevelIndex = 0; layerTopLevelIndex < 2; layerTopLevelIndex++){
-      const vec4 weights = layerMaterialWeights[layerTopLevelIndex]; 
+      const vec4 weights = layerMaterialWeights[layerTopLevelIndex];
       if(any(greaterThan(weights, vec4(0.0)))){
         [[unroll]] for(int layerBottomLevelIndex = 0; layerBottomLevelIndex < 4; layerBottomLevelIndex++){
           const float weight = weights[layerBottomLevelIndex];
-          if(weight > 0.0){        
-            const int layerIndex = (layerTopLevelIndex << 2) | layerBottomLevelIndex; 
+          if(weight > 0.0){
+            const int layerIndex = (layerTopLevelIndex << 2) | layerBottomLevelIndex;
             const PlanetMaterial layerMaterial = layerMaterials[layerIndex];
             albedo += multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(layerMaterial) << 1) | 1], GetPlanetMaterialScale(layerMaterial)) * weight;
             normalHeight += multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterial) << 1) | 0], GetPlanetMaterialScale(layerMaterial)) * weight;
@@ -374,9 +374,9 @@ void main(){
       const float defaultWeightFactor = clamp((fadeEnd - weightSum) / (fadeEnd - fadeStart), 0.0, 1.0);
 
       // Calculate the weight of the default ground texture
-      const float defaultWeight = defaultWeightFactor;   
+      const float defaultWeight = defaultWeightFactor;
 
-      if(defaultWeight > 0.0){   
+      if(defaultWeight > 0.0){
 
         const PlanetMaterial defaultMaterial = layerMaterials[15];
         albedo += multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(defaultMaterial) << 1) | 1], GetPlanetMaterialScale(defaultMaterial)) * defaultWeight;
@@ -384,7 +384,7 @@ void main(){
         occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(defaultMaterial) << 1) | 0], GetPlanetMaterialScale(defaultMaterial)) * defaultWeight;
         weightSum += defaultWeight;
 
-      }  
+      }
 
     }
 
@@ -399,16 +399,16 @@ void main(){
         normalHeight *= factor;
         occlusionRoughnessMetallic *= factor;
         weightSum *= factor;
-      } 
+      }
 
       // Optional attenuation of the current textures based on the grass value
-      float f = pow(1.0 - grass, 16.0);     
+      float f = pow(1.0 - grass, 16.0);
       albedo *= f;
       normalHeight *= f;
       occlusionRoughnessMetallic *= f;
       weightSum *= f;
 
-      // Add the grass texture 
+      // Add the grass texture
       const float weight = grass;
       const PlanetMaterial grassMaterial = layerMaterials[14];
       albedo += multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(grassMaterial) << 1) | 1], GetPlanetMaterialScale(grassMaterial)) * weight;
@@ -418,13 +418,13 @@ void main(){
 
     }
 
-    // Normalize the weights 
+    // Normalize the weights
     if(weightSum > 0.0){
       float factor = 1.0 / max(1e-7, weightSum);
       albedo *= factor;
       normalHeight *= factor;
       occlusionRoughnessMetallic *= factor;
-    } 
+    }
 
   }
 
@@ -441,7 +441,7 @@ void main(){
   // Apply decals BEFORE wetness
   vec3 decalNormal = vec3(0.0, 0.0, 1.0);
   float decalNormalBlend = 0.0;
-  
+
   applyDecals(
     albedo,
     occlusionRoughnessMetallic.z,
@@ -459,7 +459,7 @@ void main(){
   );
 
   vec4 wetnessNormal = vec4(0.0);
-  const float rainTime = float(uint(pushConstants.timeSeconds & 4095u)) + pushConstants.timeFractionalSecond;         
+  const float rainTime = float(uint(pushConstants.timeSeconds & 4095u)) + pushConstants.timeFractionalSecond;
   applyPBRWetness(
     wetness,
     inWorldSpacePosition,
@@ -467,7 +467,7 @@ void main(){
     albedo.xyz,
     wetnessNormal,
     occlusionRoughnessMetallic.z, // metallic
-    occlusionRoughnessMetallic.y, // roughness 
+    occlusionRoughnessMetallic.y, // roughness
     occlusionRoughnessMetallic.x, // occlusion
     RainTexture,
     RainNormalTexture,
@@ -489,8 +489,8 @@ void main(){
 
   vec3 baseColor = albedo.xyz;
 
-  float occlusion = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0); 
-    
+  float occlusion = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
+
   vec2 metallicRoughness = clamp(occlusionRoughnessMetallic.zy, vec2(0.0, 1e-3), vec2(1.0));
 
   float metallic = metallicRoughness.x;
@@ -505,11 +505,11 @@ void main(){
 
   float kernelRoughness;
   {
-    const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
+    const float SIGMA2 = 0.15915494, KAPPA = 0.18;
     vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
     kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
     perceptualRoughness = sqrt(clamp((perceptualRoughness * perceptualRoughness) + kernelRoughness, 0.0, 1.0));
-  }  
+  }
 
   float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
@@ -520,7 +520,7 @@ void main(){
   {
     vec3 reflectedVector = reflect(-viewDirection, normal);
     float horizon = min(1.0 + dot(reflectedVector, normal), 1.0);
-    specularOcclusion *= horizon * horizon;         
+    specularOcclusion *= horizon * horizon;
   }
 
   const vec3 sheenColor = vec3(0.0);
@@ -533,14 +533,14 @@ void main(){
   const float clearcoatRoughness = 1.0;
 
   float litIntensity = 1.0;
- 
+
   const float iblWeight = 1.0;
 
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
 #undef LIGHTING_INITIALIZATION
 
-  const bool receiveShadows = true; 
+  const bool receiveShadows = true;
 
 #define LIGHTING_IMPLEMENTATION
 #include "lighting.glsl"
@@ -557,7 +557,7 @@ void main(){
     colorOutput += ddgiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
   }
   vec3 iblDiffuse = vec3(0.0);
-  float ddgiIblWeight = ddgiSkyVisibility * specularOcclusion;
+  float ddgiIblWeight = ddgiSkyVisibility;
 #else
   vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
   const float ddgiIblWeight = 1.0;
@@ -570,14 +570,14 @@ void main(){
   vec3 iblDielectricBRDF = mix(iblDiffuse * diffuseOcclusion, iblSpecularDielectric * specularOcclusion, iblDielectricFresnel);
   vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
   colorOutput += iblResultColor * ddgiIblWeight;
-       
+
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
   vec4 c = vec4(colorOutput, 1.0);
-  
+
   if(planetData.selected.w > 1e-6){
-    
+
     const vec4 selectedColor = vec4(unpackHalf2x16(planetData.selectedColorBrushIndexBrushRotation.x), unpackHalf2x16(planetData.selectedColorBrushIndexBrushRotation.y));
-    
+
     const uint brushIndex = planetData.selectedColorBrushIndexBrushRotation.z;
 
     if(brushIndex == 0u){
@@ -586,7 +586,7 @@ void main(){
 
       const float d = length(sphereNormal - normalize(planetData.selected.xyz)) - planetData.selected.w;
 
-#if 0     
+#if 0
       float t = fwidth(d);
       float l = max(1e-6, planetData.selected.w * 0.25);
       if((d < l) && ((t < (l * 2.0)) && !(isnan(t) || isinf(t)))){ // to prevent artifacts at normal discontinuities and edges
@@ -609,10 +609,10 @@ void main(){
       const vec3 n = normalize(planetData.selected.xyz),
                  p = sphereNormal;
 
-      vec3 t = n.yzx - n.zxy, 
+      vec3 t = n.yzx - n.zxy,
            b = normalize(cross(n, t = normalize(t - dot(t, n)))),
            o = p - n;
-      
+
       if(brushRotation != 0.0){
         const vec2 rotationSinCos = sin(vec2(brushRotation) + vec2(0.0, 1.57079632679));
         const vec3 ot = t, ob = b;
@@ -633,17 +633,17 @@ void main(){
         float smoothLevelFract = fract(smoothLevel);
         uint smoothLevelInt = uint(smoothLevel);
         uint smoothLevelIntNext = min(smoothLevelInt + 1u, 15u);
-        
+
         vec2 uvCoords = fma(uv, vec2(0.5), vec2(0.5));
-        
+
         // Sample both levels
         float value0 = textureLod(uPlanetArrayTextures[PLANET_TEXTURE_SMOOTHEDBRUSHES + smoothLevelInt], vec3(uvCoords, float(brushIndex)), 0.0).x;
         float value1 = textureLod(uPlanetArrayTextures[PLANET_TEXTURE_SMOOTHEDBRUSHES + smoothLevelIntNext], vec3(uvCoords, float(brushIndex)), 0.0).x;
-        
+
         // Interpolate between levels
         d *= mix(value0, value1, smoothLevelFract);
 
-      } 
+      }
 
 //    c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), selectedColor.xyz, selectedColor.w), d);
       c.xyz = mix(c.xyz, selectedColor.xyz, selectedColor.w * d);
@@ -656,16 +656,16 @@ void main(){
   if((planetData.flagsResolutions.x & (1u << 0u)) != 0){
     c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(0.0, 1.0, 1.0), 0.5), edgeFactor());
   }
-#endif  
+#endif
 
 
 #if defined(SHADOWS) && 0
   {
     vec4 d = shadowCascadeVisualizationColor();
     c = mix(c, d, d.w * 0.25);
-  } 
+  }
 #endif
-   
+
   if((inBlock.meshletID & 0x80000000u) != 0u){
     c.xyz = meshletDebugColor(inBlock.meshletID & 0x7fffffffu);
   }
@@ -675,7 +675,7 @@ void main(){
 #if defined(VELOCITY)
   outVelocity = (((inBlock.currentClipSpace.xy / inBlock.currentClipSpace.w) - pushConstants.jitter.xy) - ((inBlock.previousClipSpace.xy / inBlock.previousClipSpace.w) - pushConstants.jitter.zw)) * 0.5;
 #elif defined(REFLECTIVESHADOWMAPOUTPUT)
-  outFragNormalUsed = vec4(vec3(fma(normalize(workNormal), vec3(0.5), vec3(0.5))), 1.0);  
+  outFragNormalUsed = vec4(vec3(fma(normalize(workNormal), vec3(0.5), vec3(0.5))), 1.0);
 #endif
 
 }

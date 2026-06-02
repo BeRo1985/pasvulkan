@@ -665,6 +665,10 @@ compileshaderarguments=(
   "-V planet_water.frag -DUNDERWATER -o ${tempPath}/planet_water_underwater_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_underwater_bufref_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DRAYTRACING -o ${tempPath}/planet_water_underwater_raytracing_frag.spv"
+  # DDGI (RT-based GI) variant of the underwater fullscreen pass — RT only, 'ddgi' segment last; DDGI feeds the shore-foam
+  # ambient term here (the underwater base color is refracted scene color, already lit). WATER_CAUSTICS gets no DDGI variant:
+  # that pass is purely additive refracted-sun light with no diffuse/ambient term for the probe field to feed.
+  "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} -o ${tempPath}/planet_water_underwater_raytracing_ddgi_frag.spv"
 
   "-V planet_water.vert -DWATER_CAUSTICS -o ${tempPath}/planet_water_caustics_vert.spv"
   "-V planet_water.vert -DWATER_CAUSTICS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_vert.spv"

@@ -30569,6 +30569,13 @@ begin
  end;
  fVulkanDevice.DebugUtils.SetObjectName(fUnderwaterVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fUnderwaterVertexShaderModule');
 
+ // RT-based GI (DDGI) frag variant of the underwater fullscreen pass — only the frag differs (DDGI feeds the shore-foam
+ // ambient); the vertex shader is shared, so this is appended only after the vertex module was loaded with the base name.
+ if (TpvScene3DRenderer(aRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
+    assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
+  ShaderFileName:=ShaderFileName+'_ddgi';
+ end;
+
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_frag.spv');
  try
   fUnderwaterFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
@@ -31228,6 +31235,20 @@ begin
                                             0,
                                             nil);
 
+       // set 4 = DDGI probe field (RT GI only). Bound once here with fPipelineLayout so it covers both the underwater
+       // fullscreen pass and the tessellated water surface (both draw through fPipelineLayout); the mesh-shader water
+       // draw rebinds it with fWaterMeshPipelineLayout below (the push-constant ranges differ, which disturbs bindings).
+       if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
+          assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             fPipelineLayout.Handle,
+                                             4,
+                                             1,
+                                             @TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle,
+                                             0,
+                                             nil);
+       end;
+
        fPushConstants.ViewBaseIndex:=aViewBaseIndex;
        fPushConstants.CountViews:=aCountViews;
        fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Count;
@@ -31394,17 +31415,7 @@ begin
         end;
 {$endif}
 
-        // set 4 = DDGI probe field (RT GI only, main water surface); sets 0-3 already bound with fPipelineLayout above
-        if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-           assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
-         aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                              fPipelineLayout.Handle,
-                                              4,
-                                              1,
-                                              @TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle,
-                                              0,
-                                              nil);
-        end;
+        // set 4 (DDGI probe field) is already bound with fPipelineLayout above (covers underwater + this tessellated surface).
 
         aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fWaterPipeline.Handle);
         if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
