@@ -3828,6 +3828,55 @@ uses PasVulkan.Scene3D,
 type TVector3Array=TpvDynamicArray<TpvVector3>;
      TIndexArray=TpvDynamicArray<TpvUInt32>;
 
+// --- Ray-traced GI helpers for the planet pipelines -----------------------------------------------------------------
+// The planet pipelines wire a dedicated set 4 + a 'kind' frag-variant segment for the RT-based GI modes (DDGI and surfel,
+// which are mutually exclusive and share that slot). These helpers select the active mode's descriptor set layout / set /
+// frag-variant name so each call site stays mode-agnostic. They return nil / '' for the non-RT GI modes (CRH, VCT, ...).
+function PlanetRTGIActive(const aRendererInstance:TObject):boolean;
+begin
+ result:=TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode in
+          [TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination,
+           TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination];
+end;
+
+function PlanetRTGIDescriptorSetLayout(const aRendererInstance:TObject):TpvVulkanDescriptorSetLayout;
+begin
+ case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
+  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout;
+  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationSurfelDescriptorSetLayout;
+  else result:=nil;
+ end;
+end;
+
+function PlanetRTGIDescriptorSet(const aRendererInstance:TObject;const aInFlightFrameIndex:TpvSizeInt):TpvVulkanDescriptorSet;
+begin
+ case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
+  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex];
+  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationSurfelDescriptorSets[aInFlightFrameIndex];
+  else result:=nil;
+ end;
+end;
+
+// Frag-variant 'kind' name segment ('ddgi_' / 'surfel_' / ''), e.g. planet_renderpass_raytracing_<kind>frag.spv.
+function PlanetRTGIKind(const aRendererInstance:TObject):TpvUTF8String;
+begin
+ case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
+  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:='ddgi_';
+  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:result:='surfel_';
+  else result:='';
+ end;
+end;
+
+// Frag-variant name suffix segment ('_ddgi' / '_surfel' / ''), used by the water passes (planet_water..._<suffix>_frag.spv).
+function PlanetRTGISuffix(const aRendererInstance:TObject):TpvUTF8String;
+begin
+ case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
+  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:='_ddgi';
+  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:result:='_surfel';
+  else result:='';
+ end;
+end;
+
 procedure FlipBrushesY(var aBrushes:TpvScene3DPlanet.TBrushes);
 var Index,y:TpvSizeInt;
     NewBrushes:TpvScene3DPlanet.PBrushes;
@@ -27510,9 +27559,9 @@ begin
     // DDGI (RT-based GI): the 'ddgi_' Kind selects the planet_renderpass DDGI frag variant (samples the probe field at
     // set 4). Only for the RT GI modes (DDGI now, Surfel later) — never CRH/VCT. Reset to '' before the grass frag below,
     // since the grass DDGI variant is wired in a separate step.
-    if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-       assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
-     Kind:='ddgi_'; // matches the same condition used for the set-4 pipeline-layout + draw bind below, so they stay consistent
+    if (PlanetRTGIActive(fRendererInstance)) and
+       assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
+     Kind:=PlanetRTGIKind(fRendererInstance); // matches the same condition used for the set-4 pipeline-layout + draw bind below, so they stay consistent
     end else begin
      Kind:='';
     end;
@@ -27537,9 +27586,9 @@ begin
     end;
 
     // Grass DDGI frag variant — same condition as the terrain frag / pipeline layout / draw bind, so they stay consistent.
-    if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-       assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
-     Kind:='ddgi_';
+    if (PlanetRTGIActive(fRendererInstance)) and
+       assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
+     Kind:=PlanetRTGIKind(fRendererInstance);
     end else begin
      Kind:='';
     end;
@@ -27723,10 +27772,10 @@ begin
   fPlanetPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout); // set 1 = global planet descriptor set
   fPlanetPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // set 2 = per planet descriptor set
   // RT GI (DDGI): the DDGI frag samples the probe field at the fixed set 4; fill set 3 with the empty placeholder here.
-  if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-     assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
+  if (PlanetRTGIActive(fRendererInstance)) and
+     assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
    fPlanetPipelineLayout.AddDescriptorSetLayout(fEmptyDescriptorSetLayout); // set 3 = empty placeholder (terrain-mesh SSBO slot, unused in the vertex path)
-   fPlanetPipelineLayout.AddDescriptorSetLayout(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout); // set 4 = DDGI probe field
+   fPlanetPipelineLayout.AddDescriptorSetLayout(PlanetRTGIDescriptorSetLayout(fRendererInstance)); // set 4 = DDGI probe field
   end;
   fPlanetPipelineLayout.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fPlanetPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TRenderPass.fPlanetPipelineLayout');
@@ -27740,9 +27789,9 @@ begin
   fGrassPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // set 2 = per planet descriptor set
   fGrassPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetGrassCullAndMeshGenerationDescriptorSetLayout); // set 3 = grass cull / mesh-gen
   // RT GI (DDGI): the DDGI grass frag samples the probe field at the fixed set 4.
-  if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-     assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
-   fGrassPipelineLayout.AddDescriptorSetLayout(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout); // set 4 = DDGI probe field
+  if (PlanetRTGIActive(fRendererInstance)) and
+     assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
+   fGrassPipelineLayout.AddDescriptorSetLayout(PlanetRTGIDescriptorSetLayout(fRendererInstance)); // set 4 = DDGI probe field
   end;
   fGrassPipelineLayout.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fGrassPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TRenderPass.fGrassPipelineLayout');
@@ -27761,9 +27810,9 @@ begin
    fTerrainMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
    fTerrainMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetTerrainMeshDescriptorSetLayout); // set 3 = Terrain mesh SSBO
    // RT GI (DDGI): the DDGI frag samples the probe field at the fixed set 4 (same index as the vertex path).
-   if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-      assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
-    fTerrainMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout); // set 4 = DDGI probe field
+   if (PlanetRTGIActive(fRendererInstance)) and
+      assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
+    fTerrainMeshPipelineLayout.AddDescriptorSetLayout(PlanetRTGIDescriptorSetLayout(fRendererInstance)); // set 4 = DDGI probe field
    end;
    fTerrainMeshPipelineLayout.Initialize;
    fVulkanDevice.DebugUtils.SetObjectName(fTerrainMeshPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TRenderPass.fTerrainMeshPipelineLayout');
@@ -28508,14 +28557,14 @@ begin
 
       // RT GI (DDGI): bind the probe field at the fixed set 4 (matches the DDGI frag variant; same set index for both
       // the mesh-shader and vertex terrain pipeline layouts). Only when DDGI is the active GI mode.
-      if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-         assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
+      if (PlanetRTGIActive(fRendererInstance)) and
+         assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
        if UseTerrainMeshShader then begin
         aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                              fTerrainMeshPipelineLayout.Handle,
                                              4,
                                              1,
-                                             @TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle,
+                                             @PlanetRTGIDescriptorSet(fRendererInstance,aInFlightFrameIndex).Handle,
                                              0,
                                              nil);
        end else begin
@@ -28523,7 +28572,7 @@ begin
                                              fPlanetPipelineLayout.Handle,
                                              4,
                                              1,
-                                             @TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle,
+                                             @PlanetRTGIDescriptorSet(fRendererInstance,aInFlightFrameIndex).Handle,
                                              0,
                                              nil);
        end;
@@ -28785,13 +28834,13 @@ begin
                                            nil);
 
       // RT GI (DDGI): bind the probe field at the fixed set 4 (matches the DDGI grass frag variant). Only when DDGI active.
-      if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-         assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
+      if (PlanetRTGIActive(fRendererInstance)) and
+         assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                             fGrassPipelineLayout.Handle,
                                             4,
                                             1,
-                                            @TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle,
+                                            @PlanetRTGIDescriptorSet(fRendererInstance,aInFlightFrameIndex).Handle,
                                             0,
                                             nil);
       end;
@@ -30571,9 +30620,9 @@ begin
 
  // RT-based GI (DDGI) frag variant of the underwater fullscreen pass — only the frag differs (DDGI feeds the shore-foam
  // ambient); the vertex shader is shared, so this is appended only after the vertex module was loaded with the base name.
- if (TpvScene3DRenderer(aRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-    assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
-  ShaderFileName:=ShaderFileName+'_ddgi';
+ if (PlanetRTGIActive(fRendererInstance)) and
+    assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
+  ShaderFileName:=ShaderFileName+PlanetRTGISuffix(fRendererInstance);
  end;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName+'_frag.spv');
@@ -30662,9 +30711,9 @@ begin
 
  // RT-based GI (DDGI) variant of the main water surface — 'ddgi' segment last, matching compileshaders.sh
  // (planet_water[_raytracing][_msaa|_msaa_fast]_ddgi_frag.spv). RT GI only, so it implies RaytracingActive.
- if (TpvScene3DRenderer(aRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-    assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
-  ShaderFileName:=ShaderFileName+'_ddgi';
+ if (PlanetRTGIActive(fRendererInstance)) and
+    assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
+  ShaderFileName:=ShaderFileName+PlanetRTGISuffix(fRendererInstance);
  end;
 
  ShaderFileName:=ShaderFileName+'_frag.spv';
@@ -30820,9 +30869,9 @@ begin
  fPipelineLayout.AddDescriptorSetLayout(aPassVulkanDescriptorSetLayout); // Pass descriptor set
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetWaterRenderDescriptorSetLayout); // Per render pass descriptor set
- if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-    assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
-  fPipelineLayout.AddDescriptorSetLayout(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout); // set 4 = DDGI probe field (RT GI only, main water surface)
+ if (PlanetRTGIActive(fRendererInstance)) and
+    assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
+  fPipelineLayout.AddDescriptorSetLayout(PlanetRTGIDescriptorSetLayout(fRendererInstance)); // set 4 = DDGI probe field (RT GI only, main water surface)
  end;
  fPipelineLayout.Initialize;
  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterRenderPass.fPipelineLayout');
@@ -31074,9 +31123,9 @@ begin
   fWaterMeshPipelineLayout.AddDescriptorSetLayout(aPassVulkanDescriptorSetLayout); // Pass descriptor set (views UBO)
   fWaterMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
   fWaterMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetWaterRenderDescriptorSetLayout); // Per render pass descriptor set
-  if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-     assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
-   fWaterMeshPipelineLayout.AddDescriptorSetLayout(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout); // set 4 = DDGI probe field (RT GI only, main water surface)
+  if (PlanetRTGIActive(fRendererInstance)) and
+     assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
+   fWaterMeshPipelineLayout.AddDescriptorSetLayout(PlanetRTGIDescriptorSetLayout(fRendererInstance)); // set 4 = DDGI probe field (RT GI only, main water surface)
   end;
   fWaterMeshPipelineLayout.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fWaterMeshPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterRenderPass.fWaterMeshPipelineLayout');
@@ -31238,13 +31287,13 @@ begin
        // set 4 = DDGI probe field (RT GI only). Bound once here with fPipelineLayout so it covers both the underwater
        // fullscreen pass and the tessellated water surface (both draw through fPipelineLayout); the mesh-shader water
        // draw rebinds it with fWaterMeshPipelineLayout below (the push-constant ranges differ, which disturbs bindings).
-       if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-          assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
+       if (PlanetRTGIActive(fRendererInstance)) and
+          assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
         aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                              fPipelineLayout.Handle,
                                              4,
                                              1,
-                                             @TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle,
+                                             @PlanetRTGIDescriptorSet(fRendererInstance,aInFlightFrameIndex).Handle,
                                              0,
                                              nil);
        end;
@@ -31352,13 +31401,13 @@ begin
                                              nil);
 
         // set 4 = DDGI probe field (RT GI only, main water surface)
-        if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
-           assigned(TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout) then begin
+        if (PlanetRTGIActive(fRendererInstance)) and
+           assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
          aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                               fWaterMeshPipelineLayout.Handle,
                                               4,
                                               1,
-                                              @TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle,
+                                              @PlanetRTGIDescriptorSet(fRendererInstance,aInFlightFrameIndex).Handle,
                                               0,
                                               nil);
         end;
