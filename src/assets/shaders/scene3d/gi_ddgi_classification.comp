@@ -1,0 +1,54 @@
+#version 460 core
+
+// DDGI probe classification pass (RTXGI-style, read-only consumer of the trace's fixed rays — no re-tracing).
+//
+// One thread per probe. From the fixed rays' signed distances (negative = backface) written by the trace it marks probes
+// that mostly see backfaces (i.e. are inside geometry) as INACTIVE, so the shading gather skips them — the robust anti-leak
+// guard. Conservative v1: probes in open space stay ACTIVE (they still provide valid sky/bounce GI); only the inside-
+// geometry case disables. Writes only the state (w) of the probe-data image and preserves the relocation offset (xyz),
+// which the relocation pass owns. Runs after the relocation pass.
+
+#extension GL_GOOGLE_include_directive : require
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+#include "global_illumination_ddgi.glsl"
+
+layout(set = 1, binding = 1, rgba16f) uniform readonly image2D uDDGIRayData; // fixed rays: a = signed distance (neg=backface)
+layout(set = 1, binding = 5, rgba16f) uniform image3D uDDGIProbeData;        // xyz = offset (relocation), w = state (this pass)
+
+layout(push_constant) uniform PushConstants {
+  vec4 randomRotation0;
+  vec4 randomRotation1;
+  vec4 randomRotation2;
+  uvec4 params; // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
+  vec4 blend;
+} pushConstants;
+
+void main(){
+  uint globalProbeIndex = gl_GlobalInvocationID.x;
+  uint totalProbes = pushConstants.params.y * pushConstants.params.z;
+  if(globalProbeIndex >= totalProbes){
+    return;
+  }
+
+  int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
+  int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
+  ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade);
+  ivec3 texel = ivec3(probeCoord.xy, probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z));
+
+  int backfaceCount = 0;
+  for(int i = 0; i < GI_DDGI_FIXED_RAYS; i++){
+    if(imageLoad(uDDGIRayData, ivec2(i, int(globalProbeIndex))).a < 0.0){
+      backfaceCount++;
+    }
+  }
+
+  float backfaceFraction = float(backfaceCount) / float(GI_DDGI_FIXED_RAYS);
+  float state = (backfaceFraction > GI_DDGI_PROBE_BACKFACE_THRESHOLD) ? GI_DDGI_PROBE_STATE_INACTIVE : GI_DDGI_PROBE_STATE_ACTIVE;
+
+  vec4 probeData = imageLoad(uDDGIProbeData, texel);
+  imageStore(uDDGIProbeData, texel, vec4(probeData.xyz, state)); // preserve offset (xyz), owned by the relocation pass
+}
