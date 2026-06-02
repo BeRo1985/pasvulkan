@@ -65,14 +65,10 @@ const float GI_DDGI_FOUR_PI = 12.566370614359172;
 // in the same interleaved pattern. (Same packing as the old SH image set, just sourced from / written to the buffer.)
 DDGI_SH_TYPE ddgiLoadSH(const in ivec3 probeCoord, const in int cascadeIndex){
   DDGIIrradianceSHBuffer shBuf = pushConstants.ddgiMaster.irradianceSH; // hoist the master->sub-pointer deref once
-  vec4 a = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 0);
-  vec4 b = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 1);
-  vec4 c = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 2);
+  DDGISHProbe p = ddgiLoadSHProbe(shBuf, probeCoord, cascadeIndex);     // one contiguous load of the whole probe
+  vec4 a = p.c[0]; vec4 b = p.c[1]; vec4 c = p.c[2];
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-  vec4 d = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 3);
-  vec4 e = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 4);
-  vec4 f = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 5);
-  vec4 g = ddgiLoadSHVec4(shBuf, probeCoord, cascadeIndex, 6);
+  vec4 d = p.c[3]; vec4 e = p.c[4]; vec4 f = p.c[5]; vec4 g = p.c[6];
   return SHC3CoefficientsL2Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w),
                                   vec3(d.x, d.y, d.z), vec3(d.w, e.x, e.y), vec3(e.z, e.w, f.x), vec3(f.y, f.z, f.w),
                                   vec3(g.x, g.y, g.z));
@@ -83,15 +79,17 @@ DDGI_SH_TYPE ddgiLoadSH(const in ivec3 probeCoord, const in int cascadeIndex){
 
 void ddgiStoreSH(const in ivec3 probeCoord, const in int cascadeIndex, const in DDGI_SH_TYPE sh){
   DDGIIrradianceSHBuffer shBuf = pushConstants.ddgiMaster.irradianceSH; // hoist the master->sub-pointer deref once
-  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 0, vec4(sh.coefficients[0].xyz, sh.coefficients[1].x));
-  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 1, vec4(sh.coefficients[1].yz, sh.coefficients[2].xy));
-  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 2, vec4(sh.coefficients[2].z, sh.coefficients[3].xyz));
+  DDGISHProbe p;
+  p.c[0] = vec4(sh.coefficients[0].xyz, sh.coefficients[1].x);
+  p.c[1] = vec4(sh.coefficients[1].yz, sh.coefficients[2].xy);
+  p.c[2] = vec4(sh.coefficients[2].z, sh.coefficients[3].xyz);
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 3, vec4(sh.coefficients[4].xyz, sh.coefficients[5].x));
-  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 4, vec4(sh.coefficients[5].yz, sh.coefficients[6].xy));
-  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 5, vec4(sh.coefficients[6].z, sh.coefficients[7].xyz));
-  ddgiStoreSHVec4(shBuf, probeCoord, cascadeIndex, 6, vec4(sh.coefficients[8].xyz, 0.0));
+  p.c[3] = vec4(sh.coefficients[4].xyz, sh.coefficients[5].x);
+  p.c[4] = vec4(sh.coefficients[5].yz, sh.coefficients[6].xy);
+  p.c[5] = vec4(sh.coefficients[6].z, sh.coefficients[7].xyz);
+  p.c[6] = vec4(sh.coefficients[8].xyz, 0.0);
 #endif
+  ddgiStoreSHProbe(shBuf, probeCoord, cascadeIndex, p);                 // one contiguous store of the whole probe
 }
 
 void main(){

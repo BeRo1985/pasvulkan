@@ -19,8 +19,16 @@
 // =====================================================================================================================
 
 layout(buffer_reference, std430, buffer_reference_align = 16) buffer DDGIRayDataBuffer { vec4 data[]; };       // rgb = shaded radiance, a = distance (signed for fixed rays); idx = globalProbe*raysPerProbe + ray
-layout(buffer_reference, std430, buffer_reference_align = 16) buffer DDGIProbeDataBuffer { vec4 data[]; };     // xyz = relocation offset, w = state; idx = physical probe slot + cascade*probesPerCascade   (phase 3)
-layout(buffer_reference, std430, buffer_reference_align = 16) buffer DDGIIrradianceSHBuffer { vec4 data[]; };  // packed RGB SH (SH storage only); DDGI_SH_IMAGE_COUNT vec4 per probe                          (phase 4)
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer DDGIProbeDataBuffer { vec4 data[]; };     // xyz = relocation offset, w = state; idx = physical probe slot + cascade*probesPerCascade
+
+// SH-irradiance: ONE contiguous element (DDGI_SH_IMAGE_COUNT packed vec4) per probe, so a probe's whole SH is a single linear
+// load/store (better coalescing than indexing individual vec4 by probe*COUNT+i). Indexed by the probe linear index.
+#ifdef DDGI_SH_IMAGE_COUNT
+struct DDGISHProbe { vec4 c[DDGI_SH_IMAGE_COUNT]; };
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer DDGIIrradianceSHBuffer { DDGISHProbe probes[]; };
+#else
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer DDGIIrradianceSHBuffer { vec4 data[]; }; // OCT mode: unused placeholder (irradiance is a sampled image there)
+#endif
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer DDGIMaster {
   DDGIRayDataBuffer rayData;           // phase 1
@@ -54,16 +62,13 @@ void ddgiStoreProbeDataBuffer(const in DDGIProbeDataBuffer aProbeData, const in 
 }
 
 #ifdef DDGI_SH_IMAGE_COUNT
-// SH-irradiance (SH storage only): DDGI_SH_IMAGE_COUNT packed vec4 per probe, interleaved (probe-major). Index =
-// probeLinear * DDGI_SH_IMAGE_COUNT + i. Same per-probe flattening as ddgiProbeDataIndex / the old SH 3D-image texel.
-uint ddgiSHBufferIndex(const in ivec3 probeCoord, const in int cascadeIndex, const in int i){
-  return (ddgiProbeDataIndex(probeCoord, cascadeIndex) * uint(DDGI_SH_IMAGE_COUNT)) + uint(i);
+// Whole-probe SH load/store: one contiguous DDGISHProbe element per probe (probe linear index matches ddgiProbeDataIndex).
+// Reading/writing the probe as a unit lets the compiler emit wide/coalesced loads instead of COUNT separate indexed reads.
+DDGISHProbe ddgiLoadSHProbe(const in DDGIIrradianceSHBuffer aSH, const in ivec3 probeCoord, const in int cascadeIndex){
+  return aSH.probes[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
 }
-vec4 ddgiLoadSHVec4(const in DDGIIrradianceSHBuffer aSH, const in ivec3 probeCoord, const in int cascadeIndex, const in int i){
-  return aSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, i)];
-}
-void ddgiStoreSHVec4(const in DDGIIrradianceSHBuffer aSH, const in ivec3 probeCoord, const in int cascadeIndex, const in int i, const in vec4 aValue){
-  aSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, i)] = aValue;
+void ddgiStoreSHProbe(const in DDGIIrradianceSHBuffer aSH, const in ivec3 probeCoord, const in int cascadeIndex, const in DDGISHProbe aProbe){
+  aSH.probes[ddgiProbeDataIndex(probeCoord, cascadeIndex)] = aProbe;
 }
 #endif
 

@@ -35,16 +35,13 @@ layout(set = DDGI_DESCRIPTOR_SET, binding = 3, std140) uniform DDGIMasterRef {
 } uDDGIMasterRef;
 
 #if GI_DDGI_STORAGE_IS_SH
-  // RGB spherical harmonics: DDGI_SH_IMAGE_COUNT packed vec4 per probe in the master's irradianceSH BDA buffer (no sampler).
+  // RGB spherical harmonics: one contiguous DDGISHProbe (DDGI_SH_IMAGE_COUNT packed vec4) per probe in the master's
+  // irradianceSH BDA buffer (no sampler) — loaded as a whole element for coalesced access.
   DDGI_SH_TYPE ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
-    vec4 a = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 0)];
-    vec4 b = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 1)];
-    vec4 c = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 2)];
+    DDGISHProbe p = uDDGIMasterRef.irradianceSH.probes[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
+    vec4 a = p.c[0]; vec4 b = p.c[1]; vec4 c = p.c[2];
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-    vec4 d = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 3)];
-    vec4 e = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 4)];
-    vec4 f = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 5)];
-    vec4 g = uDDGIMasterRef.irradianceSH.data[ddgiSHBufferIndex(probeCoord, cascadeIndex, 6)];
+    vec4 d = p.c[3]; vec4 e = p.c[4]; vec4 f = p.c[5]; vec4 g = p.c[6];
     return SHC3CoefficientsL2Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w),
                                     vec3(d.x, d.y, d.z), vec3(d.w, e.x, e.y), vec3(e.z, e.w, f.x), vec3(f.y, f.z, f.w),
                                     vec3(g.x, g.y, g.z));
