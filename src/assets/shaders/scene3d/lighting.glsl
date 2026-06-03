@@ -785,6 +785,7 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition, const in 
 #endif // TRANSMISSION
               doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
                             vec3(lightAttenuation),                             //
+                            vec2(1.0),                                          // diffuseSpecularFactors (neutral)
                             pointToLightDirection,                              //
                             normal.xyz,                                         //
                             baseColor.xyz,                                      //
