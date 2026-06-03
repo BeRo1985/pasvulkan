@@ -146,10 +146,10 @@ type { TpvScene3DRendererInstance }
              // active state) is allocated, and the compute set (binding 5) + shading set (binding 3) carry it. When false none
              // of that exists (plain DDGI), and the binding counts match the relocation-off shader variants.
              GlobalIlluminationDDGIProbeRelocation=true;
-             // Per-probe convergence warmup. MUST match GI_DDGI_PROBE_AGE_WARMUP (= DDGI_PROBE_AGE_WARMUP in compileshaders.sh).
-             // Only gates an extra irradiance<->visibility barrier in the probe-update pass (the warmup itself is shader-side,
-             // per-probe age stored in the visibility image's w channel). Intended for fast-camera cases where probes
-             // toroidally scroll in constantly.
+             // VESTIGIAL: the per-probe convergence warmup is now ALWAYS on (per-probe age lives in its own BDA buffer, the
+             // shaders no longer gate it, and the per-stage compute barrier covers the irradiance<->visibility ordering). This
+             // const is referenced only by the DORMANT combined ProbeUpdate pass (kept for reference); the active per-stage
+             // path ignores it. Kept so that file still compiles — safe to drop together with that pass.
              GlobalIlluminationDDGIProbeAgeWarmup=true;
              // Surfel-based global illumination. Must match the GI_SURFEL_* defines in global_illumination_surfel.glsl
              // (and SURFEL_STORAGE in compileshaders.sh). The persistent surfel pool is indexed by a world-space hash grid.

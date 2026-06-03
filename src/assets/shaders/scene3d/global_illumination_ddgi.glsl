@@ -168,15 +168,11 @@
 #define GI_DDGI_PROBE_STATE_INACTIVE 0.0
 #define GI_DDGI_PROBE_STATE_ACTIVE   1.0
 
-// Per-probe convergence warmup (default off). When on, each probe ramps its temporal hysteresis from GI_DDGI_WARMUP_START_
-// HYSTERESIS up to GI_DDGI_STEADY_HYSTERESIS over its first GI_DDGI_WARMUP_FRAMES frames of life, so a freshly-initialized or
-// toroidally-scrolled-in probe converges in a few frames instead of ~100 (kills the scroll-in flicker during fast camera
-// motion). The per-probe age (frames since (re)init) is stored in the FREE w channel of the visibility image: the visibility
-// update owns/increments it (reset on firstFrame / scroll-in), the irradiance update reads it back. Must match
-// GlobalIlluminationDDGIProbeAgeWarmup on the Pascal side (which gates the extra irradiance<->visibility barrier).
-#ifndef GI_DDGI_PROBE_AGE_WARMUP
-  #define GI_DDGI_PROBE_AGE_WARMUP 0
-#endif
+// Per-probe convergence warmup (always on). Each probe ramps its temporal hysteresis from GI_DDGI_WARMUP_START_HYSTERESIS up
+// to GI_DDGI_STEADY_HYSTERESIS over its first GI_DDGI_WARMUP_FRAMES frames of life, so a freshly-initialized or toroidally-
+// scrolled-in probe converges in a few frames instead of ~100 (kills the scroll-in flicker during fast camera motion). The
+// per-probe age (frames since (re)init) lives in its own BDA buffer (DDGIAgeBuffer in gi_ddgi_master.glsl): the visibility
+// update owns/increments it (reset on firstFrame / scroll-in), the irradiance update reads it back.
 #ifndef GI_DDGI_WARMUP_FRAMES
   #define GI_DDGI_WARMUP_FRAMES 16.0
 #endif
