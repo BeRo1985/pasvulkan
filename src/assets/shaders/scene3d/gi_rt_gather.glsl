@@ -63,6 +63,8 @@ struct GIGatherSurface {
   bool backface;     // true when the ray hit the back side of the surface (shading normal pointed along the ray before
                      // it was flipped) — i.e. the ray origin is behind/inside this surface. Used by the DDGI trace to
                      // treat such hits as occluders (shortened distance) and absorptive (black), preventing leaks.
+  bool doubleSided;  // true when the hit material is double-sided (face culling == None). A "backface" of a double-sided
+                     // surface (foliage, thin sheets) is a legitimate surface, not geometry the probe is embedded in.
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -166,6 +168,7 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
   s.hitDistance = -1.0;
   s.hit = false;
   s.backface = false;
+  s.doubleSided = false;
 
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, 0u, cullMask, origin, tMin, direction, tMax);
@@ -250,6 +253,17 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
       vec2 texCoords[2] = vec2[2]( vertexTexCoords.xy, vertexTexCoords.zw );
 
       Material material = uMaterials.materials[geometryItem.materialIndex];
+
+      // Double-sided when the material's face-culling mode is None (flags bits 4..5 == 0; see TpvScene3D.EncodeModeFlags).
+      s.doubleSided = (((material.alphaCutOffFlagsTex0Tex1.y >> 4u) & 3u) == 0u);
+
+      // glTF double-sided semantics: a back-facing hit on a double-sided material is shaded as a FRONT face with the normal
+      // flipped toward the ray (the flip already happened above). So it is not a "behind/inside geometry" backface — clear the
+      // flag, and the whole downstream GI path (radiance gather, ray-data distance encode, relocation/classification backface
+      // count, irradiance blend) then treats it exactly like any front-face hit. Single-sided backfaces keep backface == true.
+      if(s.doubleSided){
+        s.backface = false;
+      }
 
       // Base color (texture index 0, sRGB) modulated by the base color factor and vertex color.
       s.albedo = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords).xyz * material.baseColorFactor.xyz * vertexColor.xyz;
