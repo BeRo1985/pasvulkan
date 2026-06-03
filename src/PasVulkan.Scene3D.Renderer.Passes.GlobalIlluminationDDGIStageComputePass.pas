@@ -91,6 +91,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass }
        type TStage=
              (
               Irradiance,     // one thread per probe; integrates the random rays into the irradiance (SH buffer or OCT atlas)
+              GlossyRadiance, // one workgroup per probe; integrates the rays into the octahedral GLOSSY prefiltered-radiance atlas (only when GlobalIlluminationDDGIGlossyRadiance)
               Visibility,     // one workgroup per probe; integrates hit distances into the octahedral mean/mean^2/sky atlas
               Border,         // one workgroup per probe; copies the octahedral guard bands
               Relocation,     // one thread per probe; RTXGI-style offset out of geometry (relocation only)
@@ -141,6 +142,9 @@ begin
   TStage.Irradiance:begin
    Name:='GlobalIlluminationDDGIIrradianceUpdateComputePass';
   end;
+  TStage.GlossyRadiance:begin
+   Name:='GlobalIlluminationDDGIGlossyRadianceUpdateComputePass';
+  end;
   TStage.Visibility:begin
    Name:='GlobalIlluminationDDGIVisibilityUpdateComputePass';
   end;
@@ -172,6 +176,9 @@ begin
  case fStage of
   TStage.Irradiance:begin
    ShaderName:='gi_ddgi_irradiance_update_comp.spv';
+  end;
+  TStage.GlossyRadiance:begin
+   ShaderName:='gi_ddgi_glossy_update_comp.spv';
   end;
   TStage.Visibility:begin
    ShaderName:='gi_ddgi_visibility_update_comp.spv';
@@ -222,6 +229,9 @@ begin
  end else begin
   fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*2); // binding 3 = visibility moments + binding 4 = visibility sky (SH irradiance is a BDA buffer via the master); ray-data + probe-data are BDA too
  end;
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIGlossyRadiance then begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames); // binding 5 = glossy prefiltered-radiance atlas (only the glossy + border stages declare it)
+ end;
  fVulkanDescriptorPool.Initialize;
 
  // Set 1 = DDGI resources used by the blend: UBO, irradiance (OCT only), visibility. Same shared layout the gi_ddgi_*.comp
@@ -235,6 +245,9 @@ begin
  end;
  fVulkanDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]); // visibility moments (RG32F)
  fVulkanDescriptorSetLayout.AddBinding(4,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]); // visibility sky (R8); only the visibility/border stages declare it
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIGlossyRadiance then begin
+  fVulkanDescriptorSetLayout.AddBinding(5,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]); // glossy prefiltered-radiance atlas; only the glossy + border stages declare it (superset layout, valid for the rest)
+ end;
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -260,6 +273,10 @@ begin
                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 3 = visibility moments (RG32F)
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 4 = visibility sky (R8)
+  if TpvScene3DRendererInstance.GlobalIlluminationDDGIGlossyRadiance then begin
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIGlossyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 5 = glossy prefiltered-radiance atlas
+  end;
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
  end;
@@ -331,7 +348,7 @@ begin
  // Irradiance / relocation / classification: one thread per probe (local_size_x = 64). Visibility / border: one workgroup
  // per probe (octahedral tile).
  case fStage of
-  TStage.Visibility,TStage.Border:begin
+  TStage.GlossyRadiance,TStage.Visibility,TStage.Border:begin
    aCommandBuffer.CmdDispatch(TotalProbes,1,1);
   end;
   else begin

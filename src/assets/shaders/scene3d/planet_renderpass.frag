@@ -579,16 +579,21 @@ void main(){
 #endif
   vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
 #if defined(GLOBAL_ILLUMINATION_DDGI) && defined(GI_DDGI_GLOSSY_RESIDUAL)
-  // Probe-derived glossy (G1 parity with mesh.frag; the planet pass previously had specular only from the environment IBL).
+  // Probe-derived glossy (matches mesh.frag; the planet pass previously had specular only from the environment IBL).
   // Storage-agnostic: sample the probe field along the reflection vector as a broad prefiltered radiance (E(R)/pi ~ a rough
   // reflected radiance) and lerp it into the prefiltered specular source by roughness — rough surfaces take the probe (it
   // carries local colour bleed + correct occlusion, not just the sky), sharp surfaces keep the environment reflection (the
-  // low-resolution probe atlas cannot resolve a sharp reflection; that is the job of the G2 radiance atlas). The split-sum
+  // low-resolution probe atlas cannot resolve a sharp reflection; that is the job of the glossy radiance atlas). The split-sum
   // BRDF term below and the giIBLWeight (sky-visibility) occlusion are unchanged, matching this pass's existing philosophy.
   {
     float ddgiGlossySky;
     vec3 ddgiReflectionVector = normalize(reflect(-viewDirection, normal));
-    vec3 ddgiGlossyRadiance = ddgiSampleIrradiance(inWorldSpacePosition, ddgiReflectionVector, viewDirection, ddgiGlossySky) * OneOverPI;
+    vec3 ddgiGlossyRadiance = ddgiSampleIrradiance(inWorldSpacePosition, ddgiReflectionVector, viewDirection, ddgiGlossySky) * OneOverPI; // broad reflection
+#if defined(GI_DDGI_GLOSSY_RADIANCE)
+    // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
+    vec3 ddgiSharpGlossy = ddgiSampleGlossyRadiance(inWorldSpacePosition, normal, ddgiReflectionVector, viewDirection);
+    ddgiGlossyRadiance = mix(ddgiSharpGlossy, ddgiGlossyRadiance, smoothstep(GI_DDGI_GLOSSY_ROUGHNESS_LO, GI_DDGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
+#endif
     iblSpecularMetal = mix(iblSpecularMetal, ddgiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
   }
 #endif

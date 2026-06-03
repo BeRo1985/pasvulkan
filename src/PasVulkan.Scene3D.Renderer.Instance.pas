@@ -140,12 +140,24 @@ type { TpvScene3DRendererInstance }
              GlobalIlluminationDDGIIrradianceAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIIrradianceOctFull;
              GlobalIlluminationDDGIVisibilityAtlasWidth=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIVisibilityOctFull;
              GlobalIlluminationDDGIVisibilityAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIVisibilityOctFull;
+             // Glossy prefiltered-radiance octahedral atlas; same tiling as the visibility atlas (16 + guard band).
+             GlobalIlluminationDDGIGlossyOctSize=16;
+             GlobalIlluminationDDGIGlossyOctFull=GlobalIlluminationDDGIGlossyOctSize+2;
+             GlobalIlluminationDDGIGlossyAtlasWidth=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIGlossyOctFull;
+             GlobalIlluminationDDGIGlossyAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIGlossyOctFull;
              // RTXGI-style probe relocation + classification. MUST match GI_DDGI_PROBE_RELOCATION (= DDGI_PROBE_RELOCATION in
              // compileshaders.sh) the DDGI shaders are built with. When true: the trace traces fixed relocation rays, the
              // relocation + classification compute passes run, a per-probe probe-data 3D image (xyz = relocation offset, w =
              // active state) is allocated, and the compute set (binding 5) + shading set (binding 3) carry it. When false none
              // of that exists (plain DDGI), and the binding counts match the relocation-off shader variants.
              GlobalIlluminationDDGIProbeRelocation=true;
+             // Glossy prefiltered-radiance octahedral atlas, opt-in. When true: an extra RGBA16F octahedral atlas
+             // (prefiltered RADIANCE, not cosine-convolved) is allocated, updated by the GlossyRadiance stage (chained
+             // Irradiance -> GlossyRadiance -> Visibility), border-copied, and sampled at compute set 1 binding 5 / shading
+             // set binding 5 for glossy reflections. MUST match GI_DDGI_GLOSSY_RADIANCE in compileshaders.sh (this RGBA16F
+             // first iteration also needs -DGI_DDGI_GLOSSY_RGBA16F there; the RGB9E5 variant is a later memory optimization).
+             // Default false (no atlas, no stage, no extra binding; the broad glossy in the frag shaders still applies).
+             GlobalIlluminationDDGIGlossyRadiance=true;
              // VESTIGIAL: the per-probe convergence warmup is now ALWAYS on (per-probe age lives in its own BDA buffer, the
              // shaders no longer gate it, and the per-stage compute barrier covers the irradiance<->visibility ordering). This
              // const is referenced only by the DORMANT combined ProbeUpdate pass (kept for reference); the active per-stage
@@ -811,6 +823,7 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationDDGIIrradianceOctImages:TGlobalIlluminationDDGIImage2Ds;             // octahedral storage: 1 RGBA16F 2D atlas per frame
        fGlobalIlluminationDDGIVisibilityMomentsImages:TGlobalIlluminationDDGIImage2Ds;          // visibility MOMENTS atlas (RG32F): x = mean dist, y = mean dist^2
        fGlobalIlluminationDDGIVisibilitySkyImages:TGlobalIlluminationDDGIImage2Ds;              // visibility SKY atlas (R8): x = sky visibility (0..1)
+       fGlobalIlluminationDDGIGlossyImages:TGlobalIlluminationDDGIImage2Ds;                     // glossy prefiltered-radiance atlas (RGBA16F; only when GlobalIlluminationDDGIGlossyRadiance)
        fGlobalIlluminationDDGIRayDataBuffers:TGlobalIlluminationDDGIBuffers;                    // BDA storage buffer (rgb = radiance, a = distance), per in-flight frame
        fGlobalIlluminationDDGIMasterBuffers:TGlobalIlluminationDDGIBuffers;                     // unified DDGI data SSBO (`ddgiData`): cascade globals + BDA sub-buffer pointers, per in-flight frame (BAR, binding 0)
        fGlobalIlluminationDDGIProbeDataBuffers:TGlobalIlluminationDDGIBuffers;                  // relocation only: BDA buffer, vec4 per probe (xyz = offset, w = active state)
@@ -1171,6 +1184,7 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationDDGIIrradianceOctImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIIrradianceOctImages;
        property GlobalIlluminationDDGIVisibilityMomentsImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIVisibilityMomentsImages;
        property GlobalIlluminationDDGIVisibilitySkyImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIVisibilitySkyImages;
+       property GlobalIlluminationDDGIGlossyImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIGlossyImages;
        property GlobalIlluminationDDGIRayDataBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIRayDataBuffers;
        property GlobalIlluminationDDGIMasterBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIMasterBuffers;
        property GlobalIlluminationDDGIProbeDataBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIProbeDataBuffers;
@@ -1566,6 +1580,7 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationCascadedRadianceHintsBounceComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass;
        fGlobalIlluminationDDGITraceComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGITraceComputePass;
        fGlobalIlluminationDDGIIrradianceUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
+       fGlobalIlluminationDDGIGlossyRadianceUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass; // glossy atlas (only when GlobalIlluminationDDGIGlossyRadiance)
        fGlobalIlluminationDDGIVisibilityUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
        fGlobalIlluminationDDGIBorderUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
        fGlobalIlluminationDDGIRelocationComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;       // relocation only
@@ -2613,6 +2628,7 @@ begin
  FillChar(fGlobalIlluminationDDGIIrradianceOctImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
  FillChar(fGlobalIlluminationDDGIVisibilityMomentsImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
  FillChar(fGlobalIlluminationDDGIVisibilitySkyImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
+ FillChar(fGlobalIlluminationDDGIGlossyImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
  FillChar(fGlobalIlluminationDDGIRayDataBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
  FillChar(fGlobalIlluminationDDGIMasterBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
  FillChar(fGlobalIlluminationDDGIProbeDataBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
@@ -3045,6 +3061,7 @@ begin
   FreeAndNil(fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDDGIGlossyImages[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex]);
@@ -3692,6 +3709,22 @@ begin
                                                                                                      pvAllocationGroupIDScene3DStatic,
                                                                                                      'TpvScene3DRendererInstance.fGlobalIlluminationDDGIVisibilitySkyImages['+IntToStr(InFlightFrameIndex)+']');
 
+    // Glossy prefiltered-radiance octahedral atlas, opt-in. RGBA16F (hardware-bilinear-filtered,
+    // single view via TpvScene3DRendererImage2D like the irradiance octahedral atlas). Only allocated when the toggle is on.
+    if GlobalIlluminationDDGIGlossyRadiance then begin
+     fGlobalIlluminationDDGIGlossyImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
+                                                                                               GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIGlossyOctFull,
+                                                                                               GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIGlossyOctFull,
+                                                                                               VK_FORMAT_R16G16B16A16_SFLOAT, // prefiltered radiance (RGB)
+                                                                                               true,
+                                                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                                                               VK_IMAGE_LAYOUT_GENERAL,
+                                                                                               VK_SHARING_MODE_EXCLUSIVE,
+                                                                                               nil,
+                                                                                               pvAllocationGroupIDScene3DStatic,
+                                                                                               'TpvScene3DRendererInstance.fGlobalIlluminationDDGIGlossyImages['+IntToStr(InFlightFrameIndex)+']');
+    end;
+
     // Ray-data is now a BDA storage buffer (vec4 per (probe,ray): rgb = radiance, a = distance). Device-local, full
     // precision, no image-format cap; written by the trace, read by the update/relocation/classification passes via the
     // DDGI master buffer (gi_ddgi_master.glsl). Fully rewritten every frame, so no initial clear is needed.
@@ -3785,6 +3818,9 @@ begin
    end else begin
     fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*2); // binding 2 = visibility moments + binding 4 = visibility sky (SH irradiance is a BDA buffer via the master)
    end;
+   if GlobalIlluminationDDGIGlossyRadiance then begin
+    fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames); // binding 5 = glossy prefiltered-radiance atlas
+   end;
    fGlobalIlluminationDDGIDescriptorPool.Initialize;
 
    // Binding 0 = ddgiData SSBO (cascade globals + the BDA sub-buffer pointers — probe-data + SH-irradiance + ...); binding 2 =
@@ -3798,6 +3834,9 @@ begin
    end;
    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 2 = visibility moments (RG32F)
    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(4,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 4 = visibility sky (R8)
+   if GlobalIlluminationDDGIGlossyRadiance then begin
+    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(5,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 5 = glossy prefiltered-radiance atlas
+   end;
    fGlobalIlluminationDDGIDescriptorSetLayout.Initialize;
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
@@ -3811,6 +3850,10 @@ begin
                                                                                    [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 2 = visibility moments
     fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                    [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 4 = visibility sky
+    if GlobalIlluminationDDGIGlossyRadiance then begin
+     fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                    [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIGlossyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 5 = glossy prefiltered-radiance atlas (RGBA16F, hardware bilinear)
+    end;
     fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].Flush;
    end;
 
@@ -5038,6 +5081,7 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIGlossyRadianceUpdateComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRelocationComputePass:=nil;
@@ -5147,8 +5191,18 @@ begin
    // is on, else border) flips the shared firstFrames flag + publishes the probe writes to the fragment shading stages.
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Irradiance,false);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass);
+   // Glossy radiance stage (opt-in): chained Irradiance -> GlossyRadiance -> Visibility (it reads the per-probe age the
+   // visibility stage writes, like irradiance, so it must run before visibility). When off, Visibility depends on Irradiance.
+   if TpvScene3DRendererInstance.GlobalIlluminationDDGIGlossyRadiance then begin
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIGlossyRadianceUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.GlossyRadiance,false);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIGlossyRadianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass);
+   end;
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Visibility,false);
-   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass);
+   if TpvScene3DRendererInstance.GlobalIlluminationDDGIGlossyRadiance then begin
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIGlossyRadianceUpdateComputePass);
+   end else begin
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass);
+   end;
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Border,not TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass);
    if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin

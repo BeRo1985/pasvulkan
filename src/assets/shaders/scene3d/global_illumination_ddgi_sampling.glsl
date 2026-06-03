@@ -65,4 +65,34 @@ vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
 }
 #endif
 
+#if defined(GI_DDGI_GLOSSY_RADIANCE)
+// Glossy prefiltered-radiance octahedral atlas, binding 5. RGB9E5 (default) is sampled as a uint texture (it is not
+// reliably hardware-linear-filterable) and bilinear-filtered manually with a decode per tap; the RGBA16F fallback uses a
+// hardware-bilinear sampler. The guard band (filled by gi_ddgi_border_update.comp) makes the edge taps correct either way.
+#include "rgb9e5.glsl"
+#ifdef GI_DDGI_GLOSSY_RGB9E5
+layout(set = DDGI_DESCRIPTOR_SET, binding = 5) uniform usampler2D uDDGIGlossyRadiance; // R32_UINT alias of the E5B9G9R9 atlas
+#else
+layout(set = DDGI_DESCRIPTOR_SET, binding = 5) uniform sampler2D uDDGIGlossyRadiance;  // RGBA16F atlas
+#endif
+vec3 ddgiEvaluateGlossyRadiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 reflectionDirection){
+  vec2 oct = fma(octEncode(normalize(reflectionDirection)), vec2(0.5), vec2(0.5)); // [-1,1] -> [0,1]
+  vec2 originTexel = vec2(ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_GLOSSY_OCT_FULL));
+  vec2 texel = originTexel + (oct * float(GI_DDGI_GLOSSY_OCT_SIZE));
+#ifdef GI_DDGI_GLOSSY_RGB9E5
+  vec2 t = texel - vec2(0.5);
+  ivec2 base = ivec2(floor(t));
+  vec2 f = t - vec2(base);
+  vec3 c00 = decodeRGB9E5(texelFetch(uDDGIGlossyRadiance, base + ivec2(0, 0), 0).x);
+  vec3 c10 = decodeRGB9E5(texelFetch(uDDGIGlossyRadiance, base + ivec2(1, 0), 0).x);
+  vec3 c01 = decodeRGB9E5(texelFetch(uDDGIGlossyRadiance, base + ivec2(0, 1), 0).x);
+  vec3 c11 = decodeRGB9E5(texelFetch(uDDGIGlossyRadiance, base + ivec2(1, 1), 0).x);
+  return max(vec3(0.0), mix(mix(c00, c10, f.x), mix(c01, c11, f.x), f.y));
+#else
+  vec2 uv = texel / vec2(ddgiAtlasSize(GI_DDGI_GLOSSY_OCT_FULL));
+  return max(vec3(0.0), textureLod(uDDGIGlossyRadiance, uv, 0.0).rgb);
+#endif
+}
+#endif
+
 #endif // GLOBAL_ILLUMINATION_DDGI_SAMPLING_GLSL

@@ -960,11 +960,16 @@ void main() {
         // Glossy/specular fill from the *residual* radiance field: the dominant light's specular is handled analytically by
         // doSingleLight below (sharp highlight toward the brightest direction), and residual = field minus that dominant, so
         // evaluating it along the reflection vector adds the non-dominant reflected radiance without double-counting. L1/L2 is
-        // low-frequency -> a broad (rough) reflection; the sharp end stays with the dominant light (and the G2 radiance atlas).
+        // low-frequency -> a broad (rough) reflection; the sharp end stays with the dominant light (and the glossy radiance atlas).
         // Routed through the same split-sum BRDF term (getIBLGGXFresnel) as the environment IBL specular for consistency.
         {
           vec3 ddgiReflectionVector = normalize(reflect(-viewDirection, normal.xyz));
-          vec3 ddgiGlossyRadiance = max(vec3(0.0), DDGI_SH_EVALUATE(shResidual, ddgiReflectionVector));
+          vec3 ddgiGlossyRadiance = max(vec3(0.0), DDGI_SH_EVALUATE(shResidual, ddgiReflectionVector)); // broad reflection (residual SH along R)
+#if defined(GI_DDGI_GLOSSY_RADIANCE)
+          // Prefer the sharp prefiltered-radiance atlas for low roughness, fade to the broad residual source toward HI.
+          vec3 ddgiSharpGlossy = ddgiSampleGlossyRadiance(inWorldSpacePosition.xyz, normal.xyz, ddgiReflectionVector, viewDirection);
+          ddgiGlossyRadiance = mix(ddgiSharpGlossy, ddgiGlossyRadiance, smoothstep(GI_DDGI_GLOSSY_ROUGHNESS_LO, GI_DDGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
+#endif
           vec3 ddgiGlossyFresnel = getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic));
           colorOutput += ddgiGlossyRadiance * ddgiGlossyFresnel * specularOcclusion;
         }

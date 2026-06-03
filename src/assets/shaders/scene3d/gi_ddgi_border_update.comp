@@ -27,6 +27,15 @@ layout(local_size_x = GI_DDGI_VISIBILITY_OCT_FULL, local_size_y = GI_DDGI_VISIBI
 #endif
 layout(set = 1, binding = 3, rg32f) uniform image2D uDDGIVisibilityMoments; // x = mean dist, y = mean dist^2
 layout(set = 1, binding = 4, r8) uniform image2D uDDGIVisibilitySky;        // x = sky visibility (0..1)
+#if defined(GI_DDGI_GLOSSY_RADIANCE)
+  // Glossy prefiltered-radiance atlas; border-copied here too. RGB9E5 copies the raw shared-exponent uint bits (no
+  // decode needed for a guard-band copy), RGBA16F copies the vec4. Format must match the glossy update + the Pascal image.
+  #ifdef GI_DDGI_GLOSSY_RGB9E5
+    layout(set = 1, binding = 5, r32ui) uniform uimage2D uDDGIGlossyRadiance;
+  #else
+    layout(set = 1, binding = 5, rgba16f) uniform image2D uDDGIGlossyRadiance;
+  #endif
+#endif
 
 // Must match the shared push constant layout the pass pushes for all DDGI stages (only params is used here, but the
 // preceding fields must be present so params sits at the correct offset).
@@ -90,6 +99,23 @@ void main(){
     if(ddgiBorderSource(t, GI_DDGI_IRRADIANCE_OCT_SIZE, src)){
       vec3 value = imageLoad(uDDGIIrradianceOct, fullOrigin + src).rgb;
       imageStore(uDDGIIrradianceOct, fullOrigin + t, vec4(value, 1.0));
+    }
+  }
+#endif
+
+#if defined(GI_DDGI_GLOSSY_RADIANCE)
+  // Glossy atlas guard band (full tile = GLOSSY_OCT_FULL); only the threads inside that tile participate.
+  if(all(lessThan(t, ivec2(GI_DDGI_GLOSSY_OCT_FULL)))){
+    ivec2 fullOrigin = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_GLOSSY_OCT_FULL) - ivec2(1);
+    ivec2 src;
+    if(ddgiBorderSource(t, GI_DDGI_GLOSSY_OCT_SIZE, src)){
+#ifdef GI_DDGI_GLOSSY_RGB9E5
+      uint value = imageLoad(uDDGIGlossyRadiance, fullOrigin + src).x;
+      imageStore(uDDGIGlossyRadiance, fullOrigin + t, uvec4(value, 0u, 0u, 0u));
+#else
+      vec3 value = imageLoad(uDDGIGlossyRadiance, fullOrigin + src).rgb;
+      imageStore(uDDGIGlossyRadiance, fullOrigin + t, vec4(value, 1.0));
+#endif
     }
   }
 #endif

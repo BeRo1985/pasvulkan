@@ -82,11 +82,11 @@
 // DirectionalLights (separate uniform ambient + DC-zeroed residual + per-direction roughness estimate) — a different fit.
 #define GI_DDGI_SH_APPROXIMATE_DOMINANT
 
-// SH-storage glossy fill (Phase G1, frag-only, no extra resource): in the SH shading path the dominant directional light
+// SH-storage glossy fill (frag-only, no extra resource): in the SH shading path the dominant directional light
 // already supplies a roughness-aware *sharp* specular highlight via the analytic BRDF (doSingleLight). This toggle adds the
 // *non-dominant* reflected radiance by evaluating the residual radiance SH (field minus the extracted dominant) along the
 // reflection vector and routing it through the same split-sum BRDF term as the environment IBL (getIBLGGXFresnel). L1/L2 is
-// low-frequency, so it is a broad (rough) reflection — the sharp end stays with the dominant light / the G2 radiance atlas.
+// low-frequency, so it is a broad (rough) reflection — the sharp end stays with the dominant light / the glossy radiance atlas.
 // Comment out for an A/B comparison (the dominant-light-only specular). Default ON. Octahedral storage is unaffected.
 #define GI_DDGI_GLOSSY_RESIDUAL
 
@@ -114,6 +114,40 @@
 #endif
 #define GI_DDGI_IRRADIANCE_OCT_FULL (GI_DDGI_IRRADIANCE_OCT_SIZE + 2)
 #define GI_DDGI_VISIBILITY_OCT_FULL (GI_DDGI_VISIBILITY_OCT_SIZE + 2)
+
+// Glossy-radiance octahedral atlas. Separate from the irradiance atlas because it stores prefiltered *radiance*
+// (no cosine convolution), integrated with a sharp directional kernel for glossy reflections. Only allocated/updated/sampled
+// when GI_DDGI_GLOSSY_RADIANCE is defined (Pascal GlobalIlluminationDDGIGlossyRadiance, mirrored in compileshaders.sh; the
+// toggle is opt-in / default OFF). Sized like the visibility atlas (16 interior + guard band) for reasonable sharpness.
+#ifndef GI_DDGI_GLOSSY_OCT_SIZE
+  #define GI_DDGI_GLOSSY_OCT_SIZE 16
+#endif
+#define GI_DDGI_GLOSSY_OCT_FULL (GI_DDGI_GLOSSY_OCT_SIZE + 2)
+
+// Directional prefilter sharpness (Phong-like lobe exponent pow(max(dot,0), n)). Bounded by the ray count (~96 random rays):
+// too sharp -> too few rays per texel -> noise (temporal accumulation hides some). ~8 is the practical sharp limit here; the
+// planned mip chain (v2) adds *blurrier* levels below this for higher roughness, picked by a roughness->LOD at sample time.
+#ifndef GI_DDGI_GLOSSY_SHARPNESS
+  #define GI_DDGI_GLOSSY_SHARPNESS 8.0
+#endif
+
+// Storage format of the glossy atlas. Default RGB9E5 (E5B9G9R9 shared-exponent, 4 bytes/texel ~= half of RGBA16F): compute
+// read/write goes through an R32_UINT alias view (encodeRGB9E5/decodeRGB9E5 in rgb9e5.glsl), and sampling does a manual
+// 4-tap bilinear decode because E5B9G9R9 is not reliably hardware-linear-filterable. Build with -DGI_DDGI_GLOSSY_RGBA16F for
+// the RGBA16F fallback (8 bytes, hardware bilinear). Whichever is chosen MUST match the Pascal image format.
+#if !defined(GI_DDGI_GLOSSY_RGB9E5) && !defined(GI_DDGI_GLOSSY_RGBA16F)
+  #define GI_DDGI_GLOSSY_RGB9E5
+#endif
+
+// Shading-time roughness band for blending the sharp glossy atlas against the broad source: at/below LO take the sharp
+// atlas, at/above HI take the broad source (the atlas prefilter sharpness ~ roughness HI, beyond which the broad source
+// is already correct). Only used when GI_DDGI_GLOSSY_RADIANCE.
+#ifndef GI_DDGI_GLOSSY_ROUGHNESS_LO
+  #define GI_DDGI_GLOSSY_ROUGHNESS_LO 0.0
+#endif
+#ifndef GI_DDGI_GLOSSY_ROUGHNESS_HI
+  #define GI_DDGI_GLOSSY_ROUGHNESS_HI 0.45
+#endif
 
 // Number of rays traced per probe per frame.
 #ifndef GI_DDGI_RAYS_PER_PROBE
@@ -370,6 +404,12 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
   vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex);
 #endif
 
+#if defined(GI_DDGI_GLOSSY_RADIANCE)
+  // Prefiltered glossy *radiance* (NOT cosine-convolved) for a reflection direction, from the octahedral glossy atlas.
+  // Provided by the consumer: a (u)sampler2D with manual/HW bilinear in the shading path. See ddgiSampleGlossyRadiance.
+  vec3 ddgiEvaluateGlossyRadiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 reflectionDirection);
+#endif
+
   // ---------------------------------------------------------------------------------------------------------------------
   //  Sample the irradiance field at a world position for a surface with the given normal, with Chebyshev visibility
   //  weighting (the DDGI leak-reduction term) and trilinear + backface weighting. Returns diffuse irradiance.
@@ -493,6 +533,110 @@ vec2 ddgiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
     skyVisibility = (sumWeight > 0.0) ? clamp(sumSkyVisibility / sumWeight, 0.0, 1.0) : 1.0;
     return result;
   }
+
+#if defined(GI_DDGI_GLOSSY_RADIANCE)
+  // ---------------------------------------------------------------------------------------------------------------------
+  //  Sample the prefiltered glossy radiance field along a reflection direction. Same probe gather as the irradiance
+  //  path (surface bias, trilinear, relocation skip, normal-based backface wrap, Chebyshev visibility) so it stays leak-
+  //  consistent — only the per-probe lookup samples the glossy atlas along the *reflection* vector instead of evaluating
+  //  cosine-convolved irradiance along the normal. Returns prefiltered radiance (the caller applies the split-sum BRDF).
+  // ---------------------------------------------------------------------------------------------------------------------
+  vec3 ddgiSampleGlossyRadianceInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 reflectionDirection, const in vec3 viewDirection, const in int cascadeIndex){
+    vec3 gridCoord = ddgiWorldToProbeGrid(worldPosition, cascadeIndex);
+    ivec3 baseProbe = ivec3(floor(gridCoord));
+    vec3 frac = gridCoord - vec3(baseProbe);
+
+    vec3 biasedPosition = worldPosition + ((normal * GI_DDGI_NORMAL_BIAS) + (viewDirection * GI_DDGI_VIEW_BIAS)) * ddgiData.ddgiCascadeCellSizes[cascadeIndex].x;
+
+    vec3 sumGlossy = vec3(0.0);
+    float sumWeight = 0.0;
+
+    for(int i = 0; i < 8; i++){
+      ivec3 offset = ivec3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
+      ivec3 probeCoord = clamp(baseProbe + offset, ivec3(0), uDDGIProbeCounts - ivec3(1));
+      ivec3 physProbeCoord = ddgiProbePhysicalCoord(probeCoord, cascadeIndex);
+
+      vec3 trilinear = mix(vec3(1.0) - frac, frac, vec3(offset));
+      float weight = trilinear.x * trilinear.y * trilinear.z;
+
+      vec3 probeWorld = ddgiProbeGridToWorld(probeCoord, cascadeIndex);
+#if GI_DDGI_PROBE_RELOCATION
+      vec4 probeData = ddgiLoadProbeData(physProbeCoord, cascadeIndex);
+      if(probeData.w < 0.5){
+        continue;
+      }
+      probeWorld += probeData.xyz;
+#endif
+      vec3 probeToPoint = biasedPosition - probeWorld;
+      vec3 dirToProbe = normalize(-probeToPoint);
+
+      float wrap = (dot(dirToProbe, normal) + 1.0) * 0.5;
+      weight *= (wrap * wrap) + 0.2;
+
+      float distToProbe = length(probeToPoint);
+      vec2 moments = ddgiSampleVisibility(physProbeCoord, cascadeIndex, normalize(probeToPoint)).xy;
+      float meanDist = moments.x;
+      if(distToProbe > meanDist){
+        float variance = abs((meanDist * meanDist) - moments.y);
+        float d = distToProbe - meanDist;
+        float chebyshev = variance / (variance + (d * d));
+        chebyshev = max(0.0, chebyshev * chebyshev * chebyshev);
+        weight *= chebyshev;
+      }
+
+      const float crushThreshold = 0.2;
+      if(weight < crushThreshold){
+        weight *= (weight * weight) * (1.0 / (crushThreshold * crushThreshold));
+      }
+      weight = max(weight, 1e-6);
+
+      sumGlossy += ddgiEvaluateGlossyRadiance(physProbeCoord, cascadeIndex, reflectionDirection) * weight;
+      sumWeight += weight;
+    }
+
+    return (sumWeight > 0.0) ? (sumGlossy / sumWeight) : vec3(0.0);
+  }
+
+  // Cascade selection + fade blend (same scheme as ddgiSampleIrradiance), returning prefiltered glossy radiance along the
+  // reflection vector. Outside all cascades returns 0 (the caller falls back to the broad source / environment specular).
+  vec3 ddgiSampleGlossyRadiance(const in vec3 worldPosition, const in vec3 normal, const in vec3 reflectionDirection, const in vec3 viewDirection){
+    int cascadeIndex = 0;
+    while(((cascadeIndex + 1) < GI_DDGI_CASCADES) &&
+          (any(lessThan(worldPosition, ddgiData.ddgiCascadeAABBMin[cascadeIndex].xyz)) ||
+           any(greaterThan(worldPosition, ddgiData.ddgiCascadeAABBMax[cascadeIndex].xyz)))){
+      cascadeIndex++;
+    }
+
+    vec3 result = vec3(0.0);
+    float sumWeight = 0.0;
+    float current = 1.0;
+    for(int c = cascadeIndex; c < GI_DDGI_CASCADES; c++){
+      float weight;
+      if(c == (GI_DDGI_CASCADES - 1)){
+        weight = current;
+        current = 0.0;
+      }else if(all(greaterThanEqual(worldPosition, ddgiData.ddgiCascadeAABBMin[c].xyz)) &&
+               all(lessThanEqual(worldPosition, ddgiData.ddgiCascadeAABBMax[c].xyz))){
+        vec3 fade = smoothstep(ddgiData.ddgiCascadeAABBFadeStart[c].xyz,
+                               ddgiData.ddgiCascadeAABBFadeEnd[c].xyz,
+                               abs(worldPosition - ddgiData.ddgiCascadeAABBCenter[c].xyz));
+        float f = 1.0 - clamp(max(max(fade.x, fade.y), fade.z), 0.0, 1.0);
+        weight = current * f;
+        current *= 1.0 - f;
+      }else{
+        break;
+      }
+      if(weight > 1e-6){
+        result += ddgiSampleGlossyRadianceInCascade(worldPosition, normal, reflectionDirection, viewDirection, c) * weight;
+        sumWeight += weight;
+      }
+      if(current < 1e-6){
+        break;
+      }
+    }
+    return (sumWeight > 0.0) ? (result / sumWeight) : vec3(0.0);
+  }
+#endif // GI_DDGI_GLOSSY_RADIANCE
 
   #if GI_DDGI_STORAGE_IS_SH
   // ---------------------------------------------------------------------------------------------------------------------
