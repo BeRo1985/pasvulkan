@@ -275,8 +275,7 @@ vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float
 }
 #elif defined(WATER_SURFEL)
 vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
-  skyVisibility = 1.0;
-  return giSurfelSampleIrradiance(worldPosition, n) * OneOverPI;
+  return giSurfelSampleIrradiance(worldPosition, n, skyVisibility) * OneOverPI;
 }
 #else
 vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){

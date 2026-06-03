@@ -994,9 +994,13 @@ void main() {
       // Surfel GI: gather the nearby surfels from the world hash grid, blend their SH and evaluate the diffuse irradiance
       // E(n) (outgoing diffuse = albedo/PI * E). The surfel field replaces the environment IBL diffuse; the environment
       // IBL specular is kept (block below).
-      float iblWeight = 1.0;
+      // Sample the surfel field unconditionally to also get the per-point sky visibility (blend of nearby surfels) — it
+      // occludes the environment IBL specular below (iblWeight), the surfel analogue of DDGI's ddgiSkyVisibility, so enclosed
+      // areas stop being washed out by full-strength env specular. The diffuse irradiance is only added for non-black albedo.
+      float surfelSkyVisibility;
+      vec3 surfelIrradiance = giSurfelSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, surfelSkyVisibility);
+      float iblWeight = surfelSkyVisibility;
       if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-        vec3 surfelIrradiance = giSurfelSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz);
         colorOutput += surfelIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
       }
 #endif

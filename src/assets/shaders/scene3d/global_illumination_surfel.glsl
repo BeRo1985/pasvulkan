@@ -99,6 +99,8 @@ struct Surfel {
   uvec2 payload[GI_SURFEL_PAYLOAD_UVEC2_COUNT]; // packed radiance: SH (L1/L2) or octahedral irradiance atlas (half-float)
   uint lastFrame;        // frame index this surfel was last touched (for recycling stale surfels)
   uint flags;            // GI_SURFEL_FLAG_* bits
+  float skyVisibility;   // fraction of this surfel's trace rays that escaped to the sky (temporally averaged); occludes the
+                         // environment IBL specular at shading in enclosed areas — the surfel analogue of DDGI sky-visibility
 };
 
 // --- Payload (un)packing helpers ------------------------------------------------------------------------------------
@@ -206,7 +208,7 @@ layout(set = GI_SURFEL_DESCRIPTOR_SET, binding = 3, std430) readonly buffer Surf
 // by spatial proximity (smooth falloff over the surfel radius) and normal agreement (back-facing surfels rejected). The
 // cell size is chosen (Pascal side) >= the surfel radius so a single-cell gather already covers a point's neighbourhood;
 // returns irradiance E (multiply by albedo/PI like getIBLDiffuse's result for the diffuse contribution).
-vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal){
+vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal, out float skyVisibility){
   float cellSize = surfelData.cameraPositionCellSize.w;
   ivec3 cellCoord = giSurfelCellCoord(worldPosition, cellSize);
   uint cell = giSurfelCellHash(cellCoord);
@@ -220,6 +222,7 @@ vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal)
   vec3 accumIrradiance = vec3(0.0);
 #endif
   float accumWeight = 0.0;
+  float accumSkyVis = 0.0;
 
   for(uint i = 0u; i < count; i++){
     uint surfelIndex = surfelGridCells[base + i];
@@ -259,11 +262,14 @@ vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal)
     accumIrradiance += surfelOctSample(surfel, normal) * weight; // per-surfel oct atlas already stores irradiance
 #endif
     accumWeight += weight;
+    accumSkyVis += surfel.skyVisibility * weight;
   }
 
   if(accumWeight <= 0.0){
+    skyVisibility = 1.0; // no surfels here -> leave the env IBL specular unoccluded
     return vec3(0.0);
   }
+  skyVisibility = accumSkyVis / accumWeight;
 
 #if GI_SURFEL_STORAGE_IS_SH
   accumSH = SURFEL_SH_DIV(accumSH, accumWeight);

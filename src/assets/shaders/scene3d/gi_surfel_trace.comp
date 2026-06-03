@@ -108,6 +108,8 @@ void main(){
   vec3 rayRadiances[GI_SURFEL_RAYS_PER_SURFEL];
 #endif
 
+  uint missCount = 0u; // rays that escaped to the sky (-> per-surfel sky visibility, occludes the env IBL specular at shading)
+
   for(uint j = 0u; j < raysPerSurfel; j++){
     // Uniform hemisphere sampling (avoids the 1/cos blow-up of cosine sampling at grazing angles).
     vec2 u = fract(vec2((float(j) + 0.5) / float(raysPerSurfel),
@@ -131,6 +133,7 @@ void main(){
       radiance = giGatherShadeHit(hit, previousFrameIndirect);
     }else{
       radiance = GI_GATHER_SKY(dir);
+      missCount++;
     }
     if(any(isnan(radiance)) || any(isinf(radiance))){
       radiance = vec3(0.0);
@@ -172,6 +175,8 @@ void main(){
     }
   }
 #endif
+  // Per-surfel sky visibility: temporally averaged fraction of rays that reached the sky (same running-average alpha as the radiance).
+  surfels[surfelIndex].skyVisibility = mix(surfel.skyVisibility, float(missCount) / float(raysPerSurfel), alpha);
   surfels[surfelIndex].normalCount.w = min(count + 1.0, float(GI_SURFEL_MAX_ACCUM));
   surfels[surfelIndex].lastFrame = frameIndex;
 }

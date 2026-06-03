@@ -110,6 +110,7 @@ void main(){
   }
   surfel.lastFrame = pushConstants.params.z;
   surfel.flags = GI_SURFEL_FLAG_ALIVE;
+  surfel.skyVisibility = 1.0; // neutral until the trace refines it (no sudden darkening of a fresh surfel)
   surfels[surfelIndex] = surfel;
 
   giSurfelGridInsert(surfelIndex, worldPosition);

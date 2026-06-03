@@ -562,18 +562,20 @@ void main(){
     colorOutput += ddgiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
   }
   vec3 iblDiffuse = vec3(0.0);
-  float ddgiIblWeight = ddgiSkyVisibility;
+  float giIBLWeight = ddgiSkyVisibility;
 #elif defined(GLOBAL_ILLUMINATION_SURFEL)
-  // RT GI: surfel field provides the diffuse indirect (replacing the environment IBL diffuse); the IBL specular is kept.
+  // RT GI: surfel field provides the diffuse indirect (replacing the environment IBL diffuse); the IBL specular is kept but
+  // occluded by the blended per-surfel sky visibility (so enclosed terrain stops being washed out by full env specular).
+  float surfelSkyVisibility;
+  vec3 surfelIrradiance = giSurfelSampleIrradiance(inWorldSpacePosition, normal, surfelSkyVisibility);
   if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-    vec3 surfelIrradiance = giSurfelSampleIrradiance(inWorldSpacePosition, normal);
     colorOutput += surfelIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
   }
   vec3 iblDiffuse = vec3(0.0);
-  const float ddgiIblWeight = 1.0;
+  float giIBLWeight = surfelSkyVisibility;
 #else
   vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
-  const float ddgiIblWeight = 1.0;
+  const float giIBLWeight = 1.0;
 #endif
   vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
   vec3 iblSpecularDielectric = iblSpecularMetal;
@@ -582,7 +584,7 @@ void main(){
   vec3 iblDielectricFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, F0Dielectric, specularWeight);
   vec3 iblDielectricBRDF = mix(iblDiffuse * diffuseOcclusion, iblSpecularDielectric * specularOcclusion, iblDielectricFresnel);
   vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
-  colorOutput += iblResultColor * ddgiIblWeight;
+  colorOutput += iblResultColor * giIBLWeight;
 
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
   vec4 c = vec4(colorOutput, 1.0);
