@@ -802,13 +802,13 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationDDGICascadedVolumes:TCascadedVolumes;
        fGlobalIlluminationDDGIProbeBaseCells:array[0..MaxInFlightFrames-1,0..CountGlobalIlluminationDDGICascades-1] of TpvVector3; // per in-flight slot per cascade: rounded baseCell of the previous update, for toroidal scroll re-init
        fGlobalIlluminationDDGIUniformBufferDataArray:TGlobalIlluminationDDGIUniformBufferDataArray;
-       fGlobalIlluminationDDGIUniformBuffers:TGlobalIlluminationDDGIUniformBuffers;
+       // (the separate DDGI globals UBO buffer is gone — globals + sub-buffer pointers now share one SSBO: fGlobalIlluminationDDGIMasterBuffers)
        fGlobalIlluminationDDGIIrradianceSHBuffers:TGlobalIlluminationDDGIBuffers;              // SH storage: BDA buffer (DDGI_SH_IMAGE_COUNT packed vec4 per probe) per frame
        fGlobalIlluminationDDGIIrradianceOctImages:TGlobalIlluminationDDGIImage2Ds;             // octahedral storage: 1 RGBA16F 2D atlas per frame
        fGlobalIlluminationDDGIVisibilityMomentsImages:TGlobalIlluminationDDGIImage2Ds;          // visibility MOMENTS atlas (RG32F): x = mean dist, y = mean dist^2
        fGlobalIlluminationDDGIVisibilitySkyImages:TGlobalIlluminationDDGIImage2Ds;              // visibility SKY atlas (R8): x = sky visibility (0..1)
        fGlobalIlluminationDDGIRayDataBuffers:TGlobalIlluminationDDGIBuffers;                    // BDA storage buffer (rgb = radiance, a = distance), per in-flight frame
-       fGlobalIlluminationDDGIMasterBuffers:TGlobalIlluminationDDGIBuffers;                     // BDA master (sub-buffer pointers), per in-flight frame, host-visible
+       fGlobalIlluminationDDGIMasterBuffers:TGlobalIlluminationDDGIBuffers;                     // unified DDGI data SSBO (`ddgiData`): cascade globals + BDA sub-buffer pointers, per in-flight frame (BAR, binding 0)
        fGlobalIlluminationDDGIProbeDataBuffers:TGlobalIlluminationDDGIBuffers;                  // relocation only: BDA buffer, vec4 per probe (xyz = offset, w = active state)
        fGlobalIlluminationDDGIAgeBuffers:TGlobalIlluminationDDGIBuffers;                        // BDA buffer, uint per probe (per-probe convergence age, written by visibility / read by irradiance)
        fGlobalIlluminationDDGIDescriptorPool:TpvVulkanDescriptorPool;
@@ -1163,7 +1163,6 @@ type { TpvScene3DRendererInstance }
        property InFlightFrameCascadedRadianceHintSecondBounceVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages;
        property GlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray read fGlobalIlluminationRadianceHintsUniformBufferDataArray;
        property GlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers read fGlobalIlluminationRadianceHintsUniformBuffers;
-       property GlobalIlluminationDDGIUniformBuffers:TGlobalIlluminationDDGIUniformBuffers read fGlobalIlluminationDDGIUniformBuffers;
        property GlobalIlluminationDDGIIrradianceSHBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIIrradianceSHBuffers;
        property GlobalIlluminationDDGIIrradianceOctImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIIrradianceOctImages;
        property GlobalIlluminationDDGIVisibilityMomentsImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIVisibilityMomentsImages;
@@ -2606,7 +2605,6 @@ begin
  FillChar(fGlobalIlluminationDDGIProbeBaseCells,SizeOf(fGlobalIlluminationDDGIProbeBaseCells),#0);
 
  fGlobalIlluminationDDGICascadedVolumes:=nil;
- FillChar(fGlobalIlluminationDDGIUniformBuffers,SizeOf(TGlobalIlluminationDDGIUniformBuffers),#0);
  FillChar(fGlobalIlluminationDDGIIrradianceSHBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
  FillChar(fGlobalIlluminationDDGIIrradianceOctImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
  FillChar(fGlobalIlluminationDDGIVisibilityMomentsImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
@@ -3048,7 +3046,6 @@ begin
   FreeAndNil(fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationDDGIUniformBuffers[InFlightFrameIndex]);
  end;
  FreeAndNil(fGlobalIlluminationDDGIDescriptorSetLayout);
  FreeAndNil(fGlobalIlluminationDDGIDescriptorPool);
@@ -3631,18 +3628,9 @@ begin
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
-    fGlobalIlluminationDDGIUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                      SizeOf(TGlobalIlluminationDDGIUniformBufferData),
-                                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                      [],
-                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                                      0,0,0,0,0,0,
-                                                                                      [TpvVulkanBufferFlag.PersistentMappedIfPossible],
-                                                                                      0,
-                                                                                      pvAllocationGroupIDScene3DStatic,
-                                                                                      'TpvScene3DRendererInstance.fGlobalIlluminationDDGIUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
+    // The cascade globals (formerly a separate UBO buffer) now live at offset 0 of the DDGI data buffer (fGlobalIllumination
+    // DDGIMasterBuffers), followed by the BDA sub-buffer pointers — one std430 SSBO `ddgiData` (gi_ddgi_data.glsl). Created
+    // further below (after the sub-buffers exist), so nothing to allocate here any more.
 
     if GlobalIlluminationDDGIStorageOctahedral then begin
      // Octahedral irradiance: a single RGBA16F 2D atlas (probe tiles with guard bands).
@@ -3715,17 +3703,21 @@ begin
                                                                                       pvAllocationGroupIDScene3DStatic,
                                                                                       'TpvScene3DRendererInstance.fGlobalIlluminationDDGIRayDataBuffers['+IntToStr(InFlightFrameIndex)+']');
 
-    // DDGI master: tiny host-visible BDA buffer holding the sub-buffer device addresses; passed to the compute passes by
-    // push constant. Phase 1 sets only the ray-data pointer (probe-data + SH-irradiance follow in later phases).
+    // DDGI data buffer: ONE std430 SSBO holding the cascade globals (offset 0, CPU-written each frame) followed by the BDA
+    // sub-buffer pointers (offset SizeOf(globals), written once below) — the unified `ddgiData` block (gi_ddgi_data.glsl),
+    // bound at the DDGI set's binding 0 in both the compute passes and the fragment consumers (replaces the old globals UBO
+    // AND the old master pointer buffer). BAR: device-local (fast SSBO reads by every DDGI invocation / fragment) AND
+    // host-visible (CPU fills the pointers via UpdateData; the per-frame globals are staged into offset 0). No device-address
+    // needed for the block itself any more (only the sub-buffers it points to are BDA).
     fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                     SizeOf(TGlobalIlluminationDDGIMasterData),
-                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                     SizeOf(TGlobalIlluminationDDGIUniformBufferData)+SizeOf(TGlobalIlluminationDDGIMasterData),
+                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                      [],
-                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), // require BAR: device-local (fast GPU/BDA reads) AND host-visible (one-time CPU fill via UpdateData); the master is read by every DDGI invocation
+                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                                                      0,0,0,0,0,0,
-                                                                                     [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                                                     [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                      0,
                                                                                      pvAllocationGroupIDScene3DStatic,
                                                                                      'TpvScene3DRendererInstance.fGlobalIlluminationDDGIMasterBuffers['+IntToStr(InFlightFrameIndex)+']');
@@ -3773,7 +3765,9 @@ begin
      GlobalIlluminationDDGIMasterData.IrradianceSH:=fGlobalIlluminationDDGIIrradianceSHBuffers[InFlightFrameIndex].DeviceAddress;
     end;
     GlobalIlluminationDDGIMasterData.Age:=fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex].DeviceAddress;
-    fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].UpdateData(GlobalIlluminationDDGIMasterData,0,SizeOf(GlobalIlluminationDDGIMasterData));
+    // Pointers go AFTER the cascade globals (which the per-frame UploadGlobalIlluminationDDGI stages into offset 0). Written
+    // once here (the sub-buffer addresses are stable for the slot's lifetime).
+    fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].UpdateData(GlobalIlluminationDDGIMasterData,SizeOf(TGlobalIlluminationDDGIUniformBufferData),SizeOf(GlobalIlluminationDDGIMasterData));
 
    end;
 
@@ -3781,7 +3775,7 @@ begin
    fGlobalIlluminationDDGIDescriptorPool:=TpvVulkanDescriptorPool.Create(Renderer.VulkanDevice,
                                                                          TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                          Renderer.CountInFlightFrames);
-   fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames*2); // binding 0 = globals UBO, binding 3 = DDGI master pointer UBO
+   fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,Renderer.CountInFlightFrames); // binding 0 = ddgiData SSBO (cascade globals + sub-buffer pointers)
    if GlobalIlluminationDDGIStorageOctahedral then begin
     fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*3); // binding 1 = oct irradiance + binding 2 = visibility moments + binding 4 = visibility sky
    end else begin
@@ -3789,29 +3783,28 @@ begin
    end;
    fGlobalIlluminationDDGIDescriptorPool.Initialize;
 
-   // Binding 0 = globals UBO; binding 2 = octahedral visibility (bilinear); binding 3 = DDGI master pointer UBO (the BDA
-   // sub-buffers: probe-data + SH-irradiance). Binding 1 = octahedral irradiance atlas (bilinear) ONLY in OCT storage mode;
-   // in SH mode the irradiance is a BDA buffer reached via the master. Matches DDGIMasterRef in global_illumination_ddgi_sampling.glsl.
+   // Binding 0 = ddgiData SSBO (cascade globals + the BDA sub-buffer pointers — probe-data + SH-irradiance + ...); binding 2 =
+   // octahedral visibility moments (bilinear); binding 4 = visibility sky (bilinear). Binding 1 = octahedral irradiance atlas
+   // (bilinear) ONLY in OCT storage mode (SH irradiance is a sub-buffer reached via ddgiData). Matches the `ddgiData` SSBO in
+   // gi_ddgi_data.glsl (binding 3, the old master pointer UBO, is gone — folded into binding 0).
    fGlobalIlluminationDDGIDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
-   fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
+   fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 0 = ddgiData SSBO
    if GlobalIlluminationDDGIStorageOctahedral then begin
     fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
    end;
    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 2 = visibility moments (RG32F)
-   fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(4,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 4 = visibility sky (R8)
    fGlobalIlluminationDDGIDescriptorSetLayout.Initialize;
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
     fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalIlluminationDDGIDescriptorPool,fGlobalIlluminationDDGIDescriptorSetLayout);
-    fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),[],[fGlobalIlluminationDDGIUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false);
+    fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false); // binding 0 = ddgiData SSBO (globals + sub-buffer pointers)
     if GlobalIlluminationDDGIStorageOctahedral then begin
      fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                     [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
     end;
     fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                    [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 2 = visibility moments
-    fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),[],[fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false);
     fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                    [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 4 = visibility sky
     fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].Flush;
@@ -8509,7 +8502,7 @@ begin
                                             fScene3D.VulkanStagingCommandBuffer,
                                             fScene3D.VulkanStagingFence,
                                             fGlobalIlluminationDDGIUniformBufferDataArray[aInFlightFrameIndex],
-                                            fGlobalIlluminationDDGIUniformBuffers[aInFlightFrameIndex],
+                                            fGlobalIlluminationDDGIMasterBuffers[aInFlightFrameIndex], // cascade globals live at offset 0 of the unified ddgiData buffer (the sub-buffer pointers, written once, sit after them)
                                             0,
                                             SizeOf(TGlobalIlluminationDDGIUniformBufferData));
 

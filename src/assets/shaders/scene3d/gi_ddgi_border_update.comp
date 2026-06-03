@@ -17,7 +17,7 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
-#include "gi_ddgi_master.glsl" // only for the DDGIMaster type referenced by the shared push-constant block
+// ddgiData (SSBO) comes via global_illumination_ddgi.glsl; border doesn't use it, but the SSBO's buffer_reference members need the extension above
 
 // One workgroup per probe; threads cover the full (bordered) visibility tile, which is the larger of the two tiles.
 layout(local_size_x = GI_DDGI_VISIBILITY_OCT_FULL, local_size_y = GI_DDGI_VISIBILITY_OCT_FULL, local_size_z = 1) in;

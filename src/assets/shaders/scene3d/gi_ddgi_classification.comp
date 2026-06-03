@@ -16,7 +16,7 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
-#include "gi_ddgi_master.glsl"
+// ddgiData (SSBO: cascade globals + sub-buffer pointers) + the sub-buffer accessors come via global_illumination_ddgi.glsl
 
 #include "gi_ddgi_pushconstants.glsl"
 
@@ -32,8 +32,8 @@ void main(){
   ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade);
 
   // Hoist the master->sub-pointer derefs once.
-  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData;
-  DDGIProbeDataBuffer probeDataBuf = pushConstants.ddgiMaster.probeData;
+  DDGIRayDataBuffer rayData = ddgiData.rayData;
+  DDGIProbeDataBuffer probeDataBuf = ddgiData.probeData;
 
   int backfaceCount = 0;
   for(int i = 0; i < GI_DDGI_FIXED_RAYS; i++){

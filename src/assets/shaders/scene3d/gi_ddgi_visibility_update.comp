@@ -17,7 +17,7 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
 #include "gi_ddgi_raydata.glsl"
-#include "gi_ddgi_master.glsl"
+// ddgiData (SSBO: cascade globals + sub-buffer pointers) + the sub-buffer accessors come via global_illumination_ddgi.glsl
 
 layout(local_size_x = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_y = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_z = 1) in;
 
@@ -57,7 +57,7 @@ void main(){
   // Cooperatively load this probe's rays (direction + raw distance) into shared memory ONCE for the whole workgroup. Each
   // thread loads a strided subset; the 256 threads (16x16) cover the <=128 rays in a single iteration. Then barrier so every
   // texel below reads from LDS instead of the ray-data buffer (256x less global traffic + the direction trig done once).
-  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData; // hoist the master->sub-pointer deref out of the load
+  DDGIRayDataBuffer rayData = ddgiData.rayData; // hoist the master->sub-pointer deref out of the load
   uint localIndex = (uint(gl_LocalInvocationID.y) * GI_DDGI_VISIBILITY_OCT_SIZE) + uint(gl_LocalInvocationID.x);
   for(uint r = GI_DDGI_RAY_START + localIndex; r < raysPerProbe; r += uint(GI_DDGI_VISIBILITY_OCT_SIZE * GI_DDGI_VISIBILITY_OCT_SIZE)){
     sDDGIVisibilityRays[r] = vec4(ddgiTraceRayDirection(r, randomRotation), ddgiLoadRay(rayData, globalProbeIndex, r, raysPerProbe).a);
@@ -88,15 +88,17 @@ void main(){
 
   ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_VISIBILITY_OCT_FULL) + localTexel;
   vec3 previous = vec3(imageLoad(uDDGIVisibilityMoments, atlasTexel).xy, imageLoad(uDDGIVisibilitySky, atlasTexel).x);
+
   // Guard against uninitialized NaN/Inf (images are not cleared) and discard stale history: on the firstFrame flag
   // (blend.z) the previous data is uninitialized garbage, and on a probe that just toroidally scrolled into the volume
   // its stored history belongs to a different world cell — in both cases take the freshly computed value.
   bool firstFrame = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
+
   // Per-probe convergence age (frames since (re)init) lives in its own BDA buffer (was the free image w channel): reset on
   // firstFrame/scroll-in, else +1 (capped at the warmup length). It drives a faster hysteresis right after init so the probe
   // converges in a few frames; the irradiance update reads the same age for its matching ramp. The age is per-probe (same for
   // every texel of the tile), so it is computed identically by all threads but written back by only one.
-  DDGIAgeBuffer ageBuffer = pushConstants.ddgiMaster.age;
+  DDGIAgeBuffer ageBuffer = ddgiData.age;
   uint probeAge = firstFrame ? 0u : min(ddgiLoadAge(ageBuffer, probeCoord, cascadeIndex) + 1u, uint(GI_DDGI_WARMUP_FRAMES));
   float hysteresis = ddgiWarmupHysteresis(float(probeAge));
   float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : hysteresis;
@@ -106,4 +108,5 @@ void main(){
   if(gl_LocalInvocationIndex == 0u){
     ddgiStoreAge(ageBuffer, probeCoord, cascadeIndex, probeAge);
   }
+
 }

@@ -102,7 +102,6 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass }
              RandomRotation2:TpvVector4;
              Params:TpvUInt32Vector4;    // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
              Blend:TpvVector4;           // x = hysteresis, z = firstFrame (1 = ignore the uninitialized previous probe data); y/w unused here
-             Master:TVkDeviceAddress;    // BDA pointer to the DDGI master buffer (ray-data sub-buffer); appended after Blend (8-byte aligned)
             end;
             PPushConstants=^TPushConstants;
       private
@@ -217,7 +216,7 @@ begin
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,fInstance.Renderer.CountInFlightFrames); // binding 0 = ddgiData SSBO
  if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
   fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*3); // binding 2 = oct irradiance + binding 3 = visibility moments + binding 4 = visibility sky
  end else begin
@@ -230,7 +229,7 @@ begin
  // relocation/classification stages only touch the UBO + the master (they declare neither image), but they share this
  // superset layout — extra layout bindings unused by a shader are valid.
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
- fVulkanDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+ fVulkanDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]); // binding 0 = ddgiData SSBO (cascade globals + sub-buffer pointers)
  if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
   fVulkanDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]); // oct irradiance; SH irradiance is a BDA buffer via the master
  end;
@@ -251,7 +250,7 @@ begin
  for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
 
   fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,fVulkanDescriptorSetLayout);
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),[],[fInstance.GlobalIlluminationDDGIUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false);
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fInstance.GlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false); // binding 0 = ddgiData SSBO
   // binding 1 (ray-data) + SH irradiance are BDA buffers reached via the master push constant; binding 2 = oct irradiance only.
   if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
@@ -322,7 +321,6 @@ begin
   Hysteresis:=(WarmupStartHysteresis*(1.0-WarmupT))+(SteadyHysteresis*WarmupT);
   PushConstants.Blend:=TpvVector4.InlineableCreate(Hysteresis,1.0,0.0,0.0);
  end;
- PushConstants.Master:=fInstance.GlobalIlluminationDDGIMasterBuffers[aInFlightFrameIndex].DeviceAddress; // BDA pointer to the ray-data sub-buffer (shared by all stages)
 
  // The ray-data was published by the trace pass and each previous stage by its barrier below (+ the frame-graph ordering).
  DescriptorSet:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;

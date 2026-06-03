@@ -21,24 +21,18 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET DDGI_DESCRIPTOR_SET
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #define GLOBAL_ILLUMINATION_DDGI_SAMPLE
-#include "global_illumination_ddgi.glsl"
-#include "gi_ddgi_master.glsl" // DDGI master BDA buffer (probe-data + SH-irradiance sub-buffers reached through it)
+#include "global_illumination_ddgi.glsl" // pulls in gi_ddgi_data.glsl -> the `ddgiData` SSBO (cascade globals + sub-buffer pointers) at this set's binding 0
 
-// DDGI master (BDA): the point-access sub-buffers (probe-data, SH-irradiance) are reached through here. Tiny UBO in the DDGI
-// descriptor set at binding 3 (freed from the old probe-data sampler), always present. The UBO holds the master buffer's
-// CONTENT directly (the 3 sub-pointers) — NOT a pointer-to-master — so the fields are read as-is (the compute passes instead
-// push the master's device address and dereference it; the byte layout matches: 3 × uint64). Declared before the consumers.
-layout(set = DDGI_DESCRIPTOR_SET, binding = 3, std140) uniform DDGIMasterRef {
-  DDGIRayDataBuffer rayData;
-  DDGIProbeDataBuffer probeData;
-  DDGIIrradianceSHBuffer irradianceSH;
-} uDDGIMasterRef;
+// The DDGI data block — cascade globals + the BDA sub-buffer pointers (probe-data, SH-irradiance, ...) — is the std430 SSBO
+// `ddgiData` declared at this set's binding 0 by gi_ddgi_data.glsl (via global_illumination_ddgi.glsl above). The fragment
+// reads its globals + the probe-data / SH-irradiance pointers from it directly; no separate master UBO any more (the old
+// binding 3 is freed).
 
 #if GI_DDGI_STORAGE_IS_SH
   // RGB spherical harmonics: one contiguous DDGISHProbe (DDGI_SH_IMAGE_COUNT packed vec4) per probe in the master's
   // irradianceSH BDA buffer (no sampler) — loaded as a whole element for coalesced access.
   DDGI_SH_TYPE ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
-    DDGISHProbe p = uDDGIMasterRef.irradianceSH.probes[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
+    DDGISHProbe p = ddgiData.irradianceSH.probes[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
     vec4 a = p.c[0]; vec4 b = p.c[1]; vec4 c = p.c[2];
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
     vec4 d = p.c[3]; vec4 e = p.c[4]; vec4 f = p.c[5]; vec4 g = p.c[6];
@@ -67,7 +61,7 @@ vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, 
 #if GI_DDGI_PROBE_RELOCATION
 // Per-probe data (xyz = world-space relocation offset, w = state) lives in the master's probe-data BDA buffer.
 vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
-  return uDDGIMasterRef.probeData.data[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
+  return ddgiData.probeData.data[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
 }
 #endif
 

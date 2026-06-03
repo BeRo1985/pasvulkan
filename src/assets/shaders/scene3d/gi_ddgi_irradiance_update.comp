@@ -18,7 +18,7 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
 #include "gi_ddgi_raydata.glsl"
-#include "gi_ddgi_master.glsl"
+// ddgiData (SSBO: cascade globals + sub-buffer pointers) + the sub-buffer accessors come via global_illumination_ddgi.glsl
 
 #if GI_DDGI_STORAGE_IS_SH
   #include "sphericalharmonics.glsl"
@@ -41,7 +41,7 @@
 // The probe-update chain runs irradiance before visibility, so this reads the previous frame's age (one frame behind —
 // irrelevant for a warmup ramp); the per-stage compute barrier serializes that read against this frame's visibility write.
 float ddgiProbeAgeHysteresis(const in ivec3 probeCoord, const in int cascadeIndex){
-  DDGIAgeBuffer ageBuffer = pushConstants.ddgiMaster.age;
+  DDGIAgeBuffer ageBuffer = ddgiData.age;
   return ddgiWarmupHysteresis(float(ddgiLoadAge(ageBuffer, probeCoord, cascadeIndex)));
 }
 
@@ -53,7 +53,7 @@ const float GI_DDGI_FOUR_PI = 12.566370614359172;
 // L1 (4 coeffs) uses 3 vec4, L2 (9 coeffs) uses 7; the first three are identical between the two, the L2 ones append c4..c8
 // in the same interleaved pattern. (Same packing as the old SH image set, just sourced from / written to the buffer.)
 DDGI_SH_TYPE ddgiLoadSH(const in ivec3 probeCoord, const in int cascadeIndex){
-  DDGIIrradianceSHBuffer shBuf = pushConstants.ddgiMaster.irradianceSH; // hoist the master->sub-pointer deref once
+  DDGIIrradianceSHBuffer shBuf = ddgiData.irradianceSH; // hoist the master->sub-pointer deref once
   DDGISHProbe p = ddgiLoadSHProbe(shBuf, probeCoord, cascadeIndex);     // one contiguous load of the whole probe
   vec4 a = p.c[0]; vec4 b = p.c[1]; vec4 c = p.c[2];
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
@@ -67,7 +67,7 @@ DDGI_SH_TYPE ddgiLoadSH(const in ivec3 probeCoord, const in int cascadeIndex){
 }
 
 void ddgiStoreSH(const in ivec3 probeCoord, const in int cascadeIndex, const in DDGI_SH_TYPE sh){
-  DDGIIrradianceSHBuffer shBuf = pushConstants.ddgiMaster.irradianceSH; // hoist the master->sub-pointer deref once
+  DDGIIrradianceSHBuffer shBuf = ddgiData.irradianceSH; // hoist the master->sub-pointer deref once
   DDGISHProbe p;
   p.c[0] = vec4(sh.coefficients[0].xyz, sh.coefficients[1].x);
   p.c[1] = vec4(sh.coefficients[1].yz, sh.coefficients[2].xy);
@@ -96,13 +96,14 @@ void main(){
 
   uint raysPerProbe = pushConstants.params.w;
 
-  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData; // hoist the master->sub-pointer deref out of the ray loop
+  DDGIRayDataBuffer rayData = ddgiData.rayData; // hoist the master->sub-pointer deref out of the ray loop
   DDGI_SH_TYPE sh = DDGI_SH_ZERO();
   for(uint r = GI_DDGI_RAY_START; r < raysPerProbe; r++){
     vec3 rayDirection = ddgiTraceRayDirection(r, randomRotation);
     vec3 radiance = ddgiLoadRay(rayData, globalProbeIndex, r, raysPerProbe).rgb;
     sh = DDGI_SH_ADD(sh, DDGI_SH_PROJECT(rayDirection, radiance));
   }
+
   // Monte-Carlo estimator over the uniform sphere: c_lm = (4*pi / N) * sum(L * Y_lm), where N is the number of rays actually
   // integrated (the random rays). With relocation enabled the first GI_DDGI_FIXED_RAYS rays are fixed/unshaded and skipped
   // (GI_DDGI_RAY_START > 0), so divide by the integrated count, not the full raysPerProbe (else the irradiance is too dark).
@@ -111,6 +112,7 @@ void main(){
   // The probe buffer is not cleared on allocation, so guard against uninitialized NaN/Inf memory which would otherwise
   // lock in permanently through the temporal hysteresis blend; on the first (non-finite) read just take the new value.
   DDGI_SH_TYPE previous = ddgiLoadSH(probeCoord, cascadeIndex);
+
   // Discard stale previous SH: firstFrame (blend.z) = uninitialized garbage; or the probe just toroidally scrolled into
   // the volume (its stored SH belongs to a different world cell). Either way take the freshly projected SH.
   bool firstFrame = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
@@ -145,7 +147,7 @@ void main(){
   mat3 randomRotation = mat3(pushConstants.randomRotation0.xyz, pushConstants.randomRotation1.xyz, pushConstants.randomRotation2.xyz);
   uint raysPerProbe = pushConstants.params.w;
 
-  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData; // hoist the master->sub-pointer deref out of the ray loop
+  DDGIRayDataBuffer rayData = ddgiData.rayData; // hoist the master->sub-pointer deref out of the ray loop
   vec3 sum = vec3(0.0);
   float sumWeight = 0.0;
   for(uint r = GI_DDGI_RAY_START; r < raysPerProbe; r++){
@@ -160,6 +162,7 @@ void main(){
 
   ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_IRRADIANCE_OCT_FULL) + localTexel;
   vec3 previous = imageLoad(uDDGIIrradianceOct, atlasTexel).rgb;
+
   // Guard against uninitialized NaN/Inf (images are not cleared) and discard stale history: firstFrame (blend.z) =
   // uninitialized garbage, or the probe just toroidally scrolled into the volume (stored data is for a different world
   // cell) — in both cases take the freshly computed value instead of blending against it.
@@ -167,6 +170,7 @@ void main(){
   float hysteresis = ddgiProbeAgeHysteresis(probeCoord, cascadeIndex);
   float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : hysteresis;
   imageStore(uDDGIIrradianceOct, atlasTexel, vec4(mix(irradiance, previous, blendT), 1.0));
+
 }
 
 #endif

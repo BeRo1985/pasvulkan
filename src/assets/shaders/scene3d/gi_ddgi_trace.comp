@@ -60,7 +60,7 @@ vec3 ddgiGatherSky(const in vec3 dir){
 #endif
 #include "global_illumination_ddgi.glsl"
 #include "gi_ddgi_raydata.glsl" // shared ray-data contract: ddgiTraceRayDirection / ddgiEncodeRayData / ddgiRayIsFixed
-#include "gi_ddgi_master.glsl"  // DDGI master BDA buffer (ray-data lives in a storage buffer, not an image)
+// ddgiData (SSBO: cascade globals + sub-buffer pointers) + the sub-buffer accessors come via global_illumination_ddgi.glsl
 
 // Per-ray output (rgb = radiance towards the probe, a = hit distance / signed for fixed rays) now lives in the master's
 // ray-data BDA storage buffer (full precision, no image-format cap), written via ddgiStoreRay below.
@@ -104,7 +104,7 @@ vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, 
 // Defined after the push constant since it dereferences the master pointer; the prototype in global_illumination_ddgi.glsl
 // lets the sampling functions (compiled above) call it.
 vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
-  DDGIProbeDataBuffer pd = pushConstants.ddgiMaster.probeData; // launder through a local (readonly master field -> non-readonly ref) + hoist
+  DDGIProbeDataBuffer pd = ddgiData.probeData; // launder through a local (readonly master field -> non-readonly ref) + hoist
   return ddgiLoadProbeDataBuffer(pd, probeCoord, cascadeIndex);
 }
 #endif
@@ -113,7 +113,7 @@ vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
 // Previous-frame SH irradiance (multi-bounce feedback) from the master's irradianceSH BDA buffer. Same packing as the update
 // pass writes; defined after the push constant (dereferences the master), prototyped in global_illumination_ddgi.glsl.
 DDGI_SH_TYPE ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
-  DDGIIrradianceSHBuffer shBuf = pushConstants.ddgiMaster.irradianceSH; // hoist the master->sub-pointer deref once
+  DDGIIrradianceSHBuffer shBuf = ddgiData.irradianceSH; // hoist the master->sub-pointer deref once
   DDGISHProbe p = ddgiLoadSHProbe(shBuf, probeCoord, cascadeIndex);     // one contiguous load of the whole probe
   vec4 a = p.c[0]; vec4 b = p.c[1]; vec4 c = p.c[2];
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
@@ -199,7 +199,7 @@ void main(){
 
   // Encode per the shared ray-data contract (fixed -> signed/unclamped distance, no radiance; random -> shaded radiance +
   // backface-shortened, locally-clamped distance).
-  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData; // launder through a local (readonly master field -> non-readonly ref)
+  DDGIRayDataBuffer rayData = ddgiData.rayData; // launder through a local (readonly master field -> non-readonly ref)
   ddgiStoreRay(rayData, globalProbeIndex, rayIndex, raysPerProbe,
                ddgiEncodeRayData(rayIndex, radiance, surface.hit, surface.backface, surface.hitDistance, tMax, cellSize));
 }

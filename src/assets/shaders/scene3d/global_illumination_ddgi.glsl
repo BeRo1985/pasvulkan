@@ -202,18 +202,12 @@ const ivec3 uDDGIProbeCounts = ivec3(GI_DDGI_PROBES_X, GI_DDGI_PROBES_Y, GI_DDGI
 // Mirrors the cascaded radiance hints volume uniform layout (one entry per cascade) so the CPU-side snapping code can be
 // shared. AABBMin/Max/Scale/Center are the probe grid bounds in world space; the probes sit on the grid lattice spanning
 // the AABB, i.e. probe (i,j,k) is at AABBMin + (i,j,k) * cellSize, with cellSize = (AABBMax-AABBMin)/(probeCounts-1).
+// The DDGI data block (cascade globals + the BDA sub-buffer pointers) lives in gi_ddgi_data.glsl as one std430 readonly SSBO
+// `ddgiData`, declared at the DDGI set's binding 0 (same set/binding the old globals UBO used). Only pulled in when the DDGI
+// set is defined (i.e. a DDGI shader, which has GL_EXT_buffer_reference enabled); constants-only includers skip it. The
+// addressing/sampling helpers below read ddgiData.ddgiCascade* exactly as before — only the backing storage changed.
 #ifdef GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET
-layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING, std140) uniform uboGlobalIlluminationDDGIData {
-  vec4 ddgiCascadeAABBMin[GI_DDGI_CASCADES];        // xyz = world space min corner of the probe lattice
-  vec4 ddgiCascadeAABBMax[GI_DDGI_CASCADES];        // xyz = world space max corner of the probe lattice
-  vec4 ddgiCascadeAABBScale[GI_DDGI_CASCADES];      // xyz = 1.0 / (max - min)
-  vec4 ddgiCascadeCellSizes[GI_DDGI_CASCADES];      // xyz = world space spacing between adjacent probes, w = max probe ray distance
-  vec4 ddgiCascadeAABBCenter[GI_DDGI_CASCADES];     // xyz = AABB center (for cascade fade computation)
-  vec4 ddgiCascadeAABBFadeStart[GI_DDGI_CASCADES];  // xyz = distance from center where this cascade begins to fade out
-  vec4 ddgiCascadeAABBFadeEnd[GI_DDGI_CASCADES];    // xyz = distance from center where this cascade is fully faded out
-  ivec4 ddgiCascadeProbeScroll[GI_DDGI_CASCADES];     // xyz = base cell offset floor(AABBMin/cellSize) (this frame), w = scrolling enabled (1) / disabled (0)
-  ivec4 ddgiCascadeProbeScrollPrev[GI_DDGI_CASCADES]; // xyz = base cell offset of the previous update of this in-flight slot (for re-initializing scrolled-in probes)
-} ddgiData;
+#include "gi_ddgi_data.glsl"
 #endif
 
 // =====================================================================================================================
