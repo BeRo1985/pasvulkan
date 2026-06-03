@@ -1426,7 +1426,6 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsBounceComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGITraceComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGIProbeUpdateComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGIStageComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationSurfelComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass,
@@ -1558,7 +1557,6 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass;
        fGlobalIlluminationCascadedRadianceHintsBounceComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass;
        fGlobalIlluminationDDGITraceComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGITraceComputePass;
-       fGlobalIlluminationDDGIProbeUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIProbeUpdateComputePass; // dormant: superseded by the per-stage passes below (kept for reference)
        fGlobalIlluminationDDGIIrradianceUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
        fGlobalIlluminationDDGIVisibilityUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
        fGlobalIlluminationDDGIBorderUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
@@ -4998,7 +4996,6 @@ begin
 
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass:=nil;
- TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIProbeUpdateComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass:=nil;
@@ -5106,8 +5103,7 @@ begin
    end;
    // The technique-agnostic probe BLEND/update CORE is split into one frame-graph pass per compute stage so each shader gets
    // its own GPU timer (separate F8 per-pass timing). They chain linearly; the last stage (classification when relocation is
-   // on, else border) flips the shared firstFrames flag + publishes the probe writes to the fragment shading stages. The old
-   // combined fGlobalIlluminationDDGIProbeUpdateComputePass is left dormant (not created -> not in the frame graph).
+   // on, else border) flips the shared firstFrames flag + publishes the probe writes to the fragment shading stages.
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Irradiance,false);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Visibility,false);
