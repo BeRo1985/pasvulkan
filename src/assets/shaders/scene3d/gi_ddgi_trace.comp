@@ -96,14 +96,7 @@ vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, 
 }
 #endif
 
-layout(push_constant) uniform PushConstants {
-  vec4 randomRotation0; // mat3 column 0 (xyz)
-  vec4 randomRotation1; // mat3 column 1 (xyz)
-  vec4 randomRotation2; // mat3 column 2 (xyz)
-  uvec4 params;         // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-  vec4 blend;           // x = hysteresis (used by the update stages), y = multi-bounce feedback strength
-  DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data + probe-data sub-buffers); 8 bytes, appended after blend
-} pushConstants;
+#include "gi_ddgi_pushconstants.glsl"
 
 #if GI_DDGI_PROBE_RELOCATION
 // Probe data (xyz = relocation offset, w = state) lives in the master's probe-data BDA buffer (written by the relocation/

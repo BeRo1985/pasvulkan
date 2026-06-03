@@ -18,15 +18,7 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 #include "global_illumination_ddgi.glsl"
 #include "gi_ddgi_master.glsl"
 
-
-layout(push_constant) uniform PushConstants {
-  vec4 randomRotation0;
-  vec4 randomRotation1;
-  vec4 randomRotation2;
-  uvec4 params; // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-  vec4 blend;
-  DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data sub-buffer)
-} pushConstants;
+#include "gi_ddgi_pushconstants.glsl"
 
 void main(){
   uint globalProbeIndex = gl_GlobalInvocationID.x;
@@ -70,4 +62,5 @@ void main(){
   }
 
   ddgiStoreProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex, vec4(probeData.xyz, state)); // preserve offset (xyz), owned by the relocation pass
+
 }

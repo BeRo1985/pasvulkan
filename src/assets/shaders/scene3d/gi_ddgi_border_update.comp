@@ -9,6 +9,7 @@
 
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_buffer_reference : require // for the DDGIMaster type in the shared push-constant block (the field is unused here)
 
 /* clang-format off */
 
@@ -16,6 +17,7 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_ddgi.glsl"
+#include "gi_ddgi_master.glsl" // only for the DDGIMaster type referenced by the shared push-constant block
 
 // One workgroup per probe; threads cover the full (bordered) visibility tile, which is the larger of the two tiles.
 layout(local_size_x = GI_DDGI_VISIBILITY_OCT_FULL, local_size_y = GI_DDGI_VISIBILITY_OCT_FULL, local_size_z = 1) in;
@@ -28,13 +30,7 @@ layout(set = 1, binding = 4, r8) uniform image2D uDDGIVisibilitySky;        // x
 
 // Must match the shared push constant layout the pass pushes for all DDGI stages (only params is used here, but the
 // preceding fields must be present so params sits at the correct offset).
-layout(push_constant) uniform PushConstants {
-  vec4 randomRotation0;
-  vec4 randomRotation1;
-  vec4 randomRotation2;
-  uvec4 params;     // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-  vec4 blend;
-} pushConstants;
+#include "gi_ddgi_pushconstants.glsl"
 
 // Tile-local source interior texel for a border texel t in [0, full-1], using the octahedral wrap rule. Returns false
 // for interior texels (which are left untouched).

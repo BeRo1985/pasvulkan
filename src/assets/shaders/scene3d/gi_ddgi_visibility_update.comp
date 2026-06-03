@@ -24,14 +24,7 @@ layout(local_size_x = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_y = GI_DDGI_VISIBI
 layout(set = 1, binding = 3, rg32f) uniform image2D uDDGIVisibilityMoments; // x = mean dist, y = mean dist^2 (F32 precision for the Chebyshev test)
 layout(set = 1, binding = 4, r8) uniform image2D uDDGIVisibilitySky;        // x = sky visibility (0..1)
 
-layout(push_constant) uniform PushConstants {
-  vec4 randomRotation0;
-  vec4 randomRotation1;
-  vec4 randomRotation2;
-  uvec4 params;     // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-  vec4 blend;       // x = hysteresis (0..1)
-  DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data sub-buffer)
-} pushConstants;
+#include "gi_ddgi_pushconstants.glsl"
 
 // Shared cache of this probe's traced rays for the whole workgroup (one workgroup == one probe): xyz = traced ray
 // direction, w = raw hit distance. Loaded cooperatively once, then every octahedral texel integrates from LDS instead of

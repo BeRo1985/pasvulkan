@@ -35,14 +35,7 @@
   layout(set = 1, binding = 2, rgba16f) uniform image2D uDDGIIrradianceOct;
 #endif
 
-layout(push_constant) uniform PushConstants {
-  vec4 randomRotation0;
-  vec4 randomRotation1;
-  vec4 randomRotation2;
-  uvec4 params;     // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-  vec4 blend;       // x = hysteresis (0..1), y = unused, z = unused, w = unused
-  DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data sub-buffer)
-} pushConstants;
+#include "gi_ddgi_pushconstants.glsl"
 
 // Per-probe convergence-warmup hysteresis ramp: reads the per-probe age the visibility update wrote into its own BDA buffer.
 // The probe-update chain runs irradiance before visibility, so this reads the previous frame's age (one frame behind —

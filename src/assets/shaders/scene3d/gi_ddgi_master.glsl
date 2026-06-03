@@ -46,11 +46,13 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer DD
 uint ddgiRayDataIndex(const in uint globalProbeIndex, const in uint rayIndex, const in uint raysPerProbe){
   return (globalProbeIndex * raysPerProbe) + rayIndex;
 }
+
 // The accessors take the sub-buffer reference directly (not the master) so the caller can hoist the single master->sub-pointer
 // dereference into a local once per invocation, instead of re-reading it from the master on every call (hot loops).
 vec4 ddgiLoadRay(const in DDGIRayDataBuffer aRayData, const in uint globalProbeIndex, const in uint rayIndex, const in uint raysPerProbe){
   return aRayData.data[ddgiRayDataIndex(globalProbeIndex, rayIndex, raysPerProbe)];
 }
+
 void ddgiStoreRay(const in DDGIRayDataBuffer aRayData, const in uint globalProbeIndex, const in uint rayIndex, const in uint raysPerProbe, const in vec4 aValue){
   aRayData.data[ddgiRayDataIndex(globalProbeIndex, rayIndex, raysPerProbe)] = aValue;
 }
@@ -60,9 +62,11 @@ void ddgiStoreRay(const in DDGIRayDataBuffer aRayData, const in uint globalProbe
 uint ddgiProbeDataIndex(const in ivec3 probeCoord, const in int cascadeIndex){
   return uint(probeCoord.x + (probeCoord.y * GI_DDGI_PROBES_X) + ((probeCoord.z + (cascadeIndex * GI_DDGI_PROBES_Z)) * GI_DDGI_PROBES_X * GI_DDGI_PROBES_Y));
 }
+
 vec4 ddgiLoadProbeDataBuffer(const in DDGIProbeDataBuffer aProbeData, const in ivec3 probeCoord, const in int cascadeIndex){
   return aProbeData.data[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
 }
+
 void ddgiStoreProbeDataBuffer(const in DDGIProbeDataBuffer aProbeData, const in ivec3 probeCoord, const in int cascadeIndex, const in vec4 aValue){
   aProbeData.data[ddgiProbeDataIndex(probeCoord, cascadeIndex)] = aValue;
 }
@@ -73,6 +77,7 @@ void ddgiStoreProbeDataBuffer(const in DDGIProbeDataBuffer aProbeData, const in 
 DDGISHProbe ddgiLoadSHProbe(const in DDGIIrradianceSHBuffer aSH, const in ivec3 probeCoord, const in int cascadeIndex){
   return aSH.probes[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
 }
+
 void ddgiStoreSHProbe(const in DDGIIrradianceSHBuffer aSH, const in ivec3 probeCoord, const in int cascadeIndex, const in DDGISHProbe aProbe){
   aSH.probes[ddgiProbeDataIndex(probeCoord, cascadeIndex)] = aProbe;
 }
@@ -82,6 +87,7 @@ void ddgiStoreSHProbe(const in DDGIIrradianceSHBuffer aSH, const in ivec3 probeC
 uint ddgiLoadAge(const in DDGIAgeBuffer aAge, const in ivec3 probeCoord, const in int cascadeIndex){
   return aAge.age[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
 }
+
 void ddgiStoreAge(const in DDGIAgeBuffer aAge, const in ivec3 probeCoord, const in int cascadeIndex, const in uint aValue){
   aAge.age[ddgiProbeDataIndex(probeCoord, cascadeIndex)] = aValue;
 }
