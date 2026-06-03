@@ -57,10 +57,11 @@ layout(set = DDGI_DESCRIPTOR_SET, binding = 3, std140) uniform DDGIMasterRef {
   }
 #endif
 
-layout(set = DDGI_DESCRIPTOR_SET, binding = 2) uniform sampler2D uDDGIVisibility;
+layout(set = DDGI_DESCRIPTOR_SET, binding = 2) uniform sampler2D uDDGIVisibilityMoments; // x = mean dist, y = mean dist^2 (RG32F)
+layout(set = DDGI_DESCRIPTOR_SET, binding = 4) uniform sampler2D uDDGIVisibilitySky;     // x = sky visibility (R8, 0..1)
 vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction){
   vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, direction, GI_DDGI_VISIBILITY_OCT_SIZE, GI_DDGI_VISIBILITY_OCT_FULL);
-  return textureLod(uDDGIVisibility, uv, 0.0).rgb; // x = mean dist, y = mean dist^2, z = sky visibility
+  return vec3(textureLod(uDDGIVisibilityMoments, uv, 0.0).xy, textureLod(uDDGIVisibilitySky, uv, 0.0).x); // x = mean dist, y = mean dist^2, z = sky visibility
 }
 
 #if GI_DDGI_PROBE_RELOCATION

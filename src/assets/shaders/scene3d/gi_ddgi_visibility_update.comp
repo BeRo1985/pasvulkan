@@ -21,7 +21,8 @@
 
 layout(local_size_x = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_y = GI_DDGI_VISIBILITY_OCT_SIZE, local_size_z = 1) in;
 
-layout(set = 1, binding = 3, rgba16f) uniform image2D uDDGIVisibilityOct; // x = mean dist, y = mean dist^2, z = sky visibility
+layout(set = 1, binding = 3, rg32f) uniform image2D uDDGIVisibilityMoments; // x = mean dist, y = mean dist^2 (F32 precision for the Chebyshev test)
+layout(set = 1, binding = 4, r8) uniform image2D uDDGIVisibilitySky;        // x = sky visibility (0..1)
 
 layout(push_constant) uniform PushConstants {
   vec4 randomRotation0;
@@ -93,7 +94,7 @@ void main(){
                                     : vec3(maxRayDistance, maxRayDistance * maxRayDistance, 1.0);
 
   ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_VISIBILITY_OCT_FULL) + localTexel;
-  vec3 previous = imageLoad(uDDGIVisibilityOct, atlasTexel).rgb;
+  vec3 previous = vec3(imageLoad(uDDGIVisibilityMoments, atlasTexel).xy, imageLoad(uDDGIVisibilitySky, atlasTexel).x);
   // Guard against uninitialized NaN/Inf (images are not cleared) and discard stale history: on the firstFrame flag
   // (blend.z) the previous data is uninitialized garbage, and on a probe that just toroidally scrolled into the volume
   // its stored history belongs to a different world cell — in both cases take the freshly computed value.
@@ -106,7 +107,9 @@ void main(){
   uint probeAge = firstFrame ? 0u : min(ddgiLoadAge(ageBuffer, probeCoord, cascadeIndex) + 1u, uint(GI_DDGI_WARMUP_FRAMES));
   float hysteresis = ddgiWarmupHysteresis(float(probeAge));
   float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : hysteresis;
-  imageStore(uDDGIVisibilityOct, atlasTexel, vec4(mix(moments, previous, blendT), 0.0)); // w unused now (age moved to the BDA buffer)
+  vec3 blended = mix(moments, previous, blendT);
+  imageStore(uDDGIVisibilityMoments, atlasTexel, vec4(blended.xy, 0.0, 0.0)); // x = mean dist, y = mean dist^2
+  imageStore(uDDGIVisibilitySky, atlasTexel, vec4(blended.z, 0.0, 0.0, 0.0));  // x = sky visibility
   if(gl_LocalInvocationIndex == 0u){
     ddgiStoreAge(ageBuffer, probeCoord, cascadeIndex, probeAge);
   }

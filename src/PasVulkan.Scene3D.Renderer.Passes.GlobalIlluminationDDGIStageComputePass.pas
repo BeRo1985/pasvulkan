@@ -219,9 +219,9 @@ begin
                                                        fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
  if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
-  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*2); // binding 2 = oct irradiance + binding 3 = visibility
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*3); // binding 2 = oct irradiance + binding 3 = visibility moments + binding 4 = visibility sky
  end else begin
-  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames); // binding 3 = visibility only (SH irradiance is a BDA buffer via the master); ray-data + probe-data are BDA too
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*2); // binding 3 = visibility moments + binding 4 = visibility sky (SH irradiance is a BDA buffer via the master); ray-data + probe-data are BDA too
  end;
  fVulkanDescriptorPool.Initialize;
 
@@ -234,7 +234,8 @@ begin
  if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
   fVulkanDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]); // oct irradiance; SH irradiance is a BDA buffer via the master
  end;
- fVulkanDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+ fVulkanDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]); // visibility moments (RG32F)
+ fVulkanDescriptorSetLayout.AddBinding(4,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]); // visibility sky (R8); only the visibility/border stages declare it
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -257,7 +258,9 @@ begin
                                                                   [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
   end;
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIVisibilityImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
+                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 3 = visibility moments (RG32F)
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 4 = visibility sky (R8)
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
  end;

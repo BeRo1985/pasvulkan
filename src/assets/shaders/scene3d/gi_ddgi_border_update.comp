@@ -23,7 +23,8 @@ layout(local_size_x = GI_DDGI_VISIBILITY_OCT_FULL, local_size_y = GI_DDGI_VISIBI
 #if GI_DDGI_STORAGE == GI_DDGI_STORAGE_OCT_VALUE
   layout(set = 1, binding = 2, rgba16f) uniform image2D uDDGIIrradianceOct;
 #endif
-layout(set = 1, binding = 3, rgba16f) uniform image2D uDDGIVisibilityOct; // x = mean dist, y = mean dist^2, z = sky visibility
+layout(set = 1, binding = 3, rg32f) uniform image2D uDDGIVisibilityMoments; // x = mean dist, y = mean dist^2
+layout(set = 1, binding = 4, r8) uniform image2D uDDGIVisibilitySky;        // x = sky visibility (0..1)
 
 // Must match the shared push constant layout the pass pushes for all DDGI stages (only params is used here, but the
 // preceding fields must be present so params sits at the correct offset).
@@ -78,8 +79,10 @@ void main(){
     ivec2 fullOrigin = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_VISIBILITY_OCT_FULL) - ivec2(1);
     ivec2 src;
     if(ddgiBorderSource(t, GI_DDGI_VISIBILITY_OCT_SIZE, src)){
-      vec3 value = imageLoad(uDDGIVisibilityOct, fullOrigin + src).rgb;
-      imageStore(uDDGIVisibilityOct, fullOrigin + t, vec4(value, 0.0));
+      vec2 moments = imageLoad(uDDGIVisibilityMoments, fullOrigin + src).xy;
+      float sky = imageLoad(uDDGIVisibilitySky, fullOrigin + src).x;
+      imageStore(uDDGIVisibilityMoments, fullOrigin + t, vec4(moments, 0.0, 0.0));
+      imageStore(uDDGIVisibilitySky, fullOrigin + t, vec4(sky, 0.0, 0.0, 0.0));
     }
   }
 

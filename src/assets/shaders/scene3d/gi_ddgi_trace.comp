@@ -85,12 +85,14 @@ vec3 ddgiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex
 }
 #endif
 
-layout(set = 1, binding = 3, rgba16f) uniform readonly image2D uDDGIVisibilityRead;
+layout(set = 1, binding = 3, rg32f) uniform readonly image2D uDDGIVisibilityMomentsRead; // x = mean dist, y = mean dist^2
 
 vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction){
   vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, direction, GI_DDGI_VISIBILITY_OCT_SIZE, GI_DDGI_VISIBILITY_OCT_FULL);
   ivec2 texel = ivec2(uv * vec2(ddgiAtlasSize(GI_DDGI_VISIBILITY_OCT_FULL))); // point sample (no bilinear) is fine for the secondary feedback term
-  return imageLoad(uDDGIVisibilityRead, texel).rgb; // x = mean dist, y = mean dist^2, z = sky visibility
+  // The multibounce gather discards the sky-visibility term (skyVisibilityUnused), so only the distance moments are read
+  // here (z = 0); the sky atlas is therefore not bound in the trace, avoiding a clash with the env cubemaps at binding 4.
+  return vec3(imageLoad(uDDGIVisibilityMomentsRead, texel).xy, 0.0); // x = mean dist, y = mean dist^2, z = sky (unused here)
 }
 #endif
 
