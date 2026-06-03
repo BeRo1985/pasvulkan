@@ -40,6 +40,37 @@
 
 #define GI_SURFEL_HASH_CELL_MASK (uint(GI_SURFEL_HASH_CELL_COUNT) - 1u)
 
+// Confidence / fade-in: a surfel's contribution weight at gather time is scaled by saturate(sampleCount / this), so a freshly
+// spawned surfel (count 0, not yet traced -> zero/garbage radiance) contributes nothing and fades in as it converges. Without
+// it, fresh surfels dump un-converged radiance into the gather -> flicker + wrong brightness. (count = Surfel.normalCount.w.)
+#ifndef GI_SURFEL_CONFIDENCE_SAMPLES
+  #define GI_SURFEL_CONFIDENCE_SAMPLES 8.0
+#endif
+
+// Spatial anisotropy: the distance component ALONG the surfel normal is multiplied by this before the radius test/falloff,
+// so a surfel acts as a flat disc hugging its surface rather than an isotropic sphere. An isotropic sphere intersects a wall
+// as a visible circle (the "decal" artefact) and bleeds in front of/behind the surface; squishing the normal axis keeps the
+// influence on-surface. Higher = flatter.
+#ifndef GI_SURFEL_NORMAL_SQUISH
+  #define GI_SURFEL_NORMAL_SQUISH 3.0
+#endif
+
+// Per-surfel radial depth atlas for OCCLUSION: a tiny full-sphere octahedral atlas (GI_SURFEL_DEPTH_OCT_SIZE² texels), each
+// texel a half-packed Chebyshev moment pair (mean, mean² of the hit distance the surfel's rays saw in that direction). At
+// shading the gather rejects a surfel whose recorded geometry occludes the shaded point (point farther than the stored mean
+// in the surfel->point direction) → stops surfels leaking irradiance through walls (#1). Stored inline in the surfel record
+// (no extra buffer/binding). 0 texel = uninitialized = fully visible.
+#ifndef GI_SURFEL_DEPTH_OCT_SIZE
+  #define GI_SURFEL_DEPTH_OCT_SIZE 4
+#endif
+#define GI_SURFEL_DEPTH_TEXELS (GI_SURFEL_DEPTH_OCT_SIZE * GI_SURFEL_DEPTH_OCT_SIZE)
+// Hit distances stored in the radial depth atlas are clamped to this (meters) before half-packing: a miss uses the trace's
+// huge tMax (~1e6), and mean² of that overflows fp16 (max ~65504) to +Inf, which would stick a texel "visible" forever. Only
+// near occluders (within the gather radius) matter for the occlusion test anyway, so a modest cap is both safe and correct.
+#ifndef GI_SURFEL_DEPTH_MAX_DIST
+  #define GI_SURFEL_DEPTH_MAX_DIST 64.0
+#endif
+
 // Surfel "alive" flag bit.
 #define GI_SURFEL_FLAG_ALIVE 1u
 
@@ -101,6 +132,7 @@ struct Surfel {
   uint flags;            // GI_SURFEL_FLAG_* bits
   float skyVisibility;   // fraction of this surfel's trace rays that escaped to the sky (temporally averaged); occludes the
                          // environment IBL specular at shading in enclosed areas — the surfel analogue of DDGI sky-visibility
+  uint depth[GI_SURFEL_DEPTH_TEXELS]; // radial depth atlas: per (full-sphere oct) direction, packHalf2x16(meanDist, meanDist²) for the Chebyshev occlusion test
 };
 
 // --- Payload (un)packing helpers ------------------------------------------------------------------------------------
@@ -173,6 +205,33 @@ uint giSurfelCellHash(const in ivec3 cellCoord){
   return h & GI_SURFEL_HASH_CELL_MASK;
 }
 
+// --- Per-surfel radial depth (Chebyshev occlusion) -----------------------------------------------------------------
+// Texel index in a surfel's radial depth atlas for a (world-space) direction, full-sphere octahedral mapping.
+int surfelDepthTexel(const in vec3 dir){
+  vec2 uv = fma(octSignedEncode(normalize(dir)), vec2(0.5), vec2(0.5)); // [-1,1] -> [0,1]
+  ivec2 t = clamp(ivec2(uv * float(GI_SURFEL_DEPTH_OCT_SIZE)), ivec2(0), ivec2(GI_SURFEL_DEPTH_OCT_SIZE - 1));
+  return (t.y * GI_SURFEL_DEPTH_OCT_SIZE) + t.x;
+}
+
+// Visibility (0..1) of worldPosition FROM the surfel, via the surfel's radial depth atlas (Chebyshev / VSM). If the point is
+// farther than the geometry the surfel recorded in that direction, it is occluded (-> low weight, no leak through walls).
+// An uninitialized texel (0) means the surfel never traced that direction -> treat as fully visible.
+float surfelDepthOcclusion(const in Surfel surfel, const in vec3 worldPosition){
+  vec3 d = worldPosition - surfel.positionRadius.xyz;
+  float z = length(d);
+  if(z < 1e-4){
+    return 1.0;
+  }
+  vec2 m = unpackHalf2x16(surfel.depth[surfelDepthTexel(d / z)]); // (meanDist, meanDist²)
+  if(m.y <= 0.0 || z <= m.x){
+    return 1.0; // uninitialized direction, or the point is in front of / at the recorded occluder
+  }
+  float variance = max(m.y - (m.x * m.x), 1e-5);
+  float dd = z - m.x;
+  float chebyshev = variance / (variance + (dd * dd));
+  return clamp(chebyshev * chebyshev, 0.0, 1.0); // sharpen
+}
+
 // =====================================================================================================================
 //  Shading-side sampling path (mesh.frag / planet_*.frag).
 //
@@ -234,10 +293,14 @@ vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal,
       continue;
     }
 
-    vec3 toSurfel = surfel.positionRadius.xyz - worldPosition;
-    float dist = length(toSurfel);
     float radius = max(surfel.positionRadius.w, 1e-3);
-    if(dist >= radius){
+    // Anisotropic ("squished") distance: penalise the component along the surfel normal so the surfel is a flat disc hugging
+    // its surface, not an isotropic sphere (which intersects a wall as a visible circle / bleeds off-surface).
+    vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
+    float dN = dot(toSurfel, surfel.normalCount.xyz);
+    vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
+    float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
+    if(md >= radius){
       continue; // outside this surfel's influence
     }
 
@@ -248,10 +311,10 @@ vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal,
     }
 
     // Smooth spatial falloff towards the surfel radius.
-    float spatialWeight = 1.0 - (dist / radius);
-    spatialWeight *= spatialWeight;
+    float spatialWeight = smoothstep(radius, 0.0, md); // smooth falloff over the (anisotropic) radius -> no hard disc edge
 
-    float weight = spatialWeight * normalWeight;
+    float weight = spatialWeight * normalWeight * clamp(surfel.normalCount.w * (1.0 / GI_SURFEL_CONFIDENCE_SAMPLES), 0.0, 1.0) // confidence/fade-in: un-converged (low sample-count) surfels contribute proportionally less
+                 * surfelDepthOcclusion(surfel, worldPosition); // radial-depth occlusion: surfels whose recorded geometry blocks this point contribute nothing (no leak through walls)
     if(weight <= 0.0){
       continue;
     }
@@ -385,15 +448,24 @@ float giSurfelCoverage(const in vec3 worldPosition, const in vec3 normal){
     if((surfel.flags & GI_SURFEL_FLAG_ALIVE) == 0u){
       continue;
     }
-    vec3 toSurfel = surfel.positionRadius.xyz - worldPosition;
-    float dist = length(toSurfel);
     float radius = max(surfel.positionRadius.w, 1e-3);
-    if(dist >= radius){
+    // Anisotropic ("squished") distance: penalise the component along the surfel normal so the surfel is a flat disc hugging
+    // its surface, not an isotropic sphere (which intersects a wall as a visible circle / bleeds off-surface).
+    vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
+    float dN = dot(toSurfel, surfel.normalCount.xyz);
+    vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
+    float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
+    if(md >= radius){
       continue;
     }
+    // Keep-alive: this surfel covers a currently-visible shading point (the spawn pass runs giSurfelCoverage at every
+    // visible depth tile each frame). Refreshing its recycle timer HERE — driven by visibility — is the "still needed"
+    // signal; the trace must NOT do it (it touches every surfel every frame, which would keep the whole pool alive forever
+    // and starve newly-revealed regions). Surfels no longer near any visible surface stop being refreshed and age out.
+    surfels[surfelIndex].lastFrame = giSurfelFrameIndex();
     float normalWeight = clamp(dot(surfel.normalCount.xyz, normal), 0.0, 1.0);
-    float spatialWeight = 1.0 - (dist / radius);
-    coverage += (spatialWeight * spatialWeight) * normalWeight;
+    float spatialWeight = smoothstep(radius, 0.0, md); // same anisotropic falloff as the gather, so coverage matches resolve
+    coverage += spatialWeight * normalWeight;
   }
   return coverage;
 }
@@ -419,19 +491,23 @@ vec3 giSurfelGatherIrradiance(const in vec3 worldPosition, const in vec3 normal)
     if((surfel.flags & GI_SURFEL_FLAG_ALIVE) == 0u){
       continue;
     }
-    vec3 toSurfel = surfel.positionRadius.xyz - worldPosition;
-    float dist = length(toSurfel);
     float radius = max(surfel.positionRadius.w, 1e-3);
-    if(dist >= radius){
+    // Anisotropic ("squished") distance: penalise the component along the surfel normal so the surfel is a flat disc hugging
+    // its surface, not an isotropic sphere (which intersects a wall as a visible circle / bleeds off-surface).
+    vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
+    float dN = dot(toSurfel, surfel.normalCount.xyz);
+    vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
+    float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
+    if(md >= radius){
       continue;
     }
     float normalWeight = clamp(dot(surfel.normalCount.xyz, normal), 0.0, 1.0);
     if(normalWeight <= 0.0){
       continue;
     }
-    float spatialWeight = 1.0 - (dist / radius);
-    spatialWeight *= spatialWeight;
-    float weight = spatialWeight * normalWeight;
+    float spatialWeight = smoothstep(radius, 0.0, md); // smooth falloff over the (anisotropic) radius -> no hard disc edge
+    float weight = spatialWeight * normalWeight * clamp(surfel.normalCount.w * (1.0 / GI_SURFEL_CONFIDENCE_SAMPLES), 0.0, 1.0) // confidence/fade-in: un-converged (low sample-count) surfels contribute proportionally less
+                 * surfelDepthOcclusion(surfel, worldPosition); // radial-depth occlusion: surfels whose recorded geometry blocks this point contribute nothing (no leak through walls)
     if(weight <= 0.0){
       continue;
     }

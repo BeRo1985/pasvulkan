@@ -110,6 +110,11 @@ void main(){
 
   uint missCount = 0u; // rays that escaped to the sky (-> per-surfel sky visibility, occludes the env IBL specular at shading)
 
+  // Temporal running-average factor (converge fast while young, then stick at the hysteresis floor). Hoisted above the loop
+  // so the per-ray radial-depth atlas update inside it can use the same alpha.
+  float count = surfel.normalCount.w;
+  float alpha = max(1.0 / (count + 1.0), 1.0 - clamp(pushConstants.misc.z, 0.0, 0.999));
+
   for(uint j = 0u; j < raysPerSurfel; j++){
     // Uniform hemisphere sampling (avoids the 1/cos blow-up of cosine sampling at grazing angles).
     vec2 u = fract(vec2((float(j) + 0.5) / float(raysPerSurfel),
@@ -139,6 +144,15 @@ void main(){
       radiance = vec3(0.0);
     }
 
+    // Radial depth atlas (occlusion): record this ray direction's hit distance (a miss -> tMax = open/far) as half-packed
+    // Chebyshev moments, EMA-blended; one thread per surfel so the indexed write is race-free. Seed on first touch.
+    {
+      int dt = surfelDepthTexel(dir);
+      float dz = min(hit.hit ? hit.hitDistance : tMax, GI_SURFEL_DEPTH_MAX_DIST); // clamp so mean² stays fp16-safe (a miss's ~1e6 would overflow to +Inf)
+      vec2 dm = unpackHalf2x16(surfels[surfelIndex].depth[dt]);
+      surfels[surfelIndex].depth[dt] = packHalf2x16((dm.y <= 0.0) ? vec2(dz, dz * dz) : mix(dm, vec2(dz, dz * dz), alpha));
+    }
+
 #if GI_SURFEL_STORAGE_IS_SH
     // Project the sampled radiance into the SH (uniform hemisphere -> 2*PI solid angle per sample).
     radianceSH = SURFEL_SH_ADD(radianceSH, SURFEL_SH_PROJECT(dir, radiance));
@@ -150,10 +164,7 @@ void main(){
 #if GI_SURFEL_STORAGE_IS_SH
   radianceSH = SURFEL_SH_MUL(radianceSH, 6.2831853071795864 / float(raysPerSurfel));
 #endif
-
-  // Temporal running average: converge quickly while young, then stick at the hysteresis floor.
-  float count = surfel.normalCount.w;
-  float alpha = max(1.0 / (count + 1.0), 1.0 - clamp(pushConstants.misc.z, 0.0, 0.999));
+  // (count + alpha were computed above the loop, for the radial-depth update.)
 
 #if GI_SURFEL_STORAGE_IS_SH
   surfelStoreSH(surfelIndex, SURFEL_SH_LERP(surfelLoadSH(surfel), radianceSH, alpha));
@@ -178,5 +189,7 @@ void main(){
   // Per-surfel sky visibility: temporally averaged fraction of rays that reached the sky (same running-average alpha as the radiance).
   surfels[surfelIndex].skyVisibility = mix(surfel.skyVisibility, float(missCount) / float(raysPerSurfel), alpha);
   surfels[surfelIndex].normalCount.w = min(count + 1.0, float(GI_SURFEL_MAX_ACCUM));
-  surfels[surfelIndex].lastFrame = frameIndex;
+  // NOTE: the recycle timer (lastFrame) is intentionally NOT refreshed here. The trace processes EVERY alive surfel every
+  // frame, so refreshing it would keep the whole pool alive permanently and the recycle pass could never free slots for
+  // newly-revealed regions (-> large areas with no surfels). The visibility-driven keep-alive lives in giSurfelCoverage.
 }

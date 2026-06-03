@@ -888,6 +888,18 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
     vec3 iblDiffuse = waterDiffuseAmbient(inWorldSpacePosition, normal) * baseColor.xyz;
     vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
+#if defined(WATER_DDGI) && defined(GI_DDGI_GLOSSY_RESIDUAL)
+    // G1 parity, roughness-gated. Water is normally near-mirror (low roughness), so smoothstep(0.3,0.8) keeps this ~inert and
+    // the sharp environment/SSR reflection wins (sharp water reflections are wanted — see waterDiffuseAmbient). It only kicks
+    // in for rough/foamy water, where a broad probe reflection (with local colour bleed) is appropriate. Storage-agnostic
+    // via ddgiSampleIrradiance (E(R)/pi ~ broad prefiltered radiance along the reflection vector).
+    {
+      float ddgiGlossySky;
+      vec3 ddgiReflectionVector = normalize(reflect(-viewDirection, normal));
+      vec3 ddgiGlossyRadiance = ddgiSampleIrradiance(inWorldSpacePosition, ddgiReflectionVector, viewDirection, ddgiGlossySky) * OneOverPI;
+      iblSpecularMetal = mix(iblSpecularMetal, ddgiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
+    }
+#endif
     vec3 iblSpecularDielectric = iblSpecularMetal;
     vec3 iblMetalFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
     vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;

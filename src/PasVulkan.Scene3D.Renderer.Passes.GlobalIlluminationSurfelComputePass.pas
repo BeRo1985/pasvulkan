@@ -497,7 +497,7 @@ begin
  PushConstants.Params.y:=TpvScene3DRendererInstance.GlobalIlluminationSurfelRaysPerSurfel;
  PushConstants.Params.z:=0;
  PushConstants.Params.w:=0;
- PushConstants.Misc:=TpvVector4.InlineableCreate(1e6,1.0,0.95,0.0); // max ray distance, multi-bounce strength, hysteresis
+ PushConstants.Misc:=TpvVector4.InlineableCreate(1e6,0.5,0.95,0.0); // max ray distance, multi-bounce strength (0.5: full 1.0 feedback ~= direct/(1-albedo) washes out bright/high-albedo scenes), hysteresis
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants),@PushConstants);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineTrace.Handle);
  aCommandBuffer.CmdDispatch((TpvScene3DRendererInstance.GlobalIlluminationSurfelMaxCount+63) shr 6,1,1);

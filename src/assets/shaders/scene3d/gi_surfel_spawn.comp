@@ -91,9 +91,15 @@ void main(){
     return;
   }
 
-  // Stagger spawns over frames so a freshly uncovered region fills in gradually (~1 in 4 eligible tiles per frame).
+  // Stagger spawns over frames so a freshly uncovered region fills in gradually (avoids a big one-frame spawn burst on a
+  // camera cut). GI_SURFEL_SPAWN_STAGGER_MASK = fraction skipped per frame: 3u = ~1/4 spawn (slow), 1u = ~1/2 (2x faster
+  // fill, better coverage during fast camera motion), 0u = spawn every eligible tile (fastest, but biggest burst). The
+  // coverage test above + the pool cap self-limit the total, so a higher fill rate cannot over-spawn a covered region.
+  #ifndef GI_SURFEL_SPAWN_STAGGER_MASK
+    #define GI_SURFEL_SPAWN_STAGGER_MASK 1u
+  #endif
   uint h = surfelSpawnHash((uint(tile.x) * 73856093u) ^ (uint(tile.y) * 19349663u) ^ (pushConstants.params.z * 83492791u));
-  if((h & 3u) != 0u){
+  if((h & GI_SURFEL_SPAWN_STAGGER_MASK) != 0u){
     return;
   }
 
@@ -107,6 +113,9 @@ void main(){
   surfel.normalCount = vec4(worldNormal, 0.0);
   for(int k = 0; k < GI_SURFEL_PAYLOAD_UVEC2_COUNT; k++){
     surfel.payload[k] = uvec2(0u); // zero SH / octahedral atlas; the trace pass fills it
+  }
+  for(int k = 0; k < GI_SURFEL_DEPTH_TEXELS; k++){
+    surfel.depth[k] = 0u; // radial depth atlas starts uninitialized (= fully visible) until the trace records distances
   }
   surfel.lastFrame = pushConstants.params.z;
   surfel.flags = GI_SURFEL_FLAG_ALIVE;

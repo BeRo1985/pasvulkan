@@ -410,6 +410,17 @@ void main(){
   const float giIBLWeight = 1.0;
 #endif
   vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
+#if defined(GLOBAL_ILLUMINATION_DDGI) && defined(GI_DDGI_GLOSSY_RESIDUAL)
+  // Probe-derived glossy (G1 parity with mesh.frag / planet_renderpass.frag). Storage-agnostic: sample the probe field along
+  // the reflection vector as a broad prefiltered radiance (E(R)/pi) and lerp it into the prefiltered specular source by
+  // roughness (rough grass takes the probe local colour bleed, sharp keeps the environment reflection). giIBLWeight unchanged.
+  {
+    float ddgiGlossySky;
+    vec3 ddgiReflectionVector = normalize(reflect(-viewDirection, normal));
+    vec3 ddgiGlossyRadiance = ddgiSampleIrradiance(inWorldSpacePosition, ddgiReflectionVector, viewDirection, ddgiGlossySky) * OneOverPI;
+    iblSpecularMetal = mix(iblSpecularMetal, ddgiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
+  }
+#endif
   vec3 iblSpecularDielectric = iblSpecularMetal;
   vec3 iblMetalFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
   vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;

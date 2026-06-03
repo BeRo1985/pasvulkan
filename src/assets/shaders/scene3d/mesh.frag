@@ -954,6 +954,20 @@ void main() {
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
           colorOutput += fma(shResidualDiffuse, vec3(OneOverPI), max(vec3(0.0), shAmbient)) * baseColor.xyz * diffuseOcclusion;
         }
+        DDGI_SH_TYPE shResidual = ddgiRadianceSH; // extract-and-subtract leaves the residual (DC-zeroed) field in ddgiRadianceSH
+#endif
+#if defined(GI_DDGI_GLOSSY_RESIDUAL) && !defined(REFLECTIVESHADOWMAPOUTPUT)
+        // Glossy/specular fill from the *residual* radiance field: the dominant light's specular is handled analytically by
+        // doSingleLight below (sharp highlight toward the brightest direction), and residual = field minus that dominant, so
+        // evaluating it along the reflection vector adds the non-dominant reflected radiance without double-counting. L1/L2 is
+        // low-frequency -> a broad (rough) reflection; the sharp end stays with the dominant light (and the G2 radiance atlas).
+        // Routed through the same split-sum BRDF term (getIBLGGXFresnel) as the environment IBL specular for consistency.
+        {
+          vec3 ddgiReflectionVector = normalize(reflect(-viewDirection, normal.xyz));
+          vec3 ddgiGlossyRadiance = max(vec3(0.0), DDGI_SH_EVALUATE(shResidual, ddgiReflectionVector));
+          vec3 ddgiGlossyFresnel = getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic));
+          colorOutput += ddgiGlossyRadiance * ddgiGlossyFresnel * specularOcclusion;
+        }
 #endif
         doSingleLight(shDominantDirectionalLightColor,                    //
                       vec3(specularOcclusion),                            //

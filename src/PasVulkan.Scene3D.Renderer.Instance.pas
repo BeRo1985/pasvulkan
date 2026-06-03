@@ -165,10 +165,13 @@ type { TpvScene3DRendererInstance }
              GlobalIlluminationSurfelPayloadUVec2Count=(7*Ord(GlobalIlluminationSurfelStorageMode=2))+
                                                        (3*Ord(GlobalIlluminationSurfelStorageMode=1))+
                                                        ((GlobalIlluminationSurfelOctSize*GlobalIlluminationSurfelOctSize)*Ord(GlobalIlluminationSurfelStorageMode=0));
+             // Per-surfel radial depth atlas (occlusion): GI_SURFEL_DEPTH_OCT_SIZE² uint texels (half-packed mean/mean² of hit
+             // distance per direction). MUST match GI_SURFEL_DEPTH_OCT_SIZE in global_illumination_surfel.glsl.
+             GlobalIlluminationSurfelDepthOctSize=4;
+             GlobalIlluminationSurfelDepthTexels=GlobalIlluminationSurfelDepthOctSize*GlobalIlluminationSurfelDepthOctSize;
              // GLSL std430 Surfel stride: positionRadius(16) + normalCount(16) + payload(count*8) + lastFrame/flags(8) +
-             // skyVisibility(4) = 44 + payload, rounded up to the 16-byte struct alignment (matters for the octahedral mode
-             // whose payload is not a multiple of 16).
-             GlobalIlluminationSurfelRecordSize=((44+(GlobalIlluminationSurfelPayloadUVec2Count*8)+15) div 16)*16;
+             // skyVisibility(4) + depth(DepthTexels*4) = 44 + payload + depth, rounded up to the 16-byte struct alignment.
+             GlobalIlluminationSurfelRecordSize=((44+(GlobalIlluminationSurfelPayloadUVec2Count*8)+(GlobalIlluminationSurfelDepthTexels*4)+15) div 16)*16;
              MaxMultiIndirectDrawCalls=65536; //1048576; // as worst case
              InitialCountSolidPrimitives=1 shl 10;
              MaxSolidPrimitives=1 shl 20;

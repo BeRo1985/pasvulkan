@@ -82,6 +82,14 @@
 // DirectionalLights (separate uniform ambient + DC-zeroed residual + per-direction roughness estimate) — a different fit.
 #define GI_DDGI_SH_APPROXIMATE_DOMINANT
 
+// SH-storage glossy fill (Phase G1, frag-only, no extra resource): in the SH shading path the dominant directional light
+// already supplies a roughness-aware *sharp* specular highlight via the analytic BRDF (doSingleLight). This toggle adds the
+// *non-dominant* reflected radiance by evaluating the residual radiance SH (field minus the extracted dominant) along the
+// reflection vector and routing it through the same split-sum BRDF term as the environment IBL (getIBLGGXFresnel). L1/L2 is
+// low-frequency, so it is a broad (rough) reflection — the sharp end stays with the dominant light / the G2 radiance atlas.
+// Comment out for an A/B comparison (the dominant-light-only specular). Default ON. Octahedral storage is unaffected.
+#define GI_DDGI_GLOSSY_RESIDUAL
+
 // --- Probe field dimensions -------------------------------------------------------------------------------------------
 #ifndef GI_DDGI_CASCADES
   #define GI_DDGI_CASCADES 4
