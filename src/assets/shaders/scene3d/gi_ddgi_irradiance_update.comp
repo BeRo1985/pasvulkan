@@ -35,18 +35,6 @@
   layout(set = 1, binding = 2, rgba16f) uniform image2D uDDGIIrradianceOct;
 #endif
 
-#if GI_DDGI_PROBE_AGE_WARMUP
-// Visibility image (binding 3), read-only here only to fetch the per-probe age (w) the visibility update wrote, for the
-// matching convergence-warmup hysteresis ramp. The probe-update pass runs irradiance before visibility, so this reads the
-// previous frame's age (one frame behind — irrelevant for a warmup ramp); a Pascal irradiance<->visibility barrier (gated by
-// GlobalIlluminationDDGIProbeAgeWarmup) keeps that read race-free against this frame's visibility write.
-layout(set = 1, binding = 3, rgba16f) uniform readonly image2D uDDGIVisibilityForAge;
-float ddgiProbeAgeHysteresis(const in ivec3 probeCoord, const in int cascadeIndex){
-  float probeAge = imageLoad(uDDGIVisibilityForAge, ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_VISIBILITY_OCT_FULL)).a;
-  return ddgiWarmupHysteresis(probeAge);
-}
-#endif
-
 layout(push_constant) uniform PushConstants {
   vec4 randomRotation0;
   vec4 randomRotation1;
@@ -55,6 +43,14 @@ layout(push_constant) uniform PushConstants {
   vec4 blend;       // x = hysteresis (0..1), y = unused, z = unused, w = unused
   DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data sub-buffer)
 } pushConstants;
+
+// Per-probe convergence-warmup hysteresis ramp: reads the per-probe age the visibility update wrote into its own BDA buffer.
+// The probe-update chain runs irradiance before visibility, so this reads the previous frame's age (one frame behind —
+// irrelevant for a warmup ramp); the per-stage compute barrier serializes that read against this frame's visibility write.
+float ddgiProbeAgeHysteresis(const in ivec3 probeCoord, const in int cascadeIndex){
+  DDGIAgeBuffer ageBuffer = pushConstants.ddgiMaster.age;
+  return ddgiWarmupHysteresis(float(ddgiLoadAge(ageBuffer, probeCoord, cascadeIndex)));
+}
 
 const float GI_DDGI_FOUR_PI = 12.566370614359172;
 
@@ -125,11 +121,7 @@ void main(){
   // Discard stale previous SH: firstFrame (blend.z) = uninitialized garbage; or the probe just toroidally scrolled into
   // the volume (its stored SH belongs to a different world cell). Either way take the freshly projected SH.
   bool firstFrame = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
-#if GI_DDGI_PROBE_AGE_WARMUP
   float hysteresis = ddgiProbeAgeHysteresis(probeCoord, cascadeIndex);
-#else
-  float hysteresis = pushConstants.blend.x;
-#endif
   vec3 finiteCheck = ((previous.coefficients[0] + previous.coefficients[1]) + previous.coefficients[2]) + previous.coefficients[3];
   if(firstFrame || any(isnan(finiteCheck)) || any(isinf(finiteCheck))){
     ddgiStoreSH(probeCoord, cascadeIndex, sh);
@@ -179,11 +171,7 @@ void main(){
   // uninitialized garbage, or the probe just toroidally scrolled into the volume (stored data is for a different world
   // cell) — in both cases take the freshly computed value instead of blending against it.
   bool firstFrame = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
-#if GI_DDGI_PROBE_AGE_WARMUP
   float hysteresis = ddgiProbeAgeHysteresis(probeCoord, cascadeIndex);
-#else
-  float hysteresis = pushConstants.blend.x;
-#endif
   float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : hysteresis;
   imageStore(uDDGIIrradianceOct, atlasTexel, vec4(mix(irradiance, previous, blendT), 1.0));
 }

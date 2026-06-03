@@ -30,10 +30,16 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer DDGIIrradia
 layout(buffer_reference, std430, buffer_reference_align = 16) buffer DDGIIrradianceSHBuffer { vec4 data[]; }; // OCT mode: unused placeholder (irradiance is a sampled image there)
 #endif
 
+// Per-probe convergence age (frames since (re)init, capped at the warmup length): a plain uint count, point-access only (the
+// visibility update writes it, the irradiance update reads it for the warmup hysteresis ramp; never sampled by shading), so a
+// BDA buffer rather than squeezing it into an image channel. Indexed by the probe linear index (ddgiProbeDataIndex).
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer DDGIAgeBuffer { uint age[]; };
+
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer DDGIMaster {
-  DDGIRayDataBuffer rayData;           // phase 1
-  DDGIProbeDataBuffer probeData;       // null until phase 3
-  DDGIIrradianceSHBuffer irradianceSH; // null until phase 4
+  DDGIRayDataBuffer rayData;
+  DDGIProbeDataBuffer probeData;
+  DDGIIrradianceSHBuffer irradianceSH;
+  DDGIAgeBuffer age;
 };
 
 // Ray-data linear index: rows of raysPerProbe per probe (matches the old image layout image[y=globalProbe][x=ray]).
@@ -71,5 +77,13 @@ void ddgiStoreSHProbe(const in DDGIIrradianceSHBuffer aSH, const in ivec3 probeC
   aSH.probes[ddgiProbeDataIndex(probeCoord, cascadeIndex)] = aProbe;
 }
 #endif
+
+// Per-probe age (probe linear index matches ddgiProbeDataIndex).
+uint ddgiLoadAge(const in DDGIAgeBuffer aAge, const in ivec3 probeCoord, const in int cascadeIndex){
+  return aAge.age[ddgiProbeDataIndex(probeCoord, cascadeIndex)];
+}
+void ddgiStoreAge(const in DDGIAgeBuffer aAge, const in ivec3 probeCoord, const in int cascadeIndex, const in uint aValue){
+  aAge.age[ddgiProbeDataIndex(probeCoord, cascadeIndex)] = aValue;
+}
 
 #endif // GI_DDGI_MASTER_GLSL

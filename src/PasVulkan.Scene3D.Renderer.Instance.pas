@@ -421,9 +421,10 @@ type { TpvScene3DRendererInstance }
             // BDA master: device-address pointers to the point-access DDGI sub-buffers; layout must match DDGIMaster in
             // gi_ddgi_master.glsl. Pointers are 0 until their migration phase enables them (ray-data = phase 1).
             TGlobalIlluminationDDGIMasterData=packed record
-             RayData:TVkDeviceAddress;       // -> ray-data buffer (phase 1)
-             ProbeData:TVkDeviceAddress;     // 0 until phase 3
-             IrradianceSH:TVkDeviceAddress;  // 0 until phase 4
+             RayData:TVkDeviceAddress;       // -> ray-data buffer
+             ProbeData:TVkDeviceAddress;     // -> probe-data buffer (0 when relocation off)
+             IrradianceSH:TVkDeviceAddress;  // -> SH-irradiance buffer (0 in octahedral storage mode)
+             Age:TVkDeviceAddress;           // -> per-probe convergence age buffer (uint per probe)
             end;
             PGlobalIlluminationDDGIMasterData=^TGlobalIlluminationDDGIMasterData;
             TGlobalIlluminationDDGIDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
@@ -808,6 +809,7 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationDDGIRayDataBuffers:TGlobalIlluminationDDGIBuffers;                    // BDA storage buffer (rgb = radiance, a = distance), per in-flight frame
        fGlobalIlluminationDDGIMasterBuffers:TGlobalIlluminationDDGIBuffers;                     // BDA master (sub-buffer pointers), per in-flight frame, host-visible
        fGlobalIlluminationDDGIProbeDataBuffers:TGlobalIlluminationDDGIBuffers;                  // relocation only: BDA buffer, vec4 per probe (xyz = offset, w = active state)
+       fGlobalIlluminationDDGIAgeBuffers:TGlobalIlluminationDDGIBuffers;                        // BDA buffer, uint per probe (per-probe convergence age, written by visibility / read by irradiance)
        fGlobalIlluminationDDGIDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalIlluminationDDGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalIlluminationDDGIDescriptorSets:TGlobalIlluminationDDGIDescriptorSets;
@@ -1167,6 +1169,7 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationDDGIRayDataBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIRayDataBuffers;
        property GlobalIlluminationDDGIMasterBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIMasterBuffers;
        property GlobalIlluminationDDGIProbeDataBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIProbeDataBuffers;
+       property GlobalIlluminationDDGIAgeBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIAgeBuffers;
        property GlobalIlluminationDDGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationDDGIDescriptorSetLayout;
        property GlobalIlluminationDDGIDescriptorSets:TGlobalIlluminationDDGIDescriptorSets read fGlobalIlluminationDDGIDescriptorSets;
        function GetGlobalIlluminationDDGIFirstFrame(const aInFlightFrameIndex:TpvSizeInt):boolean;
@@ -2608,6 +2611,7 @@ begin
  FillChar(fGlobalIlluminationDDGIRayDataBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
  FillChar(fGlobalIlluminationDDGIMasterBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
  FillChar(fGlobalIlluminationDDGIProbeDataBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
+ FillChar(fGlobalIlluminationDDGIAgeBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
  fGlobalIlluminationDDGIDescriptorPool:=nil;
  fGlobalIlluminationDDGIDescriptorSetLayout:=nil;
  FillChar(fGlobalIlluminationDDGIDescriptorSets,SizeOf(TGlobalIlluminationDDGIDescriptorSets),#0);
@@ -3038,6 +3042,7 @@ begin
   FreeAndNil(fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationDDGIUniformBuffers[InFlightFrameIndex]);
  end;
@@ -3722,6 +3727,22 @@ begin
                                                                                          'TpvScene3DRendererInstance.fGlobalIlluminationDDGIProbeDataBuffers['+IntToStr(InFlightFrameIndex)+']');
     end;
 
+    // Per-probe convergence age: a tiny BDA storage buffer, one uint per probe (frames since (re)init). Written by the
+    // visibility update (one thread per probe), read by the irradiance update for the warmup hysteresis ramp; never sampled.
+    // Always allocated (the per-probe warmup is no longer compile-time gated). Not cleared: on a probe's first frame the age
+    // is reset, so the uninitialized value is never used.
+    fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                  TpvSizeInt(CountGlobalIlluminationDDGICascades)*TpvSizeInt(GlobalIlluminationDDGIProbesPerCascade)*SizeOf(TpvUInt32),
+                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                  [],
+                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                  0,0,0,0,0,0,0,
+                                                                                  [TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                                                  0,
+                                                                                  pvAllocationGroupIDScene3DStatic,
+                                                                                  'TpvScene3DRendererInstance.fGlobalIlluminationDDGIAgeBuffers['+IntToStr(InFlightFrameIndex)+']');
+
     // Fill the master pointers now that all of this slot's sub-buffers exist. probe-data = 0 when relocation is off; the
     // The SH-irradiance pointer is set only in SH storage mode (the octahedral mode keeps its sampled image instead).
     FillChar(GlobalIlluminationDDGIMasterData,SizeOf(GlobalIlluminationDDGIMasterData),#0);
@@ -3732,6 +3753,7 @@ begin
     if not GlobalIlluminationDDGIStorageOctahedral then begin
      GlobalIlluminationDDGIMasterData.IrradianceSH:=fGlobalIlluminationDDGIIrradianceSHBuffers[InFlightFrameIndex].DeviceAddress;
     end;
+    GlobalIlluminationDDGIMasterData.Age:=fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex].DeviceAddress;
     fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].UpdateData(GlobalIlluminationDDGIMasterData,0,SizeOf(GlobalIlluminationDDGIMasterData));
 
    end;

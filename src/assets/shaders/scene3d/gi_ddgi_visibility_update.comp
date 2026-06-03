@@ -93,22 +93,21 @@ void main(){
                                     : vec3(maxRayDistance, maxRayDistance * maxRayDistance, 1.0);
 
   ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_VISIBILITY_OCT_FULL) + localTexel;
-  vec4 previousFull = imageLoad(uDDGIVisibilityOct, atlasTexel);
-  vec3 previous = previousFull.rgb;
+  vec3 previous = imageLoad(uDDGIVisibilityOct, atlasTexel).rgb;
   // Guard against uninitialized NaN/Inf (images are not cleared) and discard stale history: on the firstFrame flag
   // (blend.z) the previous data is uninitialized garbage, and on a probe that just toroidally scrolled into the volume
   // its stored history belongs to a different world cell — in both cases take the freshly computed value.
   bool firstFrame = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
-#if GI_DDGI_PROBE_AGE_WARMUP
-  // Per-probe age (frames since (re)init) lives in the free w channel: reset on firstFrame/scroll-in, else +1 (capped). It
-  // drives a faster hysteresis right after init so the probe converges in a few frames; the irradiance update reads this
-  // same w for its matching ramp.
-  float probeAge = firstFrame ? 0.0 : min(previousFull.a + 1.0, GI_DDGI_WARMUP_FRAMES);
-  float hysteresis = ddgiWarmupHysteresis(probeAge);
-#else
-  float probeAge = 0.0;
-  float hysteresis = pushConstants.blend.x;
-#endif
+  // Per-probe convergence age (frames since (re)init) lives in its own BDA buffer (was the free image w channel): reset on
+  // firstFrame/scroll-in, else +1 (capped at the warmup length). It drives a faster hysteresis right after init so the probe
+  // converges in a few frames; the irradiance update reads the same age for its matching ramp. The age is per-probe (same for
+  // every texel of the tile), so it is computed identically by all threads but written back by only one.
+  DDGIAgeBuffer ageBuffer = pushConstants.ddgiMaster.age;
+  uint probeAge = firstFrame ? 0u : min(ddgiLoadAge(ageBuffer, probeCoord, cascadeIndex) + 1u, uint(GI_DDGI_WARMUP_FRAMES));
+  float hysteresis = ddgiWarmupHysteresis(float(probeAge));
   float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : hysteresis;
-  imageStore(uDDGIVisibilityOct, atlasTexel, vec4(mix(moments, previous, blendT), probeAge));
+  imageStore(uDDGIVisibilityOct, atlasTexel, vec4(mix(moments, previous, blendT), 0.0)); // w unused now (age moved to the BDA buffer)
+  if(gl_LocalInvocationIndex == 0u){
+    ddgiStoreAge(ageBuffer, probeCoord, cascadeIndex, probeAge);
+  }
 }
