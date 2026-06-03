@@ -51,6 +51,7 @@ vec4 ddgiEncodeRayData(const in uint rayIndex,
                        const in float aHitDistance,
                        const in float aMissDistance,
                        const in float aCellSize){
+
 #if GI_DDGI_PROBE_RELOCATION
   if(rayIndex < uint(GI_DDGI_FIXED_RAYS)){
     // Fixed ray: only the geometry distance matters (consumed by the relocation + classification passes). Store it SIGNED
@@ -58,9 +59,11 @@ vec4 ddgiEncodeRayData(const in uint rayIndex,
     return vec4(0.0, 0.0, 0.0, aHit ? (aBackface ? -aHitDistance : aHitDistance) : aMissDistance);
   }
 #endif
+
   // Random ray: shaded radiance in rgb (integrated by the irradiance blend) + the distance in a (feeds the mean/mean^2
   // visibility statistics for the Chebyshev test).
   float storedDistance = aHit ? aHitDistance : aMissDistance;
+
   // Shorten backface-hit distances (à la Majercik's DDGI optimization) so a probe just behind a thin slab records it as a
   // close occluder in the mean/mean^2 depth statistics — the Chebyshev test then blocks the leak to the other side.
   if(aHit && aBackface){
