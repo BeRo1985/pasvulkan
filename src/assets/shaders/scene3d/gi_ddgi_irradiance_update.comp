@@ -121,6 +121,8 @@ void main(){
   if(firstFrame || any(isnan(finiteCheck)) || any(isinf(finiteCheck))){
     ddgiStoreSH(probeCoord, cascadeIndex, sh);
   }else{
+    // Lower the hysteresis when the field's mean radiance (SH DC band) changed a lot -> fast re-convergence on lighting changes.
+    hysteresis = ddgiAdaptiveHysteresis(hysteresis, sh.coefficients[0], previous.coefficients[0]);
     ddgiStoreSH(probeCoord, cascadeIndex, DDGI_SH_LERP(sh, previous, hysteresis));
   }
 }
@@ -168,7 +170,8 @@ void main(){
   // cell) — in both cases take the freshly computed value instead of blending against it.
   bool firstFrame = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
   float hysteresis = ddgiProbeAgeHysteresis(probeCoord, cascadeIndex);
-  float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : hysteresis;
+  // Lower the hysteresis when this texel's irradiance changed a lot -> fast re-convergence on lighting changes (per texel here).
+  float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : ddgiAdaptiveHysteresis(hysteresis, irradiance, previous);
   imageStore(uDDGIIrradianceOct, atlasTexel, vec4(mix(irradiance, previous, blendT), 1.0));
 
 }

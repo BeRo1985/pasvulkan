@@ -227,6 +227,36 @@ float ddgiWarmupHysteresis(const in float age){
   return mix(GI_DDGI_WARMUP_START_HYSTERESIS, GI_DDGI_STEADY_HYSTERESIS, min(age / GI_DDGI_WARMUP_FRAMES, 1.0));
 }
 
+// Luminance-adaptive hysteresis ("faster GI transitions", Scaling-DDGI / RTXGI ProbeBlendingCS): when a probe's freshly
+// integrated irradiance differs a lot in luminance from its stored (temporally smoothed) value — a real runtime lighting
+// change, e.g. a light toggles or a door opens — temporarily LOWER the temporal hysteresis so the probe re-converges in a
+// few frames instead of ~100; when the field is stable, keep the high steady hysteresis (noise-free). Complements the
+// per-probe age warmup (which only covers (re)init / scroll-in); this covers changes on already-converged probes.
+// relativeChange = |Lnew - Lprev| / max(Lnew, Lprev); ramps the hysteresis from base toward a floor across the threshold.
+// CAVEAT: the per-frame Monte-Carlo noise of the new estimate (~96 rays) is itself a luminance change, so keep the
+// threshold above that noise floor or stable probes will spuriously drop hysteresis and get noisier; the floor bounds it.
+#ifndef GI_DDGI_ADAPTIVE_HYSTERESIS
+  #define GI_DDGI_ADAPTIVE_HYSTERESIS 0   // 0 = off (age-warmup hysteresis only; current default), 1 = on (faster reaction to lighting changes)
+#endif
+#ifndef GI_DDGI_ADAPTIVE_CHANGE_THRESHOLD  // relative luminance change at which adaptation starts; above ~2x it the floor is reached
+  #define GI_DDGI_ADAPTIVE_CHANGE_THRESHOLD 0.25
+#endif
+#ifndef GI_DDGI_ADAPTIVE_MIN_HYSTERESIS    // hysteresis floor the adaptation can pull down to on a large change (still some smoothing)
+  #define GI_DDGI_ADAPTIVE_MIN_HYSTERESIS 0.5
+#endif
+float ddgiAdaptiveHysteresis(const in float baseHysteresis, const in vec3 newColor, const in vec3 prevColor){
+#if GI_DDGI_ADAPTIVE_HYSTERESIS
+  const vec3 lumaWeights = vec3(0.2126, 0.7152, 0.0722);
+  float newLuma = dot(max(newColor, vec3(0.0)), lumaWeights);
+  float prevLuma = dot(max(prevColor, vec3(0.0)), lumaWeights);
+  float relativeChange = abs(newLuma - prevLuma) / (max(newLuma, prevLuma) + 1e-4);
+  float t = clamp((relativeChange - GI_DDGI_ADAPTIVE_CHANGE_THRESHOLD) / max(GI_DDGI_ADAPTIVE_CHANGE_THRESHOLD, 1e-4), 0.0, 1.0);
+  return mix(baseHysteresis, min(baseHysteresis, GI_DDGI_ADAPTIVE_MIN_HYSTERESIS), t);
+#else
+  return baseHysteresis;
+#endif
+}
+
 // First ray index the irradiance/visibility integration uses. With relocation enabled the first GI_DDGI_FIXED_RAYS rays
 // are the FIXED rays (unrotated, used only by the relocation + classification passes for geometry sampling), so the probe
 // blend skips them — exactly RTXGI's `rayIndex = NUM_FIXED_RAYS` when relocation/classification is enabled.
