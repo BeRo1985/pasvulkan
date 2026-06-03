@@ -32,6 +32,11 @@ layout(push_constant) uniform PushConstants {
   DDGIMaster ddgiMaster; // BDA pointer to the DDGI master (ray-data sub-buffer)
 } pushConstants;
 
+// Shared cache of this probe's traced rays for the whole workgroup (one workgroup == one probe): xyz = traced ray
+// direction, w = raw hit distance. Loaded cooperatively once, then every octahedral texel integrates from LDS instead of
+// re-reading the ray-data buffer + recomputing each direction per texel (the RTXGI ProbeBlendingCS optimization).
+shared vec4 sDDGIVisibilityRays[GI_DDGI_RAYS_PER_PROBE];
+
 void main(){
   uint globalProbeIndex = gl_WorkGroupID.x;
   uint totalProbes = pushConstants.params.y * pushConstants.params.z;
@@ -55,16 +60,25 @@ void main(){
 
   float maxRayDistance = max(ddgiData.ddgiCascadeCellSizes[cascadeIndex].w, 1e-2);
 
-  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData; // hoist the master->sub-pointer deref out of the ray loop
+  // Cooperatively load this probe's rays (direction + raw distance) into shared memory ONCE for the whole workgroup. Each
+  // thread loads a strided subset; the 256 threads (16x16) cover the <=128 rays in a single iteration. Then barrier so every
+  // texel below reads from LDS instead of the ray-data buffer (256x less global traffic + the direction trig done once).
+  DDGIRayDataBuffer rayData = pushConstants.ddgiMaster.rayData; // hoist the master->sub-pointer deref out of the load
+  uint localIndex = (uint(gl_LocalInvocationID.y) * GI_DDGI_VISIBILITY_OCT_SIZE) + uint(gl_LocalInvocationID.x);
+  for(uint r = GI_DDGI_RAY_START + localIndex; r < raysPerProbe; r += uint(GI_DDGI_VISIBILITY_OCT_SIZE * GI_DDGI_VISIBILITY_OCT_SIZE)){
+    sDDGIVisibilityRays[r] = vec4(ddgiTraceRayDirection(r, randomRotation), ddgiLoadRay(rayData, globalProbeIndex, r, raysPerProbe).a);
+  }
+  barrier();
+
   float sumDist = 0.0;
   float sumDist2 = 0.0;
   float sumSky = 0.0; // weighted fraction of rays in this direction that escaped to the sky (missed geometry)
   float sumWeight = 0.0;
   for(uint r = GI_DDGI_RAY_START; r < raysPerProbe; r++){
-    vec3 rayDirection = ddgiTraceRayDirection(r, randomRotation);
-    float weight = pow(max(0.0, dot(texelDirection, rayDirection)), sharpness);
+    vec4 ray = sDDGIVisibilityRays[r];
+    float weight = pow(max(0.0, dot(texelDirection, ray.xyz)), sharpness);
     if(weight > 0.0){
-      float rawDist = ddgiLoadRay(rayData, globalProbeIndex, r, raysPerProbe).a;
+      float rawDist = ray.w;
       float dist = min(rawDist, maxRayDistance);
       // The trace stores maxRayDistance as the hit distance on a miss, so a ray that reached (or exceeded) it saw the sky.
       float missedToSky = (rawDist >= (maxRayDistance * 0.999)) ? 1.0 : 0.0;

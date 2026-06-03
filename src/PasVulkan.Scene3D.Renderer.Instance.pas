@@ -5102,8 +5102,8 @@ begin
     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
    end;
    // The technique-agnostic probe BLEND/update CORE is split into one frame-graph pass per compute stage so each shader gets
-   // its own GPU timer (separate F8 per-pass timing). They chain linearly; the last stage (classification when relocation is
-   // on, else border) flips the shared firstFrames flag + publishes the probe writes to the fragment shading stages.
+   // its own GPU timer (separate profiler per-pass timing). They chain linearly; the last stage (classification when relocation
+   // is on, else border) flips the shared firstFrames flag + publishes the probe writes to the fragment shading stages.
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Irradiance,false);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Visibility,false);
