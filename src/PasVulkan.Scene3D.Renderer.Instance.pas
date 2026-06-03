@@ -1427,6 +1427,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsBounceComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGITraceComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGIProbeUpdateComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGIStageComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationSurfelComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass,
@@ -1557,7 +1558,12 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass;
        fGlobalIlluminationCascadedRadianceHintsBounceComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass;
        fGlobalIlluminationDDGITraceComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGITraceComputePass;
-       fGlobalIlluminationDDGIProbeUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIProbeUpdateComputePass;
+       fGlobalIlluminationDDGIProbeUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIProbeUpdateComputePass; // dormant: superseded by the per-stage passes below (kept for reference)
+       fGlobalIlluminationDDGIIrradianceUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
+       fGlobalIlluminationDDGIVisibilityUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
+       fGlobalIlluminationDDGIBorderUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
+       fGlobalIlluminationDDGIRelocationComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;       // relocation only
+       fGlobalIlluminationDDGIClassificationComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;   // relocation only
        fGlobalIlluminationSurfelComputePass:TpvScene3DRendererPassesGlobalIlluminationSurfelComputePass;
        fGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass;
        fGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass;
@@ -4993,6 +4999,11 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIProbeUpdateComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRelocationComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationSurfelComputePass:=nil;
 
  case Renderer.GlobalIlluminationMode of
@@ -5093,9 +5104,25 @@ begin
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
    end;
-   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIProbeUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIProbeUpdateComputePass.Create(fFrameGraph,self);
-   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIProbeUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass);
-   TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIProbeUpdateComputePass);
+   // The technique-agnostic probe BLEND/update CORE is split into one frame-graph pass per compute stage so each shader gets
+   // its own GPU timer (separate F8 per-pass timing). They chain linearly; the last stage (classification when relocation is
+   // on, else border) flips the shared firstFrames flag + publishes the probe writes to the fragment shading stages. The old
+   // combined fGlobalIlluminationDDGIProbeUpdateComputePass is left dormant (not created -> not in the frame graph).
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Irradiance,false);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Visibility,false);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Border,not TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass);
+   if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRelocationComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Relocation,false);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRelocationComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Classification,true);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRelocationComputePass);
+    TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass);
+   end else begin
+    TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass);
+   end;
 
   end;
 
@@ -5306,7 +5333,12 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsBounceComputePass);
   end;
   TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
-   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIProbeUpdateComputePass);
+   // depend on the last DDGI update stage (it owns the final publish barrier to the fragment shading stages)
+   if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
+    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass);
+   end else begin
+    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass);
+   end;
   end;
   TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:begin
    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationSurfelComputePass);
