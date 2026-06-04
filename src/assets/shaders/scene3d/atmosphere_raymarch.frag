@@ -79,7 +79,7 @@ vec3 inWorldSpacePosition, workNormal;
 #include "octahedral.glsl"
 
 #define CLOUDS_SHADOW_ENABLED
-layout(set = 2, binding = 14) uniform sampler2D uCloudsShadowMap;
+layout(set = 2, binding = 14) uniform sampler2DArray uCloudsShadowMap;
 
 #include "atmosphere_common.glsl"
 

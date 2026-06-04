@@ -971,15 +971,15 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
           float distanceToCloud = max(0.0, -b + sqrt(disc));
           vec3 cloudVector = receiverVector + (toLight * distanceToCloud);
           vec2 octUV = octEqualAreaUnsignedEncode(cloudVector);
-          float cloudTransmittance = textureLod(uCloudsShadowMap, octUV, 0.0).r;
+          float cloudTransmittance = textureLod(uCloudsShadowMap, vec3(octUV, 0.0), 0.0).r;
           float penumbraRadius = tan(csm.params.y) * distanceToCloud;
           if(penumbraRadius > 0.001){
             float texelSize = 1.0 / float(textureSize(uCloudsShadowMap, 0).x);
             float pcfRadius = clamp(penumbraRadius / (cloudShellRadius * 3.14159), 0.0, 4.0 * texelSize);
-            cloudTransmittance  = textureLod(uCloudsShadowMap, wrapOctahedralCoordinates(octUV + vec2( pcfRadius,  0.0)), 0.0).r;
-            cloudTransmittance += textureLod(uCloudsShadowMap, wrapOctahedralCoordinates(octUV + vec2(-pcfRadius,  0.0)), 0.0).r;
-            cloudTransmittance += textureLod(uCloudsShadowMap, wrapOctahedralCoordinates(octUV + vec2( 0.0,  pcfRadius)), 0.0).r;
-            cloudTransmittance += textureLod(uCloudsShadowMap, wrapOctahedralCoordinates(octUV + vec2( 0.0, -pcfRadius)), 0.0).r;
+            cloudTransmittance  = textureLod(uCloudsShadowMap, vec3(wrapOctahedralCoordinates(octUV + vec2( pcfRadius,  0.0)), 0.0), 0.0).r;
+            cloudTransmittance += textureLod(uCloudsShadowMap, vec3(wrapOctahedralCoordinates(octUV + vec2(-pcfRadius,  0.0)), 0.0), 0.0).r;
+            cloudTransmittance += textureLod(uCloudsShadowMap, vec3(wrapOctahedralCoordinates(octUV + vec2( 0.0,  pcfRadius)), 0.0), 0.0).r;
+            cloudTransmittance += textureLod(uCloudsShadowMap, vec3(wrapOctahedralCoordinates(octUV + vec2( 0.0, -pcfRadius)), 0.0), 0.0).r;
             cloudTransmittance *= 0.25;
           }
           shadow *= cloudTransmittance;
