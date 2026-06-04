@@ -495,6 +495,8 @@ type { TpvScene3DRendererInstance }
              HardwareConservativeRasterization:TpvUInt32;
              MaxGlobalFragmentCount:TpvUInt32;
              MaxLocalFragmentCount:TpvUInt32;
+             EmissiveGIScale:TpvFloat; // global GI emissive master regulator: scale (mirrors voxelgriddata_uniforms.glsl)
+             EmissiveGIMax:TpvFloat;   // global GI emissive master regulator: absolute cap
             end;
             PGlobalIlluminationCascadedVoxelConeTracingUniformBufferData=^TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
             TGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
@@ -8717,6 +8719,10 @@ begin
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.MaxGlobalFragmentCount:=fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;
 
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.MaxLocalFragmentCount:=fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount;
+
+ // Global GI emissive master regulators (renderer-wide); the voxelization fragment clamps emission to min(emission*matFactor*scale, matMax, max).
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.EmissiveGIScale:=Renderer.GlobalIlluminationEmissiveScale;
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.EmissiveGIMax:=Renderer.GlobalIlluminationEmissiveMaximum;
 
  Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
                                             fScene3D.VulkanStagingCommandBuffer,

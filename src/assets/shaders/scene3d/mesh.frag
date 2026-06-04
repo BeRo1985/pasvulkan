@@ -493,7 +493,13 @@ void main() {
 
   vec4 baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor * inColor0;
 
-  vec4 emissionColor = vec4(textureFetch(4, vec4(1.0), true).xyz * material.emissiveFactor.xyz * material.emissiveFactor.w * inColor0.xyz, baseColor.w);
+  vec3 voxelEmission = textureFetch(4, vec4(1.0), true).xyz * material.emissiveFactor.xyz * material.emissiveFactor.w * inColor0.xyz;
+  // GI-only emissive limitation (PASVULKAN_materials_emissive_gi): per-material factor/max (two fp16 packed into the material's
+  // dispersion/shadow uvec4 .w) scaled by the global master regulator (voxelGridData) and clamped — same policy as the DDGI/
+  // surfel gather (gi_rt_gather.glsl giGatherShadeHit). The voxel feeds only the GI here, so limiting it at injection is correct.
+  vec2 voxelEmissiveGI = unpackHalf2x16(material.dispersionShadowCastMaskShadowReceiveMaskUnused.w);
+  voxelEmission = min(voxelEmission * (voxelEmissiveGI.x * voxelGridData.emissiveGIScale), vec3(min(voxelEmissiveGI.y, voxelGridData.emissiveGIMax)));
+  vec4 emissionColor = vec4(voxelEmission, baseColor.w);
 
   float alpha = ((flags & (1u << 31u)) != 0u) ? 1.0 : baseColor.w;
 
