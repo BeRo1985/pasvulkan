@@ -513,7 +513,8 @@ begin
                                  SizeOf(TpvScene3DAtmosphereGlobals.TCloudRaymarchingPushConstants),
                                  @fPushConstants);
 
- TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).DrawClouds(aInFlightFrameIndex,
+ TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).DrawClouds(0,
+                                                                 aInFlightFrameIndex,
                                                                  aCommandBuffer,
                                                                  fResourceDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                                  fResourceCascadedShadowMap.VulkanImageViews[aInFlightFrameIndex].Handle,

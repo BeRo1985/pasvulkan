@@ -720,11 +720,11 @@ type TpvScene3DAtmosphere=class;
               fCubeMapPassDescriptorPool:TpvVulkanDescriptorPool;
               fCubeMapPassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fCloudRaymarchingPassDescriptorPool:TpvVulkanDescriptorPool;
-              fCloudRaymarchingPassDepthImageViews:array[0..MaxInFlightFrames-1] of TVkImageView;
-              fCloudRaymarchingPassCascadedShadowMapImageViews:array[0..MaxInFlightFrames-1] of TVkImageView;
-              fCloudRaymarchingPassCloudsShadowMapImageViews:array[0..MaxInFlightFrames-1] of TVkImageView;
-              fCloudRaymarchingPassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-              fCloudRaymarchingPassDescriptorSetFirsts:array[0..MaxInFlightFrames-1] of boolean;
+              fCloudRaymarchingPassDepthImageViews:array[0..1,0..MaxInFlightFrames-1] of TVkImageView;
+              fCloudRaymarchingPassCascadedShadowMapImageViews:array[0..1,0..MaxInFlightFrames-1] of TVkImageView;
+              fCloudRaymarchingPassCloudsShadowMapImageViews:array[0..1,0..MaxInFlightFrames-1] of TVkImageView;
+              fCloudRaymarchingPassDescriptorSets:array[0..1,0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fCloudRaymarchingPassDescriptorSetFirsts:array[0..1,0..MaxInFlightFrames-1] of boolean;
               fRaymarchingPassDescriptorPool:TpvVulkanDescriptorPool;
               fRaymarchingPassDepthImageViews:array[0..MaxInFlightFrames-1] of TVkImageView;
               fRaymarchingPassCascadedShadowMapImageViews:array[0..MaxInFlightFrames-1] of TVkImageView;
@@ -745,7 +745,8 @@ type TpvScene3DAtmosphere=class;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
-              procedure SetCloudsImageViews(const aInFlightFrameIndex:TpvSizeInt;
+              procedure SetCloudsImageViews(const aPassIndex:TpvSizeInt;
+                                            const aInFlightFrameIndex:TpvSizeInt;
                                             const aDepthImageView:TVkImageView;
                                             const aCascadedShadowMapImageView:TVkImageView;
                                             const aCloudsShadowMapImageView:TVkImageView);
@@ -764,7 +765,8 @@ type TpvScene3DAtmosphere=class;
               procedure ReleaseGraphicsPipeline;
               procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
                                 const aCommandBuffer:TpvVulkanCommandBuffer);
-              procedure DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+              procedure DrawClouds(const aPassIndex:TpvSizeInt;
+                                   const aInFlightFrameIndex:TpvSizeInt;
                                    const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aDepthImageView:TVkImageView;
                                   const aCascadedShadowMapImageView:TVkImageView;
@@ -877,7 +879,8 @@ type TpvScene3DAtmosphere=class;
        procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
                          const aCommandBuffer:TpvVulkanCommandBuffer;
                          const aRendererInstance:TObject);
-       procedure DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+       procedure DrawClouds(const aPassIndex:TpvSizeInt;
+                            const aInFlightFrameIndex:TpvSizeInt;
                             const aCommandBuffer:TpvVulkanCommandBuffer;
                             const aDepthImageView:TVkImageView;
                             const aCascadedShadowMapImageView:TVkImageView;
@@ -913,7 +916,8 @@ type TpvScene3DAtmosphere=class;
        constructor Create(const aScene3D:TObject); reintroduce;
        destructor Destroy; override;
        procedure ProcessReleases;
-       procedure DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+       procedure DrawClouds(const aPassIndex:TpvSizeInt;
+                            const aInFlightFrameIndex:TpvSizeInt;
                             const aCommandBuffer:TpvVulkanCommandBuffer;
                             const aDepthImageView:TVkImageView;
                             const aCascadedShadowMapImageView:TVkImageView;
@@ -2023,6 +2027,7 @@ end;
 
 constructor TpvScene3DAtmosphere.TRendererInstance.Create(const aAtmosphere:TpvScene3DAtmosphere;const aRendererInstance:TObject);
 var InFlightFrameIndex:TpvSizeInt;
+    CloudPassIndex:TpvSizeInt;
 begin
 
  inherited Create;
@@ -2610,27 +2615,29 @@ begin
  fCloudRaymarchingPassDescriptorPool:=TpvVulkanDescriptorPool.Create(TpvScene3D(fAtmosphere.fScene3D).VulkanDevice,
                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
-                                                                    TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
- fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
- fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*11);
- fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2);
- fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2);
+                                                                    TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2);
+ fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2*1);
+ fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2*11);
+ fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2*2);
+ fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2*2);
  fCloudRaymarchingPassDescriptorPool.Initialize;
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCloudRaymarchingPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'CloudRaymarchingPassDescriptorPool');
 
+ for CloudPassIndex:=0 to 1 do begin
+
  for InFlightFrameIndex:=0 to TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames-1 do begin
 
-  fCloudRaymarchingPassDepthImageViews[InFlightFrameIndex]:=VK_NULL_HANDLE;
+  fCloudRaymarchingPassDepthImageViews[CloudPassIndex,InFlightFrameIndex]:=VK_NULL_HANDLE;
 
-  fCloudRaymarchingPassCascadedShadowMapImageViews[InFlightFrameIndex]:=VK_NULL_HANDLE;
+  fCloudRaymarchingPassCascadedShadowMapImageViews[CloudPassIndex,InFlightFrameIndex]:=VK_NULL_HANDLE;
 
-  fCloudRaymarchingPassCloudsShadowMapImageViews[InFlightFrameIndex]:=VK_NULL_HANDLE;
-  
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fCloudRaymarchingPassDescriptorPool,
+  fCloudRaymarchingPassCloudsShadowMapImageViews[CloudPassIndex,InFlightFrameIndex]:=VK_NULL_HANDLE;
+
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fCloudRaymarchingPassDescriptorPool,
                                                                                          TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fCloudRaymarchingPassDescriptorSetLayout);
 
   // Depth texture
- {fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+ {fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_SAMPLED_IMAGE),
@@ -2642,7 +2649,7 @@ begin
                                                                                false);}
 
   // Atmosphere parameters
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
@@ -2653,7 +2660,7 @@ begin
                                                                                false);
 
   // Blue noise 
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(2,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2665,7 +2672,7 @@ begin
                                                                                false);
 
   // Sky luminance
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(3,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2677,7 +2684,7 @@ begin
                                                                                false);
 
   // Transmittance LUT
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(4,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2689,7 +2696,7 @@ begin
                                                                                false);
 
   // Shape noise
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2701,7 +2708,7 @@ begin
                                                                                false);
 
   // Detail noise
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(6,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2713,7 +2720,7 @@ begin
                                                                                false);
 
   // Curl noise
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(7,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(7,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2725,7 +2732,7 @@ begin
                                                                                false);
 
   // Sky luminance LUT
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(8,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2737,7 +2744,7 @@ begin
                                                                                false);
 
   // Weather map
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(9,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2749,7 +2756,7 @@ begin
                                                                                false);
 
   // Precipitation map
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(10,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(10,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2761,7 +2768,7 @@ begin
                                                                                false);
 
   // Atmosphere map
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(11,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(11,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -2773,7 +2780,7 @@ begin
                                                                                false);
 
   // Atmosphere map min/max buffer
-  fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(12,
+  fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(12,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -2782,11 +2789,13 @@ begin
                                                                                [],
                                                                                false);                                                                               
 
-  //fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].Flush; // Not needed, because the descriptor set will be flushed when it is bound
+  //fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].Flush; // Not needed, because the descriptor set will be flushed when it is bound
 
-  fCloudRaymarchingPassDescriptorSetFirsts[InFlightFrameIndex]:=true; // Will be set to false after the first flush, so that the further descriptor set updates will be updated directly instead of creating new descriptor sets
+  fCloudRaymarchingPassDescriptorSetFirsts[CloudPassIndex,InFlightFrameIndex]:=true; // Will be set to false after the first flush, so that the further descriptor set updates will be updated directly instead of creating new descriptor sets
 
-  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'CloudRaymarchingPassDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'CloudRaymarchingPassDescriptorSets['+IntToStr(CloudPassIndex)+','+IntToStr(InFlightFrameIndex)+']');
+
+ end;
 
  end;
 
@@ -3038,7 +3047,8 @@ begin
   FreeAndNil(fSkyViewLUTPassDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fCubeMapPassDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fCameraVolumePassDescriptorSets[InFlightFrameIndex]);
-  FreeAndNil(fCloudRaymarchingPassDescriptorSets[InFlightFrameIndex]);
+  FreeAndNil(fCloudRaymarchingPassDescriptorSets[0,InFlightFrameIndex]);
+  FreeAndNil(fCloudRaymarchingPassDescriptorSets[1,InFlightFrameIndex]);
   FreeAndNil(fRaymarchingPassDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fGlobalDescriptorSets[InFlightFrameIndex]);
  end;
@@ -3096,21 +3106,22 @@ begin
  inherited BeforeDestruction;
 end;
 
-procedure TpvScene3DAtmosphere.TRendererInstance.SetCloudsImageViews(const aInFlightFrameIndex:TpvSizeInt;
+procedure TpvScene3DAtmosphere.TRendererInstance.SetCloudsImageViews(const aPassIndex:TpvSizeInt;
+                                                                     const aInFlightFrameIndex:TpvSizeInt;
                                                                      const aDepthImageView:TVkImageView;
                                                                      const aCascadedShadowMapImageView:TVkImageView;
                                                                      const aCloudsShadowMapImageView:TVkImageView);
 begin
 
- if (fCloudRaymarchingPassDepthImageViews[aInFlightFrameIndex]<>aDepthImageView) or
-    (fCloudRaymarchingPassCascadedShadowMapImageViews[aInFlightFrameIndex]<>aCascadedShadowMapImageView) or
-    (fCloudRaymarchingPassCloudsShadowMapImageViews[aInFlightFrameIndex]<>aCloudsShadowMapImageView) then begin
+ if (fCloudRaymarchingPassDepthImageViews[aPassIndex,aInFlightFrameIndex]<>aDepthImageView) or
+    (fCloudRaymarchingPassCascadedShadowMapImageViews[aPassIndex,aInFlightFrameIndex]<>aCascadedShadowMapImageView) or
+    (fCloudRaymarchingPassCloudsShadowMapImageViews[aPassIndex,aInFlightFrameIndex]<>aCloudsShadowMapImageView) then begin
 
-  if fCloudRaymarchingPassDepthImageViews[aInFlightFrameIndex]<>aDepthImageView then begin
+  if fCloudRaymarchingPassDepthImageViews[aPassIndex,aInFlightFrameIndex]<>aDepthImageView then begin
 
-   fCloudRaymarchingPassDepthImageViews[aInFlightFrameIndex]:=aDepthImageView;
+   fCloudRaymarchingPassDepthImageViews[aPassIndex,aInFlightFrameIndex]:=aDepthImageView;
 
-   fCloudRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(0,
+   fCloudRaymarchingPassDescriptorSets[aPassIndex,aInFlightFrameIndex].WriteToDescriptorSet(0,
                                                                                  0,
                                                                                  1,
                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
@@ -3119,15 +3130,15 @@ begin
                                                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                  [],
                                                                                  [],
-                                                                                 not fCloudRaymarchingPassDescriptorSetFirsts[aInFlightFrameIndex]);
+                                                                                 not fCloudRaymarchingPassDescriptorSetFirsts[aPassIndex,aInFlightFrameIndex]);
 
   end;
 
-  if fCloudRaymarchingPassCascadedShadowMapImageViews[aInFlightFrameIndex]<>aCascadedShadowMapImageView then begin
+  if fCloudRaymarchingPassCascadedShadowMapImageViews[aPassIndex,aInFlightFrameIndex]<>aCascadedShadowMapImageView then begin
 
-   fCloudRaymarchingPassCascadedShadowMapImageViews[aInFlightFrameIndex]:=aCascadedShadowMapImageView;
+   fCloudRaymarchingPassCascadedShadowMapImageViews[aPassIndex,aInFlightFrameIndex]:=aCascadedShadowMapImageView;
 
-{  fCloudRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(11,
+{  fCloudRaymarchingPassDescriptorSets[aPassIndex,aInFlightFrameIndex].WriteToDescriptorSet(11,
                                                                                  0,
                                                                                  1,
                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -3136,14 +3147,14 @@ begin
                                                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                  [],
                                                                                  [],
-                                                                                 not fCloudRaymarchingPassDescriptorSetFirsts[aInFlightFrameIndex]);}
+                                                                                 not fCloudRaymarchingPassDescriptorSetFirsts[aPassIndex,aInFlightFrameIndex]);}
   end;
 
-  if fCloudRaymarchingPassCloudsShadowMapImageViews[aInFlightFrameIndex]<>aCloudsShadowMapImageView then begin
+  if fCloudRaymarchingPassCloudsShadowMapImageViews[aPassIndex,aInFlightFrameIndex]<>aCloudsShadowMapImageView then begin
 
-   fCloudRaymarchingPassCloudsShadowMapImageViews[aInFlightFrameIndex]:=aCloudsShadowMapImageView;
+   fCloudRaymarchingPassCloudsShadowMapImageViews[aPassIndex,aInFlightFrameIndex]:=aCloudsShadowMapImageView;
 
-   fCloudRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(13,
+   fCloudRaymarchingPassDescriptorSets[aPassIndex,aInFlightFrameIndex].WriteToDescriptorSet(13,
                                                                                  0,
                                                                                  1,
                                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -3152,14 +3163,14 @@ begin
                                                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                  [],
                                                                                  [],
-                                                                                 not fCloudRaymarchingPassDescriptorSetFirsts[aInFlightFrameIndex]);
+                                                                                 not fCloudRaymarchingPassDescriptorSetFirsts[aPassIndex,aInFlightFrameIndex]);
   end;
 
-  if fCloudRaymarchingPassDescriptorSetFirsts[aInFlightFrameIndex] then begin
-   fCloudRaymarchingPassDescriptorSets[aInFlightFrameIndex].Flush;
+  if fCloudRaymarchingPassDescriptorSetFirsts[aPassIndex,aInFlightFrameIndex] then begin
+   fCloudRaymarchingPassDescriptorSets[aPassIndex,aInFlightFrameIndex].Flush;
   end;
 
-  fCloudRaymarchingPassDescriptorSetFirsts[aInFlightFrameIndex]:=false;
+  fCloudRaymarchingPassDescriptorSetFirsts[aPassIndex,aInFlightFrameIndex]:=false;
 
  end;
 
@@ -3952,7 +3963,8 @@ begin
 
 end;
 
-procedure TpvScene3DAtmosphere.TRendererInstance.DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+procedure TpvScene3DAtmosphere.TRendererInstance.DrawClouds(const aPassIndex:TpvSizeInt;
+                                                            const aInFlightFrameIndex:TpvSizeInt;
                                                             const aCommandBuffer:TpvVulkanCommandBuffer;
                                                             const aDepthImageView:TVkImageView;
                                                             const aCascadedShadowMapImageView:TVkImageView;
@@ -3962,11 +3974,11 @@ begin
 
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Atmosphere.Clouds.Draw',[1.0,0.0,0.0,1.0]);
 
- SetCloudsImageViews(aInFlightFrameIndex,aDepthImageView,aCascadedShadowMapImageView,aCloudsShadowMapImageView);
+ SetCloudsImageViews(aPassIndex,aInFlightFrameIndex,aDepthImageView,aCascadedShadowMapImageView,aCloudsShadowMapImageView);
 
  DescriptorSets[0]:=TpvScene3D(fAtmosphere.fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
  DescriptorSets[1]:=fGlobalDescriptorSets[aInFlightFrameIndex].Handle;
- DescriptorSets[2]:=fCloudRaymarchingPassDescriptorSets[aInFlightFrameIndex].Handle;
+ DescriptorSets[2]:=fCloudRaymarchingPassDescriptorSets[aPassIndex,aInFlightFrameIndex].Handle;
 
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).fCloudRaymarchingPipelineLayout.Handle,
@@ -5150,7 +5162,8 @@ begin
 
 end;
 
-procedure TpvScene3DAtmosphere.DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+procedure TpvScene3DAtmosphere.DrawClouds(const aPassIndex:TpvSizeInt;
+                                          const aInFlightFrameIndex:TpvSizeInt;
                                           const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aDepthImageView:TVkImageView;
                                           const aCascadedShadowMapImageView:TVkImageView;
@@ -5164,7 +5177,7 @@ begin
   AtmosphereRendererInstance:=GetRenderInstance(aRendererInstance);
 
   if assigned(AtmosphereRendererInstance) then begin
-   AtmosphereRendererInstance.DrawClouds(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsShadowMapImageView);
+   AtmosphereRendererInstance.DrawClouds(aPassIndex,aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsShadowMapImageView);
   end;
 
  end;
@@ -5236,7 +5249,8 @@ begin
  end; 
 end;
 
-procedure TpvScene3DAtmospheres.DrawClouds(const aInFlightFrameIndex:TpvSizeInt;
+procedure TpvScene3DAtmospheres.DrawClouds(const aPassIndex:TpvSizeInt;
+                                           const aInFlightFrameIndex:TpvSizeInt;
                                            const aCommandBuffer:TpvVulkanCommandBuffer;
                                            const aDepthImageView:TVkImageView;
                                            const aCascadedShadowMapImageView:TVkImageView;
@@ -5253,7 +5267,7 @@ begin
    for Index:=0 to Count-1 do begin
     Atmosphere:=Items[Index];
     if assigned(Atmosphere) then begin
-     Atmosphere.DrawClouds(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsShadowMapImageView,aRendererInstance);
+     Atmosphere.DrawClouds(aPassIndex,aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsShadowMapImageView,aRendererInstance);
     end;
    end;
 
