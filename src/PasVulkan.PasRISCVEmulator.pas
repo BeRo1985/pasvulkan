@@ -241,6 +241,9 @@ type { TpvPasRISCVEmulatorMachineInstance }
        fLastSerialConsoleMode:Boolean;
        fSerialConsoleMode:Boolean;
        fMouseButtons:TpvUInt32;
+       fLastGamepadValid:boolean;
+       fLastGamepadButtons:TpvUInt32;
+       fLastGamepadAxes:array[0..7] of TpvInt32;
        fSelectedIndex:TpvInt32;
        fStartY:TpvFloat;
        fTime:TpvDouble;
@@ -265,6 +268,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        function HandleKeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function HandlePointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
        function HandleScrolled(const aRelativeAmount:TpvVector2):boolean;
+       procedure UpdateGameControllers;
        procedure UpdateEmulatorState;
        procedure RecordFrameBufferUpload(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure RenderToCanvas(const aInFlightFrameIndex:TpvSizeInt;const aCanvasWidth,aCanvasHeight:TpvFloat);
@@ -2063,6 +2067,11 @@ begin
  fSerialConsoleMode:=false;
  fLastSerialConsoleMode:=not fSerialConsoleMode;
  fMouseButtons:=0;
+ fLastGamepadValid:=false;
+ fLastGamepadButtons:=0;
+ for Index:=0 to length(fLastGamepadAxes)-1 do begin
+  fLastGamepadAxes[Index]:=0;
+ end;
  fFlags:=[TFlag.Centered,TFlag.Scaled,TFlag.ScaleToNearest];
  fTime:=0.48;
  fTerm:=TPasTerm.Create(80,25);
@@ -2737,12 +2746,128 @@ if fReady and not fSerialConsoleMode then begin
  end;
 end;
 
+procedure TpvPasRISCVEmulatorRenderer.UpdateGameControllers;
+var Index:TpvSizeInt;
+    Joystick,SelectedJoystick:TpvApplicationJoystick;
+    Device:TPasRISCV.TVirtIOInputGamepadDevice;
+    Buttons:TpvUInt32;
+    Axes:array[0..7] of TpvInt32;
+    LeftTriggerValue,RightTriggerValue:TpvFloat;
+    Changed:boolean;
+ function ScaleStick(const aValue:TpvFloat):TpvInt32;
+ begin
+  result:=Round(aValue*TPasRISCV.TVirtIOInputDevice.GAMEPAD_ABS_MAX);
+  if result<TPasRISCV.TVirtIOInputDevice.GAMEPAD_ABS_MIN then begin
+   result:=TPasRISCV.TVirtIOInputDevice.GAMEPAD_ABS_MIN;
+  end else if result>TPasRISCV.TVirtIOInputDevice.GAMEPAD_ABS_MAX then begin
+   result:=TPasRISCV.TVirtIOInputDevice.GAMEPAD_ABS_MAX;
+  end;
+ end;
+ function ScaleTrigger(const aValue:TpvFloat):TpvInt32;
+ begin
+  result:=Round(aValue*TPasRISCV.TVirtIOInputDevice.GAMEPAD_TRIGGER_MAX);
+  if result<0 then begin
+   result:=0;
+  end else if result>TPasRISCV.TVirtIOInputDevice.GAMEPAD_TRIGGER_MAX then begin
+   result:=TPasRISCV.TVirtIOInputDevice.GAMEPAD_TRIGGER_MAX;
+  end;
+ end;
+ procedure SetButton(const aBit:TpvInt32;const aDown:boolean);
+ begin
+  if aDown then begin
+   Buttons:=Buttons or (TpvUInt32(1) shl aBit);
+  end;
+ end;
+begin
+
+ if not (assigned(fMachineInstance) and assigned(fMachineInstance.Machine)) then begin
+  exit;
+ end;
+
+ Device:=fMachineInstance.Machine.VirtIOInputGamepadDevice;
+ if (not assigned(Device)) or fSerialConsoleMode or not fReady then begin
+  exit;
+ end;
+
+ // Pick the first attached SDL game controller (well-defined button/axis layout)
+ SelectedJoystick:=nil;
+ for Index:=0 to pvApplication.Input.GetJoystickCount-1 do begin
+  Joystick:=pvApplication.Input.GetJoystickByIndex(Index);
+  if assigned(Joystick) and Joystick.IsGameController and Joystick.IsGameControllerAttached then begin
+   SelectedJoystick:=Joystick;
+   break;
+  end;
+ end;
+
+ if not assigned(SelectedJoystick) then begin
+  fLastGamepadValid:=false;
+  exit;
+ end;
+
+ LeftTriggerValue:=SelectedJoystick.GetGameControllerAxis(GAME_CONTROLLER_AXIS_TRIGGERLEFT);
+ RightTriggerValue:=SelectedJoystick.GetGameControllerAxis(GAME_CONTROLLER_AXIS_TRIGGERRIGHT);
+ 
+// Axes: framework already normalizes to evdev convention (Y up = negative); sticks -1..1, triggers 0..1
+ Axes[0]:=ScaleStick(SelectedJoystick.GetGameControllerAxis(GAME_CONTROLLER_AXIS_LEFTX));
+ Axes[1]:=ScaleStick(SelectedJoystick.GetGameControllerAxis(GAME_CONTROLLER_AXIS_LEFTY));
+ Axes[2]:=ScaleStick(SelectedJoystick.GetGameControllerAxis(GAME_CONTROLLER_AXIS_RIGHTX));
+ Axes[3]:=ScaleStick(SelectedJoystick.GetGameControllerAxis(GAME_CONTROLLER_AXIS_RIGHTY));
+ Axes[4]:=ScaleTrigger(LeftTriggerValue);
+ Axes[5]:=ScaleTrigger(RightTriggerValue);
+ 
+// D-pad -> hat axes (-1/0/1); evdev convention: down/right = +1
+ Axes[6]:=(ord(SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_DPAD_RIGHT)) and 1)-
+          (ord(SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_DPAD_LEFT)) and 1);
+ Axes[7]:=(ord(SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_DPAD_DOWN)) and 1)-
+          (ord(SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_DPAD_UP)) and 1);
+
+ // Buttons in GamepadButtonList order: SOUTH,EAST,NORTH,WEST,TL,TR,TL2,TR2,SELECT,START,MODE,THUMBL,THUMBR
+ Buttons:=0;
+ SetButton(0,SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_A));
+ SetButton(1,SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_B));
+ SetButton(2,SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_X));
+ SetButton(3,SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_Y));
+ SetButton(4,SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_LEFTSHOULDER));
+ SetButton(5,SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_RIGHTSHOULDER));
+ SetButton(6,LeftTriggerValue>0.5);  // BTN_TL2 (digital left trigger)
+ SetButton(7,RightTriggerValue>0.5); // BTN_TR2 (digital right trigger)
+ SetButton(8,SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_BACK));
+ SetButton(9,SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_START));
+ SetButton(10,SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_GUIDE));
+ SetButton(11,SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_LEFTSTICK));
+ SetButton(12,SelectedJoystick.GetGameControllerButton(GAME_CONTROLLER_BUTTON_RIGHTSTICK));
+
+ // HandleGamepad re-emits every axis on each call, so only forward on an actual state change
+ // to avoid flooding the event queue with redundant SYN reports each frame.
+ Changed:=(not fLastGamepadValid) or (Buttons<>fLastGamepadButtons);
+ if not Changed then begin
+  for Index:=0 to length(Axes)-1 do begin
+   if Axes[Index]<>fLastGamepadAxes[Index] then begin
+    Changed:=true;
+    break;
+   end;
+  end;
+ end;
+
+ if Changed then begin
+  Device.HandleGamepad(Axes[0],Axes[1],Axes[2],Axes[3],Axes[4],Axes[5],Axes[6],Axes[7],Buttons);
+  fLastGamepadButtons:=Buttons;
+  for Index:=0 to length(Axes)-1 do begin
+   fLastGamepadAxes[Index]:=Axes[Index];
+  end;
+  fLastGamepadValid:=true;
+ end;
+
+end;
+
 procedure TpvPasRISCVEmulatorRenderer.UpdateEmulatorState;
 var Index:TpvSizeInt;
     IncomingChars:TpvInt32;
     Updated,FrameBufferActive,FrameBufferGenerationDirty:boolean;
     VSockTestProtocol:TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol;
 begin
+ UpdateGameControllers;
+
 
  if assigned(fMachineInstance) and
     assigned(fMachineInstance.Machine) and
