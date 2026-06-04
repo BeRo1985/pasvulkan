@@ -128,19 +128,12 @@ begin
                                        1.0,
                                        1);
 
- if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'resource_depth_data',
-                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                     []
-                                    );
- end else begin
-  fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'resource_msaa_depth_data',
-                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                     []
-                                    );
- end;
+ // The clouds shadow map is a view-independent top-down (octahedral) render and never samples the camera depth (the depth
+ // sampling in atmosphere_clouds_raymarch.frag is #if'd out for CLOUDS_SHADOWMAP, and the declaration is gated out too, so the
+ // shadow-map pipeline does not statically use the depth binding). Declaring it as a frame-graph input here only coupled this
+ // pass to FinalViewCullDepthRenderPass (a leftover from the shared cloud-render path) and closed a frame-graph cycle whenever
+ // a GI mode that reads the clouds shadow map (e.g. the RSM) forced the mesh cull after that GI source. So: no depth input.
+ fResourceDepth:=nil;
 
  fResourceOutput:=AddImageOutput('resourcetype_clouds_shadowmap',
                                  'resource_clouds_shadowmap',
@@ -311,10 +304,14 @@ begin
                                  SizeOf(TpvScene3DAtmosphereGlobals.TCloudRaymarchingPushConstants),
                                  @fPushConstants);
 
+ // VK_NULL_HANDLE for the depth view: the clouds shadow map render does not sample the camera depth (see AllocateResources +
+ // the CLOUDS_SHADOWMAP gating in atmosphere_clouds_raymarch.frag). With the stored per-pass depth view starting out nil too,
+ // SetCloudsImageViews then never writes the depth descriptor (set 2 binding 0) for this pass index, and the shadow-map
+ // pipeline never statically uses it, so the binding is left untouched (valid: an unused descriptor need not be populated).
  TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).DrawClouds(1,
                                                                  aInFlightFrameIndex,
                                                                  aCommandBuffer,
-                                                                 fResourceDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
+                                                                 VK_NULL_HANDLE,
                                                                  VK_NULL_HANDLE,
                                                                  VK_NULL_HANDLE,
                                                                  fInstance);

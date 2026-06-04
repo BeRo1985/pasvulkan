@@ -5464,7 +5464,11 @@ begin
 
   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass:=TpvScene3DRendererPassesAtmosphereCloudShadowRenderPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
-  TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCullDepthRenderPass);
+  // No dependency on the camera CullDepthRenderPass: the clouds shadow map is a view-independent top-down (octahedral) render
+  // and never samples the camera depth (the depth sampling in atmosphere_clouds_raymarch.frag is #if'd out for CLOUDS_SHADOWMAP).
+  // Coupling it to the camera depth was a leftover from the shared cloud-render path and closed a frame-graph cycle when a GI
+  // mode that reads the clouds shadow map (e.g. cascaded radiance hints' RSM) forces the mesh cull after that GI source:
+  // MeshCull0 -> RSM -> (reads clouds shadow map) CloudShadow -> CullDepth -> MeshCull0. Decoupled here + in the pass itself.
 
   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudRenderPass:=TpvScene3DRendererPassesAtmosphereCloudRenderPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);

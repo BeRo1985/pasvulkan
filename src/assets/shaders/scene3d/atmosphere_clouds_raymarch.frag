@@ -153,7 +153,11 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-#ifndef SHADOWMAP
+// The camera depth is only consumed by the regular cloud render (to composite clouds behind opaque geometry). It is NOT used
+// by either shadow-map variant — the depth sampling below is #if'd out for both SHADOWMAP and CLOUDS_SHADOWMAP — so do not even
+// declare the binding there, otherwise the (view-independent, top-down) CLOUDS_SHADOWMAP pipeline would statically reference a
+// set-2/binding-0 depth descriptor and force a frame-graph dependency on the camera depth pass.
+#if !defined(SHADOWMAP) && !defined(CLOUDS_SHADOWMAP)
 
 #ifdef MSAA
 
@@ -166,14 +170,14 @@ layout(set = 2, binding = 0) uniform texture2DMS uDepthTexture;
 #else
 
 #ifdef MULTIVIEW
-layout(set = 2, binding = 0) uniform texture2DArray uDepthTexture; 
+layout(set = 2, binding = 0) uniform texture2DArray uDepthTexture;
 #else
 layout(set = 2, binding = 0) uniform texture2D uDepthTexture;
 #endif
 
 #endif // MSAA
 
-#endif // !SHADOWMAP
+#endif // !SHADOWMAP && !CLOUDS_SHADOWMAP
 
 layout(set = 2, binding = 1, std140) uniform AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
