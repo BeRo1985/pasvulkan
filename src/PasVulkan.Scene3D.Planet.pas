@@ -30149,9 +30149,9 @@ begin
                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                      [],
                                      0);
- fPassDescriptorSetLayout.AddBinding(5, // SSAO + scene mip + depth mip
+ fPassDescriptorSetLayout.AddBinding(5, // SSAO + scene mip + depth mip + clouds shadow map (uPassTextures[3], sampled by lighting.glsl)
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                     3,
+                                     4,
                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                      [],
                                      0);
@@ -30186,7 +30186,7 @@ begin
  fPassDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                      CountInFlightFrames);
- fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,13*CountInFlightFrames);
+ fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,14*CountInFlightFrames);
  fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*CountInFlightFrames);
  fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2*CountInFlightFrames);
  fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,CountInFlightFrames);
@@ -30274,7 +30274,7 @@ begin
 
   fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                0,
-                                                               3,
+                                                               4,
                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRenderer).AmbientOcclusionSampler.Handle,
                                                                                               aSSAOViews[InFlightFrameIndex].Handle,
@@ -30284,7 +30284,13 @@ begin
                                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                                                                 TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRenderer).ClampedNearestSampler.Handle,
                                                                                               TpvScene3DRendererInstance(fRendererInstance).DepthMipmappedArray2DImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
-                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                // index 3 = clouds shadow map (uPassTextures[3] in lighting.glsl). The caustics pass has no clouds-shadow
+                                                                // resource wired in, so bind the SSAO view as a valid dummy (matches the WaterRenderPass fallback); the
+                                                                // runtime guard in applyCloudShadowMapAttenuation (cloudsShadowMapBDA == 0) skips the sample anyway.
+                                                                TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRenderer).AmbientOcclusionSampler.Handle,
+                                                                                              aSSAOViews[InFlightFrameIndex].Handle,
+                                                                                              aSSAOLayout)],
                                                                [],
                                                                [],
                                                                false);
