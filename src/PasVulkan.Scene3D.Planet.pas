@@ -5232,7 +5232,7 @@ begin
                                                          fPlanet.fHeightMiniMapResolution,
                                                          fPlanet.fHeightMiniMapResolution,
                                                          VK_FORMAT_R32_SFLOAT,
-                                                         false,
+                                                         true,
                                                          VK_SAMPLE_COUNT_1_BIT,
                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                          ImageSharingMode,
