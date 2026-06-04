@@ -722,6 +722,12 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationRadianceHintsDescriptorSetLayout);
   end;
+  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
+   fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationDDGIDescriptorSetLayout);
+  end;
+  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:begin
+   fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationSurfelDescriptorSetLayout);
+  end;
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
    fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout);
   end;
@@ -1128,6 +1134,28 @@ begin
                                          1,
                                          2,
                                          @DescriptorSets,
+                                         0,
+                                         nil);
+   end;
+   TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
+    DescriptorSets[0]:=fPassVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+    DescriptorSets[1]:=fInstance.GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle;
+    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                         fVulkanPipelineLayout.Handle,
+                                         1,
+                                         2,
+                                         @DescriptorSets[0],
+                                         0,
+                                         nil);
+   end;
+   TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:begin
+    DescriptorSets[0]:=fPassVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+    DescriptorSets[1]:=fInstance.GlobalIlluminationSurfelDescriptorSets[aInFlightFrameIndex].Handle;
+    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                         fVulkanPipelineLayout.Handle,
+                                         1,
+                                         2,
+                                         @DescriptorSets[0],
                                          0,
                                          nil);
    end;
