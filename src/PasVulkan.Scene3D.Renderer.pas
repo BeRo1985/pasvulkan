@@ -1195,9 +1195,11 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination,
   TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:begin
    if not fRaytracingActive then begin
-    pvApplication.Log(LOG_INFO,'TpvScene3DRenderer','DynamicDiffuseGlobalIllumination/SurfelGlobalIllumination requires raytracing, downgrading to CascadedRadianceHints');
-//  fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
-    fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
+    if assigned(pvApplication) then begin
+     pvApplication.Log(LOG_INFO,'TpvScene3DRenderer','DynamicDiffuseGlobalIllumination/SurfelGlobalIllumination requires raytracing, downgrading to StaticEnvironmentMap');
+    end;
+    fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+//  fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
    end;
   end;
   else begin
