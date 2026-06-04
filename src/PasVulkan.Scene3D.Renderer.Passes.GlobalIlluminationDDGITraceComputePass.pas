@@ -93,6 +93,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGITraceComputePass }
              RandomRotation2:TpvVector4; // mat3 column 2 in xyz
              Params:TpvUInt32Vector4;    // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
              Blend:TpvVector4;           // y = multi-bounce feedback strength (0 on a slot's first frame); x/z unused by the trace (the update owns them)
+             EmissiveGI:TpvVector4;      // x = global GI emissive scale, y = global GI emissive max (z/w reserved) — must match gi_ddgi_pushconstants.glsl
             end;
             PPushConstants=^TPushConstants;
       private
@@ -326,13 +327,16 @@ begin
  // Deterministic from the frame index so the trace and the probe-update pass agree on it (both reconstruct directions).
  Quaternion:=TpvQuaternion.CreateFromAngleAxis((aFrameIndex*2.39996323)+0.5,TpvVector3.InlineableCreate(0.5774,0.5774,0.5774).Normalize);
  RotationMatrix:=TpvMatrix3x3.CreateFromQuaternion(Quaternion);
+
  PushConstants.RandomRotation0:=TpvVector4.InlineableCreate(RotationMatrix.RawComponents[0,0],RotationMatrix.RawComponents[0,1],RotationMatrix.RawComponents[0,2],0.0);
  PushConstants.RandomRotation1:=TpvVector4.InlineableCreate(RotationMatrix.RawComponents[1,0],RotationMatrix.RawComponents[1,1],RotationMatrix.RawComponents[1,2],0.0);
  PushConstants.RandomRotation2:=TpvVector4.InlineableCreate(RotationMatrix.RawComponents[2,0],RotationMatrix.RawComponents[2,1],RotationMatrix.RawComponents[2,2],0.0);
+
  PushConstants.Params.x:=TpvUInt32(aFrameIndex);
  PushConstants.Params.y:=TpvScene3DRendererInstance.CountGlobalIlluminationDDGICascades;
  PushConstants.Params.z:=TpvScene3DRendererInstance.GlobalIlluminationDDGIProbesPerCascade;
  PushConstants.Params.w:=TpvScene3DRendererInstance.GlobalIlluminationDDGIRaysPerProbe;
+
  // Multi-bounce feedback strength: 0 on this slot's first frame (the previous probe field is uninitialized garbage), else
  // full. The first-frame state is shared with the probe-update pass (which flips it false after writing the probes).
  if fInstance.GlobalIlluminationDDGIFirstFrames[aInFlightFrameIndex] then begin
@@ -340,6 +344,10 @@ begin
  end else begin
   PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,1.0,0.0,0.0);
  end;
+
+ // Global GI emissive master regulators (renderer-wide); the gather clamps emission to min(emission*matFactor*x, matMax, y).
+ PushConstants.EmissiveGI:=TpvVector4.InlineableCreate(fInstance.Renderer.GlobalIlluminationEmissiveScale,fInstance.Renderer.GlobalIlluminationEmissiveMaximum,0.0,0.0);
+
  // Make the host/transfer write of the ddgiData buffer's per-frame cascade globals visible to the compute shader (SSBO read).
  BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),

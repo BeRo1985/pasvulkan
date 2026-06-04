@@ -92,6 +92,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationSurfelComputePass }
        type TPushConstants=record
              Params:TpvUInt32Vector4; // trace: x=frameIndex, y=raysPerSurfel; spawn: x=viewLayer, y=tileStride, z=frameIndex
              Misc:TpvVector4;         // trace: x=maxRayDistance, y=multiBounceStrength, z=hysteresis
+             EmissiveGI:TpvVector4;   // trace: x=global GI emissive scale, y=global GI emissive max (z/w reserved); other dispatches ignore it
             end;
             PPushConstants=^TPushConstants;
             TSpawnView=record
@@ -498,6 +499,8 @@ begin
  PushConstants.Params.z:=0;
  PushConstants.Params.w:=0;
  PushConstants.Misc:=TpvVector4.InlineableCreate(1e6,0.5,0.95,0.0); // max ray distance, multi-bounce strength (0.5: full 1.0 feedback ~= direct/(1-albedo) washes out bright/high-albedo scenes), hysteresis
+ // Global GI emissive master regulators (renderer-wide); the gather clamps emission to min(emission*matFactor*x, matMax, y).
+ PushConstants.EmissiveGI:=TpvVector4.InlineableCreate(fInstance.Renderer.GlobalIlluminationEmissiveScale,fInstance.Renderer.GlobalIlluminationEmissiveMaximum,0.0,0.0);
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants),@PushConstants);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineTrace.Handle);
  aCommandBuffer.CmdDispatch((TpvScene3DRendererInstance.GlobalIlluminationSurfelMaxCount+63) shr 6,1,1);

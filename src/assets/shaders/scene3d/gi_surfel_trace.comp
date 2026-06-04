@@ -32,15 +32,26 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 #include "global_illumination_surfel.glsl"
 
 // Sky on ray miss — identical to gi_ddgi_trace.comp (env A Lambertian dual-blended by env B atmosphere coverage).
+
 layout(set = 1, binding = 6) uniform samplerCube uSurfelEnvironmentMaps[6];
+
 vec3 surfelGatherSky(const in vec3 dir){
   vec3 irradiance = textureLod(uSurfelEnvironmentMaps[2], dir, 0.0).xyz;
   vec4 envB = textureLod(uSurfelEnvironmentMaps[5], dir, 0.0);
   return mix(irradiance, envB.xyz, envB.w);
 }
+
 #define GI_GATHER_SKY(dir) surfelGatherSky(dir)
+
 #define GI_GATHER_PLANET_TEXTURES
 #define GI_GATHER_PLANET_TEXTURES_SET 2
+
+// Global GI-emissive master regulators (push, included below) -> file-scope globals set in main() before any hit is shaded.
+float surfelEmissiveScale = 1.0;
+float surfelEmissiveMax = uintBitsToFloat(0x7f800000u);
+#define GI_GATHER_EMISSIVE_SCALE surfelEmissiveScale
+#define GI_GATHER_EMISSIVE_MAX surfelEmissiveMax
+
 #include "gi_rt_gather.glsl"
 
 #ifndef GI_SURFEL_RAYS_PER_SURFEL
@@ -56,8 +67,9 @@ vec3 surfelGatherSky(const in vec3 dir){
 #endif
 
 layout(push_constant) uniform PushConstants {
-  uvec4 params;  // x = frameIndex, y = raysPerSurfel, z = unused, w = unused
-  vec4 misc;     // x = max ray distance, y = multi-bounce feedback strength, z = temporal hysteresis (0..1), w = unused
+  uvec4 params;     // x = frameIndex, y = raysPerSurfel, z = unused, w = unused
+  vec4 misc;        // x = max ray distance, y = multi-bounce feedback strength, z = temporal hysteresis (0..1), w = unused
+  vec4 emissiveGI;  // x = global GI emissive scale, y = global GI emissive max (z/w reserved)
 } pushConstants;
 
 // Branchless orthonormal basis (Duff et al. 2017).
@@ -96,6 +108,10 @@ void main(){
   uint frameIndex = pushConstants.params.x;
   float tMax = max(pushConstants.misc.x, 1e-2);
   float multibounceStrength = pushConstants.misc.y;
+
+  // Publish the global GI-emissive master regulators (push) into the file-scope globals the gather's giGatherShadeHit reads.
+  surfelEmissiveScale = pushConstants.emissiveGI.x;
+  surfelEmissiveMax = pushConstants.emissiveGI.y;
 
   // Per-(surfel,frame) random offset so the Hammersley set is rotated each frame -> full-hemisphere coverage over time.
   vec2 jitter = vec2(surfelHashF((surfelIndex * 747796405u) + (frameIndex * 2891336453u)),

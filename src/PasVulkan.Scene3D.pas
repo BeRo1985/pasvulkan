@@ -1278,7 +1278,8 @@ type EpvScene3D=class(Exception);
                        Dispersion:TpvFloat;
                        ShadowCastMask:TpvUInt32;
                        ShadowReceiveMask:TpvUInt32;
-                       Unused:TpvUInt32;
+                       EmissiveGIFactor:TpvUInt16; // Half float - GI-only emissive multiplier (PASVULKAN_materials_emissive_gi)
+                       EmissiveGIMax:TpvUInt16;    // Half float - GI-only emissive upper clamp (+Inf = unbounded)
                       // uvec4 End
                       // uvec4 Hologram Blocks begin
                        HologramDirectionX:TpvUInt16; // b0.x
@@ -1346,6 +1347,8 @@ type EpvScene3D=class(Exception);
                      OcclusionTextureStrength:TpvFloat;
                      EmissiveFactor:TpvVector4; // w = EmissiveStrength
                      EmissiveTexture:TTextureReference;
+                     EmissiveGIFactor:TpvFloat; // PASVULKAN_materials_emissive_gi: GI-only emissive multiplier (1.0 = unchanged)
+                     EmissiveGIMax:TpvFloat;    // PASVULKAN_materials_emissive_gi: GI-only emissive upper clamp (+Inf = unbounded)
                      PBRMetallicRoughness:TPBRMetallicRoughness;
                      PBRSpecularGlossiness:TPBRSpecularGlossiness;
                      PBRSheen:TPBRSheen;
@@ -1383,6 +1386,8 @@ type EpvScene3D=class(Exception);
                      OcclusionTextureStrength:1.0;
                      EmissiveFactor:(x:0.0;y:0.0;z:0.0;w:1.0);
                      EmissiveTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
+                     EmissiveGIFactor:1.0;
+                     EmissiveGIMax:Infinity; // +Inf -> unbounded GI emissive by default (packs to fp16 +Inf = 0x7C00)
                      PBRMetallicRoughness:(
                       BaseColorFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                       BaseColorTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
@@ -1498,7 +1503,8 @@ type EpvScene3D=class(Exception);
                      Dispersion:0.0;
                      ShadowCastMask:TpvUInt32($ffffffff);
                      ShadowReceiveMask:TpvUInt32($ffffffff);
-                     Unused:0;
+                     EmissiveGIFactor:$3c00; // fp16 1.0
+                     EmissiveGIMax:$7c00;    // fp16 +Inf
                      HologramDirectionX:0;
                      HologramDirectionY:0;
                      HologramDirectionZ:0;
@@ -2299,7 +2305,9 @@ type EpvScene3D=class(Exception);
                                    PointerTextureOffset,
                                    PointerTextureRotation,
                                    PointerTextureScale,
-                                   PointerNodeExtensionsKHRNodeVisibilityVisible
+                                   PointerNodeExtensionsKHRNodeVisibilityVisible,
+                                   PointerMaterialEmissiveGIFactor, // PASVULKAN_materials_emissive_gi (appended at the end to keep existing ordinals stable)
+                                   PointerMaterialEmissiveGIMax
                                   );
                                  TTargetSet=set of TTarget;
                                  TInterpolation=
@@ -2320,6 +2328,8 @@ type EpvScene3D=class(Exception);
                                     TTarget.PointerMaterialPBRClearCoatFactor,
                                     TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
                                     TTarget.PointerMaterialEmissiveStrength,
+                                    TTarget.PointerMaterialEmissiveGIFactor,
+                                    TTarget.PointerMaterialEmissiveGIMax,
                                     TTarget.PointerMaterialIOR,
                                     TTarget.PointerMaterialPBRIridescenceFactor,
                                     TTarget.PointerMaterialPBRIridescenceIor,
@@ -3098,6 +3108,8 @@ type EpvScene3D=class(Exception);
                                    DefaultMaterialPBRClearCoatFactor,
                                    DefaultMaterialPBRClearCoatRoughnessFactor,
                                    DefaultMaterialEmissiveStrength,
+                                   DefaultMaterialEmissiveGIFactor,
+                                   DefaultMaterialEmissiveGIMax,
                                    DefaultMaterialIOR,
                                    DefaultMaterialPBRIridescenceFactor,
                                    DefaultMaterialPBRIridescenceIor,
@@ -3147,6 +3159,8 @@ type EpvScene3D=class(Exception);
                                    MaterialPBRClearCoatFactor,
                                    MaterialPBRClearCoatRoughnessFactor,
                                    MaterialEmissiveStrength,
+                                   MaterialEmissiveGIFactor,
+                                   MaterialEmissiveGIMax,
                                    MaterialIOR,
                                    MaterialPBRIridescenceFactor,
                                    MaterialPBRIridescenceIor,
@@ -3204,6 +3218,8 @@ type EpvScene3D=class(Exception);
                                      MaterialPBRClearCoatFactor:TpvFloat;
                                      MaterialPBRClearCoatRoughnessFactor:TpvFloat;
                                      MaterialEmissiveStrength:TpvFloat;
+                                     MaterialEmissiveGIFactor:TpvFloat;
+                                     MaterialEmissiveGIMax:TpvFloat;
                                      MaterialIOR:TpvFloat;
                                      MaterialPBRIridescenceFactor:TpvFloat;
                                      MaterialPBRIridescenceIor:TpvFloat;
@@ -4243,7 +4259,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($0000000e);
+             PVMFVersion=TpVUInt32($0000000f);
              ProceduralTextureImageHookDefault:TProceduralTextureImageHook=(Hook:nil;AllocateTexture:true);
              EmptyGPUInstanceData:TGPUInstanceData=
               (
@@ -10228,6 +10244,16 @@ begin
    fData.Dispersion.Active:=StreamIO.ReadBoolean;
 
    fData.Dispersion.Dispersion:=StreamIO.ReadFloat;
+ 
+  end;
+
+  begin
+
+   // PASVULKAN_materials_emissive_gi
+
+   fData.EmissiveGIFactor:=StreamIO.ReadFloat;
+
+   fData.EmissiveGIMax:=StreamIO.ReadFloat;
 
   end;
 
@@ -10615,6 +10641,16 @@ begin
    StreamIO.WriteBoolean(fData.Dispersion.Active);
 
    StreamIO.WriteFloat(fData.Dispersion.Dispersion);
+
+  end;
+
+  begin
+ 
+   // PASVULKAN_materials_emissive_gi
+
+   StreamIO.WriteFloat(fData.EmissiveGIFactor);
+
+   StreamIO.WriteFloat(fData.EmissiveGIMax);
 
   end;
 
@@ -11225,6 +11261,23 @@ begin
    LoadHologramFromJSON(aSourceMaterial.Extensions.Properties['PASVULKAN_hologram']);
   end;
 
+  // PASVULKAN_materials_emissive_gi: GI-only emissive limitation. Default = no-op (factor 1.0, max +Inf). Read from
+  // material.extras first (Blender custom properties "emissiveGIFactor" / "emissiveGIMax" -> authorable without an
+  // exporter plugin), then let the dedicated extension {"factor","max"} override.
+  fData.EmissiveGIFactor:=1.0;
+  fData.EmissiveGIMax:=Infinity;
+  if assigned(aSourceMaterial.Extras) and (aSourceMaterial.Extras is TPasJSONItemObject) then begin
+   JSONObject:=TPasJSONItemObject(aSourceMaterial.Extras);
+   fData.EmissiveGIFactor:=TPasJSON.GetNumber(JSONObject.Properties['emissiveGIFactor'],fData.EmissiveGIFactor);
+   fData.EmissiveGIMax:=TPasJSON.GetNumber(JSONObject.Properties['emissiveGIMax'],fData.EmissiveGIMax);
+  end;
+  JSONItem:=aSourceMaterial.Extensions.Properties['PASVULKAN_materials_emissive_gi'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONObject:=TPasJSONItemObject(JSONItem);
+   fData.EmissiveGIFactor:=TPasJSON.GetNumber(JSONObject.Properties['factor'],fData.EmissiveGIFactor);
+   fData.EmissiveGIMax:=TPasJSON.GetNumber(JSONObject.Properties['max'],fData.EmissiveGIMax);
+  end;
+
   JSONItem:=aSourceMaterial.Extensions.Properties['MSFT_lod'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
    JSONObject:=TPasJSONItemObject(JSONItem);
@@ -11547,6 +11600,11 @@ begin
    fShaderData.TextureTransforms[16]:=fData.Anisotropy.AnisotropyTexture.Transform.ToAlignedMatrix3x2;
   end;
  end;
+
+ // GI-only emissive limitation (PASVULKAN_materials_emissive_gi): two fp16 packed into the dispersion/shadow uvec4's .w
+ // slot. Always written (every material has a factor/max; defaults 1.0 / +Inf make it a no-op). Read in gi_rt_gather.glsl.
+ TpvHalfFloat(pointer(@fShaderData.EmissiveGIFactor)^):=fData.EmissiveGIFactor;
+ TpvHalfFloat(pointer(@fShaderData.EmissiveGIMax)^):=fData.EmissiveGIMax;
 
  if fData.Dispersion.Active then begin
   fShaderData.Flags:=fShaderData.Flags or (1 shl 14);
@@ -14434,6 +14492,14 @@ begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion;
           end;
          end;
+        end else if TargetPointerStrings[3]='PASVULKAN_materials_emissive_gi' then begin
+         if length(TargetPointerStrings)>4 then begin
+          if TargetPointerStrings[4]='factor' then begin
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIFactor;
+          end else if TargetPointerStrings[4]='max' then begin
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIMax;
+          end;
+         end;
         end else if TargetPointerStrings[3]='PASVULKAN_hologram' then begin
          if length(TargetPointerStrings)>4 then begin
           if TargetPointerStrings[4]='direction' then begin
@@ -14968,6 +15034,8 @@ begin
     TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor,
     TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
     TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength,
+    TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIFactor,
+    TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIMax,
     TAnimation.TChannel.TTarget.PointerMaterialIOR,
     TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor,
     TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor,
@@ -19860,6 +19928,8 @@ begin
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIFactor,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIMax,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor,
@@ -25594,6 +25664,8 @@ var Index,AnimatedTextureIndex:TpvSizeInt;
     MaterialPBRClearCoatFactorSum:TpvScene3D.TScalarSum;
     MaterialPBRClearCoatRoughnessFactorSum:TpvScene3D.TScalarSum;
     MaterialEmissiveStrengthSum:TpvScene3D.TScalarSum;
+    MaterialEmissiveGIFactorSum:TpvScene3D.TScalarSum;
+    MaterialEmissiveGIMaxSum:TpvScene3D.TScalarSum;
     MaterialIORSum:TpvScene3D.TScalarSum;
     MaterialPBRIridescenceFactorSum:TpvScene3D.TScalarSum;
     MaterialPBRIridescenceIorSum:TpvScene3D.TScalarSum;
@@ -25654,6 +25726,8 @@ begin
   MaterialPBRClearCoatFactorSum.Clear;
   MaterialPBRClearCoatRoughnessFactorSum.Clear;
   MaterialEmissiveStrengthSum.Clear;
+  MaterialEmissiveGIFactorSum.Clear;
+  MaterialEmissiveGIMaxSum.Clear;
   MaterialIORSum.Clear;
   MaterialPBRIridescenceFactorSum.Clear;
   MaterialPBRIridescenceIorSum.Clear;
@@ -25718,6 +25792,8 @@ begin
       MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor,Additive);
       MaterialPBRClearCoatRoughnessFactorSum.Add(fData.PBRClearCoat.RoughnessFactor,Factor,Additive);
       MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor,Additive);
+      MaterialEmissiveGIFactorSum.Add(fData.EmissiveGIFactor,Factor,Additive);
+      MaterialEmissiveGIMaxSum.Add(fData.EmissiveGIMax,Factor,Additive);
       MaterialIORSum.Add(fData.IOR,Factor,Additive);
       MaterialPBRIridescenceFactorSum.Add(fData.Iridescence.Factor,Factor,Additive);
       MaterialPBRIridescenceIorSum.Add(fData.Iridescence.Ior,Factor,Additive);
@@ -25834,6 +25910,20 @@ begin
         MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor,Additive);
        end else begin
         MaterialEmissiveStrengthSum.Add(Overwrite^.MaterialEmissiveStrength,Factor,Additive);
+       end;
+      end;
+      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveGIFactor in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialEmissiveGIFactor in Overwrite^.Flags then begin
+        MaterialEmissiveGIFactorSum.Add(fData.EmissiveGIFactor,Factor,Additive);
+       end else begin
+        MaterialEmissiveGIFactorSum.Add(Overwrite^.MaterialEmissiveGIFactor,Factor,Additive);
+       end;
+      end;
+      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveGIMax in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialEmissiveGIMax in Overwrite^.Flags then begin
+        MaterialEmissiveGIMaxSum.Add(fData.EmissiveGIMax,Factor,Additive);
+       end else begin
+        MaterialEmissiveGIMaxSum.Add(Overwrite^.MaterialEmissiveGIMax,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialIOR in Overwrite^.Flags then begin
@@ -26128,6 +26218,8 @@ begin
   fWorkData.PBRClearCoat.Factor:=MaterialOcclusionTextureStrengthSum.Get(fData.PBRClearCoat.Factor);
   fWorkData.PBRClearCoat.RoughnessFactor:=MaterialPBRClearCoatRoughnessFactorSum.Get(fData.PBRClearCoat.RoughnessFactor);
   fWorkData.EmissiveFactor[3]:=MaterialEmissiveStrengthSum.Get(fData.EmissiveFactor[3]);
+  fWorkData.EmissiveGIFactor:=MaterialEmissiveGIFactorSum.Get(fData.EmissiveGIFactor);
+  fWorkData.EmissiveGIMax:=MaterialEmissiveGIMaxSum.Get(fData.EmissiveGIMax);
   fWorkData.IOR:=MaterialIORSum.Get(fData.IOR);
   fWorkData.Iridescence.Factor:=MaterialPBRIridescenceFactorSum.Get(fData.Iridescence.Factor);
   fWorkData.Iridescence.Ior:=MaterialPBRIridescenceIorSum.Get(fData.Iridescence.Ior);
@@ -29621,6 +29713,8 @@ begin
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIMax,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor,
@@ -29757,6 +29851,16 @@ begin
             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveStrength);
             MaterialOverwrite^.MaterialEmissiveStrength:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIFactor:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveGIFactor);
+            MaterialOverwrite^.MaterialEmissiveGIFactor:=Scalar;
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIMax:begin
+            ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+            Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveGIMax);
+            MaterialOverwrite^.MaterialEmissiveGIMax:=Scalar;
            end;
            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR:begin
             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
@@ -30218,6 +30322,8 @@ begin
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIFactor,
+     TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIMax,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor,
      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor,
@@ -30331,6 +30437,14 @@ begin
            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength:begin
             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialEmissiveStrength,
                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveStrength];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIFactor:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialEmissiveGIFactor,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveGIFactor];
+           end;
+           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIMax:begin
+            MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialEmissiveGIMax,
+                                                                TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveGIMax];
            end;
            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR:begin
             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialIOR,
@@ -43098,6 +43212,8 @@ begin
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatFactor,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRClearCoatRoughnessFactor,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveStrength,
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIFactor,
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialEmissiveGIMax,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialIOR,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceFactor,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRIridescenceIor,

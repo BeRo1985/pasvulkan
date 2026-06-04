@@ -149,6 +149,8 @@ type TpvScene3DRenderer=class;
        fDepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode;
        fLensMode:TpvScene3DRendererLensMode;
        fGlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode;
+       fGlobalIlluminationEmissiveScale:TpvFloat;   // global master regulator: scales the per-material emissive GI contribution
+       fGlobalIlluminationEmissiveMaximum:TpvFloat;  // global master regulator: absolute cap (min'd with the per-material max)
        fToneMappingMode:TpvScene3DRendererToneMappingMode;
 {      fMinLogLuminance:TpvFloat;
        fMaxLogLuminance:TpvFloat;}
@@ -246,6 +248,8 @@ type TpvScene3DRenderer=class;
        property DepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode read fDepthOfFieldMode write fDepthOfFieldMode;
        property LensMode:TpvScene3DRendererLensMode read fLensMode write fLensMode;
        property GlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode read fGlobalIlluminationMode write fGlobalIlluminationMode;
+       property GlobalIlluminationEmissiveScale:TpvFloat read fGlobalIlluminationEmissiveScale write fGlobalIlluminationEmissiveScale;
+       property GlobalIlluminationEmissiveMaximum:TpvFloat read fGlobalIlluminationEmissiveMaximum write fGlobalIlluminationEmissiveMaximum;
        property ToneMappingMode:TpvScene3DRendererToneMappingMode read fToneMappingMode write fToneMappingMode;
        property ResamplingMode:TpvScene3DRendererResamplingMode read fResamplingMode write fResamplingMode;
        property RCASSharpness:TpvFloat read fRCASSharpness write fRCASSharpness;
@@ -447,6 +451,9 @@ begin
  fLensMode:=TpvScene3DRendererLensMode.Auto;
 
  fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.Auto;
+
+ fGlobalIlluminationEmissiveScale:=1.0;        // no-op default
+ fGlobalIlluminationEmissiveMaximum:=Infinity; // no-op default (unbounded)
 
  fToneMappingMode:=TpvScene3DRendererToneMappingMode.Auto;
 

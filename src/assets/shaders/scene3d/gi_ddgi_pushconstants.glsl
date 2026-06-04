@@ -12,6 +12,7 @@ layout(push_constant) uniform PushConstants {
   vec4 randomRotation2;  // mat3 column 2 (xyz)
   uvec4 params;          // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
   vec4 blend;            // x = temporal hysteresis, y = multi-bounce feedback strength (trace), z = firstFrame flag; exact use varies per pass
+  vec4 emissiveGI;       // x = global GI emissive scale, y = global GI emissive max (set + used by the trace pass only; the update stages ignore it)
 } pushConstants;
 
 #endif // GI_DDGI_PUSHCONSTANTS_GLSL

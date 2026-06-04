@@ -57,7 +57,9 @@ struct GIGatherSurface {
   vec3 position;     // world space hit position (meters)
   vec3 normal;       // shading normal at the hit, oriented against the ray
   vec3 albedo;       // diffuse albedo (base color), linear
-  vec3 emission;     // emissive radiance, linear
+  vec3 emission;     // emissive radiance, linear (the FULL emissive term; the GI-only limitation is applied in giGatherShadeHit)
+  float emissiveGIFactor; // per-material multiplier for the emissive term's GI contribution (1.0 = unchanged)
+  float emissiveGIMax;    // per-material upper clamp for the emissive term's GI contribution (+Inf = unbounded)
   float hitDistance; // distance from ray origin to hit; negative when the ray missed
   bool hit;          // true when the ray hit geometry, false on a sky/environment miss
   bool backface;     // true when the ray hit the back side of the surface (shading normal pointed along the ray before
@@ -165,6 +167,8 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
   s.normal = -direction;
   s.albedo = vec3(0.0);
   s.emission = vec3(0.0);
+  s.emissiveGIFactor = 1.0;                       // default: emissive contributes to GI unchanged
+  s.emissiveGIMax = uintBitsToFloat(0x7f800000u); // default: +Inf -> unbounded (no clamp)
   s.hitDistance = -1.0;
   s.hit = false;
   s.backface = false;
@@ -270,6 +274,12 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
 
       // Emissive (texture index 4, sRGB) modulated by the emissive factor (xyz) and strength (w) and vertex color.
       s.emission = raytracingTextureFetch(material, 4, vec4(1.0), true, texCoords).xyz * material.emissiveFactor.xyz * material.emissiveFactor.w * vertexColor.xyz;
+
+      // Per-material GI emissive limitation (PASVULKAN_materials_emissive_gi): two fp16 packed into the .w of the
+      // dispersion/shadow-mask uvec4 (the formerly-"Unused" slot). x = factor, y = max. Applied GI-only in giGatherShadeHit.
+      vec2 emissiveGI = unpackHalf2x16(material.dispersionShadowCastMaskShadowReceiveMaskUnused.w);
+      s.emissiveGIFactor = emissiveGI.x;
+      s.emissiveGIMax = emissiveGI.y;
 
       break;
 
@@ -419,9 +429,24 @@ vec3 giGatherEvaluateLighting(const in vec3 worldPosition, const in vec3 normal)
 //  hit point (probe field for DDGI, hash grid for surfels). Passing it in here gives multi-bounce ("infinite bounce")
 //  lighting almost for free; pass vec3(0.0) to disable it.
 // ---------------------------------------------------------------------------------------------------------------------
+
+// Global GI-emissive master regulators: a renderer-wide scale (multiplies the per-material factor) and an absolute cap
+// (min'd with the per-material max). Each GI producer supplies them from its own source (DDGI: ddgiData; surfels: push
+// constants) by #defining these before including this file; they default to a no-op (scale 1.0, +Inf cap).
+#ifndef GI_GATHER_EMISSIVE_SCALE
+#define GI_GATHER_EMISSIVE_SCALE 1.0
+#endif
+#ifndef GI_GATHER_EMISSIVE_MAX
+#define GI_GATHER_EMISSIVE_MAX uintBitsToFloat(0x7f800000u)
+#endif
+
 vec3 giGatherShadeHit(const in GIGatherSurface surface, const in vec3 previousFrameIndirect){
   vec3 directLight = giGatherEvaluateLighting(surface.position, surface.normal);
-  return surface.emission + (surface.albedo * float(GI_GATHER_OneOverPI) * (directLight + previousFrameIndirect));
+  // GI-only emissive limitation: scale the full emissive term by (per-material factor * global scale), then clamp to
+  // min(per-material max, global cap). With the defaults (1.0 / +Inf) this reduces exactly to the unmodified emission.
+  vec3 limitedEmission = min(surface.emission * (surface.emissiveGIFactor * float(GI_GATHER_EMISSIVE_SCALE)),
+                             vec3(min(surface.emissiveGIMax, float(GI_GATHER_EMISSIVE_MAX))));
+  return limitedEmission + (surface.albedo * float(GI_GATHER_OneOverPI) * (directLight + previousFrameIndirect));
 }
 
 // Convenience: trace one gather ray and return its radiance, sampling the sky on a miss. previousFrameIndirect is only

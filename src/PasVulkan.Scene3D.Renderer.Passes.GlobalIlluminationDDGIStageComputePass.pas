@@ -103,6 +103,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass }
              RandomRotation2:TpvVector4;
              Params:TpvUInt32Vector4;    // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
              Blend:TpvVector4;           // x = hysteresis, z = firstFrame (1 = ignore the uninitialized previous probe data); y/w unused here
+             EmissiveGI:TpvVector4;      // unused by the update stages; present only to byte-match the shared gi_ddgi_pushconstants.glsl block
             end;
             PPushConstants=^TPushConstants;
       private

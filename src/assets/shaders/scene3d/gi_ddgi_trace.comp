@@ -32,17 +32,29 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 // direction, dual-blended by env B's alpha (= per-texel atmosphere existence; 0 where there is no/partial atmosphere, and
 // the whole dual term is a no-op when no planet/atmosphere is active). Integrating this per missed ray bakes the sky into
 // the probe irradiance, correctly occluded (a probe whose rays mostly hit geometry sees little sky).
+
 layout(set = 1, binding = 4) uniform samplerCube uDDGIEnvironmentMaps[6];
+
 vec3 ddgiGatherSky(const in vec3 dir){
   vec3 irradiance = textureLod(uDDGIEnvironmentMaps[2], dir, 0.0).xyz;       // Lambertian (diffuse irradiance), env A
   vec4 envB = textureLod(uDDGIEnvironmentMaps[5], dir, 0.0);                  // Lambertian, env B (atmosphere); w = coverage
   return mix(irradiance, envB.xyz, envB.w);
 }
+
 #define GI_GATHER_SKY(dir) ddgiGatherSky(dir)
+
 // Per-planet blend/grass maps (bindless, indexed by planet object index) on set 2, so planet hits get the full material
 // layer blend instead of just the default ground material.
 #define GI_GATHER_PLANET_TEXTURES
 #define GI_GATHER_PLANET_TEXTURES_SET 2
+
+// Global GI-emissive master regulators, delivered via the push constants. The push block is included further below, so these
+// file-scope globals (set in main() before any hit is shaded) let giGatherShadeHit read the values without a signature change.
+float ddgiEmissiveScale = 1.0;
+float ddgiEmissiveMax = uintBitsToFloat(0x7f800000u);
+#define GI_GATHER_EMISSIVE_SCALE ddgiEmissiveScale
+#define GI_GATHER_EMISSIVE_MAX ddgiEmissiveMax
+
 #include "gi_rt_gather.glsl"
 
 // Optional multi-bounce: sample the previous frame's irradiance field at each ray hit and feed it back as the indirect
@@ -138,6 +150,10 @@ void main(){
   if((rayIndex >= raysPerProbe) || (globalProbeIndex >= totalProbes)){
     return;
   }
+
+  // Publish the global GI-emissive master regulators (push) into the file-scope globals the gather's giGatherShadeHit reads.
+  ddgiEmissiveScale = pushConstants.emissiveGI.x;
+  ddgiEmissiveMax = pushConstants.emissiveGI.y;
 
   int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
   int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
