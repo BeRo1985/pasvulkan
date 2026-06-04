@@ -5444,13 +5444,15 @@ type TEventBeforeAfter=(Event,Before,After);
       TStackItem=record
        Action:TAction;
        Pass:TPass;
+       FromPass:TPass; // the pass whose dependency pushed this one (DFS parent) -> used to pinpoint the exact cycle-closing edge
       end;
       PStackItem=^TStackItem;
       TStack=TpvDynamicStack<TStackItem>;
-  function NewStackItem(const aAction:TAction;const aPass:TPass):TStackItem;
+  function NewStackItem(const aAction:TAction;const aPass:TPass;const aFromPass:TPass=nil):TStackItem;
   begin
    result.Action:=aAction;
    result.Pass:=aPass;
+   result.FromPass:=aFromPass;
   end;
  var Index,
      Count,
@@ -5465,7 +5467,9 @@ type TEventBeforeAfter=(Event,Before,After);
      Resource:TResource;
      WorkPasses:array[0..1] of TPass;
      RecursionMessage:TpvRawByteString;
-     CyclePass:TPass;
+     CyclePass,
+     FromPass:TPass;
+     EdgeReason:TpvRawByteString;
  begin
   // Construct the directed acyclic graph by doing a modified-DFS-based topological sort at the same time
   Stack.Initialize;
@@ -5492,6 +5496,41 @@ type TEventBeforeAfter=(Event,Before,After);
          RecursionMessage:=RecursionMessage+' "'+CyclePass.fName+'"';
         end;
        end;
+       // Pinpoint the exact closing edge: StackItem.FromPass is the pass that pulled this (already temporary-marked, i.e. on
+       // the current DFS path) pass back in -> "FromPass" depends on "Pass", which closes the cycle. Report WHY this dependency
+       // exists (an explicit AddExplicitPassDependency, or which shared image/buffer resource induced it), so the offending edge
+       // can be fixed surgically instead of guessed from the bare node list.
+       FromPass:=StackItem.FromPass;
+       if assigned(FromPass) then begin
+        EdgeReason:='(unknown)';
+        for ExplicitPassDependency in FromPass.fExplicitPassDependencies do begin
+         if ExplicitPassDependency.fPass=Pass then begin
+          EdgeReason:='explicit pass dependency';
+          break;
+         end;
+        end;
+        if EdgeReason='(unknown)' then begin
+         for ResourceTransition in FromPass.fResourceTransitions do begin
+          if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
+             not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
+           Resource:=ResourceTransition.fResource;
+           for OtherResourceTransition in Resource.fResourceTransitions do begin
+            if (ResourceTransition<>OtherResourceTransition) and
+               (OtherResourceTransition.fPass=Pass) and
+               (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
+             EdgeReason:='resource "'+Resource.fName+'"';
+             break;
+            end;
+           end;
+           if EdgeReason<>'(unknown)' then begin
+            break;
+           end;
+          end;
+         end;
+        end;
+        RecursionMessage:=RecursionMessage+'; closing edge: "'+FromPass.fName+'" depends on "'+Pass.fName+'" via '+EdgeReason;
+       end;
+       pvApplication.Log(LOG_ERROR,'TpvFrameGraph',RecursionMessage);
        raise EpvFrameGraphRecursion.Create(String(RecursionMessage));
       end;
       Include(Pass.fFlags,TPass.TFlag.TemporaryMarked);
@@ -5565,7 +5604,7 @@ type TEventBeforeAfter=(Event,Before,After);
       end;
       Stack.Push(NewStackItem(TAction.RemoveTemporaryMarkFlag,Pass));
       for OtherPass in Pass.fPreviousPasses do begin
-       Stack.Push(NewStackItem(TAction.Process,OtherPass));
+       Stack.Push(NewStackItem(TAction.Process,OtherPass,Pass)); // remember the DFS parent (Pass) to report the cycle-closing edge
       end;
      end;
      TAction.RemoveTemporaryMarkFlag:begin
