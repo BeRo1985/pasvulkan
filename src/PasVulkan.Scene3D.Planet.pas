@@ -3539,6 +3539,7 @@ type TpvScene3DPlanets=class;
        class function CreatePlanetRainStreakMeshGenerationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetRainStreakMeshGenerationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;       
        procedure BeginUpdate;
+       procedure SubmitUpdateCommandBuffer;
        procedure EndUpdate;
        procedure FlushUpdate;
        procedure Initialize(const aPasMPInstance:TPasMP=nil;const aData:TStream=nil;const aDataFreeOnDestroy:boolean=false);
@@ -34718,58 +34719,119 @@ begin
  end;
 end;
 
-procedure TpvScene3DPlanet.EndUpdate;
+procedure TpvScene3DPlanet.SubmitUpdateCommandBuffer;
 var SubmitInfo:TVkSubmitInfo;
     TimelineSubmitInfo:TVkTimelineSemaphoreSubmitInfo;
-    WaitSemaphoreHandle,SignalSemaphoreHandle:TVkSemaphore;
-    WaitDstStageFlags:TVkPipelineStageFlags;
-    WaitSemaphoreValue,SignalSemaphoreValue:TpvUInt64;
+    WaitSemaphoreHandles:array[0..1] of TVkSemaphore;
+    WaitSemaphoreValues:array[0..1] of TpvUInt64;
+    WaitDstStageMasks:array[0..1] of TVkPipelineStageFlags;
+    SignalSemaphoreHandles:array[0..0] of TVkSemaphore;
+    SignalSemaphoreValues:array[0..0] of TpvUInt64;
+    CountWaitSemaphores,CountSignalSemaphores:TpvSizeInt;
     CmdBufHandle:TVkCommandBuffer;
     UseTimelineWait:boolean;
+    WaterWaitValue,WaterSignalValue:TpvUInt64;
     Scene3D:TpvScene3D;
+{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
+    GrassAgeMapSyncWaitValue:TpvUInt64;
+{$endif}
+begin
+
+ // Ends + submits the planet update command buffer on the update queue, building
+ // the wait/signal semaphore set out of:
+ //  - the water-simulation timeline (update <-> parallel water queue ping-pong), and
+ //  - (approach B) the grass-age-map cross-queue sync timeline, so the update
+ //    queue's TransferTo cannot race the universal-queue grass-age-map passes.
+ // When neither applies, falls back to the plain Execute (fence-only) path.
+ // Shared by EndUpdate and FlushUpdate.
+
+ fVulkanUpdateCommandBuffer.EndRecording;
+
+ Scene3D:=TpvScene3D(fScene3D);
+
+ CountWaitSemaphores:=0;
+ CountSignalSemaphores:=0;
+
+ UseTimelineWait:=Scene3D.PlanetWaterSimulationUseParallelQueue and assigned(Scene3D.PlanetWaterSimulationTimelineSemaphore);
+ if UseTimelineWait then begin
+  WaterSignalValue:=Scene3D.AcquirePlanetWaterSimulationTimelineSequence(WaterWaitValue);
+  WaitSemaphoreHandles[CountWaitSemaphores]:=Scene3D.PlanetWaterSimulationTimelineSemaphore.Handle;
+  WaitSemaphoreValues[CountWaitSemaphores]:=WaterWaitValue;
+  WaitDstStageMasks[CountWaitSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+  inc(CountWaitSemaphores);
+  SignalSemaphoreHandles[CountSignalSemaphores]:=Scene3D.PlanetWaterSimulationTimelineSemaphore.Handle;
+  SignalSemaphoreValues[CountSignalSemaphores]:=WaterSignalValue;
+  inc(CountSignalSemaphores);
+ end;
+
+{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
+ // Cross-queue sync (approach B): GPU-wait on the grass-age-map sync timeline so
+ // the update queue's TransferTo layout transition of the master grass age map
+ // runs after the universal-queue grass-age-map passes that last wrote it. The
+ // value is the latest one ProcessFrame signalled; 0 means none yet (skip).
+ if assigned(Scene3D.PlanetGrassAgeMapSyncTimelineSemaphore) then begin
+  GrassAgeMapSyncWaitValue:=Scene3D.GetPlanetGrassAgeMapSyncWaitValue;
+  if GrassAgeMapSyncWaitValue>0 then begin
+   WaitSemaphoreHandles[CountWaitSemaphores]:=Scene3D.PlanetGrassAgeMapSyncTimelineSemaphore.Handle;
+   WaitSemaphoreValues[CountWaitSemaphores]:=GrassAgeMapSyncWaitValue;
+   WaitDstStageMasks[CountWaitSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+   inc(CountWaitSemaphores);
+  end;
+ end;
+{$endif}
+
+ if (CountWaitSemaphores>0) or (CountSignalSemaphores>0) then begin
+
+  CmdBufHandle:=fVulkanUpdateCommandBuffer.Handle;
+
+  FillChar(TimelineSubmitInfo,SizeOf(TVkTimelineSemaphoreSubmitInfo),#0);
+  TimelineSubmitInfo.sType:=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+  TimelineSubmitInfo.pNext:=nil;
+  TimelineSubmitInfo.waitSemaphoreValueCount:=CountWaitSemaphores;
+  TimelineSubmitInfo.pWaitSemaphoreValues:=@WaitSemaphoreValues[0];
+  TimelineSubmitInfo.signalSemaphoreValueCount:=CountSignalSemaphores;
+  TimelineSubmitInfo.pSignalSemaphoreValues:=@SignalSemaphoreValues[0];
+
+  FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+  SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  SubmitInfo.pNext:=@TimelineSubmitInfo;
+  if CountWaitSemaphores>0 then begin
+   SubmitInfo.waitSemaphoreCount:=CountWaitSemaphores;
+   SubmitInfo.pWaitSemaphores:=@WaitSemaphoreHandles[0];
+   SubmitInfo.pWaitDstStageMask:=@WaitDstStageMasks[0];
+  end;
+  SubmitInfo.commandBufferCount:=1;
+  SubmitInfo.pCommandBuffers:=@CmdBufHandle;
+  if CountSignalSemaphores>0 then begin
+   SubmitInfo.signalSemaphoreCount:=CountSignalSemaphores;
+   SubmitInfo.pSignalSemaphores:=@SignalSemaphoreHandles[0];
+  end;
+
+  fVulkanUpdateQueue.Submit(1,@SubmitInfo,fVulkanUpdateFence);
+  fVulkanUpdateFence.WaitFor;
+  fVulkanUpdateFence.Reset;
+
+ end else begin
+
+  fVulkanUpdateCommandBuffer.Execute(fVulkanUpdateQueue,
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     nil,
+                                     nil,
+                                     fVulkanUpdateFence,
+                                     true);
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.EndUpdate;
 begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCommandBufferLock);
  try
   if fCommandBufferLevel>0 then begin
    dec(fCommandBufferLevel);
    if fCommandBufferLevel=0 then begin
-    fVulkanUpdateCommandBuffer.EndRecording;
-    Scene3D:=TpvScene3D(fScene3D);
-    UseTimelineWait:=Scene3D.PlanetWaterSimulationUseParallelQueue and assigned(Scene3D.PlanetWaterSimulationTimelineSemaphore);
-    if UseTimelineWait then begin
-     SignalSemaphoreValue:=Scene3D.AcquirePlanetWaterSimulationTimelineSequence(WaitSemaphoreValue);
-     WaitSemaphoreHandle:=Scene3D.PlanetWaterSimulationTimelineSemaphore.Handle;
-     SignalSemaphoreHandle:=WaitSemaphoreHandle;
-     WaitDstStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
-     CmdBufHandle:=fVulkanUpdateCommandBuffer.Handle;
-     FillChar(TimelineSubmitInfo,SizeOf(TVkTimelineSemaphoreSubmitInfo),#0);
-     TimelineSubmitInfo.sType:=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-     TimelineSubmitInfo.pNext:=nil;
-     TimelineSubmitInfo.waitSemaphoreValueCount:=1;
-     TimelineSubmitInfo.pWaitSemaphoreValues:=@WaitSemaphoreValue;
-     TimelineSubmitInfo.signalSemaphoreValueCount:=1;
-     TimelineSubmitInfo.pSignalSemaphoreValues:=@SignalSemaphoreValue;
-     FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
-     SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-     SubmitInfo.pNext:=@TimelineSubmitInfo;
-     SubmitInfo.waitSemaphoreCount:=1;
-     SubmitInfo.pWaitSemaphores:=@WaitSemaphoreHandle;
-     SubmitInfo.pWaitDstStageMask:=@WaitDstStageFlags;
-     SubmitInfo.commandBufferCount:=1;
-     SubmitInfo.pCommandBuffers:=@CmdBufHandle;
-     SubmitInfo.signalSemaphoreCount:=1;
-     SubmitInfo.pSignalSemaphores:=@SignalSemaphoreHandle;
-     fVulkanUpdateQueue.Submit(1,@SubmitInfo,fVulkanUpdateFence);
-     fVulkanUpdateFence.WaitFor;
-     fVulkanUpdateFence.Reset;
-    end else begin
-     fVulkanUpdateCommandBuffer.Execute(fVulkanUpdateQueue,
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                        nil,
-                                        nil,
-                                        fVulkanUpdateFence,
-                                        true);
-    end;
+    SubmitUpdateCommandBuffer;
    end;
   end;
  finally
@@ -34778,55 +34840,11 @@ begin
 end;
 
 procedure TpvScene3DPlanet.FlushUpdate;
-var SubmitInfo:TVkSubmitInfo;
-    TimelineSubmitInfo:TVkTimelineSemaphoreSubmitInfo;
-    WaitSemaphoreHandle,SignalSemaphoreHandle:TVkSemaphore;
-    WaitDstStageFlags:TVkPipelineStageFlags;
-    WaitSemaphoreValue,SignalSemaphoreValue:TpvUInt64;
-    CmdBufHandle:TVkCommandBuffer;
-    UseTimelineWait:boolean;
-    Scene3D:TpvScene3D;
 begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCommandBufferLock);
  try
   if fCommandBufferLevel=1 then begin
-   fVulkanUpdateCommandBuffer.EndRecording;
-   Scene3D:=TpvScene3D(fScene3D);
-   UseTimelineWait:=Scene3D.PlanetWaterSimulationUseParallelQueue and assigned(Scene3D.PlanetWaterSimulationTimelineSemaphore);
-   if UseTimelineWait then begin
-    SignalSemaphoreValue:=Scene3D.AcquirePlanetWaterSimulationTimelineSequence(WaitSemaphoreValue);
-    WaitSemaphoreHandle:=Scene3D.PlanetWaterSimulationTimelineSemaphore.Handle;
-    SignalSemaphoreHandle:=WaitSemaphoreHandle;
-    WaitDstStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
-    CmdBufHandle:=fVulkanUpdateCommandBuffer.Handle;
-    FillChar(TimelineSubmitInfo,SizeOf(TVkTimelineSemaphoreSubmitInfo),#0);
-    TimelineSubmitInfo.sType:=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-    TimelineSubmitInfo.pNext:=nil;
-    TimelineSubmitInfo.waitSemaphoreValueCount:=1;
-    TimelineSubmitInfo.pWaitSemaphoreValues:=@WaitSemaphoreValue;
-    TimelineSubmitInfo.signalSemaphoreValueCount:=1;
-    TimelineSubmitInfo.pSignalSemaphoreValues:=@SignalSemaphoreValue;
-    FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
-    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    SubmitInfo.pNext:=@TimelineSubmitInfo;
-    SubmitInfo.waitSemaphoreCount:=1;
-    SubmitInfo.pWaitSemaphores:=@WaitSemaphoreHandle;
-    SubmitInfo.pWaitDstStageMask:=@WaitDstStageFlags;
-    SubmitInfo.commandBufferCount:=1;
-    SubmitInfo.pCommandBuffers:=@CmdBufHandle;
-    SubmitInfo.signalSemaphoreCount:=1;
-    SubmitInfo.pSignalSemaphores:=@SignalSemaphoreHandle;
-    fVulkanUpdateQueue.Submit(1,@SubmitInfo,fVulkanUpdateFence);
-    fVulkanUpdateFence.WaitFor;
-    fVulkanUpdateFence.Reset;
-   end else begin
-    fVulkanUpdateCommandBuffer.Execute(fVulkanUpdateQueue,
-                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                       nil,
-                                       nil,
-                                       fVulkanUpdateFence,
-                                       true);
-   end;
+   SubmitUpdateCommandBuffer;
    fVulkanUpdateCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
    fVulkanUpdateCommandBuffer.BeginRecording;
   end;
@@ -35967,18 +35985,11 @@ begin
       (InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration) or
       (InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration)) then begin
 
-{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
-   // Cross-queue sync (approach B): before the update-queue TransferTo performs
-   // its layout transition + copy of the master grass age map, host-wait until
-   // the universal queue has finished the grass-age-map passes (GrassAgeMapUpdate
-   // / GrassAgeMapSandboxGrowth / GrassFlagsMapFlagsUpdate) that last wrote it,
-   // so the two layout transitions on different VkQueues cannot race. See
-   // PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc.
-   if (not TpvScene3D(fScene3D).PlanetSingleBuffers) and
-      (InFlightFrameData.fGrassAgeMapGeneration<>fData.fGrassAgeMapGeneration) then begin
-    TpvScene3D(fScene3D).WaitForPlanetGrassAgeMapSync;
-   end;
-{$endif}
+   // Cross-queue sync (approach B): the update-queue submit that contains
+   // TransferTo waits on the grass-age-map sync timeline (GPU-level, in
+   // SubmitUpdateCommandBuffer / EndUpdate) so its layout transition of the
+   // master grass age map cannot race with the universal-queue grass-age-map
+   // passes. See PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc.
 
    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
     BeginUpdate;

@@ -5177,7 +5177,7 @@ type EpvScene3D=class(Exception);
 {$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
        property PlanetGrassAgeMapSyncTimelineSemaphore:TpvVulkanTimelineSemaphore read fPlanetGrassAgeMapSyncTimelineSemaphore;
        function AcquirePlanetGrassAgeMapSyncSignalValue:TpvUInt64;
-       procedure WaitForPlanetGrassAgeMapSync;
+       function GetPlanetGrassAgeMapSyncWaitValue:TpvUInt64;
 {$endif}
       published
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
@@ -40319,7 +40319,8 @@ begin
  // Called by ProcessFrame right before the universal-queue submit that signals
  // the grass-age-map timeline. The returned (monotonically increasing) value
  // becomes both the value signalled by that submit and the value the update
- // queue will host-wait on in WaitForPlanetGrassAgeMapSync.
+ // queue's submit will GPU-wait on (see GetPlanetGrassAgeMapSyncWaitValue and
+ // TpvScene3DPlanet.SubmitUpdateCommandBuffer).
  result:=0;
  if assigned(fPlanetGrassAgeMapSyncTimelineLock) then begin
   fPlanetGrassAgeMapSyncTimelineLock.Acquire;
@@ -40332,24 +40333,20 @@ begin
  end;
 end;
 
-procedure TpvScene3D.WaitForPlanetGrassAgeMapSync;
-var WaitValue:TpvUInt64;
+function TpvScene3D.GetPlanetGrassAgeMapSyncWaitValue:TpvUInt64;
 begin
- // Called by the update queue (TpvScene3DPlanet.TData.TransferData) before
- // recording TransferTo. Host-waits until the universal queue has finished the
- // grass-age-map passes it last signalled, so that the subsequent update-queue
- // layout transition of the master grass age map cannot race with them. The
- // counter starts at 0 and the timeline starts at 0, so the very first wait
- // (before any ProcessFrame has signalled) is satisfied immediately.
- if assigned(fPlanetGrassAgeMapSyncTimelineSemaphore) and assigned(fPlanetGrassAgeMapSyncTimelineLock) then begin
+ // Returns the grass-age-map sync timeline value last signalled by ProcessFrame
+ // (i.e. the latest universal-queue grass-age-map work). The update queue makes
+ // its TransferTo submit wait (GPU-side) on this value so the cross-queue layout
+ // transitions of the master grass age map cannot race. 0 means no ProcessFrame
+ // has signalled yet (timeline starts at 0), so the caller skips the wait.
+ result:=0;
+ if assigned(fPlanetGrassAgeMapSyncTimelineLock) then begin
   fPlanetGrassAgeMapSyncTimelineLock.Acquire;
   try
-   WaitValue:=fPlanetGrassAgeMapSyncTimelineCounter;
+   result:=fPlanetGrassAgeMapSyncTimelineCounter;
   finally
    fPlanetGrassAgeMapSyncTimelineLock.Release;
-  end;
-  if WaitValue>0 then begin
-   fPlanetGrassAgeMapSyncTimelineSemaphore.WaitFor(WaitValue);
   end;
  end;
 end;
