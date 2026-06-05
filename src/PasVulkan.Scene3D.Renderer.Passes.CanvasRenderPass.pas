@@ -166,8 +166,11 @@ inherited Create(aFrameGraph);
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceColor:=AddImageInput('resourcetype_color_tonemapping',
-                               'resource_tonemapping_color',
+ // Read+write the running LastOutputResource (dynamic), not the fixed tonemapping color, so any post-tonemapping pass that
+ // updates LastOutputResource (e.g. the object-selection outline compose) is composited UNDER the UI drawn here. Without such
+ // a pass this is identical to the old fixed 'resourcetype_color_tonemapping' (tonemapping sets LastOutputResource to it).
+ fResourceColor:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
+                               fInstance.LastOutputResource.Resource.Name,
                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
                                 TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]

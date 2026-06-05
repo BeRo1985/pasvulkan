@@ -128,6 +128,13 @@ vec3 inGeometricNormal = normalize(
 #ifdef VOXELIZATION
   // Nothing in this case, since the fragment shader writes to the voxel grid directly.
 #elif defined(DEPTHONLY)
+#ifdef SELECTIONMASK
+  // Object-selection outline mask (compiled as a DEPTHONLY variant): x = instanceDataIndex (instance data has its own ID, not the object ID), y =
+  // floatBitsToUint(gl_FragCoord.z) of the frontmost selected fragment (the mask pass depth-tests against its OWN depth, so
+  // the nearest selected surface wins per pixel). Visible-vs-occluded is resolved later in the compose pass by comparing y
+  // against the scene depth at the seed position (reverse-Z). No scene-depth sampler is needed in this fragment.
+  layout(location = 0) out uvec2 outSelectionMask;
+#endif
 #else
   #if defined(VELOCITY) && !(defined(MBOIT) && defined(MBOITPASS1))
     layout(location = 1) out vec2 outFragVelocity;
@@ -1371,6 +1378,12 @@ void main() {
 
 #ifdef VOXELIZATION
   #include "voxelization_fragment.glsl"
+#endif
+
+#ifdef SELECTIONMASK
+  // Surviving (alpha-tested) selected fragment: write the object id + its depth. The mask pass depth-tests against its own
+  // depth buffer (frontmost selected wins per pixel); visible-vs-occluded is decided in the compose pass vs the scene depth.
+  outSelectionMask = uvec2(inInstanceDataIndex, floatBitsToUint(gl_FragCoord.z));
 #endif
 
 }

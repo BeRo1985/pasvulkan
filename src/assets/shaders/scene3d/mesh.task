@@ -81,7 +81,7 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256];
 } uView;
 
-#if PASS == 1
+#if (PASS == 1) && !defined(SELECTIONMASK)
 layout(set = 1, binding = 7) uniform sampler2DArray uTextureDepths[];
 #endif
 
@@ -342,6 +342,14 @@ void main(){
 
 #else
 
+#ifdef SELECTIONMASK
+
+    // Selection mask: emit EVERY meshlet unconditionally — no frustum/HiZ/distance culling, no dependency on cull state or the
+    // HiZ depth binding -> occluded selected meshlets are drawn too (x-ray), matching the vertex/index pre-occlusion list.
+    bool visible = true;
+
+#else
+
     bool visible = false;
 
     if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere && !distanceCulled){
@@ -403,6 +411,8 @@ void main(){
       // Culling disabled or no valid bounding sphere → always visible (conservative)
       visible = true;
     }
+
+#endif
 
     if(visible){
       uint idx = atomicAdd(payload.count, 1u);

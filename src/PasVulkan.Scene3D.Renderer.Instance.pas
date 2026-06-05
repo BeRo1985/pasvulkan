@@ -1004,6 +1004,8 @@ type { TpvScene3DRendererInstance }
        fPerInFlightFrameGPUDrawIndexedIndirectCommandCSMDisocclusionOffsets:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues;
        fPerInFlightFrameGPUDrawIndexedIndirectCommandFilterOffsets:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues;
        fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers;
+       fSelectionListDrawIndexedIndirectCommandBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers;      // object-selection outline: selected-only indirect draw list (built by SelectionListComputePass)
+       fSelectionListDrawIndexedIndirectCommandCountBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers; // ... and its count (1x uint, cleared each frame, drawn via vkCmdDrawIndexedIndirectCount)
        fGPUDrawIndexedIndirectCommandOutputBuffers:TpvVulkanInFlightFrameBuffers;
        fGPUDrawIndexedIndirectCommandCounterBuffers:TpvVulkanInFlightFrameBuffers;
        fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers;
@@ -1352,6 +1354,8 @@ type { TpvScene3DRendererInstance }
        property PerInFlightFrameGPUDrawIndexedIndirectCommandCSMOffsets:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandCSMOffsets;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandFilterOffsets:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandFilterOffsets;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers;
+       property SelectionListDrawIndexedIndirectCommandBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fSelectionListDrawIndexedIndirectCommandBuffers;
+       property SelectionListDrawIndexedIndirectCommandCountBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fSelectionListDrawIndexedIndirectCommandCountBuffers;
        property GPUDrawIndexedIndirectCommandOutputBuffers:TpvVulkanInFlightFrameBuffers read fGPUDrawIndexedIndirectCommandOutputBuffers;
        property GPUDrawIndexedIndirectCommandCounterBuffers:TpvVulkanInFlightFrameBuffers read fGPUDrawIndexedIndirectCommandCounterBuffers;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers read fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers;
@@ -1427,6 +1431,10 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.AtmosphereProcessCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.MeshFilterComputePass,
      PasVulkan.Scene3D.Renderer.Passes.MeshCullPass0ComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.SelectionListComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.SelectionMaskRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.SelectionOutlineBuildRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.SelectionOutlineFXAAComposeRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthResolveComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthPyramidComputePass,
@@ -1561,6 +1569,10 @@ type TpvScene3DRendererInstancePasses=class
        fTopDownSkyOcclusionMapMeshFilterComputePass:TpvScene3DRendererPassesMeshFilterComputePass;
        fReflectiveShadowMapMeshFilterComputePass:TpvScene3DRendererPassesMeshFilterComputePass;
        fMeshCullPass0ComputePass:TpvScene3DRendererPassesMeshCullPass0ComputePass;
+       fSelectionListComputePass:TpvScene3DRendererPassesSelectionListComputePass; // object-selection outline: builds the selected-only indirect draw list
+       fSelectionMaskRenderPass:TpvScene3DRendererPassesSelectionMaskRenderPass;   // object-selection outline: rasterizes the selection list into the RG32UI mask
+       fSelectionOutlineBuildRenderPass:TpvScene3DRendererPassesSelectionOutlineBuildRenderPass; // object-selection outline: builds the isolated premultiplied outline buffer from the mask
+       fSelectionOutlineFXAAComposeRenderPass:TpvScene3DRendererPassesSelectionOutlineFXAAComposeRenderPass; // object-selection outline: FXAA the outline buffer + composite over the scene (under the UI)
        fCullDepthRenderPass:TpvScene3DRendererPassesCullDepthRenderPass;
        fCullDepthResolveComputePass:TpvScene3DRendererPassesCullDepthResolveComputePass;
        fCullDepthPyramidComputePass:TpvScene3DRendererPassesCullDepthPyramidComputePass;
@@ -4260,6 +4272,39 @@ begin
                                   1
                                  );
 
+ // Object-selection outline (branch objectselectiontry1): the selection mask (objectID + depth) + its own depth buffer, at
+ // scene resolution. Non-MSAA. RG32UI so the JFA/compose can read the id + the frontmost-selected fragment depth.
+ fFrameGraph.AddImageResourceType('resourcetype_selection_mask',
+                                  false,
+                                  VK_FORMAT_R32G32_UINT,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_selection_mask_depth',
+                                  false,
+                                  VK_FORMAT_D32_SFLOAT,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ // Object-selection outline: the ISOLATED premultiplied outline buffer (built from the mask, then FXAA'd + composited).
+ fFrameGraph.AddImageResourceType('resourcetype_selection_outline_buffer',
+                                  false,
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_msaa_color',
                                   false,
                                   VK_FORMAT_R16G16B16A16_SFLOAT,
@@ -5026,6 +5071,17 @@ begin
    else begin
    end;
   end;
+
+  // Object-selection outline: build the selected-only indirect draw list from the (pre-occlusion) input commands. Ordered
+  // after the FinalView mesh cull so the per-frame input command upload is established; the selection mask pass (later) will
+  // depend on this. Always created (selection works in any renderer mode).
+  TpvScene3DRendererInstancePasses(fPasses).fSelectionListComputePass:=TpvScene3DRendererPassesSelectionListComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fSelectionListComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass);
+
+  // Selection mask: rasterizes the selection list (RG32UI id+depth, own depth buffer). Depends on the list build. Its output
+  // is consumed by the (future) selection JFA/compose pass, which is what pulls this + the list-build into the frame graph.
+  TpvScene3DRendererInstancePasses(fPasses).fSelectionMaskRenderPass:=TpvScene3DRendererPassesSelectionMaskRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fSelectionMaskRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fSelectionListComputePass);
 
   TpvScene3DRendererInstancePasses(fPasses).fCullDepthRenderPass:=TpvScene3DRendererPassesCullDepthRenderPass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.FinalView);
 //TpvScene3DRendererInstancePasses(fPasses).fCullDepthRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
@@ -5971,6 +6027,18 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(AntialiasingLastPass);
  end;
 
+ // Object-selection outline, step 1 — BUILD: reads only the selection mask, writes the isolated premultiplied outline buffer
+ // (does NOT touch LastOutputResource). Consuming the mask is what pulls the whole selection chain (list -> mask -> here) in.
+ TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineBuildRenderPass:=TpvScene3DRendererPassesSelectionOutlineBuildRenderPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineBuildRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fSelectionMaskRenderPass);
+
+ // Object-selection outline, step 2 — FXAA + COMPOSITE: anti-aliases the outline buffer in isolation, composites it over the
+ // scene (= LastOutputResource, still the tonemapping output here) and updates LastOutputResource -> the canvas/UI (read below
+ // from LastOutputResource) sits ON TOP of the outline.
+ TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineFXAAComposeRenderPass:=TpvScene3DRendererPassesSelectionOutlineFXAAComposeRenderPass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineFXAAComposeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineBuildRenderPass);
+ TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineFXAAComposeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
+
  TpvScene3DRendererInstancePasses(fPasses).fCanvasComputePass:=TpvScene3DRendererPassesCanvasComputePass.Create(fFrameGraph,self);
 
  TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass:=TpvScene3DRendererPassesCanvasRenderPass.Create(fFrameGraph,self);
@@ -6379,6 +6447,28 @@ begin
                                                                                                                '3DRendererInstance.VisibilityBuffers['+IntToStr(InFlightFrameIndex)+']'
                                                                                                               );
    Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.VisibilityBuffers['+IntToStr(InFlightFrameIndex)+']');
+
+   // Object-selection outline: the selected-only indirect draw list (built by SelectionListComputePass, drawn by the mask
+   // pass via vkCmdDrawIndexedIndirectCount, stride 32) + its count (cleared each frame). GPU-only (device-local).
+   fSelectionListDrawIndexedIndirectCommandBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                               Max(1,fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[InFlightFrameIndex])*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand),
+                                                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT), // BDA: mesh.task reads the per-draw command via MeshDrawCommandsBDA
+                                                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),[],
+                                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),0,0,
+                                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),0,0,0,0,[TpvVulkanBufferFlag.BufferDeviceAddress],0,
+                                                                                               pvAllocationGroupIDScene3DDynamic,
+                                                                                               '3DRendererInstance.SelectionListCommandBuffers['+IntToStr(InFlightFrameIndex)+']');
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fSelectionListDrawIndexedIndirectCommandBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.SelectionListCommandBuffers['+IntToStr(InFlightFrameIndex)+']');
+
+   fSelectionListDrawIndexedIndirectCommandCountBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                                    SizeOf(TpvUInt32),
+                                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),[],
+                                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),0,0,
+                                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),0,0,0,0,[],0,
+                                                                                                    pvAllocationGroupIDScene3DDynamic,
+                                                                                                    '3DRendererInstance.SelectionListCommandCountBuffers['+IntToStr(InFlightFrameIndex)+']');
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fSelectionListDrawIndexedIndirectCommandCountBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.SelectionListCommandCountBuffers['+IntToStr(InFlightFrameIndex)+']');
 
    fPerInFlightFrameMeshCullBatchRangeBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                           MaxMultiIndirectDrawCalls*SizeOf(TpvScene3D.TGPUBatchRange),
@@ -6856,6 +6946,8 @@ begin
   fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[InFlightFrameIndex].Finalize;
   FreeAndNil(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[InFlightFrameIndex]);
   FreeAndNil(fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers[InFlightFrameIndex]);
+  FreeAndNil(fSelectionListDrawIndexedIndirectCommandBuffers[InFlightFrameIndex]);
+  FreeAndNil(fSelectionListDrawIndexedIndirectCommandCountBuffers[InFlightFrameIndex]);
   FreeAndNil(fPerInFlightFrameMeshCullBatchRangeBuffers[InFlightFrameIndex]);
   FreeAndNil(fPerInFlightFrameMeshCullPrefixSumBuffers[InFlightFrameIndex]);
   FreeAndNil(fPerInFlightFrameExpandRangeInfoBuffers[InFlightFrameIndex]);

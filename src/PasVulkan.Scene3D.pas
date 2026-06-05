@@ -51,6 +51,7 @@
  ******************************************************************************)
 unit PasVulkan.Scene3D;
 {$i PasVulkan.inc}
+{$i PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
   {$if CompilerVersion>=24.0}
@@ -4360,6 +4361,15 @@ type EpvScene3D=class(Exception);
        fPlanetWaterSimulationTimelineSemaphore:TpvVulkanTimelineSemaphore;
        fPlanetWaterSimulationTimelineCounter:TpvUInt64;
        fPlanetWaterSimulationTimelineLock:TPasMPSlimReaderWriterLock;
+{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
+       // Cross-queue sync for the master grass age map: the universal-queue
+       // ProcessFrame submit signals this timeline after the grass-age-map
+       // passes, the update queue host-waits on it before TransferTo. See
+       // PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc.
+       fPlanetGrassAgeMapSyncTimelineSemaphore:TpvVulkanTimelineSemaphore;
+       fPlanetGrassAgeMapSyncTimelineCounter:TpvUInt64;
+       fPlanetGrassAgeMapSyncTimelineLock:TPasMPSlimReaderWriterLock;
+{$endif}
        fMeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout;
        fVulkanStagingQueue:TpvVulkanQueue;
@@ -4738,6 +4748,7 @@ type EpvScene3D=class(Exception);
        fLoadGLTFTimeDuration:TpvDouble;
        fDrawDataGeneration:TPasMPUInt64;
        fGPUInstanceDataGeneration:TpvUInt64;
+       fCountSelectedInstances:TpvInt32; // object-selection outline: atomic count of instances with Selected>0, so the renderer can skip the whole selection chain (list/mask/JFA) when nothing is selected. Maintained at the SetSelected chokepoint + instance Destroy; only ever over-counts (safe: never skips a real selection).
        fInFlightFrameGPUInstanceDataGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fUpdatedOriginTransform:TPasMPBool32;
        fLastOriginTransform:TOriginTransform;
@@ -5011,6 +5022,8 @@ type EpvScene3D=class(Exception);
       public
        procedure RebuildDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
+      public 
+       function GetVulkanDrawIndexBuffer:TpvVulkanBuffer; // public accessor for the GPU-driven draw index buffer (used by custom indirect draws like the selection mask pass)
       public
        property DebugMeshletSpherePairsBuffer:TpvVulkanBuffer read fDebugMeshletSpherePairsBuffer;
        property DebugMeshletSpherePairCount:TpvSizeInt read fDebugMeshletSpherePairs.Count;
@@ -5119,6 +5132,7 @@ type EpvScene3D=class(Exception);
        property RainStreaksNormalTexture:TpvVulkanTexture read fRainStreaksNormalTexture;
       public
        property DrawDataGeneration:TPasMPUInt64 read fDrawDataGeneration write fDrawDataGeneration;
+       property CountSelectedInstances:TpvInt32 read fCountSelectedInstances; // object-selection outline: >0 if anything is selected; lets the renderer skip the selection chain (list/mask/JFA) otherwise
       public
        property VulkanFrameGraphStagingQueue:TpvVulkanQueue read fVulkanFrameGraphStagingQueue;
        property VulkanFrameGraphStagingCommandPool:TpvVulkanCommandPool read fVulkanFrameGraphStagingCommandPool;
@@ -5160,11 +5174,18 @@ type EpvScene3D=class(Exception);
        property PlanetWaterSimulationTimelineCounter:TpvUInt64 read fPlanetWaterSimulationTimelineCounter;
        property PlanetWaterSimulationTimelineLock:TPasMPSlimReaderWriterLock read fPlanetWaterSimulationTimelineLock;
        function AcquirePlanetWaterSimulationTimelineSequence(out aWaitValue:TpvUInt64):TpvUInt64;
+{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
+       property PlanetGrassAgeMapSyncTimelineSemaphore:TpvVulkanTimelineSemaphore read fPlanetGrassAgeMapSyncTimelineSemaphore;
+       function AcquirePlanetGrassAgeMapSyncSignalValue:TpvUInt64;
+       procedure WaitForPlanetGrassAgeMapSync;
+{$endif}
       published
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
        property MeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet1Layout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
        property GlobalBoundingSphereVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalBoundingSphereVulkanDescriptorSetLayout;
+      published
+       property VulkanDrawIndexBuffer:TpvVulkanBuffer read GetVulkanDrawIndexBuffer;
       published
        property MeshletBoundsComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshletBoundsComputeVulkanDescriptorSet0Layout;
        property GlobalMeshletVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalMeshletVulkanDescriptorSetLayout;
@@ -6252,6 +6273,9 @@ destructor TpvScene3D.TInstanceData.Destroy;
 begin
  if fGPUInstanceDataIndex>0 then begin
   try
+   if GPUInstanceData^.Selected>0.0 then begin // keep the selected-instance count correct when a still-selected instance is destroyed (selection-outline skip)
+    TPasMPInterlocked.Decrement(fSceneInstance.fCountSelectedInstances);
+   end;
    fSceneInstance.ReleaseGPUInstanceDataIndex(fGPUInstanceDataIndex);
   finally
    fGPUInstanceDataIndex:=0;
@@ -6308,9 +6332,19 @@ begin
 end;
 
 procedure TpvScene3D.TInstanceData.SetSelected(const aValue:TpvFloat);
+var WasSelected,IsSelected:boolean;
 begin
  if GPUInstanceData^.Selected<>aValue then begin
+  WasSelected:=GPUInstanceData^.Selected>0.0;
+  IsSelected:=aValue>0.0;
   GPUInstanceData^.Selected:=aValue;
+  if WasSelected<>IsSelected then begin // maintain the CPU selected-instance count on 0<->selected transitions (selection-outline skip)
+   if IsSelected then begin
+    TPasMPInterlocked.Increment(fSceneInstance.fCountSelectedInstances);
+   end else begin
+    TPasMPInterlocked.Decrement(fSceneInstance.fCountSelectedInstances);
+   end;
+  end;
   inc(fSceneInstance.fGPUInstanceDataGeneration);
  end;
 end;
@@ -34791,6 +34825,12 @@ begin
   fPlanetWaterSimulationTimelineLock:=nil;
   fPlanetWaterSimulationTimelineCounter:=0;
 
+{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
+  fPlanetGrassAgeMapSyncTimelineSemaphore:=nil;
+  fPlanetGrassAgeMapSyncTimelineLock:=nil;
+  fPlanetGrassAgeMapSyncTimelineCounter:=0;
+{$endif}
+
   fPlanetAtmospherePrecipitationSimulationUseParallelQueue:=false;
   fPlanetAtmospherePrecipitationSimulationQueue:=nil;
   fPlanetAtmospherePrecipitationSimulationQueueFamilyIndex:=-1;
@@ -35475,6 +35515,12 @@ begin
   FreeAndNil(fPlanetWaterSimulationTimelineLock);
   fPlanetWaterSimulationTimelineCounter:=0;
 
+{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
+  FreeAndNil(fPlanetGrassAgeMapSyncTimelineSemaphore);
+  FreeAndNil(fPlanetGrassAgeMapSyncTimelineLock);
+  fPlanetGrassAgeMapSyncTimelineCounter:=0;
+{$endif}
+
   FreeAndNil(fPlanetWaterSimulationCommandPool);
 
   fPlanetWaterSimulationQueue:=nil;
@@ -36105,6 +36151,20 @@ begin
   fPlanetWaterSimulationTimelineCounter:=0;
 
  end;
+
+{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
+ // Cross-queue sync timeline for the master grass age map. Created unconditionally
+ // (independent of the water-simulation parallel-queue path), because the master
+ // grass age map is shared between the universal queue (ProcessFrame grass-age
+ // passes) and the update queue (grass age modifications + TransferTo) whenever
+ // planets exist. See PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc.
+ if assigned(fVulkanDevice) then begin
+  fPlanetGrassAgeMapSyncTimelineCounter:=0;
+  fPlanetGrassAgeMapSyncTimelineLock:=TPasMPSlimReaderWriterLock.Create;
+  fPlanetGrassAgeMapSyncTimelineSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
+  fVulkanDevice.DebugUtils.SetObjectName(fPlanetGrassAgeMapSyncTimelineSemaphore.Handle,VK_OBJECT_TYPE_SEMAPHORE,'TpvScene3D.fPlanetGrassAgeMapSyncTimelineSemaphore');
+ end;
+{$endif}
 
  // Initialize atmosphere/precipitation simulation queue settings
  fPlanetAtmospherePrecipitationSimulationUseParallelQueue:=false; //fPlanetWaterSimulationUseParallelQueue;
@@ -40253,6 +40313,48 @@ begin
  end;
 end;
 
+{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
+function TpvScene3D.AcquirePlanetGrassAgeMapSyncSignalValue:TpvUInt64;
+begin
+ // Called by ProcessFrame right before the universal-queue submit that signals
+ // the grass-age-map timeline. The returned (monotonically increasing) value
+ // becomes both the value signalled by that submit and the value the update
+ // queue will host-wait on in WaitForPlanetGrassAgeMapSync.
+ result:=0;
+ if assigned(fPlanetGrassAgeMapSyncTimelineLock) then begin
+  fPlanetGrassAgeMapSyncTimelineLock.Acquire;
+  try
+   inc(fPlanetGrassAgeMapSyncTimelineCounter);
+   result:=fPlanetGrassAgeMapSyncTimelineCounter;
+  finally
+   fPlanetGrassAgeMapSyncTimelineLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.WaitForPlanetGrassAgeMapSync;
+var WaitValue:TpvUInt64;
+begin
+ // Called by the update queue (TpvScene3DPlanet.TData.TransferData) before
+ // recording TransferTo. Host-waits until the universal queue has finished the
+ // grass-age-map passes it last signalled, so that the subsequent update-queue
+ // layout transition of the master grass age map cannot race with them. The
+ // counter starts at 0 and the timeline starts at 0, so the very first wait
+ // (before any ProcessFrame has signalled) is satisfied immediately.
+ if assigned(fPlanetGrassAgeMapSyncTimelineSemaphore) and assigned(fPlanetGrassAgeMapSyncTimelineLock) then begin
+  fPlanetGrassAgeMapSyncTimelineLock.Acquire;
+  try
+   WaitValue:=fPlanetGrassAgeMapSyncTimelineCounter;
+  finally
+   fPlanetGrassAgeMapSyncTimelineLock.Release;
+  end;
+  if WaitValue>0 then begin
+   fPlanetGrassAgeMapSyncTimelineSemaphore.WaitFor(WaitValue);
+  end;
+ end;
+end;
+{$endif}
+
 procedure TpvScene3D.RecordDebugDumps(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
 var NMAPStream:TMemoryStream;
     NMAPGroup:TpvScene3D.TGroup;
@@ -40443,8 +40545,8 @@ var PlanetIndex,PassIndex,CountPlanetAtmospherePrecipitationSimulationToSignalSe
     WaitSemaphoreHandles:array[0..1] of TVkSemaphore;
     WaitSemaphoreDstStageFlags:array[0..1] of TVkPipelineStageFlags;
     WaitSemaphoreValues:array[0..1] of TpvUInt64;
-    SignalSemaphoreValues:array[0..1] of TpvUInt64;
-    SignalSemaphoreHandles:array[0..1] of TVkSemaphore;
+    SignalSemaphoreValues:array[0..2] of TpvUInt64; // [2] reserved for the grass-age-map cross-queue sync timeline (approach B)
+    SignalSemaphoreHandles:array[0..2] of TVkSemaphore;
     CountSignalSemaphores:TpvSizeInt;
     DumpEnabled:Boolean;
     WaterSignalSemaphoreValues:array of TpvUInt64;
@@ -40634,9 +40736,19 @@ begin
     fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fPlanetWaterSimulationQueue,PlanetWaterSimulationCommandBuffer);
 
+    // Approach B / default: grass-age-map update runs on the parallel water
+    // simulation queue (already ordered against the update queue via the water
+    // timeline semaphore). Approach A records it on the update queue instead,
+    // except in the single-buffer path which has no update-queue TransferTo.
+{$ifdef PasVulkanPlanetGrassAgeMapSyncConsolidate}
+    if fPlanetSingleBuffers then begin
+{$endif}
     fVulkanDevice.DebugUtils.CmdBufLabelBegin(PlanetWaterSimulationCommandBuffer,'Planet Grass Age Map Update',[0.25,0.75,0.5,1.0]);
     ProcessPlanetGrassAgeMapUpdateSimulations(PlanetWaterSimulationCommandBuffer,aInFlightFrameIndex);
     fVulkanDevice.DebugUtils.CmdBufLabelEnd(PlanetWaterSimulationCommandBuffer);
+{$ifdef PasVulkanPlanetGrassAgeMapSyncConsolidate}
+    end;
+{$endif}
 
     PlanetWaterSimulationCommandBuffer.EndRecording;
 
@@ -40711,6 +40823,15 @@ begin
 
    end;
 
+{$ifdef PasVulkanPlanetGrassAgeMapSyncConsolidate}
+   // Approach A: with per-in-flight-frame copies (TransferTo path) the grass-age-map
+   // passes are recorded on the update queue instead (see
+   // TpvScene3DPlanet.RecordGrassAgeMapSimulationsOnUpdateQueue), so that all
+   // master-grass-age-map access lives on a single queue. Only the single-buffer
+   // path - which has no update-queue TransferTo and therefore no cross-queue
+   // race - still runs the passes here on the universal queue.
+   if fPlanetSingleBuffers then begin
+{$endif}
    if not (fEnableWater and fPlanetWaterSimulationUseParallelQueue) then begin
     fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Grass Age Map Update',[0.25,0.75,0.5,1.0]);
     ProcessPlanetGrassAgeMapUpdateSimulations(CommandBuffer,aInFlightFrameIndex);
@@ -40724,6 +40845,9 @@ begin
    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Grass Flags Map Flags Update',[0.3,0.8,0.6,1.0]);
    ProcessPlanetGrassFlagsMapFlagsUpdate(CommandBuffer,aInFlightFrameIndex);
    fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
+{$ifdef PasVulkanPlanetGrassAgeMapSyncConsolidate}
+   end;
+{$endif}
 
 // fVulkanDevice.WaitIdle; //123
 
@@ -40927,6 +41051,19 @@ begin
     fDebugDumpReadyInFlightFrameValues[aInFlightFrameIndex]:=fDebugDumpReadyCounter;
     inc(CountSignalSemaphores);
    end;
+
+{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
+   // Approach B: signal the grass-age-map cross-queue sync timeline after this
+   // universal-queue submit (which contains the grass-age-map passes). The next
+   // update-queue TransferData host-waits on this value before its TransferTo
+   // layout transition of the master grass age map, resolving the cross-queue
+   // WRITE-RACING-WRITE hazard.
+   if assigned(fPlanetGrassAgeMapSyncTimelineSemaphore) then begin
+    SignalSemaphoreHandles[CountSignalSemaphores]:=fPlanetGrassAgeMapSyncTimelineSemaphore.Handle;
+    SignalSemaphoreValues[CountSignalSemaphores]:=AcquirePlanetGrassAgeMapSyncSignalValue;
+    inc(CountSignalSemaphores);
+   end;
+{$endif}
 
    FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -43043,6 +43180,11 @@ begin
 
  end;
 
+end;
+
+function TpvScene3D.GetVulkanDrawIndexBuffer:TpvVulkanBuffer;
+begin
+ result:=fVulkanLongTermStaticBuffer.fVulkanDrawIndexBuffer;
 end;
 
 procedure TpvScene3D.Draw(const aRendererInstance:TObject;

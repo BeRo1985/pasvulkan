@@ -102,21 +102,7 @@ layout(set = 0, binding = 5, std140) uniform Materials {
 #include "planet_data.glsl"
 #endif
 
-struct InstanceData { 
-  
-  uvec4 SelectedDissolveDitheredTransparencyFlags;
-  
-  vec4 SelectedColorIntensity;
-  
-  vec4 DissolveColor0Scale;
-  vec4 DissolveColor1Width;  
-
-  uvec4 colorKeysRG; // 2x half float RGBA
-  uvec4 colorKeysBA; // 2x half float RGBA
-
-  uvec4 materialColorKeys; // 4x packed RGBA8 per-material color tinting
-  uvec4 unused1;
-};
+#include "instance_data_struct.glsl"
 
 layout(set = 0, binding = 6, std430) readonly buffer InstanceDataBuffer {
   InstanceData instanceDataItems[];

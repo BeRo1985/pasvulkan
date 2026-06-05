@@ -10370,6 +10370,11 @@ begin
    end;
    if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME)>=0 then begin
     fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+    // VK_EXT_surface_maintenance1 is the instance-level dependency of the device-level VK_EXT_swapchain_maintenance1 (enabled
+    // later when available) -> enable it here so the device extension's requirement is satisfied (VUID-vkCreateDevice-...-01387).
+    if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME)>=0 then begin
+     fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
+    end;
    end;
    SetupVulkanInstance(fVulkanInstance);
 {$if (defined(fpc) and defined(android)) and not defined(Release)}

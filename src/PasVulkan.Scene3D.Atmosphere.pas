@@ -3166,12 +3166,15 @@ begin
                                                                                  not fCloudRaymarchingPassDescriptorSetFirsts[aPassIndex,aInFlightFrameIndex]);
   end;
 
-  if fCloudRaymarchingPassDescriptorSetFirsts[aPassIndex,aInFlightFrameIndex] then begin
-   fCloudRaymarchingPassDescriptorSets[aPassIndex,aInFlightFrameIndex].Flush;
-  end;
+ end;
 
+ // First use of this [pass, in-flight-frame] descriptor set: flush the writes QUEUED in the constructor (bindings 1..12, incl.
+ // the weather map @ binding 9). Gated by First (per pass + in-flight-frame), but NOT nested in the depth/shadow view-change
+ // check above -> a pass whose views never change from their null init would otherwise never reach the flush, leaving the
+ // constructor writes unapplied (VUID-vkCmdDraw-None-08114 for uTextureWeatherMap).
+ if fCloudRaymarchingPassDescriptorSetFirsts[aPassIndex,aInFlightFrameIndex] then begin
+  fCloudRaymarchingPassDescriptorSets[aPassIndex,aInFlightFrameIndex].Flush;
   fCloudRaymarchingPassDescriptorSetFirsts[aPassIndex,aInFlightFrameIndex]:=false;
-
  end;
 
 end;

@@ -235,12 +235,16 @@ compileshaderarguments=(
   "-V mesh_cull.comp --target-env vulkan1.2 -DPASS=0 -DMESH_SHADER_PATH -DMESHLET_EXPAND -o ${tempPath}/mesh_cull_meshshader_expand_pass0_comp.spv"
   "-V mesh_cull.comp --target-env vulkan1.2 -DPASS=1 -DMESH_SHADER_PATH -DMESHLET_EXPAND -o ${tempPath}/mesh_cull_meshshader_expand_pass1_comp.spv"
   "-V mesh_cull_sort.comp --target-env vulkan1.2 -o ${tempPath}/mesh_cull_sort_comp.spv"
+  "-V mesh_selection_list.comp --target-env vulkan1.2 -o ${tempPath}/mesh_selection_list_comp.spv" # object-selection outline: builds the selected-only indirect draw list (vertex/index path)
+  "-V mesh_selection_list.comp --target-env vulkan1.2 -DMESH_SHADER_PATH -o ${tempPath}/mesh_selection_list_meshshader_comp.spv" # ... mesh-shader path, non-expand (builds 1 task-draw command per selected object)
+  "-V mesh_selection_list.comp --target-env vulkan1.2 -DMESH_SHADER_PATH -DMESHLET_EXPAND -o ${tempPath}/mesh_selection_list_meshshader_expand_comp.spv" # ... mesh-shader path, expand (1 mesh-draw command per meshlet)
   "-V mesh_cull_reset.comp --target-env vulkan1.2 -o ${tempPath}/mesh_cull_reset_comp.spv"
   "-V mesh_filter.comp --target-env vulkan1.2 -o ${tempPath}/mesh_filter_comp.spv"
   "-V mesh_filter.comp --target-env vulkan1.2 -DMESH_SHADER_PATH -o ${tempPath}/mesh_filter_ms_comp.spv"
 
   "-V mesh.task --target-env vulkan1.2 -DPASS=0 -o ${tempPath}/mesh_task_pass0.spv"
   "-V mesh.task --target-env vulkan1.2 -DPASS=1 -o ${tempPath}/mesh_task_pass1.spv"
+  "-V mesh.task --target-env vulkan1.2 -DPASS=0 -DSELECTIONMASK -o ${tempPath}/mesh_task_selectionmask_pass0.spv" # object-selection outline: task that emits all meshlets (no culling, no HiZ binding)
   "-V mesh.task --target-env vulkan1.2 -DPASS=0 -DVOXELIZATION -o ${tempPath}/mesh_voxelization_task_pass0.spv"
   "-V mesh.task --target-env vulkan1.2 -DPASS=0 -DUSE_LAYER_ROUTING -o ${tempPath}/mesh_layerrouting_task_pass0.spv"
   "-V mesh.task --target-env vulkan1.2 -DPASS=1 -DUSE_LAYER_ROUTING -o ${tempPath}/mesh_layerrouting_task_pass1.spv"
@@ -445,6 +449,10 @@ compileshaderarguments=(
   "-V blit.frag -DMSAA -o ${tempPath}/blit_msaa_frag.spv"
 
   "-V framebuffer_blit.frag -o ${tempPath}/framebuffer_blit_frag.spv"
+  "-V selection_outline_build.frag --target-env vulkan1.2 -o ${tempPath}/selection_outline_build_frag.spv" # object-selection outline BUILD (dilation edge -> isolated premultiplied outline buffer)
+  "-V selection_outline_build.frag --target-env vulkan1.2 -DMULTIVIEW -o ${tempPath}/selection_outline_build_multiview_frag.spv"
+  "-V selection_outline_fxaa_compose.frag --target-env vulkan1.2 -o ${tempPath}/selection_outline_fxaa_compose_frag.spv" # object-selection outline FXAA the isolated outline buffer + composite over the scene
+  "-V selection_outline_fxaa_compose.frag --target-env vulkan1.2 -DMULTIVIEW -o ${tempPath}/selection_outline_fxaa_compose_multiview_frag.spv"
 
   "-V msaa_resolve.frag -o ${tempPath}/msaa_resolve_frag.spv"
 
@@ -1280,6 +1288,10 @@ addMeshFragmentPassTargetVariants(){
 
   # Depth only stuff
   addMeshFragmentDepthOnlyVariants "${1}_depth" "$2 -DDEPTHONLY"
+
+  # Object-selection outline mask: rides on DEPTHONLY (minimal vertex outputs + alpha test); the frag additionally writes the
+  # uvec2 selection mask (objectID + depth). Pairs with the existing _depth mesh.vert (identical vertex<->frag interface).
+  addMeshFragmentDepthOnlyVariants "${1}_selectionmask" "$2 -DDEPTHONLY -DSELECTIONMASK"
 
   # -DFRUSTUMCLUSTERGRID -DLIGHTCLUSTERS
 

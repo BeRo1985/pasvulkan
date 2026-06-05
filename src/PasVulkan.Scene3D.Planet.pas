@@ -51,6 +51,7 @@
  ******************************************************************************)
 unit PasVulkan.Scene3D.Planet;
 {$i PasVulkan.inc}
+{$i PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
   {$if CompilerVersion>=24.0}
@@ -3584,6 +3585,9 @@ type TpvScene3DPlanets=class;
                                         const aFence:TpvVulkanFence;
                                         const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessGrassAgeMapSandboxGrowth(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+{$ifdef PasVulkanPlanetGrassAgeMapSyncConsolidate}
+       procedure RecordGrassAgeMapSimulationsOnUpdateQueue(const aInFlightFrameIndex:TpvSizeInt);
+{$endif}
        procedure ProcessWaterSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareAtmospherePrecipitationSimulation(const aQueue:TpvVulkanQueue;
                                                           const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -35963,6 +35967,19 @@ begin
       (InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration) or
       (InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration)) then begin
 
+{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
+   // Cross-queue sync (approach B): before the update-queue TransferTo performs
+   // its layout transition + copy of the master grass age map, host-wait until
+   // the universal queue has finished the grass-age-map passes (GrassAgeMapUpdate
+   // / GrassAgeMapSandboxGrowth / GrassFlagsMapFlagsUpdate) that last wrote it,
+   // so the two layout transitions on different VkQueues cannot race. See
+   // PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc.
+   if (not TpvScene3D(fScene3D).PlanetSingleBuffers) and
+      (InFlightFrameData.fGrassAgeMapGeneration<>fData.fGrassAgeMapGeneration) then begin
+    TpvScene3D(fScene3D).WaitForPlanetGrassAgeMapSync;
+   end;
+{$endif}
+
    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
     BeginUpdate;
    end;
@@ -36054,6 +36071,13 @@ begin
 
  if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
   ProcessModifications(aInFlightFrameIndex);
+{$ifdef PasVulkanPlanetGrassAgeMapSyncConsolidate}
+  // Approach A: run the grass-age-map passes on the update queue, after the
+  // grass age modifications (ProcessModifications) and before the next
+  // TransferData/TransferTo, so the master grass age map is only ever touched
+  // from the update queue. See PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc.
+  RecordGrassAgeMapSimulationsOnUpdateQueue(aInFlightFrameIndex);
+{$endif}
  end;
 
 end;
@@ -36727,6 +36751,34 @@ begin
   fGrassFlagsMapFlagsUpdate.Execute(aCommandBuffer);
  end;
 end;
+
+{$ifdef PasVulkanPlanetGrassAgeMapSyncConsolidate}
+procedure TpvScene3DPlanet.RecordGrassAgeMapSimulationsOnUpdateQueue(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ // Approach A: record the grass-age-map passes (GrassAgeMapUpdate /
+ // GrassAgeMapSandboxGrowth / GrassFlagsMapFlagsUpdate) on the update queue -
+ // the same queue that records the grass age modifications and TransferTo -
+ // instead of on the universal queue in TpvScene3D.ProcessFrame. With every
+ // access to the master grass age map on a single queue, ordinary pipeline
+ // barriers fully synchronize it and the cross-queue WRITE-RACING-WRITE hazard
+ // cannot occur. Runs after ProcessModifications (so modifications precede the
+ // simulation, matching the original universal-queue ordering) and before the
+ // next TransferData/TransferTo. Only meaningful with per-in-flight-frame copies;
+ // the single-buffer path keeps the passes on the universal queue (ProcessFrame).
+ if assigned(fVulkanDevice) and
+    (aInFlightFrameIndex>=0) and
+    (not TpvScene3D(fScene3D).PlanetSingleBuffers) then begin
+  BeginUpdate;
+  try
+   ProcessGrassAgeMapUpdate(fVulkanUpdateCommandBuffer,aInFlightFrameIndex);
+   ProcessGrassAgeMapSandboxGrowth(fVulkanUpdateCommandBuffer,aInFlightFrameIndex);
+   ProcessGrassFlagsMapFlagsUpdate(fVulkanUpdateCommandBuffer,aInFlightFrameIndex);
+  finally
+   EndUpdate;
+  end;
+ end;
+end;
+{$endif}
 
 procedure TpvScene3DPlanet.EnqueuePrecipitationMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
 var PrecipitationMapModificationItem:PPrecipitationMapModificationItem;
