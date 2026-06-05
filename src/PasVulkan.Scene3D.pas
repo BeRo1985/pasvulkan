@@ -74,7 +74,7 @@ unit PasVulkan.Scene3D;
 
 {$define SplitInstanceUpdate}
 
-{$undef FrameTextFileDebug}
+{$define FrameTextFileDebug}
 
 {$undef FlatParallelRenderInstanceUpdates}
 
@@ -4362,12 +4362,20 @@ type EpvScene3D=class(Exception);
        fPlanetWaterSimulationTimelineCounter:TpvUInt64;
        fPlanetWaterSimulationTimelineLock:TPasMPSlimReaderWriterLock;
 {$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
-       // Cross-queue sync for the master grass age map: the universal-queue
-       // ProcessFrame submit signals this timeline after the grass-age-map
-       // passes, the update queue host-waits on it before TransferTo. See
-       // PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc.
+       // Bidirectional cross-queue sync for the master grass age map (the update
+       // queue and the universal queue both write it every frame). Two one-way
+       // monotonic timelines, each "wait for latest value the other side
+       // signalled". See PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc.
+       // Universal->Update: ProcessFrame signals after its grass-age-map passes,
+       // the update queue's TransferTo submit waits (orders TransferTo after the
+       // previous universal grass-age-map writes).
        fPlanetGrassAgeMapSyncTimelineSemaphore:TpvVulkanTimelineSemaphore;
        fPlanetGrassAgeMapSyncTimelineCounter:TpvUInt64;
+       // Update->Universal: every update-queue submit signals, ProcessFrame waits
+       // before its grass-age-map passes (orders the universal grass-age-map
+       // writes after the update queue's TransferTo).
+       fPlanetGrassAgeMapSyncReverseTimelineSemaphore:TpvVulkanTimelineSemaphore;
+       fPlanetGrassAgeMapSyncReverseTimelineCounter:TpvUInt64;
        fPlanetGrassAgeMapSyncTimelineLock:TPasMPSlimReaderWriterLock;
 {$endif}
        fMeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
@@ -5176,8 +5184,11 @@ type EpvScene3D=class(Exception);
        function AcquirePlanetWaterSimulationTimelineSequence(out aWaitValue:TpvUInt64):TpvUInt64;
 {$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
        property PlanetGrassAgeMapSyncTimelineSemaphore:TpvVulkanTimelineSemaphore read fPlanetGrassAgeMapSyncTimelineSemaphore;
-       function AcquirePlanetGrassAgeMapSyncSignalValue:TpvUInt64;
-       function GetPlanetGrassAgeMapSyncWaitValue:TpvUInt64;
+       property PlanetGrassAgeMapSyncReverseTimelineSemaphore:TpvVulkanTimelineSemaphore read fPlanetGrassAgeMapSyncReverseTimelineSemaphore;
+       function AcquirePlanetGrassAgeMapSyncSignalValue:TpvUInt64;            // Universal->Update: ProcessFrame signal
+       function GetPlanetGrassAgeMapSyncWaitValue:TpvUInt64;                  // Universal->Update: update-queue wait
+       function AcquirePlanetGrassAgeMapSyncReverseSignalValue:TpvUInt64;     // Update->Universal: update-queue signal
+       function GetPlanetGrassAgeMapSyncReverseWaitValue:TpvUInt64;           // Update->Universal: ProcessFrame wait
 {$endif}
       published
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
@@ -34827,8 +34838,10 @@ begin
 
 {$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
   fPlanetGrassAgeMapSyncTimelineSemaphore:=nil;
-  fPlanetGrassAgeMapSyncTimelineLock:=nil;
   fPlanetGrassAgeMapSyncTimelineCounter:=0;
+  fPlanetGrassAgeMapSyncReverseTimelineSemaphore:=nil;
+  fPlanetGrassAgeMapSyncReverseTimelineCounter:=0;
+  fPlanetGrassAgeMapSyncTimelineLock:=nil;
 {$endif}
 
   fPlanetAtmospherePrecipitationSimulationUseParallelQueue:=false;
@@ -35517,8 +35530,10 @@ begin
 
 {$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
   FreeAndNil(fPlanetGrassAgeMapSyncTimelineSemaphore);
+  FreeAndNil(fPlanetGrassAgeMapSyncReverseTimelineSemaphore);
   FreeAndNil(fPlanetGrassAgeMapSyncTimelineLock);
   fPlanetGrassAgeMapSyncTimelineCounter:=0;
+  fPlanetGrassAgeMapSyncReverseTimelineCounter:=0;
 {$endif}
 
   FreeAndNil(fPlanetWaterSimulationCommandPool);
@@ -36160,9 +36175,12 @@ begin
  // planets exist. See PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc.
  if assigned(fVulkanDevice) then begin
   fPlanetGrassAgeMapSyncTimelineCounter:=0;
+  fPlanetGrassAgeMapSyncReverseTimelineCounter:=0;
   fPlanetGrassAgeMapSyncTimelineLock:=TPasMPSlimReaderWriterLock.Create;
   fPlanetGrassAgeMapSyncTimelineSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
   fVulkanDevice.DebugUtils.SetObjectName(fPlanetGrassAgeMapSyncTimelineSemaphore.Handle,VK_OBJECT_TYPE_SEMAPHORE,'TpvScene3D.fPlanetGrassAgeMapSyncTimelineSemaphore');
+  fPlanetGrassAgeMapSyncReverseTimelineSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
+  fVulkanDevice.DebugUtils.SetObjectName(fPlanetGrassAgeMapSyncReverseTimelineSemaphore.Handle,VK_OBJECT_TYPE_SEMAPHORE,'TpvScene3D.fPlanetGrassAgeMapSyncReverseTimelineSemaphore');
  end;
 {$endif}
 
@@ -40350,6 +40368,44 @@ begin
   end;
  end;
 end;
+
+function TpvScene3D.AcquirePlanetGrassAgeMapSyncReverseSignalValue:TpvUInt64;
+begin
+ // Called by every update-queue submit (TpvScene3DPlanet.SubmitUpdateCommandBuffer)
+ // to signal the reverse (update->universal) grass-age-map timeline. ProcessFrame
+ // GPU-waits on the latest such value before its grass-age-map passes, so the
+ // universal-queue writes of the master grass age map run after the update queue's
+ // TransferTo. The returned value is monotonically increasing.
+ result:=0;
+ if assigned(fPlanetGrassAgeMapSyncTimelineLock) then begin
+  fPlanetGrassAgeMapSyncTimelineLock.Acquire;
+  try
+   inc(fPlanetGrassAgeMapSyncReverseTimelineCounter);
+   result:=fPlanetGrassAgeMapSyncReverseTimelineCounter;
+  finally
+   fPlanetGrassAgeMapSyncTimelineLock.Release;
+  end;
+ end;
+end;
+
+function TpvScene3D.GetPlanetGrassAgeMapSyncReverseWaitValue:TpvUInt64;
+begin
+ // Returns the reverse grass-age-map timeline value last signalled by an
+ // update-queue submit. ProcessFrame's universal submit GPU-waits on this value
+ // before its grass-age-map passes. Update-queue submits are host-fence-drained,
+ // so a signalled value is always already (or imminently) reached - the wait is
+ // there to give the validator an explicit cross-queue dependency, not to stall.
+ // 0 means no update-queue submit yet, so the caller skips the wait.
+ result:=0;
+ if assigned(fPlanetGrassAgeMapSyncTimelineLock) then begin
+  fPlanetGrassAgeMapSyncTimelineLock.Acquire;
+  try
+   result:=fPlanetGrassAgeMapSyncReverseTimelineCounter;
+  finally
+   fPlanetGrassAgeMapSyncTimelineLock.Release;
+  end;
+ end;
+end;
 {$endif}
 
 procedure TpvScene3D.RecordDebugDumps(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
@@ -40539,9 +40595,9 @@ var PlanetIndex,PassIndex,CountPlanetAtmospherePrecipitationSimulationToSignalSe
     Planet:TpvScene3DPlanet;
     SubmitInfo:TVkSubmitInfo;
     WaitDstStageFlags:TVkPipelineStageFlags;
-    WaitSemaphoreHandles:array[0..1] of TVkSemaphore;
-    WaitSemaphoreDstStageFlags:array[0..1] of TVkPipelineStageFlags;
-    WaitSemaphoreValues:array[0..1] of TpvUInt64;
+    WaitSemaphoreHandles:array[0..2] of TVkSemaphore; // [2] reserved for the reverse grass-age-map cross-queue sync timeline (approach B)
+    WaitSemaphoreDstStageFlags:array[0..2] of TVkPipelineStageFlags;
+    WaitSemaphoreValues:array[0..2] of TpvUInt64;
     SignalSemaphoreValues:array[0..2] of TpvUInt64; // [2] reserved for the grass-age-map cross-queue sync timeline (approach B)
     SignalSemaphoreHandles:array[0..2] of TVkSemaphore;
     CountSignalSemaphores:TpvSizeInt;
@@ -41036,6 +41092,22 @@ begin
     WaitSemaphoreValues[CountWaitSemaphores]:=fSharedBufferTimelineCounter;
     inc(CountWaitSemaphores);
    end;
+
+{$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
+   // Approach B (reverse direction, update->universal): wait on the latest value
+   // an update-queue submit signalled, so this universal submit's grass-age-map
+   // passes run after the update queue's TransferTo layout transition of the
+   // master grass age map. The value is already drained on the host side, so this
+   // does not stall - it just gives the validator the explicit cross-queue dependency.
+   if assigned(fPlanetGrassAgeMapSyncReverseTimelineSemaphore) then begin
+    WaitSemaphoreValues[CountWaitSemaphores]:=GetPlanetGrassAgeMapSyncReverseWaitValue;
+    if WaitSemaphoreValues[CountWaitSemaphores]>0 then begin
+     WaitSemaphoreHandles[CountWaitSemaphores]:=fPlanetGrassAgeMapSyncReverseTimelineSemaphore.Handle;
+     WaitSemaphoreDstStageFlags[CountWaitSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+     inc(CountWaitSemaphores);
+    end;
+   end;
+{$endif}
 
    SignalSemaphoreHandles[0]:=fVulkanProcessFrameSemaphores[aInFlightFrameIndex].Handle;
    SignalSemaphoreValues[0]:=0;

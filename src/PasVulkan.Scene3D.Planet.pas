@@ -34725,8 +34725,8 @@ var SubmitInfo:TVkSubmitInfo;
     WaitSemaphoreHandles:array[0..1] of TVkSemaphore;
     WaitSemaphoreValues:array[0..1] of TpvUInt64;
     WaitDstStageMasks:array[0..1] of TVkPipelineStageFlags;
-    SignalSemaphoreHandles:array[0..0] of TVkSemaphore;
-    SignalSemaphoreValues:array[0..0] of TpvUInt64;
+    SignalSemaphoreHandles:array[0..1] of TVkSemaphore; // [1] reserved for the reverse grass-age-map cross-queue sync timeline (approach B)
+    SignalSemaphoreValues:array[0..1] of TpvUInt64;
     CountWaitSemaphores,CountSignalSemaphores:TpvSizeInt;
     CmdBufHandle:TVkCommandBuffer;
     UseTimelineWait:boolean;
@@ -34777,6 +34777,17 @@ begin
    WaitDstStageMasks[CountWaitSemaphores]:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
    inc(CountWaitSemaphores);
   end;
+ end;
+
+ // Cross-queue sync (approach B, reverse direction): signal the reverse timeline
+ // so the next universal-queue ProcessFrame submit can GPU-wait on it before its
+ // grass-age-map passes, ordering those universal writes after this update
+ // queue's TransferTo. Signalled on every update-queue submit; ProcessFrame waits
+ // for the latest value.
+ if assigned(Scene3D.PlanetGrassAgeMapSyncReverseTimelineSemaphore) then begin
+  SignalSemaphoreHandles[CountSignalSemaphores]:=Scene3D.PlanetGrassAgeMapSyncReverseTimelineSemaphore.Handle;
+  SignalSemaphoreValues[CountSignalSemaphores]:=Scene3D.AcquirePlanetGrassAgeMapSyncReverseSignalValue;
+  inc(CountSignalSemaphores);
  end;
 {$endif}
 

@@ -65,7 +65,7 @@ unit PasVulkan.Scene3D.Renderer.Instance;
 
 {$undef UseSphereBasedCascadedShadowMaps}
 
-{$undef FrameTextFileDebug}
+{$define FrameTextFileDebug}
 
 interface
 
@@ -1702,6 +1702,8 @@ var JitterOffsets:array[0..CountJitterOffsets-1] of TpvVector2;
 
 {$ifdef FrameTextFileDebug}
 var DebugDrawInfoDumpCounter:TpvInt32=0;
+    DebugAutoDumpFrameCounter:TpvInt32=0;
+    DebugAutoDumpDone:boolean=false;
 {$endif}
 
 { TpvScene3DRendererInstance.TMeshFragmentSpecializationConstants }
@@ -5102,6 +5104,26 @@ begin
 
   TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass:=TpvScene3DRendererPassesMeshCullPass1ComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.FinalView);
   TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCullDepthPyramidComputePass);
+
+  // RICHTUNG-2 ORDERING DIAGNOSTIC / candidate fix: keep the object-selection passes OUT of the
+  // cull -> CullDepth -> Hi-Z pyramid -> MeshCullPass1 region. The selection list/mask passes only
+  // declared a dependency on MeshCullPass0 (above), so the frame graph was free to topologically
+  // interleave the selection-list compute and (especially) the selection MASK render pass into the
+  // middle of the single-queue cull/Hi-Z command stream -> perturbing pass batching / transient
+  // resource aliasing / barrier placement and exposing the 1-frame "depth present, color missing"
+  // flicker (it reproduces with parallel queues OFF once the selection passes exist). Forcing the
+  // selection chain to start only after MeshCullPass1 removes that interleaving. The selection list
+  // reads the pre-occlusion INPUT commands, which are ready well before Pass1, so this is legal.
+  // A/B-test by toggling the define ({.$define} = off, {$define} = on).
+  // RESULT (tested): with this ON the flicker STILL occurs -> it is NOT the GPU pass
+  // interleaving/placement of the selection passes. Left here OFF as a documented experiment.
+  {.$define SELECTION_PASSES_AFTER_CULL_CHAIN}
+  {$ifdef SELECTION_PASSES_AFTER_CULL_CHAIN}
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fSelectionListComputePass) and
+     assigned(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fSelectionListComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass);
+  end;
+  {$endif}
 
  end;
 
@@ -9369,6 +9391,20 @@ begin
   exit;
  end;
 
+{$ifdef FrameTextFileDebug}
+ // Auto one-shot draw-command dump on an early View-pass frame (no keypress needed -- the F1
+ // keybind path is fragile: Ctrl+Alt+F1 = Linux VT switch, other F1 handlers may consume it, and
+ // it needs a Pascal rebuild). The obj->identity mapping is frame-stable, so an early frame's
+ // command list suffices to attribute the HIZDROP obj IDs. Writes drawinfo_dump_iff*_rp*_n*.txt
+ // (+ drawbatch_dump_*) to the CWD (the bin/ dir, next to outx*.txt).
+ if (not DebugAutoDumpDone) and (aRenderPass=TpvScene3DRendererRenderPass.View) then begin
+  inc(DebugAutoDumpFrameCounter);
+  if DebugAutoDumpFrameCounter>=2 then begin
+   fScene3D.DebugDumpDrawInfo:=true;
+   DebugAutoDumpDone:=true;
+  end;
+ end;
+{$endif}
 
  if fCachedDrawDataGeneration[aInFlightFrameIndex]<>fSnapshotDrawDataGeneration[aInFlightFrameIndex] then begin
 
@@ -9396,7 +9432,7 @@ begin
   if fScene3D.DebugDumpDrawInfo then begin
    DebugFile2Open:=true;
    inc(DebugDrawInfoDumpCounter);
-   AssignFile(DebugFile2,'/tmp/drawbatch_dump_iff'+IntToStr(aInFlightFrameIndex)+'_rp'+IntToStr(ord(aRenderPass))+'_n'+IntToStr(DebugDrawInfoDumpCounter)+'.txt');
+   AssignFile(DebugFile2,'drawbatch_dump_iff'+IntToStr(aInFlightFrameIndex)+'_rp'+IntToStr(ord(aRenderPass))+'_n'+IntToStr(DebugDrawInfoDumpCounter)+'.txt');
    Rewrite(DebugFile2);
    WriteLn(DebugFile2,'=== DrawChoreographyBatchItem Context Dump ===');
    WriteLn(DebugFile2,'InFlightFrame=',aInFlightFrameIndex,' RenderPass=',ord(aRenderPass));
@@ -9569,7 +9605,7 @@ begin
 {$ifdef FrameTextFileDebug}
   // DEBUG DUMP: Write all commands + DrawInfo to text file when triggered
   if fScene3D.DebugDumpDrawInfo then begin
-   AssignFile(DebugFile,'/tmp/drawinfo_dump_iff'+IntToStr(aInFlightFrameIndex)+'_rp'+IntToStr(ord(aRenderPass))+'_n'+IntToStr(DebugDrawInfoDumpCounter)+'.txt');
+   AssignFile(DebugFile,'drawinfo_dump_iff'+IntToStr(aInFlightFrameIndex)+'_rp'+IntToStr(ord(aRenderPass))+'_n'+IntToStr(DebugDrawInfoDumpCounter)+'.txt');
    Rewrite(DebugFile);
    WriteLn(DebugFile,'=== PrepareDraw Dump ===');
    WriteLn(DebugFile,'InFlightFrame=',aInFlightFrameIndex,' RenderPass=',ord(aRenderPass));
@@ -9614,7 +9650,7 @@ begin
     end;
    end;
    CloseFile(DebugFile);
-   WriteLn('[DEBUG] Dumped ',GPUDrawIndexedIndirectCommandDynamicArray^.Count,' commands to /tmp/drawinfo_dump_iff',aInFlightFrameIndex,'_rp',ord(aRenderPass),'_n',DebugDrawInfoDumpCounter,'.txt');
+   WriteLn('[DEBUG] Dumped ',GPUDrawIndexedIndirectCommandDynamicArray^.Count,' commands to drawinfo_dump_iff',aInFlightFrameIndex,'_rp',ord(aRenderPass),'_n',DebugDrawInfoDumpCounter,'.txt');
    // Reset trigger after last RenderPass dump
    fScene3D.DebugDumpDrawInfo:=false;
   end;

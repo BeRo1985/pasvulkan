@@ -38,6 +38,38 @@
 #undef DEBUG_SKIP_MESHLET_PREV_VIS
 #undef DEBUG_FORCE_MESHLET_VISIBILITY_BITMAP
 
+// ---------------------------------------------------------------------------------------------
+// "Depth present, color missing" 1-frame flicker (PASS0 draws a primitive into depth; PASS1
+// rebuilds the color list from scratch and false-negative-HiZ-culls it because a HiZ INPUT
+// -- pyramid / bounding sphere / visibility bitmap -- is stale for one frame; window opened by
+// parallel queues or by extra passes perturbing the frame timeline). Two EXPERIMENTAL toggles,
+// MUTUALLY EXCLUSIVE -- enable at most one. Both default OFF; the real fix is removing the
+// staleness (see flickerbug.md). cmd1.w bit0 = "added in PASS0" (set at the "Mark as added" line).
+//
+//   FIX_KEEP_PASS0_VISIBLE_IN_PASS1 : skip the PASS1 HiZ test for PASS0-committed primitives.
+//     Kills the flicker BUT breaks occlusion culling: such primitives also get marked visible in
+//     the output visibility bitmap, so next frame's PASS0 redraws them -> once-visible/in-frustum
+//     geometry is never occlusion-culled again (growing overdraw). Diagnostic only.
+//
+//   FIX_KEEP_PASS0_IN_COLOR_ONLY : keep PASS0-committed primitives in the COLOR list, but drive
+//     the visibility bitmap from the TRUE HiZ result. Genuinely-occluded objects still drop out of
+//     next frame's PASS0 -> occlusion culling stays intact; cost is only ~1 transition frame of
+//     depth-tested overdraw. A correctness net that does NOT break culling (relies on the
+//     disocclusion path for the bad frame's depth). Frustum/distance/area culling stay active here.
+//
+//#define FIX_KEEP_PASS0_VISIBLE_IN_PASS1
+//#define FIX_KEEP_PASS0_IN_COLOR_ONLY
+
+// Richtung-2 root-cause probe: on the bad frame, dump the PASS1 object-level HiZ inputs for any
+// NEAR-CAMERA PASS0-committed primitive (cmd1.w bit0 -> its depth is already in the buffer) that
+// the HiZ test wants to occlusion-cull == exactly the "depth present, color missing" flicker event.
+// Self-triggering + distance-gated (DEBUG_PASS0_HIZ_DROP_MAX_DISTANCE) so it only fires for the
+// player's parts -> stays rare -> does NOT drop to the ~1-FPS regime where the race stops
+// reproducing. Needs the validation layer + DebugPrintf at runtime (run planetgame1 with
+// --force-use-validation-layers); grep the log (projects/planetgame1/bin/outx*.txt) for "HIZDROP".
+// Keep both FIX_* toggles OFF while probing so PASS1 actually drops the primitive (the real bug).
+#define DEBUG_PASS0_HIZ_DROP_PRINTF
+
 #ifdef MESH_SHADER_PATH
 #ifndef TASK_GROUP_SIZE
 #define TASK_GROUP_SIZE 32
@@ -592,7 +624,16 @@ void submitMeshletCommands(uint counterIndex,
                   float depth = -(depthZ.x / depthZ.y);
                   float sphereFront = (-viewSpaceSphere.z) - viewSpaceSphere.w;
 #ifndef DEBUG_SKIP_MESHLET_HIZ
+#ifdef FIX_KEEP_PASS0_VISIBLE_IN_PASS1
+                  // Skip per-meshlet HiZ for meshlets of a PASS0-committed object (flags bit0):
+                  // PASS0 submits all of its meshlets into the depth buffer unconditionally, so
+                  // they are known visible -> never let a stale HiZ drop them from the color list.
+                  if((flags & 1u) == 0u){
+                    visible = sphereFront <= depth;
+                  }
+#else
                   visible = sphereFront <= depth;
+#endif
 #ifdef MESH_CULL_DEBUG_COUNTERS
                   if(!visible){
                     meshletLastCullReason = 14u;
@@ -623,6 +664,20 @@ void submitMeshletCommands(uint counterIndex,
           // Culling disabled or no valid bounding sphere → always visible (conservative)
           meshletVisible = true;
         }
+#ifdef FIX_KEEP_PASS0_IN_COLOR_ONLY
+        // Variante (a) meshlet-level: a meshlet of a PASS0-committed object (flags bit0) is kept in
+        // the draw list even if (possibly stale) HiZ said occluded, WITHOUT marking the meshlet
+        // visibility bitmap (the true HiZ result drives it) -> per-meshlet occlusion culling stays
+        // intact next frame; only ~1 transition frame of depth-tested overdraw.
+        if((!meshletVisible) && ((flags & 1u) != 0u)){
+          uint scratchIdx = atomicAdd(scratch.counter, 1u);
+          if(scratchIdx < pushConstants.maxScratchEntries){
+            scratch.entryData[scratchIdx * 3u] = uvec4(1u, 1u, 1u, meshletBase + i);
+            scratch.entryData[scratchIdx * 3u + 1u] = uvec4(1u, meshObjectID, boundingSphereIndex, flags);
+            scratch.entryData[scratchIdx * 3u + 2u] = uvec4(counterIndex, 0u, 0u, 0u);
+          }
+        }
+#endif
         if(meshletVisible){
 #ifdef MESH_CULL_DEBUG_COUNTERS
           MESH_CULL_DBG_ADD(15u);
@@ -1122,7 +1177,50 @@ void main(){
             float depth = -(depthZ.x / depthZ.y); // flip the sign, because z in view space is negative otherwise
             
 #ifndef DEBUG_SKIP_PASS1_HIZ
-            visible = ((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth;
+            bool hizVisible = ((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth;
+#ifdef DEBUG_PASS0_HIZ_DROP_PRINTF
+#ifndef DEBUG_PASS0_HIZ_DROP_MAX_DISTANCE
+#define DEBUG_PASS0_HIZ_DROP_MAX_DISTANCE 25.0
+#endif
+            // Fires ONLY on the bug event: a near-camera PASS0-committed primitive (its depth is
+            // already in the buffer) that PASS1's HiZ wants to occlusion-cull. front=sphere nearest
+            // (view space), sampled=HiZ depth read back, margin=front-sampled (>0 = "culled"); if
+            // margin is tiny the primitive is essentially at its own (stale?) depth, if margin is
+            // large a real closer occluder is in the HiZ. bsIdx=cmd1.y -> which bounding sphere.
+            if(((cmd1.w & 1u) != 0u) && (!hizVisible)){
+              vec3 dbgCamPos = uView.views[0].inverseViewMatrix[3].xyz;
+              float dbgCamDist = distance(dbgCamPos, boundingSphere.xyz);
+              if(dbgCamDist < float(DEBUG_PASS0_HIZ_DROP_MAX_DISTANCE)){
+                // Also sample the FINEST pyramid level (0 = the cull-depth itself) at the same spot.
+                // lvl0 ~= front (object present in cull-depth) but coarse "sampled" closer => the
+                //   reduction/coarse level lost it (pyramid-build staleness).
+                // lvl0 also closer than front => the object's depth is missing already at mip0
+                //   (cull-depth itself stale / draw missing).
+                vec2 dbgZ0 = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
+                  (aabb.xy + aabb.zw) - vec2(1.0),
+                  textureLod(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), 0.0).x,
+                  1.0)).zw;
+                float dbgDepth0 = -(dbgZ0.x / dbgZ0.y);
+                debugPrintfEXT("HIZDROP obj=%u view=%u camDist=%f sphereWS=[%f,%f,%f,%f] vsZ=%f r=%f front=%f sampled=%f lvl0=%f margin=%f bsIdx=%u lvl=%f",
+                  meshObjectID, viewIndex, dbgCamDist,
+                  boundingSphere.x, boundingSphere.y, boundingSphere.z, boundingSphere.w,
+                  viewSpaceBoundingSphere.z, viewSpaceBoundingSphere.w,
+                  (-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w, depth, dbgDepth0,
+                  ((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) - depth,
+                  cmd1.y, level);
+              }
+            }
+#endif
+#ifdef FIX_KEEP_PASS0_VISIBLE_IN_PASS1
+            // Skip HiZ occlusion only for PASS0-committed objects (cmd1.w bit0 "added"): they are
+            // already in the depth buffer, hence known visible -> never let a stale HiZ false-cull
+            // them out of the color list (would cause the 1-frame skybox-through-the-mesh flicker).
+            if((cmd1.w & 1u) == 0u){
+              visible = hizVisible;
+            }
+#else
+            visible = hizVisible;
+#endif
 #ifdef MESH_CULL_DEBUG_COUNTERS
             if(!visible){
               lastCullReason = 7u;
@@ -1163,9 +1261,18 @@ void main(){
 
   }
 
+#ifdef FIX_KEEP_PASS0_IN_COLOR_ONLY
+  // Variante (a): keep a PASS0-committed object (cmd1.w bit0) in the COLOR list even if the
+  // (possibly stale) HiZ marked it occluded -- but remember the TRUE visibility for the bitmap.
+  bool trueVisibleForBitmap = isDrawIndexedIndirectCommandVisible;
+  if((!isDrawIndexedIndirectCommandVisible) && ((cmd1.w & 1u) == 0u)){
+    return;
+  }
+#else
   if(!isDrawIndexedIndirectCommandVisible){
     return;
   }
+#endif
 
 #ifdef MESH_CULL_DEBUG_COUNTERS
   MESH_CULL_DBG_ADD(8u);
@@ -1174,13 +1281,20 @@ void main(){
   // LOD selection: rewrite command geometry based on screen coverage
   uint selectedLOD;
   applyLOD(cmd0, cmd1.z, cmd1.y, meshObjectID, selectedLOD);
-  
-  // Mark as visible in any case, independently of being already added in the previous pass 
-#ifdef DEBUG_FORCE_VISIBILITY_BITMAP
-  atomicOr(outputVisiblityBuffer.bitmap[visibilityBufferOffset + (meshObjectID >> 5u)], 0xffffffffu);
-#else
-  atomicOr(outputVisiblityBuffer.bitmap[visibilityBufferOffset + (meshObjectID >> 5u)], 1u << (meshObjectID & 31u)); 
+
+  // Mark as visible in any case, independently of being already added in the previous pass.
+  // Variante (a): drive the bitmap from the TRUE HiZ result only, so a force-kept-for-color but
+  // genuinely-occluded PASS0 object does NOT perpetuate its visibility into next frame's PASS0.
+#ifdef FIX_KEEP_PASS0_IN_COLOR_ONLY
+  if(trueVisibleForBitmap)
 #endif
+  {
+#ifdef DEBUG_FORCE_VISIBILITY_BITMAP
+   atomicOr(outputVisiblityBuffer.bitmap[visibilityBufferOffset + (meshObjectID >> 5u)], 0xffffffffu);
+#else
+   atomicOr(outputVisiblityBuffer.bitmap[visibilityBufferOffset + (meshObjectID >> 5u)], 1u << (meshObjectID & 31u));
+#endif
+  }
 
   // Check for instance effects (dissolve/dithered transparency) and route to OIT if needed
   {
