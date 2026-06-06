@@ -47,7 +47,9 @@
   layout(set = DDGI_DESCRIPTOR_SET, binding = 1) uniform sampler2D uDDGIIrradianceOct;
   vec3 ddgiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal){
     vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, normal, GI_DDGI_IRRADIANCE_OCT_SIZE, GI_DDGI_IRRADIANCE_OCT_FULL);
-    return max(vec3(0.0), textureLod(uDDGIIrradianceOct, uv, 0.0).rgb);
+    // The atlas stores the cosine-weighted MEAN incident radiance A = E/PI; multiply by PI here (split, like RTXGI) to return the
+    // full irradiance integral E (matches the SH path; shading then applies albedo/PI). The trace's own multibounce read stays raw.
+    return max(vec3(0.0), textureLod(uDDGIIrradianceOct, uv, 0.0).rgb) * 3.14159265358979;
   }
 #endif
 

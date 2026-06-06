@@ -160,11 +160,10 @@ void main(){
       sumWeight += weight;
     }
   }
-  // sum/sumWeight is the cosine-weighted MEAN incident radiance A = E/PI (E = the irradiance integral). The shading multiplies
-  // ddgiEvaluateIrradiance by albedo/PI (Lambertian) and the SH path returns the full integral E, so the OCT path must return E
-  // too -> scale by PI here. (RTXGI defers this PI to sample time for low-bit/perceptual encoding; our atlas is linear RGBA16F +
-  // linear EMA, so baking it into the store is equivalent and keeps both readers - shading + multibounce trace - consistent.)
-  vec3 irradiance = (sumWeight > 1e-6) ? ((sum / sumWeight) * (GI_DDGI_FOUR_PI * 0.25)) : vec3(0.0);
+  // Store the cosine-weighted MEAN incident radiance A = E/PI (E = the irradiance integral). The PI that turns A into the full
+  // irradiance E is applied at SHADING sample time (split, like RTXGI), NOT here: the multibounce trace reads this atlas raw and
+  // feeding back PI*A would amplify the feedback loop (open-sky scenes blow up). So the stored/feedback value stays A.
+  vec3 irradiance = (sumWeight > 1e-6) ? (sum / sumWeight) : vec3(0.0);
 
   ivec2 atlasTexel = ddgiProbeTileOrigin(probeCoord, cascadeIndex, GI_DDGI_IRRADIANCE_OCT_FULL) + localTexel;
   vec3 previous = imageLoad(uDDGIIrradianceOct, atlasTexel).rgb;
