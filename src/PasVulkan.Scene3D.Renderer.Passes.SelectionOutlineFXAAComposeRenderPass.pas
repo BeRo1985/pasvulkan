@@ -86,9 +86,14 @@ begin
 
  Queue:=aFrameGraph.UniversalQueue;
 
+ // Full resolution (1.0), NOT SizeFactor: this pass lives in the post-tonemapping space. It composites over the full-res scene
+ // color (LastOutputResource = tonemapping output, resourcetype_color_tonemapping @ 1.0) and its own output becomes the new
+ // LastOutputResource that the canvas/UI read at full res. The attachment output therefore inherits the 1.0-sized tonemapping
+ // resource type, so the pass Size must be 1.0 too (otherwise EpvFrameGraphMismatchImageSize when SizeFactor<>1.0). The outline
+ // buffer and scene color inputs are plain sampler reads (no attachment flag), so they can stay at SizeFactor and get upscaled.
  Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
-                                       fInstance.SizeFactor,
-                                       fInstance.SizeFactor,
+                                       1.0,
+                                       1.0,
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
