@@ -241,6 +241,7 @@ end;
 
 procedure TpvScene3DRendererPassesSelectionOutlineBuildRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 const ReferenceHeight=1080.0; // render-buffer height that SelectionOutlineThickness is tuned for
+      MinThicknessPixels=3.0; // hard lower bound: below ~3 render px an outline aliases/disappears, so never thin past this
       MaxThicknessPixels=8.0; // the build-shader dilation is O(thickness^2) per pixel -> clamp to bound the cost (JFA path planned for genuinely thick outlines)
 var PushConstants:TPushConstants;
     DescriptorSets:array[0..1] of TVkDescriptorSet;
@@ -256,9 +257,10 @@ begin
 
  // Resolution-scale the outline thickness so it stays a constant on-screen fraction across render resolutions and
  // AI/EASU upscaling: the outline buffer is built at render resolution (fResourceSurface.Height) and upscaled at
- // compose time, so scaling by renderHeight/ReferenceHeight self-normalizes the upscale. Clamp bounds the
- // O(thickness^2) dilation cost (and keeps the minimum at 1 px).
- Thickness:=Clamp(fInstance.SelectionOutlineThickness*(fResourceSurface.Height/ReferenceHeight),1.0,MaxThicknessPixels);
+ // compose time, so scaling by renderHeight/ReferenceHeight self-normalizes the upscale. Clamp to an absolute
+ // [MinThicknessPixels, MaxThicknessPixels] render-px range: the lower bound stops sub-1080p from thinning out
+ // (pure linear made 720p = 2 px, too thin), the upper bound caps the O(thickness^2) dilation cost.
+ Thickness:=Clamp(fInstance.SelectionOutlineThickness*(fResourceSurface.Height/ReferenceHeight),MinThicknessPixels,MaxThicknessPixels);
 
  // Fallback color/strength used by the shader only when the selected object has no SelectedColorIntensity set.
  PushConstants.OutlineColor:=TpvVector4.InlineableCreate(1.0,0.55,0.1,1.0); // warm orange fallback
