@@ -1019,6 +1019,7 @@ type { TpvScene3DRendererInstance }
       private
        fKeepPass0ForRendering:Boolean;
        fKeepPass0InPass1:Boolean;
+       fSelectionOutlineThickness:TpvFloat;
        fDebugDDGIProbes:Boolean;
        fDebugDrawMeshletBoundingSpheres:Boolean;
        fDebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers;
@@ -1336,6 +1337,11 @@ type { TpvScene3DRendererInstance }
        // is DIAGNOSTIC ONLY (breaks occlusion culling) and defaults OFF.
        property KeepPass0ForRendering:Boolean read fKeepPass0ForRendering write fKeepPass0ForRendering;
        property KeepPass0InPass1:Boolean read fKeepPass0InPass1 write fKeepPass0InPass1;
+       // Object-selection outline thickness in REFERENCE pixels (tuned at 1080p render height). The outline
+       // build pass scales this by (renderHeight/1080) and clamps it, so the on-screen outline stays a constant
+       // fraction of the screen across render resolutions and AI/EASU upscaling (the buffer is built at render
+       // resolution and upscaled at compose time). Default 3.0. See SelectionOutlineBuildRenderPass.
+       property SelectionOutlineThickness:TpvFloat read fSelectionOutlineThickness write fSelectionOutlineThickness;
        // Debug: draw every DDGI probe as an octahedral sphere coloured by its live-sampled directional irradiance (ForwardRenderPass).
        property DebugDDGIProbes:Boolean read fDebugDDGIProbes write fDebugDDGIProbes;
        property DebugDrawMeshletBoundingSpheres:Boolean read fDebugDrawMeshletBoundingSpheres write fDebugDrawMeshletBoundingSpheres;
@@ -2289,6 +2295,9 @@ begin
  // Mesh-cull PASS1 flicker controls: Variante (a) net ON by default, the culling-breaking diagnostic OFF.
  fKeepPass0ForRendering:=true;
  fKeepPass0InPass1:=false;
+
+ // Object-selection outline thickness in reference pixels (at 1080p render height); resolution-scaled in the build pass.
+ fSelectionOutlineThickness:=3.0;
 
  fDebugDDGIProbes:=false;
 
