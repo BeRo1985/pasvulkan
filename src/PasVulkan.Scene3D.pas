@@ -74,7 +74,7 @@ unit PasVulkan.Scene3D;
 
 {$define SplitInstanceUpdate}
 
-{$define FrameTextFileDebug}
+{-$define FrameTextFileDebug}
 
 {$undef FlatParallelRenderInstanceUpdates}
 

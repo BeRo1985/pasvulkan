@@ -65,7 +65,7 @@ unit PasVulkan.Scene3D.Renderer.Instance;
 
 {$undef UseSphereBasedCascadedShadowMaps}
 
-{$define FrameTextFileDebug}
+{-$define FrameTextFileDebug}
 
 interface
 
