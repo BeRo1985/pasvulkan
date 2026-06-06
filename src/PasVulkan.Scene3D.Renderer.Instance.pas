@@ -131,7 +131,7 @@ type { TpvScene3DRendererInstance }
              // (3 RGBA16F 3D images), 2 = L2 spherical harmonics (7 RGBA16F 3D images). Compile-time choice; MUST match the
              // GI_DDGI_STORAGE (= DDGI_STORAGE in compileshaders.sh) the DDGI compute shaders AND the globalillumination_ddgi
              // mesh fragment variant are built with, otherwise the descriptor image counts / view types mismatch.
-             GlobalIlluminationDDGIStorageMode=2;
+             GlobalIlluminationDDGIStorageMode=0;
              GlobalIlluminationDDGIStorageOctahedral=(GlobalIlluminationDDGIStorageMode=0);
              // SH image count: L2 = 7, L1 = 3 (and 3 as the unused placeholder size for the octahedral mode).
              GlobalIlluminationDDGISHImageCount=(7*Ord(GlobalIlluminationDDGIStorageMode=2))+(3*Ord(GlobalIlluminationDDGIStorageMode<>2));

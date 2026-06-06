@@ -346,15 +346,17 @@ begin
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants),@PushConstants);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
- // Irradiance / relocation / classification: one thread per probe (local_size_x = 64). Visibility / border: one workgroup
- // per probe (octahedral tile).
- case fStage of
-  TStage.GlossyRadiance,TStage.Visibility,TStage.Border:begin
-   aCommandBuffer.CmdDispatch(TotalProbes,1,1);
-  end;
-  else begin
-   aCommandBuffer.CmdDispatch((TotalProbes+63) shr 6,1,1);
-  end;
+ // Workgroup model per stage:
+ //  - one workgroup per probe (octahedral tile, local_size = OCT x OCT, gl_WorkGroupID.x = probe): glossy / visibility / border,
+ //    AND the irradiance stage in OCTAHEDRAL storage mode (gi_ddgi_irradiance_update.comp's OCT path is per-texel-per-probe).
+ //  - one thread per probe (local_size_x = 64, gl_GlobalInvocationID.x = probe): irradiance in SH storage mode, relocation,
+ //    classification.
+ // The irradiance stage thus depends on the storage mode -> NOT a fixed stage set (the SH dispatch starved the OCT path before).
+ if (fStage in [TStage.GlossyRadiance,TStage.Visibility,TStage.Border]) or
+    (TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral and (fStage=TStage.Irradiance)) then begin
+  aCommandBuffer.CmdDispatch(TotalProbes,1,1);
+ end else begin
+  aCommandBuffer.CmdDispatch((TotalProbes+63) shr 6,1,1);
  end;
 
  if fFinalStage then begin

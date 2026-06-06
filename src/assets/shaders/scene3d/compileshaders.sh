@@ -27,7 +27,7 @@ DEBUG=1
 # GlobalIlluminationDDGIStorageMode in PasVulkan.Scene3D.Renderer.Instance.pas, otherwise the descriptor layouts / image
 # counts / view types of the DDGI compute shaders and the globalillumination_ddgi mesh fragment variant won't match the
 # Pascal side. The define is always passed explicitly (the shader's own default differs), so keep the two in sync.
-DDGI_STORAGE=2
+DDGI_STORAGE=0
 DDGI_STORAGE_DEFINE="-DGI_DDGI_STORAGE=${DDGI_STORAGE}"
 
 # RTXGI-style probe relocation + classification (0 = off, 1 = on). When on, the trace traces GI_DDGI_FIXED_RAYS fixed rays
