@@ -76,9 +76,34 @@ unit PasVulkan.Scene3D;
 
 {-$define FrameTextFileDebug}
 
-{$undef FlatParallelRenderInstanceUpdates}
+// Re-enabled: the earlier "slower" result was contention (per-RI MatrixPair Mark + per-node DrawInfo lock) in the
+// Flat Phase-1 job — now removed (batched per-job MarkRange + the DrawInfo-skip-gate, same as the non-Flat path).
+// Toggle OFF => the de-contented single-threaded-per-instance non-Flat path.
+{$define FlatParallelRenderInstanceUpdates}
+
+// Populate each instance's PerInFlightFrameRenderInstances IN Phase 1 (parallel, atomic-append into a pre-sized
+// Items array) instead of the sequential Phase 2. Phase 2 then only does BB-combine + UpdateBoundingVolumes. Without
+// this, the fat instance's ~5000-RI population stays single-threaded in Phase 2. Toggle off to A/B.
+{$define FlatParallelPhase1Populate}
 
 {$undef SubTreeInFlightFramesUpdates}
+
+// Decouple per-render-instance DrawInfo writes from the matrix/generation bump: when a render instance only moves
+// (matrix changes, but MatrixID/MeshObjectID/Flags/buffer-ranges stay the same) the DrawInfo bytes are identical, so
+// we recompute them into a local and only write+Mark the master DrawInfo (and thus trigger the per-IFF GPU re-upload)
+// when the bytes actually differ. The MatrixPair is still refreshed on every matrix change. Safe across in-flight
+// frames because a single master write Mark()s the index and every IFF's ProcessDrawInfoDirtyQueue SyncFrom()s it.
+// Toggle off to A/B against the old always-rewrite behaviour.
+{$define DecoupleDrawInfoFromMatrix}
+
+// Batch the per-render-instance MatrixPair dirty-marking. The hot per-RI cost in UpdateRenderInstances is NOT the
+// matrix math but the per-element GetMatrixPairInfo(.,true): a GLOBAL atomic generation increment + a hierarchical
+// Mark() (one CAS per hierarchy level) for EVERY moving RI, every frame — ~5000 atomics + ~15000 CAS that serialize
+// (this is why parallelizing the loop got SLOWER, not faster). Instead, write the master MatrixPair without marking
+// and remember the touched MatrixID range, then Mark the whole [min..max] range ONCE per instance via MarkRange:
+// 1 atomic + ~log(N) CAS. Assumes an instance's RI MatrixIDs are roughly contiguous (true for a block allocated at
+// load); gaps only cause harmless extra re-copies in ProcessMatrixPairDirtyQueue, never wrong data. Toggle for A/B.
+{$define BatchMatrixPairDirtyMark}
 
 interface
 
@@ -5247,6 +5272,19 @@ type EpvScene3D=class(Exception);
        property TimeRebuildDirectedAcyclicGraph:TpvDouble read fTimeRebuildDirectedAcyclicGraph;
        property TimeProcessDirectedAcyclicGraph:TpvDouble read fTimeProcessDirectedAcyclicGraph;
        property TimeProcessGlobalRenderInstances:TpvDouble read fTimeProcessGlobalRenderInstances;
+       // Per-instance-update sub-step accumulators (summed over all instances during ProcessDirectedAcyclicGraph).
+       // NOTE: accumulated with non-atomic += across DAG worker threads, so they are approximate when the per-instance
+       // work is spread over many threads; they are reliable when one fat group instance dominates (the usual case).
+       property InstanceTimeResetSum:TpvDouble read fInstanceTimeResetSum;
+       property InstanceTimeBaseOverwriteTimeSum:TpvDouble read fInstanceTimeBaseOverwriteTimeSum;
+       property InstanceTimeAnimationTimeSum:TpvDouble read fInstanceTimeAnimationTimeSum;
+       property InstanceTimeLightSum:TpvDouble read fInstanceTimeLightSum;
+       property InstanceTimeCameraSum:TpvDouble read fInstanceTimeCameraSum;
+       property InstanceTimeMaterialSum:TpvDouble read fInstanceTimeMaterialSum;
+       property InstanceTimeProcessNodesSum:TpvDouble read fInstanceTimeProcessNodesSum;
+       property InstanceTimeSkinsSum:TpvDouble read fInstanceTimeSkinsSum;
+       property InstanceTimeBoundingSum:TpvDouble read fInstanceTimeBoundingSum;
+       property InstanceTimeRenderInstanceSum:TpvDouble read fInstanceTimeRenderInstanceSum;
        property ProceduralTextureImageHookStringHashMap:TProceduralTextureImageHookStringHashMap read fProceduralTextureImageHookStringHashMap;
        property GPULODEnabled:boolean read fGPULODEnabled write fGPULODEnabled;
        property LODTransformAllLevels:boolean read fLODTransformAllLevels write fLODTransformAllLevels;
@@ -28102,6 +28140,17 @@ begin
     end;
    end;
 
+{$ifdef DecoupleDrawInfoFromMatrix}
+   // RI instances: the DrawInfo gating in UpdateRenderInstances skips the per-RI DrawInfo write for pure movers, so
+   // without this a buffer-range defrag would leave stale offsets in their DrawInfo. Force every render instance to
+   // re-emit its DrawInfo on the next update (the old per-frame-rewrite behaviour made this implicit).
+   if fUseRenderInstances then begin
+    for Index:=0 to fRenderInstances.Count-1 do begin
+     fRenderInstances[Index].fFirst:=true;
+    end;
+   end;
+{$endif}
+
    if fSceneInstance.fRaytracingActive then begin
     fSceneInstance.fRaytracingDataLock.Acquire;
     try
@@ -31301,6 +31350,14 @@ begin
     TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
     try
      CountRenderInstances:=fRenderInstances.Count;
+{$ifdef FlatParallelPhase1Populate}
+     // Pre-size the per-instance output array so Phase 1 can atomic-append into it lock-free. Count:=0 here;
+     // Phase 1 grows it back via TPasMPInterlocked.Add on Count.
+     if length(fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items)<CountRenderInstances then begin
+      fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Resize(CountRenderInstances);
+     end;
+     fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
+{$endif}
      if CountRenderInstances>0 then begin
       StartIndex:=TPasMPInterlocked.Add(fSceneInstance.fGlobalRenderInstanceWorkListCount,CountRenderInstances);
       for Index:=0 to CountRenderInstances-1 do begin
@@ -31327,6 +31384,14 @@ var Index,PerInFlightFrameRenderInstanceIndex,MeshNodeArrayIndex,NodeIndex:TpvSi
     OldInstanceDataIndex:TpvUInt32;
     CurrentMatrixPair:PGPUMatrixPair;
     CurrentDrawInfo:PGPUDrawInfo;
+{$ifdef DecoupleDrawInfoFromMatrix}
+    NewDrawInfo:TGPUDrawInfo;
+    WasFirst,DrawInfoInputsChanged:boolean;
+{$endif}
+{$ifdef BatchMatrixPairDirtyMark}
+    MatrixPairDirtyMin,MatrixPairDirtyMax:TpvSizeInt;
+    MatrixPairGeneration:TpvUInt64;
+{$endif}
 {$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}    
     SphereCenterLocal,TransformedSphereCenter:TpvVector3;
     SphereRadiusLocal,Col0LenSq,Col1LenSq,Col2LenSq,TransformedSphereRadius:TpvScalar;
@@ -31343,6 +31408,10 @@ begin
   fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
   if fUseRenderInstances then begin
    TemporaryBoundingBox:=fBoundingBox;
+{$ifdef BatchMatrixPairDirtyMark}
+   MatrixPairDirtyMin:=High(TpvSizeInt);
+   MatrixPairDirtyMax:=-1;
+{$endif}
 {$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}
    SphereCenterLocal:=(TemporaryBoundingBox.Min+TemporaryBoundingBox.Max)*0.5;
    SphereRadiusLocal:=TemporaryBoundingBox.Min.DistanceTo(TemporaryBoundingBox.Max)*0.5;
@@ -31402,6 +31471,9 @@ begin
         PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
         PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
         PerInFlightFrameRenderInstance^.ModelMatrix:={$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}SingleMatrix{$else}RenderInstance.fWorkModelMatrix{$endif};
+{$ifdef DecoupleDrawInfoFromMatrix}
+        WasFirst:=RenderInstance.fFirst;
+{$endif}
         if RenderInstance.fFirst then begin
          RenderInstance.fFirst:=false;
          PerInFlightFrameRenderInstance^.PreviousModelMatrix:={$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}SingleMatrix{$else}RenderInstance.fWorkModelMatrix{$endif};
@@ -31422,12 +31494,70 @@ begin
         RenderInstance.UpdateLights(aInFlightFrameIndex);
         if (RenderInstance.fDrawInfoGenerations[aInFlightFrameIndex]<>RenderInstance.fGenerations[aInFlightFrameIndex]) or
            (RenderInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]<>RenderInstance.fInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]) then begin
+{$ifdef DecoupleDrawInfoFromMatrix}
+         // Did any DrawInfo-relevant input actually change? Captured BEFORE the generations are re-synced below.
+         // DrawInfo (MatrixID/Flags/MeshObjectID/buffer-range offsets) does NOT depend on the model matrix, so a pure
+         // mover has this false and skips the whole node loop (no AcquireDrawInfo). A buffer-range defrag forces
+         // fFirst:=true on the RIs in ReallocateData, so it surfaces here as WasFirst.
+         DrawInfoInputsChanged:=WasFirst or
+                                (OldInstanceDataIndex<>RenderInstance.fInstanceDataIndex) or
+                                (RenderInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]<>RenderInstance.fInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]);
+{$endif}
          RenderInstance.fDrawInfoGenerations[aInFlightFrameIndex]:=RenderInstance.fGenerations[aInFlightFrameIndex];
          RenderInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]:=RenderInstance.fInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex];
          // Write matrices to MatrixPairBuffer (once per RI, not per node)
+{$ifdef BatchMatrixPairDirtyMark}
+         // No per-element Mark here: write the master pair and just remember the touched MatrixID range; the whole
+         // range is Mark()ed once after the loop (see BatchMatrixPairDirtyMark note). aWrite=false => no atomic/CAS.
+         CurrentMatrixPair:=fSceneInstance.GetMatrixPairInfo(RenderInstance.fMatrixID,false);
+         CurrentMatrixPair^.ModelMatrix:=PerInFlightFrameRenderInstance^.ModelMatrix;
+         CurrentMatrixPair^.PreviousModelMatrix:=PerInFlightFrameRenderInstance^.PreviousModelMatrix;
+         if TpvSizeInt(RenderInstance.fMatrixID)<MatrixPairDirtyMin then begin
+          MatrixPairDirtyMin:=TpvSizeInt(RenderInstance.fMatrixID);
+         end;
+         if TpvSizeInt(RenderInstance.fMatrixID)>MatrixPairDirtyMax then begin
+          MatrixPairDirtyMax:=TpvSizeInt(RenderInstance.fMatrixID);
+         end;
+{$else}
          CurrentMatrixPair:=fSceneInstance.GetMatrixPairInfo(RenderInstance.fMatrixID,true);
          CurrentMatrixPair^.ModelMatrix:=PerInFlightFrameRenderInstance^.ModelMatrix;
          CurrentMatrixPair^.PreviousModelMatrix:=PerInFlightFrameRenderInstance^.PreviousModelMatrix;
+{$endif}
+{$ifdef DecoupleDrawInfoFromMatrix}
+         // Pure movers (matrix-only) skip the entire DrawInfo node loop -> no AcquireDrawInfo/ReleaseDrawInfo per node.
+         // That per-node master read-lock + capacity check was the remaining per-frame churn over all ~5000 RIs.
+         if DrawInfoInputsChanged then begin
+          for MeshNodeArrayIndex:=0 to length(fGroup.fMeshNodeIndices)-1 do begin
+           NodeIndex:=fGroup.fMeshNodeIndices[MeshNodeArrayIndex];
+           MeshObjectID:=RenderInstance.fNodeMeshObjectIDs[NodeIndex];
+           if MeshObjectID>0 then begin
+            // DrawInfo is matrix-independent: recompute into a local and only write+Mark the master DrawInfo (which is
+            // what triggers the per-IFF GPU re-upload) when the bytes actually changed. A pure mover leaves DrawInfo
+            // identical, so it no longer floods the DrawInfo dirty range / re-upload every frame. The byte-compare also
+            // catches buffer-range reallocs, so it is robust regardless of which input changed. Safe across in-flight
+            // frames: a single master write Mark()s the index and every IFF's ProcessDrawInfoDirtyQueue SyncFrom()s it.
+            NewDrawInfo.MatrixID:=RenderInstance.fMatrixID;
+            NewDrawInfo.InstanceDataIndex:=PerInFlightFrameRenderInstance^.InstanceDataIndex;
+            NewDrawInfo.MeshObjectID:=MeshObjectID;
+            NewDrawInfo.Flags:=pvScene3DRendererRenderPassesToMask(fActiveRenderPasses*RenderInstance.fInstance.fNodes.RawItems[NodeIndex].fActiveRenderPasses);
+            if RenderInstance.fInstance.fNodes.RawItems[NodeIndex].IsCastingShadows then begin
+             NewDrawInfo.Flags:=NewDrawInfo.Flags or DrawInfoFlagNodeCastsShadow;
+            end;
+            NewDrawInfo.NodeMatricesIndex:=RenderInstance.fInstance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(NodeIndex)+1;
+            NewDrawInfo.MeshletDescriptorBase:=RenderInstance.fInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
+            NewDrawInfo.MeshletBoundingSphereBase:=RenderInstance.fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
+            NewDrawInfo.MeshletVisibilityBase:=RenderInstance.fMeshletVisibilityBufferRange.Offset;
+            CurrentDrawInfo:=fSceneInstance.AcquireDrawInfo(MeshObjectID,false);
+            if CompareMem(CurrentDrawInfo,@NewDrawInfo,SizeOf(TGPUDrawInfo)) then begin
+             fSceneInstance.ReleaseDrawInfo(MeshObjectID,false);
+            end else begin
+             CurrentDrawInfo^:=NewDrawInfo;
+             fSceneInstance.ReleaseDrawInfo(MeshObjectID,true);
+            end;
+           end;   
+          end;   
+         end;   
+{$else}
          for MeshNodeArrayIndex:=0 to length(fGroup.fMeshNodeIndices)-1 do begin
           NodeIndex:=fGroup.fMeshNodeIndices[MeshNodeArrayIndex];
           MeshObjectID:=RenderInstance.fNodeMeshObjectIDs[NodeIndex];
@@ -31453,6 +31583,7 @@ begin
            end;
           end;
          end;
+{$endif}
         end;
         RenderInstance.fLastModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
        end;
@@ -31480,6 +31611,14 @@ begin
      fBoundingBox.DirectCombine(fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[Index].BoundingBox);
     end;
    end;
+{$ifdef BatchMatrixPairDirtyMark}
+   // Single batched dirty-mark for every MatrixPair this instance touched this frame (1 atomic + ~log(N) CAS instead
+   // of one per RI). See BatchMatrixPairDirtyMark note. Each in-flight frame picks the range up via SyncFrom.
+   if MatrixPairDirtyMax>=MatrixPairDirtyMin then begin
+    MatrixPairGeneration:=TPasMPInterlocked.Increment(TPasMPUInt64(fSceneInstance.fGlobalMatrixPairGeneration));
+    fSceneInstance.fMasterMatrixPairGenerations.MarkRange(MatrixPairDirtyMin,MatrixPairDirtyMax,MatrixPairGeneration);
+   end;
+{$endif}
   end;
 {$ifdef UpdateProfilingTimes}
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -39333,15 +39472,29 @@ var WorkIndex:TPasMPNativeInt;
     SphereCenterLocal,TransformedSphereCenter:TpvVector3;
     SphereRadiusLocal,Col0LenSq,Col1LenSq,Col2LenSq,TransformedSphereRadius:TpvScalar;
     SingleMatrix:TpvMatrix4x4;
+{$ifdef FlatParallelPhase1Populate}
+    OldInstanceDataIndex:TpvUInt32;
+    NewDrawInfo:TGPUDrawInfo;
+    WasFirst,DrawInfoInputsChanged:boolean;
+    MatrixPairDirtyMin,MatrixPairDirtyMax:TpvSizeInt;
+    MatrixPairGeneration:TpvUInt64;
+    PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
+    PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
+{$endif}
 begin
  InFlightFrameIndex:=fDirectedAcyclicGraphInFlightFrameIndex;
+{$ifdef FlatParallelPhase1Populate}
+ // Per-job MatrixPair dirty range — Mark()ed once at the end (work-list is per-instance-contiguous, so this stays tight).
+ MatrixPairDirtyMin:=High(TpvSizeInt);
+ MatrixPairDirtyMax:=-1;
+{$endif}
  for WorkIndex:=aFromIndex to aToIndex do begin
   RenderInstance:=fGlobalRenderInstanceWorkList[WorkIndex];
   if assigned(RenderInstance) then begin
    Instance:=RenderInstance.fInstance;
    if assigned(Instance) then begin
     if RenderInstance.fWorkActive then begin
-     // Per-RI skip check (Option A): if nothing changed for this IFF, skip expensive processing
+     // Per-RI skip check: if nothing changed for this IFF, skip expensive processing
      if (not fUpdatedOriginTransform) and
         (not RenderInstance.fFirst) and
         ((RenderInstance.fActiveMask and (TpvUInt32(1) shl InFlightFrameIndex))<>0) and
@@ -39353,13 +39506,30 @@ begin
       RenderInstance.fWorkActives[InFlightFrameIndex]:=true;
       RenderInstance.fComputedPreviousModelMatrix:=RenderInstance.fModelMatrices[InFlightFrameIndex];
       RenderInstance.fInstanceDataIndices[InFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
+{$ifdef FlatParallelPhase1Populate}
+      // TPasMPInterlocked.Add is fetch-and-add (returns the OLD value) => that IS our slot (cf. the work-list reserve above).
+      PerInFlightFrameRenderInstanceIndex:=TPasMPInterlocked.Add(Instance.fPerInFlightFrameRenderInstances[InFlightFrameIndex].Count,TpvSizeInt(1));
+      PerInFlightFrameRenderInstance:=@Instance.fPerInFlightFrameRenderInstances[InFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
+      PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
+      PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
+      PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrices[InFlightFrameIndex];
+      PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fComputedPreviousModelMatrix;
+      PerInFlightFrameRenderInstance^.Generation:=RenderInstance.fGenerations[InFlightFrameIndex];
+      PerInFlightFrameRenderInstance^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
+{$endif}
      end else begin
       // Full processing path
+{$ifdef FlatParallelPhase1Populate}
+      WasFirst:=RenderInstance.fFirst;
+{$endif}
       TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl InFlightFrameIndex);
       RenderInstance.fWorkActives[InFlightFrameIndex]:=true;
       RenderInstance.fWorkModelMatrix:=TransformOrigin(RenderInstance.fModelMatrix,InFlightFrameIndex,false);
       SingleMatrix:=RenderInstance.fWorkModelMatrix;
       RenderInstance.fModelMatrices[InFlightFrameIndex]:=SingleMatrix;
+{$ifdef FlatParallelPhase1Populate}
+      OldInstanceDataIndex:=RenderInstance.fInstanceDataIndices[InFlightFrameIndex];
+{$endif}
       RenderInstance.fInstanceDataIndices[InFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
       // Sphere-based bounding volume computation (Option C)
       SphereCenterLocal:=(Instance.fMeshBoundingBox.Min+Instance.fMeshBoundingBox.Max)*0.5;
@@ -39379,13 +39549,60 @@ begin
       end else begin
        RenderInstance.fComputedPreviousModelMatrix:=RenderInstance.fPreviousModelMatrix;
        if (RenderInstance.fWorkModelMatrix<>RenderInstance.fPreviousModelMatrix) or
-          (RenderInstance.fInstanceDataIndices[InFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) then begin
+          ({$ifdef FlatParallelPhase1Populate}OldInstanceDataIndex{$else}RenderInstance.fInstanceDataIndices[InFlightFrameIndex]{$endif}<>RenderInstance.fInstanceDataIndex) then begin
         inc(RenderInstance.fGeneration);
        end;
       end;
       RenderInstance.fGenerations[InFlightFrameIndex]:=RenderInstance.fGeneration;
       RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
       RenderInstance.UpdateLights(InFlightFrameIndex);
+{$ifdef FlatParallelPhase1Populate}
+      // MatrixPair: write master without per-element Mark (no atomic/CAS here); batched MarkRange at job end.
+      if RenderInstance.fDrawInfoGenerations[InFlightFrameIndex]<>RenderInstance.fGenerations[InFlightFrameIndex] then begin
+       CurrentMatrixPair:=GetMatrixPairInfo(RenderInstance.fMatrixID,false);
+       CurrentMatrixPair^.ModelMatrix:=SingleMatrix;
+       CurrentMatrixPair^.PreviousModelMatrix:=RenderInstance.fComputedPreviousModelMatrix;
+       if TpvSizeInt(RenderInstance.fMatrixID)<MatrixPairDirtyMin then begin
+        MatrixPairDirtyMin:=TpvSizeInt(RenderInstance.fMatrixID);
+       end;
+       if TpvSizeInt(RenderInstance.fMatrixID)>MatrixPairDirtyMax then begin
+        MatrixPairDirtyMax:=TpvSizeInt(RenderInstance.fMatrixID);
+       end;
+      end;
+      // DrawInfo is matrix-independent: pure movers skip the whole node loop (no AcquireDrawInfo). Recompute+compare;
+      // write+Mark only when bytes differ. Buffer-range defrag surfaces as WasFirst (ReallocateData sets fFirst).
+      DrawInfoInputsChanged:=WasFirst or
+                             (OldInstanceDataIndex<>RenderInstance.fInstanceDataIndex) or
+                             (RenderInstance.fActiveRenderPassesGenerations[InFlightFrameIndex]<>Instance.fActiveRenderPassesGenerations[InFlightFrameIndex]);
+      RenderInstance.fDrawInfoGenerations[InFlightFrameIndex]:=RenderInstance.fGenerations[InFlightFrameIndex];
+      RenderInstance.fActiveRenderPassesGenerations[InFlightFrameIndex]:=Instance.fActiveRenderPassesGenerations[InFlightFrameIndex];
+      if DrawInfoInputsChanged then begin
+       for MeshNodeArrayIndex:=0 to length(Instance.fGroup.fMeshNodeIndices)-1 do begin
+        NodeIndex:=Instance.fGroup.fMeshNodeIndices[MeshNodeArrayIndex];
+        MeshObjectID:=RenderInstance.fNodeMeshObjectIDs[NodeIndex];
+        if MeshObjectID>0 then begin
+         NewDrawInfo.MatrixID:=RenderInstance.fMatrixID;
+         NewDrawInfo.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
+         NewDrawInfo.MeshObjectID:=MeshObjectID;
+         NewDrawInfo.Flags:=pvScene3DRendererRenderPassesToMask(Instance.fActiveRenderPasses*Instance.fNodes.RawItems[NodeIndex].fActiveRenderPasses);
+         if Instance.fNodes.RawItems[NodeIndex].IsCastingShadows then begin
+          NewDrawInfo.Flags:=NewDrawInfo.Flags or DrawInfoFlagNodeCastsShadow;
+         end;
+         NewDrawInfo.NodeMatricesIndex:=Instance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset+TpvUInt32(NodeIndex)+1;
+         NewDrawInfo.MeshletDescriptorBase:=Instance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
+         NewDrawInfo.MeshletBoundingSphereBase:=Instance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
+         NewDrawInfo.MeshletVisibilityBase:=RenderInstance.fMeshletVisibilityBufferRange.Offset;
+         CurrentDrawInfo:=AcquireDrawInfo(MeshObjectID,false);
+         if CompareMem(CurrentDrawInfo,@NewDrawInfo,SizeOf(TGPUDrawInfo)) then begin
+          ReleaseDrawInfo(MeshObjectID,false);
+         end else begin
+          CurrentDrawInfo^:=NewDrawInfo;
+          ReleaseDrawInfo(MeshObjectID,true);
+         end;
+        end;
+       end;
+      end;
+{$else}
       if (RenderInstance.fDrawInfoGenerations[InFlightFrameIndex]<>RenderInstance.fGenerations[InFlightFrameIndex]) or
          (RenderInstance.fActiveRenderPassesGenerations[InFlightFrameIndex]<>Instance.fActiveRenderPassesGenerations[InFlightFrameIndex]) then begin
        RenderInstance.fDrawInfoGenerations[InFlightFrameIndex]:=RenderInstance.fGenerations[InFlightFrameIndex];
@@ -39424,7 +39641,19 @@ begin
         end;
        end;
       end;
+{$endif}
       RenderInstance.fLastModelMatrices[InFlightFrameIndex]:=RenderInstance.fModelMatrix;
+{$ifdef FlatParallelPhase1Populate}
+      // TPasMPInterlocked.Add is fetch-and-add (returns the OLD value) => that IS our slot (cf. the work-list reserve above).
+      PerInFlightFrameRenderInstanceIndex:=TPasMPInterlocked.Add(Instance.fPerInFlightFrameRenderInstances[InFlightFrameIndex].Count,TpvSizeInt(1));
+      PerInFlightFrameRenderInstance:=@Instance.fPerInFlightFrameRenderInstances[InFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
+      PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
+      PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
+      PerInFlightFrameRenderInstance^.ModelMatrix:=SingleMatrix;
+      PerInFlightFrameRenderInstance^.PreviousModelMatrix:=RenderInstance.fComputedPreviousModelMatrix;
+      PerInFlightFrameRenderInstance^.Generation:=RenderInstance.fGenerations[InFlightFrameIndex];
+      PerInFlightFrameRenderInstance^.InstanceDataIndex:=RenderInstance.fInstanceDataIndex;
+{$endif}
      end;
     end else begin
      // Inactive path
@@ -39440,6 +39669,13 @@ begin
    end;
   end;
  end;
+{$ifdef FlatParallelPhase1Populate}
+ // Single batched dirty-mark for every MatrixPair this job touched (1 atomic + ~log(N) CAS instead of one per RI).
+ if MatrixPairDirtyMax>=MatrixPairDirtyMin then begin
+  MatrixPairGeneration:=TPasMPInterlocked.Increment(TPasMPUInt64(fGlobalMatrixPairGeneration));
+  fMasterMatrixPairGenerations.MarkRange(MatrixPairDirtyMin,MatrixPairDirtyMax,MatrixPairGeneration);
+ end;
+{$endif}
 end;
 
 procedure TpvScene3D.ProcessGlobalRenderInstances(const aInFlightFrameIndex:TpvSizeInt);
@@ -39481,6 +39717,8 @@ begin
  for InstanceIndex:=0 to fGlobalRenderInstanceInstanceCount-1 do begin
   GroupInstance:=fGlobalRenderInstanceInstances[InstanceIndex];
   if assigned(GroupInstance) then begin
+{$ifndef FlatParallelPhase1Populate}
+   // Sequential population (when FlatParallelPhase1Populate is off). With FlatParallelPhase1Populate the array is already filled in Phase 1.
    TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(GroupInstance.fRenderInstanceLock);
    try
     for RenderInstanceIndex:=0 to GroupInstance.fRenderInstances.Count-1 do begin
@@ -39505,6 +39743,7 @@ begin
    finally
     TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(GroupInstance.fRenderInstanceLock);
    end;
+{$endif}
 
    // BB-Combine from PerInFlightFrameRenderInstances
    if GroupInstance.fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count>0 then begin
@@ -39668,7 +39907,7 @@ begin
    fInstanceTimeSkinsSum:=0.0;
    fInstanceTimeBoundingSum:=0.0;
    fInstanceTimeRenderInstanceSum:=0.0;
-   
+
    PartStartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    fGroupInstances.Sort;
    PartEndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -42018,7 +42257,6 @@ begin
     // Reset MatrixPair dirty range
     fMatrixPairDirtyMin[aInFlightFrameIndex]:=High(TpvSizeInt);
     fMatrixPairDirtyMax[aInFlightFrameIndex]:=-1;
-
 
    end;
 
