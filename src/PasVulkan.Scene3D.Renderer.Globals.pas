@@ -188,12 +188,12 @@ type TpvScene3DRendererAntialiasingMode=
       (
        Auto=0,
        
-       // No global illumination. Here in this case, it is just StaticEnvironmentMap but with a empty black environment map, for to minimize the count 
+       // No global illumination. Here in this case, it is just EnvironmentMap but with a empty black environment map, for to minimize the count
        // of the shader variants, and a cubemap lookup costs almost nothing these days.
        //None,
        
        // The simplest and fastest way to add global illumination to a scene is to use a static IBL environment map, for example from the sky. 
-       StaticEnvironmentMap, 
+       EnvironmentMap,
 
        // A camera reflection probe is a cubemap that is updated every frame to reflect the scene around it. Nintendo seems to use this technique in some 
        // of their Nintendo Switch games. It may seem like the wrong approach at first glance, but apparently it still seems to work well, at least when 

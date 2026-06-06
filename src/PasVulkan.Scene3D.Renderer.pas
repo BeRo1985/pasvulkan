@@ -1168,32 +1168,32 @@ begin
    case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
     TpvVulkanVendorID.AMD:begin
      if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-      fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+      fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap;
      end else begin
       fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
      end;
     end;
     TpvVulkanVendorID.NVIDIA:begin
      if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-      fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+      fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap;
      end else begin
       fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
      end;
     end;
     TpvVulkanVendorID.Intel:begin
      if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-      fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+      fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap;
      end else begin
       fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
      end;
     end;
     else begin
-     fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+     fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap;
     end;
    end;
   end;
 //fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing;
-//fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+//fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap;
  end;
 
  // DDGI and surfel-based global illumination both require hardware ray tracing. If it is not available, fall back to cascaded radiance hints, which is
@@ -1205,7 +1205,7 @@ begin
     if assigned(pvApplication) then begin
      pvApplication.Log(LOG_INFO,'TpvScene3DRenderer','DynamicDiffuseGlobalIllumination/SurfelGlobalIllumination requires raytracing, downgrading to StaticEnvironmentMap');
     end;
-    fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+    fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap;
 //  fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
    end;
   end;
