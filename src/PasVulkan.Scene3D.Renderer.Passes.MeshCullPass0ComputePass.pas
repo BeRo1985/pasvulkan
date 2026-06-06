@@ -710,6 +710,14 @@ begin
      PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 4); // FLAG_SHADOW_PASS
     end;
 
+    if fInstance.KeepPass0ForRendering then begin
+     PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 5); // FLAG_KEEP_PASS0_FOR_RENDERING (Variante a net, default on)
+    end;
+
+    if fInstance.KeepPass0InPass1 then begin
+     PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 6); // FLAG_KEEP_PASS0_IN_PASS1 (diagnostic, breaks culling, default off)
+    end;
+
     PushConstants.MaxOutputCommands:=fInstance.GPUDrawIndexedIndirectCommandOutputBufferSizes[aInFlightFrameIndex];
 
     if fInstance.Renderer.UseMeshletExpand then begin

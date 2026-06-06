@@ -40,42 +40,44 @@
 
 // ---------------------------------------------------------------------------------------------
 // "Depth present, color missing" 1-frame flicker (PASS0 draws a primitive into depth; PASS1
-// rebuilds the color list from scratch and false-negative-HiZ-culls it because a HiZ INPUT
+// rebuilds the render list from scratch and false-negative-HiZ-culls it because a HiZ INPUT
 // -- pyramid / bounding sphere / visibility bitmap -- is stale for one frame; window opened by
-// parallel queues or by extra passes perturbing the frame timeline). Two EXPERIMENTAL toggles,
-// MUTUALLY EXCLUSIVE -- enable at most one. Both default OFF; the real fix is removing the
-// staleness (see flickerbug.md). cmd1.w bit0 = "added in PASS0" (set at the "Mark as added" line).
+// parallel queues or by extra passes perturbing the frame timeline). cmd1.w bit0 = "added in PASS0"
+// (set at the "Mark as added" line). The two former compile-time toggles are now RUNTIME flags in
+// pushConstants.flags (set per RendererInstance from KeepPass0ForRendering / KeepPass0InPass1):
 //
-//   FIX_KEEP_PASS0_VISIBLE_IN_PASS1 : skip the PASS1 HiZ test for PASS0-committed primitives.
+//   FLAG_KEEP_PASS0_FOR_RENDERING (bit 5, see const below) : Variante (a), default ON. Keep
+//     PASS0-committed primitives in the RENDER list, but drive the visibility bitmap from the TRUE
+//     HiZ result -> occlusion culling stays intact, only ~1 transition frame of depth-tested
+//     overdraw. Cheap correctness net against 1-frame staleness races (NOT the deterministic
+//     skinned false-cull -- that is fixed by TpvScene3D.UseConservativeSkinnedBounds).
+//
+//   FLAG_KEEP_PASS0_IN_PASS1 (bit 6, see const below) : DIAGNOSTIC ONLY, default OFF. Skip the PASS1
+//     HiZ test entirely for PASS0-committed primitives AND mark them visible -> BREAKS occlusion
+//     culling (once-visible/in-frustum geometry never gets occlusion-culled again, growing overdraw).
 //     Kills the flicker BUT breaks occlusion culling: such primitives also get marked visible in
 //     the output visibility bitmap, so next frame's PASS0 redraws them -> once-visible/in-frustum
-//     geometry is never occlusion-culled again (growing overdraw). Diagnostic only.
+//     geometry is never occlusion-culled again (growing overdraw). So, diagnostic only.
 //
-//   FIX_KEEP_PASS0_IN_COLOR_ONLY : keep PASS0-committed primitives in the COLOR list, but drive
-//     the visibility bitmap from the TRUE HiZ result. Genuinely-occluded objects still drop out of
-//     next frame's PASS0 -> occlusion culling stays intact; cost is only ~1 transition frame of
-//     depth-tested overdraw. A correctness net that does NOT break culling (relies on the
-//     disocclusion path for the bad frame's depth). Frustum/distance/area culling stay active here.
-//
-//#define FIX_KEEP_PASS0_VISIBLE_IN_PASS1
-//#define FIX_KEEP_PASS0_IN_COLOR_ONLY
-
 // Richtung-2 root-cause probe: on the bad frame, dump the PASS1 object-level HiZ inputs for any
 // NEAR-CAMERA PASS0-committed primitive (cmd1.w bit0 -> its depth is already in the buffer) that
 // the HiZ test wants to occlusion-cull == exactly the "depth present, color missing" flicker event.
 // Self-triggering + distance-gated (DEBUG_PASS0_HIZ_DROP_MAX_DISTANCE) so it only fires for the
 // player's parts -> stays rare -> does NOT drop to the ~1-FPS regime where the race stops
 // reproducing. Needs the validation layer + DebugPrintf at runtime (run planetgame1 with
-// --force-use-validation-layers); grep the log (projects/planetgame1/bin/outx*.txt) for "HIZDROP".
-// Keep both FIX_* toggles OFF while probing so PASS1 actually drops the primitive (the real bug).
-#define DEBUG_PASS0_HIZ_DROP_PRINTF
+// --force-use-validation-layers); grep the log for "HIZDROP".
+//#define DEBUG_PASS0_HIZ_DROP_PRINTF
+#define DEBUG_PASS0_HIZ_DROP_MAX_DISTANCE 25.0
+
+// Conservative Hi-Z occlusion sample over the projected AABB (center + 4 corners) instead
+// of a single AABB-center texel.
+//#define HIZ_CONSERVATIVE_FOOTPRINT
 
 #ifdef MESH_SHADER_PATH
 #ifndef TASK_GROUP_SIZE
 #define TASK_GROUP_SIZE 32
 #endif
 #endif
-
 
 /* clang-format off */
 
@@ -86,7 +88,7 @@
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 /*
-// From Vulkan spec, just as reference: 
+// From Vulkan spec, just as reference:
 struct VkDrawIndexedIndirectCommand {
   uint indexCount;
   uint instanceCount;
@@ -97,9 +99,9 @@ struct VkDrawIndexedIndirectCommand {
 */
 
 struct DrawIndexedIndirectCommand {
-  uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
+  uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset
   uvec4 cmd1; // firstInstancemeshObjectID_boundingSphereIndex_flags; // x = firstInstance/meshObjectID, y = boundingSphereIndex, z = lodInfoIndex, w = flags
-}; // 32 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
+}; // 32 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment
 
 struct BatchRange {
   uint baseCommandIndex;
@@ -112,11 +114,11 @@ struct BatchRange {
   uint oitBaseCommandIndex;
 };
 
-struct InstanceData { 
+struct InstanceData {
   uvec4 SelectedDissolveDitheredTransparencyFlags;
   vec4 SelectedColorIntensity;
   vec4 DissolveColor0Scale;
-  vec4 DissolveColor1Width;  
+  vec4 DissolveColor1Width;
   uvec4 colorKeysRG;
   uvec4 colorKeysBA;
   uvec4 materialColorKeys;
@@ -133,32 +135,32 @@ struct View {
 #if PASS == 0
 
 layout(push_constant) uniform PushConstants {
-  
+
   uvec2 lodLevelCurrentBDA;    // BDA to write lodLevel[currentIFF]
   uvec2 lodLevelPreviousBDA;   // BDA to read lodLevel[previousIFF] for temporal rewrite
   uvec2 scratchBufferBDA;      // BDA to scratch buffer (MESHLET_EXPAND only, counter at offset 0, entries at offset 16)
   uvec2 meshletVisibilityBDA;  // BDA to meshlet visibility bitmap buffer
-  
+
   uint countRanges;
   uint totalCommands;
   uint countMeshObjectIDs;
   uint skipCulling;                 // 1u if it is the first frame, if there are sudden complete new views, or if the countMeshObjectIDs are not valid anymore, 0u otherwise
-  
+
   uint batchRangeOffset;            // offset into BatchRanges array for this CullRenderPass
   uint prefixSumOffset;             // offset into PrefixSums array for this CullRenderPass
   uint visibilityBufferOffset;      // per-pass constant, differs between pass 0 and pass 1
   uint renderPassMask;              // bitmask: 1 << ord(RenderPass)
-  
+
   uint baseViewIndex;
   uint countViews;
   uint rendererInstanceIndex;       // index of current RendererInstance (0..31) for lodNeeded atomicOr
   uint flags;                       // bitmask: FLAG_LOD_ENABLED | FLAG_LOD_TEMPORAL | FLAG_LOD_RESET_FRAME
-  
+
   int batchRangeIndex;              // <0 = mega-dispatch (findRangeIndex), >=0 = per-range dispatch (direct index)
   uint maxOutputCommands;           // total output buffer capacity in commands
   uint maxScratchEntries;           // max scratch entries capacity (MESHLET_EXPAND only)
   uint meshletVisibilityPartOffset; // uint32 offset into bitmap for current part (double-buffered)
-  
+
   float maximumDistance;            // max camera distance for culling (<=0.0 = disabled)
   float areaTooSmallThreshold;      // min projected pixel size for culling (<=0.0 = disabled)
   uint alphaModeMask;               // bitmask: (1 << alphaMode) for allowed alpha modes
@@ -220,32 +222,32 @@ layout(set = 2, binding = 0, std430) readonly buffer BoundingSpheres {
 #else // PASS == 1
 
 layout(push_constant) uniform PushConstants {
-  
+
   uvec2 lodLevelCurrentBDA;    // BDA to write lodLevel[currentIFF]
   uvec2 lodLevelPreviousBDA;   // BDA to read lodLevel[previousIFF] for temporal rewrite
   uvec2 scratchBufferBDA;      // BDA to scratch buffer (MESHLET_EXPAND only, counter at offset 0, entries at offset 16)
   uvec2 meshletVisibilityBDA;  // BDA to meshlet visibility bitmap buffer
-  
+
   uint countRanges;
   uint totalCommands;
   uint countMeshObjectIDs;
   uint skipCulling;            // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
-  
+
   uint batchRangeOffset;       // offset into BatchRanges array for this CullRenderPass
   uint prefixSumOffset;        // offset into PrefixSums array for this CullRenderPass
   uint visibilityBufferOffset; // per-pass constant, differs between pass 0 and pass 1
   uint textureDepthIndex;
-  
+
   uint baseViewIndex;
   uint countViews;
   uint renderPassMask;         // bitmask: 1 << ord(RenderPass)
   uint rendererInstanceIndex;  // index of current RendererInstance (0..31) for lodNeeded atomicOr
-  
+
   uint flags;                  // bitmask: FLAG_LOD_ENABLED | FLAG_LOD_TEMPORAL | FLAG_LOD_RESET_FRAME
   int batchRangeIndex;         // <0 = mega-dispatch (findRangeIndex), >=0 = per-range dispatch (direct index)
   uint maxOutputCommands;      // total output buffer capacity in commands
   uint maxScratchEntries;      // max scratch entries capacity (MESHLET_EXPAND only)
-  
+
   uint meshletVisibilityPartOffset; // uint32 offset into bitmap for current part (double-buffered)
   float maximumDistance;            // max camera distance for culling (<=0.0 = disabled)
   float areaTooSmallThreshold;      // min projected pixel size for culling (<=0.0 = disabled)
@@ -258,7 +260,7 @@ layout(push_constant) uniform PushConstants {
 } pushConstants;
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
-  View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
+  View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)
 } uView;
 
 layout(set = 0, binding = 1, std430) readonly buffer InputDrawIndexedIndirectCommands {
@@ -310,13 +312,13 @@ layout(set = 2, binding = 0, std430) readonly buffer BoundingSpheres {
 #include "frustum.glsl"
 
 // The following variables are shared between all invocations of this shader for too keep the pre-calculations needed for the culling small, which
-// are valid and the same for all invocations anyway. Other implementations uses CPU pre-calculations for it, but this is a more simple and straight 
+// are valid and the same for all invocations anyway. Other implementations uses CPU pre-calculations for it, but this is a more simple and straight
 // forward approach in my opinion, so that almost everything is done on the GPU and is in the same place, as long as it don't hurts the performance
 // significantly.
 shared mat4 viewMatrices[8];
 shared mat4 projectionMatrices[8];
 shared vec4 inverseProjectionMatrixZData[8];
-shared float zNears[8]; 
+shared float zNears[8];
 //shared vec4 fastFrustums[8];
 shared Frustum frustums[8];
 
@@ -375,9 +377,29 @@ layout(buffer_reference, std430, buffer_reference_align = 4) buffer DebugCounter
 
 #include "projectsphere.glsl"
 
+// Conservative Hi-Z occlusion depth sample (returns raw depth). The pyramid holds MIN raw depth
+// (reverse-Z => the FARTHEST visible surface per texel). The classic single-AABB-center sample
+// false-positive-culls objects whose projected center lands on a closer neighbour while their
+// visible extent sits in surrounding texels. With HIZ_CONSERVATIVE_FOOTPRINT we min() over the
+// AABB's center + 4 corners (= the farthest over the footprint) -> conservative (never culls more).
+// Only in PASS 1 (where uTextureDepths / the HiZ pyramid is declared and the occlusion test runs).
+#if PASS == 1
+float hizFarthestRaw(uint texIdx, vec4 aabb, float viewIndex, float level){
+#ifdef HIZ_CONSERVATIVE_FOOTPRINT
+  return min(textureLod(uTextureDepths[nonuniformEXT(texIdx)], vec3(mix(aabb.xy, aabb.zw, 0.5),   viewIndex), level).x,
+             min(min(textureLod(uTextureDepths[nonuniformEXT(texIdx)], vec3(aabb.xy,              viewIndex), level).x,
+                     textureLod(uTextureDepths[nonuniformEXT(texIdx)], vec3(aabb.zw,              viewIndex), level).x),
+                 min(textureLod(uTextureDepths[nonuniformEXT(texIdx)], vec3(vec2(aabb.x, aabb.w), viewIndex), level).x,
+                     textureLod(uTextureDepths[nonuniformEXT(texIdx)], vec3(vec2(aabb.z, aabb.y), viewIndex), level).x)));
+#else
+  return textureLod(uTextureDepths[nonuniformEXT(texIdx)], vec3(mix(aabb.xy, aabb.zw, 0.5), viewIndex), level).x;
+#endif
+}
+#endif // PASS == 1
+
 vec4 sphereTransform(const in vec4 sphere, const in mat4 transform){
   return vec4(
-    (transform * vec4(sphere.xyz, 1.0)).xyz, 
+    (transform * vec4(sphere.xyz, 1.0)).xyz,
     max(
       sphere.w * max(1.0, sqrt(max(max(dot(transform[0].xyz, transform[0].xyz), dot(transform[1].xyz, transform[1].xyz)), dot(transform[2].xyz, transform[2].xyz)))),
       0.0
@@ -407,12 +429,23 @@ const uint FLAG_LOD_ENABLED = 1u << 0;     // LOD selection + command-rewrite ac
 const uint FLAG_LOD_TEMPORAL = 1u << 1;    // temporal 1-frame-lag mode (writes lodNeeded/lodLevel, defers rewrite on reset)
 const uint FLAG_LOD_RESET_FRAME = 1u << 2; // first frames / camera teleport: in temporal mode, skip command-rewrite
 
-const uint FLAG_MESHLET_CULLING_ENABLED = 1u << 3; // Whether to submit meshlet commands for visible objects, if meshlet data is available, and 
-                                                   // perform meshlet culling in the task shader. If not set, the full mesh will be rendered 
+const uint FLAG_MESHLET_CULLING_ENABLED = 1u << 3; // Whether to submit meshlet commands for visible objects, if meshlet data is available, and
+                                                   // perform meshlet culling in the task shader. If not set, the full mesh will be rendered
                                                    // without meshlet culling, but still with object-level culling based on the bounding sphere
                                                    // of the whole object.
 
 const uint FLAG_SHADOW_PASS = 1u << 4;             // Shadow pass: skip items that don't cast shadows
+
+const uint FLAG_KEEP_PASS0_FOR_RENDERING = 1u << 5; // Variante (a): keep PASS0-committed primitives (cmd1.w bit0)
+                                                    // in the PASS1 RENDER list even if (possibly stale) HiZ marked them
+                                                    // occluded, but drive the visibility bitmap from the TRUE HiZ result
+                                                    // -> occlusion culling stays intact, only ~1 transition frame of
+                                                    // depth-tested overdraw. Cheap correctness net against 1-frame
+                                                    // staleness races.
+const uint FLAG_KEEP_PASS0_IN_PASS1 = 1u << 6;      // DIAGNOSTIC ONLY -- BREAKS OCCLUSION CULLING: skip the PASS1 HiZ test
+                                                    // entirely for PASS0-committed primitives AND mark them visible in the
+                                                    // bitmap, so once-visible/in-frustum geometry is never occlusion-culled
+                                                    // again (growing overdraw).
 
 const uint DRAW_CMD_FLAG_MATERIAL_CASTS_SHADOW = 1u << 2; // Per-command: material casts shadows (bit 2 of cmd1.w)
 const uint DRAW_INFO_FLAG_NODE_CASTS_SHADOW = 1u << 7;    // Per-node: node casts shadows (bit 7 of DrawInfo.flags)
@@ -457,11 +490,11 @@ void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uin
             }
           }
 
-          // Select LOD level based on screen coverage thresholds                        
+          // Select LOD level based on screen coverage thresholds
           uvec4 selectedLODMask = uvec4(lessThan(vec4(screenCoverage), lodInfo.thresholds));
           uint selectedLOD = selectedLODMask.x + selectedLODMask.y + selectedLODMask.z + selectedLODMask.w;
 
-          // Write LODLevel for next frame (only in temporal mode, buffer must be valid)      
+          // Write LODLevel for next frame (only in temporal mode, buffer must be valid)
           if(((pushConstants.flags & FLAG_LOD_TEMPORAL) != 0u) && !all(equal(pushConstants.lodLevelCurrentBDA, uvec2(0u)))){
             LODLevelBuffer lodLevelBuffer = LODLevelBuffer(pushConstants.lodLevelCurrentBDA);
             lodLevelBuffer.levels[nodeMatricesIndex] = selectedLOD;
@@ -471,18 +504,18 @@ void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uin
           // - Immediate mode: always rewrite with freshly computed selectedLOD
           // - Temporal + reset frame: rewrite with LOD 0 (safe default for first frames / camera teleport)
           // - Temporal + not reset: rewrite with previous frame's lodLevel (1-frame-lag)
-          uint rewriteLOD = ((pushConstants.flags & FLAG_LOD_TEMPORAL) != 0u) 
+          uint rewriteLOD = ((pushConstants.flags & FLAG_LOD_TEMPORAL) != 0u)
                               ? (
-                                  ((pushConstants.flags & FLAG_LOD_RESET_FRAME) != 0u) 
-                                    ? 0u 
+                                  ((pushConstants.flags & FLAG_LOD_RESET_FRAME) != 0u)
+                                    ? 0u
                                     : (
-                                        all(equal(pushConstants.lodLevelPreviousBDA, uvec2(0u))) 
-                                        ? 0u 
+                                        all(equal(pushConstants.lodLevelPreviousBDA, uvec2(0u)))
+                                        ? 0u
                                         : min(LODLevelBuffer(pushConstants.lodLevelPreviousBDA).levels[nodeMatricesIndex], lodInfo.countLODs - 1u)
                                       )
-                                ) 
+                                )
                               : selectedLOD; // default to LOD 0 for temporal mode, may be overwritten by the following conditions
-          if(rewriteLOD != 0xffffffffu){ 
+          if(rewriteLOD != 0xffffffffu){
             cmd0.xzw = uvec3(uint(lodInfo.countIndices[rewriteLOD]), uint(lodInfo.firstIndices[rewriteLOD]), uint(lodInfo.firstVertices[rewriteLOD]));
             outSelectedLOD = rewriteLOD;
           } else {
@@ -501,13 +534,13 @@ void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uin
 
 #ifdef MESH_SHADER_PATH
 // Submit draw commands for the meshlets of a visible object, either as one command with the
-// full meshlet count for the task shader to expand, or as multiple commands each with one 
-// meshlet for direct dispatch, depending on whether FLAG_MESHLET_CULLING_ENABLED is set or not. 
+// full meshlet count for the task shader to expand, or as multiple commands each with one
+// meshlet for direct dispatch, depending on whether FLAG_MESHLET_CULLING_ENABLED is set or not.
 #ifdef MESHLET_EXPAND
 // MESHLET_EXPAND: write per-meshlet commands to global scratch buffer (unsorted).
 // The sort shader later scatters them into per-range output positions.
 #endif
-void submitMeshletCommands(uint counterIndex, 
+void submitMeshletCommands(uint counterIndex,
 #ifndef MESHLET_EXPAND
                            uint inputBaseOffset, uint inputMaxCount,
 #endif
@@ -571,7 +604,7 @@ void submitMeshletCommands(uint counterIndex,
           if(hasSphere){
             meshletSphere = sphereTransform(meshletSphere, modelMatrix);
           }
-#ifdef MESH_SHADER_DEBUG_EX          
+#ifdef MESH_SHADER_DEBUG_EX
           if(i < 2u){
             debugPrintfEXT("meshletBDASphere obj=%u ml=%u base=%u idx=%u sphere=[%f,%f,%f,%f] hasSphere=%u descSphere=[%f,%f,%f,%f]",
               meshObjectID, i, meshletBoundingSphereBase, sphereIndex,
@@ -579,7 +612,7 @@ void submitMeshletCommands(uint counterIndex,
               uint(hasSphere),
               desc.boundingSphere.x, desc.boundingSphere.y, desc.boundingSphere.z, desc.boundingSphere.w);
           }
-#endif          
+#endif
         }
         if(!hasSphere && (desc.boundingSphere.w > 0.0)){
           meshletSphere = sphereTransform(desc.boundingSphere, modelMatrix);
@@ -615,7 +648,7 @@ void submitMeshletCommands(uint counterIndex,
 #endif
                 {
                   float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1));
-                  float sampledRawDepth = textureLod(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x;
+                  float sampledRawDepth = hizFarthestRaw(pushConstants.textureDepthIndex, aabb, float(viewIndex), level);
                   vec2 depthZ = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
                     (aabb.xy + aabb.zw) - vec2(1.0),
                     sampledRawDepth,
@@ -624,16 +657,15 @@ void submitMeshletCommands(uint counterIndex,
                   float depth = -(depthZ.x / depthZ.y);
                   float sphereFront = (-viewSpaceSphere.z) - viewSpaceSphere.w;
 #ifndef DEBUG_SKIP_MESHLET_HIZ
-#ifdef FIX_KEEP_PASS0_VISIBLE_IN_PASS1
-                  // Skip per-meshlet HiZ for meshlets of a PASS0-committed object (flags bit0):
-                  // PASS0 submits all of its meshlets into the depth buffer unconditionally, so
-                  // they are known visible -> never let a stale HiZ drop them from the color list.
-                  if((flags & 1u) == 0u){
+                  // FLAG_KEEP_PASS0_IN_PASS1 (runtime, diagnostic, BREAKS CULLING): skip per-meshlet HiZ
+                  // for meshlets of a PASS0-committed object (flags bit0) -- PASS0 submits all of its
+                  // meshlets into the depth buffer unconditionally, so they are known visible -> never
+                  // let a stale HiZ drop them from the rendering list. Otherwise (and by default) take HiZ.
+                  if(((pushConstants.flags & FLAG_KEEP_PASS0_IN_PASS1) != 0u) && ((flags & 1u) != 0u)){
+                    // keep visible: leave 'visible' unchanged (true from the frustum/area path above)
+                  }else{
                     visible = sphereFront <= depth;
                   }
-#else
-                  visible = sphereFront <= depth;
-#endif
 #ifdef MESH_CULL_DEBUG_COUNTERS
                   if(!visible){
                     meshletLastCullReason = 14u;
@@ -664,12 +696,12 @@ void submitMeshletCommands(uint counterIndex,
           // Culling disabled or no valid bounding sphere → always visible (conservative)
           meshletVisible = true;
         }
-#ifdef FIX_KEEP_PASS0_IN_COLOR_ONLY
-        // Variante (a) meshlet-level: a meshlet of a PASS0-committed object (flags bit0) is kept in
-        // the draw list even if (possibly stale) HiZ said occluded, WITHOUT marking the meshlet
-        // visibility bitmap (the true HiZ result drives it) -> per-meshlet occlusion culling stays
-        // intact next frame; only ~1 transition frame of depth-tested overdraw.
-        if((!meshletVisible) && ((flags & 1u) != 0u)){
+        // FLAG_KEEP_PASS0_FOR_RENDERING (Variante a, runtime) meshlet-level: a meshlet of a
+        // PASS0-committed object (flags bit0) is kept in the draw list even if (possibly stale) HiZ
+        // said occluded, WITHOUT marking the meshlet visibility bitmap (the true HiZ result drives it)
+        // -> per-meshlet occlusion culling stays intact next frame; only ~1 transition frame of
+        // depth-tested overdraw.
+        if(((pushConstants.flags & FLAG_KEEP_PASS0_FOR_RENDERING) != 0u) && (!meshletVisible) && ((flags & 1u) != 0u)){
           uint scratchIdx = atomicAdd(scratch.counter, 1u);
           if(scratchIdx < pushConstants.maxScratchEntries){
             scratch.entryData[scratchIdx * 3u] = uvec4(1u, 1u, 1u, meshletBase + i);
@@ -677,7 +709,6 @@ void submitMeshletCommands(uint counterIndex,
             scratch.entryData[scratchIdx * 3u + 2u] = uvec4(counterIndex, 0u, 0u, 0u);
           }
         }
-#endif
         if(meshletVisible){
 #ifdef MESH_CULL_DEBUG_COUNTERS
           MESH_CULL_DBG_ADD(15u);
@@ -804,21 +835,21 @@ void main(){
   if(pushConstants.batchRangeIndex < 0){
 
     // Mega-dispatch: binary search over prefix sums
-    
+
     uint globalIndex = gl_GlobalInvocationID.x;
     if(globalIndex >= pushConstants.totalCommands){
-      return;  
+      return;
     }
 
     rangeIndex = findRangeIndex(globalIndex);
     localIndex = globalIndex - prefixSums.sums[pushConstants.prefixSumOffset + rangeIndex];
 
   } else {
-    
+
     // Per-range dispatch: range index given directly
 
     rangeIndex = uint(pushConstants.batchRangeIndex);
-    localIndex = gl_GlobalInvocationID.x;    
+    localIndex = gl_GlobalInvocationID.x;
     if(localIndex >= batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommands){
       return;
     }
@@ -878,15 +909,15 @@ void main(){
 #ifndef DEBUG_SKIP_PASS0_PREV_VIS
   if((pushConstants.skipCulling == 0u) &&  // If it is the first frame or the like, just don't cull anything
     ((meshObjectID < pushConstants.countMeshObjectIDs) && // Check if the mesh object ID is in the valid range, since
-                                                           // new drawIndexedIndirectCommands may have been added 
-                                                           // with a higher mesh object ID than the current 
+                                                           // new drawIndexedIndirectCommands may have been added
+                                                           // with a higher mesh object ID than the current
                                                            // countMeshObjectIDs in contrast to the previous frame
       ((inputVisibilityBuffer.bitmap[visibilityBufferOffset + (meshObjectID >> 5u)] & (1u << (meshObjectID & 31u))) == 0u))){
-    // Skip, since it was not visible in the previous frame    
+    // Skip, since it was not visible in the previous frame
 #ifdef MESH_CULL_DEBUG_COUNTERS
     MESH_CULL_DBG_ADD(9u);
 #endif
-    return; 
+    return;
   }
 #endif
 
@@ -958,7 +989,7 @@ void main(){
     outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
   }
 #endif
-  
+
 #else // PASS == 1
 
   // In the second pass, cull the stuff against the previous frame visible stuff but with the current view and projection matrices
@@ -966,10 +997,10 @@ void main(){
   uint localInvocationIndex = gl_LocalInvocationID.x;
 
   // Maximal 8 views at once, for example 2 for VR (for the left und right eyes), 4 for cascaded shadow maps, 6 for cube maps
-  uint countViews = min(pushConstants.countViews, 8); 
+  uint countViews = min(pushConstants.countViews, 8);
 
   if(localInvocationIndex < countViews){
-    
+
     uint viewIndex = pushConstants.baseViewIndex + localInvocationIndex;
 
     viewMatrices[localInvocationIndex] = uView.views[viewIndex].viewMatrix;
@@ -978,23 +1009,23 @@ void main(){
 
     inverseProjectionMatrixZData[localInvocationIndex] = vec4(uView.views[viewIndex].inverseProjectionMatrix[2].zw, uView.views[viewIndex].inverseProjectionMatrix[3].zw);
 
-    // Get z near from projection matrix 
+    // Get z near from projection matrix
     zNears[localInvocationIndex] = abs(uView.views[viewIndex].inverseProjectionMatrix[3][2] / uView.views[viewIndex].inverseProjectionMatrix[2][3]);
 
     mat4 transposedProjectionMatrix = transpose(uView.views[viewIndex].projectionMatrix);
 
 /*  fastFrustums[localInvocationIndex] = vec4(
-      normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[0]).xz, 
+      normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[0]).xz,
       normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[1]).yz
     );*/
 
     frustumSetup(frustums[localInvocationIndex], uView.views[viewIndex].projectionMatrix);
-      
+
   }
 
   memoryBarrierShared();
   groupMemoryBarrier();
-  barrier(); 
+  barrier();
 
   uint rangeIndex;
   uint localIndex;
@@ -1005,7 +1036,7 @@ void main(){
 
     uint globalIndex = gl_GlobalInvocationID.x;
     if(globalIndex >= pushConstants.totalCommands){
-      return;  
+      return;
     }
 
     rangeIndex = findRangeIndex(globalIndex);
@@ -1020,7 +1051,7 @@ void main(){
     if(localIndex >= batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].countCommands){
       return;
     }
-    
+
   }
 
   uint baseCommandIndex = batchRanges.ranges[pushConstants.batchRangeOffset + rangeIndex].baseCommandIndex;
@@ -1081,9 +1112,9 @@ void main(){
 
   vec4 boundingSphere = boundingSphereBuffer.boundingSpheres[cmd1.y];
 
-  vec4 screenSpaceAABB = vec4(-2.0); // out of screen space, so that it is always culled away 
+  vec4 screenSpaceAABB = vec4(-2.0); // out of screen space, so that it is always culled away
 
-  // Only cull when needed, since some render passes may not need culling, so we just forward the drawIndexedIndirectCommands 
+  // Only cull when needed, since some render passes may not need culling, so we just forward the drawIndexedIndirectCommands
   // directly to the output buffer in that case. And don't cull draw items with more than one instance, since in this case
   // the bounding sphere is not valid for all instances.
   if((boundingSphere.w > 0.0) && (pushConstants.skipCulling == 0u) && (cmd0.y == 1u)){
@@ -1109,7 +1140,7 @@ void main(){
 #endif
 
    if(cmd0.y != 0u){
- 
+
     vec2 viewPortSize = vec2(textureSize(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], 0).xy);
     int countLODLevels = textureQueryLevels(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)]);
 
@@ -1121,8 +1152,8 @@ void main(){
 
       vec4 viewSpaceBoundingSphere = vec4((viewMatrices[viewIndex] * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
 
-      // Frustum visible check, but without testing the far planes, so it is more projection matrix variant independent (reverse z, 
-      // infinite far plane, and the like). The CPU culling should already have frustum-culled it away anyway, so this is just a 
+      // Frustum visible check, but without testing the far planes, so it is more projection matrix variant independent (reverse z,
+      // infinite far plane, and the like). The CPU culling should already have frustum-culled it away anyway, so this is just a
       // safety check.
 #ifdef DEBUG_SKIP_PASS1_FRUSTUM
       bool visible = true;
@@ -1158,30 +1189,28 @@ void main(){
 #endif
           {
 
-            float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1)); 
+            float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1));
 
 #undef USE_FASTER_DEPTH_CALCULATIONS
 #ifdef USE_FASTER_DEPTH_CALCULATIONS
             vec2 depthZ = fma(
-              inverseProjectionMatrixZData[viewIndex].xy, 
-              textureLod(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).xx, 
+              inverseProjectionMatrixZData[viewIndex].xy,
+              vec2(hizFarthestRaw(pushConstants.textureDepthIndex, aabb, float(viewIndex), level)),
               inverseProjectionMatrixZData[viewIndex].zw
             );
 #else
             vec2 depthZ = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
               (aabb.xy + aabb.zw) - vec2(1.0), // optimized from: fma(mix(aabb.xy, aabb.zw, 0.5), vec2(2.0), vec2(-1.0))
-              textureLod(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x, 
+              hizFarthestRaw(pushConstants.textureDepthIndex, aabb, float(viewIndex), level),
               1.0
             )).zw;
 #endif
             float depth = -(depthZ.x / depthZ.y); // flip the sign, because z in view space is negative otherwise
-            
+
 #ifndef DEBUG_SKIP_PASS1_HIZ
             bool hizVisible = ((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth;
+
 #ifdef DEBUG_PASS0_HIZ_DROP_PRINTF
-#ifndef DEBUG_PASS0_HIZ_DROP_MAX_DISTANCE
-#define DEBUG_PASS0_HIZ_DROP_MAX_DISTANCE 25.0
-#endif
             // Fires ONLY on the bug event: a near-camera PASS0-committed primitive (its depth is
             // already in the buffer) that PASS1's HiZ wants to occlusion-cull. front=sphere nearest
             // (view space), sampled=HiZ depth read back, margin=front-sampled (>0 = "culled"); if
@@ -1208,19 +1237,32 @@ void main(){
                   (-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w, depth, dbgDepth0,
                   ((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) - depth,
                   cmd1.y, level);
+                // Second line: is the BASE (model-space) sphere sane (constant per mesh) and only
+                // the node-MATRIX transform off (=> stale node matrix), or is the base sphere itself
+                // garbage (=> stale boundingSphereBuffer)? matT = model-matrix translation (world pos
+                // the cull used). Compare matT/transformed-center vs where the belt actually is.
+                vec4 dbgBaseSphere = boundingSphereBuffer.boundingSpheres[cmd1.y];
+                uint dbgMatrixID = drawInfoItems[meshObjectID].matrixID;
+                mat4 dbgModelMatrix = matrixPairBuffer.pairs[dbgMatrixID].modelMatrix;
+                debugPrintfEXT("HIZDROP2 obj=%u matrixID=%u baseSphere=[%f,%f,%f,%f] xfCenter=[%f,%f,%f] matT=[%f,%f,%f]",
+                  meshObjectID, dbgMatrixID,
+                  dbgBaseSphere.x, dbgBaseSphere.y, dbgBaseSphere.z, dbgBaseSphere.w,
+                  boundingSphere.x, boundingSphere.y, boundingSphere.z,
+                  dbgModelMatrix[3].x, dbgModelMatrix[3].y, dbgModelMatrix[3].z);
               }
             }
 #endif
-#ifdef FIX_KEEP_PASS0_VISIBLE_IN_PASS1
-            // Skip HiZ occlusion only for PASS0-committed objects (cmd1.w bit0 "added"): they are
-            // already in the depth buffer, hence known visible -> never let a stale HiZ false-cull
-            // them out of the color list (would cause the 1-frame skybox-through-the-mesh flicker).
-            if((cmd1.w & 1u) == 0u){
+
+            // FLAG_KEEP_PASS0_IN_PASS1 (runtime, diagnostic, BREAKS CULLING): skip the HiZ result only
+            // for PASS0-committed objects (cmd1.w bit0 "added") -- they are already in the depth buffer,
+            // hence known visible -> never let a stale HiZ false-cull them out of the rendering list
+            // (would cause the 1-frame skybox-through-the-mesh flicker). Otherwise (and by default) take
+            // the HiZ visibility.
+            if(((pushConstants.flags & FLAG_KEEP_PASS0_IN_PASS1) != 0u) && ((cmd1.w & 1u) != 0u)){
+              // keep visible: leave 'visible' unchanged (true from the in-frustum path above)
+            }else{
               visible = hizVisible;
             }
-#else
-            visible = hizVisible;
-#endif
 #ifdef MESH_CULL_DEBUG_COUNTERS
             if(!visible){
               lastCullReason = 7u;
@@ -1235,11 +1277,11 @@ void main(){
       }
 
       if(visible){
-        
+
         isDrawIndexedIndirectCommandVisible = true;
 
         // No need to check also the other views in this case
-        break; 
+        break;
 
       }
 
@@ -1251,28 +1293,25 @@ void main(){
     }
 #endif
 
-   } 
+   }
 
   }else{
-      
-    // Always visible, if there is no bounding sphere, or if culling is disabled, or if there are more than one instance, since in this case 
-    // the bounding sphere is not valid for all instances, or always invisible, when instanceCount is zero.       
+
+    // Always visible, if there is no bounding sphere, or if culling is disabled, or if there are more than one instance, since in this case
+    // the bounding sphere is not valid for all instances, or always invisible, when instanceCount is zero.
     isDrawIndexedIndirectCommandVisible = (cmd0.y != 0u);
 
   }
 
-#ifdef FIX_KEEP_PASS0_IN_COLOR_ONLY
-  // Variante (a): keep a PASS0-committed object (cmd1.w bit0) in the COLOR list even if the
-  // (possibly stale) HiZ marked it occluded -- but remember the TRUE visibility for the bitmap.
+  // FLAG_KEEP_PASS0_FOR_RENDERING (Variante a, runtime): keep a PASS0-committed object (cmd1.w bit0)
+  // in the RENDER list even if the (possibly stale) HiZ marked it occluded -- but remember the TRUE
+  // visibility for the bitmap below, so genuinely-occluded objects still drop out of next frame's PASS0
+  // (occlusion culling stays intact; only ~1 transition frame of depth-tested overdraw).
+  bool keepPass0ForRendering = (pushConstants.flags & FLAG_KEEP_PASS0_FOR_RENDERING) != 0u;
   bool trueVisibleForBitmap = isDrawIndexedIndirectCommandVisible;
-  if((!isDrawIndexedIndirectCommandVisible) && ((cmd1.w & 1u) == 0u)){
+  if((!isDrawIndexedIndirectCommandVisible) && ((!keepPass0ForRendering) || ((cmd1.w & 1u) == 0u))){
     return;
   }
-#else
-  if(!isDrawIndexedIndirectCommandVisible){
-    return;
-  }
-#endif
 
 #ifdef MESH_CULL_DEBUG_COUNTERS
   MESH_CULL_DBG_ADD(8u);
@@ -1283,12 +1322,10 @@ void main(){
   applyLOD(cmd0, cmd1.z, cmd1.y, meshObjectID, selectedLOD);
 
   // Mark as visible in any case, independently of being already added in the previous pass.
-  // Variante (a): drive the bitmap from the TRUE HiZ result only, so a force-kept-for-color but
-  // genuinely-occluded PASS0 object does NOT perpetuate its visibility into next frame's PASS0.
-#ifdef FIX_KEEP_PASS0_IN_COLOR_ONLY
-  if(trueVisibleForBitmap)
-#endif
-  {
+  // Variante (a): with FLAG_KEEP_PASS0_FOR_RENDERING, drive the bitmap from the TRUE HiZ result only,
+  // so a force-kept-for-rendering but genuinely-occluded PASS0 object does NOT perpetuate its visibility
+  // into next frame's PASS0. Without the flag, mark unconditionally (the old default behaviour).
+  if(trueVisibleForBitmap || !keepPass0ForRendering){
 #ifdef DEBUG_FORCE_VISIBILITY_BITMAP
    atomicOr(outputVisiblityBuffer.bitmap[visibilityBufferOffset + (meshObjectID >> 5u)], 0xffffffffu);
 #else
@@ -1311,7 +1348,7 @@ void main(){
           submitMeshletCommands(oitDrawCallIndex,
 #ifndef MESHLET_EXPAND
                                 oitBaseCommandIndex, pushConstants.maxOutputCommands,
-#endif 
+#endif
                                 meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
           uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
@@ -1347,7 +1384,7 @@ void main(){
     }
   }
 
-  // Append to the global part of the output buffer to ensure the forward+ pass renders all visible elements as much as possible, so that false positive 
+  // Append to the global part of the output buffer to ensure the forward+ pass renders all visible elements as much as possible, so that false positive
   // occlusion culls are avoided as much as possible.
   {
 
@@ -1355,7 +1392,7 @@ void main(){
     submitMeshletCommands(drawCallIndex,
 #ifndef MESHLET_EXPAND
                           baseCommandIndex, pushConstants.maxOutputCommands,
-#endif  
+#endif
                           meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
@@ -1368,7 +1405,7 @@ void main(){
 
   }
 
-  // Manage disocclusion in the output buffer. This step helps optimize depth pre-pass by minimizing depth-buffer overdraw and avoiding redundant rendering 
+  // Manage disocclusion in the output buffer. This step helps optimize depth pre-pass by minimizing depth-buffer overdraw and avoiding redundant rendering
   // in the depth buffer. This is necessary because a complete depth pre-pass is needed for things like e.g. screen space ambient occlusion and the like.
   if(((cmd1.w & 1u) == 0u) &&                                        // Just when not already added in the previous pass to the global output buffer part
     (baseCommandIndexForDisocclusions != 0xffffffffu)){ // Just when enabled
@@ -1393,4 +1430,4 @@ void main(){
 
 #endif
 
-} 
+}

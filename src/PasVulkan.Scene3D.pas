@@ -3635,6 +3635,7 @@ type EpvScene3D=class(Exception);
                      procedure UpdateSkins(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateNodeBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateInstanceBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+                     function GetConservativeSkinnedBoundingBox(const aInFlightFrameIndex:TpvSizeInt;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode):TpvAABB;
                      procedure UpdateInstanceNodes(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateDeactivation(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
 {$ifdef InstanceUpdateDirtySkip}
@@ -4343,6 +4344,7 @@ type EpvScene3D=class(Exception);
        fPlanetRainStreakMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fWetnessMapDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fUseParallelQueues:TPasMPBool32;
+       fUseConservativeSkinnedBounds:TPasMPBool32;
        fPlanetWaterSimulationUseParallelQueue:TPasMPBool32;
        fPlanetWaterSimulationQueue:TpvVulkanQueue;
        fPlanetWaterSimulationQueueFamilyIndex:TpvInt32;
@@ -5167,6 +5169,11 @@ type EpvScene3D=class(Exception);
        property PlanetRainStreakMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetRainStreakMeshGenerationDescriptorSetLayout;
        property WetnessMapDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fWetnessMapDescriptorSetLayout;
        property UseParallelQueues:TPasMPBool32 read fUseParallelQueues;
+       // When set, skinned mesh nodes use a per-frame conservative worst-case (per-joint-union) bounding
+       // sphere for object-level culling instead of the tight mesh_bounds.comp GPU bound. This prevents
+       // HiZ occlusion false-culls for hollow/ring-shaped skinned parts (e.g. belts). Can be toggled at
+       // runtime; fUsedJoints is always collected at load time (TGroup.CollectNodeUsedJoints).
+       property UseConservativeSkinnedBounds:TPasMPBool32 read fUseConservativeSkinnedBounds write fUseConservativeSkinnedBounds;
        property PlanetWaterSimulationUseParallelQueue:TPasMPBool32 read fPlanetWaterSimulationUseParallelQueue write fPlanetWaterSimulationUseParallelQueue;
        property PlanetWaterSimulationQueue:TpvVulkanQueue read fPlanetWaterSimulationQueue;
        property PlanetWaterSimulationQueueFamilyIndex:TpvInt32 read fPlanetWaterSimulationQueueFamilyIndex;
@@ -31801,6 +31808,45 @@ begin
 
 end;
 
+function TpvScene3D.TGroup.TInstance.GetConservativeSkinnedBoundingBox(const aInFlightFrameIndex:TpvSizeInt;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.TNode):TpvAABB;
+var WorkInFlightFrameIndex,UsedJointIndex:TpvSizeInt;
+    InverseMatrix,ModelNodeMatrixEx,JointMatrix:TpvMatrix4x4;
+    UsedJoint:TpvScene3D.TGroup.TNode.PUsedJoint;
+    First:Boolean;
+begin
+ // Per-frame conservative worst-case bounding box for a skinned mesh node, built from the per-joint
+ // bind-space AABBs that CollectNodeUsedJoints pre-computed at load time. Linear blend skinning maps
+ // each vertex to a convex combination (Sigma weight_j = 1) of its per-joint transformed positions, so
+ // the union of each used joint's fully-transformed AABB is a guaranteed superset of the actual skinned
+ // geometry (never too small -> no occlusion-culling false-positives). The transform chain mirrors
+ // ProcessMorphSkinNode exactly, assuming a per-joint weight of 1.0 (worst case per joint).
+ WorkInFlightFrameIndex:=Max(0,aInFlightFrameIndex);
+ if assigned(aNode.fSkin) then begin
+  InverseMatrix:=aInstanceNode.fWorkMatrix.Inverse;
+ end else begin
+  InverseMatrix:=TpvMatrix4x4.Identity;
+ end;
+ ModelNodeMatrixEx:=aInstanceNode.fWorkMatrix*fWorkModelMatrix;
+ First:=true;
+ result.Min:=TpvVector3.InlineableCreate(Infinity,Infinity,Infinity);
+ result.Max:=TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity);
+ for UsedJointIndex:=0 to aNode.fUsedJoints.Count-1 do begin
+  UsedJoint:=@aNode.fUsedJoints.Items[UsedJointIndex];
+  JointMatrix:=(fNodeMatricesArray[WorkInFlightFrameIndex][UsedJoint^.Joint]*InverseMatrix)*ModelNodeMatrixEx;
+  if First then begin
+   First:=false;
+   result:=UsedJoint^.AABB.HomogenTransform(JointMatrix);
+  end else begin
+   result.DirectCombine(UsedJoint^.AABB.HomogenTransform(JointMatrix));
+  end;
+ end;
+ if First then begin
+  // No used joints (e.g. a mesh with a skin reference but no skinned vertices): fall back to the
+  // already-computed exact per-frame bounding box for this in-flight frame.
+  result:=aInstanceNode.fBoundingBoxes[aInFlightFrameIndex];
+ end;
+end;
+
 procedure TpvScene3D.TGroup.TInstance.UpdateInstanceBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
 var Index,WorkInFlightFrameIndex:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
@@ -31835,11 +31881,21 @@ begin
    Node:=aScene.fAllNodes.RawItems[Index];
    InstanceNode:=fNodes.RawItems[Node.Index];
    if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(Node.Mesh) then begin
-    InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=TpvSphere.CreateFromAABB(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
-    if not assigned(Node.fSkin) then begin
-     // Static nodes: write bounding sphere for staging upload.
-     // Skinned nodes: mesh_bounds.comp writes exact bounds directly to GPU buffer.
+    if assigned(Node.fSkin) and fSceneInstance.fUseConservativeSkinnedBounds then begin
+     // Conservative skinned bounds mode: override the tight per-frame bound with the per-joint-union
+     // worst-case bound and upload it from the CPU. mesh_bounds.comp is suppressed for skinned nodes in
+     // this mode (no entries are added to fCachedBoundsRanges in UpdateCachedVertices), so this CPU
+     // sphere is not overwritten on the GPU. Prevents HiZ occlusion false-culls for hollow/ring-shaped
+     // skinned parts (e.g. the belt).
+     InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=TpvSphere.CreateFromAABB(GetConservativeSkinnedBoundingBox(aInFlightFrameIndex,Node,InstanceNode));
      fSceneInstance.fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][InstanceNode.fBoundingSphereIndex]:=InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4;
+    end else begin
+     InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=TpvSphere.CreateFromAABB(InstanceNode.fBoundingBoxes[aInFlightFrameIndex]);
+     if not assigned(Node.fSkin) then begin
+      // Static nodes: write bounding sphere for staging upload.
+      // Skinned nodes: mesh_bounds.comp writes exact bounds directly to GPU buffer.
+      fSceneInstance.fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][InstanceNode.fBoundingSphereIndex]:=InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4;
+     end;
     end;
    end;
   end;
@@ -31949,7 +32005,11 @@ begin
   InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]:=InstanceNode.fBoundingBoxFilled[PreviousInFlightFrameIndex];
   InstanceNode.fBoundingSpheres[aInFlightFrameIndex]:=InstanceNode.fBoundingSpheres[PreviousInFlightFrameIndex];
   if InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and assigned(fGroup.fNodes[Index].Mesh) then begin
-   if not assigned(fGroup.fNodes[Index].fSkin) then begin
+   if (not assigned(fGroup.fNodes[Index].fSkin)) or fSceneInstance.fUseConservativeSkinnedBounds then begin
+    // Static nodes always upload their sphere from the CPU. In conservative skinned bounds mode, skinned
+    // nodes also upload here: the pose is unchanged (dirty-skip), so the carried-over conservative sphere
+    // from the previous in-flight frame is still valid, and mesh_bounds.comp is suppressed (would otherwise
+    // leave this in-flight frame's GPU slot stale).
     fSceneInstance.fGlobalBoundingSphereDynamicArrays[aInFlightFrameIndex][InstanceNode.fBoundingSphereIndex]:=InstanceNode.fBoundingSpheres[aInFlightFrameIndex].Vector4;
    end;
   end;
@@ -33886,7 +33946,12 @@ begin
       CachedBoundsRange.Count:=IndicesCount;
       CachedBoundsRange.BoundingSphereIndex:=CurrentBoundingSphereIndex;
 
-      fGroup.fSceneInstance.fCachedBoundsRanges.Add(CachedBoundsRange);
+      // In conservative skinned bounds mode the per-frame conservative bounding sphere is uploaded from
+      // the CPU (see UpdateInstanceBounds); skip the mesh_bounds.comp range so the GPU does not overwrite
+      // it with the tight exact bound.
+      if not fGroup.fSceneInstance.fUseConservativeSkinnedBounds then begin
+       fGroup.fSceneInstance.fCachedBoundsRanges.Add(CachedBoundsRange);
+      end;
 
      end;
 
@@ -34843,6 +34908,8 @@ begin
   fPlanetGrassAgeMapSyncReverseTimelineCounter:=0;
   fPlanetGrassAgeMapSyncTimelineLock:=nil;
 {$endif}
+
+  fUseConservativeSkinnedBounds:=false;
 
   fPlanetAtmospherePrecipitationSimulationUseParallelQueue:=false;
   fPlanetAtmospherePrecipitationSimulationQueue:=nil;
@@ -40883,24 +40950,23 @@ begin
    // master-grass-age-map access lives on a single queue. Only the single-buffer
    // path - which has no update-queue TransferTo and therefore no cross-queue
    // race - still runs the passes here on the universal queue.
-   if fPlanetSingleBuffers then begin
-{$endif}
-   if not (fEnableWater and fPlanetWaterSimulationUseParallelQueue) then begin
-    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Grass Age Map Update',[0.25,0.75,0.5,1.0]);
-    ProcessPlanetGrassAgeMapUpdateSimulations(CommandBuffer,aInFlightFrameIndex);
+   if fPlanetSingleBuffers then{$endif}begin
+
+    if not (fEnableWater and fPlanetWaterSimulationUseParallelQueue) then begin
+     fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Grass Age Map Update',[0.25,0.75,0.5,1.0]);
+     ProcessPlanetGrassAgeMapUpdateSimulations(CommandBuffer,aInFlightFrameIndex);
+     fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
+    end;
+
+    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Grass Age Map Sandbox Growth',[0.25,0.85,0.4,1.0]);
+    ProcessPlanetGrassAgeMapSandboxGrowthSimulations(CommandBuffer,aInFlightFrameIndex);
     fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
-   end;
 
-   fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Grass Age Map Sandbox Growth',[0.25,0.85,0.4,1.0]);
-   ProcessPlanetGrassAgeMapSandboxGrowthSimulations(CommandBuffer,aInFlightFrameIndex);
-   fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
+    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Grass Flags Map Flags Update',[0.3,0.8,0.6,1.0]);
+    ProcessPlanetGrassFlagsMapFlagsUpdate(CommandBuffer,aInFlightFrameIndex);
+    fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
 
-   fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Grass Flags Map Flags Update',[0.3,0.8,0.6,1.0]);
-   ProcessPlanetGrassFlagsMapFlagsUpdate(CommandBuffer,aInFlightFrameIndex);
-   fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
-{$ifdef PasVulkanPlanetGrassAgeMapSyncConsolidate}
    end;
-{$endif}
 
 // fVulkanDevice.WaitIdle; //123
 

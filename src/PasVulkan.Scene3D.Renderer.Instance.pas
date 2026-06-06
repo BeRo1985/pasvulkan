@@ -1017,6 +1017,8 @@ type { TpvScene3DRendererInstance }
        fPerInFlightFrameMeshletVisibilityBuffers:TpvScene3D.TPerInFlightFrameMeshletVisibilityBuffersPerCullRenderPass;
        fPerInFlightFrameMeshletVisibilityBufferPartSizes:TpvScene3D.TPerInFlightFrameMeshletVisibilityBufferPartSizesPerCullRenderPass;
       private
+       fKeepPass0ForRendering:Boolean;
+       fKeepPass0InPass1:Boolean;
        fDebugDrawMeshletBoundingSpheres:Boolean;
        fDebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers;
        fDebugMeshletSphereComputeShaderModule:TpvVulkanShaderModule;
@@ -1327,6 +1329,12 @@ type { TpvScene3DRendererInstance }
        property ViewBuffersDescriptorSets:TPerInFlightFrameVulkanDescriptorSets read fViewBuffersDescriptorSets;
       public
        property DebugTAAMode:TpvUInt32 read fDebugTAAMode write fDebugTAAMode;
+       // Mesh-cull PASS1 "depth present, color missing" flicker controls (mesh_cull.comp,
+       // FLAG_KEEP_PASS0_FOR_RENDERING / FLAG_KEEP_PASS0_IN_PASS1). KeepPass0ForRendering (Variante a)
+       // is a cheap correctness net against 1-frame staleness races and defaults ON; KeepPass0InPass1
+       // is DIAGNOSTIC ONLY (breaks occlusion culling) and defaults OFF.
+       property KeepPass0ForRendering:Boolean read fKeepPass0ForRendering write fKeepPass0ForRendering;
+       property KeepPass0InPass1:Boolean read fKeepPass0InPass1 write fKeepPass0InPass1;
        property DebugDrawMeshletBoundingSpheres:Boolean read fDebugDrawMeshletBoundingSpheres write fDebugDrawMeshletBoundingSpheres;
        property DebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers read fDebugMeshletSphereLineBuffers;
       public
@@ -2274,6 +2282,10 @@ begin
  fUseDebugBlit:=false;
 
  fDebugTAAMode:=0;
+
+ // Mesh-cull PASS1 flicker controls: Variante (a) net ON by default, the culling-breaking diagnostic OFF.
+ fKeepPass0ForRendering:=true;
+ fKeepPass0InPass1:=false;
 
  fDebugDrawMeshletBoundingSpheres:=false;
 
