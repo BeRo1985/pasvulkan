@@ -549,6 +549,13 @@ compileshaderarguments=(
   # only dispatched when GlobalIlluminationDDGIProbeRelocation is true on the Pascal side (the matching toggle).
   "-V gi_ddgi_relocation.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_relocation_comp.spv"
   "-V gi_ddgi_classification.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_classification_comp.spv"
+  # DDGI probe debug visualization (RendererInstance.DebugDDGIProbes). Procedural octahedral sphere per probe, instanced over
+  # all cascades, coloured by the probe's directional irradiance via ddgiEvaluateIrradiance (same storage mode as the rest).
+  "-V gi_ddgi_probe_debug.vert --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_ddgi_probe_debug_vert.spv"
+  "-V gi_ddgi_probe_debug.frag --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_ddgi_probe_debug_frag.spv"
+  # Frustum-culled mesh-shader variant (task -> mesh) of the probe debug overlay; needs the mesh-shader SPIR-V target like the other mesh/task shaders.
+  "-V gi_ddgi_probe_debug.task --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_ddgi_probe_debug_task.spv"
+  "-V gi_ddgi_probe_debug.mesh --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_ddgi_probe_debug_mesh.spv"
 
   # Surfel GI compute passes (per-frame order: clear -> grid build -> spawn -> trace -> recycle). gi_surfel_trace.comp
   # traces rays via ray query (includes raytracing.glsl), hence the explicit ray-tracing SPIR-V target like the DDGI trace.

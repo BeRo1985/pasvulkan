@@ -98,6 +98,13 @@ type { TpvScene3DRendererPassesForwardRenderPass }
              VertexBufferBDA:TpvUInt64;
             end;
             PDebugLinesPushConstants=^TDebugLinesPushConstants;
+            // DDGI probe debug overlay (RendererInstance.DebugDDGIProbes): one octahedral sphere per probe over all cascades,
+            // coloured by the live-sampled directional irradiance. Matches gi_ddgi_probe_debug.vert's push (viewBaseIndex, countViews).
+            TDDGIProbeDebugPushConstants=packed record
+             ViewBaseIndex:TpvUInt32;
+             CountViews:TpvUInt32;
+            end;
+            PDDGIProbeDebugPushConstants=^TDDGIProbeDebugPushConstants;
       private
        fOnSetRenderPassResourcesDone:boolean;
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -146,6 +153,17 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fMeshShaderGraphicsPipelines:array[boolean,TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
        fVulkanGraphicsPipelines:array[boolean,TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
        fVulkanSpaceLinesGraphicsPipeline:TpvVulkanGraphicsPipeline;
+       fDDGIProbeDebugMeshShader:Boolean; // MeshShaderSupport and MeshShaderPipelineActive -> frustum-culled task+mesh path instead of the raw vertex path
+       fDDGIProbeDebugVertexShaderModule:TpvVulkanShaderModule;
+       fDDGIProbeDebugTaskShaderModule:TpvVulkanShaderModule;
+       fDDGIProbeDebugMeshShaderModule:TpvVulkanShaderModule;
+       fDDGIProbeDebugFragmentShaderModule:TpvVulkanShaderModule;
+       fVulkanPipelineShaderStageDDGIProbeDebugVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageDDGIProbeDebugTask:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageDDGIProbeDebugMesh:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageDDGIProbeDebugFragment:TpvVulkanPipelineShaderStage;
+       fVulkanDDGIProbeDebugPipelineLayout:TpvVulkanPipelineLayout;
+       fVulkanDDGIProbeDebugGraphicsPipeline:TpvVulkanGraphicsPipeline;
        fVulkanDebugLinesGraphicsPipeline:TpvVulkanGraphicsPipeline;
        fVulkanDebugLinesPipelineLayout:TpvVulkanPipelineLayout;
        fDebugLinesVertexShaderModule:TpvVulkanShaderModule;
@@ -554,6 +572,63 @@ begin
 
  fVulkanPipelineShaderStageSpaceLinesFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fSpaceLinesFragmentShaderModule,'main');
 
+ // DDGI probe debug overlay: only meaningful (and the DDGI descriptor set only exists) in the DDGI GI mode.
+ fDDGIProbeDebugMeshShader:=fInstance.Renderer.Scene3D.MeshShaderSupport and fInstance.Renderer.Scene3D.MeshShaderPipelineActive;
+ if fInstance.Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination then begin
+
+  if fDDGIProbeDebugMeshShader then begin
+   // Frustum-culled task->mesh path: a task workgroup culls a batch of probes, the mesh shader renders one octahedral-sphere band.
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_ddgi_probe_debug_task.spv');
+   try
+    fDDGIProbeDebugTaskShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+   finally
+    Stream.Free;
+   end;
+   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fDDGIProbeDebugTaskShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesForwardRenderPass.DDGIProbeDebugTaskShaderModule');
+
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_ddgi_probe_debug_mesh.spv');
+   try
+    fDDGIProbeDebugMeshShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+   finally
+    Stream.Free;
+   end;
+   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fDDGIProbeDebugMeshShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesForwardRenderPass.DDGIProbeDebugMeshShaderModule');
+
+   fVulkanPipelineShaderStageDDGIProbeDebugTask:=TpvVulkanPipelineShaderStage.Create(TVkShaderStageFlagBits(VK_SHADER_STAGE_TASK_BIT_EXT),fDDGIProbeDebugTaskShaderModule,'main');
+   fVulkanPipelineShaderStageDDGIProbeDebugMesh:=TpvVulkanPipelineShaderStage.Create(TVkShaderStageFlagBits(VK_SHADER_STAGE_MESH_BIT_EXT),fDDGIProbeDebugMeshShaderModule,'main');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_ddgi_probe_debug_vert.spv');
+   try
+    fDDGIProbeDebugVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+   finally
+    Stream.Free;
+   end;
+   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fDDGIProbeDebugVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesForwardRenderPass.DDGIProbeDebugVertexShaderModule');
+
+   fVulkanPipelineShaderStageDDGIProbeDebugVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fDDGIProbeDebugVertexShaderModule,'main');
+  end;
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_ddgi_probe_debug_frag.spv');
+  try
+   fDDGIProbeDebugFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fDDGIProbeDebugFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesForwardRenderPass.DDGIProbeDebugFragmentShaderModule');
+
+  fVulkanPipelineShaderStageDDGIProbeDebugFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fDDGIProbeDebugFragmentShaderModule,'main');
+
+ end else begin
+  fDDGIProbeDebugVertexShaderModule:=nil;
+  fDDGIProbeDebugTaskShaderModule:=nil;
+  fDDGIProbeDebugMeshShaderModule:=nil;
+  fDDGIProbeDebugFragmentShaderModule:=nil;
+  fVulkanPipelineShaderStageDDGIProbeDebugVertex:=nil;
+  fVulkanPipelineShaderStageDDGIProbeDebugTask:=nil;
+  fVulkanPipelineShaderStageDDGIProbeDebugMesh:=nil;
+  fVulkanPipelineShaderStageDDGIProbeDebugFragment:=nil;
+ end;
+
  if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
 
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_lines_vert.spv');
@@ -645,6 +720,14 @@ begin
 
  FreeAndNil(fVulkanPipelineShaderStageSpaceLinesFragment);
 
+ FreeAndNil(fVulkanPipelineShaderStageDDGIProbeDebugVertex);
+
+ FreeAndNil(fVulkanPipelineShaderStageDDGIProbeDebugTask);
+
+ FreeAndNil(fVulkanPipelineShaderStageDDGIProbeDebugMesh);
+
+ FreeAndNil(fVulkanPipelineShaderStageDDGIProbeDebugFragment);
+
  FreeAndNil(fVulkanPipelineShaderStageDebugLinesVertex);
 
  FreeAndNil(fVulkanPipelineShaderStageDebugLinesFragment);
@@ -668,6 +751,14 @@ begin
  FreeAndNil(fSpaceLinesVertexShaderModule);
 
  FreeAndNil(fSpaceLinesFragmentShaderModule);
+
+ FreeAndNil(fDDGIProbeDebugVertexShaderModule);
+
+ FreeAndNil(fDDGIProbeDebugTaskShaderModule);
+
+ FreeAndNil(fDDGIProbeDebugMeshShaderModule);
+
+ FreeAndNil(fDDGIProbeDebugFragmentShaderModule);
 
  FreeAndNil(fDebugLinesVertexShaderModule);
 
@@ -967,6 +1058,24 @@ begin
  fVulkanSpaceLinesPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanSpaceLinesPipelineLayout.AddDescriptorSetLayout(fPassVulkanDescriptorSetLayout);
  fVulkanSpaceLinesPipelineLayout.Initialize;
+
+ // DDGI probe debug overlay layout: set 0 = global, set 1 = view UBO (binding 0 of the pass set), set 2 = the DDGI probe-field
+ // descriptor set (ddgiData + irradiance/visibility/glossy), exactly what gi_ddgi_probe_debug.{vert | task+mesh}/.frag read.
+ // Push is read in VERTEX+FRAGMENT (vertex path) or TASK+MESH+FRAGMENT (mesh-shader path).
+ if assigned(fVulkanPipelineShaderStageDDGIProbeDebugFragment) then begin
+  fVulkanDDGIProbeDebugPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
+  if fDDGIProbeDebugMeshShader then begin
+   fVulkanDDGIProbeDebugPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TDDGIProbeDebugPushConstants));
+  end else begin
+   fVulkanDDGIProbeDebugPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TDDGIProbeDebugPushConstants));
+  end;
+  fVulkanDDGIProbeDebugPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
+  fVulkanDDGIProbeDebugPipelineLayout.AddDescriptorSetLayout(fPassVulkanDescriptorSetLayout);
+  fVulkanDDGIProbeDebugPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationDDGIDescriptorSetLayout);
+  fVulkanDDGIProbeDebugPipelineLayout.Initialize;
+ end else begin
+  fVulkanDDGIProbeDebugPipelineLayout:=nil;
+ end;
 
  if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
   fVulkanDebugLinesPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -1466,6 +1575,95 @@ begin
 
  end;
 
+ // DDGI probe debug overlay pipeline (procedural octahedral spheres, no vertex buffer). Opaque, depth-tested read-only so the
+ // probes are occluded by scene geometry; CULL_NONE because the octahedral fold winding is not globally consistent.
+ if assigned(fVulkanDDGIProbeDebugPipelineLayout) then begin
+
+  VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
+                                                           fInstance.Renderer.VulkanPipelineCache,
+                                                           0,
+                                                           [],
+                                                           fVulkanDDGIProbeDebugPipelineLayout,
+                                                           fVulkanRenderPass,
+                                                           VulkanRenderPassSubpassIndex,
+                                                           nil,
+                                                           0);
+
+  try
+
+   if fDDGIProbeDebugMeshShader then begin
+    VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageDDGIProbeDebugTask);
+    VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageDDGIProbeDebugMesh);
+   end else begin
+    VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageDDGIProbeDebugVertex);
+   end;
+   VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageDDGIProbeDebugFragment);
+
+   VulkanGraphicsPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+   VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+   fInstance.Renderer.Scene3D.InitializeGraphicsPipeline(VulkanGraphicsPipeline,false); // empty vertex input (procedural / mesh-shader)
+
+   VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fResourceColor.Width,fResourceColor.Height,0.0,1.0);
+   VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fResourceColor.Width,fResourceColor.Height);
+
+   VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
+   VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+   VulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+   VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+   VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+   VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+   VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+
+   VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fInstance.Renderer.SurfaceSampleCountFlagBits;
+   VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+
+   // Opaque, no blend; write RGBA into the scene colour, leave the velocity attachment untouched (mask 0).
+   VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                       VK_BLEND_FACTOR_ONE,
+                                                                       VK_BLEND_FACTOR_ZERO,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       VK_BLEND_FACTOR_ONE,
+                                                                       VK_BLEND_FACTOR_ZERO,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+   if fInstance.Renderer.VelocityBufferNeeded then begin
+    VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_OP_ADD,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_FACTOR_ZERO,
+                                                                        VK_BLEND_OP_ADD,
+                                                                        0);
+   end;
+
+   VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
+   VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;
+   if fInstance.ZFar<0.0 then begin
+    VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
+   end else begin
+    VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+   end;
+   VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+   VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
+
+   VulkanGraphicsPipeline.Initialize;
+
+   VulkanGraphicsPipeline.FreeMemory;
+
+  finally
+   fVulkanDDGIProbeDebugGraphicsPipeline:=VulkanGraphicsPipeline;
+   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(VulkanGraphicsPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererPassesForwardRenderPass.DDGIProbeDebugGraphicsPipeline');
+  end;
+
+ end else begin
+  fVulkanDDGIProbeDebugGraphicsPipeline:=nil;
+ end;
+
  if fInstance.Renderer.Scene3D.MeshShaderSupport and assigned(fVulkanDebugLinesPipelineLayout) then begin
 
   VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
@@ -1631,9 +1829,11 @@ begin
   end;
  end;
  FreeAndNil(fVulkanSpaceLinesGraphicsPipeline);
+ FreeAndNil(fVulkanDDGIProbeDebugGraphicsPipeline);
  FreeAndNil(fVulkanDebugLinesGraphicsPipeline);
  FreeAndNil(fVulkanPipelineLayout);
  FreeAndNil(fVulkanSpaceLinesPipelineLayout);
+ FreeAndNil(fVulkanDDGIProbeDebugPipelineLayout);
  FreeAndNil(fVulkanDebugLinesPipelineLayout);
  for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fPassVulkanDescriptorSets[Index]);
@@ -1722,6 +1922,8 @@ procedure TpvScene3DRendererPassesForwardRenderPass.Execute(const aCommandBuffer
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     PreviousInFlightFrameIndex:TpvSizeInt;
     DebugLinesPushConstants:TDebugLinesPushConstants;
+    DDGIProbeDebugPushConstants:TDDGIProbeDebugPushConstants;
+    DDGIProbeDebugDescriptorSets:array[0..2] of TVkDescriptorSet;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
@@ -1883,6 +2085,68 @@ begin
                             nil);
 
    // Set flag to false, because we have to call OnSetRenderPassResources for the next draw call, as space lines were drawn with a different pipeline
+   fOnSetRenderPassResourcesDone:=false;
+
+   FrameGraph.VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+  end;
+
+  // DDGI probe debug overlay: one procedural octahedral sphere per probe over all cascades, coloured by the live-sampled
+  // directional irradiance (ddgiEvaluateIrradiance). Unculled instanced draw; depth-tested read-only so scene geometry occludes.
+  if assigned(fVulkanDDGIProbeDebugGraphicsPipeline) and
+     fInstance.DebugDDGIProbes and
+     (InFlightFrameState^.FinalViewIndex>=0) and
+     (InFlightFrameState^.CountFinalViews>0) then begin
+
+   FrameGraph.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'DDGI Probe Debug',[0.2,0.8,1.0,1.0]);
+
+   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanDDGIProbeDebugGraphicsPipeline.Handle);
+
+   DDGIProbeDebugPushConstants.ViewBaseIndex:=TpvUInt32(InFlightFrameState^.FinalViewIndex);
+   DDGIProbeDebugPushConstants.CountViews:=TpvUInt32(InFlightFrameState^.CountFinalViews);
+
+   if fDDGIProbeDebugMeshShader then begin
+    aCommandBuffer.CmdPushConstants(fVulkanDDGIProbeDebugPipelineLayout.Handle,
+                                    TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                    0,
+                                    SizeOf(TDDGIProbeDebugPushConstants),
+                                    @DDGIProbeDebugPushConstants);
+   end else begin
+    aCommandBuffer.CmdPushConstants(fVulkanDDGIProbeDebugPipelineLayout.Handle,
+                                    TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                    0,
+                                    SizeOf(TDDGIProbeDebugPushConstants),
+                                    @DDGIProbeDebugPushConstants);
+   end;
+
+   DDGIProbeDebugDescriptorSets[0]:=fInstance.Scene3D.GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+   DDGIProbeDebugDescriptorSets[1]:=fPassVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+   DDGIProbeDebugDescriptorSets[2]:=fInstance.GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle;
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        fVulkanDDGIProbeDebugPipelineLayout.Handle,
+                                        0,
+                                        3,
+                                        @DDGIProbeDebugDescriptorSets[0],
+                                        0,
+                                        nil);
+
+   if fDDGIProbeDebugMeshShader then begin
+    // Task->mesh path: one task workgroup per 32 probes (GI_DDGI_PROBE_DEBUG_TASK_GROUP_SIZE); each culls + emits visible probes.
+    if assigned(fInstance.Renderer.VulkanDevice.Commands.Commands.CmdDrawMeshTasksEXT) then begin
+     fInstance.Renderer.VulkanDevice.Commands.Commands.CmdDrawMeshTasksEXT(aCommandBuffer.Handle,
+                                                                           (TpvUInt32(TpvScene3DRendererInstance.GlobalIlluminationDDGIProbesPerCascade*TpvScene3DRendererInstance.CountGlobalIlluminationDDGICascades)+31) shr 5,
+                                                                           1,
+                                                                           1);
+    end;
+   end else begin
+    // Vertex path: VertexCount = (GI_DDGI_PROBE_DEBUG_GRID^2)*6 (2 triangles/octahedral grid quad; GRID=16 in the vert).
+    // InstanceCount = probes per cascade * cascade count -> gl_InstanceIndex spans every probe across all cascades.
+    aCommandBuffer.CmdDraw((16*16)*6,
+                           TpvScene3DRendererInstance.GlobalIlluminationDDGIProbesPerCascade*TpvScene3DRendererInstance.CountGlobalIlluminationDDGICascades,
+                           0,
+                           0);
+   end;
+
    fOnSetRenderPassResourcesDone:=false;
 
    FrameGraph.VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);

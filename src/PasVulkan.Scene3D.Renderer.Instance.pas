@@ -1019,6 +1019,7 @@ type { TpvScene3DRendererInstance }
       private
        fKeepPass0ForRendering:Boolean;
        fKeepPass0InPass1:Boolean;
+       fDebugDDGIProbes:Boolean;
        fDebugDrawMeshletBoundingSpheres:Boolean;
        fDebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers;
        fDebugMeshletSphereComputeShaderModule:TpvVulkanShaderModule;
@@ -1335,6 +1336,8 @@ type { TpvScene3DRendererInstance }
        // is DIAGNOSTIC ONLY (breaks occlusion culling) and defaults OFF.
        property KeepPass0ForRendering:Boolean read fKeepPass0ForRendering write fKeepPass0ForRendering;
        property KeepPass0InPass1:Boolean read fKeepPass0InPass1 write fKeepPass0InPass1;
+       // Debug: draw every DDGI probe as an octahedral sphere coloured by its live-sampled directional irradiance (ForwardRenderPass).
+       property DebugDDGIProbes:Boolean read fDebugDDGIProbes write fDebugDDGIProbes;
        property DebugDrawMeshletBoundingSpheres:Boolean read fDebugDrawMeshletBoundingSpheres write fDebugDrawMeshletBoundingSpheres;
        property DebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers read fDebugMeshletSphereLineBuffers;
       public
@@ -2286,6 +2289,8 @@ begin
  // Mesh-cull PASS1 flicker controls: Variante (a) net ON by default, the culling-breaking diagnostic OFF.
  fKeepPass0ForRendering:=true;
  fKeepPass0InPass1:=false;
+
+ fDebugDDGIProbes:=false;
 
  fDebugDrawMeshletBoundingSpheres:=false;
 
@@ -3856,7 +3861,14 @@ begin
    // (bilinear) ONLY in OCT storage mode (SH irradiance is a sub-buffer reached via ddgiData). Matches the `ddgiData` SSBO in
    // gi_ddgi_data.glsl (binding 3, the old master pointer UBO, is gone — folded into binding 0).
    fGlobalIlluminationDDGIDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
-   fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 0 = ddgiData SSBO
+   // binding 0 = ddgiData SSBO. VERTEX/FRAGMENT always; TASK/MESH only when mesh shaders are supported (else the stage bits
+   // would reference an unsupported feature -> validation error). The gi_ddgi_probe_debug.{vert | task+mesh} debug overlay reads
+   // the cascade globals here for probe placement + frustum cull; production shading reads it in FRAGMENT.
+   if Renderer.Scene3D.MeshShaderSupport then begin
+    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
+   end else begin
+    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
+   end;
    if GlobalIlluminationDDGIStorageOctahedral then begin
     fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
    end;
