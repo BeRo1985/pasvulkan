@@ -1753,6 +1753,8 @@ type EpvApplication=class(Exception)
 
        fOnStep:TpvApplicationOnStep;
 
+       fScreenLock:TPasMPCriticalSection;
+
        fScreen:TpvApplicationScreen;
 
        fStartScreen:TpvApplicationScreenClass;
@@ -9115,6 +9117,8 @@ begin
 
  fVulkanTransferInFlightCommandsFromOldSwapChain:=false;
 
+ fScreenLock:=TPasMPCriticalSection.Create;
+
  fScreen:=nil;
 
  fNextScreen:=nil;
@@ -9277,6 +9281,8 @@ begin
  fPasMPInstance:=nil;
 
  FreeAndNil(fVulkanEventLock);
+
+ FreeAndNil(fScreenLock);
 
  pvApplication:=nil;
 
@@ -11393,38 +11399,43 @@ end;
 procedure TpvApplication.SetScreen(const aScreen:TpvApplicationScreen);
 begin
  if fScreen<>aScreen then begin
-  if assigned(fScreen) then begin
-   fScreen.Pause;
-   if assigned(fVulkanSurface) then begin
-    VulkanWaitIdle;
-    if fGraphicsPipelinesReady then begin
-     fScreen.BeforeDestroySwapChain;
-    end else begin
-     BeforeDestroySwapChainWithCheck;
-    end;
-   end;
-   fScreen.Hide;
-   fScreen.Free;
-  end;
-  fScreen:=aScreen;
-  if assigned(fScreen) then begin
-   fScreen.Show;
+  fScreenLock.Acquire;
+  try
    if assigned(fScreen) then begin
-    fScreen.Resize(fWidth,fHeight);
+    fScreen.Pause;
+    if assigned(fVulkanSurface) then begin
+     VulkanWaitIdle;
+     if fGraphicsPipelinesReady then begin
+      fScreen.BeforeDestroySwapChain;
+     end else begin
+      BeforeDestroySwapChainWithCheck;
+     end;
+    end;
+    fScreen.Hide;
+    fScreen.Free;
    end;
-   if assigned(fVulkanSurface) then begin
-    VulkanWaitIdle;
-    if fGraphicsPipelinesReady then begin
-     fScreen.AfterCreateSwapChain;
-    end else begin
-     AfterCreateSwapChainWithCheck;
+   fScreen:=aScreen;
+   if assigned(fScreen) then begin
+    fScreen.Show;
+    if assigned(fScreen) then begin
+     fScreen.Resize(fWidth,fHeight);
+    end;
+    if assigned(fVulkanSurface) then begin
+     VulkanWaitIdle;
+     if fGraphicsPipelinesReady then begin
+      fScreen.AfterCreateSwapChain;
+     end else begin
+      AfterCreateSwapChainWithCheck;
+     end;
+    end;
+    fScreen.Resume;
+    if CanBeParallelProcessed then begin
+     // At parallel processing, skip the next first screen frame, due to double buffering at the parallel processing approach
+     fSkipNextDrawFrame:=true;
     end;
    end;
-   fScreen.Resume;
-   if CanBeParallelProcessed then begin
-    // At parallel processing, skip the next first screen frame, due to double buffering at the parallel processing approach
-    fSkipNextDrawFrame:=true;
-   end;
+  finally
+   fScreenLock.Release;
   end;
  end;
 end;
@@ -17573,7 +17584,12 @@ end;
 procedure TpvApplication.UpdateAudio;
 begin
  if assigned(fScreen) then begin
-  fScreen.UpdateAudio;
+  fScreenLock.Acquire;
+  try
+   fScreen.UpdateAudio;
+  finally
+   fScreenLock.Release;
+  end;
  end;
 end;
 
