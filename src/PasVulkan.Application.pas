@@ -17583,10 +17583,16 @@ end;
 
 procedure TpvApplication.UpdateAudio;
 begin
- if assigned(fScreen) then begin
-  fScreenLock.Acquire;
+ // Runs on the audio thread (via the audio engine's UpdateHook, from inside the audio engine's critical section).
+ // SetScreen holds fScreenLock across the whole screen lifecycle, which itself enters the audio engine's critical
+ // section - so blocking here on fScreenLock would invert the lock order and dead-lock. Therefore only touch the
+ // screen if fScreenLock can be grabbed without blocking; while a SetScreen is in progress just skip the screen
+ // audio update for those few callbacks, which is harmless.
+ if fScreenLock.TryEnter then begin
   try
-   fScreen.UpdateAudio;
+   if assigned(fScreen) then begin
+    fScreen.UpdateAudio;
+   end;
   finally
    fScreenLock.Release;
   end;
