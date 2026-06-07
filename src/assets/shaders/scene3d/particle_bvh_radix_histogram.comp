@@ -27,8 +27,10 @@ shared uint sHist[256];
 void main(){
 
   uint localId = gl_LocalInvocationID.x;
-  uint group = gl_WorkGroupID.x; // 0 .. NUM_GROUPS-1
+  uint group = gl_WorkGroupID.x; // 0 .. numGroups-1
   uint gid = (group * PARTICLE_BVH_WORKGROUP) + localId;
+  // Count-adaptive: only ceil(count/256) groups are dispatched/sorted (not the fixed capacity), so the histogram + scan stay tiny for few particles.
+  uint numGroups = (pushConstants.particleCount + (PARTICLE_BVH_WORKGROUP - 1u)) / PARTICLE_BVH_WORKGROUP;
 
   uint shift = (pushConstants.param & 3u) * 8u;
   bool srcIsA = (pushConstants.param & 1u) == 0u;
@@ -42,6 +44,6 @@ void main(){
   barrier();
 
   // Write this group's per-bin counts column-major: histogram[bin * NUM_GROUPS + group].
-  particleRadixHistogramBuffer.data[(localId * PARTICLE_BVH_NUM_GROUPS) + group] = sHist[localId];
+  particleRadixHistogramBuffer.data[(localId * numGroups) + group] = sHist[localId];
 
 }

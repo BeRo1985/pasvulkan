@@ -31,6 +31,7 @@ void main(){
   uint localId = gl_LocalInvocationID.x;
   uint group = gl_WorkGroupID.x;
   uint gid = (group * PARTICLE_BVH_WORKGROUP) + localId;
+  uint numGroups = (pushConstants.particleCount + (PARTICLE_BVH_WORKGROUP - 1u)) / PARTICLE_BVH_WORKGROUP;
 
   uint shift = (pushConstants.param & 3u) * 8u;
   bool srcIsA = (pushConstants.param & 1u) == 0u;
@@ -40,7 +41,7 @@ void main(){
   sDigits[localId] = digit;
 
   // Global output base for this group's bin (post-scan exclusive offset).
-  sGlobalBase[localId] = particleRadixHistogramBuffer.data[(localId * PARTICLE_BVH_NUM_GROUPS) + group];
+  sGlobalBase[localId] = particleRadixHistogramBuffer.data[(localId * numGroups) + group];
   barrier();
 
   // Stable in-block rank: number of earlier keys in this block with the same digit.

@@ -287,15 +287,15 @@ begin
  RunStage(1,(ParticleCount+255) shr 8,0);
  StageBarrier;
 
- // 256 groups * 256 = capacity
- RunStage(2,256,0);
+ // count-adaptive: ceil(count/256) groups (Morton pads the last group's tail with sentinels); sort cost scales with particle count
+ RunStage(2,(ParticleCount+255) shr 8,0);
  StageBarrier;
 
  // 4) LSD radix sort, 4 passes of 8 bits: histogram -> scan -> scatter, ping-pong A<->B (ends sorted in A).
  for RadixPass:=0 to 3 do begin
 
   // histogram
-  RunStage(3,256,RadixPass);
+  RunStage(3,(ParticleCount+255) shr 8,RadixPass);
   StageBarrier;
 
   // scan (single invocation, serial)
@@ -303,7 +303,7 @@ begin
   StageBarrier;
 
   // scatter
-  RunStage(5,256,RadixPass);
+  RunStage(5,(ParticleCount+255) shr 8,RadixPass);
   StageBarrier;
 
  end;

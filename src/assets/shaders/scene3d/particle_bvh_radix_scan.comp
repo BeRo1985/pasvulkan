@@ -23,7 +23,10 @@ layout(push_constant) uniform PushConstants {
 /* clang-format on */
 
 void main(){
-  uint total = PARTICLE_BVH_RADIX_BINS * PARTICLE_BVH_NUM_GROUPS;
+  // Count-adaptive: scan only the histogram entries actually produced (RADIX_BINS * ceil(count/256)), not the fixed capacity —
+  // this is what made the build ~34ms for a handful of particles when it scanned all 65536 entries serially.
+  uint numGroups = (pushConstants.particleCount + (PARTICLE_BVH_WORKGROUP - 1u)) / PARTICLE_BVH_WORKGROUP;
+  uint total = PARTICLE_BVH_RADIX_BINS * numGroups;
   uint running = 0u;
   for(uint i = 0u; i < total; i++){
     uint c = particleRadixHistogramBuffer.data[i];
