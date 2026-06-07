@@ -536,6 +536,17 @@ compileshaderarguments=(
   "-V cnn_image_to_buffer.comp -o ${tempPath}/cnn_image_to_buffer_comp.spv"
   "-V cnn_buffer_to_image.comp -o ${tempPath}/cnn_buffer_to_image_comp.spv"
 
+  # Per-frame GPU particle LBVH build (emit -> AABB -> Morton -> radix sort -> Karras hierarchy -> AABB refit), software-traced
+  # by GI/RT consumers (DDGI now, path tracing later) to inject particles (not in the BLAS). emit reads the vertex buffer via BDA -> 1.2.
+  "-V particle_bvh_emit.comp --target-env vulkan1.2 -o ${tempPath}/particle_bvh_emit_comp.spv"
+  "-V particle_bvh_aabb.comp --target-env vulkan1.2 -o ${tempPath}/particle_bvh_aabb_comp.spv"
+  "-V particle_bvh_morton.comp --target-env vulkan1.2 -o ${tempPath}/particle_bvh_morton_comp.spv"
+  "-V particle_bvh_radix_histogram.comp --target-env vulkan1.2 -o ${tempPath}/particle_bvh_radix_histogram_comp.spv"
+  "-V particle_bvh_radix_scan.comp --target-env vulkan1.2 -o ${tempPath}/particle_bvh_radix_scan_comp.spv"
+  "-V particle_bvh_radix_scatter.comp --target-env vulkan1.2 -o ${tempPath}/particle_bvh_radix_scatter_comp.spv"
+  "-V particle_bvh_hierarchy.comp --target-env vulkan1.2 -o ${tempPath}/particle_bvh_hierarchy_comp.spv"
+  "-V particle_bvh_refit.comp --target-env vulkan1.2 -o ${tempPath}/particle_bvh_refit_comp.spv"
+
   "-V cubemap_sphericalharmonics.comp -o ${tempPath}/cubemap_sphericalharmonics_comp.spv"
 
   "-V cubemap_sphericalharmonics_accumulation.comp -o ${tempPath}/cubemap_sphericalharmonics_accumulation_comp.spv"

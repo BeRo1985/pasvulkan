@@ -7,12 +7,13 @@
 // binding 0, NOT the push. Must byte-match TPushConstants on the Pascal side
 // (PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGITraceComputePass / ...DDGIStageComputePass).
 layout(push_constant) uniform PushConstants {
-  vec4 randomRotation0;  // per-frame ray rotation, mat3 column 0 (xyz)
-  vec4 randomRotation1;  // mat3 column 1 (xyz)
-  vec4 randomRotation2;  // mat3 column 2 (xyz)
-  uvec4 params;          // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-  vec4 blend;            // x = temporal hysteresis, y = multi-bounce feedback strength (trace), z = firstFrame flag; exact use varies per pass
-  vec4 emissiveGI;       // x = global GI emissive scale, y = global GI emissive max (set + used by the trace pass only; the update stages ignore it)
+  vec4 randomRotation0;          // per-frame ray rotation, mat3 column 0 (xyz)
+  vec4 randomRotation1;          // mat3 column 1 (xyz)
+  vec4 randomRotation2;          // mat3 column 2 (xyz)
+  uvec4 params;                  // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
+  vec4 blend;                    // x = temporal hysteresis, y = multi-bounce feedback strength (trace), z = firstFrame flag; exact use varies per pass
+  vec4 emissiveGIParticleCount;  // x = global GI emissive scale, y = global GI emissive max, z = particle count (trace only; update stages ignore)
+  uvec4 particleBVH;             // particle LBVH device addresses (trace only): xy = emitter buffer (uvec2), zw = node buffer (uvec2); 0 when inactive
 } pushConstants;
 
 #endif // GI_DDGI_PUSHCONSTANTS_GLSL

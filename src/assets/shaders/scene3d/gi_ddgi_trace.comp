@@ -26,6 +26,13 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 #include "globaldescriptorset.glsl"
 #include "raytracing.glsl"
 
+// Particle LBVH (built per frame on the GPU) software-traced here to inject particles — which are NOT in the hardware
+// ray-tracing BLAS (too many, too dynamic) — into the probe irradiance. Descriptor-free: the structs come from particle_bvh.glsl
+// and the BDA refs + queries from particle_bvh_trace.glsl; the emitter/node buffer device addresses + count are pushed
+// (pushConstants.particleBVH + emissiveGIParticleCount.z). Disabled at runtime when particleCount == 0.
+#include "particle_bvh.glsl"
+#include "particle_bvh_trace.glsl"
+
 // Sky on ray miss. The environment maps mirror the mesh shading IBL set (mesh_rendering_pass_descriptorset.glsl set 1
 // binding 2): [0..2] = env A (GGX/Charlie/Lambertian), [3..5] = env B (the atmosphere-inclusive set when planets/atmosphere
 // are active). GI_GATHER_SKY mirrors getIBLDiffuse() from pbr.glsl exactly: the sky diffuse irradiance in the ray
@@ -152,8 +159,8 @@ void main(){
   }
 
   // Publish the global GI-emissive master regulators (push) into the file-scope globals the gather's giGatherShadeHit reads.
-  ddgiEmissiveScale = pushConstants.emissiveGI.x;
-  ddgiEmissiveMax = pushConstants.emissiveGI.y;
+  ddgiEmissiveScale = pushConstants.emissiveGIParticleCount.x;
+  ddgiEmissiveMax = pushConstants.emissiveGIParticleCount.y;
 
   int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
   int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
@@ -183,6 +190,31 @@ void main(){
   // handled in the gather layer; optional multi-bounce feedback samples the previous frame's irradiance field at the hit.
   GIGatherSurface surface = giTraceClosestHit(probePosition, rayDirection, tMin, tMax, CULLMASK_ALL);
 
+  // Particle LBVH (not in the BLAS): a closest opaque particle nearer than the mesh hit becomes the closest surface — it
+  // occludes, overrides the shaded radiance, and shortens the stored hit distance (so the visibility moments see it too).
+  // Transparent/additive particles add emission without occluding, bounded by the final closest opaque distance.
+  uint particleCount = uint(pushConstants.emissiveGIParticleCount.z);
+  ParticleBVHEmitterRef particleEmitters = ParticleBVHEmitterRef(pushConstants.particleBVH.xy);
+  ParticleBVHNodeRef particleNodes = ParticleBVHNodeRef(pushConstants.particleBVH.zw);
+  bool effectiveHit = surface.hit;
+  bool effectiveBackface = surface.backface;
+  float effectiveHitDistance = surface.hit ? surface.hitDistance : tMax;
+  float particleBound = effectiveHitDistance;
+  vec3 particleOpaqueEmission = vec3(0.0);
+  bool opaqueParticleCloser = false;
+  if(particleCount > 0u){
+    vec3 opaqueEmission;
+    float opaqueT = particleBVHClosestOpaque(particleNodes, particleEmitters, probePosition, rayDirection, tMin, effectiveHitDistance, particleCount, opaqueEmission);
+    if(opaqueT < effectiveHitDistance){
+      opaqueParticleCloser = true;
+      particleOpaqueEmission = opaqueEmission;
+      particleBound = opaqueT;
+      effectiveHit = true;
+      effectiveBackface = false;
+      effectiveHitDistance = opaqueT;
+    }
+  }
+
   // Shade only the random (blended) rays; fixed rays carry no radiance (the contract encodes only their signed distance).
   vec3 radiance = vec3(0.0);
   if(!ddgiRayIsFixed(rayIndex)){
@@ -208,6 +240,13 @@ void main(){
     }else{
       radiance = GI_GATHER_SKY(rayDirection);
     }
+    // Inject particles: opaque particle (if closer) replaces the surface radiance; additive particles add emission on top.
+    if(particleCount > 0u){
+      if(opaqueParticleCloser){
+        radiance = particleOpaqueEmission;
+      }
+      radiance += particleBVHAdditiveEmission(particleNodes, particleEmitters, probePosition, rayDirection, tMin, particleBound, particleCount);
+    }
     if(any(isnan(radiance)) || any(isinf(radiance))){
       radiance = vec3(0.0);
     }
@@ -217,5 +256,5 @@ void main(){
   // backface-shortened, locally-clamped distance).
   DDGIRayDataBuffer rayData = ddgiData.rayData; // launder through a local (readonly master field -> non-readonly ref)
   ddgiStoreRay(rayData, globalProbeIndex, rayIndex, raysPerProbe,
-               ddgiEncodeRayData(rayIndex, radiance, surface.hit, surface.backface, surface.hitDistance, tMax, cellSize));
+               ddgiEncodeRayData(rayIndex, radiance, effectiveHit, effectiveBackface, effectiveHitDistance, tMax, cellSize));
 }

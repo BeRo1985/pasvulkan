@@ -91,6 +91,7 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.CameraPreset,
      PasVulkan.Scene3D.Renderer,
+     PasVulkan.Scene3D.Renderer.ParticleBVH,
      PasVulkan.Scene3D.Renderer.Array2DImage,
      PasVulkan.Scene3D.Renderer.Image2D,
      PasVulkan.Scene3D.Renderer.Image3D,
@@ -813,6 +814,8 @@ type { TpvScene3DRendererInstance }
       private
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       private
+       fParticleBVH:TpvScene3DRendererParticleBVH;
+      private
        fInFlightFrameCascadedRadianceHintVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages;
        fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages:TInFlightFrameCascadedRadianceHintVolumeImages;
        fGlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray;
@@ -1189,6 +1192,8 @@ type { TpvScene3DRendererInstance }
       published
        property CameraPreset:TpvScene3DRendererCameraPreset read fCameraPreset;
       public
+       property ParticleBVH:TpvScene3DRendererParticleBVH read fParticleBVH;
+      public
        property InFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps read fInFlightFrameMustRenderGIMaps;
       public
        property InFlightFrameCascadedRadianceHintVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeImages;
@@ -1476,6 +1481,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.TopDownSkyOcclusionMapResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TopDownSkyOcclusionMapBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectiveShadowMapRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.ParticleBVHComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsClearCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectCachedComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectSkyComputePass,
@@ -1611,6 +1617,7 @@ type TpvScene3DRendererInstancePasses=class
        fTopDownSkyOcclusionMapResolveRenderPass:TpvScene3DRendererPassesTopDownSkyOcclusionMapResolveRenderPass;
        fTopDownSkyOcclusionMapBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesTopDownSkyOcclusionMapBlurRenderPass;
        fReflectiveShadowMapRenderPass:TpvScene3DRendererPassesReflectiveShadowMapRenderPass;
+       fParticleBVHComputePass:TpvScene3DRendererPassesParticleBVHComputePass;
        fGlobalIlluminationCascadedRadianceHintsClearCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsClearCustomPass;
        fGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass;
        fGlobalIlluminationCascadedRadianceHintsInjectSkyComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectSkyComputePass;
@@ -2667,6 +2674,8 @@ begin
 
  FillChar(fGlobalIlluminationRadianceHintsEvents,SizeOf(fGlobalIlluminationRadianceHintsEvents),#0);
 
+ fParticleBVH:=nil;
+
  fGlobalIlluminationRadianceHintsCascadedVolumes:=nil;
 
  FillChar(fGlobalIlluminationRadianceHintsDescriptorSets,SizeOf(TGlobalIlluminationRadianceHintsDescriptorSets),#0);
@@ -3177,6 +3186,8 @@ begin
 
  FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout);
 
+ FreeAndNil(fParticleBVH);
+
  FreeAndNil(fImageBasedLightingReflectionProbeCubeMaps);
 
  case Renderer.TransparencyMode of
@@ -3521,6 +3532,14 @@ begin
   end;
   else begin
   end;
+ end;
+
+ // Particle BVH (self-contained subsystem; created once, allocates its per-frame buffers when a consumer is active).
+ if (not assigned(fParticleBVH)) and TpvScene3DRendererParticleBVH.MustBeCreated(Renderer) then begin
+  fParticleBVH:=TpvScene3DRendererParticleBVH.Create(Renderer);
+ end;
+ if assigned(fParticleBVH) then begin
+  fParticleBVH.AcquireVolatileResources;
  end;
 
  case Renderer.GlobalIlluminationMode of
@@ -5248,6 +5267,7 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fFrustumClusterGridAssignComputePass:=TpvScene3DRendererPassesFrustumClusterGridAssignComputePass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fFrustumClusterGridAssignComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFrustumClusterGridBuildComputePass);
 
+ TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass:=nil;
@@ -5257,6 +5277,12 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRelocationComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationSurfelComputePass:=nil;
+
+ // Particle BVH build pass (technique-neutral): created before all GI passes; the consuming GI pass (the DDGI trace) takes an
+ // explicit dependency on it where it is created, so it is both kept alive and ordered before the consumer.
+ if assigned(fParticleBVH) and fParticleBVH.Active then begin
+  TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass:=TpvScene3DRendererPassesParticleBVHComputePass.Create(fFrameGraph,self);
+ end;
 
  case Renderer.GlobalIlluminationMode of
 
@@ -5353,6 +5379,9 @@ begin
    // light buffers; visibility for the gather shading is resolved with ray-traced shadow rays, so no shadow map dependency
    // is required. The main mesh culling/rendering is made to depend on the update pass further below.
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGITraceComputePass.Create(fFrameGraph,self);
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass);
+   end;
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
    end;

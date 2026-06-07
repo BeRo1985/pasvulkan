@@ -1,0 +1,33 @@
+#version 460 core
+
+// Particle-BVH radix sort, pass B: exclusive prefix sum over the whole histogram (RADIX_BINS * NUM_GROUPS entries, laid out
+// bin-major as [bin*NUM_GROUPS + group]). A linear exclusive scan in that order gives each (group,bin) its global output base
+// (all earlier bins across all groups, plus the same bin in earlier groups). Done serially by a single invocation: the array
+// is small (65536 entries) and this runs only 4x/frame; trivially correct, optimize later if it ever matters.
+
+#extension GL_GOOGLE_include_directive : require
+
+/* clang-format off */
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+#define PARTICLE_BVH_BINDINGS
+#include "particle_bvh.glsl"
+
+layout(push_constant) uniform PushConstants {
+  uvec2 particleVertexBufferAddress;
+  uint particleCount;
+  uint param;
+} pushConstants;
+
+/* clang-format on */
+
+void main(){
+  uint total = PARTICLE_BVH_RADIX_BINS * PARTICLE_BVH_NUM_GROUPS;
+  uint running = 0u;
+  for(uint i = 0u; i < total; i++){
+    uint c = particleRadixHistogramBuffer.data[i];
+    particleRadixHistogramBuffer.data[i] = running; // exclusive
+    running += c;
+  }
+}

@@ -799,6 +799,8 @@ type EpvScene3D=class(Exception);
             PParticleVertices=^TParticleVertices;
             TInFlightFrameParticleVertices=array[0..MaxInFlightFrames-1] of TParticleVertices; // 18MB in total at the moment
             PInFlightFrameParticleVertices=^TInFlightFrameParticleVertices;
+            TVulkanParticleVertexBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TCountInFlightFrameParticleVertices=array[0..MaxInFlightFrames-1] of TpvUInt32;
             TJointBlock=packed record
              case boolean of
               false:(
@@ -4608,8 +4610,8 @@ type EpvScene3D=class(Exception);
        fParticleAliveBitmap:TParticleAliveBitmap;
        fParticleIndexCounter:TpvUInt32;
        fInFlightFrameParticleVertices:TInFlightFrameParticleVertices;
-       fCountInFlightFrameParticleVertices:array[0..MaxInFlightFrames-1] of TpvUInt32;
-       fVulkanParticleVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fCountInFlightFrameParticleVertices:TCountInFlightFrameParticleVertices;
+       fVulkanParticleVertexBuffers:TVulkanParticleVertexBuffers;
        fSkyBoxBrightnessFactor:TpvScalar;
        fSkyBoxCaching:Boolean;
        fEnableAtmosphere:Boolean;
@@ -5103,6 +5105,11 @@ type EpvScene3D=class(Exception);
        property WhiteTexture:TTexture read fWhiteTexture;
        property DefaultParticleImage:TImage read fDefaultParticleImage;
        property DefaultParticleTexture:TTexture read fDefaultParticleTexture;
+       // Per-in-flight-frame billboard particle vertex buffers (3 verts/particle, all sharing the particle's position/size/color/
+       // textureID) and their vertex counts. Exposed so the particle-BVH build pass can GPU-extract emitter spheres (vertex i*3 per
+       // particle, count = vertices/3) without any extra CPU upload.
+       property ParticleVertexBuffers:TVulkanParticleVertexBuffers read fVulkanParticleVertexBuffers;
+       property CountInFlightFrameParticleVertices:TCountInFlightFrameParticleVertices read fCountInFlightFrameParticleVertices;
        property EmptyMaterial:TpvScene3D.TMaterial read fEmptyMaterial;
        property Lights:TInFlightFrameLights read fInFrameFrameLights;
        property CountLights:TCountInFlightFrameLights read fCountInFrameFrameLights;

@@ -98,12 +98,13 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass }
               Classification  // one thread per probe; marks probes mostly seeing backfaces INACTIVE (relocation only)
              );
             TPushConstants=record
-             RandomRotation0:TpvVector4; // mat3 column 0 — must match the trace's rotation (reconstructs the ray directions)
-             RandomRotation1:TpvVector4;
-             RandomRotation2:TpvVector4;
-             Params:TpvUInt32Vector4;    // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-             Blend:TpvVector4;           // x = hysteresis, z = firstFrame (1 = ignore the uninitialized previous probe data); y/w unused here
-             EmissiveGI:TpvVector4;      // unused by the update stages; present only to byte-match the shared gi_ddgi_pushconstants.glsl block
+             RandomRotation0:TpvVector4;         // mat3 column 0 in xyz - must match the trace's rotation (reconstructs the ray directions)
+             RandomRotation1:TpvVector4;         // mat3 column 1 in xyz
+             RandomRotation2:TpvVector4;         // mat3 column 2 in xyz
+             Params:TpvUInt32Vector4;            // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
+             Blend:TpvVector4;                   // x = hysteresis, z = firstFrame (1 = ignore the uninitialized previous probe data); y/w unused here
+             EmissiveGIParticleCount:TpvVector4; // unused by the update stages; present only to byte-match the shared gi_ddgi_pushconstants.glsl block
+             ParticleBVH:TpvUInt32Vector4;       // unused by the update stages; present only to byte-match the shared gi_ddgi_pushconstants.glsl block
             end;
             PPushConstants=^TPushConstants;
       private
