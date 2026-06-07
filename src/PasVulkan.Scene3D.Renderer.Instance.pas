@@ -863,6 +863,10 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffers:TpvVulkanInFlightFrameBuffers;
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages;
        fGlobalIlluminationCascadedVoxelConeTracingRadianceImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages;
+       // Dedicated visualization volume (×6 anisotropic sides per cascade): unlit base colour + emission, filled by the radiance
+       // transfer compute only while the debug visualization is active. Dual-view (R32_UINT storage / E5B9G9R9 sample) so it stays
+       // RenderDoc-inspectable. Read by the voxel mesh/vertex visualizations instead of the lit radiance images.
+       fGlobalIlluminationCascadedVoxelConeTracingVisualizationImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages;
        fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:TpvUInt32;
        fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:TpvUInt32;
        fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool:TpvVulkanDescriptorPool;
@@ -1141,6 +1145,9 @@ type { TpvScene3DRendererInstance }
        procedure ProcessAtmospheresForFrame(const aInFlightFrameIndex:TpvInt32;const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure DispatchDebugMeshletSpheres(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+       // Debug: read back the cascaded voxel-cone-tracing content data + meta-data buffers (GPU) and write a human-readable dump
+       // (header + decoded non-empty cells, FP16 and RGB9E5 interpretations, plus raw hex) for offline investigation.
+       procedure DumpVoxelConeTracingContent(const aInFlightFrameIndex:TpvSizeInt;const aFileName:TpvUTF8String);
       public
        procedure InitializeSolidPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
        procedure DrawSolidPrimitives(const aRendererInstance:TObject;
@@ -1224,6 +1231,7 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffers:TpvVulkanInFlightFrameBuffers read fGlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffers;
        property GlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages read fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages;
        property GlobalIlluminationCascadedVoxelConeTracingRadianceImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages read fGlobalIlluminationCascadedVoxelConeTracingRadianceImages;
+       property GlobalIlluminationCascadedVoxelConeTracingVisualizationImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages read fGlobalIlluminationCascadedVoxelConeTracingVisualizationImages;
        property GlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:TpvUInt32 read fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount write fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;
        property GlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:TpvUInt32 read fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount write fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount;
        property GlobalIlluminationCascadedVoxelConeTracingDescriptorPool:TpvVulkanDescriptorPool read fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool;
@@ -2710,6 +2718,7 @@ begin
  FillChar(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingImages),#0);
 
  FillChar(fGlobalIlluminationCascadedVoxelConeTracingRadianceImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingSideImages),#0);
+ FillChar(fGlobalIlluminationCascadedVoxelConeTracingVisualizationImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingSideImages),#0);
 
  FillChar(fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets),#0);
 
@@ -3140,6 +3149,7 @@ begin
   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex]);
   for ImageIndex:=0 to 5 do begin
    FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,ImageIndex]);
+   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingVisualizationImages[CascadeIndex,ImageIndex]);
   end;
  end;
 
@@ -3497,6 +3507,7 @@ var PerInFlightFrameBufferIndex:TpvSizeInt;
     GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
     GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
     GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
+    GlobalIlluminationVoxelConeTracingVisualizationTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
     GlobalIlluminationDDGIMasterData:TGlobalIlluminationDDGIMasterData;
 begin
 
@@ -4057,7 +4068,7 @@ begin
    for PerInFlightFrameBufferIndex:=0 to fScene3D.CountPerInFlightFrameResources-1 do begin
     fGlobalIlluminationCascadedVoxelConeTracingContentDataBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                                        fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount*(SizeOf(TpvUInt32)*8),
-                                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                                                        [],
                                                                                                                        0,
@@ -4079,7 +4090,7 @@ begin
                                                                                                                              (Renderer.GlobalIlluminationVoxelGridSize*
                                                                                                                               Renderer.GlobalIlluminationVoxelGridSize*
                                                                                                                               Renderer.GlobalIlluminationVoxelGridSize))+1)*(SizeOf(TpvUInt32)*2),
-                                                                                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                                                            [],
                                                                                                                            0,
@@ -4124,6 +4135,7 @@ begin
                                                                                                                              TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                                                                                                              TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
                                                                                                                              pvAllocationGroupIDScene3DStatic,
+                                                                                                                             VK_FORMAT_UNDEFINED,
                                                                                                                              'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages['+IntToStr(CascadeIndex)+']');
     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages['+IntToStr(CascadeIndex)+'].Image');
     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages['+IntToStr(CascadeIndex)+'].ImageView');
@@ -4139,9 +4151,27 @@ begin
                                                                                                                                         TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                                                                                                                         TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
                                                                                                                                         pvAllocationGroupIDScene3DStatic,
+                                                                                                                                        VK_FORMAT_UNDEFINED,
                                                                                                                                         'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingRadianceImages['+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+']');
      Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,ImageIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingRadianceImages['+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+'].Image');
      Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,ImageIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingRadianceImages['+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+'].ImageView');
+
+     // Visualization volume: R32_UINT storage (transfer compute writes encodeRGB9E5 of unlit base+emission) aliased by an
+     // E5B9G9R9 sample view (hardware-decoded, RenderDoc-friendly) read by the voxel visualizations. Only filled while the
+     // debug visualization is active.
+     fGlobalIlluminationCascadedVoxelConeTracingVisualizationImages[CascadeIndex,ImageIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(fScene3D.VulkanDevice,
+                                                                                                                                            Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                            Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                            Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                            VK_FORMAT_R32_UINT,
+                                                                                                                                            true,
+                                                                                                                                            TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                                                                            TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
+                                                                                                                                            pvAllocationGroupIDScene3DStatic,
+                                                                                                                                            VK_FORMAT_E5B9G9R9_UFLOAT_PACK32,
+                                                                                                                                            'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingVisualizationImages['+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingVisualizationImages[CascadeIndex,ImageIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingVisualizationImages['+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+'].Image');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingVisualizationImages[CascadeIndex,ImageIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingVisualizationImages['+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+'].ImageView');
 
     end;
 
@@ -4151,36 +4181,48 @@ begin
                                                                                              TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                                              Renderer.CountInFlightFrames);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames);
-   fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*Renderer.GlobalIlluminationVoxelCountCascades*(6+1));
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*Renderer.GlobalIlluminationVoxelCountCascades*(6+6+1));
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.Initialize;
    Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool');
 
+   // MESH_BIT (gated on MeshShaderSupport, else the stage bit would reference an unsupported feature -> validation error) lets the
+   // mesh-shader voxel visualization (voxel_mesh_visualization.mesh) read VoxelGridData + the radiance samplers from the MESH stage.
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(0,
                                                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                                              1,
-                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or TVkShaderStageFlags(IfThen(Renderer.Scene3D.MeshShaderSupport,TpvInt64(VK_SHADER_STAGE_MESH_BIT_EXT),TpvInt64(0))),
                                                                              []);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(1,
                                                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                                              Renderer.GlobalIlluminationVoxelCountCascades,
-                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or TVkShaderStageFlags(IfThen(Renderer.Scene3D.MeshShaderSupport,TpvInt64(VK_SHADER_STAGE_MESH_BIT_EXT),TpvInt64(0))),
                                                                              []);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(2,
                                                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                                              Renderer.GlobalIlluminationVoxelCountCascades*6,
-                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or TVkShaderStageFlags(IfThen(Renderer.Scene3D.MeshShaderSupport,TpvInt64(VK_SHADER_STAGE_MESH_BIT_EXT),TpvInt64(0))),
+                                                                             []);
+   // Binding 3: the unlit base+emission visualization volume (E5B9G9R9 sample view), read only by the voxel visualizations
+   // (vertex/mesh path). The forward/transparency cone-tracing shaders never declare this binding, so widening the shared layout
+   // is harmless to them.
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(3,
+                                                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                                             Renderer.GlobalIlluminationVoxelCountCascades*6,
+                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or TVkShaderStageFlags(IfThen(Renderer.Scene3D.MeshShaderSupport,TpvInt64(VK_SHADER_STAGE_MESH_BIT_EXT),TpvInt64(0))),
                                                                              []);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.Initialize;
    Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout');
 
    GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray:=nil;
    GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray:=nil;
+   GlobalIlluminationVoxelConeTracingVisualizationTextureDescriptorInfoArray:=nil;
 
    try
 
     SetLength(GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray,Renderer.GlobalIlluminationVoxelCountCascades);
     SetLength(GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray,Renderer.GlobalIlluminationVoxelCountCascades*6);
+    SetLength(GlobalIlluminationVoxelConeTracingVisualizationTextureDescriptorInfoArray,Renderer.GlobalIlluminationVoxelCountCascades*6);
 
     for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountCascades-1 do begin
 
@@ -4194,6 +4236,11 @@ begin
       GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray[(CascadeIndex*6)+ImageIndex]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
                                                                                                                                        fGlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,ImageIndex].VulkanImageView.Handle,
                                                                                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+      // E5B9G9R9 sample view, kept in GENERAL (the transfer compute writes it via the R32_UINT view and never transitions it).
+      GlobalIlluminationVoxelConeTracingVisualizationTextureDescriptorInfoArray[(CascadeIndex*6)+ImageIndex]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
+                                                                                                                                            fGlobalIlluminationCascadedVoxelConeTracingVisualizationImages[CascadeIndex,ImageIndex].VulkanOtherImageView.Handle,
+                                                                                                                                            VK_IMAGE_LAYOUT_GENERAL);
 
 
      end;
@@ -4239,6 +4286,15 @@ begin
                                                                                                         [],
                                                                                                         false
                                                                                                        );
+     fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+                                                                                                        0,
+                                                                                                        Renderer.GlobalIlluminationVoxelCountCascades*6,
+                                                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                                        GlobalIlluminationVoxelConeTracingVisualizationTextureDescriptorInfoArray,
+                                                                                                        [],
+                                                                                                        [],
+                                                                                                        false
+                                                                                                       );
      fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets[InFlightFrameIndex].Flush;
 
      Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DRendererInstance.fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
@@ -4248,6 +4304,7 @@ begin
    finally
     GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray:=nil;
     GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray:=nil;
+    GlobalIlluminationVoxelConeTracingVisualizationTextureDescriptorInfoArray:=nil;
    end;
 
   end;
@@ -11451,6 +11508,111 @@ begin
                                     0,nil);
 
  Renderer.VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
+procedure TpvScene3DRendererInstance.DumpVoxelConeTracingContent(const aInFlightFrameIndex:TpvSizeInt;const aFileName:TpvUTF8String);
+var ContentDataBuffer,MetaDataBuffer:TpvVulkanBuffer;
+    ContentDataSize,MetaDataSize:TVkDeviceSize;
+    ContentData,MetaData:TBytes;
+    UsedFragments,GridSize,CountCascades,MaxFragments:TpvUInt32;
+    InfoText:TStringList;
+    Stream:TFileStream;
+begin
+
+ if (Renderer.GlobalIlluminationMode<>TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing) or
+    (aInFlightFrameIndex<0) or (aInFlightFrameIndex>=Renderer.CountInFlightFrames) then begin
+  pvApplication.Log(LOG_INFO,'TpvScene3DRendererInstance.DumpVoxelConeTracingContent','Not in CascadedVoxelConeTracing mode or invalid in-flight frame index -> nothing dumped');
+  exit;
+ end;
+
+ ContentDataBuffer:=fGlobalIlluminationCascadedVoxelConeTracingContentDataBuffers[aInFlightFrameIndex];
+ MetaDataBuffer:=fGlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffers[aInFlightFrameIndex];
+ if (not assigned(ContentDataBuffer)) or (not assigned(MetaDataBuffer)) then begin
+  pvApplication.Log(LOG_INFO,'TpvScene3DRendererInstance.DumpVoxelConeTracingContent','Voxel content buffers not allocated -> nothing dumped');
+  exit;
+ end;
+
+ MaxFragments:=fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;
+ GridSize:=Renderer.GlobalIlluminationVoxelGridSize;
+ CountCascades:=Renderer.GlobalIlluminationVoxelCountCascades;
+
+ ContentDataSize:=TVkDeviceSize(MaxFragments)*TVkDeviceSize(SizeOf(TpvUInt32)*8); // stride 2 uvec4 (32 bytes) per cell
+ MetaDataSize:=((TVkDeviceSize(CountCascades)*(TVkDeviceSize(GridSize)*GridSize*GridSize))+1)*TVkDeviceSize(SizeOf(TpvUInt32)*2);
+
+ // Debug-only read-back: a full device idle is fine here (hotkey-triggered), then stage-download both buffers to host memory.
+ Renderer.VulkanDevice.WaitIdle;
+
+ ContentData:=nil;
+ MetaData:=nil;
+ InfoText:=TStringList.Create;
+ try
+
+  SetLength(ContentData,TpvSizeInt(ContentDataSize));
+  SetLength(MetaData,TpvSizeInt(MetaDataSize));
+
+  Renderer.VulkanDevice.MemoryStaging.Download(fScene3D.VulkanStagingQueue,
+                                               fScene3D.VulkanStagingCommandBuffer,
+                                               fScene3D.VulkanStagingFence,
+                                               ContentDataBuffer,
+                                               0,
+                                               ContentData[0],
+                                               ContentDataSize);
+
+  Renderer.VulkanDevice.MemoryStaging.Download(fScene3D.VulkanStagingQueue,
+                                               fScene3D.VulkanStagingCommandBuffer,
+                                               fScene3D.VulkanStagingFence,
+                                               MetaDataBuffer,
+                                               0,
+                                               MetaData[0],
+                                               MetaDataSize);
+
+  // data[0] of the meta-data buffer is the global fragment allocation counter (number of used content cells this frame).
+  UsedFragments:=PpvUInt32(@MetaData[0])^;
+
+  InfoText.Add('PasVulkan cascaded voxel-cone-tracing content dump');
+  InfoText.Add('inFlightFrameIndex='+IntToStr(aInFlightFrameIndex));
+  InfoText.Add('gridSize='+IntToStr(GridSize));
+  InfoText.Add('countCascades='+IntToStr(CountCascades));
+  InfoText.Add('maxGlobalFragmentCount='+IntToStr(MaxFragments));
+  InfoText.Add('usedFragmentCount='+IntToStr(UsedFragments));
+  InfoText.Add('contentDataBytes='+IntToStr(ContentDataSize)+' (stride 2 uvec4 = 32 bytes per cell)');
+  InfoText.Add('metaDataBytes='+IntToStr(MetaDataSize)+' (data[0]=global counter, then 2 uint per volume: +2=localCount, +3=headCellIndex 1-based)');
+  InfoText.Add('contentLayout(FP16): cell c -> 8 uint at c*8; uvec4 f0=(next, packHalf2x16(base.rg), packHalf2x16(base.b,em.r), packHalf2x16(em.gb)), uvec4 f1=(packSnorm2x16(base.a,nrm.x), packSnorm2x16(nrm.yz), 0, 0)');
+  InfoText.Add('contentLayout(RGB9E5): cell c -> 4 uint at c*4; uvec4=(next, encodeRGB9E5(base), encodeRGB9E5(em), (base.a 8bit)|(octNormal 12+12bit))');
+
+  Stream:=TFileStream.Create(String(aFileName)+'_info.txt',fmCreate);
+  try
+   InfoText.SaveToStream(Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  Stream:=TFileStream.Create(String(aFileName)+'_content.bin',fmCreate);
+  try
+   if length(ContentData)>0 then begin
+    Stream.WriteBuffer(ContentData[0],length(ContentData));
+   end;
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  Stream:=TFileStream.Create(String(aFileName)+'_meta.bin',fmCreate);
+  try
+   if length(MetaData)>0 then begin
+    Stream.WriteBuffer(MetaData[0],length(MetaData));
+   end;
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  pvApplication.Log(LOG_INFO,'TpvScene3DRendererInstance.DumpVoxelConeTracingContent','Dumped '+IntToStr(UsedFragments)+'/'+IntToStr(MaxFragments)+' voxel content fragments to '+String(aFileName)+'_{info.txt,content.bin,meta.bin}');
+
+ finally
+  ContentData:=nil;
+  MetaData:=nil;
+  FreeAndNil(InfoText);
+ end;
 
 end;
 

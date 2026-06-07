@@ -1377,6 +1377,13 @@ void main() {
 #endif
 
 #ifdef VOXELIZATION
+  // Voxelization rasterizes with backface culling DISABLED, and the dominant-axis projection captures a surface from only one
+  // side, so the gl_FrontFacing-based workNormal flip is unreliable here (e.g. a one-sided rasterization of a double-sided floor
+  // stored only -Y -> visible/lit from below only). Pass the GEOMETRIC normal plus the double-sided flag; voxelization_fragment
+  // stores one fragment (single-sided) or two fragments with +N and -N (double-sided, flag bit 6) -> both anisotropic directions.
+  // Covers both the geometry-shader and mesh-shader voxelization paths, since both feed this fragment shader.
+  bool voxelDoubleSided = (flags & (1u << 6u)) != 0u;
+  normal = normalize(inNormal);
   #include "voxelization_fragment.glsl"
 #endif
 

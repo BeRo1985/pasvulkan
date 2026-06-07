@@ -122,8 +122,9 @@ void main() {
 
   uint flags = (1u << 6u); // Double-sided
   vec3 normal = inNormal;
+  bool voxelDoubleSided = (flags & (1u << 6u)) != 0u; // voxelize both normal directions (see voxelization_fragment.glsl)
 
-  #include "voxelization_fragment.glsl" 
+  #include "voxelization_fragment.glsl"
 
 #else
 

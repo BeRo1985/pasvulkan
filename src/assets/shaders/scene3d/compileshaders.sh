@@ -50,6 +50,36 @@ else
   GLOSSY_DEFINE=""
 fi
 
+# VCT voxel content storage encoding (1 = FP16 packHalf2x16, stride 2 / 32 bytes per cell; 0 = RGB9E5, stride 1). FP16 keeps
+# very high HDR base/emission values that RGB9E5 clamps/breaks. The content data buffer is already sized for 32 bytes per cell
+# (stride 2) in PasVulkan.Scene3D.Renderer.Instance.pas, so no Pascal change either way. This MUST be passed identically to the
+# voxelization writer (mesh/particle VOXELIZATION fragment variants) AND both content readers (gi_voxel_radiance_transfer.comp +
+# gi_voxel_occlusion_transfer.comp), otherwise the write/read layouts mismatch.
+VOXEL_CONTENT_FP16=0
+if [ "${VOXEL_CONTENT_FP16}" = "1" ]; then
+  VOXEL_CONTENT_FP16_DEFINE="-DGI_VOXEL_CONTENT_FP16"
+else
+  VOXEL_CONTENT_FP16_DEFINE=""
+fi
+
+# VCT radiance-transfer debug term written into the voxel radiance instead of the final lit colour, to isolate why voxels go
+# black in the voxel-cone-tracing debug visualization: 0 = normal lit (default), 1 = raw albedo (unlit, shows all voxels =
+# coverage), 2 = sun NdotL (grey), 3 = sun shadow (grey), 4 = full lighting (grey). Only affects gi_voxel_radiance_transfer.comp.
+VOXEL_RADIANCE_DEBUG_TERM=0
+VOXEL_RADIANCE_DEBUG_TERM_DEFINE="-DVOXEL_RADIANCE_DEBUG_TERM=${VOXEL_RADIANCE_DEBUG_TERM}"
+
+# VCT mesh-visualization diagnostic: 1 = read the RAW voxelization content (per-voxel linked-list head -> base colour) instead
+# of the dedicated uVoxelGridVisualization volume, to tell whether a missing/black voxel is a voxelization (writer) problem or a
+# transfer-resolve problem. 0 = normal (the unlit base-colour + emission visualization volume filled by the radiance transfer).
+# Only affects voxel_mesh_visualization.vert. The viz pass always binds the content/meta SSBOs (set 0 bindings 1/2), so toggling
+# only needs a recompile, no Pascal change.
+VOXEL_MESH_VIS_RAW_CONTENT=0
+if [ "${VOXEL_MESH_VIS_RAW_CONTENT}" = "1" ]; then
+  VOXEL_MESH_VIS_RAW_CONTENT_DEFINE="-DVOXEL_MESH_VIS_RAW_CONTENT"
+else
+  VOXEL_MESH_VIS_RAW_CONTENT_DEFINE=""
+fi
+
 # Surfel GI radiance storage mode: 0 = octahedral irradiance atlas (per surfel), 1 = L1 spherical harmonics (default),
 # 2 = L2 spherical harmonics. MUST match the Surfel pool record size on the Pascal side (the per-surfel payload size
 # depends on this). Always passed explicitly to the surfel compute passes AND the globalillumination_surfel consumers.
@@ -260,11 +290,11 @@ compileshaderarguments=(
   "-V mesh.vert --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/mesh_velocity_vert.spv"
   "-V mesh.vert --target-env vulkan1.2 -DVOXELIZATION -o ${tempPath}/mesh_voxelization_vert.spv"
 
-  "-V gi_voxel_occlusion_transfer.comp -o ${tempPath}/gi_voxel_occlusion_transfer_comp.spv"
+  "-V gi_voxel_occlusion_transfer.comp ${VOXEL_CONTENT_FP16_DEFINE} -o ${tempPath}/gi_voxel_occlusion_transfer_comp.spv"
   "-V gi_voxel_occlusion_mipmap.comp -o ${tempPath}/gi_voxel_occlusion_mipmap_comp.spv"
 
-  "-V gi_voxel_radiance_transfer.comp -o ${tempPath}/gi_voxel_radiance_transfer_comp.spv"
-  "-V gi_voxel_radiance_transfer.comp -DUSESHADERBUFFERFLOAT32ATOMICADD -o ${tempPath}/gi_voxel_radiance_transfer_float_comp.spv"
+  "-V gi_voxel_radiance_transfer.comp ${VOXEL_CONTENT_FP16_DEFINE} ${VOXEL_RADIANCE_DEBUG_TERM_DEFINE} -o ${tempPath}/gi_voxel_radiance_transfer_comp.spv"
+  "-V gi_voxel_radiance_transfer.comp -DUSESHADERBUFFERFLOAT32ATOMICADD ${VOXEL_CONTENT_FP16_DEFINE} ${VOXEL_RADIANCE_DEBUG_TERM_DEFINE} -o ${tempPath}/gi_voxel_radiance_transfer_float_comp.spv"
 
   "-V gi_voxel_radiance_mipmap.comp -o ${tempPath}/gi_voxel_radiance_mipmap_comp.spv"
 
@@ -569,8 +599,9 @@ compileshaderarguments=(
   "-V voxel_visualization.frag -o ${tempPath}/voxel_visualization_frag.spv"
   "-V voxel_visualization.frag -DUSEDEMOTE -o ${tempPath}/voxel_visualization_demote_frag.spv"
 
-  "-V voxel_mesh_visualization.vert -o ${tempPath}/voxel_mesh_visualization_vert.spv"
+  "-V voxel_mesh_visualization.vert ${VOXEL_MESH_VIS_RAW_CONTENT_DEFINE} ${VOXEL_CONTENT_FP16_DEFINE} -o ${tempPath}/voxel_mesh_visualization_vert.spv"
   "-V voxel_mesh_visualization.vert -DUSEGEOMETRYSHADER -o ${tempPath}/voxel_mesh_visualization_geometry_vert.spv"
+  "-V voxel_mesh_visualization.mesh --target-env vulkan1.2 -o ${tempPath}/voxel_mesh_visualization_mesh.spv"
   "-V voxel_mesh_visualization.geom -o ${tempPath}/voxel_mesh_visualization_geom.spv"
   "-V voxel_mesh_visualization.frag -o ${tempPath}/voxel_mesh_visualization_frag.spv"
 
@@ -1044,7 +1075,7 @@ addParticleFragmentShadingAntialiasingVariants(){
 addParticleFragmentVoxelizationVariants(){
 
   # Voxelization
-  addParticleFragmentShader "${1}_voxelization" "$2 -DVOXELIZATION"
+  addParticleFragmentShader "${1}_voxelization" "$2 -DVOXELIZATION ${VOXEL_CONTENT_FP16_DEFINE}"
 
 }
 
@@ -1306,7 +1337,7 @@ addMeshFragmentPassTargetVariants(){
   addMeshFragmentReflectiveShadowMapVariants "${1}_rsm" "$2 -DDECALS -DLIGHTS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT"
 
   # The voxelization stuff
-  addMeshFragmentVoxelizationVariants "${1}_voxelization" "$2 -DVOXELIZATION"
+  addMeshFragmentVoxelizationVariants "${1}_voxelization" "$2 -DVOXELIZATION ${VOXEL_CONTENT_FP16_DEFINE}"
 
   # The actual shading stuff
   addMeshFragmentShadingGlobalIlluminationVariants "${1}_shading" "$2 -DDECALS -DLIGHTS -DSHADOWS"
