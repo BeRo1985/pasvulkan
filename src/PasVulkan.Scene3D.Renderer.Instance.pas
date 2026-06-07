@@ -124,8 +124,14 @@ type { TpvScene3DRendererInstance }
              GlobalIlluminationDDGIProbeCountZ=16;
              GlobalIlluminationDDGIProbesPerCascade=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ;
              GlobalIlluminationDDGIRaysPerProbe=128;
+             {$define GI_DDGI_OCT_ALIGNED_BORDER_NPOT_SIZES} // mirror of the GLSL define (global_illumination_ddgi.glsl); comment out for the legacy 8/16 interior
+             {$ifdef GI_DDGI_OCT_ALIGNED_BORDER_NPOT_SIZES}
+             GlobalIlluminationDDGIIrradianceOctSize=6;
+             GlobalIlluminationDDGIVisibilityOctSize=14;
+             {$else}
              GlobalIlluminationDDGIIrradianceOctSize=8;
              GlobalIlluminationDDGIVisibilityOctSize=16;
+             {$endif}
              GlobalIlluminationDDGIIrradianceOctFull=GlobalIlluminationDDGIIrradianceOctSize+2;
              GlobalIlluminationDDGIVisibilityOctFull=GlobalIlluminationDDGIVisibilityOctSize+2;
              // Irradiance storage mode: 0 = octahedral atlas (1 RGBA16F 2D image), 1 = L1 spherical harmonics
@@ -141,8 +147,12 @@ type { TpvScene3DRendererInstance }
              GlobalIlluminationDDGIIrradianceAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIIrradianceOctFull;
              GlobalIlluminationDDGIVisibilityAtlasWidth=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIVisibilityOctFull;
              GlobalIlluminationDDGIVisibilityAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIVisibilityOctFull;
-             // Glossy prefiltered-radiance octahedral atlas; same tiling as the visibility atlas (16 + guard band).
+             // Glossy prefiltered-radiance octahedral atlas; same tiling as the visibility atlas (14/16 + guard band).
+             {$ifdef GI_DDGI_OCT_ALIGNED_BORDER_NPOT_SIZES}
+             GlobalIlluminationDDGIGlossyOctSize=14;
+             {$else}
              GlobalIlluminationDDGIGlossyOctSize=16;
+             {$endif}
              GlobalIlluminationDDGIGlossyOctFull=GlobalIlluminationDDGIGlossyOctSize+2;
              GlobalIlluminationDDGIGlossyAtlasWidth=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIGlossyOctFull;
              GlobalIlluminationDDGIGlossyAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIGlossyOctFull;

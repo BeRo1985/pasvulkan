@@ -104,11 +104,23 @@
 #define GI_DDGI_PROBES_PER_CASCADE (GI_DDGI_PROBES_X * GI_DDGI_PROBES_Y * GI_DDGI_PROBES_Z)
 
 // Octahedral tile sizes (interior texels; one guard-band texel is added on each side in the atlas for bilinear filtering).
+// Default: NPOT interior sizes (6/14) whose BORDERED tile is power-of-two aligned (6+2=8, 14+2=16) — the RTXGI/Wicked/Flax
+// convention (less memory, POT atlas tiles). Comment out GI_DDGI_OCT_ALIGNED_BORDER_NPOT_SIZES (and its Pascal {$define}
+// counterpart in PasVulkan.Scene3D.Renderer.Instance.pas) for the legacy 8/16 interior (10/18 bordered, NPOT tiles).
+#define GI_DDGI_OCT_ALIGNED_BORDER_NPOT_SIZES
 #ifndef GI_DDGI_IRRADIANCE_OCT_SIZE
-  #define GI_DDGI_IRRADIANCE_OCT_SIZE 8
+  #ifdef GI_DDGI_OCT_ALIGNED_BORDER_NPOT_SIZES
+    #define GI_DDGI_IRRADIANCE_OCT_SIZE 6
+  #else
+    #define GI_DDGI_IRRADIANCE_OCT_SIZE 8
+  #endif
 #endif
 #ifndef GI_DDGI_VISIBILITY_OCT_SIZE
-  #define GI_DDGI_VISIBILITY_OCT_SIZE 16
+  #ifdef GI_DDGI_OCT_ALIGNED_BORDER_NPOT_SIZES
+    #define GI_DDGI_VISIBILITY_OCT_SIZE 14
+  #else
+    #define GI_DDGI_VISIBILITY_OCT_SIZE 16
+  #endif
 #endif
 #define GI_DDGI_IRRADIANCE_OCT_FULL (GI_DDGI_IRRADIANCE_OCT_SIZE + 2)
 #define GI_DDGI_VISIBILITY_OCT_FULL (GI_DDGI_VISIBILITY_OCT_SIZE + 2)
@@ -116,9 +128,13 @@
 // Glossy-radiance octahedral atlas. Separate from the irradiance atlas because it stores prefiltered *radiance*
 // (no cosine convolution), integrated with a sharp directional kernel for glossy reflections. Only allocated/updated/sampled
 // when GI_DDGI_GLOSSY_RADIANCE is defined (Pascal GlobalIlluminationDDGIGlossyRadiance, mirrored in compileshaders.sh; the
-// toggle is opt-in / default OFF). Sized like the visibility atlas (16 interior + guard band) for reasonable sharpness.
+// toggle is opt-in / default OFF). Sized like the visibility atlas (same 14/16 interior + guard band) for reasonable sharpness.
 #ifndef GI_DDGI_GLOSSY_OCT_SIZE
-  #define GI_DDGI_GLOSSY_OCT_SIZE 16
+  #ifdef GI_DDGI_OCT_ALIGNED_BORDER_NPOT_SIZES
+    #define GI_DDGI_GLOSSY_OCT_SIZE 14
+  #else
+    #define GI_DDGI_GLOSSY_OCT_SIZE 16
+  #endif
 #endif
 #define GI_DDGI_GLOSSY_OCT_FULL (GI_DDGI_GLOSSY_OCT_SIZE + 2)
 
