@@ -1,15 +1,18 @@
 #version 460 core
 
-// Particle-BVH radix sort, pass B: exclusive prefix sum over the whole histogram (RADIX_BINS * NUM_GROUPS entries, laid out
-// bin-major as [bin*NUM_GROUPS + group]). A linear exclusive scan in that order gives each (group,bin) its global output base
-// (all earlier bins across all groups, plus the same bin in earlier groups). Done serially by a single invocation: the array
-// is small (65536 entries) and this runs only 4x/frame; trivially correct, optimize later if it ever matters.
+// Particle-BVH radix sort, pass B: exclusive prefix sum over the produced histogram (RADIX_BINS * numGroups entries, laid out
+// bin-major as [bin*numGroups + group]). A linear exclusive scan in that order gives each (group,bin) its global output base
+// (all earlier bins across all groups, plus the same bin in earlier groups). numGroups = ceil(count/256), so total <= 65536.
+//
+// Single-workgroup parallel block scan (256 threads): each thread reduces its contiguous chunk, the 256 partial sums get a
+// parallel (Hillis-Steele) exclusive scan in shared memory, then each thread writes the exclusive scan of its chunk seeded by
+// its block offset. One dispatch, no cross-workgroup sync; the per-chunk work is parallel across the 256 threads.
 
 #extension GL_GOOGLE_include_directive : require
 
 /* clang-format off */
 
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 #define PARTICLE_BVH_BINDINGS
 #include "particle_bvh.glsl"
@@ -22,15 +25,43 @@ layout(push_constant) uniform PushConstants {
 
 /* clang-format on */
 
+shared uint sPartial[256]; // per-thread chunk sum
+shared uint sScan[256];    // in-place Hillis-Steele scan buffer of the partial sums
+
 void main(){
-  // Count-adaptive: scan only the histogram entries actually produced (RADIX_BINS * ceil(count/256)), not the fixed capacity —
-  // this is what made the build ~34ms for a handful of particles when it scanned all 65536 entries serially.
+
+  uint tid = gl_LocalInvocationID.x;
+
   uint numGroups = (pushConstants.particleCount + (PARTICLE_BVH_WORKGROUP - 1u)) / PARTICLE_BVH_WORKGROUP;
   uint total = PARTICLE_BVH_RADIX_BINS * numGroups;
-  uint running = 0u;
-  for(uint i = 0u; i < total; i++){
+  uint chunk = (total + 255u) / 256u; // elements per thread
+  uint start = tid * chunk;
+  uint end = min(start + chunk, total);
+
+  // Phase 1: each thread reduces its contiguous chunk.
+  uint s = 0u;
+  for(uint i = start; i < end; i++){
+    s += particleRadixHistogramBuffer.data[i];
+  }
+  sPartial[tid] = s;
+  sScan[tid] = s;
+  barrier();
+
+  // Phase 2: parallel exclusive scan of the 256 partial sums (Hillis-Steele inclusive, then subtract the own value).
+  for(uint offset = 1u; offset < 256u; offset <<= 1u){
+    uint add = (tid >= offset) ? sScan[tid - offset] : 0u;
+    barrier();
+    sScan[tid] += add;
+    barrier();
+  }
+  uint blockOffset = sScan[tid] - sPartial[tid]; // exclusive prefix of this thread's chunk
+
+  // Phase 3: each thread writes the exclusive scan of its own (disjoint) chunk, seeded by its block offset.
+  uint running = blockOffset;
+  for(uint i = start; i < end; i++){
     uint c = particleRadixHistogramBuffer.data[i];
     particleRadixHistogramBuffer.data[i] = running; // exclusive
     running += c;
   }
+
 }
