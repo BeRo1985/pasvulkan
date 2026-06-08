@@ -29,6 +29,30 @@
 #define TASK_GROUP_SIZE 32
 #endif
 
+#ifdef VOXELIZATION
+// Voxelization prim-chunking constants — MUST mirror mesh.mesh. A meshlet holds up to MAX_MESHLET_PRIMITIVES (126) triangles,
+// but the voxelization mesh shader can only output MAX_VOXEL_MESHLET_PRIMITIVES (42) per workgroup (3 unique, non-shared
+// vertices per triangle → 126 output vertices max). So a meshlet is split into MAX_VOXEL_PRIM_CHUNKS chunks of 42 triangles
+// and the task emits one (meshlet, cascade, chunk) entry per chunk, so every triangle of a >42-prim meshlet gets voxelized
+// (previously triangles 42..125 were silently dropped → under-voxelization).
+#define MAX_MESHLET_PRIMITIVES 126
+#define MAX_VOXEL_MESHLET_PRIMITIVES 42
+#define MAX_VOXEL_PRIM_CHUNKS ((MAX_MESHLET_PRIMITIVES + MAX_VOXEL_MESHLET_PRIMITIVES - 1) / MAX_VOXEL_MESHLET_PRIMITIVES) // ceil(126/42)=3
+// layerIndices entry packs cascade in the low bits and chunk in the high bits: (chunkIndex << VOXEL_CASCADE_BITS) | cascadeIndex.
+#define VOXEL_CASCADE_BITS 4u
+#define VOXEL_CASCADE_MASK 0xfu
+#endif
+
+// Option 1 (now ON by default): enlarge the payload so a single TASK_GROUP_SIZE-meshlet group can emit all
+// TASK_GROUP_SIZE × (max 8 cascades) × MAX_VOXEL_PRIM_CHUNKS (meshlet, cascade, chunk) entries without dropping any.
+// Comment the define to fall back to TASK_GROUP_SIZE capacity (which under-voxelizes — kept only as an escape hatch).
+#define VOXELIZATION_TASK_PAYLOAD_EXPAND
+#if defined(VOXELIZATION) && defined(VOXELIZATION_TASK_PAYLOAD_EXPAND)
+#define TASK_PAYLOAD_CAPACITY (TASK_GROUP_SIZE * 8 * MAX_VOXEL_PRIM_CHUNKS)
+#else
+#define TASK_PAYLOAD_CAPACITY TASK_GROUP_SIZE
+#endif
+
 layout(local_size_x = TASK_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
 /* clang-format off */
@@ -124,10 +148,10 @@ struct TaskPayload {
   uint meshletDescriptorBase; // base index in meshletDescriptors[] for this object
   uint meshObjectID;          // DrawInfo index for mesh shader (model matrix, etc.)
   uint count;                 // number of visible meshlets emitted
-  uint meshletLocalIndices[TASK_GROUP_SIZE]; // local meshlet indices (relative to meshletDescriptorBase)
+  uint meshletLocalIndices[TASK_PAYLOAD_CAPACITY]; // local meshlet indices (relative to meshletDescriptorBase)
 #if defined(VOXELIZATION) || defined(USE_LAYER_ROUTING)
   // Each entry is a meshlet × layer pair (cascade for CSM/voxelization)
-  uint layerIndices[TASK_GROUP_SIZE];
+  uint layerIndices[TASK_PAYLOAD_CAPACITY];
 #endif
 };
 taskPayloadSharedEXT TaskPayload payload;
@@ -234,8 +258,11 @@ void main(){
 
 #ifdef VOXELIZATION
 
-    // Voxelization: test meshlet bounding sphere against each cascade AABB
-    // Emit one entry per visible meshlet × cascade pair
+    // Voxelization: test meshlet bounding sphere against each cascade AABB.
+    // Emit one entry per visible (meshlet, cascade, chunk) triple. A meshlet with >MAX_VOXEL_MESHLET_PRIMITIVES (42)
+    // triangles needs numChunks (=ceil(primitiveCount/42)) mesh workgroups per cascade so every triangle is voxelized.
+    uint meshletPrimitiveCount = min(meshletDescBuf.descriptors[meshletGlobalIndex].primitiveCount, MAX_MESHLET_PRIMITIVES);
+    uint numChunks = (meshletPrimitiveCount + (MAX_VOXEL_MESHLET_PRIMITIVES - 1u)) / MAX_VOXEL_MESHLET_PRIMITIVES;
     if(((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere && !distanceCulled){
 
       uint countCascades = voxelGridData.countCascades;
@@ -246,22 +273,26 @@ void main(){
                                   voxelGridData.cascadeAABBMax[cascadeIndex].xyz);
         vec3 diff = closestPoint - worldSphere.xyz;
         if(dot(diff, diff) <= (worldSphere.w * worldSphere.w)){
-          uint idx = atomicAdd(payload.count, 1u);
-          if(idx < TASK_GROUP_SIZE){
-            payload.meshletLocalIndices[idx] = meshletLocalIndex;
-            payload.layerIndices[idx] = cascadeIndex;
+          for(uint chunkIndex = 0u; chunkIndex < numChunks; chunkIndex++){
+            uint idx = atomicAdd(payload.count, 1u);
+            if(idx < TASK_PAYLOAD_CAPACITY){
+              payload.meshletLocalIndices[idx] = meshletLocalIndex;
+              payload.layerIndices[idx] = (chunkIndex << VOXEL_CASCADE_BITS) | cascadeIndex;
+            }
           }
         }
       }
 
     }else if(!distanceCulled){
-      // Culling disabled or no valid bounding sphere → emit for all cascades (conservative)
+      // Culling disabled or no valid bounding sphere → emit for all cascades × chunks (conservative)
       uint countCascades = voxelGridData.countCascades;
       for(uint cascadeIndex = 0u; cascadeIndex < countCascades; cascadeIndex++){
-        uint idx = atomicAdd(payload.count, 1u);
-        if(idx < TASK_GROUP_SIZE){
-          payload.meshletLocalIndices[idx] = meshletLocalIndex;
-          payload.layerIndices[idx] = cascadeIndex;
+        for(uint chunkIndex = 0u; chunkIndex < numChunks; chunkIndex++){
+          uint idx = atomicAdd(payload.count, 1u);
+          if(idx < TASK_PAYLOAD_CAPACITY){
+            payload.meshletLocalIndices[idx] = meshletLocalIndex;
+            payload.layerIndices[idx] = (chunkIndex << VOXEL_CASCADE_BITS) | cascadeIndex;
+          }
         }
       }
     }
@@ -322,7 +353,7 @@ void main(){
 #endif
 
         uint idx = atomicAdd(payload.count, 1u);
-        if(idx < TASK_GROUP_SIZE){
+        if(idx < TASK_PAYLOAD_CAPACITY){
           payload.meshletLocalIndices[idx] = meshletLocalIndex;
           payload.layerIndices[idx] = viewIdx;
         }
@@ -333,7 +364,7 @@ void main(){
       // Culling disabled or no valid bounding sphere → emit for all views (conservative)
       for(uint viewIdx = 0u; viewIdx < countViews; viewIdx++){
         uint idx = atomicAdd(payload.count, 1u);
-        if(idx < TASK_GROUP_SIZE){
+        if(idx < TASK_PAYLOAD_CAPACITY){
           payload.meshletLocalIndices[idx] = meshletLocalIndex;
           payload.layerIndices[idx] = viewIdx;
         }
@@ -426,8 +457,9 @@ void main(){
   // Wait for all threads to finish writing payload
   barrier();
 
-  // Clamp emit count to TASK_GROUP_SIZE (voxelization can exceed if many cascades visible)
-  uint emitCount = min(payload.count, TASK_GROUP_SIZE);
+  // Clamp emit count to the payload capacity (= TASK_GROUP_SIZE normally; TASK_GROUP_SIZE*8 for voxelization, which emits one
+  // (meshlet, cascade) entry per cascade per meshlet — without the bigger capacity those extra pairs were silently dropped).
+  uint emitCount = min(payload.count, TASK_PAYLOAD_CAPACITY);
 
   if(emitCount > 0u && gl_LocalInvocationIndex == 0u && gl_DrawID < 3){
 #ifdef MESH_SHADER_DEBUG

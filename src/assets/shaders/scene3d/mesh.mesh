@@ -53,6 +53,12 @@
 // 3 vertices × MAX_MESHLET_PRIMITIVES. With 256 prims this would be 768 vertices which exceeds
 // typical maxMeshOutputVertices. Limit to 42 primitives × 3 = 126 vertices for voxelization.
 #define MAX_VOXEL_MESHLET_PRIMITIVES 42
+// Prim-chunking: a meshlet with up to MAX_MESHLET_PRIMITIVES (126) triangles is split into MAX_VOXEL_PRIM_CHUNKS chunks of 42;
+// the task emits one (meshlet, cascade, chunk) entry per chunk, and each mesh workgroup voxelizes its chunk's 42-triangle range.
+#define MAX_VOXEL_PRIM_CHUNKS ((MAX_MESHLET_PRIMITIVES + MAX_VOXEL_MESHLET_PRIMITIVES - 1) / MAX_VOXEL_MESHLET_PRIMITIVES) // ceil(126/42)=3
+// layerIndices entry packs cascade in the low bits and chunk in the high bits (must match mesh.task).
+#define VOXEL_CASCADE_BITS 4u
+#define VOXEL_CASCADE_MASK 0xfu
 layout(local_size_x = MESH_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 126, max_primitives = MAX_VOXEL_MESHLET_PRIMITIVES) out;
 #else
@@ -166,13 +172,21 @@ void main(){
 #define TASK_GROUP_SIZE 32
 #endif
 
+// Must match mesh.task (Option 1, now ON by default via VOXELIZATION_TASK_PAYLOAD_EXPAND).
+#define VOXELIZATION_TASK_PAYLOAD_EXPAND
+#if defined(VOXELIZATION) && defined(VOXELIZATION_TASK_PAYLOAD_EXPAND)
+#define TASK_PAYLOAD_CAPACITY (TASK_GROUP_SIZE * 8 * MAX_VOXEL_PRIM_CHUNKS)
+#else
+#define TASK_PAYLOAD_CAPACITY TASK_GROUP_SIZE
+#endif
+
 struct TaskPayload {
   uint meshletDescriptorBase; // base index in meshletDescriptors[] for this object
   uint meshObjectID;          // DrawInfo index (model matrix, material, etc.)
   uint count;                 // number of visible meshlets emitted by task shader
-  uint meshletLocalIndices[TASK_GROUP_SIZE]; // local meshlet indices (relative to base)
+  uint meshletLocalIndices[TASK_PAYLOAD_CAPACITY]; // local meshlet indices (relative to base)
 #if defined(VOXELIZATION) || defined(USE_LAYER_ROUTING)
-  uint layerIndices[TASK_GROUP_SIZE];        // layer/cascade index per emitted entry
+  uint layerIndices[TASK_PAYLOAD_CAPACITY];        // layer/cascade index per emitted entry
 #endif
 };
 taskPayloadSharedEXT TaskPayload payload;
@@ -189,7 +203,9 @@ void main(){
   uint meshletGlobalIndex = payload.meshletDescriptorBase + meshletLocalIndex;
   uint meshObjectID = payload.meshObjectID;
 #ifdef VOXELIZATION
-  uint cascadeIndex = payload.layerIndices[workGroupIndex];
+  uint packedLayer = payload.layerIndices[workGroupIndex];
+  uint cascadeIndex = packedLayer & VOXEL_CASCADE_MASK;
+  uint chunkIndex = packedLayer >> VOXEL_CASCADE_BITS;
 #elif defined(USE_LAYER_ROUTING)
   uint layerIndex = payload.layerIndices[workGroupIndex];
 #endif
@@ -207,11 +223,13 @@ void main(){
   uint primitiveCount = min(desc.primitiveCount, MAX_MESHLET_PRIMITIVES);
 
 #ifdef VOXELIZATION
-  // Voxelization: each primitive needs its own 3 vertices (dominant-axis projection
-  // differs per triangle, so vertices cannot be shared across primitives)
-  primitiveCount = min(primitiveCount, MAX_VOXEL_MESHLET_PRIMITIVES);
-  uint voxelVertexCount = primitiveCount * 3u;
-  SetMeshOutputsEXT(voxelVertexCount, primitiveCount);
+  // Voxelization: each primitive needs its own 3 vertices (dominant-axis projection differs per triangle, so vertices
+  // cannot be shared). This workgroup voxelizes ONE chunk of up to MAX_VOXEL_MESHLET_PRIMITIVES (42) triangles of the
+  // meshlet — chunkIndex selects the range [chunkPrimitiveStart .. chunkPrimitiveStart+chunkPrimitiveCount).
+  uint chunkPrimitiveStart = chunkIndex * MAX_VOXEL_MESHLET_PRIMITIVES;
+  uint chunkPrimitiveCount = (chunkPrimitiveStart < primitiveCount) ? min(MAX_VOXEL_MESHLET_PRIMITIVES, primitiveCount - chunkPrimitiveStart) : 0u;
+  uint voxelVertexCount = chunkPrimitiveCount * 3u;
+  SetMeshOutputsEXT(voxelVertexCount, chunkPrimitiveCount);
 #else
   // Declare mesh output sizes (must be called before writing any output)
   SetMeshOutputsEXT(vertexCount, primitiveCount);
@@ -306,10 +324,13 @@ void main(){
   float cascadeHalfExtent = voxelGridData.cascadeCenterHalfExtents[cascadeIndex].w;
   bool hwConservativeRaster = (voxelGridData.hardwareConservativeRasterization != 0u);
 
-  for(uint i = localID; i < primitiveCount; i += MESH_GROUP_SIZE){
+  for(uint i = localID; i < chunkPrimitiveCount; i += MESH_GROUP_SIZE){
+
+    // i is the chunk-relative output index; srcPrim is the absolute primitive index within the meshlet.
+    uint srcPrim = chunkPrimitiveStart + i;
 
     // Unpack local triangle indices
-    uvec3 localTri = (uvec3(meshletPrimBuf.primitives[desc.primitiveOffset + i]) >> uvec3(0u, 8u, 16u)) & uvec3(0xffu);
+    uvec3 localTri = (uvec3(meshletPrimBuf.primitives[desc.primitiveOffset + srcPrim]) >> uvec3(0u, 8u, 16u)) & uvec3(0xffu);
 
     // Fetch world-space positions for the 3 vertices
     vec3 worldPos[3];
