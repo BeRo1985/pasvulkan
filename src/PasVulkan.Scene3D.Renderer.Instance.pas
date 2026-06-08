@@ -3530,6 +3530,11 @@ var PerInFlightFrameBufferIndex:TpvSizeInt;
     GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
     GlobalIlluminationVoxelConeTracingVisualizationTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
     GlobalIlluminationDDGIMasterData:TGlobalIlluminationDDGIMasterData;
+    DDGIClearCommandPool:TpvVulkanCommandPool;
+    DDGIClearCommandBuffer:TpvVulkanCommandBuffer;
+    DDGIClearFence:TpvVulkanFence;
+    DDGIClearColorValue:TVkClearColorValue;
+    DDGIClearImageRange:TVkImageSubresourceRange;
 begin
 
  // If AI upscaling is enabled, enforce the size factor from the upscale mode.
@@ -3888,6 +3893,61 @@ begin
     // once here (the sub-buffer addresses are stable for the slot's lifetime).
     fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].UpdateData(GlobalIlluminationDDGIMasterData,SizeOf(TGlobalIlluminationDDGIUniformBufferData),SizeOf(GlobalIlluminationDDGIMasterData));
 
+   end;
+
+   // Defense-in-depth: the probe images/buffers are not zeroed by the allocator (the per-slot first-frame guard + the NaN-safe
+   // discard in the update shaders are the actual protection). Explicitly clear every freshly allocated DDGI image/buffer once
+   // here, so VRAM reused from a prior session can never feed NaN/Inf garbage in for even a frame. The master buffer is excluded
+   // on purpose: it holds the BDA sub-buffer pointers + cascade globals that were just written above.
+   DDGIClearCommandPool:=TpvVulkanCommandPool.Create(Renderer.VulkanDevice,
+                                                     Renderer.VulkanDevice.UniversalQueueFamilyIndex,
+                                                     TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+   try
+    DDGIClearCommandBuffer:=TpvVulkanCommandBuffer.Create(DDGIClearCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    try
+     DDGIClearFence:=TpvVulkanFence.Create(Renderer.VulkanDevice);
+     try
+      DDGIClearCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+      FillChar(DDGIClearColorValue,SizeOf(DDGIClearColorValue),#0);
+      DDGIClearImageRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,VK_REMAINING_MIP_LEVELS,0,VK_REMAINING_ARRAY_LAYERS);
+      for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+       // Images live in VK_IMAGE_LAYOUT_GENERAL (clearable in place).
+       if assigned(fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex]) then begin
+        DDGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DDGIClearColorValue,1,@DDGIClearImageRange);
+       end;
+       if assigned(fGlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex]) then begin
+        DDGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DDGIClearColorValue,1,@DDGIClearImageRange);
+       end;
+       if assigned(fGlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex]) then begin
+        DDGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DDGIClearColorValue,1,@DDGIClearImageRange);
+       end;
+       if assigned(fGlobalIlluminationDDGIGlossyImages[InFlightFrameIndex]) then begin
+        DDGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDDGIGlossyImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DDGIClearColorValue,1,@DDGIClearImageRange);
+       end;
+       // Storage buffers (all created with TRANSFER_DST). The master buffer is intentionally NOT filled here.
+       if assigned(fGlobalIlluminationDDGIIrradianceSHBuffers[InFlightFrameIndex]) then begin
+        DDGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDDGIIrradianceSHBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
+       end;
+       if assigned(fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex]) then begin
+        DDGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
+       end;
+       if assigned(fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex]) then begin
+        DDGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
+       end;
+       if assigned(fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex]) then begin
+        DDGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
+       end;
+      end;
+      DDGIClearCommandBuffer.EndRecording;
+      DDGIClearCommandBuffer.Execute(Renderer.VulkanDevice.UniversalQueue,0,nil,nil,DDGIClearFence,true);
+     finally
+      FreeAndNil(DDGIClearFence);
+     end;
+    finally
+     FreeAndNil(DDGIClearCommandBuffer);
+    end;
+   finally
+    FreeAndNil(DDGIClearCommandPool);
    end;
 
    // Set 2 descriptor for the mesh fragment shader (sampled probe data): UBO + irradiance SH (3 sampler3D) + visibility.
