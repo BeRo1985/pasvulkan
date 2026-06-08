@@ -110,6 +110,7 @@ type { TpvScene3DRendererPassesCanvasRenderPass }
        fVulkanRenderPass:TpvVulkanRenderPass;
        fInstance:TpvScene3DRendererInstance;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
+       fMeshShader:boolean;
        fGeometryShaderSupport:boolean;
        fDebugPrimitiveVertexShaderModule:TpvVulkanShaderModule;
        fDebugPrimitiveGeometryShaderModule:TpvVulkanShaderModule;
@@ -150,9 +151,12 @@ implementation
 
 constructor TpvScene3DRendererPassesCanvasRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
-inherited Create(aFrameGraph);
+
+ inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
+
+ fMeshShader:=fInstance.Renderer.Scene3D.MeshShaders;
 
  Name:='CanvasRenderPass';
 
@@ -244,7 +248,7 @@ begin
   fVulkanPipelineShaderStageDebugPrimitiveGeometry:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_GEOMETRY_BIT,fDebugPrimitiveGeometryShaderModule,'main');
  end else begin
   fVulkanPipelineShaderStageDebugPrimitiveGeometry:=nil;
- end; 
+ end;
 
  fVulkanPipelineShaderStageDebugPrimitiveFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fDebugPrimitiveFragmentShaderModule,'main');
 
@@ -252,7 +256,7 @@ begin
 
  fVulkanPipelineShaderStageSolidPrimitiveFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fSolidPrimitiveFragmentShaderModule,'main');
 
- if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+ if fMeshShader then begin
 
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_lines_vert.spv');
   try
@@ -427,7 +431,7 @@ begin
    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
    if (PipelineIndex=0) and not fGeometryShaderSupport then begin
-    // Debug primitives uses no blending, since they are simply just native GPU lines, not anti-aliased 
+    // Debug primitives uses no blending, since they are simply just native GPU lines, not anti-aliased
     VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
                                                                         VK_BLEND_FACTOR_ZERO,
                                                                         VK_BLEND_FACTOR_ZERO,
@@ -480,7 +484,7 @@ begin
 
  end;
 
- if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+ if fMeshShader then begin
   fVulkanDebugLinesPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
   fVulkanDebugLinesPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TDebugLinesPushConstants));
   fVulkanDebugLinesPipelineLayout.AddDescriptorSetLayout(fPassVulkanDescriptorSetLayout);
@@ -490,7 +494,7 @@ begin
   fVulkanDebugLinesPipelineLayout:=nil;
  end;
 
- if fInstance.Renderer.Scene3D.MeshShaderSupport and assigned(fVulkanDebugLinesPipelineLayout) then begin
+ if fMeshShader and assigned(fVulkanDebugLinesPipelineLayout) then begin
 
   VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
                                                            fInstance.Renderer.VulkanPipelineCache,
@@ -672,7 +676,7 @@ begin
 
   DebugMeshletSphereLineBuffer:=fInstance.DebugMeshletSphereLineBuffers[aInFlightFrameIndex];
   if fInstance.DebugDrawMeshletBoundingSpheres and
-     fInstance.Renderer.Scene3D.MeshShaderSupport and
+     fMeshShader and
      assigned(fVulkanDebugLinesGraphicsPipeline) and
      assigned(fVulkanDebugLinesPipelineLayout) and
      assigned(DebugMeshletSphereLineBuffer) and

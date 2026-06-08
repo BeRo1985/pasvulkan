@@ -135,7 +135,7 @@ begin
  // from the common pre-occlusion input (the input is NOT yet a draw command for the mesh path). Two output formats, matching
  // the active mesh draw path: expand (UseMeshletExpand, mesh_notask_mesh: 1 command per meshlet) vs non-expand (task shader: 1
  // command per object). Otherwise the input already IS a full indexed draw command -> just copy it.
- if fInstance.Scene3D.MeshShaderSupport and fInstance.Scene3D.MeshShaderPipelineActive then begin
+ if fInstance.Scene3D.MeshShaders then begin
   if fInstance.Renderer.UseMeshletExpand then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_selection_list_meshshader_expand_comp.spv');
   end else begin

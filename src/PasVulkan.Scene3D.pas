@@ -596,7 +596,7 @@ type EpvScene3D=class(Exception);
              DrawFlags:TpvUInt32;
              TextureDepthIndex:TpvUInt32;
              MeshDrawCommandsBDA:TVkDeviceAddress;
-             
+
              MaximumDistance:TpvFloat;
              AreaTooSmallThreshold:TpvFloat;
 
@@ -1817,7 +1817,7 @@ type EpvScene3D=class(Exception);
               Mesh=0,           // Decal applied to meshes
               Planet=1,         // Decal applied to planets
               Grass=2           // Decal applied to grass
-             ); 
+             );
             TDecalPasses=set of TDecalPass;
             TDecalDebugFlag=
              (
@@ -3362,9 +3362,9 @@ type EpvScene3D=class(Exception);
                             fDrawInfoGenerations:TRenderInstanceGenerations;
                             fActiveRenderPassesGenerations:TRenderInstanceGenerations;
                             fLastModelMatrices:TRenderInstanceLastModelMatrices;
-{$ifdef FlatParallelRenderInstanceUpdates}                            
+{$ifdef FlatParallelRenderInstanceUpdates}
                             fComputedPreviousModelMatrix:TpvMatrix4x4;
-{$endif}                            
+{$endif}
                             fAssignedVirtualInstance:TInstance;
                             fAssignedVirtualInstanceRenderInstance:TRenderInstance;
                             fTag:TpvUInt64;
@@ -3515,9 +3515,9 @@ type EpvScene3D=class(Exception);
                      fLightShadowMapMatrices:TPasGLTF.TMatrix4x4DynamicArray;
                      fLightShadowMapZFarValues:TPasGLTFFloatDynamicArray;
                      fBoundingBox:TpvAABB;
-{$ifdef FlatParallelRenderInstanceUpdates}                          
+{$ifdef FlatParallelRenderInstanceUpdates}
                      fMeshBoundingBox:TpvAABB;
-{$endif}                     
+{$endif}
                      fBoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
                      fBoundingSpheres:TBoundingSpheres;
                      fBoundingRadius:TpvDouble;
@@ -4333,6 +4333,7 @@ type EpvScene3D=class(Exception);
        fMaxMultiDrawCount:TpvUInt32;
        fMeshShaderSupport:Boolean;
        fMeshShaderPipelineActive:Boolean;
+       fMeshShaders:Boolean;
        fPlanetGrassMeshShaders:Boolean;
        fPlanetTerrainMeshShaders:Boolean;
        fPlanetWaterMeshShaders:Boolean;
@@ -4803,7 +4804,7 @@ type EpvScene3D=class(Exception);
        fTimeRebuildDirectedAcyclicGraph:TpvDouble;
        fTimeProcessDirectedAcyclicGraph:TpvDouble;
        fTimeProcessGlobalRenderInstances:TpvDouble;
-{$ifdef FlatParallelRenderInstanceUpdates}                            
+{$ifdef FlatParallelRenderInstanceUpdates}
        fGlobalRenderInstanceWorkList:array of TGroup.TInstance.TRenderInstance;
        fGlobalRenderInstanceWorkListCount:TpvInt32;
        fGlobalRenderInstanceInstances:array of TGroup.TInstance;
@@ -4811,7 +4812,7 @@ type EpvScene3D=class(Exception);
       private
        procedure ProcessGlobalRenderInstances(const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessGlobalRenderInstancesParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-{$endif}       
+{$endif}
       public
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
@@ -4864,7 +4865,7 @@ type EpvScene3D=class(Exception);
                                        out aPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
                                        out aFaceCullingMode:TpvScene3D.TFaceCullingMode); static;
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil;const aVirtualReality:TpvVirtualReality=nil;const aRaytracing:Boolean=true;const aMeshShaders:Boolean=true;const aPlanetGrassMeshShaders:Boolean=true;const aUseParallelQueues:Boolean=true;const aUseOwnPasMPInstance:Boolean=false;const aPlanetTerrainMeshShaders:Boolean=false;const aPlanetWaterMeshShaders:Boolean=false); reintroduce;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil;const aVirtualReality:TpvVirtualReality=nil;const aRaytracing:Boolean=true;const aMeshShaders:Boolean=true;const aUseParallelQueues:Boolean=true;const aUseOwnPasMPInstance:Boolean=false;const aGroupMeshShaders:Boolean=true;const aPlanetTerrainMeshShaders:Boolean=false;const aPlanetGrassMeshShaders:Boolean=true;const aPlanetWaterMeshShaders:Boolean=false); reintroduce;
        destructor Destroy; override;
        procedure Initialize;
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
@@ -5059,7 +5060,7 @@ type EpvScene3D=class(Exception);
       public
        procedure RebuildDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
-      public 
+      public
        function GetVulkanDrawIndexBuffer:TpvVulkanBuffer; // public accessor for the GPU-driven draw index buffer (used by custom indirect draws like the selection mask pass)
       public
        property DebugMeshletSpherePairsBuffer:TpvVulkanBuffer read fDebugMeshletSpherePairsBuffer;
@@ -5256,6 +5257,7 @@ type EpvScene3D=class(Exception);
        property MaxMultiDrawCount:TpvUInt32 read fMaxMultiDrawCount write fMaxMultiDrawCount;
        property MeshShaderSupport:Boolean read fMeshShaderSupport;
        property MeshShaderPipelineActive:Boolean read fMeshShaderPipelineActive write fMeshShaderPipelineActive;
+       property MeshShaders:Boolean read fMeshShaders;
        property PlanetGrassMeshShaders:Boolean read fPlanetGrassMeshShaders;
        property PlanetGrassMeshShaderSupport:Boolean read GetPlanetGrassMeshShaderSupport;
        property PlanetTerrainMeshShaderSupport:Boolean read GetPlanetTerrainMeshShaderSupport;
@@ -7146,10 +7148,10 @@ begin
   exit;
  end;}
 
- // Distance-based update throttling. For already-initialized nodes whose geometry, 
- // raytracing mask, shadow flag and long-term static buffer generation are unchanged 
- // since the last update, the matrix and render-instance transforms may be allowed to 
- // lag by a few frames for distant nodes without any visually noticeable effect on 
+ // Distance-based update throttling. For already-initialized nodes whose geometry,
+ // raytracing mask, shadow flag and long-term static buffer generation are unchanged
+ // since the last update, the matrix and render-instance transforms may be allowed to
+ // lag by a few frames for distant nodes without any visually noticeable effect on
  // raytraced shadows or reflections. Interval bins (approx.):
  //   < 20 m  -> every frame, 20-60 m -> every 4th, 60-200 m -> every 16th,
  //   > 200 m -> every 64th. Salt distributes the update phase per node to avoid
@@ -7185,7 +7187,7 @@ begin
   end;
  end;
 
- // Quick-Reject: if node is initialized and no relevant state has changed, skip 
+ // Quick-Reject: if node is initialized and no relevant state has changed, skip
  // the expensive BLAS-variant loop and per-render-instance transform update.
  // Tracks: active+visible+bboxfilled state, raytracing mask, casting-shadows flag,
  // cache generations (matrix, vertices, long-term static buffer), and a hash over
@@ -7222,7 +7224,7 @@ begin
      exit;
     end;
    end;
-  end; 
+  end;
  end;
 
  fInUsage:=true;
@@ -7600,7 +7602,7 @@ begin
 
          BLASInstance:=InstanceListRawItems[BLASInstanceIndex];
          PerInFlightFrameRenderInstance:=@RenderInstanceItems[RendererInstanceIndex];
-         
+
          // Check if RenderInstance changed or generation changed
          if fMatrixChanged or
             (BLASInstance.TrackedObjectInstance<>PerInFlightFrameRenderInstance^.RenderInstance) or
@@ -7627,7 +7629,7 @@ begin
           BLASInstance.NewGeneration;}
 
          end;
-         
+
          inc(BLASInstanceIndex);
 
         end;
@@ -7670,7 +7672,7 @@ begin
 
  end;
 
- // Update tracked state so the next call can short-circuit when nothing has changed. 
+ // Update tracked state so the next call can short-circuit when nothing has changed.
  // Cache generations, mask, and casting-shadows are already updated inside the body
  // above; here we capture active-state and the render-instance hash in their
  // post-update form.
@@ -10341,7 +10343,7 @@ begin
    fData.Dispersion.Active:=StreamIO.ReadBoolean;
 
    fData.Dispersion.Dispersion:=StreamIO.ReadFloat;
- 
+
   end;
 
   begin
@@ -10742,7 +10744,7 @@ begin
   end;
 
   begin
- 
+
    // PASVULKAN_materials_emissive_gi
 
    StreamIO.WriteFloat(fData.EmissiveGIFactor);
@@ -13143,9 +13145,9 @@ begin
       (assigned(fVulkanDrawUniqueIndexBuffer) and (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
       (assigned(fVulkanMorphTargetVertexBuffer) and (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) or
       (assigned(fVulkanJointBlockBuffer) and (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock)))) or
-      (fSceneInstance.fMeshShaderSupport and assigned(fVulkanMeshletDescriptorBuffer) and (fVulkanMeshletDescriptorBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor)))) or
-      (fSceneInstance.fMeshShaderSupport and assigned(fVulkanMeshletVertexBuffer) and (fVulkanMeshletVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32)))) or
-      (fSceneInstance.fMeshShaderSupport and assigned(fVulkanMeshletPrimitiveBuffer) and (fVulkanMeshletPrimitiveBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32)))) then begin
+      (fSceneInstance.fMeshShaders and assigned(fVulkanMeshletDescriptorBuffer) and (fVulkanMeshletDescriptorBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor)))) or
+      (fSceneInstance.fMeshShaders and assigned(fVulkanMeshletVertexBuffer) and (fVulkanMeshletVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32)))) or
+      (fSceneInstance.fMeshShaders and assigned(fVulkanMeshletPrimitiveBuffer) and (fVulkanMeshletPrimitiveBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32)))) then begin
     fSceneInstance.Defragment(true);
    end;
 
@@ -13157,7 +13159,7 @@ begin
       ((not assigned(fVulkanDrawUniqueIndexBuffer)) or (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanDrawUniqueIndexBuffer.Size>(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
       ((not assigned(fVulkanMorphTargetVertexBuffer)) or (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMorphTargetVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))))) or
       ((not assigned(fVulkanJointBlockBuffer)) or (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))) or (fSceneInstance.fAllowBufferShrink and (fVulkanJointBlockBuffer.Size>(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))))) or
-      (fSceneInstance.fMeshShaderSupport and
+      (fSceneInstance.fMeshShaders and
        (((not assigned(fVulkanMeshletDescriptorBuffer)) or (fVulkanMeshletDescriptorBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletDescriptorBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor))))) or
         ((not assigned(fVulkanMeshletVertexBuffer)) or (fVulkanMeshletVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32))))) or
         ((not assigned(fVulkanMeshletPrimitiveBuffer)) or (fVulkanMeshletPrimitiveBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletPrimitiveBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32))))))) then begin
@@ -13404,7 +13406,7 @@ begin
      end;
 
      // Meshlet descriptor buffer
-     if fSceneInstance.fMeshShaderSupport then begin
+     if fSceneInstance.fMeshShaders then begin
       if (not assigned(fVulkanMeshletDescriptorBuffer)) or (fVulkanMeshletDescriptorBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletDescriptorBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletDescriptorBufferData.Count)*SizeOf(TGPUMeshletDescriptor)))) then begin
        FreeAndNil(fVulkanMeshletDescriptorBuffer);
        fVulkanMeshletDescriptorBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -13440,7 +13442,7 @@ begin
      end;
 
      // Meshlet vertex buffer (global vertex index remap)
-     if fSceneInstance.fMeshShaderSupport then begin
+     if fSceneInstance.fMeshShaders then begin
       if (not assigned(fVulkanMeshletVertexBuffer)) or (fVulkanMeshletVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletVertexBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletVertexBufferData.Count)*SizeOf(TpvUInt32)))) then begin
        FreeAndNil(fVulkanMeshletVertexBuffer);
        fVulkanMeshletVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -13475,7 +13477,7 @@ begin
      end;
 
      // Meshlet primitive buffer (packed triangle indices)
-     if fSceneInstance.fMeshShaderSupport then begin
+     if fSceneInstance.fMeshShaders then begin
       if (not assigned(fVulkanMeshletPrimitiveBuffer)) or (fVulkanMeshletPrimitiveBuffer.Size<(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32))) or (fSceneInstance.fAllowBufferShrink and (fVulkanMeshletPrimitiveBuffer.Size>(Max(1,fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count)*SizeOf(TpvUInt32)))) then begin
        FreeAndNil(fVulkanMeshletPrimitiveBuffer);
        fVulkanMeshletPrimitiveBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -13584,7 +13586,7 @@ begin
     end;
 
     // Meshlet bounds compute descriptor set (Set 0: MeshletVertexBuffer + MeshletDescriptorBuffer)
-    if fSceneInstance.fMeshShaderSupport and
+    if fSceneInstance.fMeshShaders and
        assigned(fVulkanMeshletVertexBuffer) and
        assigned(fVulkanMeshletDescriptorBuffer) and
        assigned(fSceneInstance.fMeshletBoundsComputeVulkanDescriptorSet0Layout) and
@@ -13706,7 +13708,7 @@ begin
                                                            GroupInstance.fGroup.fSharedMorphTargetVertexBufferRange.Size*SizeOf(TMorphTargetVertex));
         end;
 
-        if fSceneInstance.fMeshShaderSupport then begin
+        if fSceneInstance.fMeshShaders then begin
          if GroupInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Size>0 then begin
           fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                             fSceneInstance.fVulkanStagingCommandBuffer,
@@ -20852,7 +20854,7 @@ var DrawChoreographyBatchItemIndex,OtherIndex,LODLevel,LODCount:TpvSizeInt;
     NewMaterialID:TpvUInt32;
     NeedClone:boolean;
     Vertex:TpvScene3D.PVertex;
-    LODFirstVertices,LODCountVertices:array[0..3] of TpvSizeUInt; 
+    LODFirstVertices,LODCountVertices:array[0..3] of TpvSizeUInt;
 begin
  for DrawChoreographyBatchItemIndex:=0 to fDrawChoreographyBatchItems.Count-1 do begin
   DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
@@ -20981,7 +20983,7 @@ begin
          if assigned(SourceNodeMeshPrimitiveInstance) and assigned(SourcePrimitive) then begin
           LODFirstVertices[LODLevel]:=SourceNodeMeshPrimitiveInstance.fStartBufferVertexOffset;
           LODCountVertices[LODLevel]:=SourcePrimitive.fCountVertices;
-         end; 
+         end;
         end;
        end else begin
         LODInfo^.CountIndices[LODLevel]:=0;
@@ -21249,7 +21251,7 @@ begin
   CalculateBoundingBox;
 
   CollectMeshlets;
-  
+
   CollectUsedVisibleDrawNodes;
 
   CollectMeshNodeIndices;
@@ -31346,7 +31348,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UpdateRenderInstances(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
-{$ifdef FlatParallelRenderInstanceUpdates}                            
+{$ifdef FlatParallelRenderInstanceUpdates}
 var Index,StartIndex,CountRenderInstances:TpvSizeInt;
 begin
  if aInFlightFrameIndex>=0 then begin
@@ -31399,7 +31401,7 @@ var Index,PerInFlightFrameRenderInstanceIndex,MeshNodeArrayIndex,NodeIndex:TpvSi
     MatrixPairDirtyMin,MatrixPairDirtyMax:TpvSizeInt;
     MatrixPairGeneration:TpvUInt64;
 {$endif}
-{$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}    
+{$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}
     SphereCenterLocal,TransformedSphereCenter:TpvVector3;
     SphereRadiusLocal,Col0LenSq,Col1LenSq,Col2LenSq,TransformedSphereRadius:TpvScalar;
     SingleMatrix:TpvMatrix4x4;
@@ -31453,7 +31455,7 @@ begin
         TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
         RenderInstance.fWorkActives[aInFlightFrameIndex]:=true;
         RenderInstance.fWorkModelMatrix:=fSceneInstance.TransformOrigin(RenderInstance.fModelMatrix,aInFlightFrameIndex,false);
-{$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}    
+{$ifdef UseSphereTransformedBoundingSphereForRenderInstanceCulling}
         SingleMatrix:=RenderInstance.fWorkModelMatrix;
         RenderInstance.fModelMatrices[aInFlightFrameIndex]:=SingleMatrix;
         OldInstanceDataIndex:=RenderInstance.fInstanceDataIndices[aInFlightFrameIndex];
@@ -31472,7 +31474,7 @@ begin
         RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
         RenderInstance.fBoundingBox:=TemporaryBoundingBox.HomogenTransform(RenderInstance.fWorkModelMatrix);
         RenderInstance.fBoundingSphere:=TpvSphere.CreateFromAABB(RenderInstance.fBoundingBox);
-{$endif}        
+{$endif}
         PerInFlightFrameRenderInstanceIndex:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNewIndex;
         PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
         PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
@@ -31561,9 +31563,9 @@ begin
              CurrentDrawInfo^:=NewDrawInfo;
              fSceneInstance.ReleaseDrawInfo(MeshObjectID,true);
             end;
-           end;   
-          end;   
-         end;   
+           end;
+          end;
+         end;
 {$else}
          for MeshNodeArrayIndex:=0 to length(fGroup.fMeshNodeIndices)-1 do begin
           NodeIndex:=fGroup.fMeshNodeIndices[MeshNodeArrayIndex];
@@ -34106,7 +34108,7 @@ begin
    end;
 
    // Build meshlet bounds ranges for all nodes that go through mesh.comp and have meshlets
-   if fGroup.fSceneInstance.fMeshShaderSupport then begin
+   if fGroup.fSceneInstance.fMeshShaders then begin
 
     DrawChoreographyBatchUniqueItemIndex:=0;
 
@@ -34185,7 +34187,7 @@ end;
 
 { TpvScene3D }
 
-constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aVirtualReality:TpvVirtualReality;const aRaytracing:Boolean;const aMeshShaders:Boolean;const aPlanetGrassMeshShaders:Boolean;const aUseParallelQueues:Boolean;const aUseOwnPasMPInstance:Boolean;const aPlanetTerrainMeshShaders:Boolean;const aPlanetWaterMeshShaders:Boolean);
+constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aVirtualReality:TpvVirtualReality;const aRaytracing:Boolean;const aMeshShaders:Boolean;const aUseParallelQueues:Boolean;const aUseOwnPasMPInstance:Boolean;const aGroupMeshShaders:Boolean;const aPlanetTerrainMeshShaders:Boolean;const aPlanetGrassMeshShaders:Boolean;const aPlanetWaterMeshShaders:Boolean);
 var Index,InFlightFrameIndex,Count:TpvSizeInt;
     RenderPass:TpvScene3DRendererRenderPass;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
@@ -34233,7 +34235,7 @@ begin
 
  fDataGeneration:=0;
 
-{$ifdef FlatParallelRenderInstanceUpdates}                            
+{$ifdef FlatParallelRenderInstanceUpdates}
  fGlobalRenderInstanceWorkList:=nil;
  fGlobalRenderInstanceWorkListCount:=0;
  fGlobalRenderInstanceInstances:=nil;
@@ -34322,7 +34324,9 @@ begin
                      (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE) and
                      ((fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE) or not assigned(fVirtualReality));
 
- fMeshShaderPipelineActive:=false;
+ fMeshShaderPipelineActive:=aGroupMeshShaders;
+
+ fMeshShaders:=fMeshShaderSupport and fMeshShaderPipelineActive;
 
  fPlanetGrassMeshShaders:=aPlanetGrassMeshShaders;
  fPlanetTerrainMeshShaders:=aPlanetTerrainMeshShaders;
@@ -34919,7 +34923,7 @@ begin
 
   begin
 
-   Count:=5+IfThen(fMeshShaderSupport,1,0)+IfThen(fRaytracingActive,1,0);
+   Count:=5+IfThen(fMeshShaders,1,0)+IfThen(fRaytracingActive,1,0);
 
    for Index:=0 to fCountInFlightFrames-1 do begin
     fProcessFrameTimerQueries[Index]:=TpvTimerQuery.Create(fVulkanDevice,Count);
@@ -35151,7 +35155,7 @@ begin
   fGlobalVulkanDescriptorSetLayout.AddBinding(0,
                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               1,
-                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT) or IfThen(fMeshShaderSupport,TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0),
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT) or IfThen(fMeshShaders,TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0),
                                               []);
   fGlobalVulkanDescriptorSetLayout.AddBinding(1,
                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -35187,7 +35191,7 @@ begin
                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT) or
-                                              IfThen(fMeshShaderSupport,TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0),
+                                              IfThen(fMeshShaders,TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0),
                                               []);
   // InstanceDataIndexBuffer (binding 7) - REMOVED: now part of DrawInfo SSBO at binding 0
   {fGlobalVulkanDescriptorSetLayout.AddBinding(7,
@@ -35204,7 +35208,7 @@ begin
                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT) or
-                                              IfThen(fMeshShaderSupport,TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0),
+                                              IfThen(fMeshShaders,TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0),
                                               []);
   // Raytracing (bindings 8-9 if active)
   if fRaytracingActive then begin
@@ -35240,7 +35244,7 @@ begin
                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT) or
-                                              IfThen(fMeshShaderSupport,TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0),
+                                              IfThen(fMeshShaders,TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0),
                                               [],
                                               TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT) or
                                               TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT) or
@@ -35280,7 +35284,7 @@ begin
    fGlobalMeshletVulkanDescriptorSets[Index]:=nil;
   end;
 
-  if fMeshShaderSupport then begin
+  if fMeshShaders then begin
 
    // Meshlet bounds compute Set 0 layout (MeshletVertexBuffer + MeshletDescriptorBuffer)
    fMeshletBoundsComputeVulkanDescriptorSet0Layout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
@@ -37533,7 +37537,7 @@ end;
 procedure TpvScene3D.UpdateMeshletBoundingSphereBuffer(const aInFlightFrameIndex:TpvSizeInt);
 var Count,InFlightFrameIndex,FirstIndex,LastIndex:TpvSizeInt;
 begin
- if fMeshShaderSupport then begin
+ if fMeshShaders then begin
   Count:=Max(65536,Max(fTotalActiveMeshletCount,fVulkanMeshletBoundingSphereBufferRangeAllocator.Capacity));
   if fUsePerInFlightFrameResources then begin
    FirstIndex:=aInFlightFrameIndex;
@@ -39425,7 +39429,7 @@ begin
     ]
    );
   end else begin
-   fPasMPInstance.Invoke(DirectedAcyclicGraphInstanceParallelForJob); 
+   fPasMPInstance.Invoke(DirectedAcyclicGraphInstanceParallelForJob);
   end;
 
  end else begin
@@ -39944,7 +39948,7 @@ begin
    end;
    fGlobalRenderInstanceWorkListCount:=0;
    fGlobalRenderInstanceInstanceCount:=0;
-{$endif}   
+{$endif}
 
    fGlobalVulkanDrawInfoLocks[aInFlightFrameIndex].AcquireRead;
    try
@@ -39960,7 +39964,7 @@ begin
     ProcessGlobalRenderInstances(aInFlightFrameIndex);
 {$else}
     fTimeProcessGlobalRenderInstances:=0.0;
-{$endif}    
+{$endif}
 
 {$ifdef DeferredLightAABBTreeUpdates}
     ProcessDeferredLightOperations;
@@ -40167,11 +40171,11 @@ var DecalIndex:TpvSizeInt;
     RemainingLife,FadeFactor,EffectiveOpacity:TpvDouble;
     Matrix:PpvMatrix4x4;
 begin
- 
+
  aDecalItemArray.ClearNoFree;
- 
+
  for DecalIndex:=0 to fDecals.Count-1 do begin
- 
+
   Decal:=fDecals[DecalIndex];
 
   if assigned(Decal) then begin
@@ -40223,7 +40227,7 @@ begin
     DecalItem^.TextureIndices.y:=Decal.fNormalTexture;
     DecalItem^.TextureIndices.z:=Decal.fORMTexture;
     DecalItem^.TextureIndices.w:=Decal.fSpecularTexture;
-    
+
     DecalItem^.TextureIndices2.x:=Decal.fEmissiveTexture;
     DecalItem^.TextureIndices2.y:=-1;
     DecalItem^.TextureIndices2.z:=-1;
@@ -40584,15 +40588,15 @@ var RequiredSize:TpvSizeInt;
 begin
  Generation:=fDebugMeshletSpherePairsGeneration;
  if fDebugMeshletSpherePairsUploadedGeneration<>Generation then begin
-  
+
   fDebugMeshletSpherePairsUploadedGeneration:=Generation;
-  
+
   RebuildDebugMeshletSpherePairs(aInFlightFrameIndex);
-  
+
   WaitOnceOnPreviousFrame;
-  
+
   RequiredSize:=Max(1,fDebugMeshletSpherePairs.Count)*SizeOf(TDebugMeshletSpherePair);
-  
+
   if (not assigned(fDebugMeshletSpherePairsBuffer)) or
      (fDebugMeshletSpherePairsBuffer.Size<RequiredSize) then begin
 
@@ -40620,16 +40624,16 @@ begin
                                                           'TpvScene3D.DebugMeshletSpherePairsBuffer'
                                                          );
    fVulkanDevice.DebugUtils.SetObjectName(fDebugMeshletSpherePairsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.DebugMeshletSpherePairsBuffer');
-   
+
   end;
-  
+
   if fDebugMeshletSpherePairs.Count>0 then begin
    fDebugMeshletSpherePairsBuffer.UpdateData(fDebugMeshletSpherePairs.Items[0],
                                              0,
                                              fDebugMeshletSpherePairs.Count*SizeOf(TDebugMeshletSpherePair));
   end;
 
- end; 
+ end;
 end;
 
 function TpvScene3D.AcquirePlanetWaterSimulationTimelineSequence(out aWaitValue:TpvUInt64):TpvUInt64;
@@ -40736,7 +40740,7 @@ var NMAPStream:TMemoryStream;
 begin
  if (pvScene3DDumpBoundingSpheres or pvScene3DDumpAnimationBuffers) and assigned(pvScene3DDebugDumpManager) then begin
   if pvScene3DDumpBoundingSpheres then begin
-   if fMeshShaderPipelineActive and assigned(fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex]) then begin
+   if fMeshShaders and assigned(fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex]) then begin
     pvScene3DDebugDumpManager.RecordCopy(aCommandBuffer,
                                          aInFlightFrameIndex,
                                          TpvScene3DDebugDumpTagMeshletBoundingSpheres,
@@ -41266,7 +41270,7 @@ begin
    // Zero-fill newly (re)created meshlet bounding sphere buffer so uncomputed spheres have w=0
    // (shader falls back to descriptor spheres when w<=0)
    MeshletBoundingSphereBuffer:=fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex];
-   if fMeshShaderSupport and
+   if fMeshShaders and
       assigned(MeshletBoundingSphereBuffer) and
       fGlobalMeshletBoundingSphereBufferNeedsClear then begin
     fGlobalMeshletBoundingSphereBufferNeedsClear:=false;
@@ -41382,7 +41386,7 @@ begin
 
    if (pvScene3DDumpBoundingSpheres or pvScene3DDumpAnimationBuffers) and assigned(pvScene3DDebugDumpManager) then begin
     RecordDebugDumps(CommandBuffer,aInFlightFrameIndex);
-   end; 
+   end;
 
    CommandBuffer.EndRecording;
 
@@ -41659,9 +41663,9 @@ begin
   UploadBoundingSphereBuffer(aInFlightFrameIndex);
 
   begin
-   
+
    fVulkanLongTermStaticBuffer.Update(aInFlightFrameIndex);
-   
+
    fVulkanShortTermDynamicBuffers.Update(aInFlightFrameIndex);
 
    UpdateMorphWeightBaseOffsetsBuffer(aInFlightFrameIndex);
@@ -42203,7 +42207,7 @@ begin
       fMatrixPairMappedBufferCounts[aInFlightFrameIndex]:=Size div SizeOf(TGPUMatrixPair);
      end else begin
       fMatrixPairMappedBasePointers[aInFlightFrameIndex]:=nil;
-      fMatrixPairMappedBufferCounts[aInFlightFrameIndex]:=0; 
+      fMatrixPairMappedBufferCounts[aInFlightFrameIndex]:=0;
      end;
 
     end;
@@ -42343,7 +42347,7 @@ begin
                                      FlushUpdateData
                                     );
     end;
-    TBufferStreamingMode.Staging:begin 
+    TBufferStreamingMode.Staging:begin
      fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
                                         fVulkanStagingCommandBuffer,
                                         fVulkanStagingFence,
@@ -42444,7 +42448,7 @@ begin
   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletVertexDeviceAddress:=0;
   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletPrimitiveDeviceAddress:=0;
   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletBoundingSphereDeviceAddress:=0;
-  if fMeshShaderSupport and assigned(fVulkanLongTermStaticBuffer) then begin
+  if fMeshShaders and assigned(fVulkanLongTermStaticBuffer) then begin
    if assigned(fVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer) then begin
     fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletDescriptorDeviceAddress:=fVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer.DeviceAddress;
    end;
@@ -42455,7 +42459,7 @@ begin
     fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletPrimitiveDeviceAddress:=fVulkanLongTermStaticBuffer.fVulkanMeshletPrimitiveBuffer.DeviceAddress;
    end;
   end;
-  
+
   // Set per-instance meshlet bounding sphere BDA (per IFF, dynamic buffer)
   MeshletBoundingSphereBuffer:=fGlobalMeshletBoundingSphereBuffers[aInFlightFrameIndex];
   if assigned(MeshletBoundingSphereBuffer) then begin
@@ -42465,7 +42469,7 @@ begin
   // Set node matrices BDA (per IFF, dynamic buffer — for mesh shader winding flip via determinant)
   if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanNodeMatricesBuffer) then begin
    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].NodeMatricesDeviceAddress:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanNodeMatricesBuffer.DeviceAddress;
-  end else begin 
+  end else begin
    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].NodeMatricesDeviceAddress:=0;
   end;
 
@@ -42750,7 +42754,7 @@ begin
 
   PushConstantStageFlags:=TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT) or
                            TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT);
-  if fMeshShaderSupport then begin
+  if fMeshShaders then begin
    PushConstantStageFlags:=PushConstantStageFlags or
                             TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_TASK_BIT_EXT) or
                             TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_MESH_BIT_EXT);
@@ -43424,9 +43428,9 @@ begin
  BeginCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  fUpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresParallelForJobInFlightFrameIndex:=fRaytracing.InFlightFrameIndex;
 
- // Snapshot primary camera position (for distance-based update throttling) and advance 
- // the global raytracing-update frame counter. Camera position is taken from the first 
- // registered renderer instance; if none is present, distance-throttling is disabled 
+ // Snapshot primary camera position (for distance-based update throttling) and advance
+ // the global raytracing-update frame counter. Camera position is taken from the first
+ // registered renderer instance; if none is present, distance-throttling is disabled
  // for this frame.
  if fRendererInstanceList.Count>0 then begin
   fRaytracingUpdateCameraPosition:=TpvScene3DRendererInstance(fRendererInstanceList.RawItems[0]).InFlightFrameStates^[fRaytracing.InFlightFrameIndex].MainCameraPosition;
@@ -44006,7 +44010,7 @@ function TpvScene3D.SpawnDecal(const aPosition:TpvVector3D;
                                const aEmissiveTexture:TpvInt32;
                                const aBlendMode:TpvScene3D.TDecalBlendMode;
                                const aPBRBlendFactor:TpvFloat;
-                               const aOpacity:TpvFloat;                               
+                               const aOpacity:TpvFloat;
                                const aAngleFade:TpvFloat;
                                const aEdgeFade:TpvFloat;
                                const aLifetime:TpvDouble;
@@ -44046,7 +44050,7 @@ begin
  result.fPasses:=aPasses;
  result.fHolder:=aHolder;
  result.Update(-1); // Initial update without origin transform
- 
+
 end;
 
 procedure TpvScene3D.StoreDecalStates;
@@ -45079,6 +45083,3 @@ end;
 initialization
  InitializeAnimationChannelTargetOverwriteGroupMap;
 end.
-
-
-

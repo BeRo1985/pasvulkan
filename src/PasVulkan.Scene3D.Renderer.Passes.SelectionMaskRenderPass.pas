@@ -134,7 +134,7 @@ begin
 
  inherited AcquirePersistentResources;
 
- fMeshShader:=fInstance.Renderer.Scene3D.MeshShaderSupport and fInstance.Renderer.Scene3D.MeshShaderPipelineActive;
+ fMeshShader:=fInstance.Renderer.Scene3D.MeshShaders;
 
  if fMeshShader then begin
   // Mirror CullDepthRenderPass: non-expand (NOT UseMeshletExpand) uses a task shader (mesh_task_pass0) that expands meshlets +

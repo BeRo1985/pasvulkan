@@ -87,7 +87,7 @@ type { TpvScene3DRendererVoxelMeshVisualization }
        fInstance:TpvScene3DRendererInstance;
        fRenderer:TpvScene3DRenderer;
        fScene3D:TpvScene3D;
-       fMeshShader:Boolean; // MeshShaderSupport and MeshShaderPipelineActive -> mesh-shader path (one workgroup per voxel, GPU-side empty cull) instead of the vertex-instanced cubes
+       fMeshShader:Boolean; // MeshShaders -> mesh-shader path (one workgroup per voxel, GPU-side empty cull) instead of the vertex-instanced cubes
        fVertexShaderModule:TpvVulkanShaderModule;
        fMeshShaderModule:TpvVulkanShaderModule;
        //fGeometryShaderModule:TpvVulkanShaderModule;
@@ -135,7 +135,7 @@ begin
 
  fScene3D:=aScene3D;
 
- fMeshShader:=fScene3D.MeshShaderSupport and fScene3D.MeshShaderPipelineActive;
+ fMeshShader:=fScene3D.MeshShaders;
 
  if fMeshShader then begin
   PrimaryStageFlags:=TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT);

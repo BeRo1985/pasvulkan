@@ -105,6 +105,7 @@ type { TpvScene3DRendererPassesCascadedShadowMapRenderPass }
        fMeshMeshShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageMeshTask:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshMesh:TpvVulkanPipelineShaderStage;
+       fMeshShader:Boolean;
        fMeshShaderGraphicsPipelines:array[TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
        fLayerRoutingTaskShaderModule:TpvVulkanShaderModule;
        fLayerRoutingMeshShaderModule:TpvVulkanShaderModule;
@@ -226,6 +227,8 @@ var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AcquirePersistentResources;
 
+ fMeshShader:=fInstance.Renderer.Scene3D.MeshShaders;
+
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -259,7 +262,7 @@ begin
 
  fVulkanPipelineShaderStageMeshMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshMaskedFragmentShaderModule,'main');
 
- if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+ if fMeshShader then begin
 
   if not fInstance.Renderer.UseMeshletExpand then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_task_pass0.spv');
@@ -294,7 +297,7 @@ begin
   fVulkanPipelineShaderStageMeshMesh:=nil;
  end;
 
- if fInstance.Renderer.Scene3D.MeshShaderSupport and fInstance.Renderer.UseMeshShaderLayerRouting then begin
+ if fMeshShader and fInstance.Renderer.UseMeshShaderLayerRouting then begin
 
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_layerrouting_task_pass0.spv');
   try
@@ -383,8 +386,10 @@ begin
 
  fVulkanRenderPass:=VulkanRenderPass;
 
+ fMeshShader:=fInstance.Renderer.Scene3D.MeshShaders;
+
  fPassVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
- if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+ if fMeshShader then begin
   fPassVulkanDescriptorSetLayout.AddBinding(0,
                                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                               1,
@@ -418,7 +423,7 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+ if fMeshShader then begin
   fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0,SizeOf(TpvScene3D.TMeshStagePushConstants));
  end else begin
   fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3D.TMeshStagePushConstants));
@@ -572,7 +577,7 @@ begin
 
  end;
 
- if (MultiviewMask=0) and assigned(fVulkanPipelineShaderStageMeshMesh) then begin
+ if (MultiviewMask=0) and fMeshShader and assigned(fVulkanPipelineShaderStageMeshMesh) then begin
 
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
@@ -703,7 +708,7 @@ begin
 
  end;
 
- if (MultiviewMask=0) and assigned(fVulkanPipelineShaderStageLayerRoutingTask) and assigned(fVulkanPipelineShaderStageLayerRoutingMesh) then begin
+ if (MultiviewMask=0) and fMeshShader and assigned(fVulkanPipelineShaderStageLayerRoutingTask) and assigned(fVulkanPipelineShaderStageLayerRoutingMesh) then begin
 
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin

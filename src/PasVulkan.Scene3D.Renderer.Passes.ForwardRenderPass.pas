@@ -150,10 +150,11 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fVulkanPipelineShaderStageMeshTask:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshMesh:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshVelocityMesh:TpvVulkanPipelineShaderStage;
+       fMeshShader:Boolean;
        fMeshShaderGraphicsPipelines:array[boolean,TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
        fVulkanGraphicsPipelines:array[boolean,TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
        fVulkanSpaceLinesGraphicsPipeline:TpvVulkanGraphicsPipeline;
-       fDDGIProbeDebugMeshShader:Boolean; // MeshShaderSupport and MeshShaderPipelineActive -> frustum-culled task+mesh path instead of the raw vertex path
+       fDDGIProbeDebugMeshShader:Boolean; // MeshShaders -> frustum-culled task+mesh path instead of the raw vertex path
        fDDGIProbeDebugVertexShaderModule:TpvVulkanShaderModule;
        fDDGIProbeDebugTaskShaderModule:TpvVulkanShaderModule;
        fDDGIProbeDebugMeshShaderModule:TpvVulkanShaderModule;
@@ -363,6 +364,8 @@ var Index:TpvSizeInt;
 begin
  inherited AcquirePersistentResources;
 
+ fMeshShader:=fInstance.Renderer.Scene3D.MeshShaders;
+
  MeshFragmentSpecializationConstants:=fInstance.MeshFragmentSpecializationConstants;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_vert.spv');
@@ -459,7 +462,7 @@ begin
 
  end;
 
- if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+ if fMeshShader then begin
 
   if not fInstance.Renderer.UseMeshletExpand then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_task_pass0.spv');
@@ -573,7 +576,7 @@ begin
  fVulkanPipelineShaderStageSpaceLinesFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fSpaceLinesFragmentShaderModule,'main');
 
  // DDGI probe debug overlay: only meaningful (and the DDGI descriptor set only exists) in the DDGI GI mode.
- fDDGIProbeDebugMeshShader:=fInstance.Renderer.Scene3D.MeshShaderSupport and fInstance.Renderer.Scene3D.MeshShaderPipelineActive;
+ fDDGIProbeDebugMeshShader:=fInstance.Renderer.Scene3D.MeshShaders;
  if fInstance.Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination then begin
 
   if fDDGIProbeDebugMeshShader then begin
@@ -629,7 +632,7 @@ begin
   fVulkanPipelineShaderStageDDGIProbeDebugFragment:=nil;
  end;
 
- if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+ if fMeshShader then begin
 
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_lines_vert.spv');
   try
@@ -708,7 +711,7 @@ begin
 
  if fUseDepthPrepass then begin
   FreeAndNil(fPlanetDepthPrePass);
- end; 
+ end;
 
  FreeAndNil(fPlanetOpaquePass);
 
@@ -804,8 +807,10 @@ begin
 
  fVulkanRenderPass:=VulkanRenderPass;
 
+ fMeshShader:=fInstance.Renderer.Scene3D.MeshShaders;
+
  fPassVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
- if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+ if fMeshShader then begin
   fPassVulkanDescriptorSetLayout.AddBinding(0,
                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                             1,
@@ -878,8 +883,8 @@ begin
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  if assigned(fResourceWetnessMap) then begin
-  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,1*fInstance.Renderer.CountInFlightFrames); 
- end; 
+  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,1*fInstance.Renderer.CountInFlightFrames);
+ end;
  fPassVulkanDescriptorPool.Initialize;
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
@@ -964,10 +969,10 @@ begin
                                                                       DescriptorImageInfos,
                                                                       [],
                                                                       [],
-                                                                      false); 
+                                                                      false);
   finally
    DescriptorImageInfos:=nil;
-  end;                                                                     
+  end;
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
                                                                      0,
                                                                      1,
@@ -1028,7 +1033,7 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+ if fMeshShader then begin
   fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT),0,SizeOf(TpvScene3D.TMeshStagePushConstants));
  end else begin
   fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3D.TMeshStagePushConstants));
@@ -1077,7 +1082,7 @@ begin
   fVulkanDDGIProbeDebugPipelineLayout:=nil;
  end;
 
- if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+ if fMeshShader then begin
   fVulkanDebugLinesPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
   fVulkanDebugLinesPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TDebugLinesPushConstants));
   fVulkanDebugLinesPipelineLayout.AddDescriptorSetLayout(fPassVulkanDescriptorSetLayout);
@@ -1282,7 +1287,7 @@ begin
 
  end;
 
- if assigned(fVulkanPipelineShaderStageMeshMesh) then begin
+ if fMeshShader and assigned(fVulkanPipelineShaderStageMeshMesh) then begin
 
   for DepthPrePass:=false to fUseDepthPrepass do begin
    for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
@@ -1664,7 +1669,7 @@ begin
   fVulkanDDGIProbeDebugGraphicsPipeline:=nil;
  end;
 
- if fInstance.Renderer.Scene3D.MeshShaderSupport and assigned(fVulkanDebugLinesPipelineLayout) then begin
+ if fMeshShader and assigned(fVulkanDebugLinesPipelineLayout) then begin
 
   VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
                                                            fInstance.Renderer.VulkanPipelineCache,
@@ -1757,7 +1762,7 @@ begin
                            fInstance.ScaledHeight,
                            fInstance.CountSurfaceViews,
                            fInstance.Renderer.SurfaceSampleCountFlagBits);
- 
+
  if fUseDepthPrepass then begin
   fPlanetDepthPrePass.AllocateResources(fVulkanRenderPass,
                                         fInstance.ScaledWidth,
@@ -2049,7 +2054,7 @@ begin
    fSpaceLinesPushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
    fSpaceLinesPushConstants.CountAllViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountViews;
    fSpaceLinesPushConstants.ViewPortSize:=TpvVector2.Create(fResourceColor.Width,fResourceColor.Height);
-  
+
    aCommandBuffer.CmdPushConstants(fVulkanSpaceLinesPipelineLayout.Handle,
                                    TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                    0,

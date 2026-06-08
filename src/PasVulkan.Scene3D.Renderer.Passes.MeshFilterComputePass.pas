@@ -160,7 +160,7 @@ begin
 
  inherited AcquirePersistentResources;
 
- if fInstance.Renderer.Scene3D.MeshShaderSupport then begin
+ if fInstance.Renderer.Scene3D.MeshShaders then begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_filter_ms_comp.spv');
  end else begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_filter_comp.spv');

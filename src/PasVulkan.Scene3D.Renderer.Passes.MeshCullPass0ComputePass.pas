@@ -139,6 +139,7 @@ type { TpvScene3DRendererPassesMeshCullPass0ComputePass }
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
        fMeshShaderComputeShaderModule:TpvVulkanShaderModule;
+       fMeshShader:Boolean;
        fMeshShaderVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
        fMeshShaderPipeline:TpvVulkanComputePipeline;
        fSortComputeShaderModule:TpvVulkanShaderModule;
@@ -199,6 +200,8 @@ begin
 
  inherited AcquirePersistentResources;
 
+ fMeshShader:=fInstance.Scene3D.MeshShaders;
+
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_cull_pass0_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -209,7 +212,7 @@ begin
 
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
- if fInstance.Scene3D.MeshShaderSupport then begin
+ if fMeshShader then begin
   if fInstance.Renderer.UseMeshletExpand then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_cull_meshshader_expand_pass0_comp.spv');
   end else begin
@@ -501,7 +504,7 @@ begin
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) or
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
-                                    TVkPipelineStageFlags(IfThen(fInstance.Scene3D.MeshShaderSupport,
+                                    TVkPipelineStageFlags(IfThen(fMeshShader,
                                                                  TVkFlags(VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT) or
                                                                  TVkFlags(VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT),
                                                                  0)),
@@ -612,7 +615,7 @@ begin
                                      0,nil);
   end;
 
-  if fInstance.Renderer.UseMeshShaderPipeline and assigned(fMeshShaderPipeline) then begin
+  if fInstance.Renderer.Scene3D.MeshShaders and assigned(fMeshShaderPipeline) then begin
 {$ifdef MeshShaderDebug}
    WriteLn('[DEBUG-MS] MeshCullPass0: Using MESH_SHADER_PATH pipeline');
 {$endif}
@@ -888,7 +891,7 @@ begin
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) or
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
-                                    TVkPipelineStageFlags(IfThen(fInstance.Scene3D.MeshShaderSupport,
+                                    TVkPipelineStageFlags(IfThen(fMeshShader,
                                                                  TVkFlags(VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT) or
                                                                  TVkFlags(VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT),
                                                                  0)),

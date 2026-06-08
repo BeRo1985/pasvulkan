@@ -406,7 +406,7 @@ begin
  end else begin
   PushConstants.Mode:=0;
  end;
- if (fInstance.DrawMeshletDebugColors and fInstance.Renderer.UseMeshShaderPipeline) or
+ if (fInstance.DrawMeshletDebugColors and fInstance.Renderer.Scene3D.MeshShaders) or
     fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
   PushConstants.Mode:=0;
  end;

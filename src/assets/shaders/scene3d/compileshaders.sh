@@ -317,6 +317,9 @@ compileshaderarguments=(
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=6 -o ${tempPath}/particle_voxelization_6_geom.spv"
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=7 -o ${tempPath}/particle_voxelization_7_geom.spv"
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=8 -o ${tempPath}/particle_voxelization_8_geom.spv"
+  # Mesh-shader variant of the particle voxelization (used when MeshShaderSupport is on, no geometry shader). Reads the particle
+  # vertex buffer via BDA + loops cascades at runtime, so no COUNT_CLIPMAPS variants. Output interface = particle.frag (-DVOXELIZATION).
+  "-V particle_voxelization.mesh --target-env vulkan1.2 -o ${tempPath}/particle_voxelization_mesh.spv"
 
   "-V mboit_resolve.frag -o ${tempPath}/mboit_resolve_frag.spv"
   "-V mboit_resolve.frag -DWATER -o ${tempPath}/mboit_resolve_water_frag.spv"

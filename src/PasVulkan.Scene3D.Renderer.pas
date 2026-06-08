@@ -137,7 +137,6 @@ type TpvScene3DRenderer=class;
        fVulkanPipelineCache:TpvVulkanPipelineCache;
        fCountInFlightFrames:TpvSizeInt;
        fVelocityBufferNeeded:Boolean;
-       fUseMeshShaderPipeline:Boolean;
        fUseMeshletExpand:Boolean;
        fUseMeshletCulling:Boolean;
        fUseMeshShaderLayerRouting:Boolean;
@@ -236,7 +235,6 @@ type TpvScene3DRenderer=class;
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property VelocityBufferNeeded:Boolean read fVelocityBufferNeeded;
-       property UseMeshShaderPipeline:Boolean read fUseMeshShaderPipeline write fUseMeshShaderPipeline;
        property UseMeshletExpand:Boolean read fUseMeshletExpand write fUseMeshletExpand;
        property UseMeshletCulling:Boolean read fUseMeshletCulling write fUseMeshletCulling;
        property UseMeshShaderLayerRouting:Boolean read fUseMeshShaderLayerRouting write fUseMeshShaderLayerRouting;
@@ -411,8 +409,6 @@ begin
  inherited Create(nil);
 
  fScene3D:=aScene3D;
-
- fUseMeshShaderPipeline:=true;
 
  fUseMeshletExpand:=true;
 
@@ -695,15 +691,11 @@ begin
 
  fVelocityBufferNeeded:=false;
 
- fUseMeshShaderPipeline:=fUseMeshShaderPipeline and fScene3D.MeshShaderSupport;
+ fUseMeshletExpand:=fUseMeshletExpand and fScene3D.MeshShaders;
 
- fScene3D.MeshShaderPipelineActive:=fUseMeshShaderPipeline;
+ fUseMeshletCulling:=fUseMeshletCulling and fScene3D.MeshShaders;
 
- fUseMeshletExpand:=fUseMeshletExpand and fUseMeshShaderPipeline;
-
- fUseMeshletCulling:=fUseMeshletCulling and fUseMeshShaderPipeline;
-
- fUseMeshShaderLayerRouting:=fScene3D.MeshShaderSupport and
+ fUseMeshShaderLayerRouting:=fScene3D.MeshShaders and
                              (fScene3D.VulkanDevice.PhysicalDevice.Vulkan12Features.shaderOutputLayer<>VK_FALSE);
 
  if fShadowMapSize=0 then begin
