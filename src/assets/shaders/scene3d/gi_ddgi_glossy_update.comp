@@ -96,6 +96,7 @@ void main(){
   bool firstFrame = (pushConstants.blend.z > 0.5) || ddgiProbeScrolledIn(probeCoord, cascadeIndex);
   DDGIAgeBuffer ageBuffer = ddgiData.age;
   float hysteresis = ddgiWarmupHysteresis(float(ddgiLoadAge(ageBuffer, probeCoord, cascadeIndex)));
-  float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : hysteresis;
-  ddgiGlossyStore(atlasTexel, mix(glossy, previous, blendT));
+  // NaN-safe discard: a zero blend weight is not enough, because mix(cur, NaN, 0.0) = cur + NaN*0.0 = NaN; select the fresh value.
+  bool discardPrevious = firstFrame || any(isnan(previous)) || any(isinf(previous));
+  ddgiGlossyStore(atlasTexel, discardPrevious ? glossy : mix(glossy, previous, hysteresis));
 }

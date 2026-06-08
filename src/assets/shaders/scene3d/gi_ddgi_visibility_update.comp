@@ -101,8 +101,9 @@ void main(){
   DDGIAgeBuffer ageBuffer = ddgiData.age;
   uint probeAge = firstFrame ? 0u : min(ddgiLoadAge(ageBuffer, probeCoord, cascadeIndex) + 1u, uint(GI_DDGI_WARMUP_FRAMES));
   float hysteresis = ddgiWarmupHysteresis(float(probeAge));
-  float blendT = (firstFrame || any(isnan(previous)) || any(isinf(previous))) ? 0.0 : hysteresis;
-  vec3 blended = mix(moments, previous, blendT);
+  // NaN-safe discard: a zero blend weight is not enough, because mix(cur, NaN, 0.0) = cur + NaN*0.0 = NaN; select the fresh value.
+  bool discardPrevious = firstFrame || any(isnan(previous)) || any(isinf(previous));
+  vec3 blended = discardPrevious ? moments : mix(moments, previous, hysteresis);
   imageStore(uDDGIVisibilityMoments, atlasTexel, vec4(blended.xy, 0.0, 0.0)); // x = mean dist, y = mean dist^2
   imageStore(uDDGIVisibilitySky, atlasTexel, vec4(blended.z, 0.0, 0.0, 0.0));  // x = sky visibility
   if(gl_LocalInvocationIndex == 0u){
