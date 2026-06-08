@@ -20,12 +20,16 @@ bool particleBVHRaySphere(vec3 ro, vec3 rd, vec3 c, float r, float tMin, float t
   float b = dot(oc, rd);
   float cc = dot(oc, oc) - (r * r);
   float disc = (b * b) - cc;
-  if(disc < 0.0){ tNear = tMax; return false; }
-  float sq = sqrt(disc);
-  float t0 = -b - sq;
-  float t1 = -b + sq;
-  tNear = t0;
-  return (t1 >= tMin) && (t0 <= tMax);
+  if(disc < 0.0){
+    tNear = tMax;
+    return false;
+  }else{
+    float sq = sqrt(disc);
+    float t0 = -b - sq;
+    float t1 = -b + sq;
+    tNear = t0;
+    return (t1 >= tMin) && (t0 <= tMax);
+  }
 }
 
 bool particleBVHRayAABB(vec3 ro, vec3 invRd, vec3 bmin, vec3 bmax, float tMin, float tMax){
@@ -43,7 +47,9 @@ float particleBVHClosestOpaque(ParticleBVHNodeRef nodeRef, ParticleBVHEmitterRef
                                vec3 ro, vec3 rd, float tMin, float tMaxIn, uint n, out vec3 emission){
   emission = vec3(0.0);
   float best = tMaxIn;
-  if(n == 0u){ return best; }
+  if(n == 0u){
+    return best;
+  }
   vec3 invRd = vec3(1.0) / rd;
   uint stack[64];
   int sp = 0;
@@ -58,7 +64,10 @@ float particleBVHClosestOpaque(ParticleBVHNodeRef nodeRef, ParticleBVHEmitterRef
         float tn;
         if(particleBVHRaySphere(ro, rd, e.positionRadius.xyz, e.positionRadius.w, tMin, best, tn)){
           float t = max(tn, tMin);
-          if(t < best){ best = t; emission = e.emissionType.xyz; }
+          if(t < best){
+            best = t;
+            emission = e.emissionType.xyz;
+          }
         }
       }
     }else{
@@ -75,7 +84,9 @@ float particleBVHClosestOpaque(ParticleBVHNodeRef nodeRef, ParticleBVHEmitterRef
 vec3 particleBVHAdditiveEmission(ParticleBVHNodeRef nodeRef, ParticleBVHEmitterRef emitterRef,
                                  vec3 ro, vec3 rd, float tMin, float tMax, uint n){
   vec3 sum = vec3(0.0);
-  if(n == 0u){ return sum; }
+  if(n == 0u){
+    return sum;
+  }
   vec3 invRd = vec3(1.0) / rd;
   uint stack[64];
   int sp = 0;
@@ -94,8 +105,12 @@ vec3 particleBVHAdditiveEmission(ParticleBVHNodeRef nodeRef, ParticleBVHEmitterR
       }
     }else{
       if(particleBVHRayAABB(ro, invRd, node.aabbMin.xyz, node.aabbMax.xyz, tMin, tMax)){
-        if(sp < 63){ stack[sp++] = floatBitsToUint(node.aabbMin.w); }
-        if(sp < 63){ stack[sp++] = floatBitsToUint(node.aabbMax.w); }
+        if(sp < 63){
+          stack[sp++] = floatBitsToUint(node.aabbMin.w);
+        }
+        if(sp < 63){
+          stack[sp++] = floatBitsToUint(node.aabbMax.w);
+        }
       }
     }
   }
