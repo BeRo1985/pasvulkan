@@ -81,7 +81,7 @@
 #define MAX_CHANNELS        16        // sanity cap on the resolved channel count
 #define BLOCK_SAMPLES 8192            // per-block length per channel (non-overlapping blocks)
 #define MIN_BAND      4               // stop the dyadic split when the low band gets this small
-#define FWA_MAGIC    0x41575650u     // "FWA"
+#define FWA_MAGIC    0x43415746u     // "FWAC" (low byte first: F,W,A,C)
 #define JOINT_TOP_BANDS 2             // joint-stereo intensity: top frequency bands of Side collapsed to mono (>~6 kHz)
 
 static void *checked_malloc(size_t size) {
