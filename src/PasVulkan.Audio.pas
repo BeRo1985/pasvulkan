@@ -4768,6 +4768,13 @@ begin
  try
   fSeekBaseTime:=aBaseTime;
   fStarted:=false; // re-anchor the per-stream clock offset at the next mix
+  if State=TpvAudioSoundMusicState.Stopped then begin
+   // GetNextInBuffer latches Stopped at end-of-stream and then never calls the read callback again; a seek (e.g. the
+   // facade looping/restarting) must re-arm it. Done here under the same lock the mixer holds, so it is atomic against
+   // the mixer's own State:=Stopped write (an unlocked Play could lose that race -> clock stays frozen). Paused/Playing
+   // are left untouched so a seek-while-paused does not silently resume.
+   State:=TpvAudioSoundMusicState.Playing;
+  end;
   InBufferPosition:=InBufferSize+1; // force a fresh GetNextInBuffer from the (already-seeked) source
   OutBufferPosition:=OutBufferSize+1;
   ResamplerPosition:=0;

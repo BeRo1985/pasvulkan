@@ -74,6 +74,9 @@ unit Vulkan;
  {$endif}
 {$ifend}
 
+{$define VkVideo}
+{$define VkStdVideo}
+
 interface
 
 uses {$if defined(Windows)}

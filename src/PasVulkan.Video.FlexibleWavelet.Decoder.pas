@@ -332,6 +332,9 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        // separated and stays inside RecordFrame (the GOP rebuild runs on the Draw thread when the displayed GOP changes).
        procedure PrepareFrame(const aDisplayIndex:TpvInt32);
        procedure RecordFrame(const aCommandBuffer:TpvVulkanCommandBuffer);
+       // Reset the decode-ahead / DPB bookkeeping so the next PrepareFrame replays from frame 0 (seek-to-start without
+       // recreating the decoder). Frame 0 is intra, so the reference chain rebuilds cleanly from there.
+       procedure ResetForReplay;
        // Mode C (submit mode 2): record ONE B-frame decode-ahead step (or the final display) into the caller's
        // command buffer; the caller submits + WAITS, then calls again, until this returns False (display recorded).
        function DecodeFrameStep(const aCommandBuffer:TpvVulkanCommandBuffer;const aDisplayPOC:TpvInt32):boolean;
@@ -2631,6 +2634,30 @@ begin
   RecordDecode(aCommandBuffer,fPreparedIsPredicted);
  end;
  fPreparedIndex:=-1;
+
+end;
+
+procedure TpvFlexibleWaveletVideoDecoder.ResetForReplay;
+var Index:TpvInt32;
+begin
+
+ // Decode-ahead / DPB / 3D-GOP bookkeeping back to the start so the next PrepareFrame(0) replays cleanly from the
+ // intra frame 0 (which needs no references). Reuses the same reset values as Create; the buffers are kept.
+ fGCursor:=0;
+ fGDecStepIndex:=-1;
+ fBufferRingSlot:=-1;
+ fPreparedIndex:=-1;
+ fBidiDisplayPOC:=-1;
+ fCur3DGopStart:=-1;
+ if fHasBFrames then begin
+  for Index:=0 to fFrameCount-1 do begin
+   fGDPBPOCToSlot[Index]:=-1;
+   fGDPBCodingToSlot[Index]:=-1;
+  end;
+  for Index:=0 to fGDPBSlots-1 do begin
+   fGDPBSlotCoding[Index]:=-1;
+  end;
+ end;
 
 end;
 

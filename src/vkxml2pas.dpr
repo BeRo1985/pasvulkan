@@ -6011,6 +6011,9 @@ begin
    OutputPAS.Add(' {$endif}');
    OutputPAS.Add('{$ifend}');
    OutputPAS.Add('');
+   OutputPAS.Add('{$define VkVideo}');
+   OutputPAS.Add('{$define VkStdVideo}');
+   OutputPAS.Add('');
    OutputPAS.Add('interface');
    OutputPAS.Add('');
    OutputPAS.Add('uses {$if defined(Windows)}');

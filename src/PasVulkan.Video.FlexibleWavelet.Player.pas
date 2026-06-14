@@ -93,6 +93,8 @@ type EpvFlexibleWaveletVideoPlayer=class(EpvFlexibleWaveletVideo);
        function DecodeTime(const aTimeInSeconds:TpvDouble):boolean;
        // GPU record (Draw thread): record the staged frame's decode into the caller command buffer; True if it recorded one
        function Decode(const aCommandBuffer:TpvVulkanCommandBuffer):boolean;
+       // Restart playback from the beginning by SEEKING (reuses the player + its GPU resources; no free/recreate).
+       procedure Restart;
        // blit the last decoded frame (OutputImage, left in TRANSFER_SRC_OPTIMAL) into a present target image
        procedure BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout);
        // audio: open the container's audio sub-codec into a TpvAudioSoundVideo on the given engine audio system (A/V sync)
@@ -537,6 +539,20 @@ begin
  fLastDecodedIndex:=fPreparedIndex;
  fPreparedIndex:=-1;
  result:=true;
+end;
+
+procedure TpvFlexibleWaveletVideoPlayer.Restart;
+begin
+ // Seek back to the start without recreating the decoder/GPU resources: reset the poll-API cursors + the decoder's
+ // reference bookkeeping, then re-anchor the audio clock. The H.264 backend resets itself on the next Decode (its
+ // EnsureDisplayFrame sees the target is behind the current display index and replays from the IDR).
+ fLastDecodedIndex:=-1;
+ fPreparedIndex:=-1;
+ fTargetIndex:=-1;
+ if assigned(fDecoder) then begin
+  fDecoder.ResetForReplay;
+ end;
+ SeekAudio(0.0); // seek the audio decoder back + flush + (atomically, under the audio lock) resume the stream from 0
 end;
 
 procedure TpvFlexibleWaveletVideoPlayer.BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout);

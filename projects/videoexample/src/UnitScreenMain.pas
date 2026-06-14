@@ -586,9 +586,11 @@ begin
     result:=true;
    end;
    KEYCODE_R:begin
-    DestroyPlayer; // restart from the beginning (F1 has no seek yet -> re-open)
-    CreatePlayer;
-    BindPlayerToDescriptor;
+    // restart from the beginning by SEEKING - reuse the player + its GPU resources (no free/recreate, no device wait)
+    if assigned(fPlayer) then begin
+     fPlaybackTime:=0.0;
+     fPlayer.Restart;
+    end;
     result:=true;
    end;
   end;
