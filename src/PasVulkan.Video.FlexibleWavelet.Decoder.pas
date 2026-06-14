@@ -245,6 +245,11 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fCompressedScratch:array of TpvUInt8; // raw container bytes of the current frame
        fOffsetScratch:array[0..2] of array of TpvUInt32; // per-plane block offset prefix sums (CPU side)
        fStepScratch:array of TpvInt32; // per-plane quantization step map (CPU side), grown on demand
+       // Quantization-step cache: the step map depends only on (quality, levels, gains, sample-white), NOT on frame
+       // content, so it is built ONCE per distinct quality and reused (the C fwvplay does the same via step_cache).
+       // Without this the per-pixel rebuild every frame is the CPU bottleneck at 1080p.
+       fStepCacheQuality:array of TpvInt32;       // quality value held by each cache slot
+       fStepCacheData:array of array of TpvInt32; // [(slot*3)+plane] -> the prebuilt step map for that quality/plane
        fMVScratch:array of TpvInt32; // decoded motion vectors (CPU side) before upload to fMVBuffer
        fMV1Scratch:array of TpvInt32; // B-frames: decoded L1 motion vectors (CPU side)
        fModeScratch:array of TpvInt32; // B-frames: decoded per-block modes (CPU side)
@@ -274,6 +279,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        procedure RecordComputeBarrier(const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure RecordImageBarrier(const aCommandBuffer:TpvVulkanCommandBuffer;const aOldLayout,aNewLayout:TVkImageLayout;const aSrcAccess,aDstAccess:TVkAccessFlags;const aSrcStage,aDstStage:TVkPipelineStageFlags);
        procedure RecordDispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aPipeline:TpvVulkanComputePipeline;const aLayout:TpvVulkanPipelineLayout;const aSet:TpvVulkanDescriptorSet;const aPushConstants:Pointer;const aPushSize:TpvUInt32;const aGroupsX,aGroupsY,aGroupsZ:TpvUInt32);
+       function EnsureStepCacheSlot(const aQuality:TpvInt32):TpvInt32; // build (once) + return the step-map cache slot for a quality
        procedure UploadFrame(const aFrameIndex:TpvInt32);
        procedure RecordDecode(const aCommandBuffer:TpvVulkanCommandBuffer;const aIsPredicted:boolean);
        // hierarchical B-frames (Stage E3). The Active* helpers return the shared buffer/set (fBufferRingSlot<0,
@@ -1005,8 +1011,34 @@ begin
  aCommandBuffer.CmdDispatch(aGroupsX,aGroupsY,aGroupsZ);
 end;
 
+function TpvFlexibleWaveletVideoDecoder.EnsureStepCacheSlot(const aQuality:TpvInt32):TpvInt32;
+var Slot,Plane,PlanePixels:TpvInt32;
+begin
+
+ // already built for this quality -> reuse (the step map is content-independent, so it is identical every frame)
+ for Slot:=0 to length(fStepCacheQuality)-1 do begin
+  if fStepCacheQuality[Slot]=aQuality then begin
+   result:=Slot;
+   exit;
+  end;
+ end;
+
+ // first time this quality appears -> build all three planes once (caller has ensured the synthesis gains are ready)
+ Slot:=length(fStepCacheQuality);
+ SetLength(fStepCacheQuality,Slot+1);
+ SetLength(fStepCacheData,(Slot+1)*3);
+ fStepCacheQuality[Slot]:=aQuality;
+ for Plane:=0 to 2 do begin
+  PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
+  SetLength(fStepCacheData[(Slot*3)+Plane],PlanePixels);
+  BuildQuantizationSteps(PpvInt32Array(@fStepCacheData[(Slot*3)+Plane][0]),PlaneWidth(Plane),PlaneHeight(Plane),fLevels,aQuality,fSampleWhite,fHFGain,fLLGain);
+ end;
+
+ result:=Slot;
+end;
+
 procedure TpvFlexibleWaveletVideoDecoder.UploadFrame(const aFrameIndex:TpvInt32);
-var Plane,PlanePixels:TpvInt32;
+var Plane,PlanePixels,StepSlot:TpvInt32;
     Entry:PFrameEntry;
     CompressedLength:TpvSizeUInt;
     RawLength,DataLength:TpvUInt32;
@@ -1045,22 +1077,20 @@ begin
   raise EpvFlexibleWaveletVideoDecoder.Create('Frame decompression failed');
  end;
 
- // Lossy: build + upload the per-plane integer quant step maps the GPU dequant reads. The per-subband
- // synthesis gains depend only on the level count, so they are measured once and cached.
+ // Lossy: upload the per-plane integer quant step maps the GPU dequant reads. The per-subband synthesis gains
+ // depend only on the level count (measured once), and the step map itself depends only on the quality, so it is
+ // built once per quality and cached (rebuilding it per frame was the 1080p CPU bottleneck).
  if not fLossless then begin
   if not fGainsComputed then begin
    MeasureSynthesisGains(fLevels,fHFGain,fLLGain);
    fGainsComputed:=true;
   end;
+  StepSlot:=EnsureStepCacheSlot(Entry^.Quality);
   for Plane:=0 to 2 do begin
    PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
-   if TpvSizeUInt(Length(fStepScratch))<TpvSizeUInt(PlanePixels) then begin
-    SetLength(fStepScratch,PlanePixels);
-   end;
-   BuildQuantizationSteps(PpvInt32Array(@fStepScratch[0]),PlaneWidth(Plane),PlaneHeight(Plane),fLevels,Entry^.Quality,fSampleWhite,fHFGain,fLLGain);
    DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
    try
-    Move(fStepScratch[0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
+    Move(fStepCacheData[(StepSlot*3)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
    finally
     ActiveStepBuffer(Plane).Memory.UnmapMemory;
    end;
@@ -1459,7 +1489,7 @@ begin
 end;
 
 procedure TpvFlexibleWaveletVideoDecoder.UploadBidiFrame(const aCodingIndex:TpvInt32);
-var Plane,PlanePixels:TpvInt32;
+var Plane,PlanePixels,StepSlot:TpvInt32;
     Entry:PFrameEntry;
     CompressedLength:TpvSizeUInt;
     RawLength,DataLength:TpvUInt32;
@@ -1492,21 +1522,18 @@ begin
   raise EpvFlexibleWaveletVideoDecoder.Create('Frame decompression failed');
  end;
 
- // Lossy: build + upload the per-plane quant step maps at THIS frame's (temporal-id-cascaded) quality.
+ // Lossy: upload the per-plane quant step maps at THIS frame's (temporal-id-cascaded) quality, cached per quality.
  if not fLossless then begin
   if not fGainsComputed then begin
    MeasureSynthesisGains(fLevels,fHFGain,fLLGain);
    fGainsComputed:=true;
   end;
+  StepSlot:=EnsureStepCacheSlot(Entry^.Quality);
   for Plane:=0 to 2 do begin
    PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
-   if TpvSizeUInt(Length(fStepScratch))<TpvSizeUInt(PlanePixels) then begin
-    SetLength(fStepScratch,PlanePixels);
-   end;
-   BuildQuantizationSteps(PpvInt32Array(@fStepScratch[0]),PlaneWidth(Plane),PlaneHeight(Plane),fLevels,Entry^.Quality,fSampleWhite,fHFGain,fLLGain);
    DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
    try
-    Move(fStepScratch[0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
+    Move(fStepCacheData[(StepSlot*3)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
    finally
     ActiveStepBuffer(Plane).Memory.UnmapMemory;
    end;
@@ -2030,7 +2057,7 @@ begin
 end;
 
 procedure TpvFlexibleWaveletVideoDecoder.Upload3DFrame(const aCodingIndex,aSlot,aGOPCount:TpvInt32);
-var Plane,PlanePixels,TemporalLevel,EffectiveQuality:TpvInt32;
+var Plane,PlanePixels,TemporalLevel,EffectiveQuality,StepSlot:TpvInt32;
     Entry:PFrameEntry;
     CompressedLength:TpvSizeUInt;
     RawLength,DataLength:TpvUInt32;
@@ -2074,15 +2101,12 @@ begin
   if EffectiveQuality<1 then begin
    EffectiveQuality:=1;
   end;
+  StepSlot:=EnsureStepCacheSlot(EffectiveQuality);
   for Plane:=0 to 2 do begin
    PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
-   if TpvSizeUInt(Length(fStepScratch))<TpvSizeUInt(PlanePixels) then begin
-    SetLength(fStepScratch,PlanePixels);
-   end;
-   BuildQuantizationSteps(PpvInt32Array(@fStepScratch[0]),PlaneWidth(Plane),PlaneHeight(Plane),fLevels,EffectiveQuality,fSampleWhite,fHFGain,fLLGain);
    DataPointer:=PpvUInt8Array(fStepBuffer[Plane].Memory.MapMemory);
    try
-    Move(fStepScratch[0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
+    Move(fStepCacheData[(StepSlot*3)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
    finally
     fStepBuffer[Plane].Memory.UnmapMemory;
    end;

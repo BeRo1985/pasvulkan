@@ -52,6 +52,8 @@ type TScreenMain=class(TpvApplicationScreen)
        fPlayer:TpvFlexibleWaveletVideoPlayer;
        fPlaybackTime:TpvDouble;
        fAVLogTick:TpvInt32; // FWV_AVLOG diagnostic counter
+       fDecTimeAccumUS,fDecTimeMaxUS:TpvInt64; // FWV_DECTIME: CPU DecodeTime cost accumulator
+       fDecTimeCount:TpvInt32;
        fPaused:boolean;
        fPresentBlit:boolean; // False = textured-quad (A, default), True = blit (B)
        fOutputImageLayout:TVkImageLayout; // tracked layout of the player's OutputImage between passes
@@ -597,6 +599,7 @@ begin
 end;
 
 procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
+var DecTimeT0,DecTimeUS:TpvInt64;
 begin
  inherited Update(aDeltaTime);
  if assigned(fPlayer) then begin
@@ -605,7 +608,25 @@ begin
   end else if (not fPaused) and (fPlayer.Duration>0.0) and (fPlaybackTime<fPlayer.Duration) then begin
    fPlaybackTime:=fPlaybackTime+aDeltaTime; // no audio: wall-clock; clamps at the end (hold last frame)
   end;
-  fPlayer.DecodeTime(fPlaybackTime); // CPU advance: stage the frame this time maps to (idempotent within a tick)
+  if GetEnvironmentVariable('FWV_DECTIME')='1' then begin // CPU DecodeTime cost diagnostic (worst-case per frame vs 33.3 ms)
+   DecTimeT0:=pvApplication.HighResolutionTimer.GetTime;
+   fPlayer.DecodeTime(fPlaybackTime);
+   DecTimeUS:=pvApplication.HighResolutionTimer.ToMicroseconds(pvApplication.HighResolutionTimer.GetTime-DecTimeT0);
+   inc(fDecTimeAccumUS,DecTimeUS);
+   if DecTimeUS>fDecTimeMaxUS then begin
+    fDecTimeMaxUS:=DecTimeUS;
+   end;
+   inc(fDecTimeCount);
+   if fDecTimeCount>=60 then begin
+    writeln(Format('  dectime: avg %.2f ms / MAX %.2f ms over %d ticks (realtime budget 33.3 ms)',
+                   [(fDecTimeAccumUS/fDecTimeCount)/1000.0,fDecTimeMaxUS/1000.0,fDecTimeCount]));
+    fDecTimeAccumUS:=0;
+    fDecTimeMaxUS:=0;
+    fDecTimeCount:=0;
+   end;
+  end else begin
+   fPlayer.DecodeTime(fPlaybackTime); // CPU advance: stage the frame this time maps to (idempotent within a tick)
+  end;
   if GetEnvironmentVariable('FWV_AVLOG')='1' then begin // A/V sync diagnostic: master clock vs displayed frame
    inc(fAVLogTick);
    if (fAVLogTick mod 30)=0 then begin
