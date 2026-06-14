@@ -197,6 +197,10 @@ begin
   ConvertFile('shaders/canvas/vr_disabled_to_screen_blit_vert.spv','VRDisabledToScreenBlitVertSPIRV');
   ConvertFile('shaders/canvas/vr_enabled_to_screen_blit_frag.spv','VREnabledToScreenBlitFragSPIRV');
   ConvertFile('shaders/canvas/vr_enabled_to_screen_blit_vert.spv','VREnabledToScreenBlitVertSPIRV');
+  // Shaders for the PasVulkan.ScreenGUIBase virtual-reality content-projection screen (src/assets/shaders/virtualreality/*.spv)
+  ConvertFile('shaders/virtualreality/fullscreen_vert.spv','VirtualRealityFullscreenVertexSPIRV');
+  ConvertFile('shaders/virtualreality/contentprojection_frag.spv','VirtualRealityContentProjectionFragmentSPIRV');
+  ConvertFile('shaders/virtualreality/blit_frag.spv','VirtualRealityBlitFragmentSPIRV');
   // Flexible Wavelet Video (FWV) compute shaders (src/flexiblewavelet/shaders/*.spv)
   ConvertFile('../flexiblewavelet/shaders/apply_pcrd.spv','FlexibleWaveletVideoApplyPcrdSPIRV');
   ConvertFile('../flexiblewavelet/shaders/bidi_blend.spv','FlexibleWaveletVideoBidiBlendSPIRV');

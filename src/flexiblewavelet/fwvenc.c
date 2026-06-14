@@ -408,6 +408,7 @@ static short *extract_audio_pcm(const char *input, int *out_samples, int *out_ch
 // future fields can be appended and older readers skip to the payload via header_size. The colour
 // block uses CICP code points (ITU-T H.273) so a player / engine knows how to display the frames;
 // the codec itself is currently 8-bit SDR, the HDR fields are reserved for later.
+#pragma pack(push,1) // packed on-disk container layout — byte-exact, no padding
 typedef struct {
   uint8_t  magic[4];            // "FWVC"
   uint16_t version;             // container format version
@@ -436,7 +437,7 @@ typedef struct {
   uint8_t  reserved2[6];        // [0] = temporal levels, [1] = temporal wavelet; [2] = bframes gop; [3] = per-block mode; [4] = coding block size; [5] = motion block size
   // ---- audio (appended) ----
   uint8_t  audio_codec[4];      // sub-FOURCC: "OGGV" = OGG/Vorbis, "QOAL" = little-endian QOA, "RPCM" = raw PCM, "FWAC" = wavelet audio (fwa)
-  uint8_t  mv_codec;            // motion-vector entropy coder. 0 = signed Exp-Golomb (default), 1 = adaptive binary range coder. (Occupies former padding; struct layout unchanged.)
+  uint8_t  mv_codec;            // motion-vector entropy coder. 0 = signed Exp-Golomb (default), 1 = adaptive binary range coder.
   // ---- optional parallel H.264 elementary stream (Annex-B) for HW decode ----
   uint64_t h264_offset;         // byte offset of the H.264 Annex-B blob (full-res; the wavelet width/height may be down-scaled)
   uint64_t h264_size;           // 0 = no H.264 stream (wavelet-only container)
@@ -462,6 +463,7 @@ typedef struct {
   uint8_t  temporal_id; // hierarchy level (QP-cascading / temporal scalability) — future-proof
   uint8_t  pad;
 } FrameEntry;           // 28 bytes
+#pragma pack(pop)
 
 // Source duration in seconds (for the encode progress total / ETA); 0 if ffprobe cannot tell.
 static double probe_video_duration(const char *input) {

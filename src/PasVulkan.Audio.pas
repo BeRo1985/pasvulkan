@@ -819,6 +819,90 @@ type PpvAudioInt32=^TpvInt32;
        property Items[Index:TpvInt32]:TpvAudioSoundMusic read GetItem write SetItem; default;
      end;
 
+     // Pull callback: fill aFloatBuffer with up to aFrameCount interleaved-float32 frames (the stream's source channel
+     // count per frame, normalized -1..1) and return how many frames were actually provided (< requested = end of
+     // stream). Fed e.g. from a video container's audio decoder (FWA/Vorbis/QOA/raw).
+     TpvAudioSoundVideoReadCallback=function(const aFloatBuffer:Pointer;const aFrameCount:TpvInt32):TpvInt32 of object;
+
+     TpvAudioSoundVideos=class;
+
+     { TpvAudioSoundVideo }
+     // A streaming audio source for video playback: a lean, callback-fed sibling of TpvAudioSoundMusic (same SINC/cubic
+     // resampler + up/downmix-to-stereo + MixTo), with no TpvResource / interface / POCA ties. It carries a per-stream
+     // clock offset (StartTime + SeekBaseTime) on top of the engine's global mix-output clock so its PlaybackTime acts
+     // as the A/V master clock. f32 from the callback is converted to s16 internally (like the music PCMBuffer path).
+     TpvAudioSoundVideo=class
+      public
+       AudioEngine:TpvAudio;
+       Videos:TpvAudioSoundVideos;
+       State:TpvAudioSoundMusicState;
+       Loop:LongBool;
+       Volume:TpvInt32;
+       VolumeLeft:TpvInt32;
+       VolumeRight:TpvInt32;
+       VolumeLeftCurrent:TpvInt32;
+       VolumeRightCurrent:TpvInt32;
+       VolumeLeftInc:TpvInt32;
+       VolumeRightInc:TpvInt32;
+       Panning:TpvInt32;
+       VolumeRampingRemain:TpvInt32;
+       LastLeft:TpvInt32;
+       LastRight:TpvInt32;
+       ResamplerBuffer:TpvAudioResamplerBuffer;
+       ResamplerBufferPosition:TpvInt32;
+       ResamplerCurrentSample:TpvAudioSoundMusicBufferSample;
+       ResamplerLastSample:TpvAudioSoundMusicBufferSample;
+       ResamplerPosition:TpvInt64;
+       ResamplerIncrement:TpvInt64;
+       ResamplerOriginalIncrement:TpvInt64;
+       OutBuffer:array[0..4095] of TpvAudioSoundMusicBufferSample;
+       OutBufferPosition:TpvInt32;
+       OutBufferSize:TpvInt32;
+       InBuffer:array[0..4095] of TpvAudioSoundMusicBufferSample;
+       InBufferPosition:TpvInt32;
+       InBufferSize:TpvInt32;
+       PCMBuffer:array[0..65535] of smallint;
+       FloatBuffer:array[0..(4096*8)-1] of TpvFloat; // interleaved f32 the callback fills (source channels)
+       Channels:TpvInt32;
+       SampleRate:TpvInt32;
+       LastSample:TpvAudioSoundMusicBufferSample;
+       Table:TpvAudioResamplerSINCArray;
+       fReadCallback:TpvAudioSoundVideoReadCallback;
+       fStarted:LongBool; // whether the per-stream clock offset has been anchored to the global clock yet
+       fStartTime:TpvDouble; // global mix-output time at which this stream's current run started being mixed
+       fSeekBaseTime:TpvDouble; // the source time the stream was (re)started/seeked to (0 on first Play)
+       fPausedClock:TpvDouble; // PlaybackTime frozen while paused (the global clock keeps running, so re-anchor on resume)
+       constructor Create(const aAudioEngine:TpvAudio;const aVideos:TpvAudioSoundVideos;const aChannels,aSampleRate:TpvInt32;const aReadCallback:TpvAudioSoundVideoReadCallback);
+       destructor Destroy; override;
+       procedure InitSINC;
+       procedure Play(const aVolume:TpvFloat=1.0;const aPanning:TpvFloat=0.0;const aRate:TpvFloat=1.0;const aLoop:boolean=false);
+       procedure Stop;
+       procedure Pause;
+       procedure Resume;
+       procedure SetVolume(const aVolume:TpvFloat);
+       procedure SetPanning(const aPanning:TpvFloat);
+       procedure SetRate(const aRate:TpvFloat);
+       procedure ResetForSeek(const aBaseTime:TpvDouble); // after the source decoder was seeked: flush resampler + re-anchor
+       procedure GetNextInBuffer;
+       procedure Resample;
+       procedure MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
+       function IsPlaying:boolean;
+       function IsPaused:boolean;
+       function PlaybackTime:TpvDouble; // the A/V master clock: SeekBaseTime + (global clock - StartTime)
+     end;
+
+     { TpvAudioSoundVideos }
+     TpvAudioSoundVideos=class(TList)
+      private
+       function GetItem(Index:TpvInt32):TpvAudioSoundVideo;
+       procedure SetItem(Index:TpvInt32;Item:TpvAudioSoundVideo);
+      public
+       AudioEngine:TpvAudio;
+       constructor Create(AAudioEngine:TpvAudio);
+       destructor Destroy; override;
+       property Items[Index:TpvInt32]:TpvAudioSoundVideo read GetItem write SetItem; default;
+     end;
+
      TpvAudioUpdateHook=procedure of object;
 
      PpvAudioPitchShifterBuffer=^TpvAudioPitchShifterBuffer;
@@ -1001,12 +1085,15 @@ type PpvAudioInt32=^TpvInt32;
        fOnFillBuffer:TpvAudioOnFillBuffer;
        fOnSecondFillBuffer:TpvAudioOnFillBuffer;
        fOnThirdFillBuffer:TpvAudioOnFillBuffer;
+       fOutputSampleFrames:TpvInt64; // total sample-frames pushed into the output ring buffer (the global playback clock)
+       fOutputLatencyFrames:TpvInt32; // device-internal output latency in frames, set by the backend after the device is opened
        procedure CalcEvIndices(ev:TpvFloat;evidx:PpvAudioInt32s;var evmu:TpvFloat);
        procedure CalcAzIndices(evidx:TpvInt32;az:TpvFloat;azidx:PpvAudioInt32s;var azmu:TpvFloat);
        procedure GetLerpedHRTFCoefs(Elevation,Azimuth:TpvFloat;var LeftCoefs,RightCoefs:TpvAudioHRTFCoefs;var LeftDelay,RightDelay:TpvInt32);
       public
        Samples:TpvAudioSoundSamples;
        Musics:TpvAudioSoundMusics;
+       Videos:TpvAudioSoundVideos;
        SpatializationMode:TpvInt32;
        HRTF:LongBool;
        HRTFPreset:PpvAudioHRTFPreset;
@@ -1100,6 +1187,9 @@ type PpvAudioInt32=^TpvInt32;
        procedure SetActive(Active:boolean);
        procedure Mute;
        procedure Unmute;
+       function PlaybackPositionInSeconds:TpvDouble; // latency-compensated global mix-output clock (= produced - ring backlog - device latency)
+       property OutputSampleFrames:TpvInt64 read fOutputSampleFrames;
+       property OutputLatencyFrames:TpvInt32 read fOutputLatencyFrames write fOutputLatencyFrames;
        property MixerMasterVolume:TpvFloat read GetMixerMasterVolume write SetMixerMasterVolume;
        property MixerMusicVolume:TpvFloat read GetMixerMusicVolume write SetMixerMusicVolume;
        property MixerSampleVolume:TpvFloat read GetMixerSampleVolume write SetMixerSampleVolume;
@@ -4415,6 +4505,643 @@ begin
                    TpvAudioSoundMusicState.Pausing];
 end;
 
+{ TpvAudioSoundVideo }
+
+constructor TpvAudioSoundVideo.Create(const aAudioEngine:TpvAudio;const aVideos:TpvAudioSoundVideos;const aChannels,aSampleRate:TpvInt32;const aReadCallback:TpvAudioSoundVideoReadCallback);
+begin
+ inherited Create;
+ AudioEngine:=aAudioEngine;
+ Videos:=aVideos;
+ Channels:=aChannels;
+ if Channels<1 then begin
+  Channels:=1;
+ end;
+ SampleRate:=aSampleRate;
+ if SampleRate<1 then begin
+  SampleRate:=AudioEngine.SampleRate;
+ end;
+ fReadCallback:=aReadCallback;
+ State:=TpvAudioSoundMusicState.Stopped;
+ Loop:=false;
+ VolumeRampingRemain:=0;
+ LastLeft:=0;
+ LastRight:=0;
+ LastSample.Left:=0;
+ LastSample.Right:=0;
+ Panning:=0;
+ Volume:=0;
+ VolumeLeft:=-1;
+ VolumeRight:=-1;
+ VolumeLeftCurrent:=0;
+ VolumeRightCurrent:=0;
+ VolumeLeftInc:=0;
+ VolumeRightInc:=0;
+ InBufferSize:=0;
+ InBufferPosition:=0;
+ OutBufferSize:=0;
+ OutBufferPosition:=0;
+ fStarted:=false;
+ fStartTime:=0.0;
+ fSeekBaseTime:=0.0;
+ InitSINC;
+ AudioEngine.CriticalSection.Enter;
+ try
+  Videos.Add(self);
+ finally
+  AudioEngine.CriticalSection.Leave;
+ end;
+end;
+
+destructor TpvAudioSoundVideo.Destroy;
+begin
+ AudioEngine.CriticalSection.Enter;
+ try
+  Videos.Remove(self);
+ finally
+  AudioEngine.CriticalSection.Leave;
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvAudioSoundVideo.InitSINC;
+const Points=ResamplerSINCWidth;
+      ThePoints=Points;
+      HalfPoints=Points*0.5;
+      ExtendedPI=3.1415926535897932384626433832795;
+var FracValue,Value,SincValue,WindowValue,WindowFactor,WindowParameter,
+    OtherPosition,Position,ResamplerSINCCutOff:{$ifdef cpuarm}TpvFloat{$else}TpvDouble{$endif};
+    Counter,SubCounter:TpvInt32;
+begin
+ ResamplerSINCCutOff:=Clamp(AudioEngine.SampleRate/SampleRate,0.0,1.0);
+ for Counter:=0 to ResamplerSINCLength-1 do begin
+  FracValue:=(Counter/ResamplerSINCLength)-0.5;
+  WindowFactor:=(2*ExtendedPI)/ThePoints;
+  for SubCounter:=0 to Points-1 do begin
+   OtherPosition:=SubCounter-FracValue;
+   Position:=OtherPosition-HalfPoints;
+   if abs(Position)<ResamplerEpsilon then begin
+    Value:=ResamplerSINCCutOff;
+   end else begin
+    SincValue:=sin(ResamplerSINCCutOff*Position*ExtendedPI)/(Position*ExtendedPI);
+    WindowParameter:=OtherPosition*WindowFactor;
+    WindowValue:=0.42-(0.50*cos(WindowParameter))+(0.08*cos(2.0*WindowParameter)); // Blackman exact
+    Value:=SincValue*WindowValue;
+   end;
+   Table[Counter,SubCounter]:=round(Value*ResamplerSINCValueLength);
+  end;
+ end;
+end;
+
+procedure TpvAudioSoundVideo.Play(const aVolume,aPanning,aRate:TpvFloat;const aLoop:boolean);
+var Pan,VolLeft,VolRight,MixVolume:TpvInt32;
+begin
+ inc(LastLeft,LastSample.Left);
+ inc(LastRight,LastSample.Right);
+ LastSample.Left:=0;
+ LastSample.Right:=0;
+ InBufferPosition:=InBufferSize+1;
+ OutBufferPosition:=OutBufferSize+1;
+ Volume:=round(aVolume*65536.0);
+ Panning:=round(aPanning*65536.0);
+ Loop:=aLoop;
+ VolumeRampingRemain:=0;
+ Pan:=Panning+65536;
+ if Pan<0 then begin
+  Pan:=0;
+ end else if Pan>=131072 then begin
+  Pan:=131071;
+ end;
+ MixVolume:=SARLongint(Volume*AudioEngine.MusicVolume,16);
+ VolLeft:=SARLongint(AudioEngine.PanningLUT[SARLongint(131072-Pan,1)]*MixVolume,15);
+ VolRight:=SARLongint(AudioEngine.PanningLUT[SARLongint(Pan,1)]*MixVolume,15);
+ if VolLeft<0 then begin
+  VolLeft:=0;
+ end else if VolLeft>=4096 then begin
+  VolLeft:=4095;
+ end;
+ if VolRight<0 then begin
+  VolRight:=0;
+ end else if VolRight>=4096 then begin
+  VolRight:=4095;
+ end;
+ VolLeft:=VolLeft shl 12;
+ VolRight:=VolRight shl 12;
+ VolumeLeft:=VolLeft;
+ VolumeRight:=VolRight;
+ if AudioEngine.MusicStateRampSamples>0 then begin
+  VolumeLeftCurrent:=0;
+  VolumeRightCurrent:=0;
+  VolumeRampingRemain:=AudioEngine.MusicStateRampSamples;
+  VolumeLeftInc:=VolumeLeft div VolumeRampingRemain;
+  VolumeRightInc:=VolumeRight div VolumeRampingRemain;
+ end else begin
+  VolumeLeftCurrent:=VolLeft;
+  VolumeRightCurrent:=VolRight;
+  VolumeRampingRemain:=0;
+  VolumeLeftInc:=0;
+  VolumeRightInc:=0;
+ end;
+ ResamplerPosition:=0;
+ if AudioEngine.SampleRate=SampleRate then begin
+  ResamplerOriginalIncrement:=ResamplerFixedPointFactor;
+ end else begin
+  ResamplerOriginalIncrement:=((SampleRate*ResamplerFixedPointFactor)+(AudioEngine.SampleRate div 2)) div AudioEngine.SampleRate;
+ end;
+ ResamplerIncrement:=(abs(round(aRate*65536.0))*ResamplerOriginalIncrement) shr 16;
+ ResamplerBufferPosition:=0;
+ FillChar(ResamplerBuffer,SizeOf(ResamplerBuffer),AnsiChar(#0));
+ FillChar(ResamplerCurrentSample,SizeOf(TpvAudioSoundMusicBufferSample),AnsiChar(#0));
+ FillChar(ResamplerLastSample,SizeOf(TpvAudioSoundMusicBufferSample),AnsiChar(#0));
+ fSeekBaseTime:=0.0; // start of stream
+ fStarted:=false; // re-anchor the per-stream clock offset at the next mix
+ State:=TpvAudioSoundMusicState.Playing;
+end;
+
+procedure TpvAudioSoundVideo.Stop;
+begin
+ if (State=TpvAudioSoundMusicState.Playing) and (AudioEngine.MusicStateRampSamples>0) then begin
+  VolumeRampingRemain:=AudioEngine.MusicStateRampSamples;
+  VolumeLeftInc:=-(VolumeLeftCurrent div VolumeRampingRemain);
+  VolumeRightInc:=-(VolumeRightCurrent div VolumeRampingRemain);
+  VolumeLeft:=0;
+  VolumeRight:=0;
+  State:=TpvAudioSoundMusicState.Stopping;
+ end else begin
+  State:=TpvAudioSoundMusicState.Stopped;
+  inc(LastLeft,LastSample.Left);
+  inc(LastRight,LastSample.Right);
+  LastSample.Left:=0;
+  LastSample.Right:=0;
+ end;
+end;
+
+procedure TpvAudioSoundVideo.Pause;
+begin
+ case State of
+  TpvAudioSoundMusicState.Playing:begin
+   fPausedClock:=PlaybackTime; // freeze the master clock here; resume re-anchors StartTime past the paused span
+   if AudioEngine.MusicStateRampSamples>0 then begin
+    VolumeRampingRemain:=AudioEngine.MusicStateRampSamples;
+    VolumeLeftInc:=-(VolumeLeftCurrent div VolumeRampingRemain);
+    VolumeRightInc:=-(VolumeRightCurrent div VolumeRampingRemain);
+    VolumeLeft:=0;
+    VolumeRight:=0;
+    State:=TpvAudioSoundMusicState.Pausing;
+   end else begin
+    State:=TpvAudioSoundMusicState.Paused;
+   end;
+  end;
+  else begin
+  end;
+ end;
+end;
+
+procedure TpvAudioSoundVideo.Resume;
+var Pan,VolLeft,VolRight,MixVolume:TpvInt32;
+begin
+ case State of
+  TpvAudioSoundMusicState.Paused:begin
+   if AudioEngine.MusicStateRampSamples>0 then begin
+    Pan:=Panning+65536;
+    if Pan<0 then begin
+     Pan:=0;
+    end else if Pan>=131072 then begin
+     Pan:=131071;
+    end;
+    MixVolume:=SARLongint(Volume*AudioEngine.MusicVolume,16);
+    VolLeft:=SARLongint(AudioEngine.PanningLUT[SARLongint(131072-Pan,1)]*MixVolume,15);
+    VolRight:=SARLongint(AudioEngine.PanningLUT[SARLongint(Pan,1)]*MixVolume,15);
+    if VolLeft<0 then begin
+     VolLeft:=0;
+    end else if VolLeft>=4096 then begin
+     VolLeft:=4095;
+    end;
+    if VolRight<0 then begin
+     VolRight:=0;
+    end else if VolRight>=4096 then begin
+     VolRight:=4095;
+    end;
+    VolLeft:=VolLeft shl 12;
+    VolRight:=VolRight shl 12;
+    VolumeLeftCurrent:=0;
+    VolumeRightCurrent:=0;
+    VolumeLeft:=VolLeft;
+    VolumeRight:=VolRight;
+    VolumeRampingRemain:=AudioEngine.MusicStateRampSamples;
+    VolumeLeftInc:=VolumeLeft div VolumeRampingRemain;
+    VolumeRightInc:=VolumeRight div VolumeRampingRemain;
+   end else begin
+    VolumeRampingRemain:=0;
+   end;
+   // re-anchor so PlaybackTime continues from where it was frozen at Pause (the global clock advanced meanwhile)
+   if AudioEngine.SampleRate>0 then begin
+    fStartTime:=AudioEngine.PlaybackPositionInSeconds-(fPausedClock-fSeekBaseTime);
+   end;
+   fStarted:=true;
+   State:=TpvAudioSoundMusicState.Playing;
+  end;
+  else begin
+  end;
+ end;
+end;
+
+procedure TpvAudioSoundVideo.SetVolume(const aVolume:TpvFloat);
+begin
+ Volume:=round(aVolume*65536.0);
+ VolumeRampingRemain:=AudioEngine.RampingSamples;
+end;
+
+procedure TpvAudioSoundVideo.SetPanning(const aPanning:TpvFloat);
+begin
+ Panning:=round(aPanning*65536.0);
+ VolumeRampingRemain:=AudioEngine.RampingSamples;
+end;
+
+procedure TpvAudioSoundVideo.SetRate(const aRate:TpvFloat);
+begin
+ ResamplerIncrement:=(abs(round(aRate*65536.0))*ResamplerOriginalIncrement) shr 16;
+end;
+
+procedure TpvAudioSoundVideo.ResetForSeek(const aBaseTime:TpvDouble);
+begin
+ AudioEngine.CriticalSection.Enter;
+ try
+  fSeekBaseTime:=aBaseTime;
+  fStarted:=false; // re-anchor the per-stream clock offset at the next mix
+  InBufferPosition:=InBufferSize+1; // force a fresh GetNextInBuffer from the (already-seeked) source
+  OutBufferPosition:=OutBufferSize+1;
+  ResamplerPosition:=0;
+  ResamplerBufferPosition:=0;
+  FillChar(ResamplerBuffer,SizeOf(ResamplerBuffer),AnsiChar(#0));
+  LastLeft:=0;
+  LastRight:=0;
+  LastSample.Left:=0;
+  LastSample.Right:=0;
+ finally
+  AudioEngine.CriticalSection.Leave;
+ end;
+end;
+
+procedure TpvAudioSoundVideo.GetNextInBuffer;
+var FramesRead,Position,IntSample,MaxFrames:TpvInt32;
+begin
+ MaxFrames:=length(InBuffer);
+ if (Channels*MaxFrames)>length(FloatBuffer) then begin
+  MaxFrames:=length(FloatBuffer) div Channels;
+ end;
+ FramesRead:=0;
+ if assigned(fReadCallback) and (State<>TpvAudioSoundMusicState.Stopped) then begin
+  FramesRead:=fReadCallback(@FloatBuffer[0],MaxFrames);
+ end;
+ if FramesRead<=0 then begin
+  // End of stream: emit silence and stop. Looping is the facade's job (re-seek the decoder), since the callback
+  // itself cannot rewind.
+  FramesRead:=MaxFrames;
+  FillChar(PCMBuffer[0],SizeOf(smallint)*length(PCMBuffer),AnsiChar(#0));
+  State:=TpvAudioSoundMusicState.Stopped;
+ end else begin
+  // Convert the interleaved f32 (-1..1) the callback delivered to s16, like the music PCMBuffer path
+  for Position:=0 to (FramesRead*Channels)-1 do begin
+   IntSample:=round(FloatBuffer[Position]*32767.0);
+   if IntSample<-32768 then begin
+    IntSample:=-32768;
+   end else if IntSample>32767 then begin
+    IntSample:=32767;
+   end;
+   PCMBuffer[Position]:=IntSample;
+  end;
+ end;
+ InBufferSize:=FramesRead;
+ case Channels of
+  1:begin
+   // Mono
+   for Position:=0 to InBufferSize-1 do begin
+    InBuffer[Position].Left:=PCMBuffer[Position];
+    InBuffer[Position].Right:=PCMBuffer[Position];
+   end;
+  end;
+  2:begin
+   // Left, right
+   for Position:=0 to InBufferSize-1 do begin
+    InBuffer[Position].Left:=PCMBuffer[(Position*2)+0];
+    InBuffer[Position].Right:=PCMBuffer[(Position*2)+1];
+   end;
+  end;
+  3:begin
+   // Left, middle, right
+   for Position:=0 to InBufferSize-1 do begin
+    InBuffer[Position].Left:=SARLongint(PCMBuffer[(Position*3)+0]+PCMBuffer[(Position*3)+1],1);
+    InBuffer[Position].Right:=SARLongint(PCMBuffer[(Position*3)+2]+PCMBuffer[(Position*3)+1],1);
+   end;
+  end;
+  4:begin
+   // Front left, front right, back left, back right
+   for Position:=0 to InBufferSize-1 do begin
+    InBuffer[Position].Left:=SARLongint(PCMBuffer[(Position*4)+0]+PCMBuffer[(Position*4)+2],1);
+    InBuffer[Position].Right:=SARLongint(PCMBuffer[(Position*4)+1]+PCMBuffer[(Position*4)+3],1);
+   end;
+  end;
+  5:begin
+   // Front left, front middle, front right, back left, back right
+   for Position:=0 to InBufferSize-1 do begin
+    InBuffer[Position].Left:=(PCMBuffer[(Position*5)+0]+PCMBuffer[(Position*5)+1]+PCMBuffer[(Position*5)+3]) div 3;
+    InBuffer[Position].Right:=(PCMBuffer[(Position*5)+2]+PCMBuffer[(Position*5)+1]+PCMBuffer[(Position*5)+4]) div 3;
+   end;
+  end;
+  6:begin
+   // Front left, front middle, front right, back left, back right, LFE channel (subwoofer)
+   for Position:=0 to InBufferSize-1 do begin
+    InBuffer[Position].Left:=SARLongint(PCMBuffer[(Position*6)+0]+PCMBuffer[(Position*6)+1]+PCMBuffer[(Position*6)+3]+PCMBuffer[(Position*6)+5],2);
+    InBuffer[Position].Right:=SARLongint(PCMBuffer[(Position*6)+2]+PCMBuffer[(Position*6)+1]+PCMBuffer[(Position*6)+4]+PCMBuffer[(Position*6)+5],2);
+   end;
+  end;
+  else begin
+   // Undefined, so take only the first two channels into account
+   for Position:=0 to InBufferSize-1 do begin
+    InBuffer[Position].Left:=PCMBuffer[(Position*Channels)+0];
+    InBuffer[Position].Right:=PCMBuffer[(Position*Channels)+1];
+   end;
+  end;
+ end;
+ InBufferPosition:=0;
+end;
+
+procedure TpvAudioSoundVideo.Resample;
+var Counter{$ifdef cpuarm},Factor{$endif}:TpvInt32;
+    OutSample:PpvAudioSoundMusicBufferSample;
+{$ifdef cpuarm}
+    InSamples:array[-1..0] of PpvAudioSoundMusicBufferSample;
+{$else}
+    SINCSubArray:PpvAudioResamplerSINCSubArray;
+    InSamples:array[-3..0] of PpvAudioSoundMusicBufferSample;
+    SubArray:PpvAudioResamplerCubicSplineSubArray;
+{$endif}
+begin
+ if ResamplerIncrement=ResamplerFixedPointFactor then begin
+  for Counter:=low(OutBuffer) to high(OutBuffer) do begin
+   if InBufferPosition>=InBufferSize then begin
+    GetNextInBuffer;
+   end;
+   OutBuffer[Counter]:=InBuffer[InBufferPosition];
+   inc(InBufferPosition);
+  end;
+ end else begin
+{$ifdef cpuarm}
+  // Use simple but fast linear interpolation for up- and downsampling on mobile embedded ARM platforms
+  for Counter:=low(OutBuffer) to high(OutBuffer) do begin
+   inc(ResamplerPosition,ResamplerIncrement);
+   while ResamplerPosition>=ResamplerFixedPointFactor do begin
+    dec(ResamplerPosition,ResamplerFixedPointFactor);
+    if InBufferPosition>=InBufferSize then begin
+     GetNextInBuffer;
+    end;
+    ResamplerBuffer[ResamplerBufferPosition and ResamplerBufferMask]:=InBuffer[InBufferPosition];
+    inc(InBufferPosition);
+    ResamplerBufferPosition:=(ResamplerBufferPosition+1) and ResamplerBufferMask;
+   end;
+   Factor:=(TpvInt32(ResamplerPosition and ResamplerFixedPointMask) shr ResamplerLinearInterpolationFracShift) and ResamplerLinearInterpolationFracMask;
+   InSamples[-1]:=@ResamplerBuffer[(ResamplerBufferPosition-2) and ResamplerBufferMask];
+   InSamples[0]:=@ResamplerBuffer[(ResamplerBufferPosition-1) and ResamplerBufferMask];
+   OutSample:=@OutBuffer[Counter];
+   OutSample^.Left:=InSamples[-1]^.Left+SARLongint((InSamples[0]^.Left-InSamples[-1]^.Left)*Factor,ResamplerLinearInterpolationValueBits);
+   OutSample^.Right:=InSamples[-1]^.Right+SARLongint((InSamples[0]^.Right-InSamples[-1]^.Right)*Factor,ResamplerLinearInterpolationValueBits);
+  end;
+{$else}
+  if (ResamplerIncrement<ResamplerFixedPointFactor) or (ResamplerIncrement<>ResamplerOriginalIncrement) then begin
+   // Upsample (and downsample if not original resampling rate) with cubic spline
+   for Counter:=low(OutBuffer) to high(OutBuffer) do begin
+    inc(ResamplerPosition,ResamplerIncrement);
+    while ResamplerPosition>=ResamplerFixedPointFactor do begin
+     dec(ResamplerPosition,ResamplerFixedPointFactor);
+     if InBufferPosition>=InBufferSize then begin
+      GetNextInBuffer;
+     end;
+     ResamplerBuffer[ResamplerBufferPosition and ResamplerBufferMask]:=InBuffer[InBufferPosition];
+     inc(InBufferPosition);
+     ResamplerBufferPosition:=(ResamplerBufferPosition+1) and ResamplerBufferMask;
+    end;
+    SubArray:=@AudioEngine.CubicSplineTable[(TpvUInt32(ResamplerPosition and ResamplerFixedPointMask) shr ResamplerCubicSplineFracShift) and ResamplerCubicSplineFracMask];
+    InSamples[-3]:=@ResamplerBuffer[(ResamplerBufferPosition-4) and ResamplerBufferMask];
+    InSamples[-2]:=@ResamplerBuffer[(ResamplerBufferPosition-3) and ResamplerBufferMask];
+    InSamples[-1]:=@ResamplerBuffer[(ResamplerBufferPosition-2) and ResamplerBufferMask];
+    InSamples[0]:=@ResamplerBuffer[(ResamplerBufferPosition-1) and ResamplerBufferMask];
+    OutSample:=@OutBuffer[Counter];
+    OutSample^.Left:=SARLongint((SubArray^[0]*InSamples[-3]^.Left)+(SubArray^[1]*InSamples[-1]^.Left)+(SubArray^[2]*InSamples[-2]^.Left)+(SubArray^[3]*InSamples[0]^.Left),ResamplerCubicSplineValueBits);
+    OutSample^.Right:=SARLongint((SubArray^[0]*InSamples[-3]^.Right)+(SubArray^[1]*InSamples[-1]^.Right)+(SubArray^[2]*InSamples[-2]^.Right)+(SubArray^[3]*InSamples[0]^.Right),ResamplerCubicSplineValueBits);
+   end;
+  end else begin
+   // Downsample with SINC
+   for Counter:=low(OutBuffer) to high(OutBuffer) do begin
+    inc(ResamplerPosition,ResamplerIncrement);
+    while ResamplerPosition>=ResamplerFixedPointFactor do begin
+     dec(ResamplerPosition,ResamplerFixedPointFactor);
+     if InBufferPosition>=InBufferSize then begin
+      GetNextInBuffer;
+     end;
+     ResamplerBuffer[ResamplerBufferPosition and ResamplerBufferMask]:=InBuffer[InBufferPosition];
+     inc(InBufferPosition);
+     ResamplerBufferPosition:=(ResamplerBufferPosition+1) and ResamplerBufferMask;
+    end;
+    SINCSubArray:=@Table[(TpvUInt32(ResamplerPosition and ResamplerFixedPointMask) shr ResamplerSINCFracShift) and ResamplerSINCFracMask];
+    OutSample:=@OutBuffer[Counter];
+    OutSample^.Left:=SARLongint(SARLongint((SINCSubArray^[0]*ResamplerBuffer[(ResamplerBufferPosition-8) and ResamplerBufferMask].Left)+
+                                           (SINCSubArray^[1]*ResamplerBuffer[(ResamplerBufferPosition-7) and ResamplerBufferMask].Left)+
+                                           (SINCSubArray^[2]*ResamplerBuffer[(ResamplerBufferPosition-6) and ResamplerBufferMask].Left)+
+                                           (SINCSubArray^[3]*ResamplerBuffer[(ResamplerBufferPosition-5) and ResamplerBufferMask].Left),ResamplerSINCValueBits)+
+                                SARLongint((SINCSubArray^[4]*ResamplerBuffer[(ResamplerBufferPosition-4) and ResamplerBufferMask].Left)+
+                                           (SINCSubArray^[5]*ResamplerBuffer[(ResamplerBufferPosition-3) and ResamplerBufferMask].Left)+
+                                           (SINCSubArray^[6]*ResamplerBuffer[(ResamplerBufferPosition-2) and ResamplerBufferMask].Left)+
+                                           (SINCSubArray^[7]*ResamplerBuffer[(ResamplerBufferPosition-1) and ResamplerBufferMask].Left),ResamplerSINCValueBits),1);
+    OutSample^.Right:=SARLongint(SARLongint((SINCSubArray^[0]*ResamplerBuffer[(ResamplerBufferPosition-8) and ResamplerBufferMask].Right)+
+                                            (SINCSubArray^[1]*ResamplerBuffer[(ResamplerBufferPosition-7) and ResamplerBufferMask].Right)+
+                                            (SINCSubArray^[2]*ResamplerBuffer[(ResamplerBufferPosition-6) and ResamplerBufferMask].Right)+
+                                            (SINCSubArray^[3]*ResamplerBuffer[(ResamplerBufferPosition-5) and ResamplerBufferMask].Right),ResamplerSINCValueBits)+
+                                 SARLongint((SINCSubArray^[4]*ResamplerBuffer[(ResamplerBufferPosition-4) and ResamplerBufferMask].Right)+
+                                            (SINCSubArray^[5]*ResamplerBuffer[(ResamplerBufferPosition-3) and ResamplerBufferMask].Right)+
+                                            (SINCSubArray^[6]*ResamplerBuffer[(ResamplerBufferPosition-2) and ResamplerBufferMask].Right)+
+                                            (SINCSubArray^[7]*ResamplerBuffer[(ResamplerBufferPosition-1) and ResamplerBufferMask].Right),ResamplerSINCValueBits),1);
+   end;
+  end;
+{$endif}
+ end;
+ OutBufferPosition:=0;
+ OutBufferSize:=length(OutBuffer);
+end;
+
+procedure TpvAudioSoundVideo.MixTo(Buffer:PpvAudioSoundSampleValues;MixVolume:TpvInt32);
+var Counter,Pan,VolLeft,VolRight:TpvInt32;
+    Sample:TpvAudioSoundMusicBufferSample;
+    BufferSample:PpvAudioSoundSampleValue;
+    IsAudible:boolean;
+begin
+ IsAudible:=(State in [TpvAudioSoundMusicState.Playing,
+                       TpvAudioSoundMusicState.Stopping,
+                       TpvAudioSoundMusicState.Pausing]) or
+            (VolumeRampingRemain>0) or
+            (LastLeft<>0) or
+            (LastRight<>0);
+ if IsAudible then begin
+  // Anchor the per-stream clock offset to the global mix-output clock at the first mixed playing block
+  if (not fStarted) and (State=TpvAudioSoundMusicState.Playing) then begin
+   if AudioEngine.SampleRate>0 then begin
+    fStartTime:=AudioEngine.fOutputSampleFrames/AudioEngine.SampleRate;
+   end else begin
+    fStartTime:=0.0;
+   end;
+   fStarted:=true;
+  end;
+  Pan:=Panning+65536;
+  if Pan<0 then begin
+   Pan:=0;
+  end else if Pan>=131072 then begin
+   Pan:=131071;
+  end;
+  MixVolume:=SARLongint(Volume*MixVolume,16);
+  VolLeft:=SARLongint(AudioEngine.PanningLUT[SARLongint(131072-Pan,1)]*MixVolume,15);
+  VolRight:=SARLongint(AudioEngine.PanningLUT[SARLongint(Pan,1)]*MixVolume,15);
+  if VolLeft<0 then begin
+   VolLeft:=0;
+  end else if VolLeft>=4096 then begin
+   VolLeft:=4095;
+  end;
+  if VolRight<0 then begin
+   VolRight:=0;
+  end else if VolRight>=4096 then begin
+   VolRight:=4095;
+  end;
+  VolLeft:=VolLeft shl 12;
+  VolRight:=VolRight shl 12;
+  if (State=TpvAudioSoundMusicState.Playing) and
+     ((VolumeLeft<>VolLeft) or (VolumeRight<>VolRight)) then begin
+   VolumeLeft:=VolLeft;
+   VolumeRight:=VolRight;
+   if VolumeRampingRemain=0 then begin
+    VolumeLeftCurrent:=VolumeLeft;
+    VolumeRightCurrent:=VolumeRight;
+    VolumeLeftInc:=0;
+    VolumeRightInc:=0;
+   end else begin
+    VolumeLeftInc:=(VolumeLeft-VolumeLeftCurrent) div VolumeRampingRemain;
+    VolumeRightInc:=(VolumeRight-VolumeRightCurrent) div VolumeRampingRemain;
+   end;
+  end;
+  BufferSample:=@Buffer^[0];
+  for Counter:=1 to AudioEngine.BufferSamples do begin
+   if State in [TpvAudioSoundMusicState.Playing,
+                TpvAudioSoundMusicState.Stopping,
+                TpvAudioSoundMusicState.Pausing] then begin
+    if OutBufferPosition>=OutBufferSize then begin
+     Resample;
+    end;
+    Sample:=OutBuffer[OutBufferPosition];
+    inc(OutBufferPosition);
+   end else begin
+    Sample.Left:=0;
+    Sample.Right:=0;
+   end;
+   if VolumeRampingRemain>0 then begin
+    dec(VolumeRampingRemain);
+    VolLeft:=SARLongint(VolumeLeftCurrent,12);
+    VolRight:=SARLongint(VolumeRightCurrent,12);
+    inc(VolumeLeftCurrent,VolumeLeftInc);
+    inc(VolumeRightCurrent,VolumeRightInc);
+    if VolumeRampingRemain=0 then begin
+     if State=TpvAudioSoundMusicState.Stopping then begin
+      State:=TpvAudioSoundMusicState.Stopped;
+      inc(LastLeft,LastSample.Left);
+      inc(LastRight,LastSample.Right);
+      LastSample.Left:=0;
+      LastSample.Right:=0;
+      VolumeLeftCurrent:=0;
+      VolumeRightCurrent:=0;
+     end else if State=TpvAudioSoundMusicState.Pausing then begin
+      State:=TpvAudioSoundMusicState.Paused;
+      VolumeLeftCurrent:=0;
+      VolumeRightCurrent:=0;
+     end;
+    end;
+   end else begin
+    VolLeft:=SARLongint(VolumeLeft,12);
+    VolRight:=SARLongint(VolumeRight,12);
+   end;
+   Sample.Left:=SARLongint(Sample.Left*VolLeft,12);
+   Sample.Right:=SARLongint(Sample.Right*VolRight,12);
+   LastSample:=Sample;
+   if (LastLeft<>0) or (LastRight<>0) then begin
+    dec(LastLeft,SARLongint(LastLeft+(SARLongint(-LastLeft,31) and $ff),8));
+    dec(LastRight,SARLongint(LastRight+(SARLongint(-LastRight,31) and $ff),8));
+    inc(Sample.Left,SARLongint(LastLeft,12));
+    inc(Sample.Right,SARLongint(LastRight,12));
+   end;
+   inc(BufferSample^,Sample.Left);
+   inc(BufferSample);
+   inc(BufferSample^,Sample.Right);
+   inc(BufferSample);
+  end;
+  if VolumeRampingRemain=0 then begin
+   if State=TpvAudioSoundMusicState.Playing then begin
+    VolumeLeftCurrent:=VolumeLeft;
+    VolumeRightCurrent:=VolumeRight;
+    VolumeLeftInc:=0;
+    VolumeRightInc:=0;
+   end;
+  end;
+ end;
+end;
+
+function TpvAudioSoundVideo.IsPlaying:boolean;
+begin
+ result:=State in [TpvAudioSoundMusicState.Playing,
+                   TpvAudioSoundMusicState.Stopping,
+                   TpvAudioSoundMusicState.Pausing];
+end;
+
+function TpvAudioSoundVideo.IsPaused:boolean;
+begin
+ result:=State in [TpvAudioSoundMusicState.Paused,
+                   TpvAudioSoundMusicState.Pausing];
+end;
+
+function TpvAudioSoundVideo.PlaybackTime:TpvDouble;
+begin
+ if State in [TpvAudioSoundMusicState.Paused,TpvAudioSoundMusicState.Pausing] then begin
+  result:=fPausedClock; // frozen while paused
+ end else if fStarted then begin
+  result:=fSeekBaseTime+(AudioEngine.PlaybackPositionInSeconds-fStartTime);
+ end else begin
+  result:=fSeekBaseTime;
+ end;
+ if result<0.0 then begin
+  result:=0.0;
+ end;
+end;
+
+{ TpvAudioSoundVideos }
+
+constructor TpvAudioSoundVideos.Create(AAudioEngine:TpvAudio);
+begin
+ inherited Create;
+ AudioEngine:=AAudioEngine;
+end;
+
+destructor TpvAudioSoundVideos.Destroy;
+begin
+ while Count>0 do begin
+  TpvAudioSoundVideo(Items[Count-1]).Free; // each Free removes itself from the list
+ end;
+ inherited Destroy;
+end;
+
+function TpvAudioSoundVideos.GetItem(Index:TpvInt32):TpvAudioSoundVideo;
+begin
+ result:=TpvAudioSoundVideo(inherited Items[Index]);
+end;
+
+procedure TpvAudioSoundVideos.SetItem(Index:TpvInt32;Item:TpvAudioSoundVideo);
+begin
+ inherited Items[Index]:=Item;
+end;
+
 constructor TpvAudioSoundSampleResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aParallelLoadable:TpvResource.TParallelLoadable);
 begin
  inherited Create(aResourceManager,aParent,aMetaResource,aParallelLoadable);
@@ -5788,6 +6515,7 @@ begin
     repeat
      if AudioEngine.RingBuffer.AvailableForWrite>=AudioEngine.OutputBufferSize then begin
       AudioEngine.RingBuffer.Write(AudioEngine.OutputBuffer,AudioEngine.OutputBufferSize);
+      inc(AudioEngine.fOutputSampleFrames,AudioEngine.BufferSamples); // advance the global playback clock by one produced block
       break;
      end else begin
       ReadEvent.WaitFor(1);
@@ -6655,6 +7383,9 @@ begin
  SpatializationDelayMask:=SpatializationDelayPowerOfTwo-1;
  Samples:=TpvAudioSoundSamples.Create(self);
  Musics:=TpvAudioSoundMusics.Create(self);
+ Videos:=TpvAudioSoundVideos.Create(self);
+ fOutputSampleFrames:=0;
+ fOutputLatencyFrames:=0;
  HRTFPreset:=@DefaultHRTFPreset;
  HRTF:=ASampleRate=HRTFPreset^.SampleRate;
  iF HRTF then begin
@@ -6742,6 +7473,7 @@ begin
  FreeAndNil(Reverb);
  FreeAndNil(PitchShifter);
  FreeAndNil(Samples);
+ FreeAndNil(Videos);
  FreeAndNil(Musics);
  FreeMem(MixingBuffer);
  FreeMem(MusicMixingBuffer);
@@ -7157,6 +7889,10 @@ begin
   // Mixing all music streams
   for i:=0 to Musics.Count-1 do begin
    Musics[i].MixTo(MusicMixingBuffer,MusicVolume);
+  end;
+  // Mixing all video audio streams onto the same music bus
+  for i:=0 to Videos.Count-1 do begin
+   Videos[i].MixTo(MusicMixingBuffer,MusicVolume);
   end;
   for i:=0 to BufferChannelSamples-1 do begin
    inc(MixingBuffer[i],MusicMixingBuffer[i]);
@@ -7596,6 +8332,26 @@ begin
   IsMuted:=false;
  finally
   CriticalSection.Leave;
+ end;
+end;
+
+function TpvAudio.PlaybackPositionInSeconds:TpvDouble;
+var FrameBytes,PlayedFrames:TpvInt64;
+begin
+ // Latency-compensated global mix-output clock: produced frames minus what is still queued in the ring buffer minus the
+ // device-internal output latency = roughly the frame currently leaving the speakers. Backend-agnostic (no SDL/Win32 hook).
+ FrameBytes:=Channels*(Bits shr 3);
+ if FrameBytes<=0 then begin
+  FrameBytes:=4;
+ end;
+ PlayedFrames:=fOutputSampleFrames-(RingBuffer.AvailableForRead div FrameBytes)-fOutputLatencyFrames;
+ if PlayedFrames<0 then begin
+  PlayedFrames:=0;
+ end;
+ if SampleRate>0 then begin
+  result:=PlayedFrames/SampleRate;
+ end else begin
+  result:=0.0;
  end;
 end;
 

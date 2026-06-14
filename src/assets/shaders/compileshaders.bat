@@ -8,5 +8,9 @@ cd scene3d
 call compileshaders.bat
 cd ..
 
+cd virtualreality
+call compileshaders.bat
+cd ..
+
 echo.
 pause

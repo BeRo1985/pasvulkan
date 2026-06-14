@@ -1,0 +1,596 @@
+unit PasVulkan.Video.FlexibleWavelet.Player;
+{$i PasVulkan.inc}
+
+// Poll-based playback facade over the Flexible Wavelet video decoders. The engine drives it with a clock (e.g. the
+// FWA audio clock for A/V sync): DecodeTime(t) advances the CPU side on the Update thread (parse + decompress + MV/mode
+// decode + host upload, one frame toward the time's target), Decode(cmd) records the GPU side into the caller's command
+// buffer on the Draw thread, then the decoded frame is available as OutputImage / blitted into a present target. The
+// facade owns the backend choice: a container carrying an H.264 stream decodes via the dedicated VK-H.264 hardware path
+// where the GPU supports it (Stage F3, PasVulkan.Video.H264.Decoder), otherwise via the self-contained wavelet GPU path
+// (the lossless / HDR / 3D-DWT / downscalable fallback). For now only the wavelet backend is wired; an H.264-only request
+// raises, an auto request with an H.264 stream logs and falls back to wavelet.
+
+interface
+
+uses SysUtils,
+     Classes,
+     Vulkan,
+     PasVulkan.Types,
+     PasVulkan.Framework,
+     PasVulkan.Audio,
+     PasVulkan.Audio.FlexibleWavelet.Decoder,
+     PasVulkan.Audio.QOAL,
+     PasVulkan.Audio.RPCM,
+     PasVulkan.Audio.OGGVorbis,
+     PasVulkan.Video.FlexibleWavelet,
+     PasVulkan.Video.FlexibleWavelet.Decoder,
+     PasVulkan.Video.H264.Decoder;
+
+type EpvFlexibleWaveletVideoPlayer=class(EpvFlexibleWaveletVideo);
+
+     { TpvFlexibleWaveletVideoPlayer }
+     TpvFlexibleWaveletVideoPlayer=class(TObject)
+      public
+       type TDecoderChoice=
+             (
+              Auto,         // H.264 where HW-decodable, else wavelet
+              ForceH264,    // require the H.264 hardware path (raises if unavailable)
+              ForceWavelet  // always the wavelet GPU-compute path
+             );
+            TAudioKind=
+             (
+              None,
+              FWAC, // wavelet audio  (TpvFlexibleWaveletAudioDecoder)
+              QOAL, // little-endian QOA  (TpvAudioQOALDecoder)
+              RPCM, // raw PCM  (TpvAudioRPCMDecoder)
+              OGGV  // OGG/Vorbis  (TpvAudioOGGVorbisDecoder)
+             );
+      private
+       fStream:TStream;
+       fDevice:TpvVulkanDevice;
+       fDecoder:TpvFlexibleWaveletVideoDecoder; // the wavelet backend (nil when the H.264 backend is active)
+       fH264:TpvVideoH264Decoder; // the VK-H.264 HW-decode backend (Stage F3); nil unless fUsingH264
+       // audio (A/V sync): one container audio sub-codec decoder feeds a TpvAudioSoundVideo whose PlaybackTime is the clock
+       fAudio:TpvAudio;
+       fAudioKind:TAudioKind;
+       fAudioStream:TpvAudioSoundVideo;
+       fAudioBlobStream:TMemoryStream; // owns the audio sub-blob; kept alive >= the decoder (FWA reads it on demand)
+       fAudioFWADecoder:TpvFlexibleWaveletAudioDecoder;
+       fAudioQOALDecoder:TpvAudioQOALDecoder;
+       fAudioRPCMDecoder:TpvAudioRPCMDecoder;
+       fAudioOGGVDecoder:TpvAudioOGGVorbisDecoder;
+       fAudioChannels:TpvInt32;
+       fAudioSampleRate:TpvInt32;
+       fHeader:TpvFlexibleWaveletVideo.THeader;
+       fWidth:TpvInt32;
+       fHeight:TpvInt32;
+       fFrameCount:TpvInt64;
+       fFpsNum:TpvUInt32;
+       fFpsDen:TpvUInt32;
+       fFrameRate:TpvDouble;
+       fDuration:TpvDouble;
+       fHasH264Stream:boolean;
+       fUsingH264:boolean;
+       fTargetIndex:TpvInt32; // display frame index the current time maps to
+       fPreparedIndex:TpvInt32; // index PrepareFrame staged for the next Decode (-1 = none)
+       fLastDecodedIndex:TpvInt32; // last index RecordFrame produced (-1 = none)
+{$ifdef VkVideo}
+       procedure TryCreateH264Backend; // build the VK-H.264 backend from the container's H.264 sub-blob; on success sets fUsingH264
+{$endif}
+       function GetOutputImage:TpvVulkanImage;
+       function GetOutputImageView:TpvVulkanImageView;
+       function GetOutputFormat:TVkFormat;
+       function GetIsHDR:boolean;
+       function GetHasAudio:boolean;
+       function AudioReadCallback(const aFloatBuffer:Pointer;const aFrameCount:TpvInt32):TpvInt32; // TpvAudioSoundVideoReadCallback
+      public
+       constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice=TDecoderChoice.Auto;const aPreferSCRGBForHDR:boolean=false);
+       destructor Destroy; override;
+       // map a presentation time to a display-order frame index (clamped to the stream)
+       function TimeToFrameIndex(const aTimeInSeconds:TpvDouble):TpvInt32;
+       // CPU advance (Update thread): stage the next frame toward the time's target; True if a frame is staged for Decode.
+       // Idempotent across repeated calls before a Decode (a fixed-timestep loop may call Update several times per Draw).
+       function DecodeTime(const aTimeInSeconds:TpvDouble):boolean;
+       // GPU record (Draw thread): record the staged frame's decode into the caller command buffer; True if it recorded one
+       function Decode(const aCommandBuffer:TpvVulkanCommandBuffer):boolean;
+       // blit the last decoded frame (OutputImage, left in TRANSFER_SRC_OPTIMAL) into a present target image
+       procedure BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout);
+       // audio: open the container's audio sub-codec into a TpvAudioSoundVideo on the given engine audio system (A/V sync)
+       procedure OpenAudio(const aAudio:TpvAudio);
+       procedure StartAudio; // begin audio playback (anchors the master clock)
+       procedure PauseAudio;
+       procedure ResumeAudio;
+       procedure SeekAudio(const aTimeInSeconds:TpvDouble);
+       procedure CloseAudio;
+       function MasterClockSeconds:TpvDouble; // the audio stream's PlaybackTime (only meaningful when HasAudio)
+       property HasAudio:boolean read GetHasAudio;
+       property AudioChannels:TpvInt32 read fAudioChannels;
+       property AudioSampleRate:TpvInt32 read fAudioSampleRate;
+       property Width:TpvInt32 read fWidth;
+       property Height:TpvInt32 read fHeight;
+       property FrameCount:TpvInt64 read fFrameCount;
+       property FrameRate:TpvDouble read fFrameRate;
+       property Duration:TpvDouble read fDuration;
+       property CurrentFrameIndex:TpvInt32 read fLastDecodedIndex;
+       property HasH264Stream:boolean read fHasH264Stream;
+       property UsingH264:boolean read fUsingH264;
+       property OutputImage:TpvVulkanImage read GetOutputImage;
+       property OutputImageView:TpvVulkanImageView read GetOutputImageView;
+       property OutputFormat:TVkFormat read GetOutputFormat;
+       property IsHDR:boolean read GetIsHDR;
+     end;
+
+implementation
+
+{ TpvFlexibleWaveletVideoPlayer }
+
+constructor TpvFlexibleWaveletVideoPlayer.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice;const aPreferSCRGBForHDR:boolean);
+begin
+ inherited Create;
+
+ fStream:=aStream;
+ fDevice:=aDevice;
+ fDecoder:=nil;
+ fH264:=nil;
+ fTargetIndex:=-1;
+ fPreparedIndex:=-1;
+ fLastDecodedIndex:=-1;
+ fAudio:=nil;
+ fAudioKind:=TAudioKind.None;
+ fAudioStream:=nil;
+ fAudioBlobStream:=nil;
+ fAudioFWADecoder:=nil;
+ fAudioQOALDecoder:=nil;
+ fAudioRPCMDecoder:=nil;
+ fAudioOGGVDecoder:=nil;
+ fAudioChannels:=0;
+ fAudioSampleRate:=0;
+
+ // peek the 126-byte container header for the time base + the backend decision, then rewind for the decoder
+ fStream.Seek(0,soBeginning);
+ fStream.ReadBuffer(fHeader,SizeOf(fHeader));
+ if (CompareByte(fHeader.Magic[0],TpvFlexibleWaveletVideo.Magic[0],4)<>0) or (fHeader.Version<>TpvFlexibleWaveletVideo.FormatVersion) then begin
+  raise EpvFlexibleWaveletVideoPlayer.Create('Not a FWVC stream');
+ end;
+
+ fWidth:=TpvInt32(fHeader.Width);
+ fHeight:=TpvInt32(fHeader.Height);
+ fFrameCount:=TpvInt64(fHeader.FrameCount);
+ fFpsNum:=fHeader.FpsNum;
+ fFpsDen:=fHeader.FpsDen;
+ if fFpsNum=0 then begin
+  fFpsNum:=30;
+ end;
+ if fFpsDen=0 then begin
+  fFpsDen:=1;
+ end;
+ fFrameRate:=fFpsNum/fFpsDen;
+ if fFrameRate>0.0 then begin
+  fDuration:=fFrameCount/fFrameRate;
+ end else begin
+  fDuration:=0.0;
+ end;
+
+ // backend decision (mirrors the C fwvplay: use_h264 = (choice<>force-wavelet) && h264_size>0 && gpu_h264)
+ fHasH264Stream:=fHeader.H264Size>0;
+ fUsingH264:=false;
+{$ifdef VkVideo}
+ if (aDecoderChoice<>TDecoderChoice.ForceWavelet) and fHasH264Stream and assigned(fDevice.VideoDecodeQueue) then begin
+  // copy the H.264 Annex-B sub-blob out of the container; TpvVideoH264Decoder copies it again internally, so a local
+  // stream is enough (unlike the audio decoders, which read on demand and need their blob kept alive).
+  TryCreateH264Backend; // sets fUsingH264 + fH264 + the H.264 width/height/frame-count on success
+ end;
+ if (not fUsingH264) and (aDecoderChoice=TDecoderChoice.ForceH264) then begin
+  raise EpvFlexibleWaveletVideoPlayer.Create('H.264 hardware decode requested but unavailable (no stream, no VK video-decode queue, or session creation failed)');
+ end;
+{$else}
+ if aDecoderChoice=TDecoderChoice.ForceH264 then begin
+  raise EpvFlexibleWaveletVideoPlayer.Create('H.264 hardware decode requested but the engine was built without VkVideo');
+ end;
+{$endif}
+
+ // the wavelet backend is the default + the fallback; only built when the H.264 backend is not active
+ if not fUsingH264 then begin
+  fStream.Seek(0,soBeginning);
+  fDecoder:=TpvFlexibleWaveletVideoDecoder.Create(fStream,fDevice,aPreferSCRGBForHDR,1); // submit mode B: whole decode-ahead into ONE caller CB
+ end;
+
+end;
+
+{$ifdef VkVideo}
+procedure TpvFlexibleWaveletVideoPlayer.TryCreateH264Backend;
+var BlobStream:TMemoryStream;
+begin
+ BlobStream:=TMemoryStream.Create;
+ try
+  fStream.Seek(TpvInt64(fHeader.H264Offset),soBeginning);
+  BlobStream.CopyFrom(fStream,TpvInt64(fHeader.H264Size));
+  BlobStream.Seek(0,soBeginning);
+  try
+   fH264:=TpvVideoH264Decoder.Create(BlobStream,fDevice); // parses + creates the VkVideoSession (raises if unsupported)
+   fUsingH264:=true;
+   // the H.264 stream is full-resolution; the container header width/height may be the wavelet's down-scaled size
+   fWidth:=fH264.Width;
+   fHeight:=fH264.Height;
+   fFrameCount:=fH264.FrameCount;
+   if fFrameRate>0.0 then begin
+    fDuration:=fFrameCount/fFrameRate;
+   end;
+  except
+   on e:Exception do begin
+    // auto-fallback to wavelet: the GPU advertised a video-decode queue but the actual session/profile was rejected
+    FreeAndNil(fH264);
+    fUsingH264:=false;
+   end;
+  end;
+ finally
+  BlobStream.Free;
+ end;
+end;
+{$endif}
+
+destructor TpvFlexibleWaveletVideoPlayer.Destroy;
+begin
+ CloseAudio;
+ FreeAndNil(fDecoder);
+{$ifdef VkVideo}
+ FreeAndNil(fH264);
+{$endif}
+ inherited Destroy;
+end;
+
+function TpvFlexibleWaveletVideoPlayer.GetHasAudio:boolean;
+begin
+ result:=(fAudioKind<>TAudioKind.None) and assigned(fAudioStream);
+end;
+
+function TpvFlexibleWaveletVideoPlayer.AudioReadCallback(const aFloatBuffer:Pointer;const aFrameCount:TpvInt32):TpvInt32;
+begin
+ // called from the audio thread (TpvAudioSoundVideo.GetNextInBuffer): pull interleaved f32 from the active sub-codec decoder
+ case fAudioKind of
+  TAudioKind.FWAC:begin
+   result:=fAudioFWADecoder.Decode(aFloatBuffer,aFrameCount);
+  end;
+  TAudioKind.QOAL:begin
+   result:=fAudioQOALDecoder.Decode(aFloatBuffer,aFrameCount);
+  end;
+  TAudioKind.RPCM:begin
+   result:=fAudioRPCMDecoder.Decode(aFloatBuffer,aFrameCount);
+  end;
+  TAudioKind.OGGV:begin
+   result:=fAudioOGGVDecoder.Decode(aFloatBuffer,aFrameCount);
+  end;
+  else begin
+   result:=0;
+  end;
+ end;
+end;
+
+procedure TpvFlexibleWaveletVideoPlayer.OpenAudio(const aAudio:TpvAudio);
+ function CodecIs(const a,b,c,d:AnsiChar):boolean;
+ begin
+  result:=(fHeader.AudioCodec[0]=a) and (fHeader.AudioCodec[1]=b) and (fHeader.AudioCodec[2]=c) and (fHeader.AudioCodec[3]=d);
+ end;
+begin
+
+ CloseAudio;
+ if (fHeader.AudioSize=0) or not assigned(aAudio) then begin
+  exit; // no audio track (or no audio engine)
+ end;
+ fAudio:=aAudio;
+
+ // copy the audio sub-blob out of the container stream (kept alive >= the decoder)
+ fAudioBlobStream:=TMemoryStream.Create;
+ fStream.Seek(TpvInt64(fHeader.AudioOffset),soBeginning);
+ fAudioBlobStream.CopyFrom(fStream,TpvInt64(fHeader.AudioSize));
+ fAudioBlobStream.Seek(0,soBeginning);
+
+ if CodecIs('F','W','A','C') then begin
+  fAudioFWADecoder:=TpvFlexibleWaveletAudioDecoder.Create(fAudioBlobStream);
+  fAudioKind:=TAudioKind.FWAC;
+  fAudioChannels:=fAudioFWADecoder.Channels;
+  fAudioSampleRate:=fAudioFWADecoder.SampleRate;
+ end else if CodecIs('Q','O','A','L') then begin
+  fAudioQOALDecoder:=TpvAudioQOALDecoder.Create(fAudioBlobStream);
+  fAudioKind:=TAudioKind.QOAL;
+  fAudioChannels:=fAudioQOALDecoder.Channels;
+  fAudioSampleRate:=fAudioQOALDecoder.SampleRate;
+ end else if CodecIs('R','P','C','M') then begin
+  fAudioRPCMDecoder:=TpvAudioRPCMDecoder.Create(fAudioBlobStream);
+  fAudioKind:=TAudioKind.RPCM;
+  fAudioChannels:=fAudioRPCMDecoder.Channels;
+  fAudioSampleRate:=fAudioRPCMDecoder.SampleRate;
+ end else if CodecIs('O','G','G','V') then begin
+  fAudioOGGVDecoder:=TpvAudioOGGVorbisDecoder.Create(fAudioBlobStream);
+  fAudioKind:=TAudioKind.OGGV;
+  fAudioChannels:=fAudioOGGVDecoder.Channels;
+  fAudioSampleRate:=fAudioOGGVDecoder.SampleRate;
+ end else begin
+  // unknown audio sub-codec -> no audio
+  FreeAndNil(fAudioBlobStream);
+  fAudio:=nil;
+  exit;
+ end;
+
+ fAudioStream:=TpvAudioSoundVideo.Create(fAudio,fAudio.Videos,fAudioChannels,fAudioSampleRate,AudioReadCallback);
+
+end;
+
+procedure TpvFlexibleWaveletVideoPlayer.StartAudio;
+begin
+ if assigned(fAudioStream) then begin
+  fAudioStream.Play(1.0,0.0,1.0,false);
+ end;
+end;
+
+procedure TpvFlexibleWaveletVideoPlayer.PauseAudio;
+begin
+ if assigned(fAudioStream) then begin
+  fAudioStream.Pause;
+ end;
+end;
+
+procedure TpvFlexibleWaveletVideoPlayer.ResumeAudio;
+begin
+ if assigned(fAudioStream) then begin
+  fAudioStream.Resume;
+ end;
+end;
+
+procedure TpvFlexibleWaveletVideoPlayer.SeekAudio(const aTimeInSeconds:TpvDouble);
+var Frame:TpvInt64;
+begin
+
+ if not GetHasAudio then begin
+  exit;
+ end;
+
+ if aTimeInSeconds<=0.0 then begin
+  Frame:=0;
+ end else begin
+  Frame:=Round(aTimeInSeconds*fAudioSampleRate);
+ end;
+
+ // serialize the source seek against the audio thread's read callback (FillBuffer holds the same lock)
+ fAudio.Lock;
+ try
+  case fAudioKind of
+   TAudioKind.FWAC:begin
+    fAudioFWADecoder.Seek(Frame);
+   end;
+   TAudioKind.QOAL:begin
+    fAudioQOALDecoder.Seek(Frame);
+   end;
+   TAudioKind.RPCM:begin
+    fAudioRPCMDecoder.Seek(Frame);
+   end;
+   TAudioKind.OGGV:begin
+    fAudioOGGVDecoder.Seek(Frame);
+   end;
+   else begin
+   end;
+  end;
+ finally
+  fAudio.Unlock;
+ end;
+
+ fAudioStream.ResetForSeek(aTimeInSeconds); // flush the resampler + re-anchor the per-stream clock offset to this time
+
+end;
+
+procedure TpvFlexibleWaveletVideoPlayer.CloseAudio;
+begin
+
+ FreeAndNil(fAudioStream); // removes itself from fAudio.Videos under the engine lock
+
+ FreeAndNil(fAudioFWADecoder);
+ FreeAndNil(fAudioQOALDecoder);
+ FreeAndNil(fAudioRPCMDecoder);
+ FreeAndNil(fAudioOGGVDecoder);
+ FreeAndNil(fAudioBlobStream);
+
+ fAudioKind:=TAudioKind.None;
+ fAudio:=nil;
+ fAudioChannels:=0;
+ fAudioSampleRate:=0;
+
+end;
+
+function TpvFlexibleWaveletVideoPlayer.MasterClockSeconds:TpvDouble;
+begin
+ if GetHasAudio then begin
+  result:=fAudioStream.PlaybackTime;
+ end else begin
+  result:=0.0;
+ end;
+end;
+
+function TpvFlexibleWaveletVideoPlayer.GetOutputImage:TpvVulkanImage;
+begin
+
+{$ifdef VkVideo}
+ if fUsingH264 then begin
+  result:=fH264.OutputImage;
+  exit;
+ end;
+{$endif}
+
+ result:=fDecoder.OutputImage;
+
+end;
+
+function TpvFlexibleWaveletVideoPlayer.GetOutputImageView:TpvVulkanImageView;
+begin
+
+{$ifdef VkVideo}
+ if fUsingH264 then begin
+  result:=fH264.OutputImageView;
+  exit;
+ end;
+{$endif}
+
+ result:=fDecoder.OutputImageView;
+
+end;
+
+function TpvFlexibleWaveletVideoPlayer.GetOutputFormat:TVkFormat;
+begin
+ if fUsingH264 then begin
+  result:=VK_FORMAT_R8G8B8A8_SRGB; // H.264 display image is sRGB -> samples/blits to linear (sRGB swapchain + in-game correct)
+  exit;
+ end;
+ result:=fDecoder.OutputFormat;
+end;
+
+function TpvFlexibleWaveletVideoPlayer.GetIsHDR:boolean;
+begin
+
+ if fUsingH264 then begin
+  result:=false; // the H.264 backend is 8-bit SDR
+  exit;
+ end;
+
+ result:=fDecoder.IsHDR;
+end;
+
+function TpvFlexibleWaveletVideoPlayer.TimeToFrameIndex(const aTimeInSeconds:TpvDouble):TpvInt32;
+var FrameNumber:TpvInt64;
+begin
+
+ if aTimeInSeconds<=0.0 then begin
+  result:=0;
+  exit;
+ end;
+
+ // display frame = floor(t * fps) = floor(t * FpsNum / FpsDen)
+ FrameNumber:=TpvInt64(Trunc((aTimeInSeconds*fFpsNum)/fFpsDen));
+ if FrameNumber<0 then begin
+  FrameNumber:=0;
+ end else if FrameNumber>=fFrameCount then begin
+  FrameNumber:=fFrameCount-1;
+ end;
+
+ result:=TpvInt32(FrameNumber);
+end;
+
+function TpvFlexibleWaveletVideoPlayer.DecodeTime(const aTimeInSeconds:TpvDouble):boolean;
+begin
+ fTargetIndex:=TimeToFrameIndex(aTimeInSeconds);
+
+{$ifdef VkVideo}
+ if fUsingH264 then begin
+  // H.264 path: CPU-only on the Update thread (just note the target). The actual HW decode is self-submitting and
+  // runs entirely in Decode() on the Draw thread, so Update+Draw stay parallel-safe. EnsureDisplayFrame absorbs any
+  // forward jump (or a backward seek) in one Decode() call, so no per-frame staging is needed here.
+  result:=fTargetIndex<>fLastDecodedIndex;
+  exit;
+ end;
+{$endif}
+
+ // already at (or past) the target -> nothing new to decode this tick
+ if fLastDecodedIndex>=fTargetIndex then begin
+  result:=false;
+  exit;
+ end;
+
+ // already staged this exact frame (a previous DecodeTime call this tick) -> idempotent, don't re-prepare
+ if fPreparedIndex=(fLastDecodedIndex+1) then begin
+  result:=true;
+  exit;
+ end;
+
+ // stage exactly one display frame toward the target (keeps the intra/P reference chain; the B-frame decode-ahead is
+ // incremental, so stepping POC by POC only uploads newly-needed coding frames). A caller behind by several frames
+ // calls DecodeTime/Decode again to catch up.
+ fPreparedIndex:=fLastDecodedIndex+1;
+ fDecoder.PrepareFrame(fPreparedIndex);
+ result:=true;
+end;
+
+function TpvFlexibleWaveletVideoPlayer.Decode(const aCommandBuffer:TpvVulkanCommandBuffer):boolean;
+begin
+
+ {$ifdef VkVideo}
+ if fUsingH264 then begin
+
+  // GPU side (Draw thread): the H.264 decode is fully self-submitting (own video + universal queue submits), so the
+  // caller command buffer is only used later by BlitLastDecodedFrame. EnsureDisplayFrame brings the output to fTargetIndex.
+  if (fTargetIndex<0) or (fTargetIndex=fLastDecodedIndex) then begin
+   result:=false;
+   exit;
+  end;
+
+  fH264.EnsureDisplayFrame(fTargetIndex);
+  fLastDecodedIndex:=fTargetIndex;
+  result:=true;
+  exit;
+
+ end;
+
+{$endif}
+
+ if fPreparedIndex<0 then begin
+  result:=false;
+  exit;
+ end;
+ fDecoder.RecordFrame(aCommandBuffer);
+ fLastDecodedIndex:=fPreparedIndex;
+ fPreparedIndex:=-1;
+ result:=true;
+end;
+
+procedure TpvFlexibleWaveletVideoPlayer.BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout);
+var Blit:TVkImageBlit;
+    Barrier:TVkImageMemoryBarrier;
+    SourceLayout:TVkImageLayout;
+
+ procedure TransitionTarget(const aOldLayout,aNewLayout:TVkImageLayout;const aSrcAccess,aDstAccess:TVkAccessFlags;const aSrcStage,aDstStage:TVkPipelineStageFlags);
+ begin
+  FillChar(Barrier,SizeOf(Barrier),#0);
+  Barrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  Barrier.srcAccessMask:=aSrcAccess;
+  Barrier.dstAccessMask:=aDstAccess;
+  Barrier.oldLayout:=aOldLayout;
+  Barrier.newLayout:=aNewLayout;
+  Barrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  Barrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  Barrier.image:=aTargetImage.Handle;
+  Barrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  Barrier.subresourceRange.levelCount:=1;
+  Barrier.subresourceRange.layerCount:=1;
+  aCommandBuffer.CmdPipelineBarrier(aSrcStage,aDstStage,0,0,nil,0,nil,1,@Barrier);
+ end;
+
+begin
+
+ // both backends leave OutputImage as a single persistent image in TRANSFER_SRC_OPTIMAL (the H.264 decoder copies its
+ // current rotating pool slot into a stable display image), so the present path is identical for both
+ SourceLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+ // bring the target to TRANSFER_DST, blit (linear) from the decoded frame, restore it
+ TransitionTarget(aTargetOldLayout,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                  0,TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT));
+
+ FillChar(Blit,SizeOf(Blit),#0);
+ Blit.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+ Blit.srcSubresource.layerCount:=1;
+ Blit.srcOffsets[1].x:=fWidth;
+ Blit.srcOffsets[1].y:=fHeight;
+ Blit.srcOffsets[1].z:=1;
+ Blit.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+ Blit.dstSubresource.layerCount:=1;
+ Blit.dstOffsets[1].x:=aTargetWidth;
+ Blit.dstOffsets[1].y:=aTargetHeight;
+ Blit.dstOffsets[1].z:=1;
+ aCommandBuffer.CmdBlitImage(GetOutputImage.Handle,SourceLayout,
+                             aTargetImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                             1,@Blit,VK_FILTER_LINEAR);
+
+ TransitionTarget(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,aTargetNewLayout,
+                  TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),0,
+                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
+
+end;
+
+end.

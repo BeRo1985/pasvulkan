@@ -3373,7 +3373,7 @@ begin
      ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Alias+';');
     end else if length(ExtensionOrFeatureEnum.Value)<>0 then begin
      if pos('"',ExtensionOrFeatureEnum.Value)=0 then begin
-      ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Value+';');
+      ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+StringReplace(ExtensionOrFeatureEnum.Value,'0x','$',[rfReplaceAll,rfIgnoreCase])+';'); // C hex literal 0xFF -> Pascal $FF (video.xml)
      end else begin
       ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+StringReplace(ExtensionOrFeatureEnum.Value,'"','''',[rfReplaceAll])+';');
      end;
@@ -3460,6 +3460,7 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
       TypeDefinitionIndex:longint;
       Ptr:longint;
       Constant:longbool;
+      BitWidth:longint; // 0 = normal member; >0 = C bitfield of this many bits (e.g. "uint32_t flag : 1")
      end;
      TTypeDefinitionMembers=array of TTypeDefinitionMember;
      PTypeDefinition=^TTypeDefinition;
@@ -3492,6 +3493,11 @@ var i,j,k,ArraySize,OtherArraySize,CountTypeDefinitions,VersionVariant,VersionMa
     RecordConstructorStringList:TStringList;
     RecordConstructorCodeStringList:TStringList;
     RecordConstructorCodeBlockStringList:TStringList;
+    BitfieldDeclStringList:TStringList; // record getter/setter + property declarations for packed bitfields
+    BitfieldImplStringList:TStringList; // implementation-section getter/setter bodies for packed bitfields
+    BitfieldRunCounter,BitfieldRunOffset:longint;
+    BitfieldRunActive,HasBitfield:boolean;
+    BitfieldStorageName,BitfieldBaseType,BitfieldMask:ansistring;
     Ptr,Constant,HasArray:boolean;
  procedure ResolveTypeDefinitionDependencies;
   function HaveDependencyOnTypeDefinition(const TypeDefinition,OtherTypeDefinition:PTypeDefinition):boolean;
@@ -4026,7 +4032,8 @@ begin
        if Category='include' then begin
        end else if Category='define' then begin
         Name:=ParseText(ChildTag.FindTag('name'),['']);
-        if ((pos('VK_API_VERSION',Name)=1) or (pos('VK_HEADER_VERSION_COMPLETE',Name)=1)) and
+        if (((pos('VK_API_VERSION',Name)=1) or (pos('VK_HEADER_VERSION_COMPLETE',Name)=1)) or
+            ((pos('VULKAN_VIDEO_CODEC',Name)>0) and (pos('API_VERSION',Name)>0))) and // video.xml: ..._API_VERSION_x = VK_MAKE_VIDEO_STD_VERSION(major,minor,patch)
            ((Name<>'VK_API_VERSION_VARIANT') and
             (Name<>'VK_API_VERSION_MAJOR') and
             (Name<>'VK_API_VERSION_MINOR') and
@@ -4538,6 +4545,20 @@ begin
              inc(TypeDefinitionMember^.Ptr);
             end;
            end;
+           TypeDefinitionMember^.BitWidth:=0;
+           k:=pos(':',Text); // C bitfield: "<type> <name> : <bits>" (a trailing <comment> may follow the bit count)
+           if k>0 then begin
+            Text2:='';
+            inc(k);
+            while (k<=length(Text)) and (Text[k]=' ') do begin
+             inc(k);
+            end;
+            while (k<=length(Text)) and (Text[k] in ['0'..'9']) do begin
+             Text2:=Text2+Text[k];
+             inc(k);
+            end;
+            TypeDefinitionMember^.BitWidth:=StrToIntDef(Text2,0);
+           end;
            if (Type_='HWND') or (Type_='HMONITOR') or (Type_='HINSTANCE') or (Type_='SECURITY_ATTRIBUTES') then begin
             TypeDefinition^.Define:='Windows';
            end else if Type_='RROutput' then begin
@@ -4898,10 +4919,54 @@ begin
       RecordConstructorStringList:=TStringList.Create;
       RecordConstructorCodeStringList:=TStringList.Create;
       RecordConstructorCodeBlockStringList:=TStringList.Create;
+      BitfieldDeclStringList:=TStringList.Create;
+      BitfieldImplStringList:=TStringList.Create;
+      BitfieldRunCounter:=0;
+      BitfieldRunOffset:=0;
+      BitfieldRunActive:=false;
+      BitfieldStorageName:='';
+      HasBitfield:=false;
+      for k:=0 to TypeDefinition^.CountMembers-1 do begin // pre-scan: a struct with packed bitfields gets no constructor
+       if TypeDefinition^.Members[k].BitWidth>0 then begin
+        HasBitfield:=true;
+       end;
+      end;
       HasArray:=false;
       try
        for j:=0 to TypeDefinition^.CountMembers-1 do begin
         Assert(length(TypeDefinition^.Members[j].Name)>0);
+        if TypeDefinition^.Members[j].BitWidth>0 then begin
+         // C bitfield member: pack it into a backing storage word + expose a named get/set property (the std video
+         // *Flags structs); keep ABI exact (one storage word per run of same-base-type bitfields, not one word per flag).
+         if (not BitfieldRunActive) or (j=0) or (TypeDefinition^.Members[j-1].BitWidth<=0) or (TypeDefinition^.Members[j-1].Type_<>TypeDefinition^.Members[j].Type_) then begin
+          BitfieldBaseType:=TranslateType(TypeDefinition^.Members[j].Type_,0);
+          if BitfieldRunCounter=0 then begin
+           BitfieldStorageName:='_bitfield';
+          end else begin
+           BitfieldStorageName:='_bitfield'+IntToStr(BitfieldRunCounter);
+          end;
+          inc(BitfieldRunCounter);
+          BitfieldRunOffset:=0;
+          BitfieldRunActive:=true;
+          TypeDefinitionTypes.Add('       '+BitfieldStorageName+':'+BitfieldBaseType+'; // packed bitfield storage');
+         end;
+         BitfieldMask:='$'+LowerCase(IntToHex(longword((int64(1) shl TypeDefinition^.Members[j].BitWidth)-1),8));
+         BitfieldDeclStringList.Add('       function Get_'+TypeDefinition^.Members[j].Name+':'+BitfieldBaseType+';');
+         BitfieldDeclStringList.Add('       procedure Set_'+TypeDefinition^.Members[j].Name+'(const aValue:'+BitfieldBaseType+');');
+         BitfieldDeclStringList.Add('       property '+TypeDefinition^.Members[j].Name+':'+BitfieldBaseType+' read Get_'+TypeDefinition^.Members[j].Name+' write Set_'+TypeDefinition^.Members[j].Name+';'+MemberComment(TypeDefinition^.Members[j].Comment));
+         BitfieldImplStringList.Add('function T'+TypeDefinition^.Name+'.Get_'+TypeDefinition^.Members[j].Name+':'+BitfieldBaseType+';');
+         BitfieldImplStringList.Add('begin');
+         BitfieldImplStringList.Add(' result:=('+BitfieldStorageName+' shr '+IntToStr(BitfieldRunOffset)+') and '+BitfieldMask+';');
+         BitfieldImplStringList.Add('end;');
+         BitfieldImplStringList.Add('procedure T'+TypeDefinition^.Name+'.Set_'+TypeDefinition^.Members[j].Name+'(const aValue:'+BitfieldBaseType+');');
+         BitfieldImplStringList.Add('begin');
+         BitfieldImplStringList.Add(' '+BitfieldStorageName+':=('+BitfieldStorageName+' and not ('+BitfieldMask+' shl '+IntToStr(BitfieldRunOffset)+')) or ((aValue and '+BitfieldMask+') shl '+IntToStr(BitfieldRunOffset)+');');
+         BitfieldImplStringList.Add('end;');
+         inc(BitfieldRunOffset,TypeDefinition^.Members[j].BitWidth);
+         continue;
+        end else begin
+         BitfieldRunActive:=false;
+        end;
         if (TypeDefinition^.Members[j].Type_='VkStructureType') and
            (length(TypeDefinition^.Members[j].Comment)=0) and
            (length(TypeDefinition^.Members[j].Values)>0) and
@@ -4995,7 +5060,8 @@ begin
           CodeParameterLine:=CodeParameterLine+');';
           ParameterLine:=ParameterLine+');'+MemberComment(TypeDefinition^.Members[j].Comment);
          end;
-         if (TypeDefinition^.Name<>'VkBaseInStructure') and
+         if (not HasBitfield) and
+            (TypeDefinition^.Name<>'VkBaseInStructure') and
             (TypeDefinition^.Name<>'VkBaseOutStructure') and
             (TypeDefinition^.Name<>'VkSubpassEndInfoKHR') and
             (TypeDefinition^.Name<>'VkExportMetalObjectsInfoEXT') and
@@ -5032,11 +5098,28 @@ begin
          TypeDefinitionConstructors.Add('{$endif}');
         end;
        end;
+       // packed-bitfield getter/setter implementations (TypeDefinitionConstructors is emitted under HAS_ADVANCED_RECORDS
+       // globally; only the per-struct define needs guarding here)
+       if BitfieldImplStringList.Count>0 then begin
+        if TypeDefinitionConstructors.Count>0 then begin
+         TypeDefinitionConstructors.Add('');
+        end;
+        if length(TypeDefinition^.Define)>0 then begin
+         TypeDefinitionConstructors.Add('{$ifdef '+TypeDefinition^.Define+'}');
+        end;
+        TypeDefinitionConstructors.AddStrings(BitfieldImplStringList);
+        if length(TypeDefinition^.Define)>0 then begin
+         TypeDefinitionConstructors.Add('{$endif}');
+        end;
+       end;
        TypeDefinitionTypes.Add('{$ifdef HAS_ADVANCED_RECORDS}');
        if RecordConstructorStringList.Count>0 then begin
         TypeDefinitionTypes.AddStrings(RecordConstructorStringList);
        end else begin
  //     TypeDefinitionTypes.Add('       function Create:T'+TypeDefinition^.Name+';');
+       end;
+       if BitfieldDeclStringList.Count>0 then begin
+        TypeDefinitionTypes.AddStrings(BitfieldDeclStringList);
        end;
        TypeDefinitionTypes.Add('{$endif}');
        TypeDefinitionTypes.Add('     end;');
@@ -5044,6 +5127,8 @@ begin
        RecordConstructorStringList.Free;
        RecordConstructorCodeStringList.Free;
        RecordConstructorCodeBlockStringList.Free;
+       BitfieldDeclStringList.Free;
+       BitfieldImplStringList.Free;
       end;
      end;
      tdkUNION:begin
@@ -5727,6 +5812,8 @@ end;
 
 var VKXMLFileStream:TMemoryStream;
     VKXML:TXML;
+    VideoXMLFileStream:TMemoryStream;
+    VideoXML:TXML;
     RegistryTag:TXMLTag;
     OutputPAS:TStringList;
 
@@ -5761,6 +5848,39 @@ begin
 
  InitializeEntites;
  try
+
+  // First load+parse video.xml (the vk_video std codec registry): it DEFINES the StdVideo* enums/structs/constants that
+  // vk.xml only references. Parse it BEFORE vk.xml so the std-video type definitions precede the VK_KHR_video structs that
+  // point at them. Optional: skip silently if absent so the generator still works without it.
+  if FileExists('video.xml') then begin
+   write('Loading "video.xml" . . . ');
+   VideoXMLFileStream:=TMemoryStream.Create;
+   try
+    VideoXMLFileStream.LoadFromFile('video.xml');
+    if VideoXMLFileStream.Seek(0,soBeginning)=0 then begin
+     writeln('OK!');
+     VideoXML:=TXML.Create;
+     try
+      write('Parsing "video.xml" . . . ');
+      if VideoXML.Parse(VideoXMLFileStream) then begin
+       writeln('OK!');
+       RegistryTag:=VideoXML.Root.FindTag('registry');
+       if assigned(RegistryTag) then begin
+        ParseRegistryTag(RegistryTag);
+       end;
+      end else begin
+       writeln('Error!');
+      end;
+     finally
+      VideoXML.Free;
+     end;
+    end;
+   finally
+    VideoXMLFileStream.Free;
+   end;
+  end else begin
+   writeln('"video.xml" not found - skipping (StdVideo* types stay unavailable)');
+  end;
 
   VKXMLFileStream:=TMemoryStream.Create;
   try

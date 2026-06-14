@@ -262,21 +262,163 @@ static void parse_pps(const uint8_t *rbsp, size_t length, Pps *pps) {
 }
 
 typedef struct {
+  int operation;   // memory_management_control_operation (1..6); the list is terminated by a 0
+  int argument1;   // op1/op3: difference_of_pic_nums_minus1 ; op2: long_term_pic_num ; op4: max_long_term_frame_idx_plus1
+  int argument2;   // op3/op6: long_term_frame_idx
+} MmcoOperation;
+
+typedef struct {
   int type, frame_num, idr, poc_lsb, idr_pic_id;
+  int long_term_reference_flag;   // IDR only: mark the IDR picture as a long-term reference
+  int adaptive_marking;           // non-IDR reference picture carries explicit MMCO commands
+  int mmco_count;
+  MmcoOperation mmco[16];
 } Slice;
 
-static void parse_slice(const uint8_t *rbsp, size_t length, const Sps *sps, int nal_type, Slice *slice) {
+// Parse the whole slice header up to and including dec_ref_pic_marking(): the reference picture marking
+// (sliding window vs. MMCO) is the only part the application must track itself - the GPU re-reads the rest
+// (ref list modification, weights) straight from the bitstream. Everything before dec_ref_pic_marking is
+// parsed only to stay bit-aligned, so it is read and discarded.
+static void parse_slice(const uint8_t *rbsp, size_t length, const Sps *sps, const Pps *pps, int nal_type, int nal_ref_idc, Slice *slice) {
   BitReader reader = { rbsp, length, 0 };
-  read_unsigned_exp_golomb(&reader);
+  memset(slice, 0, sizeof *slice);
+  read_unsigned_exp_golomb(&reader);                                    // first_mb_in_slice
   slice->type = (int)(read_unsigned_exp_golomb(&reader) % 5);
-  read_unsigned_exp_golomb(&reader);
+  read_unsigned_exp_golomb(&reader);                                    // pic_parameter_set_id
   slice->frame_num = (int)read_bits(&reader, sps->log2_max_frame_num_minus4 + 4);
+  int field_pic_flag = 0;
+  if (!sps->frame_mbs_only) {
+    field_pic_flag = read_bit(&reader);                                 // field_pic_flag
+    if (field_pic_flag) {
+      read_bit(&reader);                                                // bottom_field_flag
+    }
+  }
   slice->idr = (nal_type == 5);
-  slice->idr_pic_id = 0;
   if (slice->idr) {
     slice->idr_pic_id = (int)read_unsigned_exp_golomb(&reader);
   }
-  slice->poc_lsb = sps->poc_type == 0 ? (int)read_bits(&reader, sps->log2_max_poc_lsb_minus4 + 4) : 0;
+  if (sps->poc_type == 0) {
+    slice->poc_lsb = (int)read_bits(&reader, sps->log2_max_poc_lsb_minus4 + 4);
+    if (pps->bottom_field_poc && !field_pic_flag) {
+      read_signed_exp_golomb(&reader);                                  // delta_pic_order_cnt_bottom
+    }
+  }
+  // poc_type == 1 is not emitted by x264 here and the SPS parser does not retain delta_pic_order_always_zero_flag,
+  // so that slice-header branch is intentionally not consumed (would only matter for delta-based POC streams).
+  if (pps->redundant) {
+    read_unsigned_exp_golomb(&reader);                                  // redundant_pic_cnt
+  }
+  if (slice->type == 1) {                                               // B
+    read_bit(&reader);                                                  // direct_spatial_mv_pred_flag
+  }
+  int num_ref_l0 = pps->num_ref_l0_minus1;
+  int num_ref_l1 = pps->num_ref_l1_minus1;
+  if (slice->type == 0 || slice->type == 3 || slice->type == 1) {       // P / SP / B
+    if (read_bit(&reader)) {                                            // num_ref_idx_active_override_flag
+      num_ref_l0 = (int)read_unsigned_exp_golomb(&reader);
+      if (slice->type == 1) {
+        num_ref_l1 = (int)read_unsigned_exp_golomb(&reader);
+      }
+    }
+  }
+  // ref_pic_list_modification() / ref_pic_list_reordering() - parse + discard
+  if (slice->type != 2 && slice->type != 4) {                           // not I / SI
+    if (read_bit(&reader)) {                                            // ref_pic_list_modification_flag_l0
+      int idc;
+      do {
+        idc = (int)read_unsigned_exp_golomb(&reader);
+        if (idc == 0 || idc == 1 || idc == 2) {
+          read_unsigned_exp_golomb(&reader);
+        }
+      } while (idc != 3);
+    }
+  }
+  if (slice->type == 1) {                                               // B
+    if (read_bit(&reader)) {                                            // ref_pic_list_modification_flag_l1
+      int idc;
+      do {
+        idc = (int)read_unsigned_exp_golomb(&reader);
+        if (idc == 0 || idc == 1 || idc == 2) {
+          read_unsigned_exp_golomb(&reader);
+        }
+      } while (idc != 3);
+    }
+  }
+  // pred_weight_table() - parse + discard (chroma_array_type == chroma_format_idc here: no separate colour planes)
+  int chroma_array_type = sps->chroma_format_idc;
+  int has_weights = (((slice->type == 0) || (slice->type == 3)) && pps->weighted_pred) ||
+                    ((slice->type == 1) && (pps->weighted_bipred == 1));
+  if (has_weights) {
+    read_unsigned_exp_golomb(&reader);                                  // luma_log2_weight_denom
+    if (chroma_array_type != 0) {
+      read_unsigned_exp_golomb(&reader);                                // chroma_log2_weight_denom
+    }
+    for (int i = 0; i <= num_ref_l0; i++) {
+      if (read_bit(&reader)) {                                          // luma_weight_l0_flag
+        read_signed_exp_golomb(&reader);
+        read_signed_exp_golomb(&reader);
+      }
+      if (chroma_array_type != 0) {
+        if (read_bit(&reader)) {                                        // chroma_weight_l0_flag
+          read_signed_exp_golomb(&reader);
+          read_signed_exp_golomb(&reader);
+          read_signed_exp_golomb(&reader);
+          read_signed_exp_golomb(&reader);
+        }
+      }
+    }
+    if (slice->type == 1) {
+      for (int i = 0; i <= num_ref_l1; i++) {
+        if (read_bit(&reader)) {                                        // luma_weight_l1_flag
+          read_signed_exp_golomb(&reader);
+          read_signed_exp_golomb(&reader);
+        }
+        if (chroma_array_type != 0) {
+          if (read_bit(&reader)) {                                      // chroma_weight_l1_flag
+            read_signed_exp_golomb(&reader);
+            read_signed_exp_golomb(&reader);
+            read_signed_exp_golomb(&reader);
+            read_signed_exp_golomb(&reader);
+          }
+        }
+      }
+    }
+  }
+  // dec_ref_pic_marking() - the part we actually keep
+  if (nal_ref_idc != 0) {
+    if (slice->idr) {
+      read_bit(&reader);                                                // no_output_of_prior_pics_flag
+      slice->long_term_reference_flag = read_bit(&reader);
+    }
+    if (!slice->idr) {
+      slice->adaptive_marking = read_bit(&reader);                      // adaptive_ref_pic_marking_mode_flag
+      if (slice->adaptive_marking) {
+        int op;
+        do {
+          op = (int)read_unsigned_exp_golomb(&reader);
+          if (op != 0 && slice->mmco_count < 16) {
+            MmcoOperation *m = &slice->mmco[slice->mmco_count];
+            m->operation = op;
+            m->argument1 = 0;
+            m->argument2 = 0;
+            if (op == 1 || op == 3) {
+              m->argument1 = (int)read_unsigned_exp_golomb(&reader);    // difference_of_pic_nums_minus1
+            }
+            if (op == 2) {
+              m->argument1 = (int)read_unsigned_exp_golomb(&reader);    // long_term_pic_num
+            }
+            if (op == 3 || op == 6) {
+              m->argument2 = (int)read_unsigned_exp_golomb(&reader);    // long_term_frame_idx
+            }
+            if (op == 4) {
+              m->argument1 = (int)read_unsigned_exp_golomb(&reader);    // max_long_term_frame_idx_plus1
+            }
+            slice->mmco_count++;
+          }
+        } while (op != 0);
+      }
+    }
+  }
 }
 
 static int compute_poc(const Sps *sps, const Slice *slice, int *previous_msb, int *previous_lsb) {
@@ -592,6 +734,8 @@ int run_h264_player(const FwvH264Context *ctx) {
     const uint8_t *nal;
     size_t length;
     int idr, frame_num, poc, type, ref_idc;
+    int long_term_reference_flag, adaptive_marking, mmco_count;
+    MmcoOperation mmco[16];
   } Frame;
   Frame *frames = checked_malloc(sizeof(Frame) * 300000);
   int frame_count = 0, previous_msb = 0, previous_lsb = 0;
@@ -615,9 +759,14 @@ int run_h264_player(const FwvH264Context *ctx) {
         have_pps = 1;
       } else if (nal_type == 5 || nal_type == 1) {
         Slice slice;
-        parse_slice(rbsp, to_rbsp(stream + start + 1, end - start - 1, rbsp), &sps, nal_type, &slice);
+        parse_slice(rbsp, to_rbsp(stream + start + 1, end - start - 1, rbsp), &sps, &pps, nal_type, ref_idc, &slice);
         int poc = compute_poc(&sps, &slice, &previous_msb, &previous_lsb);
-        frames[frame_count++] = (Frame){ stream + i, end - i, slice.idr, slice.frame_num, poc, slice.type, ref_idc };
+        Frame *frame = &frames[frame_count++];
+        *frame = (Frame){ stream + i, end - i, slice.idr, slice.frame_num, poc, slice.type, ref_idc };
+        frame->long_term_reference_flag = slice.long_term_reference_flag;
+        frame->adaptive_marking = slice.adaptive_marking;
+        frame->mmco_count = slice.mmco_count;
+        memcpy(frame->mmco, slice.mmco, sizeof frame->mmco);
       }
       i = end;
     } else {
@@ -796,7 +945,7 @@ int run_h264_player(const FwvH264Context *ctx) {
   VkImage dpb_image[8];
   VkImageView dpb_view[8];
   VkImageLayout dpb_layout[8];
-  struct { int used, poc, frame_num; } slot[8];
+  struct { int used, poc, frame_num, long_term, long_term_frame_idx; } slot[8];
   VkVideoPictureResourceInfoKHR picture_resource[8];
   for (int s = 0; s < slot_count; s++) {
     VkImageCreateInfo image_info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
@@ -911,8 +1060,11 @@ int run_h264_player(const FwvH264Context *ctx) {
   VkImageView *pool_views = checked_malloc((size_t)pool_count * sizeof(VkImageView));
   for (int p = 0; p < pool_count; p++) {
     VkImageCreateInfo pool_info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+    // sRGB-format pool so the present blit decodes the gamma RGB to linear (the sRGB swapchain then re-encodes);
+    // MUTABLE_FORMAT|EXTENDED_USAGE lets the compute store raw gamma bytes through a UNORM view of the same image.
+    pool_info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
     pool_info.imageType = VK_IMAGE_TYPE_2D;
-    pool_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+    pool_info.format = VK_FORMAT_R8G8B8A8_SRGB;
     pool_info.extent = (VkExtent3D){ width, height, 1 };
     pool_info.mipLevels = 1;
     pool_info.arrayLayers = 1;
@@ -1071,6 +1223,7 @@ int run_h264_player(const FwvH264Context *ctx) {
   // ---- decode loop: decode -> copy DPB to stage -> compute NV12->RGB -> reorder -> aspect blit ----
   ReorderEntry reorder[REORDER + 2];
   int reorder_count = 0, gop_index = 0, reset_done = 0, displayed = 0, quit = 0;
+  int max_long_term_frame_idx = -1;   // H.264 reference picture marking state (MMCO op4 sets it; -1 = none)
   double start_time = now_milliseconds();
   if (audio_device && !g_avi) {   // decode-to is headless: don't start audio playback
     SDL_PauseAudioDevice(audio_device, 0);
@@ -1088,6 +1241,7 @@ int run_h264_player(const FwvH264Context *ctx) {
       for (int s = 0; s < slot_count; s++) {
         slot[s].used = 0;
       }
+      max_long_term_frame_idx = -1;
       if (f > 0) {
         gop_index++;
       }
@@ -1121,7 +1275,13 @@ int run_h264_player(const FwvH264Context *ctx) {
     for (int s = 0; s < slot_count; s++) {
       if (slot[s].used) {
         memset(&reference_info[reference_count], 0, sizeof reference_info[reference_count]);
-        reference_info[reference_count].FrameNum = slot[s].frame_num;
+        if (slot[s].long_term) {
+          // for a long-term reference the std header carries LongTermFrameIdx in FrameNum + the flag
+          reference_info[reference_count].flags.used_for_long_term_reference = 1;
+          reference_info[reference_count].FrameNum = slot[s].long_term_frame_idx;
+        } else {
+          reference_info[reference_count].FrameNum = slot[s].frame_num;
+        }
         reference_info[reference_count].PicOrderCnt[0] = reference_info[reference_count].PicOrderCnt[1] = slot[s].poc;
         reference_dpb[reference_count] = (VkVideoDecodeH264DpbSlotInfoKHR){ VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR };
         reference_dpb[reference_count].pStdReferenceInfo = &reference_info[reference_count];
@@ -1249,28 +1409,131 @@ int run_h264_player(const FwvH264Context *ctx) {
     reorder[reorder_count].index = pool_index;
     reorder_count++;
 
-    // Keep this frame's slot if it is a reference; sliding window to at most max_ref refs.
+    // H.264 reference picture marking (spec 8.2.5): keep this picture's slot if it is a reference, then update
+    // the short-term / long-term reference set per IDR / MMCO / sliding-window so the next pictures are handed
+    // exactly the right DPB. (Without applying MMCO, x264 b-pyramid streams hand the GPU a slightly wrong
+    // reference set and the motion-compensated prediction drifts over the GOP.)
     if (frames[f].ref_idc) {
-      slot[current].used = 1;
-      slot[current].poc = frames[f].poc;
-      slot[current].frame_num = frames[f].frame_num;
-      int used_count = 0;
-      for (int s = 0; s < slot_count; s++) {
-        used_count += slot[s].used;
-      }
-      while (used_count > max_ref) {
-        int oldest = -1, oldest_wrap = 0;
-        for (int s = 0; s < slot_count; s++) {
-          if (slot[s].used) {
-            int wrap = slot[s].frame_num > frames[f].frame_num ? slot[s].frame_num - max_frame_num : slot[s].frame_num;
-            if (oldest < 0 || wrap < oldest_wrap) {
-              oldest = s;
-              oldest_wrap = wrap;
+      int curr_pic_num = frames[f].frame_num;
+      if (frames[f].idr) {
+        // the DPB was already cleared above; mark the IDR picture itself (short- or long-term)
+        slot[current].used = 1;
+        slot[current].poc = frames[f].poc;
+        slot[current].frame_num = frames[f].frame_num;
+        slot[current].long_term = frames[f].long_term_reference_flag;
+        slot[current].long_term_frame_idx = 0;
+        if (frames[f].long_term_reference_flag) {
+          max_long_term_frame_idx = 0;
+        } else {
+          max_long_term_frame_idx = -1;
+        }
+      } else {
+        // a non-IDR reference picture is first added to the DPB as a short-term reference
+        slot[current].used = 1;
+        slot[current].poc = frames[f].poc;
+        slot[current].frame_num = frames[f].frame_num;
+        slot[current].long_term = 0;
+        slot[current].long_term_frame_idx = 0;
+        if (frames[f].adaptive_marking) {
+          // adaptive memory control (8.2.5.4): apply the MMCO command list
+          for (int m = 0; m < frames[f].mmco_count; m++) {
+            int op = frames[f].mmco[m].operation;
+            if (op == 1) {
+              // mark a short-term picture as unused for reference
+              int pic_num_x = curr_pic_num - (frames[f].mmco[m].argument1 + 1);
+              for (int s = 0; s < slot_count; s++) {
+                if (slot[s].used && !slot[s].long_term) {
+                  int pic_num = slot[s].frame_num > curr_pic_num ? slot[s].frame_num - max_frame_num : slot[s].frame_num;
+                  if (pic_num == pic_num_x) {
+                    slot[s].used = 0;
+                  }
+                }
+              }
+            }
+            if (op == 2) {
+              // mark a long-term picture as unused for reference
+              for (int s = 0; s < slot_count; s++) {
+                if (slot[s].used && slot[s].long_term && (slot[s].long_term_frame_idx == frames[f].mmco[m].argument1)) {
+                  slot[s].used = 0;
+                }
+              }
+            }
+            if (op == 3) {
+              // turn a short-term picture into a long-term picture with the given index
+              int pic_num_x = curr_pic_num - (frames[f].mmco[m].argument1 + 1);
+              int long_term_idx = frames[f].mmco[m].argument2;
+              for (int s = 0; s < slot_count; s++) {
+                if (slot[s].used && slot[s].long_term && (slot[s].long_term_frame_idx == long_term_idx)) {
+                  slot[s].used = 0;
+                }
+              }
+              for (int s = 0; s < slot_count; s++) {
+                if (slot[s].used && !slot[s].long_term) {
+                  int pic_num = slot[s].frame_num > curr_pic_num ? slot[s].frame_num - max_frame_num : slot[s].frame_num;
+                  if (pic_num == pic_num_x) {
+                    slot[s].long_term = 1;
+                    slot[s].long_term_frame_idx = long_term_idx;
+                  }
+                }
+              }
+            }
+            if (op == 4) {
+              // set MaxLongTermFrameIdx and drop any long-term picture above it
+              max_long_term_frame_idx = frames[f].mmco[m].argument1 - 1;
+              for (int s = 0; s < slot_count; s++) {
+                if (slot[s].used && slot[s].long_term && (slot[s].long_term_frame_idx > max_long_term_frame_idx)) {
+                  slot[s].used = 0;
+                }
+              }
+            }
+            if (op == 5) {
+              // mark all reference pictures unused and reset; the current picture keeps frame_num 0
+              for (int s = 0; s < slot_count; s++) {
+                slot[s].used = 0;
+              }
+              max_long_term_frame_idx = -1;
+              curr_pic_num = 0;
+              slot[current].used = 1;
+              slot[current].poc = frames[f].poc;
+              slot[current].frame_num = 0;
+              slot[current].long_term = 0;
+              slot[current].long_term_frame_idx = 0;
+            }
+            if (op == 6) {
+              // assign a long-term frame index to the current picture
+              int long_term_idx = frames[f].mmco[m].argument2;
+              for (int s = 0; s < slot_count; s++) {
+                if (slot[s].used && slot[s].long_term && (slot[s].long_term_frame_idx == long_term_idx) && (s != current)) {
+                  slot[s].used = 0;
+                }
+              }
+              slot[current].long_term = 1;
+              slot[current].long_term_frame_idx = long_term_idx;
+            }
+          }
+        } else {
+          // sliding window (8.2.5.3): remove the short-term reference with the smallest FrameNumWrap once the
+          // total reference count exceeds the limit
+          int used_count = 0;
+          for (int s = 0; s < slot_count; s++) {
+            used_count += slot[s].used;
+          }
+          if (used_count > max_ref) {
+            int oldest = -1, oldest_wrap = 0;
+            for (int s = 0; s < slot_count; s++) {
+              if (slot[s].used && !slot[s].long_term && (s != current)) {
+                int wrap = slot[s].frame_num > curr_pic_num ? slot[s].frame_num - max_frame_num : slot[s].frame_num;
+                if (oldest < 0 || wrap < oldest_wrap) {
+                  oldest = s;
+                  oldest_wrap = wrap;
+                }
+              }
+            }
+            if (oldest >= 0) {
+              slot[oldest].used = 0;
             }
           }
         }
-        slot[oldest].used = 0;
-        used_count--;
       }
     }
 

@@ -784,6 +784,7 @@ type EpvVulkanException=class(Exception);
        fComputeQueueFamilyIndex:TpvInt32;
        fUpdateQueueFamilyIndex:TpvInt32;
        fTransferQueueFamilyIndex:TpvInt32;
+       fVideoDecodeQueueFamilyIndex:TpvInt32;
        fAllQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
        fQueueFamilyIndices:TVkUInt32DynamicArrayList;
        fQueueFamilyQueues:TpvVulkanQueueFamilyQueues;
@@ -793,6 +794,7 @@ type EpvVulkanException=class(Exception);
        fComputeQueue:TpvVulkanQueue;
        fUpdateQueue:TpvVulkanQueue;
        fTransferQueue:TpvVulkanQueue;
+       fVideoDecodeQueue:TpvVulkanQueue;
        fUniversalQueues:TpvVulkanQueues;
        fPresentQueues:TpvVulkanQueues;
        fGraphicsQueues:TpvVulkanQueues;
@@ -872,6 +874,7 @@ type EpvVulkanException=class(Exception);
        procedure AddQueues(const aSurface:TpvVulkanSurface=nil;
                            const aPreferQueueFamilyVariety:boolean=true;
                            const aNeedSparseBinding:boolean=false);
+       function AddVideoDecodeQueue:boolean; // opt-in: add a VK_QUEUE_VIDEO_DECODE_BIT_KHR queue family (call before Initialize); False if none
        procedure Initialize;
        procedure WaitIdle;
       public
@@ -892,6 +895,7 @@ type EpvVulkanException=class(Exception);
        property ComputeQueueFamilyIndex:TpvInt32 read fComputeQueueFamilyIndex;
        property UpdateQueueFamilyIndex:TpvInt32 read fUpdateQueueFamilyIndex;
        property TransferQueueFamilyIndex:TpvInt32 read fTransferQueueFamilyIndex;
+       property VideoDecodeQueueFamilyIndex:TpvInt32 read fVideoDecodeQueueFamilyIndex; // -1 = no video-decode queue
        property QueueFamilyIndices:TVkUInt32DynamicArrayList read fQueueFamilyIndices;
        property QueueFamilyQueues:TpvVulkanQueueFamilyQueues read fQueueFamilyQueues;
        property UniversalQueue:TpvVulkanQueue read fUniversalQueue;
@@ -900,6 +904,7 @@ type EpvVulkanException=class(Exception);
        property ComputeQueue:TpvVulkanQueue read fComputeQueue;
        property UpdateQueue:TpvVulkanQueue read fUpdateQueue;
        property TransferQueue:TpvVulkanQueue read fTransferQueue;
+       property VideoDecodeQueue:TpvVulkanQueue read fVideoDecodeQueue; // nil = no video-decode queue available
        property UniversalQueues:TpvVulkanQueues read fUniversalQueues;
        property PresentQueues:TpvVulkanQueues read fPresentQueues;
        property GraphicsQueues:TpvVulkanQueues read fGraphicsQueues;
@@ -11261,6 +11266,7 @@ begin
  fComputeQueueFamilyIndex:=-1;
  fUpdateQueueFamilyIndex:=-1;
  fTransferQueueFamilyIndex:=-1;
+ fVideoDecodeQueueFamilyIndex:=-1;
 
  fUniversalQueue:=nil;
  fPresentQueue:=nil;
@@ -11268,6 +11274,7 @@ begin
  fComputeQueue:=nil;
  fUpdateQueue:=nil;
  fTransferQueue:=nil;
+ fVideoDecodeQueue:=nil;
 
  fUniversalQueues:=nil;
  fPresentQueues:=nil;
@@ -11772,6 +11779,28 @@ begin
  __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Leaving TpvVulkanDevice.AddQueues');
 {$ifend}
 
+end;
+
+function TpvVulkanDevice.AddVideoDecodeQueue:boolean;
+var Index:TpvSizeInt;
+    QueueFamilyProperties:PVkQueueFamilyProperties;
+begin
+ // Opt-in (call before Initialize): find a queue family advertising VK_QUEUE_VIDEO_DECODE_BIT_KHR and add one queue from
+ // it. Returns False if the GPU has no video-decode queue family (the caller should fall back, e.g. to wavelet decode).
+ result:=false;
+ if fVideoDecodeQueueFamilyIndex>=0 then begin
+  result:=true;
+  exit;
+ end;
+ for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
+  QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
+  if (QueueFamilyProperties^.queueFlags and TpvUInt32(VK_QUEUE_VIDEO_DECODE_BIT_KHR))<>0 then begin
+   fVideoDecodeQueueFamilyIndex:=Index;
+   AddQueue(TpvUInt32(Index),[1.0],TVkQueueFlags(VK_QUEUE_VIDEO_DECODE_BIT_KHR),nil,false);
+   result:=true;
+   break;
+  end;
+ end;
 end;
 
 procedure TpvVulkanDevice.Initialize;
@@ -12370,7 +12399,8 @@ begin
       (Index=fPresentQueueFamilyIndex) or
       (Index=fGraphicsQueueFamilyIndex) or
       (Index=fComputeQueueFamilyIndex) or
-      (Index=fTransferQueueFamilyIndex) then begin
+      (Index=fTransferQueueFamilyIndex) or
+      (Index=fVideoDecodeQueueFamilyIndex) then begin
     DeviceQueueCreateInfo:=nil;
     for SubIndex:=0 to length(fDeviceQueueCreateInfos)-1 do begin
      if fDeviceQueueCreateInfos[SubIndex].queueFamilyIndex=Index then begin
@@ -12448,6 +12478,15 @@ begin
   end else begin
    fTransferQueue:=nil;
    fTransferQueues:=nil;
+  end;
+
+  if (fVideoDecodeQueueFamilyIndex>=0) and (fVideoDecodeQueueFamilyIndex<length(fQueueFamilyQueues)) and (length(fQueueFamilyQueues[fVideoDecodeQueueFamilyIndex])>0) then begin
+   fVideoDecodeQueue:=fQueueFamilyQueues[fVideoDecodeQueueFamilyIndex,0];
+   if assigned(fDebugUtils) and assigned(fVideoDecodeQueue) then begin
+    fDebugUtils.SetObjectName(fVideoDecodeQueue.Handle,VK_OBJECT_TYPE_QUEUE,'TpvVulkanDevice.VideoDecodeQueue');
+   end;
+  end else begin
+   fVideoDecodeQueue:=nil;
   end;
 
   // Assign update queue to a multiple universal or compute queue
@@ -23691,6 +23730,8 @@ begin
  if (TpvPtrUInt(fDataAligned) and 3)<>0 then begin
   inc(TpvPtrUInt(fDataAligned),4-(TpvPtrUInt(fDataAligned) and 3));
  end;
+
+ Move(aData,fData^,fDataSize);
 
  Load;
 

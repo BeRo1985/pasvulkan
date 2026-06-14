@@ -112,6 +112,7 @@ uses {$if defined(Unix)}
      PasVulkan.Android,
      PasVulkan.Audio,
      PasVulkan.Resources,
+     PasVulkan.VirtualReality,
      PasVulkan.Collections,
      PasVulkan.NVIDIA.AfterMath;
 
@@ -1589,6 +1590,8 @@ type EpvApplication=class(Exception)
        fPresentFrameLatencyMode:TpvApplicationPresentFrameLatencyMode;
        fProcessingMode:TpvApplicationProcessingMode;
        fResizable:boolean;
+       fBlitableSurface:boolean;
+       fVideoDecodeSupport:boolean;
        fVisibleMouseCursor:boolean;
        fCatchMouseOnButton:boolean;
        fCatchMouse:boolean;
@@ -2057,6 +2060,8 @@ type EpvApplication=class(Exception)
 
       protected
 
+       fVirtualReality:TpvVirtualReality;
+
        class procedure VulkanDebugLn(const What:TpvUTF8String); static;
 
        function VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TpvUInt64;const aLocation:TVkSize;aMessageCode:TpvInt32;const aLayerPrefix,aMessage:TpvUTF8String):TVkBool32;
@@ -2145,6 +2150,8 @@ type EpvApplication=class(Exception)
 
        procedure ReadConfig; virtual;
        procedure SaveConfig; virtual;
+
+       procedure ApplyFPSLimit(const aMode:Boolean); virtual;
 
        procedure PostRunnable(const aRunnable:TpvApplicationRunnable);
 
@@ -2319,6 +2326,12 @@ type EpvApplication=class(Exception)
 
        property Resizable:boolean read fResizable write fResizable;
 
+       // opt-in: add VK_IMAGE_USAGE_TRANSFER_DST_BIT to the swapchain images so they can be blitted into directly
+       property BlitableSurface:boolean read fBlitableSurface write fBlitableSurface;
+
+       // opt-in: enable VK video decode (h264) extensions + a video-decode queue when the GPU supports them (else ignored)
+       property VideoDecodeSupport:boolean read fVideoDecodeSupport write fVideoDecodeSupport;
+
        property VisibleMouseCursor:boolean read fVisibleMouseCursor write fVisibleMouseCursor;
 
        property CatchMouseOnButton:boolean read fCatchMouseOnButton write fCatchMouseOnButton;
@@ -2480,6 +2493,8 @@ type EpvApplication=class(Exception)
        property TimingCPUDrawEnd:TpvDouble read fTimingCPUDrawEnd;
 
        property MaximumFramesPerSecond:TpvDouble read fMaximumFramesPerSecond write fMaximumFramesPerSecond;
+
+       property VirtualReality:TpvVirtualReality read fVirtualReality;
 
        property FrameCounter:TpvInt64 read fFrameCounter;
 
@@ -8986,6 +9001,8 @@ begin
  fPresentFrameLatencyMode:=TpvApplicationPresentFrameLatencyMode.CombinedWait;
  fProcessingMode:=TpvApplicationProcessingMode.Strict;
  fResizable:=true;
+ fBlitableSurface:=false;
+ fVideoDecodeSupport:=false;
  fVisibleMouseCursor:=false;
  fCatchMouseOnButton:=false;
  fCatchMouse:=false;
@@ -10030,6 +10047,22 @@ begin
    end;
   end;
 
+  // opt-in: VK video-decode (H.264) extensions + a video-decode queue, only when the GPU supports the whole chain
+  // (else silently skipped so the caller falls back, e.g. to the wavelet video decoder)
+  if fVideoDecodeSupport and
+     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_VIDEO_QUEUE_EXTENSION_NAME)>=0) and
+     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME)>=0) and
+     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME)>=0) and
+     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)>=0) and
+     fVulkanDevice.AddVideoDecodeQueue then begin
+   if fVulkanDevice.EnabledExtensionNames.IndexOf(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)<0 then begin
+    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+   end;
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_VIDEO_QUEUE_EXTENSION_NAME);
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME);
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME);
+  end;
+
   if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
    // = Vulkan API version 1.0
    if fVulkanInstance.EnabledExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
@@ -10691,7 +10724,7 @@ begin
                                              1,
                                              VK_FORMAT_UNDEFINED,
                                              VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-                                             TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT),
+                                             TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or IfThen(fBlitableSurface,TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),TVkImageUsageFlags(0)),
                                              VK_SHARING_MODE_EXCLUSIVE,
                                              fVulkanSwapChainQueueFamilyIndices.Items,
                                              [VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR],
@@ -12404,6 +12437,21 @@ end;
 
 procedure TpvApplication.SaveConfig;
 begin
+end;
+
+procedure TpvApplication.ApplyFPSLimit(const aMode:Boolean);
+begin
+
+ // Default frame-rate policy: a higher ceiling when a virtual reality device is
+ // active, a moderate one otherwise. Descendants override this to factor in their
+ // own configuration (e.g. a user-chosen FPS limit).
+
+ if assigned(fVirtualReality) then begin
+  MaximumFramesPerSecond:=240;
+ end else begin
+  MaximumFramesPerSecond:=60;
+ end;
+
 end;
 
 procedure TpvApplication.PostRunnable(const aRunnable:TpvApplicationRunnable);

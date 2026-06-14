@@ -13,7 +13,10 @@ void main() {
   if (pixel.x >= push.width || pixel.y >= push.height) {
     return;
   }
-  // texelFetch returns normalized [0,1]; scale back to the 8-bit code values.
+  // texelFetch returns normalized [0,1]; scale back to the 8-bit code values. Chroma is half resolution, so
+  // each output pixel takes the texel at pixel/2 - i.e. a nearest/box upsample, which is what ffmpeg's default
+  // yuv420p->rgb conversion (the verify reference) also does, so the two match. (A bilinear upsample was tried
+  // and measurably DIVERGED from ffmpeg, so it was reverted.)
   float luma = texelFetch(luma_plane, pixel, 0).r * 255.0;
   vec2 chroma = texelFetch(chroma_plane, pixel / 2, 0).rg * 255.0;
 

@@ -298,6 +298,20 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_WITHOUT_PATCH_MASK=TVkUInt32($fffff000);
 
+      VK_STD_VULKAN_VIDEO_CODEC_H264_DECODE_API_VERSION_1_0_0=(0 shl 29) or (1 shl 22) or (0 shl 12) or (0 shl 0);
+
+      VK_STD_VULKAN_VIDEO_CODEC_H264_ENCODE_API_VERSION_1_0_0=(0 shl 29) or (1 shl 22) or (0 shl 12) or (0 shl 0);
+
+      VK_STD_VULKAN_VIDEO_CODEC_H265_DECODE_API_VERSION_1_0_0=(0 shl 29) or (1 shl 22) or (0 shl 12) or (0 shl 0);
+
+      VK_STD_VULKAN_VIDEO_CODEC_H265_ENCODE_API_VERSION_1_0_0=(0 shl 29) or (1 shl 22) or (0 shl 12) or (0 shl 0);
+
+      VK_STD_VULKAN_VIDEO_CODEC_VP9_DECODE_API_VERSION_1_0_0=(0 shl 29) or (1 shl 22) or (0 shl 12) or (0 shl 0);
+
+      VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_API_VERSION_1_0_0=(0 shl 29) or (1 shl 22) or (0 shl 12) or (0 shl 0);
+
+      VK_STD_VULKAN_VIDEO_CODEC_AV1_ENCODE_API_VERSION_1_0_0=(0 shl 29) or (1 shl 22) or (0 shl 12) or (0 shl 0);
+
       VK_API_VERSION=(0 shl 29) or (1 shl 22) or (0 shl 12) or (0 shl 0);
 
       VK_API_VERSION_1_0=(0 shl 29) or (1 shl 22) or (0 shl 12) or (0 shl 0);
@@ -351,6 +365,82 @@ const VK_NULL_HANDLE=0;
       VK_COMPUTE_OCCUPANCY_PRIORITY_LOW_NV=0.25;
       VK_COMPUTE_OCCUPANCY_PRIORITY_NORMAL_NV=0.50;
       VK_COMPUTE_OCCUPANCY_PRIORITY_HIGH_NV=0.75;
+      STD_VIDEO_H264_CPB_CNT_LIST_SIZE=32;
+      STD_VIDEO_H264_SCALING_LIST_4X4_NUM_LISTS=6;
+      STD_VIDEO_H264_SCALING_LIST_4X4_NUM_ELEMENTS=16;
+      STD_VIDEO_H264_SCALING_LIST_8X8_NUM_LISTS=6;
+      STD_VIDEO_H264_SCALING_LIST_8X8_NUM_ELEMENTS=64;
+      STD_VIDEO_H264_MAX_NUM_LIST_REF=32;
+      STD_VIDEO_H264_MAX_CHROMA_PLANES=2;
+      STD_VIDEO_H264_NO_REFERENCE_PICTURE=$FF;
+      VK_STD_VULKAN_VIDEO_CODEC_H264_DECODE_SPEC_VERSION=VK_STD_VULKAN_VIDEO_CODEC_H264_DECODE_API_VERSION_1_0_0;
+      VK_STD_VULKAN_VIDEO_CODEC_H264_DECODE_EXTENSION_NAME='VK_STD_vulkan_video_codec_h264_decode';
+      STD_VIDEO_DECODE_H264_FIELD_ORDER_COUNT_LIST_SIZE=2;
+      VK_STD_VULKAN_VIDEO_CODEC_H264_ENCODE_SPEC_VERSION=VK_STD_VULKAN_VIDEO_CODEC_H264_ENCODE_API_VERSION_1_0_0;
+      VK_STD_VULKAN_VIDEO_CODEC_H264_ENCODE_EXTENSION_NAME='VK_STD_vulkan_video_codec_h264_encode';
+      STD_VIDEO_H265_CPB_CNT_LIST_SIZE=32;
+      STD_VIDEO_H265_SUBLAYERS_LIST_SIZE=7;
+      STD_VIDEO_H265_SCALING_LIST_4X4_NUM_LISTS=6;
+      STD_VIDEO_H265_SCALING_LIST_4X4_NUM_ELEMENTS=16;
+      STD_VIDEO_H265_SCALING_LIST_8X8_NUM_LISTS=6;
+      STD_VIDEO_H265_SCALING_LIST_8X8_NUM_ELEMENTS=64;
+      STD_VIDEO_H265_SCALING_LIST_16X16_NUM_LISTS=6;
+      STD_VIDEO_H265_SCALING_LIST_16X16_NUM_ELEMENTS=64;
+      STD_VIDEO_H265_SCALING_LIST_32X32_NUM_LISTS=2;
+      STD_VIDEO_H265_SCALING_LIST_32X32_NUM_ELEMENTS=64;
+      STD_VIDEO_H265_CHROMA_QP_OFFSET_LIST_SIZE=6;
+      STD_VIDEO_H265_CHROMA_QP_OFFSET_TILE_COLS_LIST_SIZE=19;
+      STD_VIDEO_H265_CHROMA_QP_OFFSET_TILE_ROWS_LIST_SIZE=21;
+      STD_VIDEO_H265_PREDICTOR_PALETTE_COMPONENTS_LIST_SIZE=3;
+      STD_VIDEO_H265_PREDICTOR_PALETTE_COMP_ENTRIES_LIST_SIZE=128;
+      STD_VIDEO_H265_MAX_NUM_LIST_REF=15;
+      STD_VIDEO_H265_MAX_CHROMA_PLANES=2;
+      STD_VIDEO_H265_MAX_SHORT_TERM_REF_PIC_SETS=64;
+      STD_VIDEO_H265_MAX_DPB_SIZE=16;
+      STD_VIDEO_H265_MAX_LONG_TERM_REF_PICS_SPS=32;
+      STD_VIDEO_H265_MAX_LONG_TERM_PICS=16;
+      STD_VIDEO_H265_MAX_DELTA_POC=48;
+      STD_VIDEO_H265_NO_REFERENCE_PICTURE=$FF;
+      VK_STD_VULKAN_VIDEO_CODEC_H265_DECODE_SPEC_VERSION=VK_STD_VULKAN_VIDEO_CODEC_H265_DECODE_API_VERSION_1_0_0;
+      VK_STD_VULKAN_VIDEO_CODEC_H265_DECODE_EXTENSION_NAME='VK_STD_vulkan_video_codec_h265_decode';
+      STD_VIDEO_DECODE_H265_REF_PIC_SET_LIST_SIZE=8;
+      VK_STD_VULKAN_VIDEO_CODEC_H265_ENCODE_SPEC_VERSION=VK_STD_VULKAN_VIDEO_CODEC_H265_ENCODE_API_VERSION_1_0_0;
+      VK_STD_VULKAN_VIDEO_CODEC_H265_ENCODE_EXTENSION_NAME='VK_STD_vulkan_video_codec_h265_encode';
+      STD_VIDEO_VP9_NUM_REF_FRAMES=8;
+      STD_VIDEO_VP9_REFS_PER_FRAME=3;
+      STD_VIDEO_VP9_MAX_REF_FRAMES=4;
+      STD_VIDEO_VP9_LOOP_FILTER_ADJUSTMENTS=2;
+      STD_VIDEO_VP9_MAX_SEGMENTS=8;
+      STD_VIDEO_VP9_SEG_LVL_MAX=4;
+      STD_VIDEO_VP9_MAX_SEGMENTATION_TREE_PROBS=7;
+      STD_VIDEO_VP9_MAX_SEGMENTATION_PRED_PROB=3;
+      VK_STD_VULKAN_VIDEO_CODEC_VP9_DECODE_SPEC_VERSION=VK_STD_VULKAN_VIDEO_CODEC_VP9_DECODE_API_VERSION_1_0_0;
+      VK_STD_VULKAN_VIDEO_CODEC_VP9_DECODE_EXTENSION_NAME='VK_STD_vulkan_video_codec_vp9_decode';
+      STD_VIDEO_AV1_NUM_REF_FRAMES=8;
+      STD_VIDEO_AV1_REFS_PER_FRAME=7;
+      STD_VIDEO_AV1_TOTAL_REFS_PER_FRAME=8;
+      STD_VIDEO_AV1_MAX_TILE_COLS=64;
+      STD_VIDEO_AV1_MAX_TILE_ROWS=64;
+      STD_VIDEO_AV1_MAX_SEGMENTS=8;
+      STD_VIDEO_AV1_SEG_LVL_MAX=8;
+      STD_VIDEO_AV1_PRIMARY_REF_NONE=7;
+      STD_VIDEO_AV1_SELECT_INTEGER_MV=2;
+      STD_VIDEO_AV1_SELECT_SCREEN_CONTENT_TOOLS=2;
+      STD_VIDEO_AV1_SKIP_MODE_FRAMES=2;
+      STD_VIDEO_AV1_MAX_LOOP_FILTER_STRENGTHS=4;
+      STD_VIDEO_AV1_LOOP_FILTER_ADJUSTMENTS=2;
+      STD_VIDEO_AV1_MAX_CDEF_FILTER_STRENGTHS=8;
+      STD_VIDEO_AV1_MAX_NUM_PLANES=3;
+      STD_VIDEO_AV1_GLOBAL_MOTION_PARAMS=6;
+      STD_VIDEO_AV1_MAX_NUM_Y_POINTS=14;
+      STD_VIDEO_AV1_MAX_NUM_CB_POINTS=10;
+      STD_VIDEO_AV1_MAX_NUM_CR_POINTS=10;
+      STD_VIDEO_AV1_MAX_NUM_POS_LUMA=24;
+      STD_VIDEO_AV1_MAX_NUM_POS_CHROMA=25;
+      VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_SPEC_VERSION=VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_API_VERSION_1_0_0;
+      VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_EXTENSION_NAME='VK_STD_vulkan_video_codec_av1_decode';
+      VK_STD_VULKAN_VIDEO_CODEC_AV1_ENCODE_SPEC_VERSION=VK_STD_VULKAN_VIDEO_CODEC_AV1_ENCODE_API_VERSION_1_0_0;
+      VK_STD_VULKAN_VIDEO_CODEC_AV1_ENCODE_EXTENSION_NAME='VK_STD_vulkan_video_codec_av1_encode';
       VK_KHR_SURFACE_SPEC_VERSION=25;
       VK_KHR_SURFACE_EXTENSION_NAME='VK_KHR_surface';
       VK_KHR_SWAPCHAIN_SPEC_VERSION=70;
@@ -3119,6 +3209,535 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkExternalComputeQueueNV=^PVkExternalComputeQueueNV;
      PVkExternalComputeQueueNV=^TVkExternalComputeQueueNV;
      TVkExternalComputeQueueNV=TVkDispatchableHandle;
+
+     PPStdVideoH264ChromaFormatIdc=^PStdVideoH264ChromaFormatIdc;
+     PStdVideoH264ChromaFormatIdc=^TStdVideoH264ChromaFormatIdc;
+     TStdVideoH264ChromaFormatIdc=
+      (
+       STD_VIDEO_H264_CHROMA_FORMAT_IDC_MONOCHROME=0,
+       STD_VIDEO_H264_CHROMA_FORMAT_IDC_420=1,
+       STD_VIDEO_H264_CHROMA_FORMAT_IDC_422=2,
+       STD_VIDEO_H264_CHROMA_FORMAT_IDC_444=3,
+       STD_VIDEO_H264_CHROMA_FORMAT_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoH264ProfileIdc=^PStdVideoH264ProfileIdc;
+     PStdVideoH264ProfileIdc=^TStdVideoH264ProfileIdc;
+     TStdVideoH264ProfileIdc=
+      (
+       STD_VIDEO_H264_PROFILE_IDC_BASELINE=66,                                   //< Only constrained baseline is supported
+       STD_VIDEO_H264_PROFILE_IDC_MAIN=77,
+       STD_VIDEO_H264_PROFILE_IDC_HIGH=100,
+       STD_VIDEO_H264_PROFILE_IDC_HIGH_444_PREDICTIVE=244,
+       STD_VIDEO_H264_PROFILE_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoH264LevelIdc=^PStdVideoH264LevelIdc;
+     PStdVideoH264LevelIdc=^TStdVideoH264LevelIdc;
+     TStdVideoH264LevelIdc=
+      (
+       STD_VIDEO_H264_LEVEL_IDC_1_0=0,
+       STD_VIDEO_H264_LEVEL_IDC_1_1=1,
+       STD_VIDEO_H264_LEVEL_IDC_1_2=2,
+       STD_VIDEO_H264_LEVEL_IDC_1_3=3,
+       STD_VIDEO_H264_LEVEL_IDC_2_0=4,
+       STD_VIDEO_H264_LEVEL_IDC_2_1=5,
+       STD_VIDEO_H264_LEVEL_IDC_2_2=6,
+       STD_VIDEO_H264_LEVEL_IDC_3_0=7,
+       STD_VIDEO_H264_LEVEL_IDC_3_1=8,
+       STD_VIDEO_H264_LEVEL_IDC_3_2=9,
+       STD_VIDEO_H264_LEVEL_IDC_4_0=10,
+       STD_VIDEO_H264_LEVEL_IDC_4_1=11,
+       STD_VIDEO_H264_LEVEL_IDC_4_2=12,
+       STD_VIDEO_H264_LEVEL_IDC_5_0=13,
+       STD_VIDEO_H264_LEVEL_IDC_5_1=14,
+       STD_VIDEO_H264_LEVEL_IDC_5_2=15,
+       STD_VIDEO_H264_LEVEL_IDC_6_0=16,
+       STD_VIDEO_H264_LEVEL_IDC_6_1=17,
+       STD_VIDEO_H264_LEVEL_IDC_6_2=18,
+       STD_VIDEO_H264_LEVEL_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoH264PocType=^PStdVideoH264PocType;
+     PStdVideoH264PocType=^TStdVideoH264PocType;
+     TStdVideoH264PocType=
+      (
+       STD_VIDEO_H264_POC_TYPE_0=0,
+       STD_VIDEO_H264_POC_TYPE_1=1,
+       STD_VIDEO_H264_POC_TYPE_2=2,
+       STD_VIDEO_H264_POC_TYPE_INVALID=2147483647
+      );
+
+     PPStdVideoH264AspectRatioIdc=^PStdVideoH264AspectRatioIdc;
+     PStdVideoH264AspectRatioIdc=^TStdVideoH264AspectRatioIdc;
+     TStdVideoH264AspectRatioIdc=
+      (
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_UNSPECIFIED=0,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_SQUARE=1,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_12_11=2,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_10_11=3,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_16_11=4,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_40_33=5,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_24_11=6,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_20_11=7,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_32_11=8,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_80_33=9,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_18_11=10,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_15_11=11,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_64_33=12,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_160_99=13,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_4_3=14,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_3_2=15,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_2_1=16,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_EXTENDED_SAR=255,
+       STD_VIDEO_H264_ASPECT_RATIO_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoH264WeightedBipredIdc=^PStdVideoH264WeightedBipredIdc;
+     PStdVideoH264WeightedBipredIdc=^TStdVideoH264WeightedBipredIdc;
+     TStdVideoH264WeightedBipredIdc=
+      (
+       STD_VIDEO_H264_WEIGHTED_BIPRED_IDC_DEFAULT=0,
+       STD_VIDEO_H264_WEIGHTED_BIPRED_IDC_EXPLICIT=1,
+       STD_VIDEO_H264_WEIGHTED_BIPRED_IDC_IMPLICIT=2,
+       STD_VIDEO_H264_WEIGHTED_BIPRED_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoH264ModificationOfPicNumsIdc=^PStdVideoH264ModificationOfPicNumsIdc;
+     PStdVideoH264ModificationOfPicNumsIdc=^TStdVideoH264ModificationOfPicNumsIdc;
+     TStdVideoH264ModificationOfPicNumsIdc=
+      (
+       STD_VIDEO_H264_MODIFICATION_OF_PIC_NUMS_IDC_SHORT_TERM_SUBTRACT=0,
+       STD_VIDEO_H264_MODIFICATION_OF_PIC_NUMS_IDC_SHORT_TERM_ADD=1,
+       STD_VIDEO_H264_MODIFICATION_OF_PIC_NUMS_IDC_LONG_TERM=2,
+       STD_VIDEO_H264_MODIFICATION_OF_PIC_NUMS_IDC_END=3,
+       STD_VIDEO_H264_MODIFICATION_OF_PIC_NUMS_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoH264MemMgmtControlOp=^PStdVideoH264MemMgmtControlOp;
+     PStdVideoH264MemMgmtControlOp=^TStdVideoH264MemMgmtControlOp;
+     TStdVideoH264MemMgmtControlOp=
+      (
+       STD_VIDEO_H264_MEM_MGMT_CONTROL_OP_END=0,
+       STD_VIDEO_H264_MEM_MGMT_CONTROL_OP_UNMARK_SHORT_TERM=1,
+       STD_VIDEO_H264_MEM_MGMT_CONTROL_OP_UNMARK_LONG_TERM=2,
+       STD_VIDEO_H264_MEM_MGMT_CONTROL_OP_MARK_LONG_TERM=3,
+       STD_VIDEO_H264_MEM_MGMT_CONTROL_OP_SET_MAX_LONG_TERM_INDEX=4,
+       STD_VIDEO_H264_MEM_MGMT_CONTROL_OP_UNMARK_ALL=5,
+       STD_VIDEO_H264_MEM_MGMT_CONTROL_OP_MARK_CURRENT_AS_LONG_TERM=6,
+       STD_VIDEO_H264_MEM_MGMT_CONTROL_OP_INVALID=2147483647
+      );
+
+     PPStdVideoH264CabacInitIdc=^PStdVideoH264CabacInitIdc;
+     PStdVideoH264CabacInitIdc=^TStdVideoH264CabacInitIdc;
+     TStdVideoH264CabacInitIdc=
+      (
+       STD_VIDEO_H264_CABAC_INIT_IDC_0=0,
+       STD_VIDEO_H264_CABAC_INIT_IDC_1=1,
+       STD_VIDEO_H264_CABAC_INIT_IDC_2=2,
+       STD_VIDEO_H264_CABAC_INIT_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoH264DisableDeblockingFilterIdc=^PStdVideoH264DisableDeblockingFilterIdc;
+     PStdVideoH264DisableDeblockingFilterIdc=^TStdVideoH264DisableDeblockingFilterIdc;
+     TStdVideoH264DisableDeblockingFilterIdc=
+      (
+       STD_VIDEO_H264_DISABLE_DEBLOCKING_FILTER_IDC_DISABLED=0,
+       STD_VIDEO_H264_DISABLE_DEBLOCKING_FILTER_IDC_ENABLED=1,
+       STD_VIDEO_H264_DISABLE_DEBLOCKING_FILTER_IDC_PARTIAL=2,
+       STD_VIDEO_H264_DISABLE_DEBLOCKING_FILTER_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoH264SliceType=^PStdVideoH264SliceType;
+     PStdVideoH264SliceType=^TStdVideoH264SliceType;
+     TStdVideoH264SliceType=
+      (
+       STD_VIDEO_H264_SLICE_TYPE_P=0,
+       STD_VIDEO_H264_SLICE_TYPE_B=1,
+       STD_VIDEO_H264_SLICE_TYPE_I=2,
+       STD_VIDEO_H264_SLICE_TYPE_INVALID=2147483647
+      );
+
+     PPStdVideoH264PictureType=^PStdVideoH264PictureType;
+     PStdVideoH264PictureType=^TStdVideoH264PictureType;
+     TStdVideoH264PictureType=
+      (
+       STD_VIDEO_H264_PICTURE_TYPE_P=0,
+       STD_VIDEO_H264_PICTURE_TYPE_B=1,
+       STD_VIDEO_H264_PICTURE_TYPE_I=2,
+       STD_VIDEO_H264_PICTURE_TYPE_IDR=5,
+       STD_VIDEO_H264_PICTURE_TYPE_INVALID=2147483647
+      );
+
+     PPStdVideoH264NonVclNaluType=^PStdVideoH264NonVclNaluType;
+     PStdVideoH264NonVclNaluType=^TStdVideoH264NonVclNaluType;
+     TStdVideoH264NonVclNaluType=
+      (
+       STD_VIDEO_H264_NON_VCL_NALU_TYPE_SPS=0,
+       STD_VIDEO_H264_NON_VCL_NALU_TYPE_PPS=1,
+       STD_VIDEO_H264_NON_VCL_NALU_TYPE_AUD=2,
+       STD_VIDEO_H264_NON_VCL_NALU_TYPE_PREFIX=3,
+       STD_VIDEO_H264_NON_VCL_NALU_TYPE_END_OF_SEQUENCE=4,
+       STD_VIDEO_H264_NON_VCL_NALU_TYPE_END_OF_STREAM=5,
+       STD_VIDEO_H264_NON_VCL_NALU_TYPE_PRECODED=6,
+       STD_VIDEO_H264_NON_VCL_NALU_TYPE_INVALID=2147483647
+      );
+
+     PPStdVideoDecodeH264FieldOrderCount=^PStdVideoDecodeH264FieldOrderCount;
+     PStdVideoDecodeH264FieldOrderCount=^TStdVideoDecodeH264FieldOrderCount;
+     TStdVideoDecodeH264FieldOrderCount=
+      (
+       STD_VIDEO_DECODE_H264_FIELD_ORDER_COUNT_TOP=0,
+       STD_VIDEO_DECODE_H264_FIELD_ORDER_COUNT_BOTTOM=1,
+       STD_VIDEO_DECODE_H264_FIELD_ORDER_COUNT_INVALID=2147483647
+      );
+
+     PPStdVideoH265ChromaFormatIdc=^PStdVideoH265ChromaFormatIdc;
+     PStdVideoH265ChromaFormatIdc=^TStdVideoH265ChromaFormatIdc;
+     TStdVideoH265ChromaFormatIdc=
+      (
+       STD_VIDEO_H265_CHROMA_FORMAT_IDC_MONOCHROME=0,
+       STD_VIDEO_H265_CHROMA_FORMAT_IDC_420=1,
+       STD_VIDEO_H265_CHROMA_FORMAT_IDC_422=2,
+       STD_VIDEO_H265_CHROMA_FORMAT_IDC_444=3,
+       STD_VIDEO_H265_CHROMA_FORMAT_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoH265ProfileIdc=^PStdVideoH265ProfileIdc;
+     PStdVideoH265ProfileIdc=^TStdVideoH265ProfileIdc;
+     TStdVideoH265ProfileIdc=
+      (
+       STD_VIDEO_H265_PROFILE_IDC_MAIN=1,
+       STD_VIDEO_H265_PROFILE_IDC_MAIN_10=2,
+       STD_VIDEO_H265_PROFILE_IDC_MAIN_STILL_PICTURE=3,
+       STD_VIDEO_H265_PROFILE_IDC_FORMAT_RANGE_EXTENSIONS=4,
+       STD_VIDEO_H265_PROFILE_IDC_SCC_EXTENSIONS=9,
+       STD_VIDEO_H265_PROFILE_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoH265LevelIdc=^PStdVideoH265LevelIdc;
+     PStdVideoH265LevelIdc=^TStdVideoH265LevelIdc;
+     TStdVideoH265LevelIdc=
+      (
+       STD_VIDEO_H265_LEVEL_IDC_1_0=0,
+       STD_VIDEO_H265_LEVEL_IDC_2_0=1,
+       STD_VIDEO_H265_LEVEL_IDC_2_1=2,
+       STD_VIDEO_H265_LEVEL_IDC_3_0=3,
+       STD_VIDEO_H265_LEVEL_IDC_3_1=4,
+       STD_VIDEO_H265_LEVEL_IDC_4_0=5,
+       STD_VIDEO_H265_LEVEL_IDC_4_1=6,
+       STD_VIDEO_H265_LEVEL_IDC_5_0=7,
+       STD_VIDEO_H265_LEVEL_IDC_5_1=8,
+       STD_VIDEO_H265_LEVEL_IDC_5_2=9,
+       STD_VIDEO_H265_LEVEL_IDC_6_0=10,
+       STD_VIDEO_H265_LEVEL_IDC_6_1=11,
+       STD_VIDEO_H265_LEVEL_IDC_6_2=12,
+       STD_VIDEO_H265_LEVEL_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoH265SliceType=^PStdVideoH265SliceType;
+     PStdVideoH265SliceType=^TStdVideoH265SliceType;
+     TStdVideoH265SliceType=
+      (
+       STD_VIDEO_H265_SLICE_TYPE_B=0,
+       STD_VIDEO_H265_SLICE_TYPE_P=1,
+       STD_VIDEO_H265_SLICE_TYPE_I=2,
+       STD_VIDEO_H265_SLICE_TYPE_INVALID=2147483647
+      );
+
+     PPStdVideoH265PictureType=^PStdVideoH265PictureType;
+     PStdVideoH265PictureType=^TStdVideoH265PictureType;
+     TStdVideoH265PictureType=
+      (
+       STD_VIDEO_H265_PICTURE_TYPE_P=0,
+       STD_VIDEO_H265_PICTURE_TYPE_B=1,
+       STD_VIDEO_H265_PICTURE_TYPE_I=2,
+       STD_VIDEO_H265_PICTURE_TYPE_IDR=3,
+       STD_VIDEO_H265_PICTURE_TYPE_INVALID=2147483647
+      );
+
+     PPStdVideoH265AspectRatioIdc=^PStdVideoH265AspectRatioIdc;
+     PStdVideoH265AspectRatioIdc=^TStdVideoH265AspectRatioIdc;
+     TStdVideoH265AspectRatioIdc=
+      (
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_UNSPECIFIED=0,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_SQUARE=1,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_12_11=2,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_10_11=3,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_16_11=4,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_40_33=5,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_24_11=6,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_20_11=7,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_32_11=8,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_80_33=9,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_18_11=10,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_15_11=11,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_64_33=12,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_160_99=13,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_4_3=14,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_3_2=15,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_2_1=16,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_EXTENDED_SAR=255,
+       STD_VIDEO_H265_ASPECT_RATIO_IDC_INVALID=2147483647
+      );
+
+     PPStdVideoVP9Profile=^PStdVideoVP9Profile;
+     PStdVideoVP9Profile=^TStdVideoVP9Profile;
+     TStdVideoVP9Profile=
+      (
+       STD_VIDEO_VP9_PROFILE_0=0,
+       STD_VIDEO_VP9_PROFILE_1=1,
+       STD_VIDEO_VP9_PROFILE_2=2,
+       STD_VIDEO_VP9_PROFILE_3=3,
+       STD_VIDEO_VP9_PROFILE_INVALID=2147483647
+      );
+
+     PPStdVideoVP9Level=^PStdVideoVP9Level;
+     PStdVideoVP9Level=^TStdVideoVP9Level;
+     TStdVideoVP9Level=
+      (
+       STD_VIDEO_VP9_LEVEL_1_0=0,
+       STD_VIDEO_VP9_LEVEL_1_1=1,
+       STD_VIDEO_VP9_LEVEL_2_0=2,
+       STD_VIDEO_VP9_LEVEL_2_1=3,
+       STD_VIDEO_VP9_LEVEL_3_0=4,
+       STD_VIDEO_VP9_LEVEL_3_1=5,
+       STD_VIDEO_VP9_LEVEL_4_0=6,
+       STD_VIDEO_VP9_LEVEL_4_1=7,
+       STD_VIDEO_VP9_LEVEL_5_0=8,
+       STD_VIDEO_VP9_LEVEL_5_1=9,
+       STD_VIDEO_VP9_LEVEL_5_2=10,
+       STD_VIDEO_VP9_LEVEL_6_0=11,
+       STD_VIDEO_VP9_LEVEL_6_1=12,
+       STD_VIDEO_VP9_LEVEL_6_2=13,
+       STD_VIDEO_VP9_LEVEL_INVALID=2147483647
+      );
+
+     PPStdVideoVP9FrameType=^PStdVideoVP9FrameType;
+     PStdVideoVP9FrameType=^TStdVideoVP9FrameType;
+     TStdVideoVP9FrameType=
+      (
+       STD_VIDEO_VP9_FRAME_TYPE_KEY=0,
+       STD_VIDEO_VP9_FRAME_TYPE_NON_KEY=1,
+       STD_VIDEO_VP9_FRAME_TYPE_INVALID=2147483647
+      );
+
+     PPStdVideoVP9ReferenceName=^PStdVideoVP9ReferenceName;
+     PStdVideoVP9ReferenceName=^TStdVideoVP9ReferenceName;
+     TStdVideoVP9ReferenceName=
+      (
+       STD_VIDEO_VP9_REFERENCE_NAME_INTRA_FRAME=0,
+       STD_VIDEO_VP9_REFERENCE_NAME_LAST_FRAME=1,
+       STD_VIDEO_VP9_REFERENCE_NAME_GOLDEN_FRAME=2,
+       STD_VIDEO_VP9_REFERENCE_NAME_ALTREF_FRAME=3,
+       STD_VIDEO_VP9_REFERENCE_NAME_INVALID=2147483647
+      );
+
+     PPStdVideoVP9InterpolationFilter=^PStdVideoVP9InterpolationFilter;
+     PStdVideoVP9InterpolationFilter=^TStdVideoVP9InterpolationFilter;
+     TStdVideoVP9InterpolationFilter=
+      (
+       STD_VIDEO_VP9_INTERPOLATION_FILTER_EIGHTTAP=0,
+       STD_VIDEO_VP9_INTERPOLATION_FILTER_EIGHTTAP_SMOOTH=1,
+       STD_VIDEO_VP9_INTERPOLATION_FILTER_EIGHTTAP_SHARP=2,
+       STD_VIDEO_VP9_INTERPOLATION_FILTER_BILINEAR=3,
+       STD_VIDEO_VP9_INTERPOLATION_FILTER_SWITCHABLE=4,
+       STD_VIDEO_VP9_INTERPOLATION_FILTER_INVALID=2147483647
+      );
+
+     PPStdVideoVP9ColorSpace=^PStdVideoVP9ColorSpace;
+     PStdVideoVP9ColorSpace=^TStdVideoVP9ColorSpace;
+     TStdVideoVP9ColorSpace=
+      (
+       STD_VIDEO_VP9_COLOR_SPACE_UNKNOWN=0,
+       STD_VIDEO_VP9_COLOR_SPACE_BT_601=1,
+       STD_VIDEO_VP9_COLOR_SPACE_BT_709=2,
+       STD_VIDEO_VP9_COLOR_SPACE_SMPTE_170=3,
+       STD_VIDEO_VP9_COLOR_SPACE_SMPTE_240=4,
+       STD_VIDEO_VP9_COLOR_SPACE_BT_2020=5,
+       STD_VIDEO_VP9_COLOR_SPACE_RESERVED=6,
+       STD_VIDEO_VP9_COLOR_SPACE_RGB=7,
+       STD_VIDEO_VP9_COLOR_SPACE_INVALID=2147483647
+      );
+
+     PPStdVideoAV1Profile=^PStdVideoAV1Profile;
+     PStdVideoAV1Profile=^TStdVideoAV1Profile;
+     TStdVideoAV1Profile=
+      (
+       STD_VIDEO_AV1_PROFILE_MAIN=0,
+       STD_VIDEO_AV1_PROFILE_HIGH=1,
+       STD_VIDEO_AV1_PROFILE_PROFESSIONAL=2,
+       STD_VIDEO_AV1_PROFILE_INVALID=2147483647
+      );
+
+     PPStdVideoAV1Level=^PStdVideoAV1Level;
+     PStdVideoAV1Level=^TStdVideoAV1Level;
+     TStdVideoAV1Level=
+      (
+       STD_VIDEO_AV1_LEVEL_2_0=0,
+       STD_VIDEO_AV1_LEVEL_2_1=1,
+       STD_VIDEO_AV1_LEVEL_2_2=2,
+       STD_VIDEO_AV1_LEVEL_2_3=3,
+       STD_VIDEO_AV1_LEVEL_3_0=4,
+       STD_VIDEO_AV1_LEVEL_3_1=5,
+       STD_VIDEO_AV1_LEVEL_3_2=6,
+       STD_VIDEO_AV1_LEVEL_3_3=7,
+       STD_VIDEO_AV1_LEVEL_4_0=8,
+       STD_VIDEO_AV1_LEVEL_4_1=9,
+       STD_VIDEO_AV1_LEVEL_4_2=10,
+       STD_VIDEO_AV1_LEVEL_4_3=11,
+       STD_VIDEO_AV1_LEVEL_5_0=12,
+       STD_VIDEO_AV1_LEVEL_5_1=13,
+       STD_VIDEO_AV1_LEVEL_5_2=14,
+       STD_VIDEO_AV1_LEVEL_5_3=15,
+       STD_VIDEO_AV1_LEVEL_6_0=16,
+       STD_VIDEO_AV1_LEVEL_6_1=17,
+       STD_VIDEO_AV1_LEVEL_6_2=18,
+       STD_VIDEO_AV1_LEVEL_6_3=19,
+       STD_VIDEO_AV1_LEVEL_7_0=20,
+       STD_VIDEO_AV1_LEVEL_7_1=21,
+       STD_VIDEO_AV1_LEVEL_7_2=22,
+       STD_VIDEO_AV1_LEVEL_7_3=23,
+       STD_VIDEO_AV1_LEVEL_INVALID=2147483647
+      );
+
+     PPStdVideoAV1FrameType=^PStdVideoAV1FrameType;
+     PStdVideoAV1FrameType=^TStdVideoAV1FrameType;
+     TStdVideoAV1FrameType=
+      (
+       STD_VIDEO_AV1_FRAME_TYPE_KEY=0,
+       STD_VIDEO_AV1_FRAME_TYPE_INTER=1,
+       STD_VIDEO_AV1_FRAME_TYPE_INTRA_ONLY=2,
+       STD_VIDEO_AV1_FRAME_TYPE_SWITCH=3,
+       STD_VIDEO_AV1_FRAME_TYPE_INVALID=2147483647
+      );
+
+     PPStdVideoAV1ReferenceName=^PStdVideoAV1ReferenceName;
+     PStdVideoAV1ReferenceName=^TStdVideoAV1ReferenceName;
+     TStdVideoAV1ReferenceName=
+      (
+       STD_VIDEO_AV1_REFERENCE_NAME_INTRA_FRAME=0,
+       STD_VIDEO_AV1_REFERENCE_NAME_LAST_FRAME=1,
+       STD_VIDEO_AV1_REFERENCE_NAME_LAST2_FRAME=2,
+       STD_VIDEO_AV1_REFERENCE_NAME_LAST3_FRAME=3,
+       STD_VIDEO_AV1_REFERENCE_NAME_GOLDEN_FRAME=4,
+       STD_VIDEO_AV1_REFERENCE_NAME_BWDREF_FRAME=5,
+       STD_VIDEO_AV1_REFERENCE_NAME_ALTREF2_FRAME=6,
+       STD_VIDEO_AV1_REFERENCE_NAME_ALTREF_FRAME=7,
+       STD_VIDEO_AV1_REFERENCE_NAME_INVALID=2147483647
+      );
+
+     PPStdVideoAV1InterpolationFilter=^PStdVideoAV1InterpolationFilter;
+     PStdVideoAV1InterpolationFilter=^TStdVideoAV1InterpolationFilter;
+     TStdVideoAV1InterpolationFilter=
+      (
+       STD_VIDEO_AV1_INTERPOLATION_FILTER_EIGHTTAP=0,
+       STD_VIDEO_AV1_INTERPOLATION_FILTER_EIGHTTAP_SMOOTH=1,
+       STD_VIDEO_AV1_INTERPOLATION_FILTER_EIGHTTAP_SHARP=2,
+       STD_VIDEO_AV1_INTERPOLATION_FILTER_BILINEAR=3,
+       STD_VIDEO_AV1_INTERPOLATION_FILTER_SWITCHABLE=4,
+       STD_VIDEO_AV1_INTERPOLATION_FILTER_INVALID=2147483647
+      );
+
+     PPStdVideoAV1TxMode=^PStdVideoAV1TxMode;
+     PStdVideoAV1TxMode=^TStdVideoAV1TxMode;
+     TStdVideoAV1TxMode=
+      (
+       STD_VIDEO_AV1_TX_MODE_ONLY_4X4=0,
+       STD_VIDEO_AV1_TX_MODE_LARGEST=1,
+       STD_VIDEO_AV1_TX_MODE_SELECT=2,
+       STD_VIDEO_AV1_TX_MODE_INVALID=2147483647
+      );
+
+     PPStdVideoAV1FrameRestorationType=^PStdVideoAV1FrameRestorationType;
+     PStdVideoAV1FrameRestorationType=^TStdVideoAV1FrameRestorationType;
+     TStdVideoAV1FrameRestorationType=
+      (
+       STD_VIDEO_AV1_FRAME_RESTORATION_TYPE_NONE=0,
+       STD_VIDEO_AV1_FRAME_RESTORATION_TYPE_WIENER=1,
+       STD_VIDEO_AV1_FRAME_RESTORATION_TYPE_SGRPROJ=2,
+       STD_VIDEO_AV1_FRAME_RESTORATION_TYPE_SWITCHABLE=3,
+       STD_VIDEO_AV1_FRAME_RESTORATION_TYPE_INVALID=2147483647
+      );
+
+     PPStdVideoAV1ColorPrimaries=^PStdVideoAV1ColorPrimaries;
+     PStdVideoAV1ColorPrimaries=^TStdVideoAV1ColorPrimaries;
+     TStdVideoAV1ColorPrimaries=
+      (
+       STD_VIDEO_AV1_COLOR_PRIMARIES_BT_709=1,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_UNSPECIFIED=2,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_BT_470_M=4,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_BT_470_B_G=5,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_BT_601=6,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_SMPTE_240=7,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_GENERIC_FILM=8,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_BT_2020=9,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_XYZ=10,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_SMPTE_431=11,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_SMPTE_432=12,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_EBU_3213=22,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_INVALID=2147483647,
+       STD_VIDEO_AV1_COLOR_PRIMARIES_BT_UNSPECIFIED=STD_VIDEO_AV1_COLOR_PRIMARIES_UNSPECIFIED
+      );
+
+     PPStdVideoAV1TransferCharacteristics=^PStdVideoAV1TransferCharacteristics;
+     PStdVideoAV1TransferCharacteristics=^TStdVideoAV1TransferCharacteristics;
+     TStdVideoAV1TransferCharacteristics=
+      (
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_RESERVED_0=0,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_BT_709=1,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_UNSPECIFIED=2,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_RESERVED_3=3,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_BT_470_M=4,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_BT_470_B_G=5,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_BT_601=6,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_SMPTE_240=7,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_LINEAR=8,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_LOG_100=9,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_LOG_100_SQRT10=10,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_IEC_61966=11,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_BT_1361=12,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_SRGB=13,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_BT_2020_10_BIT=14,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_BT_2020_12_BIT=15,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_SMPTE_2084=16,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_SMPTE_428=17,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_HLG=18,
+       STD_VIDEO_AV1_TRANSFER_CHARACTERISTICS_INVALID=2147483647
+      );
+
+     PPStdVideoAV1MatrixCoefficients=^PStdVideoAV1MatrixCoefficients;
+     PStdVideoAV1MatrixCoefficients=^TStdVideoAV1MatrixCoefficients;
+     TStdVideoAV1MatrixCoefficients=
+      (
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_IDENTITY=0,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_BT_709=1,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_UNSPECIFIED=2,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_RESERVED_3=3,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_FCC=4,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_BT_470_B_G=5,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_BT_601=6,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_SMPTE_240=7,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_SMPTE_YCGCO=8,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_BT_2020_NCL=9,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_BT_2020_CL=10,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_SMPTE_2085=11,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_CHROMAT_NCL=12,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_CHROMAT_CL=13,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_ICTCP=14,
+       STD_VIDEO_AV1_MATRIX_COEFFICIENTS_INVALID=2147483647
+      );
+
+     PPStdVideoAV1ChromaSamplePosition=^PStdVideoAV1ChromaSamplePosition;
+     PStdVideoAV1ChromaSamplePosition=^TStdVideoAV1ChromaSamplePosition;
+     TStdVideoAV1ChromaSamplePosition=
+      (
+       STD_VIDEO_AV1_CHROMA_SAMPLE_POSITION_UNKNOWN=0,
+       STD_VIDEO_AV1_CHROMA_SAMPLE_POSITION_VERTICAL=1,
+       STD_VIDEO_AV1_CHROMA_SAMPLE_POSITION_COLOCATED=2,
+       STD_VIDEO_AV1_CHROMA_SAMPLE_POSITION_RESERVED=3,
+       STD_VIDEO_AV1_CHROMA_SAMPLE_POSITION_INVALID=2147483647
+      );
 
      PPVkImageLayout=^PVkImageLayout;
      PVkImageLayout=^TVkImageLayout;
@@ -9771,6 +10390,3317 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDriverIdKHR=PVkDriverId;
      TVkDriverIdKHR=TVkDriverId;
 
+{$ifdef VkStdVideo}
+     PPStdVideoH264SpsVuiFlags=^PStdVideoH264SpsVuiFlags;
+     PStdVideoH264SpsVuiFlags=^TStdVideoH264SpsVuiFlags;
+     TStdVideoH264SpsVuiFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_aspect_ratio_info_present_flag:TVkUInt32;
+       procedure Set_aspect_ratio_info_present_flag(const aValue:TVkUInt32);
+       property aspect_ratio_info_present_flag:TVkUInt32 read Get_aspect_ratio_info_present_flag write Set_aspect_ratio_info_present_flag;
+       function Get_overscan_info_present_flag:TVkUInt32;
+       procedure Set_overscan_info_present_flag(const aValue:TVkUInt32);
+       property overscan_info_present_flag:TVkUInt32 read Get_overscan_info_present_flag write Set_overscan_info_present_flag;
+       function Get_overscan_appropriate_flag:TVkUInt32;
+       procedure Set_overscan_appropriate_flag(const aValue:TVkUInt32);
+       property overscan_appropriate_flag:TVkUInt32 read Get_overscan_appropriate_flag write Set_overscan_appropriate_flag;
+       function Get_video_signal_type_present_flag:TVkUInt32;
+       procedure Set_video_signal_type_present_flag(const aValue:TVkUInt32);
+       property video_signal_type_present_flag:TVkUInt32 read Get_video_signal_type_present_flag write Set_video_signal_type_present_flag;
+       function Get_video_full_range_flag:TVkUInt32;
+       procedure Set_video_full_range_flag(const aValue:TVkUInt32);
+       property video_full_range_flag:TVkUInt32 read Get_video_full_range_flag write Set_video_full_range_flag;
+       function Get_color_description_present_flag:TVkUInt32;
+       procedure Set_color_description_present_flag(const aValue:TVkUInt32);
+       property color_description_present_flag:TVkUInt32 read Get_color_description_present_flag write Set_color_description_present_flag;
+       function Get_chroma_loc_info_present_flag:TVkUInt32;
+       procedure Set_chroma_loc_info_present_flag(const aValue:TVkUInt32);
+       property chroma_loc_info_present_flag:TVkUInt32 read Get_chroma_loc_info_present_flag write Set_chroma_loc_info_present_flag;
+       function Get_timing_info_present_flag:TVkUInt32;
+       procedure Set_timing_info_present_flag(const aValue:TVkUInt32);
+       property timing_info_present_flag:TVkUInt32 read Get_timing_info_present_flag write Set_timing_info_present_flag;
+       function Get_fixed_frame_rate_flag:TVkUInt32;
+       procedure Set_fixed_frame_rate_flag(const aValue:TVkUInt32);
+       property fixed_frame_rate_flag:TVkUInt32 read Get_fixed_frame_rate_flag write Set_fixed_frame_rate_flag;
+       function Get_bitstream_restriction_flag:TVkUInt32;
+       procedure Set_bitstream_restriction_flag(const aValue:TVkUInt32);
+       property bitstream_restriction_flag:TVkUInt32 read Get_bitstream_restriction_flag write Set_bitstream_restriction_flag;
+       function Get_nal_hrd_parameters_present_flag:TVkUInt32;
+       procedure Set_nal_hrd_parameters_present_flag(const aValue:TVkUInt32);
+       property nal_hrd_parameters_present_flag:TVkUInt32 read Get_nal_hrd_parameters_present_flag write Set_nal_hrd_parameters_present_flag;
+       function Get_vcl_hrd_parameters_present_flag:TVkUInt32;
+       procedure Set_vcl_hrd_parameters_present_flag(const aValue:TVkUInt32);
+       property vcl_hrd_parameters_present_flag:TVkUInt32 read Get_vcl_hrd_parameters_present_flag write Set_vcl_hrd_parameters_present_flag;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH264HrdParameters=^PStdVideoH264HrdParameters;
+     PStdVideoH264HrdParameters=^TStdVideoH264HrdParameters;
+     TStdVideoH264HrdParameters=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       cpb_cnt_minus1:TVkUInt8;
+       bit_rate_scale:TVkUInt8;
+       cpb_size_scale:TVkUInt8;
+       reserved1:TVkUInt8;
+       bit_rate_value_minus1:array[0..STD_VIDEO_H264_CPB_CNT_LIST_SIZE-1] of TVkUInt32;
+       cpb_size_value_minus1:array[0..STD_VIDEO_H264_CPB_CNT_LIST_SIZE-1] of TVkUInt32;
+       cbr_flag:array[0..STD_VIDEO_H264_CPB_CNT_LIST_SIZE-1] of TVkUInt8;
+       initial_cpb_removal_delay_length_minus1:TVkUInt32;
+       cpb_removal_delay_length_minus1:TVkUInt32;
+       dpb_output_delay_length_minus1:TVkUInt32;
+       time_offset_length:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aCpb_cnt_minus1:TVkUInt8;
+                          const aBit_rate_scale:TVkUInt8;
+                          const aCpb_size_scale:TVkUInt8;
+                          const aReserved1:TVkUInt8;
+                          const aBit_rate_value_minus1:array of TVkUInt32;
+                          const aCpb_size_value_minus1:array of TVkUInt32;
+                          const aCbr_flag:array of TVkUInt8;
+                          const aInitial_cpb_removal_delay_length_minus1:TVkUInt32;
+                          const aCpb_removal_delay_length_minus1:TVkUInt32;
+                          const aDpb_output_delay_length_minus1:TVkUInt32;
+                          const aTime_offset_length:TVkUInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH264SequenceParameterSetVui=^PStdVideoH264SequenceParameterSetVui;
+     PStdVideoH264SequenceParameterSetVui=^TStdVideoH264SequenceParameterSetVui;
+     TStdVideoH264SequenceParameterSetVui=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoH264SpsVuiFlags;
+       aspect_ratio_idc:TStdVideoH264AspectRatioIdc;
+       sar_width:TVkUInt16;
+       sar_height:TVkUInt16;
+       video_format:TVkUInt8;
+       colour_primaries:TVkUInt8;
+       transfer_characteristics:TVkUInt8;
+       matrix_coefficients:TVkUInt8;
+       num_units_in_tick:TVkUInt32;
+       time_scale:TVkUInt32;
+       max_num_reorder_frames:TVkUInt8;
+       max_dec_frame_buffering:TVkUInt8;
+       chroma_sample_loc_type_top_field:TVkUInt8;
+       chroma_sample_loc_type_bottom_field:TVkUInt8;
+       reserved1:TVkUInt32;
+       pHrdParameters:PStdVideoH264HrdParameters;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoH264SpsVuiFlags;
+                          const aAspect_ratio_idc:TStdVideoH264AspectRatioIdc;
+                          const aSar_width:TVkUInt16;
+                          const aSar_height:TVkUInt16;
+                          const aVideo_format:TVkUInt8;
+                          const aColour_primaries:TVkUInt8;
+                          const aTransfer_characteristics:TVkUInt8;
+                          const aMatrix_coefficients:TVkUInt8;
+                          const aNum_units_in_tick:TVkUInt32;
+                          const aTime_scale:TVkUInt32;
+                          const aMax_num_reorder_frames:TVkUInt8;
+                          const aMax_dec_frame_buffering:TVkUInt8;
+                          const aChroma_sample_loc_type_top_field:TVkUInt8;
+                          const aChroma_sample_loc_type_bottom_field:TVkUInt8;
+                          const aReserved1:TVkUInt32;
+                          const aPHrdParameters:PStdVideoH264HrdParameters);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH264SpsFlags=^PStdVideoH264SpsFlags;
+     PStdVideoH264SpsFlags=^TStdVideoH264SpsFlags;
+     TStdVideoH264SpsFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_constraint_set0_flag:TVkUInt32;
+       procedure Set_constraint_set0_flag(const aValue:TVkUInt32);
+       property constraint_set0_flag:TVkUInt32 read Get_constraint_set0_flag write Set_constraint_set0_flag;
+       function Get_constraint_set1_flag:TVkUInt32;
+       procedure Set_constraint_set1_flag(const aValue:TVkUInt32);
+       property constraint_set1_flag:TVkUInt32 read Get_constraint_set1_flag write Set_constraint_set1_flag;
+       function Get_constraint_set2_flag:TVkUInt32;
+       procedure Set_constraint_set2_flag(const aValue:TVkUInt32);
+       property constraint_set2_flag:TVkUInt32 read Get_constraint_set2_flag write Set_constraint_set2_flag;
+       function Get_constraint_set3_flag:TVkUInt32;
+       procedure Set_constraint_set3_flag(const aValue:TVkUInt32);
+       property constraint_set3_flag:TVkUInt32 read Get_constraint_set3_flag write Set_constraint_set3_flag;
+       function Get_constraint_set4_flag:TVkUInt32;
+       procedure Set_constraint_set4_flag(const aValue:TVkUInt32);
+       property constraint_set4_flag:TVkUInt32 read Get_constraint_set4_flag write Set_constraint_set4_flag;
+       function Get_constraint_set5_flag:TVkUInt32;
+       procedure Set_constraint_set5_flag(const aValue:TVkUInt32);
+       property constraint_set5_flag:TVkUInt32 read Get_constraint_set5_flag write Set_constraint_set5_flag;
+       function Get_direct_8x8_inference_flag:TVkUInt32;
+       procedure Set_direct_8x8_inference_flag(const aValue:TVkUInt32);
+       property direct_8x8_inference_flag:TVkUInt32 read Get_direct_8x8_inference_flag write Set_direct_8x8_inference_flag;
+       function Get_mb_adaptive_frame_field_flag:TVkUInt32;
+       procedure Set_mb_adaptive_frame_field_flag(const aValue:TVkUInt32);
+       property mb_adaptive_frame_field_flag:TVkUInt32 read Get_mb_adaptive_frame_field_flag write Set_mb_adaptive_frame_field_flag;
+       function Get_frame_mbs_only_flag:TVkUInt32;
+       procedure Set_frame_mbs_only_flag(const aValue:TVkUInt32);
+       property frame_mbs_only_flag:TVkUInt32 read Get_frame_mbs_only_flag write Set_frame_mbs_only_flag;
+       function Get_delta_pic_order_always_zero_flag:TVkUInt32;
+       procedure Set_delta_pic_order_always_zero_flag(const aValue:TVkUInt32);
+       property delta_pic_order_always_zero_flag:TVkUInt32 read Get_delta_pic_order_always_zero_flag write Set_delta_pic_order_always_zero_flag;
+       function Get_separate_colour_plane_flag:TVkUInt32;
+       procedure Set_separate_colour_plane_flag(const aValue:TVkUInt32);
+       property separate_colour_plane_flag:TVkUInt32 read Get_separate_colour_plane_flag write Set_separate_colour_plane_flag;
+       function Get_gaps_in_frame_num_value_allowed_flag:TVkUInt32;
+       procedure Set_gaps_in_frame_num_value_allowed_flag(const aValue:TVkUInt32);
+       property gaps_in_frame_num_value_allowed_flag:TVkUInt32 read Get_gaps_in_frame_num_value_allowed_flag write Set_gaps_in_frame_num_value_allowed_flag;
+       function Get_qpprime_y_zero_transform_bypass_flag:TVkUInt32;
+       procedure Set_qpprime_y_zero_transform_bypass_flag(const aValue:TVkUInt32);
+       property qpprime_y_zero_transform_bypass_flag:TVkUInt32 read Get_qpprime_y_zero_transform_bypass_flag write Set_qpprime_y_zero_transform_bypass_flag;
+       function Get_frame_cropping_flag:TVkUInt32;
+       procedure Set_frame_cropping_flag(const aValue:TVkUInt32);
+       property frame_cropping_flag:TVkUInt32 read Get_frame_cropping_flag write Set_frame_cropping_flag;
+       function Get_seq_scaling_matrix_present_flag:TVkUInt32;
+       procedure Set_seq_scaling_matrix_present_flag(const aValue:TVkUInt32);
+       property seq_scaling_matrix_present_flag:TVkUInt32 read Get_seq_scaling_matrix_present_flag write Set_seq_scaling_matrix_present_flag;
+       function Get_vui_parameters_present_flag:TVkUInt32;
+       procedure Set_vui_parameters_present_flag(const aValue:TVkUInt32);
+       property vui_parameters_present_flag:TVkUInt32 read Get_vui_parameters_present_flag write Set_vui_parameters_present_flag;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH264ScalingLists=^PStdVideoH264ScalingLists;
+     PStdVideoH264ScalingLists=^TStdVideoH264ScalingLists;
+     TStdVideoH264ScalingLists=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       scaling_list_present_mask:TVkUInt16;
+       use_default_scaling_matrix_mask:TVkUInt16;
+       ScalingList4x4:array[0..STD_VIDEO_H264_SCALING_LIST_4X4_NUM_LISTS-1] of TVkUInt8;
+       ScalingList8x8:array[0..STD_VIDEO_H264_SCALING_LIST_8X8_NUM_LISTS-1] of TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aScaling_list_present_mask:TVkUInt16;
+                          const aUse_default_scaling_matrix_mask:TVkUInt16;
+                          const aScalingList4x4:array of TVkUInt8;
+                          const aScalingList8x8:array of TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH264SequenceParameterSet=^PStdVideoH264SequenceParameterSet;
+     PStdVideoH264SequenceParameterSet=^TStdVideoH264SequenceParameterSet;
+     TStdVideoH264SequenceParameterSet=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoH264SpsFlags;
+       profile_idc:TStdVideoH264ProfileIdc;
+       level_idc:TStdVideoH264LevelIdc;
+       chroma_format_idc:TStdVideoH264ChromaFormatIdc;
+       seq_parameter_set_id:TVkUInt8;
+       bit_depth_luma_minus8:TVkUInt8;
+       bit_depth_chroma_minus8:TVkUInt8;
+       log2_max_frame_num_minus4:TVkUInt8;
+       pic_order_cnt_type:TStdVideoH264PocType;
+       offset_for_non_ref_pic:TVkInt32;
+       offset_for_top_to_bottom_field:TVkInt32;
+       log2_max_pic_order_cnt_lsb_minus4:TVkUInt8;
+       num_ref_frames_in_pic_order_cnt_cycle:TVkUInt8;
+       max_num_ref_frames:TVkUInt8;
+       reserved1:TVkUInt8;
+       pic_width_in_mbs_minus1:TVkUInt32;
+       pic_height_in_map_units_minus1:TVkUInt32;
+       frame_crop_left_offset:TVkUInt32;
+       frame_crop_right_offset:TVkUInt32;
+       frame_crop_top_offset:TVkUInt32;
+       frame_crop_bottom_offset:TVkUInt32;
+       reserved2:TVkUInt32;
+       pOffsetForRefFrame:PVkInt32;
+       pScalingLists:PStdVideoH264ScalingLists;
+       pSequenceParameterSetVui:PStdVideoH264SequenceParameterSetVui;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoH264SpsFlags;
+                          const aProfile_idc:TStdVideoH264ProfileIdc;
+                          const aLevel_idc:TStdVideoH264LevelIdc;
+                          const aChroma_format_idc:TStdVideoH264ChromaFormatIdc;
+                          const aSeq_parameter_set_id:TVkUInt8;
+                          const aBit_depth_luma_minus8:TVkUInt8;
+                          const aBit_depth_chroma_minus8:TVkUInt8;
+                          const aLog2_max_frame_num_minus4:TVkUInt8;
+                          const aPic_order_cnt_type:TStdVideoH264PocType;
+                          const aOffset_for_non_ref_pic:TVkInt32;
+                          const aOffset_for_top_to_bottom_field:TVkInt32;
+                          const aLog2_max_pic_order_cnt_lsb_minus4:TVkUInt8;
+                          const aNum_ref_frames_in_pic_order_cnt_cycle:TVkUInt8;
+                          const aMax_num_ref_frames:TVkUInt8;
+                          const aReserved1:TVkUInt8;
+                          const aPic_width_in_mbs_minus1:TVkUInt32;
+                          const aPic_height_in_map_units_minus1:TVkUInt32;
+                          const aFrame_crop_left_offset:TVkUInt32;
+                          const aFrame_crop_right_offset:TVkUInt32;
+                          const aFrame_crop_top_offset:TVkUInt32;
+                          const aFrame_crop_bottom_offset:TVkUInt32;
+                          const aReserved2:TVkUInt32;
+                          const aPOffsetForRefFrame:PVkInt32;
+                          const aPScalingLists:PStdVideoH264ScalingLists;
+                          const aPSequenceParameterSetVui:PStdVideoH264SequenceParameterSetVui);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH264PpsFlags=^PStdVideoH264PpsFlags;
+     PStdVideoH264PpsFlags=^TStdVideoH264PpsFlags;
+     TStdVideoH264PpsFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_transform_8x8_mode_flag:TVkUInt32;
+       procedure Set_transform_8x8_mode_flag(const aValue:TVkUInt32);
+       property transform_8x8_mode_flag:TVkUInt32 read Get_transform_8x8_mode_flag write Set_transform_8x8_mode_flag;
+       function Get_redundant_pic_cnt_present_flag:TVkUInt32;
+       procedure Set_redundant_pic_cnt_present_flag(const aValue:TVkUInt32);
+       property redundant_pic_cnt_present_flag:TVkUInt32 read Get_redundant_pic_cnt_present_flag write Set_redundant_pic_cnt_present_flag;
+       function Get_constrained_intra_pred_flag:TVkUInt32;
+       procedure Set_constrained_intra_pred_flag(const aValue:TVkUInt32);
+       property constrained_intra_pred_flag:TVkUInt32 read Get_constrained_intra_pred_flag write Set_constrained_intra_pred_flag;
+       function Get_deblocking_filter_control_present_flag:TVkUInt32;
+       procedure Set_deblocking_filter_control_present_flag(const aValue:TVkUInt32);
+       property deblocking_filter_control_present_flag:TVkUInt32 read Get_deblocking_filter_control_present_flag write Set_deblocking_filter_control_present_flag;
+       function Get_weighted_pred_flag:TVkUInt32;
+       procedure Set_weighted_pred_flag(const aValue:TVkUInt32);
+       property weighted_pred_flag:TVkUInt32 read Get_weighted_pred_flag write Set_weighted_pred_flag;
+       function Get_bottom_field_pic_order_in_frame_present_flag:TVkUInt32;
+       procedure Set_bottom_field_pic_order_in_frame_present_flag(const aValue:TVkUInt32);
+       property bottom_field_pic_order_in_frame_present_flag:TVkUInt32 read Get_bottom_field_pic_order_in_frame_present_flag write Set_bottom_field_pic_order_in_frame_present_flag;
+       function Get_entropy_coding_mode_flag:TVkUInt32;
+       procedure Set_entropy_coding_mode_flag(const aValue:TVkUInt32);
+       property entropy_coding_mode_flag:TVkUInt32 read Get_entropy_coding_mode_flag write Set_entropy_coding_mode_flag;
+       function Get_pic_scaling_matrix_present_flag:TVkUInt32;
+       procedure Set_pic_scaling_matrix_present_flag(const aValue:TVkUInt32);
+       property pic_scaling_matrix_present_flag:TVkUInt32 read Get_pic_scaling_matrix_present_flag write Set_pic_scaling_matrix_present_flag;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH264PictureParameterSet=^PStdVideoH264PictureParameterSet;
+     PStdVideoH264PictureParameterSet=^TStdVideoH264PictureParameterSet;
+     TStdVideoH264PictureParameterSet=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoH264PpsFlags;
+       seq_parameter_set_id:TVkUInt8;
+       pic_parameter_set_id:TVkUInt8;
+       num_ref_idx_l0_default_active_minus1:TVkUInt8;
+       num_ref_idx_l1_default_active_minus1:TVkUInt8;
+       weighted_bipred_idc:TStdVideoH264WeightedBipredIdc;
+       pic_init_qp_minus26:TVkInt8;
+       pic_init_qs_minus26:TVkInt8;
+       chroma_qp_index_offset:TVkInt8;
+       second_chroma_qp_index_offset:TVkInt8;
+       pScalingLists:PStdVideoH264ScalingLists;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoH264PpsFlags;
+                          const aSeq_parameter_set_id:TVkUInt8;
+                          const aPic_parameter_set_id:TVkUInt8;
+                          const aNum_ref_idx_l0_default_active_minus1:TVkUInt8;
+                          const aNum_ref_idx_l1_default_active_minus1:TVkUInt8;
+                          const aWeighted_bipred_idc:TStdVideoH264WeightedBipredIdc;
+                          const aPic_init_qp_minus26:TVkInt8;
+                          const aPic_init_qs_minus26:TVkInt8;
+                          const aChroma_qp_index_offset:TVkInt8;
+                          const aSecond_chroma_qp_index_offset:TVkInt8;
+                          const aPScalingLists:PStdVideoH264ScalingLists);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeH264PictureInfoFlags=^PStdVideoDecodeH264PictureInfoFlags;
+     PStdVideoDecodeH264PictureInfoFlags=^TStdVideoDecodeH264PictureInfoFlags;
+     TStdVideoDecodeH264PictureInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_field_pic_flag:TVkUInt32;
+       procedure Set_field_pic_flag(const aValue:TVkUInt32);
+       property field_pic_flag:TVkUInt32 read Get_field_pic_flag write Set_field_pic_flag;
+       function Get_is_intra:TVkUInt32;
+       procedure Set_is_intra(const aValue:TVkUInt32);
+       property is_intra:TVkUInt32 read Get_is_intra write Set_is_intra;
+       function Get_IdrPicFlag:TVkUInt32;
+       procedure Set_IdrPicFlag(const aValue:TVkUInt32);
+       property IdrPicFlag:TVkUInt32 read Get_IdrPicFlag write Set_IdrPicFlag;
+       function Get_bottom_field_flag:TVkUInt32;
+       procedure Set_bottom_field_flag(const aValue:TVkUInt32);
+       property bottom_field_flag:TVkUInt32 read Get_bottom_field_flag write Set_bottom_field_flag;
+       function Get_is_reference:TVkUInt32;
+       procedure Set_is_reference(const aValue:TVkUInt32);
+       property is_reference:TVkUInt32 read Get_is_reference write Set_is_reference;
+       function Get_complementary_field_pair:TVkUInt32;
+       procedure Set_complementary_field_pair(const aValue:TVkUInt32);
+       property complementary_field_pair:TVkUInt32 read Get_complementary_field_pair write Set_complementary_field_pair;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeH264PictureInfo=^PStdVideoDecodeH264PictureInfo;
+     PStdVideoDecodeH264PictureInfo=^TStdVideoDecodeH264PictureInfo;
+     TStdVideoDecodeH264PictureInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoDecodeH264PictureInfoFlags;
+       seq_parameter_set_id:TVkUInt8;
+       pic_parameter_set_id:TVkUInt8;
+       reserved1:TVkUInt8;
+       reserved2:TVkUInt8;
+       frame_num:TVkUInt16;
+       idr_pic_id:TVkUInt16;
+       PicOrderCnt:array[0..STD_VIDEO_DECODE_H264_FIELD_ORDER_COUNT_LIST_SIZE-1] of TVkInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoDecodeH264PictureInfoFlags;
+                          const aSeq_parameter_set_id:TVkUInt8;
+                          const aPic_parameter_set_id:TVkUInt8;
+                          const aReserved1:TVkUInt8;
+                          const aReserved2:TVkUInt8;
+                          const aFrame_num:TVkUInt16;
+                          const aIdr_pic_id:TVkUInt16;
+                          const aPicOrderCnt:array of TVkInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeH264ReferenceInfoFlags=^PStdVideoDecodeH264ReferenceInfoFlags;
+     PStdVideoDecodeH264ReferenceInfoFlags=^TStdVideoDecodeH264ReferenceInfoFlags;
+     TStdVideoDecodeH264ReferenceInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_top_field_flag:TVkUInt32;
+       procedure Set_top_field_flag(const aValue:TVkUInt32);
+       property top_field_flag:TVkUInt32 read Get_top_field_flag write Set_top_field_flag;
+       function Get_bottom_field_flag:TVkUInt32;
+       procedure Set_bottom_field_flag(const aValue:TVkUInt32);
+       property bottom_field_flag:TVkUInt32 read Get_bottom_field_flag write Set_bottom_field_flag;
+       function Get_used_for_long_term_reference:TVkUInt32;
+       procedure Set_used_for_long_term_reference(const aValue:TVkUInt32);
+       property used_for_long_term_reference:TVkUInt32 read Get_used_for_long_term_reference write Set_used_for_long_term_reference;
+       function Get_is_non_existing:TVkUInt32;
+       procedure Set_is_non_existing(const aValue:TVkUInt32);
+       property is_non_existing:TVkUInt32 read Get_is_non_existing write Set_is_non_existing;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeH264ReferenceInfo=^PStdVideoDecodeH264ReferenceInfo;
+     PStdVideoDecodeH264ReferenceInfo=^TStdVideoDecodeH264ReferenceInfo;
+     TStdVideoDecodeH264ReferenceInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoDecodeH264ReferenceInfoFlags;
+       FrameNum:TVkUInt16;
+       reserved:TVkUInt16;
+       PicOrderCnt:array[0..STD_VIDEO_DECODE_H264_FIELD_ORDER_COUNT_LIST_SIZE-1] of TVkInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoDecodeH264ReferenceInfoFlags;
+                          const aFrameNum:TVkUInt16;
+                          const aReserved:TVkUInt16;
+                          const aPicOrderCnt:array of TVkInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264WeightTableFlags=^PStdVideoEncodeH264WeightTableFlags;
+     PStdVideoEncodeH264WeightTableFlags=^TStdVideoEncodeH264WeightTableFlags;
+     TStdVideoEncodeH264WeightTableFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       luma_weight_l0_flag:TVkUInt32;
+       chroma_weight_l0_flag:TVkUInt32;
+       luma_weight_l1_flag:TVkUInt32;
+       chroma_weight_l1_flag:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aLuma_weight_l0_flag:TVkUInt32;
+                          const aChroma_weight_l0_flag:TVkUInt32;
+                          const aLuma_weight_l1_flag:TVkUInt32;
+                          const aChroma_weight_l1_flag:TVkUInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264WeightTable=^PStdVideoEncodeH264WeightTable;
+     PStdVideoEncodeH264WeightTable=^TStdVideoEncodeH264WeightTable;
+     TStdVideoEncodeH264WeightTable=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeH264WeightTableFlags;
+       luma_log2_weight_denom:TVkUInt8;
+       chroma_log2_weight_denom:TVkUInt8;
+       luma_weight_l0:array[0..STD_VIDEO_H264_MAX_NUM_LIST_REF-1] of TVkInt8;
+       luma_offset_l0:array[0..STD_VIDEO_H264_MAX_NUM_LIST_REF-1] of TVkInt8;
+       chroma_weight_l0:array[0..STD_VIDEO_H264_MAX_NUM_LIST_REF-1] of TVkInt8;
+       chroma_offset_l0:array[0..STD_VIDEO_H264_MAX_NUM_LIST_REF-1] of TVkInt8;
+       luma_weight_l1:array[0..STD_VIDEO_H264_MAX_NUM_LIST_REF-1] of TVkInt8;
+       luma_offset_l1:array[0..STD_VIDEO_H264_MAX_NUM_LIST_REF-1] of TVkInt8;
+       chroma_weight_l1:array[0..STD_VIDEO_H264_MAX_NUM_LIST_REF-1] of TVkInt8;
+       chroma_offset_l1:array[0..STD_VIDEO_H264_MAX_NUM_LIST_REF-1] of TVkInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeH264WeightTableFlags;
+                          const aLuma_log2_weight_denom:TVkUInt8;
+                          const aChroma_log2_weight_denom:TVkUInt8;
+                          const aLuma_weight_l0:array of TVkInt8;
+                          const aLuma_offset_l0:array of TVkInt8;
+                          const aChroma_weight_l0:array of TVkInt8;
+                          const aChroma_offset_l0:array of TVkInt8;
+                          const aLuma_weight_l1:array of TVkInt8;
+                          const aLuma_offset_l1:array of TVkInt8;
+                          const aChroma_weight_l1:array of TVkInt8;
+                          const aChroma_offset_l1:array of TVkInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264SliceHeaderFlags=^PStdVideoEncodeH264SliceHeaderFlags;
+     PStdVideoEncodeH264SliceHeaderFlags=^TStdVideoEncodeH264SliceHeaderFlags;
+     TStdVideoEncodeH264SliceHeaderFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_direct_spatial_mv_pred_flag:TVkUInt32;
+       procedure Set_direct_spatial_mv_pred_flag(const aValue:TVkUInt32);
+       property direct_spatial_mv_pred_flag:TVkUInt32 read Get_direct_spatial_mv_pred_flag write Set_direct_spatial_mv_pred_flag;
+       function Get_num_ref_idx_active_override_flag:TVkUInt32;
+       procedure Set_num_ref_idx_active_override_flag(const aValue:TVkUInt32);
+       property num_ref_idx_active_override_flag:TVkUInt32 read Get_num_ref_idx_active_override_flag write Set_num_ref_idx_active_override_flag;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264PictureInfoFlags=^PStdVideoEncodeH264PictureInfoFlags;
+     PStdVideoEncodeH264PictureInfoFlags=^TStdVideoEncodeH264PictureInfoFlags;
+     TStdVideoEncodeH264PictureInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_IdrPicFlag:TVkUInt32;
+       procedure Set_IdrPicFlag(const aValue:TVkUInt32);
+       property IdrPicFlag:TVkUInt32 read Get_IdrPicFlag write Set_IdrPicFlag;
+       function Get_is_reference:TVkUInt32;
+       procedure Set_is_reference(const aValue:TVkUInt32);
+       property is_reference:TVkUInt32 read Get_is_reference write Set_is_reference;
+       function Get_no_output_of_prior_pics_flag:TVkUInt32;
+       procedure Set_no_output_of_prior_pics_flag(const aValue:TVkUInt32);
+       property no_output_of_prior_pics_flag:TVkUInt32 read Get_no_output_of_prior_pics_flag write Set_no_output_of_prior_pics_flag;
+       function Get_long_term_reference_flag:TVkUInt32;
+       procedure Set_long_term_reference_flag(const aValue:TVkUInt32);
+       property long_term_reference_flag:TVkUInt32 read Get_long_term_reference_flag write Set_long_term_reference_flag;
+       function Get_adaptive_ref_pic_marking_mode_flag:TVkUInt32;
+       procedure Set_adaptive_ref_pic_marking_mode_flag(const aValue:TVkUInt32);
+       property adaptive_ref_pic_marking_mode_flag:TVkUInt32 read Get_adaptive_ref_pic_marking_mode_flag write Set_adaptive_ref_pic_marking_mode_flag;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264ReferenceInfoFlags=^PStdVideoEncodeH264ReferenceInfoFlags;
+     PStdVideoEncodeH264ReferenceInfoFlags=^TStdVideoEncodeH264ReferenceInfoFlags;
+     TStdVideoEncodeH264ReferenceInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_used_for_long_term_reference:TVkUInt32;
+       procedure Set_used_for_long_term_reference(const aValue:TVkUInt32);
+       property used_for_long_term_reference:TVkUInt32 read Get_used_for_long_term_reference write Set_used_for_long_term_reference;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264ReferenceListsInfoFlags=^PStdVideoEncodeH264ReferenceListsInfoFlags;
+     PStdVideoEncodeH264ReferenceListsInfoFlags=^TStdVideoEncodeH264ReferenceListsInfoFlags;
+     TStdVideoEncodeH264ReferenceListsInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_ref_pic_list_modification_flag_l0:TVkUInt32;
+       procedure Set_ref_pic_list_modification_flag_l0(const aValue:TVkUInt32);
+       property ref_pic_list_modification_flag_l0:TVkUInt32 read Get_ref_pic_list_modification_flag_l0 write Set_ref_pic_list_modification_flag_l0;
+       function Get_ref_pic_list_modification_flag_l1:TVkUInt32;
+       procedure Set_ref_pic_list_modification_flag_l1(const aValue:TVkUInt32);
+       property ref_pic_list_modification_flag_l1:TVkUInt32 read Get_ref_pic_list_modification_flag_l1 write Set_ref_pic_list_modification_flag_l1;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264RefListModEntry=^PStdVideoEncodeH264RefListModEntry;
+     PStdVideoEncodeH264RefListModEntry=^TStdVideoEncodeH264RefListModEntry;
+     TStdVideoEncodeH264RefListModEntry=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       modification_of_pic_nums_idc:TStdVideoH264ModificationOfPicNumsIdc;
+       abs_diff_pic_num_minus1:TVkUInt16;
+       long_term_pic_num:TVkUInt16;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aModification_of_pic_nums_idc:TStdVideoH264ModificationOfPicNumsIdc;
+                          const aAbs_diff_pic_num_minus1:TVkUInt16;
+                          const aLong_term_pic_num:TVkUInt16);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264RefPicMarkingEntry=^PStdVideoEncodeH264RefPicMarkingEntry;
+     PStdVideoEncodeH264RefPicMarkingEntry=^TStdVideoEncodeH264RefPicMarkingEntry;
+     TStdVideoEncodeH264RefPicMarkingEntry=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       memory_management_control_operation:TStdVideoH264MemMgmtControlOp;
+       difference_of_pic_nums_minus1:TVkUInt16;
+       long_term_pic_num:TVkUInt16;
+       long_term_frame_idx:TVkUInt16;
+       max_long_term_frame_idx_plus1:TVkUInt16;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMemory_management_control_operation:TStdVideoH264MemMgmtControlOp;
+                          const aDifference_of_pic_nums_minus1:TVkUInt16;
+                          const aLong_term_pic_num:TVkUInt16;
+                          const aLong_term_frame_idx:TVkUInt16;
+                          const aMax_long_term_frame_idx_plus1:TVkUInt16);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264ReferenceListsInfo=^PStdVideoEncodeH264ReferenceListsInfo;
+     PStdVideoEncodeH264ReferenceListsInfo=^TStdVideoEncodeH264ReferenceListsInfo;
+     TStdVideoEncodeH264ReferenceListsInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeH264ReferenceListsInfoFlags;
+       num_ref_idx_l0_active_minus1:TVkUInt8;
+       num_ref_idx_l1_active_minus1:TVkUInt8;
+       RefPicList0:array[0..STD_VIDEO_H264_MAX_NUM_LIST_REF-1] of TVkUInt8;
+       RefPicList1:array[0..STD_VIDEO_H264_MAX_NUM_LIST_REF-1] of TVkUInt8;
+       refList0ModOpCount:TVkUInt8;
+       refList1ModOpCount:TVkUInt8;
+       refPicMarkingOpCount:TVkUInt8;
+       reserved1:array[0..6] of TVkUInt8;
+       pRefList0ModOperations:PStdVideoEncodeH264RefListModEntry;
+       pRefList1ModOperations:PStdVideoEncodeH264RefListModEntry;
+       pRefPicMarkingOperations:PStdVideoEncodeH264RefPicMarkingEntry;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeH264ReferenceListsInfoFlags;
+                          const aNum_ref_idx_l0_active_minus1:TVkUInt8;
+                          const aNum_ref_idx_l1_active_minus1:TVkUInt8;
+                          const aRefPicList0:array of TVkUInt8;
+                          const aRefPicList1:array of TVkUInt8;
+                          const aRefList0ModOpCount:TVkUInt8;
+                          const aRefList1ModOpCount:TVkUInt8;
+                          const aRefPicMarkingOpCount:TVkUInt8;
+                          const aReserved1:array of TVkUInt8;
+                          const aPRefList0ModOperations:PStdVideoEncodeH264RefListModEntry;
+                          const aPRefList1ModOperations:PStdVideoEncodeH264RefListModEntry;
+                          const aPRefPicMarkingOperations:PStdVideoEncodeH264RefPicMarkingEntry);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264PictureInfo=^PStdVideoEncodeH264PictureInfo;
+     PStdVideoEncodeH264PictureInfo=^TStdVideoEncodeH264PictureInfo;
+     TStdVideoEncodeH264PictureInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeH264PictureInfoFlags;
+       seq_parameter_set_id:TVkUInt8;
+       pic_parameter_set_id:TVkUInt8;
+       idr_pic_id:TVkUInt16;
+       primary_pic_type:TStdVideoH264PictureType;
+       frame_num:TVkUInt32;
+       PicOrderCnt:TVkInt32;
+       temporal_id:TVkUInt8;
+       reserved1:array[0..2] of TVkUInt8;
+       pRefLists:PStdVideoEncodeH264ReferenceListsInfo;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeH264PictureInfoFlags;
+                          const aSeq_parameter_set_id:TVkUInt8;
+                          const aPic_parameter_set_id:TVkUInt8;
+                          const aIdr_pic_id:TVkUInt16;
+                          const aPrimary_pic_type:TStdVideoH264PictureType;
+                          const aFrame_num:TVkUInt32;
+                          const aPicOrderCnt:TVkInt32;
+                          const aTemporal_id:TVkUInt8;
+                          const aReserved1:array of TVkUInt8;
+                          const aPRefLists:PStdVideoEncodeH264ReferenceListsInfo);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264ReferenceInfo=^PStdVideoEncodeH264ReferenceInfo;
+     PStdVideoEncodeH264ReferenceInfo=^TStdVideoEncodeH264ReferenceInfo;
+     TStdVideoEncodeH264ReferenceInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeH264ReferenceInfoFlags;
+       primary_pic_type:TStdVideoH264PictureType;
+       FrameNum:TVkUInt32;
+       PicOrderCnt:TVkInt32;
+       long_term_pic_num:TVkUInt16;
+       long_term_frame_idx:TVkUInt16;
+       temporal_id:TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeH264ReferenceInfoFlags;
+                          const aPrimary_pic_type:TStdVideoH264PictureType;
+                          const aFrameNum:TVkUInt32;
+                          const aPicOrderCnt:TVkInt32;
+                          const aLong_term_pic_num:TVkUInt16;
+                          const aLong_term_frame_idx:TVkUInt16;
+                          const aTemporal_id:TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH264SliceHeader=^PStdVideoEncodeH264SliceHeader;
+     PStdVideoEncodeH264SliceHeader=^TStdVideoEncodeH264SliceHeader;
+     TStdVideoEncodeH264SliceHeader=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeH264SliceHeaderFlags;
+       first_mb_in_slice:TVkUInt32;
+       slice_type:TStdVideoH264SliceType;
+       slice_alpha_c0_offset_div2:TVkInt8;
+       slice_beta_offset_div2:TVkInt8;
+       slice_qp_delta:TVkInt8;
+       reserved1:TVkUInt8;
+       cabac_init_idc:TStdVideoH264CabacInitIdc;
+       disable_deblocking_filter_idc:TStdVideoH264DisableDeblockingFilterIdc;
+       pWeightTable:PStdVideoEncodeH264WeightTable;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeH264SliceHeaderFlags;
+                          const aFirst_mb_in_slice:TVkUInt32;
+                          const aSlice_type:TStdVideoH264SliceType;
+                          const aSlice_alpha_c0_offset_div2:TVkInt8;
+                          const aSlice_beta_offset_div2:TVkInt8;
+                          const aSlice_qp_delta:TVkInt8;
+                          const aReserved1:TVkUInt8;
+                          const aCabac_init_idc:TStdVideoH264CabacInitIdc;
+                          const aDisable_deblocking_filter_idc:TStdVideoH264DisableDeblockingFilterIdc;
+                          const aPWeightTable:PStdVideoEncodeH264WeightTable);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265ProfileTierLevelFlags=^PStdVideoH265ProfileTierLevelFlags;
+     PStdVideoH265ProfileTierLevelFlags=^TStdVideoH265ProfileTierLevelFlags;
+     TStdVideoH265ProfileTierLevelFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_general_tier_flag:TVkUInt32;
+       procedure Set_general_tier_flag(const aValue:TVkUInt32);
+       property general_tier_flag:TVkUInt32 read Get_general_tier_flag write Set_general_tier_flag;
+       function Get_general_progressive_source_flag:TVkUInt32;
+       procedure Set_general_progressive_source_flag(const aValue:TVkUInt32);
+       property general_progressive_source_flag:TVkUInt32 read Get_general_progressive_source_flag write Set_general_progressive_source_flag;
+       function Get_general_interlaced_source_flag:TVkUInt32;
+       procedure Set_general_interlaced_source_flag(const aValue:TVkUInt32);
+       property general_interlaced_source_flag:TVkUInt32 read Get_general_interlaced_source_flag write Set_general_interlaced_source_flag;
+       function Get_general_non_packed_constraint_flag:TVkUInt32;
+       procedure Set_general_non_packed_constraint_flag(const aValue:TVkUInt32);
+       property general_non_packed_constraint_flag:TVkUInt32 read Get_general_non_packed_constraint_flag write Set_general_non_packed_constraint_flag;
+       function Get_general_frame_only_constraint_flag:TVkUInt32;
+       procedure Set_general_frame_only_constraint_flag(const aValue:TVkUInt32);
+       property general_frame_only_constraint_flag:TVkUInt32 read Get_general_frame_only_constraint_flag write Set_general_frame_only_constraint_flag;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265ProfileTierLevel=^PStdVideoH265ProfileTierLevel;
+     PStdVideoH265ProfileTierLevel=^TStdVideoH265ProfileTierLevel;
+     TStdVideoH265ProfileTierLevel=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoH265ProfileTierLevelFlags;
+       general_profile_idc:TStdVideoH265ProfileIdc;
+       general_level_idc:TStdVideoH265LevelIdc;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoH265ProfileTierLevelFlags;
+                          const aGeneral_profile_idc:TStdVideoH265ProfileIdc;
+                          const aGeneral_level_idc:TStdVideoH265LevelIdc);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265DecPicBufMgr=^PStdVideoH265DecPicBufMgr;
+     PStdVideoH265DecPicBufMgr=^TStdVideoH265DecPicBufMgr;
+     TStdVideoH265DecPicBufMgr=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       max_latency_increase_plus1:array[0..STD_VIDEO_H265_SUBLAYERS_LIST_SIZE-1] of TVkUInt32;
+       max_dec_pic_buffering_minus1:array[0..STD_VIDEO_H265_SUBLAYERS_LIST_SIZE-1] of TVkUInt8;
+       max_num_reorder_pics:array[0..STD_VIDEO_H265_SUBLAYERS_LIST_SIZE-1] of TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMax_latency_increase_plus1:array of TVkUInt32;
+                          const aMax_dec_pic_buffering_minus1:array of TVkUInt8;
+                          const aMax_num_reorder_pics:array of TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265SubLayerHrdParameters=^PStdVideoH265SubLayerHrdParameters;
+     PStdVideoH265SubLayerHrdParameters=^TStdVideoH265SubLayerHrdParameters;
+     TStdVideoH265SubLayerHrdParameters=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       bit_rate_value_minus1:array[0..STD_VIDEO_H265_CPB_CNT_LIST_SIZE-1] of TVkUInt32;
+       cpb_size_value_minus1:array[0..STD_VIDEO_H265_CPB_CNT_LIST_SIZE-1] of TVkUInt32;
+       cpb_size_du_value_minus1:array[0..STD_VIDEO_H265_CPB_CNT_LIST_SIZE-1] of TVkUInt32;
+       bit_rate_du_value_minus1:array[0..STD_VIDEO_H265_CPB_CNT_LIST_SIZE-1] of TVkUInt32;
+       cbr_flag:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aBit_rate_value_minus1:array of TVkUInt32;
+                          const aCpb_size_value_minus1:array of TVkUInt32;
+                          const aCpb_size_du_value_minus1:array of TVkUInt32;
+                          const aBit_rate_du_value_minus1:array of TVkUInt32;
+                          const aCbr_flag:TVkUInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265HrdFlags=^PStdVideoH265HrdFlags;
+     PStdVideoH265HrdFlags=^TStdVideoH265HrdFlags;
+     TStdVideoH265HrdFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_nal_hrd_parameters_present_flag:TVkUInt32;
+       procedure Set_nal_hrd_parameters_present_flag(const aValue:TVkUInt32);
+       property nal_hrd_parameters_present_flag:TVkUInt32 read Get_nal_hrd_parameters_present_flag write Set_nal_hrd_parameters_present_flag;
+       function Get_vcl_hrd_parameters_present_flag:TVkUInt32;
+       procedure Set_vcl_hrd_parameters_present_flag(const aValue:TVkUInt32);
+       property vcl_hrd_parameters_present_flag:TVkUInt32 read Get_vcl_hrd_parameters_present_flag write Set_vcl_hrd_parameters_present_flag;
+       function Get_sub_pic_hrd_params_present_flag:TVkUInt32;
+       procedure Set_sub_pic_hrd_params_present_flag(const aValue:TVkUInt32);
+       property sub_pic_hrd_params_present_flag:TVkUInt32 read Get_sub_pic_hrd_params_present_flag write Set_sub_pic_hrd_params_present_flag;
+       function Get_sub_pic_cpb_params_in_pic_timing_sei_flag:TVkUInt32;
+       procedure Set_sub_pic_cpb_params_in_pic_timing_sei_flag(const aValue:TVkUInt32);
+       property sub_pic_cpb_params_in_pic_timing_sei_flag:TVkUInt32 read Get_sub_pic_cpb_params_in_pic_timing_sei_flag write Set_sub_pic_cpb_params_in_pic_timing_sei_flag;
+       function Get_fixed_pic_rate_general_flag:TVkUInt32;
+       procedure Set_fixed_pic_rate_general_flag(const aValue:TVkUInt32);
+       property fixed_pic_rate_general_flag:TVkUInt32 read Get_fixed_pic_rate_general_flag write Set_fixed_pic_rate_general_flag;
+       function Get_fixed_pic_rate_within_cvs_flag:TVkUInt32;
+       procedure Set_fixed_pic_rate_within_cvs_flag(const aValue:TVkUInt32);
+       property fixed_pic_rate_within_cvs_flag:TVkUInt32 read Get_fixed_pic_rate_within_cvs_flag write Set_fixed_pic_rate_within_cvs_flag;
+       function Get_low_delay_hrd_flag:TVkUInt32;
+       procedure Set_low_delay_hrd_flag(const aValue:TVkUInt32);
+       property low_delay_hrd_flag:TVkUInt32 read Get_low_delay_hrd_flag write Set_low_delay_hrd_flag;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265HrdParameters=^PStdVideoH265HrdParameters;
+     PStdVideoH265HrdParameters=^TStdVideoH265HrdParameters;
+     TStdVideoH265HrdParameters=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoH265HrdFlags;
+       tick_divisor_minus2:TVkUInt8;
+       du_cpb_removal_delay_increment_length_minus1:TVkUInt8;
+       dpb_output_delay_du_length_minus1:TVkUInt8;
+       bit_rate_scale:TVkUInt8;
+       cpb_size_scale:TVkUInt8;
+       cpb_size_du_scale:TVkUInt8;
+       initial_cpb_removal_delay_length_minus1:TVkUInt8;
+       au_cpb_removal_delay_length_minus1:TVkUInt8;
+       dpb_output_delay_length_minus1:TVkUInt8;
+       cpb_cnt_minus1:array[0..STD_VIDEO_H265_SUBLAYERS_LIST_SIZE-1] of TVkUInt8;
+       elemental_duration_in_tc_minus1:array[0..STD_VIDEO_H265_SUBLAYERS_LIST_SIZE-1] of TVkUInt16;
+       reserved:array[0..2] of TVkUInt16; //< NOTE: These arrays are sized according to parameters coming from their encompassing structures
+       pSubLayerHrdParametersNal:PStdVideoH265SubLayerHrdParameters;
+       pSubLayerHrdParametersVcl:PStdVideoH265SubLayerHrdParameters;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoH265HrdFlags;
+                          const aTick_divisor_minus2:TVkUInt8;
+                          const aDu_cpb_removal_delay_increment_length_minus1:TVkUInt8;
+                          const aDpb_output_delay_du_length_minus1:TVkUInt8;
+                          const aBit_rate_scale:TVkUInt8;
+                          const aCpb_size_scale:TVkUInt8;
+                          const aCpb_size_du_scale:TVkUInt8;
+                          const aInitial_cpb_removal_delay_length_minus1:TVkUInt8;
+                          const aAu_cpb_removal_delay_length_minus1:TVkUInt8;
+                          const aDpb_output_delay_length_minus1:TVkUInt8;
+                          const aCpb_cnt_minus1:array of TVkUInt8;
+                          const aElemental_duration_in_tc_minus1:array of TVkUInt16;
+                          const aReserved:array of TVkUInt16; //< NOTE: These arrays are sized according to parameters coming from their encompassing structures
+                          const aPSubLayerHrdParametersNal:PStdVideoH265SubLayerHrdParameters;
+                          const aPSubLayerHrdParametersVcl:PStdVideoH265SubLayerHrdParameters);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265VpsFlags=^PStdVideoH265VpsFlags;
+     PStdVideoH265VpsFlags=^TStdVideoH265VpsFlags;
+     TStdVideoH265VpsFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_vps_temporal_id_nesting_flag:TVkUInt32;
+       procedure Set_vps_temporal_id_nesting_flag(const aValue:TVkUInt32);
+       property vps_temporal_id_nesting_flag:TVkUInt32 read Get_vps_temporal_id_nesting_flag write Set_vps_temporal_id_nesting_flag;
+       function Get_vps_sub_layer_ordering_info_present_flag:TVkUInt32;
+       procedure Set_vps_sub_layer_ordering_info_present_flag(const aValue:TVkUInt32);
+       property vps_sub_layer_ordering_info_present_flag:TVkUInt32 read Get_vps_sub_layer_ordering_info_present_flag write Set_vps_sub_layer_ordering_info_present_flag;
+       function Get_vps_timing_info_present_flag:TVkUInt32;
+       procedure Set_vps_timing_info_present_flag(const aValue:TVkUInt32);
+       property vps_timing_info_present_flag:TVkUInt32 read Get_vps_timing_info_present_flag write Set_vps_timing_info_present_flag;
+       function Get_vps_poc_proportional_to_timing_flag:TVkUInt32;
+       procedure Set_vps_poc_proportional_to_timing_flag(const aValue:TVkUInt32);
+       property vps_poc_proportional_to_timing_flag:TVkUInt32 read Get_vps_poc_proportional_to_timing_flag write Set_vps_poc_proportional_to_timing_flag;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265VideoParameterSet=^PStdVideoH265VideoParameterSet;
+     PStdVideoH265VideoParameterSet=^TStdVideoH265VideoParameterSet;
+     TStdVideoH265VideoParameterSet=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoH265VpsFlags;
+       vps_video_parameter_set_id:TVkUInt8;
+       vps_max_sub_layers_minus1:TVkUInt8;
+       reserved1:TVkUInt8;
+       reserved2:TVkUInt8;
+       vps_num_units_in_tick:TVkUInt32;
+       vps_time_scale:TVkUInt32;
+       vps_num_ticks_poc_diff_one_minus1:TVkUInt32;
+       reserved3:TVkUInt32;
+       pDecPicBufMgr:PStdVideoH265DecPicBufMgr;
+       pHrdParameters:PStdVideoH265HrdParameters;
+       pProfileTierLevel:PStdVideoH265ProfileTierLevel;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoH265VpsFlags;
+                          const aVps_video_parameter_set_id:TVkUInt8;
+                          const aVps_max_sub_layers_minus1:TVkUInt8;
+                          const aReserved1:TVkUInt8;
+                          const aReserved2:TVkUInt8;
+                          const aVps_num_units_in_tick:TVkUInt32;
+                          const aVps_time_scale:TVkUInt32;
+                          const aVps_num_ticks_poc_diff_one_minus1:TVkUInt32;
+                          const aReserved3:TVkUInt32;
+                          const aPDecPicBufMgr:PStdVideoH265DecPicBufMgr;
+                          const aPHrdParameters:PStdVideoH265HrdParameters;
+                          const aPProfileTierLevel:PStdVideoH265ProfileTierLevel);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265ScalingLists=^PStdVideoH265ScalingLists;
+     PStdVideoH265ScalingLists=^TStdVideoH265ScalingLists;
+     TStdVideoH265ScalingLists=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       ScalingList4x4:array[0..STD_VIDEO_H265_SCALING_LIST_4X4_NUM_LISTS-1] of TVkUInt8;
+       ScalingList8x8:array[0..STD_VIDEO_H265_SCALING_LIST_8X8_NUM_LISTS-1] of TVkUInt8;
+       ScalingList16x16:array[0..STD_VIDEO_H265_SCALING_LIST_16X16_NUM_LISTS-1] of TVkUInt8;
+       ScalingList32x32:array[0..STD_VIDEO_H265_SCALING_LIST_32X32_NUM_LISTS-1] of TVkUInt8;
+       ScalingListDCCoef16x16:array[0..STD_VIDEO_H265_SCALING_LIST_16X16_NUM_LISTS-1] of TVkUInt8;
+       ScalingListDCCoef32x32:array[0..STD_VIDEO_H265_SCALING_LIST_32X32_NUM_LISTS-1] of TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aScalingList4x4:array of TVkUInt8;
+                          const aScalingList8x8:array of TVkUInt8;
+                          const aScalingList16x16:array of TVkUInt8;
+                          const aScalingList32x32:array of TVkUInt8;
+                          const aScalingListDCCoef16x16:array of TVkUInt8;
+                          const aScalingListDCCoef32x32:array of TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265ShortTermRefPicSetFlags=^PStdVideoH265ShortTermRefPicSetFlags;
+     PStdVideoH265ShortTermRefPicSetFlags=^TStdVideoH265ShortTermRefPicSetFlags;
+     TStdVideoH265ShortTermRefPicSetFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_inter_ref_pic_set_prediction_flag:TVkUInt32;
+       procedure Set_inter_ref_pic_set_prediction_flag(const aValue:TVkUInt32);
+       property inter_ref_pic_set_prediction_flag:TVkUInt32 read Get_inter_ref_pic_set_prediction_flag write Set_inter_ref_pic_set_prediction_flag;
+       function Get_delta_rps_sign:TVkUInt32;
+       procedure Set_delta_rps_sign(const aValue:TVkUInt32);
+       property delta_rps_sign:TVkUInt32 read Get_delta_rps_sign write Set_delta_rps_sign;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265ShortTermRefPicSet=^PStdVideoH265ShortTermRefPicSet;
+     PStdVideoH265ShortTermRefPicSet=^TStdVideoH265ShortTermRefPicSet;
+     TStdVideoH265ShortTermRefPicSet=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoH265ShortTermRefPicSetFlags;
+       delta_idx_minus1:TVkUInt32;
+       use_delta_flag:TVkUInt16;
+       abs_delta_rps_minus1:TVkUInt16;
+       used_by_curr_pic_flag:TVkUInt16;
+       used_by_curr_pic_s0_flag:TVkUInt16;
+       used_by_curr_pic_s1_flag:TVkUInt16;
+       reserved1:TVkUInt16;
+       reserved2:TVkUInt8;
+       reserved3:TVkUInt8;
+       num_negative_pics:TVkUInt8;
+       num_positive_pics:TVkUInt8;
+       delta_poc_s0_minus1:array[0..STD_VIDEO_H265_MAX_DPB_SIZE-1] of TVkUInt16;
+       delta_poc_s1_minus1:array[0..STD_VIDEO_H265_MAX_DPB_SIZE-1] of TVkUInt16;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoH265ShortTermRefPicSetFlags;
+                          const aDelta_idx_minus1:TVkUInt32;
+                          const aUse_delta_flag:TVkUInt16;
+                          const aAbs_delta_rps_minus1:TVkUInt16;
+                          const aUsed_by_curr_pic_flag:TVkUInt16;
+                          const aUsed_by_curr_pic_s0_flag:TVkUInt16;
+                          const aUsed_by_curr_pic_s1_flag:TVkUInt16;
+                          const aReserved1:TVkUInt16;
+                          const aReserved2:TVkUInt8;
+                          const aReserved3:TVkUInt8;
+                          const aNum_negative_pics:TVkUInt8;
+                          const aNum_positive_pics:TVkUInt8;
+                          const aDelta_poc_s0_minus1:array of TVkUInt16;
+                          const aDelta_poc_s1_minus1:array of TVkUInt16);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265LongTermRefPicsSps=^PStdVideoH265LongTermRefPicsSps;
+     PStdVideoH265LongTermRefPicsSps=^TStdVideoH265LongTermRefPicsSps;
+     TStdVideoH265LongTermRefPicsSps=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       used_by_curr_pic_lt_sps_flag:TVkUInt32;
+       lt_ref_pic_poc_lsb_sps:array[0..STD_VIDEO_H265_MAX_LONG_TERM_REF_PICS_SPS-1] of TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aUsed_by_curr_pic_lt_sps_flag:TVkUInt32;
+                          const aLt_ref_pic_poc_lsb_sps:array of TVkUInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265SpsVuiFlags=^PStdVideoH265SpsVuiFlags;
+     PStdVideoH265SpsVuiFlags=^TStdVideoH265SpsVuiFlags;
+     TStdVideoH265SpsVuiFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_aspect_ratio_info_present_flag:TVkUInt32;
+       procedure Set_aspect_ratio_info_present_flag(const aValue:TVkUInt32);
+       property aspect_ratio_info_present_flag:TVkUInt32 read Get_aspect_ratio_info_present_flag write Set_aspect_ratio_info_present_flag;
+       function Get_overscan_info_present_flag:TVkUInt32;
+       procedure Set_overscan_info_present_flag(const aValue:TVkUInt32);
+       property overscan_info_present_flag:TVkUInt32 read Get_overscan_info_present_flag write Set_overscan_info_present_flag;
+       function Get_overscan_appropriate_flag:TVkUInt32;
+       procedure Set_overscan_appropriate_flag(const aValue:TVkUInt32);
+       property overscan_appropriate_flag:TVkUInt32 read Get_overscan_appropriate_flag write Set_overscan_appropriate_flag;
+       function Get_video_signal_type_present_flag:TVkUInt32;
+       procedure Set_video_signal_type_present_flag(const aValue:TVkUInt32);
+       property video_signal_type_present_flag:TVkUInt32 read Get_video_signal_type_present_flag write Set_video_signal_type_present_flag;
+       function Get_video_full_range_flag:TVkUInt32;
+       procedure Set_video_full_range_flag(const aValue:TVkUInt32);
+       property video_full_range_flag:TVkUInt32 read Get_video_full_range_flag write Set_video_full_range_flag;
+       function Get_colour_description_present_flag:TVkUInt32;
+       procedure Set_colour_description_present_flag(const aValue:TVkUInt32);
+       property colour_description_present_flag:TVkUInt32 read Get_colour_description_present_flag write Set_colour_description_present_flag;
+       function Get_chroma_loc_info_present_flag:TVkUInt32;
+       procedure Set_chroma_loc_info_present_flag(const aValue:TVkUInt32);
+       property chroma_loc_info_present_flag:TVkUInt32 read Get_chroma_loc_info_present_flag write Set_chroma_loc_info_present_flag;
+       function Get_neutral_chroma_indication_flag:TVkUInt32;
+       procedure Set_neutral_chroma_indication_flag(const aValue:TVkUInt32);
+       property neutral_chroma_indication_flag:TVkUInt32 read Get_neutral_chroma_indication_flag write Set_neutral_chroma_indication_flag;
+       function Get_field_seq_flag:TVkUInt32;
+       procedure Set_field_seq_flag(const aValue:TVkUInt32);
+       property field_seq_flag:TVkUInt32 read Get_field_seq_flag write Set_field_seq_flag;
+       function Get_frame_field_info_present_flag:TVkUInt32;
+       procedure Set_frame_field_info_present_flag(const aValue:TVkUInt32);
+       property frame_field_info_present_flag:TVkUInt32 read Get_frame_field_info_present_flag write Set_frame_field_info_present_flag;
+       function Get_default_display_window_flag:TVkUInt32;
+       procedure Set_default_display_window_flag(const aValue:TVkUInt32);
+       property default_display_window_flag:TVkUInt32 read Get_default_display_window_flag write Set_default_display_window_flag;
+       function Get_vui_timing_info_present_flag:TVkUInt32;
+       procedure Set_vui_timing_info_present_flag(const aValue:TVkUInt32);
+       property vui_timing_info_present_flag:TVkUInt32 read Get_vui_timing_info_present_flag write Set_vui_timing_info_present_flag;
+       function Get_vui_poc_proportional_to_timing_flag:TVkUInt32;
+       procedure Set_vui_poc_proportional_to_timing_flag(const aValue:TVkUInt32);
+       property vui_poc_proportional_to_timing_flag:TVkUInt32 read Get_vui_poc_proportional_to_timing_flag write Set_vui_poc_proportional_to_timing_flag;
+       function Get_vui_hrd_parameters_present_flag:TVkUInt32;
+       procedure Set_vui_hrd_parameters_present_flag(const aValue:TVkUInt32);
+       property vui_hrd_parameters_present_flag:TVkUInt32 read Get_vui_hrd_parameters_present_flag write Set_vui_hrd_parameters_present_flag;
+       function Get_bitstream_restriction_flag:TVkUInt32;
+       procedure Set_bitstream_restriction_flag(const aValue:TVkUInt32);
+       property bitstream_restriction_flag:TVkUInt32 read Get_bitstream_restriction_flag write Set_bitstream_restriction_flag;
+       function Get_tiles_fixed_structure_flag:TVkUInt32;
+       procedure Set_tiles_fixed_structure_flag(const aValue:TVkUInt32);
+       property tiles_fixed_structure_flag:TVkUInt32 read Get_tiles_fixed_structure_flag write Set_tiles_fixed_structure_flag;
+       function Get_motion_vectors_over_pic_boundaries_flag:TVkUInt32;
+       procedure Set_motion_vectors_over_pic_boundaries_flag(const aValue:TVkUInt32);
+       property motion_vectors_over_pic_boundaries_flag:TVkUInt32 read Get_motion_vectors_over_pic_boundaries_flag write Set_motion_vectors_over_pic_boundaries_flag;
+       function Get_restricted_ref_pic_lists_flag:TVkUInt32;
+       procedure Set_restricted_ref_pic_lists_flag(const aValue:TVkUInt32);
+       property restricted_ref_pic_lists_flag:TVkUInt32 read Get_restricted_ref_pic_lists_flag write Set_restricted_ref_pic_lists_flag;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265SequenceParameterSetVui=^PStdVideoH265SequenceParameterSetVui;
+     PStdVideoH265SequenceParameterSetVui=^TStdVideoH265SequenceParameterSetVui;
+     TStdVideoH265SequenceParameterSetVui=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoH265SpsVuiFlags;
+       aspect_ratio_idc:TStdVideoH265AspectRatioIdc;
+       sar_width:TVkUInt16;
+       sar_height:TVkUInt16;
+       video_format:TVkUInt8;
+       colour_primaries:TVkUInt8;
+       transfer_characteristics:TVkUInt8;
+       matrix_coeffs:TVkUInt8;
+       chroma_sample_loc_type_top_field:TVkUInt8;
+       chroma_sample_loc_type_bottom_field:TVkUInt8;
+       reserved1:TVkUInt8;
+       reserved2:TVkUInt8;
+       def_disp_win_left_offset:TVkUInt16;
+       def_disp_win_right_offset:TVkUInt16;
+       def_disp_win_top_offset:TVkUInt16;
+       def_disp_win_bottom_offset:TVkUInt16;
+       vui_num_units_in_tick:TVkUInt32;
+       vui_time_scale:TVkUInt32;
+       vui_num_ticks_poc_diff_one_minus1:TVkUInt32;
+       min_spatial_segmentation_idc:TVkUInt16;
+       reserved3:TVkUInt16;
+       max_bytes_per_pic_denom:TVkUInt8;
+       max_bits_per_min_cu_denom:TVkUInt8;
+       log2_max_mv_length_horizontal:TVkUInt8;
+       log2_max_mv_length_vertical:TVkUInt8;
+       pHrdParameters:PStdVideoH265HrdParameters;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoH265SpsVuiFlags;
+                          const aAspect_ratio_idc:TStdVideoH265AspectRatioIdc;
+                          const aSar_width:TVkUInt16;
+                          const aSar_height:TVkUInt16;
+                          const aVideo_format:TVkUInt8;
+                          const aColour_primaries:TVkUInt8;
+                          const aTransfer_characteristics:TVkUInt8;
+                          const aMatrix_coeffs:TVkUInt8;
+                          const aChroma_sample_loc_type_top_field:TVkUInt8;
+                          const aChroma_sample_loc_type_bottom_field:TVkUInt8;
+                          const aReserved1:TVkUInt8;
+                          const aReserved2:TVkUInt8;
+                          const aDef_disp_win_left_offset:TVkUInt16;
+                          const aDef_disp_win_right_offset:TVkUInt16;
+                          const aDef_disp_win_top_offset:TVkUInt16;
+                          const aDef_disp_win_bottom_offset:TVkUInt16;
+                          const aVui_num_units_in_tick:TVkUInt32;
+                          const aVui_time_scale:TVkUInt32;
+                          const aVui_num_ticks_poc_diff_one_minus1:TVkUInt32;
+                          const aMin_spatial_segmentation_idc:TVkUInt16;
+                          const aReserved3:TVkUInt16;
+                          const aMax_bytes_per_pic_denom:TVkUInt8;
+                          const aMax_bits_per_min_cu_denom:TVkUInt8;
+                          const aLog2_max_mv_length_horizontal:TVkUInt8;
+                          const aLog2_max_mv_length_vertical:TVkUInt8;
+                          const aPHrdParameters:PStdVideoH265HrdParameters);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265PredictorPaletteEntries=^PStdVideoH265PredictorPaletteEntries;
+     PStdVideoH265PredictorPaletteEntries=^TStdVideoH265PredictorPaletteEntries;
+     TStdVideoH265PredictorPaletteEntries=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       PredictorPaletteEntries:array[0..STD_VIDEO_H265_PREDICTOR_PALETTE_COMPONENTS_LIST_SIZE-1] of TVkUInt16;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aPredictorPaletteEntries:array of TVkUInt16);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265SpsFlags=^PStdVideoH265SpsFlags;
+     PStdVideoH265SpsFlags=^TStdVideoH265SpsFlags;
+     TStdVideoH265SpsFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_sps_temporal_id_nesting_flag:TVkUInt32;
+       procedure Set_sps_temporal_id_nesting_flag(const aValue:TVkUInt32);
+       property sps_temporal_id_nesting_flag:TVkUInt32 read Get_sps_temporal_id_nesting_flag write Set_sps_temporal_id_nesting_flag;
+       function Get_separate_colour_plane_flag:TVkUInt32;
+       procedure Set_separate_colour_plane_flag(const aValue:TVkUInt32);
+       property separate_colour_plane_flag:TVkUInt32 read Get_separate_colour_plane_flag write Set_separate_colour_plane_flag;
+       function Get_conformance_window_flag:TVkUInt32;
+       procedure Set_conformance_window_flag(const aValue:TVkUInt32);
+       property conformance_window_flag:TVkUInt32 read Get_conformance_window_flag write Set_conformance_window_flag;
+       function Get_sps_sub_layer_ordering_info_present_flag:TVkUInt32;
+       procedure Set_sps_sub_layer_ordering_info_present_flag(const aValue:TVkUInt32);
+       property sps_sub_layer_ordering_info_present_flag:TVkUInt32 read Get_sps_sub_layer_ordering_info_present_flag write Set_sps_sub_layer_ordering_info_present_flag;
+       function Get_scaling_list_enabled_flag:TVkUInt32;
+       procedure Set_scaling_list_enabled_flag(const aValue:TVkUInt32);
+       property scaling_list_enabled_flag:TVkUInt32 read Get_scaling_list_enabled_flag write Set_scaling_list_enabled_flag;
+       function Get_sps_scaling_list_data_present_flag:TVkUInt32;
+       procedure Set_sps_scaling_list_data_present_flag(const aValue:TVkUInt32);
+       property sps_scaling_list_data_present_flag:TVkUInt32 read Get_sps_scaling_list_data_present_flag write Set_sps_scaling_list_data_present_flag;
+       function Get_amp_enabled_flag:TVkUInt32;
+       procedure Set_amp_enabled_flag(const aValue:TVkUInt32);
+       property amp_enabled_flag:TVkUInt32 read Get_amp_enabled_flag write Set_amp_enabled_flag;
+       function Get_sample_adaptive_offset_enabled_flag:TVkUInt32;
+       procedure Set_sample_adaptive_offset_enabled_flag(const aValue:TVkUInt32);
+       property sample_adaptive_offset_enabled_flag:TVkUInt32 read Get_sample_adaptive_offset_enabled_flag write Set_sample_adaptive_offset_enabled_flag;
+       function Get_pcm_enabled_flag:TVkUInt32;
+       procedure Set_pcm_enabled_flag(const aValue:TVkUInt32);
+       property pcm_enabled_flag:TVkUInt32 read Get_pcm_enabled_flag write Set_pcm_enabled_flag;
+       function Get_pcm_loop_filter_disabled_flag:TVkUInt32;
+       procedure Set_pcm_loop_filter_disabled_flag(const aValue:TVkUInt32);
+       property pcm_loop_filter_disabled_flag:TVkUInt32 read Get_pcm_loop_filter_disabled_flag write Set_pcm_loop_filter_disabled_flag;
+       function Get_long_term_ref_pics_present_flag:TVkUInt32;
+       procedure Set_long_term_ref_pics_present_flag(const aValue:TVkUInt32);
+       property long_term_ref_pics_present_flag:TVkUInt32 read Get_long_term_ref_pics_present_flag write Set_long_term_ref_pics_present_flag;
+       function Get_sps_temporal_mvp_enabled_flag:TVkUInt32;
+       procedure Set_sps_temporal_mvp_enabled_flag(const aValue:TVkUInt32);
+       property sps_temporal_mvp_enabled_flag:TVkUInt32 read Get_sps_temporal_mvp_enabled_flag write Set_sps_temporal_mvp_enabled_flag;
+       function Get_strong_intra_smoothing_enabled_flag:TVkUInt32;
+       procedure Set_strong_intra_smoothing_enabled_flag(const aValue:TVkUInt32);
+       property strong_intra_smoothing_enabled_flag:TVkUInt32 read Get_strong_intra_smoothing_enabled_flag write Set_strong_intra_smoothing_enabled_flag;
+       function Get_vui_parameters_present_flag:TVkUInt32;
+       procedure Set_vui_parameters_present_flag(const aValue:TVkUInt32);
+       property vui_parameters_present_flag:TVkUInt32 read Get_vui_parameters_present_flag write Set_vui_parameters_present_flag;
+       function Get_sps_extension_present_flag:TVkUInt32;
+       procedure Set_sps_extension_present_flag(const aValue:TVkUInt32);
+       property sps_extension_present_flag:TVkUInt32 read Get_sps_extension_present_flag write Set_sps_extension_present_flag;
+       function Get_sps_range_extension_flag:TVkUInt32;
+       procedure Set_sps_range_extension_flag(const aValue:TVkUInt32);
+       property sps_range_extension_flag:TVkUInt32 read Get_sps_range_extension_flag write Set_sps_range_extension_flag;
+       function Get_transform_skip_rotation_enabled_flag:TVkUInt32;
+       procedure Set_transform_skip_rotation_enabled_flag(const aValue:TVkUInt32);
+       property transform_skip_rotation_enabled_flag:TVkUInt32 read Get_transform_skip_rotation_enabled_flag write Set_transform_skip_rotation_enabled_flag;
+       function Get_transform_skip_context_enabled_flag:TVkUInt32;
+       procedure Set_transform_skip_context_enabled_flag(const aValue:TVkUInt32);
+       property transform_skip_context_enabled_flag:TVkUInt32 read Get_transform_skip_context_enabled_flag write Set_transform_skip_context_enabled_flag;
+       function Get_implicit_rdpcm_enabled_flag:TVkUInt32;
+       procedure Set_implicit_rdpcm_enabled_flag(const aValue:TVkUInt32);
+       property implicit_rdpcm_enabled_flag:TVkUInt32 read Get_implicit_rdpcm_enabled_flag write Set_implicit_rdpcm_enabled_flag;
+       function Get_explicit_rdpcm_enabled_flag:TVkUInt32;
+       procedure Set_explicit_rdpcm_enabled_flag(const aValue:TVkUInt32);
+       property explicit_rdpcm_enabled_flag:TVkUInt32 read Get_explicit_rdpcm_enabled_flag write Set_explicit_rdpcm_enabled_flag;
+       function Get_extended_precision_processing_flag:TVkUInt32;
+       procedure Set_extended_precision_processing_flag(const aValue:TVkUInt32);
+       property extended_precision_processing_flag:TVkUInt32 read Get_extended_precision_processing_flag write Set_extended_precision_processing_flag;
+       function Get_intra_smoothing_disabled_flag:TVkUInt32;
+       procedure Set_intra_smoothing_disabled_flag(const aValue:TVkUInt32);
+       property intra_smoothing_disabled_flag:TVkUInt32 read Get_intra_smoothing_disabled_flag write Set_intra_smoothing_disabled_flag;
+       function Get_high_precision_offsets_enabled_flag:TVkUInt32;
+       procedure Set_high_precision_offsets_enabled_flag(const aValue:TVkUInt32);
+       property high_precision_offsets_enabled_flag:TVkUInt32 read Get_high_precision_offsets_enabled_flag write Set_high_precision_offsets_enabled_flag;
+       function Get_persistent_rice_adaptation_enabled_flag:TVkUInt32;
+       procedure Set_persistent_rice_adaptation_enabled_flag(const aValue:TVkUInt32);
+       property persistent_rice_adaptation_enabled_flag:TVkUInt32 read Get_persistent_rice_adaptation_enabled_flag write Set_persistent_rice_adaptation_enabled_flag;
+       function Get_cabac_bypass_alignment_enabled_flag:TVkUInt32;
+       procedure Set_cabac_bypass_alignment_enabled_flag(const aValue:TVkUInt32);
+       property cabac_bypass_alignment_enabled_flag:TVkUInt32 read Get_cabac_bypass_alignment_enabled_flag write Set_cabac_bypass_alignment_enabled_flag;
+       function Get_sps_scc_extension_flag:TVkUInt32;
+       procedure Set_sps_scc_extension_flag(const aValue:TVkUInt32);
+       property sps_scc_extension_flag:TVkUInt32 read Get_sps_scc_extension_flag write Set_sps_scc_extension_flag;
+       function Get_sps_curr_pic_ref_enabled_flag:TVkUInt32;
+       procedure Set_sps_curr_pic_ref_enabled_flag(const aValue:TVkUInt32);
+       property sps_curr_pic_ref_enabled_flag:TVkUInt32 read Get_sps_curr_pic_ref_enabled_flag write Set_sps_curr_pic_ref_enabled_flag;
+       function Get_palette_mode_enabled_flag:TVkUInt32;
+       procedure Set_palette_mode_enabled_flag(const aValue:TVkUInt32);
+       property palette_mode_enabled_flag:TVkUInt32 read Get_palette_mode_enabled_flag write Set_palette_mode_enabled_flag;
+       function Get_sps_palette_predictor_initializers_present_flag:TVkUInt32;
+       procedure Set_sps_palette_predictor_initializers_present_flag(const aValue:TVkUInt32);
+       property sps_palette_predictor_initializers_present_flag:TVkUInt32 read Get_sps_palette_predictor_initializers_present_flag write Set_sps_palette_predictor_initializers_present_flag;
+       function Get_intra_boundary_filtering_disabled_flag:TVkUInt32;
+       procedure Set_intra_boundary_filtering_disabled_flag(const aValue:TVkUInt32);
+       property intra_boundary_filtering_disabled_flag:TVkUInt32 read Get_intra_boundary_filtering_disabled_flag write Set_intra_boundary_filtering_disabled_flag;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265SequenceParameterSet=^PStdVideoH265SequenceParameterSet;
+     PStdVideoH265SequenceParameterSet=^TStdVideoH265SequenceParameterSet;
+     TStdVideoH265SequenceParameterSet=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoH265SpsFlags;
+       chroma_format_idc:TStdVideoH265ChromaFormatIdc;
+       pic_width_in_luma_samples:TVkUInt32;
+       pic_height_in_luma_samples:TVkUInt32;
+       sps_video_parameter_set_id:TVkUInt8;
+       sps_max_sub_layers_minus1:TVkUInt8;
+       sps_seq_parameter_set_id:TVkUInt8;
+       bit_depth_luma_minus8:TVkUInt8;
+       bit_depth_chroma_minus8:TVkUInt8;
+       log2_max_pic_order_cnt_lsb_minus4:TVkUInt8;
+       log2_min_luma_coding_block_size_minus3:TVkUInt8;
+       log2_diff_max_min_luma_coding_block_size:TVkUInt8;
+       log2_min_luma_transform_block_size_minus2:TVkUInt8;
+       log2_diff_max_min_luma_transform_block_size:TVkUInt8;
+       max_transform_hierarchy_depth_inter:TVkUInt8;
+       max_transform_hierarchy_depth_intra:TVkUInt8;
+       num_short_term_ref_pic_sets:TVkUInt8;
+       num_long_term_ref_pics_sps:TVkUInt8;
+       pcm_sample_bit_depth_luma_minus1:TVkUInt8;
+       pcm_sample_bit_depth_chroma_minus1:TVkUInt8;
+       log2_min_pcm_luma_coding_block_size_minus3:TVkUInt8;
+       log2_diff_max_min_pcm_luma_coding_block_size:TVkUInt8;
+       reserved1:TVkUInt8;
+       reserved2:TVkUInt8;
+       palette_max_size:TVkUInt8;
+       delta_palette_max_predictor_size:TVkUInt8;
+       motion_vector_resolution_control_idc:TVkUInt8;
+       sps_num_palette_predictor_initializers_minus1:TVkUInt8;
+       conf_win_left_offset:TVkUInt32;
+       conf_win_right_offset:TVkUInt32;
+       conf_win_top_offset:TVkUInt32;
+       conf_win_bottom_offset:TVkUInt32;
+       pProfileTierLevel:PStdVideoH265ProfileTierLevel;
+       pDecPicBufMgr:PStdVideoH265DecPicBufMgr;
+       pScalingLists:PStdVideoH265ScalingLists;
+       pShortTermRefPicSet:PStdVideoH265ShortTermRefPicSet;
+       pLongTermRefPicsSps:PStdVideoH265LongTermRefPicsSps;
+       pSequenceParameterSetVui:PStdVideoH265SequenceParameterSetVui;
+       pPredictorPaletteEntries:PStdVideoH265PredictorPaletteEntries;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoH265SpsFlags;
+                          const aChroma_format_idc:TStdVideoH265ChromaFormatIdc;
+                          const aPic_width_in_luma_samples:TVkUInt32;
+                          const aPic_height_in_luma_samples:TVkUInt32;
+                          const aSps_video_parameter_set_id:TVkUInt8;
+                          const aSps_max_sub_layers_minus1:TVkUInt8;
+                          const aSps_seq_parameter_set_id:TVkUInt8;
+                          const aBit_depth_luma_minus8:TVkUInt8;
+                          const aBit_depth_chroma_minus8:TVkUInt8;
+                          const aLog2_max_pic_order_cnt_lsb_minus4:TVkUInt8;
+                          const aLog2_min_luma_coding_block_size_minus3:TVkUInt8;
+                          const aLog2_diff_max_min_luma_coding_block_size:TVkUInt8;
+                          const aLog2_min_luma_transform_block_size_minus2:TVkUInt8;
+                          const aLog2_diff_max_min_luma_transform_block_size:TVkUInt8;
+                          const aMax_transform_hierarchy_depth_inter:TVkUInt8;
+                          const aMax_transform_hierarchy_depth_intra:TVkUInt8;
+                          const aNum_short_term_ref_pic_sets:TVkUInt8;
+                          const aNum_long_term_ref_pics_sps:TVkUInt8;
+                          const aPcm_sample_bit_depth_luma_minus1:TVkUInt8;
+                          const aPcm_sample_bit_depth_chroma_minus1:TVkUInt8;
+                          const aLog2_min_pcm_luma_coding_block_size_minus3:TVkUInt8;
+                          const aLog2_diff_max_min_pcm_luma_coding_block_size:TVkUInt8;
+                          const aReserved1:TVkUInt8;
+                          const aReserved2:TVkUInt8;
+                          const aPalette_max_size:TVkUInt8;
+                          const aDelta_palette_max_predictor_size:TVkUInt8;
+                          const aMotion_vector_resolution_control_idc:TVkUInt8;
+                          const aSps_num_palette_predictor_initializers_minus1:TVkUInt8;
+                          const aConf_win_left_offset:TVkUInt32;
+                          const aConf_win_right_offset:TVkUInt32;
+                          const aConf_win_top_offset:TVkUInt32;
+                          const aConf_win_bottom_offset:TVkUInt32;
+                          const aPProfileTierLevel:PStdVideoH265ProfileTierLevel;
+                          const aPDecPicBufMgr:PStdVideoH265DecPicBufMgr;
+                          const aPScalingLists:PStdVideoH265ScalingLists;
+                          const aPShortTermRefPicSet:PStdVideoH265ShortTermRefPicSet;
+                          const aPLongTermRefPicsSps:PStdVideoH265LongTermRefPicsSps;
+                          const aPSequenceParameterSetVui:PStdVideoH265SequenceParameterSetVui;
+                          const aPPredictorPaletteEntries:PStdVideoH265PredictorPaletteEntries);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265PpsFlags=^PStdVideoH265PpsFlags;
+     PStdVideoH265PpsFlags=^TStdVideoH265PpsFlags;
+     TStdVideoH265PpsFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_dependent_slice_segments_enabled_flag:TVkUInt32;
+       procedure Set_dependent_slice_segments_enabled_flag(const aValue:TVkUInt32);
+       property dependent_slice_segments_enabled_flag:TVkUInt32 read Get_dependent_slice_segments_enabled_flag write Set_dependent_slice_segments_enabled_flag;
+       function Get_output_flag_present_flag:TVkUInt32;
+       procedure Set_output_flag_present_flag(const aValue:TVkUInt32);
+       property output_flag_present_flag:TVkUInt32 read Get_output_flag_present_flag write Set_output_flag_present_flag;
+       function Get_sign_data_hiding_enabled_flag:TVkUInt32;
+       procedure Set_sign_data_hiding_enabled_flag(const aValue:TVkUInt32);
+       property sign_data_hiding_enabled_flag:TVkUInt32 read Get_sign_data_hiding_enabled_flag write Set_sign_data_hiding_enabled_flag;
+       function Get_cabac_init_present_flag:TVkUInt32;
+       procedure Set_cabac_init_present_flag(const aValue:TVkUInt32);
+       property cabac_init_present_flag:TVkUInt32 read Get_cabac_init_present_flag write Set_cabac_init_present_flag;
+       function Get_constrained_intra_pred_flag:TVkUInt32;
+       procedure Set_constrained_intra_pred_flag(const aValue:TVkUInt32);
+       property constrained_intra_pred_flag:TVkUInt32 read Get_constrained_intra_pred_flag write Set_constrained_intra_pred_flag;
+       function Get_transform_skip_enabled_flag:TVkUInt32;
+       procedure Set_transform_skip_enabled_flag(const aValue:TVkUInt32);
+       property transform_skip_enabled_flag:TVkUInt32 read Get_transform_skip_enabled_flag write Set_transform_skip_enabled_flag;
+       function Get_cu_qp_delta_enabled_flag:TVkUInt32;
+       procedure Set_cu_qp_delta_enabled_flag(const aValue:TVkUInt32);
+       property cu_qp_delta_enabled_flag:TVkUInt32 read Get_cu_qp_delta_enabled_flag write Set_cu_qp_delta_enabled_flag;
+       function Get_pps_slice_chroma_qp_offsets_present_flag:TVkUInt32;
+       procedure Set_pps_slice_chroma_qp_offsets_present_flag(const aValue:TVkUInt32);
+       property pps_slice_chroma_qp_offsets_present_flag:TVkUInt32 read Get_pps_slice_chroma_qp_offsets_present_flag write Set_pps_slice_chroma_qp_offsets_present_flag;
+       function Get_weighted_pred_flag:TVkUInt32;
+       procedure Set_weighted_pred_flag(const aValue:TVkUInt32);
+       property weighted_pred_flag:TVkUInt32 read Get_weighted_pred_flag write Set_weighted_pred_flag;
+       function Get_weighted_bipred_flag:TVkUInt32;
+       procedure Set_weighted_bipred_flag(const aValue:TVkUInt32);
+       property weighted_bipred_flag:TVkUInt32 read Get_weighted_bipred_flag write Set_weighted_bipred_flag;
+       function Get_transquant_bypass_enabled_flag:TVkUInt32;
+       procedure Set_transquant_bypass_enabled_flag(const aValue:TVkUInt32);
+       property transquant_bypass_enabled_flag:TVkUInt32 read Get_transquant_bypass_enabled_flag write Set_transquant_bypass_enabled_flag;
+       function Get_tiles_enabled_flag:TVkUInt32;
+       procedure Set_tiles_enabled_flag(const aValue:TVkUInt32);
+       property tiles_enabled_flag:TVkUInt32 read Get_tiles_enabled_flag write Set_tiles_enabled_flag;
+       function Get_entropy_coding_sync_enabled_flag:TVkUInt32;
+       procedure Set_entropy_coding_sync_enabled_flag(const aValue:TVkUInt32);
+       property entropy_coding_sync_enabled_flag:TVkUInt32 read Get_entropy_coding_sync_enabled_flag write Set_entropy_coding_sync_enabled_flag;
+       function Get_uniform_spacing_flag:TVkUInt32;
+       procedure Set_uniform_spacing_flag(const aValue:TVkUInt32);
+       property uniform_spacing_flag:TVkUInt32 read Get_uniform_spacing_flag write Set_uniform_spacing_flag;
+       function Get_loop_filter_across_tiles_enabled_flag:TVkUInt32;
+       procedure Set_loop_filter_across_tiles_enabled_flag(const aValue:TVkUInt32);
+       property loop_filter_across_tiles_enabled_flag:TVkUInt32 read Get_loop_filter_across_tiles_enabled_flag write Set_loop_filter_across_tiles_enabled_flag;
+       function Get_pps_loop_filter_across_slices_enabled_flag:TVkUInt32;
+       procedure Set_pps_loop_filter_across_slices_enabled_flag(const aValue:TVkUInt32);
+       property pps_loop_filter_across_slices_enabled_flag:TVkUInt32 read Get_pps_loop_filter_across_slices_enabled_flag write Set_pps_loop_filter_across_slices_enabled_flag;
+       function Get_deblocking_filter_control_present_flag:TVkUInt32;
+       procedure Set_deblocking_filter_control_present_flag(const aValue:TVkUInt32);
+       property deblocking_filter_control_present_flag:TVkUInt32 read Get_deblocking_filter_control_present_flag write Set_deblocking_filter_control_present_flag;
+       function Get_deblocking_filter_override_enabled_flag:TVkUInt32;
+       procedure Set_deblocking_filter_override_enabled_flag(const aValue:TVkUInt32);
+       property deblocking_filter_override_enabled_flag:TVkUInt32 read Get_deblocking_filter_override_enabled_flag write Set_deblocking_filter_override_enabled_flag;
+       function Get_pps_deblocking_filter_disabled_flag:TVkUInt32;
+       procedure Set_pps_deblocking_filter_disabled_flag(const aValue:TVkUInt32);
+       property pps_deblocking_filter_disabled_flag:TVkUInt32 read Get_pps_deblocking_filter_disabled_flag write Set_pps_deblocking_filter_disabled_flag;
+       function Get_pps_scaling_list_data_present_flag:TVkUInt32;
+       procedure Set_pps_scaling_list_data_present_flag(const aValue:TVkUInt32);
+       property pps_scaling_list_data_present_flag:TVkUInt32 read Get_pps_scaling_list_data_present_flag write Set_pps_scaling_list_data_present_flag;
+       function Get_lists_modification_present_flag:TVkUInt32;
+       procedure Set_lists_modification_present_flag(const aValue:TVkUInt32);
+       property lists_modification_present_flag:TVkUInt32 read Get_lists_modification_present_flag write Set_lists_modification_present_flag;
+       function Get_slice_segment_header_extension_present_flag:TVkUInt32;
+       procedure Set_slice_segment_header_extension_present_flag(const aValue:TVkUInt32);
+       property slice_segment_header_extension_present_flag:TVkUInt32 read Get_slice_segment_header_extension_present_flag write Set_slice_segment_header_extension_present_flag;
+       function Get_pps_extension_present_flag:TVkUInt32;
+       procedure Set_pps_extension_present_flag(const aValue:TVkUInt32);
+       property pps_extension_present_flag:TVkUInt32 read Get_pps_extension_present_flag write Set_pps_extension_present_flag;
+       function Get_cross_component_prediction_enabled_flag:TVkUInt32;
+       procedure Set_cross_component_prediction_enabled_flag(const aValue:TVkUInt32);
+       property cross_component_prediction_enabled_flag:TVkUInt32 read Get_cross_component_prediction_enabled_flag write Set_cross_component_prediction_enabled_flag;
+       function Get_chroma_qp_offset_list_enabled_flag:TVkUInt32;
+       procedure Set_chroma_qp_offset_list_enabled_flag(const aValue:TVkUInt32);
+       property chroma_qp_offset_list_enabled_flag:TVkUInt32 read Get_chroma_qp_offset_list_enabled_flag write Set_chroma_qp_offset_list_enabled_flag;
+       function Get_pps_curr_pic_ref_enabled_flag:TVkUInt32;
+       procedure Set_pps_curr_pic_ref_enabled_flag(const aValue:TVkUInt32);
+       property pps_curr_pic_ref_enabled_flag:TVkUInt32 read Get_pps_curr_pic_ref_enabled_flag write Set_pps_curr_pic_ref_enabled_flag;
+       function Get_residual_adaptive_colour_transform_enabled_flag:TVkUInt32;
+       procedure Set_residual_adaptive_colour_transform_enabled_flag(const aValue:TVkUInt32);
+       property residual_adaptive_colour_transform_enabled_flag:TVkUInt32 read Get_residual_adaptive_colour_transform_enabled_flag write Set_residual_adaptive_colour_transform_enabled_flag;
+       function Get_pps_slice_act_qp_offsets_present_flag:TVkUInt32;
+       procedure Set_pps_slice_act_qp_offsets_present_flag(const aValue:TVkUInt32);
+       property pps_slice_act_qp_offsets_present_flag:TVkUInt32 read Get_pps_slice_act_qp_offsets_present_flag write Set_pps_slice_act_qp_offsets_present_flag;
+       function Get_pps_palette_predictor_initializers_present_flag:TVkUInt32;
+       procedure Set_pps_palette_predictor_initializers_present_flag(const aValue:TVkUInt32);
+       property pps_palette_predictor_initializers_present_flag:TVkUInt32 read Get_pps_palette_predictor_initializers_present_flag write Set_pps_palette_predictor_initializers_present_flag;
+       function Get_monochrome_palette_flag:TVkUInt32;
+       procedure Set_monochrome_palette_flag(const aValue:TVkUInt32);
+       property monochrome_palette_flag:TVkUInt32 read Get_monochrome_palette_flag write Set_monochrome_palette_flag;
+       function Get_pps_range_extension_flag:TVkUInt32;
+       procedure Set_pps_range_extension_flag(const aValue:TVkUInt32);
+       property pps_range_extension_flag:TVkUInt32 read Get_pps_range_extension_flag write Set_pps_range_extension_flag;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoH265PictureParameterSet=^PStdVideoH265PictureParameterSet;
+     PStdVideoH265PictureParameterSet=^TStdVideoH265PictureParameterSet;
+     TStdVideoH265PictureParameterSet=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoH265PpsFlags;
+       pps_pic_parameter_set_id:TVkUInt8;
+       pps_seq_parameter_set_id:TVkUInt8;
+       sps_video_parameter_set_id:TVkUInt8;
+       num_extra_slice_header_bits:TVkUInt8;
+       num_ref_idx_l0_default_active_minus1:TVkUInt8;
+       num_ref_idx_l1_default_active_minus1:TVkUInt8;
+       init_qp_minus26:TVkInt8;
+       diff_cu_qp_delta_depth:TVkUInt8;
+       pps_cb_qp_offset:TVkInt8;
+       pps_cr_qp_offset:TVkInt8;
+       pps_beta_offset_div2:TVkInt8;
+       pps_tc_offset_div2:TVkInt8;
+       log2_parallel_merge_level_minus2:TVkUInt8;
+       log2_max_transform_skip_block_size_minus2:TVkUInt8;
+       diff_cu_chroma_qp_offset_depth:TVkUInt8;
+       chroma_qp_offset_list_len_minus1:TVkUInt8;
+       cb_qp_offset_list:array[0..STD_VIDEO_H265_CHROMA_QP_OFFSET_LIST_SIZE-1] of TVkInt8;
+       cr_qp_offset_list:array[0..STD_VIDEO_H265_CHROMA_QP_OFFSET_LIST_SIZE-1] of TVkInt8;
+       log2_sao_offset_scale_luma:TVkUInt8;
+       log2_sao_offset_scale_chroma:TVkUInt8;
+       pps_act_y_qp_offset_plus5:TVkInt8;
+       pps_act_cb_qp_offset_plus5:TVkInt8;
+       pps_act_cr_qp_offset_plus3:TVkInt8;
+       pps_num_palette_predictor_initializers:TVkUInt8;
+       luma_bit_depth_entry_minus8:TVkUInt8;
+       chroma_bit_depth_entry_minus8:TVkUInt8;
+       num_tile_columns_minus1:TVkUInt8;
+       num_tile_rows_minus1:TVkUInt8;
+       reserved1:TVkUInt8;
+       reserved2:TVkUInt8;
+       column_width_minus1:array[0..STD_VIDEO_H265_CHROMA_QP_OFFSET_TILE_COLS_LIST_SIZE-1] of TVkUInt16;
+       row_height_minus1:array[0..STD_VIDEO_H265_CHROMA_QP_OFFSET_TILE_ROWS_LIST_SIZE-1] of TVkUInt16;
+       reserved3:TVkUInt32;
+       pScalingLists:PStdVideoH265ScalingLists;
+       pPredictorPaletteEntries:PStdVideoH265PredictorPaletteEntries;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoH265PpsFlags;
+                          const aPps_pic_parameter_set_id:TVkUInt8;
+                          const aPps_seq_parameter_set_id:TVkUInt8;
+                          const aSps_video_parameter_set_id:TVkUInt8;
+                          const aNum_extra_slice_header_bits:TVkUInt8;
+                          const aNum_ref_idx_l0_default_active_minus1:TVkUInt8;
+                          const aNum_ref_idx_l1_default_active_minus1:TVkUInt8;
+                          const aInit_qp_minus26:TVkInt8;
+                          const aDiff_cu_qp_delta_depth:TVkUInt8;
+                          const aPps_cb_qp_offset:TVkInt8;
+                          const aPps_cr_qp_offset:TVkInt8;
+                          const aPps_beta_offset_div2:TVkInt8;
+                          const aPps_tc_offset_div2:TVkInt8;
+                          const aLog2_parallel_merge_level_minus2:TVkUInt8;
+                          const aLog2_max_transform_skip_block_size_minus2:TVkUInt8;
+                          const aDiff_cu_chroma_qp_offset_depth:TVkUInt8;
+                          const aChroma_qp_offset_list_len_minus1:TVkUInt8;
+                          const aCb_qp_offset_list:array of TVkInt8;
+                          const aCr_qp_offset_list:array of TVkInt8;
+                          const aLog2_sao_offset_scale_luma:TVkUInt8;
+                          const aLog2_sao_offset_scale_chroma:TVkUInt8;
+                          const aPps_act_y_qp_offset_plus5:TVkInt8;
+                          const aPps_act_cb_qp_offset_plus5:TVkInt8;
+                          const aPps_act_cr_qp_offset_plus3:TVkInt8;
+                          const aPps_num_palette_predictor_initializers:TVkUInt8;
+                          const aLuma_bit_depth_entry_minus8:TVkUInt8;
+                          const aChroma_bit_depth_entry_minus8:TVkUInt8;
+                          const aNum_tile_columns_minus1:TVkUInt8;
+                          const aNum_tile_rows_minus1:TVkUInt8;
+                          const aReserved1:TVkUInt8;
+                          const aReserved2:TVkUInt8;
+                          const aColumn_width_minus1:array of TVkUInt16;
+                          const aRow_height_minus1:array of TVkUInt16;
+                          const aReserved3:TVkUInt32;
+                          const aPScalingLists:PStdVideoH265ScalingLists;
+                          const aPPredictorPaletteEntries:PStdVideoH265PredictorPaletteEntries);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeH265PictureInfoFlags=^PStdVideoDecodeH265PictureInfoFlags;
+     PStdVideoDecodeH265PictureInfoFlags=^TStdVideoDecodeH265PictureInfoFlags;
+     TStdVideoDecodeH265PictureInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_IrapPicFlag:TVkUInt32;
+       procedure Set_IrapPicFlag(const aValue:TVkUInt32);
+       property IrapPicFlag:TVkUInt32 read Get_IrapPicFlag write Set_IrapPicFlag;
+       function Get_IdrPicFlag:TVkUInt32;
+       procedure Set_IdrPicFlag(const aValue:TVkUInt32);
+       property IdrPicFlag:TVkUInt32 read Get_IdrPicFlag write Set_IdrPicFlag;
+       function Get_IsReference:TVkUInt32;
+       procedure Set_IsReference(const aValue:TVkUInt32);
+       property IsReference:TVkUInt32 read Get_IsReference write Set_IsReference;
+       function Get_short_term_ref_pic_set_sps_flag:TVkUInt32;
+       procedure Set_short_term_ref_pic_set_sps_flag(const aValue:TVkUInt32);
+       property short_term_ref_pic_set_sps_flag:TVkUInt32 read Get_short_term_ref_pic_set_sps_flag write Set_short_term_ref_pic_set_sps_flag;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeH265PictureInfo=^PStdVideoDecodeH265PictureInfo;
+     PStdVideoDecodeH265PictureInfo=^TStdVideoDecodeH265PictureInfo;
+     TStdVideoDecodeH265PictureInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoDecodeH265PictureInfoFlags;
+       sps_video_parameter_set_id:TVkUInt8;
+       pps_seq_parameter_set_id:TVkUInt8;
+       pps_pic_parameter_set_id:TVkUInt8;
+       NumDeltaPocsOfRefRpsIdx:TVkUInt8;
+       PicOrderCntVal:TVkInt32;
+       NumBitsForSTRefPicSetInSlice:TVkUInt16;
+       reserved:TVkUInt16;
+       RefPicSetStCurrBefore:array[0..STD_VIDEO_DECODE_H265_REF_PIC_SET_LIST_SIZE-1] of TVkUInt8;
+       RefPicSetStCurrAfter:array[0..STD_VIDEO_DECODE_H265_REF_PIC_SET_LIST_SIZE-1] of TVkUInt8;
+       RefPicSetLtCurr:array[0..STD_VIDEO_DECODE_H265_REF_PIC_SET_LIST_SIZE-1] of TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoDecodeH265PictureInfoFlags;
+                          const aSps_video_parameter_set_id:TVkUInt8;
+                          const aPps_seq_parameter_set_id:TVkUInt8;
+                          const aPps_pic_parameter_set_id:TVkUInt8;
+                          const aNumDeltaPocsOfRefRpsIdx:TVkUInt8;
+                          const aPicOrderCntVal:TVkInt32;
+                          const aNumBitsForSTRefPicSetInSlice:TVkUInt16;
+                          const aReserved:TVkUInt16;
+                          const aRefPicSetStCurrBefore:array of TVkUInt8;
+                          const aRefPicSetStCurrAfter:array of TVkUInt8;
+                          const aRefPicSetLtCurr:array of TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeH265ReferenceInfoFlags=^PStdVideoDecodeH265ReferenceInfoFlags;
+     PStdVideoDecodeH265ReferenceInfoFlags=^TStdVideoDecodeH265ReferenceInfoFlags;
+     TStdVideoDecodeH265ReferenceInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_used_for_long_term_reference:TVkUInt32;
+       procedure Set_used_for_long_term_reference(const aValue:TVkUInt32);
+       property used_for_long_term_reference:TVkUInt32 read Get_used_for_long_term_reference write Set_used_for_long_term_reference;
+       function Get_unused_for_reference:TVkUInt32;
+       procedure Set_unused_for_reference(const aValue:TVkUInt32);
+       property unused_for_reference:TVkUInt32 read Get_unused_for_reference write Set_unused_for_reference;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeH265ReferenceInfo=^PStdVideoDecodeH265ReferenceInfo;
+     PStdVideoDecodeH265ReferenceInfo=^TStdVideoDecodeH265ReferenceInfo;
+     TStdVideoDecodeH265ReferenceInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoDecodeH265ReferenceInfoFlags;
+       PicOrderCntVal:TVkInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoDecodeH265ReferenceInfoFlags;
+                          const aPicOrderCntVal:TVkInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH265WeightTableFlags=^PStdVideoEncodeH265WeightTableFlags;
+     PStdVideoEncodeH265WeightTableFlags=^TStdVideoEncodeH265WeightTableFlags;
+     TStdVideoEncodeH265WeightTableFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       luma_weight_l0_flag:TVkUInt16;
+       chroma_weight_l0_flag:TVkUInt16;
+       luma_weight_l1_flag:TVkUInt16;
+       chroma_weight_l1_flag:TVkUInt16;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aLuma_weight_l0_flag:TVkUInt16;
+                          const aChroma_weight_l0_flag:TVkUInt16;
+                          const aLuma_weight_l1_flag:TVkUInt16;
+                          const aChroma_weight_l1_flag:TVkUInt16);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH265WeightTable=^PStdVideoEncodeH265WeightTable;
+     PStdVideoEncodeH265WeightTable=^TStdVideoEncodeH265WeightTable;
+     TStdVideoEncodeH265WeightTable=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeH265WeightTableFlags;
+       luma_log2_weight_denom:TVkUInt8;
+       delta_chroma_log2_weight_denom:TVkInt8;
+       delta_luma_weight_l0:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkInt8;
+       luma_offset_l0:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkInt8;
+       delta_chroma_weight_l0:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkInt8;
+       delta_chroma_offset_l0:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkInt8;
+       delta_luma_weight_l1:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkInt8;
+       luma_offset_l1:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkInt8;
+       delta_chroma_weight_l1:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkInt8;
+       delta_chroma_offset_l1:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeH265WeightTableFlags;
+                          const aLuma_log2_weight_denom:TVkUInt8;
+                          const aDelta_chroma_log2_weight_denom:TVkInt8;
+                          const aDelta_luma_weight_l0:array of TVkInt8;
+                          const aLuma_offset_l0:array of TVkInt8;
+                          const aDelta_chroma_weight_l0:array of TVkInt8;
+                          const aDelta_chroma_offset_l0:array of TVkInt8;
+                          const aDelta_luma_weight_l1:array of TVkInt8;
+                          const aLuma_offset_l1:array of TVkInt8;
+                          const aDelta_chroma_weight_l1:array of TVkInt8;
+                          const aDelta_chroma_offset_l1:array of TVkInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH265LongTermRefPics=^PStdVideoEncodeH265LongTermRefPics;
+     PStdVideoEncodeH265LongTermRefPics=^TStdVideoEncodeH265LongTermRefPics;
+     TStdVideoEncodeH265LongTermRefPics=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       num_long_term_sps:TVkUInt8;
+       num_long_term_pics:TVkUInt8;
+       lt_idx_sps:array[0..STD_VIDEO_H265_MAX_LONG_TERM_REF_PICS_SPS-1] of TVkUInt8;
+       poc_lsb_lt:array[0..STD_VIDEO_H265_MAX_LONG_TERM_PICS-1] of TVkUInt8;
+       used_by_curr_pic_lt_flag:TVkUInt16;
+       delta_poc_msb_present_flag:array[0..STD_VIDEO_H265_MAX_DELTA_POC-1] of TVkUInt8;
+       delta_poc_msb_cycle_lt:array[0..STD_VIDEO_H265_MAX_DELTA_POC-1] of TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aNum_long_term_sps:TVkUInt8;
+                          const aNum_long_term_pics:TVkUInt8;
+                          const aLt_idx_sps:array of TVkUInt8;
+                          const aPoc_lsb_lt:array of TVkUInt8;
+                          const aUsed_by_curr_pic_lt_flag:TVkUInt16;
+                          const aDelta_poc_msb_present_flag:array of TVkUInt8;
+                          const aDelta_poc_msb_cycle_lt:array of TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH265SliceSegmentHeaderFlags=^PStdVideoEncodeH265SliceSegmentHeaderFlags;
+     PStdVideoEncodeH265SliceSegmentHeaderFlags=^TStdVideoEncodeH265SliceSegmentHeaderFlags;
+     TStdVideoEncodeH265SliceSegmentHeaderFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_first_slice_segment_in_pic_flag:TVkUInt32;
+       procedure Set_first_slice_segment_in_pic_flag(const aValue:TVkUInt32);
+       property first_slice_segment_in_pic_flag:TVkUInt32 read Get_first_slice_segment_in_pic_flag write Set_first_slice_segment_in_pic_flag;
+       function Get_dependent_slice_segment_flag:TVkUInt32;
+       procedure Set_dependent_slice_segment_flag(const aValue:TVkUInt32);
+       property dependent_slice_segment_flag:TVkUInt32 read Get_dependent_slice_segment_flag write Set_dependent_slice_segment_flag;
+       function Get_slice_sao_luma_flag:TVkUInt32;
+       procedure Set_slice_sao_luma_flag(const aValue:TVkUInt32);
+       property slice_sao_luma_flag:TVkUInt32 read Get_slice_sao_luma_flag write Set_slice_sao_luma_flag;
+       function Get_slice_sao_chroma_flag:TVkUInt32;
+       procedure Set_slice_sao_chroma_flag(const aValue:TVkUInt32);
+       property slice_sao_chroma_flag:TVkUInt32 read Get_slice_sao_chroma_flag write Set_slice_sao_chroma_flag;
+       function Get_num_ref_idx_active_override_flag:TVkUInt32;
+       procedure Set_num_ref_idx_active_override_flag(const aValue:TVkUInt32);
+       property num_ref_idx_active_override_flag:TVkUInt32 read Get_num_ref_idx_active_override_flag write Set_num_ref_idx_active_override_flag;
+       function Get_mvd_l1_zero_flag:TVkUInt32;
+       procedure Set_mvd_l1_zero_flag(const aValue:TVkUInt32);
+       property mvd_l1_zero_flag:TVkUInt32 read Get_mvd_l1_zero_flag write Set_mvd_l1_zero_flag;
+       function Get_cabac_init_flag:TVkUInt32;
+       procedure Set_cabac_init_flag(const aValue:TVkUInt32);
+       property cabac_init_flag:TVkUInt32 read Get_cabac_init_flag write Set_cabac_init_flag;
+       function Get_cu_chroma_qp_offset_enabled_flag:TVkUInt32;
+       procedure Set_cu_chroma_qp_offset_enabled_flag(const aValue:TVkUInt32);
+       property cu_chroma_qp_offset_enabled_flag:TVkUInt32 read Get_cu_chroma_qp_offset_enabled_flag write Set_cu_chroma_qp_offset_enabled_flag;
+       function Get_deblocking_filter_override_flag:TVkUInt32;
+       procedure Set_deblocking_filter_override_flag(const aValue:TVkUInt32);
+       property deblocking_filter_override_flag:TVkUInt32 read Get_deblocking_filter_override_flag write Set_deblocking_filter_override_flag;
+       function Get_slice_deblocking_filter_disabled_flag:TVkUInt32;
+       procedure Set_slice_deblocking_filter_disabled_flag(const aValue:TVkUInt32);
+       property slice_deblocking_filter_disabled_flag:TVkUInt32 read Get_slice_deblocking_filter_disabled_flag write Set_slice_deblocking_filter_disabled_flag;
+       function Get_collocated_from_l0_flag:TVkUInt32;
+       procedure Set_collocated_from_l0_flag(const aValue:TVkUInt32);
+       property collocated_from_l0_flag:TVkUInt32 read Get_collocated_from_l0_flag write Set_collocated_from_l0_flag;
+       function Get_slice_loop_filter_across_slices_enabled_flag:TVkUInt32;
+       procedure Set_slice_loop_filter_across_slices_enabled_flag(const aValue:TVkUInt32);
+       property slice_loop_filter_across_slices_enabled_flag:TVkUInt32 read Get_slice_loop_filter_across_slices_enabled_flag write Set_slice_loop_filter_across_slices_enabled_flag;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH265SliceSegmentHeader=^PStdVideoEncodeH265SliceSegmentHeader;
+     PStdVideoEncodeH265SliceSegmentHeader=^TStdVideoEncodeH265SliceSegmentHeader;
+     TStdVideoEncodeH265SliceSegmentHeader=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeH265SliceSegmentHeaderFlags;
+       slice_type:TStdVideoH265SliceType;
+       slice_segment_address:TVkUInt32;
+       collocated_ref_idx:TVkUInt8;
+       MaxNumMergeCand:TVkUInt8;
+       slice_cb_qp_offset:TVkInt8;
+       slice_cr_qp_offset:TVkInt8;
+       slice_beta_offset_div2:TVkInt8;
+       slice_tc_offset_div2:TVkInt8;
+       slice_act_y_qp_offset:TVkInt8;
+       slice_act_cb_qp_offset:TVkInt8;
+       slice_act_cr_qp_offset:TVkInt8;
+       slice_qp_delta:TVkInt8;
+       reserved1:TVkUInt16;
+       pWeightTable:PStdVideoEncodeH265WeightTable;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeH265SliceSegmentHeaderFlags;
+                          const aSlice_type:TStdVideoH265SliceType;
+                          const aSlice_segment_address:TVkUInt32;
+                          const aCollocated_ref_idx:TVkUInt8;
+                          const aMaxNumMergeCand:TVkUInt8;
+                          const aSlice_cb_qp_offset:TVkInt8;
+                          const aSlice_cr_qp_offset:TVkInt8;
+                          const aSlice_beta_offset_div2:TVkInt8;
+                          const aSlice_tc_offset_div2:TVkInt8;
+                          const aSlice_act_y_qp_offset:TVkInt8;
+                          const aSlice_act_cb_qp_offset:TVkInt8;
+                          const aSlice_act_cr_qp_offset:TVkInt8;
+                          const aSlice_qp_delta:TVkInt8;
+                          const aReserved1:TVkUInt16;
+                          const aPWeightTable:PStdVideoEncodeH265WeightTable);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH265ReferenceListsInfoFlags=^PStdVideoEncodeH265ReferenceListsInfoFlags;
+     PStdVideoEncodeH265ReferenceListsInfoFlags=^TStdVideoEncodeH265ReferenceListsInfoFlags;
+     TStdVideoEncodeH265ReferenceListsInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_ref_pic_list_modification_flag_l0:TVkUInt32;
+       procedure Set_ref_pic_list_modification_flag_l0(const aValue:TVkUInt32);
+       property ref_pic_list_modification_flag_l0:TVkUInt32 read Get_ref_pic_list_modification_flag_l0 write Set_ref_pic_list_modification_flag_l0;
+       function Get_ref_pic_list_modification_flag_l1:TVkUInt32;
+       procedure Set_ref_pic_list_modification_flag_l1(const aValue:TVkUInt32);
+       property ref_pic_list_modification_flag_l1:TVkUInt32 read Get_ref_pic_list_modification_flag_l1 write Set_ref_pic_list_modification_flag_l1;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH265ReferenceListsInfo=^PStdVideoEncodeH265ReferenceListsInfo;
+     PStdVideoEncodeH265ReferenceListsInfo=^TStdVideoEncodeH265ReferenceListsInfo;
+     TStdVideoEncodeH265ReferenceListsInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeH265ReferenceListsInfoFlags;
+       num_ref_idx_l0_active_minus1:TVkUInt8;
+       num_ref_idx_l1_active_minus1:TVkUInt8;
+       RefPicList0:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkUInt8;
+       RefPicList1:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkUInt8;
+       list_entry_l0:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkUInt8;
+       list_entry_l1:array[0..STD_VIDEO_H265_MAX_NUM_LIST_REF-1] of TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeH265ReferenceListsInfoFlags;
+                          const aNum_ref_idx_l0_active_minus1:TVkUInt8;
+                          const aNum_ref_idx_l1_active_minus1:TVkUInt8;
+                          const aRefPicList0:array of TVkUInt8;
+                          const aRefPicList1:array of TVkUInt8;
+                          const aList_entry_l0:array of TVkUInt8;
+                          const aList_entry_l1:array of TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH265PictureInfoFlags=^PStdVideoEncodeH265PictureInfoFlags;
+     PStdVideoEncodeH265PictureInfoFlags=^TStdVideoEncodeH265PictureInfoFlags;
+     TStdVideoEncodeH265PictureInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_is_reference:TVkUInt32;
+       procedure Set_is_reference(const aValue:TVkUInt32);
+       property is_reference:TVkUInt32 read Get_is_reference write Set_is_reference;
+       function Get_IrapPicFlag:TVkUInt32;
+       procedure Set_IrapPicFlag(const aValue:TVkUInt32);
+       property IrapPicFlag:TVkUInt32 read Get_IrapPicFlag write Set_IrapPicFlag;
+       function Get_used_for_long_term_reference:TVkUInt32;
+       procedure Set_used_for_long_term_reference(const aValue:TVkUInt32);
+       property used_for_long_term_reference:TVkUInt32 read Get_used_for_long_term_reference write Set_used_for_long_term_reference;
+       function Get_discardable_flag:TVkUInt32;
+       procedure Set_discardable_flag(const aValue:TVkUInt32);
+       property discardable_flag:TVkUInt32 read Get_discardable_flag write Set_discardable_flag;
+       function Get_cross_layer_bla_flag:TVkUInt32;
+       procedure Set_cross_layer_bla_flag(const aValue:TVkUInt32);
+       property cross_layer_bla_flag:TVkUInt32 read Get_cross_layer_bla_flag write Set_cross_layer_bla_flag;
+       function Get_pic_output_flag:TVkUInt32;
+       procedure Set_pic_output_flag(const aValue:TVkUInt32);
+       property pic_output_flag:TVkUInt32 read Get_pic_output_flag write Set_pic_output_flag;
+       function Get_no_output_of_prior_pics_flag:TVkUInt32;
+       procedure Set_no_output_of_prior_pics_flag(const aValue:TVkUInt32);
+       property no_output_of_prior_pics_flag:TVkUInt32 read Get_no_output_of_prior_pics_flag write Set_no_output_of_prior_pics_flag;
+       function Get_short_term_ref_pic_set_sps_flag:TVkUInt32;
+       procedure Set_short_term_ref_pic_set_sps_flag(const aValue:TVkUInt32);
+       property short_term_ref_pic_set_sps_flag:TVkUInt32 read Get_short_term_ref_pic_set_sps_flag write Set_short_term_ref_pic_set_sps_flag;
+       function Get_slice_temporal_mvp_enabled_flag:TVkUInt32;
+       procedure Set_slice_temporal_mvp_enabled_flag(const aValue:TVkUInt32);
+       property slice_temporal_mvp_enabled_flag:TVkUInt32 read Get_slice_temporal_mvp_enabled_flag write Set_slice_temporal_mvp_enabled_flag;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH265PictureInfo=^PStdVideoEncodeH265PictureInfo;
+     PStdVideoEncodeH265PictureInfo=^TStdVideoEncodeH265PictureInfo;
+     TStdVideoEncodeH265PictureInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeH265PictureInfoFlags;
+       pic_type:TStdVideoH265PictureType;
+       sps_video_parameter_set_id:TVkUInt8;
+       pps_seq_parameter_set_id:TVkUInt8;
+       pps_pic_parameter_set_id:TVkUInt8;
+       short_term_ref_pic_set_idx:TVkUInt8;
+       PicOrderCntVal:TVkInt32;
+       TemporalId:TVkUInt8;
+       reserved1:array[0..6] of TVkUInt8;
+       pRefLists:PStdVideoEncodeH265ReferenceListsInfo;
+       pShortTermRefPicSet:PStdVideoH265ShortTermRefPicSet;
+       pLongTermRefPics:PStdVideoEncodeH265LongTermRefPics;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeH265PictureInfoFlags;
+                          const aPic_type:TStdVideoH265PictureType;
+                          const aSps_video_parameter_set_id:TVkUInt8;
+                          const aPps_seq_parameter_set_id:TVkUInt8;
+                          const aPps_pic_parameter_set_id:TVkUInt8;
+                          const aShort_term_ref_pic_set_idx:TVkUInt8;
+                          const aPicOrderCntVal:TVkInt32;
+                          const aTemporalId:TVkUInt8;
+                          const aReserved1:array of TVkUInt8;
+                          const aPRefLists:PStdVideoEncodeH265ReferenceListsInfo;
+                          const aPShortTermRefPicSet:PStdVideoH265ShortTermRefPicSet;
+                          const aPLongTermRefPics:PStdVideoEncodeH265LongTermRefPics);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH265ReferenceInfoFlags=^PStdVideoEncodeH265ReferenceInfoFlags;
+     PStdVideoEncodeH265ReferenceInfoFlags=^TStdVideoEncodeH265ReferenceInfoFlags;
+     TStdVideoEncodeH265ReferenceInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_used_for_long_term_reference:TVkUInt32;
+       procedure Set_used_for_long_term_reference(const aValue:TVkUInt32);
+       property used_for_long_term_reference:TVkUInt32 read Get_used_for_long_term_reference write Set_used_for_long_term_reference;
+       function Get_unused_for_reference:TVkUInt32;
+       procedure Set_unused_for_reference(const aValue:TVkUInt32);
+       property unused_for_reference:TVkUInt32 read Get_unused_for_reference write Set_unused_for_reference;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeH265ReferenceInfo=^PStdVideoEncodeH265ReferenceInfo;
+     PStdVideoEncodeH265ReferenceInfo=^TStdVideoEncodeH265ReferenceInfo;
+     TStdVideoEncodeH265ReferenceInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeH265ReferenceInfoFlags;
+       pic_type:TStdVideoH265PictureType;
+       PicOrderCntVal:TVkInt32;
+       TemporalId:TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeH265ReferenceInfoFlags;
+                          const aPic_type:TStdVideoH265PictureType;
+                          const aPicOrderCntVal:TVkInt32;
+                          const aTemporalId:TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoVP9ColorConfigFlags=^PStdVideoVP9ColorConfigFlags;
+     PStdVideoVP9ColorConfigFlags=^TStdVideoVP9ColorConfigFlags;
+     TStdVideoVP9ColorConfigFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_color_range:TVkUInt32;
+       procedure Set_color_range(const aValue:TVkUInt32);
+       property color_range:TVkUInt32 read Get_color_range write Set_color_range;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoVP9ColorConfig=^PStdVideoVP9ColorConfig;
+     PStdVideoVP9ColorConfig=^TStdVideoVP9ColorConfig;
+     TStdVideoVP9ColorConfig=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoVP9ColorConfigFlags;
+       BitDepth:TVkUInt8;
+       subsampling_x:TVkUInt8;
+       subsampling_y:TVkUInt8;
+       reserved1:TVkUInt8;
+       color_space:TStdVideoVP9ColorSpace;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoVP9ColorConfigFlags;
+                          const aBitDepth:TVkUInt8;
+                          const aSubsampling_x:TVkUInt8;
+                          const aSubsampling_y:TVkUInt8;
+                          const aReserved1:TVkUInt8;
+                          const aColor_space:TStdVideoVP9ColorSpace);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoVP9LoopFilterFlags=^PStdVideoVP9LoopFilterFlags;
+     PStdVideoVP9LoopFilterFlags=^TStdVideoVP9LoopFilterFlags;
+     TStdVideoVP9LoopFilterFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_loop_filter_delta_enabled:TVkUInt32;
+       procedure Set_loop_filter_delta_enabled(const aValue:TVkUInt32);
+       property loop_filter_delta_enabled:TVkUInt32 read Get_loop_filter_delta_enabled write Set_loop_filter_delta_enabled;
+       function Get_loop_filter_delta_update:TVkUInt32;
+       procedure Set_loop_filter_delta_update(const aValue:TVkUInt32);
+       property loop_filter_delta_update:TVkUInt32 read Get_loop_filter_delta_update write Set_loop_filter_delta_update;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoVP9LoopFilter=^PStdVideoVP9LoopFilter;
+     PStdVideoVP9LoopFilter=^TStdVideoVP9LoopFilter;
+     TStdVideoVP9LoopFilter=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoVP9LoopFilterFlags;
+       loop_filter_level:TVkUInt8;
+       loop_filter_sharpness:TVkUInt8;
+       update_ref_delta:TVkUInt8;
+       loop_filter_ref_deltas:array[0..STD_VIDEO_VP9_MAX_REF_FRAMES-1] of TVkInt8;
+       update_mode_delta:TVkUInt8;
+       loop_filter_mode_deltas:array[0..STD_VIDEO_VP9_LOOP_FILTER_ADJUSTMENTS-1] of TVkInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoVP9LoopFilterFlags;
+                          const aLoop_filter_level:TVkUInt8;
+                          const aLoop_filter_sharpness:TVkUInt8;
+                          const aUpdate_ref_delta:TVkUInt8;
+                          const aLoop_filter_ref_deltas:array of TVkInt8;
+                          const aUpdate_mode_delta:TVkUInt8;
+                          const aLoop_filter_mode_deltas:array of TVkInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoVP9SegmentationFlags=^PStdVideoVP9SegmentationFlags;
+     PStdVideoVP9SegmentationFlags=^TStdVideoVP9SegmentationFlags;
+     TStdVideoVP9SegmentationFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_segmentation_update_map:TVkUInt32;
+       procedure Set_segmentation_update_map(const aValue:TVkUInt32);
+       property segmentation_update_map:TVkUInt32 read Get_segmentation_update_map write Set_segmentation_update_map;
+       function Get_segmentation_temporal_update:TVkUInt32;
+       procedure Set_segmentation_temporal_update(const aValue:TVkUInt32);
+       property segmentation_temporal_update:TVkUInt32 read Get_segmentation_temporal_update write Set_segmentation_temporal_update;
+       function Get_segmentation_update_data:TVkUInt32;
+       procedure Set_segmentation_update_data(const aValue:TVkUInt32);
+       property segmentation_update_data:TVkUInt32 read Get_segmentation_update_data write Set_segmentation_update_data;
+       function Get_segmentation_abs_or_delta_update:TVkUInt32;
+       procedure Set_segmentation_abs_or_delta_update(const aValue:TVkUInt32);
+       property segmentation_abs_or_delta_update:TVkUInt32 read Get_segmentation_abs_or_delta_update write Set_segmentation_abs_or_delta_update;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoVP9Segmentation=^PStdVideoVP9Segmentation;
+     PStdVideoVP9Segmentation=^TStdVideoVP9Segmentation;
+     TStdVideoVP9Segmentation=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoVP9SegmentationFlags;
+       segmentation_tree_probs:array[0..STD_VIDEO_VP9_MAX_SEGMENTATION_TREE_PROBS-1] of TVkUInt8;
+       segmentation_pred_prob:array[0..STD_VIDEO_VP9_MAX_SEGMENTATION_PRED_PROB-1] of TVkUInt8;
+       FeatureEnabled:array[0..STD_VIDEO_VP9_MAX_SEGMENTS-1] of TVkUInt8;
+       FeatureData:array[0..STD_VIDEO_VP9_MAX_SEGMENTS-1] of TVkInt16;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoVP9SegmentationFlags;
+                          const aSegmentation_tree_probs:array of TVkUInt8;
+                          const aSegmentation_pred_prob:array of TVkUInt8;
+                          const aFeatureEnabled:array of TVkUInt8;
+                          const aFeatureData:array of TVkInt16);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeVP9PictureInfoFlags=^PStdVideoDecodeVP9PictureInfoFlags;
+     PStdVideoDecodeVP9PictureInfoFlags=^TStdVideoDecodeVP9PictureInfoFlags;
+     TStdVideoDecodeVP9PictureInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_error_resilient_mode:TVkUInt32;
+       procedure Set_error_resilient_mode(const aValue:TVkUInt32);
+       property error_resilient_mode:TVkUInt32 read Get_error_resilient_mode write Set_error_resilient_mode;
+       function Get_intra_only:TVkUInt32;
+       procedure Set_intra_only(const aValue:TVkUInt32);
+       property intra_only:TVkUInt32 read Get_intra_only write Set_intra_only;
+       function Get_allow_high_precision_mv:TVkUInt32;
+       procedure Set_allow_high_precision_mv(const aValue:TVkUInt32);
+       property allow_high_precision_mv:TVkUInt32 read Get_allow_high_precision_mv write Set_allow_high_precision_mv;
+       function Get_refresh_frame_context:TVkUInt32;
+       procedure Set_refresh_frame_context(const aValue:TVkUInt32);
+       property refresh_frame_context:TVkUInt32 read Get_refresh_frame_context write Set_refresh_frame_context;
+       function Get_frame_parallel_decoding_mode:TVkUInt32;
+       procedure Set_frame_parallel_decoding_mode(const aValue:TVkUInt32);
+       property frame_parallel_decoding_mode:TVkUInt32 read Get_frame_parallel_decoding_mode write Set_frame_parallel_decoding_mode;
+       function Get_segmentation_enabled:TVkUInt32;
+       procedure Set_segmentation_enabled(const aValue:TVkUInt32);
+       property segmentation_enabled:TVkUInt32 read Get_segmentation_enabled write Set_segmentation_enabled;
+       function Get_show_frame:TVkUInt32;
+       procedure Set_show_frame(const aValue:TVkUInt32);
+       property show_frame:TVkUInt32 read Get_show_frame write Set_show_frame;
+       function Get_UsePrevFrameMvs:TVkUInt32;
+       procedure Set_UsePrevFrameMvs(const aValue:TVkUInt32);
+       property UsePrevFrameMvs:TVkUInt32 read Get_UsePrevFrameMvs write Set_UsePrevFrameMvs;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeVP9PictureInfo=^PStdVideoDecodeVP9PictureInfo;
+     PStdVideoDecodeVP9PictureInfo=^TStdVideoDecodeVP9PictureInfo;
+     TStdVideoDecodeVP9PictureInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoDecodeVP9PictureInfoFlags;
+       profile:TStdVideoVP9Profile;
+       frame_type:TStdVideoVP9FrameType;
+       frame_context_idx:TVkUInt8;
+       reset_frame_context:TVkUInt8;
+       refresh_frame_flags:TVkUInt8;
+       ref_frame_sign_bias_mask:TVkUInt8;
+       interpolation_filter:TStdVideoVP9InterpolationFilter;
+       base_q_idx:TVkUInt8;
+       delta_q_y_dc:TVkInt8;
+       delta_q_uv_dc:TVkInt8;
+       delta_q_uv_ac:TVkInt8;
+       tile_cols_log2:TVkUInt8;
+       tile_rows_log2:TVkUInt8;
+       reserved1:array[0..2] of TVkUInt16;
+       pColorConfig:PStdVideoVP9ColorConfig;
+       pLoopFilter:PStdVideoVP9LoopFilter;
+       pSegmentation:PStdVideoVP9Segmentation;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoDecodeVP9PictureInfoFlags;
+                          const aProfile:TStdVideoVP9Profile;
+                          const aFrame_type:TStdVideoVP9FrameType;
+                          const aFrame_context_idx:TVkUInt8;
+                          const aReset_frame_context:TVkUInt8;
+                          const aRefresh_frame_flags:TVkUInt8;
+                          const aRef_frame_sign_bias_mask:TVkUInt8;
+                          const aInterpolation_filter:TStdVideoVP9InterpolationFilter;
+                          const aBase_q_idx:TVkUInt8;
+                          const aDelta_q_y_dc:TVkInt8;
+                          const aDelta_q_uv_dc:TVkInt8;
+                          const aDelta_q_uv_ac:TVkInt8;
+                          const aTile_cols_log2:TVkUInt8;
+                          const aTile_rows_log2:TVkUInt8;
+                          const aReserved1:array of TVkUInt16;
+                          const aPColorConfig:PStdVideoVP9ColorConfig;
+                          const aPLoopFilter:PStdVideoVP9LoopFilter;
+                          const aPSegmentation:PStdVideoVP9Segmentation);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1ColorConfigFlags=^PStdVideoAV1ColorConfigFlags;
+     PStdVideoAV1ColorConfigFlags=^TStdVideoAV1ColorConfigFlags;
+     TStdVideoAV1ColorConfigFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_mono_chrome:TVkUInt32;
+       procedure Set_mono_chrome(const aValue:TVkUInt32);
+       property mono_chrome:TVkUInt32 read Get_mono_chrome write Set_mono_chrome;
+       function Get_color_range:TVkUInt32;
+       procedure Set_color_range(const aValue:TVkUInt32);
+       property color_range:TVkUInt32 read Get_color_range write Set_color_range;
+       function Get_separate_uv_delta_q:TVkUInt32;
+       procedure Set_separate_uv_delta_q(const aValue:TVkUInt32);
+       property separate_uv_delta_q:TVkUInt32 read Get_separate_uv_delta_q write Set_separate_uv_delta_q;
+       function Get_color_description_present_flag:TVkUInt32;
+       procedure Set_color_description_present_flag(const aValue:TVkUInt32);
+       property color_description_present_flag:TVkUInt32 read Get_color_description_present_flag write Set_color_description_present_flag;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1ColorConfig=^PStdVideoAV1ColorConfig;
+     PStdVideoAV1ColorConfig=^TStdVideoAV1ColorConfig;
+     TStdVideoAV1ColorConfig=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoAV1ColorConfigFlags;
+       BitDepth:TVkUInt8;
+       subsampling_x:TVkUInt8;
+       subsampling_y:TVkUInt8;
+       reserved1:TVkUInt8;
+       color_primaries:TStdVideoAV1ColorPrimaries;
+       transfer_characteristics:TStdVideoAV1TransferCharacteristics;
+       matrix_coefficients:TStdVideoAV1MatrixCoefficients;
+       chroma_sample_position:TStdVideoAV1ChromaSamplePosition;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoAV1ColorConfigFlags;
+                          const aBitDepth:TVkUInt8;
+                          const aSubsampling_x:TVkUInt8;
+                          const aSubsampling_y:TVkUInt8;
+                          const aReserved1:TVkUInt8;
+                          const aColor_primaries:TStdVideoAV1ColorPrimaries;
+                          const aTransfer_characteristics:TStdVideoAV1TransferCharacteristics;
+                          const aMatrix_coefficients:TStdVideoAV1MatrixCoefficients;
+                          const aChroma_sample_position:TStdVideoAV1ChromaSamplePosition);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1TimingInfoFlags=^PStdVideoAV1TimingInfoFlags;
+     PStdVideoAV1TimingInfoFlags=^TStdVideoAV1TimingInfoFlags;
+     TStdVideoAV1TimingInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_equal_picture_interval:TVkUInt32;
+       procedure Set_equal_picture_interval(const aValue:TVkUInt32);
+       property equal_picture_interval:TVkUInt32 read Get_equal_picture_interval write Set_equal_picture_interval;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1TimingInfo=^PStdVideoAV1TimingInfo;
+     PStdVideoAV1TimingInfo=^TStdVideoAV1TimingInfo;
+     TStdVideoAV1TimingInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoAV1TimingInfoFlags;
+       num_units_in_display_tick:TVkUInt32;
+       time_scale:TVkUInt32;
+       num_ticks_per_picture_minus_1:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoAV1TimingInfoFlags;
+                          const aNum_units_in_display_tick:TVkUInt32;
+                          const aTime_scale:TVkUInt32;
+                          const aNum_ticks_per_picture_minus_1:TVkUInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1SequenceHeaderFlags=^PStdVideoAV1SequenceHeaderFlags;
+     PStdVideoAV1SequenceHeaderFlags=^TStdVideoAV1SequenceHeaderFlags;
+     TStdVideoAV1SequenceHeaderFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_still_picture:TVkUInt32;
+       procedure Set_still_picture(const aValue:TVkUInt32);
+       property still_picture:TVkUInt32 read Get_still_picture write Set_still_picture;
+       function Get_reduced_still_picture_header:TVkUInt32;
+       procedure Set_reduced_still_picture_header(const aValue:TVkUInt32);
+       property reduced_still_picture_header:TVkUInt32 read Get_reduced_still_picture_header write Set_reduced_still_picture_header;
+       function Get_use_128x128_superblock:TVkUInt32;
+       procedure Set_use_128x128_superblock(const aValue:TVkUInt32);
+       property use_128x128_superblock:TVkUInt32 read Get_use_128x128_superblock write Set_use_128x128_superblock;
+       function Get_enable_filter_intra:TVkUInt32;
+       procedure Set_enable_filter_intra(const aValue:TVkUInt32);
+       property enable_filter_intra:TVkUInt32 read Get_enable_filter_intra write Set_enable_filter_intra;
+       function Get_enable_intra_edge_filter:TVkUInt32;
+       procedure Set_enable_intra_edge_filter(const aValue:TVkUInt32);
+       property enable_intra_edge_filter:TVkUInt32 read Get_enable_intra_edge_filter write Set_enable_intra_edge_filter;
+       function Get_enable_interintra_compound:TVkUInt32;
+       procedure Set_enable_interintra_compound(const aValue:TVkUInt32);
+       property enable_interintra_compound:TVkUInt32 read Get_enable_interintra_compound write Set_enable_interintra_compound;
+       function Get_enable_masked_compound:TVkUInt32;
+       procedure Set_enable_masked_compound(const aValue:TVkUInt32);
+       property enable_masked_compound:TVkUInt32 read Get_enable_masked_compound write Set_enable_masked_compound;
+       function Get_enable_warped_motion:TVkUInt32;
+       procedure Set_enable_warped_motion(const aValue:TVkUInt32);
+       property enable_warped_motion:TVkUInt32 read Get_enable_warped_motion write Set_enable_warped_motion;
+       function Get_enable_dual_filter:TVkUInt32;
+       procedure Set_enable_dual_filter(const aValue:TVkUInt32);
+       property enable_dual_filter:TVkUInt32 read Get_enable_dual_filter write Set_enable_dual_filter;
+       function Get_enable_order_hint:TVkUInt32;
+       procedure Set_enable_order_hint(const aValue:TVkUInt32);
+       property enable_order_hint:TVkUInt32 read Get_enable_order_hint write Set_enable_order_hint;
+       function Get_enable_jnt_comp:TVkUInt32;
+       procedure Set_enable_jnt_comp(const aValue:TVkUInt32);
+       property enable_jnt_comp:TVkUInt32 read Get_enable_jnt_comp write Set_enable_jnt_comp;
+       function Get_enable_ref_frame_mvs:TVkUInt32;
+       procedure Set_enable_ref_frame_mvs(const aValue:TVkUInt32);
+       property enable_ref_frame_mvs:TVkUInt32 read Get_enable_ref_frame_mvs write Set_enable_ref_frame_mvs;
+       function Get_frame_id_numbers_present_flag:TVkUInt32;
+       procedure Set_frame_id_numbers_present_flag(const aValue:TVkUInt32);
+       property frame_id_numbers_present_flag:TVkUInt32 read Get_frame_id_numbers_present_flag write Set_frame_id_numbers_present_flag;
+       function Get_enable_superres:TVkUInt32;
+       procedure Set_enable_superres(const aValue:TVkUInt32);
+       property enable_superres:TVkUInt32 read Get_enable_superres write Set_enable_superres;
+       function Get_enable_cdef:TVkUInt32;
+       procedure Set_enable_cdef(const aValue:TVkUInt32);
+       property enable_cdef:TVkUInt32 read Get_enable_cdef write Set_enable_cdef;
+       function Get_enable_restoration:TVkUInt32;
+       procedure Set_enable_restoration(const aValue:TVkUInt32);
+       property enable_restoration:TVkUInt32 read Get_enable_restoration write Set_enable_restoration;
+       function Get_film_grain_params_present:TVkUInt32;
+       procedure Set_film_grain_params_present(const aValue:TVkUInt32);
+       property film_grain_params_present:TVkUInt32 read Get_film_grain_params_present write Set_film_grain_params_present;
+       function Get_timing_info_present_flag:TVkUInt32;
+       procedure Set_timing_info_present_flag(const aValue:TVkUInt32);
+       property timing_info_present_flag:TVkUInt32 read Get_timing_info_present_flag write Set_timing_info_present_flag;
+       function Get_initial_display_delay_present_flag:TVkUInt32;
+       procedure Set_initial_display_delay_present_flag(const aValue:TVkUInt32);
+       property initial_display_delay_present_flag:TVkUInt32 read Get_initial_display_delay_present_flag write Set_initial_display_delay_present_flag;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1SequenceHeader=^PStdVideoAV1SequenceHeader;
+     PStdVideoAV1SequenceHeader=^TStdVideoAV1SequenceHeader;
+     TStdVideoAV1SequenceHeader=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoAV1SequenceHeaderFlags;
+       seq_profile:TStdVideoAV1Profile;
+       frame_width_bits_minus_1:TVkUInt8;
+       frame_height_bits_minus_1:TVkUInt8;
+       max_frame_width_minus_1:TVkUInt16;
+       max_frame_height_minus_1:TVkUInt16;
+       delta_frame_id_length_minus_2:TVkUInt8;
+       additional_frame_id_length_minus_1:TVkUInt8;
+       order_hint_bits_minus_1:TVkUInt8;
+       seq_force_integer_mv:TVkUInt8;
+       seq_force_screen_content_tools:TVkUInt8;
+       reserved1:array[0..4] of TVkUInt8;
+       pColorConfig:PStdVideoAV1ColorConfig;
+       pTimingInfo:PStdVideoAV1TimingInfo;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoAV1SequenceHeaderFlags;
+                          const aSeq_profile:TStdVideoAV1Profile;
+                          const aFrame_width_bits_minus_1:TVkUInt8;
+                          const aFrame_height_bits_minus_1:TVkUInt8;
+                          const aMax_frame_width_minus_1:TVkUInt16;
+                          const aMax_frame_height_minus_1:TVkUInt16;
+                          const aDelta_frame_id_length_minus_2:TVkUInt8;
+                          const aAdditional_frame_id_length_minus_1:TVkUInt8;
+                          const aOrder_hint_bits_minus_1:TVkUInt8;
+                          const aSeq_force_integer_mv:TVkUInt8;
+                          const aSeq_force_screen_content_tools:TVkUInt8;
+                          const aReserved1:array of TVkUInt8;
+                          const aPColorConfig:PStdVideoAV1ColorConfig;
+                          const aPTimingInfo:PStdVideoAV1TimingInfo);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1LoopFilterFlags=^PStdVideoAV1LoopFilterFlags;
+     PStdVideoAV1LoopFilterFlags=^TStdVideoAV1LoopFilterFlags;
+     TStdVideoAV1LoopFilterFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_loop_filter_delta_enabled:TVkUInt32;
+       procedure Set_loop_filter_delta_enabled(const aValue:TVkUInt32);
+       property loop_filter_delta_enabled:TVkUInt32 read Get_loop_filter_delta_enabled write Set_loop_filter_delta_enabled;
+       function Get_loop_filter_delta_update:TVkUInt32;
+       procedure Set_loop_filter_delta_update(const aValue:TVkUInt32);
+       property loop_filter_delta_update:TVkUInt32 read Get_loop_filter_delta_update write Set_loop_filter_delta_update;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1LoopFilter=^PStdVideoAV1LoopFilter;
+     PStdVideoAV1LoopFilter=^TStdVideoAV1LoopFilter;
+     TStdVideoAV1LoopFilter=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoAV1LoopFilterFlags;
+       loop_filter_level:array[0..STD_VIDEO_AV1_MAX_LOOP_FILTER_STRENGTHS-1] of TVkUInt8;
+       loop_filter_sharpness:TVkUInt8;
+       update_ref_delta:TVkUInt8;
+       loop_filter_ref_deltas:array[0..STD_VIDEO_AV1_TOTAL_REFS_PER_FRAME-1] of TVkInt8;
+       update_mode_delta:TVkUInt8;
+       loop_filter_mode_deltas:array[0..STD_VIDEO_AV1_LOOP_FILTER_ADJUSTMENTS-1] of TVkInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoAV1LoopFilterFlags;
+                          const aLoop_filter_level:array of TVkUInt8;
+                          const aLoop_filter_sharpness:TVkUInt8;
+                          const aUpdate_ref_delta:TVkUInt8;
+                          const aLoop_filter_ref_deltas:array of TVkInt8;
+                          const aUpdate_mode_delta:TVkUInt8;
+                          const aLoop_filter_mode_deltas:array of TVkInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1QuantizationFlags=^PStdVideoAV1QuantizationFlags;
+     PStdVideoAV1QuantizationFlags=^TStdVideoAV1QuantizationFlags;
+     TStdVideoAV1QuantizationFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_using_qmatrix:TVkUInt32;
+       procedure Set_using_qmatrix(const aValue:TVkUInt32);
+       property using_qmatrix:TVkUInt32 read Get_using_qmatrix write Set_using_qmatrix;
+       function Get_diff_uv_delta:TVkUInt32;
+       procedure Set_diff_uv_delta(const aValue:TVkUInt32);
+       property diff_uv_delta:TVkUInt32 read Get_diff_uv_delta write Set_diff_uv_delta;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1Quantization=^PStdVideoAV1Quantization;
+     PStdVideoAV1Quantization=^TStdVideoAV1Quantization;
+     TStdVideoAV1Quantization=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoAV1QuantizationFlags;
+       base_q_idx:TVkUInt8;
+       DeltaQYDc:TVkInt8;
+       DeltaQUDc:TVkInt8;
+       DeltaQUAc:TVkInt8;
+       DeltaQVDc:TVkInt8;
+       DeltaQVAc:TVkInt8;
+       qm_y:TVkUInt8;
+       qm_u:TVkUInt8;
+       qm_v:TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoAV1QuantizationFlags;
+                          const aBase_q_idx:TVkUInt8;
+                          const aDeltaQYDc:TVkInt8;
+                          const aDeltaQUDc:TVkInt8;
+                          const aDeltaQUAc:TVkInt8;
+                          const aDeltaQVDc:TVkInt8;
+                          const aDeltaQVAc:TVkInt8;
+                          const aQm_y:TVkUInt8;
+                          const aQm_u:TVkUInt8;
+                          const aQm_v:TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1Segmentation=^PStdVideoAV1Segmentation;
+     PStdVideoAV1Segmentation=^TStdVideoAV1Segmentation;
+     TStdVideoAV1Segmentation=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       FeatureEnabled:array[0..STD_VIDEO_AV1_MAX_SEGMENTS-1] of TVkUInt8;
+       FeatureData:array[0..STD_VIDEO_AV1_MAX_SEGMENTS-1] of TVkInt16;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFeatureEnabled:array of TVkUInt8;
+                          const aFeatureData:array of TVkInt16);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1TileInfoFlags=^PStdVideoAV1TileInfoFlags;
+     PStdVideoAV1TileInfoFlags=^TStdVideoAV1TileInfoFlags;
+     TStdVideoAV1TileInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_uniform_tile_spacing_flag:TVkUInt32;
+       procedure Set_uniform_tile_spacing_flag(const aValue:TVkUInt32);
+       property uniform_tile_spacing_flag:TVkUInt32 read Get_uniform_tile_spacing_flag write Set_uniform_tile_spacing_flag;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1TileInfo=^PStdVideoAV1TileInfo;
+     PStdVideoAV1TileInfo=^TStdVideoAV1TileInfo;
+     TStdVideoAV1TileInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoAV1TileInfoFlags;
+       TileCols:TVkUInt8;
+       TileRows:TVkUInt8;
+       context_update_tile_id:TVkUInt16;
+       tile_size_bytes_minus_1:TVkUInt8;
+       reserved1:array[0..6] of TVkUInt8;
+       pMiColStarts:PVkUInt16;
+       pMiRowStarts:PVkUInt16;
+       pWidthInSbsMinus1:PVkUInt16;
+       pHeightInSbsMinus1:PVkUInt16;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoAV1TileInfoFlags;
+                          const aTileCols:TVkUInt8;
+                          const aTileRows:TVkUInt8;
+                          const aContext_update_tile_id:TVkUInt16;
+                          const aTile_size_bytes_minus_1:TVkUInt8;
+                          const aReserved1:array of TVkUInt8;
+                          const aPMiColStarts:PVkUInt16;
+                          const aPMiRowStarts:PVkUInt16;
+                          const aPWidthInSbsMinus1:PVkUInt16;
+                          const aPHeightInSbsMinus1:PVkUInt16);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1CDEF=^PStdVideoAV1CDEF;
+     PStdVideoAV1CDEF=^TStdVideoAV1CDEF;
+     TStdVideoAV1CDEF=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       cdef_damping_minus_3:TVkUInt8;
+       cdef_bits:TVkUInt8;
+       cdef_y_pri_strength:array[0..STD_VIDEO_AV1_MAX_CDEF_FILTER_STRENGTHS-1] of TVkUInt8;
+       cdef_y_sec_strength:array[0..STD_VIDEO_AV1_MAX_CDEF_FILTER_STRENGTHS-1] of TVkUInt8;
+       cdef_uv_pri_strength:array[0..STD_VIDEO_AV1_MAX_CDEF_FILTER_STRENGTHS-1] of TVkUInt8;
+       cdef_uv_sec_strength:array[0..STD_VIDEO_AV1_MAX_CDEF_FILTER_STRENGTHS-1] of TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aCdef_damping_minus_3:TVkUInt8;
+                          const aCdef_bits:TVkUInt8;
+                          const aCdef_y_pri_strength:array of TVkUInt8;
+                          const aCdef_y_sec_strength:array of TVkUInt8;
+                          const aCdef_uv_pri_strength:array of TVkUInt8;
+                          const aCdef_uv_sec_strength:array of TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1LoopRestoration=^PStdVideoAV1LoopRestoration;
+     PStdVideoAV1LoopRestoration=^TStdVideoAV1LoopRestoration;
+     TStdVideoAV1LoopRestoration=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       FrameRestorationType:array[0..STD_VIDEO_AV1_MAX_NUM_PLANES-1] of TStdVideoAV1FrameRestorationType;
+       LoopRestorationSize:array[0..STD_VIDEO_AV1_MAX_NUM_PLANES-1] of TVkUInt16;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFrameRestorationType:array of TStdVideoAV1FrameRestorationType;
+                          const aLoopRestorationSize:array of TVkUInt16);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1GlobalMotion=^PStdVideoAV1GlobalMotion;
+     PStdVideoAV1GlobalMotion=^TStdVideoAV1GlobalMotion;
+     TStdVideoAV1GlobalMotion=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       GmType:array[0..STD_VIDEO_AV1_NUM_REF_FRAMES-1] of TVkUInt8;
+       gm_params:array[0..STD_VIDEO_AV1_NUM_REF_FRAMES-1] of TVkInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aGmType:array of TVkUInt8;
+                          const aGm_params:array of TVkInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1FilmGrainFlags=^PStdVideoAV1FilmGrainFlags;
+     PStdVideoAV1FilmGrainFlags=^TStdVideoAV1FilmGrainFlags;
+     TStdVideoAV1FilmGrainFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_chroma_scaling_from_luma:TVkUInt32;
+       procedure Set_chroma_scaling_from_luma(const aValue:TVkUInt32);
+       property chroma_scaling_from_luma:TVkUInt32 read Get_chroma_scaling_from_luma write Set_chroma_scaling_from_luma;
+       function Get_overlap_flag:TVkUInt32;
+       procedure Set_overlap_flag(const aValue:TVkUInt32);
+       property overlap_flag:TVkUInt32 read Get_overlap_flag write Set_overlap_flag;
+       function Get_clip_to_restricted_range:TVkUInt32;
+       procedure Set_clip_to_restricted_range(const aValue:TVkUInt32);
+       property clip_to_restricted_range:TVkUInt32 read Get_clip_to_restricted_range write Set_clip_to_restricted_range;
+       function Get_update_grain:TVkUInt32;
+       procedure Set_update_grain(const aValue:TVkUInt32);
+       property update_grain:TVkUInt32 read Get_update_grain write Set_update_grain;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoAV1FilmGrain=^PStdVideoAV1FilmGrain;
+     PStdVideoAV1FilmGrain=^TStdVideoAV1FilmGrain;
+     TStdVideoAV1FilmGrain=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoAV1FilmGrainFlags;
+       grain_scaling_minus_8:TVkUInt8;
+       ar_coeff_lag:TVkUInt8;
+       ar_coeff_shift_minus_6:TVkUInt8;
+       grain_scale_shift:TVkUInt8;
+       grain_seed:TVkUInt16;
+       film_grain_params_ref_idx:TVkUInt8;
+       num_y_points:TVkUInt8;
+       point_y_value:array[0..STD_VIDEO_AV1_MAX_NUM_Y_POINTS-1] of TVkUInt8;
+       point_y_scaling:array[0..STD_VIDEO_AV1_MAX_NUM_Y_POINTS-1] of TVkUInt8;
+       num_cb_points:TVkUInt8;
+       point_cb_value:array[0..STD_VIDEO_AV1_MAX_NUM_CB_POINTS-1] of TVkUInt8;
+       point_cb_scaling:array[0..STD_VIDEO_AV1_MAX_NUM_CB_POINTS-1] of TVkUInt8;
+       num_cr_points:TVkUInt8;
+       point_cr_value:array[0..STD_VIDEO_AV1_MAX_NUM_CR_POINTS-1] of TVkUInt8;
+       point_cr_scaling:array[0..STD_VIDEO_AV1_MAX_NUM_CR_POINTS-1] of TVkUInt8;
+       ar_coeffs_y_plus_128:array[0..STD_VIDEO_AV1_MAX_NUM_POS_LUMA-1] of TVkInt8;
+       ar_coeffs_cb_plus_128:array[0..STD_VIDEO_AV1_MAX_NUM_POS_CHROMA-1] of TVkInt8;
+       ar_coeffs_cr_plus_128:array[0..STD_VIDEO_AV1_MAX_NUM_POS_CHROMA-1] of TVkInt8;
+       cb_mult:TVkUInt8;
+       cb_luma_mult:TVkUInt8;
+       cb_offset:TVkUInt16;
+       cr_mult:TVkUInt8;
+       cr_luma_mult:TVkUInt8;
+       cr_offset:TVkUInt16;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoAV1FilmGrainFlags;
+                          const aGrain_scaling_minus_8:TVkUInt8;
+                          const aAr_coeff_lag:TVkUInt8;
+                          const aAr_coeff_shift_minus_6:TVkUInt8;
+                          const aGrain_scale_shift:TVkUInt8;
+                          const aGrain_seed:TVkUInt16;
+                          const aFilm_grain_params_ref_idx:TVkUInt8;
+                          const aNum_y_points:TVkUInt8;
+                          const aPoint_y_value:array of TVkUInt8;
+                          const aPoint_y_scaling:array of TVkUInt8;
+                          const aNum_cb_points:TVkUInt8;
+                          const aPoint_cb_value:array of TVkUInt8;
+                          const aPoint_cb_scaling:array of TVkUInt8;
+                          const aNum_cr_points:TVkUInt8;
+                          const aPoint_cr_value:array of TVkUInt8;
+                          const aPoint_cr_scaling:array of TVkUInt8;
+                          const aAr_coeffs_y_plus_128:array of TVkInt8;
+                          const aAr_coeffs_cb_plus_128:array of TVkInt8;
+                          const aAr_coeffs_cr_plus_128:array of TVkInt8;
+                          const aCb_mult:TVkUInt8;
+                          const aCb_luma_mult:TVkUInt8;
+                          const aCb_offset:TVkUInt16;
+                          const aCr_mult:TVkUInt8;
+                          const aCr_luma_mult:TVkUInt8;
+                          const aCr_offset:TVkUInt16);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeAV1PictureInfoFlags=^PStdVideoDecodeAV1PictureInfoFlags;
+     PStdVideoDecodeAV1PictureInfoFlags=^TStdVideoDecodeAV1PictureInfoFlags;
+     TStdVideoDecodeAV1PictureInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_error_resilient_mode:TVkUInt32;
+       procedure Set_error_resilient_mode(const aValue:TVkUInt32);
+       property error_resilient_mode:TVkUInt32 read Get_error_resilient_mode write Set_error_resilient_mode;
+       function Get_disable_cdf_update:TVkUInt32;
+       procedure Set_disable_cdf_update(const aValue:TVkUInt32);
+       property disable_cdf_update:TVkUInt32 read Get_disable_cdf_update write Set_disable_cdf_update;
+       function Get_use_superres:TVkUInt32;
+       procedure Set_use_superres(const aValue:TVkUInt32);
+       property use_superres:TVkUInt32 read Get_use_superres write Set_use_superres;
+       function Get_render_and_frame_size_different:TVkUInt32;
+       procedure Set_render_and_frame_size_different(const aValue:TVkUInt32);
+       property render_and_frame_size_different:TVkUInt32 read Get_render_and_frame_size_different write Set_render_and_frame_size_different;
+       function Get_allow_screen_content_tools:TVkUInt32;
+       procedure Set_allow_screen_content_tools(const aValue:TVkUInt32);
+       property allow_screen_content_tools:TVkUInt32 read Get_allow_screen_content_tools write Set_allow_screen_content_tools;
+       function Get_is_filter_switchable:TVkUInt32;
+       procedure Set_is_filter_switchable(const aValue:TVkUInt32);
+       property is_filter_switchable:TVkUInt32 read Get_is_filter_switchable write Set_is_filter_switchable;
+       function Get_force_integer_mv:TVkUInt32;
+       procedure Set_force_integer_mv(const aValue:TVkUInt32);
+       property force_integer_mv:TVkUInt32 read Get_force_integer_mv write Set_force_integer_mv;
+       function Get_frame_size_override_flag:TVkUInt32;
+       procedure Set_frame_size_override_flag(const aValue:TVkUInt32);
+       property frame_size_override_flag:TVkUInt32 read Get_frame_size_override_flag write Set_frame_size_override_flag;
+       function Get_buffer_removal_time_present_flag:TVkUInt32;
+       procedure Set_buffer_removal_time_present_flag(const aValue:TVkUInt32);
+       property buffer_removal_time_present_flag:TVkUInt32 read Get_buffer_removal_time_present_flag write Set_buffer_removal_time_present_flag;
+       function Get_allow_intrabc:TVkUInt32;
+       procedure Set_allow_intrabc(const aValue:TVkUInt32);
+       property allow_intrabc:TVkUInt32 read Get_allow_intrabc write Set_allow_intrabc;
+       function Get_frame_refs_short_signaling:TVkUInt32;
+       procedure Set_frame_refs_short_signaling(const aValue:TVkUInt32);
+       property frame_refs_short_signaling:TVkUInt32 read Get_frame_refs_short_signaling write Set_frame_refs_short_signaling;
+       function Get_allow_high_precision_mv:TVkUInt32;
+       procedure Set_allow_high_precision_mv(const aValue:TVkUInt32);
+       property allow_high_precision_mv:TVkUInt32 read Get_allow_high_precision_mv write Set_allow_high_precision_mv;
+       function Get_is_motion_mode_switchable:TVkUInt32;
+       procedure Set_is_motion_mode_switchable(const aValue:TVkUInt32);
+       property is_motion_mode_switchable:TVkUInt32 read Get_is_motion_mode_switchable write Set_is_motion_mode_switchable;
+       function Get_use_ref_frame_mvs:TVkUInt32;
+       procedure Set_use_ref_frame_mvs(const aValue:TVkUInt32);
+       property use_ref_frame_mvs:TVkUInt32 read Get_use_ref_frame_mvs write Set_use_ref_frame_mvs;
+       function Get_disable_frame_end_update_cdf:TVkUInt32;
+       procedure Set_disable_frame_end_update_cdf(const aValue:TVkUInt32);
+       property disable_frame_end_update_cdf:TVkUInt32 read Get_disable_frame_end_update_cdf write Set_disable_frame_end_update_cdf;
+       function Get_allow_warped_motion:TVkUInt32;
+       procedure Set_allow_warped_motion(const aValue:TVkUInt32);
+       property allow_warped_motion:TVkUInt32 read Get_allow_warped_motion write Set_allow_warped_motion;
+       function Get_reduced_tx_set:TVkUInt32;
+       procedure Set_reduced_tx_set(const aValue:TVkUInt32);
+       property reduced_tx_set:TVkUInt32 read Get_reduced_tx_set write Set_reduced_tx_set;
+       function Get_reference_select:TVkUInt32;
+       procedure Set_reference_select(const aValue:TVkUInt32);
+       property reference_select:TVkUInt32 read Get_reference_select write Set_reference_select;
+       function Get_skip_mode_present:TVkUInt32;
+       procedure Set_skip_mode_present(const aValue:TVkUInt32);
+       property skip_mode_present:TVkUInt32 read Get_skip_mode_present write Set_skip_mode_present;
+       function Get_delta_q_present:TVkUInt32;
+       procedure Set_delta_q_present(const aValue:TVkUInt32);
+       property delta_q_present:TVkUInt32 read Get_delta_q_present write Set_delta_q_present;
+       function Get_delta_lf_present:TVkUInt32;
+       procedure Set_delta_lf_present(const aValue:TVkUInt32);
+       property delta_lf_present:TVkUInt32 read Get_delta_lf_present write Set_delta_lf_present;
+       function Get_delta_lf_multi:TVkUInt32;
+       procedure Set_delta_lf_multi(const aValue:TVkUInt32);
+       property delta_lf_multi:TVkUInt32 read Get_delta_lf_multi write Set_delta_lf_multi;
+       function Get_segmentation_enabled:TVkUInt32;
+       procedure Set_segmentation_enabled(const aValue:TVkUInt32);
+       property segmentation_enabled:TVkUInt32 read Get_segmentation_enabled write Set_segmentation_enabled;
+       function Get_segmentation_update_map:TVkUInt32;
+       procedure Set_segmentation_update_map(const aValue:TVkUInt32);
+       property segmentation_update_map:TVkUInt32 read Get_segmentation_update_map write Set_segmentation_update_map;
+       function Get_segmentation_temporal_update:TVkUInt32;
+       procedure Set_segmentation_temporal_update(const aValue:TVkUInt32);
+       property segmentation_temporal_update:TVkUInt32 read Get_segmentation_temporal_update write Set_segmentation_temporal_update;
+       function Get_segmentation_update_data:TVkUInt32;
+       procedure Set_segmentation_update_data(const aValue:TVkUInt32);
+       property segmentation_update_data:TVkUInt32 read Get_segmentation_update_data write Set_segmentation_update_data;
+       function Get_UsesLr:TVkUInt32;
+       procedure Set_UsesLr(const aValue:TVkUInt32);
+       property UsesLr:TVkUInt32 read Get_UsesLr write Set_UsesLr;
+       function Get_usesChromaLr:TVkUInt32;
+       procedure Set_usesChromaLr(const aValue:TVkUInt32);
+       property usesChromaLr:TVkUInt32 read Get_usesChromaLr write Set_usesChromaLr;
+       function Get_apply_grain:TVkUInt32;
+       procedure Set_apply_grain(const aValue:TVkUInt32);
+       property apply_grain:TVkUInt32 read Get_apply_grain write Set_apply_grain;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeAV1PictureInfo=^PStdVideoDecodeAV1PictureInfo;
+     PStdVideoDecodeAV1PictureInfo=^TStdVideoDecodeAV1PictureInfo;
+     TStdVideoDecodeAV1PictureInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoDecodeAV1PictureInfoFlags;
+       frame_type:TStdVideoAV1FrameType;
+       current_frame_id:TVkUInt32;
+       OrderHint:TVkUInt8;
+       primary_ref_frame:TVkUInt8;
+       refresh_frame_flags:TVkUInt8;
+       reserved1:TVkUInt8;
+       interpolation_filter:TStdVideoAV1InterpolationFilter;
+       TxMode:TStdVideoAV1TxMode;
+       delta_q_res:TVkUInt8;
+       delta_lf_res:TVkUInt8;
+       SkipModeFrame:array[0..STD_VIDEO_AV1_SKIP_MODE_FRAMES-1] of TVkUInt8;
+       coded_denom:TVkUInt8;
+       reserved2:array[0..2] of TVkUInt8;
+       OrderHints:array[0..STD_VIDEO_AV1_NUM_REF_FRAMES-1] of TVkUInt8;
+       expectedFrameId:array[0..STD_VIDEO_AV1_NUM_REF_FRAMES-1] of TVkUInt32;
+       pTileInfo:PStdVideoAV1TileInfo;
+       pQuantization:PStdVideoAV1Quantization;
+       pSegmentation:PStdVideoAV1Segmentation;
+       pLoopFilter:PStdVideoAV1LoopFilter;
+       pCDEF:PStdVideoAV1CDEF;
+       pLoopRestoration:PStdVideoAV1LoopRestoration;
+       pGlobalMotion:PStdVideoAV1GlobalMotion;
+       pFilmGrain:PStdVideoAV1FilmGrain;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoDecodeAV1PictureInfoFlags;
+                          const aFrame_type:TStdVideoAV1FrameType;
+                          const aCurrent_frame_id:TVkUInt32;
+                          const aOrderHint:TVkUInt8;
+                          const aPrimary_ref_frame:TVkUInt8;
+                          const aRefresh_frame_flags:TVkUInt8;
+                          const aReserved1:TVkUInt8;
+                          const aInterpolation_filter:TStdVideoAV1InterpolationFilter;
+                          const aTxMode:TStdVideoAV1TxMode;
+                          const aDelta_q_res:TVkUInt8;
+                          const aDelta_lf_res:TVkUInt8;
+                          const aSkipModeFrame:array of TVkUInt8;
+                          const aCoded_denom:TVkUInt8;
+                          const aReserved2:array of TVkUInt8;
+                          const aOrderHints:array of TVkUInt8;
+                          const aExpectedFrameId:array of TVkUInt32;
+                          const aPTileInfo:PStdVideoAV1TileInfo;
+                          const aPQuantization:PStdVideoAV1Quantization;
+                          const aPSegmentation:PStdVideoAV1Segmentation;
+                          const aPLoopFilter:PStdVideoAV1LoopFilter;
+                          const aPCDEF:PStdVideoAV1CDEF;
+                          const aPLoopRestoration:PStdVideoAV1LoopRestoration;
+                          const aPGlobalMotion:PStdVideoAV1GlobalMotion;
+                          const aPFilmGrain:PStdVideoAV1FilmGrain);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeAV1ReferenceInfoFlags=^PStdVideoDecodeAV1ReferenceInfoFlags;
+     PStdVideoDecodeAV1ReferenceInfoFlags=^TStdVideoDecodeAV1ReferenceInfoFlags;
+     TStdVideoDecodeAV1ReferenceInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_disable_frame_end_update_cdf:TVkUInt32;
+       procedure Set_disable_frame_end_update_cdf(const aValue:TVkUInt32);
+       property disable_frame_end_update_cdf:TVkUInt32 read Get_disable_frame_end_update_cdf write Set_disable_frame_end_update_cdf;
+       function Get_segmentation_enabled:TVkUInt32;
+       procedure Set_segmentation_enabled(const aValue:TVkUInt32);
+       property segmentation_enabled:TVkUInt32 read Get_segmentation_enabled write Set_segmentation_enabled;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoDecodeAV1ReferenceInfo=^PStdVideoDecodeAV1ReferenceInfo;
+     PStdVideoDecodeAV1ReferenceInfo=^TStdVideoDecodeAV1ReferenceInfo;
+     TStdVideoDecodeAV1ReferenceInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoDecodeAV1ReferenceInfoFlags;
+       frame_type:TVkUInt8;
+       RefFrameSignBias:TVkUInt8;
+       OrderHint:TVkUInt8;
+       SavedOrderHints:array[0..STD_VIDEO_AV1_NUM_REF_FRAMES-1] of TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoDecodeAV1ReferenceInfoFlags;
+                          const aFrame_type:TVkUInt8;
+                          const aRefFrameSignBias:TVkUInt8;
+                          const aOrderHint:TVkUInt8;
+                          const aSavedOrderHints:array of TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeAV1ExtensionHeader=^PStdVideoEncodeAV1ExtensionHeader;
+     PStdVideoEncodeAV1ExtensionHeader=^TStdVideoEncodeAV1ExtensionHeader;
+     TStdVideoEncodeAV1ExtensionHeader=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       temporal_id:TVkUInt8;
+       spatial_id:TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aTemporal_id:TVkUInt8;
+                          const aSpatial_id:TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeAV1DecoderModelInfo=^PStdVideoEncodeAV1DecoderModelInfo;
+     PStdVideoEncodeAV1DecoderModelInfo=^TStdVideoEncodeAV1DecoderModelInfo;
+     TStdVideoEncodeAV1DecoderModelInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       buffer_delay_length_minus_1:TVkUInt8;
+       buffer_removal_time_length_minus_1:TVkUInt8;
+       frame_presentation_time_length_minus_1:TVkUInt8;
+       reserved1:TVkUInt8;
+       num_units_in_decoding_tick:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aBuffer_delay_length_minus_1:TVkUInt8;
+                          const aBuffer_removal_time_length_minus_1:TVkUInt8;
+                          const aFrame_presentation_time_length_minus_1:TVkUInt8;
+                          const aReserved1:TVkUInt8;
+                          const aNum_units_in_decoding_tick:TVkUInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeAV1OperatingPointInfoFlags=^PStdVideoEncodeAV1OperatingPointInfoFlags;
+     PStdVideoEncodeAV1OperatingPointInfoFlags=^TStdVideoEncodeAV1OperatingPointInfoFlags;
+     TStdVideoEncodeAV1OperatingPointInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_decoder_model_present_for_this_op:TVkUInt32;
+       procedure Set_decoder_model_present_for_this_op(const aValue:TVkUInt32);
+       property decoder_model_present_for_this_op:TVkUInt32 read Get_decoder_model_present_for_this_op write Set_decoder_model_present_for_this_op;
+       function Get_low_delay_mode_flag:TVkUInt32;
+       procedure Set_low_delay_mode_flag(const aValue:TVkUInt32);
+       property low_delay_mode_flag:TVkUInt32 read Get_low_delay_mode_flag write Set_low_delay_mode_flag;
+       function Get_initial_display_delay_present_for_this_op:TVkUInt32;
+       procedure Set_initial_display_delay_present_for_this_op(const aValue:TVkUInt32);
+       property initial_display_delay_present_for_this_op:TVkUInt32 read Get_initial_display_delay_present_for_this_op write Set_initial_display_delay_present_for_this_op;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeAV1OperatingPointInfo=^PStdVideoEncodeAV1OperatingPointInfo;
+     PStdVideoEncodeAV1OperatingPointInfo=^TStdVideoEncodeAV1OperatingPointInfo;
+     TStdVideoEncodeAV1OperatingPointInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeAV1OperatingPointInfoFlags;
+       operating_point_idc:TVkUInt16;
+       seq_level_idx:TVkUInt8;
+       seq_tier:TVkUInt8;
+       decoder_buffer_delay:TVkUInt32;
+       encoder_buffer_delay:TVkUInt32;
+       initial_display_delay_minus_1:TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeAV1OperatingPointInfoFlags;
+                          const aOperating_point_idc:TVkUInt16;
+                          const aSeq_level_idx:TVkUInt8;
+                          const aSeq_tier:TVkUInt8;
+                          const aDecoder_buffer_delay:TVkUInt32;
+                          const aEncoder_buffer_delay:TVkUInt32;
+                          const aInitial_display_delay_minus_1:TVkUInt8);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeAV1PictureInfoFlags=^PStdVideoEncodeAV1PictureInfoFlags;
+     PStdVideoEncodeAV1PictureInfoFlags=^TStdVideoEncodeAV1PictureInfoFlags;
+     TStdVideoEncodeAV1PictureInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_error_resilient_mode:TVkUInt32;
+       procedure Set_error_resilient_mode(const aValue:TVkUInt32);
+       property error_resilient_mode:TVkUInt32 read Get_error_resilient_mode write Set_error_resilient_mode;
+       function Get_disable_cdf_update:TVkUInt32;
+       procedure Set_disable_cdf_update(const aValue:TVkUInt32);
+       property disable_cdf_update:TVkUInt32 read Get_disable_cdf_update write Set_disable_cdf_update;
+       function Get_use_superres:TVkUInt32;
+       procedure Set_use_superres(const aValue:TVkUInt32);
+       property use_superres:TVkUInt32 read Get_use_superres write Set_use_superres;
+       function Get_render_and_frame_size_different:TVkUInt32;
+       procedure Set_render_and_frame_size_different(const aValue:TVkUInt32);
+       property render_and_frame_size_different:TVkUInt32 read Get_render_and_frame_size_different write Set_render_and_frame_size_different;
+       function Get_allow_screen_content_tools:TVkUInt32;
+       procedure Set_allow_screen_content_tools(const aValue:TVkUInt32);
+       property allow_screen_content_tools:TVkUInt32 read Get_allow_screen_content_tools write Set_allow_screen_content_tools;
+       function Get_is_filter_switchable:TVkUInt32;
+       procedure Set_is_filter_switchable(const aValue:TVkUInt32);
+       property is_filter_switchable:TVkUInt32 read Get_is_filter_switchable write Set_is_filter_switchable;
+       function Get_force_integer_mv:TVkUInt32;
+       procedure Set_force_integer_mv(const aValue:TVkUInt32);
+       property force_integer_mv:TVkUInt32 read Get_force_integer_mv write Set_force_integer_mv;
+       function Get_frame_size_override_flag:TVkUInt32;
+       procedure Set_frame_size_override_flag(const aValue:TVkUInt32);
+       property frame_size_override_flag:TVkUInt32 read Get_frame_size_override_flag write Set_frame_size_override_flag;
+       function Get_buffer_removal_time_present_flag:TVkUInt32;
+       procedure Set_buffer_removal_time_present_flag(const aValue:TVkUInt32);
+       property buffer_removal_time_present_flag:TVkUInt32 read Get_buffer_removal_time_present_flag write Set_buffer_removal_time_present_flag;
+       function Get_allow_intrabc:TVkUInt32;
+       procedure Set_allow_intrabc(const aValue:TVkUInt32);
+       property allow_intrabc:TVkUInt32 read Get_allow_intrabc write Set_allow_intrabc;
+       function Get_frame_refs_short_signaling:TVkUInt32;
+       procedure Set_frame_refs_short_signaling(const aValue:TVkUInt32);
+       property frame_refs_short_signaling:TVkUInt32 read Get_frame_refs_short_signaling write Set_frame_refs_short_signaling;
+       function Get_allow_high_precision_mv:TVkUInt32;
+       procedure Set_allow_high_precision_mv(const aValue:TVkUInt32);
+       property allow_high_precision_mv:TVkUInt32 read Get_allow_high_precision_mv write Set_allow_high_precision_mv;
+       function Get_is_motion_mode_switchable:TVkUInt32;
+       procedure Set_is_motion_mode_switchable(const aValue:TVkUInt32);
+       property is_motion_mode_switchable:TVkUInt32 read Get_is_motion_mode_switchable write Set_is_motion_mode_switchable;
+       function Get_use_ref_frame_mvs:TVkUInt32;
+       procedure Set_use_ref_frame_mvs(const aValue:TVkUInt32);
+       property use_ref_frame_mvs:TVkUInt32 read Get_use_ref_frame_mvs write Set_use_ref_frame_mvs;
+       function Get_disable_frame_end_update_cdf:TVkUInt32;
+       procedure Set_disable_frame_end_update_cdf(const aValue:TVkUInt32);
+       property disable_frame_end_update_cdf:TVkUInt32 read Get_disable_frame_end_update_cdf write Set_disable_frame_end_update_cdf;
+       function Get_allow_warped_motion:TVkUInt32;
+       procedure Set_allow_warped_motion(const aValue:TVkUInt32);
+       property allow_warped_motion:TVkUInt32 read Get_allow_warped_motion write Set_allow_warped_motion;
+       function Get_reduced_tx_set:TVkUInt32;
+       procedure Set_reduced_tx_set(const aValue:TVkUInt32);
+       property reduced_tx_set:TVkUInt32 read Get_reduced_tx_set write Set_reduced_tx_set;
+       function Get_skip_mode_present:TVkUInt32;
+       procedure Set_skip_mode_present(const aValue:TVkUInt32);
+       property skip_mode_present:TVkUInt32 read Get_skip_mode_present write Set_skip_mode_present;
+       function Get_delta_q_present:TVkUInt32;
+       procedure Set_delta_q_present(const aValue:TVkUInt32);
+       property delta_q_present:TVkUInt32 read Get_delta_q_present write Set_delta_q_present;
+       function Get_delta_lf_present:TVkUInt32;
+       procedure Set_delta_lf_present(const aValue:TVkUInt32);
+       property delta_lf_present:TVkUInt32 read Get_delta_lf_present write Set_delta_lf_present;
+       function Get_delta_lf_multi:TVkUInt32;
+       procedure Set_delta_lf_multi(const aValue:TVkUInt32);
+       property delta_lf_multi:TVkUInt32 read Get_delta_lf_multi write Set_delta_lf_multi;
+       function Get_segmentation_enabled:TVkUInt32;
+       procedure Set_segmentation_enabled(const aValue:TVkUInt32);
+       property segmentation_enabled:TVkUInt32 read Get_segmentation_enabled write Set_segmentation_enabled;
+       function Get_segmentation_update_map:TVkUInt32;
+       procedure Set_segmentation_update_map(const aValue:TVkUInt32);
+       property segmentation_update_map:TVkUInt32 read Get_segmentation_update_map write Set_segmentation_update_map;
+       function Get_segmentation_temporal_update:TVkUInt32;
+       procedure Set_segmentation_temporal_update(const aValue:TVkUInt32);
+       property segmentation_temporal_update:TVkUInt32 read Get_segmentation_temporal_update write Set_segmentation_temporal_update;
+       function Get_segmentation_update_data:TVkUInt32;
+       procedure Set_segmentation_update_data(const aValue:TVkUInt32);
+       property segmentation_update_data:TVkUInt32 read Get_segmentation_update_data write Set_segmentation_update_data;
+       function Get_UsesLr:TVkUInt32;
+       procedure Set_UsesLr(const aValue:TVkUInt32);
+       property UsesLr:TVkUInt32 read Get_UsesLr write Set_UsesLr;
+       function Get_usesChromaLr:TVkUInt32;
+       procedure Set_usesChromaLr(const aValue:TVkUInt32);
+       property usesChromaLr:TVkUInt32 read Get_usesChromaLr write Set_usesChromaLr;
+       function Get_show_frame:TVkUInt32;
+       procedure Set_show_frame(const aValue:TVkUInt32);
+       property show_frame:TVkUInt32 read Get_show_frame write Set_show_frame;
+       function Get_showable_frame:TVkUInt32;
+       procedure Set_showable_frame(const aValue:TVkUInt32);
+       property showable_frame:TVkUInt32 read Get_showable_frame write Set_showable_frame;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeAV1PictureInfo=^PStdVideoEncodeAV1PictureInfo;
+     PStdVideoEncodeAV1PictureInfo=^TStdVideoEncodeAV1PictureInfo;
+     TStdVideoEncodeAV1PictureInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeAV1PictureInfoFlags;
+       frame_type:TStdVideoAV1FrameType;
+       frame_presentation_time:TVkUInt32;
+       current_frame_id:TVkUInt32;
+       order_hint:TVkUInt8;
+       primary_ref_frame:TVkUInt8;
+       refresh_frame_flags:TVkUInt8;
+       coded_denom:TVkUInt8;
+       render_width_minus_1:TVkUInt16;
+       render_height_minus_1:TVkUInt16;
+       interpolation_filter:TStdVideoAV1InterpolationFilter;
+       TxMode:TStdVideoAV1TxMode;
+       delta_q_res:TVkUInt8;
+       delta_lf_res:TVkUInt8;
+       ref_order_hint:array[0..STD_VIDEO_AV1_NUM_REF_FRAMES-1] of TVkUInt8;
+       ref_frame_idx:array[0..STD_VIDEO_AV1_REFS_PER_FRAME-1] of TVkInt8;
+       reserved1:array[0..2] of TVkUInt8;
+       delta_frame_id_minus_1:array[0..STD_VIDEO_AV1_REFS_PER_FRAME-1] of TVkUInt32;
+       pTileInfo:PStdVideoAV1TileInfo;
+       pQuantization:PStdVideoAV1Quantization;
+       pSegmentation:PStdVideoAV1Segmentation;
+       pLoopFilter:PStdVideoAV1LoopFilter;
+       pCDEF:PStdVideoAV1CDEF;
+       pLoopRestoration:PStdVideoAV1LoopRestoration;
+       pGlobalMotion:PStdVideoAV1GlobalMotion;
+       pExtensionHeader:PStdVideoEncodeAV1ExtensionHeader;
+       pBufferRemovalTimes:PVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeAV1PictureInfoFlags;
+                          const aFrame_type:TStdVideoAV1FrameType;
+                          const aFrame_presentation_time:TVkUInt32;
+                          const aCurrent_frame_id:TVkUInt32;
+                          const aOrder_hint:TVkUInt8;
+                          const aPrimary_ref_frame:TVkUInt8;
+                          const aRefresh_frame_flags:TVkUInt8;
+                          const aCoded_denom:TVkUInt8;
+                          const aRender_width_minus_1:TVkUInt16;
+                          const aRender_height_minus_1:TVkUInt16;
+                          const aInterpolation_filter:TStdVideoAV1InterpolationFilter;
+                          const aTxMode:TStdVideoAV1TxMode;
+                          const aDelta_q_res:TVkUInt8;
+                          const aDelta_lf_res:TVkUInt8;
+                          const aRef_order_hint:array of TVkUInt8;
+                          const aRef_frame_idx:array of TVkInt8;
+                          const aReserved1:array of TVkUInt8;
+                          const aDelta_frame_id_minus_1:array of TVkUInt32;
+                          const aPTileInfo:PStdVideoAV1TileInfo;
+                          const aPQuantization:PStdVideoAV1Quantization;
+                          const aPSegmentation:PStdVideoAV1Segmentation;
+                          const aPLoopFilter:PStdVideoAV1LoopFilter;
+                          const aPCDEF:PStdVideoAV1CDEF;
+                          const aPLoopRestoration:PStdVideoAV1LoopRestoration;
+                          const aPGlobalMotion:PStdVideoAV1GlobalMotion;
+                          const aPExtensionHeader:PStdVideoEncodeAV1ExtensionHeader;
+                          const aPBufferRemovalTimes:PVkUInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeAV1ReferenceInfoFlags=^PStdVideoEncodeAV1ReferenceInfoFlags;
+     PStdVideoEncodeAV1ReferenceInfoFlags=^TStdVideoEncodeAV1ReferenceInfoFlags;
+     TStdVideoEncodeAV1ReferenceInfoFlags=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       _bitfield:TVkUInt32; // packed bitfield storage
+{$ifdef HAS_ADVANCED_RECORDS}
+       function Get_disable_frame_end_update_cdf:TVkUInt32;
+       procedure Set_disable_frame_end_update_cdf(const aValue:TVkUInt32);
+       property disable_frame_end_update_cdf:TVkUInt32 read Get_disable_frame_end_update_cdf write Set_disable_frame_end_update_cdf;
+       function Get_segmentation_enabled:TVkUInt32;
+       procedure Set_segmentation_enabled(const aValue:TVkUInt32);
+       property segmentation_enabled:TVkUInt32 read Get_segmentation_enabled write Set_segmentation_enabled;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+{$endif}
+     end;
+{$endif}
+
+{$ifdef VkStdVideo}
+     PPStdVideoEncodeAV1ReferenceInfo=^PStdVideoEncodeAV1ReferenceInfo;
+     PStdVideoEncodeAV1ReferenceInfo=^TStdVideoEncodeAV1ReferenceInfo;
+     TStdVideoEncodeAV1ReferenceInfo=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       flags:TStdVideoEncodeAV1ReferenceInfoFlags;
+       RefFrameId:TVkUInt32;
+       frame_type:TStdVideoAV1FrameType;
+       OrderHint:TVkUInt8;
+       reserved1:array[0..2] of TVkUInt8;
+       pExtensionHeader:PStdVideoEncodeAV1ExtensionHeader;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TStdVideoEncodeAV1ReferenceInfoFlags;
+                          const aRefFrameId:TVkUInt32;
+                          const aFrame_type:TStdVideoAV1FrameType;
+                          const aOrderHint:TVkUInt8;
+                          const aReserved1:array of TVkUInt8;
+                          const aPExtensionHeader:PStdVideoEncodeAV1ExtensionHeader);
+{$endif}
+     end;
+{$endif}
+
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
      PPFN_vkInternalAllocationNotification=^TPFN_vkInternalAllocationNotification;
      TPFN_vkInternalAllocationNotification=procedure(pUserData:PVkVoid;size:TVkSize;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -13886,13 +17816,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       geometryIndex:TVkUInt32;
-       reserved:TVkUInt32;
-       geometryFlags:TVkUInt32;
+       _bitfield:TVkUInt32; // packed bitfield storage
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aGeometryIndex:TVkUInt32;
-                          const aReserved:TVkUInt32;
-                          const aGeometryFlags:TVkUInt32);
+       function Get_geometryIndex:TVkUInt32;
+       procedure Set_geometryIndex(const aValue:TVkUInt32);
+       property geometryIndex:TVkUInt32 read Get_geometryIndex write Set_geometryIndex;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
+       function Get_geometryFlags:TVkUInt32;
+       procedure Set_geometryFlags(const aValue:TVkUInt32);
+       property geometryFlags:TVkUInt32 read Get_geometryFlags write Set_geometryFlags;
 {$endif}
      end;
 
@@ -13944,11 +17878,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
        clusterID:TVkUInt32;
        clusterFlags:TVkClusterAccelerationStructureClusterFlagsNV;
-       triangleCount:TVkUInt32;
-       vertexCount:TVkUInt32;
-       positionTruncateBitCount:TVkUInt32;
-       indexType:TVkUInt32;
-       opacityMicromapIndexType:TVkUInt32;
+       _bitfield:TVkUInt32; // packed bitfield storage
        baseGeometryIndexAndGeometryFlags:TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV;
        indexBufferStride:TVkUInt16;
        vertexBufferStride:TVkUInt16;
@@ -13960,23 +17890,21 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        opacityMicromapArray:TVkDeviceAddress;
        opacityMicromapIndexBuffer:TVkDeviceAddress;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aClusterID:TVkUInt32;
-                          const aClusterFlags:TVkClusterAccelerationStructureClusterFlagsNV;
-                          const aTriangleCount:TVkUInt32;
-                          const aVertexCount:TVkUInt32;
-                          const aPositionTruncateBitCount:TVkUInt32;
-                          const aIndexType:TVkUInt32;
-                          const aOpacityMicromapIndexType:TVkUInt32;
-                          const aBaseGeometryIndexAndGeometryFlags:TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV;
-                          const aIndexBufferStride:TVkUInt16;
-                          const aVertexBufferStride:TVkUInt16;
-                          const aGeometryIndexAndFlagsBufferStride:TVkUInt16;
-                          const aOpacityMicromapIndexBufferStride:TVkUInt16;
-                          const aIndexBuffer:TVkDeviceAddress;
-                          const aVertexBuffer:TVkDeviceAddress;
-                          const aGeometryIndexAndFlagsBuffer:TVkDeviceAddress;
-                          const aOpacityMicromapArray:TVkDeviceAddress;
-                          const aOpacityMicromapIndexBuffer:TVkDeviceAddress);
+       function Get_triangleCount:TVkUInt32;
+       procedure Set_triangleCount(const aValue:TVkUInt32);
+       property triangleCount:TVkUInt32 read Get_triangleCount write Set_triangleCount;
+       function Get_vertexCount:TVkUInt32;
+       procedure Set_vertexCount(const aValue:TVkUInt32);
+       property vertexCount:TVkUInt32 read Get_vertexCount write Set_vertexCount;
+       function Get_positionTruncateBitCount:TVkUInt32;
+       procedure Set_positionTruncateBitCount(const aValue:TVkUInt32);
+       property positionTruncateBitCount:TVkUInt32 read Get_positionTruncateBitCount write Set_positionTruncateBitCount;
+       function Get_indexType:TVkUInt32;
+       procedure Set_indexType(const aValue:TVkUInt32);
+       property indexType:TVkUInt32 read Get_indexType write Set_indexType;
+       function Get_opacityMicromapIndexType:TVkUInt32;
+       procedure Set_opacityMicromapIndexType(const aValue:TVkUInt32);
+       property opacityMicromapIndexType:TVkUInt32 read Get_opacityMicromapIndexType write Set_opacityMicromapIndexType;
 {$endif}
      end;
 
@@ -13988,11 +17916,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
        clusterID:TVkUInt32;
        clusterFlags:TVkClusterAccelerationStructureClusterFlagsNV;
-       triangleCount:TVkUInt32;
-       vertexCount:TVkUInt32;
-       positionTruncateBitCount:TVkUInt32;
-       indexType:TVkUInt32;
-       opacityMicromapIndexType:TVkUInt32;
+       _bitfield:TVkUInt32; // packed bitfield storage
        baseGeometryIndexAndGeometryFlags:TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV;
        indexBufferStride:TVkUInt16;
        vertexBufferStride:TVkUInt16;
@@ -14005,24 +17929,21 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        opacityMicromapIndexBuffer:TVkDeviceAddress;
        instantiationBoundingBoxLimit:TVkDeviceAddress;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aClusterID:TVkUInt32;
-                          const aClusterFlags:TVkClusterAccelerationStructureClusterFlagsNV;
-                          const aTriangleCount:TVkUInt32;
-                          const aVertexCount:TVkUInt32;
-                          const aPositionTruncateBitCount:TVkUInt32;
-                          const aIndexType:TVkUInt32;
-                          const aOpacityMicromapIndexType:TVkUInt32;
-                          const aBaseGeometryIndexAndGeometryFlags:TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV;
-                          const aIndexBufferStride:TVkUInt16;
-                          const aVertexBufferStride:TVkUInt16;
-                          const aGeometryIndexAndFlagsBufferStride:TVkUInt16;
-                          const aOpacityMicromapIndexBufferStride:TVkUInt16;
-                          const aIndexBuffer:TVkDeviceAddress;
-                          const aVertexBuffer:TVkDeviceAddress;
-                          const aGeometryIndexAndFlagsBuffer:TVkDeviceAddress;
-                          const aOpacityMicromapArray:TVkDeviceAddress;
-                          const aOpacityMicromapIndexBuffer:TVkDeviceAddress;
-                          const aInstantiationBoundingBoxLimit:TVkDeviceAddress);
+       function Get_triangleCount:TVkUInt32;
+       procedure Set_triangleCount(const aValue:TVkUInt32);
+       property triangleCount:TVkUInt32 read Get_triangleCount write Set_triangleCount;
+       function Get_vertexCount:TVkUInt32;
+       procedure Set_vertexCount(const aValue:TVkUInt32);
+       property vertexCount:TVkUInt32 read Get_vertexCount write Set_vertexCount;
+       function Get_positionTruncateBitCount:TVkUInt32;
+       procedure Set_positionTruncateBitCount(const aValue:TVkUInt32);
+       property positionTruncateBitCount:TVkUInt32 read Get_positionTruncateBitCount write Set_positionTruncateBitCount;
+       function Get_indexType:TVkUInt32;
+       procedure Set_indexType(const aValue:TVkUInt32);
+       property indexType:TVkUInt32 read Get_indexType write Set_indexType;
+       function Get_opacityMicromapIndexType:TVkUInt32;
+       procedure Set_opacityMicromapIndexType(const aValue:TVkUInt32);
+       property opacityMicromapIndexType:TVkUInt32 read Get_opacityMicromapIndexType write Set_opacityMicromapIndexType;
 {$endif}
      end;
 
@@ -14033,16 +17954,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        clusterIdOffset:TVkUInt32;
-       geometryIndexOffset:TVkUInt32;
-       reserved:TVkUInt32;
+       _bitfield:TVkUInt32; // packed bitfield storage
        clusterTemplateAddress:TVkDeviceAddress;
        vertexBuffer:TVkStridedDeviceAddressNV;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aClusterIdOffset:TVkUInt32;
-                          const aGeometryIndexOffset:TVkUInt32;
-                          const aReserved:TVkUInt32;
-                          const aClusterTemplateAddress:TVkDeviceAddress;
-                          const aVertexBuffer:TVkStridedDeviceAddressNV);
+       function Get_geometryIndexOffset:TVkUInt32;
+       procedure Set_geometryIndexOffset(const aValue:TVkUInt32);
+       property geometryIndexOffset:TVkUInt32 read Get_geometryIndexOffset write Set_geometryIndexOffset;
+       function Get_reserved:TVkUInt32;
+       procedure Set_reserved(const aValue:TVkUInt32);
+       property reserved:TVkUInt32 read Get_reserved write Set_reserved;
 {$endif}
      end;
 
@@ -50378,6 +54299,4830 @@ begin
 end;
 
 {$ifdef HAS_ADVANCED_RECORDS}
+{$ifdef VkStdVideo}
+function TStdVideoH264SpsVuiFlags.Get_aspect_ratio_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_aspect_ratio_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoH264SpsVuiFlags.Get_overscan_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_overscan_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoH264SpsVuiFlags.Get_overscan_appropriate_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_overscan_appropriate_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoH264SpsVuiFlags.Get_video_signal_type_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_video_signal_type_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoH264SpsVuiFlags.Get_video_full_range_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_video_full_range_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoH264SpsVuiFlags.Get_color_description_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_color_description_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoH264SpsVuiFlags.Get_chroma_loc_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_chroma_loc_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoH264SpsVuiFlags.Get_timing_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_timing_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+function TStdVideoH264SpsVuiFlags.Get_fixed_frame_rate_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 8) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_fixed_frame_rate_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 8)) or ((aValue and $00000001) shl 8);
+end;
+function TStdVideoH264SpsVuiFlags.Get_bitstream_restriction_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_bitstream_restriction_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 9)) or ((aValue and $00000001) shl 9);
+end;
+function TStdVideoH264SpsVuiFlags.Get_nal_hrd_parameters_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 10) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_nal_hrd_parameters_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 10)) or ((aValue and $00000001) shl 10);
+end;
+function TStdVideoH264SpsVuiFlags.Get_vcl_hrd_parameters_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 11) and $00000001;
+end;
+procedure TStdVideoH264SpsVuiFlags.Set_vcl_hrd_parameters_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 11)) or ((aValue and $00000001) shl 11);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH264HrdParameters.Create(const aCpb_cnt_minus1:TVkUInt8;
+                                              const aBit_rate_scale:TVkUInt8;
+                                              const aCpb_size_scale:TVkUInt8;
+                                              const aReserved1:TVkUInt8;
+                                              const aBit_rate_value_minus1:array of TVkUInt32;
+                                              const aCpb_size_value_minus1:array of TVkUInt32;
+                                              const aCbr_flag:array of TVkUInt8;
+                                              const aInitial_cpb_removal_delay_length_minus1:TVkUInt32;
+                                              const aCpb_removal_delay_length_minus1:TVkUInt32;
+                                              const aDpb_output_delay_length_minus1:TVkUInt32;
+                                              const aTime_offset_length:TVkUInt32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoH264HrdParameters),#0);
+ cpb_cnt_minus1:=aCpb_cnt_minus1;
+ bit_rate_scale:=aBit_rate_scale;
+ cpb_size_scale:=aCpb_size_scale;
+ reserved1:=aReserved1;
+ ArrayItemCount:=length(aBit_rate_value_minus1);
+ if ArrayItemCount>length(bit_rate_value_minus1) then begin
+  ArrayItemCount:=length(bit_rate_value_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aBit_rate_value_minus1[0],bit_rate_value_minus1[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ ArrayItemCount:=length(aCpb_size_value_minus1);
+ if ArrayItemCount>length(cpb_size_value_minus1) then begin
+  ArrayItemCount:=length(cpb_size_value_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aCpb_size_value_minus1[0],cpb_size_value_minus1[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ ArrayItemCount:=length(aCbr_flag);
+ if ArrayItemCount>length(cbr_flag) then begin
+  ArrayItemCount:=length(cbr_flag);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aCbr_flag[0],cbr_flag[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ initial_cpb_removal_delay_length_minus1:=aInitial_cpb_removal_delay_length_minus1;
+ cpb_removal_delay_length_minus1:=aCpb_removal_delay_length_minus1;
+ dpb_output_delay_length_minus1:=aDpb_output_delay_length_minus1;
+ time_offset_length:=aTime_offset_length;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH264SequenceParameterSetVui.Create(const aFlags:TStdVideoH264SpsVuiFlags;
+                                                        const aAspect_ratio_idc:TStdVideoH264AspectRatioIdc;
+                                                        const aSar_width:TVkUInt16;
+                                                        const aSar_height:TVkUInt16;
+                                                        const aVideo_format:TVkUInt8;
+                                                        const aColour_primaries:TVkUInt8;
+                                                        const aTransfer_characteristics:TVkUInt8;
+                                                        const aMatrix_coefficients:TVkUInt8;
+                                                        const aNum_units_in_tick:TVkUInt32;
+                                                        const aTime_scale:TVkUInt32;
+                                                        const aMax_num_reorder_frames:TVkUInt8;
+                                                        const aMax_dec_frame_buffering:TVkUInt8;
+                                                        const aChroma_sample_loc_type_top_field:TVkUInt8;
+                                                        const aChroma_sample_loc_type_bottom_field:TVkUInt8;
+                                                        const aReserved1:TVkUInt32;
+                                                        const aPHrdParameters:PStdVideoH264HrdParameters);
+begin
+ flags:=aFlags;
+ aspect_ratio_idc:=aAspect_ratio_idc;
+ sar_width:=aSar_width;
+ sar_height:=aSar_height;
+ video_format:=aVideo_format;
+ colour_primaries:=aColour_primaries;
+ transfer_characteristics:=aTransfer_characteristics;
+ matrix_coefficients:=aMatrix_coefficients;
+ num_units_in_tick:=aNum_units_in_tick;
+ time_scale:=aTime_scale;
+ max_num_reorder_frames:=aMax_num_reorder_frames;
+ max_dec_frame_buffering:=aMax_dec_frame_buffering;
+ chroma_sample_loc_type_top_field:=aChroma_sample_loc_type_top_field;
+ chroma_sample_loc_type_bottom_field:=aChroma_sample_loc_type_bottom_field;
+ reserved1:=aReserved1;
+ pHrdParameters:=aPHrdParameters;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoH264SpsFlags.Get_constraint_set0_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_constraint_set0_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoH264SpsFlags.Get_constraint_set1_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_constraint_set1_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoH264SpsFlags.Get_constraint_set2_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_constraint_set2_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoH264SpsFlags.Get_constraint_set3_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_constraint_set3_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoH264SpsFlags.Get_constraint_set4_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_constraint_set4_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoH264SpsFlags.Get_constraint_set5_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_constraint_set5_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoH264SpsFlags.Get_direct_8x8_inference_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_direct_8x8_inference_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoH264SpsFlags.Get_mb_adaptive_frame_field_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_mb_adaptive_frame_field_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+function TStdVideoH264SpsFlags.Get_frame_mbs_only_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 8) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_frame_mbs_only_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 8)) or ((aValue and $00000001) shl 8);
+end;
+function TStdVideoH264SpsFlags.Get_delta_pic_order_always_zero_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_delta_pic_order_always_zero_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 9)) or ((aValue and $00000001) shl 9);
+end;
+function TStdVideoH264SpsFlags.Get_separate_colour_plane_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 10) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_separate_colour_plane_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 10)) or ((aValue and $00000001) shl 10);
+end;
+function TStdVideoH264SpsFlags.Get_gaps_in_frame_num_value_allowed_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 11) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_gaps_in_frame_num_value_allowed_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 11)) or ((aValue and $00000001) shl 11);
+end;
+function TStdVideoH264SpsFlags.Get_qpprime_y_zero_transform_bypass_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 12) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_qpprime_y_zero_transform_bypass_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 12)) or ((aValue and $00000001) shl 12);
+end;
+function TStdVideoH264SpsFlags.Get_frame_cropping_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 13) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_frame_cropping_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 13)) or ((aValue and $00000001) shl 13);
+end;
+function TStdVideoH264SpsFlags.Get_seq_scaling_matrix_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 14) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_seq_scaling_matrix_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 14)) or ((aValue and $00000001) shl 14);
+end;
+function TStdVideoH264SpsFlags.Get_vui_parameters_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 15) and $00000001;
+end;
+procedure TStdVideoH264SpsFlags.Set_vui_parameters_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 15)) or ((aValue and $00000001) shl 15);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH264ScalingLists.Create(const aScaling_list_present_mask:TVkUInt16;
+                                             const aUse_default_scaling_matrix_mask:TVkUInt16;
+                                             const aScalingList4x4:array of TVkUInt8;
+                                             const aScalingList8x8:array of TVkUInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoH264ScalingLists),#0);
+ scaling_list_present_mask:=aScaling_list_present_mask;
+ use_default_scaling_matrix_mask:=aUse_default_scaling_matrix_mask;
+ ArrayItemCount:=length(aScalingList4x4);
+ if ArrayItemCount>length(ScalingList4x4) then begin
+  ArrayItemCount:=length(ScalingList4x4);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aScalingList4x4[0],ScalingList4x4[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aScalingList8x8);
+ if ArrayItemCount>length(ScalingList8x8) then begin
+  ArrayItemCount:=length(ScalingList8x8);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aScalingList8x8[0],ScalingList8x8[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH264SequenceParameterSet.Create(const aFlags:TStdVideoH264SpsFlags;
+                                                     const aProfile_idc:TStdVideoH264ProfileIdc;
+                                                     const aLevel_idc:TStdVideoH264LevelIdc;
+                                                     const aChroma_format_idc:TStdVideoH264ChromaFormatIdc;
+                                                     const aSeq_parameter_set_id:TVkUInt8;
+                                                     const aBit_depth_luma_minus8:TVkUInt8;
+                                                     const aBit_depth_chroma_minus8:TVkUInt8;
+                                                     const aLog2_max_frame_num_minus4:TVkUInt8;
+                                                     const aPic_order_cnt_type:TStdVideoH264PocType;
+                                                     const aOffset_for_non_ref_pic:TVkInt32;
+                                                     const aOffset_for_top_to_bottom_field:TVkInt32;
+                                                     const aLog2_max_pic_order_cnt_lsb_minus4:TVkUInt8;
+                                                     const aNum_ref_frames_in_pic_order_cnt_cycle:TVkUInt8;
+                                                     const aMax_num_ref_frames:TVkUInt8;
+                                                     const aReserved1:TVkUInt8;
+                                                     const aPic_width_in_mbs_minus1:TVkUInt32;
+                                                     const aPic_height_in_map_units_minus1:TVkUInt32;
+                                                     const aFrame_crop_left_offset:TVkUInt32;
+                                                     const aFrame_crop_right_offset:TVkUInt32;
+                                                     const aFrame_crop_top_offset:TVkUInt32;
+                                                     const aFrame_crop_bottom_offset:TVkUInt32;
+                                                     const aReserved2:TVkUInt32;
+                                                     const aPOffsetForRefFrame:PVkInt32;
+                                                     const aPScalingLists:PStdVideoH264ScalingLists;
+                                                     const aPSequenceParameterSetVui:PStdVideoH264SequenceParameterSetVui);
+begin
+ flags:=aFlags;
+ profile_idc:=aProfile_idc;
+ level_idc:=aLevel_idc;
+ chroma_format_idc:=aChroma_format_idc;
+ seq_parameter_set_id:=aSeq_parameter_set_id;
+ bit_depth_luma_minus8:=aBit_depth_luma_minus8;
+ bit_depth_chroma_minus8:=aBit_depth_chroma_minus8;
+ log2_max_frame_num_minus4:=aLog2_max_frame_num_minus4;
+ pic_order_cnt_type:=aPic_order_cnt_type;
+ offset_for_non_ref_pic:=aOffset_for_non_ref_pic;
+ offset_for_top_to_bottom_field:=aOffset_for_top_to_bottom_field;
+ log2_max_pic_order_cnt_lsb_minus4:=aLog2_max_pic_order_cnt_lsb_minus4;
+ num_ref_frames_in_pic_order_cnt_cycle:=aNum_ref_frames_in_pic_order_cnt_cycle;
+ max_num_ref_frames:=aMax_num_ref_frames;
+ reserved1:=aReserved1;
+ pic_width_in_mbs_minus1:=aPic_width_in_mbs_minus1;
+ pic_height_in_map_units_minus1:=aPic_height_in_map_units_minus1;
+ frame_crop_left_offset:=aFrame_crop_left_offset;
+ frame_crop_right_offset:=aFrame_crop_right_offset;
+ frame_crop_top_offset:=aFrame_crop_top_offset;
+ frame_crop_bottom_offset:=aFrame_crop_bottom_offset;
+ reserved2:=aReserved2;
+ pOffsetForRefFrame:=aPOffsetForRefFrame;
+ pScalingLists:=aPScalingLists;
+ pSequenceParameterSetVui:=aPSequenceParameterSetVui;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoH264PpsFlags.Get_transform_8x8_mode_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoH264PpsFlags.Set_transform_8x8_mode_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoH264PpsFlags.Get_redundant_pic_cnt_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoH264PpsFlags.Set_redundant_pic_cnt_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoH264PpsFlags.Get_constrained_intra_pred_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoH264PpsFlags.Set_constrained_intra_pred_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoH264PpsFlags.Get_deblocking_filter_control_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoH264PpsFlags.Set_deblocking_filter_control_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoH264PpsFlags.Get_weighted_pred_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoH264PpsFlags.Set_weighted_pred_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoH264PpsFlags.Get_bottom_field_pic_order_in_frame_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoH264PpsFlags.Set_bottom_field_pic_order_in_frame_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoH264PpsFlags.Get_entropy_coding_mode_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoH264PpsFlags.Set_entropy_coding_mode_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoH264PpsFlags.Get_pic_scaling_matrix_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoH264PpsFlags.Set_pic_scaling_matrix_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH264PictureParameterSet.Create(const aFlags:TStdVideoH264PpsFlags;
+                                                    const aSeq_parameter_set_id:TVkUInt8;
+                                                    const aPic_parameter_set_id:TVkUInt8;
+                                                    const aNum_ref_idx_l0_default_active_minus1:TVkUInt8;
+                                                    const aNum_ref_idx_l1_default_active_minus1:TVkUInt8;
+                                                    const aWeighted_bipred_idc:TStdVideoH264WeightedBipredIdc;
+                                                    const aPic_init_qp_minus26:TVkInt8;
+                                                    const aPic_init_qs_minus26:TVkInt8;
+                                                    const aChroma_qp_index_offset:TVkInt8;
+                                                    const aSecond_chroma_qp_index_offset:TVkInt8;
+                                                    const aPScalingLists:PStdVideoH264ScalingLists);
+begin
+ flags:=aFlags;
+ seq_parameter_set_id:=aSeq_parameter_set_id;
+ pic_parameter_set_id:=aPic_parameter_set_id;
+ num_ref_idx_l0_default_active_minus1:=aNum_ref_idx_l0_default_active_minus1;
+ num_ref_idx_l1_default_active_minus1:=aNum_ref_idx_l1_default_active_minus1;
+ weighted_bipred_idc:=aWeighted_bipred_idc;
+ pic_init_qp_minus26:=aPic_init_qp_minus26;
+ pic_init_qs_minus26:=aPic_init_qs_minus26;
+ chroma_qp_index_offset:=aChroma_qp_index_offset;
+ second_chroma_qp_index_offset:=aSecond_chroma_qp_index_offset;
+ pScalingLists:=aPScalingLists;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoDecodeH264PictureInfoFlags.Get_field_pic_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoDecodeH264PictureInfoFlags.Set_field_pic_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoDecodeH264PictureInfoFlags.Get_is_intra:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoDecodeH264PictureInfoFlags.Set_is_intra(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoDecodeH264PictureInfoFlags.Get_IdrPicFlag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoDecodeH264PictureInfoFlags.Set_IdrPicFlag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoDecodeH264PictureInfoFlags.Get_bottom_field_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoDecodeH264PictureInfoFlags.Set_bottom_field_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoDecodeH264PictureInfoFlags.Get_is_reference:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoDecodeH264PictureInfoFlags.Set_is_reference(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoDecodeH264PictureInfoFlags.Get_complementary_field_pair:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoDecodeH264PictureInfoFlags.Set_complementary_field_pair(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoDecodeH264PictureInfo.Create(const aFlags:TStdVideoDecodeH264PictureInfoFlags;
+                                                  const aSeq_parameter_set_id:TVkUInt8;
+                                                  const aPic_parameter_set_id:TVkUInt8;
+                                                  const aReserved1:TVkUInt8;
+                                                  const aReserved2:TVkUInt8;
+                                                  const aFrame_num:TVkUInt16;
+                                                  const aIdr_pic_id:TVkUInt16;
+                                                  const aPicOrderCnt:array of TVkInt32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoDecodeH264PictureInfo),#0);
+ flags:=aFlags;
+ seq_parameter_set_id:=aSeq_parameter_set_id;
+ pic_parameter_set_id:=aPic_parameter_set_id;
+ reserved1:=aReserved1;
+ reserved2:=aReserved2;
+ frame_num:=aFrame_num;
+ idr_pic_id:=aIdr_pic_id;
+ ArrayItemCount:=length(aPicOrderCnt);
+ if ArrayItemCount>length(PicOrderCnt) then begin
+  ArrayItemCount:=length(PicOrderCnt);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aPicOrderCnt[0],PicOrderCnt[0],ArrayItemCount*SizeOf(TVkInt32));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoDecodeH264ReferenceInfoFlags.Get_top_field_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoDecodeH264ReferenceInfoFlags.Set_top_field_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoDecodeH264ReferenceInfoFlags.Get_bottom_field_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoDecodeH264ReferenceInfoFlags.Set_bottom_field_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoDecodeH264ReferenceInfoFlags.Get_used_for_long_term_reference:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoDecodeH264ReferenceInfoFlags.Set_used_for_long_term_reference(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoDecodeH264ReferenceInfoFlags.Get_is_non_existing:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoDecodeH264ReferenceInfoFlags.Set_is_non_existing(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoDecodeH264ReferenceInfo.Create(const aFlags:TStdVideoDecodeH264ReferenceInfoFlags;
+                                                    const aFrameNum:TVkUInt16;
+                                                    const aReserved:TVkUInt16;
+                                                    const aPicOrderCnt:array of TVkInt32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoDecodeH264ReferenceInfo),#0);
+ flags:=aFlags;
+ FrameNum:=aFrameNum;
+ reserved:=aReserved;
+ ArrayItemCount:=length(aPicOrderCnt);
+ if ArrayItemCount>length(PicOrderCnt) then begin
+  ArrayItemCount:=length(PicOrderCnt);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aPicOrderCnt[0],PicOrderCnt[0],ArrayItemCount*SizeOf(TVkInt32));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH264WeightTableFlags.Create(const aLuma_weight_l0_flag:TVkUInt32;
+                                                       const aChroma_weight_l0_flag:TVkUInt32;
+                                                       const aLuma_weight_l1_flag:TVkUInt32;
+                                                       const aChroma_weight_l1_flag:TVkUInt32);
+begin
+ luma_weight_l0_flag:=aLuma_weight_l0_flag;
+ chroma_weight_l0_flag:=aChroma_weight_l0_flag;
+ luma_weight_l1_flag:=aLuma_weight_l1_flag;
+ chroma_weight_l1_flag:=aChroma_weight_l1_flag;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH264WeightTable.Create(const aFlags:TStdVideoEncodeH264WeightTableFlags;
+                                                  const aLuma_log2_weight_denom:TVkUInt8;
+                                                  const aChroma_log2_weight_denom:TVkUInt8;
+                                                  const aLuma_weight_l0:array of TVkInt8;
+                                                  const aLuma_offset_l0:array of TVkInt8;
+                                                  const aChroma_weight_l0:array of TVkInt8;
+                                                  const aChroma_offset_l0:array of TVkInt8;
+                                                  const aLuma_weight_l1:array of TVkInt8;
+                                                  const aLuma_offset_l1:array of TVkInt8;
+                                                  const aChroma_weight_l1:array of TVkInt8;
+                                                  const aChroma_offset_l1:array of TVkInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoEncodeH264WeightTable),#0);
+ flags:=aFlags;
+ luma_log2_weight_denom:=aLuma_log2_weight_denom;
+ chroma_log2_weight_denom:=aChroma_log2_weight_denom;
+ ArrayItemCount:=length(aLuma_weight_l0);
+ if ArrayItemCount>length(luma_weight_l0) then begin
+  ArrayItemCount:=length(luma_weight_l0);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLuma_weight_l0[0],luma_weight_l0[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aLuma_offset_l0);
+ if ArrayItemCount>length(luma_offset_l0) then begin
+  ArrayItemCount:=length(luma_offset_l0);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLuma_offset_l0[0],luma_offset_l0[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aChroma_weight_l0);
+ if ArrayItemCount>length(chroma_weight_l0) then begin
+  ArrayItemCount:=length(chroma_weight_l0);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aChroma_weight_l0[0],chroma_weight_l0[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aChroma_offset_l0);
+ if ArrayItemCount>length(chroma_offset_l0) then begin
+  ArrayItemCount:=length(chroma_offset_l0);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aChroma_offset_l0[0],chroma_offset_l0[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aLuma_weight_l1);
+ if ArrayItemCount>length(luma_weight_l1) then begin
+  ArrayItemCount:=length(luma_weight_l1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLuma_weight_l1[0],luma_weight_l1[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aLuma_offset_l1);
+ if ArrayItemCount>length(luma_offset_l1) then begin
+  ArrayItemCount:=length(luma_offset_l1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLuma_offset_l1[0],luma_offset_l1[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aChroma_weight_l1);
+ if ArrayItemCount>length(chroma_weight_l1) then begin
+  ArrayItemCount:=length(chroma_weight_l1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aChroma_weight_l1[0],chroma_weight_l1[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aChroma_offset_l1);
+ if ArrayItemCount>length(chroma_offset_l1) then begin
+  ArrayItemCount:=length(chroma_offset_l1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aChroma_offset_l1[0],chroma_offset_l1[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoEncodeH264SliceHeaderFlags.Get_direct_spatial_mv_pred_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoEncodeH264SliceHeaderFlags.Set_direct_spatial_mv_pred_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoEncodeH264SliceHeaderFlags.Get_num_ref_idx_active_override_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoEncodeH264SliceHeaderFlags.Set_num_ref_idx_active_override_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoEncodeH264SliceHeaderFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $3fffffff;
+end;
+procedure TStdVideoEncodeH264SliceHeaderFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($3fffffff shl 2)) or ((aValue and $3fffffff) shl 2);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoEncodeH264PictureInfoFlags.Get_IdrPicFlag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoEncodeH264PictureInfoFlags.Set_IdrPicFlag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoEncodeH264PictureInfoFlags.Get_is_reference:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoEncodeH264PictureInfoFlags.Set_is_reference(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoEncodeH264PictureInfoFlags.Get_no_output_of_prior_pics_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoEncodeH264PictureInfoFlags.Set_no_output_of_prior_pics_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoEncodeH264PictureInfoFlags.Get_long_term_reference_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoEncodeH264PictureInfoFlags.Set_long_term_reference_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoEncodeH264PictureInfoFlags.Get_adaptive_ref_pic_marking_mode_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoEncodeH264PictureInfoFlags.Set_adaptive_ref_pic_marking_mode_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoEncodeH264PictureInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $07ffffff;
+end;
+procedure TStdVideoEncodeH264PictureInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($07ffffff shl 5)) or ((aValue and $07ffffff) shl 5);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoEncodeH264ReferenceInfoFlags.Get_used_for_long_term_reference:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoEncodeH264ReferenceInfoFlags.Set_used_for_long_term_reference(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoEncodeH264ReferenceInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $7fffffff;
+end;
+procedure TStdVideoEncodeH264ReferenceInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($7fffffff shl 1)) or ((aValue and $7fffffff) shl 1);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoEncodeH264ReferenceListsInfoFlags.Get_ref_pic_list_modification_flag_l0:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoEncodeH264ReferenceListsInfoFlags.Set_ref_pic_list_modification_flag_l0(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoEncodeH264ReferenceListsInfoFlags.Get_ref_pic_list_modification_flag_l1:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoEncodeH264ReferenceListsInfoFlags.Set_ref_pic_list_modification_flag_l1(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoEncodeH264ReferenceListsInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $3fffffff;
+end;
+procedure TStdVideoEncodeH264ReferenceListsInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($3fffffff shl 2)) or ((aValue and $3fffffff) shl 2);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH264RefListModEntry.Create(const aModification_of_pic_nums_idc:TStdVideoH264ModificationOfPicNumsIdc;
+                                                      const aAbs_diff_pic_num_minus1:TVkUInt16;
+                                                      const aLong_term_pic_num:TVkUInt16);
+begin
+ modification_of_pic_nums_idc:=aModification_of_pic_nums_idc;
+ abs_diff_pic_num_minus1:=aAbs_diff_pic_num_minus1;
+ long_term_pic_num:=aLong_term_pic_num;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH264RefPicMarkingEntry.Create(const aMemory_management_control_operation:TStdVideoH264MemMgmtControlOp;
+                                                         const aDifference_of_pic_nums_minus1:TVkUInt16;
+                                                         const aLong_term_pic_num:TVkUInt16;
+                                                         const aLong_term_frame_idx:TVkUInt16;
+                                                         const aMax_long_term_frame_idx_plus1:TVkUInt16);
+begin
+ memory_management_control_operation:=aMemory_management_control_operation;
+ difference_of_pic_nums_minus1:=aDifference_of_pic_nums_minus1;
+ long_term_pic_num:=aLong_term_pic_num;
+ long_term_frame_idx:=aLong_term_frame_idx;
+ max_long_term_frame_idx_plus1:=aMax_long_term_frame_idx_plus1;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH264ReferenceListsInfo.Create(const aFlags:TStdVideoEncodeH264ReferenceListsInfoFlags;
+                                                         const aNum_ref_idx_l0_active_minus1:TVkUInt8;
+                                                         const aNum_ref_idx_l1_active_minus1:TVkUInt8;
+                                                         const aRefPicList0:array of TVkUInt8;
+                                                         const aRefPicList1:array of TVkUInt8;
+                                                         const aRefList0ModOpCount:TVkUInt8;
+                                                         const aRefList1ModOpCount:TVkUInt8;
+                                                         const aRefPicMarkingOpCount:TVkUInt8;
+                                                         const aReserved1:array of TVkUInt8;
+                                                         const aPRefList0ModOperations:PStdVideoEncodeH264RefListModEntry;
+                                                         const aPRefList1ModOperations:PStdVideoEncodeH264RefListModEntry;
+                                                         const aPRefPicMarkingOperations:PStdVideoEncodeH264RefPicMarkingEntry);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoEncodeH264ReferenceListsInfo),#0);
+ flags:=aFlags;
+ num_ref_idx_l0_active_minus1:=aNum_ref_idx_l0_active_minus1;
+ num_ref_idx_l1_active_minus1:=aNum_ref_idx_l1_active_minus1;
+ ArrayItemCount:=length(aRefPicList0);
+ if ArrayItemCount>length(RefPicList0) then begin
+  ArrayItemCount:=length(RefPicList0);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aRefPicList0[0],RefPicList0[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aRefPicList1);
+ if ArrayItemCount>length(RefPicList1) then begin
+  ArrayItemCount:=length(RefPicList1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aRefPicList1[0],RefPicList1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ refList0ModOpCount:=aRefList0ModOpCount;
+ refList1ModOpCount:=aRefList1ModOpCount;
+ refPicMarkingOpCount:=aRefPicMarkingOpCount;
+ ArrayItemCount:=length(aReserved1);
+ if ArrayItemCount>length(reserved1) then begin
+  ArrayItemCount:=length(reserved1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aReserved1[0],reserved1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ pRefList0ModOperations:=aPRefList0ModOperations;
+ pRefList1ModOperations:=aPRefList1ModOperations;
+ pRefPicMarkingOperations:=aPRefPicMarkingOperations;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH264PictureInfo.Create(const aFlags:TStdVideoEncodeH264PictureInfoFlags;
+                                                  const aSeq_parameter_set_id:TVkUInt8;
+                                                  const aPic_parameter_set_id:TVkUInt8;
+                                                  const aIdr_pic_id:TVkUInt16;
+                                                  const aPrimary_pic_type:TStdVideoH264PictureType;
+                                                  const aFrame_num:TVkUInt32;
+                                                  const aPicOrderCnt:TVkInt32;
+                                                  const aTemporal_id:TVkUInt8;
+                                                  const aReserved1:array of TVkUInt8;
+                                                  const aPRefLists:PStdVideoEncodeH264ReferenceListsInfo);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoEncodeH264PictureInfo),#0);
+ flags:=aFlags;
+ seq_parameter_set_id:=aSeq_parameter_set_id;
+ pic_parameter_set_id:=aPic_parameter_set_id;
+ idr_pic_id:=aIdr_pic_id;
+ primary_pic_type:=aPrimary_pic_type;
+ frame_num:=aFrame_num;
+ PicOrderCnt:=aPicOrderCnt;
+ temporal_id:=aTemporal_id;
+ ArrayItemCount:=length(aReserved1);
+ if ArrayItemCount>length(reserved1) then begin
+  ArrayItemCount:=length(reserved1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aReserved1[0],reserved1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ pRefLists:=aPRefLists;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH264ReferenceInfo.Create(const aFlags:TStdVideoEncodeH264ReferenceInfoFlags;
+                                                    const aPrimary_pic_type:TStdVideoH264PictureType;
+                                                    const aFrameNum:TVkUInt32;
+                                                    const aPicOrderCnt:TVkInt32;
+                                                    const aLong_term_pic_num:TVkUInt16;
+                                                    const aLong_term_frame_idx:TVkUInt16;
+                                                    const aTemporal_id:TVkUInt8);
+begin
+ flags:=aFlags;
+ primary_pic_type:=aPrimary_pic_type;
+ FrameNum:=aFrameNum;
+ PicOrderCnt:=aPicOrderCnt;
+ long_term_pic_num:=aLong_term_pic_num;
+ long_term_frame_idx:=aLong_term_frame_idx;
+ temporal_id:=aTemporal_id;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH264SliceHeader.Create(const aFlags:TStdVideoEncodeH264SliceHeaderFlags;
+                                                  const aFirst_mb_in_slice:TVkUInt32;
+                                                  const aSlice_type:TStdVideoH264SliceType;
+                                                  const aSlice_alpha_c0_offset_div2:TVkInt8;
+                                                  const aSlice_beta_offset_div2:TVkInt8;
+                                                  const aSlice_qp_delta:TVkInt8;
+                                                  const aReserved1:TVkUInt8;
+                                                  const aCabac_init_idc:TStdVideoH264CabacInitIdc;
+                                                  const aDisable_deblocking_filter_idc:TStdVideoH264DisableDeblockingFilterIdc;
+                                                  const aPWeightTable:PStdVideoEncodeH264WeightTable);
+begin
+ flags:=aFlags;
+ first_mb_in_slice:=aFirst_mb_in_slice;
+ slice_type:=aSlice_type;
+ slice_alpha_c0_offset_div2:=aSlice_alpha_c0_offset_div2;
+ slice_beta_offset_div2:=aSlice_beta_offset_div2;
+ slice_qp_delta:=aSlice_qp_delta;
+ reserved1:=aReserved1;
+ cabac_init_idc:=aCabac_init_idc;
+ disable_deblocking_filter_idc:=aDisable_deblocking_filter_idc;
+ pWeightTable:=aPWeightTable;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoH265ProfileTierLevelFlags.Get_general_tier_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoH265ProfileTierLevelFlags.Set_general_tier_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoH265ProfileTierLevelFlags.Get_general_progressive_source_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoH265ProfileTierLevelFlags.Set_general_progressive_source_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoH265ProfileTierLevelFlags.Get_general_interlaced_source_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoH265ProfileTierLevelFlags.Set_general_interlaced_source_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoH265ProfileTierLevelFlags.Get_general_non_packed_constraint_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoH265ProfileTierLevelFlags.Set_general_non_packed_constraint_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoH265ProfileTierLevelFlags.Get_general_frame_only_constraint_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoH265ProfileTierLevelFlags.Set_general_frame_only_constraint_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265ProfileTierLevel.Create(const aFlags:TStdVideoH265ProfileTierLevelFlags;
+                                                 const aGeneral_profile_idc:TStdVideoH265ProfileIdc;
+                                                 const aGeneral_level_idc:TStdVideoH265LevelIdc);
+begin
+ flags:=aFlags;
+ general_profile_idc:=aGeneral_profile_idc;
+ general_level_idc:=aGeneral_level_idc;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265DecPicBufMgr.Create(const aMax_latency_increase_plus1:array of TVkUInt32;
+                                             const aMax_dec_pic_buffering_minus1:array of TVkUInt8;
+                                             const aMax_num_reorder_pics:array of TVkUInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoH265DecPicBufMgr),#0);
+ ArrayItemCount:=length(aMax_latency_increase_plus1);
+ if ArrayItemCount>length(max_latency_increase_plus1) then begin
+  ArrayItemCount:=length(max_latency_increase_plus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aMax_latency_increase_plus1[0],max_latency_increase_plus1[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ ArrayItemCount:=length(aMax_dec_pic_buffering_minus1);
+ if ArrayItemCount>length(max_dec_pic_buffering_minus1) then begin
+  ArrayItemCount:=length(max_dec_pic_buffering_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aMax_dec_pic_buffering_minus1[0],max_dec_pic_buffering_minus1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aMax_num_reorder_pics);
+ if ArrayItemCount>length(max_num_reorder_pics) then begin
+  ArrayItemCount:=length(max_num_reorder_pics);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aMax_num_reorder_pics[0],max_num_reorder_pics[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265SubLayerHrdParameters.Create(const aBit_rate_value_minus1:array of TVkUInt32;
+                                                      const aCpb_size_value_minus1:array of TVkUInt32;
+                                                      const aCpb_size_du_value_minus1:array of TVkUInt32;
+                                                      const aBit_rate_du_value_minus1:array of TVkUInt32;
+                                                      const aCbr_flag:TVkUInt32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoH265SubLayerHrdParameters),#0);
+ ArrayItemCount:=length(aBit_rate_value_minus1);
+ if ArrayItemCount>length(bit_rate_value_minus1) then begin
+  ArrayItemCount:=length(bit_rate_value_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aBit_rate_value_minus1[0],bit_rate_value_minus1[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ ArrayItemCount:=length(aCpb_size_value_minus1);
+ if ArrayItemCount>length(cpb_size_value_minus1) then begin
+  ArrayItemCount:=length(cpb_size_value_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aCpb_size_value_minus1[0],cpb_size_value_minus1[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ ArrayItemCount:=length(aCpb_size_du_value_minus1);
+ if ArrayItemCount>length(cpb_size_du_value_minus1) then begin
+  ArrayItemCount:=length(cpb_size_du_value_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aCpb_size_du_value_minus1[0],cpb_size_du_value_minus1[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ ArrayItemCount:=length(aBit_rate_du_value_minus1);
+ if ArrayItemCount>length(bit_rate_du_value_minus1) then begin
+  ArrayItemCount:=length(bit_rate_du_value_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aBit_rate_du_value_minus1[0],bit_rate_du_value_minus1[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ cbr_flag:=aCbr_flag;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoH265HrdFlags.Get_nal_hrd_parameters_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoH265HrdFlags.Set_nal_hrd_parameters_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoH265HrdFlags.Get_vcl_hrd_parameters_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoH265HrdFlags.Set_vcl_hrd_parameters_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoH265HrdFlags.Get_sub_pic_hrd_params_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoH265HrdFlags.Set_sub_pic_hrd_params_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoH265HrdFlags.Get_sub_pic_cpb_params_in_pic_timing_sei_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoH265HrdFlags.Set_sub_pic_cpb_params_in_pic_timing_sei_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoH265HrdFlags.Get_fixed_pic_rate_general_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $000000ff;
+end;
+procedure TStdVideoH265HrdFlags.Set_fixed_pic_rate_general_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($000000ff shl 4)) or ((aValue and $000000ff) shl 4);
+end;
+function TStdVideoH265HrdFlags.Get_fixed_pic_rate_within_cvs_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 12) and $000000ff;
+end;
+procedure TStdVideoH265HrdFlags.Set_fixed_pic_rate_within_cvs_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($000000ff shl 12)) or ((aValue and $000000ff) shl 12);
+end;
+function TStdVideoH265HrdFlags.Get_low_delay_hrd_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 20) and $000000ff;
+end;
+procedure TStdVideoH265HrdFlags.Set_low_delay_hrd_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($000000ff shl 20)) or ((aValue and $000000ff) shl 20);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265HrdParameters.Create(const aFlags:TStdVideoH265HrdFlags;
+                                              const aTick_divisor_minus2:TVkUInt8;
+                                              const aDu_cpb_removal_delay_increment_length_minus1:TVkUInt8;
+                                              const aDpb_output_delay_du_length_minus1:TVkUInt8;
+                                              const aBit_rate_scale:TVkUInt8;
+                                              const aCpb_size_scale:TVkUInt8;
+                                              const aCpb_size_du_scale:TVkUInt8;
+                                              const aInitial_cpb_removal_delay_length_minus1:TVkUInt8;
+                                              const aAu_cpb_removal_delay_length_minus1:TVkUInt8;
+                                              const aDpb_output_delay_length_minus1:TVkUInt8;
+                                              const aCpb_cnt_minus1:array of TVkUInt8;
+                                              const aElemental_duration_in_tc_minus1:array of TVkUInt16;
+                                              const aReserved:array of TVkUInt16;
+                                              const aPSubLayerHrdParametersNal:PStdVideoH265SubLayerHrdParameters;
+                                              const aPSubLayerHrdParametersVcl:PStdVideoH265SubLayerHrdParameters);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoH265HrdParameters),#0);
+ flags:=aFlags;
+ tick_divisor_minus2:=aTick_divisor_minus2;
+ du_cpb_removal_delay_increment_length_minus1:=aDu_cpb_removal_delay_increment_length_minus1;
+ dpb_output_delay_du_length_minus1:=aDpb_output_delay_du_length_minus1;
+ bit_rate_scale:=aBit_rate_scale;
+ cpb_size_scale:=aCpb_size_scale;
+ cpb_size_du_scale:=aCpb_size_du_scale;
+ initial_cpb_removal_delay_length_minus1:=aInitial_cpb_removal_delay_length_minus1;
+ au_cpb_removal_delay_length_minus1:=aAu_cpb_removal_delay_length_minus1;
+ dpb_output_delay_length_minus1:=aDpb_output_delay_length_minus1;
+ ArrayItemCount:=length(aCpb_cnt_minus1);
+ if ArrayItemCount>length(cpb_cnt_minus1) then begin
+  ArrayItemCount:=length(cpb_cnt_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aCpb_cnt_minus1[0],cpb_cnt_minus1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aElemental_duration_in_tc_minus1);
+ if ArrayItemCount>length(elemental_duration_in_tc_minus1) then begin
+  ArrayItemCount:=length(elemental_duration_in_tc_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aElemental_duration_in_tc_minus1[0],elemental_duration_in_tc_minus1[0],ArrayItemCount*SizeOf(TVkUInt16));
+ end;
+ ArrayItemCount:=length(aReserved);
+ if ArrayItemCount>length(reserved) then begin
+  ArrayItemCount:=length(reserved);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aReserved[0],reserved[0],ArrayItemCount*SizeOf(TVkUInt16));
+ end;
+ pSubLayerHrdParametersNal:=aPSubLayerHrdParametersNal;
+ pSubLayerHrdParametersVcl:=aPSubLayerHrdParametersVcl;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoH265VpsFlags.Get_vps_temporal_id_nesting_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoH265VpsFlags.Set_vps_temporal_id_nesting_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoH265VpsFlags.Get_vps_sub_layer_ordering_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoH265VpsFlags.Set_vps_sub_layer_ordering_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoH265VpsFlags.Get_vps_timing_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoH265VpsFlags.Set_vps_timing_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoH265VpsFlags.Get_vps_poc_proportional_to_timing_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoH265VpsFlags.Set_vps_poc_proportional_to_timing_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265VideoParameterSet.Create(const aFlags:TStdVideoH265VpsFlags;
+                                                  const aVps_video_parameter_set_id:TVkUInt8;
+                                                  const aVps_max_sub_layers_minus1:TVkUInt8;
+                                                  const aReserved1:TVkUInt8;
+                                                  const aReserved2:TVkUInt8;
+                                                  const aVps_num_units_in_tick:TVkUInt32;
+                                                  const aVps_time_scale:TVkUInt32;
+                                                  const aVps_num_ticks_poc_diff_one_minus1:TVkUInt32;
+                                                  const aReserved3:TVkUInt32;
+                                                  const aPDecPicBufMgr:PStdVideoH265DecPicBufMgr;
+                                                  const aPHrdParameters:PStdVideoH265HrdParameters;
+                                                  const aPProfileTierLevel:PStdVideoH265ProfileTierLevel);
+begin
+ flags:=aFlags;
+ vps_video_parameter_set_id:=aVps_video_parameter_set_id;
+ vps_max_sub_layers_minus1:=aVps_max_sub_layers_minus1;
+ reserved1:=aReserved1;
+ reserved2:=aReserved2;
+ vps_num_units_in_tick:=aVps_num_units_in_tick;
+ vps_time_scale:=aVps_time_scale;
+ vps_num_ticks_poc_diff_one_minus1:=aVps_num_ticks_poc_diff_one_minus1;
+ reserved3:=aReserved3;
+ pDecPicBufMgr:=aPDecPicBufMgr;
+ pHrdParameters:=aPHrdParameters;
+ pProfileTierLevel:=aPProfileTierLevel;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265ScalingLists.Create(const aScalingList4x4:array of TVkUInt8;
+                                             const aScalingList8x8:array of TVkUInt8;
+                                             const aScalingList16x16:array of TVkUInt8;
+                                             const aScalingList32x32:array of TVkUInt8;
+                                             const aScalingListDCCoef16x16:array of TVkUInt8;
+                                             const aScalingListDCCoef32x32:array of TVkUInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoH265ScalingLists),#0);
+ ArrayItemCount:=length(aScalingList4x4);
+ if ArrayItemCount>length(ScalingList4x4) then begin
+  ArrayItemCount:=length(ScalingList4x4);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aScalingList4x4[0],ScalingList4x4[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aScalingList8x8);
+ if ArrayItemCount>length(ScalingList8x8) then begin
+  ArrayItemCount:=length(ScalingList8x8);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aScalingList8x8[0],ScalingList8x8[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aScalingList16x16);
+ if ArrayItemCount>length(ScalingList16x16) then begin
+  ArrayItemCount:=length(ScalingList16x16);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aScalingList16x16[0],ScalingList16x16[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aScalingList32x32);
+ if ArrayItemCount>length(ScalingList32x32) then begin
+  ArrayItemCount:=length(ScalingList32x32);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aScalingList32x32[0],ScalingList32x32[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aScalingListDCCoef16x16);
+ if ArrayItemCount>length(ScalingListDCCoef16x16) then begin
+  ArrayItemCount:=length(ScalingListDCCoef16x16);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aScalingListDCCoef16x16[0],ScalingListDCCoef16x16[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aScalingListDCCoef32x32);
+ if ArrayItemCount>length(ScalingListDCCoef32x32) then begin
+  ArrayItemCount:=length(ScalingListDCCoef32x32);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aScalingListDCCoef32x32[0],ScalingListDCCoef32x32[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoH265ShortTermRefPicSetFlags.Get_inter_ref_pic_set_prediction_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoH265ShortTermRefPicSetFlags.Set_inter_ref_pic_set_prediction_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoH265ShortTermRefPicSetFlags.Get_delta_rps_sign:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoH265ShortTermRefPicSetFlags.Set_delta_rps_sign(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265ShortTermRefPicSet.Create(const aFlags:TStdVideoH265ShortTermRefPicSetFlags;
+                                                   const aDelta_idx_minus1:TVkUInt32;
+                                                   const aUse_delta_flag:TVkUInt16;
+                                                   const aAbs_delta_rps_minus1:TVkUInt16;
+                                                   const aUsed_by_curr_pic_flag:TVkUInt16;
+                                                   const aUsed_by_curr_pic_s0_flag:TVkUInt16;
+                                                   const aUsed_by_curr_pic_s1_flag:TVkUInt16;
+                                                   const aReserved1:TVkUInt16;
+                                                   const aReserved2:TVkUInt8;
+                                                   const aReserved3:TVkUInt8;
+                                                   const aNum_negative_pics:TVkUInt8;
+                                                   const aNum_positive_pics:TVkUInt8;
+                                                   const aDelta_poc_s0_minus1:array of TVkUInt16;
+                                                   const aDelta_poc_s1_minus1:array of TVkUInt16);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoH265ShortTermRefPicSet),#0);
+ flags:=aFlags;
+ delta_idx_minus1:=aDelta_idx_minus1;
+ use_delta_flag:=aUse_delta_flag;
+ abs_delta_rps_minus1:=aAbs_delta_rps_minus1;
+ used_by_curr_pic_flag:=aUsed_by_curr_pic_flag;
+ used_by_curr_pic_s0_flag:=aUsed_by_curr_pic_s0_flag;
+ used_by_curr_pic_s1_flag:=aUsed_by_curr_pic_s1_flag;
+ reserved1:=aReserved1;
+ reserved2:=aReserved2;
+ reserved3:=aReserved3;
+ num_negative_pics:=aNum_negative_pics;
+ num_positive_pics:=aNum_positive_pics;
+ ArrayItemCount:=length(aDelta_poc_s0_minus1);
+ if ArrayItemCount>length(delta_poc_s0_minus1) then begin
+  ArrayItemCount:=length(delta_poc_s0_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDelta_poc_s0_minus1[0],delta_poc_s0_minus1[0],ArrayItemCount*SizeOf(TVkUInt16));
+ end;
+ ArrayItemCount:=length(aDelta_poc_s1_minus1);
+ if ArrayItemCount>length(delta_poc_s1_minus1) then begin
+  ArrayItemCount:=length(delta_poc_s1_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDelta_poc_s1_minus1[0],delta_poc_s1_minus1[0],ArrayItemCount*SizeOf(TVkUInt16));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265LongTermRefPicsSps.Create(const aUsed_by_curr_pic_lt_sps_flag:TVkUInt32;
+                                                   const aLt_ref_pic_poc_lsb_sps:array of TVkUInt32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoH265LongTermRefPicsSps),#0);
+ used_by_curr_pic_lt_sps_flag:=aUsed_by_curr_pic_lt_sps_flag;
+ ArrayItemCount:=length(aLt_ref_pic_poc_lsb_sps);
+ if ArrayItemCount>length(lt_ref_pic_poc_lsb_sps) then begin
+  ArrayItemCount:=length(lt_ref_pic_poc_lsb_sps);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLt_ref_pic_poc_lsb_sps[0],lt_ref_pic_poc_lsb_sps[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoH265SpsVuiFlags.Get_aspect_ratio_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_aspect_ratio_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoH265SpsVuiFlags.Get_overscan_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_overscan_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoH265SpsVuiFlags.Get_overscan_appropriate_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_overscan_appropriate_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoH265SpsVuiFlags.Get_video_signal_type_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_video_signal_type_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoH265SpsVuiFlags.Get_video_full_range_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_video_full_range_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoH265SpsVuiFlags.Get_colour_description_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_colour_description_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoH265SpsVuiFlags.Get_chroma_loc_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_chroma_loc_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoH265SpsVuiFlags.Get_neutral_chroma_indication_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_neutral_chroma_indication_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+function TStdVideoH265SpsVuiFlags.Get_field_seq_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 8) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_field_seq_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 8)) or ((aValue and $00000001) shl 8);
+end;
+function TStdVideoH265SpsVuiFlags.Get_frame_field_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_frame_field_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 9)) or ((aValue and $00000001) shl 9);
+end;
+function TStdVideoH265SpsVuiFlags.Get_default_display_window_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 10) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_default_display_window_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 10)) or ((aValue and $00000001) shl 10);
+end;
+function TStdVideoH265SpsVuiFlags.Get_vui_timing_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 11) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_vui_timing_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 11)) or ((aValue and $00000001) shl 11);
+end;
+function TStdVideoH265SpsVuiFlags.Get_vui_poc_proportional_to_timing_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 12) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_vui_poc_proportional_to_timing_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 12)) or ((aValue and $00000001) shl 12);
+end;
+function TStdVideoH265SpsVuiFlags.Get_vui_hrd_parameters_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 13) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_vui_hrd_parameters_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 13)) or ((aValue and $00000001) shl 13);
+end;
+function TStdVideoH265SpsVuiFlags.Get_bitstream_restriction_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 14) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_bitstream_restriction_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 14)) or ((aValue and $00000001) shl 14);
+end;
+function TStdVideoH265SpsVuiFlags.Get_tiles_fixed_structure_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 15) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_tiles_fixed_structure_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 15)) or ((aValue and $00000001) shl 15);
+end;
+function TStdVideoH265SpsVuiFlags.Get_motion_vectors_over_pic_boundaries_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 16) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_motion_vectors_over_pic_boundaries_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 16)) or ((aValue and $00000001) shl 16);
+end;
+function TStdVideoH265SpsVuiFlags.Get_restricted_ref_pic_lists_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 17) and $00000001;
+end;
+procedure TStdVideoH265SpsVuiFlags.Set_restricted_ref_pic_lists_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 17)) or ((aValue and $00000001) shl 17);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265SequenceParameterSetVui.Create(const aFlags:TStdVideoH265SpsVuiFlags;
+                                                        const aAspect_ratio_idc:TStdVideoH265AspectRatioIdc;
+                                                        const aSar_width:TVkUInt16;
+                                                        const aSar_height:TVkUInt16;
+                                                        const aVideo_format:TVkUInt8;
+                                                        const aColour_primaries:TVkUInt8;
+                                                        const aTransfer_characteristics:TVkUInt8;
+                                                        const aMatrix_coeffs:TVkUInt8;
+                                                        const aChroma_sample_loc_type_top_field:TVkUInt8;
+                                                        const aChroma_sample_loc_type_bottom_field:TVkUInt8;
+                                                        const aReserved1:TVkUInt8;
+                                                        const aReserved2:TVkUInt8;
+                                                        const aDef_disp_win_left_offset:TVkUInt16;
+                                                        const aDef_disp_win_right_offset:TVkUInt16;
+                                                        const aDef_disp_win_top_offset:TVkUInt16;
+                                                        const aDef_disp_win_bottom_offset:TVkUInt16;
+                                                        const aVui_num_units_in_tick:TVkUInt32;
+                                                        const aVui_time_scale:TVkUInt32;
+                                                        const aVui_num_ticks_poc_diff_one_minus1:TVkUInt32;
+                                                        const aMin_spatial_segmentation_idc:TVkUInt16;
+                                                        const aReserved3:TVkUInt16;
+                                                        const aMax_bytes_per_pic_denom:TVkUInt8;
+                                                        const aMax_bits_per_min_cu_denom:TVkUInt8;
+                                                        const aLog2_max_mv_length_horizontal:TVkUInt8;
+                                                        const aLog2_max_mv_length_vertical:TVkUInt8;
+                                                        const aPHrdParameters:PStdVideoH265HrdParameters);
+begin
+ flags:=aFlags;
+ aspect_ratio_idc:=aAspect_ratio_idc;
+ sar_width:=aSar_width;
+ sar_height:=aSar_height;
+ video_format:=aVideo_format;
+ colour_primaries:=aColour_primaries;
+ transfer_characteristics:=aTransfer_characteristics;
+ matrix_coeffs:=aMatrix_coeffs;
+ chroma_sample_loc_type_top_field:=aChroma_sample_loc_type_top_field;
+ chroma_sample_loc_type_bottom_field:=aChroma_sample_loc_type_bottom_field;
+ reserved1:=aReserved1;
+ reserved2:=aReserved2;
+ def_disp_win_left_offset:=aDef_disp_win_left_offset;
+ def_disp_win_right_offset:=aDef_disp_win_right_offset;
+ def_disp_win_top_offset:=aDef_disp_win_top_offset;
+ def_disp_win_bottom_offset:=aDef_disp_win_bottom_offset;
+ vui_num_units_in_tick:=aVui_num_units_in_tick;
+ vui_time_scale:=aVui_time_scale;
+ vui_num_ticks_poc_diff_one_minus1:=aVui_num_ticks_poc_diff_one_minus1;
+ min_spatial_segmentation_idc:=aMin_spatial_segmentation_idc;
+ reserved3:=aReserved3;
+ max_bytes_per_pic_denom:=aMax_bytes_per_pic_denom;
+ max_bits_per_min_cu_denom:=aMax_bits_per_min_cu_denom;
+ log2_max_mv_length_horizontal:=aLog2_max_mv_length_horizontal;
+ log2_max_mv_length_vertical:=aLog2_max_mv_length_vertical;
+ pHrdParameters:=aPHrdParameters;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265PredictorPaletteEntries.Create(const aPredictorPaletteEntries:array of TVkUInt16);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoH265PredictorPaletteEntries),#0);
+ ArrayItemCount:=length(aPredictorPaletteEntries);
+ if ArrayItemCount>length(PredictorPaletteEntries) then begin
+  ArrayItemCount:=length(PredictorPaletteEntries);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aPredictorPaletteEntries[0],PredictorPaletteEntries[0],ArrayItemCount*SizeOf(TVkUInt16));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoH265SpsFlags.Get_sps_temporal_id_nesting_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_sps_temporal_id_nesting_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoH265SpsFlags.Get_separate_colour_plane_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_separate_colour_plane_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoH265SpsFlags.Get_conformance_window_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_conformance_window_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoH265SpsFlags.Get_sps_sub_layer_ordering_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_sps_sub_layer_ordering_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoH265SpsFlags.Get_scaling_list_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_scaling_list_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoH265SpsFlags.Get_sps_scaling_list_data_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_sps_scaling_list_data_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoH265SpsFlags.Get_amp_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_amp_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoH265SpsFlags.Get_sample_adaptive_offset_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_sample_adaptive_offset_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+function TStdVideoH265SpsFlags.Get_pcm_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 8) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_pcm_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 8)) or ((aValue and $00000001) shl 8);
+end;
+function TStdVideoH265SpsFlags.Get_pcm_loop_filter_disabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_pcm_loop_filter_disabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 9)) or ((aValue and $00000001) shl 9);
+end;
+function TStdVideoH265SpsFlags.Get_long_term_ref_pics_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 10) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_long_term_ref_pics_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 10)) or ((aValue and $00000001) shl 10);
+end;
+function TStdVideoH265SpsFlags.Get_sps_temporal_mvp_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 11) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_sps_temporal_mvp_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 11)) or ((aValue and $00000001) shl 11);
+end;
+function TStdVideoH265SpsFlags.Get_strong_intra_smoothing_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 12) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_strong_intra_smoothing_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 12)) or ((aValue and $00000001) shl 12);
+end;
+function TStdVideoH265SpsFlags.Get_vui_parameters_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 13) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_vui_parameters_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 13)) or ((aValue and $00000001) shl 13);
+end;
+function TStdVideoH265SpsFlags.Get_sps_extension_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 14) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_sps_extension_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 14)) or ((aValue and $00000001) shl 14);
+end;
+function TStdVideoH265SpsFlags.Get_sps_range_extension_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 15) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_sps_range_extension_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 15)) or ((aValue and $00000001) shl 15);
+end;
+function TStdVideoH265SpsFlags.Get_transform_skip_rotation_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 16) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_transform_skip_rotation_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 16)) or ((aValue and $00000001) shl 16);
+end;
+function TStdVideoH265SpsFlags.Get_transform_skip_context_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 17) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_transform_skip_context_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 17)) or ((aValue and $00000001) shl 17);
+end;
+function TStdVideoH265SpsFlags.Get_implicit_rdpcm_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 18) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_implicit_rdpcm_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 18)) or ((aValue and $00000001) shl 18);
+end;
+function TStdVideoH265SpsFlags.Get_explicit_rdpcm_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 19) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_explicit_rdpcm_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 19)) or ((aValue and $00000001) shl 19);
+end;
+function TStdVideoH265SpsFlags.Get_extended_precision_processing_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 20) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_extended_precision_processing_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 20)) or ((aValue and $00000001) shl 20);
+end;
+function TStdVideoH265SpsFlags.Get_intra_smoothing_disabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 21) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_intra_smoothing_disabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 21)) or ((aValue and $00000001) shl 21);
+end;
+function TStdVideoH265SpsFlags.Get_high_precision_offsets_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 22) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_high_precision_offsets_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 22)) or ((aValue and $00000001) shl 22);
+end;
+function TStdVideoH265SpsFlags.Get_persistent_rice_adaptation_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 23) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_persistent_rice_adaptation_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 23)) or ((aValue and $00000001) shl 23);
+end;
+function TStdVideoH265SpsFlags.Get_cabac_bypass_alignment_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 24) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_cabac_bypass_alignment_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 24)) or ((aValue and $00000001) shl 24);
+end;
+function TStdVideoH265SpsFlags.Get_sps_scc_extension_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 25) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_sps_scc_extension_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 25)) or ((aValue and $00000001) shl 25);
+end;
+function TStdVideoH265SpsFlags.Get_sps_curr_pic_ref_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 26) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_sps_curr_pic_ref_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 26)) or ((aValue and $00000001) shl 26);
+end;
+function TStdVideoH265SpsFlags.Get_palette_mode_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 27) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_palette_mode_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 27)) or ((aValue and $00000001) shl 27);
+end;
+function TStdVideoH265SpsFlags.Get_sps_palette_predictor_initializers_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 28) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_sps_palette_predictor_initializers_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 28)) or ((aValue and $00000001) shl 28);
+end;
+function TStdVideoH265SpsFlags.Get_intra_boundary_filtering_disabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 29) and $00000001;
+end;
+procedure TStdVideoH265SpsFlags.Set_intra_boundary_filtering_disabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 29)) or ((aValue and $00000001) shl 29);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265SequenceParameterSet.Create(const aFlags:TStdVideoH265SpsFlags;
+                                                     const aChroma_format_idc:TStdVideoH265ChromaFormatIdc;
+                                                     const aPic_width_in_luma_samples:TVkUInt32;
+                                                     const aPic_height_in_luma_samples:TVkUInt32;
+                                                     const aSps_video_parameter_set_id:TVkUInt8;
+                                                     const aSps_max_sub_layers_minus1:TVkUInt8;
+                                                     const aSps_seq_parameter_set_id:TVkUInt8;
+                                                     const aBit_depth_luma_minus8:TVkUInt8;
+                                                     const aBit_depth_chroma_minus8:TVkUInt8;
+                                                     const aLog2_max_pic_order_cnt_lsb_minus4:TVkUInt8;
+                                                     const aLog2_min_luma_coding_block_size_minus3:TVkUInt8;
+                                                     const aLog2_diff_max_min_luma_coding_block_size:TVkUInt8;
+                                                     const aLog2_min_luma_transform_block_size_minus2:TVkUInt8;
+                                                     const aLog2_diff_max_min_luma_transform_block_size:TVkUInt8;
+                                                     const aMax_transform_hierarchy_depth_inter:TVkUInt8;
+                                                     const aMax_transform_hierarchy_depth_intra:TVkUInt8;
+                                                     const aNum_short_term_ref_pic_sets:TVkUInt8;
+                                                     const aNum_long_term_ref_pics_sps:TVkUInt8;
+                                                     const aPcm_sample_bit_depth_luma_minus1:TVkUInt8;
+                                                     const aPcm_sample_bit_depth_chroma_minus1:TVkUInt8;
+                                                     const aLog2_min_pcm_luma_coding_block_size_minus3:TVkUInt8;
+                                                     const aLog2_diff_max_min_pcm_luma_coding_block_size:TVkUInt8;
+                                                     const aReserved1:TVkUInt8;
+                                                     const aReserved2:TVkUInt8;
+                                                     const aPalette_max_size:TVkUInt8;
+                                                     const aDelta_palette_max_predictor_size:TVkUInt8;
+                                                     const aMotion_vector_resolution_control_idc:TVkUInt8;
+                                                     const aSps_num_palette_predictor_initializers_minus1:TVkUInt8;
+                                                     const aConf_win_left_offset:TVkUInt32;
+                                                     const aConf_win_right_offset:TVkUInt32;
+                                                     const aConf_win_top_offset:TVkUInt32;
+                                                     const aConf_win_bottom_offset:TVkUInt32;
+                                                     const aPProfileTierLevel:PStdVideoH265ProfileTierLevel;
+                                                     const aPDecPicBufMgr:PStdVideoH265DecPicBufMgr;
+                                                     const aPScalingLists:PStdVideoH265ScalingLists;
+                                                     const aPShortTermRefPicSet:PStdVideoH265ShortTermRefPicSet;
+                                                     const aPLongTermRefPicsSps:PStdVideoH265LongTermRefPicsSps;
+                                                     const aPSequenceParameterSetVui:PStdVideoH265SequenceParameterSetVui;
+                                                     const aPPredictorPaletteEntries:PStdVideoH265PredictorPaletteEntries);
+begin
+ flags:=aFlags;
+ chroma_format_idc:=aChroma_format_idc;
+ pic_width_in_luma_samples:=aPic_width_in_luma_samples;
+ pic_height_in_luma_samples:=aPic_height_in_luma_samples;
+ sps_video_parameter_set_id:=aSps_video_parameter_set_id;
+ sps_max_sub_layers_minus1:=aSps_max_sub_layers_minus1;
+ sps_seq_parameter_set_id:=aSps_seq_parameter_set_id;
+ bit_depth_luma_minus8:=aBit_depth_luma_minus8;
+ bit_depth_chroma_minus8:=aBit_depth_chroma_minus8;
+ log2_max_pic_order_cnt_lsb_minus4:=aLog2_max_pic_order_cnt_lsb_minus4;
+ log2_min_luma_coding_block_size_minus3:=aLog2_min_luma_coding_block_size_minus3;
+ log2_diff_max_min_luma_coding_block_size:=aLog2_diff_max_min_luma_coding_block_size;
+ log2_min_luma_transform_block_size_minus2:=aLog2_min_luma_transform_block_size_minus2;
+ log2_diff_max_min_luma_transform_block_size:=aLog2_diff_max_min_luma_transform_block_size;
+ max_transform_hierarchy_depth_inter:=aMax_transform_hierarchy_depth_inter;
+ max_transform_hierarchy_depth_intra:=aMax_transform_hierarchy_depth_intra;
+ num_short_term_ref_pic_sets:=aNum_short_term_ref_pic_sets;
+ num_long_term_ref_pics_sps:=aNum_long_term_ref_pics_sps;
+ pcm_sample_bit_depth_luma_minus1:=aPcm_sample_bit_depth_luma_minus1;
+ pcm_sample_bit_depth_chroma_minus1:=aPcm_sample_bit_depth_chroma_minus1;
+ log2_min_pcm_luma_coding_block_size_minus3:=aLog2_min_pcm_luma_coding_block_size_minus3;
+ log2_diff_max_min_pcm_luma_coding_block_size:=aLog2_diff_max_min_pcm_luma_coding_block_size;
+ reserved1:=aReserved1;
+ reserved2:=aReserved2;
+ palette_max_size:=aPalette_max_size;
+ delta_palette_max_predictor_size:=aDelta_palette_max_predictor_size;
+ motion_vector_resolution_control_idc:=aMotion_vector_resolution_control_idc;
+ sps_num_palette_predictor_initializers_minus1:=aSps_num_palette_predictor_initializers_minus1;
+ conf_win_left_offset:=aConf_win_left_offset;
+ conf_win_right_offset:=aConf_win_right_offset;
+ conf_win_top_offset:=aConf_win_top_offset;
+ conf_win_bottom_offset:=aConf_win_bottom_offset;
+ pProfileTierLevel:=aPProfileTierLevel;
+ pDecPicBufMgr:=aPDecPicBufMgr;
+ pScalingLists:=aPScalingLists;
+ pShortTermRefPicSet:=aPShortTermRefPicSet;
+ pLongTermRefPicsSps:=aPLongTermRefPicsSps;
+ pSequenceParameterSetVui:=aPSequenceParameterSetVui;
+ pPredictorPaletteEntries:=aPPredictorPaletteEntries;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoH265PpsFlags.Get_dependent_slice_segments_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_dependent_slice_segments_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoH265PpsFlags.Get_output_flag_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_output_flag_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoH265PpsFlags.Get_sign_data_hiding_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_sign_data_hiding_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoH265PpsFlags.Get_cabac_init_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_cabac_init_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoH265PpsFlags.Get_constrained_intra_pred_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_constrained_intra_pred_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoH265PpsFlags.Get_transform_skip_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_transform_skip_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoH265PpsFlags.Get_cu_qp_delta_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_cu_qp_delta_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoH265PpsFlags.Get_pps_slice_chroma_qp_offsets_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_pps_slice_chroma_qp_offsets_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+function TStdVideoH265PpsFlags.Get_weighted_pred_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 8) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_weighted_pred_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 8)) or ((aValue and $00000001) shl 8);
+end;
+function TStdVideoH265PpsFlags.Get_weighted_bipred_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_weighted_bipred_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 9)) or ((aValue and $00000001) shl 9);
+end;
+function TStdVideoH265PpsFlags.Get_transquant_bypass_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 10) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_transquant_bypass_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 10)) or ((aValue and $00000001) shl 10);
+end;
+function TStdVideoH265PpsFlags.Get_tiles_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 11) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_tiles_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 11)) or ((aValue and $00000001) shl 11);
+end;
+function TStdVideoH265PpsFlags.Get_entropy_coding_sync_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 12) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_entropy_coding_sync_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 12)) or ((aValue and $00000001) shl 12);
+end;
+function TStdVideoH265PpsFlags.Get_uniform_spacing_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 13) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_uniform_spacing_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 13)) or ((aValue and $00000001) shl 13);
+end;
+function TStdVideoH265PpsFlags.Get_loop_filter_across_tiles_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 14) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_loop_filter_across_tiles_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 14)) or ((aValue and $00000001) shl 14);
+end;
+function TStdVideoH265PpsFlags.Get_pps_loop_filter_across_slices_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 15) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_pps_loop_filter_across_slices_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 15)) or ((aValue and $00000001) shl 15);
+end;
+function TStdVideoH265PpsFlags.Get_deblocking_filter_control_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 16) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_deblocking_filter_control_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 16)) or ((aValue and $00000001) shl 16);
+end;
+function TStdVideoH265PpsFlags.Get_deblocking_filter_override_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 17) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_deblocking_filter_override_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 17)) or ((aValue and $00000001) shl 17);
+end;
+function TStdVideoH265PpsFlags.Get_pps_deblocking_filter_disabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 18) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_pps_deblocking_filter_disabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 18)) or ((aValue and $00000001) shl 18);
+end;
+function TStdVideoH265PpsFlags.Get_pps_scaling_list_data_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 19) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_pps_scaling_list_data_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 19)) or ((aValue and $00000001) shl 19);
+end;
+function TStdVideoH265PpsFlags.Get_lists_modification_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 20) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_lists_modification_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 20)) or ((aValue and $00000001) shl 20);
+end;
+function TStdVideoH265PpsFlags.Get_slice_segment_header_extension_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 21) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_slice_segment_header_extension_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 21)) or ((aValue and $00000001) shl 21);
+end;
+function TStdVideoH265PpsFlags.Get_pps_extension_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 22) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_pps_extension_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 22)) or ((aValue and $00000001) shl 22);
+end;
+function TStdVideoH265PpsFlags.Get_cross_component_prediction_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 23) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_cross_component_prediction_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 23)) or ((aValue and $00000001) shl 23);
+end;
+function TStdVideoH265PpsFlags.Get_chroma_qp_offset_list_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 24) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_chroma_qp_offset_list_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 24)) or ((aValue and $00000001) shl 24);
+end;
+function TStdVideoH265PpsFlags.Get_pps_curr_pic_ref_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 25) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_pps_curr_pic_ref_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 25)) or ((aValue and $00000001) shl 25);
+end;
+function TStdVideoH265PpsFlags.Get_residual_adaptive_colour_transform_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 26) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_residual_adaptive_colour_transform_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 26)) or ((aValue and $00000001) shl 26);
+end;
+function TStdVideoH265PpsFlags.Get_pps_slice_act_qp_offsets_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 27) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_pps_slice_act_qp_offsets_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 27)) or ((aValue and $00000001) shl 27);
+end;
+function TStdVideoH265PpsFlags.Get_pps_palette_predictor_initializers_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 28) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_pps_palette_predictor_initializers_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 28)) or ((aValue and $00000001) shl 28);
+end;
+function TStdVideoH265PpsFlags.Get_monochrome_palette_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 29) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_monochrome_palette_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 29)) or ((aValue and $00000001) shl 29);
+end;
+function TStdVideoH265PpsFlags.Get_pps_range_extension_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 30) and $00000001;
+end;
+procedure TStdVideoH265PpsFlags.Set_pps_range_extension_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 30)) or ((aValue and $00000001) shl 30);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoH265PictureParameterSet.Create(const aFlags:TStdVideoH265PpsFlags;
+                                                    const aPps_pic_parameter_set_id:TVkUInt8;
+                                                    const aPps_seq_parameter_set_id:TVkUInt8;
+                                                    const aSps_video_parameter_set_id:TVkUInt8;
+                                                    const aNum_extra_slice_header_bits:TVkUInt8;
+                                                    const aNum_ref_idx_l0_default_active_minus1:TVkUInt8;
+                                                    const aNum_ref_idx_l1_default_active_minus1:TVkUInt8;
+                                                    const aInit_qp_minus26:TVkInt8;
+                                                    const aDiff_cu_qp_delta_depth:TVkUInt8;
+                                                    const aPps_cb_qp_offset:TVkInt8;
+                                                    const aPps_cr_qp_offset:TVkInt8;
+                                                    const aPps_beta_offset_div2:TVkInt8;
+                                                    const aPps_tc_offset_div2:TVkInt8;
+                                                    const aLog2_parallel_merge_level_minus2:TVkUInt8;
+                                                    const aLog2_max_transform_skip_block_size_minus2:TVkUInt8;
+                                                    const aDiff_cu_chroma_qp_offset_depth:TVkUInt8;
+                                                    const aChroma_qp_offset_list_len_minus1:TVkUInt8;
+                                                    const aCb_qp_offset_list:array of TVkInt8;
+                                                    const aCr_qp_offset_list:array of TVkInt8;
+                                                    const aLog2_sao_offset_scale_luma:TVkUInt8;
+                                                    const aLog2_sao_offset_scale_chroma:TVkUInt8;
+                                                    const aPps_act_y_qp_offset_plus5:TVkInt8;
+                                                    const aPps_act_cb_qp_offset_plus5:TVkInt8;
+                                                    const aPps_act_cr_qp_offset_plus3:TVkInt8;
+                                                    const aPps_num_palette_predictor_initializers:TVkUInt8;
+                                                    const aLuma_bit_depth_entry_minus8:TVkUInt8;
+                                                    const aChroma_bit_depth_entry_minus8:TVkUInt8;
+                                                    const aNum_tile_columns_minus1:TVkUInt8;
+                                                    const aNum_tile_rows_minus1:TVkUInt8;
+                                                    const aReserved1:TVkUInt8;
+                                                    const aReserved2:TVkUInt8;
+                                                    const aColumn_width_minus1:array of TVkUInt16;
+                                                    const aRow_height_minus1:array of TVkUInt16;
+                                                    const aReserved3:TVkUInt32;
+                                                    const aPScalingLists:PStdVideoH265ScalingLists;
+                                                    const aPPredictorPaletteEntries:PStdVideoH265PredictorPaletteEntries);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoH265PictureParameterSet),#0);
+ flags:=aFlags;
+ pps_pic_parameter_set_id:=aPps_pic_parameter_set_id;
+ pps_seq_parameter_set_id:=aPps_seq_parameter_set_id;
+ sps_video_parameter_set_id:=aSps_video_parameter_set_id;
+ num_extra_slice_header_bits:=aNum_extra_slice_header_bits;
+ num_ref_idx_l0_default_active_minus1:=aNum_ref_idx_l0_default_active_minus1;
+ num_ref_idx_l1_default_active_minus1:=aNum_ref_idx_l1_default_active_minus1;
+ init_qp_minus26:=aInit_qp_minus26;
+ diff_cu_qp_delta_depth:=aDiff_cu_qp_delta_depth;
+ pps_cb_qp_offset:=aPps_cb_qp_offset;
+ pps_cr_qp_offset:=aPps_cr_qp_offset;
+ pps_beta_offset_div2:=aPps_beta_offset_div2;
+ pps_tc_offset_div2:=aPps_tc_offset_div2;
+ log2_parallel_merge_level_minus2:=aLog2_parallel_merge_level_minus2;
+ log2_max_transform_skip_block_size_minus2:=aLog2_max_transform_skip_block_size_minus2;
+ diff_cu_chroma_qp_offset_depth:=aDiff_cu_chroma_qp_offset_depth;
+ chroma_qp_offset_list_len_minus1:=aChroma_qp_offset_list_len_minus1;
+ ArrayItemCount:=length(aCb_qp_offset_list);
+ if ArrayItemCount>length(cb_qp_offset_list) then begin
+  ArrayItemCount:=length(cb_qp_offset_list);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aCb_qp_offset_list[0],cb_qp_offset_list[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aCr_qp_offset_list);
+ if ArrayItemCount>length(cr_qp_offset_list) then begin
+  ArrayItemCount:=length(cr_qp_offset_list);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aCr_qp_offset_list[0],cr_qp_offset_list[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ log2_sao_offset_scale_luma:=aLog2_sao_offset_scale_luma;
+ log2_sao_offset_scale_chroma:=aLog2_sao_offset_scale_chroma;
+ pps_act_y_qp_offset_plus5:=aPps_act_y_qp_offset_plus5;
+ pps_act_cb_qp_offset_plus5:=aPps_act_cb_qp_offset_plus5;
+ pps_act_cr_qp_offset_plus3:=aPps_act_cr_qp_offset_plus3;
+ pps_num_palette_predictor_initializers:=aPps_num_palette_predictor_initializers;
+ luma_bit_depth_entry_minus8:=aLuma_bit_depth_entry_minus8;
+ chroma_bit_depth_entry_minus8:=aChroma_bit_depth_entry_minus8;
+ num_tile_columns_minus1:=aNum_tile_columns_minus1;
+ num_tile_rows_minus1:=aNum_tile_rows_minus1;
+ reserved1:=aReserved1;
+ reserved2:=aReserved2;
+ ArrayItemCount:=length(aColumn_width_minus1);
+ if ArrayItemCount>length(column_width_minus1) then begin
+  ArrayItemCount:=length(column_width_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aColumn_width_minus1[0],column_width_minus1[0],ArrayItemCount*SizeOf(TVkUInt16));
+ end;
+ ArrayItemCount:=length(aRow_height_minus1);
+ if ArrayItemCount>length(row_height_minus1) then begin
+  ArrayItemCount:=length(row_height_minus1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aRow_height_minus1[0],row_height_minus1[0],ArrayItemCount*SizeOf(TVkUInt16));
+ end;
+ reserved3:=aReserved3;
+ pScalingLists:=aPScalingLists;
+ pPredictorPaletteEntries:=aPPredictorPaletteEntries;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoDecodeH265PictureInfoFlags.Get_IrapPicFlag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoDecodeH265PictureInfoFlags.Set_IrapPicFlag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoDecodeH265PictureInfoFlags.Get_IdrPicFlag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoDecodeH265PictureInfoFlags.Set_IdrPicFlag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoDecodeH265PictureInfoFlags.Get_IsReference:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoDecodeH265PictureInfoFlags.Set_IsReference(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoDecodeH265PictureInfoFlags.Get_short_term_ref_pic_set_sps_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoDecodeH265PictureInfoFlags.Set_short_term_ref_pic_set_sps_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoDecodeH265PictureInfo.Create(const aFlags:TStdVideoDecodeH265PictureInfoFlags;
+                                                  const aSps_video_parameter_set_id:TVkUInt8;
+                                                  const aPps_seq_parameter_set_id:TVkUInt8;
+                                                  const aPps_pic_parameter_set_id:TVkUInt8;
+                                                  const aNumDeltaPocsOfRefRpsIdx:TVkUInt8;
+                                                  const aPicOrderCntVal:TVkInt32;
+                                                  const aNumBitsForSTRefPicSetInSlice:TVkUInt16;
+                                                  const aReserved:TVkUInt16;
+                                                  const aRefPicSetStCurrBefore:array of TVkUInt8;
+                                                  const aRefPicSetStCurrAfter:array of TVkUInt8;
+                                                  const aRefPicSetLtCurr:array of TVkUInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoDecodeH265PictureInfo),#0);
+ flags:=aFlags;
+ sps_video_parameter_set_id:=aSps_video_parameter_set_id;
+ pps_seq_parameter_set_id:=aPps_seq_parameter_set_id;
+ pps_pic_parameter_set_id:=aPps_pic_parameter_set_id;
+ NumDeltaPocsOfRefRpsIdx:=aNumDeltaPocsOfRefRpsIdx;
+ PicOrderCntVal:=aPicOrderCntVal;
+ NumBitsForSTRefPicSetInSlice:=aNumBitsForSTRefPicSetInSlice;
+ reserved:=aReserved;
+ ArrayItemCount:=length(aRefPicSetStCurrBefore);
+ if ArrayItemCount>length(RefPicSetStCurrBefore) then begin
+  ArrayItemCount:=length(RefPicSetStCurrBefore);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aRefPicSetStCurrBefore[0],RefPicSetStCurrBefore[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aRefPicSetStCurrAfter);
+ if ArrayItemCount>length(RefPicSetStCurrAfter) then begin
+  ArrayItemCount:=length(RefPicSetStCurrAfter);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aRefPicSetStCurrAfter[0],RefPicSetStCurrAfter[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aRefPicSetLtCurr);
+ if ArrayItemCount>length(RefPicSetLtCurr) then begin
+  ArrayItemCount:=length(RefPicSetLtCurr);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aRefPicSetLtCurr[0],RefPicSetLtCurr[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoDecodeH265ReferenceInfoFlags.Get_used_for_long_term_reference:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoDecodeH265ReferenceInfoFlags.Set_used_for_long_term_reference(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoDecodeH265ReferenceInfoFlags.Get_unused_for_reference:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoDecodeH265ReferenceInfoFlags.Set_unused_for_reference(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoDecodeH265ReferenceInfo.Create(const aFlags:TStdVideoDecodeH265ReferenceInfoFlags;
+                                                    const aPicOrderCntVal:TVkInt32);
+begin
+ flags:=aFlags;
+ PicOrderCntVal:=aPicOrderCntVal;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH265WeightTableFlags.Create(const aLuma_weight_l0_flag:TVkUInt16;
+                                                       const aChroma_weight_l0_flag:TVkUInt16;
+                                                       const aLuma_weight_l1_flag:TVkUInt16;
+                                                       const aChroma_weight_l1_flag:TVkUInt16);
+begin
+ luma_weight_l0_flag:=aLuma_weight_l0_flag;
+ chroma_weight_l0_flag:=aChroma_weight_l0_flag;
+ luma_weight_l1_flag:=aLuma_weight_l1_flag;
+ chroma_weight_l1_flag:=aChroma_weight_l1_flag;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH265WeightTable.Create(const aFlags:TStdVideoEncodeH265WeightTableFlags;
+                                                  const aLuma_log2_weight_denom:TVkUInt8;
+                                                  const aDelta_chroma_log2_weight_denom:TVkInt8;
+                                                  const aDelta_luma_weight_l0:array of TVkInt8;
+                                                  const aLuma_offset_l0:array of TVkInt8;
+                                                  const aDelta_chroma_weight_l0:array of TVkInt8;
+                                                  const aDelta_chroma_offset_l0:array of TVkInt8;
+                                                  const aDelta_luma_weight_l1:array of TVkInt8;
+                                                  const aLuma_offset_l1:array of TVkInt8;
+                                                  const aDelta_chroma_weight_l1:array of TVkInt8;
+                                                  const aDelta_chroma_offset_l1:array of TVkInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoEncodeH265WeightTable),#0);
+ flags:=aFlags;
+ luma_log2_weight_denom:=aLuma_log2_weight_denom;
+ delta_chroma_log2_weight_denom:=aDelta_chroma_log2_weight_denom;
+ ArrayItemCount:=length(aDelta_luma_weight_l0);
+ if ArrayItemCount>length(delta_luma_weight_l0) then begin
+  ArrayItemCount:=length(delta_luma_weight_l0);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDelta_luma_weight_l0[0],delta_luma_weight_l0[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aLuma_offset_l0);
+ if ArrayItemCount>length(luma_offset_l0) then begin
+  ArrayItemCount:=length(luma_offset_l0);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLuma_offset_l0[0],luma_offset_l0[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aDelta_chroma_weight_l0);
+ if ArrayItemCount>length(delta_chroma_weight_l0) then begin
+  ArrayItemCount:=length(delta_chroma_weight_l0);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDelta_chroma_weight_l0[0],delta_chroma_weight_l0[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aDelta_chroma_offset_l0);
+ if ArrayItemCount>length(delta_chroma_offset_l0) then begin
+  ArrayItemCount:=length(delta_chroma_offset_l0);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDelta_chroma_offset_l0[0],delta_chroma_offset_l0[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aDelta_luma_weight_l1);
+ if ArrayItemCount>length(delta_luma_weight_l1) then begin
+  ArrayItemCount:=length(delta_luma_weight_l1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDelta_luma_weight_l1[0],delta_luma_weight_l1[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aLuma_offset_l1);
+ if ArrayItemCount>length(luma_offset_l1) then begin
+  ArrayItemCount:=length(luma_offset_l1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLuma_offset_l1[0],luma_offset_l1[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aDelta_chroma_weight_l1);
+ if ArrayItemCount>length(delta_chroma_weight_l1) then begin
+  ArrayItemCount:=length(delta_chroma_weight_l1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDelta_chroma_weight_l1[0],delta_chroma_weight_l1[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aDelta_chroma_offset_l1);
+ if ArrayItemCount>length(delta_chroma_offset_l1) then begin
+  ArrayItemCount:=length(delta_chroma_offset_l1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDelta_chroma_offset_l1[0],delta_chroma_offset_l1[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH265LongTermRefPics.Create(const aNum_long_term_sps:TVkUInt8;
+                                                      const aNum_long_term_pics:TVkUInt8;
+                                                      const aLt_idx_sps:array of TVkUInt8;
+                                                      const aPoc_lsb_lt:array of TVkUInt8;
+                                                      const aUsed_by_curr_pic_lt_flag:TVkUInt16;
+                                                      const aDelta_poc_msb_present_flag:array of TVkUInt8;
+                                                      const aDelta_poc_msb_cycle_lt:array of TVkUInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoEncodeH265LongTermRefPics),#0);
+ num_long_term_sps:=aNum_long_term_sps;
+ num_long_term_pics:=aNum_long_term_pics;
+ ArrayItemCount:=length(aLt_idx_sps);
+ if ArrayItemCount>length(lt_idx_sps) then begin
+  ArrayItemCount:=length(lt_idx_sps);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLt_idx_sps[0],lt_idx_sps[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aPoc_lsb_lt);
+ if ArrayItemCount>length(poc_lsb_lt) then begin
+  ArrayItemCount:=length(poc_lsb_lt);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aPoc_lsb_lt[0],poc_lsb_lt[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ used_by_curr_pic_lt_flag:=aUsed_by_curr_pic_lt_flag;
+ ArrayItemCount:=length(aDelta_poc_msb_present_flag);
+ if ArrayItemCount>length(delta_poc_msb_present_flag) then begin
+  ArrayItemCount:=length(delta_poc_msb_present_flag);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDelta_poc_msb_present_flag[0],delta_poc_msb_present_flag[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aDelta_poc_msb_cycle_lt);
+ if ArrayItemCount>length(delta_poc_msb_cycle_lt) then begin
+  ArrayItemCount:=length(delta_poc_msb_cycle_lt);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDelta_poc_msb_cycle_lt[0],delta_poc_msb_cycle_lt[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_first_slice_segment_in_pic_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_first_slice_segment_in_pic_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_dependent_slice_segment_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_dependent_slice_segment_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_slice_sao_luma_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_slice_sao_luma_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_slice_sao_chroma_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_slice_sao_chroma_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_num_ref_idx_active_override_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_num_ref_idx_active_override_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_mvd_l1_zero_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_mvd_l1_zero_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_cabac_init_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_cabac_init_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_cu_chroma_qp_offset_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_cu_chroma_qp_offset_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_deblocking_filter_override_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 8) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_deblocking_filter_override_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 8)) or ((aValue and $00000001) shl 8);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_slice_deblocking_filter_disabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_slice_deblocking_filter_disabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 9)) or ((aValue and $00000001) shl 9);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_collocated_from_l0_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 10) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_collocated_from_l0_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 10)) or ((aValue and $00000001) shl 10);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_slice_loop_filter_across_slices_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 11) and $00000001;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_slice_loop_filter_across_slices_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 11)) or ((aValue and $00000001) shl 11);
+end;
+function TStdVideoEncodeH265SliceSegmentHeaderFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 12) and $000fffff;
+end;
+procedure TStdVideoEncodeH265SliceSegmentHeaderFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($000fffff shl 12)) or ((aValue and $000fffff) shl 12);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH265SliceSegmentHeader.Create(const aFlags:TStdVideoEncodeH265SliceSegmentHeaderFlags;
+                                                         const aSlice_type:TStdVideoH265SliceType;
+                                                         const aSlice_segment_address:TVkUInt32;
+                                                         const aCollocated_ref_idx:TVkUInt8;
+                                                         const aMaxNumMergeCand:TVkUInt8;
+                                                         const aSlice_cb_qp_offset:TVkInt8;
+                                                         const aSlice_cr_qp_offset:TVkInt8;
+                                                         const aSlice_beta_offset_div2:TVkInt8;
+                                                         const aSlice_tc_offset_div2:TVkInt8;
+                                                         const aSlice_act_y_qp_offset:TVkInt8;
+                                                         const aSlice_act_cb_qp_offset:TVkInt8;
+                                                         const aSlice_act_cr_qp_offset:TVkInt8;
+                                                         const aSlice_qp_delta:TVkInt8;
+                                                         const aReserved1:TVkUInt16;
+                                                         const aPWeightTable:PStdVideoEncodeH265WeightTable);
+begin
+ flags:=aFlags;
+ slice_type:=aSlice_type;
+ slice_segment_address:=aSlice_segment_address;
+ collocated_ref_idx:=aCollocated_ref_idx;
+ MaxNumMergeCand:=aMaxNumMergeCand;
+ slice_cb_qp_offset:=aSlice_cb_qp_offset;
+ slice_cr_qp_offset:=aSlice_cr_qp_offset;
+ slice_beta_offset_div2:=aSlice_beta_offset_div2;
+ slice_tc_offset_div2:=aSlice_tc_offset_div2;
+ slice_act_y_qp_offset:=aSlice_act_y_qp_offset;
+ slice_act_cb_qp_offset:=aSlice_act_cb_qp_offset;
+ slice_act_cr_qp_offset:=aSlice_act_cr_qp_offset;
+ slice_qp_delta:=aSlice_qp_delta;
+ reserved1:=aReserved1;
+ pWeightTable:=aPWeightTable;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoEncodeH265ReferenceListsInfoFlags.Get_ref_pic_list_modification_flag_l0:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoEncodeH265ReferenceListsInfoFlags.Set_ref_pic_list_modification_flag_l0(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoEncodeH265ReferenceListsInfoFlags.Get_ref_pic_list_modification_flag_l1:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoEncodeH265ReferenceListsInfoFlags.Set_ref_pic_list_modification_flag_l1(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoEncodeH265ReferenceListsInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $3fffffff;
+end;
+procedure TStdVideoEncodeH265ReferenceListsInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($3fffffff shl 2)) or ((aValue and $3fffffff) shl 2);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH265ReferenceListsInfo.Create(const aFlags:TStdVideoEncodeH265ReferenceListsInfoFlags;
+                                                         const aNum_ref_idx_l0_active_minus1:TVkUInt8;
+                                                         const aNum_ref_idx_l1_active_minus1:TVkUInt8;
+                                                         const aRefPicList0:array of TVkUInt8;
+                                                         const aRefPicList1:array of TVkUInt8;
+                                                         const aList_entry_l0:array of TVkUInt8;
+                                                         const aList_entry_l1:array of TVkUInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoEncodeH265ReferenceListsInfo),#0);
+ flags:=aFlags;
+ num_ref_idx_l0_active_minus1:=aNum_ref_idx_l0_active_minus1;
+ num_ref_idx_l1_active_minus1:=aNum_ref_idx_l1_active_minus1;
+ ArrayItemCount:=length(aRefPicList0);
+ if ArrayItemCount>length(RefPicList0) then begin
+  ArrayItemCount:=length(RefPicList0);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aRefPicList0[0],RefPicList0[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aRefPicList1);
+ if ArrayItemCount>length(RefPicList1) then begin
+  ArrayItemCount:=length(RefPicList1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aRefPicList1[0],RefPicList1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aList_entry_l0);
+ if ArrayItemCount>length(list_entry_l0) then begin
+  ArrayItemCount:=length(list_entry_l0);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aList_entry_l0[0],list_entry_l0[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aList_entry_l1);
+ if ArrayItemCount>length(list_entry_l1) then begin
+  ArrayItemCount:=length(list_entry_l1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aList_entry_l1[0],list_entry_l1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoEncodeH265PictureInfoFlags.Get_is_reference:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoEncodeH265PictureInfoFlags.Set_is_reference(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoEncodeH265PictureInfoFlags.Get_IrapPicFlag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoEncodeH265PictureInfoFlags.Set_IrapPicFlag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoEncodeH265PictureInfoFlags.Get_used_for_long_term_reference:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoEncodeH265PictureInfoFlags.Set_used_for_long_term_reference(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoEncodeH265PictureInfoFlags.Get_discardable_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoEncodeH265PictureInfoFlags.Set_discardable_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoEncodeH265PictureInfoFlags.Get_cross_layer_bla_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoEncodeH265PictureInfoFlags.Set_cross_layer_bla_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoEncodeH265PictureInfoFlags.Get_pic_output_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoEncodeH265PictureInfoFlags.Set_pic_output_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoEncodeH265PictureInfoFlags.Get_no_output_of_prior_pics_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoEncodeH265PictureInfoFlags.Set_no_output_of_prior_pics_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoEncodeH265PictureInfoFlags.Get_short_term_ref_pic_set_sps_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoEncodeH265PictureInfoFlags.Set_short_term_ref_pic_set_sps_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+function TStdVideoEncodeH265PictureInfoFlags.Get_slice_temporal_mvp_enabled_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 8) and $00000001;
+end;
+procedure TStdVideoEncodeH265PictureInfoFlags.Set_slice_temporal_mvp_enabled_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 8)) or ((aValue and $00000001) shl 8);
+end;
+function TStdVideoEncodeH265PictureInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $007fffff;
+end;
+procedure TStdVideoEncodeH265PictureInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($007fffff shl 9)) or ((aValue and $007fffff) shl 9);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH265PictureInfo.Create(const aFlags:TStdVideoEncodeH265PictureInfoFlags;
+                                                  const aPic_type:TStdVideoH265PictureType;
+                                                  const aSps_video_parameter_set_id:TVkUInt8;
+                                                  const aPps_seq_parameter_set_id:TVkUInt8;
+                                                  const aPps_pic_parameter_set_id:TVkUInt8;
+                                                  const aShort_term_ref_pic_set_idx:TVkUInt8;
+                                                  const aPicOrderCntVal:TVkInt32;
+                                                  const aTemporalId:TVkUInt8;
+                                                  const aReserved1:array of TVkUInt8;
+                                                  const aPRefLists:PStdVideoEncodeH265ReferenceListsInfo;
+                                                  const aPShortTermRefPicSet:PStdVideoH265ShortTermRefPicSet;
+                                                  const aPLongTermRefPics:PStdVideoEncodeH265LongTermRefPics);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoEncodeH265PictureInfo),#0);
+ flags:=aFlags;
+ pic_type:=aPic_type;
+ sps_video_parameter_set_id:=aSps_video_parameter_set_id;
+ pps_seq_parameter_set_id:=aPps_seq_parameter_set_id;
+ pps_pic_parameter_set_id:=aPps_pic_parameter_set_id;
+ short_term_ref_pic_set_idx:=aShort_term_ref_pic_set_idx;
+ PicOrderCntVal:=aPicOrderCntVal;
+ TemporalId:=aTemporalId;
+ ArrayItemCount:=length(aReserved1);
+ if ArrayItemCount>length(reserved1) then begin
+  ArrayItemCount:=length(reserved1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aReserved1[0],reserved1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ pRefLists:=aPRefLists;
+ pShortTermRefPicSet:=aPShortTermRefPicSet;
+ pLongTermRefPics:=aPLongTermRefPics;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoEncodeH265ReferenceInfoFlags.Get_used_for_long_term_reference:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoEncodeH265ReferenceInfoFlags.Set_used_for_long_term_reference(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoEncodeH265ReferenceInfoFlags.Get_unused_for_reference:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoEncodeH265ReferenceInfoFlags.Set_unused_for_reference(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoEncodeH265ReferenceInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $3fffffff;
+end;
+procedure TStdVideoEncodeH265ReferenceInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($3fffffff shl 2)) or ((aValue and $3fffffff) shl 2);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeH265ReferenceInfo.Create(const aFlags:TStdVideoEncodeH265ReferenceInfoFlags;
+                                                    const aPic_type:TStdVideoH265PictureType;
+                                                    const aPicOrderCntVal:TVkInt32;
+                                                    const aTemporalId:TVkUInt8);
+begin
+ flags:=aFlags;
+ pic_type:=aPic_type;
+ PicOrderCntVal:=aPicOrderCntVal;
+ TemporalId:=aTemporalId;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoVP9ColorConfigFlags.Get_color_range:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoVP9ColorConfigFlags.Set_color_range(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoVP9ColorConfigFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $7fffffff;
+end;
+procedure TStdVideoVP9ColorConfigFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($7fffffff shl 1)) or ((aValue and $7fffffff) shl 1);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoVP9ColorConfig.Create(const aFlags:TStdVideoVP9ColorConfigFlags;
+                                           const aBitDepth:TVkUInt8;
+                                           const aSubsampling_x:TVkUInt8;
+                                           const aSubsampling_y:TVkUInt8;
+                                           const aReserved1:TVkUInt8;
+                                           const aColor_space:TStdVideoVP9ColorSpace);
+begin
+ flags:=aFlags;
+ BitDepth:=aBitDepth;
+ subsampling_x:=aSubsampling_x;
+ subsampling_y:=aSubsampling_y;
+ reserved1:=aReserved1;
+ color_space:=aColor_space;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoVP9LoopFilterFlags.Get_loop_filter_delta_enabled:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoVP9LoopFilterFlags.Set_loop_filter_delta_enabled(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoVP9LoopFilterFlags.Get_loop_filter_delta_update:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoVP9LoopFilterFlags.Set_loop_filter_delta_update(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoVP9LoopFilterFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $3fffffff;
+end;
+procedure TStdVideoVP9LoopFilterFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($3fffffff shl 2)) or ((aValue and $3fffffff) shl 2);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoVP9LoopFilter.Create(const aFlags:TStdVideoVP9LoopFilterFlags;
+                                          const aLoop_filter_level:TVkUInt8;
+                                          const aLoop_filter_sharpness:TVkUInt8;
+                                          const aUpdate_ref_delta:TVkUInt8;
+                                          const aLoop_filter_ref_deltas:array of TVkInt8;
+                                          const aUpdate_mode_delta:TVkUInt8;
+                                          const aLoop_filter_mode_deltas:array of TVkInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoVP9LoopFilter),#0);
+ flags:=aFlags;
+ loop_filter_level:=aLoop_filter_level;
+ loop_filter_sharpness:=aLoop_filter_sharpness;
+ update_ref_delta:=aUpdate_ref_delta;
+ ArrayItemCount:=length(aLoop_filter_ref_deltas);
+ if ArrayItemCount>length(loop_filter_ref_deltas) then begin
+  ArrayItemCount:=length(loop_filter_ref_deltas);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLoop_filter_ref_deltas[0],loop_filter_ref_deltas[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ update_mode_delta:=aUpdate_mode_delta;
+ ArrayItemCount:=length(aLoop_filter_mode_deltas);
+ if ArrayItemCount>length(loop_filter_mode_deltas) then begin
+  ArrayItemCount:=length(loop_filter_mode_deltas);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLoop_filter_mode_deltas[0],loop_filter_mode_deltas[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoVP9SegmentationFlags.Get_segmentation_update_map:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoVP9SegmentationFlags.Set_segmentation_update_map(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoVP9SegmentationFlags.Get_segmentation_temporal_update:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoVP9SegmentationFlags.Set_segmentation_temporal_update(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoVP9SegmentationFlags.Get_segmentation_update_data:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoVP9SegmentationFlags.Set_segmentation_update_data(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoVP9SegmentationFlags.Get_segmentation_abs_or_delta_update:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoVP9SegmentationFlags.Set_segmentation_abs_or_delta_update(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoVP9SegmentationFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $0fffffff;
+end;
+procedure TStdVideoVP9SegmentationFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($0fffffff shl 4)) or ((aValue and $0fffffff) shl 4);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoVP9Segmentation.Create(const aFlags:TStdVideoVP9SegmentationFlags;
+                                            const aSegmentation_tree_probs:array of TVkUInt8;
+                                            const aSegmentation_pred_prob:array of TVkUInt8;
+                                            const aFeatureEnabled:array of TVkUInt8;
+                                            const aFeatureData:array of TVkInt16);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoVP9Segmentation),#0);
+ flags:=aFlags;
+ ArrayItemCount:=length(aSegmentation_tree_probs);
+ if ArrayItemCount>length(segmentation_tree_probs) then begin
+  ArrayItemCount:=length(segmentation_tree_probs);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aSegmentation_tree_probs[0],segmentation_tree_probs[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aSegmentation_pred_prob);
+ if ArrayItemCount>length(segmentation_pred_prob) then begin
+  ArrayItemCount:=length(segmentation_pred_prob);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aSegmentation_pred_prob[0],segmentation_pred_prob[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aFeatureEnabled);
+ if ArrayItemCount>length(FeatureEnabled) then begin
+  ArrayItemCount:=length(FeatureEnabled);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aFeatureEnabled[0],FeatureEnabled[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aFeatureData);
+ if ArrayItemCount>length(FeatureData) then begin
+  ArrayItemCount:=length(FeatureData);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aFeatureData[0],FeatureData[0],ArrayItemCount*SizeOf(TVkInt16));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoDecodeVP9PictureInfoFlags.Get_error_resilient_mode:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoDecodeVP9PictureInfoFlags.Set_error_resilient_mode(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoDecodeVP9PictureInfoFlags.Get_intra_only:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoDecodeVP9PictureInfoFlags.Set_intra_only(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoDecodeVP9PictureInfoFlags.Get_allow_high_precision_mv:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoDecodeVP9PictureInfoFlags.Set_allow_high_precision_mv(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoDecodeVP9PictureInfoFlags.Get_refresh_frame_context:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoDecodeVP9PictureInfoFlags.Set_refresh_frame_context(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoDecodeVP9PictureInfoFlags.Get_frame_parallel_decoding_mode:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoDecodeVP9PictureInfoFlags.Set_frame_parallel_decoding_mode(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoDecodeVP9PictureInfoFlags.Get_segmentation_enabled:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoDecodeVP9PictureInfoFlags.Set_segmentation_enabled(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoDecodeVP9PictureInfoFlags.Get_show_frame:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoDecodeVP9PictureInfoFlags.Set_show_frame(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoDecodeVP9PictureInfoFlags.Get_UsePrevFrameMvs:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoDecodeVP9PictureInfoFlags.Set_UsePrevFrameMvs(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+function TStdVideoDecodeVP9PictureInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 8) and $00ffffff;
+end;
+procedure TStdVideoDecodeVP9PictureInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00ffffff shl 8)) or ((aValue and $00ffffff) shl 8);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoDecodeVP9PictureInfo.Create(const aFlags:TStdVideoDecodeVP9PictureInfoFlags;
+                                                 const aProfile:TStdVideoVP9Profile;
+                                                 const aFrame_type:TStdVideoVP9FrameType;
+                                                 const aFrame_context_idx:TVkUInt8;
+                                                 const aReset_frame_context:TVkUInt8;
+                                                 const aRefresh_frame_flags:TVkUInt8;
+                                                 const aRef_frame_sign_bias_mask:TVkUInt8;
+                                                 const aInterpolation_filter:TStdVideoVP9InterpolationFilter;
+                                                 const aBase_q_idx:TVkUInt8;
+                                                 const aDelta_q_y_dc:TVkInt8;
+                                                 const aDelta_q_uv_dc:TVkInt8;
+                                                 const aDelta_q_uv_ac:TVkInt8;
+                                                 const aTile_cols_log2:TVkUInt8;
+                                                 const aTile_rows_log2:TVkUInt8;
+                                                 const aReserved1:array of TVkUInt16;
+                                                 const aPColorConfig:PStdVideoVP9ColorConfig;
+                                                 const aPLoopFilter:PStdVideoVP9LoopFilter;
+                                                 const aPSegmentation:PStdVideoVP9Segmentation);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoDecodeVP9PictureInfo),#0);
+ flags:=aFlags;
+ profile:=aProfile;
+ frame_type:=aFrame_type;
+ frame_context_idx:=aFrame_context_idx;
+ reset_frame_context:=aReset_frame_context;
+ refresh_frame_flags:=aRefresh_frame_flags;
+ ref_frame_sign_bias_mask:=aRef_frame_sign_bias_mask;
+ interpolation_filter:=aInterpolation_filter;
+ base_q_idx:=aBase_q_idx;
+ delta_q_y_dc:=aDelta_q_y_dc;
+ delta_q_uv_dc:=aDelta_q_uv_dc;
+ delta_q_uv_ac:=aDelta_q_uv_ac;
+ tile_cols_log2:=aTile_cols_log2;
+ tile_rows_log2:=aTile_rows_log2;
+ ArrayItemCount:=length(aReserved1);
+ if ArrayItemCount>length(reserved1) then begin
+  ArrayItemCount:=length(reserved1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aReserved1[0],reserved1[0],ArrayItemCount*SizeOf(TVkUInt16));
+ end;
+ pColorConfig:=aPColorConfig;
+ pLoopFilter:=aPLoopFilter;
+ pSegmentation:=aPSegmentation;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoAV1ColorConfigFlags.Get_mono_chrome:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoAV1ColorConfigFlags.Set_mono_chrome(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoAV1ColorConfigFlags.Get_color_range:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoAV1ColorConfigFlags.Set_color_range(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoAV1ColorConfigFlags.Get_separate_uv_delta_q:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoAV1ColorConfigFlags.Set_separate_uv_delta_q(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoAV1ColorConfigFlags.Get_color_description_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoAV1ColorConfigFlags.Set_color_description_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoAV1ColorConfigFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $0fffffff;
+end;
+procedure TStdVideoAV1ColorConfigFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($0fffffff shl 4)) or ((aValue and $0fffffff) shl 4);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoAV1ColorConfig.Create(const aFlags:TStdVideoAV1ColorConfigFlags;
+                                           const aBitDepth:TVkUInt8;
+                                           const aSubsampling_x:TVkUInt8;
+                                           const aSubsampling_y:TVkUInt8;
+                                           const aReserved1:TVkUInt8;
+                                           const aColor_primaries:TStdVideoAV1ColorPrimaries;
+                                           const aTransfer_characteristics:TStdVideoAV1TransferCharacteristics;
+                                           const aMatrix_coefficients:TStdVideoAV1MatrixCoefficients;
+                                           const aChroma_sample_position:TStdVideoAV1ChromaSamplePosition);
+begin
+ flags:=aFlags;
+ BitDepth:=aBitDepth;
+ subsampling_x:=aSubsampling_x;
+ subsampling_y:=aSubsampling_y;
+ reserved1:=aReserved1;
+ color_primaries:=aColor_primaries;
+ transfer_characteristics:=aTransfer_characteristics;
+ matrix_coefficients:=aMatrix_coefficients;
+ chroma_sample_position:=aChroma_sample_position;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoAV1TimingInfoFlags.Get_equal_picture_interval:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoAV1TimingInfoFlags.Set_equal_picture_interval(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoAV1TimingInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $7fffffff;
+end;
+procedure TStdVideoAV1TimingInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($7fffffff shl 1)) or ((aValue and $7fffffff) shl 1);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoAV1TimingInfo.Create(const aFlags:TStdVideoAV1TimingInfoFlags;
+                                          const aNum_units_in_display_tick:TVkUInt32;
+                                          const aTime_scale:TVkUInt32;
+                                          const aNum_ticks_per_picture_minus_1:TVkUInt32);
+begin
+ flags:=aFlags;
+ num_units_in_display_tick:=aNum_units_in_display_tick;
+ time_scale:=aTime_scale;
+ num_ticks_per_picture_minus_1:=aNum_ticks_per_picture_minus_1;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoAV1SequenceHeaderFlags.Get_still_picture:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_still_picture(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_reduced_still_picture_header:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_reduced_still_picture_header(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_use_128x128_superblock:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_use_128x128_superblock(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_filter_intra:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_filter_intra(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_intra_edge_filter:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_intra_edge_filter(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_interintra_compound:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_interintra_compound(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_masked_compound:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_masked_compound(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_warped_motion:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_warped_motion(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_dual_filter:TVkUInt32;
+begin
+ result:=(_bitfield shr 8) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_dual_filter(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 8)) or ((aValue and $00000001) shl 8);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_order_hint:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_order_hint(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 9)) or ((aValue and $00000001) shl 9);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_jnt_comp:TVkUInt32;
+begin
+ result:=(_bitfield shr 10) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_jnt_comp(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 10)) or ((aValue and $00000001) shl 10);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_ref_frame_mvs:TVkUInt32;
+begin
+ result:=(_bitfield shr 11) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_ref_frame_mvs(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 11)) or ((aValue and $00000001) shl 11);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_frame_id_numbers_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 12) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_frame_id_numbers_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 12)) or ((aValue and $00000001) shl 12);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_superres:TVkUInt32;
+begin
+ result:=(_bitfield shr 13) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_superres(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 13)) or ((aValue and $00000001) shl 13);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_cdef:TVkUInt32;
+begin
+ result:=(_bitfield shr 14) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_cdef(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 14)) or ((aValue and $00000001) shl 14);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_enable_restoration:TVkUInt32;
+begin
+ result:=(_bitfield shr 15) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_enable_restoration(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 15)) or ((aValue and $00000001) shl 15);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_film_grain_params_present:TVkUInt32;
+begin
+ result:=(_bitfield shr 16) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_film_grain_params_present(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 16)) or ((aValue and $00000001) shl 16);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_timing_info_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 17) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_timing_info_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 17)) or ((aValue and $00000001) shl 17);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_initial_display_delay_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 18) and $00000001;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_initial_display_delay_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 18)) or ((aValue and $00000001) shl 18);
+end;
+function TStdVideoAV1SequenceHeaderFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 19) and $00001fff;
+end;
+procedure TStdVideoAV1SequenceHeaderFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00001fff shl 19)) or ((aValue and $00001fff) shl 19);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoAV1SequenceHeader.Create(const aFlags:TStdVideoAV1SequenceHeaderFlags;
+                                              const aSeq_profile:TStdVideoAV1Profile;
+                                              const aFrame_width_bits_minus_1:TVkUInt8;
+                                              const aFrame_height_bits_minus_1:TVkUInt8;
+                                              const aMax_frame_width_minus_1:TVkUInt16;
+                                              const aMax_frame_height_minus_1:TVkUInt16;
+                                              const aDelta_frame_id_length_minus_2:TVkUInt8;
+                                              const aAdditional_frame_id_length_minus_1:TVkUInt8;
+                                              const aOrder_hint_bits_minus_1:TVkUInt8;
+                                              const aSeq_force_integer_mv:TVkUInt8;
+                                              const aSeq_force_screen_content_tools:TVkUInt8;
+                                              const aReserved1:array of TVkUInt8;
+                                              const aPColorConfig:PStdVideoAV1ColorConfig;
+                                              const aPTimingInfo:PStdVideoAV1TimingInfo);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoAV1SequenceHeader),#0);
+ flags:=aFlags;
+ seq_profile:=aSeq_profile;
+ frame_width_bits_minus_1:=aFrame_width_bits_minus_1;
+ frame_height_bits_minus_1:=aFrame_height_bits_minus_1;
+ max_frame_width_minus_1:=aMax_frame_width_minus_1;
+ max_frame_height_minus_1:=aMax_frame_height_minus_1;
+ delta_frame_id_length_minus_2:=aDelta_frame_id_length_minus_2;
+ additional_frame_id_length_minus_1:=aAdditional_frame_id_length_minus_1;
+ order_hint_bits_minus_1:=aOrder_hint_bits_minus_1;
+ seq_force_integer_mv:=aSeq_force_integer_mv;
+ seq_force_screen_content_tools:=aSeq_force_screen_content_tools;
+ ArrayItemCount:=length(aReserved1);
+ if ArrayItemCount>length(reserved1) then begin
+  ArrayItemCount:=length(reserved1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aReserved1[0],reserved1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ pColorConfig:=aPColorConfig;
+ pTimingInfo:=aPTimingInfo;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoAV1LoopFilterFlags.Get_loop_filter_delta_enabled:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoAV1LoopFilterFlags.Set_loop_filter_delta_enabled(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoAV1LoopFilterFlags.Get_loop_filter_delta_update:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoAV1LoopFilterFlags.Set_loop_filter_delta_update(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoAV1LoopFilterFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $3fffffff;
+end;
+procedure TStdVideoAV1LoopFilterFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($3fffffff shl 2)) or ((aValue and $3fffffff) shl 2);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoAV1LoopFilter.Create(const aFlags:TStdVideoAV1LoopFilterFlags;
+                                          const aLoop_filter_level:array of TVkUInt8;
+                                          const aLoop_filter_sharpness:TVkUInt8;
+                                          const aUpdate_ref_delta:TVkUInt8;
+                                          const aLoop_filter_ref_deltas:array of TVkInt8;
+                                          const aUpdate_mode_delta:TVkUInt8;
+                                          const aLoop_filter_mode_deltas:array of TVkInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoAV1LoopFilter),#0);
+ flags:=aFlags;
+ ArrayItemCount:=length(aLoop_filter_level);
+ if ArrayItemCount>length(loop_filter_level) then begin
+  ArrayItemCount:=length(loop_filter_level);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLoop_filter_level[0],loop_filter_level[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ loop_filter_sharpness:=aLoop_filter_sharpness;
+ update_ref_delta:=aUpdate_ref_delta;
+ ArrayItemCount:=length(aLoop_filter_ref_deltas);
+ if ArrayItemCount>length(loop_filter_ref_deltas) then begin
+  ArrayItemCount:=length(loop_filter_ref_deltas);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLoop_filter_ref_deltas[0],loop_filter_ref_deltas[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ update_mode_delta:=aUpdate_mode_delta;
+ ArrayItemCount:=length(aLoop_filter_mode_deltas);
+ if ArrayItemCount>length(loop_filter_mode_deltas) then begin
+  ArrayItemCount:=length(loop_filter_mode_deltas);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLoop_filter_mode_deltas[0],loop_filter_mode_deltas[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoAV1QuantizationFlags.Get_using_qmatrix:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoAV1QuantizationFlags.Set_using_qmatrix(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoAV1QuantizationFlags.Get_diff_uv_delta:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoAV1QuantizationFlags.Set_diff_uv_delta(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoAV1QuantizationFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $3fffffff;
+end;
+procedure TStdVideoAV1QuantizationFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($3fffffff shl 2)) or ((aValue and $3fffffff) shl 2);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoAV1Quantization.Create(const aFlags:TStdVideoAV1QuantizationFlags;
+                                            const aBase_q_idx:TVkUInt8;
+                                            const aDeltaQYDc:TVkInt8;
+                                            const aDeltaQUDc:TVkInt8;
+                                            const aDeltaQUAc:TVkInt8;
+                                            const aDeltaQVDc:TVkInt8;
+                                            const aDeltaQVAc:TVkInt8;
+                                            const aQm_y:TVkUInt8;
+                                            const aQm_u:TVkUInt8;
+                                            const aQm_v:TVkUInt8);
+begin
+ flags:=aFlags;
+ base_q_idx:=aBase_q_idx;
+ DeltaQYDc:=aDeltaQYDc;
+ DeltaQUDc:=aDeltaQUDc;
+ DeltaQUAc:=aDeltaQUAc;
+ DeltaQVDc:=aDeltaQVDc;
+ DeltaQVAc:=aDeltaQVAc;
+ qm_y:=aQm_y;
+ qm_u:=aQm_u;
+ qm_v:=aQm_v;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoAV1Segmentation.Create(const aFeatureEnabled:array of TVkUInt8;
+                                            const aFeatureData:array of TVkInt16);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoAV1Segmentation),#0);
+ ArrayItemCount:=length(aFeatureEnabled);
+ if ArrayItemCount>length(FeatureEnabled) then begin
+  ArrayItemCount:=length(FeatureEnabled);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aFeatureEnabled[0],FeatureEnabled[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aFeatureData);
+ if ArrayItemCount>length(FeatureData) then begin
+  ArrayItemCount:=length(FeatureData);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aFeatureData[0],FeatureData[0],ArrayItemCount*SizeOf(TVkInt16));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoAV1TileInfoFlags.Get_uniform_tile_spacing_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoAV1TileInfoFlags.Set_uniform_tile_spacing_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoAV1TileInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $7fffffff;
+end;
+procedure TStdVideoAV1TileInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($7fffffff shl 1)) or ((aValue and $7fffffff) shl 1);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoAV1TileInfo.Create(const aFlags:TStdVideoAV1TileInfoFlags;
+                                        const aTileCols:TVkUInt8;
+                                        const aTileRows:TVkUInt8;
+                                        const aContext_update_tile_id:TVkUInt16;
+                                        const aTile_size_bytes_minus_1:TVkUInt8;
+                                        const aReserved1:array of TVkUInt8;
+                                        const aPMiColStarts:PVkUInt16;
+                                        const aPMiRowStarts:PVkUInt16;
+                                        const aPWidthInSbsMinus1:PVkUInt16;
+                                        const aPHeightInSbsMinus1:PVkUInt16);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoAV1TileInfo),#0);
+ flags:=aFlags;
+ TileCols:=aTileCols;
+ TileRows:=aTileRows;
+ context_update_tile_id:=aContext_update_tile_id;
+ tile_size_bytes_minus_1:=aTile_size_bytes_minus_1;
+ ArrayItemCount:=length(aReserved1);
+ if ArrayItemCount>length(reserved1) then begin
+  ArrayItemCount:=length(reserved1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aReserved1[0],reserved1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ pMiColStarts:=aPMiColStarts;
+ pMiRowStarts:=aPMiRowStarts;
+ pWidthInSbsMinus1:=aPWidthInSbsMinus1;
+ pHeightInSbsMinus1:=aPHeightInSbsMinus1;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoAV1CDEF.Create(const aCdef_damping_minus_3:TVkUInt8;
+                                    const aCdef_bits:TVkUInt8;
+                                    const aCdef_y_pri_strength:array of TVkUInt8;
+                                    const aCdef_y_sec_strength:array of TVkUInt8;
+                                    const aCdef_uv_pri_strength:array of TVkUInt8;
+                                    const aCdef_uv_sec_strength:array of TVkUInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoAV1CDEF),#0);
+ cdef_damping_minus_3:=aCdef_damping_minus_3;
+ cdef_bits:=aCdef_bits;
+ ArrayItemCount:=length(aCdef_y_pri_strength);
+ if ArrayItemCount>length(cdef_y_pri_strength) then begin
+  ArrayItemCount:=length(cdef_y_pri_strength);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aCdef_y_pri_strength[0],cdef_y_pri_strength[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aCdef_y_sec_strength);
+ if ArrayItemCount>length(cdef_y_sec_strength) then begin
+  ArrayItemCount:=length(cdef_y_sec_strength);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aCdef_y_sec_strength[0],cdef_y_sec_strength[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aCdef_uv_pri_strength);
+ if ArrayItemCount>length(cdef_uv_pri_strength) then begin
+  ArrayItemCount:=length(cdef_uv_pri_strength);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aCdef_uv_pri_strength[0],cdef_uv_pri_strength[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aCdef_uv_sec_strength);
+ if ArrayItemCount>length(cdef_uv_sec_strength) then begin
+  ArrayItemCount:=length(cdef_uv_sec_strength);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aCdef_uv_sec_strength[0],cdef_uv_sec_strength[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoAV1LoopRestoration.Create(const aFrameRestorationType:array of TStdVideoAV1FrameRestorationType;
+                                               const aLoopRestorationSize:array of TVkUInt16);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoAV1LoopRestoration),#0);
+ ArrayItemCount:=length(aFrameRestorationType);
+ if ArrayItemCount>length(FrameRestorationType) then begin
+  ArrayItemCount:=length(FrameRestorationType);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aFrameRestorationType[0],FrameRestorationType[0],ArrayItemCount*SizeOf(TStdVideoAV1FrameRestorationType));
+ end;
+ ArrayItemCount:=length(aLoopRestorationSize);
+ if ArrayItemCount>length(LoopRestorationSize) then begin
+  ArrayItemCount:=length(LoopRestorationSize);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aLoopRestorationSize[0],LoopRestorationSize[0],ArrayItemCount*SizeOf(TVkUInt16));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoAV1GlobalMotion.Create(const aGmType:array of TVkUInt8;
+                                            const aGm_params:array of TVkInt32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoAV1GlobalMotion),#0);
+ ArrayItemCount:=length(aGmType);
+ if ArrayItemCount>length(GmType) then begin
+  ArrayItemCount:=length(GmType);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aGmType[0],GmType[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aGm_params);
+ if ArrayItemCount>length(gm_params) then begin
+  ArrayItemCount:=length(gm_params);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aGm_params[0],gm_params[0],ArrayItemCount*SizeOf(TVkInt32));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoAV1FilmGrainFlags.Get_chroma_scaling_from_luma:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoAV1FilmGrainFlags.Set_chroma_scaling_from_luma(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoAV1FilmGrainFlags.Get_overlap_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoAV1FilmGrainFlags.Set_overlap_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoAV1FilmGrainFlags.Get_clip_to_restricted_range:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoAV1FilmGrainFlags.Set_clip_to_restricted_range(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoAV1FilmGrainFlags.Get_update_grain:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoAV1FilmGrainFlags.Set_update_grain(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoAV1FilmGrainFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $0fffffff;
+end;
+procedure TStdVideoAV1FilmGrainFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($0fffffff shl 4)) or ((aValue and $0fffffff) shl 4);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoAV1FilmGrain.Create(const aFlags:TStdVideoAV1FilmGrainFlags;
+                                         const aGrain_scaling_minus_8:TVkUInt8;
+                                         const aAr_coeff_lag:TVkUInt8;
+                                         const aAr_coeff_shift_minus_6:TVkUInt8;
+                                         const aGrain_scale_shift:TVkUInt8;
+                                         const aGrain_seed:TVkUInt16;
+                                         const aFilm_grain_params_ref_idx:TVkUInt8;
+                                         const aNum_y_points:TVkUInt8;
+                                         const aPoint_y_value:array of TVkUInt8;
+                                         const aPoint_y_scaling:array of TVkUInt8;
+                                         const aNum_cb_points:TVkUInt8;
+                                         const aPoint_cb_value:array of TVkUInt8;
+                                         const aPoint_cb_scaling:array of TVkUInt8;
+                                         const aNum_cr_points:TVkUInt8;
+                                         const aPoint_cr_value:array of TVkUInt8;
+                                         const aPoint_cr_scaling:array of TVkUInt8;
+                                         const aAr_coeffs_y_plus_128:array of TVkInt8;
+                                         const aAr_coeffs_cb_plus_128:array of TVkInt8;
+                                         const aAr_coeffs_cr_plus_128:array of TVkInt8;
+                                         const aCb_mult:TVkUInt8;
+                                         const aCb_luma_mult:TVkUInt8;
+                                         const aCb_offset:TVkUInt16;
+                                         const aCr_mult:TVkUInt8;
+                                         const aCr_luma_mult:TVkUInt8;
+                                         const aCr_offset:TVkUInt16);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoAV1FilmGrain),#0);
+ flags:=aFlags;
+ grain_scaling_minus_8:=aGrain_scaling_minus_8;
+ ar_coeff_lag:=aAr_coeff_lag;
+ ar_coeff_shift_minus_6:=aAr_coeff_shift_minus_6;
+ grain_scale_shift:=aGrain_scale_shift;
+ grain_seed:=aGrain_seed;
+ film_grain_params_ref_idx:=aFilm_grain_params_ref_idx;
+ num_y_points:=aNum_y_points;
+ ArrayItemCount:=length(aPoint_y_value);
+ if ArrayItemCount>length(point_y_value) then begin
+  ArrayItemCount:=length(point_y_value);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aPoint_y_value[0],point_y_value[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aPoint_y_scaling);
+ if ArrayItemCount>length(point_y_scaling) then begin
+  ArrayItemCount:=length(point_y_scaling);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aPoint_y_scaling[0],point_y_scaling[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ num_cb_points:=aNum_cb_points;
+ ArrayItemCount:=length(aPoint_cb_value);
+ if ArrayItemCount>length(point_cb_value) then begin
+  ArrayItemCount:=length(point_cb_value);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aPoint_cb_value[0],point_cb_value[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aPoint_cb_scaling);
+ if ArrayItemCount>length(point_cb_scaling) then begin
+  ArrayItemCount:=length(point_cb_scaling);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aPoint_cb_scaling[0],point_cb_scaling[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ num_cr_points:=aNum_cr_points;
+ ArrayItemCount:=length(aPoint_cr_value);
+ if ArrayItemCount>length(point_cr_value) then begin
+  ArrayItemCount:=length(point_cr_value);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aPoint_cr_value[0],point_cr_value[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aPoint_cr_scaling);
+ if ArrayItemCount>length(point_cr_scaling) then begin
+  ArrayItemCount:=length(point_cr_scaling);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aPoint_cr_scaling[0],point_cr_scaling[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aAr_coeffs_y_plus_128);
+ if ArrayItemCount>length(ar_coeffs_y_plus_128) then begin
+  ArrayItemCount:=length(ar_coeffs_y_plus_128);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aAr_coeffs_y_plus_128[0],ar_coeffs_y_plus_128[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aAr_coeffs_cb_plus_128);
+ if ArrayItemCount>length(ar_coeffs_cb_plus_128) then begin
+  ArrayItemCount:=length(ar_coeffs_cb_plus_128);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aAr_coeffs_cb_plus_128[0],ar_coeffs_cb_plus_128[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aAr_coeffs_cr_plus_128);
+ if ArrayItemCount>length(ar_coeffs_cr_plus_128) then begin
+  ArrayItemCount:=length(ar_coeffs_cr_plus_128);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aAr_coeffs_cr_plus_128[0],ar_coeffs_cr_plus_128[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ cb_mult:=aCb_mult;
+ cb_luma_mult:=aCb_luma_mult;
+ cb_offset:=aCb_offset;
+ cr_mult:=aCr_mult;
+ cr_luma_mult:=aCr_luma_mult;
+ cr_offset:=aCr_offset;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoDecodeAV1PictureInfoFlags.Get_error_resilient_mode:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_error_resilient_mode(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_disable_cdf_update:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_disable_cdf_update(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_use_superres:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_use_superres(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_render_and_frame_size_different:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_render_and_frame_size_different(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_allow_screen_content_tools:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_allow_screen_content_tools(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_is_filter_switchable:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_is_filter_switchable(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_force_integer_mv:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_force_integer_mv(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_frame_size_override_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_frame_size_override_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_buffer_removal_time_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 8) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_buffer_removal_time_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 8)) or ((aValue and $00000001) shl 8);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_allow_intrabc:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_allow_intrabc(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 9)) or ((aValue and $00000001) shl 9);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_frame_refs_short_signaling:TVkUInt32;
+begin
+ result:=(_bitfield shr 10) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_frame_refs_short_signaling(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 10)) or ((aValue and $00000001) shl 10);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_allow_high_precision_mv:TVkUInt32;
+begin
+ result:=(_bitfield shr 11) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_allow_high_precision_mv(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 11)) or ((aValue and $00000001) shl 11);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_is_motion_mode_switchable:TVkUInt32;
+begin
+ result:=(_bitfield shr 12) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_is_motion_mode_switchable(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 12)) or ((aValue and $00000001) shl 12);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_use_ref_frame_mvs:TVkUInt32;
+begin
+ result:=(_bitfield shr 13) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_use_ref_frame_mvs(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 13)) or ((aValue and $00000001) shl 13);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_disable_frame_end_update_cdf:TVkUInt32;
+begin
+ result:=(_bitfield shr 14) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_disable_frame_end_update_cdf(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 14)) or ((aValue and $00000001) shl 14);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_allow_warped_motion:TVkUInt32;
+begin
+ result:=(_bitfield shr 15) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_allow_warped_motion(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 15)) or ((aValue and $00000001) shl 15);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_reduced_tx_set:TVkUInt32;
+begin
+ result:=(_bitfield shr 16) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_reduced_tx_set(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 16)) or ((aValue and $00000001) shl 16);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_reference_select:TVkUInt32;
+begin
+ result:=(_bitfield shr 17) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_reference_select(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 17)) or ((aValue and $00000001) shl 17);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_skip_mode_present:TVkUInt32;
+begin
+ result:=(_bitfield shr 18) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_skip_mode_present(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 18)) or ((aValue and $00000001) shl 18);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_delta_q_present:TVkUInt32;
+begin
+ result:=(_bitfield shr 19) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_delta_q_present(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 19)) or ((aValue and $00000001) shl 19);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_delta_lf_present:TVkUInt32;
+begin
+ result:=(_bitfield shr 20) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_delta_lf_present(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 20)) or ((aValue and $00000001) shl 20);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_delta_lf_multi:TVkUInt32;
+begin
+ result:=(_bitfield shr 21) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_delta_lf_multi(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 21)) or ((aValue and $00000001) shl 21);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_segmentation_enabled:TVkUInt32;
+begin
+ result:=(_bitfield shr 22) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_segmentation_enabled(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 22)) or ((aValue and $00000001) shl 22);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_segmentation_update_map:TVkUInt32;
+begin
+ result:=(_bitfield shr 23) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_segmentation_update_map(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 23)) or ((aValue and $00000001) shl 23);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_segmentation_temporal_update:TVkUInt32;
+begin
+ result:=(_bitfield shr 24) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_segmentation_temporal_update(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 24)) or ((aValue and $00000001) shl 24);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_segmentation_update_data:TVkUInt32;
+begin
+ result:=(_bitfield shr 25) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_segmentation_update_data(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 25)) or ((aValue and $00000001) shl 25);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_UsesLr:TVkUInt32;
+begin
+ result:=(_bitfield shr 26) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_UsesLr(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 26)) or ((aValue and $00000001) shl 26);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_usesChromaLr:TVkUInt32;
+begin
+ result:=(_bitfield shr 27) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_usesChromaLr(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 27)) or ((aValue and $00000001) shl 27);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_apply_grain:TVkUInt32;
+begin
+ result:=(_bitfield shr 28) and $00000001;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_apply_grain(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 28)) or ((aValue and $00000001) shl 28);
+end;
+function TStdVideoDecodeAV1PictureInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 29) and $00000007;
+end;
+procedure TStdVideoDecodeAV1PictureInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000007 shl 29)) or ((aValue and $00000007) shl 29);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoDecodeAV1PictureInfo.Create(const aFlags:TStdVideoDecodeAV1PictureInfoFlags;
+                                                 const aFrame_type:TStdVideoAV1FrameType;
+                                                 const aCurrent_frame_id:TVkUInt32;
+                                                 const aOrderHint:TVkUInt8;
+                                                 const aPrimary_ref_frame:TVkUInt8;
+                                                 const aRefresh_frame_flags:TVkUInt8;
+                                                 const aReserved1:TVkUInt8;
+                                                 const aInterpolation_filter:TStdVideoAV1InterpolationFilter;
+                                                 const aTxMode:TStdVideoAV1TxMode;
+                                                 const aDelta_q_res:TVkUInt8;
+                                                 const aDelta_lf_res:TVkUInt8;
+                                                 const aSkipModeFrame:array of TVkUInt8;
+                                                 const aCoded_denom:TVkUInt8;
+                                                 const aReserved2:array of TVkUInt8;
+                                                 const aOrderHints:array of TVkUInt8;
+                                                 const aExpectedFrameId:array of TVkUInt32;
+                                                 const aPTileInfo:PStdVideoAV1TileInfo;
+                                                 const aPQuantization:PStdVideoAV1Quantization;
+                                                 const aPSegmentation:PStdVideoAV1Segmentation;
+                                                 const aPLoopFilter:PStdVideoAV1LoopFilter;
+                                                 const aPCDEF:PStdVideoAV1CDEF;
+                                                 const aPLoopRestoration:PStdVideoAV1LoopRestoration;
+                                                 const aPGlobalMotion:PStdVideoAV1GlobalMotion;
+                                                 const aPFilmGrain:PStdVideoAV1FilmGrain);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoDecodeAV1PictureInfo),#0);
+ flags:=aFlags;
+ frame_type:=aFrame_type;
+ current_frame_id:=aCurrent_frame_id;
+ OrderHint:=aOrderHint;
+ primary_ref_frame:=aPrimary_ref_frame;
+ refresh_frame_flags:=aRefresh_frame_flags;
+ reserved1:=aReserved1;
+ interpolation_filter:=aInterpolation_filter;
+ TxMode:=aTxMode;
+ delta_q_res:=aDelta_q_res;
+ delta_lf_res:=aDelta_lf_res;
+ ArrayItemCount:=length(aSkipModeFrame);
+ if ArrayItemCount>length(SkipModeFrame) then begin
+  ArrayItemCount:=length(SkipModeFrame);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aSkipModeFrame[0],SkipModeFrame[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ coded_denom:=aCoded_denom;
+ ArrayItemCount:=length(aReserved2);
+ if ArrayItemCount>length(reserved2) then begin
+  ArrayItemCount:=length(reserved2);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aReserved2[0],reserved2[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aOrderHints);
+ if ArrayItemCount>length(OrderHints) then begin
+  ArrayItemCount:=length(OrderHints);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aOrderHints[0],OrderHints[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aExpectedFrameId);
+ if ArrayItemCount>length(expectedFrameId) then begin
+  ArrayItemCount:=length(expectedFrameId);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aExpectedFrameId[0],expectedFrameId[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ pTileInfo:=aPTileInfo;
+ pQuantization:=aPQuantization;
+ pSegmentation:=aPSegmentation;
+ pLoopFilter:=aPLoopFilter;
+ pCDEF:=aPCDEF;
+ pLoopRestoration:=aPLoopRestoration;
+ pGlobalMotion:=aPGlobalMotion;
+ pFilmGrain:=aPFilmGrain;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoDecodeAV1ReferenceInfoFlags.Get_disable_frame_end_update_cdf:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoDecodeAV1ReferenceInfoFlags.Set_disable_frame_end_update_cdf(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoDecodeAV1ReferenceInfoFlags.Get_segmentation_enabled:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoDecodeAV1ReferenceInfoFlags.Set_segmentation_enabled(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoDecodeAV1ReferenceInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $3fffffff;
+end;
+procedure TStdVideoDecodeAV1ReferenceInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($3fffffff shl 2)) or ((aValue and $3fffffff) shl 2);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoDecodeAV1ReferenceInfo.Create(const aFlags:TStdVideoDecodeAV1ReferenceInfoFlags;
+                                                   const aFrame_type:TVkUInt8;
+                                                   const aRefFrameSignBias:TVkUInt8;
+                                                   const aOrderHint:TVkUInt8;
+                                                   const aSavedOrderHints:array of TVkUInt8);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoDecodeAV1ReferenceInfo),#0);
+ flags:=aFlags;
+ frame_type:=aFrame_type;
+ RefFrameSignBias:=aRefFrameSignBias;
+ OrderHint:=aOrderHint;
+ ArrayItemCount:=length(aSavedOrderHints);
+ if ArrayItemCount>length(SavedOrderHints) then begin
+  ArrayItemCount:=length(SavedOrderHints);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aSavedOrderHints[0],SavedOrderHints[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeAV1ExtensionHeader.Create(const aTemporal_id:TVkUInt8;
+                                                     const aSpatial_id:TVkUInt8);
+begin
+ temporal_id:=aTemporal_id;
+ spatial_id:=aSpatial_id;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeAV1DecoderModelInfo.Create(const aBuffer_delay_length_minus_1:TVkUInt8;
+                                                      const aBuffer_removal_time_length_minus_1:TVkUInt8;
+                                                      const aFrame_presentation_time_length_minus_1:TVkUInt8;
+                                                      const aReserved1:TVkUInt8;
+                                                      const aNum_units_in_decoding_tick:TVkUInt32);
+begin
+ buffer_delay_length_minus_1:=aBuffer_delay_length_minus_1;
+ buffer_removal_time_length_minus_1:=aBuffer_removal_time_length_minus_1;
+ frame_presentation_time_length_minus_1:=aFrame_presentation_time_length_minus_1;
+ reserved1:=aReserved1;
+ num_units_in_decoding_tick:=aNum_units_in_decoding_tick;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoEncodeAV1OperatingPointInfoFlags.Get_decoder_model_present_for_this_op:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoEncodeAV1OperatingPointInfoFlags.Set_decoder_model_present_for_this_op(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoEncodeAV1OperatingPointInfoFlags.Get_low_delay_mode_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoEncodeAV1OperatingPointInfoFlags.Set_low_delay_mode_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoEncodeAV1OperatingPointInfoFlags.Get_initial_display_delay_present_for_this_op:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoEncodeAV1OperatingPointInfoFlags.Set_initial_display_delay_present_for_this_op(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoEncodeAV1OperatingPointInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $1fffffff;
+end;
+procedure TStdVideoEncodeAV1OperatingPointInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($1fffffff shl 3)) or ((aValue and $1fffffff) shl 3);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeAV1OperatingPointInfo.Create(const aFlags:TStdVideoEncodeAV1OperatingPointInfoFlags;
+                                                        const aOperating_point_idc:TVkUInt16;
+                                                        const aSeq_level_idx:TVkUInt8;
+                                                        const aSeq_tier:TVkUInt8;
+                                                        const aDecoder_buffer_delay:TVkUInt32;
+                                                        const aEncoder_buffer_delay:TVkUInt32;
+                                                        const aInitial_display_delay_minus_1:TVkUInt8);
+begin
+ flags:=aFlags;
+ operating_point_idc:=aOperating_point_idc;
+ seq_level_idx:=aSeq_level_idx;
+ seq_tier:=aSeq_tier;
+ decoder_buffer_delay:=aDecoder_buffer_delay;
+ encoder_buffer_delay:=aEncoder_buffer_delay;
+ initial_display_delay_minus_1:=aInitial_display_delay_minus_1;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoEncodeAV1PictureInfoFlags.Get_error_resilient_mode:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_error_resilient_mode(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_disable_cdf_update:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_disable_cdf_update(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_use_superres:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_use_superres(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 2)) or ((aValue and $00000001) shl 2);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_render_and_frame_size_different:TVkUInt32;
+begin
+ result:=(_bitfield shr 3) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_render_and_frame_size_different(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 3)) or ((aValue and $00000001) shl 3);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_allow_screen_content_tools:TVkUInt32;
+begin
+ result:=(_bitfield shr 4) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_allow_screen_content_tools(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 4)) or ((aValue and $00000001) shl 4);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_is_filter_switchable:TVkUInt32;
+begin
+ result:=(_bitfield shr 5) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_is_filter_switchable(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 5)) or ((aValue and $00000001) shl 5);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_force_integer_mv:TVkUInt32;
+begin
+ result:=(_bitfield shr 6) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_force_integer_mv(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 6)) or ((aValue and $00000001) shl 6);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_frame_size_override_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 7) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_frame_size_override_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 7)) or ((aValue and $00000001) shl 7);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_buffer_removal_time_present_flag:TVkUInt32;
+begin
+ result:=(_bitfield shr 8) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_buffer_removal_time_present_flag(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 8)) or ((aValue and $00000001) shl 8);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_allow_intrabc:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_allow_intrabc(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 9)) or ((aValue and $00000001) shl 9);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_frame_refs_short_signaling:TVkUInt32;
+begin
+ result:=(_bitfield shr 10) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_frame_refs_short_signaling(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 10)) or ((aValue and $00000001) shl 10);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_allow_high_precision_mv:TVkUInt32;
+begin
+ result:=(_bitfield shr 11) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_allow_high_precision_mv(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 11)) or ((aValue and $00000001) shl 11);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_is_motion_mode_switchable:TVkUInt32;
+begin
+ result:=(_bitfield shr 12) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_is_motion_mode_switchable(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 12)) or ((aValue and $00000001) shl 12);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_use_ref_frame_mvs:TVkUInt32;
+begin
+ result:=(_bitfield shr 13) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_use_ref_frame_mvs(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 13)) or ((aValue and $00000001) shl 13);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_disable_frame_end_update_cdf:TVkUInt32;
+begin
+ result:=(_bitfield shr 14) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_disable_frame_end_update_cdf(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 14)) or ((aValue and $00000001) shl 14);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_allow_warped_motion:TVkUInt32;
+begin
+ result:=(_bitfield shr 15) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_allow_warped_motion(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 15)) or ((aValue and $00000001) shl 15);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_reduced_tx_set:TVkUInt32;
+begin
+ result:=(_bitfield shr 16) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_reduced_tx_set(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 16)) or ((aValue and $00000001) shl 16);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_skip_mode_present:TVkUInt32;
+begin
+ result:=(_bitfield shr 17) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_skip_mode_present(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 17)) or ((aValue and $00000001) shl 17);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_delta_q_present:TVkUInt32;
+begin
+ result:=(_bitfield shr 18) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_delta_q_present(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 18)) or ((aValue and $00000001) shl 18);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_delta_lf_present:TVkUInt32;
+begin
+ result:=(_bitfield shr 19) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_delta_lf_present(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 19)) or ((aValue and $00000001) shl 19);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_delta_lf_multi:TVkUInt32;
+begin
+ result:=(_bitfield shr 20) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_delta_lf_multi(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 20)) or ((aValue and $00000001) shl 20);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_segmentation_enabled:TVkUInt32;
+begin
+ result:=(_bitfield shr 21) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_segmentation_enabled(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 21)) or ((aValue and $00000001) shl 21);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_segmentation_update_map:TVkUInt32;
+begin
+ result:=(_bitfield shr 22) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_segmentation_update_map(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 22)) or ((aValue and $00000001) shl 22);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_segmentation_temporal_update:TVkUInt32;
+begin
+ result:=(_bitfield shr 23) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_segmentation_temporal_update(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 23)) or ((aValue and $00000001) shl 23);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_segmentation_update_data:TVkUInt32;
+begin
+ result:=(_bitfield shr 24) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_segmentation_update_data(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 24)) or ((aValue and $00000001) shl 24);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_UsesLr:TVkUInt32;
+begin
+ result:=(_bitfield shr 25) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_UsesLr(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 25)) or ((aValue and $00000001) shl 25);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_usesChromaLr:TVkUInt32;
+begin
+ result:=(_bitfield shr 26) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_usesChromaLr(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 26)) or ((aValue and $00000001) shl 26);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_show_frame:TVkUInt32;
+begin
+ result:=(_bitfield shr 27) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_show_frame(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 27)) or ((aValue and $00000001) shl 27);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_showable_frame:TVkUInt32;
+begin
+ result:=(_bitfield shr 28) and $00000001;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_showable_frame(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 28)) or ((aValue and $00000001) shl 28);
+end;
+function TStdVideoEncodeAV1PictureInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 29) and $00000007;
+end;
+procedure TStdVideoEncodeAV1PictureInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000007 shl 29)) or ((aValue and $00000007) shl 29);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeAV1PictureInfo.Create(const aFlags:TStdVideoEncodeAV1PictureInfoFlags;
+                                                 const aFrame_type:TStdVideoAV1FrameType;
+                                                 const aFrame_presentation_time:TVkUInt32;
+                                                 const aCurrent_frame_id:TVkUInt32;
+                                                 const aOrder_hint:TVkUInt8;
+                                                 const aPrimary_ref_frame:TVkUInt8;
+                                                 const aRefresh_frame_flags:TVkUInt8;
+                                                 const aCoded_denom:TVkUInt8;
+                                                 const aRender_width_minus_1:TVkUInt16;
+                                                 const aRender_height_minus_1:TVkUInt16;
+                                                 const aInterpolation_filter:TStdVideoAV1InterpolationFilter;
+                                                 const aTxMode:TStdVideoAV1TxMode;
+                                                 const aDelta_q_res:TVkUInt8;
+                                                 const aDelta_lf_res:TVkUInt8;
+                                                 const aRef_order_hint:array of TVkUInt8;
+                                                 const aRef_frame_idx:array of TVkInt8;
+                                                 const aReserved1:array of TVkUInt8;
+                                                 const aDelta_frame_id_minus_1:array of TVkUInt32;
+                                                 const aPTileInfo:PStdVideoAV1TileInfo;
+                                                 const aPQuantization:PStdVideoAV1Quantization;
+                                                 const aPSegmentation:PStdVideoAV1Segmentation;
+                                                 const aPLoopFilter:PStdVideoAV1LoopFilter;
+                                                 const aPCDEF:PStdVideoAV1CDEF;
+                                                 const aPLoopRestoration:PStdVideoAV1LoopRestoration;
+                                                 const aPGlobalMotion:PStdVideoAV1GlobalMotion;
+                                                 const aPExtensionHeader:PStdVideoEncodeAV1ExtensionHeader;
+                                                 const aPBufferRemovalTimes:PVkUInt32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoEncodeAV1PictureInfo),#0);
+ flags:=aFlags;
+ frame_type:=aFrame_type;
+ frame_presentation_time:=aFrame_presentation_time;
+ current_frame_id:=aCurrent_frame_id;
+ order_hint:=aOrder_hint;
+ primary_ref_frame:=aPrimary_ref_frame;
+ refresh_frame_flags:=aRefresh_frame_flags;
+ coded_denom:=aCoded_denom;
+ render_width_minus_1:=aRender_width_minus_1;
+ render_height_minus_1:=aRender_height_minus_1;
+ interpolation_filter:=aInterpolation_filter;
+ TxMode:=aTxMode;
+ delta_q_res:=aDelta_q_res;
+ delta_lf_res:=aDelta_lf_res;
+ ArrayItemCount:=length(aRef_order_hint);
+ if ArrayItemCount>length(ref_order_hint) then begin
+  ArrayItemCount:=length(ref_order_hint);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aRef_order_hint[0],ref_order_hint[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aRef_frame_idx);
+ if ArrayItemCount>length(ref_frame_idx) then begin
+  ArrayItemCount:=length(ref_frame_idx);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aRef_frame_idx[0],ref_frame_idx[0],ArrayItemCount*SizeOf(TVkInt8));
+ end;
+ ArrayItemCount:=length(aReserved1);
+ if ArrayItemCount>length(reserved1) then begin
+  ArrayItemCount:=length(reserved1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aReserved1[0],reserved1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ ArrayItemCount:=length(aDelta_frame_id_minus_1);
+ if ArrayItemCount>length(delta_frame_id_minus_1) then begin
+  ArrayItemCount:=length(delta_frame_id_minus_1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDelta_frame_id_minus_1[0],delta_frame_id_minus_1[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ pTileInfo:=aPTileInfo;
+ pQuantization:=aPQuantization;
+ pSegmentation:=aPSegmentation;
+ pLoopFilter:=aPLoopFilter;
+ pCDEF:=aPCDEF;
+ pLoopRestoration:=aPLoopRestoration;
+ pGlobalMotion:=aPGlobalMotion;
+ pExtensionHeader:=aPExtensionHeader;
+ pBufferRemovalTimes:=aPBufferRemovalTimes;
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+function TStdVideoEncodeAV1ReferenceInfoFlags.Get_disable_frame_end_update_cdf:TVkUInt32;
+begin
+ result:=(_bitfield shr 0) and $00000001;
+end;
+procedure TStdVideoEncodeAV1ReferenceInfoFlags.Set_disable_frame_end_update_cdf(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 0)) or ((aValue and $00000001) shl 0);
+end;
+function TStdVideoEncodeAV1ReferenceInfoFlags.Get_segmentation_enabled:TVkUInt32;
+begin
+ result:=(_bitfield shr 1) and $00000001;
+end;
+procedure TStdVideoEncodeAV1ReferenceInfoFlags.Set_segmentation_enabled(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000001 shl 1)) or ((aValue and $00000001) shl 1);
+end;
+function TStdVideoEncodeAV1ReferenceInfoFlags.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 2) and $3fffffff;
+end;
+procedure TStdVideoEncodeAV1ReferenceInfoFlags.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($3fffffff shl 2)) or ((aValue and $3fffffff) shl 2);
+end;
+{$endif}
+
+{$ifdef VkStdVideo}
+constructor TStdVideoEncodeAV1ReferenceInfo.Create(const aFlags:TStdVideoEncodeAV1ReferenceInfoFlags;
+                                                   const aRefFrameId:TVkUInt32;
+                                                   const aFrame_type:TStdVideoAV1FrameType;
+                                                   const aOrderHint:TVkUInt8;
+                                                   const aReserved1:array of TVkUInt8;
+                                                   const aPExtensionHeader:PStdVideoEncodeAV1ExtensionHeader);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TStdVideoEncodeAV1ReferenceInfo),#0);
+ flags:=aFlags;
+ RefFrameId:=aRefFrameId;
+ frame_type:=aFrame_type;
+ OrderHint:=aOrderHint;
+ ArrayItemCount:=length(aReserved1);
+ if ArrayItemCount>length(reserved1) then begin
+  ArrayItemCount:=length(reserved1);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aReserved1[0],reserved1[0],ArrayItemCount*SizeOf(TVkUInt8));
+ end;
+ pExtensionHeader:=aPExtensionHeader;
+end;
+{$endif}
+
 constructor TVkOffset2D.Create(const aX:TVkInt32;
                                const aY:TVkInt32);
 begin
@@ -53185,13 +61930,29 @@ begin
  allowClusterAccelerationStructure:=aAllowClusterAccelerationStructure;
 end;
 
-constructor TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV.Create(const aGeometryIndex:TVkUInt32;
-                                                                                  const aReserved:TVkUInt32;
-                                                                                  const aGeometryFlags:TVkUInt32);
+function TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV.Get_geometryIndex:TVkUInt32;
 begin
- geometryIndex:=aGeometryIndex;
- reserved:=aReserved;
- geometryFlags:=aGeometryFlags;
+ result:=(_bitfield shr 0) and $00ffffff;
+end;
+procedure TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV.Set_geometryIndex(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00ffffff shl 0)) or ((aValue and $00ffffff) shl 0);
+end;
+function TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 24) and $0000001f;
+end;
+procedure TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($0000001f shl 24)) or ((aValue and $0000001f) shl 24);
+end;
+function TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV.Get_geometryFlags:TVkUInt32;
+begin
+ result:=(_bitfield shr 29) and $00000007;
+end;
+procedure TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV.Set_geometryFlags(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00000007 shl 29)) or ((aValue and $00000007) shl 29);
 end;
 
 constructor TVkClusterAccelerationStructureMoveObjectsInfoNV.Create(const aSrcAccelerationStructure:TVkDeviceAddress);
@@ -53213,93 +61974,103 @@ begin
  clusterTemplateAddress:=aClusterTemplateAddress;
 end;
 
-constructor TVkClusterAccelerationStructureBuildTriangleClusterInfoNV.Create(const aClusterID:TVkUInt32;
-                                                                             const aClusterFlags:TVkClusterAccelerationStructureClusterFlagsNV;
-                                                                             const aTriangleCount:TVkUInt32;
-                                                                             const aVertexCount:TVkUInt32;
-                                                                             const aPositionTruncateBitCount:TVkUInt32;
-                                                                             const aIndexType:TVkUInt32;
-                                                                             const aOpacityMicromapIndexType:TVkUInt32;
-                                                                             const aBaseGeometryIndexAndGeometryFlags:TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV;
-                                                                             const aIndexBufferStride:TVkUInt16;
-                                                                             const aVertexBufferStride:TVkUInt16;
-                                                                             const aGeometryIndexAndFlagsBufferStride:TVkUInt16;
-                                                                             const aOpacityMicromapIndexBufferStride:TVkUInt16;
-                                                                             const aIndexBuffer:TVkDeviceAddress;
-                                                                             const aVertexBuffer:TVkDeviceAddress;
-                                                                             const aGeometryIndexAndFlagsBuffer:TVkDeviceAddress;
-                                                                             const aOpacityMicromapArray:TVkDeviceAddress;
-                                                                             const aOpacityMicromapIndexBuffer:TVkDeviceAddress);
+function TVkClusterAccelerationStructureBuildTriangleClusterInfoNV.Get_triangleCount:TVkUInt32;
 begin
- clusterID:=aClusterID;
- clusterFlags:=aClusterFlags;
- triangleCount:=aTriangleCount;
- vertexCount:=aVertexCount;
- positionTruncateBitCount:=aPositionTruncateBitCount;
- indexType:=aIndexType;
- opacityMicromapIndexType:=aOpacityMicromapIndexType;
- baseGeometryIndexAndGeometryFlags:=aBaseGeometryIndexAndGeometryFlags;
- indexBufferStride:=aIndexBufferStride;
- vertexBufferStride:=aVertexBufferStride;
- geometryIndexAndFlagsBufferStride:=aGeometryIndexAndFlagsBufferStride;
- opacityMicromapIndexBufferStride:=aOpacityMicromapIndexBufferStride;
- indexBuffer:=aIndexBuffer;
- vertexBuffer:=aVertexBuffer;
- geometryIndexAndFlagsBuffer:=aGeometryIndexAndFlagsBuffer;
- opacityMicromapArray:=aOpacityMicromapArray;
- opacityMicromapIndexBuffer:=aOpacityMicromapIndexBuffer;
+ result:=(_bitfield shr 0) and $000001ff;
+end;
+procedure TVkClusterAccelerationStructureBuildTriangleClusterInfoNV.Set_triangleCount(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($000001ff shl 0)) or ((aValue and $000001ff) shl 0);
+end;
+function TVkClusterAccelerationStructureBuildTriangleClusterInfoNV.Get_vertexCount:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $000001ff;
+end;
+procedure TVkClusterAccelerationStructureBuildTriangleClusterInfoNV.Set_vertexCount(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($000001ff shl 9)) or ((aValue and $000001ff) shl 9);
+end;
+function TVkClusterAccelerationStructureBuildTriangleClusterInfoNV.Get_positionTruncateBitCount:TVkUInt32;
+begin
+ result:=(_bitfield shr 18) and $0000003f;
+end;
+procedure TVkClusterAccelerationStructureBuildTriangleClusterInfoNV.Set_positionTruncateBitCount(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($0000003f shl 18)) or ((aValue and $0000003f) shl 18);
+end;
+function TVkClusterAccelerationStructureBuildTriangleClusterInfoNV.Get_indexType:TVkUInt32;
+begin
+ result:=(_bitfield shr 24) and $0000000f;
+end;
+procedure TVkClusterAccelerationStructureBuildTriangleClusterInfoNV.Set_indexType(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($0000000f shl 24)) or ((aValue and $0000000f) shl 24);
+end;
+function TVkClusterAccelerationStructureBuildTriangleClusterInfoNV.Get_opacityMicromapIndexType:TVkUInt32;
+begin
+ result:=(_bitfield shr 28) and $0000000f;
+end;
+procedure TVkClusterAccelerationStructureBuildTriangleClusterInfoNV.Set_opacityMicromapIndexType(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($0000000f shl 28)) or ((aValue and $0000000f) shl 28);
 end;
 
-constructor TVkClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV.Create(const aClusterID:TVkUInt32;
-                                                                                     const aClusterFlags:TVkClusterAccelerationStructureClusterFlagsNV;
-                                                                                     const aTriangleCount:TVkUInt32;
-                                                                                     const aVertexCount:TVkUInt32;
-                                                                                     const aPositionTruncateBitCount:TVkUInt32;
-                                                                                     const aIndexType:TVkUInt32;
-                                                                                     const aOpacityMicromapIndexType:TVkUInt32;
-                                                                                     const aBaseGeometryIndexAndGeometryFlags:TVkClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV;
-                                                                                     const aIndexBufferStride:TVkUInt16;
-                                                                                     const aVertexBufferStride:TVkUInt16;
-                                                                                     const aGeometryIndexAndFlagsBufferStride:TVkUInt16;
-                                                                                     const aOpacityMicromapIndexBufferStride:TVkUInt16;
-                                                                                     const aIndexBuffer:TVkDeviceAddress;
-                                                                                     const aVertexBuffer:TVkDeviceAddress;
-                                                                                     const aGeometryIndexAndFlagsBuffer:TVkDeviceAddress;
-                                                                                     const aOpacityMicromapArray:TVkDeviceAddress;
-                                                                                     const aOpacityMicromapIndexBuffer:TVkDeviceAddress;
-                                                                                     const aInstantiationBoundingBoxLimit:TVkDeviceAddress);
+function TVkClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV.Get_triangleCount:TVkUInt32;
 begin
- clusterID:=aClusterID;
- clusterFlags:=aClusterFlags;
- triangleCount:=aTriangleCount;
- vertexCount:=aVertexCount;
- positionTruncateBitCount:=aPositionTruncateBitCount;
- indexType:=aIndexType;
- opacityMicromapIndexType:=aOpacityMicromapIndexType;
- baseGeometryIndexAndGeometryFlags:=aBaseGeometryIndexAndGeometryFlags;
- indexBufferStride:=aIndexBufferStride;
- vertexBufferStride:=aVertexBufferStride;
- geometryIndexAndFlagsBufferStride:=aGeometryIndexAndFlagsBufferStride;
- opacityMicromapIndexBufferStride:=aOpacityMicromapIndexBufferStride;
- indexBuffer:=aIndexBuffer;
- vertexBuffer:=aVertexBuffer;
- geometryIndexAndFlagsBuffer:=aGeometryIndexAndFlagsBuffer;
- opacityMicromapArray:=aOpacityMicromapArray;
- opacityMicromapIndexBuffer:=aOpacityMicromapIndexBuffer;
- instantiationBoundingBoxLimit:=aInstantiationBoundingBoxLimit;
+ result:=(_bitfield shr 0) and $000001ff;
+end;
+procedure TVkClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV.Set_triangleCount(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($000001ff shl 0)) or ((aValue and $000001ff) shl 0);
+end;
+function TVkClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV.Get_vertexCount:TVkUInt32;
+begin
+ result:=(_bitfield shr 9) and $000001ff;
+end;
+procedure TVkClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV.Set_vertexCount(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($000001ff shl 9)) or ((aValue and $000001ff) shl 9);
+end;
+function TVkClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV.Get_positionTruncateBitCount:TVkUInt32;
+begin
+ result:=(_bitfield shr 18) and $0000003f;
+end;
+procedure TVkClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV.Set_positionTruncateBitCount(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($0000003f shl 18)) or ((aValue and $0000003f) shl 18);
+end;
+function TVkClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV.Get_indexType:TVkUInt32;
+begin
+ result:=(_bitfield shr 24) and $0000000f;
+end;
+procedure TVkClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV.Set_indexType(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($0000000f shl 24)) or ((aValue and $0000000f) shl 24);
+end;
+function TVkClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV.Get_opacityMicromapIndexType:TVkUInt32;
+begin
+ result:=(_bitfield shr 28) and $0000000f;
+end;
+procedure TVkClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV.Set_opacityMicromapIndexType(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($0000000f shl 28)) or ((aValue and $0000000f) shl 28);
 end;
 
-constructor TVkClusterAccelerationStructureInstantiateClusterInfoNV.Create(const aClusterIdOffset:TVkUInt32;
-                                                                           const aGeometryIndexOffset:TVkUInt32;
-                                                                           const aReserved:TVkUInt32;
-                                                                           const aClusterTemplateAddress:TVkDeviceAddress;
-                                                                           const aVertexBuffer:TVkStridedDeviceAddressNV);
+function TVkClusterAccelerationStructureInstantiateClusterInfoNV.Get_geometryIndexOffset:TVkUInt32;
 begin
- clusterIdOffset:=aClusterIdOffset;
- geometryIndexOffset:=aGeometryIndexOffset;
- reserved:=aReserved;
- clusterTemplateAddress:=aClusterTemplateAddress;
- vertexBuffer:=aVertexBuffer;
+ result:=(_bitfield shr 0) and $00ffffff;
+end;
+procedure TVkClusterAccelerationStructureInstantiateClusterInfoNV.Set_geometryIndexOffset(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($00ffffff shl 0)) or ((aValue and $00ffffff) shl 0);
+end;
+function TVkClusterAccelerationStructureInstantiateClusterInfoNV.Get_reserved:TVkUInt32;
+begin
+ result:=(_bitfield shr 24) and $000000ff;
+end;
+procedure TVkClusterAccelerationStructureInstantiateClusterInfoNV.Set_reserved(const aValue:TVkUInt32);
+begin
+ _bitfield:=(_bitfield and not ($000000ff shl 24)) or ((aValue and $000000ff) shl 24);
 end;
 
 constructor TVkClusterAccelerationStructureClustersBottomLevelInputNV.Create(const aMaxTotalClusterCount:TVkUInt32;

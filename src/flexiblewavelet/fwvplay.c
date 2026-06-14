@@ -93,6 +93,7 @@ static VkCommandBuffer command_buffer;
 
 // .fwv container header (binary-compatible with fwvenc's writer). The colour block is CICP
 // (ITU-T H.273); the codec is currently 8-bit SDR, the HDR fields are reserved for later.
+#pragma pack(push,1) // packed on-disk container layout — byte-exact, no padding
 typedef struct {
   uint8_t  magic[4];            // "FWVC"
   uint16_t version;             // container format version
@@ -121,7 +122,7 @@ typedef struct {
   uint8_t  reserved2[6];        // [0] = temporal levels, [1] = temporal wavelet; [2] = bframes gop; [3] = per-block mode; [4] = coding block size; [5] = motion block size
   // ---- audio (appended) ----
   uint8_t  audio_codec[4];      // sub-FOURCC: "OGGV" = OGG/Vorbis, "QOAL" = little-endian QOA, "RPCM" = raw PCM, "FWAC" = wavelet audio (fwa)
-  uint8_t  mv_codec;            // motion-vector entropy coder. 0 = signed Exp-Golomb (default), 1 = adaptive binary range coder. (Occupies former padding; struct layout unchanged.)
+  uint8_t  mv_codec;            // motion-vector entropy coder. 0 = signed Exp-Golomb (default), 1 = adaptive binary range coder.
   // ---- optional parallel H.264 elementary stream (Annex-B) for HW decode ----
   uint64_t h264_offset;         // byte offset of the H.264 Annex-B blob (full-res; the wavelet width/height may be down-scaled)
   uint64_t h264_size;           // 0 = no H.264 stream (wavelet-only container)
@@ -142,6 +143,7 @@ typedef struct {
   uint8_t  temporal_id; // hierarchy level (QP-cascading / temporal scalability)
   uint8_t  pad;
 } FrameEntry;           // 28 bytes
+#pragma pack(pop)
 
 // ---------------------------------------------------------------- Vulkan helpers
 
@@ -928,7 +930,8 @@ int main(int argc, char **argv) {
       "  offline / debug (no window):\n"
       "    --decode-to <file.avi>         decode the whole stream to an OpenDML AVI (RGB + PCM16) and exit\n"
       "    --verify                       GPU-decode vs CPU-decode PSNR self-check, then exit\n"
-      "    --dump                         dump the first decoded frame and exit\n",
+      "    --dump                         dump the first decoded frame and exit\n"
+      "    --force-scrgb                  force the scRGB FP16 decode path headless (--dump then writes raw RGBA16F)\n",
       argv[0]);
     return 1;
   }
@@ -936,7 +939,8 @@ int main(int argc, char **argv) {
   int output_mode = 0;               // 0 = autodetect, 1 = force scRGB FP16, 2 = force SDR tonemap
   int verify = 0;                    // --verify: GPU-decode vs CPU-decode PSNR check, no window
   int cpu_decode = 0;                // --cpu-decode: force the Stage A CPU B-decode (oracle/fallback); default for a B-stream is the GPU bidi decode (Stage B1b)
-  int dump_first_frame = 0;          // --dump: write the GPU-decoded frame 0 to /tmp/fwv_frame0.ppm
+  int dump_first_frame = 0;          // --dump: write the GPU-decoded frame 0 to /tmp/fwv_frame0.ppm (.f16 when scRGB)
+  int force_scrgb = 0;               // --force-scrgb: force scRGB FP16 output headless (HDR FP16 testing without an HDR swapchain)
   int decoder_choice = 0;            // --decoder: 0 = auto (H.264 if available, else wavelet), 1 = force H.264, 2 = force wavelet
   const char *decode_to_path = NULL; // --decode-to <file.avi>: decode the whole stream to an OpenDML AVI (RGB32 + PCM16)
   for (int a = 2; a < argc; a++) {
@@ -954,6 +958,8 @@ int main(int argc, char **argv) {
       cpu_decode = 0;   // accepted for compatibility; GPU bidi decode is now the default for a B-stream
     } else if (strcmp(argv[a], "--dump") == 0) {
       dump_first_frame = 1;
+    } else if (strcmp(argv[a], "--force-scrgb") == 0) {
+      force_scrgb = 1;   // force the scRGB FP16 decode path headless (+ a raw RGBA16F --dump)
     } else if (strncmp(argv[a], "--decoder=", 10) == 0) {
       const char *value = argv[a] + 10;   // --decoder=h264|wavelet|auto
       decoder_choice = strstr(value, "h264") ? 1 : (strstr(value, "wav") ? 2 : 0);
@@ -966,8 +972,8 @@ int main(int argc, char **argv) {
       decode_to_path = argv[++a];
     }
   }
-  if (decode_to_path) {
-    output_mode = 2;   // export is RGB32 8-bit SDR -> force the SDR (HDR-tonemapped) output path
+  if (decode_to_path && !force_scrgb) {
+    output_mode = 2;   // export is RGB32 8-bit SDR -> force the SDR (HDR-tonemapped) output path (unless --force-scrgb)
   }
   FILE *file = fopen(argv[1], "rb");
   if (!file) {
@@ -1207,10 +1213,23 @@ int main(int argc, char **argv) {
     }
   }
   if (!use_scrgb_output) {
+    // Prefer an sRGB-FORMAT swapchain (the PasVulkan engine convention): the decoded RGB is sampled/blitted as
+    // linear-sRGB and the swapchain encodes linear->sRGB on present, so the same data path works in-game. The
+    // pool / output images are sRGB-format so the present blit decodes their gamma bytes to linear first.
+    int found = 0;
     for (uint32_t i = 0; i < format_count; i++) {
-      if ((formats[i].format == VK_FORMAT_B8G8R8A8_UNORM) || (formats[i].format == VK_FORMAT_R8G8B8A8_UNORM)) {
+      if ((formats[i].format == VK_FORMAT_B8G8R8A8_SRGB) || (formats[i].format == VK_FORMAT_R8G8B8A8_SRGB)) {
         surface_format = formats[i];
+        found = 1;
         break;
+      }
+    }
+    if (!found) {
+      for (uint32_t i = 0; i < format_count; i++) {
+        if ((formats[i].format == VK_FORMAT_B8G8R8A8_UNORM) || (formats[i].format == VK_FORMAT_R8G8B8A8_UNORM)) {
+          surface_format = formats[i];
+          break;
+        }
       }
     }
   }
@@ -1263,7 +1282,15 @@ int main(int argc, char **argv) {
 
   VkImageCreateInfo image_info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
   image_info.imageType = VK_IMAGE_TYPE_2D;
-  VkFormat decode_image_format = use_scrgb_output ? VK_FORMAT_R16G16B16A16_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM;
+  if (force_scrgb && is_hdr) {   // --force-scrgb: scRGB FP16 even headless (no swapchain to negotiate)
+    use_scrgb_output = 1;
+  }
+  // SDR present is sRGB-format (the blit decodes the gamma RGB to linear, the sRGB swapchain re-encodes -> in-game
+  // compatible); the colour compute stores raw gamma bytes through a UNORM view of the same image. HDR stays linear
+  // scRGB FP16. MUTABLE_FORMAT|EXTENDED_USAGE allow the UNORM storage view on the sRGB image.
+  VkFormat decode_image_format = use_scrgb_output ? VK_FORMAT_R16G16B16A16_SFLOAT : VK_FORMAT_R8G8B8A8_SRGB;
+  VkFormat decode_storage_format = use_scrgb_output ? VK_FORMAT_R16G16B16A16_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM;
+  image_info.flags = use_scrgb_output ? 0 : (VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
   image_info.format = decode_image_format;
   image_info.extent = (VkExtent3D){ width, height, 1 };
   image_info.mipLevels = 1;
@@ -1284,7 +1311,7 @@ int main(int argc, char **argv) {
   VkImageViewCreateInfo view_info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
   view_info.image = decode_image;
   view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  view_info.format = decode_image_format;
+  view_info.format = decode_storage_format;   // UNORM view (SDR) so the colour compute stores raw gamma bytes; FP16 for HDR
   view_info.subresourceRange = (VkImageSubresourceRange){ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
   VkImageView decode_view;
   VK_CHECK(vkCreateImageView(device, &view_info, 0, &decode_view));
@@ -2508,14 +2535,22 @@ int main(int argc, char **argv) {
       vkQueueWaitIdle(queue);
 
       uint8_t *gpu_rgba = readback_map;
-      if (dump_first_frame && (frame_index == 0)) {   // dump the GPU-decoded frame 0 as a PPM (--dump)
-        FILE *ppm = fopen("/tmp/fwv_frame0.ppm", "wb");
-        if (ppm) {
-          fprintf(ppm, "P6\n%d %d\n255\n", width, height);
-          for (int p = 0; p < pixel_count; p++) {
-            fwrite(&gpu_rgba[p * 4], 1, 3, ppm);
+      if (dump_first_frame && (frame_index == 0)) {   // dump GPU-decoded frame 0 (--dump): raw RGBA16F when scRGB, else 8-bit PPM
+        if (use_scrgb_output) {
+          FILE *f16 = fopen("/tmp/fwv_frame0.f16", "wb");
+          if (f16) {
+            fwrite(gpu_rgba, 8, (size_t)pixel_count, f16);
+            fclose(f16);
           }
-          fclose(ppm);
+        } else {
+          FILE *ppm = fopen("/tmp/fwv_frame0.ppm", "wb");
+          if (ppm) {
+            fprintf(ppm, "P6\n%d %d\n255\n", width, height);
+            for (int p = 0; p < pixel_count; p++) {
+              fwrite(&gpu_rgba[p * 4], 1, 3, ppm);
+            }
+            fclose(ppm);
+          }
         }
       }
       if (decode_to_path) {   // --decode-to: write this decoded frame (RGBA8 SDR) to the OpenDML AVI

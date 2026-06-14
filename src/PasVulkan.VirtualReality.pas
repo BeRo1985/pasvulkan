@@ -87,7 +87,6 @@ uses SysUtils,
      PasVulkan.Streams,
      PasVulkan.Math,
      PasVulkan.Framework,
-     PasVulkan.Application,
      PasVulkan.Collections,
      PasVulkan.NVIDIA.AfterMath;
 
@@ -213,12 +212,12 @@ type EpvVirtualReality=class(Exception);
        fVulkanSampler:TpvVulkanSampler;
        fVulkanUniversalQueueCommandPool:TpvVulkanCommandPool;
        fVulkanCommandBuffers:TVulkanCommandBuffers;
-       fVulkanSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+       fVulkanSemaphores:array of TpvVulkanSemaphore;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fVulkanDescriptorSets:array of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fVulkanVertexShaderModule:TpvVulkanShaderModule;
        fVulkanFragmentShaderModule:TpvVulkanShaderModule;
@@ -288,6 +287,8 @@ type EpvVirtualReality=class(Exception);
      end;
 
 implementation
+
+uses PasVulkan.Application;
 
 { TpvVirtualReality.TTrackedDevice }
 
@@ -509,6 +510,8 @@ begin
  FreeAndNil(fVulkanImageViews);
  FreeAndNil(fVulkanImages);
  FreeAndNil(fVulkanMemoryBlocks);
+ fVulkanSemaphores:=nil;
+ fVulkanDescriptorSets:=nil;
  inherited Destroy;
 end;
 
@@ -786,6 +789,8 @@ begin
                                          VK_BORDER_COLOR_INT_OPAQUE_BLACK,
                                          false);
 
+ fVulkanSemaphores:=nil;
+ SetLength(fVulkanSemaphores,MaxInFlightFrames);
  for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
  end;
@@ -1095,6 +1100,8 @@ begin
                                          []);
    fVulkanDescriptorSetLayout.Initialize;
 
+   fVulkanDescriptorSets:=nil;
+   SetLength(fVulkanDescriptorSets,MaxInFlightFrames);
    for Index:=0 to fCountInFlightFrames-1 do begin
     fVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                                 fVulkanDescriptorSetLayout);
