@@ -3544,7 +3544,7 @@ static size_t assemble_frame(const int *block_count, uint32_t **sizes, const uin
 // offset arrays, hand back the coded motion-vector blob (if any), and return a pointer to the block data.
 // block_count is per-plane (caller computes it from chroma_format + dims, since it is not stored per frame).
 static const uint8_t *parse_frame_header(const uint8_t *frame, const int *block_count, int *out_block_count, uint32_t *offsets[3],
-                                         const uint8_t **out_mv_data, uint32_t *out_mv_length) {
+                                         const uint8_t **out_mv_data, uint32_t *out_mv_length, uint32_t *out_data_length) {
   uint32_t leading_count;
   memcpy(&leading_count, frame, 4);   // = luma block_count (sanity; the per-plane counts come from the caller)
   *out_block_count = (int)leading_count;
@@ -3568,7 +3568,12 @@ static const uint8_t *parse_frame_header(const uint8_t *frame, const int *block_
   *out_mv_data = frame + cursor;
   *out_mv_length = mv_length;
   cursor += mv_length;
-  cursor += 4;   // skip the data_length field
+  uint32_t data_length;
+  memcpy(&data_length, frame + cursor, 4);   // the block-data byte length, stored just before the data
+  if (out_data_length) {
+    *out_data_length = data_length;
+  }
+  cursor += 4;
   return frame + cursor;
 }
 
@@ -3718,7 +3723,7 @@ static void decode_frame_coefdiff(const uint8_t *frame, size_t length, int width
   int parsed_block_count;
   const uint8_t *mv_data;
   uint32_t mv_length;
-  const uint8_t *data = parse_frame_header(frame, (int[3]){ block_count, block_count, block_count }, &parsed_block_count, offsets, &mv_data, &mv_length);   // coefdiff: 4:4:4
+  const uint8_t *data = parse_frame_header(frame, (int[3]){ block_count, block_count, block_count }, &parsed_block_count, offsets, &mv_data, &mv_length, NULL);   // coefdiff: 4:4:4
   (void)mv_data;
   (void)mv_length;
 
@@ -3869,6 +3874,34 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
   size_t total_size = assemble_frame(block_counts, offsets, mv_bytes, mv_length, writer.bytes, writer.length, &output);   // offsets[] holds per-block sizes
   free(mv_bytes);
 
+  // Optional alpha plane (full-res like luma): its own writer + appended section; the 3-plane colour payload above is unchanged.
+  if (g_has_alpha) {
+    int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : base_quality;
+    int alpha_block_count = block_counts[0];   // alpha is full-res, so its block count == the luma block count
+    int32_t *alpha = checked_malloc((size_t)pixel_count * 4);
+    for (int i = 0; i < pixel_count; i++) {
+      alpha[i] = rgb[(i * 4) + 3];   // the alpha lane of the rgba ingest buffer
+    }
+    build_quantization_steps(step, width, height, levels, alpha_qp);
+    if (alpha_qp == 0) {
+      forward_legall53_2d(alpha, width, height, levels);   // lossless alpha
+    } else {
+      for (int i = 0; i < pixel_count; i++) {
+        float_plane[i] = (float)alpha[i];
+      }
+      forward_dwt_2d(float_plane, width, height, levels);
+      quantize(float_plane, alpha, step, pixel_count, 1.0f);
+    }
+    BitWriter alpha_writer;
+    bitwriter_init(&alpha_writer);
+    uint32_t *alpha_offsets = checked_malloc((size_t)alpha_block_count * 4);
+    encode_plane(&alpha_writer, alpha, width, height, alpha_offsets);
+    total_size = append_alpha_section(&output, total_size, alpha_qp, alpha_offsets, alpha_block_count, alpha_writer.bytes, alpha_writer.length);
+    free(alpha);
+    free(alpha_writer.bytes);
+    free(alpha_offsets);
+  }
+
   free(luma);
   free(chroma_orange);
   free(chroma_green);
@@ -3907,7 +3940,8 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
   int parsed_block_count;
   const uint8_t *mv_data;
   uint32_t mv_length;
-  const uint8_t *data = parse_frame_header(frame, block_counts, &parsed_block_count, offsets, &mv_data, &mv_length);
+  uint32_t cdl;
+  const uint8_t *data = parse_frame_header(frame, block_counts, &parsed_block_count, offsets, &mv_data, &mv_length, &cdl);
 
   // Decode the per-16x16-block motion vectors (P-frame) and motion-compensate the previous frame.
   int motion_blocks_x = ((width + MOTION_BLOCK) - 1) / MOTION_BLOCK, motion_blocks_y = ((height + MOTION_BLOCK) - 1) / MOTION_BLOCK;
@@ -3961,6 +3995,24 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
   ycocg_to_rgb(luma, co_full, cg_full, rgb, pixel_count);
   free(co_temp);
   free(cg_temp);
+
+  // Optional alpha plane: the appended section sits at the colour payload's end (data + cdl); decode it into the rgba alpha lane.
+  if (g_has_alpha) {
+    const uint8_t *alpha_section = data + cdl;
+    uint32_t *alpha_offsets = checked_malloc((size_t)block_counts[0] * 4);
+    int alpha_qp;
+    const uint8_t *alpha_data = parse_alpha_section(alpha_section, alpha_offsets, block_counts[0], &alpha_qp);
+    build_quantization_steps(step, width, height, levels, alpha_qp);
+    int32_t *alpha = checked_malloc((size_t)pixel_count * 4);
+    decode_plane(alpha_data, alpha_offsets, alpha, width, height);
+    reconstruct_plane(alpha, float_plane, step, width, height, levels, alpha_qp, 1.0f);
+    for (int i = 0; i < pixel_count; i++) {
+      int a = alpha[i];
+      rgb[(i * 4) + 3] = (uint8_t)((a < 0) ? 0 : ((a > 255) ? 255 : a));
+    }
+    free(alpha);
+    free(alpha_offsets);
+  }
 
   free(luma);
   free(chroma_orange);
@@ -4089,7 +4141,7 @@ static void decode_frame_bidi(const uint8_t *frame, int width, int height, int l
   int parsed_block_count;
   const uint8_t *mv_data;
   uint32_t mv_length;
-  const uint8_t *data = parse_frame_header(frame, block_counts, &parsed_block_count, offsets, &mv_data, &mv_length);
+  const uint8_t *data = parse_frame_header(frame, block_counts, &parsed_block_count, offsets, &mv_data, &mv_length, NULL);
   (void)mv_data;
   (void)mv_length;
   int has_prediction = (ref0 != NULL);
@@ -4389,7 +4441,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
     int parsed_block_count;
     const uint8_t *mv_data;
     uint32_t mv_length;
-    const uint8_t *data = parse_frame_header(frames[f], plane_blocks, &parsed_block_count, offsets, &mv_data, &mv_length);
+    const uint8_t *data = parse_frame_header(frames[f], plane_blocks, &parsed_block_count, offsets, &mv_data, &mv_length, NULL);
     if (g_mctf && (mv_length > 0)) {   // high-pass frame: decode its MV field for the temporal inverse warp
       int *fmv = &frame_mv[((size_t)f * motion_blocks) * 2];
       if (g_mv_codec == 1) {

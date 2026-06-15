@@ -665,7 +665,7 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
   int parsed_block_count;
   const uint8_t *mv_data;
   uint32_t mv_length;
-  const uint8_t *frame_data = parse_frame_header(*frame_buffer, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length);
+  const uint8_t *frame_data = parse_frame_header(*frame_buffer, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length, NULL);
   if (mctf_mv_out && (mv_length > 0)) {   // MCTF high-pass frame: decode its luma MV field for the MC-Haar temporal inverse
     int motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block, motion_blocks_y = ((height + g_motion_block) - 1) / g_motion_block;
     if (g_mv_codec == 1) {
@@ -1923,7 +1923,7 @@ int main(int argc, char **argv) {
       int parsed_block_count;
       const uint8_t *mv_data;
       uint32_t mv_length;
-      const uint8_t *frame_data = parse_frame_header(frame_buffer, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length);
+      const uint8_t *frame_data = parse_frame_header(frame_buffer, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length, NULL);
       // Decode the motion vectors for mc.comp (colordiff P-frames). Decode into the cached scratch (random
       // neighbour reads in the predictor would otherwise be uncached PCIe reads from the write-combined VRAM
       // mv_buffer — ~23 ms/frame at 4K), then one memcpy to VRAM. (Same fix as the B decode-ahead path.)
@@ -2024,7 +2024,7 @@ int main(int argc, char **argv) {
         int parsed_block_count;
         const uint8_t *mv_data;
         uint32_t mv_length;
-        const uint8_t *frame_data = parse_frame_header(gframe_buffer, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length);
+        const uint8_t *frame_data = parse_frame_header(gframe_buffer, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length, NULL);
         uint32_t data_length;
         memcpy(&data_length, frame_data - 4, 4);
         memcpy(data_map, frame_data, data_length);

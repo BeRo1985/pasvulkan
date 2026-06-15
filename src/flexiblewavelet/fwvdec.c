@@ -613,7 +613,7 @@ int main(int argc, char **argv) {
         int parsed_block_count;
         const uint8_t *mv_data;
         uint32_t mv_length;
-        const uint8_t *frame_data = parse_frame_header(gop_encoded[g], block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length);
+        const uint8_t *frame_data = parse_frame_header(gop_encoded[g], block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length, NULL);
         (void)mv_data;
         (void)mv_length;
         size_t data_length = gop_encoded_length[g] - (size_t)(frame_data - gop_encoded[g]);
@@ -791,7 +791,7 @@ int main(int argc, char **argv) {
       int frame_block_count;
       const uint8_t *mv_data;
       uint32_t mv_length;
-      const uint8_t *frame_data = parse_frame_header(encoded, block_count_plane, &frame_block_count, parse_offsets, &mv_data, &mv_length);   // intra: no motion
+      const uint8_t *frame_data = parse_frame_header(encoded, block_count_plane, &frame_block_count, parse_offsets, &mv_data, &mv_length, NULL);   // intra: no motion
       (void)mv_data;
       (void)mv_length;
       size_t data_length = encoded_length - (size_t)(frame_data - encoded);
