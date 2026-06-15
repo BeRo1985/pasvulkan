@@ -259,3 +259,5 @@
 {$endif}
 {$scopedenums on}
 {-$define PasVulkanRangeChecks}
+{$define VkVideo}
+{$define VkStdVideo}
