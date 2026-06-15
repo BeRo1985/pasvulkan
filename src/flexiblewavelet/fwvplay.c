@@ -1263,6 +1263,11 @@ int main(int argc, char **argv) {
     create_buffer(plane_bytes, DEVICE_LOCAL, &previous_buffer[plane], &previous_memory[plane]);
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[plane], &step_memory[plane]);
   }
+  if (g_has_alpha) {   // alpha plane 3: full-res decode buffers (intra — no previous/motion buffer needed)
+    create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &offset_buffer[3], &offset_memory[3]);
+    create_buffer(plane_bytes, DEVICE_LOCAL, &coeff_buffer[3], &coeff_memory[3]);
+    create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[3], &step_memory[3]);
+  }
   // DWT transpose scratch (also reused for motion compensation): a W x H plane transposes to H x W
   // stored with row stride max(W,H), spanning max(W,H)^2 elements. pixel_count (W*H) is too small for
   // non-square planes (1920x1080 needs 1920^2), which let the transpose go out of bounds and zeroed
@@ -1279,6 +1284,10 @@ int main(int argc, char **argv) {
   for (int plane = 0; plane < g_num_planes; plane++) {
     VK_CHECK(vkMapMemory(device, offset_memory[plane], 0, VK_WHOLE_SIZE, 0, &offset_map[plane]));
     VK_CHECK(vkMapMemory(device, step_memory[plane], 0, VK_WHOLE_SIZE, 0, &step_map[plane]));
+  }
+  if (g_has_alpha) {
+    VK_CHECK(vkMapMemory(device, offset_memory[3], 0, VK_WHOLE_SIZE, 0, &offset_map[3]));
+    VK_CHECK(vkMapMemory(device, step_memory[3], 0, VK_WHOLE_SIZE, 0, &step_map[3]));
   }
   int *step = checked_malloc(pixel_count * sizeof(int));
   for (int plane = 0; plane < g_num_planes; plane++) {   // per-plane quant map (chroma subsampled -> its own subband layout); 4:4:4 -> all identical
@@ -1342,6 +1351,25 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_inverse_row_97 = create_compute_pipeline("shaders/idwt97row.spv", pipeline_layout_row);
   VkPipeline pipeline_round = create_compute_pipeline("shaders/round97.spv", pipeline_layout_round);
   VkPipeline pipeline_colour = create_compute_pipeline("shaders/color.spv", pipeline_layout_colour);
+  // color_alpha variant: bindings 0,1,2 = colour coeff buffers, 3 = output image, 4 = alpha coeff buffer.
+  VkDescriptorSetLayout layout_colour_alpha = 0;
+  VkPipelineLayout pipeline_layout_colour_alpha = 0;
+  VkPipeline pipeline_colour_alpha = 0;
+  if (g_has_alpha) {
+    VkDescriptorSetLayoutBinding ca_b[5] = {
+      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, 0 },
+      { 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, 0 },
+      { 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, 0 },
+      { 3, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,  1, VK_SHADER_STAGE_COMPUTE_BIT, 0 },
+      { 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, 0 },
+    };
+    VkDescriptorSetLayoutCreateInfo ca_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+    ca_info.bindingCount = 5;
+    ca_info.pBindings = ca_b;
+    VK_CHECK(vkCreateDescriptorSetLayout(device, &ca_info, 0, &layout_colour_alpha));
+    pipeline_layout_colour_alpha = create_pipeline_layout(layout_colour_alpha, 24);   // same push constants as color.comp
+    pipeline_colour_alpha = create_compute_pipeline("shaders/color_alpha.spv", pipeline_layout_colour_alpha);
+  }
   VkPipelineLayout pipeline_layout_colour_hdr = create_pipeline_layout(layout_colour, 32);   // {width, height, exposure, transfer, shift_x, shift_y, small_w, small_h}
   VkPipeline pipeline_colour_hdr = create_compute_pipeline("shaders/color_hdr.spv", pipeline_layout_colour_hdr);
   VkPipeline pipeline_colour_hdr_scrgb = create_compute_pipeline("shaders/color_hdr_scrgb.spv", pipeline_layout_colour_hdr);   // FP16 scRGB output
@@ -1353,10 +1381,10 @@ int main(int argc, char **argv) {
 
   VkDescriptorPoolSize pool_sizes[2] = {
     { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 240 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode (Phase 2) + MCTF (3 mc + 3 add) sets
-    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
+    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2 },   // set_colour + set_colour_alpha (the alpha decode's colour-write set)
   };
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 92;   // B1b bidi (6) + B2 motion (6) + Phase 2 mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6)
+  pool_info.maxSets = 98;   // +6 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff[3] + set_colour_alpha)   // B1b bidi (6) + B2 motion (6) + Phase 2 mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6)
   pool_info.poolSizeCount = 2;
   pool_info.pPoolSizes = pool_sizes;
   VkDescriptorPool descriptor_pool;
@@ -1385,6 +1413,19 @@ int main(int argc, char **argv) {
   }
   set_row_scratch = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
   bind_storage_buffers(set_row_scratch, (VkBuffer[]){ scratch_buffer }, 1);
+  VkDescriptorSet set_colour_alpha = 0;   // bound after set_colour (it needs the decode image view)
+  if (g_has_alpha) {   // alpha plane 3 decode sets (intra: unpack -> dequant -> idwt, reusing the colour decode pipelines)
+    set_unpack[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+    bind_storage_buffers(set_unpack[3], (VkBuffer[]){ data_buffer, offset_buffer[3], coeff_buffer[3] }, 3);
+    set_dequant[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+    bind_storage_buffers(set_dequant[3], (VkBuffer[]){ coeff_buffer[3], step_buffer[3] }, 2);
+    set_coeff_to_scratch[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+    bind_storage_buffers(set_coeff_to_scratch[3], (VkBuffer[]){ coeff_buffer[3], scratch_buffer }, 2);
+    set_scratch_to_coeff[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+    bind_storage_buffers(set_scratch_to_coeff[3], (VkBuffer[]){ scratch_buffer, coeff_buffer[3] }, 2);
+    set_row[3] = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
+    bind_storage_buffers(set_row[3], (VkBuffer[]){ coeff_buffer[3] }, 1);
+  }
 
   // Stage B1b: GPU bidi decode — DPB pool + bidi_blend + per-frame-rebound sets (mirror of the
   // encoder). bidi_blend reuses pipeline_layout_unpack (3 buffers + 12-byte push); the reconstruct's
@@ -1473,6 +1514,31 @@ int main(int argc, char **argv) {
     writes[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     writes[3].pImageInfo = &colour_image;
     vkUpdateDescriptorSets(device, 4, writes, 0, 0);
+  }
+  if (g_has_alpha) {   // set_colour_alpha: 3 colour planes (0,1,2) + output image (3) + the alpha plane (4)
+    set_colour_alpha = allocate_descriptor_set(descriptor_pool, layout_colour_alpha);
+    VkDescriptorBufferInfo ca_buf[4] = {
+      { coeff_buffer[0], 0, VK_WHOLE_SIZE }, { coeff_buffer[1], 0, VK_WHOLE_SIZE },
+      { coeff_buffer[2], 0, VK_WHOLE_SIZE }, { coeff_buffer[3], 0, VK_WHOLE_SIZE },
+    };
+    VkDescriptorImageInfo ca_img = { 0, decode_view, VK_IMAGE_LAYOUT_GENERAL };
+    VkWriteDescriptorSet ca_w[5] = { 0 };
+    int ca_bind[4] = { 0, 1, 2, 4 };   // colour buffers at 0,1,2; alpha buffer at 4 (binding 3 is the image)
+    for (int i = 0; i < 4; i++) {
+      ca_w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      ca_w[i].dstSet = set_colour_alpha;
+      ca_w[i].dstBinding = ca_bind[i];
+      ca_w[i].descriptorCount = 1;
+      ca_w[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      ca_w[i].pBufferInfo = &ca_buf[i];
+    }
+    ca_w[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    ca_w[4].dstSet = set_colour_alpha;
+    ca_w[4].dstBinding = 3;
+    ca_w[4].descriptorCount = 1;
+    ca_w[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    ca_w[4].pImageInfo = &ca_img;
+    vkUpdateDescriptorSets(device, 5, ca_w, 0, 0);
   }
 
   // 3D-DWT: a GOP of subband frames is spatially inverse-transformed into per-plane slots,
