@@ -1038,6 +1038,10 @@ static int g_num_planes = 3;
 static int g_has_alpha = 0;
 static int g_alpha_qp = -1;
 static int g_premultiplied = 0;
+// RGB pixel channel count: 3 = rgb24/rgb48 (legacy), 4 = rgba8/rgba16 (Option B: 32/64-bit aligned + alpha-capable).
+// The colour transform reads/writes R,G,B at stride g_channels; with 4 the 4th lane is alpha. Set per tool; default 3
+// keeps every non-rgba path byte-for-byte unchanged.
+static int g_channels = 3;
 static int chroma_shift_x(void) { return (g_chroma_format == 0) ? 0 : 1; }   // 4:2:2 and 4:2:0 halve horizontally
 static int chroma_shift_y(void) { return (g_chroma_format == 2) ? 1 : 0; }   // only 4:2:0 halves vertically
 static int plane_width(int plane, int frame_width) {
@@ -1076,9 +1080,10 @@ static void set_sample_mode(int mode) {
 static void rgb_to_ycocg(const uint8_t *rgb, int32_t *luma, int32_t *chroma_orange, int32_t *chroma_green, int pixel_count) {
   const int16_t *rgb16 = (const int16_t *)rgb;
   for (int i = 0; i < pixel_count; i++) {
-    int r = (g_sample_bytes == 2) ? rgb16[3 * i]             : rgb[3 * i];
-    int g = (g_sample_bytes == 2) ? rgb16[(3 * i) + 1] : rgb[(3 * i) + 1];
-    int b = (g_sample_bytes == 2) ? rgb16[(3 * i) + 2] : rgb[(3 * i) + 2];
+    int base = g_channels * i;
+    int r = (g_sample_bytes == 2) ? rgb16[base]     : rgb[base];
+    int g = (g_sample_bytes == 2) ? rgb16[base + 1] : rgb[base + 1];
+    int b = (g_sample_bytes == 2) ? rgb16[base + 2] : rgb[base + 2];
     int co = r - b;
     int t = b + (co >> 1);
     int cg = g - t;
@@ -1099,14 +1104,21 @@ static void ycocg_to_rgb(const int32_t *luma, const int32_t *chroma_orange, cons
     int g = cg + t;
     int b = t - (co >> 1);
     int r = b + co;
+    int base = g_channels * i;
     if (g_sample_bytes == 2) {
-      rgb16[3 * i] = (int16_t)clamp_sample(r);
-      rgb16[(3 * i) + 1] = (int16_t)clamp_sample(g);
-      rgb16[(3 * i) + 2] = (int16_t)clamp_sample(b);
+      rgb16[base] = (int16_t)clamp_sample(r);
+      rgb16[base + 1] = (int16_t)clamp_sample(g);
+      rgb16[base + 2] = (int16_t)clamp_sample(b);
+      if (g_channels == 4) {
+        rgb16[base + 3] = (int16_t)g_sample_max;   // opaque alpha (the alpha decode overwrites it when present)
+      }
     } else {
-      rgb[3 * i] = clamp_byte(r);
-      rgb[(3 * i) + 1] = clamp_byte(g);
-      rgb[(3 * i) + 2] = clamp_byte(b);
+      rgb[base] = clamp_byte(r);
+      rgb[base + 1] = clamp_byte(g);
+      rgb[base + 2] = clamp_byte(b);
+      if (g_channels == 4) {
+        rgb[base + 3] = 255;   // opaque alpha (the alpha decode overwrites it when present)
+      }
     }
   }
 }
@@ -4973,8 +4985,9 @@ int main(int argc, char **argv) {
          input, width, height, quality, levels, gop, (method == 0) ? "coefdiff" : "colordiff",
          (quality == 0) ? "LOSSLESS 5/3 integer" : "lossy 9/7");
 
+  g_channels = 4;   // Option B: rgba8 (SDR) / rgba64 (HDR) input — 32/64-bit aligned + an alpha lane. Non-alpha keeps A opaque.
   char command[4096];
-  const char *ingest_fmt = (g_sample_bytes == 2) ? "rgb48le" : "rgb24";   // HDR (--hdr) ingests 16-bit rgb48le
+  const char *ingest_fmt = (g_sample_bytes == 2) ? "rgba64le" : "rgba";   // 4-channel aligned (was rgb48le / rgb24)
   if (max_frames) {
     snprintf(command, sizeof command,
              "ffmpeg -v error -i \"%s\" -frames:v %ld -f rawvideo -pix_fmt %s -", input, max_frames, ingest_fmt);
@@ -4987,7 +5000,7 @@ int main(int argc, char **argv) {
     die("popen ffmpeg failed");
   }
 
-  size_t frame_bytes = (((size_t)width * height) * 3) * g_sample_bytes;   // HDR (g_sample_bytes==2) = 16-bit rgb48le
+  size_t frame_bytes = (((size_t)width * height) * g_channels) * g_sample_bytes;   // rgba8 (SDR) / rgba64le (HDR)
   int pixel_count = width * height;
   uint8_t *rgb = checked_malloc(frame_bytes);
   uint8_t *reconstructed = checked_malloc(frame_bytes);
@@ -5046,8 +5059,10 @@ int main(int argc, char **argv) {
       if (g_sample_bytes == 2) {   // HDR: rgb48le is 10-bit << 6; >>4 in place -> 12-bit BT.2020 code (mirrors fwvenc)
         for (int g = 0; g < filled; g++) {
           uint16_t *sample16 = (uint16_t *)gop_rgb[g];
-          for (int s = 0; s < (pixel_count * 3); s++) {
-            sample16[s] = (uint16_t)(sample16[s] >> 4);
+          for (int p = 0; p < pixel_count; p++) {
+            for (int c = 0; c < 3; c++) {   // R,G,B only (the alpha lane is opacity, not a 12-bit code)
+              sample16[(p * g_channels) + c] = (uint16_t)(sample16[(p * g_channels) + c] >> 4);
+            }
           }
         }
       }
@@ -5058,11 +5073,13 @@ int main(int argc, char **argv) {
       double t2 = now_milliseconds();
       for (int g = 0; g < filled; g++) {
         double mean_squared_error = 0;
+        size_t pixel_stride = (size_t)g_channels * g_sample_bytes, rgb_bytes = (size_t)3 * g_sample_bytes;
         for (size_t i = 0; i < frame_bytes; i++) {
+          if ((i % pixel_stride) >= rgb_bytes) { continue; }   // skip the alpha lane (compare R/G/B only)
           int difference = (int)gop_rgb[g][i] - (int)gop_reconstructed[g][i];
           mean_squared_error += (double)difference * difference;
         }
-        mean_squared_error /= frame_bytes;
+        mean_squared_error /= ((double)pixel_count * rgb_bytes);
         double psnr = (mean_squared_error == 0) ? 99.99 : (10.0 * log10((255.0 * 255.0) / mean_squared_error));
         sum_psnr += psnr;
         total_bytes += gop_encoded_length[g];
@@ -5103,11 +5120,13 @@ int main(int argc, char **argv) {
       double t2 = now_milliseconds();
 
       double mean_squared_error = 0;
+      size_t pixel_stride = (size_t)g_channels * g_sample_bytes, rgb_bytes = (size_t)3 * g_sample_bytes;
       for (size_t i = 0; i < frame_bytes; i++) {
+        if ((i % pixel_stride) >= rgb_bytes) { continue; }   // skip the alpha lane (compare R/G/B only)
         int difference = (int)rgb[i] - (int)reconstructed[i];
         mean_squared_error += (double)difference * difference;
       }
-      mean_squared_error /= frame_bytes;
+      mean_squared_error /= ((double)pixel_count * rgb_bytes);
       double psnr = (mean_squared_error == 0) ? 99.99 : (10.0 * log10((255.0 * 255.0) / mean_squared_error));
 
       sum_psnr += psnr;
