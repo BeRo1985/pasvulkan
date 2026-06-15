@@ -1027,14 +1027,19 @@ static int g_quant_debug = 0;         // debug: print the measured 9/7 synthesis
 // Chroma subsampling (Variante A: YCoCg-R kept; Co/Cg spatially down/upsampled at the I/O edges, lossy).
 // 0 = 4:4:4 (default, full), 1 = 4:2:2 (chroma W/2 x H), 2 = 4:2:0 (chroma W/2 x H/2). Q0 stays 4:4:4.
 static int g_chroma_format = 0;
+// Plane count: 3 (Y, Co, Cg) by default, 4 when the stream carries an OPTIONAL alpha channel (ColourFlags bit 1). The
+// alpha plane (index 3) is ALWAYS full resolution like luma, regardless of chroma subsampling (4:4:4:4 / 4:2:2:4 /
+// 4:2:0:4). g_num_planes stays 3 unless a has-alpha header sets it, so non-alpha streams are byte-for-byte unchanged.
+#define MAX_PLANES 4
+static int g_num_planes = 3;
 static int chroma_shift_x(void) { return (g_chroma_format == 0) ? 0 : 1; }   // 4:2:2 and 4:2:0 halve horizontally
 static int chroma_shift_y(void) { return (g_chroma_format == 2) ? 1 : 0; }   // only 4:2:0 halves vertically
 static int plane_width(int plane, int frame_width) {
-  int shift = (plane == 0) ? 0 : chroma_shift_x();
+  int shift = ((plane == 0) || (plane == 3)) ? 0 : chroma_shift_x();   // luma + alpha full res; chroma subsampled
   return (frame_width + ((1 << shift) - 1)) >> shift;   // ceil(frame_width / 2^shift)
 }
 static int plane_height(int plane, int frame_height) {
-  int shift = (plane == 0) ? 0 : chroma_shift_y();
+  int shift = ((plane == 0) || (plane == 3)) ? 0 : chroma_shift_y();
   return (frame_height + ((1 << shift) - 1)) >> shift;
 }
 

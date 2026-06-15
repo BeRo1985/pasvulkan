@@ -849,19 +849,16 @@ int main(int argc, char **argv) {
         memory_barrier();
 
         if (!lossless) {
-          // Lossy: multiply each coefficient by its quant step (writes float bit-patterns in place). coefdiff
-          // (4:4:4) keeps the legacy 4-byte push (chroma_multiplier = encoder default 1.0) so its result is
-          // byte-identical to before; colordiff (subsampled) pushes the explicit per-plane multiplier.
+          // Lossy: multiply each coefficient by its quant step (writes float bit-patterns in place). The shader
+          // reads { pixel_count, chroma_multiplier }, so always push BOTH: coefdiff (4:4:4) uses multiplier 1.0
+          // (== the CPU reference), colordiff (subsampled) the explicit per-plane multiplier. A 4-byte push left
+          // chroma_multiplier undefined on the 4:4:4 path -> garbage step -> wrong dequant (the Q8 4:4:4 mismatch).
           int32_t dequant_push[2] = { pixel_count_push, 0 };
-          uint32_t dequant_push_size = 4;
-          if (use_colordiff) {
-            float chroma_multiplier = (plane == 0) ? 1.0f : g_chroma_quant;
-            memcpy(&dequant_push[1], &chroma_multiplier, sizeof(float));
-            dequant_push_size = 8;
-          }
+          float chroma_multiplier = (plane == 0) ? 1.0f : g_chroma_quant;
+          memcpy(&dequant_push[1], &chroma_multiplier, sizeof(float));
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dequant);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dequant, 0, 1, &set_dequant[plane], 0, 0);
-          vkCmdPushConstants(command_buffer, pipeline_layout_dequant, VK_SHADER_STAGE_COMPUTE_BIT, 0, dequant_push_size, dequant_push);
+          vkCmdPushConstants(command_buffer, pipeline_layout_dequant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dequant_push);
           vkCmdDispatch(command_buffer, plane_pixel_workgroups, 1, 1);
           memory_barrier();
         }
