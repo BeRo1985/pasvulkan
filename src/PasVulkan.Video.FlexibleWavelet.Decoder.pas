@@ -153,10 +153,15 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fMCTFMVScratch:array of TpvInt32; // MCTF: every GOP frame's luma MV field (CPU side), by deinterleaved slot
        fSetMCTFMC:array[0..2] of TpvVulkanDescriptorSet; // MCTF (rebound per pair, with byte offsets): {gop@low, mv, pred}
        fSetMCTFAdd:array[0..2] of TpvVulkanDescriptorSet; // MCTF: {scratch@odd, pred}
-       // mode B per-frame input ring: -1 = the shared buffers/sets (mode A self-submit, mode C caller step-loop),
-       // >=0 = the active ring slot (mode B records the whole decode-ahead into ONE caller command buffer).
+       // Per-frame input ring: -1 = the shared buffers/sets (mode A self-submit, mode C caller step-loop, 3D-DWT),
+       // >=0 = the active ring slot. Used by mode B (the whole decode-ahead into ONE caller command buffer) AND by the
+       // pure intra/I-P path, which cycles one slot per displayed frame so a pipelined Update can stage frame N+1 without
+       // clobbering the input buffers frame N's still-running GPU decode reads (the washed-out / pale-fade race).
        fBufferRingSlot:TpvInt32;
        fBufferRingSize:TpvInt32;
+       fIPInputRing:boolean; // the intra/I-P path uses the ring (set when not B-frames and not 3D-DWT)
+       fIPRingSlot:TpvInt32; // next ring slot the intra/I-P PrepareFrame will use (cycles 0..fBufferRingSize-1)
+       fPreparedRingSlot:TpvInt32; // ring slot PrepareFrame chose; RecordFrame restores it (Update + Draw are separate calls)
        fRingDataBuffer:array of TpvVulkanBuffer;
        fRingOffsetBuffer:array of array[0..2] of TpvVulkanBuffer;
        fRingStepBuffer:array of array[0..2] of TpvVulkanBuffer;
@@ -170,12 +175,15 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fRingSetGBlend:array of array[0..2] of TpvVulkanDescriptorSet;
        fRingSetGBlendMode:array of array[0..2] of TpvVulkanDescriptorSet;
        fRingSetGAdd:array of array[0..2] of TpvVulkanDescriptorSet;
+       fRingSetMCPlay:array of array[0..2] of TpvVulkanDescriptorSet; // intra/I-P motion comp: {shared previous, ring mv, shared scratch}
        // two-phase decode (the poll-API split): PrepareFrame does the CPU side, RecordFrame the GPU side.
        fPreparedIndex:TpvInt32; // display index the last PrepareFrame staged (-1 = none)
        fPreparedIsPredicted:boolean; // intra/P: is_predicted of fPreparedIndex
        fBidiPlan:TBidiPlans; // mode-B decode-ahead plan captured by PrepareFrameBidi, replayed by RecordFrameBidi
        fBidiPlanCount:TpvInt32;
        fBidiDisplayPOC:TpvInt32;
+       fBidiRingCursor:TpvInt32; // mode B: free-running ring-slot cursor; does NOT reset per display frame, so consecutive
+                                 // (pipelined, in-flight) frames take DISJOINT input slots instead of clobbering each other
        fHFGain:TSynthesisGains;
        fLLGain:TpvFloat;
        fUseSCRGB:boolean;
@@ -298,6 +306,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        function ActiveSetGBlend(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
        function ActiveSetGBlendMode(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
        function ActiveSetGAdd(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
+       function ActiveSetMCPlay(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
        procedure BuildBidiRing; // allocate the per-frame input ring (mode B only)
        procedure UploadBidiFrame(const aCodingIndex:TpvInt32); // CPU: read + parse + MV/mode decode + upload for a coding frame
        function PrepareBidiFrame(const aDisplayPOC:TpvInt32;out aIsPredicted,aRef1Slot,aWeight0,aWeight1:TpvInt32):boolean; // upload fGCursor + DPB slot mgmt + rebind; False = pool full but display ready
@@ -529,6 +538,17 @@ begin
   end else if fGOPCapacity>64 then begin
    fGOPCapacity:=64;
   end;
+ end;
+
+ // Intra / I-P (not B-frames, not 3D-DWT) records its decode into the CALLER command buffer, which the engine submits
+ // and pipelines. With a single shared set of input buffers, Update stages frame N+1 (UploadFrame overwrites them)
+ // before the engine waits on frame N's GPU decode -> a clobber-while-reading race. Give this path its own input ring,
+ // cycled one slot per displayed frame (see PrepareFrame / RecordFrame), so each in-flight frame reads its own slot.
+ fIPInputRing:=(not fHasBFrames) and (not fMode3DDWT);
+ fIPRingSlot:=0;
+ fPreparedRingSlot:=-1;
+ if fIPInputRing then begin
+  fBufferRingSize:=4; // MaxInFlightFrames (3) + 1: frame N's slot is not reused until frame N+4, by when N's decode is done
  end;
 
 end;
@@ -849,9 +869,9 @@ begin
 
  MaxSets:=64;
  MaxBuffers:=256;
- if fHasBFrames and (fSubmitMode=1) then begin // mode B: + the per-frame input ring (~21 sets / ~60 buffers per slot)
-  MaxSets:=MaxSets+(fBufferRingSize*24);
-  MaxBuffers:=MaxBuffers+(fBufferRingSize*70);
+ if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin // the per-frame input ring (~24 sets / ~80 buffers per slot)
+  MaxSets:=MaxSets+(fBufferRingSize*30);
+  MaxBuffers:=MaxBuffers+(fBufferRingSize*96);
  end;
  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),MaxSets);
  fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,MaxBuffers);
@@ -1234,7 +1254,7 @@ begin
   UnpackPush[1]:=PlaneH;
   UnpackPush[2]:=PlaneBlocksX;
   UnpackPush[3]:=PlaneBlocksY;
-  RecordDispatch(aCommandBuffer,fPipeUnpack,fPLUnpack,fSetUnpack[Plane],@UnpackPush[0],16,PlaneUnpackWorkgroups,1,1);
+  RecordDispatch(aCommandBuffer,fPipeUnpack,fPLUnpack,ActiveSetUnpack(Plane),@UnpackPush[0],16,PlaneUnpackWorkgroups,1,1);
   RecordComputeBarrier(aCommandBuffer);
 
   // coefdiff (A) P-frame: add the previous coefficients to the unpacked difference here (BEFORE the inverse),
@@ -1255,7 +1275,7 @@ begin
     ChromaMultiplier:=fChromaQuant;
    end;
    DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
-   RecordDispatch(aCommandBuffer,fPipeDequant,fPLDequant,fSetDequant[Plane],@DequantPush[0],8,PlanePixelWorkgroups,1,1);
+   RecordDispatch(aCommandBuffer,fPipeDequant,fPLDequant,ActiveSetDequant(Plane),@DequantPush[0],8,PlanePixelWorkgroups,1,1);
    RecordComputeBarrier(aCommandBuffer);
   end;
 
@@ -1323,7 +1343,7 @@ begin
     MCPush[0]:=PlaneW;
     MCPush[1]:=PlaneH;
     MCPush[2]:=MotionBlocksX(PlaneW);
-    RecordDispatch(aCommandBuffer,fPipeMC,fPLUnpack,fSetMCPlay[Plane],@MCPush[0],12,PlanePixelWorkgroups,1,1);
+    RecordDispatch(aCommandBuffer,fPipeMC,fPLUnpack,ActiveSetMCPlay(Plane),@MCPush[0],12,PlanePixelWorkgroups,1,1);
     RecordComputeBarrier(aCommandBuffer);
    end;
    AddPush[0]:=PlanePixels;
@@ -1436,6 +1456,11 @@ begin
  if fBufferRingSlot<0 then begin result:=fSetGAdd[aPlane]; end else begin result:=fRingSetGAdd[fBufferRingSlot][aPlane]; end;
 end;
 
+function TpvFlexibleWaveletVideoDecoder.ActiveSetMCPlay(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
+begin
+ if fBufferRingSlot<0 then begin result:=fSetMCPlay[aPlane]; end else begin result:=fRingSetMCPlay[fBufferRingSlot][aPlane]; end;
+end;
+
 // Mode B: allocate the per-frame input ring (data / offset / step / mv / mv1 / mode buffers + their sets) so the
 // whole decode-ahead can be recorded into ONE caller command buffer. The unpack/dequant sets bind their ring
 // inputs + the SHARED coeff once here; the gmc/blend/add sets are rebound per frame (DPB ref slots).
@@ -1461,6 +1486,7 @@ begin
  SetLength(fRingSetGBlend,fBufferRingSize);
  SetLength(fRingSetGBlendMode,fBufferRingSize);
  SetLength(fRingSetGAdd,fBufferRingSize);
+ SetLength(fRingSetMCPlay,fBufferRingSize);
  for Slot:=0 to fBufferRingSize-1 do begin
   fRingDataBuffer[Slot]:=CreateStorageBuffer(DataCapacity,false,'FWV.ring.data');
   fRingMVBuffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(MotionCells)*2*4,false,'FWV.ring.mv');
@@ -1487,6 +1513,12 @@ begin
    if fHasPerBlockMode then begin
     fRingSetGBlendMode[Slot][Plane]:=AllocateSet(fDSL3);
    end;
+   // intra/I-P motion comp set, bound once: {shared previous, ring mv, shared scratch} (mirrors fSetMCPlay)
+   fRingSetMCPlay[Slot][Plane]:=AllocateSet(fDSL3);
+   BindStorageBuffer(fRingSetMCPlay[Slot][Plane],0,fPreviousBuffer[Plane]);
+   BindStorageBuffer(fRingSetMCPlay[Slot][Plane],1,fRingMVBuffer[Slot]);
+   BindStorageBuffer(fRingSetMCPlay[Slot][Plane],2,fScratchBuffer);
+   fRingSetMCPlay[Slot][Plane].Flush;
   end;
  end;
 end;
@@ -2562,7 +2594,7 @@ begin
  // CPU decode-ahead (mode B): upload + DPB-manage each coding-order frame into its own ring slot until this
  // display POC is ready + the lead is full, capturing a per-frame record plan for RecordFrameBidi to replay.
  fBidiPlanCount:=0;
- RingIndex:=0;
+ RingIndex:=0; // per-call coding-frame counter; only guards that ONE display frame's decode-ahead fits the ring
  while fGCursor<fFrameCount do begin
   if (fGDPBPOCToSlot[aDisplayPOC]>=0) and (fGCursor>=(aDisplayPOC+fGDecodeLead)) then begin
    break;
@@ -2570,17 +2602,25 @@ begin
   if RingIndex>=fBufferRingSize then begin
    raise EpvFlexibleWaveletVideoDecoder.Create('B-frame mode B input ring overflow');
   end;
-  fBufferRingSlot:=RingIndex;
+  // Use the FREE-RUNNING cursor (not RingIndex) as the slot: it does not reset per display frame, so this frame's
+  // input slots stay disjoint from the previous, still-in-flight frame's slots (the engine pipelines display frames,
+  // and UploadBidiFrame here would otherwise clobber buffers the prior frame's GPU decode is still reading -> the pale
+  // fade). The ring's +fGDecodePeriod margin over the lead-burst depth covers the in-flight window before a slot wraps.
+  fBufferRingSlot:=fBidiRingCursor;
   if not PrepareBidiFrame(aDisplayPOC,IsPredicted,Ref1Slot,Weight0,Weight1) then begin
    break;
   end;
-  fBidiPlan[fBidiPlanCount].RingSlot:=RingIndex;
+  fBidiPlan[fBidiPlanCount].RingSlot:=fBidiRingCursor;
   fBidiPlan[fBidiPlanCount].IsPredicted:=IsPredicted;
   fBidiPlan[fBidiPlanCount].Ref1Slot:=Ref1Slot;
   fBidiPlan[fBidiPlanCount].Weight0:=Weight0;
   fBidiPlan[fBidiPlanCount].Weight1:=Weight1;
   inc(fBidiPlanCount);
   inc(RingIndex);
+  inc(fBidiRingCursor);
+  if fBidiRingCursor>=fBufferRingSize then begin
+   fBidiRingCursor:=0;
+  end;
  end;
  fBufferRingSlot:=-1;
  fBidiDisplayPOC:=aDisplayPOC;
@@ -2613,6 +2653,16 @@ begin
  end else if fHasBFrames then begin
   PrepareFrameBidi(aDisplayIndex);
  end else begin
+  if fIPInputRing then begin
+   // cycle to a fresh ring slot so this frame's input buffers differ from those the previous (still in-flight) frames' GPU
+   // decode is reading; RecordFrame restores this slot for the GPU side (Update and Draw are separate calls).
+   fBufferRingSlot:=fIPRingSlot;
+   inc(fIPRingSlot);
+   if fIPRingSlot>=fBufferRingSize then begin
+    fIPRingSlot:=0;
+   end;
+  end;
+  fPreparedRingSlot:=fBufferRingSlot;
   UploadFrame(aDisplayIndex);
   fPreparedIsPredicted:=fFrameEntries[aDisplayIndex].FrameType<>0; // is_predicted = frame type is not I
  end;
@@ -2631,7 +2681,9 @@ begin
  end else if fHasBFrames then begin
   RecordFrameBidi(aCommandBuffer);
  end else begin
+  fBufferRingSlot:=fPreparedRingSlot; // GPU side reads the same ring slot PrepareFrame's UploadFrame wrote (-1 = shared)
   RecordDecode(aCommandBuffer,fPreparedIsPredicted);
+  fBufferRingSlot:=-1;
  end;
  fPreparedIndex:=-1;
 
@@ -2646,6 +2698,9 @@ begin
  fGCursor:=0;
  fGDecStepIndex:=-1;
  fBufferRingSlot:=-1;
+ fIPRingSlot:=0;
+ fPreparedRingSlot:=-1;
+ fBidiRingCursor:=0;
  fPreparedIndex:=-1;
  fBidiDisplayPOC:=-1;
  fCur3DGopStart:=-1;
@@ -2687,8 +2742,8 @@ begin
   fBDecodeFence:=TpvVulkanFence.Create(fDevice);
  end;
 
- // mode B only: the per-frame input ring (the whole decode-ahead in one caller command buffer)
- if fHasBFrames and (fSubmitMode=1) then begin
+ // the per-frame input ring: mode B (the whole decode-ahead in one caller CB) + the intra/I-P path (one slot per frame)
+ if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin
   BuildBidiRing;
  end;
 
@@ -2731,6 +2786,7 @@ begin
    FreeAndNil(fRingSetGBlend[SlotIndex][Plane]);
    FreeAndNil(fRingSetGBlendMode[SlotIndex][Plane]);
    FreeAndNil(fRingSetGAdd[SlotIndex][Plane]);
+   FreeAndNil(fRingSetMCPlay[SlotIndex][Plane]);
    FreeAndNil(fRingOffsetBuffer[SlotIndex][Plane]);
    FreeAndNil(fRingStepBuffer[SlotIndex][Plane]);
   end;
