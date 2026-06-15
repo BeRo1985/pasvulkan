@@ -1,4 +1,4 @@
-unit PasVulkan.ScreenGUIBase;
+unit PasVulkan.Application.VirtualRealityAwareScreen;
 {$ifdef fpc}
  {$mode delphi}
  {$ifdef cpu386}
@@ -40,22 +40,22 @@ const ScreenGUIBaseWidth=2048;
 
       ScreenGUIBaseHeight=1152;
 
-type PpvScreenGUIBaseSceneContentUniformBuffer=^TpvScreenGUIBaseSceneContentUniformBuffer;
-     TpvScreenGUIBaseSceneContentUniformBuffer=packed record
+type PpvApplicationVirtualRealityAwareScreenSceneContentUniformBuffer=^TpvApplicationVirtualRealityAwareScreenSceneContentUniformBuffer;
+     TpvApplicationVirtualRealityAwareScreenSceneContentUniformBuffer=packed record
       InverseViewProjectionMatrices:array[0..1] of TpvMatrix4x4;
       Resolution:TpvVector2;
      end;
 
-     TpvScreenGUIBase=class;
+     TpvApplicationVirtualRealityAwareScreen=class;
 
-     TpvScreenGUIBaseContentRenderPass=class(TpvFrameGraph.TRenderPass)
+     TpvApplicationVirtualRealityAwareScreenContentRenderPass=class(TpvFrameGraph.TRenderPass)
       private
-       fParent:TpvScreenGUIBase;
+       fParent:TpvApplicationVirtualRealityAwareScreen;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fResourceSurface:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
       public
-       constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvScreenGUIBase); reintroduce;
+       constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvApplicationVirtualRealityAwareScreen); reintroduce;
        destructor Destroy; override;
        procedure AcquirePersistentResources; override;
        procedure ReleasePersistentResources; override;
@@ -65,12 +65,12 @@ type PpvScreenGUIBaseSceneContentUniformBuffer=^TpvScreenGUIBaseSceneContentUnif
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
 
-     TpvScreenGUIBaseContentProjectionRenderPass=class(TpvFrameGraph.TRenderPass)
+     TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass=class(TpvFrameGraph.TRenderPass)
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
        fWidth:TpvSizeInt;
        fHeight:TpvSizeInt;
-       fParent:TpvScreenGUIBase;
+       fParent:TpvApplicationVirtualRealityAwareScreen;
        fResourceContent:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
@@ -88,10 +88,10 @@ type PpvScreenGUIBaseSceneContentUniformBuffer=^TpvScreenGUIBaseSceneContentUnif
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
-       fUniformBuffers:array[0..MaxInFlightFrames-1] of TpvScreenGUIBaseSceneContentUniformBuffer;
+       fUniformBuffers:array[0..MaxInFlightFrames-1] of TpvApplicationVirtualRealityAwareScreenSceneContentUniformBuffer;
        fVulkanSampler:TpvVulkanSampler;
       public
-       constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvScreenGUIBase); reintroduce;
+       constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvApplicationVirtualRealityAwareScreen); reintroduce;
        destructor Destroy; override;
        procedure AcquirePersistentResources; override;
        procedure ReleasePersistentResources; override;
@@ -101,9 +101,9 @@ type PpvScreenGUIBaseSceneContentUniformBuffer=^TpvScreenGUIBaseSceneContentUnif
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
 
-     TpvScreenGUIBaseBlitRenderPass=class(TpvFrameGraph.TRenderPass)
+     TpvApplicationVirtualRealityAwareScreenBlitRenderPass=class(TpvFrameGraph.TRenderPass)
       private
-       fParent:TpvScreenGUIBase;
+       fParent:TpvApplicationVirtualRealityAwareScreen;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceSurface:TpvFrameGraph.TPass.TUsedImageResource;
@@ -121,7 +121,7 @@ type PpvScreenGUIBaseSceneContentUniformBuffer=^TpvScreenGUIBaseSceneContentUnif
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
       public
-       constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvScreenGUIBase); reintroduce;
+       constructor Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvApplicationVirtualRealityAwareScreen); reintroduce;
        destructor Destroy; override;
        procedure AcquirePersistentResources; override;
        procedure ReleasePersistentResources; override;
@@ -131,20 +131,20 @@ type PpvScreenGUIBaseSceneContentUniformBuffer=^TpvScreenGUIBaseSceneContentUnif
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); override;
      end;
 
-     { TpvScreenGUIBase }
+     { TpvApplicationVirtualRealityAwareScreen }
 
-     TpvScreenGUIBase=class(TpvApplicationScreen)
+     TpvApplicationVirtualRealityAwareScreen=class(TpvApplicationScreen)
       protected
 
        fFrameGraph:TpvFrameGraph;
 
        fExternalOutputImageData:TpvFrameGraph.TExternalImageData;
 
-       fContentRenderPass:TpvScreenGUIBaseContentRenderPass;
+       fContentRenderPass:TpvApplicationVirtualRealityAwareScreenContentRenderPass;
 
-       fContentProjectionRenderPass:TpvScreenGUIBaseContentProjectionRenderPass;
+       fContentProjectionRenderPass:TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass;
 
-       fBlitRenderPass:TpvScreenGUIBaseBlitRenderPass;
+       fBlitRenderPass:TpvApplicationVirtualRealityAwareScreenBlitRenderPass;
 
        fVulkanSampleCountFlagBits:TVkSampleCountFlagBits;
 
@@ -213,9 +213,9 @@ uses PasVulkan.Assets,PasVulkan.Streams;
 
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 
-{ TpvScreenGUIBaseContentRenderPass }
+{ TpvApplicationVirtualRealityAwareScreenContentRenderPass }
 
-constructor TpvScreenGUIBaseContentRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvScreenGUIBase);
+constructor TpvApplicationVirtualRealityAwareScreenContentRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvApplicationVirtualRealityAwareScreen);
 begin
 
  inherited Create(aFrameGraph);
@@ -248,51 +248,51 @@ begin
 
 end;
 
-destructor TpvScreenGUIBaseContentRenderPass.Destroy;
+destructor TpvApplicationVirtualRealityAwareScreenContentRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScreenGUIBaseContentRenderPass.AcquirePersistentResources;
+procedure TpvApplicationVirtualRealityAwareScreenContentRenderPass.AcquirePersistentResources;
 begin
  inherited AcquirePersistentResources;
  fParent.AcquirePersistentResources;
 end;
 
-procedure TpvScreenGUIBaseContentRenderPass.ReleasePersistentResources;
+procedure TpvApplicationVirtualRealityAwareScreenContentRenderPass.ReleasePersistentResources;
 begin
  fParent.ReleasePersistentResources;
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScreenGUIBaseContentRenderPass.AcquireVolatileResources;
+procedure TpvApplicationVirtualRealityAwareScreenContentRenderPass.AcquireVolatileResources;
 begin
  inherited AcquireVolatileResources;
  fVulkanRenderPass:=VulkanRenderPass;
  fParent.AcquireVolatileResources(fVulkanRenderPass,trunc(PhysicalRenderPass.Size.Size.x),trunc(PhysicalRenderPass.Size.Size.y));
 end;
 
-procedure TpvScreenGUIBaseContentRenderPass.ReleaseVolatileResources;
+procedure TpvApplicationVirtualRealityAwareScreenContentRenderPass.ReleaseVolatileResources;
 begin
  fParent.ReleaseVolatileResources;
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScreenGUIBaseContentRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvApplicationVirtualRealityAwareScreenContentRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
  fParent.ContentUpdate(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScreenGUIBaseContentRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvApplicationVirtualRealityAwareScreenContentRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  fParent.ContentExecute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 end;
 
-{ TpvScreenGUIBaseContentProjectionRenderPass }
+{ TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass }
 
-constructor TpvScreenGUIBaseContentProjectionRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvScreenGUIBase);
+constructor TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvApplicationVirtualRealityAwareScreen);
 begin
 
  inherited Create(aFrameGraph);
@@ -366,12 +366,12 @@ begin
 
 end;
 
-destructor TpvScreenGUIBaseContentProjectionRenderPass.Destroy;
+destructor TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScreenGUIBaseContentProjectionRenderPass.AcquirePersistentResources;
+procedure TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass.AcquirePersistentResources;
 var x,y:TpvSizeInt;
     Stream:TStream;
 begin
@@ -429,7 +429,7 @@ begin
 
 end;
 
-procedure TpvScreenGUIBaseContentProjectionRenderPass.ReleasePersistentResources;
+procedure TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageVertex);
  FreeAndNil(fVulkanPipelineShaderStageFragment);
@@ -443,7 +443,7 @@ begin
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScreenGUIBaseContentProjectionRenderPass.AcquireVolatileResources;
+procedure TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass.AcquireVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AcquireVolatileResources;
@@ -458,7 +458,7 @@ begin
 
   for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
    fVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                                               SizeOf(TpvScreenGUIBaseSceneContentUniformBuffer),
+                                                                               SizeOf(TpvApplicationVirtualRealityAwareScreenSceneContentUniformBuffer),
                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                FrameGraph.QueueFamilyIndices.Items,
@@ -477,7 +477,7 @@ begin
                                                                   fVulkanTransferCommandBufferFence,
                                                                   fUniformBuffers[InFlightFrameIndex],
                                                                   0,
-                                                                  SizeOf(TpvScreenGUIBaseSceneContentUniformBuffer),
+                                                                  SizeOf(TpvApplicationVirtualRealityAwareScreenSceneContentUniformBuffer),
                                                                   TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
   end;
 
@@ -601,7 +601,7 @@ begin
 
 end;
 
-procedure TpvScreenGUIBaseContentProjectionRenderPass.ReleaseVolatileResources;
+procedure TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -630,7 +630,7 @@ begin
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScreenGUIBaseContentProjectionRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 const ZNear=1.0;
       ZFar=1024.0;
 var ModelMatrix,
@@ -638,7 +638,7 @@ var ModelMatrix,
     ViewMatrices,
     ViewProjectionMatrices,
     InverseViewProjectionMatrices:array[0..1] of TpvMatrix4x4;
-    SceneContentUniformBuffer:PpvScreenGUIBaseSceneContentUniformBuffer;
+    SceneContentUniformBuffer:PpvApplicationVirtualRealityAwareScreenSceneContentUniformBuffer;
 begin
 
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
@@ -661,17 +661,17 @@ begin
 
 end;
 
-procedure TpvScreenGUIBaseContentProjectionRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var p:pointer;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  begin
 
-  p:=fVulkanUniformBuffers[aInFlightFrameIndex].Memory.MapMemory(0,SizeOf(TpvScreenGUIBaseSceneContentUniformBuffer));
+  p:=fVulkanUniformBuffers[aInFlightFrameIndex].Memory.MapMemory(0,SizeOf(TpvApplicationVirtualRealityAwareScreenSceneContentUniformBuffer));
   if assigned(p) then begin
    try
-    PpvScreenGUIBaseSceneContentUniformBuffer(p)^:=fUniformBuffers[aInFlightFrameIndex];
+    PpvApplicationVirtualRealityAwareScreenSceneContentUniformBuffer(p)^:=fUniformBuffers[aInFlightFrameIndex];
    finally
     fVulkanUniformBuffers[aInFlightFrameIndex].Memory.UnmapMemory;
    end;
@@ -692,7 +692,7 @@ begin
 end;
 
 
-constructor TpvScreenGUIBaseBlitRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvScreenGUIBase);
+constructor TpvApplicationVirtualRealityAwareScreenBlitRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aParent:TpvApplicationVirtualRealityAwareScreen);
 begin
 
  inherited Create(aFrameGraph);
@@ -733,12 +733,12 @@ begin
 
 end;
 
-destructor TpvScreenGUIBaseBlitRenderPass.Destroy;
+destructor TpvApplicationVirtualRealityAwareScreenBlitRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScreenGUIBaseBlitRenderPass.AcquirePersistentResources;
+procedure TpvApplicationVirtualRealityAwareScreenBlitRenderPass.AcquirePersistentResources;
 var Stream:TStream;
 begin
 
@@ -787,7 +787,7 @@ begin
 
 end;
 
-procedure TpvScreenGUIBaseBlitRenderPass.ReleasePersistentResources;
+procedure TpvApplicationVirtualRealityAwareScreenBlitRenderPass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanSampler);
  FreeAndNil(fVulkanPipelineShaderStageVertex);
@@ -799,7 +799,7 @@ begin
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScreenGUIBaseBlitRenderPass.AcquireVolatileResources;
+procedure TpvApplicationVirtualRealityAwareScreenBlitRenderPass.AcquireVolatileResources;
 var InFlightFrameIndex,Width,Height:TpvSizeInt;
 begin
  inherited AcquireVolatileResources;
@@ -928,7 +928,7 @@ begin
 
 end;
 
-procedure TpvScreenGUIBaseBlitRenderPass.ReleaseVolatileResources;
+procedure TpvApplicationVirtualRealityAwareScreenBlitRenderPass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -950,12 +950,12 @@ begin
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScreenGUIBaseBlitRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvApplicationVirtualRealityAwareScreenBlitRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScreenGUIBaseBlitRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvApplicationVirtualRealityAwareScreenBlitRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[aInFlightFrameIndex].Handle,0,nil);
@@ -969,9 +969,9 @@ begin
  end;
 end;
 
-{ TpvScreenGUIBase }
+{ TpvApplicationVirtualRealityAwareScreen }
 
-constructor TpvScreenGUIBase.Create;
+constructor TpvApplicationVirtualRealityAwareScreen.Create;
 var SampleCounts:TVkSampleCountFlags;
 begin
 
@@ -1099,11 +1099,11 @@ begin
                                     1
                                    );
 
-   fContentRenderPass:=TpvScreenGUIBaseContentRenderPass.Create(fFrameGraph,self);
+   fContentRenderPass:=TpvApplicationVirtualRealityAwareScreenContentRenderPass.Create(fFrameGraph,self);
 
-   fContentProjectionRenderPass:=TpvScreenGUIBaseContentProjectionRenderPass.Create(fFrameGraph,self);
+   fContentProjectionRenderPass:=TpvApplicationVirtualRealityAwareScreenContentProjectionRenderPass.Create(fFrameGraph,self);
 
-   fBlitRenderPass:=TpvScreenGUIBaseBlitRenderPass.Create(fFrameGraph,self);
+   fBlitRenderPass:=TpvApplicationVirtualRealityAwareScreenBlitRenderPass.Create(fFrameGraph,self);
 
    fFrameGraph.RootPass:=fBlitRenderPass;
 
@@ -1126,7 +1126,7 @@ begin
 
 end;
 
-destructor TpvScreenGUIBase.Destroy;
+destructor TpvApplicationVirtualRealityAwareScreen.Destroy;
 begin
  if assigned(pvApplication.VulkanDevice) then begin
   if assigned(fFrameGraph) then begin
@@ -1136,7 +1136,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScreenGUIBase.Show;
+procedure TpvApplicationVirtualRealityAwareScreen.Show;
 var Index,SwapChainImageIndex:TpvInt32;
 begin
  inherited Show;
@@ -1181,7 +1181,7 @@ begin
 
 end;
 
-procedure TpvScreenGUIBase.Hide;
+procedure TpvApplicationVirtualRealityAwareScreen.Hide;
 var Index,SwapChainImageIndex:TpvInt32;
 begin
  if assigned(pvApplication.VulkanDevice) then begin
@@ -1208,22 +1208,22 @@ begin
  inherited Hide;
 end;
 
-procedure TpvScreenGUIBase.Resume;
+procedure TpvApplicationVirtualRealityAwareScreen.Resume;
 begin
  inherited Resume;
 end;
 
-procedure TpvScreenGUIBase.Pause;
+procedure TpvApplicationVirtualRealityAwareScreen.Pause;
 begin
  inherited Pause;
 end;
 
-procedure TpvScreenGUIBase.Resize(const aWidth,aHeight:TpvInt32);
+procedure TpvApplicationVirtualRealityAwareScreen.Resize(const aWidth,aHeight:TpvInt32);
 begin
  inherited Resize(aWidth,aHeight);
 end;
 
-procedure TpvScreenGUIBase.AfterCreateSwapChain;
+procedure TpvApplicationVirtualRealityAwareScreen.AfterCreateSwapChain;
 var Index,SwapChainImageIndex:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
@@ -1329,7 +1329,7 @@ begin
 
 end;
 
-procedure TpvScreenGUIBase.BeforeDestroySwapChain;
+procedure TpvApplicationVirtualRealityAwareScreen.BeforeDestroySwapChain;
 begin
  if assigned(pvApplication.VulkanDevice) then begin
   if assigned(fFrameGraph) then begin
@@ -1343,43 +1343,43 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TpvScreenGUIBase.AcquirePersistentResources;
+procedure TpvApplicationVirtualRealityAwareScreen.AcquirePersistentResources;
 begin
 
 end;
 
-procedure TpvScreenGUIBase.ReleasePersistentResources;
+procedure TpvApplicationVirtualRealityAwareScreen.ReleasePersistentResources;
 begin
 
 end;
 
-procedure TpvScreenGUIBase.AcquireVolatileResources(const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32);
+procedure TpvApplicationVirtualRealityAwareScreen.AcquireVolatileResources(const aRenderPass:TpvVulkanRenderPass;const aWidth,aHeight:TpvInt32);
 begin
 
 end;
 
-procedure TpvScreenGUIBase.ReleaseVolatileResources;
+procedure TpvApplicationVirtualRealityAwareScreen.ReleaseVolatileResources;
 begin
 
 end;
 
-procedure TpvScreenGUIBase.ContentUpdate(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvApplicationVirtualRealityAwareScreen.ContentUpdate(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
 
 end;
 
-procedure TpvScreenGUIBase.ContentExecute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvApplicationVirtualRealityAwareScreen.ContentExecute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
 
 end;
 
-function TpvScreenGUIBase.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvApplicationVirtualRealityAwareScreen.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
  if fReady and (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down) then begin
   case aKeyEvent.KeyCode of
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
-   // pvApplication.NextScreen:=TpvScreenGUIBase.Create;
+   // pvApplication.NextScreen:=TpvApplicationVirtualRealityAwareScreen.Create;
 //  pvApplication.Terminate;
    end;
    KEYCODE_UP:begin
@@ -1414,14 +1414,14 @@ begin
    end;
    KEYCODE_RETURN,KEYCODE_SPACE:begin
     if fSelectedIndex=0 then begin
-  //   pvApplication.NextScreen:=TpvScreenGUIBase.Create;
+  //   pvApplication.NextScreen:=TpvApplicationVirtualRealityAwareScreen.Create;
     end;
    end;
   end;
  end;
 end;
 
-function TpvScreenGUIBase.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvApplicationVirtualRealityAwareScreen.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -1435,7 +1435,7 @@ begin
      if (aPointerEvent.Position.y>=cy) and (aPointerEvent.Position.y<(cy+(Application.TextOverlay.FontCharHeight*FontSize))) then begin
       fSelectedIndex:=Index;
       if fSelectedIndex=0 then begin
-       pvApplication.NextScreen:=TpvScreenGUIBase.Create;
+       pvApplication.NextScreen:=TpvApplicationVirtualRealityAwareScreen.Create;
       end;
      end;
      cy:=cy+((Application.TextOverlay.FontCharHeight+4)*FontSize);
@@ -1459,17 +1459,17 @@ begin
  end;}
 end;
 
-function TpvScreenGUIBase.Scrolled(const aRelativeAmount:TpvVector2):boolean;
+function TpvApplicationVirtualRealityAwareScreen.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  result:=false;
 end;
 
-function TpvScreenGUIBase.CanBeParallelProcessed:boolean;
+function TpvApplicationVirtualRealityAwareScreen.CanBeParallelProcessed:boolean;
 begin
  result:=true;
 end;
 
-procedure TpvScreenGUIBase.Update(const aDeltaTime:TpvDouble);
+procedure TpvApplicationVirtualRealityAwareScreen.Update(const aDeltaTime:TpvDouble);
 begin
  inherited Update(aDeltaTime);
 
@@ -1485,7 +1485,7 @@ begin
 
 end;
 
-procedure TpvScreenGUIBase.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+procedure TpvApplicationVirtualRealityAwareScreen.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 var VulkanCommandBuffer:TpvVulkanCommandBuffer;
     VulkanSwapChain:TpvVulkanSwapChain;
 begin
