@@ -733,7 +733,8 @@ begin
    fPlayer.BlitLastDecodedFrame(CommandBuffer,
                                 pvApplication.VulkanSwapChain.Images[aSwapChainImageIndex],
                                 pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height,
-                                VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+                                VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                true); // aspect-fit + centre (letterbox), bars cleared black
   end else begin
    // no decoded frame yet -> clear the swapchain image to black
    FillChar(ClearColor,SizeOf(ClearColor),#0);

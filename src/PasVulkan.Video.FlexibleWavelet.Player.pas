@@ -98,7 +98,7 @@ type EpvFlexibleWaveletVideoPlayer=class(EpvFlexibleWaveletVideo);
        // Restart playback from the beginning by SEEKING (reuses the player + its GPU resources; no free/recreate).
        procedure Restart;
        // blit the last decoded frame (OutputImage, left in TRANSFER_SRC_OPTIMAL) into a present target image
-       procedure BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout);
+       procedure BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout;const aLetterbox:boolean=false);
        // audio: open the container's audio sub-codec into a TpvAudioSoundVideo on the given engine audio system (A/V sync)
        procedure OpenAudio(const aAudio:TpvAudio);
        procedure StartAudio; // begin audio playback (anchors the master clock)
@@ -568,10 +568,14 @@ begin
  SeekAudio(0.0); // seek the audio decoder back + flush + (atomically, under the audio lock) resume the stream from 0
 end;
 
-procedure TpvFlexibleWaveletVideoPlayer.BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout);
+procedure TpvFlexibleWaveletVideoPlayer.BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout;const aLetterbox:boolean);
 var Blit:TVkImageBlit;
     Barrier:TVkImageMemoryBarrier;
     SourceLayout:TVkImageLayout;
+    ClearColor:TVkClearColorValue;
+    ClearRange:TVkImageSubresourceRange;
+    MemBarrier:TVkMemoryBarrier;
+    DstX,DstY,DstW,DstH:TpvInt32;
 
  procedure TransitionTarget(const aOldLayout,aNewLayout:TVkImageLayout;const aSrcAccess,aDstAccess:TVkAccessFlags;const aSrcStage,aDstStage:TVkPipelineStageFlags);
  begin
@@ -596,10 +600,44 @@ begin
  // current rotating pool slot into a stable display image), so the present path is identical for both
  SourceLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
- // bring the target to TRANSFER_DST, blit (linear) from the decoded frame, restore it
+ // aspect-fit + centre the decoded frame in the target when letterboxing (else stretch to fill the whole target)
+ if (((aLetterbox and (fWidth>0)) and (fHeight>0)) and (aTargetWidth>0)) and (aTargetHeight>0) then begin
+  if (aTargetWidth*fHeight)>(aTargetHeight*fWidth) then begin // target wider than the video -> pillarbox
+   DstH:=aTargetHeight;
+   DstW:=Round((aTargetHeight*fWidth)/fHeight);
+  end else begin // target taller (or equal) -> letterbox
+   DstW:=aTargetWidth;
+   DstH:=Round((aTargetWidth*fHeight)/fWidth);
+  end;
+  DstX:=(aTargetWidth-DstW) div 2;
+  DstY:=(aTargetHeight-DstH) div 2;
+ end else begin
+  DstX:=0;
+  DstY:=0;
+  DstW:=aTargetWidth;
+  DstH:=aTargetHeight;
+ end;
+
+ // bring the target to TRANSFER_DST
  TransitionTarget(aTargetOldLayout,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                   0,TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT));
+
+ // letterbox: clear the whole target to black so the bars are black, then a barrier before the centred blit
+ if (DstX>0) or (DstY>0) then begin
+  FillChar(ClearColor,SizeOf(ClearColor),#0);
+  ClearColor.float32[3]:=1.0;
+  FillChar(ClearRange,SizeOf(ClearRange),#0);
+  ClearRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ClearRange.levelCount:=1;
+  ClearRange.layerCount:=1;
+  aCommandBuffer.CmdClearColorImage(aTargetImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,@ClearColor,1,@ClearRange);
+  FillChar(MemBarrier,SizeOf(MemBarrier),#0);
+  MemBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  MemBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  MemBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),0,1,@MemBarrier,0,nil,0,nil);
+ end;
 
  FillChar(Blit,SizeOf(Blit),#0);
  Blit.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
@@ -609,8 +647,11 @@ begin
  Blit.srcOffsets[1].z:=1;
  Blit.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
  Blit.dstSubresource.layerCount:=1;
- Blit.dstOffsets[1].x:=aTargetWidth;
- Blit.dstOffsets[1].y:=aTargetHeight;
+ Blit.dstOffsets[0].x:=DstX;
+ Blit.dstOffsets[0].y:=DstY;
+ Blit.dstOffsets[0].z:=0;
+ Blit.dstOffsets[1].x:=DstX+DstW;
+ Blit.dstOffsets[1].y:=DstY+DstH;
  Blit.dstOffsets[1].z:=1;
  aCommandBuffer.CmdBlitImage(GetOutputImage.Handle,SourceLayout,
                              aTargetImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
