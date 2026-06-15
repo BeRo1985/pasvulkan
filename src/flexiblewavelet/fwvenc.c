@@ -969,17 +969,17 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
   // multiple of period; gop <= period => only the very first frame is an I-frame (single open GOP).
   int key_interval = (gop > period) ? ((gop / period) * period) : 0;
 
-  int plane_pixels[3];
-  for (int p = 0; p < 3; p++) {
+  int plane_pixels[MAX_PLANES];
+  for (int p = 0; p < g_num_planes; p++) {
     plane_pixels[p] = plane_width(p, width) * plane_height(p, height);
   }
   // Per-position state for the current anchor pair (slots 0..period).
   uint8_t *rgb_slot[period + 1];
-  int32_t *dpb[period + 1][3];   // reconstructed YCoCg per slot (the prediction references)
+  int32_t *dpb[period + 1][MAX_PLANES];   // reconstructed YCoCg per slot (the prediction references)
   long dpb_coding[period + 1];   // coding-order index of the frame currently held in each slot
   for (int s = 0; s <= period; s++) {
     rgb_slot[s] = checked_malloc(frame_bytes);
-    for (int p = 0; p < 3; p++) {
+    for (int p = 0; p < g_num_planes; p++) {
       dpb[s][p] = checked_malloc((size_t)plane_pixels[p] * 4);
     }
     dpb_coding[s] = -1;
@@ -1059,7 +1059,7 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
       print_encode_progress(frame_index, total_frames, fps_value, now_milliseconds() - encode_start);
 
       // ---- slide: the hi anchor becomes the next lo (swap its slot into slot 0) ----
-      for (int p = 0; p < 3; p++) {
+      for (int p = 0; p < g_num_planes; p++) {
         int32_t *swap = dpb[0][p];
         dpb[0][p] = dpb[hi][p];
         dpb[hi][p] = swap;
@@ -1074,7 +1074,7 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
 
   for (int s = 0; s <= period; s++) {
     free(rgb_slot[s]);
-    for (int p = 0; p < 3; p++) {
+    for (int p = 0; p < g_num_planes; p++) {
       free(dpb[s][p]);
     }
   }
@@ -1522,9 +1522,9 @@ int main(int argc, char **argv) {
   // ---- buffers ----
   size_t plane_bytes = (size_t)pixel_count * 4;
   size_t data_capacity = ((size_t)pixel_count * 4) + ((size_t)block_count * 16);
-  VkBuffer rgb_buffer, coeff_buffer[3], scratch_buffer, step_buffer[3], size_buffer[3], offset_buffer[3], data_buffer;
-  VkBuffer previous_buffer[3], difference_buffer[3];   // P-frame coefficient reference + difference
-  VkBuffer size_buffer_diff[3];                        // P-frame: packed block sizes of the difference (for the I/P decision)
+  VkBuffer rgb_buffer, coeff_buffer[MAX_PLANES], scratch_buffer, step_buffer[MAX_PLANES], size_buffer[MAX_PLANES], offset_buffer[MAX_PLANES], data_buffer;
+  VkBuffer previous_buffer[MAX_PLANES], difference_buffer[MAX_PLANES];   // P-frame coefficient reference + difference
+  VkBuffer size_buffer_diff[MAX_PLANES];                        // P-frame: packed block sizes of the difference (for the I/P decision)
   VkBuffer energy_buffer;                               // colordiff: single host-visible L1-residual counter (scene-cut detect)
   VkBuffer mv_buffer;                                   // motion: per-block [mv_x, mv_y] (half-pel) — the fine 8-grid in variable mode
   VkBuffer mv_prev_buffer;                              // previous frame's MVs (temporal predictor; device-local snapshot of mv_buffer)
@@ -1533,13 +1533,13 @@ int main(int argc, char **argv) {
   VkBuffer mv8_prev_buffer = 0, mv16_prev_buffer = 0, mv32_prev_buffer = 0;   // variable motion: per-size previous-frame MVs (temporal predictor)
   VkBuffer mv1_8_buffer = 0, mv1_16_buffer = 0, mv1_32_buffer = 0;            // variable B: per-size L1 (vs ref1) ME outputs
   VkBuffer modesad8_buffer = 0, modesad16_buffer = 0, modesad32_buffer = 0;   // variable B: per-size [sadL0,sadL1,sadBI] from bidi_mode_sad
-  VkDeviceMemory rgb_memory, coeff_memory[3], scratch_memory, step_memory[3], size_memory[3], offset_memory[3], data_memory;
-  VkDeviceMemory previous_memory[3], difference_memory[3], size_memory_diff[3], energy_memory, mv_memory, mv_prev_memory, sad_memory;
+  VkDeviceMemory rgb_memory, coeff_memory[MAX_PLANES], scratch_memory, step_memory[MAX_PLANES], size_memory[MAX_PLANES], offset_memory[MAX_PLANES], data_memory;
+  VkDeviceMemory previous_memory[MAX_PLANES], difference_memory[MAX_PLANES], size_memory_diff[MAX_PLANES], energy_memory, mv_memory, mv_prev_memory, sad_memory;
   VkDeviceMemory mv8_memory = 0, mv16_memory = 0, mv32_memory = 0, sad16_memory = 0, sad32_memory = 0;
   VkDeviceMemory mv8_prev_memory = 0, mv16_prev_memory = 0, mv32_prev_memory = 0;
   VkDeviceMemory mv1_8_memory = 0, mv1_16_memory = 0, mv1_32_memory = 0, modesad8_memory = 0, modesad16_memory = 0, modesad32_memory = 0;
   create_buffer((size_t)pixel_count * (hdr_mode ? 6 : 4), HOST_VISIBLE_COHERENT, &rgb_buffer, &rgb_memory);
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     create_buffer(plane_bytes, DEVICE_LOCAL, &coeff_buffer[plane], &coeff_memory[plane]);
     create_buffer(plane_bytes, DEVICE_LOCAL, &previous_buffer[plane], &previous_memory[plane]);
     create_buffer(plane_bytes, DEVICE_LOCAL, &difference_buffer[plane], &difference_memory[plane]);
@@ -1591,18 +1591,18 @@ int main(int argc, char **argv) {
   // per position within the current anchor pair (slot 0 = lo anchor, slot `period` = hi anchor). The
   // coding-order driver reconstructs each frame into its slot; the bidi blend reads two slots.
   int dpb_slots = use_bframes ? (bframes + 2) : 0;   // period + 1, with one spare
-  VkBuffer dpb_buffer[18][3];
-  VkDeviceMemory dpb_memory[18][3];
+  VkBuffer dpb_buffer[18][MAX_PLANES];
+  VkDeviceMemory dpb_memory[18][MAX_PLANES];
   for (int slot = 0; slot < dpb_slots; slot++) {
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       create_buffer(plane_bytes, DEVICE_LOCAL, &dpb_buffer[slot][plane], &dpb_memory[slot][plane]);
     }
   }
   // Stage B2: bidirectional motion. mv1 = the L1 motion vectors (mv_buffer is L0); mv_zero is a
   // zeroed temporal predictor for the B searches; mc1 holds the L1 motion-compensated prediction (the L0
   // mc reuses difference_buffer, then bidi_blend combines them in place).
-  VkBuffer mv1_buffer = 0, mv_zero_buffer = 0, mv_snap_buffer = 0, mode_buffer = 0, mc1_buffer[3] = { 0, 0, 0 };
-  VkDeviceMemory mv1_memory = 0, mv_zero_memory = 0, mv_snap_memory = 0, mode_memory = 0, mc1_memory[3] = { 0, 0, 0 };
+  VkBuffer mv1_buffer = 0, mv_zero_buffer = 0, mv_snap_buffer = 0, mode_buffer = 0, mc1_buffer[MAX_PLANES] = { 0, 0, 0 };
+  VkDeviceMemory mv1_memory = 0, mv_zero_memory = 0, mv_snap_memory = 0, mode_memory = 0, mc1_memory[MAX_PLANES] = { 0, 0, 0 };
   void *mv1_map = 0, *mv_zero_map = 0, *mode_map = 0;
   if (use_bframes) {
     create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &mv1_buffer, &mv1_memory);
@@ -1613,12 +1613,12 @@ int main(int argc, char **argv) {
     VK_CHECK(vkMapMemory(device, mv_zero_memory, 0, VK_WHOLE_SIZE, 0, &mv_zero_map));
     VK_CHECK(vkMapMemory(device, mode_memory, 0, VK_WHOLE_SIZE, 0, &mode_map));
     memset(mv_zero_map, 0, (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);   // zero L1/L0 temporal predictor for B
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       create_buffer(plane_bytes, DEVICE_LOCAL, &mc1_buffer[plane], &mc1_memory[plane]);
     }
   }
 
-  void *rgb_map, *step_map[3], *size_map[3], *size_map_diff[3], *offset_map[3], *data_map, *energy_map, *mv_map;
+  void *rgb_map, *step_map[MAX_PLANES], *size_map[MAX_PLANES], *size_map_diff[MAX_PLANES], *offset_map[MAX_PLANES], *data_map, *energy_map, *mv_map;
   void *sad32_map = 0;   // variable motion: the host reads the @32 SADs to set the next frame's adaptive lambda
   int prev_avg_sad = 0;  // average 32-block SAD of the previous frame (drives the adaptive frame-level lambda; 0 for frame 1)
   if (g_motion_variable) {
@@ -1628,10 +1628,10 @@ int main(int argc, char **argv) {
   VK_CHECK(vkMapMemory(device, mv_memory, 0, VK_WHOLE_SIZE, 0, &mv_map));
   memset(mv_map, 0, (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);   // all-zero MVs (mc_prev == prev when there is no motion)
   VK_CHECK(vkMapMemory(device, rgb_memory, 0, VK_WHOLE_SIZE, 0, &rgb_map));
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     VK_CHECK(vkMapMemory(device, step_memory[plane], 0, VK_WHOLE_SIZE, 0, &step_map[plane]));
   }
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     VK_CHECK(vkMapMemory(device, size_memory[plane], 0, VK_WHOLE_SIZE, 0, &size_map[plane]));
     VK_CHECK(vkMapMemory(device, size_memory_diff[plane], 0, VK_WHOLE_SIZE, 0, &size_map_diff[plane]));
     VK_CHECK(vkMapMemory(device, offset_memory[plane], 0, VK_WHOLE_SIZE, 0, &offset_map[plane]));
@@ -1739,13 +1739,13 @@ int main(int argc, char **argv) {
   // row transform, quant, bitplane_size, and bitplane_pack.
   VkDescriptorSet set_colour = allocate_descriptor_set(descriptor_pool, layout_colour);
   bind_storage_buffers(set_colour, (VkBuffer[]){ rgb_buffer, coeff_buffer[0], coeff_buffer[1], coeff_buffer[2] }, 4);
-  VkDescriptorSet set_coeff_to_scratch[3], set_scratch_to_coeff[3], set_row[3], set_quant[3], set_size[3], set_pack[3];
-  VkDescriptorSet set_diff[3], set_size_diff[3], set_pack_diff[3];   // coefdiff (A) P-frame sets
-  VkDescriptorSet set_ycocg[3];                                      // colordiff (B): {coeff, prev_ycocg} for ycocg_diff + coeff_add
-  VkDescriptorSet set_energy[3];                                     // colordiff (B): {coeff, prev, energy} for the scene-cut detector
-  VkDescriptorSet set_mc[3], set_motion_add[3], set_ycocg_mc[3];     // motion: mc.comp, motion_add, ycocg_diff-vs-mc_prev (mc_prev reuses difference_buffer)
+  VkDescriptorSet set_coeff_to_scratch[MAX_PLANES], set_scratch_to_coeff[MAX_PLANES], set_row[MAX_PLANES], set_quant[MAX_PLANES], set_size[MAX_PLANES], set_pack[MAX_PLANES];
+  VkDescriptorSet set_diff[MAX_PLANES], set_size_diff[MAX_PLANES], set_pack_diff[MAX_PLANES];   // coefdiff (A) P-frame sets
+  VkDescriptorSet set_ycocg[MAX_PLANES];                                      // colordiff (B): {coeff, prev_ycocg} for ycocg_diff + coeff_add
+  VkDescriptorSet set_energy[MAX_PLANES];                                     // colordiff (B): {coeff, prev, energy} for the scene-cut detector
+  VkDescriptorSet set_mc[MAX_PLANES], set_motion_add[MAX_PLANES], set_ycocg_mc[MAX_PLANES];     // motion: mc.comp, motion_add, ycocg_diff-vs-mc_prev (mc_prev reuses difference_buffer)
   VkDescriptorSet set_motion_estimate;                              // motion search: {cur_luma[0], prev_luma[0], mv}
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     set_coeff_to_scratch[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     bind_storage_buffers(set_coeff_to_scratch[plane], (VkBuffer[]){ coeff_buffer[plane], scratch_buffer }, 2);
     set_scratch_to_coeff[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
@@ -1787,8 +1787,8 @@ int main(int argc, char **argv) {
   // Stage B1a: bidi sets, REBOUND per coding step to the chosen DPB slots. bidi_blend reads two
   // references + writes the prediction into difference_buffer (the existing prediction slot, consumed by
   // ycocg_diff via set_ycocg_mc); the reconstruct's motion_add writes the recon into the frame's DPB slot.
-  VkDescriptorSet set_bidi_blend[3], set_motion_add_bidi[3];
-  for (int plane = 0; plane < 3; plane++) {
+  VkDescriptorSet set_bidi_blend[MAX_PLANES], set_motion_add_bidi[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     set_bidi_blend[plane] = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
     set_motion_add_bidi[plane] = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
   }
@@ -1841,18 +1841,18 @@ int main(int argc, char **argv) {
   // mode to the prediction slot per plane. Rebound per coding step (the DPB slots / MC buffers are fixed but
   // re-bound for clarity). set_mode_decide is bound once (fixed buffers); set_blend_mode[plane] per plane.
   VkDescriptorSet set_mode_decide = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_10_buffers) : 0;
-  VkDescriptorSet set_blend_mode[3];
+  VkDescriptorSet set_blend_mode[MAX_PLANES];
   if (use_bframes) {
     bind_storage_buffers(set_mode_decide, (VkBuffer[]){ coeff_buffer[0], coeff_buffer[1], coeff_buffer[2],
                          difference_buffer[0], difference_buffer[1], difference_buffer[2],
                          mc1_buffer[0], mc1_buffer[1], mc1_buffer[2], mode_buffer }, 10);
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       set_blend_mode[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
       bind_storage_buffers(set_blend_mode[plane], (VkBuffer[]){ difference_buffer[plane], mc1_buffer[plane], mode_buffer }, 3);
     }
   }
-  VkDescriptorSet set_mc_b0[3], set_mc_b1[3];
-  for (int plane = 0; plane < 3; plane++) {
+  VkDescriptorSet set_mc_b0[MAX_PLANES], set_mc_b1[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     set_mc_b0[plane] = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
     set_mc_b1[plane] = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
   }
@@ -1860,20 +1860,20 @@ int main(int argc, char **argv) {
   // 3D-DWT: per-plane GOP-resident coefficient buffers + the temporal-DWT pipeline. The
   // colour pass fills these one frame at a time; the temporal-DWT shader transforms along the frame
   // axis in place; then each temporal-subband frame is spatially transformed/packed via the sets above.
-  VkBuffer gop_buffer[3] = { 0, 0, 0 };
-  VkDeviceMemory gop_memory[3] = { 0, 0, 0 };
+  VkBuffer gop_buffer[MAX_PLANES] = { 0, 0, 0 };
+  VkDeviceMemory gop_memory[MAX_PLANES] = { 0, 0, 0 };
   VkPipelineLayout pipeline_layout_temporal = 0;
   VkPipeline pipeline_temporal_int = 0, pipeline_temporal_float = 0;
-  VkDescriptorSet set_temporal[3] = { 0, 0, 0 };
+  VkDescriptorSet set_temporal[MAX_PLANES] = { 0, 0, 0 };
   if (mode_3ddwt) {
-    for (int plane = 0; plane < 3; plane++) {   // chroma slots are smaller when subsampled (4:2:0 / 4:2:2)
+    for (int plane = 0; plane < g_num_planes; plane++) {   // chroma slots are smaller when subsampled (4:2:0 / 4:2:2)
       int plane_pixels = plane_width(plane, width) * plane_height(plane, height);
       create_buffer((size_t)gop * plane_pixels * 4, DEVICE_LOCAL, &gop_buffer[plane], &gop_memory[plane]);
     }
     pipeline_layout_temporal = create_pipeline_layout(layout_1_buffer, 20);   // { pixel_count, num_frames, levels, wavelet, inverse }
     pipeline_temporal_int = create_compute_pipeline("shaders/tdwt_int.spv", pipeline_layout_temporal);
     pipeline_temporal_float = create_compute_pipeline("shaders/tdwt_float.spv", pipeline_layout_temporal);
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       set_temporal[plane] = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
       bind_storage_buffers(set_temporal[plane], (VkBuffer[]){ gop_buffer[plane] }, 1);
     }
@@ -1883,11 +1883,11 @@ int main(int argc, char **argv) {
   // per-plane OBMC prediction of the even frame; mctf_scratch is the deinterleave-reorder target GOP (the [low|high]
   // layout, mirroring the CPU mctf_forward's scratch[]). The motion search / mc / coeff_diff sets are REBOUND per
   // pair to gop_buffer at the even/odd frame offsets (like the B-path rebinds set_bidi_blend to DPB slots).
-  VkBuffer mctf_pred[3] = { 0, 0, 0 }, mctf_scratch[3] = { 0, 0, 0 };
-  VkDeviceMemory mctf_pred_memory[3] = { 0, 0, 0 }, mctf_scratch_memory[3] = { 0, 0, 0 };
-  VkDescriptorSet set_mctf_me = 0, set_mctf_mc[3] = { 0, 0, 0 }, set_mctf_diff[3] = { 0, 0, 0 };
+  VkBuffer mctf_pred[MAX_PLANES] = { 0, 0, 0 }, mctf_scratch[MAX_PLANES] = { 0, 0, 0 };
+  VkDeviceMemory mctf_pred_memory[MAX_PLANES] = { 0, 0, 0 }, mctf_scratch_memory[MAX_PLANES] = { 0, 0, 0 };
+  VkDescriptorSet set_mctf_me = 0, set_mctf_mc[MAX_PLANES] = { 0, 0, 0 }, set_mctf_diff[MAX_PLANES] = { 0, 0, 0 };
   if (mode_3ddwt && g_mctf) {
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       int plane_pixels = plane_width(plane, width) * plane_height(plane, height);
       create_buffer((size_t)plane_pixels * 4, DEVICE_LOCAL, &mctf_pred[plane], &mctf_pred_memory[plane]);
       create_buffer((size_t)gop * plane_pixels * 4, DEVICE_LOCAL, &mctf_scratch[plane], &mctf_scratch_memory[plane]);
@@ -1930,19 +1930,19 @@ int main(int argc, char **argv) {
   uint8_t *rgb = checked_malloc(frame_bytes);
   uint8_t *reconstructed = checked_malloc(frame_bytes);
   // Self-test (no output) coefficient reference, so the CPU decode tracks P-frames too.
-  int32_t *self_previous[3];
-  for (int plane = 0; plane < 3; plane++) {
+  int32_t *self_previous[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     self_previous[plane] = checked_malloc((size_t)pixel_count * 4);
   }
   int *step = checked_malloc(pixel_count * sizeof(int));
-  for (int plane = 0; plane < 3; plane++) {   // per-plane quant map: chroma is built at its (subsampled) plane size, matching the decoder
+  for (int plane = 0; plane < g_num_planes; plane++) {   // per-plane quant map: chroma is built at its (subsampled) plane size, matching the decoder
     int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
     build_quantization_steps(step, plane_w, plane_h, levels, quality);
     memcpy(step_map[plane], step, (size_t)(plane_w * plane_h) * 4);
   }
   int current_quality = quality;   // per-GOP working Q (varies under --vbr); written into each FrameEntry
-  uint32_t *offsets[3];
-  for (int plane = 0; plane < 3; plane++) {
+  uint32_t *offsets[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     offsets[plane] = checked_malloc((size_t)block_count * 4);
   }
   long frame_index = 0;
@@ -2066,9 +2066,9 @@ int main(int argc, char **argv) {
            (g_chroma_format == 2) ? "4:2:0" : ((g_chroma_format == 1) ? "4:2:2" : "4:4:4"));
     int scratch_stride = (width > height) ? width : height;
     // Per-plane dimensions + level pyramids (luma full-res; chroma subsampled when g_chroma_format != 0).
-    int plane_w[3], plane_h[3], plane_pixels[3], plane_blocks[3], plane_level_count[3];
-    int plane_level_width[3][16], plane_level_height[3][16];
-    for (int plane = 0; plane < 3; plane++) {
+    int plane_w[MAX_PLANES], plane_h[MAX_PLANES], plane_pixels[MAX_PLANES], plane_blocks[MAX_PLANES], plane_level_count[MAX_PLANES];
+    int plane_level_width[MAX_PLANES][16], plane_level_height[MAX_PLANES][16];
+    for (int plane = 0; plane < g_num_planes; plane++) {
       plane_w[plane] = plane_width(plane, width);
       plane_h[plane] = plane_height(plane, height);
       plane_pixels[plane] = plane_w[plane] * plane_h[plane];
@@ -2151,7 +2151,7 @@ int main(int argc, char **argv) {
         colour_barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
         colour_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &colour_barrier, 0, 0, 0, 0);
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           VkBufferCopy copy = { 0, (VkDeviceSize)f * plane_pixels[plane] * 4, (VkDeviceSize)plane_pixels[plane] * 4 };
           vkCmdCopyBuffer(command_buffer, coeff_buffer[plane], gop_buffer[plane], 1, &copy);
         }
@@ -2162,8 +2162,8 @@ int main(int argc, char **argv) {
       // (motion-aligned; mirrors CPU mctf_forward), else the open-loop per-pixel-column temporal wavelet.
       if (g_mctf) {
         int luma_blocks = motion_blocks_x * motion_blocks_y;
-        int plane_mbx[3];
-        for (int plane = 0; plane < 3; plane++) {
+        int plane_mbx[MAX_PLANES];
+        for (int plane = 0; plane < g_num_planes; plane++) {
           plane_mbx[plane] = ((plane_w[plane] + g_motion_block) - 1) / g_motion_block;   // each plane's motion grid (subsampled chroma is smaller)
         }
         int len = filled;
@@ -2190,7 +2190,7 @@ int main(int argc, char **argv) {
               memcpy(&mctf_frame_mv[((size_t)(low_count + k) * luma_blocks) * 2], mv_map, (size_t)luma_blocks * 2 * 4);   // this pair's MVs live with the high frame
               // 2) per plane: pred = OBMC(gop@even, mv); high = gop@odd - pred -> scratch@(low_count+k); low = gop@even -> scratch@k
               begin_recording();
-              for (int plane = 0; plane < 3; plane++) {
+              for (int plane = 0; plane < g_num_planes; plane++) {
                 int pp = plane_pixels[plane];
                 VkDeviceSize even_off = (VkDeviceSize)even * pp * 4, odd_off = (VkDeviceSize)odd * pp * 4;
                 bind_storage_buffers_offset(set_mctf_mc[plane],
@@ -2216,7 +2216,7 @@ int main(int argc, char **argv) {
               submit_and_wait();
             } else {
               begin_recording();   // odd tail (no partner): low = even passthrough -> scratch@k
-              for (int plane = 0; plane < 3; plane++) {
+              for (int plane = 0; plane < g_num_planes; plane++) {
                 int pp = plane_pixels[plane];
                 VkBufferCopy low_copy = { (VkDeviceSize)even * pp * 4, (VkDeviceSize)k * pp * 4, (VkDeviceSize)pp * 4 };
                 vkCmdCopyBuffer(command_buffer, gop_buffer[plane], mctf_scratch[plane], 1, &low_copy);
@@ -2225,7 +2225,7 @@ int main(int argc, char **argv) {
             }
           }
           begin_recording();   // copy scratch[0..len) back into gop_buffer (the deinterleaved [low | high] layout)
-          for (int plane = 0; plane < 3; plane++) {
+          for (int plane = 0; plane < g_num_planes; plane++) {
             VkBufferCopy back = { 0, 0, (VkDeviceSize)len * plane_pixels[plane] * 4 };
             vkCmdCopyBuffer(command_buffer, mctf_scratch[plane], gop_buffer[plane], 1, &back);
           }
@@ -2236,7 +2236,7 @@ int main(int argc, char **argv) {
         // open-loop temporal forward DWT along the frame axis, per plane (at each plane's size).
         begin_recording();
         VkPipeline temporal_pipeline = lossless ? pipeline_temporal_int : pipeline_temporal_float;
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           int32_t temporal_push[5] = { plane_pixels[plane], filled, g_temporal_levels, temporal_wavelet, 0 };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, temporal_pipeline);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_temporal, 0, 1, &set_temporal[plane], 0, 0);
@@ -2310,7 +2310,7 @@ int main(int argc, char **argv) {
           effective_quality = 1;
         }
         begin_recording();
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           int pw = plane_w[plane], ph = plane_h[plane], pp = plane_pixels[plane];
           VkBufferCopy copy = { (VkDeviceSize)f * pp * 4, 0, (VkDeviceSize)pp * 4 };
           vkCmdCopyBuffer(command_buffer, gop_buffer[plane], coeff_buffer[plane], 1, &copy);
@@ -2402,7 +2402,7 @@ int main(int argc, char **argv) {
 
         // prefix-sum the per-block sizes into byte offsets (per-plane; chroma has fewer blocks when subsampled).
         uint32_t cumulative = 0;
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           const uint32_t *sizes = size_map[plane];
           for (int block = 0; block < plane_blocks[plane]; block++) {
             offsets[plane][block] = cumulative;
@@ -2413,7 +2413,7 @@ int main(int argc, char **argv) {
         size_t data_length = cumulative;
 
         begin_recording();
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           int32_t block_push[4] = { plane_w[plane], plane_h[plane], block_count_x(plane_w[plane]), block_count_y(plane_h[plane]) };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_pack);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_pack[plane], 0, 0);
@@ -2590,7 +2590,7 @@ int main(int argc, char **argv) {
             }
           }
         }
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           if (b_ref0_slot >= 0) {
             bind_storage_buffers(set_mc_b0[plane], (VkBuffer[]){ dpb_buffer[b_ref0_slot][plane], mv_buffer, difference_buffer[plane] }, 3);
             if (b_ref1_slot >= 0) {
@@ -2632,7 +2632,7 @@ int main(int argc, char **argv) {
         } else if (running_bpp < vbr_target_bpp && current_quality > 1) {
           current_quality--;
         }
-        for (int plane = 0; plane < 3; plane++) {   // per-plane quant map (see the initial build above)
+        for (int plane = 0; plane < g_num_planes; plane++) {   // per-plane quant map (see the initial build above)
           int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
           build_quantization_steps(step, plane_w, plane_h, levels, current_quality);
           memcpy(step_map[plane], step, (size_t)(plane_w * plane_h) * 4);
@@ -2650,7 +2650,7 @@ int main(int argc, char **argv) {
         frame_quality = (int)(((float)current_quality * temporal_quant_scale(b_tid)) + 0.5f);
         if (frame_quality < 1) { frame_quality = 1; }
         if (frame_quality > 31) { frame_quality = 31; }
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           int pw = plane_width(plane, width), ph = plane_height(plane, height);
           build_quantization_steps(step, pw, ph, levels, frame_quality);
           memcpy(step_map[plane], step, (size_t)(pw * ph) * 4);
@@ -2671,7 +2671,7 @@ int main(int argc, char **argv) {
         vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
         memory_barrier();
         int32_t energy_push[2] = { pixel_count, lossless };
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_energy);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_energy[plane], 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, energy_push);
@@ -2863,7 +2863,7 @@ int main(int argc, char **argv) {
       // MC_other = MC(ref0, mv0_refined) (difference_buffer). One iteration each; the per-plane loop and the
       // MV payload below then use the refined mv_buffer / mv1_buffer.
       if (((((use_bframes && joint_mv) && is_predicted) && (b_ref1_slot >= 0))) && (!g_motion_variable)) {   // joint refine is single-size; skip for variable
-        for (int plane = 0; plane < 3; plane++) {   // MC1 = MC(ref1, mv1) -> mc1_buffer
+        for (int plane = 0; plane < g_num_planes; plane++) {   // MC1 = MC(ref1, mv1) -> mc1_buffer
           int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
           int32_t mc_push[3] = { plane_w, plane_h, ((plane_w + g_motion_block) - 1) / g_motion_block };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
@@ -2879,7 +2879,7 @@ int main(int argc, char **argv) {
         vkCmdPushConstants(command_buffer, pipeline_layout_me_bidi, VK_SHADER_STAGE_COMPUTE_BIT, 0, 24, bidi_push0);
         vkCmdDispatch(command_buffer, motion_blocks_x * motion_blocks_y, 1, 1);
         memory_barrier();
-        for (int plane = 0; plane < 3; plane++) {   // MC0 = MC(ref0, mv0_refined) -> difference_buffer
+        for (int plane = 0; plane < g_num_planes; plane++) {   // MC0 = MC(ref0, mv0_refined) -> difference_buffer
           int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
           int32_t mc_push[3] = { plane_w, plane_h, ((plane_w + g_motion_block) - 1) / g_motion_block };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
@@ -2901,7 +2901,7 @@ int main(int argc, char **argv) {
       // difference_buffer and MC1 (all planes) -> mc1_buffer, then mode_decide picks L0/L1/BI per block. The
       // per-plane loop below then applies the chosen mode (blend_mode) instead of an unconditional BI blend.
       if ((((use_bframes && per_block_mode) && is_predicted) && (b_ref1_slot >= 0))) {
-        for (int plane = 0; plane < 3; plane++) {   // MC0 = MC(ref0, mv0) -> difference_buffer
+        for (int plane = 0; plane < g_num_planes; plane++) {   // MC0 = MC(ref0, mv0) -> difference_buffer
           int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
           int32_t mc_push[3] = { plane_w, plane_h, ((plane_w + g_motion_block) - 1) / g_motion_block };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
@@ -2909,7 +2909,7 @@ int main(int argc, char **argv) {
           vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
           vkCmdDispatch(command_buffer, ((plane_w * plane_h) + 255) / 256, 1, 1);
         }
-        for (int plane = 0; plane < 3; plane++) {   // MC1 = MC(ref1, mv1) -> mc1_buffer
+        for (int plane = 0; plane < g_num_planes; plane++) {   // MC1 = MC(ref1, mv1) -> mc1_buffer
           int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
           int32_t mc_push[3] = { plane_w, plane_h, ((plane_w + g_motion_block) - 1) / g_motion_block };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
@@ -2960,7 +2960,7 @@ int main(int argc, char **argv) {
         }
       }
 
-      for (int plane = 0; plane < 3; plane++) {
+      for (int plane = 0; plane < g_num_planes; plane++) {
         // Per-plane dimensions: luma is full-res; chroma is subsampled when g_chroma_format != 0 (4:4:4 ->
         // these equal the frame dims, so 4:4:4 behaviour is unchanged). plane_w is the buffer ROW STRIDE.
         int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
@@ -3134,8 +3134,8 @@ int main(int argc, char **argv) {
       submit_and_wait();
 
       // Per-plane block counts (chroma fewer when subsampled; 4:4:4 -> all equal the frame block_count).
-      int block_counts[3];
-      for (int plane = 0; plane < 3; plane++) {
+      int block_counts[MAX_PLANES];
+      for (int plane = 0; plane < g_num_planes; plane++) {
         block_counts[plane] = block_count_x(plane_width(plane, width)) * block_count_y(plane_height(plane, height));
       }
 
@@ -3145,7 +3145,7 @@ int main(int argc, char **argv) {
       // coefdiff (A): exact size-based decision (colordiff already decided via the energy detector above).
       if (method == 0 && p_eligible) {
         uint64_t intra_total = 0, predicted_total = 0;
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           const uint32_t *cur_sizes = size_map[plane];
           const uint32_t *diff_sizes = size_map_diff[plane];
           for (int block = 0; block < block_counts[plane]; block++) {
@@ -3158,7 +3158,7 @@ int main(int argc, char **argv) {
 
       // ---- prefix-sum the chosen per-block sizes into byte offsets (CPU; a GPU scan is a later refinement) ----
       uint32_t cumulative = 0;
-      for (int plane = 0; plane < 3; plane++) {
+      for (int plane = 0; plane < g_num_planes; plane++) {
         const uint32_t *sizes = (method == 0 && is_predicted) ? size_map_diff[plane] : size_map[plane];
         for (int block = 0; block < block_counts[plane]; block++) {
           offsets[plane][block] = cumulative;
@@ -3170,7 +3170,7 @@ int main(int argc, char **argv) {
 
       // ---- GPU pass 2: pack each block's bytes at its offset ----
       begin_recording();
-      for (int plane = 0; plane < 3; plane++) {
+      for (int plane = 0; plane < g_num_planes; plane++) {
         // Per-plane dimensions (see pass 1); 4:4:4 -> these equal the frame dims.
         int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
         int scratch_stride = (plane_w > plane_h) ? plane_w : plane_h;
@@ -3267,8 +3267,8 @@ int main(int argc, char **argv) {
       submit_and_wait();
 
       // ---- assemble the frame payload (block_count, u16 size tables, data) ----
-      uint32_t *frame_sizes[3];
-      for (int plane = 0; plane < 3; plane++) {
+      uint32_t *frame_sizes[MAX_PLANES];
+      for (int plane = 0; plane < g_num_planes; plane++) {
         frame_sizes[plane] = (method == 0 && is_predicted) ? (uint32_t *)size_map_diff[plane] : (uint32_t *)size_map[plane];
       }
       // Code the motion vectors. I/P: one L0 set. B-stream (Stage B2): the L0 set, plus the L1 set for a
@@ -3410,7 +3410,7 @@ int main(int argc, char **argv) {
       // B-stream: the anchor pair finished -> the hi anchor's DPB slot becomes the next lo (slot 0).
       if (use_bframes && (b_slide_from >= 0)) {
         begin_recording();
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           VkBufferCopy slide = { 0, 0, plane_bytes };
           vkCmdCopyBuffer(command_buffer, dpb_buffer[b_slide_from][plane], dpb_buffer[0][plane], 1, &slide);
         }

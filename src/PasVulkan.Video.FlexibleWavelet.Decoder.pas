@@ -110,6 +110,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fQuality:TpvInt32;
        fBlockSize:TpvInt32;
        fChromaFormat:TpvInt32;
+       fNumPlanes:TpvInt32; // 3 (Y,Co,Cg) by default, 4 when the stream carries an optional alpha channel (plane 3 = full-res like luma)
        fPredictionMethod:TpvInt32;
        fGOP:TpvInt32;
        fMotionBlock:TpvInt32;
@@ -148,21 +149,21 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fPipeTDWTFloat:TpvVulkanComputePipeline;
        fPLTemporal:TpvVulkanPipelineLayout; // DSL1 + 20-byte push
        fSetTemporal:array[0..1,0..2] of TpvVulkanDescriptorSet; // per GOP buffer: {gop_buffer[buf][plane]}
-       fMCTFPred:array[0..2] of TpvVulkanBuffer; // MCTF: the per-pair MC-warped low frame, device-local
-       fMCTFScratch:array[0..2] of TpvVulkanBuffer; // MCTF: the per-level interleaved frame workspace, device-local
+       fMCTFPred:array[0..3] of TpvVulkanBuffer; // MCTF: the per-pair MC-warped low frame, device-local
+       fMCTFScratch:array[0..3] of TpvVulkanBuffer; // MCTF: the per-level interleaved frame workspace, device-local
        fMCTFMVScratch:array of TpvInt32; // MCTF: every GOP frame's luma MV field (CPU side), by deinterleaved slot
-       fSetMCTFMC:array[0..2] of TpvVulkanDescriptorSet; // MCTF (rebound per pair, with byte offsets): {gop@low, mv, pred}
-       fSetMCTFAdd:array[0..2] of TpvVulkanDescriptorSet; // MCTF: {scratch@odd, pred}
+       fSetMCTFMC:array[0..3] of TpvVulkanDescriptorSet; // MCTF (rebound per pair, with byte offsets): {gop@low, mv, pred}
+       fSetMCTFAdd:array[0..3] of TpvVulkanDescriptorSet; // MCTF: {scratch@odd, pred}
        // 3D-DWT GOP prefetch: the next GOP is decoded one subband per displayed frame on a SEPARATE command buffer +
        // fence (overlaps the present) into the OTHER gop buffer, then swapped in — so no whole-GOP burst stalls a frame.
        // The prefetch spatial inverse writes its own fPrefetchCoeff (the present's display only touches fCoeffBuffer, so
        // data/offset/step/scratch stay free for the prefetch to reuse).
-       fPrefetchCoeff:array[0..2] of TpvVulkanBuffer;
-       fSetUnpackPF:array[0..2] of TpvVulkanDescriptorSet; // {data, offset, prefetch_coeff}
-       fSetDequantPF:array[0..2] of TpvVulkanDescriptorSet; // {prefetch_coeff, step}
-       fSetCoeffToScratchPF:array[0..2] of TpvVulkanDescriptorSet; // {prefetch_coeff, scratch}
-       fSetScratchToCoeffPF:array[0..2] of TpvVulkanDescriptorSet; // {scratch, prefetch_coeff}
-       fSetRowPF:array[0..2] of TpvVulkanDescriptorSet; // {prefetch_coeff} (iDWT row + MCTF round)
+       fPrefetchCoeff:array[0..3] of TpvVulkanBuffer;
+       fSetUnpackPF:array[0..3] of TpvVulkanDescriptorSet; // {data, offset, prefetch_coeff}
+       fSetDequantPF:array[0..3] of TpvVulkanDescriptorSet; // {prefetch_coeff, step}
+       fSetCoeffToScratchPF:array[0..3] of TpvVulkanDescriptorSet; // {prefetch_coeff, scratch}
+       fSetScratchToCoeffPF:array[0..3] of TpvVulkanDescriptorSet; // {scratch, prefetch_coeff}
+       fSetRowPF:array[0..3] of TpvVulkanDescriptorSet; // {prefetch_coeff} (iDWT row + MCTF round)
        fPrefetchCommandBuffer:TpvVulkanCommandBuffer; // async GOP-prefetch steps (overlaps present)
        fPrefetchFence:TpvVulkanFence;
        f3DCurBuf:TpvInt32; // gop_buffer index currently presented
@@ -184,19 +185,19 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fIPRingSlot:TpvInt32; // next ring slot the intra/I-P PrepareFrame will use (cycles 0..fBufferRingSize-1)
        fPreparedRingSlot:TpvInt32; // ring slot PrepareFrame chose; RecordFrame restores it (Update + Draw are separate calls)
        fRingDataBuffer:array of TpvVulkanBuffer;
-       fRingOffsetBuffer:array of array[0..2] of TpvVulkanBuffer;
-       fRingStepBuffer:array of array[0..2] of TpvVulkanBuffer;
+       fRingOffsetBuffer:array of array[0..3] of TpvVulkanBuffer;
+       fRingStepBuffer:array of array[0..3] of TpvVulkanBuffer;
        fRingMVBuffer:array of TpvVulkanBuffer;
        fRingMV1Buffer:array of TpvVulkanBuffer;
        fRingModeBuffer:array of TpvVulkanBuffer;
-       fRingSetUnpack:array of array[0..2] of TpvVulkanDescriptorSet; // bound once: {ring data, ring offset, shared coeff}
-       fRingSetDequant:array of array[0..2] of TpvVulkanDescriptorSet; // bound once: {shared coeff, ring step}
-       fRingSetGMC0:array of array[0..2] of TpvVulkanDescriptorSet; // rebound per frame
-       fRingSetGMC1:array of array[0..2] of TpvVulkanDescriptorSet;
-       fRingSetGBlend:array of array[0..2] of TpvVulkanDescriptorSet;
-       fRingSetGBlendMode:array of array[0..2] of TpvVulkanDescriptorSet;
-       fRingSetGAdd:array of array[0..2] of TpvVulkanDescriptorSet;
-       fRingSetMCPlay:array of array[0..2] of TpvVulkanDescriptorSet; // intra/I-P motion comp: {shared previous, ring mv, shared scratch}
+       fRingSetUnpack:array of array[0..3] of TpvVulkanDescriptorSet; // bound once: {ring data, ring offset, shared coeff}
+       fRingSetDequant:array of array[0..3] of TpvVulkanDescriptorSet; // bound once: {shared coeff, ring step}
+       fRingSetGMC0:array of array[0..3] of TpvVulkanDescriptorSet; // rebound per frame
+       fRingSetGMC1:array of array[0..3] of TpvVulkanDescriptorSet;
+       fRingSetGBlend:array of array[0..3] of TpvVulkanDescriptorSet;
+       fRingSetGBlendMode:array of array[0..3] of TpvVulkanDescriptorSet;
+       fRingSetGAdd:array of array[0..3] of TpvVulkanDescriptorSet;
+       fRingSetMCPlay:array of array[0..3] of TpvVulkanDescriptorSet; // intra/I-P motion comp: {shared previous, ring mv, shared scratch}
        // two-phase decode (the poll-API split): PrepareFrame does the CPU side, RecordFrame the GPU side.
        fPreparedIndex:TpvInt32; // display index the last PrepareFrame staged (-1 = none)
        fPreparedIsPredicted:boolean; // intra/P: is_predicted of fPreparedIndex
@@ -239,15 +240,15 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fPipeColourHDRSCRGB:TpvVulkanComputePipeline;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDataBuffer:TpvVulkanBuffer;
-       fOffsetBuffer:array[0..2] of TpvVulkanBuffer;
-       fStepBuffer:array[0..2] of TpvVulkanBuffer;
-       fCoeffBuffer:array[0..2] of TpvVulkanBuffer;
-       fPreviousBuffer:array[0..2] of TpvVulkanBuffer; // P-frame reference (coefficients / reconstructed YCoCg), GPU-resident across frames
+       fOffsetBuffer:array[0..3] of TpvVulkanBuffer;
+       fStepBuffer:array[0..3] of TpvVulkanBuffer;
+       fCoeffBuffer:array[0..3] of TpvVulkanBuffer;
+       fPreviousBuffer:array[0..3] of TpvVulkanBuffer; // P-frame reference (coefficients / reconstructed YCoCg), GPU-resident across frames
        fMVBuffer:TpvVulkanBuffer; // colordiff (B): per-block [mv_x, mv_y] (half-pel), host-visible
        fMV1Buffer:TpvVulkanBuffer; // B-frames: the L1 motion-vector field, host-visible
        fModeBuffer:TpvVulkanBuffer; // B-frames: per-block L0/L1/BI mode, host-visible
-       fDPBBuffer:array of array[0..2] of TpvVulkanBuffer; // B-frame decoded-picture-buffer slots (YCoCg), device-local
-       fGMCBuffer:array[0..1] of array[0..2] of TpvVulkanBuffer; // B-frames: the L0/L1 motion-compensated references, device-local
+       fDPBBuffer:array of array[0..3] of TpvVulkanBuffer; // B-frame decoded-picture-buffer slots (YCoCg), device-local
+       fGMCBuffer:array[0..1] of array[0..3] of TpvVulkanBuffer; // B-frames: the L0/L1 motion-compensated references, device-local
        fScratchBuffer:TpvVulkanBuffer;
        fOutputImage:TpvVulkanImage;
        fOutputImageMemory:TpvVulkanDeviceMemoryBlock;
@@ -255,24 +256,24 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fOutputImageStorageView:TpvVulkanImageView; // compute storage view (UNORM for SDR -> stores raw gamma bytes; FP16 for HDR)
        fOutputStorageFormat:TVkFormat;
        fOutputImageFlags:TVkImageCreateFlags;
-       fSetUnpack:array[0..2] of TpvVulkanDescriptorSet;
-       fSetDequant:array[0..2] of TpvVulkanDescriptorSet;
-       fSetAdd:array[0..2] of TpvVulkanDescriptorSet; // coefdiff (A): {coeff, previous}
-       fSetMCPlay:array[0..2] of TpvVulkanDescriptorSet; // colordiff (B): {previous, mv, scratch=mc_prev}
-       fSetMotionAddPlay:array[0..2] of TpvVulkanDescriptorSet; // colordiff (B): {coeff, scratch=mc_prev, previous}
-       fSetGMC0:array[0..2] of TpvVulkanDescriptorSet; // B-frames (rewritten per frame): {dpb[ref0], mv, gmc0}
-       fSetGMC1:array[0..2] of TpvVulkanDescriptorSet; // B-frames: {dpb[ref1], mv1, gmc1}
-       fSetGBlend:array[0..2] of TpvVulkanDescriptorSet; // B-frames: {gmc0, gmc1, scratch}
-       fSetGBlendMode:array[0..2] of TpvVulkanDescriptorSet; // B-frames: {gmc0, gmc1, mode}
-       fSetGAdd:array[0..2] of TpvVulkanDescriptorSet; // B-frames: {coeff, prediction, dpb[dst]}
-       fSetCoeffToScratch:array[0..2] of TpvVulkanDescriptorSet;
-       fSetScratchToCoeff:array[0..2] of TpvVulkanDescriptorSet;
-       fSetRow:array[0..2] of TpvVulkanDescriptorSet;
+       fSetUnpack:array[0..3] of TpvVulkanDescriptorSet;
+       fSetDequant:array[0..3] of TpvVulkanDescriptorSet;
+       fSetAdd:array[0..3] of TpvVulkanDescriptorSet; // coefdiff (A): {coeff, previous}
+       fSetMCPlay:array[0..3] of TpvVulkanDescriptorSet; // colordiff (B): {previous, mv, scratch=mc_prev}
+       fSetMotionAddPlay:array[0..3] of TpvVulkanDescriptorSet; // colordiff (B): {coeff, scratch=mc_prev, previous}
+       fSetGMC0:array[0..3] of TpvVulkanDescriptorSet; // B-frames (rewritten per frame): {dpb[ref0], mv, gmc0}
+       fSetGMC1:array[0..3] of TpvVulkanDescriptorSet; // B-frames: {dpb[ref1], mv1, gmc1}
+       fSetGBlend:array[0..3] of TpvVulkanDescriptorSet; // B-frames: {gmc0, gmc1, scratch}
+       fSetGBlendMode:array[0..3] of TpvVulkanDescriptorSet; // B-frames: {gmc0, gmc1, mode}
+       fSetGAdd:array[0..3] of TpvVulkanDescriptorSet; // B-frames: {coeff, prediction, dpb[dst]}
+       fSetCoeffToScratch:array[0..3] of TpvVulkanDescriptorSet;
+       fSetScratchToCoeff:array[0..3] of TpvVulkanDescriptorSet;
+       fSetRow:array[0..3] of TpvVulkanDescriptorSet;
        fSetRowScratch:TpvVulkanDescriptorSet;
        fSetColour:TpvVulkanDescriptorSet;
        fFrameScratch:array of TpvUInt8; // decompressed frame payload, grown on demand
        fCompressedScratch:array of TpvUInt8; // raw container bytes of the current frame
-       fOffsetScratch:array[0..2] of array of TpvUInt32; // per-plane block offset prefix sums (CPU side)
+       fOffsetScratch:array[0..3] of array of TpvUInt32; // per-plane block offset prefix sums (CPU side)
        fStepScratch:array of TpvInt32; // per-plane quantization step map (CPU side), grown on demand
        // Quantization-step cache: the step map depends only on (quality, levels, gains, sample-white), NOT on frame
        // content, so it is built ONCE per distinct quality and reused (the C fwvplay does the same via step_cache).
@@ -387,8 +388,8 @@ implementation
 function TpvFlexibleWaveletVideoDecoder.PlaneWidth(const aPlane:TpvInt32):TpvInt32;
 var Shift:TpvInt32;
 begin
- if (aPlane=0) or (fChromaFormat=0) then begin
-  Shift:=0; // chroma_shift_x: 4:2:2 / 4:2:0 halve horizontally, 4:4:4 does not
+ if (aPlane=0) or (aPlane=3) or (fChromaFormat=0) then begin
+  Shift:=0; // luma + alpha (plane 3) full res; chroma_shift_x: 4:2:2 / 4:2:0 halve horizontally, 4:4:4 does not
  end else begin
   Shift:=1;
  end;
@@ -398,8 +399,8 @@ end;
 function TpvFlexibleWaveletVideoDecoder.PlaneHeight(const aPlane:TpvInt32):TpvInt32;
 var Shift:TpvInt32;
 begin
- if (aPlane=0) or (fChromaFormat<>2) then begin
-  Shift:=0; // chroma_shift_y: only 4:2:0 halves vertically
+ if (aPlane=0) or (aPlane=3) or (fChromaFormat<>2) then begin
+  Shift:=0; // luma + alpha (plane 3) full res; chroma_shift_y: only 4:2:0 halves vertically
  end else begin
   Shift:=1;
  end;
@@ -450,6 +451,7 @@ begin
  fLevels:=TpvInt32(fHeader.Levels);
  fQuality:=TpvInt32(fHeader.Quality);
  fChromaFormat:=fHeader.ChromaFormat;
+ fNumPlanes:=3; // stays 3 unless a has-alpha header sets it; non-alpha streams are byte-for-byte unchanged
  fPredictionMethod:=fHeader.PredictionMethod;
  fGOP:=fHeader.GOP;
 
@@ -771,7 +773,7 @@ begin
  fDataBuffer:=CreateStorageBuffer(DataCapacity,false,'FWV.data');
 
  // per-plane working buffers
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   PlaneBytes:=TVkDeviceSize(PlaneWidth(Plane))*TVkDeviceSize(PlaneHeight(Plane))*4;
   fOffsetBuffer[Plane]:=CreateStorageBuffer(TVkDeviceSize(LumaBlockCount)*4,false,'FWV.offset');
   fStepBuffer[Plane]:=CreateStorageBuffer(PlaneBytes,false,'FWV.step');
@@ -797,12 +799,12 @@ begin
   fModeBuffer:=CreateStorageBuffer(TVkDeviceSize(MotionBlocksX(fWidth))*TVkDeviceSize(MotionBlocksY(fHeight))*4,false,'FWV.mode');
   SetLength(fDPBBuffer,fGDPBSlots);
   for SlotIndex:=0 to fGDPBSlots-1 do begin
-   for Plane:=0 to 2 do begin
+   for Plane:=0 to fNumPlanes-1 do begin
     PlaneBytes:=TVkDeviceSize(PlaneWidth(Plane))*TVkDeviceSize(PlaneHeight(Plane))*4;
     fDPBBuffer[SlotIndex][Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.dpb');
    end;
   end;
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    PlaneBytes:=TVkDeviceSize(PlaneWidth(Plane))*TVkDeviceSize(PlaneHeight(Plane))*4;
    fGMCBuffer[0][Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.gmc0');
    fGMCBuffer[1][Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.gmc1');
@@ -812,7 +814,7 @@ begin
  // 3D-DWT: the whole GOP (gop_capacity frames per plane, contiguous slots), DOUBLE-buffered (present vs prefetch),
  // device-local; plus a prefetch coeff buffer (one plane) so the prefetch spatial inverse never touches fCoeffBuffer.
  if fMode3DDWT then begin
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    PlaneBytes:=TVkDeviceSize(PlaneWidth(Plane))*TVkDeviceSize(PlaneHeight(Plane))*4;
    fGopBuffer[0][Plane]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.gop0');
    fGopBuffer[1][Plane]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.gop1');
@@ -820,7 +822,7 @@ begin
   end;
   // MCTF: the per-pair MC prediction + the per-level interleaved-frame workspace + the GOP's luma MV fields
   if fMCTF then begin
-   for Plane:=0 to 2 do begin
+   for Plane:=0 to fNumPlanes-1 do begin
     PlaneBytes:=TVkDeviceSize(PlaneWidth(Plane))*TVkDeviceSize(PlaneHeight(Plane))*4;
     fMCTFPred[Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.mctfpred');
     fMCTFScratch[Plane]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.mctfscratch');
@@ -919,7 +921,7 @@ begin
  fDescriptorPool.Initialize;
 
  // per-plane sets: unpack (data, offset, coeff), dequant (coeff, step), the two transpose directions, the row pass
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
 
   fSetUnpack[Plane]:=AllocateSet(fDSL3);
   BindStorageBuffer(fSetUnpack[Plane],0,fDataBuffer);
@@ -980,7 +982,7 @@ begin
  // hierarchical B-frames: the 5 per-plane sets are allocated once but REWRITTEN per decode-ahead frame (their
  // DPB ref slots change), so they are bound in DecodeAheadFrame, not here.
  if fHasBFrames then begin
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    fSetGMC0[Plane]:=AllocateSet(fDSL3);
    fSetGMC1[Plane]:=AllocateSet(fDSL3);
    fSetGBlend[Plane]:=AllocateSet(fDSL3);
@@ -995,7 +997,7 @@ begin
  // offsets). Plus the GOP-prefetch spatial sets, identical to the present's spatial sets but bound to fPrefetchCoeff
  // (so the prefetch's spatial inverse never touches fCoeffBuffer, which the present's display copy + colour use).
  if fMode3DDWT then begin
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    fSetTemporal[0][Plane]:=AllocateSet(fDSL1);
    BindStorageBuffer(fSetTemporal[0][Plane],0,fGopBuffer[0][Plane]);
    fSetTemporal[0][Plane].Flush;
@@ -1120,12 +1122,12 @@ begin
  // first time this quality appears -> build all three planes once (caller has ensured the synthesis gains are ready)
  Slot:=length(fStepCacheQuality);
  SetLength(fStepCacheQuality,Slot+1);
- SetLength(fStepCacheData,(Slot+1)*3);
+ SetLength(fStepCacheData,(Slot+1)*fNumPlanes);
  fStepCacheQuality[Slot]:=aQuality;
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
-  SetLength(fStepCacheData[(Slot*3)+Plane],PlanePixels);
-  BuildQuantizationSteps(PpvInt32Array(@fStepCacheData[(Slot*3)+Plane][0]),PlaneWidth(Plane),PlaneHeight(Plane),fLevels,aQuality,fSampleWhite,fHFGain,fLLGain);
+  SetLength(fStepCacheData[(Slot*fNumPlanes)+Plane],PlanePixels);
+  BuildQuantizationSteps(PpvInt32Array(@fStepCacheData[(Slot*fNumPlanes)+Plane][0]),PlaneWidth(Plane),PlaneHeight(Plane),fLevels,aQuality,fSampleWhite,fHFGain,fLLGain);
  end;
 
  result:=Slot;
@@ -1180,11 +1182,11 @@ begin
    fGainsComputed:=true;
   end;
   StepSlot:=EnsureStepCacheSlot(Entry^.Quality);
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
    DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
    try
-    Move(fStepCacheData[(StepSlot*3)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
+    Move(fStepCacheData[(StepSlot*fNumPlanes)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
    finally
     ActiveStepBuffer(Plane).Memory.UnmapMemory;
    end;
@@ -1193,7 +1195,7 @@ begin
 
  // Per-plane block counts for the size-table prefix sum (4:4:4 -> all equal to the luma count); the offsets
  // are prefix-summed into the CPU scratch (the GPU offset buffers are filled from it below).
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   BlockCount[Plane]:=BlockCountX(PlaneWidth(Plane))*BlockCountY(PlaneHeight(Plane));
   if TpvSizeUInt(Length(fOffsetScratch[Plane]))<TpvSizeUInt(BlockCount[Plane]) then begin
    SetLength(fOffsetScratch[Plane],BlockCount[Plane]);
@@ -1205,7 +1207,7 @@ begin
  // Upload the per-plane offset tables, then the packed bitplane bytes (data_length is the u32 right before
  // the block data). The host-visible buffers are pooled into shared memory chunks where only one map per
  // chunk may be live at a time, so each buffer is mapped / copied / unmapped on its own.
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   DataPointer:=PpvUInt8Array(ActiveOffsetBuffer(Plane).Memory.MapMemory);
   try
    Move(fOffsetScratch[Plane][0],DataPointer^[0],TpvSizeUInt(BlockCount[Plane])*4);
@@ -1299,7 +1301,7 @@ begin
                     0,TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
 
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
 
   // Per-plane dimensions: luma is full-res, chroma is subsampled when the chroma format is not 4:4:4.
   PlaneW:=PlaneWidth(Plane);
@@ -1563,7 +1565,7 @@ begin
   fRingMVBuffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(MotionCells)*2*4,false,'FWV.ring.mv');
   fRingMV1Buffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(MotionCells)*2*4,false,'FWV.ring.mv1');
   fRingModeBuffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(MotionCells)*4,false,'FWV.ring.mode');
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    PlaneBytes:=TVkDeviceSize(PlaneWidth(Plane))*TVkDeviceSize(PlaneHeight(Plane))*4;
    fRingOffsetBuffer[Slot][Plane]:=CreateStorageBuffer(TVkDeviceSize(LumaBlockCount)*4,false,'FWV.ring.offset');
    fRingStepBuffer[Slot][Plane]:=CreateStorageBuffer(PlaneBytes,false,'FWV.ring.step');
@@ -1635,11 +1637,11 @@ begin
    fGainsComputed:=true;
   end;
   StepSlot:=EnsureStepCacheSlot(Entry^.Quality);
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
    DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
    try
-    Move(fStepCacheData[(StepSlot*3)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
+    Move(fStepCacheData[(StepSlot*fNumPlanes)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
    finally
     ActiveStepBuffer(Plane).Memory.UnmapMemory;
    end;
@@ -1647,7 +1649,7 @@ begin
  end;
 
  // Offsets + data upload.
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   BlockCount[Plane]:=BlockCountX(PlaneWidth(Plane))*BlockCountY(PlaneHeight(Plane));
   if TpvSizeUInt(Length(fOffsetScratch[Plane]))<TpvSizeUInt(BlockCount[Plane]) then begin
    SetLength(fOffsetScratch[Plane],BlockCount[Plane]);
@@ -1655,7 +1657,7 @@ begin
   Offsets[Plane]:=PpvUInt32Array(@fOffsetScratch[Plane][0]);
  end;
  ParseFrameHeader(PpvUInt8Array(@fFrameScratch[0]),BlockCount,Offsets,LeadingBlockCount,MVDataOffset,MVLength,BlockDataOffset);
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   DataPointer:=PpvUInt8Array(ActiveOffsetBuffer(Plane).Memory.MapMemory);
   try
    Move(fOffsetScratch[Plane][0],DataPointer^[0],TpvSizeUInt(BlockCount[Plane])*4);
@@ -1796,7 +1798,7 @@ begin
   RowPipeline:=fPipeIDWT97;
  end;
 
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
 
   PlaneW:=PlaneWidth(Plane);
   PlaneH:=PlaneHeight(Plane);
@@ -1985,7 +1987,7 @@ begin
 
  // rebind the dynamic B sets (Active* = the ring slot's sets for mode B) to this frame's DPB ref slots + target slot
  if aIsPredicted<>0 then begin
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    BindStorageBuffer(ActiveSetGMC0(Plane),0,fDPBBuffer[Ref0Slot][Plane]);
    BindStorageBuffer(ActiveSetGMC0(Plane),1,ActiveMVBuffer);
    BindStorageBuffer(ActiveSetGMC0(Plane),2,fGMCBuffer[0][Plane]);
@@ -2014,7 +2016,7 @@ begin
    end;
   end;
  end;
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   BindStorageBuffer(ActiveSetGAdd(Plane),0,fCoeffBuffer[Plane]);
   if IsPhase2<>0 then begin
    BindStorageBuffer(ActiveSetGAdd(Plane),1,fGMCBuffer[0][Plane]);
@@ -2050,7 +2052,7 @@ begin
                     0,TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
 
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
   FillChar(BufferCopy,SizeOf(BufferCopy),#0);
   BufferCopy.srcOffset:=0;
@@ -2212,11 +2214,11 @@ begin
    EffectiveQuality:=1;
   end;
   StepSlot:=EnsureStepCacheSlot(EffectiveQuality);
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
    DataPointer:=PpvUInt8Array(fStepBuffer[Plane].Memory.MapMemory);
    try
-    Move(fStepCacheData[(StepSlot*3)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
+    Move(fStepCacheData[(StepSlot*fNumPlanes)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
    finally
     fStepBuffer[Plane].Memory.UnmapMemory;
    end;
@@ -2224,7 +2226,7 @@ begin
  end;
 
  // offsets + data upload
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   BlockCount[Plane]:=BlockCountX(PlaneWidth(Plane))*BlockCountY(PlaneHeight(Plane));
   if TpvSizeUInt(Length(fOffsetScratch[Plane]))<TpvSizeUInt(BlockCount[Plane]) then begin
    SetLength(fOffsetScratch[Plane],BlockCount[Plane]);
@@ -2232,7 +2234,7 @@ begin
   Offsets[Plane]:=PpvUInt32Array(@fOffsetScratch[Plane][0]);
  end;
  ParseFrameHeader(PpvUInt8Array(@fFrameScratch[0]),BlockCount,Offsets,LeadingBlockCount,MVDataOffset,MVLength,BlockDataOffset);
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   DataPointer:=PpvUInt8Array(fOffsetBuffer[Plane].Memory.MapMemory);
   try
    Move(fOffsetScratch[Plane][0],DataPointer^[0],TpvSizeUInt(BlockCount[Plane])*4);
@@ -2288,7 +2290,7 @@ begin
   RowPipeline:=fPipeIDWT97;
  end;
 
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
 
   PlaneW:=PlaneWidth(Plane);
   PlaneH:=PlaneHeight(Plane);
@@ -2412,7 +2414,7 @@ begin
   Pipeline:=fPipeTDWTFloat;
  end;
 
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
   TemporalPush[0]:=PlanePixels;
   TemporalPush[1]:=aGOPCount;
@@ -2427,7 +2429,7 @@ end;
 
 procedure TpvFlexibleWaveletVideoDecoder.DecodeMCTFInverse(const aBuf,aGOPCount:TpvInt32);
 var LumaBlocks,Plane,Level,Count,Len,LevelLen,LowCount,k,Even,Odd:TpvInt32;
-    PlaneW,PlaneH,PlanePP,PlaneMBX:array[0..2] of TpvInt32;
+    PlaneW,PlaneH,PlanePP,PlaneMBX:array[0..3] of TpvInt32;
     Lengths:array[0..15] of TpvInt32;
     PlanePixels:TpvInt32;
     LowOff,HighOff,EvenOff,OddOff:TVkDeviceSize;
@@ -2439,7 +2441,7 @@ var LumaBlocks,Plane,Level,Count,Len,LevelLen,LowCount,k,Even,Odd:TpvInt32;
 begin
 
  LumaBlocks:=MotionBlocksX(fWidth)*MotionBlocksY(fHeight);
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   PlaneW[Plane]:=PlaneWidth(Plane);
   PlaneH[Plane]:=PlaneHeight(Plane);
   PlanePP[Plane]:=PlaneW[Plane]*PlaneH[Plane];
@@ -2475,7 +2477,7 @@ begin
     finally
      fMVBuffer.Memory.UnmapMemory;
     end;
-    for Plane:=0 to 2 do begin
+    for Plane:=0 to fNumPlanes-1 do begin
      PlanePixels:=PlanePP[Plane];
      LowOff:=TVkDeviceSize(k)*PlanePixels*4;
      HighOff:=TVkDeviceSize(LowCount+k)*PlanePixels*4;
@@ -2516,7 +2518,7 @@ begin
      RecordDispatch(fPrefetchCommandBuffer,fPipeCoeffAdd,fPLCoeffAdd,fSetMCTFAdd[Plane],@AddPush[0],8,(PlanePixels+255) div 256,1,1);
     end;
    end else begin // odd tail (no partner): even = low passthrough -> scratch@even
-    for Plane:=0 to 2 do begin
+    for Plane:=0 to fNumPlanes-1 do begin
      PlanePixels:=PlanePP[Plane];
      FillChar(BufferCopy,SizeOf(BufferCopy),#0);
      BufferCopy.srcOffset:=TVkDeviceSize(k)*PlanePixels*4;
@@ -2532,7 +2534,7 @@ begin
   // copy scratch[0..level_len) back into gop_buffer (the interleaved frames for this level)
   PrefetchWait;
   fPrefetchCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    FillChar(BufferCopy,SizeOf(BufferCopy),#0);
    BufferCopy.srcOffset:=0;
    BufferCopy.dstOffset:=0;
@@ -2562,7 +2564,7 @@ begin
                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
 
  // copy this display frame's GOP slot into coeff, then (lossy open-loop only) round the float to int
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
   FillChar(BufferCopy,SizeOf(BufferCopy),#0);
   BufferCopy.srcOffset:=TVkDeviceSize(aSlot)*TVkDeviceSize(PlanePixels)*4;
@@ -2579,7 +2581,7 @@ begin
                                    0,1,@Barrier,0,nil,0,nil);
 
  if (not fLossless) and (not fMCTF) then begin // open-loop lossy gop is float -> round to int before colour
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
    PixelCountPush:=PlanePixels;
    RecordDispatch(aCommandBuffer,fPipeRound,fPLRound,fSetRow[Plane],@PixelCountPush,4,(PlanePixels+255) div 256,1,1);
@@ -2947,7 +2949,7 @@ begin
 
  FreeAndNil(fSetColour);
  FreeAndNil(fSetRowScratch);
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   FreeAndNil(fSetUnpack[Plane]);
   FreeAndNil(fSetDequant[Plane]);
   FreeAndNil(fSetAdd[Plane]);
@@ -2972,7 +2974,7 @@ begin
   FreeAndNil(fSetRow[Plane]);
  end;
  for SlotIndex:=0 to length(fRingDataBuffer)-1 do begin // mode B per-frame input ring
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    FreeAndNil(fRingSetUnpack[SlotIndex][Plane]);
    FreeAndNil(fRingSetDequant[SlotIndex][Plane]);
    FreeAndNil(fRingSetGMC0[SlotIndex][Plane]);
@@ -2998,7 +3000,7 @@ begin
   fDevice.MemoryManager.FreeMemoryBlock(fOutputImageMemory);
   fOutputImageMemory:=nil;
  end;
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   FreeAndNil(fGopBuffer[0][Plane]);
   FreeAndNil(fGopBuffer[1][Plane]);
   FreeAndNil(fPrefetchCoeff[Plane]);
@@ -3008,17 +3010,17 @@ begin
  FreeAndNil(fMV1Buffer);
  FreeAndNil(fModeBuffer);
  for SlotIndex:=0 to length(fDPBBuffer)-1 do begin
-  for Plane:=0 to 2 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
    FreeAndNil(fDPBBuffer[SlotIndex][Plane]);
   end;
  end;
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   FreeAndNil(fGMCBuffer[0][Plane]);
   FreeAndNil(fGMCBuffer[1][Plane]);
  end;
  FreeAndNil(fMVBuffer);
  FreeAndNil(fScratchBuffer);
- for Plane:=0 to 2 do begin
+ for Plane:=0 to fNumPlanes-1 do begin
   FreeAndNil(fPreviousBuffer[Plane]);
   FreeAndNil(fCoeffBuffer[Plane]);
   FreeAndNil(fStepBuffer[Plane]);

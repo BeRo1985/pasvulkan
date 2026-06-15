@@ -362,9 +362,9 @@ typedef struct {
   VkFence fence;
   VkPipeline unpack, dequant, transpose, inverse_row, temporal_int, temporal_float;
   VkPipelineLayout layout_unpack, layout_dequant, layout_transpose, layout_row, layout_temporal;
-  VkDescriptorSet unpack_pf[3], dequant_pf[3], coeff_to_scratch_pf[3], scratch_to_coeff_pf[3], row_pf[3], row_scratch;
-  VkDescriptorSet temporal[2][3];
-  VkBuffer prefetch_coeff[3], gop_buffer[2][3];
+  VkDescriptorSet unpack_pf[MAX_PLANES], dequant_pf[MAX_PLANES], coeff_to_scratch_pf[MAX_PLANES], scratch_to_coeff_pf[MAX_PLANES], row_pf[MAX_PLANES], row_scratch;
+  VkDescriptorSet temporal[2][MAX_PLANES];
+  VkBuffer prefetch_coeff[MAX_PLANES], gop_buffer[2][MAX_PLANES];
   int width, height, levels, pixel_count, temporal_levels, temporal_wavelet, lossless;
   size_t plane_bytes;
   // MCTF (prediction_method==3): the temporal-DWT inverse is replaced by a frame-level predict-only MC-Haar inverse
@@ -372,9 +372,9 @@ typedef struct {
   int mctf, motion_blocks_x, motion_blocks_y, motion_block;
   VkPipeline mc, coeff_add, round;
   VkPipelineLayout layout_mc, layout_coeff_add, layout_round;
-  VkBuffer mv_buffer, mctf_pred[3], mctf_scratch[3];
+  VkBuffer mv_buffer, mctf_pred[MAX_PLANES], mctf_scratch[MAX_PLANES];
   void *mv_map;
-  VkDescriptorSet mctf_mc[3], mctf_add[3];
+  VkDescriptorSet mctf_mc[MAX_PLANES], mctf_add[MAX_PLANES];
 } Decode3D;
 
 // The caller must vkWaitForFences + vkResetFences on d->fence (and, for a spatial step, upload the
@@ -410,7 +410,7 @@ static void decode3d_submit(const Decode3D *d) {
 static void decode3d_spatial(const Decode3D *d, int buf, int slot) {
   decode3d_begin(d);
   int scratch_stride = (d->width > d->height) ? d->width : d->height;
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     int pw = plane_width(plane, d->width), ph = plane_height(plane, d->height);   // chroma smaller when subsampled
     int pp = pw * ph;
     int plane_blocks = block_count_x(pw) * block_count_y(ph);
@@ -493,7 +493,7 @@ static void decode3d_temporal(const Decode3D *d, int buf, int gop_count) {
     wavelet = 1;
   }
   VkPipeline pipeline = d->lossless ? d->temporal_int : d->temporal_float;
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     int pp = plane_width(plane, d->width) * plane_height(plane, d->height);   // per-plane (subsampled chroma)
     int32_t temporal_push[5] = { pp, gop_count, d->temporal_levels, wavelet, 1 };
     vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
@@ -511,8 +511,8 @@ static void decode3d_temporal(const Decode3D *d, int buf, int gop_count) {
 // decode3d_temporal's contract; the LAST submit is left pending for the caller's vkWaitForFences).
 static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, const int *frame_mv) {
   int luma_blocks = d->motion_blocks_x * d->motion_blocks_y;
-  int plane_w[3], plane_h[3], plane_pp[3], plane_mbx[3];
-  for (int plane = 0; plane < 3; plane++) {
+  int plane_w[MAX_PLANES], plane_h[MAX_PLANES], plane_pp[MAX_PLANES], plane_mbx[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     plane_w[plane] = plane_width(plane, d->width);
     plane_h[plane] = plane_height(plane, d->height);
     plane_pp[plane] = plane_w[plane] * plane_h[plane];
@@ -535,7 +535,7 @@ static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, con
       if (((2 * k) + 1) < level_len) {
         int odd = (2 * k) + 1;
         memcpy(d->mv_map, &frame_mv[((size_t)(low_count + k) * luma_blocks) * 2], (size_t)luma_blocks * 2 * 4);
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           int pp = plane_pp[plane];
           VkDeviceSize low_off = (VkDeviceSize)k * pp * 4, high_off = (VkDeviceSize)(low_count + k) * pp * 4;
           VkDeviceSize even_off = (VkDeviceSize)even * pp * 4, odd_off = (VkDeviceSize)odd * pp * 4;
@@ -565,7 +565,7 @@ static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, con
           vkCmdDispatch(d->cmd, (pp + 255) / 256, 1, 1);
         }
       } else {
-        for (int plane = 0; plane < 3; plane++) {   // odd tail (no partner): even = low passthrough -> scratch@even
+        for (int plane = 0; plane < g_num_planes; plane++) {   // odd tail (no partner): even = low passthrough -> scratch@even
           int pp = plane_pp[plane];
           VkBufferCopy even_copy = { (VkDeviceSize)k * pp * 4, (VkDeviceSize)even * pp * 4, (VkDeviceSize)pp * 4 };
           vkCmdCopyBuffer(d->cmd, d->gop_buffer[buf][plane], d->mctf_scratch[plane], 1, &even_copy);
@@ -576,7 +576,7 @@ static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, con
     }
     decode3d_wait(d);   // copy scratch[0..level_len) back into gop_buffer (the interleaved frames for this level)
     decode3d_begin(d);
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       VkBufferCopy back = { 0, 0, (VkDeviceSize)level_len * plane_pp[plane] * 4 };
       vkCmdCopyBuffer(d->cmd, d->mctf_scratch[plane], d->gop_buffer[buf][plane], 1, &back);
     }
@@ -661,7 +661,7 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
                            int width, int height, int levels, int quality, int lossless,
                            int subband_in_gop, int gop_count, int temporal_levels, int *mctf_mv_out) {
   read_frame(file, &index[source_index], frame_buffer, frame_buffer_capacity);
-  uint32_t *parse_offsets[3] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
+  uint32_t *parse_offsets[MAX_PLANES] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
   int parsed_block_count;
   const uint8_t *mv_data;
   uint32_t mv_length;
@@ -685,7 +685,7 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
     if (effective_quality < 1) {
       effective_quality = 1;
     }
-    for (int plane = 0; plane < 3; plane++) {   // per-plane quant steps (chroma is subsampled), as the encoder builds them
+    for (int plane = 0; plane < g_num_planes; plane++) {   // per-plane quant steps (chroma is subsampled), as the encoder builds them
       int pw = plane_width(plane, width), ph = plane_height(plane, height);
       build_quantization_steps(step, pw, ph, levels, effective_quality);
       memcpy(step_map[plane], step, (size_t)(pw * ph) * 4);
@@ -818,7 +818,7 @@ typedef struct {
   FILE *file;
   const FrameEntry *index;
   int frame_count, width, height, levels;
-  int plane_pixels[3];
+  int plane_pixels[MAX_PLANES];
   size_t frame_bytes;
   int *last_use;        // [frame_count]: largest coding index that references this one (>= itself)
   int32_t **dpb;        // [frame_count*3]: reconstructed YCoCg planes per coding index (NULL = absent/evicted)
@@ -838,17 +838,17 @@ static void bstream_init(BStream *bs, FILE *file, const FrameEntry *index, int f
   bs->height = height;
   bs->levels = levels;
   bs->frame_bytes = frame_bytes;
-  for (int p = 0; p < 3; p++) {
+  for (int p = 0; p < g_num_planes; p++) {
     bs->plane_pixels[p] = plane_width(p, width) * plane_height(p, height);
   }
   bs->last_use = checked_malloc((size_t)frame_count * sizeof(int));
-  bs->dpb = checked_malloc((size_t)frame_count * 3 * sizeof(int32_t *));
+  bs->dpb = checked_malloc((size_t)frame_count * g_num_planes * sizeof(int32_t *));
   bs->rgb = checked_malloc((size_t)frame_count * sizeof(uint8_t *));
   for (int c = 0; c < frame_count; c++) {
     bs->last_use[c] = c;   // a frame is at least live until it is itself decoded
     bs->rgb[c] = NULL;
-    for (int p = 0; p < 3; p++) {
-      bs->dpb[(c * 3) + p] = NULL;
+    for (int p = 0; p < g_num_planes; p++) {
+      bs->dpb[(c * g_num_planes) + p] = NULL;
     }
   }
   for (int c = 0; c < frame_count; c++) {   // last_use[ref] = the latest coding index referencing it
@@ -871,8 +871,8 @@ static void bstream_decode_until(BStream *bs, int target_poc) {
     int c = bs->cursor;
     const FrameEntry *entry = &bs->index[c];
     read_frame(bs->file, entry, &bs->payload, &bs->payload_cap);
-    int32_t **ref0 = (entry->ref0 >= 0) ? &bs->dpb[entry->ref0 * 3] : NULL;
-    int32_t **ref1 = (entry->ref1 >= 0) ? &bs->dpb[entry->ref1 * 3] : NULL;
+    int32_t **ref0 = (entry->ref0 >= 0) ? &bs->dpb[entry->ref0 * g_num_planes] : NULL;
+    int32_t **ref1 = (entry->ref1 >= 0) ? &bs->dpb[entry->ref1 * g_num_planes] : NULL;
     int weight0 = 0, weight1 = 0;   // weights derived from the temporal (POC) distances, as in build_b_range
     if (ref0 && ref1) {
       int poc_self = (int)entry->poc, poc0 = (int)bs->index[entry->ref0].poc, poc1 = (int)bs->index[entry->ref1].poc;
@@ -881,23 +881,23 @@ static void bstream_decode_until(BStream *bs, int target_poc) {
     } else if (ref0) {
       weight0 = 256;
     }
-    for (int p = 0; p < 3; p++) {
-      bs->dpb[(c * 3) + p] = checked_malloc((size_t)bs->plane_pixels[p] * 4);
+    for (int p = 0; p < g_num_planes; p++) {
+      bs->dpb[(c * g_num_planes) + p] = checked_malloc((size_t)bs->plane_pixels[p] * 4);
     }
     bs->rgb[entry->poc] = checked_malloc(bs->frame_bytes);
     decode_frame_bidi(bs->payload, bs->width, bs->height, bs->levels, entry->quality,
-                      ref0, ref1, weight0, weight1, &bs->dpb[c * 3], bs->rgb[entry->poc]);
+                      ref0, ref1, weight0, weight1, &bs->dpb[c * g_num_planes], bs->rgb[entry->poc]);
     bs->cursor++;
     // Evict DPB entries no longer referenced by any future frame (the RGB display copy is separate).
     for (int x = bs->evict_low; x < bs->cursor; x++) {
-      if (bs->dpb[x * 3] && (bs->last_use[x] < bs->cursor)) {
-        for (int p = 0; p < 3; p++) {
-          free(bs->dpb[(x * 3) + p]);
-          bs->dpb[(x * 3) + p] = NULL;
+      if (bs->dpb[x * g_num_planes] && (bs->last_use[x] < bs->cursor)) {
+        for (int p = 0; p < g_num_planes; p++) {
+          free(bs->dpb[(x * g_num_planes) + p]);
+          bs->dpb[(x * g_num_planes) + p] = NULL;
         }
       }
     }
-    while ((bs->evict_low < bs->cursor) && !bs->dpb[bs->evict_low * 3]) {
+    while ((bs->evict_low < bs->cursor) && !bs->dpb[bs->evict_low * g_num_planes]) {
       bs->evict_low++;
     }
   }
@@ -906,8 +906,8 @@ static void bstream_decode_until(BStream *bs, int target_poc) {
 static void bstream_free(BStream *bs) {
   for (int c = 0; c < bs->frame_count; c++) {
     free(bs->rgb[c]);
-    for (int p = 0; p < 3; p++) {
-      free(bs->dpb[(c * 3) + p]);
+    for (int p = 0; p < g_num_planes; p++) {
+      free(bs->dpb[(c * g_num_planes) + p]);
     }
   }
   free(bs->rgb);
@@ -1011,8 +1011,8 @@ int main(int argc, char **argv) {
   int blocks_y = block_count_y(height);
   int block_count = blocks_x * blocks_y;   // luma (full-res) block count; chroma is per-plane (subsampled -> fewer)
   // Per-plane block count (luma full-res; chroma fewer when subsampled). 4:4:4 -> all three equal block_count.
-  int block_count_plane[3];
-  for (int p = 0; p < 3; p++) {
+  int block_count_plane[MAX_PLANES];
+  for (int p = 0; p < g_num_planes; p++) {
     block_count_plane[p] = block_count_x(plane_width(p, width)) * block_count_y(plane_height(p, height));
   }
   int pixel_count = width * height;
@@ -1244,13 +1244,13 @@ int main(int argc, char **argv) {
   // ---- decode buffers + output image (rgba8) ----
   size_t plane_bytes = (size_t)pixel_count * 4;
   size_t data_capacity = ((size_t)pixel_count * 4) + ((size_t)block_count * 16);
-  VkBuffer data_buffer, offset_buffer[3], coeff_buffer[3], scratch_buffer, step_buffer[3];   // step is per-plane (chroma subsampled -> its own subband layout)
-  VkBuffer previous_buffer[3];   // P-frame coefficient reference, GPU-resident across frames
+  VkBuffer data_buffer, offset_buffer[MAX_PLANES], coeff_buffer[MAX_PLANES], scratch_buffer, step_buffer[MAX_PLANES];   // step is per-plane (chroma subsampled -> its own subband layout)
+  VkBuffer previous_buffer[MAX_PLANES];   // P-frame coefficient reference, GPU-resident across frames
   VkBuffer mv_buffer;            // motion: per-16x16-block [mv_x, mv_y] (half-pel); all-zero when there is no motion
-  VkDeviceMemory data_memory, offset_memory[3], coeff_memory[3], scratch_memory, step_memory[3];
-  VkDeviceMemory previous_memory[3], mv_memory;
+  VkDeviceMemory data_memory, offset_memory[MAX_PLANES], coeff_memory[MAX_PLANES], scratch_memory, step_memory[MAX_PLANES];
+  VkDeviceMemory previous_memory[MAX_PLANES], mv_memory;
   create_buffer(data_capacity, HOST_VISIBLE_COHERENT, &data_buffer, &data_memory);
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &offset_buffer[plane], &offset_memory[plane]);
     create_buffer(plane_bytes, DEVICE_LOCAL, &coeff_buffer[plane], &coeff_memory[plane]);
     create_buffer(plane_bytes, DEVICE_LOCAL, &previous_buffer[plane], &previous_memory[plane]);
@@ -1265,16 +1265,16 @@ int main(int argc, char **argv) {
   int motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block, motion_blocks_y = ((height + g_motion_block) - 1) / g_motion_block;
   create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &mv_buffer, &mv_memory);
 
-  void *data_map, *offset_map[3], *step_map[3], *mv_map;
+  void *data_map, *offset_map[MAX_PLANES], *step_map[MAX_PLANES], *mv_map;
   VK_CHECK(vkMapMemory(device, mv_memory, 0, VK_WHOLE_SIZE, 0, &mv_map));
   memset(mv_map, 0, (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);   // all-zero MVs (mc_prev == prev when there is no motion)
   VK_CHECK(vkMapMemory(device, data_memory, 0, VK_WHOLE_SIZE, 0, &data_map));
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     VK_CHECK(vkMapMemory(device, offset_memory[plane], 0, VK_WHOLE_SIZE, 0, &offset_map[plane]));
     VK_CHECK(vkMapMemory(device, step_memory[plane], 0, VK_WHOLE_SIZE, 0, &step_map[plane]));
   }
   int *step = checked_malloc(pixel_count * sizeof(int));
-  for (int plane = 0; plane < 3; plane++) {   // per-plane quant map (chroma subsampled -> its own subband layout); 4:4:4 -> all identical
+  for (int plane = 0; plane < g_num_planes; plane++) {   // per-plane quant map (chroma subsampled -> its own subband layout); 4:4:4 -> all identical
     int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
     build_quantization_steps(step, plane_w, plane_h, levels, quality);
     memcpy(step_map[plane], step, (size_t)(plane_w * plane_h) * 4);
@@ -1355,10 +1355,10 @@ int main(int argc, char **argv) {
   VkDescriptorPool descriptor_pool;
   VK_CHECK(vkCreateDescriptorPool(device, &pool_info, 0, &descriptor_pool));
 
-  VkDescriptorSet set_unpack[3], set_dequant[3], set_add[3], set_coeff_to_scratch[3], set_scratch_to_coeff[3], set_row[3];
-  VkDescriptorSet set_mc_play[3], set_motion_add_play[3];   // motion (mc_prev reuses scratch_buffer, transient per plane)
+  VkDescriptorSet set_unpack[MAX_PLANES], set_dequant[MAX_PLANES], set_add[MAX_PLANES], set_coeff_to_scratch[MAX_PLANES], set_scratch_to_coeff[MAX_PLANES], set_row[MAX_PLANES];
+  VkDescriptorSet set_mc_play[MAX_PLANES], set_motion_add_play[MAX_PLANES];   // motion (mc_prev reuses scratch_buffer, transient per plane)
   VkDescriptorSet set_row_scratch, set_colour;
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     set_unpack[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
     bind_storage_buffers(set_unpack[plane], (VkBuffer[]){ data_buffer, offset_buffer[plane], coeff_buffer[plane] }, 3);
     set_dequant[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
@@ -1395,9 +1395,9 @@ int main(int argc, char **argv) {
   // the full per-pixel step map every frame (O(width*height) CPU — ~50 ms/frame at 4K, the decode bottleneck),
   // cache one GPU step buffer set per distinct quality (only a few exist) and just rebind the dequant set.
   #define STEP_CACHE_MAX 16
-  VkBuffer step_cache_buf[STEP_CACHE_MAX][3] = { { 0, 0, 0 } };
-  VkDeviceMemory step_cache_mem[STEP_CACHE_MAX][3] = { { 0, 0, 0 } };
-  void *step_cache_map[STEP_CACHE_MAX][3] = { { 0, 0, 0 } };
+  VkBuffer step_cache_buf[STEP_CACHE_MAX][MAX_PLANES] = { { 0, 0, 0 } };
+  VkDeviceMemory step_cache_mem[STEP_CACHE_MAX][MAX_PLANES] = { { 0, 0, 0 } };
+  void *step_cache_map[STEP_CACHE_MAX][MAX_PLANES] = { { 0, 0, 0 } };
   int step_cache_q[STEP_CACHE_MAX];
   int step_cache_n = 0, gdec_step_idx = -1;   // built-quality count + the currently-bound cache index
   int gdecode_lead = use_gpu_bdecode ? (2 * gdecode_period) : 0;
@@ -1405,14 +1405,14 @@ int main(int argc, char **argv) {
   if (gdpb_slots > 64) {
     gdpb_slots = 64;
   }
-  VkBuffer gdpb_buffer[64][3];
-  VkDeviceMemory gdpb_memory[64][3];
-  VkDescriptorSet set_gblend[3], set_gadd[3];
+  VkBuffer gdpb_buffer[64][MAX_PLANES];
+  VkDeviceMemory gdpb_memory[64][MAX_PLANES];
+  VkDescriptorSet set_gblend[MAX_PLANES], set_gadd[MAX_PLANES];
   VkFence bdecode_fence = 0;
   // Stage B2 decode: L1 motion vectors + the two motion-compensated predictions (gmc0/gmc1),
   // blended into scratch_buffer (consumed by the reconstruct's motion_add). mv_buffer/mv_map = L0.
-  VkBuffer mv1_buffer = 0, mode_buffer = 0, gmc_buffer[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
-  VkDeviceMemory mv1_memory = 0, mode_memory = 0, gmc_memory[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
+  VkBuffer mv1_buffer = 0, mode_buffer = 0, gmc_buffer[2][MAX_PLANES] = { { 0, 0, 0 }, { 0, 0, 0 } };
+  VkDeviceMemory mv1_memory = 0, mode_memory = 0, gmc_memory[2][MAX_PLANES] = { { 0, 0, 0 }, { 0, 0, 0 } };
   void *mv1_map = 0, *mode_map = 0;
   // MVs are decoded into these CPU-local (cached) scratch arrays and bulk-copied to the GPU-mapped buffers:
   // decode_motion_vectors does random neighbour reads (median predictor), and the GPU-mapped buffers are
@@ -1420,10 +1420,10 @@ int main(int argc, char **argv) {
   // cached scratch makes those reads hit L1/L2; one sequential memcpy to VRAM then uploads the result.
   int *mv0_scratch = checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);   // both the B path AND the I/P P-frame MV decode use this cached scratch
   int *mv1_scratch = checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);
-  VkDescriptorSet set_gmc0[3], set_gmc1[3], set_blend_mode[3];
+  VkDescriptorSet set_gmc0[MAX_PLANES], set_gmc1[MAX_PLANES], set_blend_mode[MAX_PLANES];
   if (use_gpu_bdecode) {
     for (int slot = 0; slot < gdpb_slots; slot++) {
-      for (int plane = 0; plane < 3; plane++) {
+      for (int plane = 0; plane < g_num_planes; plane++) {
         create_buffer(plane_bytes, DEVICE_LOCAL, &gdpb_buffer[slot][plane], &gdpb_memory[slot][plane]);
       }
     }
@@ -1433,7 +1433,7 @@ int main(int argc, char **argv) {
       create_buffer(((size_t)motion_blocks_x * motion_blocks_y) * 4, HOST_VISIBLE_COHERENT, &mode_buffer, &mode_memory);
       VK_CHECK(vkMapMemory(device, mode_memory, 0, VK_WHOLE_SIZE, 0, &mode_map));
     }
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       create_buffer(plane_bytes, DEVICE_LOCAL, &gmc_buffer[0][plane], &gmc_memory[0][plane]);
       create_buffer(plane_bytes, DEVICE_LOCAL, &gmc_buffer[1][plane], &gmc_memory[1][plane]);
       set_gblend[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
@@ -1474,23 +1474,23 @@ int main(int argc, char **argv) {
   // one is presented while the NEXT GOP is decoded ahead of time on a separate (prefetch) command buffer
   // + fence, into its own prefetch_coeff (the present only touches coeff_buffer, so data/offset/step/
   // scratch are free for the prefetch to reuse). One subband frame is prefetched per displayed frame.
-  VkBuffer gop_buffer[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
-  VkDeviceMemory gop_memory[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
-  VkBuffer prefetch_coeff[3] = { 0, 0, 0 };
-  VkDeviceMemory prefetch_coeff_memory[3] = { 0, 0, 0 };
+  VkBuffer gop_buffer[2][MAX_PLANES] = { { 0, 0, 0 }, { 0, 0, 0 } };
+  VkDeviceMemory gop_memory[2][MAX_PLANES] = { { 0, 0, 0 }, { 0, 0, 0 } };
+  VkBuffer prefetch_coeff[MAX_PLANES] = { 0, 0, 0 };
+  VkDeviceMemory prefetch_coeff_memory[MAX_PLANES] = { 0, 0, 0 };
   VkPipelineLayout pipeline_layout_temporal = 0;
   VkPipeline pipeline_temporal_int = 0, pipeline_temporal_float = 0;
-  VkDescriptorSet set_temporal[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
-  VkDescriptorSet set_unpack_pf[3], set_dequant_pf[3], set_coeff_to_scratch_pf[3], set_scratch_to_coeff_pf[3], set_row_pf[3];
+  VkDescriptorSet set_temporal[2][MAX_PLANES] = { { 0, 0, 0 }, { 0, 0, 0 } };
+  VkDescriptorSet set_unpack_pf[MAX_PLANES], set_dequant_pf[MAX_PLANES], set_coeff_to_scratch_pf[MAX_PLANES], set_scratch_to_coeff_pf[MAX_PLANES], set_row_pf[MAX_PLANES];
   // MCTF (prediction_method==3): the MC-Haar temporal inverse needs a per-plane OBMC prediction scratch + a
   // deinterleave-reorder GOP, plus each high-pass frame's decoded luma MV field (per ping-pong buffer).
-  VkBuffer mctf_pred[3] = { 0, 0, 0 }, mctf_scratch[3] = { 0, 0, 0 };
-  VkDeviceMemory mctf_pred_memory[3] = { 0, 0, 0 }, mctf_scratch_memory[3] = { 0, 0, 0 };
-  VkDescriptorSet set_mctf_mc[3] = { 0, 0, 0 }, set_mctf_add[3] = { 0, 0, 0 };
+  VkBuffer mctf_pred[MAX_PLANES] = { 0, 0, 0 }, mctf_scratch[MAX_PLANES] = { 0, 0, 0 };
+  VkDeviceMemory mctf_pred_memory[MAX_PLANES] = { 0, 0, 0 }, mctf_scratch_memory[MAX_PLANES] = { 0, 0, 0 };
+  VkDescriptorSet set_mctf_mc[MAX_PLANES] = { 0, 0, 0 }, set_mctf_add[MAX_PLANES] = { 0, 0, 0 };
   int *mctf_mv[2] = { NULL, NULL };
   int gop_capacity = mode_3ddwt ? ((header.gop < 2) ? 16 : ((header.gop > MAX_GOP) ? MAX_GOP : header.gop)) : 0;
   if (mode_3ddwt && g_mctf) {
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       int plane_pixels = plane_width(plane, width) * plane_height(plane, height);
       create_buffer((size_t)plane_pixels * 4, DEVICE_LOCAL, &mctf_pred[plane], &mctf_pred_memory[plane]);
       create_buffer((size_t)gop_capacity * plane_pixels * 4, DEVICE_LOCAL, &mctf_scratch[plane], &mctf_scratch_memory[plane]);
@@ -1503,26 +1503,26 @@ int main(int argc, char **argv) {
   }
   if (mode_3ddwt) {
     for (int buffer = 0; buffer < 2; buffer++) {
-      for (int plane = 0; plane < 3; plane++) {   // chroma slots are smaller when subsampled (4:2:0 / 4:2:2)
+      for (int plane = 0; plane < g_num_planes; plane++) {   // chroma slots are smaller when subsampled (4:2:0 / 4:2:2)
         int plane_pixels = plane_width(plane, width) * plane_height(plane, height);
         create_buffer((size_t)gop_capacity * plane_pixels * 4, DEVICE_LOCAL, &gop_buffer[buffer][plane], &gop_memory[buffer][plane]);
       }
     }
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       create_buffer(plane_bytes, DEVICE_LOCAL, &prefetch_coeff[plane], &prefetch_coeff_memory[plane]);
     }
     pipeline_layout_temporal = create_pipeline_layout(layout_1_buffer, 20);   // { pixel_count, num_frames, levels, wavelet, inverse }
     pipeline_temporal_int = create_compute_pipeline("shaders/tdwt_int.spv", pipeline_layout_temporal);
     pipeline_temporal_float = create_compute_pipeline("shaders/tdwt_float.spv", pipeline_layout_temporal);
     for (int buffer = 0; buffer < 2; buffer++) {
-      for (int plane = 0; plane < 3; plane++) {
+      for (int plane = 0; plane < g_num_planes; plane++) {
         set_temporal[buffer][plane] = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
         bind_storage_buffers(set_temporal[buffer][plane], (VkBuffer[]){ gop_buffer[buffer][plane] }, 1);
       }
     }
     // Prefetch decode sets: identical to the present's decode sets but bound to prefetch_coeff (data /
     // offset / step / scratch are shared — the present never touches them in 3D-DWT mode).
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       set_unpack_pf[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
       bind_storage_buffers(set_unpack_pf[plane], (VkBuffer[]){ data_buffer, offset_buffer[plane], prefetch_coeff[plane] }, 3);
       set_dequant_pf[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
@@ -1671,7 +1671,7 @@ int main(int argc, char **argv) {
   void *readback_map = 0;
   uint8_t *cpu_rgb = 0;
   uint8_t *cpu_sdr = 0;                      // HDR: the CPU decode tonemapped, to match the GPU color_hdr present
-  int32_t *cpu_previous[3] = { 0, 0, 0 };   // CPU P-frame coefficient reference (mirrors the GPU's)
+  int32_t *cpu_previous[MAX_PLANES] = { 0, 0, 0 };   // CPU P-frame coefficient reference (mirrors the GPU's)
   double verify_sum = 0;
   int verify_low = 0, verify_count = 0;
   if (verify || decode_to_path) {   // both need the per-frame readback of the decoded image
@@ -1683,7 +1683,7 @@ int main(int argc, char **argv) {
     if (is_hdr) {
       cpu_sdr = checked_malloc((size_t)pixel_count * 3);
     }
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       cpu_previous[plane] = checked_malloc((size_t)pixel_count * 4);
     }
     printf("VERIFY mode: GPU-decode(file) vs CPU %s(file), per frame\n", mode_3ddwt ? "decode_gop_3ddwt" : "decode_frame_coefdiff");
@@ -1744,7 +1744,7 @@ int main(int argc, char **argv) {
     d3d.layout_round = pipeline_layout_round;
     d3d.mv_buffer = mv_buffer;
     d3d.mv_map = mv_map;
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       d3d.unpack_pf[plane] = set_unpack_pf[plane];
       d3d.dequant_pf[plane] = set_dequant_pf[plane];
       d3d.coeff_to_scratch_pf[plane] = set_coeff_to_scratch_pf[plane];
@@ -1918,7 +1918,7 @@ int main(int argc, char **argv) {
     if (!mode_3ddwt && !has_bframes) {
       read_frame(file, &index[frame_index], &frame_buffer, &frame_buffer_capacity);
       // Prefix-sum the u16 sizes straight into the (host-visible) GPU offset buffers, then upload data.
-      uint32_t *parse_offsets[3] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
+      uint32_t *parse_offsets[MAX_PLANES] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
       int parsed_block_count;
       const uint8_t *mv_data;
       uint32_t mv_length;
@@ -2019,7 +2019,7 @@ int main(int argc, char **argv) {
         int c = gcursor;
         const FrameEntry *entry = &index[c];
         read_frame(file, entry, &gframe_buffer, &gframe_cap);
-        uint32_t *parse_offsets[3] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
+        uint32_t *parse_offsets[MAX_PLANES] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
         int parsed_block_count;
         const uint8_t *mv_data;
         uint32_t mv_length;
@@ -2113,7 +2113,7 @@ int main(int argc, char **argv) {
         }
         int is_phase2_b = (has_per_block_mode && (ref1_slot >= 0));   // per-block L0/L1/BI mode (vs the unconditional BI blend)
         double bdec_ta = fwv_time ? now_milliseconds() : 0.0;   // end of parse (frame read + header + MV parse + uploads)
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           if (is_pred) {
             bind_storage_buffers(set_gmc0[plane], (VkBuffer[]){ gdpb_buffer[ref0_slot][plane], mv_buffer, gmc_buffer[0][plane] }, 3);
             if (ref1_slot >= 0) {
@@ -2139,7 +2139,7 @@ int main(int argc, char **argv) {
           if ((idx < 0) && (step_cache_n < STEP_CACHE_MAX)) {
             idx = step_cache_n++;
             step_cache_q[idx] = q;
-            for (int plane = 0; plane < 3; plane++) {
+            for (int plane = 0; plane < g_num_planes; plane++) {
               int pw = plane_width(plane, width), ph = plane_height(plane, height);
               create_buffer((size_t)plane_bytes, HOST_VISIBLE_COHERENT, &step_cache_buf[idx][plane], &step_cache_mem[idx][plane]);
               VK_CHECK(vkMapMemory(device, step_cache_mem[idx][plane], 0, VK_WHOLE_SIZE, 0, &step_cache_map[idx][plane]));
@@ -2148,7 +2148,7 @@ int main(int argc, char **argv) {
             }
           }
           if ((idx >= 0) && (idx != gdec_step_idx)) {
-            for (int plane = 0; plane < 3; plane++) {
+            for (int plane = 0; plane < g_num_planes; plane++) {
               bind_storage_buffers(set_dequant[plane], (VkBuffer[]){ coeff_buffer[plane], step_cache_buf[idx][plane] }, 2);
             }
             gdec_step_idx = idx;
@@ -2159,7 +2159,7 @@ int main(int argc, char **argv) {
         VkCommandBufferBeginInfo bdec_begin = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
         bdec_begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         vkBeginCommandBuffer(command_buffer, &bdec_begin);
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
           int scratch_stride = (plane_w > plane_h) ? plane_w : plane_h;
           int plane_pixels = plane_w * plane_h;
@@ -2336,7 +2336,7 @@ int main(int argc, char **argv) {
       // Stage B1b: the decode-ahead above reconstructed this display POC's YCoCg into a DPB slot;
       // stage it into coeff_buffer (already rounded int) for the colour pass below.
       int dslot = gdpb_poc_to_slot[frame_index];
-      for (int plane = 0; plane < 3; plane++) {
+      for (int plane = 0; plane < g_num_planes; plane++) {
         int pp = plane_width(plane, width) * plane_height(plane, height);   // chroma slot is smaller when subsampled
         VkBufferCopy copy = { 0, 0, (VkDeviceSize)pp * 4 };
         vkCmdCopyBuffer(command_buffer, gdpb_buffer[dslot][plane], coeff_buffer[plane], 1, &copy);
@@ -2349,7 +2349,7 @@ int main(int argc, char **argv) {
       // The GOP was already spatial+temporal inverse-transformed above; just fetch this frame's slot
       // into coeff_buffer (and round the float result for the lossy path) for the colour pass below.
       int slot = (int)(frame_index - cur_gop_start);
-      for (int plane = 0; plane < 3; plane++) {
+      for (int plane = 0; plane < g_num_planes; plane++) {
         int pp = plane_width(plane, width) * plane_height(plane, height);   // chroma slot is smaller when subsampled
         VkBufferCopy copy = { (VkDeviceSize)slot * pp * 4, 0, (VkDeviceSize)pp * 4 };
         vkCmdCopyBuffer(command_buffer, gop_buffer[cur_buf][plane], coeff_buffer[plane], 1, &copy);
@@ -2372,13 +2372,13 @@ int main(int argc, char **argv) {
       // mixing lossless and lossy GOPs would also need a per-frame 5/3-vs-9/7 switch (deferred).
       if (index[frame_index].quality != current_quality) {
         current_quality = index[frame_index].quality;
-        for (int plane = 0; plane < 3; plane++) {   // per-plane quant map (4:4:4 -> all identical)
+        for (int plane = 0; plane < g_num_planes; plane++) {   // per-plane quant map (4:4:4 -> all identical)
           int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
           build_quantization_steps(step, plane_w, plane_h, levels, current_quality);
           memcpy(step_map[plane], step, (size_t)(plane_w * plane_h) * 4);
         }
       }
-      for (int plane = 0; plane < 3; plane++) {
+      for (int plane = 0; plane < g_num_planes; plane++) {
         // Per-plane dimensions: luma is full-res; chroma is subsampled when g_chroma_format != 0 (4:4:4 ->
         // these equal the frame dims, so 4:4:4 behaviour is unchanged). plane_w is the buffer ROW STRIDE.
         int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);

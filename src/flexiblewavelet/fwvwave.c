@@ -2407,16 +2407,16 @@ static void motion_estimate_cpu(const int32_t *current, const int32_t *reference
  * (an approximation, but closed-loop-consistent enc↔dec so the lifting still inverts exactly). gop[plane] is
  * [frame * plane_pixels + pixel]; the result is the same deinterleaved [low | high] per-level layout as the per-pixel
  * temporal transform. frame_mv receives the luma MV field of each high-pass frame (indexed by deinterleaved position). */
-static void mctf_forward(int32_t *gop[3], int num_frames, const int plane_w[3], const int plane_h[3], const int plane_pixels[3],
+static void mctf_forward(int32_t *gop[MAX_PLANES], int num_frames, const int plane_w[MAX_PLANES], const int plane_h[MAX_PLANES], const int plane_pixels[MAX_PLANES],
                          int levels_temporal, int *frame_mv, int luma_blocks_x, int luma_blocks_y) {
   int blocks = luma_blocks_x * luma_blocks_y;
-  int plane_mbx[3];
-  for (int plane = 0; plane < 3; plane++) {
+  int plane_mbx[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     plane_mbx[plane] = ((plane_w[plane] + MOTION_BLOCK) - 1) / MOTION_BLOCK;
   }
   int32_t *mc = checked_malloc((size_t)plane_pixels[0] * 4);   // luma is the largest plane
-  int32_t *scratch[3];
-  for (int plane = 0; plane < 3; plane++) {
+  int32_t *scratch[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     scratch[plane] = checked_malloc(((size_t)num_frames * plane_pixels[plane]) * 4);
   }
   int len = num_frames;
@@ -2429,7 +2429,7 @@ static void mctf_forward(int32_t *gop[3], int num_frames, const int plane_w[3], 
         int *mv = &frame_mv[((low_count + k) * blocks) * 2];   // this pair's motion lives with the high frame
         motion_estimate_cpu(gop[0] + ((size_t)odd * plane_pixels[0]), gop[0] + ((size_t)even * plane_pixels[0]), mv,
                             plane_w[0], plane_h[0], luma_blocks_x, luma_blocks_y);
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           int pp = plane_pixels[plane];
           motion_compensate(gop[plane] + ((size_t)even * pp), mv, mc, plane_w[plane], plane_h[plane], plane_mbx[plane]);
           memcpy(scratch[plane] + ((size_t)k * pp), gop[plane] + ((size_t)even * pp), (size_t)pp * 4);   // low = even
@@ -2440,30 +2440,30 @@ static void mctf_forward(int32_t *gop[3], int num_frames, const int plane_w[3], 
           }
         }
       } else {
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           int pp = plane_pixels[plane];
           memcpy(scratch[plane] + ((size_t)k * pp), gop[plane] + ((size_t)even * pp), (size_t)pp * 4);   // odd tail → low passthrough
         }
       }
     }
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       memcpy(gop[plane], scratch[plane], ((size_t)len * plane_pixels[plane]) * 4);
     }
     len = low_count;
   }
   free(mc);
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     free(scratch[plane]);
   }
 }
 
 // Inverse of mctf_forward: deepest temporal level first, reconstruct even = low, odd = high + OBMC(even). Uses the
 // same frame_mv (decoded per high-pass frame), so it inverts exactly given the forward motion.
-static void mctf_inverse(int32_t *gop[3], int num_frames, const int plane_w[3], const int plane_h[3], const int plane_pixels[3],
+static void mctf_inverse(int32_t *gop[MAX_PLANES], int num_frames, const int plane_w[MAX_PLANES], const int plane_h[MAX_PLANES], const int plane_pixels[MAX_PLANES],
                          int levels_temporal, const int *frame_mv, int luma_blocks_x, int luma_blocks_y) {
   int blocks = luma_blocks_x * luma_blocks_y;
-  int plane_mbx[3];
-  for (int plane = 0; plane < 3; plane++) {
+  int plane_mbx[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     plane_mbx[plane] = ((plane_w[plane] + MOTION_BLOCK) - 1) / MOTION_BLOCK;
   }
   int lengths[16], count = 0, len = num_frames;
@@ -2472,8 +2472,8 @@ static void mctf_inverse(int32_t *gop[3], int num_frames, const int plane_w[3], 
     len = (len + 1) / 2;
   }
   int32_t *mc = checked_malloc((size_t)plane_pixels[0] * 4);   // luma is the largest plane
-  int32_t *scratch[3];
-  for (int plane = 0; plane < 3; plane++) {
+  int32_t *scratch[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     scratch[plane] = checked_malloc(((size_t)num_frames * plane_pixels[plane]) * 4);
   }
   for (int l = count - 1; l >= 0; l--) {
@@ -2483,7 +2483,7 @@ static void mctf_inverse(int32_t *gop[3], int num_frames, const int plane_w[3], 
       if (((2 * k) + 1) < level_len) {
         int odd = (2 * k) + 1;
         const int *mv = &frame_mv[((low_count + k) * blocks) * 2];
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           int pp = plane_pixels[plane];
           const int32_t *low = gop[plane] + ((size_t)k * pp);
           memcpy(scratch[plane] + ((size_t)even * pp), low, (size_t)pp * 4);                 // even = low
@@ -2495,18 +2495,18 @@ static void mctf_inverse(int32_t *gop[3], int num_frames, const int plane_w[3], 
           }
         }
       } else {
-        for (int plane = 0; plane < 3; plane++) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
           int pp = plane_pixels[plane];
           memcpy(scratch[plane] + ((size_t)even * pp), gop[plane] + ((size_t)k * pp), (size_t)pp * 4);
         }
       }
     }
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       memcpy(gop[plane], scratch[plane], ((size_t)level_len * plane_pixels[plane]) * 4);
     }
   }
   free(mc);
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     free(scratch[plane]);
   }
 }
@@ -3473,7 +3473,7 @@ static size_t assemble_frame(const int *block_count, uint32_t **sizes, const uin
                              const uint8_t *data, size_t data_length, uint8_t **out) {
   if (g_plane_bytes) {   // measure the per-plane byte share (luma vs the two chroma planes)
     size_t plane_bytes[3] = { 0, 0, 0 };
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < 3; plane++) {   // container level: 3 colour planes only (alpha = separate appended section, step 2)
       for (int block = 0; block < block_count[plane]; block++) {
         plane_bytes[plane] += sizes[plane][block];
       }
@@ -3487,7 +3487,7 @@ static size_t assemble_frame(const int *block_count, uint32_t **sizes, const uin
   // sizes are small and clustered so this shrinks the table several-fold, and it also lifts the u16 cap).
   BitWriter size_writer;
   bitwriter_init(&size_writer);
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < 3; plane++) {   // container level: 3 colour planes only (alpha = separate appended section, step 2)
     for (int block = 0; block < block_count[plane]; block++) {
       bitwriter_put_unsigned_exp_golomb(&size_writer, sizes[plane][block]);
     }
@@ -3533,7 +3533,7 @@ static const uint8_t *parse_frame_header(const uint8_t *frame, const int *block_
   BitReader size_reader;
   bitreader_init(&size_reader, frame + cursor, size_blob_length);
   uint32_t running = 0;
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < 3; plane++) {   // container level: 3 colour planes only (alpha = separate appended section, step 2)
     for (int block = 0; block < block_count[plane]; block++) {
       offsets[plane][block] = running;
       running += bitreader_get_unsigned_exp_golomb(&size_reader);
@@ -3568,9 +3568,9 @@ static size_t encode_frame_coefdiff(const uint8_t *rgb, int width, int height, i
 
   BitWriter writer;
   bitwriter_init(&writer);
-  int32_t *planes[3] = { luma, chroma_orange, chroma_green };
-  uint32_t *offsets[3];
-  for (int plane = 0; plane < 3; plane++) {
+  int32_t *planes[MAX_PLANES] = { luma, chroma_orange, chroma_green };
+  uint32_t *offsets[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     if (base_quality == 0) {
       // Lossless: reversible 5/3 integer transform, coefficients stay integer, no quant.
       forward_legall53_2d(planes[plane], width, height, levels);
@@ -3631,8 +3631,8 @@ static void decode_frame_coefdiff(const uint8_t *frame, size_t length, int width
   build_quantization_steps(step, width, height, levels, base_quality);
 
   int block_count = block_count_x(width) * block_count_y(height);
-  uint32_t *offsets[3];
-  for (int plane = 0; plane < 3; plane++) {
+  uint32_t *offsets[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     offsets[plane] = checked_malloc((size_t)block_count * 4);
   }
   int parsed_block_count;
@@ -3642,8 +3642,8 @@ static void decode_frame_coefdiff(const uint8_t *frame, size_t length, int width
   (void)mv_data;
   (void)mv_length;
 
-  int32_t *planes[3] = { luma, chroma_orange, chroma_green };
-  for (int plane = 0; plane < 3; plane++) {
+  int32_t *planes[MAX_PLANES] = { luma, chroma_orange, chroma_green };
+  for (int plane = 0; plane < g_num_planes; plane++) {
     decode_plane(data, offsets[plane], planes[plane], width, height);
     // P-frame: add the previous frame's coefficients back to the decoded difference.
     if (is_predicted) {
@@ -3722,11 +3722,11 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
 
   BitWriter writer;
   bitwriter_init(&writer);
-  int32_t *planes[3] = { luma, chroma_orange, chroma_green };
-  uint32_t *offsets[3];
-  int block_counts[3];   // per-plane (chroma fewer when subsampled); 4:4:4 -> all equal
+  int32_t *planes[MAX_PLANES] = { luma, chroma_orange, chroma_green };
+  uint32_t *offsets[MAX_PLANES];
+  int block_counts[MAX_PLANES];   // per-plane (chroma fewer when subsampled); 4:4:4 -> all equal
   double pcrd_lambda = (base_quality > 0) ? g_pcrd_lambda : 0.0;   // --pcrd (0 = off, the default)
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     int plane_w = plane_width(plane, width);
     int plane_h = plane_height(plane, height);
     int plane_pixels = plane_w * plane_h;
@@ -3816,12 +3816,12 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
   float *float_plane = checked_malloc(pixel_count * sizeof(float));
   int *step = checked_malloc(pixel_count * sizeof(int));
 
-  int block_counts[3];
-  for (int p = 0; p < 3; p++) {
+  int block_counts[MAX_PLANES];
+  for (int p = 0; p < g_num_planes; p++) {
     block_counts[p] = block_count_x(plane_width(p, width)) * block_count_y(plane_height(p, height));
   }
-  uint32_t *offsets[3];
-  for (int plane = 0; plane < 3; plane++) {
+  uint32_t *offsets[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     offsets[plane] = checked_malloc((size_t)block_counts[plane] * 4);
   }
   int parsed_block_count;
@@ -3848,8 +3848,8 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
     }
   }
 
-  int32_t *planes[3] = { luma, chroma_orange, chroma_green };
-  for (int plane = 0; plane < 3; plane++) {
+  int32_t *planes[MAX_PLANES] = { luma, chroma_orange, chroma_green };
+  for (int plane = 0; plane < g_num_planes; plane++) {
     int plane_w = plane_width(plane, width);
     int plane_h = plane_height(plane, height);
     int plane_pixels = plane_w * plane_h;
@@ -3922,12 +3922,12 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
 
   BitWriter writer;
   bitwriter_init(&writer);
-  int32_t *planes[3] = { luma, chroma_orange, chroma_green };
-  uint32_t *offsets[3];
-  int block_counts[3];
+  int32_t *planes[MAX_PLANES] = { luma, chroma_orange, chroma_green };
+  uint32_t *offsets[MAX_PLANES];
+  int block_counts[MAX_PLANES];
   int has_prediction = (ref0 != NULL);
   double pcrd_lambda = (base_quality > 0) ? g_pcrd_lambda : 0.0;
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
     int plane_pixels = plane_w * plane_h;
     block_counts[plane] = block_count_x(plane_w) * block_count_y(plane_h);
@@ -3998,12 +3998,12 @@ static void decode_frame_bidi(const uint8_t *frame, int width, int height, int l
   int32_t *chroma_green = checked_malloc(pixel_count * 4);
   float *float_plane = checked_malloc(pixel_count * sizeof(float));
   int *step = checked_malloc(pixel_count * sizeof(int));
-  int block_counts[3];
-  for (int p = 0; p < 3; p++) {
+  int block_counts[MAX_PLANES];
+  for (int p = 0; p < g_num_planes; p++) {
     block_counts[p] = block_count_x(plane_width(p, width)) * block_count_y(plane_height(p, height));
   }
-  uint32_t *offsets[3];
-  for (int plane = 0; plane < 3; plane++) {
+  uint32_t *offsets[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     offsets[plane] = checked_malloc((size_t)block_counts[plane] * 4);
   }
   int parsed_block_count;
@@ -4013,8 +4013,8 @@ static void decode_frame_bidi(const uint8_t *frame, int width, int height, int l
   (void)mv_data;
   (void)mv_length;
   int has_prediction = (ref0 != NULL);
-  int32_t *planes[3] = { luma, chroma_orange, chroma_green };
-  for (int plane = 0; plane < 3; plane++) {
+  int32_t *planes[MAX_PLANES] = { luma, chroma_orange, chroma_green };
+  for (int plane = 0; plane < g_num_planes; plane++) {
     int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
     int plane_pixels = plane_w * plane_h;
     build_quantization_steps(step, plane_w, plane_h, levels, base_quality);
@@ -4109,8 +4109,8 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
   int *frame_mv = g_mctf ? checked_malloc(((size_t)num_frames * motion_blocks * 2) * sizeof(int)) : NULL;
 
   // Per-plane dimensions: luma full-res, chroma subsampled when g_chroma_format != 0 (Q0 stays 4:4:4).
-  int plane_w[3], plane_h[3], plane_pixels[3], plane_blocks[3];
-  for (int plane = 0; plane < 3; plane++) {
+  int plane_w[MAX_PLANES], plane_h[MAX_PLANES], plane_pixels[MAX_PLANES], plane_blocks[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     plane_w[plane] = plane_width(plane, width);
     plane_h[plane] = plane_height(plane, height);
     plane_pixels[plane] = plane_w[plane] * plane_h[plane];
@@ -4118,9 +4118,9 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
   }
 
   // GOP planes laid out as [plane][(frame * plane_pixels) + pixel]: integers when int_temporal, float otherwise.
-  int32_t *gop_int[3] = { NULL, NULL, NULL };
-  float *gop_float[3] = { NULL, NULL, NULL };
-  for (int plane = 0; plane < 3; plane++) {
+  int32_t *gop_int[MAX_PLANES] = { NULL, NULL, NULL };
+  float *gop_float[MAX_PLANES] = { NULL, NULL, NULL };
+  for (int plane = 0; plane < g_num_planes; plane++) {
     if (int_temporal) {
       gop_int[plane] = checked_malloc(((size_t)num_frames * plane_pixels[plane]) * 4);
     } else {
@@ -4138,8 +4138,8 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
       downsample_chroma(chroma_orange, chroma_orange, width, height);
       downsample_chroma(chroma_green, chroma_green, width, height);
     }
-    int32_t *src[3] = { luma, chroma_orange, chroma_green };
-    for (int plane = 0; plane < 3; plane++) {
+    int32_t *src[MAX_PLANES] = { luma, chroma_orange, chroma_green };
+    for (int plane = 0; plane < g_num_planes; plane++) {
       size_t base = (size_t)f * plane_pixels[plane];
       if (int_temporal) {
         memcpy(gop_int[plane] + base, src[plane], (size_t)plane_pixels[plane] * 4);
@@ -4160,7 +4160,7 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
     mctf_forward(gop_int, num_frames, plane_w, plane_h, plane_pixels, g_temporal_levels, frame_mv, motion_blocks_x, motion_blocks_y);
   } else if (lossless) {
     int32_t temporal_line[MAX_GOP];
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       int pp = plane_pixels[plane];
       for (int i = 0; i < pp; i++) {
         for (int f = 0; f < num_frames; f++) {
@@ -4174,7 +4174,7 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
     }
   } else {
     float temporal_line[MAX_GOP];
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       int pp = plane_pixels[plane];
       for (int i = 0; i < pp; i++) {
         for (int f = 0; f < num_frames; f++) {
@@ -4201,8 +4201,8 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
 
     BitWriter writer;
     bitwriter_init(&writer);
-    uint32_t *offsets[3];
-    for (int plane = 0; plane < 3; plane++) {
+    uint32_t *offsets[MAX_PLANES];
+    for (int plane = 0; plane < g_num_planes; plane++) {
       int pw = plane_w[plane], ph = plane_h[plane], pp = plane_pixels[plane];
       offsets[plane] = checked_malloc((size_t)plane_blocks[plane] * 4);
       if (lossless) {
@@ -4240,7 +4240,7 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
     out_len[f] = assemble_frame(plane_blocks, offsets, mv_blob, mv_blob_length, writer.bytes, writer.length, &out[f]);
     free(mv_blob);
     free(writer.bytes);
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       free(offsets[plane]);
     }
   }
@@ -4249,7 +4249,7 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
   free(float_plane);
   free(coefficients);
   free(frame_mv);
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     free(gop_int[plane]);
     free(gop_float[plane]);
   }
@@ -4273,17 +4273,17 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
   int *frame_mv = g_mctf ? checked_malloc(((size_t)num_frames * motion_blocks * 2) * sizeof(int)) : NULL;
 
   // Per-plane dimensions: luma full-res, chroma subsampled when g_chroma_format != 0.
-  int plane_w[3], plane_h[3], plane_pixels[3], plane_blocks[3];
-  for (int plane = 0; plane < 3; plane++) {
+  int plane_w[MAX_PLANES], plane_h[MAX_PLANES], plane_pixels[MAX_PLANES], plane_blocks[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     plane_w[plane] = plane_width(plane, width);
     plane_h[plane] = plane_height(plane, height);
     plane_pixels[plane] = plane_w[plane] * plane_h[plane];
     plane_blocks[plane] = block_count_x(plane_w[plane]) * block_count_y(plane_h[plane]);
   }
 
-  int32_t *gop_int[3] = { NULL, NULL, NULL };
-  float *gop_float[3] = { NULL, NULL, NULL };
-  for (int plane = 0; plane < 3; plane++) {
+  int32_t *gop_int[MAX_PLANES] = { NULL, NULL, NULL };
+  float *gop_float[MAX_PLANES] = { NULL, NULL, NULL };
+  for (int plane = 0; plane < g_num_planes; plane++) {
     if (int_temporal) {
       gop_int[plane] = checked_malloc(((size_t)num_frames * plane_pixels[plane]) * 4);
     } else {
@@ -4302,8 +4302,8 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
       effective_quality = 1;
     }
 
-    uint32_t *offsets[3];
-    for (int plane = 0; plane < 3; plane++) {
+    uint32_t *offsets[MAX_PLANES];
+    for (int plane = 0; plane < g_num_planes; plane++) {
       offsets[plane] = checked_malloc((size_t)plane_blocks[plane] * 4);
     }
     int parsed_block_count;
@@ -4320,7 +4320,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
         decode_motion_vectors(&mv_reader, fmv, motion_blocks_x, motion_blocks_y);
       }
     }
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       int pw = plane_w[plane], ph = plane_h[plane], pp = plane_pixels[plane];
       decode_plane(data, offsets[plane], coefficients, pw, ph);
       if (lossless) {
@@ -4339,7 +4339,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
         }
       }
     }
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       free(offsets[plane]);
     }
   }
@@ -4352,7 +4352,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
     mctf_inverse(gop_int, num_frames, plane_w, plane_h, plane_pixels, g_temporal_levels, frame_mv, motion_blocks_x, motion_blocks_y);
   } else if (lossless) {
     int32_t temporal_line[MAX_GOP];
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       int pp = plane_pixels[plane];
       for (int i = 0; i < pp; i++) {
         for (int f = 0; f < num_frames; f++) {
@@ -4366,7 +4366,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
     }
   } else {
     float temporal_line[MAX_GOP];
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
       int pp = plane_pixels[plane];
       for (int i = 0; i < pp; i++) {
         for (int f = 0; f < num_frames; f++) {
@@ -4387,8 +4387,8 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
   int32_t *co_full = checked_malloc((size_t)pixel_count * 4);
   int32_t *cg_full = checked_malloc((size_t)pixel_count * 4);
   for (int f = 0; f < num_frames; f++) {
-    int32_t *dst[3] = { luma, chroma_orange, chroma_green };
-    for (int plane = 0; plane < 3; plane++) {
+    int32_t *dst[MAX_PLANES] = { luma, chroma_orange, chroma_green };
+    for (int plane = 0; plane < g_num_planes; plane++) {
       size_t base = (size_t)f * plane_pixels[plane];
       if (int_temporal) {
         memcpy(dst[plane], gop_int[plane] + base, (size_t)plane_pixels[plane] * 4);
@@ -4413,7 +4413,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
   free(co_full);
   free(cg_full);
   free(frame_mv);
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     free(gop_int[plane]);
     free(gop_float[plane]);
   }
@@ -4671,14 +4671,14 @@ static int bframe_selftest(const char *input, int quality, int levels, int max_f
   }
   n = (anchors * period) + 1;   // keep whole anchor periods (last frame is an anchor)
 
-  int plane_pixels[3];
-  for (int p = 0; p < 3; p++) {
+  int plane_pixels[MAX_PLANES];
+  for (int p = 0; p < g_num_planes; p++) {
     plane_pixels[p] = plane_width(p, width) * plane_height(p, height);
   }
   int32_t ***dpb = checked_malloc((size_t)n * sizeof(void *));
   for (int f = 0; f < n; f++) {
-    dpb[f] = checked_malloc(3 * sizeof(int32_t *));
-    for (int p = 0; p < 3; p++) {
+    dpb[f] = checked_malloc(g_num_planes * sizeof(int32_t *));
+    for (int p = 0; p < g_num_planes; p++) {
       dpb[f][p] = checked_malloc((size_t)plane_pixels[p] * 4);
     }
   }
@@ -4928,8 +4928,8 @@ int main(int argc, char **argv) {
   uint8_t *rgb = checked_malloc(frame_bytes);
   uint8_t *reconstructed = checked_malloc(frame_bytes);
   // Separate encoder + decoder coefficient references (kept in lock-step for Q0 by losslessness).
-  int32_t *previous_encode[3], *previous_decode[3];
-  for (int plane = 0; plane < 3; plane++) {
+  int32_t *previous_encode[MAX_PLANES], *previous_decode[MAX_PLANES];
+  for (int plane = 0; plane < g_num_planes; plane++) {
     previous_encode[plane] = checked_malloc((size_t)pixel_count * 4);
     previous_decode[plane] = checked_malloc((size_t)pixel_count * 4);
   }
@@ -5085,7 +5085,7 @@ int main(int argc, char **argv) {
 
   free(rgb);
   free(reconstructed);
-  for (int plane = 0; plane < 3; plane++) {
+  for (int plane = 0; plane < g_num_planes; plane++) {
     free(previous_encode[plane]);
     free(previous_decode[plane]);
   }
