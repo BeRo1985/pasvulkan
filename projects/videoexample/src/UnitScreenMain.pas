@@ -59,7 +59,6 @@ type TScreenMain=class(TpvApplicationScreen)
        fOutputImageLayout:TVkImageLayout; // tracked layout of the player's OutputImage between passes
        fPlayerInitPending:boolean; // defer the heavy CreatePlayer (~0.5 s of compute-pipeline compiling) out of Show
        fBlackFramePresented:boolean; // set once Draw has cleared the swapchain to black while no player exists yet
-       fDebugSyncDecode:boolean; // FWV_SYNCDECODE diagnostic: drain the GPU before staging, to test the cross-frame decode race
        // present path A (fullscreen textured quad sampling the decoded image)
        fSampler:TpvVulkanSampler;
        fVertexShaderModule:TpvVulkanShaderModule;
@@ -121,7 +120,6 @@ begin
  fOutputImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
  fPlayerInitPending:=false;
  fBlackFramePresented:=false;
- fDebugSyncDecode:=GetEnvironmentVariable('FWV_SYNCDECODE')='1';
 end;
 
 destructor TScreenMain.Destroy;
@@ -613,14 +611,6 @@ procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
 var DecTimeT0,DecTimeUS:TpvInt64;
 begin
  inherited Update(aDeltaTime);
-
- // FWV_SYNCDECODE diagnostic: the engine runs Update (where the player stages the next frame, overwriting the decoder's
- // single shared step/data input buffers) BEFORE the back-buffer fence wait, so UploadFrame can clobber buffers the
- // previous frame's GPU decode is still reading -> a rare wrong frame that propagates through the P-chain (the pale
- // fade). Draining the GPU here removes that overlap; if the fade disappears with FWV_SYNCDECODE=1, the race is confirmed.
- if fDebugSyncDecode and assigned(fPlayer) then begin
-  pvApplication.VulkanDevice.WaitIdle;
- end;
 
  // Deferred, one-frame-delayed player creation (see Show): wait until Draw has put one black frame on screen, THEN run
  // the ~0.5 s CreatePlayer, so the compile blocks over black instead of over the undefined surface.

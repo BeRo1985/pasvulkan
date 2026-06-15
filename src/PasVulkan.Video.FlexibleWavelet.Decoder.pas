@@ -2042,7 +2042,7 @@ begin
    if RingIndex>=fBufferRingSize then begin
     raise EpvFlexibleWaveletVideoDecoder.Create('B-frame mode B input ring overflow');
    end;
-   fBufferRingSlot:=RingIndex;
+   fBufferRingSlot:=fBidiRingCursor; // free-running cursor (not RingIndex): disjoint slots across pipelined frames
   end else begin
    fBufferRingSlot:=-1;
   end;
@@ -2057,6 +2057,10 @@ begin
   end else begin // mode B: record into the caller's command buffer (submitted once with the display below)
    RecordBidiDecode(aCommandBuffer,IsPredicted,Ref1Slot,Weight0,Weight1);
    inc(RingIndex);
+   inc(fBidiRingCursor);
+   if fBidiRingCursor>=fBufferRingSize then begin
+    fBidiRingCursor:=0;
+   end;
   end;
  end;
  fBufferRingSlot:=-1;
