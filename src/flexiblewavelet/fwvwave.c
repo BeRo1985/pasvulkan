@@ -1027,11 +1027,17 @@ static int g_quant_debug = 0;         // debug: print the measured 9/7 synthesis
 // Chroma subsampling (Variante A: YCoCg-R kept; Co/Cg spatially down/upsampled at the I/O edges, lossy).
 // 0 = 4:4:4 (default, full), 1 = 4:2:2 (chroma W/2 x H), 2 = 4:2:0 (chroma W/2 x H/2). Q0 stays 4:4:4.
 static int g_chroma_format = 0;
-// Plane count: 3 (Y, Co, Cg) by default, 4 when the stream carries an OPTIONAL alpha channel (ColourFlags bit 1). The
+// Plane count: 3 (Y, Co, Cg) by default, 4 when the stream carries an OPTIONAL alpha channel (ColourFlags bit 2). The
 // alpha plane (index 3) is ALWAYS full resolution like luma, regardless of chroma subsampling (4:4:4:4 / 4:2:2:4 /
 // 4:2:0:4). g_num_planes stays 3 unless a has-alpha header sets it, so non-alpha streams are byte-for-byte unchanged.
 #define MAX_PLANES 4
 static int g_num_planes = 3;
+// Optional alpha channel (ColourFlags bit 2 = has_alpha, bit 3 = premultiplied). When active, plane 3 is a full-res
+// luma-like alpha plane coded into a SEPARATE section appended at the END of each frame (graceful-ignore: an old /
+// colour-only decoder reads the 3 colour planes and stops). g_alpha_qp is per-frame; -1 = use the frame's colour QP.
+static int g_has_alpha = 0;
+static int g_alpha_qp = -1;
+static int g_premultiplied = 0;
 static int chroma_shift_x(void) { return (g_chroma_format == 0) ? 0 : 1; }   // 4:2:2 and 4:2:0 halve horizontally
 static int chroma_shift_y(void) { return (g_chroma_format == 2) ? 1 : 0; }   // only 4:2:0 halves vertically
 static int plane_width(int plane, int frame_width) {
@@ -3549,6 +3555,64 @@ static const uint8_t *parse_frame_header(const uint8_t *frame, const int *block_
   cursor += 4;   // skip the data_length field
   return frame + cursor;
 }
+
+// ---- optional alpha section (appended at the END of each frame, within FrameEntry.Size; graceful-ignore) ----
+// Layout: [alpha_qp:u8][alpha_size_blob_length:u32][alpha_size_blob: exp-golomb block sizes][alpha_data_length:u32][alpha_data].
+// Alpha is always full-res (like luma), so its block_count == the luma block count (not stored here). An OLD / colour-only
+// decoder stops after the 3 colour planes and never sees this; a new decoder parses it iff ColourFlags bit 2 (has_alpha).
+// Returns the new total frame size (the colour payload before it is byte-identical to the non-alpha stream).
+static size_t append_alpha_section(uint8_t **frame, size_t frame_size, int alpha_qp,
+                                   const uint32_t *alpha_sizes, int block_count,
+                                   const uint8_t *alpha_data, size_t alpha_data_length) {
+  BitWriter size_writer;
+  bitwriter_init(&size_writer);
+  for (int block = 0; block < block_count; block++) {
+    bitwriter_put_unsigned_exp_golomb(&size_writer, alpha_sizes[block]);
+  }
+  bitwriter_flush(&size_writer);
+  uint32_t size_blob_length = (uint32_t)size_writer.length;
+  size_t section_size = (((1 + 4) + size_blob_length) + 4) + alpha_data_length;
+  uint8_t *grown = realloc(*frame, frame_size + section_size);
+  if (!grown) {
+    die("alpha section realloc");
+  }
+  size_t cursor = frame_size;
+  grown[cursor] = (uint8_t)alpha_qp;
+  cursor += 1;
+  memcpy(grown + cursor, &size_blob_length, 4);
+  cursor += 4;
+  memcpy(grown + cursor, size_writer.bytes, size_blob_length);
+  cursor += size_blob_length;
+  free(size_writer.bytes);
+  uint32_t data_length_u32 = (uint32_t)alpha_data_length;
+  memcpy(grown + cursor, &data_length_u32, 4);
+  cursor += 4;
+  memcpy(grown + cursor, alpha_data, alpha_data_length);
+  *frame = grown;
+  return frame_size + section_size;
+}
+
+// Parse the appended alpha section (`section` points at the alpha_qp byte = the 3-plane colour payload's end).
+// Prefix-sums the block sizes into alpha_offsets, returns alpha_qp via out_alpha_qp, and returns the alpha block data.
+static const uint8_t *parse_alpha_section(const uint8_t *section, uint32_t *alpha_offsets, int block_count, int *out_alpha_qp) {
+  size_t cursor = 0;
+  *out_alpha_qp = section[cursor];
+  cursor += 1;
+  uint32_t size_blob_length;
+  memcpy(&size_blob_length, section + cursor, 4);
+  cursor += 4;
+  BitReader size_reader;
+  bitreader_init(&size_reader, section + cursor, size_blob_length);
+  uint32_t running = 0;
+  for (int block = 0; block < block_count; block++) {
+    alpha_offsets[block] = running;
+    running += bitreader_get_unsigned_exp_golomb(&size_reader);
+  }
+  cursor += size_blob_length;
+  cursor += 4;   // skip alpha_data_length
+  return section + cursor;
+}
+
 // previous_coefficients (3 planes) is the reference for a P-frame: if is_predicted, the coefficient-
 // domain difference (current - previous) is coded; either way this frame's (un-diffed) coefficients
 // are saved back into it as the next frame's reference. Pass NULL / 0 for a stateless intra encode.
