@@ -18,9 +18,9 @@ void main() {
   if (i >= uint(push.width * push.height)) {
     return;
   }
-  int r = get_sample(i * 3u);
-  int g = get_sample((i * 3u) + 1u);
-  int b = get_sample((i * 3u) + 2u);
+  int r = get_sample(i * 4u);   // rgba16: 4 int16 samples per pixel (the alpha sample i*4+3 is not read here)
+  int g = get_sample((i * 4u) + 1u);
+  int b = get_sample((i * 4u) + 2u);
   int co = r - b;
   int t = b + (co >> 1);
   int cg = g - t;

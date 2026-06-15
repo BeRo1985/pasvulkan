@@ -945,8 +945,10 @@ static long bframe_append(FILE *file, FrameEntry **index, long *capacity, long c
 // shader sees 4x-too-large values and corrupts — the bug class the 3D-DWT path hit). Call after each B-frame read.
 static void hdr_ingest_inplace(uint8_t *frame, int pixel_count) {
   uint16_t *sample = (uint16_t *)frame;
-  for (int s = 0; s < (pixel_count * 3); s++) {
-    sample[s] = (uint16_t)(sample[s] >> 4);
+  for (int p = 0; p < pixel_count; p++) {
+    for (int c = 0; c < 3; c++) {   // R,G,B only (the alpha lane is opacity, not a 12-bit code)
+      sample[(p * g_channels) + c] = (uint16_t)(sample[(p * g_channels) + c] >> 4);
+    }
   }
 }
 
@@ -1115,7 +1117,7 @@ static int bgpu_next(BGpuDriver *d, uint8_t *rgb_dest, long coding_index,
       return 0;
     }
     if (g_sample_bytes == 2) {   // HDR: rgb48le -> 12-bit code before the colour pass reads rgb_dest
-      hdr_ingest_inplace(d->rgb_slot[0], (int)(d->frame_bytes / 6));
+      hdr_ingest_inplace(d->rgb_slot[0], (int)(d->frame_bytes / (g_channels * 2)));
     }
     d->started = 1;
     d->lo = 0;
@@ -1136,7 +1138,7 @@ static int bgpu_next(BGpuDriver *d, uint8_t *rgb_dest, long coding_index,
     }
     if (g_sample_bytes == 2) {   // HDR: convert each just-read anchor-pair frame to 12-bit code
       for (int i = 1; i <= got; i++) {
-        hdr_ingest_inplace(d->rgb_slot[i], (int)(d->frame_bytes / 6));
+        hdr_ingest_inplace(d->rgb_slot[i], (int)(d->frame_bytes / (g_channels * 2)));
       }
     }
     d->hi = got;
@@ -1538,7 +1540,8 @@ int main(int argc, char **argv) {
   VkDeviceMemory mv8_memory = 0, mv16_memory = 0, mv32_memory = 0, sad16_memory = 0, sad32_memory = 0;
   VkDeviceMemory mv8_prev_memory = 0, mv16_prev_memory = 0, mv32_prev_memory = 0;
   VkDeviceMemory mv1_8_memory = 0, mv1_16_memory = 0, mv1_32_memory = 0, modesad8_memory = 0, modesad16_memory = 0, modesad32_memory = 0;
-  create_buffer((size_t)pixel_count * (hdr_mode ? 6 : 4), HOST_VISIBLE_COHERENT, &rgb_buffer, &rgb_memory);
+  g_channels = 4;   // Option B: rgba8 (SDR) / rgba64 (HDR) — 32/64-bit aligned input; alpha = the 4th lane (A opaque when no alpha)
+  create_buffer((size_t)pixel_count * g_channels * (hdr_mode ? 2 : 1), HOST_VISIBLE_COHERENT, &rgb_buffer, &rgb_memory);
   for (int plane = 0; plane < g_num_planes; plane++) {
     create_buffer(plane_bytes, DEVICE_LOCAL, &coeff_buffer[plane], &coeff_memory[plane]);
     create_buffer(plane_bytes, DEVICE_LOCAL, &previous_buffer[plane], &previous_memory[plane]);
@@ -1912,7 +1915,7 @@ int main(int argc, char **argv) {
 
   // ---- input + per-frame state ----
   char command[4096];
-  const char *pix_fmt = hdr_mode ? "rgb48le" : "rgb24";   // HDR: 16-bit PQ/bt2020 code values
+  const char *pix_fmt = hdr_mode ? "rgba64le" : "rgba";   // Option B: 4-channel aligned (was rgb48le / rgb24); A opaque when no alpha
   char scale_filter[64] = "";
   if (wavelet_scale < 1.0) {   // down-scale the raw frames to the (reduced) wavelet dimensions
     snprintf(scale_filter, sizeof scale_filter, "-vf scale=%d:%d ", width, height);
@@ -1926,7 +1929,7 @@ int main(int argc, char **argv) {
   if (!input_pipe) {
     die("popen ffmpeg");
   }
-  size_t frame_bytes = (size_t)pixel_count * (hdr_mode ? 6 : 3);   // rgb48le (HDR 16-bit) vs rgb24 (SDR)
+  size_t frame_bytes = (size_t)pixel_count * g_channels * (hdr_mode ? 2 : 1);   // rgba8 (SDR) / rgba64le (HDR)
   uint8_t *rgb = checked_malloc(frame_bytes);
   uint8_t *reconstructed = checked_malloc(frame_bytes);
   // Self-test (no output) coefficient reference, so the CPU decode tracks P-frames too.
@@ -2114,8 +2117,11 @@ int main(int argc, char **argv) {
         if (hdr_mode) {   // HDR: rgb48le (10-bit << 6) -> 12-bit BT.2020 code, exactly as the intra/colordiff path does
           const uint16_t *source16 = (const uint16_t *)gop_rgb[f];   // (the 3D-DWT path was missing this >>4 -> 4x-too-large values overflowed the colour shader -> corruption)
           int16_t *destination16 = (int16_t *)rgb_map;
-          for (int s = 0; s < pixel_count * 3; s++) {
-            destination16[s] = (int16_t)(source16[s] >> 4);
+          for (int p = 0; p < pixel_count; p++) {
+            for (int c = 0; c < 3; c++) {   // R,G,B: 10-bit<<6 -> 12-bit; the alpha lane is opacity, copy as-is
+              destination16[(p * g_channels) + c] = (int16_t)(source16[(p * g_channels) + c] >> 4);
+            }
+            destination16[(p * g_channels) + 3] = (int16_t)source16[(p * g_channels) + 3];
           }
         } else {
           memcpy(rgb_map, gop_rgb[f], frame_bytes);
@@ -2486,11 +2492,13 @@ int main(int argc, char **argv) {
         decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed);
         for (int f = 0; f < filled; f++) {
           double mean_squared_error = 0;
+          size_t pixel_stride = (size_t)g_channels * g_sample_bytes, rgb_bytes = (size_t)3 * g_sample_bytes;
           for (size_t i = 0; i < frame_bytes; i++) {
+            if ((i % pixel_stride) >= rgb_bytes) { continue; }   // skip the alpha lane (compare R/G/B only)
             int difference = (int)gop_rgb[f][i] - (int)gop_reconstructed[f][i];
             mean_squared_error += (double)difference * difference;
           }
-          mean_squared_error /= frame_bytes;
+          mean_squared_error /= ((double)pixel_count * rgb_bytes);
           sum_psnr += (mean_squared_error == 0) ? 99.99 : (10.0 * log10((255.0 * 255.0) / mean_squared_error));
           frame_index++;
         }
@@ -2607,8 +2615,11 @@ int main(int argc, char **argv) {
         if (hdr_mode) {   // HDR (PQ or HLG): rgb48le (10-bit << 6) -> 12-bit BT.2020 code, both unsigned [0,1]
           const uint16_t *source16 = (const uint16_t *)rgb;
           int16_t *destination16 = (int16_t *)rgb_map;
-          for (int s = 0; s < pixel_count * 3; s++) {
-            destination16[s] = (int16_t)(source16[s] >> 4);
+          for (int p = 0; p < pixel_count; p++) {
+            for (int c = 0; c < 3; c++) {   // R,G,B: 10-bit<<6 -> 12-bit; the alpha lane is opacity, copy as-is
+              destination16[(p * g_channels) + c] = (int16_t)(source16[(p * g_channels) + c] >> 4);
+            }
+            destination16[(p * g_channels) + 3] = (int16_t)source16[(p * g_channels) + 3];
           }
         } else {
           memcpy(rgb_map, rgb, frame_bytes);
@@ -3394,11 +3405,13 @@ int main(int argc, char **argv) {
           decode_frame_coefdiff(frame, total, width, height, levels, quality, reconstructed, predictive ? self_previous : NULL, is_predicted);
         }
         double mean_squared_error = 0;
+        size_t pixel_stride = (size_t)g_channels * g_sample_bytes, rgb_bytes = (size_t)3 * g_sample_bytes;
         for (size_t i = 0; i < frame_bytes; i++) {
+          if ((i % pixel_stride) >= rgb_bytes) { continue; }   // skip the alpha lane (compare R/G/B only)
           int difference = (int)rgb[i] - (int)reconstructed[i];
           mean_squared_error += (double)difference * difference;
         }
-        mean_squared_error /= frame_bytes;
+        mean_squared_error /= ((double)pixel_count * rgb_bytes);
         sum_psnr += (mean_squared_error == 0) ? 99.99 : (10.0 * log10((255.0 * 255.0) / mean_squared_error));
       }
       total_bytes += total;
