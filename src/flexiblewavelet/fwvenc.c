@@ -2423,6 +2423,70 @@ int main(int argc, char **argv) {
           vkCmdDispatch(command_buffer, (g_block_size == 128) ? plane_blocks[plane] : ((plane_blocks[plane] + 63) / 64), 1, 1);   // coop (128): one workgroup per block
           memory_barrier();
         }
+        // Alpha plane 3 (intra, the ORIGINAL display-order frame f): the temporal transform is colour-only, so
+        // alpha is coded per-frame like the main I/P path. Load gop_rgb[f] into rgb_buffer, extract -> forward DWT
+        // -> quant -> bitplane size, in the SAME pass-1 command buffer. Uses step_map[3] (built once at alpha_qp).
+        if (g_has_alpha) {
+          memcpy(rgb_map, gop_rgb[f], frame_bytes);   // the original (display-order) frame f, with its alpha lane
+          int aw = width, ah = height, a_scratch_stride = (aw > ah) ? aw : ah, a_pixels = aw * ah;
+          int a_blocks_x = block_count_x(aw), a_blocks_y = block_count_y(ah), a_block_count = a_blocks_x * a_blocks_y;
+          int a_pixel_wg = (a_pixels + 255) / 256;
+          int a_block_wg = (g_block_size == 128) ? a_block_count : ((a_block_count + 63) / 64);
+          int alw[16], alh[16], alc = 0, acw = aw, ach = ah;
+          for (int level = 0; ((level < levels) && (acw >= 2)) && ach >= 2; level++) {
+            alw[alc] = acw; alh[alc] = ach; alc++; acw = (acw + 1) / 2; ach = (ach + 1) / 2;
+          }
+          int32_t a_extract_push[3] = { aw, ah, lossless };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_extract_alpha);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_extract_alpha, 0, 1, &set_extract_alpha, 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_extract_alpha, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, a_extract_push);
+          vkCmdDispatch(command_buffer, a_pixel_wg, 1, 1);
+          memory_barrier();
+          for (int level = 0; level < alc; level++) {
+            int level_w = alw[level], level_h = alh[level];
+            int32_t row_push_1[4] = { aw, level_w, level_h, 1 };
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_forward_row);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_1);
+            vkCmdDispatch(command_buffer, level_h, 1, 1);
+            memory_barrier();
+            int32_t transpose_push_1[4] = { aw, level_w, level_h, a_scratch_stride };
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_transpose);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_transpose, 0, 1, &set_coeff_to_scratch[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_transpose, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, transpose_push_1);
+            vkCmdDispatch(command_buffer, (level_w + 15) / 16, (level_h + 15) / 16, 1);
+            memory_barrier();
+            int32_t row_push_2[4] = { a_scratch_stride, level_h, level_w, 1 };
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_forward_row);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row_scratch, 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_2);
+            vkCmdDispatch(command_buffer, level_w, 1, 1);
+            memory_barrier();
+            int32_t transpose_push_2[4] = { a_scratch_stride, level_h, level_w, aw };
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_transpose);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_transpose, 0, 1, &set_scratch_to_coeff[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_transpose, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, transpose_push_2);
+            vkCmdDispatch(command_buffer, (level_h + 15) / 16, (level_w + 15) / 16, 1);
+            memory_barrier();
+          }
+          if (!lossless) {
+            int32_t a_quant_push[2];
+            a_quant_push[0] = a_pixels;
+            float a_multiplier = 1.0f;   // alpha quantises like luma
+            memcpy(&a_quant_push[1], &a_multiplier, sizeof(float));
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_quant);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, a_quant_push);
+            vkCmdDispatch(command_buffer, a_pixel_wg, 1, 1);
+            memory_barrier();
+          }
+          int32_t a_block_push[4] = { aw, ah, a_blocks_x, a_blocks_y };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_size);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_size, 0, 1, &set_size[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_size, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, a_block_push);
+          vkCmdDispatch(command_buffer, a_block_wg, 1, 1);
+          memory_barrier();
+        }
         submit_and_wait();
 
         if (debug && lossless) {   // --debug (lossless): GPU spatial output (luma) vs CPU forward_legall53_2d
@@ -2461,6 +2525,17 @@ int main(int argc, char **argv) {
           memcpy(offset_map[plane], offsets[plane], (size_t)plane_blocks[plane] * 4);
         }
         size_t data_length = cumulative;
+        size_t colour_data_length = data_length;   // colour payload ends here; the appended alpha section's block data starts here
+        int alpha_block_count = block_count_x(width) * block_count_y(height);
+        if (g_has_alpha) {   // prefix-sum the alpha block sizes, continuing the cumulative offset after the colour planes
+          const uint32_t *alpha_sizes = (const uint32_t *)size_map[3];
+          for (int block = 0; block < alpha_block_count; block++) {
+            offsets[3][block] = cumulative;
+            cumulative += alpha_sizes[block];
+          }
+          memcpy(offset_map[3], offsets[3], (size_t)alpha_block_count * 4);
+          data_length = cumulative;
+        }
 
         begin_recording();
         for (int plane = 0; plane < g_num_planes; plane++) {
@@ -2469,6 +2544,15 @@ int main(int argc, char **argv) {
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_pack[plane], 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, block_push);
           vkCmdDispatch(command_buffer, (g_block_size == 128) ? plane_blocks[plane] : ((plane_blocks[plane] + 63) / 64), 1, 1);   // coop (128): one workgroup per block
+        }
+        if (g_has_alpha) {   // alpha bitplane pack into data_buffer at the post-colour offsets
+          int a_blocks_x = block_count_x(width), a_blocks_y = block_count_y(height), a_block_count = a_blocks_x * a_blocks_y;
+          int a_block_wg = (g_block_size == 128) ? a_block_count : ((a_block_count + 63) / 64);
+          int32_t a_block_push[4] = { width, height, a_blocks_x, a_blocks_y };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_pack);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_pack[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, a_block_push);
+          vkCmdDispatch(command_buffer, a_block_wg, 1, 1);
         }
         submit_and_wait();
 
@@ -2492,7 +2576,12 @@ int main(int argc, char **argv) {
         uint8_t *frame;
         size_t total = assemble_frame(plane_blocks,
                                       (uint32_t *[3]){ (uint32_t *)size_map[0], (uint32_t *)size_map[1], (uint32_t *)size_map[2] },
-                                      mv_blob, mv_blob_length, (const uint8_t *)data_map, data_length, &frame);
+                                      mv_blob, mv_blob_length, (const uint8_t *)data_map, colour_data_length, &frame);
+        if (g_has_alpha) {   // append the alpha section (graceful-ignore) after the 3-plane colour payload
+          int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
+          total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
+                                       (const uint8_t *)data_map + colour_data_length, data_length - colour_data_length);
+        }
         free(mv_blob);
         gop_encoded[f] = frame;
         gop_encoded_length[f] = total;

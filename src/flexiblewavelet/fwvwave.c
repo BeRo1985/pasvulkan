@@ -4422,6 +4422,8 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
       gop_float[plane] = checked_malloc(((size_t)num_frames * plane_pixels[plane]) * sizeof(float));
     }
   }
+  // Alpha plane 3 (intra): each frame's decoded alpha lane, kept per display-order frame f until the rgba output below.
+  int32_t *gop_alpha = g_has_alpha ? checked_malloc(((size_t)num_frames * pixel_count) * 4) : NULL;
 
   // 1) decode each subband frame's coefficients and invert the spatial transform (at each plane's size).
   int *step = checked_malloc((size_t)pixel_count * sizeof(int));
@@ -4441,7 +4443,8 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
     int parsed_block_count;
     const uint8_t *mv_data;
     uint32_t mv_length;
-    const uint8_t *data = parse_frame_header(frames[f], plane_blocks, &parsed_block_count, offsets, &mv_data, &mv_length, NULL);
+    uint32_t cdl;
+    const uint8_t *data = parse_frame_header(frames[f], plane_blocks, &parsed_block_count, offsets, &mv_data, &mv_length, &cdl);
     if (g_mctf && (mv_length > 0)) {   // high-pass frame: decode its MV field for the temporal inverse warp
       int *fmv = &frame_mv[((size_t)f * motion_blocks) * 2];
       if (g_mv_codec == 1) {
@@ -4470,6 +4473,17 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
           memcpy(gop_float[plane] + ((size_t)f * pp), float_plane, (size_t)pp * sizeof(float));
         }
       }
+    }
+    if (g_has_alpha) {   // decode the appended alpha section into gop_alpha[f] (intra; reuse step/float_plane/coefficients, full-res)
+      int a_block_count = block_count_x(width) * block_count_y(height);
+      uint32_t *alpha_offsets = checked_malloc((size_t)a_block_count * 4);
+      int alpha_qp;
+      const uint8_t *alpha_data = parse_alpha_section(data + cdl, alpha_offsets, a_block_count, &alpha_qp);
+      decode_plane(alpha_data, alpha_offsets, coefficients, width, height);
+      build_quantization_steps(step, width, height, levels, alpha_qp);
+      reconstruct_plane(coefficients, float_plane, step, width, height, levels, alpha_qp, 1.0f);
+      memcpy(gop_alpha + ((size_t)f * pixel_count), coefficients, (size_t)pixel_count * 4);
+      free(alpha_offsets);
     }
     for (int plane = 0; plane < g_num_planes; plane++) {
       free(offsets[plane]);
@@ -4538,6 +4552,13 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
       cg = cg_full;
     }
     ycocg_to_rgb(luma, co, cg, rgb_out[f], pixel_count);
+    if (g_has_alpha) {   // write the decoded alpha lane into the rgba output (display-order frame f)
+      const int32_t *frame_alpha = gop_alpha + ((size_t)f * pixel_count);
+      for (int i = 0; i < pixel_count; i++) {
+        int a = frame_alpha[i];
+        rgb_out[f][(i * 4) + 3] = (uint8_t)((a < 0) ? 0 : ((a > 255) ? 255 : a));
+      }
+    }
   }
   free(luma);
   free(chroma_orange);
@@ -4549,6 +4570,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
     free(gop_int[plane]);
     free(gop_float[plane]);
   }
+  free(gop_alpha);
 }
 
 // ----------------------------------------------------------------------- ffmpeg input
