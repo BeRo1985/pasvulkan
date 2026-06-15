@@ -75,6 +75,7 @@ type TScreenMain=class(TpvApplicationScreen)
        procedure TestH264Session;
        procedure TestH264Decode;
        procedure BindPlayerToDescriptor;
+       procedure LetterboxRect(const aTargetW,aTargetH:TpvInt32;out aX,aY,aW,aH:TpvInt32); // aspect-fit, centred video rect
        procedure TransitionOutputImage(const aCommandBuffer:TpvVulkanCommandBuffer;const aNewLayout:TVkImageLayout;const aSrcAccess,aDstAccess:TVkAccessFlags;const aSrcStage,aDstStage:TVkPipelineStageFlags);
       public
 
@@ -311,6 +312,35 @@ begin
  fDescriptorSet.Flush;
 end;
 
+procedure TScreenMain.LetterboxRect(const aTargetW,aTargetH:TpvInt32;out aX,aY,aW,aH:TpvInt32);
+var VideoW,VideoH:TpvInt32;
+begin
+ // aspect-fit the video into the target, centred: pillarbox (bars left/right) if the target is wider than the video,
+ // letterbox (bars top/bottom) if it is taller. Falls back to the full target if a size is unknown.
+ VideoW:=0;
+ VideoH:=0;
+ if assigned(fPlayer) then begin
+  VideoW:=fPlayer.Width;
+  VideoH:=fPlayer.Height;
+ end;
+ if ((VideoW<=0) or (VideoH<=0)) or ((aTargetW<=0) or (aTargetH<=0)) then begin
+  aX:=0;
+  aY:=0;
+  aW:=aTargetW;
+  aH:=aTargetH;
+  exit;
+ end;
+ if (aTargetW*VideoH)>(aTargetH*VideoW) then begin // target wider than the video -> pillarbox
+  aH:=aTargetH;
+  aW:=Round((aTargetH*VideoW)/VideoH);
+ end else begin // target taller (or equal) -> letterbox
+  aW:=aTargetW;
+  aH:=Round((aTargetW*VideoH)/VideoW);
+ end;
+ aX:=(aTargetW-aW) div 2;
+ aY:=(aTargetH-aH) div 2;
+end;
+
 procedure TScreenMain.TransitionOutputImage(const aCommandBuffer:TpvVulkanCommandBuffer;const aNewLayout:TVkImageLayout;const aSrcAccess,aDstAccess:TVkAccessFlags;const aSrcStage,aDstStage:TVkPipelineStageFlags);
 var Barrier:TVkImageMemoryBarrier;
 begin
@@ -530,6 +560,9 @@ begin
  fGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
  fGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height,0.0,1.0);
  fGraphicsPipeline.ViewPortState.AddScissor(0,0,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height);
+ // viewport + scissor are set per-frame (Draw) to the aspect-fit, centred letterbox rect of the video in the window
+ fGraphicsPipeline.DynamicState.AddDynamicState(TVkDynamicState(VK_DYNAMIC_STATE_VIEWPORT));
+ fGraphicsPipeline.DynamicState.AddDynamicState(TVkDynamicState(VK_DYNAMIC_STATE_SCISSOR));
  fGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
  fGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
  fGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
@@ -664,6 +697,9 @@ var CommandBuffer:TpvVulkanCommandBuffer;
     Barrier:TVkImageMemoryBarrier;
     ClearColor:TVkClearColorValue;
     ClearRange:TVkImageSubresourceRange;
+    FitX,FitY,FitW,FitH:TpvInt32;
+    Viewport:TVkViewport;
+    ScissorRect:TVkRect2D;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
 
@@ -740,6 +776,21 @@ begin
                                     0,0,
                                     pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height);
   if HasFrame then begin
+   // letterbox: the render pass already cleared the swapchain to black; draw the fullscreen quad only into the
+   // aspect-fit, centred rect (dynamic viewport + scissor) so the bars stay black instead of stretching the video.
+   LetterboxRect(pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height,FitX,FitY,FitW,FitH);
+   Viewport.x:=FitX;
+   Viewport.y:=FitY;
+   Viewport.width:=FitW;
+   Viewport.height:=FitH;
+   Viewport.minDepth:=0.0;
+   Viewport.maxDepth:=1.0;
+   CommandBuffer.CmdSetViewport(0,1,@Viewport);
+   ScissorRect.offset.x:=FitX;
+   ScissorRect.offset.y:=FitY;
+   ScissorRect.extent.width:=FitW;
+   ScissorRect.extent.height:=FitH;
+   CommandBuffer.CmdSetScissor(0,1,@ScissorRect);
    CommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fGraphicsPipeline.Handle);
    CommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fPipelineLayout.Handle,0,1,@fDescriptorSet.Handle,0,nil);
    CommandBuffer.CmdDraw(3,1,0,0);
