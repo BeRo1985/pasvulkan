@@ -1252,14 +1252,15 @@ static float srgb_oetf(float c) {   // linear -> sRGB gamma
 // collapsed to SDR here. Mirrors the GPU color_hdr.comp, so the fwvplay VERIFY checks it exactly.
 static void hdr_to_srgb8(const int16_t *code, uint8_t *out, int pixel_count, float exposure, int transfer) {
   for (int i = 0; i < pixel_count; i++) {
+    int base = g_channels * i;   // input HDR code + output SDR are at the same channel stride (3 = rgb, 4 = rgba)
     float channel[3];
     if (transfer == 18) {   // HLG / BT.2020
-      float signal[3] = { (float)code[3 * i] / 4095.0f, (float)code[(3 * i) + 1] / 4095.0f, (float)code[(3 * i) + 2] / 4095.0f };
+      float signal[3] = { (float)code[base] / 4095.0f, (float)code[base + 1] / 4095.0f, (float)code[base + 2] / 4095.0f };
       hlg_to_linear709(signal, channel);
     } else {               // PQ / BT.2020: PQ-decode then bt2020 -> 709
       float l[3];
       for (int c = 0; c < 3; c++) {
-        l[c] = pq_decode((float)code[(3 * i) + c] / 4095.0f);
+        l[c] = pq_decode((float)code[base + c] / 4095.0f);
       }
       bt2020_to_rec709(l, channel);
     }
@@ -1269,7 +1270,10 @@ static void hdr_to_srgb8(const int16_t *code, uint8_t *out, int pixel_count, flo
         v = 0.0f;
       }
       v = v / (1.0f + v);                                    // Reinhard -> [0,1]
-      out[(3 * i) + c] = (uint8_t)((srgb_oetf(v) * 255.0f) + 0.5f);
+      out[base + c] = (uint8_t)((srgb_oetf(v) * 255.0f) + 0.5f);
+    }
+    if (g_channels == 4) {
+      out[base + 3] = 255;   // opaque alpha lane
     }
   }
 }

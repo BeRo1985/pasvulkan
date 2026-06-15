@@ -1033,7 +1033,8 @@ int main(int argc, char **argv) {
   printf("  colour: %s / %s / %d-bit %s%s / %s\n", primaries_name, transfer_name, header.bit_depth,
          (header.colour_flags & 1) ? "HDR" : "SDR", (header.colour_flags & 2) ? " +HDR10 metadata" : "", chroma_name);
   int is_hdr = (header.colour_flags & 1) != 0;
-  size_t frame_bytes = (size_t)pixel_count * (is_hdr ? 6 : 3);   // one decoded RGB frame: 8-bit SDR (3B) or 16-bit HDR (6B)
+  g_channels = 4;   // Option B: the CPU reference decode emits rgba8 (SDR) / rgba64 (HDR), 32/64-bit aligned + alpha lane
+  size_t frame_bytes = (size_t)pixel_count * g_channels * (is_hdr ? 2 : 1);   // one decoded rgba frame: 8-bit SDR (4B) or 16-bit HDR (8B)
   g_chroma_quant = header.chroma_quant_x16 ? ((float)header.chroma_quant_x16 / 16.0f) : 1.0f;   // chroma quant weighting from the container (0 = old file -> off)
   float hdr_exposure = 100.0f;   // SDR-display tonemap strength (X11); --exposure overrides
   if (is_hdr) {
@@ -1681,7 +1682,7 @@ int main(int argc, char **argv) {
   if (verify) {
     cpu_rgb = checked_malloc(frame_bytes);   // HDR: int16 samples
     if (is_hdr) {
-      cpu_sdr = checked_malloc((size_t)pixel_count * 3);
+      cpu_sdr = checked_malloc((size_t)pixel_count * g_channels);   // hdr_to_srgb8 now writes rgba (A=255) at g_channels stride
     }
     for (int plane = 0; plane < g_num_planes; plane++) {
       cpu_previous[plane] = checked_malloc((size_t)pixel_count * 4);
@@ -2313,10 +2314,10 @@ int main(int argc, char **argv) {
       const uint8_t *src = bstream.rgb[frame_index];
       uint8_t *dst = bf_upload_map;
       for (int i = 0; i < pixel_count; i++) {
-        dst[(i * 4) + 0] = src[(i * 3) + 0];
-        dst[(i * 4) + 1] = src[(i * 3) + 1];
-        dst[(i * 4) + 2] = src[(i * 3) + 2];
-        dst[(i * 4) + 3] = 255;
+        dst[(i * 4) + 0] = src[(i * g_channels) + 0];
+        dst[(i * 4) + 1] = src[(i * g_channels) + 1];
+        dst[(i * 4) + 2] = src[(i * g_channels) + 2];
+        dst[(i * 4) + 3] = src[(i * g_channels) + 3];   // alpha lane (opaque 255 when no alpha)
       }
       free(bstream.rgb[frame_index]);   // the display copy is consumed here; the DPB (references) is held separately
       bstream.rgb[frame_index] = NULL;
@@ -2573,7 +2574,7 @@ int main(int argc, char **argv) {
         double mean_squared_error = 0;
         for (int i = 0; i < pixel_count; i++) {
           for (int channel = 0; channel < 3; channel++) {
-            int difference = (int)gpu_rgba[(i * 4) + channel] - (int)reference[(i * 3) + channel];
+            int difference = (int)gpu_rgba[(i * 4) + channel] - (int)reference[(i * g_channels) + channel];
             mean_squared_error += (double)difference * difference;
           }
         }
