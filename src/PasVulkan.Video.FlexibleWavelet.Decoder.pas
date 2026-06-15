@@ -142,17 +142,38 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fTemporalLevels:TpvInt32;
        fTemporalWavelet:TpvInt32;
        fGOPCapacity:TpvInt32;
-       fCur3DGopStart:TpvInt32; // coding/display index of the currently-decoded GOP (-1 = none)
-       fGopBuffer:array[0..2] of TpvVulkanBuffer; // the whole reconstructed GOP (subbands -> frames), device-local
+       fCur3DGopStart:TpvInt32; // display index of the GOP currently being presented (-1 = none)
+       fGopBuffer:array[0..1,0..2] of TpvVulkanBuffer; // double-buffered reconstructed GOP (cur vs prefetched), device-local
        fPipeTDWTInt:TpvVulkanComputePipeline;
        fPipeTDWTFloat:TpvVulkanComputePipeline;
        fPLTemporal:TpvVulkanPipelineLayout; // DSL1 + 20-byte push
-       fSetTemporal:array[0..2] of TpvVulkanDescriptorSet; // {gop_buffer[plane]}
+       fSetTemporal:array[0..1,0..2] of TpvVulkanDescriptorSet; // per GOP buffer: {gop_buffer[buf][plane]}
        fMCTFPred:array[0..2] of TpvVulkanBuffer; // MCTF: the per-pair MC-warped low frame, device-local
        fMCTFScratch:array[0..2] of TpvVulkanBuffer; // MCTF: the per-level interleaved frame workspace, device-local
        fMCTFMVScratch:array of TpvInt32; // MCTF: every GOP frame's luma MV field (CPU side), by deinterleaved slot
        fSetMCTFMC:array[0..2] of TpvVulkanDescriptorSet; // MCTF (rebound per pair, with byte offsets): {gop@low, mv, pred}
        fSetMCTFAdd:array[0..2] of TpvVulkanDescriptorSet; // MCTF: {scratch@odd, pred}
+       // 3D-DWT GOP prefetch: the next GOP is decoded one subband per displayed frame on a SEPARATE command buffer +
+       // fence (overlaps the present) into the OTHER gop buffer, then swapped in — so no whole-GOP burst stalls a frame.
+       // The prefetch spatial inverse writes its own fPrefetchCoeff (the present's display only touches fCoeffBuffer, so
+       // data/offset/step/scratch stay free for the prefetch to reuse).
+       fPrefetchCoeff:array[0..2] of TpvVulkanBuffer;
+       fSetUnpackPF:array[0..2] of TpvVulkanDescriptorSet; // {data, offset, prefetch_coeff}
+       fSetDequantPF:array[0..2] of TpvVulkanDescriptorSet; // {prefetch_coeff, step}
+       fSetCoeffToScratchPF:array[0..2] of TpvVulkanDescriptorSet; // {prefetch_coeff, scratch}
+       fSetScratchToCoeffPF:array[0..2] of TpvVulkanDescriptorSet; // {scratch, prefetch_coeff}
+       fSetRowPF:array[0..2] of TpvVulkanDescriptorSet; // {prefetch_coeff} (iDWT row + MCTF round)
+       fPrefetchCommandBuffer:TpvVulkanCommandBuffer; // async GOP-prefetch steps (overlaps present)
+       fPrefetchFence:TpvVulkanFence;
+       f3DCurBuf:TpvInt32; // gop_buffer index currently presented
+       f3DCurGopCount:TpvInt32; // frame count of the presented GOP
+       f3DPfBuf:TpvInt32; // gop_buffer index being prefetched into
+       f3DPfGopStart:TpvInt32; // first frame index of the prefetched GOP
+       f3DPfGopCount:TpvInt32; // frame count of the prefetched GOP
+       f3DPfStep:TpvInt32; // next subband to prefetch (0..f3DPfGopCount)
+       f3DPfDone:boolean; // the prefetched GOP is fully decoded (spatial + temporal/MCTF)
+       f3DPfPending:boolean; // a prefetch submit is in flight on fPrefetchFence (gates PrefetchWait so it never waits empty)
+       f3DInitialized:boolean; // GOP 0 has been decoded up-front
        // Per-frame input ring: -1 = the shared buffers/sets (mode A self-submit, mode C caller step-loop, 3D-DWT),
        // >=0 = the active ring slot. Used by mode B (the whole decode-ahead into ONE caller command buffer) AND by the
        // pure intra/I-P path, which cycles one slot per displayed frame so a pipelined Update can stage frame N+1 without
@@ -318,10 +339,13 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        // 3D-DWT / MCTF temporal mode (Stage E4)
        function GopCountFrom(const aStart:TpvInt32):TpvInt32;
        procedure Upload3DFrame(const aCodingIndex,aSlot,aGOPCount:TpvInt32); // read + parse + temporally-scaled step upload
-       procedure RecordSpatial3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aSlot:TpvInt32); // spatial inverse -> gop[slot]
-       procedure RecordTemporal3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aGOPCount:TpvInt32); // open-loop temporal inverse over the GOP
-       procedure DecodeMCTFInverse(const aGOPCount:TpvInt32); // MCTF MC-Haar temporal inverse (self-submits per pair)
-       procedure RecordDisplay3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aSlot:TpvInt32); // gop[slot] -> coeff -> [round] -> colour
+       procedure RecordSpatial3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aBuf,aSlot:TpvInt32); // spatial inverse -> gop[buf][slot]
+       procedure RecordTemporal3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aBuf,aGOPCount:TpvInt32); // open-loop temporal inverse over the GOP buffer
+       procedure DecodeMCTFInverse(const aBuf,aGOPCount:TpvInt32); // MCTF MC-Haar temporal inverse on the prefetch CB (self-submits per pair, async)
+       procedure PrefetchWait; // wait + reset the prefetch fence (the previous async prefetch step finished reading the shared buffers)
+       procedure PrefetchFinishGop(const aBuf,aGOPCount:TpvInt32); // temporal / MCTF inverse of a prefetched GOP (async, last submit left pending)
+       procedure PrepareFrame3D(const aDisplayIndex:TpvInt32); // GOP-prefetch orchestration: GOP 0 up-front, one subband per frame, swap
+       procedure RecordDisplay3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aBuf,aSlot:TpvInt32); // gop[buf][slot] -> coeff -> [round] -> colour
        procedure DecodeFrame3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aDisplayIndex:TpvInt32);
       public
        // aPreferSCRGBForHDR: for HDR streams, output scRGB FP16 (R16G16B16A16) for a real HDR display instead of the
@@ -525,6 +549,15 @@ begin
  fMode3DDWT:=(fPredictionMethod=2) or (fPredictionMethod=3);
  fMCTF:=fPredictionMethod=3;
  fCur3DGopStart:=-1;
+ f3DInitialized:=false; // GOP 0 decoded on the first PrepareFrame3D
+ f3DPfPending:=false;
+ f3DCurBuf:=0;
+ f3DCurGopCount:=0;
+ f3DPfBuf:=1;
+ f3DPfGopStart:=-1;
+ f3DPfGopCount:=0;
+ f3DPfStep:=0;
+ f3DPfDone:=true;
  if fMode3DDWT then begin
   if fHeader.Reserved2[0]<>0 then begin
    fTemporalLevels:=fHeader.Reserved2[0];
@@ -776,11 +809,14 @@ begin
   end;
  end;
 
- // 3D-DWT: the whole GOP (gop_capacity frames per plane, contiguous slots), device-local
+ // 3D-DWT: the whole GOP (gop_capacity frames per plane, contiguous slots), DOUBLE-buffered (present vs prefetch),
+ // device-local; plus a prefetch coeff buffer (one plane) so the prefetch spatial inverse never touches fCoeffBuffer.
  if fMode3DDWT then begin
   for Plane:=0 to 2 do begin
    PlaneBytes:=TVkDeviceSize(PlaneWidth(Plane))*TVkDeviceSize(PlaneHeight(Plane))*4;
-   fGopBuffer[Plane]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.gop');
+   fGopBuffer[0][Plane]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.gop0');
+   fGopBuffer[1][Plane]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.gop1');
+   fPrefetchCoeff[Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.pfcoeff');
   end;
   // MCTF: the per-pair MC prediction + the per-level interleaved-frame workspace + the GOP's luma MV fields
   if fMCTF then begin
@@ -873,6 +909,10 @@ begin
   MaxSets:=MaxSets+(fBufferRingSize*30);
   MaxBuffers:=MaxBuffers+(fBufferRingSize*96);
  end;
+ if fMode3DDWT then begin // + the GOP-prefetch spatial sets (5/plane) + the second gop buffer's temporal sets
+  MaxSets:=MaxSets+24;
+  MaxBuffers:=MaxBuffers+48;
+ end;
  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),MaxSets);
  fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,MaxBuffers);
  fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,2);
@@ -951,12 +991,43 @@ begin
   end;
  end;
 
- // 3D-DWT temporal set: {gop_buffer[plane]}; MCTF mc/add sets are rebound per pair (with byte offsets)
+ // 3D-DWT temporal set: {gop_buffer[buf][plane]}, one per GOP buffer; MCTF mc/add sets are rebound per pair (with byte
+ // offsets). Plus the GOP-prefetch spatial sets, identical to the present's spatial sets but bound to fPrefetchCoeff
+ // (so the prefetch's spatial inverse never touches fCoeffBuffer, which the present's display copy + colour use).
  if fMode3DDWT then begin
   for Plane:=0 to 2 do begin
-   fSetTemporal[Plane]:=AllocateSet(fDSL1);
-   BindStorageBuffer(fSetTemporal[Plane],0,fGopBuffer[Plane]);
-   fSetTemporal[Plane].Flush;
+   fSetTemporal[0][Plane]:=AllocateSet(fDSL1);
+   BindStorageBuffer(fSetTemporal[0][Plane],0,fGopBuffer[0][Plane]);
+   fSetTemporal[0][Plane].Flush;
+   fSetTemporal[1][Plane]:=AllocateSet(fDSL1);
+   BindStorageBuffer(fSetTemporal[1][Plane],0,fGopBuffer[1][Plane]);
+   fSetTemporal[1][Plane].Flush;
+
+   fSetUnpackPF[Plane]:=AllocateSet(fDSL3);
+   BindStorageBuffer(fSetUnpackPF[Plane],0,fDataBuffer);
+   BindStorageBuffer(fSetUnpackPF[Plane],1,fOffsetBuffer[Plane]);
+   BindStorageBuffer(fSetUnpackPF[Plane],2,fPrefetchCoeff[Plane]);
+   fSetUnpackPF[Plane].Flush;
+
+   fSetDequantPF[Plane]:=AllocateSet(fDSL2);
+   BindStorageBuffer(fSetDequantPF[Plane],0,fPrefetchCoeff[Plane]);
+   BindStorageBuffer(fSetDequantPF[Plane],1,fStepBuffer[Plane]);
+   fSetDequantPF[Plane].Flush;
+
+   fSetCoeffToScratchPF[Plane]:=AllocateSet(fDSL2);
+   BindStorageBuffer(fSetCoeffToScratchPF[Plane],0,fPrefetchCoeff[Plane]);
+   BindStorageBuffer(fSetCoeffToScratchPF[Plane],1,fScratchBuffer);
+   fSetCoeffToScratchPF[Plane].Flush;
+
+   fSetScratchToCoeffPF[Plane]:=AllocateSet(fDSL2);
+   BindStorageBuffer(fSetScratchToCoeffPF[Plane],0,fScratchBuffer);
+   BindStorageBuffer(fSetScratchToCoeffPF[Plane],1,fPrefetchCoeff[Plane]);
+   fSetScratchToCoeffPF[Plane].Flush;
+
+   fSetRowPF[Plane]:=AllocateSet(fDSL1);
+   BindStorageBuffer(fSetRowPF[Plane],0,fPrefetchCoeff[Plane]);
+   fSetRowPF[Plane].Flush;
+
    if fMCTF then begin
     fSetMCTFMC[Plane]:=AllocateSet(fDSL3);
     fSetMCTFAdd[Plane]:=AllocateSet(fDSL2);
@@ -2194,7 +2265,7 @@ begin
 
 end;
 
-procedure TpvFlexibleWaveletVideoDecoder.RecordSpatial3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aSlot:TpvInt32);
+procedure TpvFlexibleWaveletVideoDecoder.RecordSpatial3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aBuf,aSlot:TpvInt32);
 var Plane,Level,LevelCount:TpvInt32;
     PlaneW,PlaneH,ScratchStride,PlanePixels:TpvInt32;
     PlaneBlocksX,PlaneBlocksY,PlaneBlockCount:TpvInt32;
@@ -2237,12 +2308,14 @@ begin
    PlaneUnpackWorkgroups:=(PlaneBlockCount+63) div 64;
   end;
 
-  // spatial inverse: unpack -> [dequant] -> iDWT (same as intra), reusing the shared sets that bind fCoeffBuffer
+  // spatial inverse: unpack -> [dequant] -> iDWT, into the PREFETCH coeff (so it never touches fCoeffBuffer, which the
+  // present's display copy + colour use) and the chosen GOP buffer; the scratch + row-scratch set are shared (the
+  // present's display does not touch scratch).
   UnpackPush[0]:=PlaneW;
   UnpackPush[1]:=PlaneH;
   UnpackPush[2]:=PlaneBlocksX;
   UnpackPush[3]:=PlaneBlocksY;
-  RecordDispatch(aCommandBuffer,fPipeUnpack,fPLUnpack,fSetUnpack[Plane],@UnpackPush[0],16,PlaneUnpackWorkgroups,1,1);
+  RecordDispatch(aCommandBuffer,fPipeUnpack,fPLUnpack,fSetUnpackPF[Plane],@UnpackPush[0],16,PlaneUnpackWorkgroups,1,1);
   RecordComputeBarrier(aCommandBuffer);
 
   if not fLossless then begin
@@ -2253,7 +2326,7 @@ begin
     ChromaMultiplier:=fChromaQuant;
    end;
    DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
-   RecordDispatch(aCommandBuffer,fPipeDequant,fPLDequant,fSetDequant[Plane],@DequantPush[0],8,PlanePixelWorkgroups,1,1);
+   RecordDispatch(aCommandBuffer,fPipeDequant,fPLDequant,fSetDequantPF[Plane],@DequantPush[0],8,PlanePixelWorkgroups,1,1);
    RecordComputeBarrier(aCommandBuffer);
   end;
 
@@ -2276,7 +2349,7 @@ begin
    TransposePush1[1]:=LevelW;
    TransposePush1[2]:=LevelH;
    TransposePush1[3]:=ScratchStride;
-   RecordDispatch(aCommandBuffer,fPipeTranspose,fPLTranspose,fSetCoeffToScratch[Plane],@TransposePush1[0],16,(LevelW+15) div 16,(LevelH+15) div 16,1);
+   RecordDispatch(aCommandBuffer,fPipeTranspose,fPLTranspose,fSetCoeffToScratchPF[Plane],@TransposePush1[0],16,(LevelW+15) div 16,(LevelH+15) div 16,1);
    RecordComputeBarrier(aCommandBuffer);
    RowPush1[0]:=ScratchStride;
    RowPush1[1]:=LevelH;
@@ -2288,24 +2361,24 @@ begin
    TransposePush2[1]:=LevelH;
    TransposePush2[2]:=LevelW;
    TransposePush2[3]:=PlaneW;
-   RecordDispatch(aCommandBuffer,fPipeTranspose,fPLTranspose,fSetScratchToCoeff[Plane],@TransposePush2[0],16,(LevelH+15) div 16,(LevelW+15) div 16,1);
+   RecordDispatch(aCommandBuffer,fPipeTranspose,fPLTranspose,fSetScratchToCoeffPF[Plane],@TransposePush2[0],16,(LevelH+15) div 16,(LevelW+15) div 16,1);
    RecordComputeBarrier(aCommandBuffer);
    RowPush2[0]:=PlaneW;
    RowPush2[1]:=LevelW;
    RowPush2[2]:=LevelH;
    RowPush2[3]:=1;
-   RecordDispatch(aCommandBuffer,RowPipeline,fPLRow,fSetRow[Plane],@RowPush2[0],16,LevelH,1,1);
+   RecordDispatch(aCommandBuffer,RowPipeline,fPLRow,fSetRowPF[Plane],@RowPush2[0],16,LevelH,1,1);
    RecordComputeBarrier(aCommandBuffer);
   end;
 
   // MCTF gop is integer: round the float 9/7 result before the integer MC-Haar inverse (open-loop stays float)
   if fMCTF and not fLossless then begin
    PixelCountPush:=PlanePixels;
-   RecordDispatch(aCommandBuffer,fPipeRound,fPLRound,fSetRow[Plane],@PixelCountPush,4,PlanePixelWorkgroups,1,1);
+   RecordDispatch(aCommandBuffer,fPipeRound,fPLRound,fSetRowPF[Plane],@PixelCountPush,4,PlanePixelWorkgroups,1,1);
    RecordComputeBarrier(aCommandBuffer);
   end;
 
-  // hand the reconstructed plane to the transfer stage, then copy it into this frame's GOP slot
+  // hand the reconstructed plane to the transfer stage, then copy it into this frame's GOP slot of the chosen buffer
   FillChar(Barrier,SizeOf(Barrier),#0);
   Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
   Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
@@ -2317,13 +2390,13 @@ begin
   BufferCopy.srcOffset:=0;
   BufferCopy.dstOffset:=TVkDeviceSize(aSlot)*TVkDeviceSize(PlanePixels)*4;
   BufferCopy.size:=TVkDeviceSize(PlanePixels)*4;
-  aCommandBuffer.CmdCopyBuffer(fCoeffBuffer[Plane].Handle,fGopBuffer[Plane].Handle,1,@BufferCopy);
+  aCommandBuffer.CmdCopyBuffer(fPrefetchCoeff[Plane].Handle,fGopBuffer[aBuf][Plane].Handle,1,@BufferCopy);
 
  end;
 
 end;
 
-procedure TpvFlexibleWaveletVideoDecoder.RecordTemporal3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aGOPCount:TpvInt32);
+procedure TpvFlexibleWaveletVideoDecoder.RecordTemporal3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aBuf,aGOPCount:TpvInt32);
 var Plane,PlanePixels,Wavelet:TpvInt32;
     TemporalPush:array[0..4] of TpvInt32;
     Pipeline:TpvVulkanComputePipeline;
@@ -2346,13 +2419,13 @@ begin
   TemporalPush[2]:=fTemporalLevels;
   TemporalPush[3]:=Wavelet;
   TemporalPush[4]:=1; // inverse
-  RecordDispatch(aCommandBuffer,Pipeline,fPLTemporal,fSetTemporal[Plane],@TemporalPush[0],20,(PlanePixels+255) div 256,1,1);
+  RecordDispatch(aCommandBuffer,Pipeline,fPLTemporal,fSetTemporal[aBuf][Plane],@TemporalPush[0],20,(PlanePixels+255) div 256,1,1);
   RecordComputeBarrier(aCommandBuffer);
  end;
 
 end;
 
-procedure TpvFlexibleWaveletVideoDecoder.DecodeMCTFInverse(const aGOPCount:TpvInt32);
+procedure TpvFlexibleWaveletVideoDecoder.DecodeMCTFInverse(const aBuf,aGOPCount:TpvInt32);
 var LumaBlocks,Plane,Level,Count,Len,LevelLen,LowCount,k,Even,Odd:TpvInt32;
     PlaneW,PlaneH,PlanePP,PlaneMBX:array[0..2] of TpvInt32;
     Lengths:array[0..15] of TpvInt32;
@@ -2384,12 +2457,16 @@ begin
   Len:=(Len+1) div 2;
  end;
 
+ // Each pair / back-copy submits ASYNC on the prefetch command buffer + fence; PrefetchWait (idempotent via f3DPfPending)
+ // before reusing the CB / fMVBuffer waits the previous step, leaving the LAST submit pending for the caller (the GOP
+ // swap) to wait on. The caller already drained the fence before calling, so the first PrefetchWait here is a no-op.
  for Level:=Count-1 downto 0 do begin
   LevelLen:=Lengths[Level];
   LowCount:=(LevelLen+1) div 2;
   for k:=0 to LowCount-1 do begin
    Even:=2*k;
-   fBDecodeCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+   PrefetchWait;
+   fPrefetchCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
    if ((2*k)+1)<LevelLen then begin // pair: odd = high + OBMC(low)
     Odd:=(2*k)+1;
     DataPointer:=PpvUInt8Array(fMVBuffer.Memory.MapMemory); // this high-pass frame's luma MVs
@@ -2405,38 +2482,38 @@ begin
      EvenOff:=TVkDeviceSize(Even)*PlanePixels*4;
      OddOff:=TVkDeviceSize(Odd)*PlanePixels*4;
      // mc: warp gop@low(k) by this pair's MVs -> mctf_pred
-     BindStorageBufferOffset(fSetMCTFMC[Plane],0,fGopBuffer[Plane],LowOff,TVkDeviceSize(PlanePixels)*4);
+     BindStorageBufferOffset(fSetMCTFMC[Plane],0,fGopBuffer[aBuf][Plane],LowOff,TVkDeviceSize(PlanePixels)*4);
      BindStorageBuffer(fSetMCTFMC[Plane],1,fMVBuffer);
      BindStorageBuffer(fSetMCTFMC[Plane],2,fMCTFPred[Plane]);
      fSetMCTFMC[Plane].Flush;
      MCPush[0]:=PlaneW[Plane];
      MCPush[1]:=PlaneH[Plane];
      MCPush[2]:=PlaneMBX[Plane];
-     RecordDispatch(fBDecodeCommandBuffer,fPipeMC,fPLUnpack,fSetMCTFMC[Plane],@MCPush[0],12,(PlanePixels+255) div 256,1,1);
+     RecordDispatch(fPrefetchCommandBuffer,fPipeMC,fPLUnpack,fSetMCTFMC[Plane],@MCPush[0],12,(PlanePixels+255) div 256,1,1);
      // even = low passthrough -> scratch@even; high -> scratch@odd (coeff_add adds pred in place)
      FillChar(BufferCopy,SizeOf(BufferCopy),#0);
      BufferCopy.srcOffset:=LowOff;
      BufferCopy.dstOffset:=EvenOff;
      BufferCopy.size:=TVkDeviceSize(PlanePixels)*4;
-     fBDecodeCommandBuffer.CmdCopyBuffer(fGopBuffer[Plane].Handle,fMCTFScratch[Plane].Handle,1,@BufferCopy);
+     fPrefetchCommandBuffer.CmdCopyBuffer(fGopBuffer[aBuf][Plane].Handle,fMCTFScratch[Plane].Handle,1,@BufferCopy);
      BufferCopy.srcOffset:=HighOff;
      BufferCopy.dstOffset:=OddOff;
-     fBDecodeCommandBuffer.CmdCopyBuffer(fGopBuffer[Plane].Handle,fMCTFScratch[Plane].Handle,1,@BufferCopy);
+     fPrefetchCommandBuffer.CmdCopyBuffer(fGopBuffer[aBuf][Plane].Handle,fMCTFScratch[Plane].Handle,1,@BufferCopy);
      // mc (compute) + the two copies (transfer) -> coeff_add (compute)
      FillChar(Barrier,SizeOf(Barrier),#0);
      Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
      Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
      Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-     fBDecodeCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                              0,1,@Barrier,0,nil,0,nil);
+     fPrefetchCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                               0,1,@Barrier,0,nil,0,nil);
      // coeff_add: scratch@odd (= high) += pred -> odd
      BindStorageBufferOffset(fSetMCTFAdd[Plane],0,fMCTFScratch[Plane],OddOff,TVkDeviceSize(PlanePixels)*4);
      BindStorageBuffer(fSetMCTFAdd[Plane],1,fMCTFPred[Plane]);
      fSetMCTFAdd[Plane].Flush;
      AddPush[0]:=PlanePixels;
      AddPush[1]:=1;
-     RecordDispatch(fBDecodeCommandBuffer,fPipeCoeffAdd,fPLCoeffAdd,fSetMCTFAdd[Plane],@AddPush[0],8,(PlanePixels+255) div 256,1,1);
+     RecordDispatch(fPrefetchCommandBuffer,fPipeCoeffAdd,fPLCoeffAdd,fSetMCTFAdd[Plane],@AddPush[0],8,(PlanePixels+255) div 256,1,1);
     end;
    end else begin // odd tail (no partner): even = low passthrough -> scratch@even
     for Plane:=0 to 2 do begin
@@ -2445,28 +2522,31 @@ begin
      BufferCopy.srcOffset:=TVkDeviceSize(k)*PlanePixels*4;
      BufferCopy.dstOffset:=TVkDeviceSize(Even)*PlanePixels*4;
      BufferCopy.size:=TVkDeviceSize(PlanePixels)*4;
-     fBDecodeCommandBuffer.CmdCopyBuffer(fGopBuffer[Plane].Handle,fMCTFScratch[Plane].Handle,1,@BufferCopy);
+     fPrefetchCommandBuffer.CmdCopyBuffer(fGopBuffer[aBuf][Plane].Handle,fMCTFScratch[Plane].Handle,1,@BufferCopy);
     end;
    end;
-   fBDecodeCommandBuffer.EndRecording;
-   fBDecodeCommandBuffer.Execute(fDevice.UniversalQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),nil,nil,fBDecodeFence,true);
+   fPrefetchCommandBuffer.EndRecording;
+   fPrefetchCommandBuffer.Execute(fDevice.UniversalQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),nil,nil,fPrefetchFence,false);
+   f3DPfPending:=true;
   end;
   // copy scratch[0..level_len) back into gop_buffer (the interleaved frames for this level)
-  fBDecodeCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+  PrefetchWait;
+  fPrefetchCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
   for Plane:=0 to 2 do begin
    FillChar(BufferCopy,SizeOf(BufferCopy),#0);
    BufferCopy.srcOffset:=0;
    BufferCopy.dstOffset:=0;
    BufferCopy.size:=TVkDeviceSize(LevelLen)*TVkDeviceSize(PlanePP[Plane])*4;
-   fBDecodeCommandBuffer.CmdCopyBuffer(fMCTFScratch[Plane].Handle,fGopBuffer[Plane].Handle,1,@BufferCopy);
+   fPrefetchCommandBuffer.CmdCopyBuffer(fMCTFScratch[Plane].Handle,fGopBuffer[aBuf][Plane].Handle,1,@BufferCopy);
   end;
-  fBDecodeCommandBuffer.EndRecording;
-  fBDecodeCommandBuffer.Execute(fDevice.UniversalQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),nil,nil,fBDecodeFence,true);
+  fPrefetchCommandBuffer.EndRecording;
+  fPrefetchCommandBuffer.Execute(fDevice.UniversalQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),nil,nil,fPrefetchFence,false);
+  f3DPfPending:=true;
  end;
 
 end;
 
-procedure TpvFlexibleWaveletVideoDecoder.RecordDisplay3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aSlot:TpvInt32);
+procedure TpvFlexibleWaveletVideoDecoder.RecordDisplay3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aBuf,aSlot:TpvInt32);
 var Plane,PlanePixels,PixelWorkgroups:TpvInt32;
     BufferCopy:TVkBufferCopy;
     Barrier:TVkMemoryBarrier;
@@ -2488,7 +2568,7 @@ begin
   BufferCopy.srcOffset:=TVkDeviceSize(aSlot)*TVkDeviceSize(PlanePixels)*4;
   BufferCopy.dstOffset:=0;
   BufferCopy.size:=TVkDeviceSize(PlanePixels)*4;
-  aCommandBuffer.CmdCopyBuffer(fGopBuffer[Plane].Handle,fCoeffBuffer[Plane].Handle,1,@BufferCopy);
+  aCommandBuffer.CmdCopyBuffer(fGopBuffer[aBuf][Plane].Handle,fCoeffBuffer[Plane].Handle,1,@BufferCopy);
  end;
  FillChar(Barrier,SizeOf(Barrier),#0);
  Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
@@ -2540,42 +2620,122 @@ begin
 
 end;
 
-procedure TpvFlexibleWaveletVideoDecoder.DecodeFrame3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aDisplayIndex:TpvInt32);
-var GopStart,GopCount,SlotIndex:TpvInt32;
+procedure TpvFlexibleWaveletVideoDecoder.PrefetchWait;
+begin
+ // idempotent: only wait+reset when a prefetch submit is actually in flight, so a wait is never issued on an
+ // already-drained fence (which would block forever).
+ if f3DPfPending then begin
+  fPrefetchFence.WaitFor;
+  fPrefetchFence.Reset;
+  f3DPfPending:=false;
+ end;
+end;
+
+procedure TpvFlexibleWaveletVideoDecoder.PrefetchFinishGop(const aBuf,aGOPCount:TpvInt32);
+begin
+ // temporal axis: MCTF MC-Haar inverse (multiple async submits, last left pending) or the open-loop temporal DWT (one
+ // async submit). The caller drained the fence (last spatial done) before calling.
+ if fMCTF then begin
+  DecodeMCTFInverse(aBuf,aGOPCount);
+ end else begin
+  fPrefetchCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+  RecordTemporal3D(fPrefetchCommandBuffer,aBuf,aGOPCount);
+  fPrefetchCommandBuffer.EndRecording;
+  fPrefetchCommandBuffer.Execute(fDevice.UniversalQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),nil,nil,fPrefetchFence,false);
+  f3DPfPending:=true;
+ end;
+end;
+
+// CPU side of the poll-API split for 3D-DWT/MCTF: the GOP-prefetch state machine (ported from fwvplay.c). The whole
+// GOP is decoded one subband per displayed frame on fPrefetchCommandBuffer (overlapping the present) into the OTHER
+// gop buffer; when the presented GOP runs out, the prefetched buffer is swapped in. No whole-GOP burst stalls a frame.
+procedure TpvFlexibleWaveletVideoDecoder.PrepareFrame3D(const aDisplayIndex:TpvInt32);
+ procedure SpatialStep(const aBuf,aGopStart,aSlot,aGopCount:TpvInt32); // upload + async spatial inverse of one subband
+ begin
+  PrefetchWait;
+  Upload3DFrame(aGopStart+aSlot,aSlot,aGopCount);
+  fPrefetchCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+  RecordSpatial3D(fPrefetchCommandBuffer,aBuf,aSlot);
+  fPrefetchCommandBuffer.EndRecording;
+  fPrefetchCommandBuffer.Execute(fDevice.UniversalQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),nil,nil,fPrefetchFence,false);
+  f3DPfPending:=true;
+ end;
+ procedure StartPrefetch(const aBuf,aGopStart:TpvInt32); // arm the prefetch state for the GOP after the current one
+ begin
+  f3DPfBuf:=aBuf;
+  f3DPfGopStart:=aGopStart;
+  if aGopStart<fFrameCount then begin
+   f3DPfGopCount:=GopCountFrom(aGopStart);
+   f3DPfStep:=0;
+   f3DPfDone:=false;
+  end else begin
+   f3DPfDone:=true; // no further GOP to prefetch (end of stream)
+  end;
+ end;
+var TargetGopStart,Slot:TpvInt32;
 begin
 
  fBufferRingSlot:=-1; // 3D-DWT uses the shared input buffers
 
  // the GOP containing this display frame starts at the nearest preceding type-0 subband frame
- GopStart:=aDisplayIndex;
- while (GopStart>0) and (fFrameEntries[GopStart].FrameType<>0) do begin
-  dec(GopStart);
+ TargetGopStart:=aDisplayIndex;
+ while (TargetGopStart>0) and (fFrameEntries[TargetGopStart].FrameType<>0) do begin
+  dec(TargetGopStart);
  end;
 
- if fCur3DGopStart<>GopStart then begin
-  GopCount:=GopCountFrom(GopStart);
-  // spatial-inverse each subband frame into its GOP slot (self-submit per frame: the shared input buffers are reused)
-  for SlotIndex:=0 to GopCount-1 do begin
-   Upload3DFrame(GopStart+SlotIndex,SlotIndex,GopCount);
-   fBDecodeCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
-   RecordSpatial3D(fBDecodeCommandBuffer,SlotIndex);
-   fBDecodeCommandBuffer.EndRecording;
-   fBDecodeCommandBuffer.Execute(fDevice.UniversalQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),nil,nil,fBDecodeFence,true);
+ if (not f3DInitialized) or ((TargetGopStart<>fCur3DGopStart) and (TargetGopStart<>f3DPfGopStart)) then begin
+
+  // start-up OR a seek to an unrelated GOP: decode it synchronously into buffer 0 (a one-off stall is fine here)
+  f3DCurBuf:=0;
+  fCur3DGopStart:=TargetGopStart;
+  f3DCurGopCount:=GopCountFrom(TargetGopStart);
+  for Slot:=0 to f3DCurGopCount-1 do begin
+   SpatialStep(0,TargetGopStart,Slot,f3DCurGopCount);
   end;
-  // temporal inverse over the whole GOP: MCTF MC-Haar (self-submits per pair) or the open-loop temporal DWT
-  if fMCTF then begin
-   DecodeMCTFInverse(GopCount);
-  end else begin
-   fBDecodeCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
-   RecordTemporal3D(fBDecodeCommandBuffer,GopCount);
-   fBDecodeCommandBuffer.EndRecording;
-   fBDecodeCommandBuffer.Execute(fDevice.UniversalQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),nil,nil,fBDecodeFence,true);
+  PrefetchWait; // last spatial done
+  PrefetchFinishGop(0,f3DCurGopCount);
+  PrefetchWait; // temporal/MCTF done -> the GOP is fully decoded
+  f3DInitialized:=true;
+  StartPrefetch(1,fCur3DGopStart+f3DCurGopCount);
+
+ end else if (TargetGopStart=f3DPfGopStart) and (TargetGopStart<>fCur3DGopStart) then begin
+
+  // advanced into the prefetched GOP: finish it if it lagged, then swap it in
+  while not f3DPfDone do begin
+   SpatialStep(f3DPfBuf,f3DPfGopStart,f3DPfStep,f3DPfGopCount);
+   inc(f3DPfStep);
+   if f3DPfStep>=f3DPfGopCount then begin
+    PrefetchWait;
+    PrefetchFinishGop(f3DPfBuf,f3DPfGopCount);
+    f3DPfDone:=true;
+   end;
   end;
-  fCur3DGopStart:=GopStart;
+  PrefetchWait; // the prefetched GOP's finish submit -> fully decoded before we present from it
+  f3DCurBuf:=f3DPfBuf;
+  fCur3DGopStart:=f3DPfGopStart;
+  f3DCurGopCount:=f3DPfGopCount;
+  StartPrefetch(1-f3DCurBuf,fCur3DGopStart+f3DCurGopCount);
+
  end;
 
- RecordDisplay3D(aCommandBuffer,aDisplayIndex-GopStart);
+ // advance the prefetch one subband per displayed frame (overlaps the present)
+ if not f3DPfDone then begin
+  SpatialStep(f3DPfBuf,f3DPfGopStart,f3DPfStep,f3DPfGopCount);
+  inc(f3DPfStep);
+  if f3DPfStep>=f3DPfGopCount then begin
+   PrefetchWait;
+   PrefetchFinishGop(f3DPfBuf,f3DPfGopCount); // async; the swap waits its completion
+   f3DPfDone:=true;
+  end;
+ end;
 
+end;
+
+procedure TpvFlexibleWaveletVideoDecoder.DecodeFrame3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aDisplayIndex:TpvInt32);
+begin
+ // combined (non-poll-API) path: prepare the GOP then record the display from the current buffer.
+ PrepareFrame3D(aDisplayIndex);
+ RecordDisplay3D(aCommandBuffer,f3DCurBuf,aDisplayIndex-fCur3DGopStart);
 end;
 
 procedure TpvFlexibleWaveletVideoDecoder.DecodeFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aFrameIndex:TpvInt32);
@@ -2653,7 +2813,8 @@ begin
  // CPU side of the poll-API split (Update thread): parse + decompress + MV/mode decode + host-buffer upload.
  fPreparedIndex:=aDisplayIndex;
  if fMode3DDWT then begin
-  // 3D-DWT/MCTF: the multi-pass GOP rebuild self-submits, so its CPU uploads stay coupled inside RecordFrame.
+  // 3D-DWT/MCTF: run the GOP-prefetch state machine (decode-ahead on the prefetch CB); RecordFrame only copies+colours.
+  PrepareFrame3D(aDisplayIndex);
  end else if fHasBFrames then begin
   PrepareFrameBidi(aDisplayIndex);
  end else begin
@@ -2681,7 +2842,8 @@ begin
   exit;
  end;
  if fMode3DDWT then begin
-  DecodeFrame3D(aCommandBuffer,fPreparedIndex);
+  // PrepareFrame3D already decoded/prefetched the GOP; just copy this frame's slot out of the current buffer + colour.
+  RecordDisplay3D(aCommandBuffer,f3DCurBuf,fPreparedIndex-fCur3DGopStart);
  end else if fHasBFrames then begin
   RecordFrameBidi(aCommandBuffer);
  end else begin
@@ -2708,6 +2870,18 @@ begin
  fPreparedIndex:=-1;
  fBidiDisplayPOC:=-1;
  fCur3DGopStart:=-1;
+ if fMode3DDWT then begin
+  // drain any in-flight prefetch, then force GOP 0 to be re-decoded up-front on the next PrepareFrame3D
+  PrefetchWait;
+  f3DInitialized:=false;
+  f3DCurBuf:=0;
+  f3DCurGopCount:=0;
+  f3DPfBuf:=1;
+  f3DPfGopStart:=-1;
+  f3DPfGopCount:=0;
+  f3DPfStep:=0;
+  f3DPfDone:=true;
+ end;
  if fHasBFrames then begin
   for Index:=0 to fFrameCount-1 do begin
    fGDPBPOCToSlot[Index]:=-1;
@@ -2746,6 +2920,14 @@ begin
   fBDecodeFence:=TpvVulkanFence.Create(fDevice);
  end;
 
+ // 3D-DWT GOP prefetch: a SECOND command buffer + fence so the next GOP's subbands decode async (overlapping the
+ // present) instead of stalling a single frame with the whole-GOP burst. The fence starts signaled (no prefetch in
+ // flight yet) so the first wait-before-reuse is a no-op.
+ if fMode3DDWT then begin
+  fPrefetchCommandBuffer:=TpvVulkanCommandBuffer.Create(fBDecodeCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  fPrefetchFence:=TpvVulkanFence.Create(fDevice); // unsignaled; f3DPfPending gates the wait so it is never waited empty
+ end;
+
  // the per-frame input ring: mode B (the whole decode-ahead in one caller CB) + the intra/I-P path (one slot per frame)
  if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin
   BuildBidiRing;
@@ -2757,6 +2939,8 @@ destructor TpvFlexibleWaveletVideoDecoder.Destroy;
 var Plane,SlotIndex:TpvInt32;
 begin
 
+ FreeAndNil(fPrefetchFence);
+ FreeAndNil(fPrefetchCommandBuffer); // allocated from fBDecodeCommandPool -> free before it
  FreeAndNil(fBDecodeFence);
  FreeAndNil(fBDecodeCommandBuffer);
  FreeAndNil(fBDecodeCommandPool);
@@ -2774,7 +2958,13 @@ begin
   FreeAndNil(fSetGBlend[Plane]);
   FreeAndNil(fSetGBlendMode[Plane]);
   FreeAndNil(fSetGAdd[Plane]);
-  FreeAndNil(fSetTemporal[Plane]);
+  FreeAndNil(fSetTemporal[0][Plane]);
+  FreeAndNil(fSetTemporal[1][Plane]);
+  FreeAndNil(fSetUnpackPF[Plane]);
+  FreeAndNil(fSetDequantPF[Plane]);
+  FreeAndNil(fSetCoeffToScratchPF[Plane]);
+  FreeAndNil(fSetScratchToCoeffPF[Plane]);
+  FreeAndNil(fSetRowPF[Plane]);
   FreeAndNil(fSetMCTFMC[Plane]);
   FreeAndNil(fSetMCTFAdd[Plane]);
   FreeAndNil(fSetCoeffToScratch[Plane]);
@@ -2809,7 +2999,9 @@ begin
   fOutputImageMemory:=nil;
  end;
  for Plane:=0 to 2 do begin
-  FreeAndNil(fGopBuffer[Plane]);
+  FreeAndNil(fGopBuffer[0][Plane]);
+  FreeAndNil(fGopBuffer[1][Plane]);
+  FreeAndNil(fPrefetchCoeff[Plane]);
   FreeAndNil(fMCTFPred[Plane]);
   FreeAndNil(fMCTFScratch[Plane]);
  end;
