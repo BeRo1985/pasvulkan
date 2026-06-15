@@ -2019,6 +2019,22 @@ int main(int argc, char **argv) {
       uint32_t data_length;
       memcpy(&data_length, frame_data - 4, 4);
       memcpy(data_map, frame_data, data_length);
+      if (g_has_alpha) {   // parse + upload the appended alpha section: its block data goes right after the colour data in data_buffer
+        int a_block_count = block_count_x(width) * block_count_y(height);
+        uint32_t *a_off = (uint32_t *)offset_map[3];
+        int alpha_qp;
+        const uint8_t *alpha_data = parse_alpha_section(frame_data + data_length, a_off, a_block_count, &alpha_qp);
+        uint32_t alpha_data_length;
+        memcpy(&alpha_data_length, alpha_data - 4, 4);
+        memcpy((uint8_t *)data_map + data_length, alpha_data, alpha_data_length);
+        for (int block = 0; block < a_block_count; block++) {
+          a_off[block] += data_length;   // absolute byte offset in data_buffer (alpha block data starts at data_length)
+        }
+        if (!lossless) {   // alpha quant map (intra; alpha_qp is fixed across frames)
+          build_quantization_steps(step, width, height, levels, alpha_qp);
+          memcpy(step_map[3], step, (size_t)(width * height) * 4);
+        }
+      }
     }
 
     // Pace to the audio master clock (or wall-clock if there is no audio).
@@ -2569,6 +2585,68 @@ int main(int argc, char **argv) {
           memory_barrier();
         }
       }
+      if (g_has_alpha) {   // GPU-decode the alpha plane (intra): unpack -> dequant (lossy) -> inverse DWT -> round, into coeff[3]
+        int aw = width, ah = height, a_scratch_stride = (aw > ah) ? aw : ah, a_pixels = aw * ah;
+        int a_blocks_x = block_count_x(aw), a_blocks_y = block_count_y(ah), a_block_count = a_blocks_x * a_blocks_y;
+        int a_pixel_wg = (a_pixels + 255) / 256;
+        int a_unpack_wg = (g_block_size == 128) ? a_block_count : ((a_block_count + 63) / 64);
+        int32_t a_unpack_push[4] = { aw, ah, a_blocks_x, a_blocks_y };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_unpack);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_unpack, 0, 1, &set_unpack[3], 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_unpack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, a_unpack_push);
+        vkCmdDispatch(command_buffer, a_unpack_wg, 1, 1);
+        memory_barrier();
+        if (!lossless) {
+          int32_t a_dequant_push[2];
+          a_dequant_push[0] = a_pixels;
+          float a_mult = 1.0f;   // alpha dequantises like luma
+          memcpy(&a_dequant_push[1], &a_mult, sizeof(float));
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dequant);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dequant, 0, 1, &set_dequant[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_dequant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, a_dequant_push);
+          vkCmdDispatch(command_buffer, a_pixel_wg, 1, 1);
+          memory_barrier();
+        }
+        int alw[16], alh[16], alc = 0, acw = aw, ach = ah;
+        for (int level = 0; ((level < levels) && (acw >= 2)) && (ach >= 2); level++) {
+          alw[alc] = acw; alh[alc] = ach; alc++; acw = (acw + 1) / 2; ach = (ach + 1) / 2;
+        }
+        for (int level = alc - 1; level >= 0; level--) {
+          int level_w = alw[level], level_h = alh[level];
+          int32_t tp1[4] = { aw, level_w, level_h, a_scratch_stride };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_transpose);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_transpose, 0, 1, &set_coeff_to_scratch[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_transpose, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, tp1);
+          vkCmdDispatch(command_buffer, (level_w + 15) / 16, (level_h + 15) / 16, 1);
+          memory_barrier();
+          int32_t rp1[4] = { a_scratch_stride, level_h, level_w, 1 };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_inverse_row);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row_scratch, 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, rp1);
+          vkCmdDispatch(command_buffer, level_w, 1, 1);
+          memory_barrier();
+          int32_t tp2[4] = { a_scratch_stride, level_h, level_w, aw };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_transpose);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_transpose, 0, 1, &set_scratch_to_coeff[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_transpose, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, tp2);
+          vkCmdDispatch(command_buffer, (level_h + 15) / 16, (level_w + 15) / 16, 1);
+          memory_barrier();
+          int32_t rp2[4] = { aw, level_w, level_h, 1 };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_inverse_row);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, rp2);
+          vkCmdDispatch(command_buffer, level_h, 1, 1);
+          memory_barrier();
+        }
+        if (!lossless) {
+          int32_t a_pc = a_pixels;
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_round);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_round, 0, 1, &set_row[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_round, VK_SHADER_STAGE_COMPUTE_BIT, 0, 4, &a_pc);
+          vkCmdDispatch(command_buffer, a_pixel_wg, 1, 1);
+          memory_barrier();
+        }
+      }
     }
 
     // Chroma upsample params for the colour shader: shift + the stored Co/Cg (plane 1) dims. 4:4:4 ->
@@ -2584,9 +2662,9 @@ int main(int argc, char **argv) {
       vkCmdPushConstants(command_buffer, pipeline_layout_colour_hdr, VK_SHADER_STAGE_COMPUTE_BIT, 0, 32, &hdr_push);
     } else {
       int32_t colour_push[6] = { width, height, chroma_shift_x_value, chroma_shift_y_value, chroma_small_w, chroma_small_h };
-      vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_colour);
-      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_colour, 0, 1, &set_colour, 0, 0);
-      vkCmdPushConstants(command_buffer, pipeline_layout_colour, VK_SHADER_STAGE_COMPUTE_BIT, 0, 24, colour_push);
+      vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, g_has_alpha ? pipeline_colour_alpha : pipeline_colour);
+      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, g_has_alpha ? pipeline_layout_colour_alpha : pipeline_layout_colour, 0, 1, g_has_alpha ? &set_colour_alpha : &set_colour, 0, 0);
+      vkCmdPushConstants(command_buffer, g_has_alpha ? pipeline_layout_colour_alpha : pipeline_layout_colour, VK_SHADER_STAGE_COMPUTE_BIT, 0, 24, colour_push);
     }
     vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
 
@@ -2623,6 +2701,15 @@ int main(int argc, char **argv) {
               fwrite(&gpu_rgba[p * 4], 1, 3, ppm);
             }
             fclose(ppm);
+          }
+          if (g_has_alpha) {   // also dump the GPU-decoded alpha lane (frame 0) for an external round-trip compare
+            FILE *af = fopen("/tmp/fwv_gpu_alpha0.gray", "wb");
+            if (af) {
+              for (int p = 0; p < pixel_count; p++) {
+                fputc(gpu_rgba[(p * 4) + 3], af);
+              }
+              fclose(af);
+            }
           }
         }
       }
