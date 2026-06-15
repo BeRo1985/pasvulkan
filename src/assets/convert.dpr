@@ -217,6 +217,7 @@ begin
   ConvertFile('../flexiblewavelet/shaders/color.spv','FlexibleWaveletVideoColorSPIRV');
   ConvertFile('../flexiblewavelet/shaders/color_hdr.spv','FlexibleWaveletVideoColorHdrSPIRV');
   ConvertFile('../flexiblewavelet/shaders/color_hdr_scrgb.spv','FlexibleWaveletVideoColorHdrScrgbSPIRV');
+  ConvertFile('../flexiblewavelet/shaders/color_alpha.spv','FlexibleWaveletVideoColorAlphaSPIRV');
   ConvertFile('../flexiblewavelet/shaders/dequant97.spv','FlexibleWaveletVideoDequant97SPIRV');
   ConvertFile('../flexiblewavelet/shaders/frame_energy.spv','FlexibleWaveletVideoFrameEnergySPIRV');
   ConvertFile('../flexiblewavelet/shaders/fwd53row.spv','FlexibleWaveletVideoFwd53rowSPIRV');

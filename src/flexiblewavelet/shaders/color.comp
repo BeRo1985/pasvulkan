@@ -8,6 +8,9 @@ layout(std430, binding = 0) readonly buffer Luma         { int luma[]; };
 layout(std430, binding = 1) readonly buffer ChromaOrange { int chroma_orange[]; };
 layout(std430, binding = 2) readonly buffer ChromaGreen  { int chroma_green[]; };
 layout(binding = 3, rgba8) uniform writeonly image2D output_image;
+#ifdef HAS_ALPHA
+layout(std430, binding = 4) readonly buffer Alpha { int alpha[]; };   // full-res decoded alpha plane (compiled into color_alpha.spv)
+#endif
 // shift_x / shift_y select the chroma subsampling (0/0 = 4:4:4, 1/0 = 4:2:2, 1/1 = 4:2:0); small_w /
 // small_h are the stored Co/Cg plane dims. For 4:4:4 (shift 0) the upsample reduces to chroma[y*W+x].
 layout(push_constant) uniform PushConstants { int width; int height; int shift_x; int shift_y; int small_w; int small_h; } push;
@@ -57,6 +60,11 @@ void main() {
   int g = cg + t;
   int b = t - (co >> 1);
   int r = b + co;
+#ifdef HAS_ALPHA
+  float out_a = float(clamp_byte(alpha[i])) / 255.0;   // the decoded alpha plane
+#else
+  float out_a = 1.0;   // opaque: no alpha channel in this stream
+#endif
   imageStore(output_image, ivec2(x, row),
-             vec4(float(clamp_byte(r)) / 255.0, float(clamp_byte(g)) / 255.0, float(clamp_byte(b)) / 255.0, 1.0));
+             vec4(float(clamp_byte(r)) / 255.0, float(clamp_byte(g)) / 255.0, float(clamp_byte(b)) / 255.0, out_a));
 }

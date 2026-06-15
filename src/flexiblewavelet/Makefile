@@ -19,7 +19,7 @@ SPV = shaders/bitplane_unpack.spv shaders/dequant97.spv shaders/transpose_f.spv 
       shaders/mode_decide.spv shaders/blend_mode.spv \
       shaders/bitplane_pack_coop.spv shaders/bitplane_size_coop.spv shaders/motion_merge.spv \
       shaders/bidi_mode_sad.spv shaders/motion_merge_bidi.spv shaders/mode_decide_root.spv \
-      shaders/int2float.spv shaders/extract_alpha.spv
+      shaders/int2float.spv shaders/extract_alpha.spv shaders/color_alpha.spv
 
 all: fwvwave fwvdec fwvenc fwvplay fwa
 
@@ -28,6 +28,9 @@ fwvwave: fwvwave.c
 
 shaders/%.spv: shaders/%.comp
 	$(GLSLC) -O $< -o $@
+
+shaders/color_alpha.spv: shaders/color.comp
+	$(GLSLC) -O -DHAS_ALPHA $< -o $@
 
 fwvdec: fwvdec.c fwvwave.c $(SPV)
 	$(CC) $(CFLAGS) -Wno-missing-field-initializers -o $@ fwvdec.c -lvulkan -lm

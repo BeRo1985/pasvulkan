@@ -6,3 +6,5 @@
 for shader in *.comp; do
   glslc -O --target-env=vulkan -fshader-stage=compute "$shader" -o "${shader%.comp}.spv"
 done
+# color.comp is compiled a second time with -DHAS_ALPHA: the alpha-aware variant that also writes the decoded alpha plane.
+glslc -O --target-env=vulkan -fshader-stage=compute -DHAS_ALPHA color.comp -o color_alpha.spv
