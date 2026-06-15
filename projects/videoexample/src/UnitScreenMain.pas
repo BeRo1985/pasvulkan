@@ -57,6 +57,9 @@ type TScreenMain=class(TpvApplicationScreen)
        fPaused:boolean;
        fPresentBlit:boolean; // False = textured-quad (A, default), True = blit (B)
        fOutputImageLayout:TVkImageLayout; // tracked layout of the player's OutputImage between passes
+       fPlayerInitPending:boolean; // defer the heavy CreatePlayer (~0.5 s of compute-pipeline compiling) out of Show
+       fBlackFramePresented:boolean; // set once Draw has cleared the swapchain to black while no player exists yet
+       fDebugSyncDecode:boolean; // FWV_SYNCDECODE diagnostic: drain the GPU before staging, to test the cross-frame decode race
        // present path A (fullscreen textured quad sampling the decoded image)
        fSampler:TpvVulkanSampler;
        fVertexShaderModule:TpvVulkanShaderModule;
@@ -116,6 +119,9 @@ begin
  fPaused:=false;
  fPresentBlit:=GetEnvironmentVariable('FWV_BLIT')='1'; // start in present path B (else A); toggle live with B
  fOutputImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+ fPlayerInitPending:=false;
+ fBlackFramePresented:=false;
+ fDebugSyncDecode:=GetEnvironmentVariable('FWV_SYNCDECODE')='1';
 end;
 
 destructor TScreenMain.Destroy;
@@ -364,8 +370,11 @@ begin
   TestH264Decode;
  end;
 
- // the video player
- CreatePlayer;
+ // The video player's Create compiles ~30 compute pipelines (~0.5 s) and blocks the render loop while it runs. Doing it
+ // here in Show would mean ~0.5 s with no Draw at all -> the OS shows the still-undefined swapchain surface (a pale /
+ // white flash) until the first frame. Defer it to the first Update AFTER one black frame has been presented instead.
+ fBlackFramePresented:=false;
+ fPlayerInitPending:=true;
 
  // present path A: sampler + the engine's fullscreen ToScreenBlit shaders + a single combined-image-sampler set
  fSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
@@ -604,6 +613,26 @@ procedure TScreenMain.Update(const aDeltaTime:TpvDouble);
 var DecTimeT0,DecTimeUS:TpvInt64;
 begin
  inherited Update(aDeltaTime);
+
+ // FWV_SYNCDECODE diagnostic: the engine runs Update (where the player stages the next frame, overwriting the decoder's
+ // single shared step/data input buffers) BEFORE the back-buffer fence wait, so UploadFrame can clobber buffers the
+ // previous frame's GPU decode is still reading -> a rare wrong frame that propagates through the P-chain (the pale
+ // fade). Draining the GPU here removes that overlap; if the fade disappears with FWV_SYNCDECODE=1, the race is confirmed.
+ if fDebugSyncDecode and assigned(fPlayer) then begin
+  pvApplication.VulkanDevice.WaitIdle;
+ end;
+
+ // Deferred, one-frame-delayed player creation (see Show): wait until Draw has put one black frame on screen, THEN run
+ // the ~0.5 s CreatePlayer, so the compile blocks over black instead of over the undefined surface.
+ if fPlayerInitPending then begin
+  if not fBlackFramePresented then begin
+   exit; // no player yet and no black frame shown yet -> let Draw present black first
+  end;
+  CreatePlayer;
+  BindPlayerToDescriptor;
+  fPlayerInitPending:=false;
+ end;
+
  if assigned(fPlayer) then begin
   if fPlayer.HasAudio then begin
    fPlaybackTime:=fPlayer.MasterClockSeconds; // A/V sync: the audio playback clock drives the video (freezes on pause)
@@ -648,7 +677,7 @@ var CommandBuffer:TpvVulkanCommandBuffer;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
 
- if not (assigned(fVulkanRenderPass) and assigned(fPlayer)) then begin
+ if not assigned(fVulkanRenderPass) then begin
   exit;
  end;
 
@@ -656,14 +685,17 @@ begin
  CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
  // GPU decode the frame Update staged (leaves the decoded image in TRANSFER_SRC_OPTIMAL when it records one)
- if fPlayer.Decode(CommandBuffer) then begin
+ if assigned(fPlayer) and fPlayer.Decode(CommandBuffer) then begin
   fOutputImageLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
  end;
 
- // Before the very first frame has been decoded the OutputImage holds no valid content yet; sampling / blitting
- // it then shows undefined memory (a pale frame for the first ~0.3 s, depending on the Update-vs-Draw startup
- // timing). Present plain black until a frame exists instead.
- HasFrame:=fPlayer.CurrentFrameIndex>=0;
+ // No valid frame to show when: the player does not exist yet (deferred creation, see Show/Update) or it has not decoded
+ // its first frame. Sampling / blitting the OutputImage then shows undefined memory (a pale frame), so present plain
+ // black instead. The first such black frame also releases the deferred CreatePlayer (fBlackFramePresented).
+ HasFrame:=assigned(fPlayer) and (fPlayer.CurrentFrameIndex>=0);
+ if not assigned(fPlayer) then begin
+  fBlackFramePresented:=true;
+ end;
 
  if fPresentBlit then begin
 
