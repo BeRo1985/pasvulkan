@@ -1555,6 +1555,12 @@ int main(int argc, char **argv) {
     create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &offset_buffer[plane], &offset_memory[plane]);
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[plane], &step_memory[plane]);   // per-plane quant map (chroma subsampled -> its own subband layout)
   }
+  if (g_has_alpha) {   // alpha = plane 3: full-res like luma, intra-only (no previous / difference buffers needed)
+    create_buffer(plane_bytes, DEVICE_LOCAL, &coeff_buffer[3], &coeff_memory[3]);
+    create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &size_buffer[3], &size_memory[3]);
+    create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &offset_buffer[3], &offset_memory[3]);
+    create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[3], &step_memory[3]);
+  }
   // DWT transpose scratch: a W x H plane is transposed to H x W and stored with row stride
   // max(W,H), spanning max(W,H) rows -> max(W,H)^2 elements. Sizing this at pixel_count (W*H) is too
   // small for non-square planes (1920x1080 needs 1920^2, not 1920*1080), so the transpose wrote/read
@@ -1644,6 +1650,11 @@ int main(int argc, char **argv) {
     VK_CHECK(vkMapMemory(device, offset_memory[plane], 0, VK_WHOLE_SIZE, 0, &offset_map[plane]));
   }
   VK_CHECK(vkMapMemory(device, data_memory, 0, VK_WHOLE_SIZE, 0, &data_map));
+  if (g_has_alpha) {   // alpha plane 3: host-visible step / size / offset maps
+    VK_CHECK(vkMapMemory(device, step_memory[3], 0, VK_WHOLE_SIZE, 0, &step_map[3]));
+    VK_CHECK(vkMapMemory(device, size_memory[3], 0, VK_WHOLE_SIZE, 0, &size_map[3]));
+    VK_CHECK(vkMapMemory(device, offset_memory[3], 0, VK_WHOLE_SIZE, 0, &offset_map[3]));
+  }
 
   // ---- pipelines ----
   VkDescriptorSetLayout layout_1_buffer = create_descriptor_set_layout(1);
@@ -1667,8 +1678,10 @@ int main(int argc, char **argv) {
   VkPipelineLayout pipeline_layout_merge = create_pipeline_layout(layout_7_buffers, 28);   // variable-motion R-D merge: push {fgx,fgy,g16x,g16y,g32x,g32y,lambda_abs}
   VkPipelineLayout pipeline_layout_bidi_sad = create_pipeline_layout(layout_12_buffers, 24);   // variable B bidi_mode_sad: push {w,h,blocks_x,lossless,weight0,weight1}
   VkPipelineLayout pipeline_layout_merge_bidi = create_pipeline_layout(layout_12_buffers, 28);  // variable B merge: push {fgx,fgy,g16x,g16y,g32x,g32y,lambda_abs}
+  VkPipelineLayout pipeline_layout_extract_alpha = create_pipeline_layout(layout_2_buffers, 12);   // alpha extract: { width, height, lossless }
 
   VkPipeline pipeline_colour_97 = create_compute_pipeline("shaders/rgb2yco.spv", pipeline_layout_colour);
+  VkPipeline pipeline_extract_alpha = g_has_alpha ? create_compute_pipeline("shaders/extract_alpha.spv", pipeline_layout_extract_alpha) : 0;
   VkPipeline pipeline_transpose = create_compute_pipeline("shaders/transpose_f.spv", pipeline_layout_transpose);
   VkPipeline pipeline_forward_row_97 = create_compute_pipeline("shaders/fwd97row.spv", pipeline_layout_row);
   VkPipeline pipeline_quant = create_compute_pipeline("shaders/quant97fwd.spv", pipeline_layout_quant);
@@ -1783,6 +1796,25 @@ int main(int argc, char **argv) {
     bind_storage_buffers(set_motion_add[plane], (VkBuffer[]){ coeff_buffer[plane], difference_buffer[plane], previous_buffer[plane] }, 3);
     set_ycocg_mc[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     bind_storage_buffers(set_ycocg_mc[plane], (VkBuffer[]){ coeff_buffer[plane], difference_buffer[plane] }, 2);
+  }
+  // Alpha plane 3 (intra-only): the extract set (rgb -> coeff[3]) + the same intra sets as the colour planes
+  // (no diff / motion / energy sets — alpha is never predicted).
+  VkDescriptorSet set_extract_alpha = 0;
+  if (g_has_alpha) {
+    set_extract_alpha = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+    bind_storage_buffers(set_extract_alpha, (VkBuffer[]){ rgb_buffer, coeff_buffer[3] }, 2);
+    set_coeff_to_scratch[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+    bind_storage_buffers(set_coeff_to_scratch[3], (VkBuffer[]){ coeff_buffer[3], scratch_buffer }, 2);
+    set_scratch_to_coeff[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+    bind_storage_buffers(set_scratch_to_coeff[3], (VkBuffer[]){ scratch_buffer, coeff_buffer[3] }, 2);
+    set_row[3] = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
+    bind_storage_buffers(set_row[3], (VkBuffer[]){ coeff_buffer[3] }, 1);
+    set_quant[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+    bind_storage_buffers(set_quant[3], (VkBuffer[]){ coeff_buffer[3], step_buffer[3] }, 2);
+    set_size[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+    bind_storage_buffers(set_size[3], (VkBuffer[]){ coeff_buffer[3], size_buffer[3] }, 2);
+    set_pack[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+    bind_storage_buffers(set_pack[3], (VkBuffer[]){ coeff_buffer[3], offset_buffer[3], data_buffer }, 3);
   }
   // Motion search reads the luma (plane 0) of the current frame and the previous reconstructed frame.
   set_motion_estimate = allocate_descriptor_set(descriptor_pool, layout_9_buffers);
@@ -1947,10 +1979,18 @@ int main(int argc, char **argv) {
     build_quantization_steps(step, plane_w, plane_h, levels, quality);
     memcpy(step_map[plane], step, (size_t)(plane_w * plane_h) * 4);
   }
+  if (g_has_alpha) {   // alpha plane 3: full-res quant map with its own QP (g_alpha_qp, or the colour QP if < 0)
+    int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
+    build_quantization_steps(step, width, height, levels, alpha_qp);
+    memcpy(step_map[3], step, (size_t)(width * height) * 4);
+  }
   int current_quality = quality;   // per-GOP working Q (varies under --vbr); written into each FrameEntry
   uint32_t *offsets[MAX_PLANES];
   for (int plane = 0; plane < g_num_planes; plane++) {
     offsets[plane] = checked_malloc((size_t)block_count * 4);
+  }
+  if (g_has_alpha) {
+    offsets[3] = checked_malloc((size_t)block_count * 4);
   }
   long frame_index = 0;
   long predicted_frames = 0;
@@ -3146,6 +3186,75 @@ int main(int argc, char **argv) {
           memory_barrier();
         }
       }
+      // Alpha plane 3 (intra): extract -> forward DWT -> quant (lossy) -> bitplane size, in the SAME pass-1
+      // command buffer (no extra submit), mirroring the colour forward sequence for one full-res plane.
+      if (g_has_alpha) {
+        int plane_w = width, plane_h = height;   // alpha is always full-res
+        int scratch_stride = (plane_w > plane_h) ? plane_w : plane_h;
+        int plane_pixels = plane_w * plane_h;
+        int blocks_x = block_count_x(plane_w), blocks_y = block_count_y(plane_h);
+        int a_block_count = blocks_x * blocks_y;
+        int pixel_workgroups = (plane_pixels + 255) / 256;
+        int block_workgroups = (g_block_size == 128) ? a_block_count : ((a_block_count + 63) / 64);
+        int level_width[16], level_height[16], level_count = 0, cw = plane_w, ch = plane_h;
+        for (int level = 0; ((level < levels) && (cw >= 2)) && ch >= 2; level++) {
+          level_width[level_count] = cw;
+          level_height[level_count] = ch;
+          level_count++;
+          cw = (cw + 1) / 2;
+          ch = (ch + 1) / 2;
+        }
+        int32_t extract_push[3] = { plane_w, plane_h, lossless };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_extract_alpha);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_extract_alpha, 0, 1, &set_extract_alpha, 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_extract_alpha, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, extract_push);
+        vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+        memory_barrier();
+        for (int level = 0; level < level_count; level++) {
+          int level_w = level_width[level], level_h = level_height[level];
+          int32_t row_push_1[4] = { plane_w, level_w, level_h, 1 };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_forward_row);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_1);
+          vkCmdDispatch(command_buffer, level_h, 1, 1);
+          memory_barrier();
+          int32_t transpose_push_1[4] = { plane_w, level_w, level_h, scratch_stride };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_transpose);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_transpose, 0, 1, &set_coeff_to_scratch[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_transpose, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, transpose_push_1);
+          vkCmdDispatch(command_buffer, (level_w + 15) / 16, (level_h + 15) / 16, 1);
+          memory_barrier();
+          int32_t row_push_2[4] = { scratch_stride, level_h, level_w, 1 };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_forward_row);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row_scratch, 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_2);
+          vkCmdDispatch(command_buffer, level_w, 1, 1);
+          memory_barrier();
+          int32_t transpose_push_2[4] = { scratch_stride, level_h, level_w, plane_w };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_transpose);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_transpose, 0, 1, &set_scratch_to_coeff[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_transpose, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, transpose_push_2);
+          vkCmdDispatch(command_buffer, (level_h + 15) / 16, (level_w + 15) / 16, 1);
+          memory_barrier();
+        }
+        if (!lossless) {
+          int32_t quant_push[2];
+          quant_push[0] = plane_pixels;
+          float alpha_multiplier = 1.0f;   // alpha quantises like luma (no chroma weighting)
+          memcpy(&quant_push[1], &alpha_multiplier, sizeof(float));
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_quant);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, quant_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
+        }
+        int32_t block_push[4] = { plane_w, plane_h, blocks_x, blocks_y };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_size);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_size, 0, 1, &set_size[3], 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_size, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, block_push);
+        vkCmdDispatch(command_buffer, block_workgroups, 1, 1);
+        memory_barrier();
+      }
       submit_and_wait();
 
       // Per-plane block counts (chroma fewer when subsampled; 4:4:4 -> all equal the frame block_count).
@@ -3182,6 +3291,17 @@ int main(int argc, char **argv) {
         memcpy(offset_map[plane], offsets[plane], (size_t)block_counts[plane] * 4);
       }
       size_t data_length = cumulative;
+      size_t colour_data_length = data_length;   // colour payload ends here; the appended alpha section's block data starts here
+      int alpha_block_count = block_count_x(width) * block_count_y(height);
+      if (g_has_alpha) {   // prefix-sum the alpha block sizes, continuing the cumulative byte offset after the colour planes
+        const uint32_t *alpha_sizes = (const uint32_t *)size_map[3];
+        for (int block = 0; block < alpha_block_count; block++) {
+          offsets[3][block] = cumulative;
+          cumulative += alpha_sizes[block];
+        }
+        memcpy(offset_map[3], offsets[3], (size_t)alpha_block_count * 4);
+        data_length = cumulative;   // total payload now includes the alpha block data, packed after colour
+      }
 
       // ---- GPU pass 2: pack each block's bytes at its offset ----
       begin_recording();
@@ -3279,6 +3399,17 @@ int main(int argc, char **argv) {
           memory_barrier();
         }
       }
+      if (g_has_alpha) {   // alpha bitplane pack: write the alpha blocks into data_buffer at their (post-colour) offsets
+        int blocks_x = block_count_x(width), blocks_y = block_count_y(height);
+        int a_block_count = blocks_x * blocks_y;
+        int block_workgroups = (g_block_size == 128) ? a_block_count : ((a_block_count + 63) / 64);
+        int32_t block_push[4] = { width, height, blocks_x, blocks_y };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_pack);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_pack[3], 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, block_push);
+        vkCmdDispatch(command_buffer, block_workgroups, 1, 1);
+        memory_barrier();
+      }
       submit_and_wait();
 
       // ---- assemble the frame payload (block_count, u16 size tables, data) ----
@@ -3366,7 +3497,12 @@ int main(int argc, char **argv) {
         }
       }
       uint8_t *frame;
-      size_t total = assemble_frame(block_counts, frame_sizes, mv_bytes, mv_length, (const uint8_t *)data_map, data_length, &frame);
+      size_t total = assemble_frame(block_counts, frame_sizes, mv_bytes, mv_length, (const uint8_t *)data_map, colour_data_length, &frame);
+      if (g_has_alpha) {   // append the alpha section (graceful-ignore) after the 3-plane colour payload
+        int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
+        total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
+                                     (const uint8_t *)data_map + colour_data_length, data_length - colour_data_length);
+      }
       free(mv_bytes);
 
       if (output && use_bframes) {

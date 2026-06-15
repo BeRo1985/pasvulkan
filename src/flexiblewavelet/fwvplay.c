@@ -940,6 +940,7 @@ int main(int argc, char **argv) {
   int verify = 0;                    // --verify: GPU-decode vs CPU-decode PSNR check, no window
   int cpu_decode = 0;                // --cpu-decode: force the Stage A CPU B-decode (oracle/fallback); default for a B-stream is the GPU bidi decode (Stage B1b)
   int dump_first_frame = 0;          // --dump: write the GPU-decoded frame 0 to /tmp/fwv_frame0.ppm (.f16 when scRGB)
+  int dump_alpha = 0;                // --dump-alpha: write the CPU-decoded alpha lane of frame 0 to /tmp/fwv_alpha0.gray (implies --verify)
   int force_scrgb = 0;               // --force-scrgb: force scRGB FP16 output headless (HDR FP16 testing without an HDR swapchain)
   int decoder_choice = 0;            // --decoder: 0 = auto (H.264 if available, else wavelet), 1 = force H.264, 2 = force wavelet
   const char *decode_to_path = NULL; // --decode-to <file.avi>: decode the whole stream to an OpenDML AVI (RGB32 + PCM16)
@@ -958,6 +959,9 @@ int main(int argc, char **argv) {
       cpu_decode = 0;   // accepted for compatibility; GPU bidi decode is now the default for a B-stream
     } else if (strcmp(argv[a], "--dump") == 0) {
       dump_first_frame = 1;
+    } else if (strcmp(argv[a], "--dump-alpha") == 0) {
+      dump_alpha = 1;
+      verify = 1;   // the CPU decode (which fills the alpha lane via decode_frame_colordiff) runs in the verify path
     } else if (strcmp(argv[a], "--force-scrgb") == 0) {
       force_scrgb = 1;   // force the scRGB FP16 decode path headless (+ a raw RGBA16F --dump)
     } else if (strncmp(argv[a], "--decoder=", 10) == 0) {
@@ -2566,6 +2570,15 @@ int main(int argc, char **argv) {
           decode_frame_colordiff(frame_buffer, index[frame_index].size, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
         } else {
           decode_frame_coefdiff(frame_buffer, index[frame_index].size, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
+        }
+        if (dump_alpha && (frame_index == 0)) {   // --dump-alpha: the CPU-decoded alpha lane of frame 0 (raw bytes, for an external round-trip compare)
+          FILE *alpha_file = fopen("/tmp/fwv_alpha0.gray", "wb");
+          if (alpha_file) {
+            for (int p = 0; p < pixel_count; p++) {
+              fputc(cpu_rgb[(p * 4) + 3], alpha_file);
+            }
+            fclose(alpha_file);
+          }
         }
         // HDR: tonemap the CPU decode the same way color_hdr does, so we compare like for like (both SDR).
         const uint8_t *reference = cpu_rgb;
