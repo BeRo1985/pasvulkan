@@ -523,16 +523,17 @@ int main(int argc, char **argv) {
   // ---- per frame: CPU-encode -> upload -> GPU decode -> compare to CPU decode ----
   char command[4096];
   if (max_frames) {
-    snprintf(command, sizeof command, "ffmpeg -v error -i \"%s\" -frames:v %ld -f rawvideo -pix_fmt rgb24 -", input, max_frames);
+    snprintf(command, sizeof command, "ffmpeg -v error -i \"%s\" -frames:v %ld -f rawvideo -pix_fmt rgba -", input, max_frames);
   } else {
-    snprintf(command, sizeof command, "ffmpeg -v error -i \"%s\" -f rawvideo -pix_fmt rgb24 -", input);
+    snprintf(command, sizeof command, "ffmpeg -v error -i \"%s\" -f rawvideo -pix_fmt rgba -", input);
   }
   FILE *input_pipe = popen(command, "r");
   if (!input_pipe) {
     die("popen ffmpeg");
   }
 
-  size_t frame_bytes = (size_t)pixel_count * 3;
+  g_channels = 4;   // Option B: rgba8 input (32-bit aligned + alpha lane); A is opaque / skipped in the non-alpha PSNR
+  size_t frame_bytes = (size_t)pixel_count * g_channels;
   uint8_t *rgb = checked_malloc(frame_bytes);
   uint8_t *cpu_rgb = checked_malloc(frame_bytes);
   int *step = checked_malloc(pixel_count * sizeof(int));
@@ -751,11 +752,11 @@ int main(int argc, char **argv) {
         double mean_squared_error = 0;
         for (int i = 0; i < pixel_count; i++) {
           for (int channel = 0; channel < 3; channel++) {
-            int difference = (int)gpu_rgba[(i * 4) + channel] - (int)reference[(i * 3) + channel];
+            int difference = (int)gpu_rgba[(i * 4) + channel] - (int)reference[(i * g_channels) + channel];
             mean_squared_error += (double)difference * difference;
           }
         }
-        mean_squared_error /= frame_bytes;
+        mean_squared_error /= ((double)pixel_count * 3);   // R/G/B samples compared (alpha lane skipped); == frame_bytes for rgb24
         double psnr = (mean_squared_error == 0) ? 99.99 : (10.0 * log10((255.0 * 255.0) / mean_squared_error));
         if (psnr < 40) {
           printf("  frame %ld: GPU-vs-CPU %.1f dB (LOW -> shader/data bug)\n", frame_index, psnr);
@@ -962,11 +963,11 @@ int main(int argc, char **argv) {
       double mean_squared_error = 0;
       for (int i = 0; i < pixel_count; i++) {
         for (int channel = 0; channel < 3; channel++) {
-          int difference = (int)gpu_rgba[(i * 4) + channel] - (int)compare_target[(i * 3) + channel];
+          int difference = (int)gpu_rgba[(i * 4) + channel] - (int)compare_target[(i * g_channels) + channel];
           mean_squared_error += (double)difference * difference;
         }
       }
-      mean_squared_error /= frame_bytes;
+      mean_squared_error /= ((double)pixel_count * 3);   // R/G/B samples compared (alpha lane skipped); == frame_bytes for rgb24
       double psnr = (mean_squared_error == 0) ? 99.99 : (10.0 * log10((255.0 * 255.0) / mean_squared_error));
       // 4:4:4 (vs CPU decode) should be near-identical, so <40 dB flags a shader/data bug. 4:2:x (vs the
       // ORIGINAL) is genuinely lossy (~38 dB for 4:2:0), so a moderate number there is expected, not a bug.
