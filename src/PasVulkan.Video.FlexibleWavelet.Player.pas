@@ -14,6 +14,7 @@ interface
 
 uses SysUtils,
      Classes,
+     PasMP,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Framework,
@@ -74,6 +75,7 @@ type EpvFlexibleWaveletVideoPlayer=class(EpvFlexibleWaveletVideo);
        fTargetIndex:TpvInt32; // display frame index the current time maps to
        fPreparedIndex:TpvInt32; // index PrepareFrame staged for the next Decode (-1 = none)
        fLastDecodedIndex:TpvInt32; // last index RecordFrame produced (-1 = none)
+       fPendingAudioSeekFrame:TpvInt64; // queued audio-source seek; applied by the audio thread in AudioReadCallback (-1 = none)
 {$ifdef VkVideo}
        procedure TryCreateH264Backend; // build the VK-H.264 backend from the container's H.264 sub-blob; on success sets fUsingH264
 {$endif}
@@ -137,6 +139,7 @@ begin
  fTargetIndex:=-1;
  fPreparedIndex:=-1;
  fLastDecodedIndex:=-1;
+ fPendingAudioSeekFrame:=-1;
  fAudio:=nil;
  fAudioKind:=TAudioKind.None;
  fAudioStream:=nil;
@@ -247,8 +250,32 @@ begin
 end;
 
 function TpvFlexibleWaveletVideoPlayer.AudioReadCallback(const aFloatBuffer:Pointer;const aFrameCount:TpvInt32):TpvInt32;
+var PendingSeekFrame:TpvInt64;
 begin
- // called from the audio thread (TpvAudioSoundVideo.GetNextInBuffer): pull interleaved f32 from the active sub-codec decoder
+ // called from the audio thread (TpvAudioSoundVideo.GetNextInBuffer, under the mixer critical section): pull interleaved
+ // f32 from the active sub-codec decoder.
+ // A queued seek (SeekAudio) is applied HERE, on this thread, rather than on the caller thread, so the decoder is only
+ // ever touched from one thread - the source seek can never run concurrently with this same thread's read on the same
+ // source. This is the deadlock-free alternative to locking the mixer's critical section across the seek.
+ PendingSeekFrame:=TPasMPInterlocked.Exchange(fPendingAudioSeekFrame,TpvInt64(-1));
+ if PendingSeekFrame>=0 then begin
+  case fAudioKind of
+   TAudioKind.FWAC:begin
+    fAudioFWADecoder.Seek(TpvUInt64(PendingSeekFrame));
+   end;
+   TAudioKind.QOAL:begin
+    fAudioQOALDecoder.Seek(TpvUInt64(PendingSeekFrame));
+   end;
+   TAudioKind.RPCM:begin
+    fAudioRPCMDecoder.Seek(TpvUInt64(PendingSeekFrame));
+   end;
+   TAudioKind.OGGV:begin
+    fAudioOGGVDecoder.Seek(TpvUInt64(PendingSeekFrame));
+   end;
+   else begin
+   end;
+  end;
+ end;
  case fAudioKind of
   TAudioKind.FWAC:begin
    result:=fAudioFWADecoder.Decode(aFloatBuffer,aFrameCount);
@@ -353,30 +380,16 @@ begin
   Frame:=Round(aTimeInSeconds*fAudioSampleRate);
  end;
 
- // serialize the source seek against the audio thread's read callback (FillBuffer holds the same lock)
- fAudio.Lock;
- try
-  case fAudioKind of
-   TAudioKind.FWAC:begin
-    fAudioFWADecoder.Seek(Frame);
-   end;
-   TAudioKind.QOAL:begin
-    fAudioQOALDecoder.Seek(Frame);
-   end;
-   TAudioKind.RPCM:begin
-    fAudioRPCMDecoder.Seek(Frame);
-   end;
-   TAudioKind.OGGV:begin
-    fAudioOGGVDecoder.Seek(Frame);
-   end;
-   else begin
-   end;
-  end;
- finally
-  fAudio.Unlock;
- end;
+ // Hand the source seek to the audio thread instead of doing it here. The decoder is then only ever touched from
+ // AudioReadCallback (which the mixer calls under its own critical section), so the seek can never run concurrently
+ // with the mixer's ov_read on the same source - which is exactly what hung/raced when seeking from this thread.
+ // Lock-free: a single producer (this thread) hands one frame to a single consumer (the audio thread).
+ TPasMPInterlocked.Exchange(fPendingAudioSeekFrame,Frame);
 
- fAudioStream.ResetForSeek(aTimeInSeconds); // flush the resampler + re-anchor the per-stream clock offset to this time
+ // Force a fresh GetNextInBuffer (so the queued seek is picked up promptly), flush the resampler and re-anchor the
+ // per-stream clock to this time. ResetForSeek only briefly enters the mixer lock to write fields (no long work under
+ // it), and also clears a latched end-of-stream Stopped state so the read callback runs again.
+ fAudioStream.ResetForSeek(aTimeInSeconds);
 
 end;
 
