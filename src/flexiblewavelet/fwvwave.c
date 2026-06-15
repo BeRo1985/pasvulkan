@@ -4651,6 +4651,71 @@ static int hdr_selftest(void) {
   return (pq_lossless && signed_lossless) ? 0 : 1;
 }
 
+// Alpha round-trip self-test: a synthetic rgba frame with a SEPARATE variable alpha gradient through
+// encode/decode_frame_colordiff with g_has_alpha=1. Q0 must be bit-exact (RGB + alpha); Q8 is a PSNR sanity.
+static int alpha_selftest(void) {
+  int width = 256, height = 256, pixel_count = width * height;
+  uint8_t *source = checked_malloc((size_t)pixel_count * 4);   // rgba8
+  uint8_t *output = checked_malloc((size_t)pixel_count * 4);
+  uint8_t *encoded;
+  size_t length;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int idx = (((y * width) + x) * 4);
+      source[idx + 0] = (uint8_t)x;                  // R
+      source[idx + 1] = (uint8_t)y;                  // G
+      source[idx + 2] = (uint8_t)((x + y) >> 1);     // B
+      source[idx + 3] = (uint8_t)((x + y) & 255);    // A: a variable gradient (so the alpha plane is genuinely coded)
+    }
+  }
+
+  g_channels = 4;     // rgba ingest + output
+  g_has_alpha = 1;    // activate the alpha plane
+  g_alpha_qp = -1;    // alpha follows the colour QP
+
+  // Q0: lossless round-trip — both RGB and the alpha lane must be bit-exact.
+  length = encode_frame_colordiff(source, width, height, 5, 0, &encoded, NULL, 0);
+  decode_frame_colordiff(encoded, length, width, height, 5, 0, output, NULL, 0);
+  int alpha_mismatch = 0, rgb_mismatch = 0;
+  for (int i = 0; i < pixel_count; i++) {
+    if (output[(i * 4) + 3] != source[(i * 4) + 3]) {
+      alpha_mismatch++;
+    }
+    for (int c = 0; c < 3; c++) {
+      if (output[(i * 4) + c] != source[(i * 4) + c]) {
+        rgb_mismatch++;
+      }
+    }
+  }
+  free(encoded);
+
+  // Q8: lossy — the alpha lane should still be high-PSNR (sanity, not bit-exact).
+  length = encode_frame_colordiff(source, width, height, 5, 8, &encoded, NULL, 0);
+  decode_frame_colordiff(encoded, length, width, height, 5, 8, output, NULL, 0);
+  double alpha_mse = 0.0;
+  for (int i = 0; i < pixel_count; i++) {
+    int d = (int)output[(i * 4) + 3] - (int)source[(i * 4) + 3];
+    alpha_mse += (double)d * d;
+  }
+  alpha_mse /= (double)pixel_count;
+  double alpha_psnr = (alpha_mse > 0.0) ? (10.0 * log10((255.0 * 255.0) / alpha_mse)) : 99.99;
+  free(encoded);
+
+  g_has_alpha = 0;    // restore defaults
+  g_channels = 3;
+  g_alpha_qp = -1;
+
+  printf("alpha selftest: Q0 alpha %s (%d mismatches) | Q0 RGB %s (%d) | Q8 alpha PSNR %.2f dB (%zu bytes)\n",
+         (alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", alpha_mismatch,
+         (rgb_mismatch == 0) ? "lossless" : "MISMATCH", rgb_mismatch,
+         alpha_psnr, length);
+
+  free(source);
+  free(output);
+  return ((alpha_mismatch == 0) && (rgb_mismatch == 0)) ? 0 : 1;
+}
+
 // HDR transcode demo: ingest a real HDR (PQ/bt2020) video, push it through the fwv codec at 12-bit,
 // then tonemap to an SDR sRGB .mp4 you can play. Proves the whole chain on a real HDR source.
 //   fwvwave hdr <input> <output.mp4> [quality=0] [frames=8] [exposure=100]
@@ -4925,6 +4990,9 @@ int main(int argc, char **argv) {
   }
   if (argc >= 2 && !strcmp(argv[1], "hdrtest")) {
     return hdr_selftest();
+  }
+  if (argc >= 2 && !strcmp(argv[1], "alphatest")) {
+    return alpha_selftest();
   }
   if (argc >= 2 && !strcmp(argv[1], "audiotest")) {
     return audio_selftest();

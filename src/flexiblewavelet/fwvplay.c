@@ -1030,9 +1030,11 @@ int main(int argc, char **argv) {
   const char *primaries_name = (header.colour_primaries == 9) ? "BT.2020" : ((header.colour_primaries == 12) ? "Display-P3" : "BT.709");
   const char *transfer_name = (header.transfer_function == 16) ? "PQ" : ((header.transfer_function == 18) ? "HLG" : ((header.transfer_function == 8) ? "linear" : "sRGB"));
   const char *chroma_name = (g_chroma_format == 2) ? "4:2:0" : ((g_chroma_format == 1) ? "4:2:2" : "4:4:4");   // g_chroma_format set above
-  printf("  colour: %s / %s / %d-bit %s%s / %s\n", primaries_name, transfer_name, header.bit_depth,
-         (header.colour_flags & 1) ? "HDR" : "SDR", (header.colour_flags & 2) ? " +HDR10 metadata" : "", chroma_name);
+  printf("  colour: %s / %s / %d-bit %s%s%s / %s\n", primaries_name, transfer_name, header.bit_depth,
+         (header.colour_flags & 1) ? "HDR" : "SDR", (header.colour_flags & 2) ? " +HDR10 metadata" : "",
+         (header.colour_flags & 4) ? " +alpha" : "", chroma_name);
   int is_hdr = (header.colour_flags & 1) != 0;
+  g_has_alpha = (header.colour_flags & 4) != 0;   // bit2 = has_alpha: decode the appended section into the rgba alpha lane
   g_channels = 4;   // Option B: the CPU reference decode emits rgba8 (SDR) / rgba64 (HDR), 32/64-bit aligned + alpha lane
   size_t frame_bytes = (size_t)pixel_count * g_channels * (is_hdr ? 2 : 1);   // one decoded rgba frame: 8-bit SDR (4B) or 16-bit HDR (8B)
   g_chroma_quant = header.chroma_quant_x16 ? ((float)header.chroma_quant_x16 / 16.0f) : 1.0f;   // chroma quant weighting from the container (0 = old file -> off)

@@ -246,6 +246,10 @@ int main(int argc, char **argv) {
       g_temporal_wavelet = strstr(value, "97") ? 2 : (strstr(value, "53") ? 1 : 0);
     } else if (!strcmp(argv[i], "--temporal-levels") && ((i + 1) < argc)) {
       g_temporal_levels = atoi(argv[++i]);
+    } else if (!strcmp(argv[i], "--alpha")) {
+      g_has_alpha = 1;
+    } else if (!strcmp(argv[i], "--alpha-qp") && ((i + 1) < argc)) {
+      g_alpha_qp = atoi(argv[++i]);
     } else if (positional_count < 8) {
       positional[positional_count++] = argv[i];   // positional[0]=prog, [1]=input, [2]=quality, ...
     }

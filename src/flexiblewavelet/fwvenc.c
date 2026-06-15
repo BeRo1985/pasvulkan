@@ -1263,6 +1263,10 @@ int main(int argc, char **argv) {
       mode_3ddwt = strstr(argv[++i], "3d") ? 1 : 0;
     } else if (!strcmp(argv[i], "--bframes") && (i + 1) < argc) {
       bframes = atoi(argv[++i]);   // N hierarchical B-frames between anchors (period = N+1)
+    } else if (!strcmp(argv[i], "--alpha")) {
+      g_has_alpha = 1;             // encode the optional alpha plane (ColourFlags bit2, appended section per frame)
+    } else if (!strcmp(argv[i], "--alpha-qp") && (i + 1) < argc) {
+      g_alpha_qp = atoi(argv[++i]);   // alpha quant (-1 = follow the colour QP)
     } else if (!strcmp(argv[i], "--cpu-bframes")) {
       cpu_bframes = 1;             // force the CPU encode_frame_bidi oracle (Stage A) instead of the GPU bidi path
     } else if (!strcmp(argv[i], "--joint")) {
@@ -3482,6 +3486,9 @@ int main(int argc, char **argv) {
       header.colour_primaries = 9;   // BT.2020
       header.transfer_function = (uint8_t)hdr_transfer;
       header.colour_flags = 1;       // bit0 = HDR
+    }
+    if (g_has_alpha) {
+      header.colour_flags |= 4;      // bit2 = has_alpha (each frame carries the appended alpha section)
     }
     header.audio_offset = (uint64_t)ftello(container_file);
     if (audio) {
