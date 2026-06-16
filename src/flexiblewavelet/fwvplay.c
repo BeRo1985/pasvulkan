@@ -626,7 +626,7 @@ static size_t read_frame(FILE *file, const FrameEntry *entry, uint8_t **buffer, 
   static uint8_t *compressed = NULL;
   static size_t compressed_capacity = 0;
   if (compressed_capacity < (size_t)entry->size) {
-    compressed_capacity = entry->size;
+    compressed_capacity = (size_t)entry->size;
     compressed = realloc(compressed, compressed_capacity);
     if (!compressed) {
       die("realloc");
@@ -691,6 +691,42 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
       memcpy(step_map[plane], step, (size_t)(pw * ph) * 4);
     }
   }
+}
+
+// CPU-decode the appended alpha section of container entry `entry_index` straight into coeff_map3 (the host map of
+// coeff[3]), for the GPU decode paths (B / 3D-DWT) where the colour is GPU-decoded but the alpha is not. color_alpha
+// reads coeff[3] as the alpha plane. The alpha is intra, so one parse + decode_plane + reconstruct_plane per frame.
+static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32_t entry_index,
+                                     const int *block_count_plane, int width, int height, int levels, int *step, void *coeff_map3) {
+  uint8_t *fb = 0;   // own buffer: the shared frame_buffer is in use by the 3D-DWT prefetch / B decode-ahead
+  size_t fb_cap = 0;
+  read_frame(file, &index[entry_index], &fb, &fb_cap);
+  uint32_t *tmp_off[MAX_PLANES] = { 0, 0, 0, 0 };
+  for (int p = 0; p < 3; p++) {
+    tmp_off[p] = checked_malloc((size_t)block_count_plane[p] * 4);
+  }
+  int parsed_block_count;
+  const uint8_t *mv_data;
+  uint32_t mv_length, cdl;
+  const uint8_t *frame_data = parse_frame_header(fb, block_count_plane, &parsed_block_count, tmp_off, &mv_data, &mv_length, &cdl);
+  int a_block_count = block_count_x(width) * block_count_y(height);
+  uint32_t *a_off = checked_malloc((size_t)a_block_count * 4);
+  float *float_scratch = checked_malloc((size_t)width * height * sizeof(float));
+  int alpha_qp;
+  uint32_t alpha_data_length;
+  const uint8_t *alpha_data = parse_alpha_section(frame_data + cdl, a_off, a_block_count, &alpha_qp, &alpha_data_length);
+  int32_t *alpha_coeff = checked_malloc((size_t)width * height * 4);   // decode into a local buffer (like decode_gop_3ddwt), then copy to the host coeff[3]
+  decode_plane(alpha_data, a_off, alpha_coeff, width, height, alpha_data_length);
+  build_quantization_steps(step, width, height, levels, alpha_qp);
+  reconstruct_plane(alpha_coeff, float_scratch, step, width, height, levels, alpha_qp, 1.0f);
+  memcpy(coeff_map3, alpha_coeff, (size_t)width * height * 4);
+  free(alpha_coeff);
+  free(float_scratch);
+  free(a_off);
+  for (int p = 0; p < 3; p++) {
+    free(tmp_off[p]);
+  }
+  free(fb);
 }
 
 // Verify only: CPU-decode a whole GOP (decode_gop_3ddwt) into cpu_gop_rgb to compare the GPU decode against.
@@ -1263,9 +1299,9 @@ int main(int argc, char **argv) {
     create_buffer(plane_bytes, DEVICE_LOCAL, &previous_buffer[plane], &previous_memory[plane]);
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[plane], &step_memory[plane]);
   }
-  if (g_has_alpha) {   // alpha plane 3: full-res decode buffers (intra — no previous/motion buffer needed)
-    create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &offset_buffer[3], &offset_memory[3]);
-    create_buffer(plane_bytes, DEVICE_LOCAL, &coeff_buffer[3], &coeff_memory[3]);
+  if (g_has_alpha) {   // alpha plane 3: full-res decode buffers (intra). coeff[3] is HOST_VISIBLE so the B / 3D-DWT paths can
+    create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &offset_buffer[3], &offset_memory[3]);   // CPU-decode the alpha plane straight into it (colordiff still GPU-decodes into it — both feed color_alpha).
+    create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &coeff_buffer[3], &coeff_memory[3]);
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[3], &step_memory[3]);
   }
   // DWT transpose scratch (also reused for motion compensation): a W x H plane transposes to H x W
@@ -1285,9 +1321,11 @@ int main(int argc, char **argv) {
     VK_CHECK(vkMapMemory(device, offset_memory[plane], 0, VK_WHOLE_SIZE, 0, &offset_map[plane]));
     VK_CHECK(vkMapMemory(device, step_memory[plane], 0, VK_WHOLE_SIZE, 0, &step_map[plane]));
   }
+  void *coeff_map3 = 0;   // host map of coeff[3] — the B / 3D-DWT paths CPU-decode the alpha plane straight into it
   if (g_has_alpha) {
     VK_CHECK(vkMapMemory(device, offset_memory[3], 0, VK_WHOLE_SIZE, 0, &offset_map[3]));
     VK_CHECK(vkMapMemory(device, step_memory[3], 0, VK_WHOLE_SIZE, 0, &step_map[3]));
+    VK_CHECK(vkMapMemory(device, coeff_memory[3], 0, VK_WHOLE_SIZE, 0, &coeff_map3));
   }
   int *step = checked_malloc(pixel_count * sizeof(int));
   for (int plane = 0; plane < g_num_planes; plane++) {   // per-plane quant map (chroma subsampled -> its own subband layout); 4:4:4 -> all identical
@@ -2023,7 +2061,7 @@ int main(int argc, char **argv) {
         int a_block_count = block_count_x(width) * block_count_y(height);
         uint32_t *a_off = (uint32_t *)offset_map[3];
         int alpha_qp;
-        const uint8_t *alpha_data = parse_alpha_section(frame_data + data_length, a_off, a_block_count, &alpha_qp);
+        const uint8_t *alpha_data = parse_alpha_section(frame_data + data_length, a_off, a_block_count, &alpha_qp, NULL);
         uint32_t alpha_data_length;
         memcpy(&alpha_data_length, alpha_data - 4, 4);
         memcpy((uint8_t *)data_map + data_length, alpha_data, alpha_data_length);
@@ -2438,6 +2476,9 @@ int main(int argc, char **argv) {
       // The GOP was already spatial+temporal inverse-transformed above; just fetch this frame's slot
       // into coeff_buffer (and round the float result for the lossy path) for the colour pass below.
       int slot = (int)(frame_index - cur_gop_start);
+      if (g_has_alpha) {   // 3D-DWT: CPU-decode this display frame's alpha section into coeff[3] (intra, positional; color_alpha reads it)
+        cpu_decode_alpha_section(file, index, frame_index, block_count_plane, width, height, levels, step, coeff_map3);
+      }
       for (int plane = 0; plane < g_num_planes; plane++) {
         int pp = plane_width(plane, width) * plane_height(plane, height);   // chroma slot is smaller when subsampled
         VkBufferCopy copy = { (VkDeviceSize)slot * pp * 4, 0, (VkDeviceSize)pp * 4 };

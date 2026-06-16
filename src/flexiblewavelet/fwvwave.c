@@ -2939,12 +2939,17 @@ static void encode_plane(BitWriter *writer, const int32_t *coefficients, int wid
   free(qor);
 }
 
-static void decode_plane(const uint8_t *data, const uint32_t *offsets, int32_t *coefficients, int width, int height) {
+// data_length = the byte length of the block-data section `data` points into; each block's bitreader is bounded to
+// the bytes from its offset to that end (the reader zero-fills past it), so the eager refill of the LAST block never
+// reads past the frame buffer. The bound is loose for non-last blocks (harmless: a block consumes only its own coded
+// bits, and the unconsumed window tail is discarded) and tight for the last block.
+static void decode_plane(const uint8_t *data, const uint32_t *offsets, int32_t *coefficients, int width, int height, uint32_t data_length) {
   int block = 0;
   for (int block_y = 0; block_y < height; block_y += BLOCK_SIZE) {
     for (int block_x = 0; block_x < width; block_x += BLOCK_SIZE) {
+      uint32_t offset = offsets[block++];
       BitReader reader;
-      bitreader_init(&reader, data + offsets[block++], 1u << 30);
+      bitreader_init(&reader, data + offset, (size_t)(data_length - offset));
       decode_block(&reader, coefficients, width, block_x, block_y,
                    (block_x + BLOCK_SIZE < width) ? BLOCK_SIZE : (width - block_x),
                    (block_y + BLOCK_SIZE < height) ? BLOCK_SIZE : (height - block_y));
@@ -3079,10 +3084,19 @@ static void lz_decompress(const uint8_t *in, size_t n, uint8_t *out, size_t out_
       out_position += (size_t)length;
       control_bit++;
     } else {
-      // a run of consecutive literals (control bits 0) -> one bulk copy
+      // a run of consecutive literals (control bits 0) -> one bulk copy. The final partial control word's
+      // trailing zero-bits (padding past the last real token) are NOT literals; the per-token out_size bound
+      // the byte-wise decoder had is lost in this bulk path, so clamp the run to the real remaining output
+      // (and input) or it overruns both buffers by up to 31 bytes on a literal-tailed final word.
       uint32_t rest = control & ~(((uint32_t)1 << control_bit) - 1);
       int next = rest ? __builtin_ctz(rest) : 32;
       int run = next - control_bit;
+      if ((size_t)run > (out_size - out_position)) {
+        run = (int)(out_size - out_position);
+      }
+      if ((size_t)run > (n - in_position)) {
+        run = (int)(n - in_position);
+      }
       memcpy(out + out_position, in + in_position, (size_t)run);
       in_position += (size_t)run;
       out_position += (size_t)run;
@@ -3615,7 +3629,7 @@ static size_t append_alpha_section(uint8_t **frame, size_t frame_size, int alpha
 
 // Parse the appended alpha section (`section` points at the alpha_qp byte = the 3-plane colour payload's end).
 // Prefix-sums the block sizes into alpha_offsets, returns alpha_qp via out_alpha_qp, and returns the alpha block data.
-static const uint8_t *parse_alpha_section(const uint8_t *section, uint32_t *alpha_offsets, int block_count, int *out_alpha_qp) {
+static const uint8_t *parse_alpha_section(const uint8_t *section, uint32_t *alpha_offsets, int block_count, int *out_alpha_qp, uint32_t *out_data_length) {
   size_t cursor = 0;
   *out_alpha_qp = section[cursor];
   cursor += 1;
@@ -3630,7 +3644,12 @@ static const uint8_t *parse_alpha_section(const uint8_t *section, uint32_t *alph
     running += bitreader_get_unsigned_exp_golomb(&size_reader);
   }
   cursor += size_blob_length;
-  cursor += 4;   // skip alpha_data_length
+  uint32_t alpha_data_length;   // the alpha block-data length (used to bound the block bitreaders against the buffer end)
+  memcpy(&alpha_data_length, section + cursor, 4);
+  if (out_data_length) {
+    *out_data_length = alpha_data_length;
+  }
+  cursor += 4;
   return section + cursor;
 }
 
@@ -3723,13 +3742,14 @@ static void decode_frame_coefdiff(const uint8_t *frame, size_t length, int width
   int parsed_block_count;
   const uint8_t *mv_data;
   uint32_t mv_length;
-  const uint8_t *data = parse_frame_header(frame, (int[3]){ block_count, block_count, block_count }, &parsed_block_count, offsets, &mv_data, &mv_length, NULL);   // coefdiff: 4:4:4
+  uint32_t data_length;
+  const uint8_t *data = parse_frame_header(frame, (int[3]){ block_count, block_count, block_count }, &parsed_block_count, offsets, &mv_data, &mv_length, &data_length);   // coefdiff: 4:4:4
   (void)mv_data;
   (void)mv_length;
 
   int32_t *planes[MAX_PLANES] = { luma, chroma_orange, chroma_green };
   for (int plane = 0; plane < g_num_planes; plane++) {
-    decode_plane(data, offsets[plane], planes[plane], width, height);
+    decode_plane(data, offsets[plane], planes[plane], width, height, data_length);
     // P-frame: add the previous frame's coefficients back to the decoded difference.
     if (is_predicted) {
       for (int i = 0; i < pixel_count; i++) {
@@ -3969,7 +3989,7 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
     int plane_pixels = plane_w * plane_h;
     int plane_motion_blocks_x = ((plane_w + MOTION_BLOCK) - 1) / MOTION_BLOCK;
     build_quantization_steps(step, plane_w, plane_h, levels, base_quality);
-    decode_plane(data, offsets[plane], planes[plane], plane_w, plane_h);
+    decode_plane(data, offsets[plane], planes[plane], plane_w, plane_h, cdl);
     reconstruct_plane(planes[plane], float_plane, step, plane_w, plane_h, levels, base_quality, (plane == 0) ? 1.0f : g_chroma_quant);   // -> residual (P) or current (I)
     if (is_predicted) {
       motion_compensate(previous_ycocg[plane], mv, mc_previous, plane_w, plane_h, plane_motion_blocks_x);
@@ -4001,10 +4021,11 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
     const uint8_t *alpha_section = data + cdl;
     uint32_t *alpha_offsets = checked_malloc((size_t)block_counts[0] * 4);
     int alpha_qp;
-    const uint8_t *alpha_data = parse_alpha_section(alpha_section, alpha_offsets, block_counts[0], &alpha_qp);
+    uint32_t alpha_data_length;
+    const uint8_t *alpha_data = parse_alpha_section(alpha_section, alpha_offsets, block_counts[0], &alpha_qp, &alpha_data_length);
     build_quantization_steps(step, width, height, levels, alpha_qp);
     int32_t *alpha = checked_malloc((size_t)pixel_count * 4);
-    decode_plane(alpha_data, alpha_offsets, alpha, width, height);
+    decode_plane(alpha_data, alpha_offsets, alpha, width, height, alpha_data_length);
     reconstruct_plane(alpha, float_plane, step, width, height, levels, alpha_qp, 1.0f);
     for (int i = 0; i < pixel_count; i++) {
       int a = alpha[i];
@@ -4141,7 +4162,8 @@ static void decode_frame_bidi(const uint8_t *frame, int width, int height, int l
   int parsed_block_count;
   const uint8_t *mv_data;
   uint32_t mv_length;
-  const uint8_t *data = parse_frame_header(frame, block_counts, &parsed_block_count, offsets, &mv_data, &mv_length, NULL);
+  uint32_t data_length;
+  const uint8_t *data = parse_frame_header(frame, block_counts, &parsed_block_count, offsets, &mv_data, &mv_length, &data_length);
   (void)mv_data;
   (void)mv_length;
   int has_prediction = (ref0 != NULL);
@@ -4150,7 +4172,7 @@ static void decode_frame_bidi(const uint8_t *frame, int width, int height, int l
     int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
     int plane_pixels = plane_w * plane_h;
     build_quantization_steps(step, plane_w, plane_h, levels, base_quality);
-    decode_plane(data, offsets[plane], planes[plane], plane_w, plane_h);
+    decode_plane(data, offsets[plane], planes[plane], plane_w, plane_h, data_length);
     reconstruct_plane(planes[plane], float_plane, step, plane_w, plane_h, levels, base_quality, (plane == 0) ? 1.0f : g_chroma_quant);
     if (has_prediction) {
       if (ref1 != NULL) {
@@ -4457,7 +4479,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
     }
     for (int plane = 0; plane < g_num_planes; plane++) {
       int pw = plane_w[plane], ph = plane_h[plane], pp = plane_pixels[plane];
-      decode_plane(data, offsets[plane], coefficients, pw, ph);
+      decode_plane(data, offsets[plane], coefficients, pw, ph, cdl);
       if (lossless) {
         inverse_legall53_2d(coefficients, pw, ph, levels);
         memcpy(gop_int[plane] + ((size_t)f * pp), coefficients, (size_t)pp * 4);
@@ -4478,8 +4500,9 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
       int a_block_count = block_count_x(width) * block_count_y(height);
       uint32_t *alpha_offsets = checked_malloc((size_t)a_block_count * 4);
       int alpha_qp;
-      const uint8_t *alpha_data = parse_alpha_section(data + cdl, alpha_offsets, a_block_count, &alpha_qp);
-      decode_plane(alpha_data, alpha_offsets, coefficients, width, height);
+      uint32_t alpha_data_length;
+      const uint8_t *alpha_data = parse_alpha_section(data + cdl, alpha_offsets, a_block_count, &alpha_qp, &alpha_data_length);
+      decode_plane(alpha_data, alpha_offsets, coefficients, width, height, alpha_data_length);
       build_quantization_steps(step, width, height, levels, alpha_qp);
       reconstruct_plane(coefficients, float_plane, step, width, height, levels, alpha_qp, 1.0f);
       memcpy(gop_alpha + ((size_t)f * pixel_count), coefficients, (size_t)pixel_count * 4);

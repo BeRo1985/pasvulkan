@@ -405,6 +405,9 @@ begin
    if (OutPosition+TpvSizeUInt(RunLength))>aOutputSize then begin
     RunLength:=TpvInt32(aOutputSize-OutPosition); // clamp the final literal run to the frame end (see the match case)
    end;
+   if (InPosition+TpvSizeUInt(RunLength))>aInputLength then begin
+    RunLength:=TpvInt32(aInputLength-InPosition); // ...and to the input bound (parity with the C decoder's literal clamp)
+   end;
    Move(aInput^[InPosition],aOutput^[OutPosition],RunLength);
    inc(InPosition,TpvSizeUInt(RunLength));
    inc(OutPosition,TpvSizeUInt(RunLength));
