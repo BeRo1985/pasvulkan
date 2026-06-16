@@ -68,6 +68,7 @@
  */
 #define FWV_NO_MAIN
 #include "fwvwave.c"
+#include <unistd.h>   // readlink() for the exe-relative shader path
 #include <vulkan/vulkan.h>
 
 // Abort with file/line if a Vulkan call returns an error.
@@ -117,10 +118,35 @@ static void create_buffer(VkDeviceSize size, VkMemoryPropertyFlags properties, V
   VK_CHECK(vkBindBufferMemory(device, *out_buffer, *out_memory, 0));
 }
 
+// Directory of the running binary (+ trailing '/'), so the shaders load relative to the EXECUTABLE, not the current
+// working directory — otherwise running the tool from elsewhere can't find shaders/*.spv.
+static char g_exe_dir[1024] = "";
+static void init_exe_dir(void) {
+  char exe[1024];
+  ssize_t n = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+  if (n > 0) {
+    exe[n] = 0;
+    char *slash = strrchr(exe, '/');
+    if (slash) {
+      size_t len = (size_t)(slash - exe) + 1;   // include the trailing '/'
+      if (len < sizeof(g_exe_dir)) {
+        memcpy(g_exe_dir, exe, len);
+        g_exe_dir[len] = 0;
+      }
+    }
+  }
+}
+
 static uint32_t *load_spirv(const char *path, size_t *out_size) {
-  FILE *file = fopen(path, "rb");
+  char resolved[1024];
+  const char *open_path = path;
+  if ((g_exe_dir[0] != 0) && (path[0] != '/')) {   // resolve relative "shaders/x.spv" against the binary's dir
+    snprintf(resolved, sizeof(resolved), "%s%s", g_exe_dir, path);
+    open_path = resolved;
+  }
+  FILE *file = fopen(open_path, "rb");
   if (!file) {
-    fprintf(stderr, "open %s\n", path);
+    fprintf(stderr, "open %s\n", open_path);
     exit(1);
   }
   fseek(file, 0, SEEK_END);
@@ -221,6 +247,7 @@ static void memory_barrier(void) {
 }
 
 int main(int argc, char **argv) {
+  init_exe_dir();   // resolve shaders relative to the binary, so the tool works from any working directory
   if (argc < 2) {
     fprintf(stderr, "usage: %s in.(mp4|y4m) [quality=8] [levels=5] [max_frames=4] [--420|--422|--chroma-format=420|422]\n", argv[0]);
     return 1;
