@@ -149,7 +149,11 @@ procedure TScreenMain.CreatePlayer;
 begin
  if (length(fVideoPath)>0) and FileExists(fVideoPath) then begin
   fStream:=TFileStream.Create(fVideoPath,fmOpenRead or fmShareDenyWrite);
-  fPlayer:=TpvFlexibleWaveletVideoPlayer.Create(fStream,pvApplication.VulkanDevice);
+  // If the engine got a real HDR swapchain (scRGB-linear FP16, see SwapChainHDR in Setup), let HDR streams output scRGB
+  // FP16 for true HDR display; otherwise (SDR swapchain) the decoder stays on the rgba8 SDR / SDR-tonemap path.
+  fPlayer:=TpvFlexibleWaveletVideoPlayer.Create(fStream,pvApplication.VulkanDevice,
+                                                TpvFlexibleWaveletVideoPlayer.TDecoderChoice.Auto,
+                                                pvApplication.VulkanSwapChain.ImageFormat=VK_FORMAT_R16G16B16A16_SFLOAT);
   fPlaybackTime:=0.0;
   fOutputImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
   // wire the container audio into the engine audio system as the A/V master clock
