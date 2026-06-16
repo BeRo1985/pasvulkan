@@ -1,0 +1,77 @@
+#version 450
+// dering.comp — a faithful GPU port of ffmpeg's `smartblur` (optional, decoder-only, lossy streams). Despite the
+// name, the validated quality win on FWV output is the smartblur EDGE-SHARPEN config (strength<0 = unsharp mask,
+// threshold<0 = "filter edges"): it restores the edge definition the 9/7 wavelet quantisation softened, while
+// leaving flat areas untouched. (+1.41 VMAF @Q8 with strength -0.5 / threshold -15 / radius 1.5 vs ffmpeg.)
+// Algorithm, per smartblur (libavfilter/vf_smartblur.c), applied per RGB channel (≈ its per-plane YUV pass):
+//   1. gb       = gaussian(orig, sigma=radius)
+//   2. filtered = strength*gb + (1-strength)*orig     // strength>0 = blur, strength<0 = sharpen, 0 = identity
+//   3. diff     = orig - filtered
+//   4. a threshold gate selects orig vs filtered (vs a linear mid-band ramp); the threshold SIGN picks the side:
+//        threshold > 0 -> keep filtered in FLAT areas, revert big changes to orig (preserve edges) = denoise/dering
+//        threshold < 0 -> keep orig where the change is small, keep filtered only at strong EDGES = edge filter
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0, rgba8) uniform readonly  image2D src_image;
+layout(binding = 1, rgba8) uniform writeonly image2D dst_image;
+// strength in -1..1 (>0 blur, <0 sharpen); threshold in -1..1 (sign = which side, magnitude = the diff band edge,
+// in the same 0..1 scale as the pixels); radius = the gaussian sigma (in pixels).
+layout(push_constant) uniform PushConstants { int width; int height; float strength; float threshold; float radius; } push;
+
+// the smartblur per-channel threshold gate (orig vs filtered, signed diff = orig - filtered)
+float gate_channel(float orig, float filtered, float diff, float T) {
+  float r = filtered;
+  if (T > 0.0) {
+    // flat mode: small change -> keep filtered (the blur); big change (edge) -> revert toward orig
+    if (diff > 0.0) {
+      if (diff > (2.0 * T)) { r = orig; }
+      else if (diff > T)    { r = orig - T; }
+    } else {
+      if ((-diff) > (2.0 * T)) { r = orig; }
+      else if ((-diff) > T)    { r = orig + T; }
+    }
+  } else if (T < 0.0) {
+    // edge mode: small change -> keep orig; strong edge -> keep filtered (the sharpen); mid -> ramp
+    if (diff > 0.0) {
+      if (diff <= (-T))         { r = orig; }
+      else if (diff <= (-2.0 * T)) { r = filtered - T; }
+    } else {
+      if (diff >= T)            { r = orig; }
+      else if (diff >= (2.0 * T)) { r = filtered + T; }
+    }
+  }
+  return r;
+}
+
+void main() {
+  ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+  if ((p.x >= push.width) || (p.y >= push.height)) {
+    return;
+  }
+  ivec2 hi = ivec2(push.width - 1, push.height - 1);
+  vec3 orig = imageLoad(src_image, p).rgb;
+  float alpha = imageLoad(src_image, p).a;
+
+  // gaussian blur, sigma = radius, fixed 9x9 support (captures ~2 sigma for radius up to ~2), clamped at the borders
+  float sigma = max(push.radius, 0.01);
+  float inv_two_sigma2 = 1.0 / (2.0 * sigma * sigma);
+  vec3 sum = vec3(0.0);
+  float wsum = 0.0;
+  for (int dy = -4; dy <= 4; dy++) {
+    for (int dx = -4; dx <= 4; dx++) {
+      ivec2 q = clamp(p + ivec2(dx, dy), ivec2(0), hi);
+      float wt = exp(-(float((dx * dx) + (dy * dy))) * inv_two_sigma2);
+      sum += imageLoad(src_image, q).rgb * wt;
+      wsum += wt;
+    }
+  }
+  vec3 gb = sum / wsum;
+
+  // smartblur blend kernel + the per-channel threshold gate
+  vec3 filtered = (push.strength * gb) + ((1.0 - push.strength) * orig);
+  vec3 diff = orig - filtered;
+  vec3 outc = vec3(gate_channel(orig.r, filtered.r, diff.r, push.threshold),
+                   gate_channel(orig.g, filtered.g, diff.g, push.threshold),
+                   gate_channel(orig.b, filtered.b, diff.b, push.threshold));
+
+  imageStore(dst_image, p, vec4(clamp(outc, 0.0, 1.0), alpha));
+}

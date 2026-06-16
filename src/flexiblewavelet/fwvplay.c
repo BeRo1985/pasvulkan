@@ -1007,6 +1007,8 @@ int main(int argc, char **argv) {
   int force_scrgb = 0;               // --force-scrgb: force scRGB FP16 output headless (HDR FP16 testing without an HDR swapchain)
   int decoder_choice = 0;            // --decoder: 0 = auto (H.264 if available, else wavelet), 1 = force H.264, 2 = force wavelet
   const char *decode_to_path = NULL; // --decode-to <file.avi>: decode the whole stream to an OpenDML AVI (RGB32 + PCM16)
+  int dering = 0;   // --dering: smartblur post-pass (lossy SDR). Default = the validated edge-sharpen winner
+  float dering_strength = -0.5f, dering_threshold = -15.0f / 255.0f, dering_radius = 1.5f;   // <0 strength = sharpen, <0 thr = edge mode
   for (int a = 2; a < argc; a++) {
     if (strncmp(argv[a], "--exposure=", 11) == 0) {
       exposure_override = (float)atof(argv[a] + 11);
@@ -1037,6 +1039,13 @@ int main(int argc, char **argv) {
       decode_to_path = argv[a] + 12;
     } else if ((strcmp(argv[a], "--decode-to") == 0) && ((a + 1) < argc)) {
       decode_to_path = argv[++a];
+    } else if (strncmp(argv[a], "--dering", 8) == 0) {
+      dering = 1;
+      if (argv[a][8] == '=') {   // --dering=strength,threshold255,radius (bare --dering = the -0.5,-15,1.5 winner)
+        float t255 = -15.0f;
+        sscanf(argv[a] + 9, "%f,%f,%f", &dering_strength, &t255, &dering_radius);   // radius keeps its default if omitted
+        dering_threshold = t255 / 255.0f;
+      }
     }
   }
   if (decode_to_path && !force_scrgb) {
@@ -1378,7 +1387,8 @@ int main(int argc, char **argv) {
   image_info.arrayLayers = 1;
   image_info.samples = 1;
   image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-  image_info.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  image_info.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                     ((!use_scrgb_output) ? VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0);   // --dering copy-back target (always for SDR -> live 'D' toggle)
   VkImage decode_image;
   VK_CHECK(vkCreateImage(device, &image_info, 0, &decode_image));
   VkMemoryRequirements image_requirements;
@@ -1396,6 +1406,42 @@ int main(int argc, char **argv) {
   view_info.subresourceRange = (VkImageSubresourceRange){ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
   VkImageView decode_view;
   VK_CHECK(vkCreateImageView(device, &view_info, 0, &decode_view));
+
+  // ---- optional deringing post-pass (--dering, lossy SDR only) ----
+  // A scratch image identical to decode_image: the dering compute reads decode_image (UNORM view) and writes this
+  // scratch, then the scratch is copied back into decode_image so the existing readback/present path stays untouched.
+  VkImage dering_image = 0;
+  VkDeviceMemory dering_image_memory = 0;
+  VkImageView dering_view = 0;
+  VkDescriptorSetLayout layout_dering = 0;
+  VkPipelineLayout pipeline_layout_dering = 0;
+  VkPipeline pipeline_dering = 0;
+  if (!use_scrgb_output && !verify) {   // create for window + --decode-to (lossy SDR); skipped for --verify (bit-compare) and HDR
+    VkImageCreateInfo dering_image_info = image_info;
+    dering_image_info.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;   // scratch = copy source
+    VK_CHECK(vkCreateImage(device, &dering_image_info, 0, &dering_image));
+    VkMemoryRequirements dering_requirements;
+    vkGetImageMemoryRequirements(device, dering_image, &dering_requirements);
+    VkMemoryAllocateInfo dering_allocate = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    dering_allocate.allocationSize = dering_requirements.size;
+    dering_allocate.memoryTypeIndex = find_memory_type(dering_requirements.memoryTypeBits, DEVICE_LOCAL);
+    VK_CHECK(vkAllocateMemory(device, &dering_allocate, 0, &dering_image_memory));
+    vkBindImageMemory(device, dering_image, dering_image_memory, 0);
+    VkImageViewCreateInfo dering_view_info = view_info;   // reuse the UNORM storage-view settings
+    dering_view_info.image = dering_image;
+    VK_CHECK(vkCreateImageView(device, &dering_view_info, 0, &dering_view));
+    // a 2-storage-image descriptor layout (binding 0 = src = decode_view, binding 1 = dst = dering_view) + 16-byte push
+    VkDescriptorSetLayoutBinding dering_bindings[2] = {
+      { 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, 0 },
+      { 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, 0 }
+    };
+    VkDescriptorSetLayoutCreateInfo dering_layout_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+    dering_layout_info.bindingCount = 2;
+    dering_layout_info.pBindings = dering_bindings;
+    VK_CHECK(vkCreateDescriptorSetLayout(device, &dering_layout_info, 0, &layout_dering));
+    pipeline_layout_dering = create_pipeline_layout(layout_dering, 20);
+    pipeline_dering = create_compute_pipeline("shaders/dering.spv", pipeline_layout_dering);
+  }
 
   // ---- pipelines (same decode chain as fwvdec) ----
   VkDescriptorSetLayout layout_1_buffer = create_descriptor_set_layout(1, 0);
@@ -1466,10 +1512,10 @@ int main(int argc, char **argv) {
 
   VkDescriptorPoolSize pool_sizes[2] = {
     { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 240 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode (Phase 2) + MCTF (3 mc + 3 add) sets
-    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },   // set_colour + set_colour_alpha + set_composite (the present blend)
+    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 5 },   // set_colour + set_colour_alpha + set_composite (present blend) + set_dering (2: src+dst)
   };
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 99;   // +6 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff[3] + set_colour_alpha) + 1 for set_composite   // B1b bidi (6) + B2 motion (6) + Phase 2 mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6)
+  pool_info.maxSets = 100;   // +6 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff[3] + set_colour_alpha) + 1 for set_composite   // B1b bidi (6) + B2 motion (6) + Phase 2 mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6)
   pool_info.poolSizeCount = 2;
   pool_info.pPoolSizes = pool_sizes;
   VkDescriptorPool descriptor_pool;
@@ -1638,6 +1684,27 @@ int main(int argc, char **argv) {
     comp_w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     comp_w.pImageInfo = &comp_img;
     vkUpdateDescriptorSets(device, 1, &comp_w, 0, 0);
+  }
+
+  // deringing set: src = decode_view (binding 0), dst = dering_view (binding 1), both GENERAL
+  VkDescriptorSet set_dering = 0;
+  if (pipeline_dering) {
+    set_dering = allocate_descriptor_set(descriptor_pool, layout_dering);
+    VkDescriptorImageInfo dering_img[2] = {
+      { 0, decode_view, VK_IMAGE_LAYOUT_GENERAL },
+      { 0, dering_view, VK_IMAGE_LAYOUT_GENERAL }
+    };
+    VkWriteDescriptorSet dering_w[2] = {
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET }, { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET }
+    };
+    for (int b = 0; b < 2; b++) {
+      dering_w[b].dstSet = set_dering;
+      dering_w[b].dstBinding = (uint32_t)b;
+      dering_w[b].descriptorCount = 1;
+      dering_w[b].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+      dering_w[b].pImageInfo = &dering_img[b];
+    }
+    vkUpdateDescriptorSets(device, 2, dering_w, 0, 0);
   }
 
   // 3D-DWT: a GOP of subband frames is spatially inverse-transformed into per-plane slots,
@@ -2035,6 +2102,10 @@ int main(int argc, char **argv) {
         quit = 1;
       } else if ((event.type == SDL_KEYDOWN) && (event.key.keysym.sym == SDLK_g)) {
         composite_bg_mode ^= 1;   // toggle the alpha composite background: checkerboard <-> solid colour
+      } else if ((event.type == SDL_KEYDOWN) && (event.key.keysym.sym == SDLK_d)) {
+        dering ^= 1;   // 'D' = live-toggle the smartblur dering/edge-sharpen post-pass (lossy SDR), for an eyeball A/B
+        printf("dering: %s\n", dering ? "ON" : "OFF");
+        fflush(stdout);
       }
     }
 
@@ -2798,8 +2869,38 @@ int main(int argc, char **argv) {
       vkCmdDispatch(command_buffer, (width + 15) / 16, (height + 15) / 16, 1);
     }
 
-    image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    // optional deringing (--dering, lossy SDR): an edge-preserving smooth of decode_image into the scratch, copied
+    // back in place. Runs for window present AND --decode-to (the quality/measurement path); skipped for --verify
+    // (which bit-compares the raw GPU decode against the CPU ref) and for lossless (nothing to dering). Leaves
+    // decode_image in TRANSFER_SRC_OPTIMAL itself, so the shared GENERAL->TRANSFER_SRC barrier below is then skipped.
+    int dering_ran = 0;
+    if (pipeline_dering && dering && !lossless && !verify) {
+      // decode_image GENERAL (colour/composite output) -> read by the dering shader; dering_image -> GENERAL (written)
+      image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+      image_barrier(dering_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 0, VK_ACCESS_SHADER_WRITE_BIT,
+                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+      struct { int32_t width, height; float strength, threshold, radius; } dering_push = { width, height, dering_strength, dering_threshold, dering_radius };
+      vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dering);
+      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dering, 0, 1, &set_dering, 0, 0);
+      vkCmdPushConstants(command_buffer, pipeline_layout_dering, VK_SHADER_STAGE_COMPUTE_BIT, 0, 20, &dering_push);
+      vkCmdDispatch(command_buffer, (width + 15) / 16, (height + 15) / 16, 1);
+      // copy the deringed scratch back into decode_image, leaving decode_image in TRANSFER_SRC for the readback/present
+      image_barrier(dering_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+      image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+      VkImageCopy dering_copy = { { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 }, { 0, 0, 0 }, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 }, { 0, 0, 0 }, { width, height, 1 } };
+      vkCmdCopyImage(command_buffer, dering_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, decode_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &dering_copy);
+      image_barrier(decode_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+      dering_ran = 1;
+    }
+
+    if (!dering_ran) {
+      image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    }
     }   // end of the non-B (GPU wavelet decode + colour) path; the B-stream upload above already left decode_image in TRANSFER_SRC
 
     if (verify || decode_to_path) {
