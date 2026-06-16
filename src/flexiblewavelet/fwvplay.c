@@ -2758,10 +2758,9 @@ int main(int argc, char **argv) {
     vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
 
     // optional alpha: composite the decoded alpha over a checkerboard / solid colour IN-PLACE in decode_image, while it
-    // is STILL in GENERAL (just written by the colour shader -> a clean SHADER_WRITE -> SHADER_READ barrier). rgba8 only.
-    // The player's 'G' key toggles the background. (TEMP: also runs in the --verify/--decode-to headless paths so the
-    // composite can be validated without a window; will be windowed-only once confirmed.)
-    if (g_has_alpha && !use_scrgb_output) {
+    // is STILL in GENERAL (just written by the colour shader -> a clean SHADER_WRITE -> SHADER_READ barrier). rgba8 only,
+    // WINDOW present only (the --verify / --decode-to / --dump headless paths keep the raw decode). 'G' toggles the bg.
+    if (g_has_alpha && !use_scrgb_output && !(verify || decode_to_path)) {
       image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
       struct { int32_t width, height, mode, premultiplied; float checker_size, colour_r, colour_g, colour_b; } comp_push = {
