@@ -993,6 +993,7 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
   long i_count = 0, p_count = 0, b_count = 0;
 
   if (fread(rgb_slot[0], 1, frame_bytes, input_pipe) == frame_bytes) {
+    apply_alpha_bleed(rgb_slot[0], width, height);   // --alpha-bleed (SDR + HDR), before the HDR ingest
     if (g_sample_bytes == 2) {   // HDR: rgb48le -> 12-bit code before encode_frame_bidi
       hdr_ingest_inplace(rgb_slot[0], width * height);
     }
@@ -1016,6 +1017,9 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
       }
       if (got == 0) {
         break;
+      }
+      for (int i = 1; i <= got; i++) {   // --alpha-bleed each just-read anchor-pair frame (SDR + HDR), before the HDR ingest
+        apply_alpha_bleed(rgb_slot[i], width, height);
       }
       if (g_sample_bytes == 2) {   // HDR: convert each just-read anchor-pair frame to 12-bit code
         for (int i = 1; i <= got; i++) {
@@ -1098,6 +1102,7 @@ typedef struct {
   size_t frame_bytes;
   long max_frames;
   int period, key_interval;
+  int width, height;            // for the --alpha-bleed preprocess (needs the 2D dims, not just frame_bytes)
   uint8_t *rgb_slot[18];        // CPU source frames for the current anchor pair (period+1 <= 17)
   CodeStep step[18];            // the current pair's coding steps (local positions)
   int step_count, step_index;   // steps in the pair, and the next one to yield
@@ -1116,6 +1121,7 @@ static int bgpu_next(BGpuDriver *d, uint8_t *rgb_dest, long coding_index,
     if (fread(d->rgb_slot[0], 1, d->frame_bytes, d->pipe) != d->frame_bytes) {
       return 0;
     }
+    apply_alpha_bleed(d->rgb_slot[0], d->width, d->height);   // --alpha-bleed (SDR + HDR), before the HDR ingest
     if (g_sample_bytes == 2) {   // HDR: rgb48le -> 12-bit code before the colour pass reads rgb_dest
       hdr_ingest_inplace(d->rgb_slot[0], (int)(d->frame_bytes / (g_channels * 2)));
     }
@@ -1135,6 +1141,9 @@ static int bgpu_next(BGpuDriver *d, uint8_t *rgb_dest, long coding_index,
     }
     if (got == 0) {
       return 0;
+    }
+    for (int i = 1; i <= got; i++) {   // --alpha-bleed each just-read anchor-pair frame (SDR + HDR), before the HDR ingest
+      apply_alpha_bleed(d->rgb_slot[i], d->width, d->height);
     }
     if (g_sample_bytes == 2) {   // HDR: convert each just-read anchor-pair frame to 12-bit code
       for (int i = 1; i <= got; i++) {
@@ -1267,6 +1276,11 @@ int main(int argc, char **argv) {
       g_has_alpha = 1;             // encode the optional alpha plane (ColourFlags bit2, appended section per frame)
     } else if (!strcmp(argv[i], "--alpha-qp") && (i + 1) < argc) {
       g_alpha_qp = atoi(argv[++i]);   // alpha quant (-1 = follow the colour QP)
+    } else if (!strncmp(argv[i], "--alpha-bleed", 13)) {
+      g_alpha_bleed = 1;              // dilate opaque RGB into the transparent pixels before the transform (no fringing / cheaper edge blocks)
+      if (argv[i][13] == '=') {
+        g_alpha_bleed_max_passes = atoi(argv[i] + 14);   // --alpha-bleed=N : cap the dilation at N passes (default 0 = fill until done)
+      }
     } else if (!strcmp(argv[i], "--cpu-bframes")) {
       cpu_bframes = 1;             // force the CPU encode_frame_bidi oracle (Stage A) instead of the GPU bidi path
     } else if (!strcmp(argv[i], "--joint")) {
@@ -1682,6 +1696,7 @@ int main(int argc, char **argv) {
 
   VkPipeline pipeline_colour_97 = create_compute_pipeline("shaders/rgb2yco.spv", pipeline_layout_colour);
   VkPipeline pipeline_extract_alpha = g_has_alpha ? create_compute_pipeline("shaders/extract_alpha.spv", pipeline_layout_extract_alpha) : 0;
+  VkPipeline pipeline_extract_alpha16 = g_has_alpha ? create_compute_pipeline("shaders/extract_alpha16.spv", pipeline_layout_extract_alpha) : 0;   // HDR (rgba16) alpha extract; picked at dispatch by g_sample_bytes
   VkPipeline pipeline_transpose = create_compute_pipeline("shaders/transpose_f.spv", pipeline_layout_transpose);
   VkPipeline pipeline_forward_row_97 = create_compute_pipeline("shaders/fwd97row.spv", pipeline_layout_row);
   VkPipeline pipeline_quant = create_compute_pipeline("shaders/quant97fwd.spv", pipeline_layout_quant);
@@ -2155,6 +2170,9 @@ int main(int argc, char **argv) {
       if (filled == 0) {
         break;
       }
+      for (int bf = 0; bf < filled; bf++) {   // --alpha-bleed each just-read GOP frame (SDR + HDR)
+        apply_alpha_bleed(gop_rgb[bf], width, height);
+      }
 
       // Phase A: colour each frame (full res); chroma is down-sampled to its plane size; copy into the GOP slot.
       for (int f = 0; f < filled; f++) {
@@ -2437,7 +2455,7 @@ int main(int argc, char **argv) {
             alw[alc] = acw; alh[alc] = ach; alc++; acw = (acw + 1) / 2; ach = (ach + 1) / 2;
           }
           int32_t a_extract_push[3] = { aw, ah, lossless };
-          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_extract_alpha);
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, (g_sample_bytes == 2) ? pipeline_extract_alpha16 : pipeline_extract_alpha);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_extract_alpha, 0, 1, &set_extract_alpha, 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_extract_alpha, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, a_extract_push);
           vkCmdDispatch(command_buffer, a_pixel_wg, 1, 1);
@@ -2664,6 +2682,8 @@ int main(int argc, char **argv) {
       bgpu.pipe = input_pipe;
       bgpu.frame_bytes = frame_bytes;
       bgpu.max_frames = max_frames;
+      bgpu.width = width;
+      bgpu.height = height;
       bgpu.period = bframes + 1;
       bgpu.key_interval = (gop > (bframes + 1)) ? ((gop / (bframes + 1)) * (bframes + 1)) : 0;
       for (int s = 0; s <= bgpu.period; s++) {
@@ -2745,6 +2765,7 @@ int main(int argc, char **argv) {
         if (!((fread(rgb, 1, frame_bytes, input_pipe) == frame_bytes) && (!max_frames || (frame_index < max_frames)))) {
           break;
         }
+        apply_alpha_bleed(rgb, width, height);   // --alpha-bleed: dilate opaque RGB into the transparent pixels (SDR + HDR), before the HDR ingest
         if (hdr_mode) {   // HDR (PQ or HLG): rgb48le (10-bit << 6) -> 12-bit BT.2020 code, both unsigned [0,1]
           const uint16_t *source16 = (const uint16_t *)rgb;
           int16_t *destination16 = (int16_t *)rgb_map;
@@ -3294,7 +3315,7 @@ int main(int argc, char **argv) {
           ch = (ch + 1) / 2;
         }
         int32_t extract_push[3] = { plane_w, plane_h, lossless };
-        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_extract_alpha);
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, (g_sample_bytes == 2) ? pipeline_extract_alpha16 : pipeline_extract_alpha);
         vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_extract_alpha, 0, 1, &set_extract_alpha, 0, 0);
         vkCmdPushConstants(command_buffer, pipeline_layout_extract_alpha, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, extract_push);
         vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);

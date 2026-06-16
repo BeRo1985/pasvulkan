@@ -9,6 +9,9 @@ layout(std430, binding = 0) readonly buffer Luma         { int luma[]; };
 layout(std430, binding = 1) readonly buffer ChromaOrange { int chroma_orange[]; };
 layout(std430, binding = 2) readonly buffer ChromaGreen  { int chroma_green[]; };
 layout(binding = 3, rgba16f) uniform writeonly image2D output_image;
+#ifdef HAS_ALPHA
+layout(std430, binding = 4) readonly buffer Alpha { int alpha[]; };   // full-res decoded alpha plane (compiled into color_hdr_scrgb_alpha.spv)
+#endif
 // shift_x/shift_y/small_w/small_h carry the chroma subsampling (0/0 = 4:4:4 -> the chroma upsample
 // reduces to small[y*W+x]); luma is always full-res.
 layout(push_constant) uniform PushConstants { int width; int height; float exposure; int transfer; int shift_x; int shift_y; int small_w; int small_h; } push;
@@ -86,5 +89,10 @@ void main() {
     linear709 = BT2020_TO_REC709 * vec3(lr, lg, lb);
   }
   vec3 scrgb = linear709 * (10000.0 / 80.0);   // linear @ 10000 nits -> scRGB-linear (1.0 = 80 nits)
-  imageStore(output_image, ivec2(x, row), vec4(scrgb, 1.0));
+#ifdef HAS_ALPHA
+  float out_a = float(clamp(alpha[i], 0, 255)) / 255.0;   // the decoded alpha plane (FP16 swapchain A)
+#else
+  float out_a = 1.0;   // opaque: no alpha channel in this stream
+#endif
+  imageStore(output_image, ivec2(x, row), vec4(scrgb, out_a));
 }

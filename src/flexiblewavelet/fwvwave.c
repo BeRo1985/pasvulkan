@@ -1047,6 +1047,97 @@ static int g_alpha_bleed_max_passes = 0;
 // The colour transform reads/writes R,G,B at stride g_channels; with 4 the 4th lane is alpha. Set per tool; default 3
 // keeps every non-rgba path byte-for-byte unchanged.
 static int g_channels = 3;
+
+// One frame sample (8-bit byte or 16-bit word, per g_sample_bytes) at a flat index, for the alpha-bleed below.
+static inline int frame_sample_get(const uint8_t *frame, int index) {
+  return (g_sample_bytes == 2) ? (int)((const uint16_t *)frame)[index] : (int)frame[index];
+}
+static inline void frame_sample_set(uint8_t *frame, int index, int value) {
+  if (g_sample_bytes == 2) {
+    ((uint16_t *)frame)[index] = (uint16_t)value;
+  } else {
+    frame[index] = (uint8_t)value;
+  }
+}
+
+// --alpha-bleed preprocess (rgba, g_channels==4; SDR 8-bit AND HDR 16-bit via frame_sample_get/set): dilate the opaque
+// RGB into the fully-transparent (alpha==0) pixels in place. Each pass, every still-unfilled pixel with >=1 already-
+// filled 8-neighbour takes the integer average of those neighbours' RGB and becomes filled; repeat until a pass fills
+// nothing (or g_alpha_bleed_max_passes is hit). The opaque (alpha!=0) pixels are the initial fill sources. Alpha is
+// NEVER touched, and the opaque pixels' RGB is left exactly as-is (only alpha==0 pixels change) -> the visible composite
+// is identical. A frame with no opaque pixel at all is left unchanged. Reading only PREVIOUS-pass-filled neighbours
+// (the `filled` mask, not `newly`) keeps the growth to a uniform one-pixel ring per pass.
+static void alpha_bleed_inplace(uint8_t *frame, int width, int height) {
+  int pixel_count = width * height;
+  uint8_t *filled = checked_malloc((size_t)pixel_count);
+  uint8_t *newly = checked_malloc((size_t)pixel_count);
+  for (int i = 0; i < pixel_count; i++) {
+    filled[i] = (frame_sample_get(frame, (i * g_channels) + 3) != 0) ? 1 : 0;
+  }
+  int pass = 0;
+  for (;;) {
+    if ((g_alpha_bleed_max_passes > 0) && (pass >= g_alpha_bleed_max_passes)) {
+      break;
+    }
+    int filled_this_pass = 0;
+    memset(newly, 0, (size_t)pixel_count);
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        int i = (y * width) + x;
+        if (filled[i]) {
+          continue;
+        }
+        int sum_r = 0, sum_g = 0, sum_b = 0, count = 0;
+        for (int dy = -1; dy <= 1; dy++) {
+          int ny = y + dy;
+          if ((ny < 0) || (ny >= height)) {
+            continue;
+          }
+          for (int dx = -1; dx <= 1; dx++) {
+            int nx = x + dx;
+            if (((dx == 0) && (dy == 0)) || (nx < 0) || (nx >= width)) {
+              continue;
+            }
+            int j = (ny * width) + nx;
+            if (filled[j]) {
+              sum_r += frame_sample_get(frame, (j * g_channels) + 0);
+              sum_g += frame_sample_get(frame, (j * g_channels) + 1);
+              sum_b += frame_sample_get(frame, (j * g_channels) + 2);
+              count++;
+            }
+          }
+        }
+        if (count > 0) {
+          frame_sample_set(frame, (i * g_channels) + 0, (sum_r + (count / 2)) / count);
+          frame_sample_set(frame, (i * g_channels) + 1, (sum_g + (count / 2)) / count);
+          frame_sample_set(frame, (i * g_channels) + 2, (sum_b + (count / 2)) / count);
+          newly[i] = 1;
+          filled_this_pass++;
+        }
+      }
+    }
+    for (int i = 0; i < pixel_count; i++) {
+      if (newly[i]) {
+        filled[i] = 1;
+      }
+    }
+    pass++;
+    if (filled_this_pass == 0) {
+      break;
+    }
+  }
+  free(newly);
+  free(filled);
+}
+
+// Call after reading each input frame (before the HDR >>4 ingest): runs the bleed only when --alpha-bleed is on, for
+// an rgba alpha stream (8-bit OR 16-bit HDR).
+static void apply_alpha_bleed(uint8_t *frame, int width, int height) {
+  if (g_alpha_bleed && g_has_alpha && (g_channels == 4)) {
+    alpha_bleed_inplace(frame, width, height);
+  }
+}
+
 static int chroma_shift_x(void) { return (g_chroma_format == 0) ? 0 : 1; }   // 4:2:2 and 4:2:0 halve horizontally
 static int chroma_shift_y(void) { return (g_chroma_format == 2) ? 1 : 0; }   // only 4:2:0 halves vertically
 static int plane_width(int plane, int frame_width) {

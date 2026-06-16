@@ -1411,6 +1411,16 @@ int main(int argc, char **argv) {
   VkPipelineLayout pipeline_layout_colour_hdr = create_pipeline_layout(layout_colour, 32);   // {width, height, exposure, transfer, shift_x, shift_y, small_w, small_h}
   VkPipeline pipeline_colour_hdr = create_compute_pipeline("shaders/color_hdr.spv", pipeline_layout_colour_hdr);
   VkPipeline pipeline_colour_hdr_scrgb = create_compute_pipeline("shaders/color_hdr_scrgb.spv", pipeline_layout_colour_hdr);   // FP16 scRGB output
+  // HDR/scRGB alpha variants: the SAME 5-binding layout_colour_alpha (set_colour_alpha works for both SDR and HDR alpha),
+  // but with the HDR 32-byte push. Only the final colour write differs (the alpha plane goes into the swapchain A).
+  VkPipelineLayout pipeline_layout_colour_hdr_alpha = 0;
+  VkPipeline pipeline_colour_hdr_alpha = 0;
+  VkPipeline pipeline_colour_hdr_scrgb_alpha = 0;
+  if (g_has_alpha) {
+    pipeline_layout_colour_hdr_alpha = create_pipeline_layout(layout_colour_alpha, 32);
+    pipeline_colour_hdr_alpha = create_compute_pipeline("shaders/color_hdr_alpha.spv", pipeline_layout_colour_hdr_alpha);
+    pipeline_colour_hdr_scrgb_alpha = create_compute_pipeline("shaders/color_hdr_scrgb_alpha.spv", pipeline_layout_colour_hdr_alpha);
+  }
   VkPipeline pipeline_inverse_row_53 = create_compute_pipeline("shaders/idwt53row.spv", pipeline_layout_row);
   VkPipeline pipeline_inverse_row = lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
   VkPipeline pipeline_coeff_add = create_compute_pipeline("shaders/coeff_add.spv", pipeline_layout_coeff_add);
@@ -2700,10 +2710,18 @@ int main(int argc, char **argv) {
     if (is_hdr) {   // HDR present: scRGB FP16 (real HDR display) or PQ/HLG -> tonemap -> sRGB8 (SDR fallback)
       struct { int32_t width, height; float exposure; int32_t transfer, shift_x, shift_y, small_w, small_h; } hdr_push =
         { width, height, hdr_exposure, header.transfer_function, chroma_shift_x_value, chroma_shift_y_value, chroma_small_w, chroma_small_h };
-      VkPipeline present_pipeline = use_scrgb_output ? pipeline_colour_hdr_scrgb : pipeline_colour_hdr;
+      VkPipeline present_pipeline;
+      VkPipelineLayout present_layout;
+      if (g_has_alpha) {   // write the decoded alpha plane into the HDR / scRGB swapchain A (set_colour_alpha binds the alpha buffer at 4)
+        present_pipeline = use_scrgb_output ? pipeline_colour_hdr_scrgb_alpha : pipeline_colour_hdr_alpha;
+        present_layout = pipeline_layout_colour_hdr_alpha;
+      } else {
+        present_pipeline = use_scrgb_output ? pipeline_colour_hdr_scrgb : pipeline_colour_hdr;
+        present_layout = pipeline_layout_colour_hdr;
+      }
       vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, present_pipeline);
-      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_colour_hdr, 0, 1, &set_colour, 0, 0);
-      vkCmdPushConstants(command_buffer, pipeline_layout_colour_hdr, VK_SHADER_STAGE_COMPUTE_BIT, 0, 32, &hdr_push);
+      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, present_layout, 0, 1, g_has_alpha ? &set_colour_alpha : &set_colour, 0, 0);
+      vkCmdPushConstants(command_buffer, present_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 32, &hdr_push);
     } else {
       int32_t colour_push[6] = { width, height, chroma_shift_x_value, chroma_shift_y_value, chroma_small_w, chroma_small_h };
       vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, g_has_alpha ? pipeline_colour_alpha : pipeline_colour);

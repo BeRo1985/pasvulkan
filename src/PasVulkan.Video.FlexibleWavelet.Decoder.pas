@@ -229,6 +229,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fPLColour:TpvVulkanPipelineLayout;
        fPLColourAlpha:TpvVulkanPipelineLayout;
        fPLColourHDR:TpvVulkanPipelineLayout;
+       fPLColourHDRAlpha:TpvVulkanPipelineLayout; // HDR alpha variant: fDSLColourAlpha (5 bindings) + the 32-byte HDR push
        fPipeUnpack:TpvVulkanComputePipeline;
        fPipeDequant:TpvVulkanComputePipeline;
        fPipeTranspose:TpvVulkanComputePipeline;
@@ -245,6 +246,8 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fPipeColourAlpha:TpvVulkanComputePipeline; // color_alpha.spv: also writes the decoded alpha plane (binding 4) into output A
        fPipeColourHDR:TpvVulkanComputePipeline;
        fPipeColourHDRSCRGB:TpvVulkanComputePipeline;
+       fPipeColourHDRAlpha:TpvVulkanComputePipeline; // color_hdr_alpha.spv: HDR/SDR-tonemap output + decoded alpha into A
+       fPipeColourHDRSCRGBAlpha:TpvVulkanComputePipeline; // color_hdr_scrgb_alpha.spv: FP16 scRGB output + decoded alpha into A
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDataBuffer:TpvVulkanBuffer;
        // alpha host-input ring (data/offset/step) — pipelining-safety: the CPU writes these each displayed frame while
@@ -780,6 +783,9 @@ begin
   fPLColourAlpha:=CreatePipelineLayout(fDSLColourAlpha,24); // same 24-byte push as fPipeColour
  end;
  fPLColourHDR:=CreatePipelineLayout(fDSLColour,32);
+ if fHasAlpha then begin
+  fPLColourHDRAlpha:=CreatePipelineLayout(fDSLColourAlpha,32); // the HDR 32-byte push on the 5-binding alpha layout
+ end;
 
  // intra-decode compute pipelines from the embedded SPIR-V
  fPipeUnpack:=CreateComputePipeline(FlexibleWaveletVideoBitplaneUnpackSPIRVData,FlexibleWaveletVideoBitplaneUnpackSPIRVDataSize,fPLUnpack,true);
@@ -812,6 +818,10 @@ begin
  end;
  fPipeColourHDR:=CreateComputePipeline(FlexibleWaveletVideoColorHdrSPIRVData,FlexibleWaveletVideoColorHdrSPIRVDataSize,fPLColourHDR,false);
  fPipeColourHDRSCRGB:=CreateComputePipeline(FlexibleWaveletVideoColorHdrScrgbSPIRVData,FlexibleWaveletVideoColorHdrScrgbSPIRVDataSize,fPLColourHDR,false);
+ if fHasAlpha then begin
+  fPipeColourHDRAlpha:=CreateComputePipeline(FlexibleWaveletVideoColorHdrAlphaSPIRVData,FlexibleWaveletVideoColorHdrAlphaSPIRVDataSize,fPLColourHDRAlpha,false);
+  fPipeColourHDRSCRGBAlpha:=CreateComputePipeline(FlexibleWaveletVideoColorHdrScrgbAlphaSPIRVData,FlexibleWaveletVideoColorHdrScrgbAlphaSPIRVDataSize,fPLColourHDRAlpha,false);
+ end;
 
 end;
 
@@ -1573,10 +1583,18 @@ begin
   HDRPush[5]:=ChromaShiftY;
   HDRPush[6]:=PlaneWidth(1);
   HDRPush[7]:=PlaneHeight(1);
-  if fUseSCRGB then begin
-   RecordDispatch(aCommandBuffer,fPipeColourHDRSCRGB,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+  if fHasAlpha then begin // HDR + alpha: write the decoded alpha plane into the HDR / scRGB swapchain A (fSetColourAlpha)
+   if fUseSCRGB then begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDRSCRGBAlpha,fPLColourHDRAlpha,fSetColourAlpha,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end else begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDRAlpha,fPLColourHDRAlpha,fSetColourAlpha,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end;
   end else begin
-   RecordDispatch(aCommandBuffer,fPipeColourHDR,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+   if fUseSCRGB then begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDRSCRGB,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end else begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDR,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end;
   end;
  end else begin
   ColourPush[0]:=fWidth;
@@ -2470,10 +2488,18 @@ begin
   HDRPush[5]:=ChromaShiftY;
   HDRPush[6]:=PlaneWidth(1);
   HDRPush[7]:=PlaneHeight(1);
-  if fUseSCRGB then begin
-   RecordDispatch(aCommandBuffer,fPipeColourHDRSCRGB,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+  if fHasAlpha then begin // HDR + alpha: write the decoded alpha plane into the HDR / scRGB swapchain A (fSetColourAlpha)
+   if fUseSCRGB then begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDRSCRGBAlpha,fPLColourHDRAlpha,fSetColourAlpha,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end else begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDRAlpha,fPLColourHDRAlpha,fSetColourAlpha,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end;
   end else begin
-   RecordDispatch(aCommandBuffer,fPipeColourHDR,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+   if fUseSCRGB then begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDRSCRGB,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end else begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDR,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end;
   end;
  end else begin
   ColourPush[0]:=fWidth;
@@ -3000,10 +3026,18 @@ begin
   HDRPush[5]:=ChromaShiftY;
   HDRPush[6]:=PlaneWidth(1);
   HDRPush[7]:=PlaneHeight(1);
-  if fUseSCRGB then begin
-   RecordDispatch(aCommandBuffer,fPipeColourHDRSCRGB,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+  if fHasAlpha then begin // HDR + alpha: write the decoded alpha plane into the HDR / scRGB swapchain A (fSetColourAlpha)
+   if fUseSCRGB then begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDRSCRGBAlpha,fPLColourHDRAlpha,fSetColourAlpha,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end else begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDRAlpha,fPLColourHDRAlpha,fSetColourAlpha,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end;
   end else begin
-   RecordDispatch(aCommandBuffer,fPipeColourHDR,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+   if fUseSCRGB then begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDRSCRGB,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end else begin
+    RecordDispatch(aCommandBuffer,fPipeColourHDR,fPLColourHDR,fSetColour,@HDRPush[0],32,PixelWorkgroups,1,1);
+   end;
   end;
  end else begin
   ColourPush[0]:=fWidth;
@@ -3460,6 +3494,8 @@ begin
  FreeAndNil(fPipeTDWTInt);
  FreeAndNil(fPipeBlendMode);
  FreeAndNil(fPipeBidiBlend);
+ FreeAndNil(fPipeColourHDRSCRGBAlpha);
+ FreeAndNil(fPipeColourHDRAlpha);
  FreeAndNil(fPipeColourHDRSCRGB);
  FreeAndNil(fPipeColourHDR);
  FreeAndNil(fPipeColourAlpha);
@@ -3476,6 +3512,7 @@ begin
 
  FreeAndNil(fPLTemporal);
  FreeAndNil(fPLBlendMode);
+ FreeAndNil(fPLColourHDRAlpha);
  FreeAndNil(fPLColourHDR);
  FreeAndNil(fPLColourAlpha);
  FreeAndNil(fPLColour);

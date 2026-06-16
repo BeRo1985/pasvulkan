@@ -250,6 +250,11 @@ int main(int argc, char **argv) {
       g_has_alpha = 1;
     } else if (!strcmp(argv[i], "--alpha-qp") && ((i + 1) < argc)) {
       g_alpha_qp = atoi(argv[++i]);
+    } else if (!strncmp(argv[i], "--alpha-bleed", 13)) {
+      g_alpha_bleed = 1;   // dilate opaque RGB into the transparent pixels before the transform
+      if (argv[i][13] == '=') {
+        g_alpha_bleed_max_passes = atoi(argv[i] + 14);   // --alpha-bleed=N : cap at N passes (0 = fill until done)
+      }
     } else if (positional_count < 8) {
       positional[positional_count++] = argv[i];   // positional[0]=prog, [1]=input, [2]=quality, ...
     }
@@ -603,6 +608,9 @@ int main(int argc, char **argv) {
       if (filled == 0) {
         break;
       }
+      for (int g = 0; g < filled; g++) {   // --alpha-bleed each just-read GOP frame
+        apply_alpha_bleed(gop_rgb[g], width, height);
+      }
       encode_gop_3ddwt(gop_rgb, filled, width, height, levels, quality, gop_encoded, gop_encoded_length);
       decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, cpu_gop_rgb);
 
@@ -785,6 +793,7 @@ int main(int argc, char **argv) {
     free(gop_encoded_length);
   } else {
     while ((fread(rgb, 1, frame_bytes, input_pipe) == frame_bytes) && ((!max_frames) || (frame_index < max_frames))) {
+      apply_alpha_bleed(rgb, width, height);   // --alpha-bleed: dilate opaque RGB into the transparent pixels
       // CPU-encode this frame, then split the payload into the block bytes and the offset tables. colordiff
       // (used when chroma is subsampled) carries the down/upsampled Co/Cg; coefdiff is the 4:4:4-only default.
       uint8_t *encoded;
