@@ -10328,6 +10328,12 @@ begin
     fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
    end;
 {$ifend}
+   // VK_EXT_swapchain_colorspace makes vkGetPhysicalDeviceSurfaceFormatsKHR enumerate the HDR colour spaces
+   // (scRGB-linear EXTENDED_SRGB_LINEAR, HDR10, ...), which SwapChainHDR=true then selects for a real HDR display.
+   // Enabled whenever available; harmless when SwapChainHDR is false (the surface-format pick stays on SRGB).
+   if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME)>=0 then begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+   end;
    if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0 then begin
     DebugExtensionName:=VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
     fVulkanDebugExtensionMode:=TpvApplicationVulkanDebugExtensionMode.DebugUtils;

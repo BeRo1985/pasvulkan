@@ -84,6 +84,8 @@ begin
  UseAudio:=true;
  BlitableSurface:=true; // present path B blits the decoded frame straight into the swapchain
  VideoDecodeSupport:=true; // opt-in: VK video-decode queue + h264 extensions (for the H.264 HW-decode backend; falls back if absent)
+ SwapChainHDR:=true; // request a scRGB-linear FP16 HDR swapchain on HDR displays (so HDR streams present in true HDR); on
+                     // an SDR display the engine's surface-format pick falls back to the usual SRGB 8-bit swapchain (no change).
 //DesiredCountSwapChainImages:=2;
  PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
  VulkanAPIVersion:=VK_API_VERSION_1_3; // H.264 video decode needs >= 1.1 (structs) + synchronization2 (core in 1.3)
