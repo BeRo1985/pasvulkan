@@ -83,6 +83,8 @@ type EpvFlexibleWaveletVideoPlayer=class(EpvFlexibleWaveletVideo);
        function GetOutputImageView:TpvVulkanImageView;
        function GetOutputFormat:TVkFormat;
        function GetIsHDR:boolean;
+       function GetHasAlpha:boolean;
+       function GetAlphaPremultiplied:boolean;
        function GetHasAudio:boolean;
        function AudioReadCallback(const aFloatBuffer:Pointer;const aFrameCount:TpvInt32):TpvInt32; // TpvAudioSoundVideoReadCallback
       public
@@ -122,6 +124,8 @@ type EpvFlexibleWaveletVideoPlayer=class(EpvFlexibleWaveletVideo);
        property OutputImageView:TpvVulkanImageView read GetOutputImageView;
        property OutputFormat:TVkFormat read GetOutputFormat;
        property IsHDR:boolean read GetIsHDR;
+       property HasAlpha:boolean read GetHasAlpha; // the decoded OutputImage's A channel carries a real alpha plane
+       property AlphaPremultiplied:boolean read GetAlphaPremultiplied; // the decoded RGB is premultiplied by alpha
      end;
 
 implementation
@@ -466,6 +470,24 @@ begin
  end;
 
  result:=fDecoder.IsHDR;
+end;
+
+function TpvFlexibleWaveletVideoPlayer.GetHasAlpha:boolean;
+begin
+ if fUsingH264 then begin
+  result:=false; // the H.264 backend has no alpha channel
+  exit;
+ end;
+ result:=fDecoder.HasAlpha;
+end;
+
+function TpvFlexibleWaveletVideoPlayer.GetAlphaPremultiplied:boolean;
+begin
+ if fUsingH264 then begin
+  result:=false;
+  exit;
+ end;
+ result:=fDecoder.AlphaPremultiplied;
 end;
 
 function TpvFlexibleWaveletVideoPlayer.TimeToFrameIndex(const aTimeInSeconds:TpvDouble):TpvInt32;

@@ -56,6 +56,7 @@ type TScreenMain=class(TpvApplicationScreen)
        fDecTimeCount:TpvInt32;
        fPaused:boolean;
        fPresentBlit:boolean; // False = textured-quad (A, default), True = blit (B)
+       fBlendBackgroundMode:TpvInt32; // present path A composite background: 0 = checkerboard, 1 = solid colour ('G' toggles)
        fOutputImageLayout:TVkImageLayout; // tracked layout of the player's OutputImage between passes
        fPlayerInitPending:boolean; // defer the heavy CreatePlayer (~0.5 s of compute-pipeline compiling) out of Show
        fBlackFramePresented:boolean; // set once Draw has cleared the swapchain to black while no player exists yet
@@ -109,6 +110,18 @@ type TScreenMain=class(TpvApplicationScreen)
 
 implementation
 
+// present path A composite fragment shader (FWV video over checkerboard / solid colour, so the decoded alpha shows)
+{$i fwv_composite_frag.inc}
+
+// push constants for fwv_composite.frag (must match the shader's PushConstants block)
+type TFWVCompositePush=packed record
+      Mode:TpvInt32;          // 0 = checkerboard, 1 = solid colour
+      Premultiplied:TpvInt32; // 1 = video RGB premultiplied by alpha
+      CheckerSize:TpvFloat;   // checkerboard cell size in pixels
+      Pad:TpvFloat;
+      SolidColour:array[0..3] of TpvFloat;
+     end;
+
 constructor TScreenMain.Create;
 begin
  inherited Create;
@@ -118,6 +131,11 @@ begin
  fPlaybackTime:=0.0;
  fPaused:=false;
  fPresentBlit:=GetEnvironmentVariable('FWV_BLIT')='1'; // start in present path B (else A); toggle live with B
+ if GetEnvironmentVariable('FWV_BLENDBG')='1' then begin
+  fBlendBackgroundMode:=1; // start on the solid-colour background ('G' toggles to/from the checkerboard)
+ end else begin
+  fBlendBackgroundMode:=0; // default = checkerboard (classic transparency view)
+ end;
  fOutputImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
  fPlayerInitPending:=false;
  fBlackFramePresented:=false;
@@ -416,7 +434,10 @@ begin
  finally
   Stream.Free;
  end;
- Stream:=TpvDataStream.Create(@PasVulkan.Assets.VRDisabledToScreenBlitFragSPIRVData[0],PasVulkan.Assets.VRDisabledToScreenBlitFragSPIRVDataSize);
+ // present path A frag = the FWV composite shader (blends the decoded alpha over the chosen background) instead of the
+ // plain ToScreenBlit frag; it keeps the SAME fullscreen-triangle vertex shader + binding-0 sampler, and for an opaque
+ // (non-alpha) stream (A=1) it shows the video unchanged -> a safe drop-in.
+ Stream:=TpvDataStream.Create(@FWVCompositeFragSPIRVData[0],FWVCompositeFragSPIRVDataSize);
  try
   fFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -438,6 +459,7 @@ begin
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TFWVCompositePush)); // fwv_composite.frag background/blend params
  fPipelineLayout.Initialize;
 
  fGraphicsPipeline:=nil;
@@ -625,6 +647,10 @@ begin
     fPresentBlit:=not fPresentBlit; // toggle present path A <-> B
     result:=true;
    end;
+   KEYCODE_G:begin
+    fBlendBackgroundMode:=1-fBlendBackgroundMode; // toggle present path A composite background: checkerboard <-> solid colour
+    result:=true;
+   end;
    KEYCODE_R:begin
     // restart from the beginning by SEEKING - reuse the player + its GPU resources (no free/recreate, no device wait)
     if assigned(fPlayer) then begin
@@ -700,6 +726,7 @@ var CommandBuffer:TpvVulkanCommandBuffer;
     FitX,FitY,FitW,FitH:TpvInt32;
     Viewport:TVkViewport;
     ScissorRect:TVkRect2D;
+    CompositePush:TFWVCompositePush;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
 
@@ -794,6 +821,21 @@ begin
    CommandBuffer.CmdSetScissor(0,1,@ScissorRect);
    CommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fGraphicsPipeline.Handle);
    CommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fPipelineLayout.Handle,0,1,@fDescriptorSet.Handle,0,nil);
+   // composite params: the background ('G' toggles checker<->colour) + the stream's premultiplied-alpha flag. For an
+   // opaque stream (A=1) the shader shows the video unchanged regardless, so this is harmless for non-alpha streams.
+   CompositePush.Mode:=fBlendBackgroundMode;
+   if fPlayer.AlphaPremultiplied then begin
+    CompositePush.Premultiplied:=1;
+   end else begin
+    CompositePush.Premultiplied:=0;
+   end;
+   CompositePush.CheckerSize:=16.0;
+   CompositePush.Pad:=0.0;
+   CompositePush.SolidColour[0]:=0.10; // background colour for mode 1 (a muted blue-grey)
+   CompositePush.SolidColour[1]:=0.12;
+   CompositePush.SolidColour[2]:=0.18;
+   CompositePush.SolidColour[3]:=1.0;
+   CommandBuffer.CmdPushConstants(fPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TFWVCompositePush),@CompositePush);
    CommandBuffer.CmdDraw(3,1,0,0);
   end;
   fVulkanRenderPass.EndRenderPass(CommandBuffer);
