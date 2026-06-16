@@ -110,10 +110,9 @@ type TScreenMain=class(TpvApplicationScreen)
 
 implementation
 
-// present path A composite fragment shader (FWV video over checkerboard / solid colour, so the decoded alpha shows)
-{$i fwv_composite_frag.inc}
-
-// push constants for fwv_composite.frag (must match the shader's PushConstants block)
+// push constants for fwv_composite.frag (must match the shader's PushConstants block). The compiled shader itself is
+// a RUNTIME asset (assets/shaders/fwv_composite.frag.spv, built by src/assets/shaders/compileshaders.sh) loaded via
+// pvApplication.Assets, NOT embedded.
 type TFWVCompositePush=packed record
       Mode:TpvInt32;          // 0 = checkerboard, 1 = solid colour
       Premultiplied:TpvInt32; // 1 = video RGB premultiplied by alpha
@@ -436,8 +435,8 @@ begin
  end;
  // present path A frag = the FWV composite shader (blends the decoded alpha over the chosen background) instead of the
  // plain ToScreenBlit frag; it keeps the SAME fullscreen-triangle vertex shader + binding-0 sampler, and for an opaque
- // (non-alpha) stream (A=1) it shows the video unchanged -> a safe drop-in.
- Stream:=TpvDataStream.Create(@FWVCompositeFragSPIRVData[0],FWVCompositeFragSPIRVDataSize);
+ // (non-alpha) stream (A=1) it shows the video unchanged -> a safe drop-in. Loaded as a runtime asset.
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/fwv_composite.frag.spv');
  try
   fFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
