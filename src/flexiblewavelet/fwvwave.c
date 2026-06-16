@@ -1038,6 +1038,11 @@ static int g_num_planes = 3;
 static int g_has_alpha = 0;
 static int g_alpha_qp = -1;
 static int g_premultiplied = 0;
+// --alpha-bleed: an encode-time preprocess that dilates the opaque RGB into the fully-transparent (alpha==0) pixels so
+// the invisible areas don't cost bits on their original high-frequency RGB and bilinear sampling never pulls a wrong
+// colour across an alpha edge (fringing). Alpha is untouched. g_alpha_bleed_max_passes 0 = fill until done, N = cap.
+static int g_alpha_bleed = 0;
+static int g_alpha_bleed_max_passes = 0;
 // RGB pixel channel count: 3 = rgb24/rgb48 (legacy), 4 = rgba8/rgba16 (Option B: 32/64-bit aligned + alpha-capable).
 // The colour transform reads/writes R,G,B at stride g_channels; with 4 the 4th lane is alpha. Set per tool; default 3
 // keeps every non-rgba path byte-for-byte unchanged.
