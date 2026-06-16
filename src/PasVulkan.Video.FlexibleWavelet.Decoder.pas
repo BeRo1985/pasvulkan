@@ -247,7 +247,17 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fPipeColourHDRSCRGB:TpvVulkanComputePipeline;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDataBuffer:TpvVulkanBuffer;
-       fAlphaDataBuffer:TpvVulkanBuffer; // alpha: packed bitplane bytes (separate from fDataBuffer so the alpha block offsets are prefix-sums-from-0, uniform across all modes)
+       // alpha host-input ring (data/offset/step) — pipelining-safety: the CPU writes these each displayed frame while
+       // an earlier frame's GPU alpha decode may still be reading them, so they cycle through fAlphaRingSize slots (a
+       // free-running cursor) exactly like the colour I/P input ring. The decoded coeff[3] (device-local) stays shared.
+       fAlphaRingSize:TpvInt32;
+       fAlphaRingCursor:TpvInt32;  // next free-running slot the upload will use (cycles 0..fAlphaRingSize-1)
+       fAlphaCurrentSlot:TpvInt32; // the slot the last UploadAlpha* wrote; RecordAlphaDecode reads it (Upload + Record are separate calls)
+       fAlphaRingData:array of TpvVulkanBuffer;   // [slot] packed bitplane bytes (own buffer -> alpha offsets are prefix-sums-from-0, uniform across modes)
+       fAlphaRingOffset:array of TpvVulkanBuffer;  // [slot] alpha block offsets
+       fAlphaRingStep:array of TpvVulkanBuffer;    // [slot] alpha quant steps (lossy)
+       fAlphaRingSetUnpack:array of TpvVulkanDescriptorSet;  // [slot] {ring data, ring offset, shared coeff[3]}
+       fAlphaRingSetDequant:array of TpvVulkanDescriptorSet; // [slot] {shared coeff[3], ring step}
        fOffsetBuffer:array[0..3] of TpvVulkanBuffer;
        fStepBuffer:array[0..3] of TpvVulkanBuffer;
        fCoeffBuffer:array[0..3] of TpvVulkanBuffer;
@@ -500,6 +510,9 @@ begin
  fAlphaPremultiplied:=(fHeader.ColourFlags and 8)<>0;
  fAlphaQP:=0;
  fAlphaLossless:=true;
+ fAlphaRingSize:=4; // MaxInFlightFrames (3) + 1 -> frame N's alpha slot is not reused until N+4, by when N's decode is done
+ fAlphaRingCursor:=0;
+ fAlphaCurrentSlot:=0;
  fTransferFunction:=fHeader.TransferFunction;
  fHDRExposure:=100.0;
  if fIsHDR then begin
@@ -831,10 +844,15 @@ begin
  // every mode (I/P, B, 3D-DWT, MCTF). No previous-buffer: the alpha is intra, never predicted.
  if fHasAlpha then begin
   PlaneBytes:=TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4;
-  fAlphaDataBuffer:=CreateStorageBuffer(DataCapacity,false,'FWV.alphadata');
-  fOffsetBuffer[3]:=CreateStorageBuffer(TVkDeviceSize(LumaBlockCount)*4,false,'FWV.alphaoffset');
-  fStepBuffer[3]:=CreateStorageBuffer(PlaneBytes,false,'FWV.alphastep');
-  fCoeffBuffer[3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.alphacoeff');
+  fCoeffBuffer[3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.alphacoeff'); // decoded alpha plane (device-local, GPU-written -> shared, like coeff[0..2])
+  SetLength(fAlphaRingData,fAlphaRingSize);
+  SetLength(fAlphaRingOffset,fAlphaRingSize);
+  SetLength(fAlphaRingStep,fAlphaRingSize);
+  for SlotIndex:=0 to fAlphaRingSize-1 do begin // host-visible input ring (one set of buffers per in-flight frame slot)
+   fAlphaRingData[SlotIndex]:=CreateStorageBuffer(DataCapacity,false,'FWV.alphadata');
+   fAlphaRingOffset[SlotIndex]:=CreateStorageBuffer(TVkDeviceSize(LumaBlockCount)*4,false,'FWV.alphaoffset');
+   fAlphaRingStep[SlotIndex]:=CreateStorageBuffer(PlaneBytes,false,'FWV.alphastep');
+  end;
  end;
 
  // device-local DWT transpose scratch (a W x H plane transposes through stride max(W,H))
@@ -958,14 +976,14 @@ begin
 end;
 
 procedure TpvFlexibleWaveletVideoDecoder.BuildDescriptorSets;
-var Plane,MaxSets,MaxBuffers:TpvInt32;
+var Plane,MaxSets,MaxBuffers,SlotIndex:TpvInt32;
 begin
 
  MaxSets:=64;
  MaxBuffers:=256;
- if fHasAlpha then begin // the 6 alpha plane-3 sets (unpack/dequant/coeff<->scratch/row + colour_alpha): ~6 sets / ~14 buffers
-  MaxSets:=MaxSets+8;
-  MaxBuffers:=MaxBuffers+16;
+ if fHasAlpha then begin // alpha: per-slot unpack+dequant ring sets (fAlphaRingSize*2) + 4 shared sets (coeff<->scratch/row + colour_alpha)
+  MaxSets:=MaxSets+(fAlphaRingSize*2)+6;
+  MaxBuffers:=MaxBuffers+(fAlphaRingSize*5)+12;
  end;
  if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin // the per-frame input ring (~24 sets / ~80 buffers per slot)
   MaxSets:=MaxSets+(fBufferRingSize*30);
@@ -1042,16 +1060,22 @@ begin
  // alpha plane-3 decode sets (same pipelines as the colour planes, but the unpack reads the SEPARATE alpha data
  // buffer) + the colour_alpha set (coeff0..2 + image + coeff3=alpha). The alpha is intra: no add / mc / motion_add sets.
  if fHasAlpha then begin
-  fSetUnpack[3]:=AllocateSet(fDSL3);
-  BindStorageBuffer(fSetUnpack[3],0,fAlphaDataBuffer);
-  BindStorageBuffer(fSetUnpack[3],1,fOffsetBuffer[3]);
-  BindStorageBuffer(fSetUnpack[3],2,fCoeffBuffer[3]);
-  fSetUnpack[3].Flush;
+  // unpack + dequant sets are PER RING SLOT (they bind the per-slot host input buffers); the rest bind only the
+  // shared coeff[3] / scratch / image, so one shared set each suffices.
+  SetLength(fAlphaRingSetUnpack,fAlphaRingSize);
+  SetLength(fAlphaRingSetDequant,fAlphaRingSize);
+  for SlotIndex:=0 to fAlphaRingSize-1 do begin
+   fAlphaRingSetUnpack[SlotIndex]:=AllocateSet(fDSL3);
+   BindStorageBuffer(fAlphaRingSetUnpack[SlotIndex],0,fAlphaRingData[SlotIndex]);
+   BindStorageBuffer(fAlphaRingSetUnpack[SlotIndex],1,fAlphaRingOffset[SlotIndex]);
+   BindStorageBuffer(fAlphaRingSetUnpack[SlotIndex],2,fCoeffBuffer[3]);
+   fAlphaRingSetUnpack[SlotIndex].Flush;
 
-  fSetDequant[3]:=AllocateSet(fDSL2);
-  BindStorageBuffer(fSetDequant[3],0,fCoeffBuffer[3]);
-  BindStorageBuffer(fSetDequant[3],1,fStepBuffer[3]);
-  fSetDequant[3].Flush;
+   fAlphaRingSetDequant[SlotIndex]:=AllocateSet(fDSL2);
+   BindStorageBuffer(fAlphaRingSetDequant[SlotIndex],0,fCoeffBuffer[3]);
+   BindStorageBuffer(fAlphaRingSetDequant[SlotIndex],1,fAlphaRingStep[SlotIndex]);
+   fAlphaRingSetDequant[SlotIndex].Flush;
+  end;
 
   fSetCoeffToScratch[3]:=AllocateSet(fDSL2);
   BindStorageBuffer(fSetCoeffToScratch[3],0,fCoeffBuffer[3]);
@@ -1616,24 +1640,33 @@ var BlockCount,StepSlot:TpvInt32;
     DataPointer:PpvUInt8Array;
 begin
 
+ // pick the next free-running ring slot so this frame's host buffers are NOT the ones an in-flight earlier frame's
+ // GPU alpha decode may still be reading (the colour I/P input ring does the same). RecordAlphaDecode reads back the
+ // captured fAlphaCurrentSlot. Upload and Record are paired CPU-sequentially (Update then Draw), so the capture is safe.
+ fAlphaCurrentSlot:=fAlphaRingCursor;
+ inc(fAlphaRingCursor);
+ if fAlphaRingCursor>=fAlphaRingSize then begin
+  fAlphaRingCursor:=0;
+ end;
+
  BlockCount:=BlockCountX(fWidth)*BlockCountY(fHeight); // alpha is full-res -> the luma block count
  ParseAlphaSection(aFrameBuffer,aSectionOffset,BlockCount,fAlphaQP,AlphaDataOffset,AlphaDataLength);
  fAlphaLossless:=fAlphaQP=0;
 
- // alpha block offsets -> fOffsetBuffer[3]
- DataPointer:=PpvUInt8Array(fOffsetBuffer[3].Memory.MapMemory);
+ // alpha block offsets -> this slot's offset buffer
+ DataPointer:=PpvUInt8Array(fAlphaRingOffset[fAlphaCurrentSlot].Memory.MapMemory);
  try
   Move(fAlphaOffsetScratch[0],DataPointer^[0],TpvSizeUInt(BlockCount)*4);
  finally
-  fOffsetBuffer[3].Memory.UnmapMemory;
+  fAlphaRingOffset[fAlphaCurrentSlot].Memory.UnmapMemory;
  end;
 
- // alpha packed bitplane bytes -> the separate alpha data buffer (offsets are prefix-sums-from-0)
- DataPointer:=PpvUInt8Array(fAlphaDataBuffer.Memory.MapMemory);
+ // alpha packed bitplane bytes -> this slot's data buffer (offsets are prefix-sums-from-0)
+ DataPointer:=PpvUInt8Array(fAlphaRingData[fAlphaCurrentSlot].Memory.MapMemory);
  try
   Move(aFrameBuffer^[AlphaDataOffset],DataPointer^[0],AlphaDataLength);
  finally
-  fAlphaDataBuffer.Memory.UnmapMemory;
+  fAlphaRingData[fAlphaCurrentSlot].Memory.UnmapMemory;
  end;
 
  // lossy alpha: the quant step map for alpha_qp. The alpha is full-res, so it equals the LUMA (plane 0) step map for
@@ -1644,11 +1677,11 @@ begin
    fGainsComputed:=true;
   end;
   StepSlot:=EnsureStepCacheSlot(fAlphaQP);
-  DataPointer:=PpvUInt8Array(fStepBuffer[3].Memory.MapMemory);
+  DataPointer:=PpvUInt8Array(fAlphaRingStep[fAlphaCurrentSlot].Memory.MapMemory);
   try
    Move(fStepCacheData[(StepSlot*fNumPlanes)+0][0],DataPointer^[0],TpvSizeUInt(fWidth)*TpvSizeUInt(fHeight)*4);
   finally
-   fStepBuffer[3].Memory.UnmapMemory;
+   fAlphaRingStep[fAlphaCurrentSlot].Memory.UnmapMemory;
   end;
  end;
 
@@ -1744,7 +1777,7 @@ begin
  UnpackPush[1]:=PlaneH;
  UnpackPush[2]:=PlaneBlocksX;
  UnpackPush[3]:=PlaneBlocksY;
- RecordDispatch(aCommandBuffer,fPipeUnpack,fPLUnpack,fSetUnpack[3],@UnpackPush[0],16,PlaneUnpackWorkgroups,1,1);
+ RecordDispatch(aCommandBuffer,fPipeUnpack,fPLUnpack,fAlphaRingSetUnpack[fAlphaCurrentSlot],@UnpackPush[0],16,PlaneUnpackWorkgroups,1,1);
  RecordComputeBarrier(aCommandBuffer);
 
  // lossy: dequantize (single luma-like plane -> chroma multiplier 1.0)
@@ -1752,7 +1785,7 @@ begin
   DequantPush[0]:=PlanePixels;
   ChromaMultiplier:=1.0;
   DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
-  RecordDispatch(aCommandBuffer,fPipeDequant,fPLDequant,fSetDequant[3],@DequantPush[0],8,PlanePixelWorkgroups,1,1);
+  RecordDispatch(aCommandBuffer,fPipeDequant,fPLDequant,fAlphaRingSetDequant[fAlphaCurrentSlot],@DequantPush[0],8,PlanePixelWorkgroups,1,1);
   RecordComputeBarrier(aCommandBuffer);
  end;
 
@@ -3246,6 +3279,8 @@ begin
  fIPRingSlot:=0;
  fPreparedRingSlot:=-1;
  fBidiRingCursor:=0;
+ fAlphaRingCursor:=0; // free-running alpha host-buffer ring cursor
+ fAlphaCurrentSlot:=0;
  fPreparedIndex:=-1;
  fBidiDisplayPOC:=-1;
  fCur3DGopStart:=-1;
@@ -3327,9 +3362,12 @@ begin
  FreeAndNil(fSetColour);
  FreeAndNil(fSetColourAlpha);
  FreeAndNil(fSetRowScratch);
- // optional alpha plane-3 decode sets (not covered by the 0..fNumPlanes-1 loop below)
- FreeAndNil(fSetUnpack[3]);
- FreeAndNil(fSetDequant[3]);
+ // optional alpha decode sets (not covered by the 0..fNumPlanes-1 loop below): the per-slot unpack+dequant ring sets
+ // plus the shared idwt sets bound to coeff[3].
+ for SlotIndex:=0 to length(fAlphaRingSetUnpack)-1 do begin
+  FreeAndNil(fAlphaRingSetUnpack[SlotIndex]);
+  FreeAndNil(fAlphaRingSetDequant[SlotIndex]);
+ end;
  FreeAndNil(fSetCoeffToScratch[3]);
  FreeAndNil(fSetScratchToCoeff[3]);
  FreeAndNil(fSetRow[3]);
@@ -3410,10 +3448,12 @@ begin
   FreeAndNil(fStepBuffer[Plane]);
   FreeAndNil(fOffsetBuffer[Plane]);
  end;
- FreeAndNil(fCoeffBuffer[3]); // optional alpha plane-3 buffers (not covered by the loop above)
- FreeAndNil(fStepBuffer[3]);
- FreeAndNil(fOffsetBuffer[3]);
- FreeAndNil(fAlphaDataBuffer);
+ FreeAndNil(fCoeffBuffer[3]); // the shared decoded-alpha plane (not covered by the loop above)
+ for SlotIndex:=0 to length(fAlphaRingData)-1 do begin // the alpha host-input ring
+  FreeAndNil(fAlphaRingData[SlotIndex]);
+  FreeAndNil(fAlphaRingOffset[SlotIndex]);
+  FreeAndNil(fAlphaRingStep[SlotIndex]);
+ end;
  FreeAndNil(fDataBuffer);
 
  FreeAndNil(fPipeTDWTFloat);
