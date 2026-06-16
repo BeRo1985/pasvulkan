@@ -146,14 +146,24 @@ begin
 end;
 
 procedure TScreenMain.CreatePlayer;
+var ForceSCRGB:boolean;
+    ParamIndex:TpvInt32;
 begin
+ // --scrgb command-line flag: force scRGB FP16 decode even on an SDR swapchain — a sanity check that the FP16 decode +
+ // present path runs without crashing on a non-HDR machine (the colours look clipped/washed on SDR, but no crash = ok).
+ ForceSCRGB:=false;
+ for ParamIndex:=1 to ParamCount do begin
+  if ParamStr(ParamIndex)='--scrgb' then begin
+   ForceSCRGB:=true;
+  end;
+ end;
  if (length(fVideoPath)>0) and FileExists(fVideoPath) then begin
   fStream:=TFileStream.Create(fVideoPath,fmOpenRead or fmShareDenyWrite);
   // If the engine got a real HDR swapchain (scRGB-linear FP16, see SwapChainHDR in Setup), let HDR streams output scRGB
   // FP16 for true HDR display; otherwise (SDR swapchain) the decoder stays on the rgba8 SDR / SDR-tonemap path.
   fPlayer:=TpvFlexibleWaveletVideoPlayer.Create(fStream,pvApplication.VulkanDevice,
                                                 TpvFlexibleWaveletVideoPlayer.TDecoderChoice.Auto,
-                                                pvApplication.VulkanSwapChain.ImageFormat=VK_FORMAT_R16G16B16A16_SFLOAT);
+                                                (pvApplication.VulkanSwapChain.ImageFormat=VK_FORMAT_R16G16B16A16_SFLOAT) or ForceSCRGB);
   fPlaybackTime:=0.0;
   fOutputImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
   // wire the container audio into the engine audio system as the A/V master clock
