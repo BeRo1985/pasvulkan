@@ -7,6 +7,7 @@ CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-function -std=c11 -ftrivial-auto-var-ini
 GLSLC  ?= glslc
 
 SPV = shaders/bitplane_unpack.spv shaders/dequant97.spv shaders/transpose_f.spv \
+      shaders/pthresh.spv \
       shaders/idwt97row.spv shaders/round97.spv shaders/color.spv \
       shaders/rgb2yco.spv shaders/fwd97row.spv shaders/quant97fwd.spv \
       shaders/bitplane_size.spv shaders/bitplane_pack.spv \

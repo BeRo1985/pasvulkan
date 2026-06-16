@@ -576,6 +576,7 @@ int main(int argc, char **argv) {
   for (int plane = 0; plane < g_num_planes; plane++) {   // per-plane quant map (chroma subsampled -> its own layout); 4:4:4 -> all identical
     int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
     build_quantization_steps(step, plane_w, plane_h, levels, quality);
+    maybe_apply_tile_aq(step, plane_w, plane_h, levels);
     memcpy(step_map[plane], step, (size_t)(plane_w * plane_h) * 4);
   }
 
@@ -664,6 +665,7 @@ int main(int argc, char **argv) {
           int pw = plane_w[plane], ph = plane_h[plane], pp = plane_pixels[plane];
           if (!lossless) {   // per-plane, temporally-scaled quant steps (chroma subsampled), as the encoder builds them
             build_quantization_steps(step, pw, ph, levels, effective_quality);
+            maybe_apply_tile_aq(step, pw, ph, levels);
             memcpy(step_map[plane], step, (size_t)pp * 4);
           }
           int32_t unpack_push[4] = { pw, ph, block_count_x(pw), block_count_y(ph) };

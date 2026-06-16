@@ -127,6 +127,8 @@ typedef struct {
   // ---- optional parallel H.264 elementary stream (Annex-B) for HW decode ----
   uint64_t h264_offset;         // byte offset of the H.264 Annex-B blob (full-res; the wavelet width/height may be down-scaled)
   uint64_t h264_size;           // 0 = no H.264 stream (wavelet-only container)
+  uint64_t qpmap_offset;        // AQ (fwvpertileqp): byte offset of the per-frame per-tile QP-map section
+  uint64_t qpmap_size;          // total bytes of the qpmap section (frame_count * tile_cols * tile_rows u8); 0 = no AQ
 } ContainerHeader;
 
 // Per-frame index entry. The on-disk
@@ -714,6 +716,7 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
     for (int plane = 0; plane < g_num_planes; plane++) {   // per-plane quant steps (chroma is subsampled), as the encoder builds them
       int pw = plane_width(plane, width), ph = plane_height(plane, height);
       build_quantization_steps(step, pw, ph, levels, effective_quality);
+      maybe_apply_tile_aq(step, pw, ph, levels);
       memcpy(step_map[plane], step, (size_t)(pw * ph) * 4);
     }
   }
@@ -744,6 +747,7 @@ static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32
   int32_t *alpha_coeff = checked_malloc((size_t)width * height * 4);   // decode into a local buffer (like decode_gop_3ddwt), then copy to the host coeff[3]
   decode_plane(alpha_data, a_off, alpha_coeff, width, height, alpha_data_length);
   build_quantization_steps(step, width, height, levels, alpha_qp);
+  maybe_apply_tile_aq(step, width, height, levels);
   reconstruct_plane(alpha_coeff, float_scratch, step, width, height, levels, alpha_qp, 1.0f);
   memcpy(coeff_map3, alpha_coeff, (size_t)width * height * 4);
   free(alpha_coeff);
@@ -1066,6 +1070,19 @@ int main(int argc, char **argv) {
   int levels = header.levels;
   int quality = header.quality;
   g_chroma_format = header.chroma_format;   // set before plane_width/plane_height are used (block counts, plane dims)
+  // AQ (fwvpertileqp): read the per-frame per-tile QP-map section once. The decode then applies map[coding_index] to
+  // the step before each dequant (aq_set_current_map), identically to the encoder, so the round trip is exact.
+  uint8_t *all_qpmaps = NULL;
+  int aq_cols = aq_tile_cols(width), aq_rows = aq_tile_rows(height);
+  size_t aq_map_bytes = (size_t)aq_cols * aq_rows;
+  if (header.qpmap_size > 0) {
+    all_qpmaps = checked_malloc((size_t)header.qpmap_size);
+    fseeko(file, (off_t)header.qpmap_offset, SEEK_SET);
+    if (fread(all_qpmaps, 1, (size_t)header.qpmap_size, file) != (size_t)header.qpmap_size) {
+      die("qpmap");
+    }
+    g_aq_enabled = 1;   // turn AQ on in the shared step path; aq_set_current_map picks the frame's map per coding index
+  }
   int mode_3ddwt = (header.prediction_method == 2) || (header.prediction_method == 3);   // 2 = open-loop 3D-DWT, 3 = MCTF 3D-DWT
   g_mctf = (header.prediction_method == 3);   // MCTF: the temporal transform is predict-only MC-Haar (motion), g_motion_block from reserved2[5]
   int has_bframes = (header.prediction_method == 1) && (header.reserved2[2] > 0);   // hierarchical B-stream (coding-order index + POC reorder)
@@ -1367,6 +1384,7 @@ int main(int argc, char **argv) {
   for (int plane = 0; plane < g_num_planes; plane++) {   // per-plane quant map (chroma subsampled -> its own subband layout); 4:4:4 -> all identical
     int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
     build_quantization_steps(step, plane_w, plane_h, levels, quality);
+    maybe_apply_tile_aq(step, plane_w, plane_h, levels);
     memcpy(step_map[plane], step, (size_t)(plane_w * plane_h) * 4);
   }
 
@@ -1579,6 +1597,7 @@ int main(int argc, char **argv) {
   void *step_cache_map[STEP_CACHE_MAX][MAX_PLANES] = { { 0, 0, 0 } };
   int step_cache_q[STEP_CACHE_MAX];
   int step_cache_n = 0, gdec_step_idx = -1;   // built-quality count + the currently-bound cache index
+  int aq_ring_cursor = 0;   // AQ (fwvpertileqp): cycles the step_cache slots as a ring (per-frame step rebuild)
   int gdecode_lead = use_gpu_bdecode ? (2 * gdecode_period) : 0;
   int gdpb_slots = use_gpu_bdecode ? ((3 * gdecode_period) + 6) : 0;
   if (gdpb_slots > 64) {
@@ -2205,6 +2224,7 @@ int main(int argc, char **argv) {
         }
         if (!lossless) {   // alpha quant map (intra; alpha_qp is fixed across frames)
           build_quantization_steps(step, width, height, levels, alpha_qp);
+          maybe_apply_tile_aq(step, width, height, levels);
           memcpy(step_map[3], step, (size_t)(width * height) * 4);
         }
       }
@@ -2394,6 +2414,26 @@ int main(int argc, char **argv) {
         // build + cache one GPU step buffer set per distinct quality, then rebind the dequant set only when
         // the quality changes — no per-frame O(width*height) rebuild (the 4K CPU bottleneck).
         if (!lossless) {
+          if (g_aq_enabled) {
+            // AQ (fwvpertileqp): the step depends on THIS frame's tile map (not just quality), so the per-quality
+            // cache is bypassed — rebuild every frame into a ring slot (STEP_CACHE_MAX-deep, so an overwritten slot's
+            // prior GPU use is long retired) with the frame's map applied, and rebind the dequant set to it.
+            aq_set_current_map(all_qpmaps + ((size_t)c * aq_map_bytes), aq_cols, aq_rows);
+            int idx = aq_ring_cursor;
+            aq_ring_cursor = (aq_ring_cursor + 1) % STEP_CACHE_MAX;
+            for (int plane = 0; plane < g_num_planes; plane++) {
+              int pw = plane_width(plane, width), ph = plane_height(plane, height);
+              if (!step_cache_buf[idx][plane]) {
+                create_buffer((size_t)plane_bytes, HOST_VISIBLE_COHERENT, &step_cache_buf[idx][plane], &step_cache_mem[idx][plane]);
+                VK_CHECK(vkMapMemory(device, step_cache_mem[idx][plane], 0, VK_WHOLE_SIZE, 0, &step_cache_map[idx][plane]));
+              }
+              build_quantization_steps(step, pw, ph, levels, (int)entry->quality);
+              maybe_apply_tile_aq(step, pw, ph, levels);
+              memcpy(step_cache_map[idx][plane], step, (size_t)(pw * ph) * 4);
+              bind_storage_buffers(set_dequant[plane], (VkBuffer[]){ coeff_buffer[plane], step_cache_buf[idx][plane] }, 2);
+            }
+            gdec_step_idx = -1;   // a later non-AQ frame (n/a in an AQ stream) would have to rebind
+          } else {
           int q = (int)entry->quality, idx = -1;
           for (int k = 0; k < step_cache_n; k++) {
             if (step_cache_q[k] == q) { idx = k; break; }
@@ -2406,6 +2446,7 @@ int main(int argc, char **argv) {
               create_buffer((size_t)plane_bytes, HOST_VISIBLE_COHERENT, &step_cache_buf[idx][plane], &step_cache_mem[idx][plane]);
               VK_CHECK(vkMapMemory(device, step_cache_mem[idx][plane], 0, VK_WHOLE_SIZE, 0, &step_cache_map[idx][plane]));
               build_quantization_steps(step, pw, ph, levels, q);
+              maybe_apply_tile_aq(step, pw, ph, levels);
               memcpy(step_cache_map[idx][plane], step, (size_t)(pw * ph) * 4);
             }
           }
@@ -2414,6 +2455,7 @@ int main(int argc, char **argv) {
               bind_storage_buffers(set_dequant[plane], (VkBuffer[]){ coeff_buffer[plane], step_cache_buf[idx][plane] }, 2);
             }
             gdec_step_idx = idx;
+          }
           }
         }
         double bdec_tb = fwv_time ? now_milliseconds() : 0.0;   // end of descriptor rebinds; command recording follows
@@ -2635,6 +2677,18 @@ int main(int argc, char **argv) {
         }
       }
     } else {
+      // AQ (fwvpertileqp): rebuild the per-plane step with THIS frame's tile map every frame (a fixed-Q I/P stream
+      // never trips the quality-change rebuild below, so the per-frame map would otherwise never reach the GPU).
+      // I/P coding index == display index == frame_index. step_buffer[plane] is what set_dequant is bound to.
+      if (g_aq_enabled && !lossless) {
+        aq_set_current_map(all_qpmaps + ((size_t)frame_index * aq_map_bytes), aq_cols, aq_rows);
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
+          build_quantization_steps(step, plane_w, plane_h, levels, (int)index[frame_index].quality);
+          maybe_apply_tile_aq(step, plane_w, plane_h, levels);
+          memcpy(step_map[plane], step, (size_t)(plane_w * plane_h) * 4);
+        }
+      }
       // Per-GOP variable Q: when the frame's quality differs from the current one (a GOP boundary in a
       // --vbr stream), rebuild the quant map. The wavelet stays the same here (a --vbr file is all-lossy);
       // mixing lossless and lossy GOPs would also need a per-frame 5/3-vs-9/7 switch (deferred).
@@ -2643,6 +2697,7 @@ int main(int argc, char **argv) {
         for (int plane = 0; plane < g_num_planes; plane++) {   // per-plane quant map (4:4:4 -> all identical)
           int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
           build_quantization_steps(step, plane_w, plane_h, levels, current_quality);
+          maybe_apply_tile_aq(step, plane_w, plane_h, levels);
           memcpy(step_map[plane], step, (size_t)(plane_w * plane_h) * 4);
         }
       }

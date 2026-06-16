@@ -1509,6 +1509,270 @@ static void dequantize(const int32_t *source, float *destination, const int *ste
   }
 }
 
+// -------------------------------------- spatially-adaptive quantization (AQ — the per-tile QP map) --------
+// A small per-tile weight map (computed from the source luma, transmitted per frame) modulates the
+// per-coefficient quant steps: flat / low-activity tiles -> weight < 1 -> finer (protects ringing / banding),
+// busy / high-activity tiles -> weight > 1 -> coarser (texture-masked, frees bits). It is applied IDENTICALLY
+// on the encoder and the decoder to the CPU step[] array BEFORE it is uploaded to the GPU quant / dequant
+// shaders, so the shaders are untouched and the round trip stays exact. Tiles are AQ_TILE px (luma domain);
+// each detail subband spatially covers the whole frame at reduced resolution, so a coefficient's tile is its
+// normalised position within its own subband — no per-level 2^L arithmetic needed.
+
+#define AQ_TILE 64        // tile edge in luma pixels
+#define AQ_WMIN 0.5f      // finest  step scale (most bits)  -> code 0
+#define AQ_WMAX 2.0f      // coarsest step scale (least bits) -> code 255
+
+static int aq_tile_cols(int width)  { return (width  + (AQ_TILE - 1)) / AQ_TILE; }
+static int aq_tile_rows(int height) { return (height + (AQ_TILE - 1)) / AQ_TILE; }
+
+// u8 code <-> weight, log-spaced so 1.0 sits in the middle. IDENTICAL on encoder + decoder (same build).
+static float aq_weight_from_code(uint8_t code) {
+  return AQ_WMIN * powf(AQ_WMAX / AQ_WMIN, (float)code / 255.0f);
+}
+static uint8_t aq_code_from_weight(float weight) {
+  if (weight <= AQ_WMIN) {
+    return 0;
+  }
+  if (weight >= AQ_WMAX) {
+    return 255;
+  }
+  float t = logf(weight / AQ_WMIN) / logf(AQ_WMAX / AQ_WMIN);
+  int code = (int)((t * 255.0f) + 0.5f);
+  return (uint8_t)((code < 0) ? 0 : ((code > 255) ? 255 : code));
+}
+
+// Compute the per-tile AQ map from the source luma (ENCODER only). Activity = per-tile std-dev of luma,
+// normalised against the frame mean; flatter-than-average -> finer, busier -> coarser. weight = ratio^strength
+// (strength 0 -> all 1.0 = AQ off). Writes cols*rows bytes into tile_code (caller sizes it).
+static void compute_tile_aq_map(const int32_t *luma, int width, int height, float strength, uint8_t *tile_code) {
+  int cols = aq_tile_cols(width);
+  int rows = aq_tile_rows(height);
+  float *activity = checked_malloc((size_t)cols * rows * sizeof(float));
+  double activity_sum = 0.0;
+
+  for (int tile_row = 0; tile_row < rows; tile_row++) {
+    for (int tile_col = 0; tile_col < cols; tile_col++) {
+      int x0 = tile_col * AQ_TILE;
+      int y0 = tile_row * AQ_TILE;
+      int x1 = ((x0 + AQ_TILE) < width)  ? (x0 + AQ_TILE)  : width;
+      int y1 = ((y0 + AQ_TILE) < height) ? (y0 + AQ_TILE) : height;
+      double sum = 0.0, sum_squares = 0.0;
+      int count = 0;
+      for (int y = y0; y < y1; y++) {
+        for (int x = x0; x < x1; x++) {
+          double value = (double)luma[((size_t)y * width) + x];
+          sum += value;
+          sum_squares += (value * value);
+          count++;
+        }
+      }
+      double mean = (count > 0) ? (sum / count) : 0.0;
+      double variance = (count > 0) ? ((sum_squares / count) - (mean * mean)) : 0.0;
+      float a = (float)sqrt((variance > 0.0) ? variance : 0.0);
+      activity[((size_t)tile_row * cols) + tile_col] = a;
+      activity_sum += a;
+    }
+  }
+
+  float activity_mean = ((cols * rows) > 0) ? (float)(activity_sum / (cols * rows)) : 1.0f;
+  if (activity_mean < 1e-3f) {
+    activity_mean = 1e-3f;
+  }
+  for (int i = 0; i < (cols * rows); i++) {
+    float ratio = activity[i] / activity_mean;   // >1 busier than average -> coarser; <1 flatter -> finer
+    if (ratio < 1e-3f) {
+      ratio = 1e-3f;
+    }
+    float weight = powf(ratio, strength);
+    if (weight < AQ_WMIN) {
+      weight = AQ_WMIN;
+    } else if (weight > AQ_WMAX) {
+      weight = AQ_WMAX;
+    }
+    tile_code[i] = aq_code_from_weight(weight);
+  }
+  free(activity);
+}
+
+// Modulate step[] by the per-tile weight map, IDENTICALLY on encoder + decoder (so the round trip is exact).
+// Walks the same Mallat layout as build_quantization_steps; each coefficient's tile = its normalised position
+// within its own subband. tile_code is cols*rows bytes (the transmitted map).
+static void apply_tile_aq(int *step, int width, int height, int levels,
+                          const uint8_t *tile_code, int tile_cols, int tile_rows) {
+  float weight_lut[256];
+  for (int c = 0; c < 256; c++) {
+    weight_lut[c] = aq_weight_from_code((uint8_t)c);
+  }
+  int current_width = width;
+  int current_height = height;
+  for (int level = 0; (level < levels && current_width >= 2) && current_height >= 2; level++) {
+    int half_width = (current_width + 1) / 2;
+    int half_height = (current_height + 1) / 2;
+    for (int y = 0; y < current_height; y++) {
+      for (int x = 0; x < current_width; x++) {
+        int in_right = (x >= half_width), in_bottom = (y >= half_height);
+        if (!in_right && !in_bottom) {
+          continue;   // the LL of this level -> handled at the final level below
+        }
+        int sx = in_right  ? (x - half_width)  : x;
+        int sy = in_bottom ? (y - half_height) : y;
+        int sw = in_right  ? (current_width - half_width)   : half_width;
+        int sh = in_bottom ? (current_height - half_height) : half_height;
+        int tc = (sw > 0) ? ((sx * tile_cols) / sw) : 0;
+        int tr = (sh > 0) ? ((sy * tile_rows) / sh) : 0;
+        if (tc >= tile_cols) { tc = tile_cols - 1; }
+        if (tr >= tile_rows) { tr = tile_rows - 1; }
+        float weight = weight_lut[tile_code[((size_t)tr * tile_cols) + tc]];
+        int q = (int)(((float)step[((size_t)y * width) + x] * weight) + 0.5f);
+        step[((size_t)y * width) + x] = (q < 1) ? 1 : q;
+      }
+    }
+    current_width = half_width;
+    current_height = half_height;
+  }
+  for (int y = 0; y < current_height; y++) {   // the final LL
+    for (int x = 0; x < current_width; x++) {
+      int tc = (current_width  > 0) ? ((x * tile_cols) / current_width)  : 0;
+      int tr = (current_height > 0) ? ((y * tile_rows) / current_height) : 0;
+      if (tc >= tile_cols) { tc = tile_cols - 1; }
+      if (tr >= tile_rows) { tr = tile_rows - 1; }
+      float weight = weight_lut[tile_code[((size_t)tr * tile_cols) + tc]];
+      int q = (int)(((float)step[((size_t)y * width) + x] * weight) + 0.5f);
+      step[((size_t)y * width) + x] = (q < 1) ? 1 : q;
+    }
+  }
+}
+
+// AQ runtime state. The encoder / decoder sets the CURRENT frame's transmitted map once per frame
+// (aq_set_current_map), and every build_quantization_steps site then calls maybe_apply_tile_aq right after
+// building the base steps, so AQ reaches every code path (I/P, B, 3D-DWT, alpha, CPU oracle) with one line each.
+int g_aq_enabled = 0;            // --aq: spatially-adaptive quantization on (encoder); decoder sets it from qpmap_size>0
+float g_aq_strength = 0.5f;      // activity->weight spread (ratio^strength); 0 = off
+static const uint8_t *g_aq_current_map = NULL;   // the current frame's per-tile map (cols*rows u8), or NULL
+static int g_aq_current_cols = 0;
+static int g_aq_current_rows = 0;
+
+static void aq_set_current_map(const uint8_t *map, int cols, int rows) {
+  g_aq_current_map = map;
+  g_aq_current_cols = cols;
+  g_aq_current_rows = rows;
+}
+
+// Apply the current frame's AQ map to a freshly-built step[] (no-op when AQ is off / no map). Width/height are
+// the plane's own (luma full-res, chroma subsampled) — the map is normalised, so the same map fits any plane.
+static void maybe_apply_tile_aq(int *step, int width, int height, int levels) {
+  if ((g_aq_enabled && (g_aq_current_map != NULL)) && ((g_aq_current_cols > 0) && (g_aq_current_rows > 0))) {
+    apply_tile_aq(step, width, height, levels, g_aq_current_map, g_aq_current_cols, g_aq_current_rows);
+  }
+}
+
+// -------------------------------- perceptual coefficient thresholding (approach B, fwvperceptualrdo) --------------
+// DECODER-TRANSPARENT: the ENCODER zeros DWT coefficients below a per-coefficient perceptual threshold BEFORE the
+// normal quantize (pthresh.comp). The threshold widens the dead-zone in high-activity (texture-masked) tiles, where
+// small coefficients are perceptually insignificant — dropping them frees bits for the visible flat / edge-near
+// regions (ringing / banding). The KEPT coefficients are quantized normally with the canonical step, and a dropped
+// coefficient decodes to zero regardless, so NO map is transmitted and the decoder / container stay untouched.
+
+int g_prdo_enabled = 0;        // --prdo: perceptual RDO coefficient dropping on (encoder only)
+float g_prdo_strength = 1.0f;  // scales the masked dead-zone widening (0 = off)
+
+#define PRDO_TILE 64           // tile edge in luma pixels
+#define PRDO_CAP 4.0f          // cap the per-tile masking so a very busy tile widens the dead-zone at most (1+CAP)x
+
+static int prdo_tile_cols(int width)  { return (width  + (PRDO_TILE - 1)) / PRDO_TILE; }
+static int prdo_tile_rows(int height) { return (height + (PRDO_TILE - 1)) / PRDO_TILE; }
+
+// Per-tile masking from the source luma (ENCODER only): masking = clamp(strength * (activity/mean - 1), 0, CAP).
+// Flat / below-average tiles get 0 (no extra dropping); busy tiles get a positive widening. Writes cols*rows floats.
+static void compute_prdo_masking(const int32_t *luma, int width, int height, float strength, float *masking) {
+  int cols = prdo_tile_cols(width);
+  int rows = prdo_tile_rows(height);
+  float *activity = checked_malloc((size_t)cols * rows * sizeof(float));
+  double activity_sum = 0.0;
+
+  for (int tile_row = 0; tile_row < rows; tile_row++) {
+    for (int tile_col = 0; tile_col < cols; tile_col++) {
+      int x0 = tile_col * PRDO_TILE;
+      int y0 = tile_row * PRDO_TILE;
+      int x1 = ((x0 + PRDO_TILE) < width)  ? (x0 + PRDO_TILE)  : width;
+      int y1 = ((y0 + PRDO_TILE) < height) ? (y0 + PRDO_TILE) : height;
+      double sum = 0.0, sum_squares = 0.0;
+      int count = 0;
+      for (int y = y0; y < y1; y++) {
+        for (int x = x0; x < x1; x++) {
+          double value = (double)luma[((size_t)y * width) + x];
+          sum += value;
+          sum_squares += (value * value);
+          count++;
+        }
+      }
+      double mean = (count > 0) ? (sum / count) : 0.0;
+      double variance = (count > 0) ? ((sum_squares / count) - (mean * mean)) : 0.0;
+      float a = (float)sqrt((variance > 0.0) ? variance : 0.0);
+      activity[((size_t)tile_row * cols) + tile_col] = a;
+      activity_sum += a;
+    }
+  }
+
+  float activity_mean = ((cols * rows) > 0) ? (float)(activity_sum / (cols * rows)) : 1.0f;
+  if (activity_mean < 1e-3f) {
+    activity_mean = 1e-3f;
+  }
+  for (int i = 0; i < (cols * rows); i++) {
+    float m = strength * ((activity[i] / activity_mean) - 1.0f);
+    if (m < 0.0f) {
+      m = 0.0f;
+    } else if (m > PRDO_CAP) {
+      m = PRDO_CAP;
+    }
+    masking[i] = m;
+  }
+  free(activity);
+}
+
+// Build per-coefficient drop thresholds (float, coefficient units) = step * (1 + masking[tile]) via the same Mallat
+// walk build_quantization_steps uses; each coefficient's tile = its normalised position within its own subband.
+// pthresh.comp zeros any coefficient with |coeff| below threshold[i].
+static void build_prdo_thresholds(float *threshold, const int *step, int width, int height, int levels,
+                                  const float *masking, int tile_cols, int tile_rows) {
+  int current_width = width;
+  int current_height = height;
+  for (int level = 0; (level < levels && current_width >= 2) && current_height >= 2; level++) {
+    int half_width = (current_width + 1) / 2;
+    int half_height = (current_height + 1) / 2;
+    for (int y = 0; y < current_height; y++) {
+      for (int x = 0; x < current_width; x++) {
+        int in_right = (x >= half_width), in_bottom = (y >= half_height);
+        if (!in_right && !in_bottom) {
+          continue;   // the LL of this level -> handled at the final level below
+        }
+        int sx = in_right  ? (x - half_width)  : x;
+        int sy = in_bottom ? (y - half_height) : y;
+        int sw = in_right  ? (current_width - half_width)   : half_width;
+        int sh = in_bottom ? (current_height - half_height) : half_height;
+        int tc = (sw > 0) ? ((sx * tile_cols) / sw) : 0;
+        int tr = (sh > 0) ? ((sy * tile_rows) / sh) : 0;
+        if (tc >= tile_cols) { tc = tile_cols - 1; }
+        if (tr >= tile_rows) { tr = tile_rows - 1; }
+        size_t i = ((size_t)y * width) + x;
+        threshold[i] = (float)step[i] * (1.0f + masking[((size_t)tr * tile_cols) + tc]);
+      }
+    }
+    current_width = half_width;
+    current_height = half_height;
+  }
+  for (int y = 0; y < current_height; y++) {   // the final LL
+    for (int x = 0; x < current_width; x++) {
+      int tc = (current_width  > 0) ? ((x * tile_cols) / current_width)  : 0;
+      int tr = (current_height > 0) ? ((y * tile_rows) / current_height) : 0;
+      if (tc >= tile_cols) { tc = tile_cols - 1; }
+      if (tr >= tile_rows) { tr = tile_rows - 1; }
+      size_t i = ((size_t)y * width) + x;
+      threshold[i] = (float)step[i] * (1.0f + masking[((size_t)tr * tile_cols) + tc]);
+    }
+  }
+}
+
 // ----------------------------------------------------------- raw bit-plane bit stream
 
 typedef struct {
@@ -3765,6 +4029,7 @@ static size_t encode_frame_coefdiff(const uint8_t *rgb, int width, int height, i
 
   rgb_to_ycocg(rgb, luma, chroma_orange, chroma_green, pixel_count);
   build_quantization_steps(step, width, height, levels, base_quality);
+  maybe_apply_tile_aq(step, width, height, levels);
 
   BitWriter writer;
   bitwriter_init(&writer);
@@ -3829,6 +4094,7 @@ static void decode_frame_coefdiff(const uint8_t *frame, size_t length, int width
   int *step = checked_malloc(pixel_count * sizeof(int));
 
   build_quantization_steps(step, width, height, levels, base_quality);
+  maybe_apply_tile_aq(step, width, height, levels);
 
   int block_count = block_count_x(width) * block_count_y(height);
   uint32_t *offsets[MAX_PLANES];
@@ -3934,6 +4200,7 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
     int plane_motion_blocks_x = ((plane_w + MOTION_BLOCK) - 1) / MOTION_BLOCK;
     block_counts[plane] = block_count_x(plane_w) * block_count_y(plane_h);
     build_quantization_steps(step, plane_w, plane_h, levels, base_quality);
+    maybe_apply_tile_aq(step, plane_w, plane_h, levels);
     // Motion-compensate the previous reconstructed frame, then take the pixel-domain residual.
     if (is_predicted) {
       motion_compensate(previous_ycocg[plane], mv, mc_previous, plane_w, plane_h, plane_motion_blocks_x);
@@ -3999,6 +4266,7 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
       alpha[i] = rgb[(i * 4) + 3];   // the alpha lane of the rgba ingest buffer
     }
     build_quantization_steps(step, width, height, levels, alpha_qp);
+    maybe_apply_tile_aq(step, width, height, levels);
     if (alpha_qp == 0) {
       forward_legall53_2d(alpha, width, height, levels);   // lossless alpha
     } else {
@@ -4085,6 +4353,7 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
     int plane_pixels = plane_w * plane_h;
     int plane_motion_blocks_x = ((plane_w + MOTION_BLOCK) - 1) / MOTION_BLOCK;
     build_quantization_steps(step, plane_w, plane_h, levels, base_quality);
+    maybe_apply_tile_aq(step, plane_w, plane_h, levels);
     decode_plane(data, offsets[plane], planes[plane], plane_w, plane_h, cdl);
     reconstruct_plane(planes[plane], float_plane, step, plane_w, plane_h, levels, base_quality, (plane == 0) ? 1.0f : g_chroma_quant);   // -> residual (P) or current (I)
     if (is_predicted) {
@@ -4120,6 +4389,7 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
     uint32_t alpha_data_length;
     const uint8_t *alpha_data = parse_alpha_section(alpha_section, alpha_offsets, block_counts[0], &alpha_qp, &alpha_data_length);
     build_quantization_steps(step, width, height, levels, alpha_qp);
+    maybe_apply_tile_aq(step, width, height, levels);
     int32_t *alpha = checked_malloc((size_t)pixel_count * 4);
     decode_plane(alpha_data, alpha_offsets, alpha, width, height, alpha_data_length);
     reconstruct_plane(alpha, float_plane, step, width, height, levels, alpha_qp, 1.0f);
@@ -4181,6 +4451,7 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
     int plane_pixels = plane_w * plane_h;
     block_counts[plane] = block_count_x(plane_w) * block_count_y(plane_h);
     build_quantization_steps(step, plane_w, plane_h, levels, base_quality);
+    maybe_apply_tile_aq(step, plane_w, plane_h, levels);
     if (has_prediction) {
       if (ref1 != NULL) {
         for (int i = 0; i < plane_pixels; i++) {
@@ -4268,6 +4539,7 @@ static void decode_frame_bidi(const uint8_t *frame, int width, int height, int l
     int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
     int plane_pixels = plane_w * plane_h;
     build_quantization_steps(step, plane_w, plane_h, levels, base_quality);
+    maybe_apply_tile_aq(step, plane_w, plane_h, levels);
     decode_plane(data, offsets[plane], planes[plane], plane_w, plane_h, data_length);
     reconstruct_plane(planes[plane], float_plane, step, plane_w, plane_h, levels, base_quality, (plane == 0) ? 1.0f : g_chroma_quant);
     if (has_prediction) {
@@ -4460,6 +4732,7 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
         forward_legall53_2d(coefficients, pw, ph, levels);
       } else {
         build_quantization_steps(step, pw, ph, levels, effective_quality);
+        maybe_apply_tile_aq(step, pw, ph, levels);
         if (g_mctf) {
           for (int i = 0; i < pp; i++) {
             float_plane[i] = (float)gop_int[plane][((size_t)f * pp) + i];   // MCTF temporal-subband frames are integer
@@ -4581,6 +4854,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
         memcpy(gop_int[plane] + ((size_t)f * pp), coefficients, (size_t)pp * 4);
       } else {
         build_quantization_steps(step, pw, ph, levels, effective_quality);
+        maybe_apply_tile_aq(step, pw, ph, levels);
         dequantize(coefficients, float_plane, step, pp, (plane == 0) ? 1.0f : g_chroma_quant);
         inverse_dwt_2d(float_plane, pw, ph, levels);
         if (g_mctf) {
@@ -4600,6 +4874,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
       const uint8_t *alpha_data = parse_alpha_section(data + cdl, alpha_offsets, a_block_count, &alpha_qp, &alpha_data_length);
       decode_plane(alpha_data, alpha_offsets, coefficients, width, height, alpha_data_length);
       build_quantization_steps(step, width, height, levels, alpha_qp);
+      maybe_apply_tile_aq(step, width, height, levels);
       reconstruct_plane(coefficients, float_plane, step, width, height, levels, alpha_qp, 1.0f);
       memcpy(gop_alpha + ((size_t)f * pixel_count), coefficients, (size_t)pixel_count * 4);
       free(alpha_offsets);
