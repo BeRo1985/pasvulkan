@@ -208,6 +208,10 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
                                  // (pipelined, in-flight) frames take DISJOINT input slots instead of clobbering each other
        fHFGain:TSynthesisGains;
        fLLGain:TpvFloat;
+       fHasAlpha:boolean;     // colour_flags bit2: an optional appended 8-bit alpha section per frame (intra, full-res)
+       fAlphaPremultiplied:boolean; // colour_flags bit3: the RGB is premultiplied by alpha
+       fAlphaQP:TpvInt32;     // the alpha section's own quantization level (parsed per frame; 0 = lossless 5/3)
+       fAlphaLossless:boolean; // fAlphaQP=0 -> reversible 5/3 alpha inverse transform
        fUseSCRGB:boolean;
        fOutputFormat:TVkFormat;
        fPipelineCache:TpvVulkanPipelineCache;
@@ -215,6 +219,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fDSL2:TpvVulkanDescriptorSetLayout; // 2 storage buffers
        fDSL3:TpvVulkanDescriptorSetLayout; // 3 storage buffers
        fDSLColour:TpvVulkanDescriptorSetLayout; // 3 storage buffers + 1 storage image
+       fDSLColourAlpha:TpvVulkanDescriptorSetLayout; // alpha variant: 3 buffers + 1 image + 1 alpha buffer (bindings 0,1,2,3=image,4=alpha)
        fPLUnpack:TpvVulkanPipelineLayout;
        fPLDequant:TpvVulkanPipelineLayout;
        fPLTranspose:TpvVulkanPipelineLayout;
@@ -222,6 +227,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fPLRound:TpvVulkanPipelineLayout;
        fPLCoeffAdd:TpvVulkanPipelineLayout;
        fPLColour:TpvVulkanPipelineLayout;
+       fPLColourAlpha:TpvVulkanPipelineLayout;
        fPLColourHDR:TpvVulkanPipelineLayout;
        fPipeUnpack:TpvVulkanComputePipeline;
        fPipeDequant:TpvVulkanComputePipeline;
@@ -236,10 +242,12 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fPipeBlendMode:TpvVulkanComputePipeline; // B-frames: per-block L0/L1/BI mode blend
        fPLBlendMode:TpvVulkanPipelineLayout; // DSL3 + 20-byte push
        fPipeColour:TpvVulkanComputePipeline;
+       fPipeColourAlpha:TpvVulkanComputePipeline; // color_alpha.spv: also writes the decoded alpha plane (binding 4) into output A
        fPipeColourHDR:TpvVulkanComputePipeline;
        fPipeColourHDRSCRGB:TpvVulkanComputePipeline;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDataBuffer:TpvVulkanBuffer;
+       fAlphaDataBuffer:TpvVulkanBuffer; // alpha: packed bitplane bytes (separate from fDataBuffer so the alpha block offsets are prefix-sums-from-0, uniform across all modes)
        fOffsetBuffer:array[0..3] of TpvVulkanBuffer;
        fStepBuffer:array[0..3] of TpvVulkanBuffer;
        fCoeffBuffer:array[0..3] of TpvVulkanBuffer;
@@ -271,8 +279,12 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fSetRow:array[0..3] of TpvVulkanDescriptorSet;
        fSetRowScratch:TpvVulkanDescriptorSet;
        fSetColour:TpvVulkanDescriptorSet;
+       fSetColourAlpha:TpvVulkanDescriptorSet; // colour_alpha: {coeff0,coeff1,coeff2, image, coeff3=alpha}
        fFrameScratch:array of TpvUInt8; // decompressed frame payload, grown on demand
        fCompressedScratch:array of TpvUInt8; // raw container bytes of the current frame
+       fAlphaCompressedScratch:array of TpvUInt8; // alpha re-read (B / 3D-DWT): a displayed frame's raw container bytes (kept off fCompressedScratch, which may hold an in-flight colour frame)
+       fAlphaFrameScratch:array of TpvUInt8; // alpha re-read: the decompressed displayed frame payload
+       fAlphaOffsetScratch:array of TpvUInt32; // the alpha plane's block-offset prefix sums (CPU side)
        fOffsetScratch:array[0..3] of array of TpvUInt32; // per-plane block offset prefix sums (CPU side)
        fStepScratch:array of TpvInt32; // per-plane quantization step map (CPU side), grown on demand
        // Quantization-step cache: the step map depends only on (quality, levels, gains, sample-white), NOT on frame
@@ -312,6 +324,13 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        function EnsureStepCacheSlot(const aQuality:TpvInt32):TpvInt32; // build (once) + return the step-map cache slot for a quality
        procedure UploadFrame(const aFrameIndex:TpvInt32);
        procedure RecordDecode(const aCommandBuffer:TpvVulkanCommandBuffer;const aIsPredicted:boolean);
+       // Optional alpha (colour_flags bit2): one intra, full-res 8-bit plane appended per frame. The colour is decoded
+       // as usual into coeff[0..2]; ParseAlphaSection + UploadAlpha* stage the appended section, RecordAlphaDecode GPU-
+       // decodes it into coeff[3], and the colour pass swaps to fPipeColourAlpha (which writes coeff[3] into output A).
+       procedure ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32);
+       procedure UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aSectionOffset:TpvSizeUInt);
+       procedure UploadAlphaForDisplayedFrame(const aCodingIndex:TpvInt32);
+       procedure RecordAlphaDecode(const aCommandBuffer:TpvVulkanCommandBuffer);
        // hierarchical B-frames (Stage E3). The Active* helpers return the shared buffer/set (fBufferRingSlot<0,
        // modes A/C) or the active ring slot's (fBufferRingSlot>=0, mode B), so UploadBidiFrame / RecordBidiDecode
        // are shared by all submit modes.
@@ -379,6 +398,8 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        property OutputImageView:TpvVulkanImageView read fOutputImageView;
        property OutputFormat:TVkFormat read fOutputFormat; // R8G8B8A8_UNORM (SDR) or R16G16B16A16_SFLOAT (scRGB HDR)
        property IsHDR:boolean read fIsHDR;
+       property HasAlpha:boolean read fHasAlpha; // colour_flags bit2: the output image's A channel carries a decoded alpha plane
+       property AlphaPremultiplied:boolean read fAlphaPremultiplied; // colour_flags bit3: the RGB is premultiplied by alpha
       end;
 
 implementation
@@ -473,6 +494,12 @@ begin
  // HDR signalling: colour_flags bit0 = HDR (12-bit BT.2020, PQ/HLG). HDR scales the reference white to 4096
  // (Q x16) and selects the HDR colour shader; the SDR fallback path tonemaps to sRGB8 (exposure default 100).
  fIsHDR:=(fHeader.ColourFlags and 1)<>0;
+ // Optional alpha: colour_flags bit2 = an 8-bit alpha section appended per frame (bit3 = the RGB is premultiplied).
+ // A colour-only decoder ignores the section (it sits past the colour payload within FrameEntry.Size).
+ fHasAlpha:=(fHeader.ColourFlags and 4)<>0;
+ fAlphaPremultiplied:=(fHeader.ColourFlags and 8)<>0;
+ fAlphaQP:=0;
+ fAlphaLossless:=true;
  fTransferFunction:=fHeader.TransferFunction;
  fHDRExposure:=100.0;
  if fIsHDR then begin
@@ -716,6 +743,18 @@ begin
  fDSL3:=CreateDescriptorSetLayout(3,false);
  fDSLColour:=CreateDescriptorSetLayout(3,true);
 
+ // colour_alpha layout: bindings 0,1,2 = coeff buffers, 3 = output image, 4 = alpha buffer (the image is NOT last, so
+ // this can't go through CreateDescriptorSetLayout — it always appends the image after the buffers; build it inline).
+ if fHasAlpha then begin
+  fDSLColourAlpha:=TpvVulkanDescriptorSetLayout.Create(fDevice);
+  fDSLColourAlpha.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+  fDSLColourAlpha.AddBinding(1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+  fDSLColourAlpha.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+  fDSLColourAlpha.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+  fDSLColourAlpha.AddBinding(4,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);
+  fDSLColourAlpha.Initialize;
+ end;
+
  // pipeline layouts (push-constant sizes match the C shaders)
  fPLUnpack:=CreatePipelineLayout(fDSL3,16);
  fPLDequant:=CreatePipelineLayout(fDSL2,8);
@@ -724,6 +763,9 @@ begin
  fPLRound:=CreatePipelineLayout(fDSL1,4);
  fPLCoeffAdd:=CreatePipelineLayout(fDSL2,8); // coefdiff (A) P-frame coeff_add: {coeff, previous}, push [pixel_count, is_predicted]
  fPLColour:=CreatePipelineLayout(fDSLColour,24);
+ if fHasAlpha then begin
+  fPLColourAlpha:=CreatePipelineLayout(fDSLColourAlpha,24); // same 24-byte push as fPipeColour
+ end;
  fPLColourHDR:=CreatePipelineLayout(fDSLColour,32);
 
  // intra-decode compute pipelines from the embedded SPIR-V
@@ -752,6 +794,9 @@ begin
   fPipeTDWTFloat:=CreateComputePipeline(FlexibleWaveletVideoTdwtFloatSPIRVData,FlexibleWaveletVideoTdwtFloatSPIRVDataSize,fPLTemporal,false);
  end;
  fPipeColour:=CreateComputePipeline(FlexibleWaveletVideoColorSPIRVData,FlexibleWaveletVideoColorSPIRVDataSize,fPLColour,false);
+ if fHasAlpha then begin
+  fPipeColourAlpha:=CreateComputePipeline(FlexibleWaveletVideoColorAlphaSPIRVData,FlexibleWaveletVideoColorAlphaSPIRVDataSize,fPLColourAlpha,false);
+ end;
  fPipeColourHDR:=CreateComputePipeline(FlexibleWaveletVideoColorHdrSPIRVData,FlexibleWaveletVideoColorHdrSPIRVDataSize,fPLColourHDR,false);
  fPipeColourHDRSCRGB:=CreateComputePipeline(FlexibleWaveletVideoColorHdrScrgbSPIRVData,FlexibleWaveletVideoColorHdrScrgbSPIRVDataSize,fPLColourHDR,false);
 
@@ -779,6 +824,17 @@ begin
   fStepBuffer[Plane]:=CreateStorageBuffer(PlaneBytes,false,'FWV.step');
   fCoeffBuffer[Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.coeff');
   fPreviousBuffer[Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.previous'); // P-frame reference, GPU-resident across frames
+ end;
+
+ // optional alpha plane (index 3): a full-res (luma-sized) intra plane. Its own data buffer keeps the alpha block
+ // offsets prefix-sums-from-0 (independent of where the colour data lives), so the GPU alpha decode is uniform for
+ // every mode (I/P, B, 3D-DWT, MCTF). No previous-buffer: the alpha is intra, never predicted.
+ if fHasAlpha then begin
+  PlaneBytes:=TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4;
+  fAlphaDataBuffer:=CreateStorageBuffer(DataCapacity,false,'FWV.alphadata');
+  fOffsetBuffer[3]:=CreateStorageBuffer(TVkDeviceSize(LumaBlockCount)*4,false,'FWV.alphaoffset');
+  fStepBuffer[3]:=CreateStorageBuffer(PlaneBytes,false,'FWV.alphastep');
+  fCoeffBuffer[3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.alphacoeff');
  end;
 
  // device-local DWT transpose scratch (a W x H plane transposes through stride max(W,H))
@@ -907,6 +963,10 @@ begin
 
  MaxSets:=64;
  MaxBuffers:=256;
+ if fHasAlpha then begin // the 6 alpha plane-3 sets (unpack/dequant/coeff<->scratch/row + colour_alpha): ~6 sets / ~14 buffers
+  MaxSets:=MaxSets+8;
+  MaxBuffers:=MaxBuffers+16;
+ end;
  if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin // the per-frame input ring (~24 sets / ~80 buffers per slot)
   MaxSets:=MaxSets+(fBufferRingSize*30);
   MaxBuffers:=MaxBuffers+(fBufferRingSize*96);
@@ -917,7 +977,7 @@ begin
  end;
  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),MaxSets);
  fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,MaxBuffers);
- fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,2);
+ fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,3); // fSetColour + (optional) fSetColourAlpha
  fDescriptorPool.Initialize;
 
  // per-plane sets: unpack (data, offset, coeff), dequant (coeff, step), the two transpose directions, the row pass
@@ -978,6 +1038,43 @@ begin
  BindStorageBuffer(fSetColour,2,fCoeffBuffer[2]);
  BindStorageImage(fSetColour,3);
  fSetColour.Flush;
+
+ // alpha plane-3 decode sets (same pipelines as the colour planes, but the unpack reads the SEPARATE alpha data
+ // buffer) + the colour_alpha set (coeff0..2 + image + coeff3=alpha). The alpha is intra: no add / mc / motion_add sets.
+ if fHasAlpha then begin
+  fSetUnpack[3]:=AllocateSet(fDSL3);
+  BindStorageBuffer(fSetUnpack[3],0,fAlphaDataBuffer);
+  BindStorageBuffer(fSetUnpack[3],1,fOffsetBuffer[3]);
+  BindStorageBuffer(fSetUnpack[3],2,fCoeffBuffer[3]);
+  fSetUnpack[3].Flush;
+
+  fSetDequant[3]:=AllocateSet(fDSL2);
+  BindStorageBuffer(fSetDequant[3],0,fCoeffBuffer[3]);
+  BindStorageBuffer(fSetDequant[3],1,fStepBuffer[3]);
+  fSetDequant[3].Flush;
+
+  fSetCoeffToScratch[3]:=AllocateSet(fDSL2);
+  BindStorageBuffer(fSetCoeffToScratch[3],0,fCoeffBuffer[3]);
+  BindStorageBuffer(fSetCoeffToScratch[3],1,fScratchBuffer);
+  fSetCoeffToScratch[3].Flush;
+
+  fSetScratchToCoeff[3]:=AllocateSet(fDSL2);
+  BindStorageBuffer(fSetScratchToCoeff[3],0,fScratchBuffer);
+  BindStorageBuffer(fSetScratchToCoeff[3],1,fCoeffBuffer[3]);
+  fSetScratchToCoeff[3].Flush;
+
+  fSetRow[3]:=AllocateSet(fDSL1);
+  BindStorageBuffer(fSetRow[3],0,fCoeffBuffer[3]);
+  fSetRow[3].Flush;
+
+  fSetColourAlpha:=AllocateSet(fDSLColourAlpha);
+  BindStorageBuffer(fSetColourAlpha,0,fCoeffBuffer[0]);
+  BindStorageBuffer(fSetColourAlpha,1,fCoeffBuffer[1]);
+  BindStorageBuffer(fSetColourAlpha,2,fCoeffBuffer[2]);
+  BindStorageImage(fSetColourAlpha,3);
+  BindStorageBuffer(fSetColourAlpha,4,fCoeffBuffer[3]);
+  fSetColourAlpha.Flush;
+ end;
 
  // hierarchical B-frames: the 5 per-plane sets are allocated once but REWRITTEN per decode-ahead frame (their
  // DPB ref slots change), so they are bound in DecodeAheadFrame, not here.
@@ -1224,6 +1321,12 @@ begin
   ActiveDataBuffer.Memory.UnmapMemory;
  end;
 
+ // optional alpha (I/P colordiff/coefdiff path): the appended alpha section sits right after the colour block data,
+ // already in fFrameScratch -> stage it for RecordAlphaDecode (no re-read; the colour and alpha are the same frame).
+ if fHasAlpha then begin
+  UploadAlphaFromBuffer(PpvUInt8Array(@fFrameScratch[0]),BlockDataOffset+DataLength);
+ end;
+
  // colordiff (B) P-frame: decode the motion-vector field and upload it for mc.comp. mv_length=0 means the
  // encoder coded no motion -> the field stays all-zero (mc is then the identity == plain colordiff).
  IsPredicted:=fFrameEntries[aFrameIndex].FrameType<>0;
@@ -1427,6 +1530,11 @@ begin
 
  end;
 
+ // optional alpha: GPU-decode the intra alpha plane into coeff[3] (the colour pass below then writes it into output A).
+ if fHasAlpha then begin
+  RecordAlphaDecode(aCommandBuffer);
+ end;
+
  // colour: YCoCg(-R) -> RGB into the output image. Chroma upsample params: shift + the stored Co/Cg dims
  // (4:4:4 -> shift 0 + small dims == frame dims, so the upsample reduces to identity).
  PixelWorkgroups:=((fWidth*fHeight)+255) div 256;
@@ -1453,7 +1561,11 @@ begin
   ColourPush[3]:=ChromaShiftY;
   ColourPush[4]:=PlaneWidth(1);
   ColourPush[5]:=PlaneHeight(1);
-  RecordDispatch(aCommandBuffer,fPipeColour,fPLColour,fSetColour,@ColourPush[0],24,PixelWorkgroups,1,1);
+  if fHasAlpha then begin
+   RecordDispatch(aCommandBuffer,fPipeColourAlpha,fPLColourAlpha,fSetColourAlpha,@ColourPush[0],24,PixelWorkgroups,1,1);
+  end else begin
+   RecordDispatch(aCommandBuffer,fPipeColour,fPLColour,fSetColour,@ColourPush[0],24,PixelWorkgroups,1,1);
+  end;
  end;
 
  // Hand the decoded image to the transfer stage for present / readback.
@@ -1461,6 +1573,241 @@ begin
                     VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT));
+
+end;
+
+procedure TpvFlexibleWaveletVideoDecoder.ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32);
+var Cursor:TpvSizeUInt;
+    SizeBlobLength,Running:TpvUInt32;
+    SizeReader:TBitReader;
+    Block:TpvInt32;
+begin
+
+ // The appended section (mirrors C parse_alpha_section): [u8 alpha_qp][u32 size_blob_length][size blob: unsigned
+ // Exp-Golomb per-block sizes][u32 alpha_data_length][alpha block data]. The alpha is full-res, so block_count is the
+ // luma block count. The per-block sizes prefix-sum into the alpha offset table (fAlphaOffsetScratch).
+ Cursor:=aSectionOffset;
+ aAlphaQP:=aFrameBuffer^[Cursor];
+ inc(Cursor,1);
+
+ SizeBlobLength:=ReadU32LE(aFrameBuffer,Cursor);
+ inc(Cursor,4);
+ if TpvSizeUInt(Length(fAlphaOffsetScratch))<TpvSizeUInt(aBlockCount) then begin
+  SetLength(fAlphaOffsetScratch,aBlockCount);
+ end;
+ SizeReader.Init(PpvUInt8Array(@aFrameBuffer^[Cursor]),SizeBlobLength);
+ Running:=0;
+ for Block:=0 to aBlockCount-1 do begin
+  fAlphaOffsetScratch[Block]:=Running;
+  inc(Running,SizeReader.GetUnsignedExpGolomb);
+ end;
+ inc(Cursor,SizeBlobLength);
+
+ aAlphaDataLength:=ReadU32LE(aFrameBuffer,Cursor);
+ inc(Cursor,4);
+ aAlphaDataOffset:=Cursor;
+
+end;
+
+procedure TpvFlexibleWaveletVideoDecoder.UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aSectionOffset:TpvSizeUInt);
+var BlockCount,StepSlot:TpvInt32;
+    AlphaDataOffset:TpvSizeUInt;
+    AlphaDataLength:TpvUInt32;
+    DataPointer:PpvUInt8Array;
+begin
+
+ BlockCount:=BlockCountX(fWidth)*BlockCountY(fHeight); // alpha is full-res -> the luma block count
+ ParseAlphaSection(aFrameBuffer,aSectionOffset,BlockCount,fAlphaQP,AlphaDataOffset,AlphaDataLength);
+ fAlphaLossless:=fAlphaQP=0;
+
+ // alpha block offsets -> fOffsetBuffer[3]
+ DataPointer:=PpvUInt8Array(fOffsetBuffer[3].Memory.MapMemory);
+ try
+  Move(fAlphaOffsetScratch[0],DataPointer^[0],TpvSizeUInt(BlockCount)*4);
+ finally
+  fOffsetBuffer[3].Memory.UnmapMemory;
+ end;
+
+ // alpha packed bitplane bytes -> the separate alpha data buffer (offsets are prefix-sums-from-0)
+ DataPointer:=PpvUInt8Array(fAlphaDataBuffer.Memory.MapMemory);
+ try
+  Move(aFrameBuffer^[AlphaDataOffset],DataPointer^[0],AlphaDataLength);
+ finally
+  fAlphaDataBuffer.Memory.UnmapMemory;
+ end;
+
+ // lossy alpha: the quant step map for alpha_qp. The alpha is full-res, so it equals the LUMA (plane 0) step map for
+ // quality = alpha_qp; reuse the per-quality step cache (a distinct alpha_qp just adds its own cache slot).
+ if not fAlphaLossless then begin
+  if not fGainsComputed then begin
+   MeasureSynthesisGains(fLevels,fHFGain,fLLGain);
+   fGainsComputed:=true;
+  end;
+  StepSlot:=EnsureStepCacheSlot(fAlphaQP);
+  DataPointer:=PpvUInt8Array(fStepBuffer[3].Memory.MapMemory);
+  try
+   Move(fStepCacheData[(StepSlot*fNumPlanes)+0][0],DataPointer^[0],TpvSizeUInt(fWidth)*TpvSizeUInt(fHeight)*4);
+  finally
+   fStepBuffer[3].Memory.UnmapMemory;
+  end;
+ end;
+
+end;
+
+procedure TpvFlexibleWaveletVideoDecoder.UploadAlphaForDisplayedFrame(const aCodingIndex:TpvInt32);
+var Entry:PFrameEntry;
+    CompressedLength:TpvSizeUInt;
+    RawLength,DataLength,MVLength:TpvUInt32;
+    BlockCount:TBlockCounts;
+    Offsets:TPlaneOffsets;
+    Plane,LeadingBlockCount:TpvInt32;
+    MVDataOffset,BlockDataOffset:TpvSizeUInt;
+begin
+
+ // B / 3D-DWT: the displayed frame's colour was reconstructed earlier (from a DPB slot / GOP buffer), so its payload
+ // is NOT in fFrameScratch. Re-read + decompress THAT frame into the alpha scratch (kept off fFrameScratch, which may
+ // hold an in-flight colour frame under engine pipelining), parse the colour header only to locate the appended alpha
+ // section (= colour block-data end), then stage it like the colordiff path.
+ Entry:=@fFrameEntries[aCodingIndex];
+ CompressedLength:=Entry^.Size;
+ if TpvSizeUInt(Length(fAlphaCompressedScratch))<(CompressedLength+8) then begin
+  SetLength(fAlphaCompressedScratch,CompressedLength+8);
+ end;
+ fStream.Position:=TpvInt64(Entry^.Offset);
+ fStream.ReadBuffer(fAlphaCompressedScratch[0],CompressedLength);
+ RawLength:=ReadU32LE(PpvUInt8Array(@fAlphaCompressedScratch[0]),1);
+ if TpvSizeUInt(Length(fAlphaFrameScratch))<RawLength then begin
+  SetLength(fAlphaFrameScratch,RawLength);
+ end;
+ if not DecompressFrame(PpvUInt8Array(@fAlphaCompressedScratch[0]),CompressedLength,PpvUInt8Array(@fAlphaFrameScratch[0]),TpvSizeUInt(Length(fAlphaFrameScratch)),RawLength) then begin
+  raise EpvFlexibleWaveletVideoDecoder.Create('Alpha frame decompression failed');
+ end;
+
+ for Plane:=0 to fNumPlanes-1 do begin
+  BlockCount[Plane]:=BlockCountX(PlaneWidth(Plane))*BlockCountY(PlaneHeight(Plane));
+  if TpvSizeUInt(Length(fOffsetScratch[Plane]))<TpvSizeUInt(BlockCount[Plane]) then begin
+   SetLength(fOffsetScratch[Plane],BlockCount[Plane]);
+  end;
+  Offsets[Plane]:=PpvUInt32Array(@fOffsetScratch[Plane][0]);
+ end;
+ ParseFrameHeader(PpvUInt8Array(@fAlphaFrameScratch[0]),BlockCount,Offsets,LeadingBlockCount,MVDataOffset,MVLength,BlockDataOffset);
+ DataLength:=ReadU32LE(PpvUInt8Array(@fAlphaFrameScratch[0]),BlockDataOffset-4);
+
+ UploadAlphaFromBuffer(PpvUInt8Array(@fAlphaFrameScratch[0]),BlockDataOffset+DataLength);
+
+end;
+
+procedure TpvFlexibleWaveletVideoDecoder.RecordAlphaDecode(const aCommandBuffer:TpvVulkanCommandBuffer);
+var Level,LevelCount:TpvInt32;
+    PlaneW,PlaneH,ScratchStride,PlanePixels:TpvInt32;
+    PlaneBlocksX,PlaneBlocksY,PlaneBlockCount:TpvInt32;
+    PlanePixelWorkgroups,PlaneUnpackWorkgroups:TpvInt32;
+    CurrentWidth,CurrentHeight,LevelW,LevelH:TpvInt32;
+    LevelWidth,LevelHeight:array[0..15] of TpvInt32;
+    RowPipeline:TpvVulkanComputePipeline;
+    UnpackPush:array[0..3] of TpvInt32;
+    DequantPush:array[0..1] of TpvInt32;
+    TransposePush1,TransposePush2,RowPush1,RowPush2:array[0..3] of TpvInt32;
+    PixelCountPush:TpvInt32;
+    ChromaMultiplier:TpvFloat;
+begin
+
+ // The alpha is intra + full-res (luma dims): the same per-plane decode as a colour plane (unpack -> dequant -> iDWT
+ // -> round) into coeff[3], but WITHOUT any predictive pass, and the lossless choice follows the alpha's OWN quant
+ // (fAlphaLossless), not the colour stream's fLossless. The unpack set reads the SEPARATE alpha data buffer.
+ if fAlphaLossless then begin
+  RowPipeline:=fPipeIDWT53; // reversible 5/3
+ end else begin
+  RowPipeline:=fPipeIDWT97; // irreversible 9/7
+ end;
+
+ PlaneW:=fWidth;
+ PlaneH:=fHeight;
+ if PlaneW>PlaneH then begin
+  ScratchStride:=PlaneW;
+ end else begin
+  ScratchStride:=PlaneH;
+ end;
+ PlanePixels:=PlaneW*PlaneH;
+ PlaneBlocksX:=BlockCountX(PlaneW);
+ PlaneBlocksY:=BlockCountY(PlaneH);
+ PlaneBlockCount:=PlaneBlocksX*PlaneBlocksY;
+ PlanePixelWorkgroups:=(PlanePixels+255) div 256;
+ if fBlockSize=128 then begin
+  PlaneUnpackWorkgroups:=PlaneBlockCount;
+ end else begin
+  PlaneUnpackWorkgroups:=(PlaneBlockCount+63) div 64;
+ end;
+
+ // unpack: packed alpha bytes + per-block offsets -> coefficients
+ UnpackPush[0]:=PlaneW;
+ UnpackPush[1]:=PlaneH;
+ UnpackPush[2]:=PlaneBlocksX;
+ UnpackPush[3]:=PlaneBlocksY;
+ RecordDispatch(aCommandBuffer,fPipeUnpack,fPLUnpack,fSetUnpack[3],@UnpackPush[0],16,PlaneUnpackWorkgroups,1,1);
+ RecordComputeBarrier(aCommandBuffer);
+
+ // lossy: dequantize (single luma-like plane -> chroma multiplier 1.0)
+ if not fAlphaLossless then begin
+  DequantPush[0]:=PlanePixels;
+  ChromaMultiplier:=1.0;
+  DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
+  RecordDispatch(aCommandBuffer,fPipeDequant,fPLDequant,fSetDequant[3],@DequantPush[0],8,PlanePixelWorkgroups,1,1);
+  RecordComputeBarrier(aCommandBuffer);
+ end;
+
+ // inverse 2D wavelet, coarsest level first (the level pyramid is the full-res pyramid)
+ LevelCount:=0;
+ CurrentWidth:=PlaneW;
+ CurrentHeight:=PlaneH;
+ Level:=0;
+ while ((Level<fLevels) and (CurrentWidth>=2)) and (CurrentHeight>=2) do begin
+  LevelWidth[LevelCount]:=CurrentWidth;
+  LevelHeight[LevelCount]:=CurrentHeight;
+  inc(LevelCount);
+  CurrentWidth:=(CurrentWidth+1) div 2;
+  CurrentHeight:=(CurrentHeight+1) div 2;
+  inc(Level);
+ end;
+ for Level:=LevelCount-1 downto 0 do begin
+  LevelW:=LevelWidth[Level];
+  LevelH:=LevelHeight[Level];
+
+  TransposePush1[0]:=PlaneW;
+  TransposePush1[1]:=LevelW;
+  TransposePush1[2]:=LevelH;
+  TransposePush1[3]:=ScratchStride;
+  RecordDispatch(aCommandBuffer,fPipeTranspose,fPLTranspose,fSetCoeffToScratch[3],@TransposePush1[0],16,(LevelW+15) div 16,(LevelH+15) div 16,1);
+  RecordComputeBarrier(aCommandBuffer);
+
+  RowPush1[0]:=ScratchStride;
+  RowPush1[1]:=LevelH;
+  RowPush1[2]:=LevelW;
+  RowPush1[3]:=1;
+  RecordDispatch(aCommandBuffer,RowPipeline,fPLRow,fSetRowScratch,@RowPush1[0],16,LevelW,1,1);
+  RecordComputeBarrier(aCommandBuffer);
+
+  TransposePush2[0]:=ScratchStride;
+  TransposePush2[1]:=LevelH;
+  TransposePush2[2]:=LevelW;
+  TransposePush2[3]:=PlaneW;
+  RecordDispatch(aCommandBuffer,fPipeTranspose,fPLTranspose,fSetScratchToCoeff[3],@TransposePush2[0],16,(LevelH+15) div 16,(LevelW+15) div 16,1);
+  RecordComputeBarrier(aCommandBuffer);
+
+  RowPush2[0]:=PlaneW;
+  RowPush2[1]:=LevelW;
+  RowPush2[2]:=LevelH;
+  RowPush2[3]:=1;
+  RecordDispatch(aCommandBuffer,RowPipeline,fPLRow,fSetRow[3],@RowPush2[0],16,LevelH,1,1);
+  RecordComputeBarrier(aCommandBuffer);
+ end;
+
+ // lossy: round the float-scaled coefficients back to integer alpha bytes
+ if not fAlphaLossless then begin
+  PixelCountPush:=PlanePixels;
+  RecordDispatch(aCommandBuffer,fPipeRound,fPLRound,fSetRow[3],@PixelCountPush,4,PlanePixelWorkgroups,1,1);
+  RecordComputeBarrier(aCommandBuffer);
+ end;
 
 end;
 
@@ -2047,6 +2394,12 @@ begin
  // copy the display POC's reconstructed YCoCg DPB slot into coeff, then colour-convert into the output image
  DisplaySlot:=fGDPBPOCToSlot[aDisplayPOC];
 
+ // optional alpha: re-read + stage the displayed frame's appended alpha section. Its container entry is the coding
+ // index occupying this display POC's DPB slot (fGDPBSlotCoding[slot]) — the SAME map the colour copy below uses.
+ if fHasAlpha then begin
+  UploadAlphaForDisplayedFrame(fGDPBSlotCoding[DisplaySlot]);
+ end;
+
  RecordImageBarrier(aCommandBuffer,
                     VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,
                     0,TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -2067,6 +2420,11 @@ begin
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,1,@Barrier,0,nil,0,nil);
+
+ // optional alpha: GPU-decode the displayed frame's intra alpha plane into coeff[3] (staged above for this POC).
+ if fHasAlpha then begin
+  RecordAlphaDecode(aCommandBuffer);
+ end;
 
  PixelWorkgroups:=((fWidth*fHeight)+255) div 256;
  if fIsHDR then begin
@@ -2091,7 +2449,11 @@ begin
   ColourPush[3]:=ChromaShiftY;
   ColourPush[4]:=PlaneWidth(1);
   ColourPush[5]:=PlaneHeight(1);
-  RecordDispatch(aCommandBuffer,fPipeColour,fPLColour,fSetColour,@ColourPush[0],24,PixelWorkgroups,1,1);
+  if fHasAlpha then begin
+   RecordDispatch(aCommandBuffer,fPipeColourAlpha,fPLColourAlpha,fSetColourAlpha,@ColourPush[0],24,PixelWorkgroups,1,1);
+  end else begin
+   RecordDispatch(aCommandBuffer,fPipeColour,fPLColour,fSetColour,@ColourPush[0],24,PixelWorkgroups,1,1);
+  end;
  end;
 
  RecordImageBarrier(aCommandBuffer,
@@ -2589,6 +2951,11 @@ begin
   end;
  end;
 
+ // optional alpha: GPU-decode the displayed frame's intra alpha plane into coeff[3] (staged by PrepareFrame3D).
+ if fHasAlpha then begin
+  RecordAlphaDecode(aCommandBuffer);
+ end;
+
  PixelWorkgroups:=((fWidth*fHeight)+255) div 256;
  if fIsHDR then begin
   HDRPush[0]:=fWidth;
@@ -2612,7 +2979,11 @@ begin
   ColourPush[3]:=ChromaShiftY;
   ColourPush[4]:=PlaneWidth(1);
   ColourPush[5]:=PlaneHeight(1);
-  RecordDispatch(aCommandBuffer,fPipeColour,fPLColour,fSetColour,@ColourPush[0],24,PixelWorkgroups,1,1);
+  if fHasAlpha then begin
+   RecordDispatch(aCommandBuffer,fPipeColourAlpha,fPLColourAlpha,fSetColourAlpha,@ColourPush[0],24,PixelWorkgroups,1,1);
+  end else begin
+   RecordDispatch(aCommandBuffer,fPipeColour,fPLColour,fSetColour,@ColourPush[0],24,PixelWorkgroups,1,1);
+  end;
  end;
 
  RecordImageBarrier(aCommandBuffer,
@@ -2729,6 +3100,12 @@ begin
    PrefetchFinishGop(f3DPfBuf,f3DPfGopCount); // async; the swap waits its completion
    f3DPfDone:=true;
   end;
+ end;
+
+ // optional alpha: re-read + stage the displayed frame's appended alpha section (3D-DWT container entries are
+ // positional, so the display index IS the coding index). RecordDisplay3D's RecordAlphaDecode GPU-decodes it.
+ if fHasAlpha then begin
+  UploadAlphaForDisplayedFrame(aDisplayIndex);
  end;
 
 end;
@@ -2948,7 +3325,14 @@ begin
  FreeAndNil(fBDecodeCommandPool);
 
  FreeAndNil(fSetColour);
+ FreeAndNil(fSetColourAlpha);
  FreeAndNil(fSetRowScratch);
+ // optional alpha plane-3 decode sets (not covered by the 0..fNumPlanes-1 loop below)
+ FreeAndNil(fSetUnpack[3]);
+ FreeAndNil(fSetDequant[3]);
+ FreeAndNil(fSetCoeffToScratch[3]);
+ FreeAndNil(fSetScratchToCoeff[3]);
+ FreeAndNil(fSetRow[3]);
  for Plane:=0 to fNumPlanes-1 do begin
   FreeAndNil(fSetUnpack[Plane]);
   FreeAndNil(fSetDequant[Plane]);
@@ -3026,6 +3410,10 @@ begin
   FreeAndNil(fStepBuffer[Plane]);
   FreeAndNil(fOffsetBuffer[Plane]);
  end;
+ FreeAndNil(fCoeffBuffer[3]); // optional alpha plane-3 buffers (not covered by the loop above)
+ FreeAndNil(fStepBuffer[3]);
+ FreeAndNil(fOffsetBuffer[3]);
+ FreeAndNil(fAlphaDataBuffer);
  FreeAndNil(fDataBuffer);
 
  FreeAndNil(fPipeTDWTFloat);
@@ -3034,6 +3422,7 @@ begin
  FreeAndNil(fPipeBidiBlend);
  FreeAndNil(fPipeColourHDRSCRGB);
  FreeAndNil(fPipeColourHDR);
+ FreeAndNil(fPipeColourAlpha);
  FreeAndNil(fPipeColour);
  FreeAndNil(fPipeMotionAdd);
  FreeAndNil(fPipeMC);
@@ -3048,6 +3437,7 @@ begin
  FreeAndNil(fPLTemporal);
  FreeAndNil(fPLBlendMode);
  FreeAndNil(fPLColourHDR);
+ FreeAndNil(fPLColourAlpha);
  FreeAndNil(fPLColour);
  FreeAndNil(fPLCoeffAdd);
  FreeAndNil(fPLRound);
@@ -3056,6 +3446,7 @@ begin
  FreeAndNil(fPLDequant);
  FreeAndNil(fPLUnpack);
 
+ FreeAndNil(fDSLColourAlpha);
  FreeAndNil(fDSLColour);
  FreeAndNil(fDSL3);
  FreeAndNil(fDSL2);

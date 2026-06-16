@@ -39,6 +39,7 @@ var CommandPool:TpvVulkanCommandPool;
     PixelCount,Index,BytesPerPixel:TpvSizeInt;
     Mapped:PpvUInt8Array;
     OutFile:TFileStream;
+    AlphaFile:TFileStream;
     HeaderText:TpvRawByteString;
     IsFP16,MoreSteps:boolean;
 begin
@@ -106,6 +107,18 @@ begin
     end;
    finally
     OutFile.Free;
+   end;
+   // optional alpha: dump the decoded A lane as a raw 8-bit grayscale sidecar (matches the C fwvplay --dump alpha lane),
+   // so the alpha round-trip can be verified externally (the PPM itself drops A).
+   if aDecoder.HasAlpha and not IsFP16 then begin
+    AlphaFile:=TFileStream.Create(aPath+'.a.gray',fmCreate);
+    try
+     for Index:=0 to PixelCount-1 do begin
+      AlphaFile.WriteBuffer(Mapped^[(Index*4)+3],1);
+     end;
+    finally
+     AlphaFile.Free;
+    end;
    end;
   finally
    ReadbackBuffer.Memory.UnmapMemory;
