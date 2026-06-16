@@ -1,0 +1,37 @@
+#version 450
+// fwvplay window present: composite the decoded FWV video (rgba8, A = decoded alpha) over a checkerboard / solid-colour
+// background IN PLACE in decode_image, so the opaque blit then shows the alpha. For an opaque stream (A=255) it is a
+// no-op (the video is shown unchanged). mode 0 = checkerboard, 1 = solid colour; the player's 'G' key toggles it.
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0, rgba8) uniform image2D image;   // read + write the decoded image
+layout(push_constant) uniform PushConstants {
+  int width;
+  int height;
+  int mode;            // 0 = checkerboard, 1 = solid colour
+  int premultiplied;   // 1 = the video RGB is premultiplied by alpha
+  float checkerSize;   // checkerboard cell size in pixels
+  float pad;
+  vec4 solidColour;    // background for mode 1
+} push;
+
+void main() {
+  ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+  if ((p.x >= push.width) || (p.y >= push.height)) {
+    return;
+  }
+  vec4 vid = imageLoad(image, p);
+  vec3 bg;
+  if (push.mode == 0) {
+    ivec2 cell = ivec2(vec2(p) / max(push.checkerSize, 1.0));
+    bg = (((cell.x + cell.y) & 1) == 0) ? vec3(0.75) : vec3(0.45);
+  } else {
+    bg = push.solidColour.rgb;
+  }
+  vec3 rgb;
+  if (push.premultiplied != 0) {
+    rgb = vid.rgb + (bg * (1.0 - vid.a));   // premultiplied-alpha "over"
+  } else {
+    rgb = mix(bg, vid.rgb, vid.a);          // straight-alpha "over"
+  }
+  imageStore(image, p, vec4(rgb, 1.0));
+}

@@ -1421,6 +1421,16 @@ int main(int argc, char **argv) {
     pipeline_colour_hdr_alpha = create_compute_pipeline("shaders/color_hdr_alpha.spv", pipeline_layout_colour_hdr_alpha);
     pipeline_colour_hdr_scrgb_alpha = create_compute_pipeline("shaders/color_hdr_scrgb_alpha.spv", pipeline_layout_colour_hdr_alpha);
   }
+  // window-present alpha composite: blend the decoded alpha over a checkerboard / solid colour in-place in decode_image
+  // (rgba8 only -> guarded at dispatch by !use_scrgb_output). One storage image binding + a 40-byte push.
+  VkDescriptorSetLayout layout_composite = 0;
+  VkPipelineLayout pipeline_layout_composite = 0;
+  VkPipeline pipeline_composite = 0;
+  if (g_has_alpha) {
+    layout_composite = create_descriptor_set_layout(0, 1);   // binding 0 = the decode image (read + write)
+    pipeline_layout_composite = create_pipeline_layout(layout_composite, 40);
+    pipeline_composite = create_compute_pipeline("shaders/fwv_composite_present.spv", pipeline_layout_composite);
+  }
   VkPipeline pipeline_inverse_row_53 = create_compute_pipeline("shaders/idwt53row.spv", pipeline_layout_row);
   VkPipeline pipeline_inverse_row = lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
   VkPipeline pipeline_coeff_add = create_compute_pipeline("shaders/coeff_add.spv", pipeline_layout_coeff_add);
@@ -1429,10 +1439,10 @@ int main(int argc, char **argv) {
 
   VkDescriptorPoolSize pool_sizes[2] = {
     { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 240 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode (Phase 2) + MCTF (3 mc + 3 add) sets
-    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2 },   // set_colour + set_colour_alpha (the alpha decode's colour-write set)
+    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },   // set_colour + set_colour_alpha + set_composite (the present blend)
   };
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 98;   // +6 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff[3] + set_colour_alpha)   // B1b bidi (6) + B2 motion (6) + Phase 2 mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6)
+  pool_info.maxSets = 99;   // +6 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff[3] + set_colour_alpha) + 1 for set_composite   // B1b bidi (6) + B2 motion (6) + Phase 2 mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6)
   pool_info.poolSizeCount = 2;
   pool_info.pPoolSizes = pool_sizes;
   VkDescriptorPool descriptor_pool;
@@ -1587,6 +1597,20 @@ int main(int argc, char **argv) {
     ca_w[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     ca_w[4].pImageInfo = &ca_img;
     vkUpdateDescriptorSets(device, 5, ca_w, 0, 0);
+  }
+
+  // window-present alpha composite set: just the decode image (read + write)
+  VkDescriptorSet set_composite = 0;
+  if (g_has_alpha) {
+    set_composite = allocate_descriptor_set(descriptor_pool, layout_composite);
+    VkDescriptorImageInfo comp_img = { 0, decode_view, VK_IMAGE_LAYOUT_GENERAL };
+    VkWriteDescriptorSet comp_w = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    comp_w.dstSet = set_composite;
+    comp_w.dstBinding = 0;
+    comp_w.descriptorCount = 1;
+    comp_w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    comp_w.pImageInfo = &comp_img;
+    vkUpdateDescriptorSets(device, 1, &comp_w, 0, 0);
   }
 
   // 3D-DWT: a GOP of subband frames is spatially inverse-transformed into per-plane slots,
@@ -1961,6 +1985,7 @@ int main(int argc, char **argv) {
   // B-stream path the clock/audio start is DEFERRED until the decode-lead is pre-filled (see the loop), so
   // that one-off startup decode does not run the clock ahead either.
   int bdecode_clock_started = 0;
+  int composite_bg_mode = (getenv("FWV_BLENDBG") != NULL) ? 1 : 0;   // window alpha composite background: 0 = checkerboard, 1 = solid colour ('G' toggles)
   int fwv_time = (getenv("FWV_TIME") != NULL);   // FWV_TIME=1 -> print B-decode CPU-prep vs GPU-busy breakdown at exit
   double bdec_cpu_ms = 0.0, bdec_gpu_ms = 0.0;
   double bdec_parse_ms = 0.0, bdec_rebind_ms = 0.0, bdec_record_ms = 0.0;   // CPU-prep sub-breakdown
@@ -1981,6 +2006,8 @@ int main(int argc, char **argv) {
     while (SDL_PollEvent(&event)) {
       if ((event.type == SDL_QUIT) || ((event.type == SDL_KEYDOWN) && (event.key.keysym.sym == SDLK_ESCAPE))) {
         quit = 1;
+      } else if ((event.type == SDL_KEYDOWN) && (event.key.keysym.sym == SDLK_g)) {
+        composite_bg_mode ^= 1;   // toggle the alpha composite background: checkerboard <-> solid colour
       }
     }
 
@@ -2857,6 +2884,20 @@ int main(int argc, char **argv) {
     }
     int fit_x = ((int)extent.width - fit_w) / 2;
     int fit_y = ((int)extent.height - fit_h) / 2;
+    // optional alpha: composite the decoded alpha over a checkerboard / solid colour IN-PLACE in decode_image, so the
+    // opaque blit then shows the transparency. rgba8 only (the FP16 scRGB present has no composite). 'G' toggles the bg.
+    if (g_has_alpha && !use_scrgb_output) {
+      image_barrier(decode_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+      struct { int32_t width, height, mode, premultiplied; float checker_size, pad; float colour[4]; } comp_push = {
+        width, height, composite_bg_mode, (header.colour_flags & 8) ? 1 : 0, 16.0f, 0.0f, { 0.10f, 0.12f, 0.18f, 1.0f } };
+      vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_composite);
+      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_composite, 0, 1, &set_composite, 0, 0);
+      vkCmdPushConstants(command_buffer, pipeline_layout_composite, VK_SHADER_STAGE_COMPUTE_BIT, 0, 40, &comp_push);
+      vkCmdDispatch(command_buffer, (width + 15) / 16, (height + 15) / 16, 1);
+      image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    }
     VkImageBlit blit = { 0 };
     blit.srcSubresource = blit.dstSubresource = (VkImageSubresourceLayers){ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
     blit.srcOffsets[1] = (VkOffset3D){ width, height, 1 };
