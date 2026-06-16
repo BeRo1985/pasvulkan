@@ -1428,7 +1428,7 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_composite = 0;
   if (g_has_alpha) {
     layout_composite = create_descriptor_set_layout(0, 1);   // binding 0 = the decode image (read + write)
-    pipeline_layout_composite = create_pipeline_layout(layout_composite, 40);
+    pipeline_layout_composite = create_pipeline_layout(layout_composite, 32);
     pipeline_composite = create_compute_pipeline("shaders/fwv_composite_present.spv", pipeline_layout_composite);
   }
   VkPipeline pipeline_inverse_row_53 = create_compute_pipeline("shaders/idwt53row.spv", pipeline_layout_row);
@@ -2757,6 +2757,21 @@ int main(int argc, char **argv) {
     }
     vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
 
+    // optional alpha: composite the decoded alpha over a checkerboard / solid colour IN-PLACE in decode_image, while it
+    // is STILL in GENERAL (just written by the colour shader -> a clean SHADER_WRITE -> SHADER_READ barrier). rgba8 only.
+    // The player's 'G' key toggles the background. (TEMP: also runs in the --verify/--decode-to headless paths so the
+    // composite can be validated without a window; will be windowed-only once confirmed.)
+    if (g_has_alpha && !use_scrgb_output) {
+      image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+      struct { int32_t width, height, mode, premultiplied; float checker_size, colour_r, colour_g, colour_b; } comp_push = {
+        width, height, composite_bg_mode, (header.colour_flags & 8) ? 1 : 0, 16.0f, 0.10f, 0.12f, 0.18f };
+      vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_composite);
+      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_composite, 0, 1, &set_composite, 0, 0);
+      vkCmdPushConstants(command_buffer, pipeline_layout_composite, VK_SHADER_STAGE_COMPUTE_BIT, 0, 32, &comp_push);
+      vkCmdDispatch(command_buffer, (width + 15) / 16, (height + 15) / 16, 1);
+    }
+
     image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     }   // end of the non-B (GPU wavelet decode + colour) path; the B-stream upload above already left decode_image in TRANSFER_SRC
@@ -2884,20 +2899,6 @@ int main(int argc, char **argv) {
     }
     int fit_x = ((int)extent.width - fit_w) / 2;
     int fit_y = ((int)extent.height - fit_h) / 2;
-    // optional alpha: composite the decoded alpha over a checkerboard / solid colour IN-PLACE in decode_image, so the
-    // opaque blit then shows the transparency. rgba8 only (the FP16 scRGB present has no composite). 'G' toggles the bg.
-    if (g_has_alpha && !use_scrgb_output) {
-      image_barrier(decode_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-      struct { int32_t width, height, mode, premultiplied; float checker_size, pad; float colour[4]; } comp_push = {
-        width, height, composite_bg_mode, (header.colour_flags & 8) ? 1 : 0, 16.0f, 0.0f, { 0.10f, 0.12f, 0.18f, 1.0f } };
-      vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_composite);
-      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_composite, 0, 1, &set_composite, 0, 0);
-      vkCmdPushConstants(command_buffer, pipeline_layout_composite, VK_SHADER_STAGE_COMPUTE_BIT, 0, 40, &comp_push);
-      vkCmdDispatch(command_buffer, (width + 15) / 16, (height + 15) / 16, 1);
-      image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-    }
     VkImageBlit blit = { 0 };
     blit.srcSubresource = blit.dstSubresource = (VkImageSubresourceLayers){ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
     blit.srcOffsets[1] = (VkOffset3D){ width, height, 1 };
