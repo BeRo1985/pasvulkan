@@ -2463,6 +2463,9 @@ int main(int argc, char **argv) {
       // Stage B1b: the decode-ahead above reconstructed this display POC's YCoCg into a DPB slot;
       // stage it into coeff_buffer (already rounded int) for the colour pass below.
       int dslot = gdpb_poc_to_slot[frame_index];
+      if (g_has_alpha) {   // B-frame: CPU-decode this display frame's alpha (intra) — its container entry is the coding index held in this slot
+        cpu_decode_alpha_section(file, index, (uint32_t)gdpb_slot_coding[dslot], block_count_plane, width, height, levels, step, coeff_map3);
+      }
       for (int plane = 0; plane < g_num_planes; plane++) {
         int pp = plane_width(plane, width) * plane_height(plane, height);   // chroma slot is smaller when subsampled
         VkBufferCopy copy = { 0, 0, (VkDeviceSize)pp * 4 };
