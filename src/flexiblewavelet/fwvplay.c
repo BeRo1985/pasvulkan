@@ -59,7 +59,7 @@
  * in the header selects the lossless integer 5/3 path. (Optionally decodes an embedded H.264 stream instead.)
  *
  *     ./fwvplay file.fwv               present in a window
- *     ./fwvplay file.fwv --decode-to out.avi   decode the whole stream to an AVI and exit
+ *     ./fwvplay file.fwv --decode-to=out.avi   decode the whole stream to an AVI and exit
  *     ./fwvplay file.fwv --verify      GPU-vs-CPU decode PSNR self-check, then exit
  */
 #define FWV_NO_MAIN
@@ -1033,7 +1033,7 @@ int main(int argc, char **argv) {
       "    --cpu-decode                   force the slow CPU B-decode oracle (GPU bidi decode is the default)\n"
       "    --gpu-decode                   force the GPU bidi decode (default; accepted for compatibility)\n"
       "  offline / debug (no window):\n"
-      "    --decode-to <file.avi>         decode the whole stream to an OpenDML AVI (RGB + PCM16) and exit\n"
+      "    --decode-to=<file.avi>         decode the whole stream to an OpenDML AVI (RGB + PCM16) and exit\n"
       "    --verify                       GPU-decode vs CPU-decode PSNR self-check, then exit\n"
       "    --dump                         dump the first decoded frame and exit\n"
       "    --force-scrgb                  force the scRGB FP16 decode path headless (--dump then writes raw RGBA16F)\n",
@@ -1048,7 +1048,7 @@ int main(int argc, char **argv) {
   int dump_alpha = 0;                // --dump-alpha: write the CPU-decoded alpha lane of frame 0 to /tmp/fwv_alpha0.gray (implies --verify)
   int force_scrgb = 0;               // --force-scrgb: force scRGB FP16 output headless (HDR FP16 testing without an HDR swapchain)
   int decoder_choice = 0;            // --decoder: 0 = auto (H.264 if available, else wavelet), 1 = force H.264, 2 = force wavelet
-  const char *decode_to_path = NULL; // --decode-to <file.avi>: decode the whole stream to an OpenDML AVI (RGB32 + PCM16)
+  const char *decode_to_path = NULL; // --decode-to=<file.avi>: decode the whole stream to an OpenDML AVI (RGB32 + PCM16)
   int dering = 0;   // --dering: smartblur post-pass (lossy SDR). Default = the validated edge-sharpen winner
   float dering_strength = -0.5f, dering_threshold = -15.0f / 255.0f, dering_radius = 1.5f;   // <0 strength = sharpen, <0 thr = edge mode
   for (int a = 2; a < argc; a++) {
@@ -1074,13 +1074,8 @@ int main(int argc, char **argv) {
     } else if (strncmp(argv[a], "--decoder=", 10) == 0) {
       const char *value = argv[a] + 10;   // --decoder=h264|wavelet|auto
       decoder_choice = strstr(value, "h264") ? 1 : (strstr(value, "wav") ? 2 : 0);
-    } else if ((strcmp(argv[a], "--decoder") == 0) && ((a + 1) < argc)) {
-      const char *value = argv[++a];      // --decoder h264|wavelet|auto
-      decoder_choice = strstr(value, "h264") ? 1 : (strstr(value, "wav") ? 2 : 0);
     } else if (strncmp(argv[a], "--decode-to=", 12) == 0) {
       decode_to_path = argv[a] + 12;
-    } else if ((strcmp(argv[a], "--decode-to") == 0) && ((a + 1) < argc)) {
-      decode_to_path = argv[++a];
     } else if (strncmp(argv[a], "--dering", 8) == 0) {
       dering = 1;
       if (argv[a][8] == '=') {   // --dering=strength,threshold255,radius (bare --dering = the -0.5,-15,1.5 winner)
