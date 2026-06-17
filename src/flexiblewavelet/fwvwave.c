@@ -3417,20 +3417,31 @@ static size_t lz_compress(const uint8_t *in, size_t n, uint8_t *out) {
 }
 
 // Decompress in[0..n) into out (must hold out_size bytes). memcpy/memset-optimised.
-static void lz_decompress(const uint8_t *in, size_t n, uint8_t *out, size_t out_size) {
+// Returns 1 on success, 0 if the input is truncated or carries an invalid back-reference (so a corrupt / malicious frame
+// fails cleanly instead of reading/writing out of bounds). Valid LZSS streams always satisfy every check below.
+static int lz_decompress(const uint8_t *in, size_t n, uint8_t *out, size_t out_size) {
   size_t in_position = 0, out_position = 0;
   int control_bit = 32;
   uint32_t control = 0;
   while ((in_position < n) && (out_position < out_size)) {
     if (control_bit == 32) {
+      if ((in_position + 4) > n) {
+        return 0;   // truncated control word
+      }
       memcpy(&control, in + in_position, 4);
       in_position += 4;
       control_bit = 0;
     }
     if (control & ((uint32_t)1 << control_bit)) {
+      if ((in_position + 3) > n) {
+        return 0;   // truncated match token
+      }
       int offset = in[in_position] | (in[in_position + 1] << 8);
       int length = in[in_position + 2] + LZ_MIN_MATCH;
       in_position += 3;
+      if ((((size_t)offset == 0) || ((size_t)offset > out_position)) || ((out_position + (size_t)length) > out_size)) {
+        return 0;   // back-reference before the output start, or a match that overruns the output
+      }
       size_t source = out_position - (size_t)offset;
       if ((size_t)offset >= (size_t)length) {
         memcpy(out + out_position, out + source, (size_t)length);   // non-overlapping
@@ -3463,6 +3474,7 @@ static void lz_decompress(const uint8_t *in, size_t n, uint8_t *out, size_t out_
       control_bit += run;
     }
   }
+  return 1;
 }
 
 // ---------------------------------------------------------------- LZBRRC frame-payload compression

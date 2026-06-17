@@ -663,6 +663,9 @@ static size_t read_frame(FILE *file, const FrameEntry *entry, uint8_t **buffer, 
   if (fread(compressed, 1, entry->size, file) != entry->size) {
     die("frame read");
   }
+  if (entry->size < 5) {
+    die("compressed frame too small (need >= 5 bytes: method byte + raw length)");
+  }
   uint32_t raw_length;
   memcpy(&raw_length, compressed + 1, 4);
   if (*capacity < (size_t)raw_length) {
@@ -673,11 +676,18 @@ static size_t read_frame(FILE *file, const FrameEntry *entry, uint8_t **buffer, 
     }
   }
   if (compressed[0] == 1) {
-    lz_decompress(compressed + 5, (size_t)entry->size - 5, *buffer, raw_length);
+    if (!lz_decompress(compressed + 5, (size_t)entry->size - 5, *buffer, raw_length)) {
+      die("corrupt LZSS frame");
+    }
   } else if (compressed[0] == 2) {
     lzbrrc_decompress(compressed + 5, (size_t)entry->size - 5, *buffer, raw_length);
-  } else {
+  } else if (compressed[0] == 0) {
+    if ((size_t)raw_length > ((size_t)entry->size - 5)) {   // a raw frame's payload cannot exceed its container entry
+      die("raw frame larger than its container entry");
+    }
     memcpy(*buffer, compressed + 5, raw_length);
+  } else {
+    die("unknown frame compression method");
   }
   return raw_length;
 }
@@ -1079,6 +1089,11 @@ int main(int argc, char **argv) {
   int aq_cols = aq_tile_cols(width), aq_rows = aq_tile_rows(height);
   size_t aq_map_bytes = (size_t)aq_cols * aq_rows;
   if (header.qpmap_size > 0) {
+    // the decode indexes aq_map_bytes at coding_index*aq_map_bytes for every frame, so the section must hold a full map
+    // per frame; reject a short / truncated section instead of reading past the buffer.
+    if (header.qpmap_size < ((uint64_t)header.frame_count * aq_map_bytes)) {
+      die("qpmap section too small for the frame count");
+    }
     all_qpmaps = checked_malloc((size_t)header.qpmap_size);
     fseeko(file, (off_t)header.qpmap_offset, SEEK_SET);
     if (fread(all_qpmaps, 1, (size_t)header.qpmap_size, file) != (size_t)header.qpmap_size) {
