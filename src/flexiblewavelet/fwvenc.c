@@ -1239,13 +1239,13 @@ int main(int argc, char **argv) {
       "    --quality=N                    0 = lossless (reversible 5/3), >=1 = lossy (9/7) (default 8)\n"
       "    --levels=N                     spatial wavelet decomposition levels (default 5)\n"
       "    --max-frames=N                 encode at most N frames (default 0 = all)\n"
-      "    --gop=N                        max keyframe interval (1 = all-intra; default 10, or 16 for --mode 3ddwt)\n"
+      "    --gop=N                        max keyframe interval (1 = all-intra; default 10, or 16 for --mode=3ddwt)\n"
       "  rate control / P-frames:\n"
-      "    --vbr <target_bpp>             lossy only: nudge Q per GOP toward target_bpp (per-GOP variable Q)\n"
-      "    --pmode coefdiff|colordiff     P-frame method (default colordiff; coefdiff is Q0-only)\n"
+      "    --vbr=<target_bpp>             lossy only: nudge Q per GOP toward target_bpp (per-GOP variable Q)\n"
+      "    --pmode=coefdiff|colordiff     P-frame method (default colordiff; coefdiff is Q0-only)\n"
       "    --pcrd[=<lambda>]              PCRD R-D bit-plane truncation (default off; lambda default 0.5)\n"
       "  hierarchical B-frames:\n"
-      "    --bframes <N>                  N hierarchical bidirectional B-frames between anchors (period = N+1; default 0 = I/P only)\n"
+      "    --bframes=<N>                  N hierarchical bidirectional B-frames between anchors (period = N+1; default 0 = I/P only)\n"
       "    --no-per-block-mode            disable Phase 2 per-block L0/L1/BI prediction mode (default ON; --per-block-mode re-enables)\n"
       "    --bi-penalty=<N>               mode-decision bias in SAD units added to BI's cost (default -4096; negative prefers BI)\n"
       "    --no-qp-cascade                disable Phase 3 temporal-id QP-cascading (default ON, lossy B-streams: deeper B = coarser quant; --qp-cascade re-enables)\n"
@@ -1253,13 +1253,13 @@ int main(int argc, char **argv) {
       "    --cpu-bframes                  force the slow CPU reference B-encode oracle (instead of the GPU path)\n"
       "    --bidi-merge                   explicit joint mode-aware B merge (now the default; kept as an alias)\n"
       "  coding block (entropy unit; separate from the 16x16 motion grid):\n"
-      "    --block-size 32|64|128         coding/bitplane block (default 32; 64 ~ -30%% size, same PSNR, slightly coarser PCRD; 128 ~ -33%% via cooperative shaders)\n"
-      "    --motion-block 8|16|32         motion block (default 16; 8 = finer motion + more MV bits, 16/32 = coarser + fewer MVs; independent of --block-size)\n"
-      "    --merge-metric sad|satd        variable-motion (--motion-split) R-D merge metric (default satd; sad is faster — skips the Hadamard)\n"
+      "    --block-size=32|64|128         coding/bitplane block (default 32; 64 ~ -30%% size, same PSNR, slightly coarser PCRD; 128 ~ -33%% via cooperative shaders)\n"
+      "    --motion-block=8|16|32         motion block (default 16; 8 = finer motion + more MV bits, 16/32 = coarser + fewer MVs; independent of --block-size)\n"
+      "    --merge-metric=sad|satd        variable-motion (--motion-split) R-D merge metric (default satd; sad is faster — skips the Hadamard)\n"
       "    --motion-split                 variable per-block motion (quadtree 32->16->8, R-D); B uses the joint mode-aware merge (fast + per-leaf mode)\n"
       "    --motion-split-fast            variable motion but the single-ref 2-ME B path (slower per-8 mode_decide, weaker RD)\n"
-      "    --motion-lambda-alpha N        variable-motion adaptive frame-level R-D scale (default 48; lambda = alpha*avgSAD>>8; 0 = fixed)\n"
-      "    --motion-lambda N              variable-motion FIXED R-D leaf cost (SAD units; disables the adaptive frame-level lambda)\n"
+      "    --motion-lambda-alpha=N        variable-motion adaptive frame-level R-D scale (default 48; lambda = alpha*avgSAD>>8; 0 = fixed)\n"
+      "    --motion-lambda=N              variable-motion FIXED R-D leaf cost (SAD units; disables the adaptive frame-level lambda)\n"
       "  chroma (lossy only; Q0 stays 4:4:4):\n"
       "    --420 | --422 | --chroma-format=420|422|444   chroma subsampling (default 4:4:4)\n"
       "    --chroma[=<mult>]              coarsen chroma quant (default mult 2.0)\n"
@@ -1267,30 +1267,30 @@ int main(int argc, char **argv) {
       "    --aq[=<strength>]              spatially-adaptive quantization: per-tile QP from luma activity (default 0.5; finer in flat/edge tiles, coarser in busy/masked ones)\n"
       "    --prdo[=<strength>]            perceptual RDO: zero coefficients below a per-tile masked threshold before quant; decoder-transparent (default 1.0; ~0.3 = sweet spot)\n"
       "  3D-DWT (open-loop temporal) mode:\n"
-      "    --mode 3ddwt                   temporal 3D-DWT over the GOP\n"
-      "    --twavelet haar|53|97          temporal wavelet (default haar; ignored with --mctf)\n"
-      "    --temporal-levels <N>          temporal DWT levels (default 2)\n"
+      "    --mode=3ddwt                   temporal 3D-DWT over the GOP\n"
+      "    --twavelet=haar|53|97          temporal wavelet (default haar; ignored with --mctf)\n"
+      "    --temporal-levels=<N>          temporal DWT levels (default 2)\n"
       "    --mctf                         motion-compensated temporal filtering (predict-only MC-Haar; SDR+HDR, 4:4:4/4:2:2/4:2:0)\n"
       "  dual video / scaling:\n"
       "    --h264                         also embed a full-res H.264 stream (player HW-decodes it where supported)\n"
-      "    --scale <f>                    down-scale ONLY the wavelet stream (e.g. 0.5 or 1/4); H.264 stays full-res\n"
+      "    --scale=<f>                    down-scale ONLY the wavelet stream (e.g. 0.5 or 1/4); H.264 stays full-res\n"
       "  alpha (optional 8-bit plane, from an RGBA source):\n"
       "    --alpha                        encode the alpha plane (appended per frame; non-alpha streams stay byte-identical)\n"
-      "    --alpha-qp <N>                 alpha quant step (-1 = follow the color quality; default -1)\n"
+      "    --alpha-qp=<N>                 alpha quant step (-1 = follow the color quality; default -1)\n"
       "    --alpha-bleed[=<N>]            dilate opaque RGB into the transparent pixels before the transform (less fringing; =N caps the passes, 0 = until done)\n"
       "  audio:\n"
-      "    --audio vorbis|qoa|rpcm|fwa    audio codec (default vorbis; fwa = Flexible Wavelet audio)\n"
-      "    --fwa-quality N                FWA: 0 = lossless (5/3), >= 1 = lossy 9/7 (default 8)\n"
-      "    --fwa-mode <m>                 FWA mode: uniform|psycho|joint|packet|packet-psycho|lms (default: Q0 5/3, lossy joint-psycho)\n"
-      "    --fwa-lms-taps N               FWA lms mode tap count (default 4)\n"
+      "    --audio=vorbis|qoa|rpcm|fwa    audio codec (default vorbis; fwa = Flexible Wavelet audio)\n"
+      "    --fwa-quality=N                FWA: 0 = lossless (5/3), >= 1 = lossy 9/7 (default 8)\n"
+      "    --fwa-mode=<m>                 FWA mode: uniform|psycho|joint|packet|packet-psycho|lms (default: Q0 5/3, lossy joint-psycho)\n"
+      "    --fwa-lms-taps=N               FWA lms mode tap count (default 4)\n"
       "    --fwa-no-pair | --fwa-pair-ms  FWA multichannel pairing (default: adaptive pairwise M/S)\n"
       "    --fwa-overlap                  FWA: cross-fade block overlap (lossy only) to soften block-boundary artefacts\n"
-      "    --fwa-overlap-amount N         FWA: shared samples per block boundary (default 1024)\n"
+      "    --fwa-overlap-amount=N         FWA: shared samples per block boundary (default 1024)\n"
       "  color:\n"
       "    --hdr[=pq|hlg]                 12-bit BT.2020 HDR (transfer autodetected unless forced)\n"
       "  misc:\n"
-      "    --frame-codec lzss|lzbrrc      per-frame compressor (default lzss = fast decode; lzbrrc = ~20%% smaller, ~37x slower decode)\n"
-      "    --mv-codec golomb|range        motion-vector entropy coder (default golomb; range = adaptive binary range coder, ~-6%% file, CPU-only)\n"
+      "    --frame-codec=lzss|lzbrrc      per-frame compressor (default lzss = fast decode; lzbrrc = ~20%% smaller, ~37x slower decode)\n"
+      "    --mv-codec=golomb|range        motion-vector entropy coder (default golomb; range = adaptive binary range coder, ~-6%% file, CPU-only)\n"
       "    --no-compress                  store frames raw (no per-frame compression)\n"
       "    --debug                        extra GPU-vs-CPU validation prints\n",
       argv[0]);
@@ -1305,8 +1305,8 @@ int main(int argc, char **argv) {
   double pcrd_lambda = 0.0;   // --pcrd [or --pcrd=<lambda>]: PCRD R-D bit-plane truncation (default off)
   int hdr_mode = 0;           // --hdr: ingest a BT.2020 HDR source as 12-bit, tag the container HDR (default off)
   int hdr_transfer = 0;       // 0 = autodetect from the source (PQ/HLG); 16 = force PQ, 18 = force HLG
-  int method = 1;   // P-frame method default: colordiff (B); --pmode coefdiff selects A (coefficient diff)
-  int mode_3ddwt = 0;   // --mode 3ddwt: open-loop temporal 3D-DWT GOP mode
+  int method = 1;   // P-frame method default: colordiff (B); --pmode=coefdiff selects A (coefficient diff)
+  int mode_3ddwt = 0;   // --mode=3ddwt: open-loop temporal 3D-DWT GOP mode
   int bframes = 0;      // --bframes N: N hierarchical B-frames between anchors (0 = off, I/P only)
   int cpu_bframes = 0;  // --cpu-bframes: force the CPU encode_frame_bidi oracle path (Stage A) instead of the GPU bidi path
   int joint_mv = 0;     // --joint: B2b joint/iterative bidirectional motion (EXPERIMENTAL, currently regresses vs independent); default = B2a independent
@@ -1327,17 +1327,17 @@ int main(int argc, char **argv) {
   long max_frames = -1;         // --max-frames=N: encode at most N frames (default 0 = all; -1 = unset sentinel)
   int gop = 0;                  // --gop=N: max keyframe interval (default 10 for I/P/B; 16 for 3D-DWT; 0 = unset sentinel)
   for (int i = 0; i < argc; i++) {
-    if (!strcmp(argv[i], "--vbr") && (i + 1) < argc) {
+    if (!strncmp(argv[i], "--vbr=", 6)) {
       vbr = 1;
-      vbr_target_bpp = atof(argv[++i]);
-    } else if (!strcmp(argv[i], "--mode") && (i + 1) < argc) {
-      mode_3ddwt = strstr(argv[++i], "3d") ? 1 : 0;
-    } else if (!strcmp(argv[i], "--bframes") && (i + 1) < argc) {
-      bframes = atoi(argv[++i]);   // N hierarchical B-frames between anchors (period = N+1)
+      vbr_target_bpp = atof(argv[i] + 6);
+    } else if (!strncmp(argv[i], "--mode=", 7)) {
+      mode_3ddwt = strstr(argv[i] + 7, "3d") ? 1 : 0;
+    } else if (!strncmp(argv[i], "--bframes=", 10)) {
+      bframes = atoi(argv[i] + 10);   // N hierarchical B-frames between anchors (period = N+1)
     } else if (!strcmp(argv[i], "--alpha")) {
       g_has_alpha = 1;             // encode the optional alpha plane (ColorFlags bit2, appended section per frame)
-    } else if (!strcmp(argv[i], "--alpha-qp") && (i + 1) < argc) {
-      g_alpha_qp = atoi(argv[++i]);   // alpha quant (-1 = follow the color QP)
+    } else if (!strncmp(argv[i], "--alpha-qp=", 11)) {
+      g_alpha_qp = atoi(argv[i] + 11);   // alpha quant (-1 = follow the color QP)
     } else if (!strncmp(argv[i], "--alpha-bleed", 13)) {
       g_alpha_bleed = 1;              // dilate opaque RGB into the transparent pixels before the transform (no fringing / cheaper edge blocks)
       if (argv[i][13] == '=') {
@@ -1357,31 +1357,31 @@ int main(int argc, char **argv) {
       qp_cascade = 0;             // force a flat quant across the B-hierarchy
     } else if (!strncmp(argv[i], "--bi-penalty=", 13)) {
       bi_penalty = atoi(argv[i] + 13);   // tune the BI R-D penalty
-    } else if (!strcmp(argv[i], "--twavelet") && (i + 1) < argc) {
-      const char *value = argv[++i];
+    } else if (!strncmp(argv[i], "--twavelet=", 11)) {
+      const char *value = argv[i] + 11;
       g_temporal_wavelet = strstr(value, "97") ? 2 : (strstr(value, "53") ? 1 : 0);
-    } else if (!strcmp(argv[i], "--temporal-levels") && (i + 1) < argc) {
-      g_temporal_levels = atoi(argv[++i]);
+    } else if (!strncmp(argv[i], "--temporal-levels=", 18)) {
+      g_temporal_levels = atoi(argv[i] + 18);
     } else if (!strcmp(argv[i], "--mctf")) {
       g_mctf = 1;                 // 3D-DWT mode: motion-compensated temporal filtering (predict-only MC-Haar) instead of open-loop
-    } else if (!strcmp(argv[i], "--block-size") && (i + 1) < argc) {
-      int bs = atoi(argv[++i]);   // coding block 32|64|128 (bigger = smaller; 128 uses the cooperative shaders)
+    } else if (!strncmp(argv[i], "--block-size=", 13)) {
+      int bs = atoi(argv[i] + 13);   // coding block 32|64|128 (bigger = smaller; 128 uses the cooperative shaders)
       if ((bs == 32 || bs == 64) || bs == 128) {
         g_block_size = bs;
       }
-    } else if (!strcmp(argv[i], "--motion-block") && (i + 1) < argc) {
-      int mb = atoi(argv[++i]);   // motion block 8|16|32 (smaller = finer motion + more MV bits; bigger = coarser, fewer MVs)
+    } else if (!strncmp(argv[i], "--motion-block=", 15)) {
+      int mb = atoi(argv[i] + 15);   // motion block 8|16|32 (smaller = finer motion + more MV bits; bigger = coarser, fewer MVs)
       if ((mb == 8 || mb == 16) || mb == 32) {
         g_motion_block = mb;
       }
-    } else if (!strcmp(argv[i], "--merge-metric") && (i + 1) < argc) {
-      g_merge_satd = strstr(argv[++i], "sad") ? 0 : 1;   // variable-motion merge residual cost: sad (faster) or satd (default, better R-D)
+    } else if (!strncmp(argv[i], "--merge-metric=", 15)) {
+      g_merge_satd = strstr(argv[i] + 15, "sad") ? 0 : 1;   // variable-motion merge residual cost: sad (faster) or satd (default, better R-D)
     } else if (!strcmp(argv[i], "--no-compress")) {
       g_compress_frames = 0;   // store frames raw (no per-frame compression)
-    } else if (!strcmp(argv[i], "--frame-codec") && (i + 1) < argc) {
-      g_frame_codec = strstr(argv[++i], "lzbrrc") ? 1 : 0;   // frame compressor: lzss (default, fast decode) or lzbrrc (~20% smaller, slow decode)
-    } else if (!strcmp(argv[i], "--mv-codec") && (i + 1) < argc) {
-      g_mv_codec = strstr(argv[++i], "range") ? 1 : 0;   // MV entropy coder: golomb (default) or range (~-6% file, CPU-only)
+    } else if (!strncmp(argv[i], "--frame-codec=", 14)) {
+      g_frame_codec = strstr(argv[i] + 14, "lzbrrc") ? 1 : 0;   // frame compressor: lzss (default, fast decode) or lzbrrc (~20% smaller, slow decode)
+    } else if (!strncmp(argv[i], "--mv-codec=", 11)) {
+      g_mv_codec = strstr(argv[i] + 11, "range") ? 1 : 0;   // MV entropy coder: golomb (default) or range (~-6% file, CPU-only)
     } else if (!strcmp(argv[i], "--motion-split")) {   // variable per-block motion (quadtree 32->16->8, R-D); B uses the joint mode-aware merge by default
       g_motion_variable = 1;
       g_motion_block = 8;
@@ -1391,32 +1391,32 @@ int main(int argc, char **argv) {
       g_motion_split_bidi = 0;
     } else if (!strcmp(argv[i], "--bidi-merge")) {   // explicit joint mode-aware B merge (now the default; kept as an alias)
       g_motion_split_bidi = 1;
-    } else if (!strcmp(argv[i], "--motion-lambda-alpha") && (i + 1) < argc) {
-      g_motion_lambda_alpha = atoi(argv[++i]);   // adaptive frame-level scale (lambda_abs = alpha*avgSAD>>8)
-    } else if (!strcmp(argv[i], "--motion-lambda") && (i + 1) < argc) {
-      g_motion_lambda_abs = atoi(argv[++i]);   // FIXED absolute leaf cost (disables adaptive)
+    } else if (!strncmp(argv[i], "--motion-lambda-alpha=", 22)) {
+      g_motion_lambda_alpha = atoi(argv[i] + 22);   // adaptive frame-level scale (lambda_abs = alpha*avgSAD>>8)
+    } else if (!strncmp(argv[i], "--motion-lambda=", 16)) {
+      g_motion_lambda_abs = atoi(argv[i] + 16);   // FIXED absolute leaf cost (disables adaptive)
       g_motion_lambda_alpha = 0;
-    } else if (!strcmp(argv[i], "--audio") && (i + 1) < argc) {
-      const char *value = argv[++i];   // --audio vorbis|qoa|rpcm|fwa
+    } else if (!strncmp(argv[i], "--audio=", 8)) {
+      const char *value = argv[i] + 8;   // --audio=vorbis|qoa|rpcm|fwa
       audio_codec_choice = strstr(value, "fwa") ? 3 : (strstr(value, "qoa") ? 1 : (strstr(value, "rpcm") ? 2 : 0));
-    } else if (!strcmp(argv[i], "--fwa-quality") && (i + 1) < argc) {
-      fwa_quality = atoi(argv[++i]);   // FWA: 0 = lossless 5/3, >= 1 = lossy 9/7
-    } else if (!strcmp(argv[i], "--fwa-mode") && (i + 1) < argc) {
-      fwa_mode = argv[++i];            // uniform|psycho|joint|packet|packet-psycho|lms
-    } else if (!strcmp(argv[i], "--fwa-lms-taps") && (i + 1) < argc) {
-      fwa_lms_taps = atoi(argv[++i]);
+    } else if (!strncmp(argv[i], "--fwa-quality=", 14)) {
+      fwa_quality = atoi(argv[i] + 14);   // FWA: 0 = lossless 5/3, >= 1 = lossy 9/7
+    } else if (!strncmp(argv[i], "--fwa-mode=", 11)) {
+      fwa_mode = argv[i] + 11;            // uniform|psycho|joint|packet|packet-psycho|lms
+    } else if (!strncmp(argv[i], "--fwa-lms-taps=", 15)) {
+      fwa_lms_taps = atoi(argv[i] + 15);
     } else if (!strcmp(argv[i], "--fwa-no-pair")) {
       fwa_no_pair = 1;                 // multichannel: independent channels (no pairwise M/S)
     } else if (!strcmp(argv[i], "--fwa-pair-ms")) {
       fwa_pair_ms = 1;                 // multichannel: force always-M/S pairs (not adaptive)
     } else if (!strcmp(argv[i], "--fwa-overlap")) {
       fwa_overlap = 1;                 // FWA: cross-fade block overlap (lossy only) to soften per-block quant boundaries
-    } else if (!strcmp(argv[i], "--fwa-overlap-amount") && ((i + 1) < argc)) {
-      fwa_overlap_amount = atoi(argv[++i]);   // FWA: shared samples per block boundary (default 1024)
+    } else if (!strncmp(argv[i], "--fwa-overlap-amount=", 21)) {
+      fwa_overlap_amount = atoi(argv[i] + 21);   // FWA: shared samples per block boundary (default 1024)
     } else if (!strcmp(argv[i], "--h264")) {
       want_h264 = 1;   // also embed a full-res H.264 elementary stream (HW-decode path in the player)
-    } else if (!strcmp(argv[i], "--scale") && (i + 1) < argc) {
-      const char *value = argv[++i];   // "0.5" or "1/4" -> down-scale the wavelet stream only
+    } else if (!strncmp(argv[i], "--scale=", 8)) {
+      const char *value = argv[i] + 8;   // "0.5" or "1/4" -> down-scale the wavelet stream only
       const char *slash = strchr(value, '/');
       if (slash) {
         double numerator = atof(value);
@@ -1428,8 +1428,8 @@ int main(int argc, char **argv) {
       if ((wavelet_scale <= 0.0) || (wavelet_scale > 1.0)) {
         wavelet_scale = 1.0;   // ignore nonsense / upscaling
       }
-    } else if (!strcmp(argv[i], "--pmode") && (i + 1) < argc) {
-      method = strstr(argv[++i], "coef") ? 0 : 1;   // "coefdiff" -> A, anything else ("colordiff") -> B
+    } else if (!strncmp(argv[i], "--pmode=", 8)) {
+      method = strstr(argv[i] + 8, "coef") ? 0 : 1;   // "coefdiff" -> A, anything else ("colordiff") -> B
     } else if (!strncmp(argv[i], "--pcrd", 6)) {
       pcrd_lambda = (argv[i][6] == '=') ? atof(argv[i] + 7) : 0.5;   // 0.5 = a moderate default
     } else if (!strncmp(argv[i], "--aq", 4)) {
