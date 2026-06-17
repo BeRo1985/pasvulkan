@@ -2061,10 +2061,9 @@ int main(int argc, char **argv) {
     maybe_apply_tile_aq(step, plane_w, plane_h, levels);
     memcpy(step_map[plane], step, (size_t)(plane_w * plane_h) * 4);
   }
-  if (g_has_alpha) {   // alpha plane 3: full-res quant map with its own QP (g_alpha_qp, or the colour QP if < 0)
-    int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
-    build_quantization_steps(step, width, height, levels, alpha_qp);
-    maybe_apply_tile_aq(step, width, height, levels);
+  if (g_has_alpha) {   // alpha plane 3: full-res quant map with its own QP (g_alpha_qp, or the colour QP if < 0).
+    int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;   // NOT AQ-modulated: alpha keeps plain alpha_qp steps (step_map[3] is
+    build_quantization_steps(step, width, height, levels, alpha_qp);   // built once and never rebuilt per-frame, so no per-tile map applies)
     memcpy(step_map[3], step, (size_t)(width * height) * 4);
   }
   int current_quality = quality;   // per-GOP working Q (varies under --vbr); written into each FrameEntry

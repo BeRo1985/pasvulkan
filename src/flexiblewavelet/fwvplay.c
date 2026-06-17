@@ -746,8 +746,7 @@ static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32
   const uint8_t *alpha_data = parse_alpha_section(frame_data + cdl, a_off, a_block_count, &alpha_qp, &alpha_data_length);
   int32_t *alpha_coeff = checked_malloc((size_t)width * height * 4);   // decode into a local buffer (like decode_gop_3ddwt), then copy to the host coeff[3]
   decode_plane(alpha_data, a_off, alpha_coeff, width, height, alpha_data_length);
-  build_quantization_steps(step, width, height, levels, alpha_qp);
-  maybe_apply_tile_aq(step, width, height, levels);
+  build_quantization_steps(step, width, height, levels, alpha_qp);   // alpha is NOT AQ-modulated: the encoder quantises it with plain alpha_qp steps
   reconstruct_plane(alpha_coeff, float_scratch, step, width, height, levels, alpha_qp, 1.0f);
   memcpy(coeff_map3, alpha_coeff, (size_t)width * height * 4);
   free(alpha_coeff);
@@ -2226,9 +2225,8 @@ int main(int argc, char **argv) {
         for (int block = 0; block < a_block_count; block++) {
           a_off[block] += data_length;   // absolute byte offset in data_buffer (alpha block data starts at data_length)
         }
-        if (!lossless) {   // alpha quant map (intra; alpha_qp is fixed across frames)
+        if (!lossless) {   // alpha quant map (intra; alpha_qp fixed across frames; NOT AQ-modulated — the encoder uses plain steps)
           build_quantization_steps(step, width, height, levels, alpha_qp);
-          maybe_apply_tile_aq(step, width, height, levels);
           memcpy(step_map[3], step, (size_t)(width * height) * 4);
         }
       }
