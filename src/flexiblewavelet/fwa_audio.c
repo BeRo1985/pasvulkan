@@ -1308,7 +1308,17 @@ typedef struct {
 // packet != 0 selects the wavelet-packet best-basis lossy mode (uniform quant; ignores perceptual).
 // The psycho mode (perceptual lossy, non-packet) additionally drops the Side channel's high-frequency
 // bands -- joint-stereo intensity -- recorded in header flags bit2 (decode-side it is a pure no-op).
-static size_t fwacodec_encode(const int16_t *interleaved, long frame_count, int channels, int sample_rate, const char *layout, int pair_enabled, int adapt, int quality, int perceptual, int packet, int joint, int lms, int lms_taps, uint8_t **out) {
+static size_t fwacodec_encode(const int16_t *interleaved, long frame_count, int channels, int sample_rate, const char *layout, int pair_enabled, int adapt, int quality, int perceptual, int packet, int joint, int lms, int lms_taps, int overlap, uint8_t **out) {
+  // Cross-fade block overlap (lossy only): adjacent blocks share `overlap` samples (stride = BLOCK-overlap); each block
+  // is still coded independently and the DECODER raised-cosine cross-fades the shared region to soften the per-block
+  // quantisation discontinuities. Q0 (lossless) must stay bit-exact, so it never overlaps.
+  if ((quality == 0) || (overlap < 0)) {
+    overlap = 0;
+  }
+  if (overlap >= BLOCK_SAMPLES) {
+    overlap = BLOCK_SAMPLES / 2;   // a stride must stay positive
+  }
+  int block_stride = (overlap > 0) ? (BLOCK_SAMPLES - overlap) : BLOCK_SAMPLES;
   int32_t **planes = checked_malloc((size_t)channels * sizeof(int32_t *));
   for (int c = 0; c < channels; c++) {
     planes[c] = checked_malloc((size_t)frame_count * sizeof(int32_t));
@@ -1351,7 +1361,7 @@ static size_t fwacodec_encode(const int16_t *interleaved, long frame_count, int 
 
   size_t capacity = (size_t)(frame_count * channels * 2) + 4096;
   uint8_t *stream = checked_malloc(capacity);
-  uint16_t header_flags = (uint16_t)((perceptual ? 1u : 0u) | (packet ? 2u : 0u) | (joint_stereo ? 4u : 0u) | (pairing ? 16u : 0u) | ((lms && (quality == 0)) ? (8u | ((uint16_t)(lms_taps & 0xFF) << 8)) : 0u));   // bits 8-15 = LMS tap count
+  uint16_t header_flags = (uint16_t)((perceptual ? 1u : 0u) | (packet ? 2u : 0u) | (joint_stereo ? 4u : 0u) | (pairing ? 16u : 0u) | ((overlap > 0) ? 32u : 0u) | ((lms && (quality == 0)) ? (8u | ((uint16_t)(lms_taps & 0xFF) << 8)) : 0u));   // bit5 = cross-fade overlap; bits 8-15 = LMS tap count
   FwaHeader header = { FWA_MAGIC, (uint32_t)sample_rate, (uint16_t)channels, BLOCK_SAMPLES, (uint16_t)quality, header_flags, (uint64_t)frame_count };
   size_t cursor = 0;
   memcpy(&stream[cursor], &header, sizeof header);
@@ -1364,8 +1374,13 @@ static size_t fwacodec_encode(const int16_t *interleaved, long frame_count, int 
       stream[cursor++] = (uint8_t)pair_mode[k];
     }
   }
+  if (overlap > 0) {                             // cross-fade overlap (bit5): the shared sample count, after the pairing plan
+    uint16_t overlap16 = (uint16_t)overlap;
+    memcpy(&stream[cursor], &overlap16, 2);
+    cursor += 2;
+  }
 
-  for (long start = 0; start < frame_count; start += BLOCK_SAMPLES) {
+  for (long start = 0; start < frame_count; start += block_stride) {
     int length = (int)(((start + BLOCK_SAMPLES) <= frame_count) ? BLOCK_SAMPLES : (frame_count - start));
     for (int channel = 0; channel < channels; channel++) {
       BitWriter tree;
@@ -1501,6 +1516,22 @@ static int16_t *fwacodec_decode(const uint8_t *stream, size_t size, long *frame_
     }
   }
 
+  int overlap = 0;                              // cross-fade overlap (bit5): the shared sample count, after the pairing plan
+  if ((header.flags & 32) != 0) {
+    if ((cursor + 2) > size) {
+      fprintf(stderr, "fwa: truncated overlap field\n");
+      exit(1);
+    }
+    uint16_t overlap16;
+    memcpy(&overlap16, &stream[cursor], 2);
+    cursor += 2;
+    overlap = (int)overlap16;
+    if ((overlap < 0) || (overlap >= BLOCK_SAMPLES)) {
+      overlap = 0;                              // ignore a corrupt overlap rather than form a non-positive stride
+    }
+  }
+  int block_stride = (overlap > 0) ? (BLOCK_SAMPLES - overlap) : BLOCK_SAMPLES;
+
   int32_t **planes = checked_malloc((size_t)channels * sizeof(int32_t *));
   for (int c = 0; c < channels; c++) {
     planes[c] = checked_malloc((size_t)frame_count * sizeof(int32_t));
@@ -1511,7 +1542,7 @@ static int16_t *fwacodec_decode(const uint8_t *stream, size_t size, long *frame_
   float *float_scratch = checked_malloc((size_t)BLOCK_SAMPLES * sizeof(float));
   float *step_per_coeff = checked_malloc((size_t)BLOCK_SAMPLES * sizeof(float));
 
-  for (long start = 0; start < frame_count; start += BLOCK_SAMPLES) {
+  for (long start = 0; start < frame_count; start += block_stride) {
     int length = (int)(((start + BLOCK_SAMPLES) <= frame_count) ? BLOCK_SAMPLES : (frame_count - start));
     for (int channel = 0; channel < channels; channel++) {
       if ((cursor + 4) > size) {
@@ -1558,14 +1589,28 @@ static int16_t *fwacodec_decode(const uint8_t *stream, size_t size, long *frame_
         int max_depth = dwt_level_count(length);
         packet_reconstruct(float_block, length, 0, max_depth, &treereader, float_scratch);
         for (int i = 0; i < length; i++) {
-          planes[channel][start + i] = (int32_t)lrintf(float_block[i]);
+          float value = float_block[i];
+          if (((overlap > 0) && (start > 0)) && (i < overlap)) {   // cross-fade the shared head with the previous block's tail already in planes
+            // raised-cosine (Hann rising half) weight 0->1 across the overlap: smooth (no slope discontinuity at the
+            // seam), and weight + (1-weight) == 1 so the cross-fade is amplitude-preserving. (NOT a linear ramp.)
+            float weight = 0.5f - (0.5f * cosf((3.14159265358979323846f * ((float)i + 0.5f)) / (float)overlap));
+            value = ((1.0f - weight) * (float)planes[channel][start + i]) + (weight * value);
+          }
+          planes[channel][start + i] = (int32_t)lrintf(value);
         }
       } else {                                             // lossy 9/7 dyadic: dequantize -> inverse -> round
         compute_steps(length, step, perceptual, sample_rate, step_per_coeff);
         dequantize_block(block_buffer, float_block, length, step_per_coeff);
         dwt97_inverse(float_block, length, float_scratch);
         for (int i = 0; i < length; i++) {
-          planes[channel][start + i] = (int32_t)lrintf(float_block[i]);
+          float value = float_block[i];
+          if (((overlap > 0) && (start > 0)) && (i < overlap)) {   // cross-fade the shared head with the previous block's tail already in planes
+            // raised-cosine (Hann rising half) weight 0->1 across the overlap: smooth (no slope discontinuity at the
+            // seam), and weight + (1-weight) == 1 so the cross-fade is amplitude-preserving. (NOT a linear ramp.)
+            float weight = 0.5f - (0.5f * cosf((3.14159265358979323846f * ((float)i + 0.5f)) / (float)overlap));
+            value = ((1.0f - weight) * (float)planes[channel][start + i]) + (weight * value);
+          }
+          planes[channel][start + i] = (int32_t)lrintf(value);
         }
       }
     }
@@ -1681,6 +1726,8 @@ int main(int argc, char **argv) {
   int forced_rate = extract_int_flag(&argc, argv, "-sr", 0);       // force sample rate via linear resample (else source rate)
   int no_pair = extract_bool_flag(&argc, argv, "-no-pair");        // multichannel: disable pairwise M/S (force independent M0)
   int pair_ms = extract_bool_flag(&argc, argv, "-pair-ms");        // multichannel: force always-M/S (else per-pair adaptive)
+  int overlap_amount = extract_int_flag(&argc, argv, "--fwa-overlap-amount", 1024);          // cross-fade A: shared samples per boundary
+  int overlap = extract_bool_flag(&argc, argv, "--fwa-overlap") ? overlap_amount : 0;        // opt-in cross-fade block overlap (lossy only, default off)
   int pair_enabled = !no_pair;
   int adapt = !pair_ms;                                            // N>=3 L/R pairs are adaptive (best-of-both) by default
   if (argc < 3) {
@@ -1730,7 +1777,7 @@ int main(int argc, char **argv) {
       }
     }
     uint8_t *stream;
-    size_t stream_length = fwacodec_encode(pcm, frame_count, channels, sample_rate, layout, pair_enabled, adapt, quality, perceptual, packet, joint, lms, lms_taps, &stream);
+    size_t stream_length = fwacodec_encode(pcm, frame_count, channels, sample_rate, layout, pair_enabled, adapt, quality, perceptual, packet, joint, lms, lms_taps, overlap, &stream);
     long decoded_count = 0;
     int decoded_channels = 0;
     int decoded_rate = 0;
@@ -1810,7 +1857,7 @@ int main(int argc, char **argv) {
       }
     }
     uint8_t *stream;
-    size_t stream_length = fwacodec_encode(pcm, frame_count, channels, sample_rate, layout, pair_enabled, adapt, quality, perceptual, packet, joint, lms, lms_taps, &stream);
+    size_t stream_length = fwacodec_encode(pcm, frame_count, channels, sample_rate, layout, pair_enabled, adapt, quality, perceptual, packet, joint, lms, lms_taps, overlap, &stream);
     FILE *file = fopen(argv[3], "wb");
     fwrite(stream, 1, stream_length, file);
     fclose(file);
@@ -1850,7 +1897,7 @@ uint8_t *fwa_encode(const short *pcm, int samples, int channels, int sample_rate
   uint8_t *out = NULL;
   size_t length = fwacodec_encode(pcm, (long)samples, channels, sample_rate, "",
                               params->pair_enabled, params->adapt, params->quality, params->perceptual,
-                              params->packet, params->joint, params->lms, params->lms_taps, &out);
+                              params->packet, params->joint, params->lms, params->lms_taps, params->overlap, &out);
   *out_size = (uint64_t)length;
   return out;
 }

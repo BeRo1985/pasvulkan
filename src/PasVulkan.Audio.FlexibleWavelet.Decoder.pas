@@ -130,7 +130,10 @@ type EpvFlexibleWaveletAudioDecoder=class(EpvFlexibleWaveletAudio);
        fCurrentBlock:TpvInt32; // which block is currently held in fBlockInterleaved (-1 = none)
        fBlockFrames:TpvInt32;
        fBlockStartFrame:TpvInt64;
-       fLMSNextBlock:TpvInt32; // block index for which fLMSStates are valid at its start
+       fLMSNextBlock:TpvInt32; // block index for which fLMSStates / the overlap tail are valid at its start
+       fOverlap:TpvInt32; // cross-fade block overlap: shared samples per block boundary (0 = off; lossy only)
+       fBlockStride:TpvInt32; // BlockSamples - fOverlap (block advance in output frames; = BlockSamples when not overlapping)
+       fPrevTail:TInt32Planes; // [channel] the previous block's last fOverlap pre-M/S samples, for the cross-fade head
        fBlockInterleaved:array of TpvFloat; // current block's interleaved f32 (BlockSamples*channels)
        fBlockPlanes:TInt32Planes; // [channel] working plane (BlockSamples)
        fLMSStates:TLMSStates; // [channel] carried LMS predictor state
@@ -275,7 +278,21 @@ begin
   end;
  end;
 
- // The block payloads start right after the header (+ plan)
+ // Optional cross-fade block overlap (bit5): the shared sample count, after the pairing plan
+ fOverlap:=0;
+ if (fHeader.Flags and FlagOverlap)<>0 then begin
+  fOverlap:=ReadU16;
+  if (fOverlap<0) or (fOverlap>=BlockSamples) then begin
+   fOverlap:=0; // ignore a corrupt overlap rather than form a non-positive stride
+  end;
+ end;
+ if fOverlap>0 then begin
+  fBlockStride:=BlockSamples-fOverlap;
+ end else begin
+  fBlockStride:=BlockSamples;
+ end;
+
+ // The block payloads start right after the header (+ plan + overlap field)
  fDataStart:=fStream.Position;
 
 end;
@@ -285,7 +302,7 @@ var BlockIndex,Channel:TpvInt32;
     EncodedLength:TpvUInt32;
 begin
  if fFrameCount>0 then begin
-  fBlockCount:=(fFrameCount+(BlockSamples-1)) div BlockSamples;
+  fBlockCount:=(fFrameCount+(fBlockStride-1)) div fBlockStride; // overlapping blocks advance by fBlockStride, so there are more of them
  end else begin
   fBlockCount:=0;
  end;
@@ -359,12 +376,13 @@ procedure TpvFlexibleWaveletAudioDecoder.DecodeBlock(const aBlockIndex:TpvInt32)
 var StartFrame:TpvInt64;
     BlockLength,Channel,Index,PairIndex,ChannelA,ChannelB:TpvInt32;
     Mid,Side,Right,Left,Residual,Sample:TpvInt32;
+    Weight:TpvFloat;
     EncodedLength,CoeffLength:TpvSizeUInt;
     TreeLength:TpvInt32;
     CoeffBytes,TreeBytes:PpvUInt8Array;
     Reader:TBitReader;
 begin
- StartFrame:=TpvInt64(aBlockIndex)*BlockSamples;
+ StartFrame:=TpvInt64(aBlockIndex)*fBlockStride;
  if (StartFrame+BlockSamples)<=fFrameCount then begin
   BlockLength:=BlockSamples;
  end else begin
@@ -425,6 +443,32 @@ begin
   end;
  end;
 
+ // Cross-fade this block's shared head with the previous block's tail (per-channel pre-M/S domain, raised-cosine, to
+ // match the C decoder bit-for-bit). The overlap is lossy-only (Q>0), so it never meets the LMS path below. The
+ // previous block's tail was carried in fPrevTail by the sequential decode (EnsureSequentialStateAt replays forward).
+ if (fOverlap>0) and (aBlockIndex>0) then begin
+  for Channel:=0 to fChannels-1 do begin
+   for Index:=0 to fOverlap-1 do begin
+    if Index<BlockLength then begin
+     Weight:=0.5-(0.5*Cos((Pi*(Index+0.5))/fOverlap));
+     fBlockPlanes[Channel][Index]:=Round(((1.0-Weight)*fPrevTail[Channel][Index])+(Weight*fBlockPlanes[Channel][Index]));
+    end;
+   end;
+  end;
+ end;
+ // Remember this block's tail [fBlockStride..fBlockStride+fOverlap) (disjoint from the just-faded head) for the next block
+ if fOverlap>0 then begin
+  for Channel:=0 to fChannels-1 do begin
+   for Index:=0 to fOverlap-1 do begin
+    if (fBlockStride+Index)<BlockLength then begin
+     fPrevTail[Channel][Index]:=fBlockPlanes[Channel][fBlockStride+Index];
+    end else begin
+     fPrevTail[Channel][Index]:=0;
+    end;
+   end;
+  end;
+ end;
+
  // Undo the LMS prediction (lossless lms mode), carrying each channel's predictor state across blocks
  if fLMS and (fQuality=0) then begin
   for Channel:=0 to fChannels-1 do begin
@@ -435,7 +479,6 @@ begin
     fLMSStates[Channel].Update(fLMSTaps,fLMSAdaptShift,Sample,Residual);
    end;
   end;
-  fLMSNextBlock:=aBlockIndex+1;
  end;
 
  // Undo the multichannel pairwise M/S (per-sample, block-local)
@@ -471,18 +514,24 @@ begin
   end;
  end;
 
- // Publish this block as the current one
- fBlockFrames:=BlockLength;
+ // Publish this block as the current one. With overlap, a non-last block "owns" only its first fBlockStride output
+ // frames (the next block cross-fades the shared tail into its own head); the last block owns its full BlockLength.
+ if (fOverlap>0) and (aBlockIndex<(fBlockCount-1)) then begin
+  fBlockFrames:=fBlockStride;
+ end else begin
+  fBlockFrames:=BlockLength;
+ end;
  fBlockStartFrame:=StartFrame;
  fCurrentBlock:=aBlockIndex;
+ fLMSNextBlock:=aBlockIndex+1; // the carried state (LMS predictor and/or overlap tail) is now valid for the next block
 
 end;
 
 procedure TpvFlexibleWaveletAudioDecoder.EnsureLMSStateAt(const aBlockIndex:TpvInt32);
 var Channel:TpvInt32;
 begin
- if not (fLMS and (fQuality=0)) then begin
-  exit; // only the lossless LMS mode carries cross-block predictor state
+ if not ((fLMS and (fQuality=0)) or (fOverlap>0)) then begin
+  exit; // only the LMS predictor or the cross-fade overlap tail carry cross-block state that needs sequential decode
  end;
  if fLMSNextBlock=aBlockIndex then begin
   exit; // already positioned at the start of the requested block
@@ -527,11 +576,15 @@ begin
  SetLength(fPayload,BlockSamples*4);
  SetLength(fBlockInterleaved,BlockSamples*Max(fChannels,1));
 
- // Per-channel working planes and carried LMS state
+ // Per-channel working planes, the cross-fade tail carry, and the LMS state
  SetLength(fBlockPlanes,fChannels);
+ SetLength(fPrevTail,fChannels);
  SetLength(fLMSStates,fChannels);
  for Channel:=0 to fChannels-1 do begin
   SetLength(fBlockPlanes[Channel],BlockSamples);
+  if fOverlap>0 then begin
+   SetLength(fPrevTail[Channel],fOverlap);
+  end;
   fLMSStates[Channel].Init(fLMSTaps);
  end;
  fLMSAdaptShift:=LMSAdaptShift(fLMSTaps);
@@ -548,6 +601,7 @@ begin
  fBlockOffsets:=nil; // managed; never frees fStream (caller owns it)
  fBlockInterleaved:=nil;
  fBlockPlanes:=nil;
+ fPrevTail:=nil;
  fLMSStates:=nil;
  fBlockBuffer:=nil;
  fScratch:=nil;
@@ -576,7 +630,7 @@ begin
  Destination:=PpvFloatArray(aBuffer);
  Produced:=0;
  while (Produced<aCount) and (fCursor<fFrameCount) do begin
-  BlockIndex:=fCursor div BlockSamples;
+  BlockIndex:=fCursor div fBlockStride;
   EnsureBlock(BlockIndex);
   OffsetInBlock:=fCursor-fBlockStartFrame;
   Available:=fBlockFrames-OffsetInBlock;
@@ -602,7 +656,7 @@ begin
  Seek(0);
  Frame:=0;
  while Frame<fFrameCount do begin
-  BlockIndex:=Frame div BlockSamples;
+  BlockIndex:=Frame div fBlockStride;
   EnsureBlock(BlockIndex);
   for Index:=0 to fBlockFrames-1 do begin
    for Channel:=0 to fChannels-1 do begin

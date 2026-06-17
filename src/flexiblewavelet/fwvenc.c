@@ -467,7 +467,7 @@ typedef struct {
   // ---- optional parallel H.264 elementary stream (Annex-B) for HW decode ----
   uint64_t h264_offset;         // byte offset of the H.264 Annex-B blob (full-res; the wavelet width/height may be down-scaled)
   uint64_t h264_size;           // 0 = no H.264 stream (wavelet-only container)
-  uint64_t qpmap_offset;        // AQ (fwvpertileqp): byte offset of the per-frame per-tile QP-map section
+  uint64_t qpmap_offset;        // AQ: byte offset of the per-frame per-tile QP-map section
   uint64_t qpmap_size;          // total bytes of the qpmap section (frame_count * tile_cols * tile_rows u8); 0 = no AQ
 } ContainerHeader;
 
@@ -1282,6 +1282,8 @@ int main(int argc, char **argv) {
       "    --fwa-mode <m>                FWA mode: uniform|psycho|joint|packet|packet-psycho|lms (default: Q0 5/3, lossy joint-psycho)\n"
       "    --fwa-lms-taps N              FWA lms mode tap count (default 4)\n"
       "    --fwa-no-pair | --fwa-pair-ms  FWA multichannel pairing (default: adaptive pairwise M/S)\n"
+      "    --fwa-overlap                 FWA: cross-fade block overlap (lossy only) to soften block-boundary artefacts\n"
+      "    --fwa-overlap-amount N        FWA: shared samples per block boundary (default 1024)\n"
       "    --hdr[=pq|hlg]                 12-bit BT.2020 HDR (transfer autodetected unless forced)\n"
       "    --frame-codec lzss|lzbrrc      per-frame compressor (default lzss = fast decode; lzbrrc = ~20%% smaller, ~37x slower decode)\n"
       "    --mv-codec golomb|range        motion-vector entropy coder (default golomb; range = adaptive binary range coder, ~-6%% file, CPU-only)\n"
@@ -1312,6 +1314,8 @@ int main(int argc, char **argv) {
   const char *fwa_mode = NULL;    // --fwa-mode (NULL -> derive: Q0 = 5/3, Q>0 = joint-psycho)
   int fwa_lms_taps = 4;           // --fwa-lms-taps (lms mode)
   int fwa_no_pair = 0, fwa_pair_ms = 0;   // multichannel pairing overrides (default: adaptive pairwise M/S)
+  int fwa_overlap = 0;            // --fwa-overlap: cross-fade block overlap (lossy only, opt-in); samples via --fwa-overlap-amount (default 1024)
+  int fwa_overlap_amount = 1024;
   int want_h264 = 0;            // --h264: also embed a full-res H.264 Annex-B elementary stream
   double wavelet_scale = 1.0;   // --scale: down-scale ONLY the wavelet stream (e.g. 0.5 or 1/4)
   for (int i = 0; i < argc; i++) {
@@ -1397,6 +1401,10 @@ int main(int argc, char **argv) {
       fwa_no_pair = 1;                 // multichannel: independent channels (no pairwise M/S)
     } else if (!strcmp(argv[i], "--fwa-pair-ms")) {
       fwa_pair_ms = 1;                 // multichannel: force always-M/S pairs (not adaptive)
+    } else if (!strcmp(argv[i], "--fwa-overlap")) {
+      fwa_overlap = 1;                 // FWA: cross-fade block overlap (lossy only) to soften per-block quant boundaries
+    } else if (!strcmp(argv[i], "--fwa-overlap-amount") && ((i + 1) < argc)) {
+      fwa_overlap_amount = atoi(argv[++i]);   // FWA: shared samples per block boundary (default 1024)
     } else if (!strcmp(argv[i], "--h264")) {
       want_h264 = 1;   // also embed a full-res H.264 elementary stream (HW-decode path in the player)
     } else if (!strcmp(argv[i], "--scale") && (i + 1) < argc) {
@@ -1417,12 +1425,12 @@ int main(int argc, char **argv) {
     } else if (!strncmp(argv[i], "--pcrd", 6)) {
       pcrd_lambda = (argv[i][6] == '=') ? atof(argv[i] + 7) : 0.5;   // 0.5 = a moderate default
     } else if (!strncmp(argv[i], "--aq", 4)) {
-      g_aq_enabled = 1;   // spatially-adaptive quantization (fwvpertileqp): per-tile QP map. Optional strength: --aq=0.7
+      g_aq_enabled = 1;   // spatially-adaptive quantization: per-tile QP map. Optional strength: --aq=0.7
       if (argv[i][4] == '=') {
         g_aq_strength = (float)atof(argv[i] + 5);
       }
     } else if (!strncmp(argv[i], "--prdo", 6)) {
-      g_prdo_enabled = 1;   // perceptual RDO coefficient dropping (fwvperceptualrdo): decoder-transparent. --prdo=1.5 = strength
+      g_prdo_enabled = 1;   // perceptual RDO coefficient dropping: decoder-transparent. --prdo=1.5 = strength
       if (argv[i][6] == '=') {
         g_prdo_strength = (float)atof(argv[i] + 7);
       }
@@ -1632,7 +1640,7 @@ int main(int argc, char **argv) {
   VkBuffer mv1_8_buffer = 0, mv1_16_buffer = 0, mv1_32_buffer = 0;            // variable B: per-size L1 (vs ref1) ME outputs
   VkBuffer modesad8_buffer = 0, modesad16_buffer = 0, modesad32_buffer = 0;   // variable B: per-size [sadL0,sadL1,sadBI] from bidi_mode_sad
   VkDeviceMemory rgb_memory, coeff_memory[MAX_PLANES], scratch_memory, step_memory[MAX_PLANES], size_memory[MAX_PLANES], offset_memory[MAX_PLANES], data_memory;
-  VkBuffer threshold_buffer[MAX_PLANES] = { 0 };   // approach B (--prdo): per-coefficient perceptual drop thresholds (pthresh.comp)
+  VkBuffer threshold_buffer[MAX_PLANES] = { 0 };   // perceptual RDO (--prdo): per-coefficient perceptual drop thresholds (pthresh.comp)
   VkDeviceMemory threshold_memory[MAX_PLANES] = { 0 };
   void *threshold_map[MAX_PLANES] = { 0 };
   VkDeviceMemory previous_memory[MAX_PLANES], difference_memory[MAX_PLANES], size_memory_diff[MAX_PLANES], energy_memory, mv_memory, mv_prev_memory, sad_memory;
@@ -1650,7 +1658,7 @@ int main(int argc, char **argv) {
     create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &offset_buffer[plane], &offset_memory[plane]);
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[plane], &step_memory[plane]);   // per-plane quant map (chroma subsampled -> its own subband layout)
     if (g_prdo_enabled) {
-      create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &threshold_buffer[plane], &threshold_memory[plane]);   // approach B: per-coefficient drop thresholds
+      create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &threshold_buffer[plane], &threshold_memory[plane]);   // perceptual RDO: per-coefficient drop thresholds
     }
   }
   if (g_has_alpha) {   // alpha = plane 3: full-res like luma, intra-only (no previous / difference buffers needed)
@@ -1863,7 +1871,7 @@ int main(int argc, char **argv) {
   VkDescriptorSet set_colour = allocate_descriptor_set(descriptor_pool, layout_colour);
   bind_storage_buffers(set_colour, (VkBuffer[]){ rgb_buffer, coeff_buffer[0], coeff_buffer[1], coeff_buffer[2] }, 4);
   VkDescriptorSet set_coeff_to_scratch[MAX_PLANES], set_scratch_to_coeff[MAX_PLANES], set_row[MAX_PLANES], set_quant[MAX_PLANES], set_size[MAX_PLANES], set_pack[MAX_PLANES];
-  VkDescriptorSet set_pthresh[MAX_PLANES] = { 0 };   // approach B (--prdo): { coeff, threshold } for pthresh.comp
+  VkDescriptorSet set_pthresh[MAX_PLANES] = { 0 };   // perceptual RDO (--prdo): { coeff, threshold } for pthresh.comp
   VkDescriptorSet set_diff[MAX_PLANES], set_size_diff[MAX_PLANES], set_pack_diff[MAX_PLANES];   // coefdiff (A) P-frame sets
   VkDescriptorSet set_ycocg[MAX_PLANES];                                      // colordiff (B): {coeff, prev_ycocg} for ycocg_diff + coeff_add
   VkDescriptorSet set_energy[MAX_PLANES];                                     // colordiff (B): {coeff, prev, energy} for the scene-cut detector
@@ -2082,14 +2090,14 @@ int main(int argc, char **argv) {
     self_previous[plane] = checked_malloc((size_t)pixel_count * 4);
   }
   int *step = checked_malloc(pixel_count * sizeof(int));
-  // AQ (fwvpertileqp): per-frame per-tile QP map from luma; all frames' maps concatenated by coding index (= frame_index
+  // AQ: per-frame per-tile QP map from luma; all frames' maps concatenated by coding index (= frame_index
   // in the main loop) into all_qpmaps, written as the container qpmap section so the decoder dequantises identically.
   int aq_cols = aq_tile_cols(width), aq_rows = aq_tile_rows(height);
   size_t aq_map_bytes = (size_t)aq_cols * aq_rows;
   int32_t *aq_luma = (g_aq_enabled && !lossless) ? checked_malloc((size_t)pixel_count * sizeof(int32_t)) : NULL;
   long aq_capacity = 0;
   uint8_t *all_qpmaps = NULL;
-  // approach B (--prdo): per-frame source-luma masking -> per-coefficient drop thresholds, uploaded for pthresh.comp.
+  // perceptual RDO (--prdo): per-frame source-luma masking -> per-coefficient drop thresholds, uploaded for pthresh.comp.
   int prdo_cols = prdo_tile_cols(width), prdo_rows = prdo_tile_rows(height);
   int32_t *prdo_luma = (g_prdo_enabled && !lossless) ? checked_malloc((size_t)pixel_count * sizeof(int32_t)) : NULL;
   float *prdo_masking = (g_prdo_enabled && !lossless) ? checked_malloc((size_t)prdo_cols * prdo_rows * sizeof(float)) : NULL;
@@ -2155,6 +2163,8 @@ int main(int argc, char **argv) {
           wp.lms_taps = fwa_lms_taps;
           wp.pair_enabled = fwa_no_pair ? 0 : 1;
           wp.adapt = fwa_pair_ms ? 0 : 1;
+          wp.overlap = fwa_overlap ? fwa_overlap_amount : 0;   // cross-fade overlap (A); fwacodec_encode forces 0 at Q0
+
           const char *mode = fwa_mode ? fwa_mode : ((fwa_quality == 0) ? "53" : "joint");
           if (!strcmp(mode, "uniform")) {
             wp.perceptual = 0;
@@ -2483,7 +2493,7 @@ int main(int argc, char **argv) {
         if (!lossless && (effective_quality < 1)) {
           effective_quality = 1;
         }
-        // AQ (fwvpertileqp): compute THIS temporal-subband frame's per-tile QP map from its OWN spatial luma, read
+        // AQ: compute THIS temporal-subband frame's per-tile QP map from its OWN spatial luma, read
         // straight back from the GPU temporal output (gop_buffer[0], subband f) — no CPU re-derivation, so the map is
         // built from the exact data the spatial quant sees. Stored by coding index (= frame_index + f, the order the
         // write loop below emits the subbands) and made current so the per-plane maybe_apply_tile_aq below quantizes
@@ -2915,7 +2925,7 @@ int main(int argc, char **argv) {
           memcpy(rgb_map, rgb, frame_bytes);
         }
       }
-      // AQ (fwvpertileqp): compute this frame's per-tile QP map from the source luma, stored by coding index
+      // AQ: compute this frame's per-tile QP map from the source luma, stored by coding index
       // (= frame_index) into all_qpmaps, and make it the current map so the per-frame step rebuild + maybe_apply use it.
       if (g_aq_enabled && !lossless) {
         if (frame_index >= aq_capacity) {
@@ -2995,7 +3005,7 @@ int main(int argc, char **argv) {
         }
       }
 
-      // AQ (fwvpertileqp): rebuild every plane's step with THIS frame's tile map (frame_quality already accounts for
+      // AQ: rebuild every plane's step with THIS frame's tile map (frame_quality already accounts for
       // VBR / QP-cascade). Done every frame under --aq so the per-frame map reaches the GPU quant; uploaded to step_map.
       if (g_aq_enabled && !lossless) {
         for (int plane = 0; plane < g_num_planes; plane++) {
@@ -3006,7 +3016,7 @@ int main(int argc, char **argv) {
         }
       }
 
-      // approach B (--prdo): per-frame source-luma masking -> per-plane drop thresholds (canonical step * (1+masking)),
+      // perceptual RDO (--prdo): per-frame source-luma masking -> per-plane drop thresholds (canonical step * (1+masking)),
       // uploaded so the pthresh pre-pass zeros perceptually-insignificant coefficients in masked tiles before quant.
       if (g_prdo_enabled && !lossless) {
         if (hdr_mode) {
@@ -3459,7 +3469,7 @@ int main(int argc, char **argv) {
         quant_push[0] = plane_pixels;
         float chroma_multiplier = (plane == 0) ? 1.0f : g_chroma_quant;
         memcpy(&quant_push[1], &chroma_multiplier, sizeof(float));
-        // approach B (--prdo): perceptual coefficient dropping BEFORE quant — zero coeffs below the per-coefficient
+        // perceptual RDO (--prdo): perceptual coefficient dropping BEFORE quant — zero coeffs below the per-coefficient
         // threshold (a wider dead-zone in masked tiles). Decoder-transparent: a dropped coefficient decodes to zero.
         if (g_prdo_enabled && !lossless) {
           int32_t prdo_push = plane_pixels;
@@ -3967,7 +3977,7 @@ int main(int argc, char **argv) {
       fwrite(h264_blob, 1, h264_blob_size, container_file);
     }
     header.h264_size = h264_blob ? h264_blob_size : 0;
-    header.qpmap_offset = (uint64_t)ftello(container_file);   // AQ (fwvpertileqp): per-frame per-tile QP maps, coding order
+    header.qpmap_offset = (uint64_t)ftello(container_file);   // AQ: per-frame per-tile QP maps, coding order
     if ((g_aq_enabled && (all_qpmaps != NULL)) && !lossless) {
       header.qpmap_size = (uint64_t)frame_index * aq_map_bytes;
       fwrite(all_qpmaps, 1, (size_t)header.qpmap_size, container_file);

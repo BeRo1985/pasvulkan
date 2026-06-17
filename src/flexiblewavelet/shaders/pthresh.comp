@@ -1,5 +1,5 @@
 #version 450
-// pthresh.comp — perceptual coefficient thresholding (the fwvperceptualrdo branch, approach B). DECODER-TRANSPARENT:
+// pthresh.comp — perceptual coefficient thresholding (the perceptual-RDO encoder). DECODER-TRANSPARENT:
 // it runs on the ENCODER only, BEFORE the normal quantize, and simply ZEROS DWT coefficients whose magnitude is
 // below a per-coefficient perceptual threshold. The decoder reconstructs a zero coefficient as zero regardless, so
 // no map is transmitted and the decoder / container are untouched. The threshold widens the dead-zone in high-

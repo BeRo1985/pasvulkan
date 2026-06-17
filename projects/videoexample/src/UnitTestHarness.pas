@@ -25,7 +25,8 @@ uses SysUtils,
      PasVulkan.Video.H264.Decoder,
      PasVulkan.Audio.QOAL,
      PasVulkan.Audio.RPCM,
-     PasVulkan.Audio.OGGVorbis;
+     PasVulkan.Audio.OGGVorbis,
+     PasVulkan.Audio.FlexibleWavelet.Decoder;
 
 // Decode frame aFrameIndex, read the output image back and write it to aPath: an 8-bit RGB PPM for the SDR
 // R8G8B8A8 format (matches the C --dump), or the raw RGBA16F bytes for the scRGB FP16 format. aSubmitMode 2
@@ -320,6 +321,51 @@ begin
  end;
 end;
 
+// FWA self-test: decode the whole stream (incl. cross-fade overlap) + write <path>.pas.s16 for a byte/SNR diff vs C fwa dec.
+procedure CheckFWA(const aPath:string);
+var Stream:TFileStream;
+    Decoder:TpvFlexibleWaveletAudioDecoder;
+    OutFile:TFileStream;
+    FloatBuffer:array of TpvFloat;
+    Samples:array of TpvInt16;
+    Total,WriteCursor:TpvInt64;
+    Got,SampleIndex:TpvSizeInt;
+begin
+ Stream:=TFileStream.Create(aPath,fmOpenRead);
+ try
+  Decoder:=TpvFlexibleWaveletAudioDecoder.Create(Stream);
+  try
+   Total:=Decoder.FrameCount*Decoder.Channels;
+   if Total<0 then begin
+    Total:=0;
+   end;
+   SetLength(FloatBuffer,Decoder.Channels*4096);
+   SetLength(Samples,Total);
+   WriteCursor:=0;
+   repeat
+    Got:=Decoder.Decode(@FloatBuffer[0],4096);
+    for SampleIndex:=0 to (Got*Decoder.Channels)-1 do begin
+     Samples[WriteCursor+SampleIndex]:=Round(FloatBuffer[SampleIndex]*32768.0);
+    end;
+    inc(WriteCursor,Got*Decoder.Channels);
+   until Got<=0;
+   OutFile:=TFileStream.Create(aPath+'.pas.s16',fmCreate);
+   try
+    if Total>0 then begin
+     OutFile.WriteBuffer(Samples[0],Total*SizeOf(TpvInt16));
+    end;
+   finally
+    OutFile.Free;
+   end;
+   writeln(Format('  %-40s fwa ch=%d rate=%d frames=%d -> %s.pas.s16',[aPath,Decoder.Channels,Decoder.SampleRate,Decoder.FrameCount,aPath]));
+  finally
+   Decoder.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
+end;
+
 // RPCM self-test (lossless raw PCM): decode + write <path>.pas.s16 for a byte-diff against the C rpcm_decode_s16 ref.
 procedure CheckRPCM(const aPath:string);
 var Stream:TFileStream;
@@ -562,6 +608,8 @@ begin
      CheckRPCM(ParamStr(Index));
     end else if (Extension='.ogg') or (Extension='.oggv') then begin
      CheckOGGV(ParamStr(Index));
+    end else if Extension='.fwa' then begin
+     CheckFWA(ParamStr(Index)); // FWA audio decode self-test (incl. cross-fade overlap) -> byte/SNR diff vs C fwa dec
     end else if UsePlayer then begin
      CheckOnePlayer(Device,ParamStr(Index));
     end else begin

@@ -107,6 +107,7 @@ type EpvFlexibleWaveletAudio=class(Exception);
              FlagJointStereo=4; // bit2: joint-stereo intensity (Side highs dropped)
              FlagLMS=8; // bit3: lossless LMS predictor (bits 8..15 carry the tap count)
              FlagPairing=16; // bit4: multichannel pairwise-M/S plan present
+             FlagOverlap=32; // bit5: cross-fade block overlap; a [u16 overlap_samples] follows the pairing plan
        const CDF97Alpha:TpvFloat=-1.586134342059924; // typed Single, matching the C float lifting constants
              CDF97Beta:TpvFloat=-0.052980118572961;
              CDF97Gamma:TpvFloat=0.882911075530934;

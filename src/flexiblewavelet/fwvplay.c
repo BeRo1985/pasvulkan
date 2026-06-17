@@ -127,7 +127,7 @@ typedef struct {
   // ---- optional parallel H.264 elementary stream (Annex-B) for HW decode ----
   uint64_t h264_offset;         // byte offset of the H.264 Annex-B blob (full-res; the wavelet width/height may be down-scaled)
   uint64_t h264_size;           // 0 = no H.264 stream (wavelet-only container)
-  uint64_t qpmap_offset;        // AQ (fwvpertileqp): byte offset of the per-frame per-tile QP-map section
+  uint64_t qpmap_offset;        // AQ: byte offset of the per-frame per-tile QP-map section
   uint64_t qpmap_size;          // total bytes of the qpmap section (frame_count * tile_cols * tile_rows u8); 0 = no AQ
 } ContainerHeader;
 
@@ -403,7 +403,7 @@ typedef struct {
   VkBuffer mv_buffer, mctf_pred[MAX_PLANES], mctf_scratch[MAX_PLANES];
   void *mv_map;
   VkDescriptorSet mctf_mc[MAX_PLANES], mctf_add[MAX_PLANES];
-  // AQ (fwvpertileqp): GPU apply pass (apply_tile_aq.comp) modulates the per-subband base step (aq_base_buffer,
+  // AQ: GPU apply pass (apply_tile_aq.comp) modulates the per-subband base step (aq_base_buffer,
   // filled by upload_subband) by the transmitted per-tile map into step_buffer the dequant reads. Bit-exact via the LUT.
   int aq_enabled, aq_cols, aq_rows;
   VkPipeline apply_aq;
@@ -1112,7 +1112,7 @@ int main(int argc, char **argv) {
   int levels = header.levels;
   int quality = header.quality;
   g_chroma_format = header.chroma_format;   // set before plane_width/plane_height are used (block counts, plane dims)
-  // AQ (fwvpertileqp): read the per-frame per-tile QP-map section once. The decode then applies map[coding_index] to
+  // AQ: read the per-frame per-tile QP-map section once. The decode then applies map[coding_index] to
   // the step before each dequant (aq_set_current_map), identically to the encoder, so the round trip is exact.
   uint8_t *all_qpmaps = NULL;
   int aq_cols = aq_tile_cols(width), aq_rows = aq_tile_rows(height);
@@ -2106,7 +2106,7 @@ int main(int argc, char **argv) {
     d3d.temporal_wavelet = g_temporal_wavelet;
     d3d.lossless = lossless;
     d3d.plane_bytes = plane_bytes;
-    // AQ (fwvpertileqp): the GPU apply pass + its tile grid. set_apply_aq is bound to { aq_base_buffer, tile_codes,
+    // AQ: the GPU apply pass + its tile grid. set_apply_aq is bound to { aq_base_buffer, tile_codes,
     // weight_lut, step_buffer } (the I/P path's set, unused in 3D-DWT mode) — exactly what the prefetch apply needs.
     d3d.aq_enabled = g_aq_enabled && !lossless;
     d3d.apply_aq = pipeline_apply_aq;
@@ -2809,7 +2809,7 @@ int main(int argc, char **argv) {
         }
       }
     } else {
-      // AQ (fwvpertileqp): rebuild the per-plane step with THIS frame's tile map every frame (a fixed-Q I/P stream
+      // AQ: rebuild the per-plane step with THIS frame's tile map every frame (a fixed-Q I/P stream
       // never trips the quality-change rebuild below, so the per-frame map would otherwise never reach the GPU).
       // I/P coding index == display index == frame_index. apply_tile_aq.comp (recorded below, before dequant) reads
       // the per-quality base in aq_base_buffer and this map, writing the modulated step into step_buffer the dequant

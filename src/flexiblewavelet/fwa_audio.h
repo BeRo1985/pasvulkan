@@ -70,6 +70,7 @@ typedef struct {
   int lms_taps;      // LMS tap count (when lms != 0)
   int pair_enabled;  // multichannel: pairwise L/R Mid/Side (default on)
   int adapt;         // multichannel: per-pair adaptive best-of-both (default on)
+  int overlap;       // cross-fade block overlap: shared samples per block boundary (0 = off; lossy only)
 } FwaParams;
 
 // Encode interleaved int16 PCM (`samples` = frames per channel) -> a self-describing FWA blob; returns the blob

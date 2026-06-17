@@ -97,6 +97,7 @@ type EpvFlexibleWaveletAudioEncoder=class(EpvFlexibleWaveletAudio);
              LMSTaps:TpvInt32;
              PairEnabled:boolean; // multichannel (>=3) pairwise Mid/Side
              Adapt:boolean; // per-pair adaptive best-of-both
+             Overlap:TpvInt32; // cross-fade block overlap: shared samples per block boundary (0 = off; lossy only)
             end;
             PParams=^TParams;
             { TpvFlexibleWaveletAudioEncoder.TBitWriter }
@@ -476,7 +477,7 @@ begin
 end;
 
 procedure TpvFlexibleWaveletAudioEncoder.Encode(const aChannelBuffer:TAudioBuffers;const aSampleRate:TpvInt32;const aParams:TParams;const aStream:TStream);
-var Channels,Channel,Quality,PairIndex,Mode,PairCount,BlockLength,Index,MaxDepth:TpvInt32;
+var Channels,Channel,Quality,PairIndex,Mode,PairCount,BlockLength,Index,MaxDepth,Overlap,BlockStride:TpvInt32;
     Frames,Start,Frame:TpvInt64;
     Pairing,JointStereo:boolean;
     Step:TpvFloat;
@@ -502,6 +503,21 @@ begin
  end;
  Frames:=Length(aChannelBuffer[0]);
  Quality:=aParams.Quality;
+
+ // Cross-fade block overlap (lossy only): adjacent blocks share Overlap samples (stride = BlockSamples-Overlap), each
+ // still coded independently; the decoder raised-cosine cross-fades the shared region. Q0 must stay bit-exact -> no overlap.
+ Overlap:=aParams.Overlap;
+ if (Quality=0) or (Overlap<0) then begin
+  Overlap:=0;
+ end;
+ if Overlap>=BlockSamples then begin
+  Overlap:=BlockSamples div 2; // a stride must stay positive
+ end;
+ if Overlap>0 then begin
+  BlockStride:=BlockSamples-Overlap;
+ end else begin
+  BlockStride:=BlockSamples;
+ end;
 
  // float -> interleaved int16 (the codec core works in the int16 domain, like the C ingest)
  SetLength(Interleaved,Frames*Channels);
@@ -591,6 +607,9 @@ begin
  if aParams.LMS and (Quality=0) then begin
   HeaderFlags:=HeaderFlags or FlagLMS or TpvUInt16((aParams.LMSTaps and $ff) shl 8);
  end;
+ if Overlap>0 then begin
+  HeaderFlags:=HeaderFlags or FlagOverlap;
+ end;
  WriteU32(Magic);
  WriteU32(aSampleRate);
  WriteU16(Channels);
@@ -607,6 +626,11 @@ begin
    WriteU8(Pairs[PairIndex,1]);
    WriteU8(PairModes[PairIndex]);
   end;
+ end;
+
+ // Cross-fade overlap (bit5): the shared sample count, after the pairing plan
+ if Overlap>0 then begin
+  WriteU16(TpvUInt16(Overlap));
  end;
 
  // Encode every block of every channel
@@ -667,7 +691,7 @@ begin
    Coder.Done;
 
   end;
-  inc(Start,BlockSamples);
+  inc(Start,BlockStride);
  end;
 
 end;

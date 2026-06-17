@@ -1670,7 +1670,7 @@ static void maybe_apply_tile_aq(int *step, int width, int height, int levels) {
   }
 }
 
-// -------------------------------- perceptual coefficient thresholding (approach B, fwvperceptualrdo) --------------
+// -------------------------------- perceptual coefficient thresholding --------------
 // DECODER-TRANSPARENT: the ENCODER zeros DWT coefficients below a per-coefficient perceptual threshold BEFORE the
 // normal quantize (pthresh.comp). The threshold widens the dead-zone in high-activity (texture-masked) tiles, where
 // small coefficients are perceptually insignificant — dropping them frees bits for the visible flat / edge-near
