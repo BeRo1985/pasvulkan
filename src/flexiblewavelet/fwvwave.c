@@ -2692,9 +2692,33 @@ static int sample_half_pel(const int32_t *previous, int width, int height, int b
   return (t + 512) >> 10;
 }
 
+// Half-pel-grid sample at half-pel units (u, v): u,v in {0,1,2} where 0=integer, 1=half, 2=next integer.
+static int half_grid(const int32_t *previous, int width, int height, int base_x, int base_y, int u, int v) {
+  return sample_half_pel(previous, width, height, base_x + (u >> 1), base_y + (v >> 1), u & 1, v & 1);
+}
+
+// Quarter-pel interpolation: the quarter position sits exactly at a half-pel-grid point (frac even) or at the
+// midpoint between two/four 6-tap half-pel samples (frac odd) -> a rounded average. qx,qy in 0..3 (quarter units).
+// EXACT mirror of mc.comp: builds on the 6-tap half-pel grid, all-integer + deterministic rounding.
+static int sample_quarter_pel(const int32_t *previous, int width, int height, int base_x, int base_y, int qx, int qy) {
+  int ax = qx & 1, hx = qx >> 1;
+  int ay = qy & 1, hy = qy >> 1;
+  if ((ax == 0) && (ay == 0)) {
+    return half_grid(previous, width, height, base_x, base_y, hx, hy);
+  }
+  if (ay == 0) {
+    return (half_grid(previous, width, height, base_x, base_y, hx, hy) + half_grid(previous, width, height, base_x, base_y, hx + 1, hy) + 1) >> 1;
+  }
+  if (ax == 0) {
+    return (half_grid(previous, width, height, base_x, base_y, hx, hy) + half_grid(previous, width, height, base_x, base_y, hx, hy + 1) + 1) >> 1;
+  }
+  return (((half_grid(previous, width, height, base_x, base_y, hx, hy) + half_grid(previous, width, height, base_x, base_y, hx + 1, hy)) +
+           (half_grid(previous, width, height, base_x, base_y, hx, hy + 1) + half_grid(previous, width, height, base_x, base_y, hx + 1, hy + 1))) + 2) >> 2;
+}
+
 static int sample_block_mv(const int32_t *previous, const int *mv, int width, int height, int block, int x, int y) {
   int mv_x = mv[block * 2], mv_y = mv[(block * 2) + 1];
-  return sample_half_pel(previous, width, height, x + (mv_x >> 1), y + (mv_y >> 1), mv_x & 1, mv_y & 1);
+  return sample_quarter_pel(previous, width, height, x + (mv_x >> 2), y + (mv_y >> 2), mv_x & 3, mv_y & 3);
 }
 
 // OBMC edge window over an m-pixel block axis: 2, 1 near each edge, 0 in the middle (m=16 -> ..,1,2 at
@@ -2783,7 +2807,7 @@ static void motion_estimate_cpu(const int32_t *current, const int32_t *reference
           }
         }
       }
-      // Half-pel refinement around the integer best (the OBMC warp samples half-pel, so it pays off).
+      // Half-pel refinement around the integer best (the OBMC warp samples sub-pel, so it pays off).
       int best_hx = best_x * 2, best_hy = best_y * 2;
       long half_best = 0x7fffffffffffffffL;
       for (int refine_y = -1; refine_y <= 1; refine_y++) {
@@ -2806,8 +2830,32 @@ static void motion_estimate_cpu(const int32_t *current, const int32_t *reference
           }
         }
       }
-      mv[((by * blocks_x) + bx) * 2] = best_hx;          // half-pel units
-      mv[(((by * blocks_x) + bx) * 2) + 1] = best_hy;
+      // Quarter-pel refinement around the best half-pel (the warp now samples quarter-pel). The center
+      // (best_hx*2, best_hy*2) is included, so the result is never worse than the half-pel best.
+      int best_qx = best_hx * 2, best_qy = best_hy * 2;
+      long quarter_best = 0x7fffffffffffffffL;
+      for (int refine_y = -1; refine_y <= 1; refine_y++) {
+        for (int refine_x = -1; refine_x <= 1; refine_x++) {
+          int qx = (best_hx * 2) + refine_x, qy = (best_hy * 2) + refine_y;
+          long sad = 0;
+          for (int y = 0; (y < m) && ((origin_y + y) < height); y++) {
+            for (int x = 0; (x < m) && ((origin_x + x) < width); x++) {
+              int pred = sample_quarter_pel(reference, width, height,
+                                            (origin_x + x) + (qx >> 2), (origin_y + y) + (qy >> 2), qx & 3, qy & 3);
+              int d = current[((origin_y + y) * width) + (origin_x + x)] - pred;
+              sad += (d < 0) ? -d : d;
+            }
+          }
+          sad += (long)((((qx < 0) ? -qx : qx) + ((qy < 0) ? -qy : qy)) >> 1);   // rate bias (quarter-pel >> 1 = half-pel scale)
+          if (sad < quarter_best) {
+            quarter_best = sad;
+            best_qx = qx;
+            best_qy = qy;
+          }
+        }
+      }
+      mv[((by * blocks_x) + bx) * 2] = best_qx;          // quarter-pel units
+      mv[(((by * blocks_x) + bx) * 2) + 1] = best_qy;
     }
   }
 }

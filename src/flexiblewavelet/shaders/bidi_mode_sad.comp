@@ -76,6 +76,28 @@ int sample_half_pel(int which, int base_x, int base_y, int half_x, int half_y) {
   return (t + 512) >> 10;
 }
 
+// Half-pel-grid sample at half-pel units (u, v): u,v in {0,1,2} where 0=integer, 1=half, 2=next integer.
+int half_grid(int which, int base_x, int base_y, int u, int v) {
+  return sample_half_pel(which, base_x + (u >> 1), base_y + (v >> 1), u & 1, v & 1);
+}
+
+// Quarter-pel interpolation: rounded average of the bracketing 6-tap half-pel samples. qx,qy in 0..3. Matches mc.comp.
+int sample_quarter_pel(int which, int base_x, int base_y, int qx, int qy) {
+  int ax = qx & 1, hx = qx >> 1;
+  int ay = qy & 1, hy = qy >> 1;
+  if ((ax == 0) && (ay == 0)) {
+    return half_grid(which, base_x, base_y, hx, hy);
+  }
+  if (ay == 0) {
+    return (half_grid(which, base_x, base_y, hx, hy) + half_grid(which, base_x, base_y, hx + 1, hy) + 1) >> 1;
+  }
+  if (ax == 0) {
+    return (half_grid(which, base_x, base_y, hx, hy) + half_grid(which, base_x, base_y, hx, hy + 1) + 1) >> 1;
+  }
+  return (((half_grid(which, base_x, base_y, hx, hy) + half_grid(which, base_x, base_y, hx + 1, hy)) +
+           (half_grid(which, base_x, base_y, hx, hy + 1) + half_grid(which, base_x, base_y, hx + 1, hy + 1))) + 2) >> 2;
+}
+
 // 4x4 SATD: separable Hadamard (rows then columns) of the residual tile, then sum of absolute coefficients. Better
 // predicts the transform/quant/bitplane coded bits than SAD (it sees frequency content, not just magnitude), so the
 // merge stops over-splitting blocks whose 8-MVs lower the SAD but not the actual coded residual (e.g. coherent motion).
@@ -134,8 +156,8 @@ void main() {
           int x = clamp_int(tx0 + xx, 0, push.width - 1), y = clamp_int(ty0 + yy, 0, push.height - 1);
           int index = (y * push.width) + x;
           int cur = decode_current((plane == 0) ? cur0[index] : ((plane == 1) ? cur1[index] : cur2[index]));
-          int a = sample_half_pel(plane,     (x + (m0x >> 1)), (y + (m0y >> 1)), m0x & 1, m0y & 1);   // MC0
-          int b = sample_half_pel(plane + 3, (x + (m1x >> 1)), (y + (m1y >> 1)), m1x & 1, m1y & 1);   // MC1
+          int a = sample_quarter_pel(plane,     (x + (m0x >> 2)), (y + (m0y >> 2)), m0x & 3, m0y & 3);   // MC0
+          int b = sample_quarter_pel(plane + 3, (x + (m1x >> 2)), (y + (m1y >> 2)), m1x & 3, m1y & 3);   // MC1
           int bi = (((push.weight0 * a) + (push.weight1 * b)) + 128) >> 8;
           int k = (yy * 4) + xx;
           rl0[k] = cur - a; rl1[k] = cur - b; rbi[k] = cur - bi;

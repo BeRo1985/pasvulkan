@@ -109,6 +109,29 @@ int sample_half_pel(int plane, int base_x, int base_y, int half_x, int half_y) {
   return (t + 512) >> 10;
 }
 
+// Half-pel-grid sample at half-pel units (u, v): u,v in {0,1,2} where 0=integer, 1=half, 2=next integer.
+int half_grid(int plane, int base_x, int base_y, int u, int v) {
+  return sample_half_pel(plane, base_x + (u >> 1), base_y + (v >> 1), u & 1, v & 1);
+}
+
+// Quarter-pel interpolation: rounded average of the bracketing 6-tap half-pel samples. qx,qy in 0..3.
+// Same as mc.comp, so the refinement scores the MV exactly as the reconstruction will interpolate it.
+int sample_quarter_pel(int plane, int base_x, int base_y, int qx, int qy) {
+  int ax = qx & 1, hx = qx >> 1;
+  int ay = qy & 1, hy = qy >> 1;
+  if ((ax == 0) && (ay == 0)) {
+    return half_grid(plane, base_x, base_y, hx, hy);
+  }
+  if (ay == 0) {
+    return (half_grid(plane, base_x, base_y, hx, hy) + half_grid(plane, base_x, base_y, hx + 1, hy) + 1) >> 1;
+  }
+  if (ax == 0) {
+    return (half_grid(plane, base_x, base_y, hx, hy) + half_grid(plane, base_x, base_y, hx, hy + 1) + 1) >> 1;
+  }
+  return (((half_grid(plane, base_x, base_y, hx, hy) + half_grid(plane, base_x, base_y, hx + 1, hy)) +
+           (half_grid(plane, base_x, base_y, hx, hy + 1) + half_grid(plane, base_x, base_y, hx + 1, hy + 1))) + 2) >> 2;
+}
+
 int block_current(int plane, int b) {
   return (plane == 0) ? block_current0[b] : ((plane == 1) ? block_current1[b] : block_current2[b]);
 }
@@ -160,8 +183,8 @@ void main() {
   barrier();
   int zero_bias = ZERO_BIAS_FLOOR + (sad_zero >> ZERO_BIAS_SHIFT);
 
-  int predict_x = clamp_int(motion_vectors_prev[block * 2] >> 1, -56, 56);
-  int predict_y = clamp_int(motion_vectors_prev[(block * 2) + 1] >> 1, -56, 56);
+  int predict_x = clamp_int(motion_vectors_prev[block * 2] >> 2, -56, 56);   // prev MV is quarter-pel -> integer-pel
+  int predict_y = clamp_int(motion_vectors_prev[(block * 2) + 1] >> 2, -56, 56);
   int span_floor = (2 * SEARCH) + 1, count_floor = span_floor * span_floor;
   int span_pred = (2 * PREDICT) + 1, count_pred = span_pred * span_pred;
   int candidates = count_floor + count_pred;
@@ -196,10 +219,11 @@ void main() {
     barrier();
   }
 
-  // Thread 0: half-pel refinement (the integer best + its 8 half-pel neighbours), 3-plane blended SAD, write.
+  // Thread 0: half-pel refinement (the integer best + its 8 half-pel neighbours), then a quarter-pel
+  // refinement around that half-pel best. 3-plane blended SAD, write a quarter-pel MV.
   if (local_index == 0u) {
     int integer_mv_x = (reduce_pack[0] / 256) - 64, integer_mv_y = (reduce_pack[0] % 256) - 64;
-    int best_refine_x = 0, best_refine_y = 0, refine_cost = 0x7fffffff;
+    int best_hx = integer_mv_x * 2, best_hy = integer_mv_y * 2, half_cost = 0x7fffffff;
     for (int refine_y = -1; refine_y <= 1; refine_y++) {
       for (int refine_x = -1; refine_x <= 1; refine_x++) {
         int half_pel_x = (integer_mv_x * 2) + refine_x, half_pel_y = (integer_mv_y * 2) + refine_y;
@@ -216,14 +240,38 @@ void main() {
           }
         }
         int cost = (sad + ((LAMBDA * (abs(half_pel_x) + abs(half_pel_y))) / 2)) + ((half_pel_x != 0 || half_pel_y != 0) ? zero_bias : 0);
-        if (cost < refine_cost) {
-          refine_cost = cost;
-          best_refine_x = refine_x;
-          best_refine_y = refine_y;
+        if (cost < half_cost) {
+          half_cost = cost;
+          best_hx = half_pel_x;
+          best_hy = half_pel_y;
         }
       }
     }
-    motion_vectors[block * 2] = (integer_mv_x * 2) + best_refine_x;
-    motion_vectors[(block * 2) + 1] = (integer_mv_y * 2) + best_refine_y;
+    int final_qpx = best_hx * 2, final_qpy = best_hy * 2, refine_cost = 0x7fffffff;
+    for (int refine_y = -1; refine_y <= 1; refine_y++) {
+      for (int refine_x = -1; refine_x <= 1; refine_x++) {
+        int quarter_x = (best_hx * 2) + refine_x, quarter_y = (best_hy * 2) + refine_y;
+        int qfx = quarter_x & 3, qfy = quarter_y & 3;
+        int sad = 0;
+        for (int y = 0; y < MB; y++) {
+          for (int x = 0; x < MB; x++) {
+            int sample_x = (origin_x + x) + (quarter_x >> 2), sample_y = (origin_y + y) + (quarter_y >> 2);
+            int b = (y * MB) + x;
+            for (int plane = 0; plane < 3; plane++) {
+              int d = block_current(plane, b) - blend(sample_quarter_pel(plane, sample_x, sample_y, qfx, qfy), block_other(plane, b));
+              sad += (d < 0) ? -d : d;
+            }
+          }
+        }
+        int cost = (sad + ((LAMBDA * (abs(quarter_x) + abs(quarter_y))) / 4)) + ((quarter_x != 0 || quarter_y != 0) ? zero_bias : 0);
+        if (cost < refine_cost) {
+          refine_cost = cost;
+          final_qpx = quarter_x;
+          final_qpy = quarter_y;
+        }
+      }
+    }
+    motion_vectors[block * 2] = final_qpx;
+    motion_vectors[(block * 2) + 1] = final_qpy;
   }
 }

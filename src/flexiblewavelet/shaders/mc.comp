@@ -60,9 +60,33 @@ int sample_half_pel(int base_x, int base_y, int half_x, int half_y) {
   return (t + 512) >> 10;
 }
 
+// Half-pel-grid sample at half-pel units (u, v): u,v in {0,1,2} where 0=integer, 1=half, 2=next integer.
+int half_grid(int base_x, int base_y, int u, int v) {
+  return sample_half_pel(base_x + (u >> 1), base_y + (v >> 1), u & 1, v & 1);
+}
+
+// Quarter-pel interpolation: the quarter position sits exactly at a half-pel-grid point (frac even) or at the
+// midpoint between two/four 6-tap half-pel samples (frac odd) -> a rounded average. qx,qy in 0..3 (quarter units).
+// Builds on the 6-tap half-pel grid, all-integer + deterministic rounding (matches the CPU reference).
+int sample_quarter_pel(int base_x, int base_y, int qx, int qy) {
+  int ax = qx & 1, hx = qx >> 1;
+  int ay = qy & 1, hy = qy >> 1;
+  if ((ax == 0) && (ay == 0)) {
+    return half_grid(base_x, base_y, hx, hy);
+  }
+  if (ay == 0) {
+    return (half_grid(base_x, base_y, hx, hy) + half_grid(base_x, base_y, hx + 1, hy) + 1) >> 1;
+  }
+  if (ax == 0) {
+    return (half_grid(base_x, base_y, hx, hy) + half_grid(base_x, base_y, hx, hy + 1) + 1) >> 1;
+  }
+  return (((half_grid(base_x, base_y, hx, hy) + half_grid(base_x, base_y, hx + 1, hy)) +
+           (half_grid(base_x, base_y, hx, hy + 1) + half_grid(base_x, base_y, hx + 1, hy + 1))) + 2) >> 2;
+}
+
 int sample_block_mv(int block, int x, int y) {
   int mv_x = motion_vectors[block * 2], mv_y = motion_vectors[(block * 2) + 1];
-  return sample_half_pel(x + (mv_x >> 1), y + (mv_y >> 1), mv_x & 1, mv_y & 1);
+  return sample_quarter_pel(x + (mv_x >> 2), y + (mv_y >> 2), mv_x & 3, mv_y & 3);
 }
 
 // OBMC edge window over an MB-pixel block axis: 2, 1 near each edge, 0 in the middle (MB=16 unchanged).
