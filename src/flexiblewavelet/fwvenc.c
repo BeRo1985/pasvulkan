@@ -1308,7 +1308,9 @@ int main(int argc, char **argv) {
       "    --mv-codec=golomb|range        motion-vector entropy coder (default golomb; range = adaptive binary range coder, ~-6%% file, CPU-only)\n"
       "    --interp=6tap|bilinear         sub-pel interpolation filter (default 6tap; bilinear = legacy)\n"
       "    --mv-precision=quarter|half    motion-vector precision (default quarter; half = coarser, fewer MV bits)\n"
-      "    --mv-predict=temporal|spatial  ME predictor (default temporal; spatial = 2nd pass toward the H.264 median, cheaper MVs)\n"
+      "    --mv-predict=temporal |        ME predictor (default temporal; spatial = 2nd pass toward the H.264 median; spatial-full = fuller search, weaker bias)\n"
+      "                 spatial |\n"
+      "                 spatial-full\n"
       "    --no-compress                  store frames raw (no per-frame compression)\n"
       "    --debug                        extra GPU-vs-CPU validation prints\n",
       argv[0]);
@@ -1404,8 +1406,9 @@ int main(int argc, char **argv) {
       if (strstr(argv[i] + 9, "bilinear")) { g_motion_mode &= ~1; } else { g_motion_mode |= 1; }
     } else if (!strncmp(argv[i], "--mv-precision=", 15)) {   // MV precision (g_motion_mode bit1). Default quarter.
       if (strstr(argv[i] + 15, "half")) { g_motion_mode &= ~2; } else { g_motion_mode |= 2; }
-    } else if (!strncmp(argv[i], "--mv-predict=", 13)) {   // ME predictor: temporal (default) or spatial median (2nd refine pass)
+    } else if (!strncmp(argv[i], "--mv-predict=", 13)) {   // ME predictor: temporal (default), spatial median (2nd refine pass), or spatial-full (fuller search, weaker bias)
       g_mv_predict_spatial = strstr(argv[i] + 13, "spatial") ? 1 : 0;
+      g_mv_predict_full = strstr(argv[i] + 13, "spatial-full") ? 1 : 0;
     } else if (!strcmp(argv[i], "--motion-split")) {   // variable per-block motion (quadtree 32->16->8, R-D); B uses the joint mode-aware merge by default
       g_motion_variable = 1;
       g_motion_block = 8;
@@ -1878,7 +1881,7 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_motion_estimate = create_compute_pipeline_motion("shaders/motion_estimate.spv", pipeline_layout_motion_estimate, g_motion_block);   // {cur0..2, prev0..2, mv, mv_prev, sad}, push 16
   // --mv-predict=spatial: the spatial-median refinement pass. Reuses the 9-buffer layout (binding 8 is an unused dummy);
   // motion_refine.comp reads {cur0..2, ref0..2, mv_in@6} and writes mv_out@7.
-  VkPipeline pipeline_motion_refine = g_mv_predict_spatial ? create_compute_pipeline_motion("shaders/motion_refine.spv", pipeline_layout_motion_estimate, g_motion_block) : 0;
+  VkPipeline pipeline_motion_refine = g_mv_predict_spatial ? create_compute_pipeline_motion(g_mv_predict_full ? "shaders/motion_refine_full.spv" : "shaders/motion_refine.spv", pipeline_layout_motion_estimate, g_motion_block) : 0;
   // Variable motion: ME at 16 and 32 (the MB=8 search reuses pipeline_motion_estimate, since g_motion_block==8 here) + the R-D quadtree merge.
   VkPipeline pipeline_me_16 = g_motion_variable ? create_compute_pipeline_motion("shaders/motion_estimate.spv", pipeline_layout_motion_estimate, 16) : 0;
   VkPipeline pipeline_me_32 = g_motion_variable ? create_compute_pipeline_motion("shaders/motion_estimate.spv", pipeline_layout_motion_estimate, 32) : 0;

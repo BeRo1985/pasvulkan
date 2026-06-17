@@ -23,8 +23,13 @@ layout(std430, binding = 6) readonly  buffer MvIn      { int mv_in[]; };    // P
 layout(std430, binding = 7) writeonly buffer MvOut     { int mv_out[]; };   // refined MVs
 layout(push_constant) uniform PushConstants { int width; int height; int blocks_x; int lossless; } push;
 
+#ifdef SPATIAL_FULL
+const int SEARCH = 12;      // --mv-predict=spatial-full: a fuller search around the median ...
+const int LAMBDA = 16;      // ... with a much weaker rate bias (B over-biased; A tests less aggressive)
+#else
 const int SEARCH = 4;       // +-4 integer-pel search around the spatial median
 const int LAMBDA = 64;      // rate bias against the spatial median (the real coder predictor)
+#endif
 
 shared int block_current0[MB * MB];
 shared int block_current1[MB * MB];
