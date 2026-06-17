@@ -579,8 +579,8 @@ begin
  if aParams.Perceptual then begin
   HeaderFlags:=HeaderFlags or FlagPerceptual;
  end;
- if aParams.Packet then begin
-  HeaderFlags:=HeaderFlags or FlagPacket;
+ if aParams.Packet and (Quality>0) then begin // Packet is a lossy-only feature; at Quality 0 the lossless path writes no
+  HeaderFlags:=HeaderFlags or FlagPacket;      // packet tree, so the flag must stay clear or the decoder would misread plain coefficient bytes as [u16 tree_len][tree]
  end;
  if JointStereo then begin
   HeaderFlags:=HeaderFlags or FlagJointStereo;

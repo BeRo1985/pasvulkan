@@ -498,6 +498,29 @@ begin
   fStream.ReadBuffer(fFrameEntries[0],Int64(fHeader.FrameCount)*SizeOf(TFrameEntry));
  end;
 
+ // Validate the (untrusted) index before any entry is used as an array index, a stream offset, or a POC-distance
+ // divisor: POC in range, Ref0/Ref1 are -1 or a valid coding index, the frame data stays within the stream, and a
+ // bidirectional frame's two references have distinct POCs (the blend weight divides by their POC distance).
+ for BFrameIndex:=0 to fFrameCount-1 do begin
+  if TpvInt64(fFrameEntries[BFrameIndex].POC)>=fFrameCount then begin
+   raise EpvFlexibleWaveletVideoDecoder.Create('Corrupt frame index (POC out of range)');
+  end;
+  if (fFrameEntries[BFrameIndex].Ref0<>-1) and ((fFrameEntries[BFrameIndex].Ref0<0) or (fFrameEntries[BFrameIndex].Ref0>=fFrameCount)) then begin
+   raise EpvFlexibleWaveletVideoDecoder.Create('Corrupt frame index (Ref0 out of range)');
+  end;
+  if (fFrameEntries[BFrameIndex].Ref1<>-1) and ((fFrameEntries[BFrameIndex].Ref1<0) or (fFrameEntries[BFrameIndex].Ref1>=fFrameCount)) then begin
+   raise EpvFlexibleWaveletVideoDecoder.Create('Corrupt frame index (Ref1 out of range)');
+  end;
+  if (TpvUInt64(fFrameEntries[BFrameIndex].Offset)>TpvUInt64(fStream.Size)) or
+     (TpvUInt64(fFrameEntries[BFrameIndex].Size)>(TpvUInt64(fStream.Size)-TpvUInt64(fFrameEntries[BFrameIndex].Offset))) then begin
+   raise EpvFlexibleWaveletVideoDecoder.Create('Corrupt frame index (frame past end of stream)');
+  end;
+  if ((fFrameEntries[BFrameIndex].Ref0<>-1) and (fFrameEntries[BFrameIndex].Ref1<>-1)) and
+     (fFrameEntries[fFrameEntries[BFrameIndex].Ref0].POC=fFrameEntries[fFrameEntries[BFrameIndex].Ref1].POC) then begin
+   raise EpvFlexibleWaveletVideoDecoder.Create('Corrupt frame index (zero-distance B references)');
+  end;
+ end;
+
  // Derive the decode parameters
  fWidth:=TpvInt32(fHeader.Width);
  fHeight:=TpvInt32(fHeader.Height);
@@ -3484,6 +3507,12 @@ end;
 destructor TpvFlexibleWaveletVideoDecoder.Destroy;
 var Plane,SlotIndex:TpvInt32;
 begin
+
+ // Drain any in-flight 3D-DWT/MCTF GOP-prefetch or B-decode-ahead submit before freeing the fences, command buffers and
+ // GPU resources they may still be reading (closing the player mid-prefetch otherwise frees a buffer under an active read).
+ if assigned(fDevice) then begin
+  fDevice.WaitIdle;
+ end;
 
  FreeAndNil(fPrefetchFence);
  FreeAndNil(fPrefetchCommandBuffer); // allocated from fBDecodeCommandPool -> free before it

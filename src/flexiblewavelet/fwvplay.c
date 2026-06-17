@@ -1145,6 +1145,27 @@ int main(int argc, char **argv) {
   if (fread(index, sizeof(FrameEntry), header.frame_count, file) != header.frame_count) {
     die("index");
   }
+  // Validate the (untrusted) index before any entry is used as an array index, a file offset, or a POC-distance divisor.
+  fseeko(file, 0, SEEK_END);
+  uint64_t fwv_file_size = (uint64_t)ftello(file);
+  for (uint32_t c = 0; c < header.frame_count; c++) {
+    FrameEntry *e = &index[c];
+    if (e->poc >= header.frame_count) {
+      die("corrupt index: poc out of range");
+    }
+    if ((e->ref0 != -1) && ((e->ref0 < 0) || ((uint32_t)e->ref0 >= header.frame_count))) {
+      die("corrupt index: ref0 out of range");
+    }
+    if ((e->ref1 != -1) && ((e->ref1 < 0) || ((uint32_t)e->ref1 >= header.frame_count))) {
+      die("corrupt index: ref1 out of range");
+    }
+    if ((e->offset > fwv_file_size) || (e->size > (fwv_file_size - e->offset))) {
+      die("corrupt index: frame extends past the end of the file");
+    }
+    if (((e->ref0 != -1) && (e->ref1 != -1)) && (index[e->ref0].poc == index[e->ref1].poc)) {
+      die("corrupt index: a bidirectional frame's two references share a POC (zero temporal distance)");
+    }
+  }
   printf("play %s: %dx%d @ %.2f fps | %u frames | audio=%s\n",
          argv[1], width, height, fps, header.frame_count, header.audio_size ? "yes" : "no");
   const char *primaries_name = (header.colour_primaries == 9) ? "BT.2020" : ((header.colour_primaries == 12) ? "Display-P3" : "BT.709");
