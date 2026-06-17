@@ -55,16 +55,18 @@ void main() {
   // Apply a set magnitude bit at block-local scan position p: read the sign at the first set bit,
   // otherwise refine the existing magnitude in place.
   #define APPLY_SET_BIT(p) do {                                               \
-      int row = (p) / block_width, column = (p) - (row * block_width);        \
-      int index = block_base + (row * push.width) + column;                   \
-      int current = coefficients[index];                                      \
-      if (current == 0) {                                                     \
-        int negative;                                                         \
-        READ_BIT(negative);                                                   \
-        coefficients[index] = (negative != 0) ? -(1 << plane) : (1 << plane); \
-      } else {                                                                \
-        int magnitude = ((current < 0) ? -current : current) | (1 << plane);   \
-        coefficients[index] = (current < 0) ? -magnitude : magnitude;         \
+      if ((p) < coefficient_count) {  /* reject an out-of-block scan position (corrupt RLE gaps) before indexing */ \
+        int row = (p) / block_width, column = (p) - (row * block_width);      \
+        int index = block_base + (row * push.width) + column;                 \
+        int current = coefficients[index];                                    \
+        if (current == 0) {                                                   \
+          int negative;                                                       \
+          READ_BIT(negative);                                                 \
+          coefficients[index] = (negative != 0) ? -(1 << plane) : (1 << plane); \
+        } else {                                                              \
+          int magnitude = ((current < 0) ? -current : current) | (1 << plane); \
+          coefficients[index] = (current < 0) ? -magnitude : magnitude;       \
+        }                                                                     \
       }                                                                       \
     } while (false)
 

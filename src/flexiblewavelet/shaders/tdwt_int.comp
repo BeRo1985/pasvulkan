@@ -101,6 +101,9 @@ void main() {
     return;
   }
   int n = push.num_frames;
+  if (n > MAX_GOP) {   // a corrupt GOP count would overflow the fixed line[MAX_GOP] / scratch[MAX_GOP] private arrays
+    n = MAX_GOP;
+  }
   if (n < 2) {
     return;
   }

@@ -19,5 +19,12 @@ void main() {
   float residual = (push.lossless != 0)
                  ? float(current[i] - previous[i])
                  : (intBitsToFloat(current[i]) - float(previous[i]));
-  atomicAdd(energy[0], uint(abs(residual) + 0.5));
+  // Saturating accumulate: a 4K+ full-frame change across three planes can exceed 2^32 and wrap the counter, making a
+  // huge scene change read as small. Detect the 32-bit overflow and pin the counter at the max so the host still sees a
+  // scene cut. (Normal, non-overflowing frames are unaffected, so the host's threshold calibration is unchanged.)
+  uint contribution = uint(abs(residual) + 0.5);
+  uint previous_sum = atomicAdd(energy[0], contribution);
+  if ((previous_sum + contribution) < previous_sum) {
+    atomicMax(energy[0], 0xffffffffu);
+  }
 }

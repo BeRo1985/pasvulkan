@@ -759,6 +759,19 @@ static uint8_t *mp4_extract_h264_annexb(const char *input, long max_frames, uint
     fclose(file);
     return NULL;
   }
+  // The sample tables must actually hold their declared entry counts (the sample walk below indexes straight into them).
+  {
+    size_t chunk_table_have = stco ? stco_size : co64_size;
+    size_t chunk_table_need = stco ? ((size_t)8 + ((size_t)chunk_count * 4)) : ((size_t)8 + ((size_t)chunk_count * 8));
+    if ((((uniform_size == 0) && (stsz_size < ((size_t)12 + ((size_t)sample_count * 4)))) ||
+         (chunk_table_have < chunk_table_need)) ||
+        (stsc_size < ((size_t)8 + ((size_t)stsc_count * 12)))) {
+      free(output);
+      free(moov);
+      fclose(file);
+      return NULL;
+    }
+  }
   if (((max_frames > 0) && ((uint32_t)max_frames < sample_count))) {
     sample_count = (uint32_t)max_frames;
   }

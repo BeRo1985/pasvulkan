@@ -227,6 +227,15 @@ begin
  if fHeader.Magic<>Magic then begin
   raise EpvFlexibleWaveletAudioDecoder.Create('Not a FWA stream');
  end;
+ if (fHeader.Channels<1) or (fHeader.Channels>MaxChannels) then begin // channels bound the plane loops + index fPairs/planes
+  raise EpvFlexibleWaveletAudioDecoder.Create('FWA: channel count out of range');
+ end;
+ if fHeader.BlockSamples<>BlockSamples then begin // the decoder works in fixed BlockSamples-sized blocks
+  raise EpvFlexibleWaveletAudioDecoder.Create('FWA: unsupported block size');
+ end;
+ if fHeader.FrameCount>TpvUInt64(High(TpvInt32)) then begin // guard the per-channel plane allocation against a bogus count
+  raise EpvFlexibleWaveletAudioDecoder.Create('FWA: implausible frame count');
+ end;
 
  // Derive the decode parameters from the header + its flag bits
  fSampleRate:=fHeader.SampleRate;
@@ -237,6 +246,11 @@ begin
  fPacket:=(fHeader.Flags and FlagPacket)<>0;
  fLMS:=(fHeader.Flags and FlagLMS)<>0;
  fLMSTaps:=(fHeader.Flags shr 8) and $ff;
+ if fLMSTaps<1 then begin // an out-of-range tap count would index the LMS History/Weights arrays out of bounds
+  fLMSTaps:=1;
+ end else if fLMSTaps>LMSMaxTaps then begin
+  fLMSTaps:=LMSMaxTaps;
+ end;
  fPairing:=(fHeader.Flags and FlagPairing)<>0;
  if fQuality>0 then begin
   fBaseStep:=fQuality;
@@ -248,10 +262,16 @@ begin
  fPairCount:=0;
  if fPairing then begin
   fPairCount:=ReadU8;
+  if fPairCount>MaxChannelPairs then begin // fPairs/fPairModes are fixed [0..MaxChannelPairs-1]
+   raise EpvFlexibleWaveletAudioDecoder.Create('FWA: too many channel pairs');
+  end;
   for PairIndex:=0 to fPairCount-1 do begin
    fPairs[PairIndex,0]:=ReadU8;
    fPairs[PairIndex,1]:=ReadU8;
    fPairModes[PairIndex]:=ReadU8;
+   if (fPairs[PairIndex,0]>=fChannels) or (fPairs[PairIndex,1]>=fChannels) then begin // pair indices must address real channels
+    raise EpvFlexibleWaveletAudioDecoder.Create('FWA: pair channel index out of range');
+   end;
   end;
  end;
 
@@ -364,7 +384,13 @@ begin
    fStream.ReadBuffer(fPayload[0],EncodedLength);
   end;
   if fPacket then begin // payload = [u16 tree_byte_len][tree][coeff bytes]
+   if EncodedLength<2 then begin
+    raise EpvFlexibleWaveletAudioDecoder.Create('FWA: truncated packet block');
+   end;
    TreeLength:=TpvInt32(fPayload[0]) or (TpvInt32(fPayload[1]) shl 8);
+   if (TpvSizeUInt(2)+TpvSizeUInt(TreeLength))>EncodedLength then begin // the tree must fit inside its block (else CoeffLength underflows)
+    raise EpvFlexibleWaveletAudioDecoder.Create('FWA: packet tree larger than its block');
+   end;
    TreeBytes:=PpvUInt8Array(@fPayload[2]);
    CoeffBytes:=PpvUInt8Array(@fPayload[2+TreeLength]);
    CoeffLength:=EncodedLength-(2+TpvSizeUInt(TreeLength));

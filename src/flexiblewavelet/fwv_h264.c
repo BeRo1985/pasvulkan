@@ -135,6 +135,9 @@ static uint32_t read_unsigned_exp_golomb(BitReader *reader) {
   while (!read_bit(reader) && leading_zeros < 32) {
     leading_zeros++;
   }
+  if (leading_zeros >= 32) {   // truncated / malformed RBSP: 1u << 32 is undefined behaviour, so bail out with 0
+    return 0;
+  }
   uint32_t value = (1u << leading_zeros) - 1;
   for (int i = 0; i < leading_zeros; i++) {
     value += read_bit(reader) << (leading_zeros - 1 - i);
