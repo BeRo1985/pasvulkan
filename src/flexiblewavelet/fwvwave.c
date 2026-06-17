@@ -2650,21 +2650,46 @@ static int clamp_pixel(int value, int low, int high) {
   return (value < low) ? low : ((value > high) ? high : value);
 }
 
-// Bilinear half-pel sample of previous[]. Deterministic integer rounding -> matches mc.comp exactly.
+// One previous[] sample with replicate-edge coordinate clamping.
+static int previous_at(const int32_t *previous, int width, int height, int sample_x, int sample_y) {
+  int cx = clamp_pixel(sample_x, 0, width - 1);
+  int cy = clamp_pixel(sample_y, 0, height - 1);
+  return previous[(cy * width) + cx];
+}
+
+// 6-tap half-pel kernel (H.264 luma weights 1,-5,20,20,-5,1); the half-pel sits between p0 and p1.
+static int tap6(int m2, int m1, int p0, int p1, int p2, int p3) {
+  return (((m2 + p3) - (5 * (m1 + p2))) + (20 * (p0 + p1)));
+}
+
+// 6-tap half-pel interpolation of previous[] (replaces the old bilinear average). The MV's fractional bits
+// select the position: (0,0) integer, (1,0) horizontal half, (0,1) vertical half, (1,1) center = a 6-tap of
+// six vertically-6-tapped columns in full precision. EXACT mirror of mc.comp: all-integer + deterministic
+// rounding so the CPU reference, the GPU decode and the encoder reconstruction stay bit-for-bit identical.
 static int sample_half_pel(const int32_t *previous, int width, int height, int base_x, int base_y, int half_x, int half_y) {
-  int x0 = clamp_pixel(base_x, 0, width - 1), y0 = clamp_pixel(base_y, 0, height - 1);
-  if (half_x == 0 && half_y == 0) {
-    return previous[(y0 * width) + x0];
+  if ((half_x == 0) && (half_y == 0)) {
+    return previous_at(previous, width, height, base_x, base_y);
   }
-  int x1 = clamp_pixel(base_x + 1, 0, width - 1), y1 = clamp_pixel(base_y + 1, 0, height - 1);
-  if (half_x == 1 && half_y == 0) {
-    return ((previous[(y0 * width) + x0] + previous[(y0 * width) + x1]) + 1) >> 1;
+  if ((half_x == 1) && (half_y == 0)) {
+    int t = tap6(previous_at(previous, width, height, base_x - 2, base_y), previous_at(previous, width, height, base_x - 1, base_y),
+                 previous_at(previous, width, height, base_x,     base_y), previous_at(previous, width, height, base_x + 1, base_y),
+                 previous_at(previous, width, height, base_x + 2, base_y), previous_at(previous, width, height, base_x + 3, base_y));
+    return (t + 16) >> 5;
   }
-  if (half_x == 0 && half_y == 1) {
-    return ((previous[(y0 * width) + x0] + previous[(y1 * width) + x0]) + 1) >> 1;
+  if ((half_x == 0) && (half_y == 1)) {
+    int t = tap6(previous_at(previous, width, height, base_x, base_y - 2), previous_at(previous, width, height, base_x, base_y - 1),
+                 previous_at(previous, width, height, base_x, base_y),     previous_at(previous, width, height, base_x, base_y + 1),
+                 previous_at(previous, width, height, base_x, base_y + 2), previous_at(previous, width, height, base_x, base_y + 3));
+    return (t + 16) >> 5;
   }
-  return ((((previous[(y0 * width) + x0] + previous[(y0 * width) + x1]) +
-           previous[(y1 * width) + x0]) + previous[(y1 * width) + x1]) + 2) >> 2;
+  int v0 = tap6(previous_at(previous, width, height, base_x - 2, base_y - 2), previous_at(previous, width, height, base_x - 2, base_y - 1), previous_at(previous, width, height, base_x - 2, base_y), previous_at(previous, width, height, base_x - 2, base_y + 1), previous_at(previous, width, height, base_x - 2, base_y + 2), previous_at(previous, width, height, base_x - 2, base_y + 3));
+  int v1 = tap6(previous_at(previous, width, height, base_x - 1, base_y - 2), previous_at(previous, width, height, base_x - 1, base_y - 1), previous_at(previous, width, height, base_x - 1, base_y), previous_at(previous, width, height, base_x - 1, base_y + 1), previous_at(previous, width, height, base_x - 1, base_y + 2), previous_at(previous, width, height, base_x - 1, base_y + 3));
+  int v2 = tap6(previous_at(previous, width, height, base_x,     base_y - 2), previous_at(previous, width, height, base_x,     base_y - 1), previous_at(previous, width, height, base_x,     base_y), previous_at(previous, width, height, base_x,     base_y + 1), previous_at(previous, width, height, base_x,     base_y + 2), previous_at(previous, width, height, base_x,     base_y + 3));
+  int v3 = tap6(previous_at(previous, width, height, base_x + 1, base_y - 2), previous_at(previous, width, height, base_x + 1, base_y - 1), previous_at(previous, width, height, base_x + 1, base_y), previous_at(previous, width, height, base_x + 1, base_y + 1), previous_at(previous, width, height, base_x + 1, base_y + 2), previous_at(previous, width, height, base_x + 1, base_y + 3));
+  int v4 = tap6(previous_at(previous, width, height, base_x + 2, base_y - 2), previous_at(previous, width, height, base_x + 2, base_y - 1), previous_at(previous, width, height, base_x + 2, base_y), previous_at(previous, width, height, base_x + 2, base_y + 1), previous_at(previous, width, height, base_x + 2, base_y + 2), previous_at(previous, width, height, base_x + 2, base_y + 3));
+  int v5 = tap6(previous_at(previous, width, height, base_x + 3, base_y - 2), previous_at(previous, width, height, base_x + 3, base_y - 1), previous_at(previous, width, height, base_x + 3, base_y), previous_at(previous, width, height, base_x + 3, base_y + 1), previous_at(previous, width, height, base_x + 3, base_y + 2), previous_at(previous, width, height, base_x + 3, base_y + 3));
+  int t = tap6(v0, v1, v2, v3, v4, v5);
+  return (t + 512) >> 10;
 }
 
 static int sample_block_mv(const int32_t *previous, const int *mv, int width, int height, int block, int x, int y) {

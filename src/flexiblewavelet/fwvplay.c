@@ -2301,8 +2301,12 @@ int main(int argc, char **argv) {
     // Read this frame's payload from the container and split it into block bytes + offset tables. Skipped
     // for 3D-DWT (the present only color-converts a GOP slot) and for the B-stream (its CPU coding-order
     // decoder reads payloads itself) — reusing the shared data/offset buffers here would race those paths.
+    // ip_frame_len = the DECOMPRESSED payload length, hoisted to the loop body so --verify can reuse it below;
+    // the container entry size is the COMPRESSED length, and passing that truncates parse_frame_header's bounds
+    // (the header offsets then no longer fit) -> the CPU verify decode would die "corrupt frame header".
+    size_t ip_frame_len = 0;
     if (!mode_3ddwt && !has_bframes) {
-      size_t ip_frame_len = read_frame(file, &index[frame_index], &frame_buffer, &frame_buffer_capacity);
+      ip_frame_len = read_frame(file, &index[frame_index], &frame_buffer, &frame_buffer_capacity);
       // Prefix-sum the u16 sizes straight into the (host-visible) GPU offset buffers, then upload data.
       uint32_t *parse_offsets[MAX_PLANES] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
       int parsed_block_count;
@@ -3137,9 +3141,9 @@ int main(int argc, char **argv) {
         if (mode_3ddwt) {
           memcpy(cpu_rgb, cpu_gop_rgb[frame_index - cur_gop_start], frame_bytes);   // CPU reference from the per-GOP decode above
         } else if (header.prediction_method == 1) {
-          decode_frame_colordiff(frame_buffer, index[frame_index].size, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
+          decode_frame_colordiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
         } else {
-          decode_frame_coefdiff(frame_buffer, index[frame_index].size, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
+          decode_frame_coefdiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
         }
         if (dump_alpha && (frame_index == 0)) {   // --dump-alpha: the CPU-decoded alpha lane of frame 0 (raw bytes, for an external round-trip compare)
           FILE *alpha_file = fopen("/tmp/fwv_alpha0.gray", "wb");

@@ -28,7 +28,8 @@ shared int reduce_bi[MB * MB];
 int clamp_int(int v, int lo, int hi) { return (v < lo) ? lo : ((v > hi) ? hi : v); }
 int decode_current(int raw) { return (push.lossless != 0) ? raw : int(round(intBitsToFloat(raw))); }
 
-// Bilinear half-pel sample of one reference plane (which = 0..5: ref0 a/b/c then ref1 a/b/c). Matches mc.comp.
+// Select one reference plane by index (which = 0..5: ref0 a/b/c then ref1 a/b/c). The 6-tap half-pel filter
+// below samples through it and matches mc.comp.
 int sample_plane(int which, int index) {
   if (which == 0) { return ref0a[index]; }
   if (which == 1) { return ref0b[index]; }
@@ -37,20 +38,42 @@ int sample_plane(int which, int index) {
   if (which == 4) { return ref1b[index]; }
   return ref1c[index];
 }
+// One reference-plane sample with replicate-edge coordinate clamping.
+int sample_plane_at(int which, int sample_x, int sample_y) {
+  int cx = clamp_int(sample_x, 0, push.width - 1);
+  int cy = clamp_int(sample_y, 0, push.height - 1);
+  return sample_plane(which, (cy * push.width) + cx);
+}
+
+// 6-tap half-pel kernel (H.264 luma weights 1,-5,20,20,-5,1); the half-pel sits between p0 and p1.
+int tap6(int m2, int m1, int p0, int p1, int p2, int p3) {
+  return (((m2 + p3) - (5 * (m1 + p2))) + (20 * (p0 + p1)));
+}
+
 int sample_half_pel(int which, int base_x, int base_y, int half_x, int half_y) {
-  int x0 = clamp_int(base_x, 0, push.width - 1), y0 = clamp_int(base_y, 0, push.height - 1);
-  if (half_x == 0 && half_y == 0) {
-    return sample_plane(which, (y0 * push.width) + x0);
+  if ((half_x == 0) && (half_y == 0)) {
+    return sample_plane_at(which, base_x, base_y);
   }
-  int x1 = clamp_int(base_x + 1, 0, push.width - 1), y1 = clamp_int(base_y + 1, 0, push.height - 1);
-  if (half_x == 1 && half_y == 0) {
-    return ((sample_plane(which, (y0 * push.width) + x0) + sample_plane(which, (y0 * push.width) + x1)) + 1) >> 1;
+  if ((half_x == 1) && (half_y == 0)) {
+    int t = tap6(sample_plane_at(which, base_x - 2, base_y), sample_plane_at(which, base_x - 1, base_y),
+                 sample_plane_at(which, base_x,     base_y), sample_plane_at(which, base_x + 1, base_y),
+                 sample_plane_at(which, base_x + 2, base_y), sample_plane_at(which, base_x + 3, base_y));
+    return (t + 16) >> 5;
   }
-  if (half_x == 0 && half_y == 1) {
-    return ((sample_plane(which, (y0 * push.width) + x0) + sample_plane(which, (y1 * push.width) + x0)) + 1) >> 1;
+  if ((half_x == 0) && (half_y == 1)) {
+    int t = tap6(sample_plane_at(which, base_x, base_y - 2), sample_plane_at(which, base_x, base_y - 1),
+                 sample_plane_at(which, base_x, base_y),     sample_plane_at(which, base_x, base_y + 1),
+                 sample_plane_at(which, base_x, base_y + 2), sample_plane_at(which, base_x, base_y + 3));
+    return (t + 16) >> 5;
   }
-  return ((((sample_plane(which, (y0 * push.width) + x0) + sample_plane(which, (y0 * push.width) + x1)) +
-             sample_plane(which, (y1 * push.width) + x0)) + sample_plane(which, (y1 * push.width) + x1)) + 2) >> 2;
+  int v0 = tap6(sample_plane_at(which, base_x - 2, base_y - 2), sample_plane_at(which, base_x - 2, base_y - 1), sample_plane_at(which, base_x - 2, base_y), sample_plane_at(which, base_x - 2, base_y + 1), sample_plane_at(which, base_x - 2, base_y + 2), sample_plane_at(which, base_x - 2, base_y + 3));
+  int v1 = tap6(sample_plane_at(which, base_x - 1, base_y - 2), sample_plane_at(which, base_x - 1, base_y - 1), sample_plane_at(which, base_x - 1, base_y), sample_plane_at(which, base_x - 1, base_y + 1), sample_plane_at(which, base_x - 1, base_y + 2), sample_plane_at(which, base_x - 1, base_y + 3));
+  int v2 = tap6(sample_plane_at(which, base_x,     base_y - 2), sample_plane_at(which, base_x,     base_y - 1), sample_plane_at(which, base_x,     base_y), sample_plane_at(which, base_x,     base_y + 1), sample_plane_at(which, base_x,     base_y + 2), sample_plane_at(which, base_x,     base_y + 3));
+  int v3 = tap6(sample_plane_at(which, base_x + 1, base_y - 2), sample_plane_at(which, base_x + 1, base_y - 1), sample_plane_at(which, base_x + 1, base_y), sample_plane_at(which, base_x + 1, base_y + 1), sample_plane_at(which, base_x + 1, base_y + 2), sample_plane_at(which, base_x + 1, base_y + 3));
+  int v4 = tap6(sample_plane_at(which, base_x + 2, base_y - 2), sample_plane_at(which, base_x + 2, base_y - 1), sample_plane_at(which, base_x + 2, base_y), sample_plane_at(which, base_x + 2, base_y + 1), sample_plane_at(which, base_x + 2, base_y + 2), sample_plane_at(which, base_x + 2, base_y + 3));
+  int v5 = tap6(sample_plane_at(which, base_x + 3, base_y - 2), sample_plane_at(which, base_x + 3, base_y - 1), sample_plane_at(which, base_x + 3, base_y), sample_plane_at(which, base_x + 3, base_y + 1), sample_plane_at(which, base_x + 3, base_y + 2), sample_plane_at(which, base_x + 3, base_y + 3));
+  int t = tap6(v0, v1, v2, v3, v4, v5);
+  return (t + 512) >> 10;
 }
 
 // 4x4 SATD: separable Hadamard (rows then columns) of the residual tile, then sum of absolute coefficients. Better
