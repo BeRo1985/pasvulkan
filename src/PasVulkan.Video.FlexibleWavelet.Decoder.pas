@@ -187,6 +187,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fRingDataBuffer:array of TpvVulkanBuffer;
        fRingOffsetBuffer:array of array[0..3] of TpvVulkanBuffer;
        fRingStepBuffer:array of array[0..3] of TpvVulkanBuffer;
+       fRingTileCodesBuffer:array of TpvVulkanBuffer; // AQ (GPU): per-ring-slot tile codes (the shared buffer would clobber under pipelining)
        fRingMVBuffer:array of TpvVulkanBuffer;
        fRingMV1Buffer:array of TpvVulkanBuffer;
        fRingModeBuffer:array of TpvVulkanBuffer;
@@ -369,6 +370,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        function ActiveDataBuffer:TpvVulkanBuffer;
        function ActiveOffsetBuffer(const aPlane:TpvInt32):TpvVulkanBuffer;
        function ActiveStepBuffer(const aPlane:TpvInt32):TpvVulkanBuffer;
+       function ActiveTileCodesBuffer:TpvVulkanBuffer; // AQ apply: the tile-codes buffer matching the active step buffer (shared vs ring slot)
        function ActiveSetApplyAQ(const aPlane:TpvInt32):TpvVulkanDescriptorSet; // AQ apply set bound to the active step buffer (shared vs ring slot)
        function ActiveMVBuffer:TpvVulkanBuffer;
        function ActiveMV1Buffer:TpvVulkanBuffer;
@@ -1384,13 +1386,15 @@ end;
 // into the step buffer each frame) IN PLACE on the GPU, so there is no per-pixel CPU work (the old ApplyAQ is gone).
 procedure TpvFlexibleWaveletVideoDecoder.UploadTileCodes;
 var DataPointer:PpvUInt8Array;
+    TileCodesBuffer:TpvVulkanBuffer;
 begin
  if fAQEnabled and assigned(fAQCurrentMap) then begin
-  DataPointer:=PpvUInt8Array(fTileCodesBuffer.Memory.MapMemory);
+  TileCodesBuffer:=ActiveTileCodesBuffer; // shared (I/P, 3D-DWT) or the active B-frame ring slot's, matching the step buffer
+  DataPointer:=PpvUInt8Array(TileCodesBuffer.Memory.MapMemory);
   try
    Move(fAQCurrentMap^[0],DataPointer^[0],TpvSizeUInt(fAQMapBytes));
   finally
-   fTileCodesBuffer.Memory.UnmapMemory;
+   TileCodesBuffer.Memory.UnmapMemory;
   end;
  end;
 end;
@@ -2048,72 +2052,137 @@ end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveDataBuffer:TpvVulkanBuffer;
 begin
- if fBufferRingSlot<0 then begin result:=fDataBuffer; end else begin result:=fRingDataBuffer[fBufferRingSlot]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fDataBuffer;
+ end else begin
+  result:=fRingDataBuffer[fBufferRingSlot];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveOffsetBuffer(const aPlane:TpvInt32):TpvVulkanBuffer;
 begin
- if fBufferRingSlot<0 then begin result:=fOffsetBuffer[aPlane]; end else begin result:=fRingOffsetBuffer[fBufferRingSlot][aPlane]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fOffsetBuffer[aPlane];
+ end else begin
+  result:=fRingOffsetBuffer[fBufferRingSlot][aPlane];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveStepBuffer(const aPlane:TpvInt32):TpvVulkanBuffer;
 begin
- if fBufferRingSlot<0 then begin result:=fStepBuffer[aPlane]; end else begin result:=fRingStepBuffer[fBufferRingSlot][aPlane]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fStepBuffer[aPlane];
+ end else begin
+  result:=fRingStepBuffer[fBufferRingSlot][aPlane];
+ end;
+end;
+
+function TpvFlexibleWaveletVideoDecoder.ActiveTileCodesBuffer:TpvVulkanBuffer;
+begin
+ if fBufferRingSlot<0 then begin
+  result:=fTileCodesBuffer;
+ end else begin
+  result:=fRingTileCodesBuffer[fBufferRingSlot];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveMVBuffer:TpvVulkanBuffer;
 begin
- if fBufferRingSlot<0 then begin result:=fMVBuffer; end else begin result:=fRingMVBuffer[fBufferRingSlot]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fMVBuffer;
+ end else begin
+  result:=fRingMVBuffer[fBufferRingSlot];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveMV1Buffer:TpvVulkanBuffer;
 begin
- if fBufferRingSlot<0 then begin result:=fMV1Buffer; end else begin result:=fRingMV1Buffer[fBufferRingSlot]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fMV1Buffer;
+ end else begin
+  result:=fRingMV1Buffer[fBufferRingSlot];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveModeBuffer:TpvVulkanBuffer;
 begin
- if fBufferRingSlot<0 then begin result:=fModeBuffer; end else begin result:=fRingModeBuffer[fBufferRingSlot]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fModeBuffer;
+ end else begin
+  result:=fRingModeBuffer[fBufferRingSlot];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveSetUnpack(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
 begin
- if fBufferRingSlot<0 then begin result:=fSetUnpack[aPlane]; end else begin result:=fRingSetUnpack[fBufferRingSlot][aPlane]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fSetUnpack[aPlane];
+ end else begin
+  result:=fRingSetUnpack[fBufferRingSlot][aPlane];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveSetDequant(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
 begin
- if fBufferRingSlot<0 then begin result:=fSetDequant[aPlane]; end else begin result:=fRingSetDequant[fBufferRingSlot][aPlane]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fSetDequant[aPlane];
+ end else begin
+  result:=fRingSetDequant[fBufferRingSlot][aPlane];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveSetGMC0(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
 begin
- if fBufferRingSlot<0 then begin result:=fSetGMC0[aPlane]; end else begin result:=fRingSetGMC0[fBufferRingSlot][aPlane]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fSetGMC0[aPlane];
+ end else begin
+  result:=fRingSetGMC0[fBufferRingSlot][aPlane];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveSetGMC1(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
 begin
- if fBufferRingSlot<0 then begin result:=fSetGMC1[aPlane]; end else begin result:=fRingSetGMC1[fBufferRingSlot][aPlane]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fSetGMC1[aPlane];
+ end else begin
+  result:=fRingSetGMC1[fBufferRingSlot][aPlane];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveSetGBlend(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
 begin
- if fBufferRingSlot<0 then begin result:=fSetGBlend[aPlane]; end else begin result:=fRingSetGBlend[fBufferRingSlot][aPlane]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fSetGBlend[aPlane];
+ end else begin
+  result:=fRingSetGBlend[fBufferRingSlot][aPlane];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveSetGBlendMode(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
 begin
- if fBufferRingSlot<0 then begin result:=fSetGBlendMode[aPlane]; end else begin result:=fRingSetGBlendMode[fBufferRingSlot][aPlane]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fSetGBlendMode[aPlane];
+ end else begin
+  result:=fRingSetGBlendMode[fBufferRingSlot][aPlane];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveSetGAdd(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
 begin
- if fBufferRingSlot<0 then begin result:=fSetGAdd[aPlane]; end else begin result:=fRingSetGAdd[fBufferRingSlot][aPlane]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fSetGAdd[aPlane];
+ end else begin
+  result:=fRingSetGAdd[fBufferRingSlot][aPlane];
+ end;
 end;
 
 function TpvFlexibleWaveletVideoDecoder.ActiveSetMCPlay(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
 begin
- if fBufferRingSlot<0 then begin result:=fSetMCPlay[aPlane]; end else begin result:=fRingSetMCPlay[fBufferRingSlot][aPlane]; end;
+ if fBufferRingSlot<0 then begin
+  result:=fSetMCPlay[aPlane];
+ end else begin
+  result:=fRingSetMCPlay[fBufferRingSlot][aPlane];
+ end;
 end;
 
 // Mode B: allocate the per-frame input ring (data / offset / step / mv / mv1 / mode buffers + their sets) so the
@@ -2131,6 +2200,7 @@ begin
  SetLength(fRingDataBuffer,fBufferRingSize);
  SetLength(fRingOffsetBuffer,fBufferRingSize);
  SetLength(fRingStepBuffer,fBufferRingSize);
+ SetLength(fRingTileCodesBuffer,fBufferRingSize);
  SetLength(fRingMVBuffer,fBufferRingSize);
  SetLength(fRingMV1Buffer,fBufferRingSize);
  SetLength(fRingModeBuffer,fBufferRingSize);
@@ -2148,6 +2218,9 @@ begin
   fRingMVBuffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(MotionCells)*2*4,false,'FWV.ring.mv');
   fRingMV1Buffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(MotionCells)*2*4,false,'FWV.ring.mv1');
   fRingModeBuffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(MotionCells)*4,false,'FWV.ring.mode');
+  if fAQEnabled then begin // AQ: per-slot tile codes (sized like the shared buffer, rounded up to a multiple of 4)
+   fRingTileCodesBuffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(((fAQMapBytes+3) div 4)*4),false,'FWV.ring.aqcodes');
+  end;
   for Plane:=0 to fNumPlanes-1 do begin
    PlaneBytes:=TVkDeviceSize(PlaneWidth(Plane))*TVkDeviceSize(PlaneHeight(Plane))*4;
    fRingOffsetBuffer[Slot][Plane]:=CreateStorageBuffer(TVkDeviceSize(LumaBlockCount)*4,false,'FWV.ring.offset');
@@ -2165,7 +2238,7 @@ begin
    if fAQEnabled then begin // AQ apply: this ring slot's step buffer is base + modulated (in-place)
     fRingSetApplyAQ[Slot][Plane]:=AllocateSet(fDSL4);
     BindStorageBuffer(fRingSetApplyAQ[Slot][Plane],0,fRingStepBuffer[Slot][Plane]);
-    BindStorageBuffer(fRingSetApplyAQ[Slot][Plane],1,fTileCodesBuffer);
+    BindStorageBuffer(fRingSetApplyAQ[Slot][Plane],1,fRingTileCodesBuffer[Slot]);
     BindStorageBuffer(fRingSetApplyAQ[Slot][Plane],2,fWeightLUTBuffer);
     BindStorageBuffer(fRingSetApplyAQ[Slot][Plane],3,fRingStepBuffer[Slot][Plane]);
     fRingSetApplyAQ[Slot][Plane].Flush;
@@ -3682,6 +3755,7 @@ begin
    FreeAndNil(fRingStepBuffer[SlotIndex][Plane]);
   end;
   FreeAndNil(fRingDataBuffer[SlotIndex]);
+  FreeAndNil(fRingTileCodesBuffer[SlotIndex]);
   FreeAndNil(fRingMVBuffer[SlotIndex]);
   FreeAndNil(fRingMV1Buffer[SlotIndex]);
   FreeAndNil(fRingModeBuffer[SlotIndex]);
