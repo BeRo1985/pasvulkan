@@ -254,9 +254,10 @@ static VkPipeline create_compute_pipeline_motion(const char *spirv_path, VkPipel
   // [3] = MOTION_MODE (bit0 = 6-tap interpolation, bit1 = quarter-pel MVs); selects the per-stream sub-pel
   // variant of mc/motion_estimate/motion_estimate_bidi/bidi_mode_sad. The other motion shaders ignore the
   // entries they do not declare (Vulkan-legal).
-  int spec_values[4] = { motion_block, motion_block * motion_block, (g_motion_variable && g_merge_satd) ? 1 : 0, g_motion_mode };
-  VkSpecializationMapEntry entries[4] = { { 0, 0, sizeof(int) }, { 1, sizeof(int), sizeof(int) }, { 2, 2 * sizeof(int), sizeof(int) }, { 3, 3 * sizeof(int), sizeof(int) } };
-  VkSpecializationInfo spec = { 4, entries, sizeof(spec_values), spec_values };
+  // [4] = SEARCH (--search-range): the +-N integer search floor in motion_estimate/_bidi (others ignore it).
+  int spec_values[5] = { motion_block, motion_block * motion_block, (g_motion_variable && g_merge_satd) ? 1 : 0, g_motion_mode, g_search_range };
+  VkSpecializationMapEntry entries[5] = { { 0, 0, sizeof(int) }, { 1, sizeof(int), sizeof(int) }, { 2, 2 * sizeof(int), sizeof(int) }, { 3, 3 * sizeof(int), sizeof(int) }, { 4, 4 * sizeof(int), sizeof(int) } };
+  VkSpecializationInfo spec = { 5, entries, sizeof(spec_values), spec_values };
   VkComputePipelineCreateInfo pipeline_info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
   pipeline_info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   pipeline_info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
@@ -1311,6 +1312,7 @@ int main(int argc, char **argv) {
       "    --mv-predict=temporal |        ME predictor (default temporal; spatial = 2nd pass toward the H.264 median; spatial-full = fuller search, weaker bias)\n"
       "                 spatial |\n"
       "                 spatial-full\n"
+      "    --search-range=N               +-N integer motion-search floor (default 16; bigger = catches faster motion, slower encode)\n"
       "    --no-compress                  store frames raw (no per-frame compression)\n"
       "    --debug                        extra GPU-vs-CPU validation prints\n",
       argv[0]);
@@ -1409,6 +1411,10 @@ int main(int argc, char **argv) {
     } else if (!strncmp(argv[i], "--mv-predict=", 13)) {   // ME predictor: temporal (default), spatial median (2nd refine pass), or spatial-full (fuller search, weaker bias)
       g_mv_predict_spatial = strstr(argv[i] + 13, "spatial") ? 1 : 0;
       g_mv_predict_full = strstr(argv[i] + 13, "spatial-full") ? 1 : 0;
+    } else if (!strncmp(argv[i], "--search-range=", 15)) {   // +-N integer motion-search floor (default 16); bigger = catches faster motion, slower encode
+      g_search_range = atoi(argv[i] + 15);
+      if (g_search_range < 4) { g_search_range = 4; }
+      if (g_search_range > 64) { g_search_range = 64; }   // keep the packed (mv+64)*256 search representation in range
     } else if (!strcmp(argv[i], "--motion-split")) {   // variable per-block motion (quadtree 32->16->8, R-D); B uses the joint mode-aware merge by default
       g_motion_variable = 1;
       g_motion_block = 8;

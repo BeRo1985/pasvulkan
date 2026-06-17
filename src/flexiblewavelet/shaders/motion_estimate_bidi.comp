@@ -26,7 +26,7 @@ layout(std430, binding = 9) writeonly buffer MotionVectors     { int motion_vect
 layout(std430, binding = 10) readonly buffer MotionVectorsPrev { int motion_vectors_prev[]; };
 layout(push_constant) uniform PushConstants { int width; int height; int blocks_x; int lossless; int weight_self; int weight_other; } push;
 
-const int SEARCH = 16;
+layout(constant_id = 4) const int SEARCH = 16;   // +-SEARCH integer search range around zero (--search-range)
 const int PREDICT = 4;
 const int LAMBDA = 64;
 const int ZERO_BIAS_FLOOR = 64;

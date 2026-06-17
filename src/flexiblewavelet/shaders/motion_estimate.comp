@@ -26,7 +26,7 @@ layout(std430, binding = 7) readonly  buffer MotionVectorsPrev { int motion_vect
 layout(std430, binding = 8) writeonly buffer SadOut            { int sad_out[]; };   // per block: the chosen MV's pure 3-plane SAD (drives the variable-motion R-D merge; ignored in fixed mode)
 layout(push_constant) uniform PushConstants { int width; int height; int blocks_x; int lossless; } push;
 
-const int SEARCH = 16;                 // +-16 integer search range around zero — the guaranteed floor
+layout(constant_id = 4) const int SEARCH = 16;   // +-SEARCH integer search range around zero (--search-range) — the guaranteed floor
 const int PREDICT = 4;                 // additional +-4 search around the temporal predictor (prev-frame co-located MV)
 const int LAMBDA = 64;                 // rate bias proportional to |mv|
 // Content-adaptive grain-RD margin: a small fixed floor (the MV's bit cost) plus a fraction of the

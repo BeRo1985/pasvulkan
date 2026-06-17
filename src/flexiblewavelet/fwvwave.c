@@ -1978,6 +1978,7 @@ static int g_motion_variable = 0;   // 1 = variable quadtree motion (root 32 -> 
 static int g_motion_mode = 3;       // sub-pel mode: bit0 = 6-tap interpolation (else bilinear), bit1 = quarter-pel MVs (else half-pel). Default 3 = 6-tap + quarter. Old files = 0 = bilinear + half. Mirrors the MOTION_MODE shader spec constant.
 static int g_mv_predict_spatial = 0;   // --mv-predict=spatial: a 2nd ME pass refines MVs toward the H.264 spatial median (the real coder predictor). Encoder-only; the bitstream/decoder are unchanged. Default 0 = temporal predictor only.
 static int g_mv_predict_full = 0;      // --mv-predict=spatial-full: the spatial refine with a fuller search + weaker bias (motion_refine_full.spv). Implies g_mv_predict_spatial.
+static int g_search_range = 16;        // --search-range=N: the +-N integer search floor in motion_estimate (the SEARCH spec constant). Bigger = catches faster motion, slower encode. Default 16.
 static int g_motion_split_bidi = 1; // 1 (DEFAULT) = the joint mode-aware blended-SAD B merge (per-leaf mode; faster than per-8 mode_decide AND better RD); 0 = --motion-split-fast single-ref 2-ME B
 static int g_motion_lambda_abs = 256;   // variable-motion R-D: per-extra-leaf floor (SAD units); also the FIXED value when alpha==0
 static int g_motion_lambda_alpha = 96;  // adaptive frame-level: lambda_abs = max(abs, (alpha*avg_32block_SAD)>>8); high-motion frames -> high lambda
