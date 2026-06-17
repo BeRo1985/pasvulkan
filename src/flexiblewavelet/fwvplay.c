@@ -1214,6 +1214,16 @@ int main(int argc, char **argv) {
   vkGetPhysicalDeviceProperties(physical_device, &device_properties);
   printf("GPU: %s | decode: GPU\n", device_properties.deviceName);
 
+  // GPU capability floor: the row IDWT shaders run 256 invocations and cache a full 4096-sample line (16 KiB) in shared
+  // memory. Every desktop GPU clears this (Vulkan's guaranteed minimum is only 128 / 16 KiB), so fail early with a clear
+  // message instead of a cryptic pipeline-creation crash on a strict-minimum mobile / iGPU.
+  if ((device_properties.limits.maxComputeWorkGroupInvocations < 256) || (device_properties.limits.maxComputeSharedMemorySize < 16384)) {
+    fprintf(stderr, "GPU below the FWV decode floor: needs >= 256 compute invocations and >= 16 KiB shared memory "
+                    "(this device: %u invocations / %u bytes)\n",
+            device_properties.limits.maxComputeWorkGroupInvocations, device_properties.limits.maxComputeSharedMemorySize);
+    exit(1);
+  }
+
   // pick the video decode path. H.264 HW where the GPU + container both support it (or forced),
   // otherwise the wavelet GPU-compute path. (--decoder auto|h264|wavelet)
   int gpu_h264 = gpu_supports_h264_decode(instance, physical_device);

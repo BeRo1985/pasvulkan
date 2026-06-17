@@ -1553,6 +1553,24 @@ int main(int argc, char **argv) {
   VkPhysicalDeviceProperties device_properties;
   vkGetPhysicalDeviceProperties(physical_device, &device_properties);
 
+  // GPU capability fallback: the per-block motion / mode shaders run one workgroup of MB*MB threads (1024 at MB=32) and
+  // the bidirectional ME caches 6*MB*MB ints (24 KiB at MB=32) in shared memory; the per-block-mode root reduction needs
+  // a fixed 1024-thread workgroup (12 KiB). Clamp MB and disable per-block mode to what this GPU actually supports so the
+  // encode still runs (coarser motion grid / whole-block mode) on a weak iGPU instead of failing at pipeline creation.
+  uint32_t max_invocations = device_properties.limits.maxComputeWorkGroupInvocations;
+  uint32_t max_shared = device_properties.limits.maxComputeSharedMemorySize;
+  while ((g_motion_block > 8) && (((uint32_t)(g_motion_block * g_motion_block) > max_invocations) ||
+                                  ((uint32_t)((6 * g_motion_block * g_motion_block) * 4) > max_shared))) {
+    fprintf(stderr, "fwvenc: GPU limit (%u invocations / %u KiB shared) too small for motion block %d -> falling back to %d\n",
+            max_invocations, max_shared >> 10, g_motion_block, g_motion_block >> 1);
+    g_motion_block >>= 1;   // 32 -> 16 -> 8
+  }
+  if (per_block_mode && ((max_invocations < 1024) || (max_shared < 12288))) {
+    fprintf(stderr, "fwvenc: GPU limit (%u invocations / %u KiB shared) too small for the per-block-mode root reduction "
+                    "(1024 threads / 12 KiB) -> disabling per-block mode\n", max_invocations, max_shared >> 10);
+    per_block_mode = 0;
+  }
+
   uint32_t queue_family_count = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, 0);
   VkQueueFamilyProperties *queue_families = checked_malloc(queue_family_count * sizeof(*queue_families));

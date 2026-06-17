@@ -3411,6 +3411,16 @@ begin
  fPreferSCRGB:=aPreferSCRGBForHDR; // consumed by ParseContainer (output format) below
  fSubmitMode:=aBSubmitMode;
 
+ // GPU capability floor: the row IDWT shaders run 256 invocations and cache a full 4096-sample line (16 KiB) in shared
+ // memory. Every desktop GPU clears this (Vulkan's guaranteed minimum is only 128 / 16 KiB), so fail early with a clear
+ // message instead of a cryptic pipeline-creation crash on a strict-minimum mobile / iGPU.
+ if (fDevice.PhysicalDevice.Properties.limits.maxComputeWorkGroupInvocations<256) or
+    (fDevice.PhysicalDevice.Properties.limits.maxComputeSharedMemorySize<16384) then begin
+  raise EpvFlexibleWaveletVideoDecoder.CreateFmt('GPU below the FWV decode floor: needs >=256 compute invocations and >=16 KiB shared memory (this device: %d invocations / %d bytes)',
+                                                 [fDevice.PhysicalDevice.Properties.limits.maxComputeWorkGroupInvocations,
+                                                  fDevice.PhysicalDevice.Properties.limits.maxComputeSharedMemorySize]);
+ end;
+
  ParseContainer;
 
  fPipelineCache:=TpvVulkanPipelineCache.Create(fDevice);
