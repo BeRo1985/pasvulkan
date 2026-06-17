@@ -1694,6 +1694,48 @@ static int extract_bool_flag(int *argc, char **argv, const char *flag) {
   return 0;
 }
 
+// Pull a "<flag>=value" out of argv (wherever it sits), compacting the array. Returns the value string, or `fallback`.
+static const char *extract_eq_flag(int *argc, char **argv, const char *flag, const char *fallback) {
+  size_t flag_length = strlen(flag);
+  for (int i = 1; i < *argc; i++) {
+    if (!strncmp(argv[i], flag, flag_length) && (argv[i][flag_length] == '=')) {
+      const char *value = argv[i] + flag_length + 1;
+      for (int j = i; j < (*argc - 1); j++) {
+        argv[j] = argv[j + 1];
+      }
+      *argc -= 1;
+      return value;
+    }
+  }
+  return fallback;
+}
+
+// Map the fwa mode string -> the (perceptual, packet, joint, lms) flags. NULL / unknown -> the quality-dependent
+// default (psychoacoustic for lossy, plain 5/3 for Q0). lossy modes: uniform | psycho | joint-psycho | packet |
+// packet-psycho; Q0 modes: 5/3 (default) | lms.
+static void fwa_mode_flags(const char *mode, int quality, int *perceptual, int *packet, int *joint, int *lms) {
+  *perceptual = (quality > 0);
+  *packet = 0;
+  *joint = 0;
+  *lms = 0;
+  if (mode) {
+    if (!strcmp(mode, "uniform")) {
+      *perceptual = 0;
+    } else if (!strcmp(mode, "packet")) {
+      *perceptual = 0;
+      *packet = 1;
+    } else if (!strcmp(mode, "packet-psycho")) {
+      *perceptual = 1;
+      *packet = 1;
+    } else if (!strcmp(mode, "joint-psycho") || !strcmp(mode, "joint")) {
+      *perceptual = 1;
+      *joint = 1;
+    } else if (!strcmp(mode, "lms")) {
+      *lms = 1;   // lossless LMS predictor (Q0 only)
+    }
+  }
+}
+
 // Resolve channel count, sample rate and channel layout (forced overrides win, else the probed source
 // values, else the stereo/48k fallbacks), then ingest. `-sr` triggers our own linear resample inside
 // read_pcm. `layout_out` (>=64 bytes) gets the layout name driving the multichannel pairwise-M/S.
@@ -1722,23 +1764,36 @@ static int16_t *ingest(const char *input, int forced_channels, int forced_rate,
 }
 
 int main(int argc, char **argv) {
-  int forced_channels = extract_int_flag(&argc, argv, "-ac", 0);   // force channel count (else auto-detect)
-  int forced_rate = extract_int_flag(&argc, argv, "-sr", 0);       // force sample rate via linear resample (else source rate)
-  int no_pair = extract_bool_flag(&argc, argv, "-no-pair");        // multichannel: disable pairwise M/S (force independent M0)
-  int pair_ms = extract_bool_flag(&argc, argv, "-pair-ms");        // multichannel: force always-M/S (else per-pair adaptive)
-  int overlap_amount = extract_int_flag(&argc, argv, "--fwa-overlap-amount", 1024);          // cross-fade A: shared samples per boundary
+  int forced_channels = atoi(extract_eq_flag(&argc, argv, "--ac", "0"));   // force channel count (else auto-detect)
+  int forced_rate = atoi(extract_eq_flag(&argc, argv, "--sr", "0"));       // force sample rate via linear resample (else source rate)
+  int no_pair = extract_bool_flag(&argc, argv, "--no-pair");               // multichannel: disable pairwise M/S (force independent M0)
+  int pair_ms = extract_bool_flag(&argc, argv, "--pair-ms");               // multichannel: force always-M/S (else per-pair adaptive)
+  int overlap_amount = atoi(extract_eq_flag(&argc, argv, "--fwa-overlap-amount", "1024"));   // cross-fade: shared samples per boundary
   int overlap = extract_bool_flag(&argc, argv, "--fwa-overlap") ? overlap_amount : 0;        // opt-in cross-fade block overlap (lossy only, default off)
+  int quality = atoi(extract_eq_flag(&argc, argv, "--quality", "0"));      // 0 = lossless (default), >= 1 = lossy 9/7
+  const char *mode = extract_eq_flag(&argc, argv, "--mode", NULL);         // lossy: uniform|psycho|joint-psycho|packet|packet-psycho; Q0: 5/3|lms
+  int lms_taps = atoi(extract_eq_flag(&argc, argv, "--lms-taps", "4"));    // lms-mode tap count
+  lms_taps = (lms_taps < 1) ? 1 : ((lms_taps > LMS_MAX_TAPS) ? LMS_MAX_TAPS : lms_taps);
   int pair_enabled = !no_pair;
   int adapt = !pair_ms;                                            // N>=3 L/R pairs are adaptive (best-of-both) by default
+  int perceptual, packet, joint, lms;
+  fwa_mode_flags(mode, quality, &perceptual, &packet, &joint, &lms);
   if (argc < 3) {
     fprintf(stderr,
             "usage:\n"
-            "  %s test in.<any> [quality] [mode] [-ac N] [-sr HZ] [-no-pair] [-pair-ms]   round-trip + ratio/SNR. Q0 mode: 5/3 (default) | lms.\n"
-            "                                       lossy mode: uniform | psycho (default) | joint-psycho | packet | packet-psycho\n"
-            "  %s enc  in.<any> out.fwa [quality] [mode] [-ac N] [-sr HZ] [-no-pair] [-pair-ms]\n"
+            "  %s test in.<any> [flags...]            round-trip + ratio/SNR\n"
+            "  %s enc  in.<any> out.fwa [flags...]\n"
             "  %s dec  in.fwa  out.wav\n"
-            "  channels/rate default to the source (ffprobe); -ac N forces channels, -sr HZ resamples (linear).\n"
-            "  N>=3 channels adaptively Mid/Side the L/R pairs (best-of-both); -no-pair = independent, -pair-ms = force M/S.\n",
+            "  flags:\n"
+            "    --quality=N      0 = lossless (default), >= 1 = lossy 9/7\n"
+            "    --mode=M         lossy: uniform | psycho (default) | joint-psycho | packet | packet-psycho ; Q0: 5/3 (default) | lms\n"
+            "    --lms-taps=N     lms-mode tap count (default 4)\n"
+            "    --ac=N           force channel count (else auto-detect via ffprobe)\n"
+            "    --sr=HZ          force sample rate (linear resample; else source rate)\n"
+            "    --no-pair        multichannel (N>=3): independent channels (no pairwise M/S)\n"
+            "    --pair-ms        multichannel (N>=3): force always-M/S (else per-pair adaptive best-of-both)\n"
+            "    --fwa-overlap    lossy: cross-fade block overlap to soften block-boundary artefacts\n"
+            "    --fwa-overlap-amount=N   shared samples per block boundary (default 1024)\n",
             argv[0], argv[0], argv[0]);
     return 1;
   }
@@ -1750,33 +1805,7 @@ int main(int argc, char **argv) {
     int sample_rate = 0;
     char layout[64] = "";
     int16_t *pcm = ingest(argv[2], forced_channels, forced_rate, &frame_count, &channels, &sample_rate, layout);
-    int quality = (argc > 3) ? atoi(argv[3]) : 0;
-    int perceptual = (quality > 0);   // lossy default = psycho (perceptual, no joint-stereo)
-    int packet = 0;
-    int joint = 0;
-    int lms = 0;
-    int lms_taps = 4;
-    if (argc > 4) {
-      if (!strcmp(argv[4], "uniform")) {
-        perceptual = 0;
-      } else if (!strcmp(argv[4], "packet")) {
-        perceptual = 0;
-        packet = 1;
-      } else if (!strcmp(argv[4], "packet-psycho")) {
-        perceptual = 1;
-        packet = 1;
-      } else if (!strcmp(argv[4], "joint-psycho") || !strcmp(argv[4], "joint")) {
-        perceptual = 1;
-        joint = 1;
-      } else if (!strcmp(argv[4], "lms")) {
-        lms = 1;                                                // lossless LMS predictor (Q0 only); optional tap count
-        if (argc > 5) {
-          lms_taps = atoi(argv[5]);
-        }
-        lms_taps = (lms_taps < 1) ? 1 : ((lms_taps > LMS_MAX_TAPS) ? LMS_MAX_TAPS : lms_taps);
-      }
-    }
-    uint8_t *stream;
+    uint8_t *stream;   // quality / mode flags (perceptual / packet / joint / lms / lms_taps) come from the shared --flags above
     size_t stream_length = fwacodec_encode(pcm, frame_count, channels, sample_rate, layout, pair_enabled, adapt, quality, perceptual, packet, joint, lms, lms_taps, overlap, &stream);
     long decoded_count = 0;
     int decoded_channels = 0;
@@ -1830,33 +1859,7 @@ int main(int argc, char **argv) {
     int sample_rate = 0;
     char layout[64] = "";
     int16_t *pcm = ingest(argv[2], forced_channels, forced_rate, &frame_count, &channels, &sample_rate, layout);
-    int quality = (argc > 4) ? atoi(argv[4]) : 0;
-    int perceptual = (quality > 0);
-    int packet = 0;
-    int joint = 0;
-    int lms = 0;
-    int lms_taps = 4;
-    if (argc > 5) {
-      if (!strcmp(argv[5], "uniform")) {
-        perceptual = 0;
-      } else if (!strcmp(argv[5], "packet")) {
-        perceptual = 0;
-        packet = 1;
-      } else if (!strcmp(argv[5], "packet-psycho")) {
-        perceptual = 1;
-        packet = 1;
-      } else if (!strcmp(argv[5], "joint-psycho") || !strcmp(argv[5], "joint")) {
-        perceptual = 1;
-        joint = 1;
-      } else if (!strcmp(argv[5], "lms")) {
-        lms = 1;
-        if (argc > 6) {
-          lms_taps = atoi(argv[6]);
-        }
-        lms_taps = (lms_taps < 1) ? 1 : ((lms_taps > LMS_MAX_TAPS) ? LMS_MAX_TAPS : lms_taps);
-      }
-    }
-    uint8_t *stream;
+    uint8_t *stream;   // quality / mode flags come from the shared --flags above
     size_t stream_length = fwacodec_encode(pcm, frame_count, channels, sample_rate, layout, pair_enabled, adapt, quality, perceptual, packet, joint, lms, lms_taps, overlap, &stream);
     FILE *file = fopen(argv[3], "wb");
     fwrite(stream, 1, stream_length, file);
