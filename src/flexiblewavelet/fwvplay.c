@@ -1063,6 +1063,10 @@ int main(int argc, char **argv) {
   if (((fread(&header, sizeof header, 1, file) != 1) || memcmp(header.magic, "FWVC", 4)) || (header.version != 1)) {
     die("not a .FWV (or unsupported version)");
   }
+  if (header.header_size < sizeof header) {   // older container predating the appended qpmap fields: the over-read
+    header.qpmap_offset = 0;                   // tail bytes are index/payload, not header -> ignore them so AQ stays
+    header.qpmap_size = 0;                     // off. Every later read seeks to an absolute on-disk offset, so this is safe.
+  }
   g_decompress_frames = 1;                  // per-frame [method][raw_len] framing (method 1 = LZSS, 2 = LZBRRC, 0 = raw)
   g_mv_codec = header.mv_codec;             // motion-vector entropy coder selector (0 = Exp-Golomb, 1 = range)
   int width = header.width;

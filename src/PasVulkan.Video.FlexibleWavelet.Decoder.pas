@@ -305,6 +305,15 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        // Without this the per-pixel rebuild every frame is the CPU bottleneck at 1080p.
        fStepCacheQuality:array of TpvInt32;       // quality value held by each cache slot
        fStepCacheData:array of array of TpvInt32; // [(slot*3)+plane] -> the prebuilt step map for that quality/plane
+       // AQ (per-tile QP): the per-frame per-tile QP maps (qpmap container section, coding order). When present the
+       // base (per-quality) step is modulated by the current frame's map in-place AFTER the cache Move, so the cache
+       // stays the content-independent base and the GPU dequant is untouched (matches the C fwvplay decoder).
+       fAQEnabled:boolean;
+       fAQMaps:array of TpvUInt8; // all frames' maps concatenated by coding index (frame_count * fAQCols * fAQRows)
+       fAQCols:TpvInt32;
+       fAQRows:TpvInt32;
+       fAQMapBytes:TpvInt32; // fAQCols * fAQRows
+       fAQCurrentMap:PpvUInt8Array; // the current frame's map (set per frame by SetAQCurrentMap), or nil
        fMVScratch:array of TpvInt32; // decoded motion vectors (CPU side) before upload to fMVBuffer
        fMV1Scratch:array of TpvInt32; // B-frames: decoded L1 motion vectors (CPU side)
        fModeScratch:array of TpvInt32; // B-frames: decoded per-block modes (CPU side)
@@ -335,6 +344,8 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        procedure RecordImageBarrier(const aCommandBuffer:TpvVulkanCommandBuffer;const aOldLayout,aNewLayout:TVkImageLayout;const aSrcAccess,aDstAccess:TVkAccessFlags;const aSrcStage,aDstStage:TVkPipelineStageFlags);
        procedure RecordDispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aPipeline:TpvVulkanComputePipeline;const aLayout:TpvVulkanPipelineLayout;const aSet:TpvVulkanDescriptorSet;const aPushConstants:Pointer;const aPushSize:TpvUInt32;const aGroupsX,aGroupsY,aGroupsZ:TpvUInt32);
        function EnsureStepCacheSlot(const aQuality:TpvInt32):TpvInt32; // build (once) + return the step-map cache slot for a quality
+       procedure SetAQCurrentMap(const aCodingIndex:TpvInt32); // AQ: select this coding frame's per-tile QP map (no-op if AQ off)
+       procedure ApplyAQ(const aStep:PpvInt32Array;const aWidth,aHeight:TpvInt32); // AQ: modulate a just-uploaded step map in-place
        procedure UploadFrame(const aFrameIndex:TpvInt32);
        procedure RecordDecode(const aCommandBuffer:TpvVulkanCommandBuffer;const aIsPredicted:boolean);
        // Optional alpha (colour_flags bit2): one intra, full-res 8-bit plane appended per frame. The colour is decoded
@@ -465,10 +476,18 @@ procedure TpvFlexibleWaveletVideoDecoder.ParseContainer;
 var BFrameIndex,SlotIndex:TpvInt32;
 begin
 
- // The 126-byte packed header (ReadBuffer-compatible, little-endian)
+ // The 142-byte packed header (ReadBuffer-compatible, little-endian)
  fStream.ReadBuffer(fHeader,SizeOf(fHeader));
  if (CompareByte(fHeader.Magic[0],Magic[0],4)<>0) or (fHeader.Version<>FormatVersion) then begin
   raise EpvFlexibleWaveletVideoDecoder.Create('Not a FWVC stream');
+ end;
+
+ // Older containers predate the appended qpmap fields (HeaderSize < the current record): the 16 over-read bytes are
+ // index/payload, not header, so ignore them and leave AQ off for those streams. Every later read seeks to an absolute
+ // on-disk offset (which was read correctly from the leading fields), so the over-read does not affect anything else.
+ if fHeader.HeaderSize<SizeOf(fHeader) then begin
+  fHeader.QPMapOffset:=0;
+  fHeader.QPMapSize:=0;
  end;
 
  // The coding-order frame index
@@ -488,6 +507,20 @@ begin
  fNumPlanes:=3; // stays 3 unless a has-alpha header sets it; non-alpha streams are byte-for-byte unchanged
  fPredictionMethod:=fHeader.PredictionMethod;
  fGOP:=fHeader.GOP;
+
+ // AQ (per-tile QP): read the per-frame per-tile QP-map section once. The decode then applies map[coding index] to the
+ // step before each dequant (SetAQCurrentMap), identically to the encoder, so the round trip is exact. The map is
+ // normalised, so the same per-frame map fits every plane (luma full-res, chroma subsampled).
+ fAQCols:=AQTileCols(fWidth);
+ fAQRows:=AQTileRows(fHeight);
+ fAQMapBytes:=fAQCols*fAQRows;
+ fAQCurrentMap:=nil;
+ fAQEnabled:=fHeader.QPMapSize>0;
+ if fAQEnabled then begin
+  SetLength(fAQMaps,fHeader.QPMapSize);
+  fStream.Position:=TpvInt64(fHeader.QPMapOffset);
+  fStream.ReadBuffer(fAQMaps[0],TpvInt64(fHeader.QPMapSize));
+ end;
 
  // motion config: mv entropy coder, motion block size + the variable-quadtree flag (reserved2[5]==1)
  fMVCodec:=fHeader.MVCodec;
@@ -1264,6 +1297,22 @@ begin
  result:=Slot;
 end;
 
+procedure TpvFlexibleWaveletVideoDecoder.SetAQCurrentMap(const aCodingIndex:TpvInt32);
+begin
+ if fAQEnabled and ((aCodingIndex>=0) and (((aCodingIndex+1)*fAQMapBytes)<=length(fAQMaps))) then begin
+  fAQCurrentMap:=PpvUInt8Array(@fAQMaps[aCodingIndex*fAQMapBytes]);
+ end else begin
+  fAQCurrentMap:=nil;
+ end;
+end;
+
+procedure TpvFlexibleWaveletVideoDecoder.ApplyAQ(const aStep:PpvInt32Array;const aWidth,aHeight:TpvInt32);
+begin
+ if fAQEnabled and assigned(fAQCurrentMap) then begin
+  ApplyTileAQ(aStep,aWidth,aHeight,fLevels,fAQCurrentMap,fAQCols,fAQRows);
+ end;
+end;
+
 procedure TpvFlexibleWaveletVideoDecoder.UploadFrame(const aFrameIndex:TpvInt32);
 var Plane,PlanePixels,StepSlot:TpvInt32;
     Entry:PFrameEntry;
@@ -1285,6 +1334,7 @@ begin
   raise EpvFlexibleWaveletVideoDecoder.Create('Frame index out of range');
  end;
  Entry:=@fFrameEntries[aFrameIndex];
+ SetAQCurrentMap(aFrameIndex); // AQ: this coding frame's per-tile QP map (no-op when AQ off)
 
  // Read the compressed container payload for this frame.
  CompressedLength:=Entry^.Size;
@@ -1318,6 +1368,7 @@ begin
    DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
    try
     Move(fStepCacheData[(StepSlot*fNumPlanes)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
+    ApplyAQ(PpvInt32Array(@DataPointer^[0]),PlaneWidth(Plane),PlaneHeight(Plane)); // AQ: modulate the base step by this frame's per-tile map
    finally
     ActiveStepBuffer(Plane).Memory.UnmapMemory;
    end;
@@ -1698,6 +1749,7 @@ begin
   DataPointer:=PpvUInt8Array(fAlphaRingStep[fAlphaCurrentSlot].Memory.MapMemory);
   try
    Move(fStepCacheData[(StepSlot*fNumPlanes)+0][0],DataPointer^[0],TpvSizeUInt(fWidth)*TpvSizeUInt(fHeight)*4);
+   ApplyAQ(PpvInt32Array(@DataPointer^[0]),fWidth,fHeight); // AQ: alpha is full-res -> modulate with this frame's tile map
   finally
    fAlphaRingStep[fAlphaCurrentSlot].Memory.UnmapMemory;
   end;
@@ -1720,6 +1772,7 @@ begin
  // hold an in-flight colour frame under engine pipelining), parse the colour header only to locate the appended alpha
  // section (= colour block-data end), then stage it like the colordiff path.
  Entry:=@fFrameEntries[aCodingIndex];
+ SetAQCurrentMap(aCodingIndex); // AQ: this coding frame's per-tile QP map (no-op when AQ off)
  CompressedLength:=Entry^.Size;
  if TpvSizeUInt(Length(fAlphaCompressedScratch))<(CompressedLength+8) then begin
   SetLength(fAlphaCompressedScratch,CompressedLength+8);
@@ -2012,6 +2065,7 @@ var Plane,PlanePixels,StepSlot:TpvInt32;
 begin
 
  Entry:=@fFrameEntries[aCodingIndex];
+ SetAQCurrentMap(aCodingIndex); // AQ: this coding frame's per-tile QP map (no-op when AQ off)
 
  // Read + decompress the coding frame (same framing as the non-B path).
  CompressedLength:=Entry^.Size;
@@ -2040,6 +2094,7 @@ begin
    DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
    try
     Move(fStepCacheData[(StepSlot*fNumPlanes)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
+    ApplyAQ(PpvInt32Array(@DataPointer^[0]),PlaneWidth(Plane),PlaneHeight(Plane)); // AQ: modulate the base step by this frame's per-tile map
    finally
     ActiveStepBuffer(Plane).Memory.UnmapMemory;
    end;
@@ -2607,6 +2662,7 @@ var Plane,PlanePixels,TemporalLevel,EffectiveQuality,StepSlot:TpvInt32;
 begin
 
  Entry:=@fFrameEntries[aCodingIndex];
+ SetAQCurrentMap(aCodingIndex); // AQ: this coding frame's per-tile QP map (no-op when AQ off)
 
  CompressedLength:=Entry^.Size;
  if TpvSizeUInt(Length(fCompressedScratch))<(CompressedLength+8) then begin
@@ -2640,6 +2696,7 @@ begin
    DataPointer:=PpvUInt8Array(fStepBuffer[Plane].Memory.MapMemory);
    try
     Move(fStepCacheData[(StepSlot*fNumPlanes)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
+    ApplyAQ(PpvInt32Array(@DataPointer^[0]),PlaneWidth(Plane),PlaneHeight(Plane)); // AQ: modulate the base step by this frame's per-tile map
    finally
     fStepBuffer[Plane].Memory.UnmapMemory;
    end;

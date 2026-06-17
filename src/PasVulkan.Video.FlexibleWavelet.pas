@@ -101,13 +101,16 @@ type EpvFlexibleWaveletVideo=class(Exception);
              FrameMethodRaw=0; // per-frame payload method byte: uncompressed
              FrameMethodLZSS=1; // LZSS-compressed
              FrameMethodLZBRRC=2; // LZBRRC-compressed
+             AQTile=64; // AQ (per-tile QP): tile edge in luma pixels
+             AQWeightMin=0.5; // AQ: finest step scale (most bits) -> code 0
+             AQWeightMax=2.0; // AQ: coarsest step scale (least bits) -> code 255
        type TPredictionMethod=(CoefDiff=0,ColorDiff=1,OpenLoop3DDWT=2,MCTF3DDWT=3);
             TChromaFormat=(YCbCr444=0,YCbCr422=1,YCbCr420=2);
             TMVCodec=(ExpGolomb=0,Range=1);
             TFrameType=(Intra=0,Predicted=1,Bidirectional=2);
             PHeader=^THeader;
             { THeader }
-            THeader=packed record // 126 bytes, byte-for-byte the packed C ContainerHeader (ReadBuffer-compatible, little-endian)
+            THeader=packed record // 142 bytes, byte-for-byte the packed C ContainerHeader (ReadBuffer-compatible, little-endian)
              Magic:array[0..3] of AnsiChar;
              Version:TpvUInt16;
              HeaderSize:TpvUInt16;
@@ -144,6 +147,8 @@ type EpvFlexibleWaveletVideo=class(Exception);
              MVCodec:TpvUInt8;
              H264Offset:TpvUInt64;
              H264Size:TpvUInt64;
+             QPMapOffset:TpvUInt64; // AQ (per-tile QP): byte offset of the per-frame per-tile QP-map section
+             QPMapSize:TpvUInt64; // total bytes of the qpmap section (frame_count * tile_cols * tile_rows u8); 0 = no AQ
             end;
             PFrameEntry=^TFrameEntry;
             { TFrameEntry }
@@ -204,6 +209,13 @@ type EpvFlexibleWaveletVideo=class(Exception);
        // the per-pixel integer quant step map (must match the C encoder/decoder bit-for-bit so the GPU dequant agrees).
        class procedure MeasureSynthesisGains(const aLevels:TpvInt32;out aHFGain:TSynthesisGains;out aLLGain:TpvFloat); static;
        class procedure BuildQuantizationSteps(const aStep:PpvInt32Array;const aWidth,aHeight,aLevels,aBaseQuality,aSampleWhite:TpvInt32;const aHFGain:TSynthesisGains;const aLLGain:TpvFloat); static;
+       // AQ (per-tile QP / adaptive quantization): a per-frame per-tile weight map (transmitted in the qpmap container
+       // section) modulates the per-coefficient quant steps IDENTICALLY on encoder + decoder, so the GPU dequant is
+       // untouched and the round trip stays exact. The map is normalised (a coefficient's tile = its position within
+       // its own subband), so one map fits every plane (luma full-res, chroma subsampled).
+       class function AQTileCols(const aWidth:TpvInt32):TpvInt32; static;
+       class function AQTileRows(const aHeight:TpvInt32):TpvInt32; static;
+       class procedure ApplyTileAQ(const aStep:PpvInt32Array;const aWidth,aHeight,aLevels:TpvInt32;const aTileCode:PpvUInt8Array;const aTileCols,aTileRows:TpvInt32); static;
        // colordiff (B) motion vectors: golomb-coded, causal-median predicted, raster order, per fixed-grid block.
        class procedure DecodeMotionVectors(var aReader:TBitReader;const aMV:PpvInt32Array;const aBlocksX,aBlocksY:TpvInt32); static;
        // variable motion: a quadtree of 32->8 px leaves (RLE split flags + golomb leaf deltas) expanded into the fine 8-grid.
@@ -762,6 +774,122 @@ begin
  for y:=0 to CurrentHeight-1 do begin
   for x:=0 to CurrentWidth-1 do begin
    aStep^[(y*aWidth)+x]:=LowPassQ;
+  end;
+ end;
+
+end;
+
+{ TpvFlexibleWaveletVideo — AQ (per-tile QP / adaptive quantization) }
+
+class function TpvFlexibleWaveletVideo.AQTileCols(const aWidth:TpvInt32):TpvInt32;
+begin
+ result:=(aWidth+(AQTile-1)) div AQTile;
+end;
+
+class function TpvFlexibleWaveletVideo.AQTileRows(const aHeight:TpvInt32):TpvInt32;
+begin
+ result:=(aHeight+(AQTile-1)) div AQTile;
+end;
+
+// Modulate step[] by the per-tile weight map, IDENTICALLY to the C encoder/decoder (apply_tile_aq), walking the same
+// Mallat layout BuildQuantizationSteps uses. Each coefficient's tile = its normalised position within its own subband.
+class procedure TpvFlexibleWaveletVideo.ApplyTileAQ(const aStep:PpvInt32Array;const aWidth,aHeight,aLevels:TpvInt32;const aTileCode:PpvUInt8Array;const aTileCols,aTileRows:TpvInt32);
+var WeightLUT:array[0..255] of TpvFloat;
+    LogSpan,Weight,QuantValue:TpvFloat;
+    CurrentWidth,CurrentHeight,Level,HalfWidth,HalfHeight,PixelX,PixelY:TpvInt32;
+    SubbandX,SubbandY,SubbandWidth,SubbandHeight,TileColumn,TileRow,QuantStep,CodeIndex:TpvInt32;
+    InRight,InBottom:boolean;
+begin
+
+ // u8 code -> weight lookup, log-spaced so 1.0 sits at the middle (IDENTICAL to aq_weight_from_code on the encoder).
+ LogSpan:=Ln(AQWeightMax/AQWeightMin);
+ for CodeIndex:=0 to 255 do begin
+  WeightLUT[CodeIndex]:=AQWeightMin*Exp((TpvFloat(CodeIndex)/255.0)*LogSpan);
+ end;
+
+ CurrentWidth:=aWidth;
+ CurrentHeight:=aHeight;
+ Level:=0;
+ while ((Level<aLevels) and (CurrentWidth>=2)) and (CurrentHeight>=2) do begin
+  HalfWidth:=(CurrentWidth+1) div 2;
+  HalfHeight:=(CurrentHeight+1) div 2;
+  for PixelY:=0 to CurrentHeight-1 do begin
+   for PixelX:=0 to CurrentWidth-1 do begin
+    InRight:=PixelX>=HalfWidth;
+    InBottom:=PixelY>=HalfHeight;
+    if (not InRight) and (not InBottom) then begin
+     continue; // the LL of this level -> handled at the final level below
+    end;
+    if InRight then begin
+     SubbandX:=PixelX-HalfWidth;
+     SubbandWidth:=CurrentWidth-HalfWidth;
+    end else begin
+     SubbandX:=PixelX;
+     SubbandWidth:=HalfWidth;
+    end;
+    if InBottom then begin
+     SubbandY:=PixelY-HalfHeight;
+     SubbandHeight:=CurrentHeight-HalfHeight;
+    end else begin
+     SubbandY:=PixelY;
+     SubbandHeight:=HalfHeight;
+    end;
+    if SubbandWidth>0 then begin
+     TileColumn:=(SubbandX*aTileCols) div SubbandWidth;
+    end else begin
+     TileColumn:=0;
+    end;
+    if SubbandHeight>0 then begin
+     TileRow:=(SubbandY*aTileRows) div SubbandHeight;
+    end else begin
+     TileRow:=0;
+    end;
+    if TileColumn>=aTileCols then begin
+     TileColumn:=aTileCols-1;
+    end;
+    if TileRow>=aTileRows then begin
+     TileRow:=aTileRows-1;
+    end;
+    Weight:=WeightLUT[aTileCode^[(TileRow*aTileCols)+TileColumn]];
+    QuantValue:=(TpvFloat(aStep^[(PixelY*aWidth)+PixelX])*Weight)+0.5; // single store -> rounds like C's +0.5f
+    QuantStep:=Trunc(QuantValue);
+    if QuantStep<1 then begin
+     QuantStep:=1;
+    end;
+    aStep^[(PixelY*aWidth)+PixelX]:=QuantStep;
+   end;
+  end;
+  CurrentWidth:=HalfWidth;
+  CurrentHeight:=HalfHeight;
+  inc(Level);
+ end;
+
+ // the final LL
+ for PixelY:=0 to CurrentHeight-1 do begin
+  for PixelX:=0 to CurrentWidth-1 do begin
+   if CurrentWidth>0 then begin
+    TileColumn:=(PixelX*aTileCols) div CurrentWidth;
+   end else begin
+    TileColumn:=0;
+   end;
+   if CurrentHeight>0 then begin
+    TileRow:=(PixelY*aTileRows) div CurrentHeight;
+   end else begin
+    TileRow:=0;
+   end;
+   if TileColumn>=aTileCols then begin
+    TileColumn:=aTileCols-1;
+   end;
+   if TileRow>=aTileRows then begin
+    TileRow:=aTileRows-1;
+   end;
+   Weight:=WeightLUT[aTileCode^[(TileRow*aTileCols)+TileColumn]];
+   QuantValue:=(TpvFloat(aStep^[(PixelY*aWidth)+PixelX])*Weight)+0.5;
+   QuantStep:=Trunc(QuantValue);
+   if QuantStep<1 then begin
+    QuantStep:=1;
+   end;
+   aStep^[(PixelY*aWidth)+PixelX]:=QuantStep;
   end;
  end;
 
