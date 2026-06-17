@@ -404,7 +404,7 @@ int main(int argc, char **argv) {
   create_buffer(((scratch_side * scratch_side) * 4), DEVICE_LOCAL, &scratch_buffer, &scratch_memory);
   create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &readback_buffer, &readback_memory);
 
-  // The reconstructed RGB is written by the colour shader into this rgba8 image, then copied out.
+  // The reconstructed RGB is written by the color shader into this rgba8 image, then copied out.
   VkImageCreateInfo image_info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
   image_info.imageType = VK_IMAGE_TYPE_2D;
   image_info.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -442,24 +442,24 @@ int main(int argc, char **argv) {
   VK_CHECK(vkMapMemory(device, readback_memory, 0, VK_WHOLE_SIZE, 0, &readback_map));
 
   // ---- pipelines ----
-  // Descriptor set layouts by the number of storage buffers (+ a trailing image for colour).
+  // Descriptor set layouts by the number of storage buffers (+ a trailing image for color).
   VkDescriptorSetLayout layout_1_buffer = create_descriptor_set_layout(1, 0);
   VkDescriptorSetLayout layout_2_buffers = create_descriptor_set_layout(2, 0);
   VkDescriptorSetLayout layout_3_buffers = create_descriptor_set_layout(3, 0);
-  VkDescriptorSetLayout layout_colour = create_descriptor_set_layout(3, 1);
+  VkDescriptorSetLayout layout_color = create_descriptor_set_layout(3, 1);
   VkPipelineLayout pipeline_layout_unpack = create_pipeline_layout(layout_3_buffers, 16);
   VkPipelineLayout pipeline_layout_dequant = create_pipeline_layout(layout_2_buffers, 8);   // { pixel_count, chroma_multiplier } (dequant97 expects both)
   VkPipelineLayout pipeline_layout_transpose = create_pipeline_layout(layout_2_buffers, 16);
   VkPipelineLayout pipeline_layout_row = create_pipeline_layout(layout_1_buffer, 16);
   VkPipelineLayout pipeline_layout_round = create_pipeline_layout(layout_1_buffer, 4);
-  VkPipelineLayout pipeline_layout_colour = create_pipeline_layout(layout_colour, 24);   // { width, height, shift_x, shift_y, small_w, small_h }
+  VkPipelineLayout pipeline_layout_color = create_pipeline_layout(layout_color, 24);   // { width, height, shift_x, shift_y, small_w, small_h }
 
   VkPipeline pipeline_unpack = create_compute_pipeline("shaders/bitplane_unpack.spv", pipeline_layout_unpack);
   VkPipeline pipeline_dequant = create_compute_pipeline("shaders/dequant97.spv", pipeline_layout_dequant);
   VkPipeline pipeline_transpose = create_compute_pipeline("shaders/transpose_f.spv", pipeline_layout_transpose);
   VkPipeline pipeline_inverse_row_97 = create_compute_pipeline("shaders/idwt97row.spv", pipeline_layout_row);
   VkPipeline pipeline_round = create_compute_pipeline("shaders/round97.spv", pipeline_layout_round);
-  VkPipeline pipeline_colour = create_compute_pipeline("shaders/color.spv", pipeline_layout_colour);
+  VkPipeline pipeline_color = create_compute_pipeline("shaders/color.spv", pipeline_layout_color);
   // Lossless path uses the integer 5/3 inverse row transform instead of dequant + 9/7 + round.
   VkPipeline pipeline_inverse_row_53 = create_compute_pipeline("shaders/idwt53row.spv", pipeline_layout_row);
   VkPipeline pipeline_inverse_row = lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
@@ -476,9 +476,9 @@ int main(int argc, char **argv) {
   VK_CHECK(vkCreateDescriptorPool(device, &pool_info, 0, &descriptor_pool));
 
   // Per plane: unpack (data+offset -> coeff), dequant (coeff+step), the two transpose directions
-  // (coeff<->scratch), and the row transform in place on coeff. The colour set reads all 3 planes.
+  // (coeff<->scratch), and the row transform in place on coeff. The color set reads all 3 planes.
   VkDescriptorSet set_unpack[MAX_PLANES], set_dequant[MAX_PLANES], set_coeff_to_scratch[MAX_PLANES], set_scratch_to_coeff[MAX_PLANES], set_row[MAX_PLANES];
-  VkDescriptorSet set_row_scratch, set_colour;
+  VkDescriptorSet set_row_scratch, set_color;
   for (int plane = 0; plane < g_num_planes; plane++) {
     set_unpack[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
     bind_storage_buffers(set_unpack[plane], (VkBuffer[]){ data_buffer, offset_buffer[plane], coeff_buffer[plane] }, 3);
@@ -494,32 +494,32 @@ int main(int argc, char **argv) {
   set_row_scratch = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
   bind_storage_buffers(set_row_scratch, (VkBuffer[]){ scratch_buffer }, 1);
 
-  set_colour = allocate_descriptor_set(descriptor_pool, layout_colour);
+  set_color = allocate_descriptor_set(descriptor_pool, layout_color);
   {
-    VkDescriptorBufferInfo colour_buffers[3];
-    VkDescriptorImageInfo colour_image = { 0, image_view, VK_IMAGE_LAYOUT_GENERAL };
+    VkDescriptorBufferInfo color_buffers[3];
+    VkDescriptorImageInfo color_image = { 0, image_view, VK_IMAGE_LAYOUT_GENERAL };
     VkWriteDescriptorSet writes[4] = { 0 };
     for (int i = 0; i < 3; i++) {
-      colour_buffers[i] = (VkDescriptorBufferInfo){ coeff_buffer[i], 0, VK_WHOLE_SIZE };
+      color_buffers[i] = (VkDescriptorBufferInfo){ coeff_buffer[i], 0, VK_WHOLE_SIZE };
       writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writes[i].dstSet = set_colour;
+      writes[i].dstSet = set_color;
       writes[i].dstBinding = i;
       writes[i].descriptorCount = 1;
       writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      writes[i].pBufferInfo = &colour_buffers[i];
+      writes[i].pBufferInfo = &color_buffers[i];
     }
     writes[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[3].dstSet = set_colour;
+    writes[3].dstSet = set_color;
     writes[3].dstBinding = 3;
     writes[3].descriptorCount = 1;
     writes[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    writes[3].pImageInfo = &colour_image;
+    writes[3].pImageInfo = &color_image;
     vkUpdateDescriptorSets(device, 4, writes, 0, 0);
   }
 
   // 3D-DWT: per-plane GOP-resident buffers + the temporal-DWT pipeline. Each subband frame
   // is spatially inverse-transformed into a GOP slot; the temporal-inverse shader then reconstructs the
-  // display frames along the time axis before the colour pass.
+  // display frames along the time axis before the color pass.
   VkBuffer gop_buffer[MAX_PLANES] = { 0, 0, 0 };
   VkDeviceMemory gop_memory[MAX_PLANES] = { 0, 0, 0 };
   VkPipelineLayout pipeline_layout_temporal = 0;
@@ -552,7 +552,7 @@ int main(int argc, char **argv) {
 
   VkQueryPoolCreateInfo query_pool_info = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
   query_pool_info.queryType = VK_QUERY_TYPE_TIMESTAMP;
-  query_pool_info.queryCount = 5;   // 0=top, 1/2/3=after luma/Co/Cg plane, 4=after colour combine
+  query_pool_info.queryCount = 5;   // 0=top, 1/2/3=after luma/Co/Cg plane, 4=after color combine
   VkQueryPool query_pool;
   VK_CHECK(vkCreateQueryPool(device, &query_pool_info, 0, &query_pool));
 
@@ -583,8 +583,8 @@ int main(int argc, char **argv) {
   long frame_index = 0;
   double sum_psnr = 0;
   double gpu_milliseconds = 0;
-  double gpu_luma = 0, gpu_co = 0, gpu_cg = 0, gpu_colour = 0;   // per-phase decode time (for the 4:2:0 projection)
-  int pixel_workgroups = (pixel_count + 255) / 256;   // frame-level: the colour pass writes full-res RGB
+  double gpu_luma = 0, gpu_co = 0, gpu_cg = 0, gpu_color = 0;   // per-phase decode time (for the 4:2:0 projection)
+  int pixel_workgroups = (pixel_count + 255) / 256;   // frame-level: the color pass writes full-res RGB
 
   if (mode_3ddwt) {
     // ---- 3D-DWT GOP decode validation: CPU-encode a GOP, GPU-decode it, compare to CPU ----
@@ -739,7 +739,7 @@ int main(int argc, char **argv) {
       VK_CHECK(vkQueueSubmit(queue, 1, &submit, 0));
       VK_CHECK(vkQueueWaitIdle(queue));
 
-      // Phase 3: per display frame -> copy slot to coeff -> round (lossy) -> colour -> readback -> compare.
+      // Phase 3: per display frame -> copy slot to coeff -> round (lossy) -> color -> readback -> compare.
       for (int g = 0; g < filled; g++) {
         vkResetCommandBuffer(command_buffer, 0);
         vkBeginCommandBuffer(command_buffer, &begin_info);
@@ -769,10 +769,10 @@ int main(int argc, char **argv) {
           }
         }
         // YCoCg-R -> RGB, bilinear-upsampling subsampled chroma (4:4:4 -> shift 0 + chroma dims == frame dims).
-        int32_t colour_push[6] = { width, height, chroma_shift_x(), chroma_shift_y(), plane_width(1, width), plane_height(1, height) };
-        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_colour);
-        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_colour, 0, 1, &set_colour, 0, 0);
-        vkCmdPushConstants(command_buffer, pipeline_layout_colour, VK_SHADER_STAGE_COMPUTE_BIT, 0, 24, colour_push);
+        int32_t color_push[6] = { width, height, chroma_shift_x(), chroma_shift_y(), plane_width(1, width), plane_height(1, height) };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_color);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_color, 0, 1, &set_color, 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_color, VK_SHADER_STAGE_COMPUTE_BIT, 0, 24, color_push);
         vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
         VkImageMemoryBarrier to_src = to_general;
         to_src.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -858,7 +858,7 @@ int main(int argc, char **argv) {
       vkBeginCommandBuffer(command_buffer, &begin_info);
       vkCmdResetQueryPool(command_buffer, query_pool, 0, 5);
 
-      // Move the output image into GENERAL so the colour shader can store into it.
+      // Move the output image into GENERAL so the color shader can store into it.
       VkImageMemoryBarrier image_barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
       image_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
       image_barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -964,13 +964,13 @@ int main(int argc, char **argv) {
       }
 
       // YCoCg-R -> RGB for all three planes into the output image, bilinear-upsampling subsampled chroma.
-      // 4:4:4 -> shift 0 + small dims == frame dims, so the colour shader reads chroma[y*W+x] unchanged.
-      int32_t colour_push[6] = { width, height, chroma_shift_x(), chroma_shift_y(), plane_width(1, width), plane_height(1, height) };
-      vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_colour);
-      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_colour, 0, 1, &set_colour, 0, 0);
-      vkCmdPushConstants(command_buffer, pipeline_layout_colour, VK_SHADER_STAGE_COMPUTE_BIT, 0, 24, colour_push);
+      // 4:4:4 -> shift 0 + small dims == frame dims, so the color shader reads chroma[y*W+x] unchanged.
+      int32_t color_push[6] = { width, height, chroma_shift_x(), chroma_shift_y(), plane_width(1, width), plane_height(1, height) };
+      vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_color);
+      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_color, 0, 1, &set_color, 0, 0);
+      vkCmdPushConstants(command_buffer, pipeline_layout_color, VK_SHADER_STAGE_COMPUTE_BIT, 0, 24, color_push);
       vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
-      vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 4);   // after colour combine
+      vkCmdWriteTimestamp(command_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query_pool, 4);   // after color combine
 
       // Copy the image out to the readback buffer (rgba8).
       VkImageMemoryBarrier copy_barrier = image_barrier;
@@ -997,7 +997,7 @@ int main(int argc, char **argv) {
       gpu_luma += (timestamps[1] - timestamps[0]) * to_ms;
       gpu_co += (timestamps[2] - timestamps[1]) * to_ms;
       gpu_cg += (timestamps[3] - timestamps[2]) * to_ms;
-      gpu_colour += (timestamps[4] - timestamps[3]) * to_ms;
+      gpu_color += (timestamps[4] - timestamps[3]) * to_ms;
       gpu_milliseconds += (timestamps[4] - timestamps[0]) * to_ms;
 
       // Compare the GPU rgba8 readback against the reference (CPU decode for 4:4:4, original for 4:2:x).
@@ -1030,12 +1030,12 @@ int main(int argc, char **argv) {
          frame_index ? (gpu_milliseconds / frame_index) : 0);
   if (frame_index) {
     double n = (double)frame_index;
-    double luma = gpu_luma / n, co = gpu_co / n, cg = gpu_cg / n, colour = gpu_colour / n;
-    double total = ((luma + co) + cg) + colour;
+    double luma = gpu_luma / n, co = gpu_co / n, cg = gpu_cg / n, color = gpu_color / n;
+    double total = ((luma + co) + cg) + color;
     double chroma = co + cg;
-    // 4:2:0 would shrink each chroma plane to 1/4 the pixels -> chroma decode ~/4; colour combine stays (still full-res RGB out).
-    double projected_420 = (luma + (chroma * 0.25)) + colour;
-    printf("  per-phase ms: luma %.3f | Co %.3f | Cg %.3f | colour %.3f  (total %.3f)\n", luma, co, cg, colour, total);
+    // 4:2:0 would shrink each chroma plane to 1/4 the pixels -> chroma decode ~/4; color combine stays (still full-res RGB out).
+    double projected_420 = (luma + (chroma * 0.25)) + color;
+    printf("  per-phase ms: luma %.3f | Co %.3f | Cg %.3f | color %.3f  (total %.3f)\n", luma, co, cg, color, total);
     printf("  chroma = %.3f ms = %.1f%% of decode | projected 4:2:0 decode %.3f ms = %.1f%% (saves %.1f%%)\n",
            chroma, (total > 0) ? (100.0 * chroma / total) : 0, projected_420,
            (total > 0) ? (100.0 * projected_420 / total) : 0, (total > 0) ? (100.0 * (total - projected_420) / total) : 0);

@@ -92,7 +92,7 @@ static VkDevice device;
 static VkPhysicalDevice physical_device;
 static VkCommandBuffer command_buffer;
 
-// .fwv container header (binary-compatible with fwvenc's writer). The colour block is CICP
+// .fwv container header (binary-compatible with fwvenc's writer). The color block is CICP
 // (ITU-T H.273); the codec is currently 8-bit SDR, the HDR fields are reserved for later.
 #pragma pack(push,1) // packed on-disk container layout — byte-exact, no padding
 typedef struct {
@@ -100,15 +100,15 @@ typedef struct {
   uint16_t version;             // container format version
   uint16_t header_size;         // sizeof(ContainerHeader)
   uint32_t width, height, fps_num, fps_den, levels, quality, frame_count;
-  // ---- colour / HDR signalling (CICP; default = SDR) ----
+  // ---- color / HDR signalling (CICP; default = SDR) ----
   uint8_t  bit_depth;           // 8 now; 10/12/16 reserved (source RGB component depth)
-  uint8_t  colour_primaries;    // CICP: 1=BT.709 (default), 9=BT.2020, 12=Display-P3
+  uint8_t  color_primaries;    // CICP: 1=BT.709 (default), 9=BT.2020, 12=Display-P3
   uint8_t  transfer_function;   // CICP: 13=sRGB (default), 1=BT.709, 16=PQ, 18=HLG, 8=linear
   uint8_t  matrix;              // CICP: 8=YCgCo (== our reversible YCoCg-R)
   uint8_t  full_range;          // 1 (YCoCg-R is full-range)
-  uint8_t  colour_flags;        // bit0 = HDR, bit1 = HDR10 static metadata present
+  uint8_t  color_flags;        // bit0 = HDR, bit1 = HDR10 static metadata present
   uint16_t gop;                 // max keyframe interval (seek hint); actual I/P type is per-frame
-  // ---- HDR10 static metadata (valid iff colour_flags bit1) ----
+  // ---- HDR10 static metadata (valid iff color_flags bit1) ----
   uint16_t mastering_primaries_x[3], mastering_primaries_y[3];   // ST 2086 R/G/B chromaticity, x50000
   uint16_t mastering_white_x, mastering_white_y;
   uint32_t mastering_max_luminance, mastering_min_luminance;     // x10000 cd/m^2
@@ -754,7 +754,7 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
 }
 
 // CPU-decode the appended alpha section of container entry `entry_index` straight into coeff_map3 (the host map of
-// coeff[3]), for the GPU decode paths (B / 3D-DWT) where the colour is GPU-decoded but the alpha is not. color_alpha
+// coeff[3]), for the GPU decode paths (B / 3D-DWT) where the color is GPU-decoded but the alpha is not. color_alpha
 // reads coeff[3] as the alpha plane. The alpha is intra, so one parse + decode_plane + reconstruct_plane per frame.
 static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32_t entry_index,
                                      const int *block_count_plane, int width, int height, int levels, int *step, void *coeff_map3) {
@@ -1188,14 +1188,14 @@ int main(int argc, char **argv) {
   }
   printf("play %s: %dx%d @ %.2f fps | %u frames | audio=%s\n",
          argv[1], width, height, fps, header.frame_count, header.audio_size ? "yes" : "no");
-  const char *primaries_name = (header.colour_primaries == 9) ? "BT.2020" : ((header.colour_primaries == 12) ? "Display-P3" : "BT.709");
+  const char *primaries_name = (header.color_primaries == 9) ? "BT.2020" : ((header.color_primaries == 12) ? "Display-P3" : "BT.709");
   const char *transfer_name = (header.transfer_function == 16) ? "PQ" : ((header.transfer_function == 18) ? "HLG" : ((header.transfer_function == 8) ? "linear" : "sRGB"));
   const char *chroma_name = (g_chroma_format == 2) ? "4:2:0" : ((g_chroma_format == 1) ? "4:2:2" : "4:4:4");   // g_chroma_format set above
-  printf("  colour: %s / %s / %d-bit %s%s%s / %s\n", primaries_name, transfer_name, header.bit_depth,
-         (header.colour_flags & 1) ? "HDR" : "SDR", (header.colour_flags & 2) ? " +HDR10 metadata" : "",
-         (header.colour_flags & 4) ? " +alpha" : "", chroma_name);
-  int is_hdr = (header.colour_flags & 1) != 0;
-  g_has_alpha = (header.colour_flags & 4) != 0;   // bit2 = has_alpha: decode the appended section into the rgba alpha lane
+  printf("  color: %s / %s / %d-bit %s%s%s / %s\n", primaries_name, transfer_name, header.bit_depth,
+         (header.color_flags & 1) ? "HDR" : "SDR", (header.color_flags & 2) ? " +HDR10 metadata" : "",
+         (header.color_flags & 4) ? " +alpha" : "", chroma_name);
+  int is_hdr = (header.color_flags & 1) != 0;
+  g_has_alpha = (header.color_flags & 4) != 0;   // bit2 = has_alpha: decode the appended section into the rgba alpha lane
   g_channels = 4;   // Option B: the CPU reference decode emits rgba8 (SDR) / rgba64 (HDR), 32/64-bit aligned + alpha lane
   size_t frame_bytes = (size_t)pixel_count * g_channels * (is_hdr ? 2 : 1);   // one decoded rgba frame: 8-bit SDR (4B) or 16-bit HDR (8B)
   g_chroma_quant = header.chroma_quant_x16 ? ((float)header.chroma_quant_x16 / 16.0f) : 1.0f;   // chroma quant weighting from the container (0 = old file -> off)
@@ -1221,7 +1221,7 @@ int main(int argc, char **argv) {
   SDL_Vulkan_GetInstanceExtensions(window, &extension_count, 0);
   const char **extensions = checked_malloc((extension_count + 1) * sizeof(char *));
   SDL_Vulkan_GetInstanceExtensions(window, &extension_count, extensions);
-  // Add VK_EXT_swapchain_colorspace if the loader has it, so the surface can report HDR/scRGB colour
+  // Add VK_EXT_swapchain_colorspace if the loader has it, so the surface can report HDR/scRGB color
   // spaces (EXTENDED_SRGB_LINEAR). Optional: absent on most SDR-only X11 setups -> we fall back to sRGB.
   {
     uint32_t available_count = 0;
@@ -1503,7 +1503,7 @@ int main(int argc, char **argv) {
     use_scrgb_output = 1;
   }
   // SDR present is sRGB-format (the blit decodes the gamma RGB to linear, the sRGB swapchain re-encodes -> in-game
-  // compatible); the colour compute stores raw gamma bytes through a UNORM view of the same image. HDR stays linear
+  // compatible); the color compute stores raw gamma bytes through a UNORM view of the same image. HDR stays linear
   // scRGB FP16. MUTABLE_FORMAT|EXTENDED_USAGE allow the UNORM storage view on the sRGB image.
   VkFormat decode_image_format = use_scrgb_output ? VK_FORMAT_R16G16B16A16_SFLOAT : VK_FORMAT_R8G8B8A8_SRGB;
   VkFormat decode_storage_format = use_scrgb_output ? VK_FORMAT_R16G16B16A16_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM;
@@ -1529,7 +1529,7 @@ int main(int argc, char **argv) {
   VkImageViewCreateInfo view_info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
   view_info.image = decode_image;
   view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  view_info.format = decode_storage_format;   // UNORM view (SDR) so the colour compute stores raw gamma bytes; FP16 for HDR
+  view_info.format = decode_storage_format;   // UNORM view (SDR) so the color compute stores raw gamma bytes; FP16 for HDR
   view_info.subresourceRange = (VkImageSubresourceRange){ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
   VkImageView decode_view;
   VK_CHECK(vkCreateImageView(device, &view_info, 0, &decode_view));
@@ -1574,7 +1574,7 @@ int main(int argc, char **argv) {
   VkDescriptorSetLayout layout_1_buffer = create_descriptor_set_layout(1, 0);
   VkDescriptorSetLayout layout_2_buffers = create_descriptor_set_layout(2, 0);
   VkDescriptorSetLayout layout_3_buffers = create_descriptor_set_layout(3, 0);
-  VkDescriptorSetLayout layout_colour = create_descriptor_set_layout(3, 1);
+  VkDescriptorSetLayout layout_color = create_descriptor_set_layout(3, 1);
   VkPipelineLayout pipeline_layout_unpack = create_pipeline_layout(layout_3_buffers, 16);
   VkPipelineLayout pipeline_layout_dequant = create_pipeline_layout(layout_2_buffers, 8);   // { pixel_count, chroma_multiplier }
   VkDescriptorSetLayout layout_4_buffers = g_aq_enabled ? create_descriptor_set_layout(4, 0) : 0;   // AQ: { base_step, tile_codes, weight_lut, modulated_step }
@@ -1583,7 +1583,7 @@ int main(int argc, char **argv) {
   VkPipelineLayout pipeline_layout_transpose = create_pipeline_layout(layout_2_buffers, 16);
   VkPipelineLayout pipeline_layout_row = create_pipeline_layout(layout_1_buffer, 16);
   VkPipelineLayout pipeline_layout_round = create_pipeline_layout(layout_1_buffer, 4);
-  VkPipelineLayout pipeline_layout_colour = create_pipeline_layout(layout_colour, 24);   // { width, height, shift_x, shift_y, small_w, small_h }
+  VkPipelineLayout pipeline_layout_color = create_pipeline_layout(layout_color, 24);   // { width, height, shift_x, shift_y, small_w, small_h }
 
   VkPipeline pipeline_unpack = create_compute_pipeline_bs("shaders/bitplane_unpack.spv", pipeline_layout_unpack, g_block_size);
   VkPipeline pipeline_dequant = create_compute_pipeline("shaders/dequant97.spv", pipeline_layout_dequant);
@@ -1591,11 +1591,11 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_transpose = create_compute_pipeline("shaders/transpose_f.spv", pipeline_layout_transpose);
   VkPipeline pipeline_inverse_row_97 = create_compute_pipeline("shaders/idwt97row.spv", pipeline_layout_row);
   VkPipeline pipeline_round = create_compute_pipeline("shaders/round97.spv", pipeline_layout_round);
-  VkPipeline pipeline_colour = create_compute_pipeline("shaders/color.spv", pipeline_layout_colour);
-  // color_alpha variant: bindings 0,1,2 = colour coeff buffers, 3 = output image, 4 = alpha coeff buffer.
-  VkDescriptorSetLayout layout_colour_alpha = 0;
-  VkPipelineLayout pipeline_layout_colour_alpha = 0;
-  VkPipeline pipeline_colour_alpha = 0;
+  VkPipeline pipeline_color = create_compute_pipeline("shaders/color.spv", pipeline_layout_color);
+  // color_alpha variant: bindings 0,1,2 = color coeff buffers, 3 = output image, 4 = alpha coeff buffer.
+  VkDescriptorSetLayout layout_color_alpha = 0;
+  VkPipelineLayout pipeline_layout_color_alpha = 0;
+  VkPipeline pipeline_color_alpha = 0;
   if (g_has_alpha) {
     VkDescriptorSetLayoutBinding ca_b[5] = {
       { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, 0 },
@@ -1607,24 +1607,24 @@ int main(int argc, char **argv) {
     VkDescriptorSetLayoutCreateInfo ca_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     ca_info.bindingCount = 5;
     ca_info.pBindings = ca_b;
-    VK_CHECK(vkCreateDescriptorSetLayout(device, &ca_info, 0, &layout_colour_alpha));
-    pipeline_layout_colour_alpha = create_pipeline_layout(layout_colour_alpha, 24);   // same push constants as color.comp
-    pipeline_colour_alpha = create_compute_pipeline("shaders/color_alpha.spv", pipeline_layout_colour_alpha);
+    VK_CHECK(vkCreateDescriptorSetLayout(device, &ca_info, 0, &layout_color_alpha));
+    pipeline_layout_color_alpha = create_pipeline_layout(layout_color_alpha, 24);   // same push constants as color.comp
+    pipeline_color_alpha = create_compute_pipeline("shaders/color_alpha.spv", pipeline_layout_color_alpha);
   }
-  VkPipelineLayout pipeline_layout_colour_hdr = create_pipeline_layout(layout_colour, 32);   // {width, height, exposure, transfer, shift_x, shift_y, small_w, small_h}
-  VkPipeline pipeline_colour_hdr = create_compute_pipeline("shaders/color_hdr.spv", pipeline_layout_colour_hdr);
-  VkPipeline pipeline_colour_hdr_scrgb = create_compute_pipeline("shaders/color_hdr_scrgb.spv", pipeline_layout_colour_hdr);   // FP16 scRGB output
-  // HDR/scRGB alpha variants: the SAME 5-binding layout_colour_alpha (set_colour_alpha works for both SDR and HDR alpha),
-  // but with the HDR 32-byte push. Only the final colour write differs (the alpha plane goes into the swapchain A).
-  VkPipelineLayout pipeline_layout_colour_hdr_alpha = 0;
-  VkPipeline pipeline_colour_hdr_alpha = 0;
-  VkPipeline pipeline_colour_hdr_scrgb_alpha = 0;
+  VkPipelineLayout pipeline_layout_color_hdr = create_pipeline_layout(layout_color, 32);   // {width, height, exposure, transfer, shift_x, shift_y, small_w, small_h}
+  VkPipeline pipeline_color_hdr = create_compute_pipeline("shaders/color_hdr.spv", pipeline_layout_color_hdr);
+  VkPipeline pipeline_color_hdr_scrgb = create_compute_pipeline("shaders/color_hdr_scrgb.spv", pipeline_layout_color_hdr);   // FP16 scRGB output
+  // HDR/scRGB alpha variants: the SAME 5-binding layout_color_alpha (set_color_alpha works for both SDR and HDR alpha),
+  // but with the HDR 32-byte push. Only the final color write differs (the alpha plane goes into the swapchain A).
+  VkPipelineLayout pipeline_layout_color_hdr_alpha = 0;
+  VkPipeline pipeline_color_hdr_alpha = 0;
+  VkPipeline pipeline_color_hdr_scrgb_alpha = 0;
   if (g_has_alpha) {
-    pipeline_layout_colour_hdr_alpha = create_pipeline_layout(layout_colour_alpha, 32);
-    pipeline_colour_hdr_alpha = create_compute_pipeline("shaders/color_hdr_alpha.spv", pipeline_layout_colour_hdr_alpha);
-    pipeline_colour_hdr_scrgb_alpha = create_compute_pipeline("shaders/color_hdr_scrgb_alpha.spv", pipeline_layout_colour_hdr_alpha);
+    pipeline_layout_color_hdr_alpha = create_pipeline_layout(layout_color_alpha, 32);
+    pipeline_color_hdr_alpha = create_compute_pipeline("shaders/color_hdr_alpha.spv", pipeline_layout_color_hdr_alpha);
+    pipeline_color_hdr_scrgb_alpha = create_compute_pipeline("shaders/color_hdr_scrgb_alpha.spv", pipeline_layout_color_hdr_alpha);
   }
-  // window-present alpha composite: blend the decoded alpha over a checkerboard / solid colour in-place in decode_image
+  // window-present alpha composite: blend the decoded alpha over a checkerboard / solid color in-place in decode_image
   // (rgba8 only -> guarded at dispatch by !use_scrgb_output). One storage image binding + a 40-byte push.
   VkDescriptorSetLayout layout_composite = 0;
   VkPipelineLayout pipeline_layout_composite = 0;
@@ -1642,10 +1642,10 @@ int main(int argc, char **argv) {
 
   VkDescriptorPoolSize pool_sizes[2] = {
     { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 240 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode (Phase 2) + MCTF (3 mc + 3 add) sets
-    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 5 },   // set_colour + set_colour_alpha + set_composite (present blend) + set_dering (2: src+dst)
+    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 5 },   // set_color + set_color_alpha + set_composite (present blend) + set_dering (2: src+dst)
   };
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 100;   // +6 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff[3] + set_colour_alpha) + 1 for set_composite   // B1b bidi (6) + B2 motion (6) + Phase 2 mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6)
+  pool_info.maxSets = 100;   // +6 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff[3] + set_color_alpha) + 1 for set_composite   // B1b bidi (6) + B2 motion (6) + Phase 2 mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6)
   pool_info.poolSizeCount = 2;
   pool_info.pPoolSizes = pool_sizes;
   VkDescriptorPool descriptor_pool;
@@ -1654,7 +1654,7 @@ int main(int argc, char **argv) {
   VkDescriptorSet set_unpack[MAX_PLANES], set_dequant[MAX_PLANES], set_add[MAX_PLANES], set_coeff_to_scratch[MAX_PLANES], set_scratch_to_coeff[MAX_PLANES], set_row[MAX_PLANES];
   VkDescriptorSet set_mc_play[MAX_PLANES], set_motion_add_play[MAX_PLANES];   // motion (mc_prev reuses scratch_buffer, transient per plane)
   VkDescriptorSet set_apply_aq[MAX_PLANES] = { 0 };   // AQ (GPU): { base_step, tile_codes, weight_lut, modulated_step = step_buffer }
-  VkDescriptorSet set_row_scratch, set_colour;
+  VkDescriptorSet set_row_scratch, set_color;
   for (int plane = 0; plane < g_num_planes; plane++) {
     set_unpack[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
     bind_storage_buffers(set_unpack[plane], (VkBuffer[]){ data_buffer, offset_buffer[plane], coeff_buffer[plane] }, 3);
@@ -1681,8 +1681,8 @@ int main(int argc, char **argv) {
   }
   set_row_scratch = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
   bind_storage_buffers(set_row_scratch, (VkBuffer[]){ scratch_buffer }, 1);
-  VkDescriptorSet set_colour_alpha = 0;   // bound after set_colour (it needs the decode image view)
-  if (g_has_alpha) {   // alpha plane 3 decode sets (intra: unpack -> dequant -> idwt, reusing the colour decode pipelines)
+  VkDescriptorSet set_color_alpha = 0;   // bound after set_color (it needs the decode image view)
+  if (g_has_alpha) {   // alpha plane 3 decode sets (intra: unpack -> dequant -> idwt, reusing the color decode pipelines)
     set_unpack[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
     bind_storage_buffers(set_unpack[3], (VkBuffer[]){ data_buffer, offset_buffer[3], coeff_buffer[3] }, 3);
     set_dequant[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
@@ -1761,47 +1761,47 @@ int main(int argc, char **argv) {
     VkFenceCreateInfo bf = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
     vkCreateFence(device, &bf, 0, &bdecode_fence);
   }
-  set_colour = allocate_descriptor_set(descriptor_pool, layout_colour);
+  set_color = allocate_descriptor_set(descriptor_pool, layout_color);
   {
-    VkDescriptorBufferInfo colour_buffers[3];
-    VkDescriptorImageInfo colour_image = { 0, decode_view, VK_IMAGE_LAYOUT_GENERAL };
+    VkDescriptorBufferInfo color_buffers[3];
+    VkDescriptorImageInfo color_image = { 0, decode_view, VK_IMAGE_LAYOUT_GENERAL };
     VkWriteDescriptorSet writes[4] = { 0 };
     for (int i = 0; i < 3; i++) {
-      colour_buffers[i] = (VkDescriptorBufferInfo){ coeff_buffer[i], 0, VK_WHOLE_SIZE };
+      color_buffers[i] = (VkDescriptorBufferInfo){ coeff_buffer[i], 0, VK_WHOLE_SIZE };
       writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writes[i].dstSet = set_colour;
+      writes[i].dstSet = set_color;
       writes[i].dstBinding = i;
       writes[i].descriptorCount = 1;
       writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      writes[i].pBufferInfo = &colour_buffers[i];
+      writes[i].pBufferInfo = &color_buffers[i];
     }
     writes[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[3].dstSet = set_colour;
+    writes[3].dstSet = set_color;
     writes[3].dstBinding = 3;
     writes[3].descriptorCount = 1;
     writes[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    writes[3].pImageInfo = &colour_image;
+    writes[3].pImageInfo = &color_image;
     vkUpdateDescriptorSets(device, 4, writes, 0, 0);
   }
-  if (g_has_alpha) {   // set_colour_alpha: 3 colour planes (0,1,2) + output image (3) + the alpha plane (4)
-    set_colour_alpha = allocate_descriptor_set(descriptor_pool, layout_colour_alpha);
+  if (g_has_alpha) {   // set_color_alpha: 3 color planes (0,1,2) + output image (3) + the alpha plane (4)
+    set_color_alpha = allocate_descriptor_set(descriptor_pool, layout_color_alpha);
     VkDescriptorBufferInfo ca_buf[4] = {
       { coeff_buffer[0], 0, VK_WHOLE_SIZE }, { coeff_buffer[1], 0, VK_WHOLE_SIZE },
       { coeff_buffer[2], 0, VK_WHOLE_SIZE }, { coeff_buffer[3], 0, VK_WHOLE_SIZE },
     };
     VkDescriptorImageInfo ca_img = { 0, decode_view, VK_IMAGE_LAYOUT_GENERAL };
     VkWriteDescriptorSet ca_w[5] = { 0 };
-    int ca_bind[4] = { 0, 1, 2, 4 };   // colour buffers at 0,1,2; alpha buffer at 4 (binding 3 is the image)
+    int ca_bind[4] = { 0, 1, 2, 4 };   // color buffers at 0,1,2; alpha buffer at 4 (binding 3 is the image)
     for (int i = 0; i < 4; i++) {
       ca_w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      ca_w[i].dstSet = set_colour_alpha;
+      ca_w[i].dstSet = set_color_alpha;
       ca_w[i].dstBinding = ca_bind[i];
       ca_w[i].descriptorCount = 1;
       ca_w[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
       ca_w[i].pBufferInfo = &ca_buf[i];
     }
     ca_w[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    ca_w[4].dstSet = set_colour_alpha;
+    ca_w[4].dstSet = set_color_alpha;
     ca_w[4].dstBinding = 3;
     ca_w[4].descriptorCount = 1;
     ca_w[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
@@ -1846,7 +1846,7 @@ int main(int argc, char **argv) {
 
   // 3D-DWT: a GOP of subband frames is spatially inverse-transformed into per-plane slots,
   // the temporal-inverse shader reconstructs the display frames along the frame axis, then each frame is
-  // colour-converted and presented in order. To hide the per-GOP decode cost, two GOP buffers ping-pong:
+  // color-converted and presented in order. To hide the per-GOP decode cost, two GOP buffers ping-pong:
   // one is presented while the NEXT GOP is decoded ahead of time on a separate (prefetch) command buffer
   // + fence, into its own prefetch_coeff (the present only touches coeff_buffer, so data/offset/step/
   // scratch are free for the prefetch to reuse). One subband frame is prefetched per displayed frame.
@@ -2071,7 +2071,7 @@ int main(int argc, char **argv) {
   double start_time = 0;   // started just before the loop (after the GOP 0 decode) so frame 0 is on time
   int quit = 0;
   int need_recreate = 0;   // set on a resize / VK_ERROR_OUT_OF_DATE_KHR; the swapchain is rebuilt next frame
-  int pixel_workgroups = (pixel_count + 255) / 256;   // frame-level: the colour pass writes full-res RGB
+  int pixel_workgroups = (pixel_count + 255) / 256;   // frame-level: the color pass writes full-res RGB
   // coefdiff predicts at Q0 only; colordiff (prediction_method 1) at any quality.
   int predictive = (header.gop > 1) && ((header.prediction_method == 1) ? 1 : lossless);
   int current_quality = quality;                    // per-GOP variable Q: rebuild the quant map when it changes
@@ -2183,7 +2183,7 @@ int main(int argc, char **argv) {
   void *bf_upload_map = 0;
   // Stage B1b GPU-decode state: a coding-order GPU decode-ahead into the DPB pool, keyed like
   // the CPU BStream (last_use eviction) but the reconstructed YCoCg lives in GPU slots; poc_to_slot maps
-  // each display POC to its slot for the colour pass. gframe_buffer is the per-frame payload read scratch.
+  // each display POC to its slot for the color pass. gframe_buffer is the per-frame payload read scratch.
   int *gdpb_last_use = NULL, *gdpb_poc_to_slot = NULL, *gdpb_coding_to_slot = NULL, gdpb_slot_coding[40], gcursor = 0;
   uint8_t *gframe_buffer = NULL;
   size_t gframe_cap = 0;
@@ -2224,7 +2224,7 @@ int main(int argc, char **argv) {
   // B-stream path the clock/audio start is DEFERRED until the decode-lead is pre-filled (see the loop), so
   // that one-off startup decode does not run the clock ahead either.
   int bdecode_clock_started = 0;
-  int composite_bg_mode = (getenv("FWV_BLENDBG") != NULL) ? 1 : 0;   // window alpha composite background: 0 = checkerboard, 1 = solid colour ('G' toggles)
+  int composite_bg_mode = (getenv("FWV_BLENDBG") != NULL) ? 1 : 0;   // window alpha composite background: 0 = checkerboard, 1 = solid color ('G' toggles)
   int fwv_time = (getenv("FWV_TIME") != NULL);   // FWV_TIME=1 -> print B-decode CPU-prep vs GPU-busy breakdown at exit
   double bdec_cpu_ms = 0.0, bdec_gpu_ms = 0.0;
   double bdec_parse_ms = 0.0, bdec_rebind_ms = 0.0, bdec_record_ms = 0.0;   // CPU-prep sub-breakdown
@@ -2246,7 +2246,7 @@ int main(int argc, char **argv) {
       if ((event.type == SDL_QUIT) || ((event.type == SDL_KEYDOWN) && (event.key.keysym.sym == SDLK_ESCAPE))) {
         quit = 1;
       } else if ((event.type == SDL_KEYDOWN) && (event.key.keysym.sym == SDLK_g)) {
-        composite_bg_mode ^= 1;   // toggle the alpha composite background: checkerboard <-> solid colour
+        composite_bg_mode ^= 1;   // toggle the alpha composite background: checkerboard <-> solid color
       } else if ((event.type == SDL_KEYDOWN) && (event.key.keysym.sym == SDLK_d)) {
         dering ^= 1;   // 'D' = live-toggle the smartblur dering/edge-sharpen post-pass (lossy SDR), for an eyeball A/B
         printf("dering: %s\n", dering ? "ON" : "OFF");
@@ -2269,7 +2269,7 @@ int main(int argc, char **argv) {
     }
 
     // 3D-DWT: at a GOP boundary, swap to the prefetched GOP (finishing it synchronously if it fell
-    // behind), then begin prefetching the GOP after it. The per-frame present below colour-converts the
+    // behind), then begin prefetching the GOP after it. The per-frame present below color-converts the
     // current GOP's slot; one subband of the next GOP is prefetched per displayed frame (after present).
     if (mode_3ddwt && (frame_index >= cur_gop_start + (uint32_t)cur_gop_count)) {
       while (!pf_done) {   // the prefetch didn't keep up (rare): finish it now
@@ -2304,7 +2304,7 @@ int main(int argc, char **argv) {
     }
 
     // Read this frame's payload from the container and split it into block bytes + offset tables. Skipped
-    // for 3D-DWT (the present only colour-converts a GOP slot) and for the B-stream (its CPU coding-order
+    // for 3D-DWT (the present only color-converts a GOP slot) and for the B-stream (its CPU coding-order
     // decoder reads payloads itself) — reusing the shared data/offset buffers here would race those paths.
     if (!mode_3ddwt && !has_bframes) {
       size_t ip_frame_len = read_frame(file, &index[frame_index], &frame_buffer, &frame_buffer_capacity);
@@ -2340,7 +2340,7 @@ int main(int argc, char **argv) {
       uint32_t data_length;
       memcpy(&data_length, frame_data - 4, 4);
       memcpy(data_map, frame_data, data_length);
-      if (g_has_alpha) {   // parse + upload the appended alpha section: its block data goes right after the colour data in data_buffer
+      if (g_has_alpha) {   // parse + upload the appended alpha section: its block data goes right after the color data in data_buffer
         int a_block_count = block_count_x(width) * block_count_y(height);
         uint32_t *a_off = (uint32_t *)offset_map[3];
         int alpha_qp;
@@ -2419,7 +2419,7 @@ int main(int argc, char **argv) {
     // Stage B1b: GPU decode-ahead. Decode coding frames into the DPB pool until the frame at the
     // display POC is reconstructed, mirroring the encoder (unpack -> dequant -> inverse -> bidi_blend ->
     // motion_add into dpb[dst]). Runs on the shared command_buffer (free after the in-flight wait above)
-    // with its own fence; the present recording below then re-records command_buffer for the colour pass.
+    // with its own fence; the present recording below then re-records command_buffer for the color pass.
     if (use_gpu_bdecode) {
       // Decode-Lead: decode until the display frame is reconstructed AND the lead is filled (or the pool is
       // full / the stream ends). The lead makes the per-frame decode steady (~1) instead of bursty.
@@ -2765,12 +2765,12 @@ int main(int argc, char **argv) {
       image_barrier(decode_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     } else {
-    // Output image into GENERAL so the colour shader can store into it.
+    // Output image into GENERAL so the color shader can store into it.
     image_barrier(decode_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 0, VK_ACCESS_SHADER_WRITE_BIT,
                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
     if (use_gpu_bdecode) {
       // Stage B1b: the decode-ahead above reconstructed this display POC's YCoCg into a DPB slot;
-      // stage it into coeff_buffer (already rounded int) for the colour pass below.
+      // stage it into coeff_buffer (already rounded int) for the color pass below.
       int dslot = gdpb_poc_to_slot[frame_index];
       if (g_has_alpha) {   // B-frame: CPU-decode this display frame's alpha (intra) — its container entry is the coding index held in this slot
         cpu_decode_alpha_section(file, index, (uint32_t)gdpb_slot_coding[dslot], block_count_plane, width, height, levels, step, coeff_map3);
@@ -2786,7 +2786,7 @@ int main(int argc, char **argv) {
       }
     } else if (mode_3ddwt) {
       // The GOP was already spatial+temporal inverse-transformed above; just fetch this frame's slot
-      // into coeff_buffer (and round the float result for the lossy path) for the colour pass below.
+      // into coeff_buffer (and round the float result for the lossy path) for the color pass below.
       int slot = (int)(frame_index - cur_gop_start);
       if (g_has_alpha) {   // 3D-DWT: CPU-decode this display frame's alpha section into coeff[3] (intra, positional; color_alpha reads it)
         cpu_decode_alpha_section(file, index, frame_index, block_count_plane, width, height, levels, step, coeff_map3);
@@ -3019,7 +3019,7 @@ int main(int argc, char **argv) {
       }
     }
 
-    // Chroma upsample params for the colour shader: shift + the stored Co/Cg (plane 1) dims. 4:4:4 ->
+    // Chroma upsample params for the color shader: shift + the stored Co/Cg (plane 1) dims. 4:4:4 ->
     // shift 0 and small dims == frame dims, so the shader's upsample reduces to chroma[y*W+x] (unchanged).
     int32_t chroma_shift_x_value = chroma_shift_x(), chroma_shift_y_value = chroma_shift_y();
     int32_t chroma_small_w = plane_width(1, width), chroma_small_h = plane_height(1, height);
@@ -3028,32 +3028,32 @@ int main(int argc, char **argv) {
         { width, height, hdr_exposure, header.transfer_function, chroma_shift_x_value, chroma_shift_y_value, chroma_small_w, chroma_small_h };
       VkPipeline present_pipeline;
       VkPipelineLayout present_layout;
-      if (g_has_alpha) {   // write the decoded alpha plane into the HDR / scRGB swapchain A (set_colour_alpha binds the alpha buffer at 4)
-        present_pipeline = use_scrgb_output ? pipeline_colour_hdr_scrgb_alpha : pipeline_colour_hdr_alpha;
-        present_layout = pipeline_layout_colour_hdr_alpha;
+      if (g_has_alpha) {   // write the decoded alpha plane into the HDR / scRGB swapchain A (set_color_alpha binds the alpha buffer at 4)
+        present_pipeline = use_scrgb_output ? pipeline_color_hdr_scrgb_alpha : pipeline_color_hdr_alpha;
+        present_layout = pipeline_layout_color_hdr_alpha;
       } else {
-        present_pipeline = use_scrgb_output ? pipeline_colour_hdr_scrgb : pipeline_colour_hdr;
-        present_layout = pipeline_layout_colour_hdr;
+        present_pipeline = use_scrgb_output ? pipeline_color_hdr_scrgb : pipeline_color_hdr;
+        present_layout = pipeline_layout_color_hdr;
       }
       vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, present_pipeline);
-      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, present_layout, 0, 1, g_has_alpha ? &set_colour_alpha : &set_colour, 0, 0);
+      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, present_layout, 0, 1, g_has_alpha ? &set_color_alpha : &set_color, 0, 0);
       vkCmdPushConstants(command_buffer, present_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 32, &hdr_push);
     } else {
-      int32_t colour_push[6] = { width, height, chroma_shift_x_value, chroma_shift_y_value, chroma_small_w, chroma_small_h };
-      vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, g_has_alpha ? pipeline_colour_alpha : pipeline_colour);
-      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, g_has_alpha ? pipeline_layout_colour_alpha : pipeline_layout_colour, 0, 1, g_has_alpha ? &set_colour_alpha : &set_colour, 0, 0);
-      vkCmdPushConstants(command_buffer, g_has_alpha ? pipeline_layout_colour_alpha : pipeline_layout_colour, VK_SHADER_STAGE_COMPUTE_BIT, 0, 24, colour_push);
+      int32_t color_push[6] = { width, height, chroma_shift_x_value, chroma_shift_y_value, chroma_small_w, chroma_small_h };
+      vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, g_has_alpha ? pipeline_color_alpha : pipeline_color);
+      vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, g_has_alpha ? pipeline_layout_color_alpha : pipeline_layout_color, 0, 1, g_has_alpha ? &set_color_alpha : &set_color, 0, 0);
+      vkCmdPushConstants(command_buffer, g_has_alpha ? pipeline_layout_color_alpha : pipeline_layout_color, VK_SHADER_STAGE_COMPUTE_BIT, 0, 24, color_push);
     }
     vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
 
-    // optional alpha: composite the decoded alpha over a checkerboard / solid colour IN-PLACE in decode_image, while it
-    // is STILL in GENERAL (just written by the colour shader -> a clean SHADER_WRITE -> SHADER_READ barrier). rgba8 only,
+    // optional alpha: composite the decoded alpha over a checkerboard / solid color IN-PLACE in decode_image, while it
+    // is STILL in GENERAL (just written by the color shader -> a clean SHADER_WRITE -> SHADER_READ barrier). rgba8 only,
     // WINDOW present only (the --verify / --decode-to / --dump headless paths keep the raw decode). 'G' toggles the bg.
     if (g_has_alpha && !use_scrgb_output && !(verify || decode_to_path)) {
       image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-      struct { int32_t width, height, mode, premultiplied; float checker_size, colour_r, colour_g, colour_b; } comp_push = {
-        width, height, composite_bg_mode, (header.colour_flags & 8) ? 1 : 0, 16.0f, 0.10f, 0.12f, 0.18f };
+      struct { int32_t width, height, mode, premultiplied; float checker_size, color_r, color_g, color_b; } comp_push = {
+        width, height, composite_bg_mode, (header.color_flags & 8) ? 1 : 0, 16.0f, 0.10f, 0.12f, 0.18f };
       vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_composite);
       vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_composite, 0, 1, &set_composite, 0, 0);
       vkCmdPushConstants(command_buffer, pipeline_layout_composite, VK_SHADER_STAGE_COMPUTE_BIT, 0, 32, &comp_push);
@@ -3066,7 +3066,7 @@ int main(int argc, char **argv) {
     // decode_image in TRANSFER_SRC_OPTIMAL itself, so the shared GENERAL->TRANSFER_SRC barrier below is then skipped.
     int dering_ran = 0;
     if (pipeline_dering && dering && !lossless && !verify) {
-      // decode_image GENERAL (colour/composite output) -> read by the dering shader; dering_image -> GENERAL (written)
+      // decode_image GENERAL (color/composite output) -> read by the dering shader; dering_image -> GENERAL (written)
       image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
       image_barrier(dering_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 0, VK_ACCESS_SHADER_WRITE_BIT,
@@ -3092,7 +3092,7 @@ int main(int argc, char **argv) {
       image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     }
-    }   // end of the non-B (GPU wavelet decode + colour) path; the B-stream upload above already left decode_image in TRANSFER_SRC
+    }   // end of the non-B (GPU wavelet decode + color) path; the B-stream upload above already left decode_image in TRANSFER_SRC
 
     if (verify || decode_to_path) {
       // Headless: copy the decoded image out; verify compares to the CPU ref, decode-to writes the AVI; no present.

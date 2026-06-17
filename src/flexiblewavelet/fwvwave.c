@@ -55,12 +55,12 @@
  * Ground-truth CPU implementation that the GPU compute shaders are validated against (bit-exact for the lossless
  * 5/3 path, visually identical for the lossy 9/7 path). It is #included as a library by the GPU tools
  * (fwvenc / fwvdec / fwvplay), which define FWV_NO_MAIN to drop the standalone main() below and reuse the codec.
- * Holds the pieces shared across all modes: the YCoCg-R colour transform, the 1D/2D and temporal wavelets, the
+ * Holds the pieces shared across all modes: the YCoCg-R color transform, the 1D/2D and temporal wavelets, the
  * bit-plane coding (independent 4-byte-aligned blocks), the motion-vector coders (Exp-Golomb + adaptive range),
  * the per-frame LZSS/LZBRRC frame compression, and the QOA-LE / raw-PCM audio sub-codecs.
  *
  * Per-frame spatial pipeline:
- *     RGB -> YCoCg-R colour transform -> 2D discrete wavelet transform -> quantize ->
+ *     RGB -> YCoCg-R color transform -> 2D discrete wavelet transform -> quantize ->
  *            raw bit-plane coding in independent blocks -> byte stream + offset table
  * On top of that the container supports inter prediction (P / hierarchical B-frames with motion) and an
  * open-loop / motion-compensated (MCTF) 3D-DWT temporal mode, plus SDR/HDR (PQ/HLG, scRGB) and 4:4:4 / 4:2:2 / 4:2:0.
@@ -1001,7 +1001,7 @@ static float temporal_quant_scale(int level) {
   return powf(2.0f, BETA * powf((float)level, KAPPA));
 }
 
-// ------------------------------------------------------ colour transform + quantization
+// ------------------------------------------------------ color transform + quantization
 
 static int clamp_byte(int value) {
   if (value < 0) {
@@ -1017,7 +1017,7 @@ static int clamp_byte(int value) {
 // width (1 = 8-bit SDR, the default; 2 = a 16-bit slot for >=10-bit HDR code values), and
 // [g_sample_min, g_sample_max] the clamp range. The 16-bit slot is read/written as SIGNED int16 so the
 // codec can also carry signed values (negatives); PQ/HLG use the non-negative [0,4095] sub-range. The
-// colour space / transfer (sRGB, PQ, HLG) lives in the container metadata and is interpreted by the
+// color space / transfer (sRGB, PQ, HLG) lives in the container metadata and is interpreted by the
 // player, not here — exactly like the 8-bit path codes sRGB-gamma values as-is.
 static int g_sample_bytes = 1;
 static int g_sample_min = 0;
@@ -1031,24 +1031,24 @@ static int g_quant_debug = 0;         // debug: print the measured 9/7 synthesis
 // Chroma subsampling (Variante A: YCoCg-R kept; Co/Cg spatially down/upsampled at the I/O edges, lossy).
 // 0 = 4:4:4 (default, full), 1 = 4:2:2 (chroma W/2 x H), 2 = 4:2:0 (chroma W/2 x H/2). Q0 stays 4:4:4.
 static int g_chroma_format = 0;
-// Plane count: 3 (Y, Co, Cg) by default, 4 when the stream carries an OPTIONAL alpha channel (ColourFlags bit 2). The
+// Plane count: 3 (Y, Co, Cg) by default, 4 when the stream carries an OPTIONAL alpha channel (ColorFlags bit 2). The
 // alpha plane (index 3) is ALWAYS full resolution like luma, regardless of chroma subsampling (4:4:4:4 / 4:2:2:4 /
 // 4:2:0:4). g_num_planes stays 3 unless a has-alpha header sets it, so non-alpha streams are byte-for-byte unchanged.
 #define MAX_PLANES 4
 static int g_num_planes = 3;
-// Optional alpha channel (ColourFlags bit 2 = has_alpha, bit 3 = premultiplied). When active, plane 3 is a full-res
+// Optional alpha channel (ColorFlags bit 2 = has_alpha, bit 3 = premultiplied). When active, plane 3 is a full-res
 // luma-like alpha plane coded into a SEPARATE section appended at the END of each frame (graceful-ignore: an old /
-// colour-only decoder reads the 3 colour planes and stops). g_alpha_qp is per-frame; -1 = use the frame's colour QP.
+// color-only decoder reads the 3 color planes and stops). g_alpha_qp is per-frame; -1 = use the frame's color QP.
 static int g_has_alpha = 0;
 static int g_alpha_qp = -1;
 static int g_premultiplied = 0;
 // --alpha-bleed: an encode-time preprocess that dilates the opaque RGB into the fully-transparent (alpha==0) pixels so
 // the invisible areas don't cost bits on their original high-frequency RGB and bilinear sampling never pulls a wrong
-// colour across an alpha edge (fringing). Alpha is untouched. g_alpha_bleed_max_passes 0 = fill until done, N = cap.
+// color across an alpha edge (fringing). Alpha is untouched. g_alpha_bleed_max_passes 0 = fill until done, N = cap.
 static int g_alpha_bleed = 0;
 static int g_alpha_bleed_max_passes = 0;
 // RGB pixel channel count: 3 = rgb24/rgb48 (legacy), 4 = rgba8/rgba16 (Option B: 32/64-bit aligned + alpha-capable).
-// The colour transform reads/writes R,G,B at stride g_channels; with 4 the 4th lane is alpha. Set per tool; default 3
+// The color transform reads/writes R,G,B at stride g_channels; with 4 the 4th lane is alpha. Set per tool; default 3
 // keeps every non-rgba path byte-for-byte unchanged.
 static int g_channels = 3;
 
@@ -3885,7 +3885,7 @@ static size_t assemble_frame(const int *block_count, uint32_t **sizes, const uin
                              const uint8_t *data, size_t data_length, uint8_t **out) {
   if (g_plane_bytes) {   // measure the per-plane byte share (luma vs the two chroma planes)
     size_t plane_bytes[3] = { 0, 0, 0 };
-    for (int plane = 0; plane < 3; plane++) {   // container level: 3 colour planes only (alpha = separate appended section, step 2)
+    for (int plane = 0; plane < 3; plane++) {   // container level: 3 color planes only (alpha = separate appended section, step 2)
       for (int block = 0; block < block_count[plane]; block++) {
         plane_bytes[plane] += sizes[plane][block];
       }
@@ -3899,7 +3899,7 @@ static size_t assemble_frame(const int *block_count, uint32_t **sizes, const uin
   // sizes are small and clustered so this shrinks the table several-fold, and it also lifts the u16 cap).
   BitWriter size_writer;
   bitwriter_init(&size_writer);
-  for (int plane = 0; plane < 3; plane++) {   // container level: 3 colour planes only (alpha = separate appended section, step 2)
+  for (int plane = 0; plane < 3; plane++) {   // container level: 3 color planes only (alpha = separate appended section, step 2)
     for (int block = 0; block < block_count[plane]; block++) {
       bitwriter_put_unsigned_exp_golomb(&size_writer, sizes[plane][block]);
     }
@@ -3954,7 +3954,7 @@ static const uint8_t *parse_frame_header(const uint8_t *frame, size_t frame_leng
   BitReader size_reader;
   bitreader_init(&size_reader, frame + cursor, size_blob_length);
   uint32_t running = 0;
-  for (int plane = 0; plane < 3; plane++) {   // container level: 3 colour planes only (alpha = separate appended section, step 2)
+  for (int plane = 0; plane < 3; plane++) {   // container level: 3 color planes only (alpha = separate appended section, step 2)
     for (int block = 0; block < block_count[plane]; block++) {
       offsets[plane][block] = running;
       running += bitreader_get_unsigned_exp_golomb(&size_reader);
@@ -3990,9 +3990,9 @@ static const uint8_t *parse_frame_header(const uint8_t *frame, size_t frame_leng
 
 // ---- optional alpha section (appended at the END of each frame, within FrameEntry.Size; graceful-ignore) ----
 // Layout: [alpha_qp:u8][alpha_size_blob_length:u32][alpha_size_blob: exp-golomb block sizes][alpha_data_length:u32][alpha_data].
-// Alpha is always full-res (like luma), so its block_count == the luma block count (not stored here). An OLD / colour-only
-// decoder stops after the 3 colour planes and never sees this; a new decoder parses it iff ColourFlags bit 2 (has_alpha).
-// Returns the new total frame size (the colour payload before it is byte-identical to the non-alpha stream).
+// Alpha is always full-res (like luma), so its block_count == the luma block count (not stored here). An OLD / color-only
+// decoder stops after the 3 color planes and never sees this; a new decoder parses it iff ColorFlags bit 2 (has_alpha).
+// Returns the new total frame size (the color payload before it is byte-identical to the non-alpha stream).
 static size_t append_alpha_section(uint8_t **frame, size_t frame_size, int alpha_qp,
                                    const uint32_t *alpha_sizes, int block_count,
                                    const uint8_t *alpha_data, size_t alpha_data_length) {
@@ -4024,7 +4024,7 @@ static size_t append_alpha_section(uint8_t **frame, size_t frame_size, int alpha
   return frame_size + section_size;
 }
 
-// Parse the appended alpha section (`section` points at the alpha_qp byte = the 3-plane colour payload's end).
+// Parse the appended alpha section (`section` points at the alpha_qp byte = the 3-plane color payload's end).
 // Prefix-sums the block sizes into alpha_offsets, returns alpha_qp via out_alpha_qp, and returns the alpha block data.
 // `section_length` is the byte length of the appended alpha section (pass SIZE_MAX to skip the bounds checks for trusted
 // just-built data). Returns NULL if any field would read past section_length (corrupt / truncated alpha section).
@@ -4311,7 +4311,7 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
   size_t total_size = assemble_frame(block_counts, offsets, mv_bytes, mv_length, writer.bytes, writer.length, &output);   // offsets[] holds per-block sizes
   free(mv_bytes);
 
-  // Optional alpha plane (full-res like luma): its own writer + appended section; the 3-plane colour payload above is unchanged.
+  // Optional alpha plane (full-res like luma): its own writer + appended section; the 3-plane color payload above is unchanged.
   if (g_has_alpha) {
     int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : base_quality;
     int alpha_block_count = block_counts[0];   // alpha is full-res, so its block count == the luma block count
@@ -4438,7 +4438,7 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
   free(co_temp);
   free(cg_temp);
 
-  // Optional alpha plane: the appended section sits at the colour payload's end (data + cdl); decode it into the rgba alpha lane.
+  // Optional alpha plane: the appended section sits at the color payload's end (data + cdl); decode it into the rgba alpha lane.
   if (g_has_alpha) {
     const uint8_t *alpha_section = data + cdl;
     uint32_t *alpha_offsets = checked_malloc((size_t)block_counts[0] * 4);
@@ -4713,7 +4713,7 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
     }
   }
 
-  // 1) colour-transform every frame; chroma is down-sampled to its plane size (4:4:4 -> a no-op).
+  // 1) color-transform every frame; chroma is down-sampled to its plane size (4:4:4 -> a no-op).
   int32_t *luma = checked_malloc((size_t)pixel_count * 4);
   int32_t *chroma_orange = checked_malloc((size_t)pixel_count * 4);
   int32_t *chroma_green = checked_malloc((size_t)pixel_count * 4);
@@ -4844,7 +4844,7 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
 // Decode a GOP: spatial-inverse each temporal-subband frame, then inverse the temporal transform
 // across the frames, then YCoCg-R -> RGB. rgb_out[f] receives the reconstructed frame in display order.
 // qpmaps (or NULL): the transmitted per-subband per-tile AQ maps, indexed by coding index. When non-NULL each subband
-// f applies its map (coding index base_coding_index + f) to the colour-plane quant steps exactly as the GPU decode
+// f applies its map (coding index base_coding_index + f) to the color-plane quant steps exactly as the GPU decode
 // does — so --verify (GPU vs CPU) holds for --aq 3D-DWT. Alpha is never AQ-modulated. NULL = no AQ (self-test callers).
 static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames, int width, int height,
                              int levels, int base_quality, uint8_t **rgb_out,
@@ -4916,7 +4916,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
         decode_motion_vectors(&mv_reader, fmv, motion_blocks_x, motion_blocks_y);
       }
     }
-    if (qpmaps) {   // verify: this subband's transmitted AQ map (coding index base + f), applied to the colour planes
+    if (qpmaps) {   // verify: this subband's transmitted AQ map (coding index base + f), applied to the color planes
       aq_set_current_map(qpmaps + ((size_t)(base_coding_index + f) * ((size_t)aq_cols * (size_t)aq_rows)), aq_cols, aq_rows);
     }
     for (int plane = 0; plane < g_num_planes; plane++) {
@@ -5170,7 +5170,7 @@ static int alpha_selftest(void) {
 
   g_channels = 4;     // rgba ingest + output
   g_has_alpha = 1;    // activate the alpha plane
-  g_alpha_qp = -1;    // alpha follows the colour QP
+  g_alpha_qp = -1;    // alpha follows the color QP
 
   // Q0: lossless round-trip — both RGB and the alpha lane must be bit-exact.
   length = encode_frame_colordiff(source, width, height, 5, 0, &encoded, NULL, 0);

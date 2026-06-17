@@ -347,7 +347,7 @@ static void parse_slice(const uint8_t *rbsp, size_t length, const Sps *sps, cons
       } while (idc != 3);
     }
   }
-  // pred_weight_table() - parse + discard (chroma_array_type == chroma_format_idc here: no separate colour planes)
+  // pred_weight_table() - parse + discard (chroma_array_type == chroma_format_idc here: no separate color planes)
   int chroma_array_type = sps->chroma_format_idc;
   int has_weights = (((slice->type == 0) || (slice->type == 3)) && pps->weighted_pred) ||
                     ((slice->type == 1) && (pps->weighted_bipred == 1));
@@ -564,7 +564,7 @@ static uint32_t *load_spirv(const char *path, size_t *out_size) {
   return code;
 }
 
-// synchronization2 image layout/access barrier on a colour image.
+// synchronization2 image layout/access barrier on a color image.
 static void image_barrier(VkCommandBuffer command_buffer, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout,
                           VkAccessFlags2 src_access, VkAccessFlags2 dst_access, VkPipelineStageFlags2 src_stage, VkPipelineStageFlags2 dst_stage) {
   VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
