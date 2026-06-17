@@ -1433,11 +1433,27 @@ static size_t fwacodec_encode(const int16_t *interleaved, long frame_count, int 
   return cursor;
 }
 
-static int16_t *fwacodec_decode(const uint8_t *stream, long *frame_count_out, int *channels_out, int *sample_rate_out) {
+static int16_t *fwacodec_decode(const uint8_t *stream, size_t size, long *frame_count_out, int *channels_out, int *sample_rate_out) {
   FwaHeader header;
+  if (size < sizeof header) {
+    fprintf(stderr, "fwa stream too small for its header\n");
+    exit(1);
+  }
   memcpy(&header, stream, sizeof header);
   if (header.magic != FWA_MAGIC) {
     fprintf(stderr, "not a fwa stream\n");
+    exit(1);
+  }
+  if ((header.channels < 1) || (header.channels > MAX_CHANNELS)) {
+    fprintf(stderr, "fwa: channel count out of range\n");
+    exit(1);
+  }
+  if (header.block_samples != BLOCK_SAMPLES) {
+    fprintf(stderr, "fwa: unsupported block size\n");
+    exit(1);
+  }
+  if (header.frame_count > (uint64_t)INT32_MAX) {
+    fprintf(stderr, "fwa: implausible frame count\n");
     exit(1);
   }
   long frame_count = (long)header.frame_count;
@@ -1448,6 +1464,11 @@ static int16_t *fwacodec_decode(const uint8_t *stream, long *frame_count_out, in
   int packet = ((header.flags & 2) != 0);
   int lms = ((header.flags & 8) != 0);
   int lms_taps = (int)((header.flags >> 8) & 0xFF);
+  if (lms_taps < 1) {                              // an out-of-range tap count would index the LMS history / weights out of bounds
+    lms_taps = 1;
+  } else if (lms_taps > LMS_MAX_TAPS) {
+    lms_taps = LMS_MAX_TAPS;
+  }
   int pairing = ((header.flags & 16) != 0);
   float step = (float)((quality > 0) ? quality : 1);
   size_t cursor = sizeof header;
@@ -1456,11 +1477,27 @@ static int16_t *fwacodec_decode(const uint8_t *stream, long *frame_count_out, in
   int pair_mode[MAX_CHANNELS / 2];
   int pair_count = 0;
   if (pairing) {
+    if ((cursor + 1) > size) {
+      fprintf(stderr, "fwa: truncated pairing header\n");
+      exit(1);
+    }
     pair_count = stream[cursor++];
+    if (pair_count > (MAX_CHANNELS / 2)) {
+      fprintf(stderr, "fwa: too many channel pairs\n");
+      exit(1);
+    }
+    if ((cursor + ((size_t)pair_count * 3)) > size) {
+      fprintf(stderr, "fwa: truncated pairing plan\n");
+      exit(1);
+    }
     for (int k = 0; k < pair_count; k++) {
       pairs[k][0] = stream[cursor++];
       pairs[k][1] = stream[cursor++];
       pair_mode[k] = stream[cursor++];
+      if ((pairs[k][0] >= channels) || (pairs[k][1] >= channels)) {   // pair indices must address real channels (planes[])
+        fprintf(stderr, "fwa: pair channel index out of range\n");
+        exit(1);
+      }
     }
   }
 
@@ -1477,15 +1514,31 @@ static int16_t *fwacodec_decode(const uint8_t *stream, long *frame_count_out, in
   for (long start = 0; start < frame_count; start += BLOCK_SAMPLES) {
     int length = (int)(((start + BLOCK_SAMPLES) <= frame_count) ? BLOCK_SAMPLES : (frame_count - start));
     for (int channel = 0; channel < channels; channel++) {
+      if ((cursor + 4) > size) {
+        fprintf(stderr, "fwa: truncated block length\n");
+        exit(1);
+      }
       uint32_t encoded_length;
       memcpy(&encoded_length, &stream[cursor], 4);
       cursor += 4;
+      if (encoded_length > (size - cursor)) {              // the block payload must stay within the stream
+        fprintf(stderr, "fwa: block extends past the stream\n");
+        exit(1);
+      }
       const uint8_t *coeff_bytes = &stream[cursor];
       size_t coeff_length = encoded_length;
       const uint8_t *tree_bytes = NULL;
       if (packet) {                                        // payload = [u16 tree_byte_len][tree][coeff bytes]
+        if (encoded_length < 2) {
+          fprintf(stderr, "fwa: truncated packet block\n");
+          exit(1);
+        }
         uint16_t tree_byte_len16;
         memcpy(&tree_byte_len16, &stream[cursor], 2);
+        if (((size_t)2 + tree_byte_len16) > encoded_length) {
+          fprintf(stderr, "fwa: packet tree larger than its block\n");
+          exit(1);
+        }
         tree_bytes = &stream[cursor + 2];
         coeff_bytes = &stream[cursor + 2 + tree_byte_len16];
         coeff_length = encoded_length - (2 + (size_t)tree_byte_len16);
@@ -1681,7 +1734,7 @@ int main(int argc, char **argv) {
     long decoded_count = 0;
     int decoded_channels = 0;
     int decoded_rate = 0;
-    int16_t *decoded = fwacodec_decode(stream, &decoded_count, &decoded_channels, &decoded_rate);
+    int16_t *decoded = fwacodec_decode(stream, stream_length, &decoded_count, &decoded_channels, &decoded_rate);
     size_t sample_count = (size_t)(frame_count * channels);
     size_t raw_bytes = sample_count * 2;
     double seconds = (double)frame_count / sample_rate;
@@ -1777,7 +1830,7 @@ int main(int argc, char **argv) {
     long frame_count = 0;
     int channels = 0;
     int sample_rate = 0;
-    int16_t *pcm = fwacodec_decode(stream, &frame_count, &channels, &sample_rate);
+    int16_t *pcm = fwacodec_decode(stream, size, &frame_count, &channels, &sample_rate);
     write_wav(argv[3], pcm, frame_count, channels, sample_rate);
     printf("wrote %s: %dch %dHz | %.1f s\n", argv[3], channels, sample_rate, (double)frame_count / sample_rate);
     free(stream);
@@ -1803,10 +1856,9 @@ uint8_t *fwa_encode(const short *pcm, int samples, int channels, int sample_rate
 }
 
 short *fwa_decode(const uint8_t *blob, uint64_t size, int *channels, int *sample_rate, int *samples) {
-  (void)size;   // fwacodec_decode reads the frame/channel/rate counts from the stream header
   long frame_count = 0;
   int decoded_channels = 0, decoded_rate = 0;
-  int16_t *pcm = fwacodec_decode(blob, &frame_count, &decoded_channels, &decoded_rate);
+  int16_t *pcm = fwacodec_decode(blob, (size_t)size, &frame_count, &decoded_channels, &decoded_rate);
   *channels = decoded_channels;
   *sample_rate = decoded_rate;
   *samples = (int)frame_count;

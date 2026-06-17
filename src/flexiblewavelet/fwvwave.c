@@ -430,6 +430,10 @@ static short *qoal_decode(const uint8_t *blob, uint64_t size, int *channels, int
       free(pcm);
       return NULL;
     }
+    if (((long)written + (long)frame_len) > (long)total_samples) {   // the frames must not decode past the declared total
+      free(pcm);
+      return NULL;
+    }
     QoaLms lms[QOA_MAX_CHANNELS];
     for (int c = 0; c < frame_channels; c++) {
       uint64_t history = load_u64_le(blob + p);
