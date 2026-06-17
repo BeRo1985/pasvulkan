@@ -524,6 +524,18 @@ begin
  end;
 {$endif}
 
+ // backward seek (wavelet path): the decode chain is forward-only (intra / P / B references), so to land on an earlier
+ // display frame we reset the decoder to the start of the stream and re-decode forward to the target — one frame per
+ // tick, exactly like a forward catch-up. (The H.264 backend handles a backward target inside EnsureDisplayFrame above,
+ // so this only applies here.) Audio re-anchoring is the caller's master-clock / SeekAudio concern, not this video poll.
+ if fTargetIndex<fLastDecodedIndex then begin
+  if assigned(fDecoder) then begin
+   fDecoder.ResetForReplay;
+  end;
+  fLastDecodedIndex:=-1;
+  fPreparedIndex:=-1;
+ end;
+
  // already at (or past) the target -> nothing new to decode this tick
  if fLastDecodedIndex>=fTargetIndex then begin
   result:=false;
