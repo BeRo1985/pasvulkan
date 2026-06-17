@@ -351,8 +351,8 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        // Optional alpha (colour_flags bit2): one intra, full-res 8-bit plane appended per frame. The colour is decoded
        // as usual into coeff[0..2]; ParseAlphaSection + UploadAlpha* stage the appended section, RecordAlphaDecode GPU-
        // decodes it into coeff[3], and the colour pass swaps to fPipeColourAlpha (which writes coeff[3] into output A).
-       procedure ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32);
-       procedure UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aSectionOffset:TpvSizeUInt);
+       function ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32):boolean; // False = corrupt / truncated alpha section
+       procedure UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt);
        procedure UploadAlphaForDisplayedFrame(const aCodingIndex:TpvInt32);
        procedure RecordAlphaDecode(const aCommandBuffer:TpvVulkanCommandBuffer);
        // hierarchical B-frames (Stage E3). The Active* helpers return the shared buffer/set (fBufferRingSlot<0,
@@ -1384,7 +1384,9 @@ begin
   end;
   Offsets[Plane]:=PpvUInt32Array(@fOffsetScratch[Plane][0]);
  end;
- ParseFrameHeader(PpvUInt8Array(@fFrameScratch[0]),BlockCount,Offsets,LeadingBlockCount,MVDataOffset,MVLength,BlockDataOffset);
+ if not ParseFrameHeader(PpvUInt8Array(@fFrameScratch[0]),RawLength,BlockCount,Offsets,LeadingBlockCount,MVDataOffset,MVLength,BlockDataOffset) then begin
+  raise EpvFlexibleWaveletVideoDecoder.Create('Corrupt frame header');
+ end;
 
  // Upload the per-plane offset tables, then the packed bitplane bytes (data_length is the u32 right before
  // the block data). The host-visible buffers are pooled into shared memory chunks where only one map per
@@ -1409,7 +1411,7 @@ begin
  // optional alpha (I/P colordiff/coefdiff path): the appended alpha section sits right after the colour block data,
  // already in fFrameScratch -> stage it for RecordAlphaDecode (no re-read; the colour and alpha are the same frame).
  if fHasAlpha then begin
-  UploadAlphaFromBuffer(PpvUInt8Array(@fFrameScratch[0]),BlockDataOffset+DataLength);
+  UploadAlphaFromBuffer(PpvUInt8Array(@fFrameScratch[0]),RawLength,BlockDataOffset+DataLength);
  end;
 
  // colordiff (B) P-frame: decode the motion-vector field and upload it for mc.comp. mv_length=0 means the
@@ -1669,22 +1671,34 @@ begin
 
 end;
 
-procedure TpvFlexibleWaveletVideoDecoder.ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32);
+function TpvFlexibleWaveletVideoDecoder.ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32):boolean;
 var Cursor:TpvSizeUInt;
     SizeBlobLength,Running:TpvUInt32;
     SizeReader:TBitReader;
     Block:TpvInt32;
 begin
 
+ result:=false;
+ aAlphaQP:=0;
+ aAlphaDataOffset:=0;
+ aAlphaDataLength:=0;
+
  // The appended section (mirrors C parse_alpha_section): [u8 alpha_qp][u32 size_blob_length][size blob: unsigned
  // Exp-Golomb per-block sizes][u32 alpha_data_length][alpha block data]. The alpha is full-res, so block_count is the
- // luma block count. The per-block sizes prefix-sum into the alpha offset table (fAlphaOffsetScratch).
+ // luma block count. The per-block sizes prefix-sum into the alpha offset table (fAlphaOffsetScratch). Returns False
+ // (without dereferencing past the frame) if any field would read beyond aFrameLength.
+ if (aSectionOffset+5)>aFrameLength then begin // alpha_qp (1) + size_blob_length (4)
+  exit;
+ end;
  Cursor:=aSectionOffset;
  aAlphaQP:=aFrameBuffer^[Cursor];
  inc(Cursor,1);
 
  SizeBlobLength:=ReadU32LE(aFrameBuffer,Cursor);
  inc(Cursor,4);
+ if (Cursor+TpvSizeUInt(SizeBlobLength))>aFrameLength then begin
+  exit;
+ end;
  if TpvSizeUInt(Length(fAlphaOffsetScratch))<TpvSizeUInt(aBlockCount) then begin
   SetLength(fAlphaOffsetScratch,aBlockCount);
  end;
@@ -1696,13 +1710,21 @@ begin
  end;
  inc(Cursor,SizeBlobLength);
 
+ if (Cursor+4)>aFrameLength then begin
+  exit;
+ end;
  aAlphaDataLength:=ReadU32LE(aFrameBuffer,Cursor);
  inc(Cursor,4);
  aAlphaDataOffset:=Cursor;
+ if (Cursor+TpvSizeUInt(aAlphaDataLength))>aFrameLength then begin // the alpha block data itself must fit
+  exit;
+ end;
+
+ result:=true;
 
 end;
 
-procedure TpvFlexibleWaveletVideoDecoder.UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aSectionOffset:TpvSizeUInt);
+procedure TpvFlexibleWaveletVideoDecoder.UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt);
 var BlockCount,StepSlot:TpvInt32;
     AlphaDataOffset:TpvSizeUInt;
     AlphaDataLength:TpvUInt32;
@@ -1719,7 +1741,9 @@ begin
  end;
 
  BlockCount:=BlockCountX(fWidth)*BlockCountY(fHeight); // alpha is full-res -> the luma block count
- ParseAlphaSection(aFrameBuffer,aSectionOffset,BlockCount,fAlphaQP,AlphaDataOffset,AlphaDataLength);
+ if not ParseAlphaSection(aFrameBuffer,aFrameLength,aSectionOffset,BlockCount,fAlphaQP,AlphaDataOffset,AlphaDataLength) then begin
+  raise EpvFlexibleWaveletVideoDecoder.Create('Corrupt alpha section');
+ end;
  fAlphaLossless:=fAlphaQP=0;
 
  // alpha block offsets -> this slot's offset buffer
@@ -1795,10 +1819,12 @@ begin
   end;
   Offsets[Plane]:=PpvUInt32Array(@fOffsetScratch[Plane][0]);
  end;
- ParseFrameHeader(PpvUInt8Array(@fAlphaFrameScratch[0]),BlockCount,Offsets,LeadingBlockCount,MVDataOffset,MVLength,BlockDataOffset);
+ if not ParseFrameHeader(PpvUInt8Array(@fAlphaFrameScratch[0]),RawLength,BlockCount,Offsets,LeadingBlockCount,MVDataOffset,MVLength,BlockDataOffset) then begin
+  raise EpvFlexibleWaveletVideoDecoder.Create('Corrupt frame header');
+ end;
  DataLength:=ReadU32LE(PpvUInt8Array(@fAlphaFrameScratch[0]),BlockDataOffset-4);
 
- UploadAlphaFromBuffer(PpvUInt8Array(@fAlphaFrameScratch[0]),BlockDataOffset+DataLength);
+ UploadAlphaFromBuffer(PpvUInt8Array(@fAlphaFrameScratch[0]),RawLength,BlockDataOffset+DataLength);
 
 end;
 
@@ -2110,7 +2136,9 @@ begin
   end;
   Offsets[Plane]:=PpvUInt32Array(@fOffsetScratch[Plane][0]);
  end;
- ParseFrameHeader(PpvUInt8Array(@fFrameScratch[0]),BlockCount,Offsets,LeadingBlockCount,MVDataOffset,MVLength,BlockDataOffset);
+ if not ParseFrameHeader(PpvUInt8Array(@fFrameScratch[0]),RawLength,BlockCount,Offsets,LeadingBlockCount,MVDataOffset,MVLength,BlockDataOffset) then begin
+  raise EpvFlexibleWaveletVideoDecoder.Create('Corrupt frame header');
+ end;
  for Plane:=0 to fNumPlanes-1 do begin
   DataPointer:=PpvUInt8Array(ActiveOffsetBuffer(Plane).Memory.MapMemory);
   try
@@ -2712,7 +2740,9 @@ begin
   end;
   Offsets[Plane]:=PpvUInt32Array(@fOffsetScratch[Plane][0]);
  end;
- ParseFrameHeader(PpvUInt8Array(@fFrameScratch[0]),BlockCount,Offsets,LeadingBlockCount,MVDataOffset,MVLength,BlockDataOffset);
+ if not ParseFrameHeader(PpvUInt8Array(@fFrameScratch[0]),RawLength,BlockCount,Offsets,LeadingBlockCount,MVDataOffset,MVLength,BlockDataOffset) then begin
+  raise EpvFlexibleWaveletVideoDecoder.Create('Corrupt frame header');
+ end;
  for Plane:=0 to fNumPlanes-1 do begin
   DataPointer:=PpvUInt8Array(fOffsetBuffer[Plane].Memory.MapMemory);
   try

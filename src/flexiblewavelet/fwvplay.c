@@ -698,12 +698,15 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
                            const int *block_count_plane, void **offset_map, void *data_map, void **step_map, int *step,
                            int width, int height, int levels, int quality, int lossless,
                            int subband_in_gop, int gop_count, int temporal_levels, int *mctf_mv_out) {
-  read_frame(file, &index[source_index], frame_buffer, frame_buffer_capacity);
+  size_t frame_len = read_frame(file, &index[source_index], frame_buffer, frame_buffer_capacity);
   uint32_t *parse_offsets[MAX_PLANES] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
   int parsed_block_count;
   const uint8_t *mv_data;
   uint32_t mv_length;
-  const uint8_t *frame_data = parse_frame_header(*frame_buffer, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length, NULL);
+  const uint8_t *frame_data = parse_frame_header(*frame_buffer, frame_len, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length, NULL);
+  if (!frame_data) {
+    die("corrupt subband frame header");
+  }
   if (mctf_mv_out && (mv_length > 0)) {   // MCTF high-pass frame: decode its luma MV field for the MC-Haar temporal inverse
     int motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block, motion_blocks_y = ((height + g_motion_block) - 1) / g_motion_block;
     if (g_mv_codec == 1) {
@@ -739,7 +742,7 @@ static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32
                                      const int *block_count_plane, int width, int height, int levels, int *step, void *coeff_map3) {
   uint8_t *fb = 0;   // own buffer: the shared frame_buffer is in use by the 3D-DWT prefetch / B decode-ahead
   size_t fb_cap = 0;
-  read_frame(file, &index[entry_index], &fb, &fb_cap);
+  size_t frame_len = read_frame(file, &index[entry_index], &fb, &fb_cap);
   uint32_t *tmp_off[MAX_PLANES] = { 0, 0, 0, 0 };
   for (int p = 0; p < 3; p++) {
     tmp_off[p] = checked_malloc((size_t)block_count_plane[p] * 4);
@@ -747,13 +750,19 @@ static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32
   int parsed_block_count;
   const uint8_t *mv_data;
   uint32_t mv_length, cdl;
-  const uint8_t *frame_data = parse_frame_header(fb, block_count_plane, &parsed_block_count, tmp_off, &mv_data, &mv_length, &cdl);
+  const uint8_t *frame_data = parse_frame_header(fb, frame_len, block_count_plane, &parsed_block_count, tmp_off, &mv_data, &mv_length, &cdl);
+  if (!frame_data) {
+    die("corrupt alpha-carrier frame header");
+  }
   int a_block_count = block_count_x(width) * block_count_y(height);
   uint32_t *a_off = checked_malloc((size_t)a_block_count * 4);
   float *float_scratch = checked_malloc((size_t)width * height * sizeof(float));
   int alpha_qp;
   uint32_t alpha_data_length;
-  const uint8_t *alpha_data = parse_alpha_section(frame_data + cdl, a_off, a_block_count, &alpha_qp, &alpha_data_length);
+  const uint8_t *alpha_data = parse_alpha_section(frame_data + cdl, frame_len - (size_t)((frame_data + cdl) - fb), a_off, a_block_count, &alpha_qp, &alpha_data_length);
+  if (!alpha_data) {
+    die("corrupt alpha section");
+  }
   int32_t *alpha_coeff = checked_malloc((size_t)width * height * 4);   // decode into a local buffer (like decode_gop_3ddwt), then copy to the host coeff[3]
   decode_plane(alpha_data, a_off, alpha_coeff, width, height, alpha_data_length);
   build_quantization_steps(step, width, height, levels, alpha_qp);   // alpha is NOT AQ-modulated: the encoder quantises it with plain alpha_qp steps
@@ -945,7 +954,7 @@ static void bstream_decode_until(BStream *bs, int target_poc) {
   while (!bs->rgb[target_poc]) {
     int c = bs->cursor;
     const FrameEntry *entry = &bs->index[c];
-    read_frame(bs->file, entry, &bs->payload, &bs->payload_cap);
+    size_t payload_length = read_frame(bs->file, entry, &bs->payload, &bs->payload_cap);
     int32_t **ref0 = (entry->ref0 >= 0) ? &bs->dpb[entry->ref0 * g_num_planes] : NULL;
     int32_t **ref1 = (entry->ref1 >= 0) ? &bs->dpb[entry->ref1 * g_num_planes] : NULL;
     int weight0 = 0, weight1 = 0;   // weights derived from the temporal (POC) distances, as in build_b_range
@@ -960,7 +969,7 @@ static void bstream_decode_until(BStream *bs, int target_poc) {
       bs->dpb[(c * g_num_planes) + p] = checked_malloc((size_t)bs->plane_pixels[p] * 4);
     }
     bs->rgb[entry->poc] = checked_malloc(bs->frame_bytes);
-    decode_frame_bidi(bs->payload, bs->width, bs->height, bs->levels, entry->quality,
+    decode_frame_bidi(bs->payload, payload_length, bs->width, bs->height, bs->levels, entry->quality,
                       ref0, ref1, weight0, weight1, &bs->dpb[c * g_num_planes], bs->rgb[entry->poc]);
     bs->cursor++;
     // Evict DPB entries no longer referenced by any future frame (the RGB display copy is separate).
@@ -2209,13 +2218,16 @@ int main(int argc, char **argv) {
     // for 3D-DWT (the present only colour-converts a GOP slot) and for the B-stream (its CPU coding-order
     // decoder reads payloads itself) — reusing the shared data/offset buffers here would race those paths.
     if (!mode_3ddwt && !has_bframes) {
-      read_frame(file, &index[frame_index], &frame_buffer, &frame_buffer_capacity);
+      size_t ip_frame_len = read_frame(file, &index[frame_index], &frame_buffer, &frame_buffer_capacity);
       // Prefix-sum the u16 sizes straight into the (host-visible) GPU offset buffers, then upload data.
       uint32_t *parse_offsets[MAX_PLANES] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
       int parsed_block_count;
       const uint8_t *mv_data;
       uint32_t mv_length;
-      const uint8_t *frame_data = parse_frame_header(frame_buffer, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length, NULL);
+      const uint8_t *frame_data = parse_frame_header(frame_buffer, ip_frame_len, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length, NULL);
+      if (!frame_data) {
+        die("corrupt frame header");
+      }
       // Decode the motion vectors for mc.comp (colordiff P-frames). Decode into the cached scratch (random
       // neighbour reads in the predictor would otherwise be uncached PCIe reads from the write-combined VRAM
       // mv_buffer — ~23 ms/frame at 4K), then one memcpy to VRAM. (Same fix as the B decode-ahead path.)
@@ -2243,7 +2255,10 @@ int main(int argc, char **argv) {
         int a_block_count = block_count_x(width) * block_count_y(height);
         uint32_t *a_off = (uint32_t *)offset_map[3];
         int alpha_qp;
-        const uint8_t *alpha_data = parse_alpha_section(frame_data + data_length, a_off, a_block_count, &alpha_qp, NULL);
+        const uint8_t *alpha_data = parse_alpha_section(frame_data + data_length, ip_frame_len - (size_t)((frame_data + data_length) - frame_buffer), a_off, a_block_count, &alpha_qp, NULL);
+        if (!alpha_data) {
+          die("corrupt alpha section");
+        }
         uint32_t alpha_data_length;
         memcpy(&alpha_data_length, alpha_data - 4, 4);
         memcpy((uint8_t *)data_map + data_length, alpha_data, alpha_data_length);
@@ -2327,12 +2342,15 @@ int main(int argc, char **argv) {
         double bdec_t0 = fwv_time ? now_milliseconds() : 0.0;   // CPU-prep timer (MV parse + rebinds + command recording)
         int c = gcursor;
         const FrameEntry *entry = &index[c];
-        read_frame(file, entry, &gframe_buffer, &gframe_cap);
+        size_t b_frame_len = read_frame(file, entry, &gframe_buffer, &gframe_cap);
         uint32_t *parse_offsets[MAX_PLANES] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
         int parsed_block_count;
         const uint8_t *mv_data;
         uint32_t mv_length;
-        const uint8_t *frame_data = parse_frame_header(gframe_buffer, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length, NULL);
+        const uint8_t *frame_data = parse_frame_header(gframe_buffer, b_frame_len, block_count_plane, &parsed_block_count, parse_offsets, &mv_data, &mv_length, NULL);
+        if (!frame_data) {
+          die("corrupt B frame header");
+        }
         uint32_t data_length;
         memcpy(&data_length, frame_data - 4, 4);
         memcpy(data_map, frame_data, data_length);

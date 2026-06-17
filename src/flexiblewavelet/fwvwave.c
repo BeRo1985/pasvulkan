@@ -3929,8 +3929,14 @@ static size_t assemble_frame(const int *block_count, uint32_t **sizes, const uin
 // Parse a frame payload header: prefix-sum the per-plane u16 sizes into the (continuous) per-plane
 // offset arrays, hand back the coded motion-vector blob (if any), and return a pointer to the block data.
 // block_count is per-plane (caller computes it from chroma_format + dims, since it is not stored per frame).
-static const uint8_t *parse_frame_header(const uint8_t *frame, const int *block_count, int *out_block_count, uint32_t *offsets[3],
+// `frame_length` is the byte length of the decompressed frame payload (pass SIZE_MAX to skip the bounds checks for
+// trusted, just-built data — the encoder / self-test reparse their own output). Returns NULL if any field would read
+// past frame_length, so a corrupt / truncated container frame fails cleanly instead of walking the cursor out of bounds.
+static const uint8_t *parse_frame_header(const uint8_t *frame, size_t frame_length, const int *block_count, int *out_block_count, uint32_t *offsets[3],
                                          const uint8_t **out_mv_data, uint32_t *out_mv_length, uint32_t *out_data_length) {
+  if (frame_length < 8) {   // leading_count (4) + size_blob_length (4)
+    return NULL;
+  }
   uint32_t leading_count;
   memcpy(&leading_count, frame, 4);   // = luma block_count (sanity; the per-plane counts come from the caller)
   *out_block_count = (int)leading_count;
@@ -3938,6 +3944,9 @@ static const uint8_t *parse_frame_header(const uint8_t *frame, const int *block_
   uint32_t size_blob_length;
   memcpy(&size_blob_length, frame + cursor, 4);   // unsigned-Exp-Golomb-coded per-block byte sizes
   cursor += 4;
+  if ((cursor + (size_t)size_blob_length) > frame_length) {
+    return NULL;
+  }
   BitReader size_reader;
   bitreader_init(&size_reader, frame + cursor, size_blob_length);
   uint32_t running = 0;
@@ -3948,18 +3957,30 @@ static const uint8_t *parse_frame_header(const uint8_t *frame, const int *block_
     }
   }
   cursor += size_blob_length;
+  if ((cursor + 4) > frame_length) {
+    return NULL;
+  }
   uint32_t mv_length;
   memcpy(&mv_length, frame + cursor, 4);
   cursor += 4;
+  if ((cursor + (size_t)mv_length) > frame_length) {
+    return NULL;
+  }
   *out_mv_data = frame + cursor;
   *out_mv_length = mv_length;
   cursor += mv_length;
+  if ((cursor + 4) > frame_length) {
+    return NULL;
+  }
   uint32_t data_length;
   memcpy(&data_length, frame + cursor, 4);   // the block-data byte length, stored just before the data
   if (out_data_length) {
     *out_data_length = data_length;
   }
   cursor += 4;
+  if ((cursor + (size_t)data_length) > frame_length) {   // the block data itself must fit within the frame
+    return NULL;
+  }
   return frame + cursor;
 }
 
@@ -4001,13 +4022,21 @@ static size_t append_alpha_section(uint8_t **frame, size_t frame_size, int alpha
 
 // Parse the appended alpha section (`section` points at the alpha_qp byte = the 3-plane colour payload's end).
 // Prefix-sums the block sizes into alpha_offsets, returns alpha_qp via out_alpha_qp, and returns the alpha block data.
-static const uint8_t *parse_alpha_section(const uint8_t *section, uint32_t *alpha_offsets, int block_count, int *out_alpha_qp, uint32_t *out_data_length) {
+// `section_length` is the byte length of the appended alpha section (pass SIZE_MAX to skip the bounds checks for trusted
+// just-built data). Returns NULL if any field would read past section_length (corrupt / truncated alpha section).
+static const uint8_t *parse_alpha_section(const uint8_t *section, size_t section_length, uint32_t *alpha_offsets, int block_count, int *out_alpha_qp, uint32_t *out_data_length) {
+  if (section_length < 5) {   // alpha_qp (1) + size_blob_length (4)
+    return NULL;
+  }
   size_t cursor = 0;
   *out_alpha_qp = section[cursor];
   cursor += 1;
   uint32_t size_blob_length;
   memcpy(&size_blob_length, section + cursor, 4);
   cursor += 4;
+  if ((cursor + (size_t)size_blob_length) > section_length) {
+    return NULL;
+  }
   BitReader size_reader;
   bitreader_init(&size_reader, section + cursor, size_blob_length);
   uint32_t running = 0;
@@ -4016,12 +4045,18 @@ static const uint8_t *parse_alpha_section(const uint8_t *section, uint32_t *alph
     running += bitreader_get_unsigned_exp_golomb(&size_reader);
   }
   cursor += size_blob_length;
+  if ((cursor + 4) > section_length) {
+    return NULL;
+  }
   uint32_t alpha_data_length;   // the alpha block-data length (used to bound the block bitreaders against the buffer end)
   memcpy(&alpha_data_length, section + cursor, 4);
   if (out_data_length) {
     *out_data_length = alpha_data_length;
   }
   cursor += 4;
+  if ((cursor + (size_t)alpha_data_length) > section_length) {
+    return NULL;
+  }
   return section + cursor;
 }
 
@@ -4117,7 +4152,10 @@ static void decode_frame_coefdiff(const uint8_t *frame, size_t length, int width
   const uint8_t *mv_data;
   uint32_t mv_length;
   uint32_t data_length;
-  const uint8_t *data = parse_frame_header(frame, (int[3]){ block_count, block_count, block_count }, &parsed_block_count, offsets, &mv_data, &mv_length, &data_length);   // coefdiff: 4:4:4
+  const uint8_t *data = parse_frame_header(frame, length, (int[3]){ block_count, block_count, block_count }, &parsed_block_count, offsets, &mv_data, &mv_length, &data_length);   // coefdiff: 4:4:4
+  if (!data) {
+    die("corrupt coefdiff frame header");
+  }
   (void)mv_data;
   (void)mv_length;
 
@@ -4337,7 +4375,10 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
   const uint8_t *mv_data;
   uint32_t mv_length;
   uint32_t cdl;
-  const uint8_t *data = parse_frame_header(frame, block_counts, &parsed_block_count, offsets, &mv_data, &mv_length, &cdl);
+  const uint8_t *data = parse_frame_header(frame, length, block_counts, &parsed_block_count, offsets, &mv_data, &mv_length, &cdl);
+  if (!data) {
+    die("corrupt colordiff frame header");
+  }
 
   // Decode the per-16x16-block motion vectors (P-frame) and motion-compensate the previous frame.
   int motion_blocks_x = ((width + MOTION_BLOCK) - 1) / MOTION_BLOCK, motion_blocks_y = ((height + MOTION_BLOCK) - 1) / MOTION_BLOCK;
@@ -4399,7 +4440,10 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
     uint32_t *alpha_offsets = checked_malloc((size_t)block_counts[0] * 4);
     int alpha_qp;
     uint32_t alpha_data_length;
-    const uint8_t *alpha_data = parse_alpha_section(alpha_section, alpha_offsets, block_counts[0], &alpha_qp, &alpha_data_length);
+    const uint8_t *alpha_data = parse_alpha_section(alpha_section, length - (size_t)(alpha_section - frame), alpha_offsets, block_counts[0], &alpha_qp, &alpha_data_length);
+    if (!alpha_data) {
+      die("corrupt alpha section");
+    }
     build_quantization_steps(step, width, height, levels, alpha_qp);
     maybe_apply_tile_aq(step, width, height, levels);
     int32_t *alpha = checked_malloc((size_t)pixel_count * 4);
@@ -4521,7 +4565,7 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
 
 // Decode a bidi/colordiff frame: rebuild the same weighted prediction from ref0/ref1, add the decoded
 // residual. recon_out[3] receives the reconstructed YCoCg (for the DPB); rgb (if non-NULL) gets the frame.
-static void decode_frame_bidi(const uint8_t *frame, int width, int height, int levels, int base_quality,
+static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, int height, int levels, int base_quality,
                               int32_t **ref0, int32_t **ref1, int weight0, int weight1,
                               int32_t **recon_out, uint8_t *rgb) {
   int pixel_count = width * height;
@@ -4542,7 +4586,10 @@ static void decode_frame_bidi(const uint8_t *frame, int width, int height, int l
   const uint8_t *mv_data;
   uint32_t mv_length;
   uint32_t data_length;
-  const uint8_t *data = parse_frame_header(frame, block_counts, &parsed_block_count, offsets, &mv_data, &mv_length, &data_length);
+  const uint8_t *data = parse_frame_header(frame, length, block_counts, &parsed_block_count, offsets, &mv_data, &mv_length, &data_length);
+  if (!data) {
+    die("corrupt bidi frame header");
+  }
   (void)mv_data;
   (void)mv_length;
   int has_prediction = (ref0 != NULL);
@@ -4847,7 +4894,10 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
     const uint8_t *mv_data;
     uint32_t mv_length;
     uint32_t cdl;
-    const uint8_t *data = parse_frame_header(frames[f], plane_blocks, &parsed_block_count, offsets, &mv_data, &mv_length, &cdl);
+    const uint8_t *data = parse_frame_header(frames[f], frame_len[f], plane_blocks, &parsed_block_count, offsets, &mv_data, &mv_length, &cdl);
+    if (!data) {
+      die("corrupt 3D-DWT frame header");
+    }
     if (g_mctf && (mv_length > 0)) {   // high-pass frame: decode its MV field for the temporal inverse warp
       int *fmv = &frame_mv[((size_t)f * motion_blocks) * 2];
       if (g_mv_codec == 1) {
@@ -4883,7 +4933,10 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
       uint32_t *alpha_offsets = checked_malloc((size_t)a_block_count * 4);
       int alpha_qp;
       uint32_t alpha_data_length;
-      const uint8_t *alpha_data = parse_alpha_section(data + cdl, alpha_offsets, a_block_count, &alpha_qp, &alpha_data_length);
+      const uint8_t *alpha_data = parse_alpha_section(data + cdl, frame_len[f] - (size_t)((data + cdl) - frames[f]), alpha_offsets, a_block_count, &alpha_qp, &alpha_data_length);
+      if (!alpha_data) {
+        die("corrupt alpha section");
+      }
       decode_plane(alpha_data, alpha_offsets, coefficients, width, height, alpha_data_length);
       build_quantization_steps(step, width, height, levels, alpha_qp);
       maybe_apply_tile_aq(step, width, height, levels);
@@ -5335,7 +5388,7 @@ static int bframe_selftest(const char *input, int quality, int levels, int max_f
       uint8_t *payload;
       size_t length = encode_frame_bidi(frames[steps[s].poc], width, height, levels, quality, r0, r1,
                                         steps[s].weight0, steps[s].weight1, dpb[steps[s].poc], &payload);
-      decode_frame_bidi(payload, width, height, levels, quality, r0, r1, steps[s].weight0, steps[s].weight1, NULL, decoded);
+      decode_frame_bidi(payload, length, width, height, levels, quality, r0, r1, steps[s].weight0, steps[s].weight1, NULL, decoded);
       total_bytes += length;
       double mse = 0;
       for (size_t i = 0; i < frame_bytes; i++) {

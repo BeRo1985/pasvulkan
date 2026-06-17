@@ -204,7 +204,7 @@ type EpvFlexibleWaveletVideo=class(Exception);
        class function LZSSDecompress(const aInput:PpvUInt8Array;const aInputLength:TpvSizeUInt;const aOutput:PpvUInt8Array;const aOutputSize:TpvSizeUInt):boolean; static;
        class function DecompressFrame(const aCompressed:PpvUInt8Array;const aCompressedLength:TpvSizeUInt;const aOutput:PpvUInt8Array;const aOutputCapacity:TpvSizeUInt;out aRawLength:TpvUInt32):boolean; static;
        // split a decompressed frame payload into the per-plane block offset arrays, the MV blob and the block data.
-       class procedure ParseFrameHeader(const aFrame:PpvUInt8Array;const aBlockCount:TBlockCounts;const aOffsets:TPlaneOffsets;out aLeadingBlockCount:TpvInt32;out aMVDataOffset:TpvSizeUInt;out aMVLength:TpvUInt32;out aBlockDataOffset:TpvSizeUInt); static;
+       class function ParseFrameHeader(const aFrame:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aBlockCount:TBlockCounts;const aOffsets:TPlaneOffsets;out aLeadingBlockCount:TpvInt32;out aMVDataOffset:TpvSizeUInt;out aMVLength:TpvUInt32;out aBlockDataOffset:TpvSizeUInt):boolean; static; // False = corrupt / truncated header
        // lossy quantization: measure the per-subband inverse-transform gains (once per level count), then build
        // the per-pixel integer quant step map (must match the C encoder/decoder bit-for-bit so the GPU dequant agrees).
        class procedure MeasureSynthesisGains(const aLevels:TpvInt32;out aHFGain:TSynthesisGains;out aLLGain:TpvFloat); static;
@@ -377,6 +377,10 @@ begin
 
   // A fresh 32-bit control word every 32 tokens (1 flag bit per token, LSB first)
   if ControlBit=32 then begin
+   if (InPosition+4)>aInputLength then begin
+    result:=false; // truncated control word
+    exit;
+   end;
    Control:=ReadU32LE(aInput,InPosition);
    inc(InPosition,4);
    ControlBit:=0;
@@ -385,6 +389,10 @@ begin
   if (Control and (TpvUInt32(1) shl ControlBit))<>0 then begin
 
    // Match: [u16 offset][u8 length-4]
+   if (InPosition+3)>aInputLength then begin
+    result:=false; // truncated match token
+    exit;
+   end;
    Offset:=aInput^[InPosition] or (TpvInt32(aInput^[InPosition+1]) shl 8);
    MatchLength:=aInput^[InPosition+2]+LZMinMatch;
    inc(InPosition,3);
@@ -393,6 +401,10 @@ begin
    // frame buffer and ignores the slack — equivalent for the meaningful (first aOutputSize) bytes.
    if (OutPosition+TpvSizeUInt(MatchLength))>aOutputSize then begin
     MatchLength:=TpvInt32(aOutputSize-OutPosition);
+   end;
+   if (Offset=0) or (TpvSizeUInt(Offset)>OutPosition) then begin
+    result:=false; // back-reference before the output start (invalid offset)
+    exit;
    end;
    Source:=OutPosition-TpvSizeUInt(Offset);
    if TpvSizeUInt(Offset)>=TpvSizeUInt(MatchLength) then begin
@@ -450,6 +462,9 @@ begin
 
  case Method of
   FrameMethodRaw:begin
+   if aRawLength>(aCompressedLength-5) then begin // a raw payload cannot exceed its compressed container entry
+    exit;
+   end;
    Move(aCompressed^[5],aOutput^[0],aRawLength);
    result:=true;
   end;
@@ -465,20 +480,34 @@ begin
  end;
 end;
 
-class procedure TpvFlexibleWaveletVideo.ParseFrameHeader(const aFrame:PpvUInt8Array;const aBlockCount:TBlockCounts;const aOffsets:TPlaneOffsets;out aLeadingBlockCount:TpvInt32;out aMVDataOffset:TpvSizeUInt;out aMVLength:TpvUInt32;out aBlockDataOffset:TpvSizeUInt);
+// aFrameLength = the decompressed frame payload length. Returns False (without dereferencing past the frame) if any
+// field would read beyond it, so a corrupt / truncated container frame is rejected instead of walking out of bounds.
+class function TpvFlexibleWaveletVideo.ParseFrameHeader(const aFrame:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aBlockCount:TBlockCounts;const aOffsets:TPlaneOffsets;out aLeadingBlockCount:TpvInt32;out aMVDataOffset:TpvSizeUInt;out aMVLength:TpvUInt32;out aBlockDataOffset:TpvSizeUInt):boolean;
 var Cursor:TpvSizeUInt;
-    SizeBlobLength,Running:TpvUInt32;
+    SizeBlobLength,Running,DataLength:TpvUInt32;
     SizeReader:TBitReader;
     Plane,Block:TpvInt32;
 begin
 
- // [u32 luma_block_count] (sanity; the per-plane counts come from the caller)
+ result:=false;
+ aLeadingBlockCount:=0;
+ aMVDataOffset:=0;
+ aMVLength:=0;
+ aBlockDataOffset:=0;
+
+ // [u32 luma_block_count] (sanity; the per-plane counts come from the caller) + [u32 size_blob_length]
+ if aFrameLength<8 then begin
+  exit;
+ end;
  aLeadingBlockCount:=TpvInt32(ReadU32LE(aFrame,0));
  Cursor:=4;
 
  // [u32 size_blob_length][size blob] -> prefix-sum the unsigned-Exp-Golomb per-block sizes into per-plane offsets
  SizeBlobLength:=ReadU32LE(aFrame,Cursor);
  inc(Cursor,4);
+ if (Cursor+TpvSizeUInt(SizeBlobLength))>aFrameLength then begin
+  exit;
+ end;
  SizeReader.Init(PpvUInt8Array(@aFrame^[Cursor]),SizeBlobLength);
  Running:=0;
  for Plane:=0 to 2 do begin
@@ -490,14 +519,29 @@ begin
  inc(Cursor,SizeBlobLength);
 
  // [u32 mv_length][mv blob]
+ if (Cursor+4)>aFrameLength then begin
+  exit;
+ end;
  aMVLength:=ReadU32LE(aFrame,Cursor);
  inc(Cursor,4);
+ if (Cursor+TpvSizeUInt(aMVLength))>aFrameLength then begin
+  exit;
+ end;
  aMVDataOffset:=Cursor;
  inc(Cursor,aMVLength);
 
  // [u32 data_length][block data]
+ if (Cursor+4)>aFrameLength then begin
+  exit;
+ end;
+ DataLength:=ReadU32LE(aFrame,Cursor);
  inc(Cursor,4);
  aBlockDataOffset:=Cursor;
+ if (Cursor+TpvSizeUInt(DataLength))>aFrameLength then begin // the block data itself must fit within the frame
+  exit;
+ end;
+
+ result:=true;
 
 end;
 
