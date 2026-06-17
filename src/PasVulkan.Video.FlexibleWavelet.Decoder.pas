@@ -1749,7 +1749,9 @@ begin
   DataPointer:=PpvUInt8Array(fAlphaRingStep[fAlphaCurrentSlot].Memory.MapMemory);
   try
    Move(fStepCacheData[(StepSlot*fNumPlanes)+0][0],DataPointer^[0],TpvSizeUInt(fWidth)*TpvSizeUInt(fHeight)*4);
-   ApplyAQ(PpvInt32Array(@DataPointer^[0]),fWidth,fHeight); // AQ: alpha is full-res -> modulate with this frame's tile map
+   // NOTE: the alpha plane is intentionally NOT AQ-modulated — the encoder quantises it with plain alpha_qp steps
+   // (step_map[3] is built once, before any per-frame tile map exists, and is never rebuilt under --aq), so the
+   // decode must dequantise alpha with the plain steps too. Applying the tile map here would mismatch the encoder.
   finally
    fAlphaRingStep[fAlphaCurrentSlot].Memory.UnmapMemory;
   end;
@@ -1772,7 +1774,6 @@ begin
  // hold an in-flight colour frame under engine pipelining), parse the colour header only to locate the appended alpha
  // section (= colour block-data end), then stage it like the colordiff path.
  Entry:=@fFrameEntries[aCodingIndex];
- SetAQCurrentMap(aCodingIndex); // AQ: this coding frame's per-tile QP map (no-op when AQ off)
  CompressedLength:=Entry^.Size;
  if TpvSizeUInt(Length(fAlphaCompressedScratch))<(CompressedLength+8) then begin
   SetLength(fAlphaCompressedScratch,CompressedLength+8);
