@@ -13,7 +13,7 @@ SPV = shaders/bitplane_unpack.spv shaders/dequant97.spv shaders/transpose_f.spv 
       shaders/bitplane_size.spv shaders/bitplane_pack.spv \
       shaders/idwt53row.spv shaders/fwd53row.spv shaders/rgb2ycor.spv \
       shaders/coeff_diff.spv shaders/coeff_add.spv shaders/ycocg_diff.spv shaders/frame_energy.spv \
-      shaders/mc.spv shaders/motion_add.spv shaders/motion_estimate.spv \
+      shaders/mc.spv shaders/motion_add.spv shaders/motion_estimate.spv shaders/motion_refine.spv \
       shaders/apply_pcrd.spv shaders/chroma_downsample.spv \
       shaders/rgb2yco16.spv shaders/rgb2ycor16.spv shaders/color_hdr.spv shaders/color_hdr_scrgb.spv \
       shaders/tdwt_int.spv shaders/tdwt_float.spv shaders/nv12rgb.spv shaders/bidi_blend.spv shaders/motion_estimate_bidi.spv \
