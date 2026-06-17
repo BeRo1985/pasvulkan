@@ -696,10 +696,12 @@ begin
  end;
 
  if assigned(fPlayer) then begin
-  if fPlayer.HasAudio then begin
-   fPlaybackTime:=fPlayer.MasterClockSeconds; // A/V sync: the audio playback clock drives the video (freezes on pause)
+  if fPlayer.HasAudio and (not fPlayer.AudioFinished) then begin
+   fPlaybackTime:=fPlayer.MasterClockSeconds; // A/V sync: the audio playback clock drives the video while audio plays (freezes on pause)
   end else if (not fPaused) and (fPlayer.Duration>0.0) and (fPlaybackTime<fPlayer.Duration) then begin
-   fPlaybackTime:=fPlaybackTime+aDeltaTime; // no audio: wall-clock; clamps at the end (hold last frame)
+   // no audio, OR the audio finished before the video: advance on the wall clock so the video still plays out to its
+   // end instead of freezing mid-stream; clamps at the end (hold the last frame until the window is closed).
+   fPlaybackTime:=fPlaybackTime+aDeltaTime;
   end;
   if GetEnvironmentVariable('FWV_DECTIME')='1' then begin // CPU DecodeTime cost diagnostic (worst-case per frame vs 33.3 ms)
    DecTimeT0:=pvApplication.HighResolutionTimer.GetTime;

@@ -76,6 +76,7 @@ type EpvFlexibleWaveletVideoPlayer=class(EpvFlexibleWaveletVideo);
        fPreparedIndex:TpvInt32; // index PrepareFrame staged for the next Decode (-1 = none)
        fLastDecodedIndex:TpvInt32; // last index RecordFrame produced (-1 = none)
        fPendingAudioSeekFrame:TpvInt64; // queued audio-source seek; applied by the audio thread in AudioReadCallback (-1 = none)
+       fAudioFinished:boolean; // set on the audio thread when the audio sub-codec decoder reaches EOF (source exhausted)
 {$ifdef VkVideo}
        procedure TryCreateH264Backend; // build the VK-H.264 backend from the container's H.264 sub-blob; on success sets fUsingH264
 {$endif}
@@ -86,6 +87,8 @@ type EpvFlexibleWaveletVideoPlayer=class(EpvFlexibleWaveletVideo);
        function GetHasAlpha:boolean;
        function GetAlphaPremultiplied:boolean;
        function GetHasAudio:boolean;
+       function GetAudioFinished:boolean; // True when there is no audio, or the audio decoder has reached EOF
+       function GetPlaybackFinished:boolean; // True only when the LAST video frame has been decoded AND the audio has finished
        function AudioReadCallback(const aFloatBuffer:Pointer;const aFrameCount:TpvInt32):TpvInt32; // TpvAudioSoundVideoReadCallback
       public
        constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice=TDecoderChoice.Auto;const aPreferSCRGBForHDR:boolean=false);
@@ -110,6 +113,8 @@ type EpvFlexibleWaveletVideoPlayer=class(EpvFlexibleWaveletVideo);
        procedure CloseAudio;
        function MasterClockSeconds:TpvDouble; // the audio stream's PlaybackTime (only meaningful when HasAudio)
        property HasAudio:boolean read GetHasAudio;
+       property AudioFinished:boolean read GetAudioFinished; // no audio, or the audio reached EOF (the audible tail may lag a mixer buffer)
+       property PlaybackFinished:boolean read GetPlaybackFinished; // BOTH the video (last frame decoded) AND the audio are done — a game polls this to dismiss the cutscene
        property AudioChannels:TpvInt32 read fAudioChannels;
        property AudioSampleRate:TpvInt32 read fAudioSampleRate;
        property Width:TpvInt32 read fWidth;
@@ -144,6 +149,7 @@ begin
  fPreparedIndex:=-1;
  fLastDecodedIndex:=-1;
  fPendingAudioSeekFrame:=-1;
+ fAudioFinished:=false;
  fAudio:=nil;
  fAudioKind:=TAudioKind.None;
  fAudioStream:=nil;
@@ -253,6 +259,19 @@ begin
  result:=(fAudioKind<>TAudioKind.None) and assigned(fAudioStream);
 end;
 
+function TpvFlexibleWaveletVideoPlayer.GetAudioFinished:boolean;
+begin
+ // No audio -> nothing to wait for; otherwise the audio thread sets fAudioFinished when the source hits EOF.
+ result:=(not GetHasAudio) or fAudioFinished;
+end;
+
+function TpvFlexibleWaveletVideoPlayer.GetPlaybackFinished:boolean;
+begin
+ // Finished only when the LAST video frame has been decoded AND the audio has finished — so a game holding a cutscene
+ // on this player keeps it up until BOTH streams are done, instead of cutting off whichever finishes first.
+ result:=((fFrameCount>0) and (fLastDecodedIndex>=(fFrameCount-1))) and GetAudioFinished;
+end;
+
 function TpvFlexibleWaveletVideoPlayer.AudioReadCallback(const aFloatBuffer:Pointer;const aFrameCount:TpvInt32):TpvInt32;
 var PendingSeekFrame:TpvInt64;
 begin
@@ -279,6 +298,7 @@ begin
    else begin
    end;
   end;
+  fAudioFinished:=false; // a queued seek re-armed the audio source — it is no longer at EOF
  end;
  case fAudioKind of
   TAudioKind.FWAC:begin
@@ -296,6 +316,11 @@ begin
   else begin
    result:=0;
   end;
+ end;
+ // The sub-codec decoders fill the buffer completely until EOF, so a short read marks the audio source exhausted.
+ // (The audible tail still in the mixer buffer lags by up to one buffer — PlaybackFinished also gates on the video.)
+ if result<aFrameCount then begin
+  fAudioFinished:=true;
  end;
 end;
 
@@ -596,6 +621,7 @@ begin
  fLastDecodedIndex:=-1;
  fPreparedIndex:=-1;
  fTargetIndex:=-1;
+ fAudioFinished:=false; // replay re-arms the audio source (the queued seek below also clears it on the audio thread)
  if assigned(fDecoder) then begin
   fDecoder.ResetForReplay;
  end;
