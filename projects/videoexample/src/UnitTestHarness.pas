@@ -26,7 +26,9 @@ uses SysUtils,
      PasVulkan.Audio.QOAL,
      PasVulkan.Audio.RPCM,
      PasVulkan.Audio.OGGVorbis,
-     PasVulkan.Audio.FlexibleWavelet.Decoder;
+     PasVulkan.Audio.FlexibleWavelet,
+     PasVulkan.Audio.FlexibleWavelet.Decoder,
+     PasVulkan.Audio.FlexibleWavelet.Encoder;
 
 // Decode frame aFrameIndex, read the output image back and write it to aPath: an 8-bit RGB PPM for the SDR
 // R8G8B8A8 format (matches the C --dump), or the raw RGBA16F bytes for the scRGB FP16 format. aSubmitMode 2
@@ -366,6 +368,92 @@ begin
  end;
 end;
 
+// FWA encoder round-trip self-test: synthesize a tone, Pascal-encode (cross-fade overlap from FWV_FWAENC_OVERLAP),
+// write <path>.pas.fwa for an external C `fwa dec` cross-check, then round-trip via the Pascal decoder + report the diff.
+procedure CheckFWAEncode(const aPath:string);
+const SampleRate=48000;
+      FrameTotal=48000;
+var Encoder:TpvFlexibleWaveletAudioEncoder;
+    Decoder:TpvFlexibleWaveletAudioDecoder;
+    Params:TpvFlexibleWaveletAudioEncoder.TParams;
+    Buffers:TpvFlexibleWaveletAudio.TAudioBuffers;
+    MemStream:TMemoryStream;
+    OutFile:TFileStream;
+    Reference:array of TpvInt16;
+    FloatBuffer:array of TpvFloat;
+    Decoded:array of TpvInt16;
+    Frame,SampleIndex,WriteCursor,Total,Limit,Difference,MaxDifference:TpvInt64;
+    Got:TpvSizeInt;
+    SumSquares:TpvDouble;
+begin
+ SetLength(Buffers,2);
+ SetLength(Buffers[0],FrameTotal);
+ SetLength(Buffers[1],FrameTotal);
+ SetLength(Reference,FrameTotal*2);
+ for Frame:=0 to FrameTotal-1 do begin
+  Buffers[0][Frame]:=0.5*Sin((2.0*Pi*440.0*Frame)/SampleRate);
+  Buffers[1][Frame]:=0.5*Sin((2.0*Pi*660.0*Frame)/SampleRate);
+  Reference[(Frame*2)+0]:=Round(Buffers[0][Frame]*32768.0); // 0.5*sine stays well within int16, no clamp needed
+  Reference[(Frame*2)+1]:=Round(Buffers[1][Frame]*32768.0);
+ end;
+ FillChar(Params,SizeOf(Params),0);
+ Params.Quality:=8;
+ Params.Perceptual:=true;
+ Params.Joint:=true;
+ Params.PairEnabled:=true;
+ Params.Adapt:=true;
+ Params.Overlap:=StrToIntDef(GetEnvironmentVariable('FWV_FWAENC_OVERLAP'),1024);
+ MemStream:=TMemoryStream.Create;
+ try
+  Encoder:=TpvFlexibleWaveletAudioEncoder.Create;
+  try
+   Encoder.Encode(Buffers,SampleRate,Params,MemStream);
+  finally
+   Encoder.Free;
+  end;
+  MemStream.Position:=0;
+  OutFile:=TFileStream.Create(aPath+'.pas.fwa',fmCreate);
+  try
+   OutFile.CopyFrom(MemStream,MemStream.Size);
+  finally
+   OutFile.Free;
+  end;
+  MemStream.Position:=0;
+  Decoder:=TpvFlexibleWaveletAudioDecoder.Create(MemStream);
+  try
+   Total:=Decoder.FrameCount*Decoder.Channels;
+   SetLength(Decoded,Total);
+   SetLength(FloatBuffer,Decoder.Channels*4096);
+   WriteCursor:=0;
+   repeat
+    Got:=Decoder.Decode(@FloatBuffer[0],4096);
+    for SampleIndex:=0 to (Got*Decoder.Channels)-1 do begin
+     Decoded[WriteCursor+SampleIndex]:=Round(FloatBuffer[SampleIndex]*32768.0);
+    end;
+    inc(WriteCursor,Got*Decoder.Channels);
+   until Got<=0;
+   Limit:=Total;
+   if Limit>(FrameTotal*2) then begin
+    Limit:=FrameTotal*2;
+   end;
+   SumSquares:=0.0;
+   MaxDifference:=0;
+   for SampleIndex:=0 to Limit-1 do begin
+    Difference:=Abs(Decoded[SampleIndex]-Reference[SampleIndex]);
+    if Difference>MaxDifference then begin
+     MaxDifference:=Difference;
+    end;
+    SumSquares:=SumSquares+(Difference*Difference);
+   end;
+   writeln(Format('  FWA encode round-trip overlap=%d: frames=%d maxdiff=%d rms=%.2f -> %s.pas.fwa',[Params.Overlap,Decoder.FrameCount,MaxDifference,Sqrt(SumSquares/Limit),aPath]));
+  finally
+   Decoder.Free;
+  end;
+ finally
+  MemStream.Free;
+ end;
+end;
+
 // RPCM self-test (lossless raw PCM): decode + write <path>.pas.s16 for a byte-diff against the C rpcm_decode_s16 ref.
 procedure CheckRPCM(const aPath:string);
 var Stream:TFileStream;
@@ -602,6 +690,8 @@ begin
      CheckH264Frames(ParamStr(Index)); // Stage F3b-1 H.264 frame-list self-test
     end else if GetEnvironmentVariable('FWV_H264PARSE')='1' then begin
      CheckH264Parse(ParamStr(Index)); // Stage F3a H.264 bitstream parse self-test
+    end else if GetEnvironmentVariable('FWV_FWAENC')='1' then begin
+     CheckFWAEncode(ParamStr(Index)); // FWA encoder round-trip self-test (Pascal-encode -> .pas.fwa for a C fwa-dec cross-check)
     end else if Extension='.qoal' then begin
      CheckQOAL(ParamStr(Index)); // pure-CPU audio sub-codec self-tests
     end else if Extension='.rpcm' then begin
