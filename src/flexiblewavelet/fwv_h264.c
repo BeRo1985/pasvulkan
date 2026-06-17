@@ -1656,6 +1656,23 @@ int run_h264_player(const FwvH264Context *ctx) {
            verify_count, psnr, bad, (psnr > 40 && !bad) ? "=> content+order CORRECT (jitter is pure present timing)" : "=> content/order issue");
     return 0;
   }
+  // The video ran out first but the audio may still be playing (audio slightly longer, or trailing padding): hold the
+  // last displayed frame on screen and keep the window responsive until the queued audio drains, so playback ends
+  // smoothly instead of cutting both off the instant the video finishes. ESC / window-close still exits.
+  if ((audio_device != 0) && !quit) {
+    SDL_Event tail_event;
+    while (SDL_GetQueuedAudioSize(audio_device) > 0) {
+      while (SDL_PollEvent(&tail_event)) {
+        if ((tail_event.type == SDL_QUIT) || ((tail_event.type == SDL_KEYDOWN) && (tail_event.key.keysym.sym == SDLK_ESCAPE))) {
+          quit = 1;
+        }
+      }
+      if (quit) {
+        break;
+      }
+      SDL_Delay(10);
+    }
+  }
   // fwvplay owns the SDL window + audio device + SDL lifetime (shared) — don't tear them down here.
   return 0;
 }
