@@ -1975,6 +1975,7 @@ static void decode_motion_vectors(BitReader *reader, int *mv, int blocks_x, int 
 #define MOTION_LEAF 8    // finest leaf (px) = the fine MV-field cell
 
 static int g_motion_variable = 0;   // 1 = variable quadtree motion (root 32 -> 8); 0 = the fixed g_motion_block grid
+static int g_motion_mode = 3;       // sub-pel mode: bit0 = 6-tap interpolation (else bilinear), bit1 = quarter-pel MVs (else half-pel). Default 3 = 6-tap + quarter. Old files = 0 = bilinear + half. Mirrors the MOTION_MODE shader spec constant.
 static int g_motion_split_bidi = 1; // 1 (DEFAULT) = the joint mode-aware blended-SAD B merge (per-leaf mode; faster than per-8 mode_decide AND better RD); 0 = --motion-split-fast single-ref 2-ME B
 static int g_motion_lambda_abs = 256;   // variable-motion R-D: per-extra-leaf floor (SAD units); also the FIXED value when alpha==0
 static int g_motion_lambda_alpha = 96;  // adaptive frame-level: lambda_abs = max(abs, (alpha*avg_32block_SAD)>>8); high-motion frames -> high lambda
@@ -2662,11 +2663,27 @@ static int tap6(int m2, int m1, int p0, int p1, int p2, int p3) {
   return (((m2 + p3) - (5 * (m1 + p2))) + (20 * (p0 + p1)));
 }
 
-// 6-tap half-pel interpolation of previous[] (replaces the old bilinear average). The MV's fractional bits
-// select the position: (0,0) integer, (1,0) horizontal half, (0,1) vertical half, (1,1) center = a 6-tap of
-// six vertically-6-tapped columns in full precision. EXACT mirror of mc.comp: all-integer + deterministic
+// Bilinear half-pel interpolation of previous[] (the legacy filter, g_motion_mode bit0 = 0). Old files were
+// encoded against this, so it must stay bit-exact to decode them. EXACT mirror of mc.comp's sample_bilinear.
+static int sample_bilinear(const int32_t *previous, int width, int height, int base_x, int base_y, int half_x, int half_y) {
+  if ((half_x == 0) && (half_y == 0)) {
+    return previous_at(previous, width, height, base_x, base_y);
+  }
+  if ((half_x == 1) && (half_y == 0)) {
+    return (previous_at(previous, width, height, base_x, base_y) + previous_at(previous, width, height, base_x + 1, base_y) + 1) >> 1;
+  }
+  if ((half_x == 0) && (half_y == 1)) {
+    return (previous_at(previous, width, height, base_x, base_y) + previous_at(previous, width, height, base_x, base_y + 1) + 1) >> 1;
+  }
+  return (((previous_at(previous, width, height, base_x, base_y) + previous_at(previous, width, height, base_x + 1, base_y)) +
+           (previous_at(previous, width, height, base_x, base_y + 1) + previous_at(previous, width, height, base_x + 1, base_y + 1))) + 2) >> 2;
+}
+
+// 6-tap half-pel interpolation of previous[] (g_motion_mode bit0 = 1). The MV's fractional bits select the
+// position: (0,0) integer, (1,0) horizontal half, (0,1) vertical half, (1,1) center = a 6-tap of six
+// vertically-6-tapped columns in full precision. EXACT mirror of mc.comp: all-integer + deterministic
 // rounding so the CPU reference, the GPU decode and the encoder reconstruction stay bit-for-bit identical.
-static int sample_half_pel(const int32_t *previous, int width, int height, int base_x, int base_y, int half_x, int half_y) {
+static int sample_6tap(const int32_t *previous, int width, int height, int base_x, int base_y, int half_x, int half_y) {
   if ((half_x == 0) && (half_y == 0)) {
     return previous_at(previous, width, height, base_x, base_y);
   }
@@ -2690,6 +2707,13 @@ static int sample_half_pel(const int32_t *previous, int width, int height, int b
   int v5 = tap6(previous_at(previous, width, height, base_x + 3, base_y - 2), previous_at(previous, width, height, base_x + 3, base_y - 1), previous_at(previous, width, height, base_x + 3, base_y), previous_at(previous, width, height, base_x + 3, base_y + 1), previous_at(previous, width, height, base_x + 3, base_y + 2), previous_at(previous, width, height, base_x + 3, base_y + 3));
   int t = tap6(v0, v1, v2, v3, v4, v5);
   return (t + 512) >> 10;
+}
+
+// Half-pel interpolation; the filter is selected per stream by g_motion_mode bit0 (mirrors the MOTION_MODE
+// shader spec constant). quarter-pel builds on this, so quarter inherits the chosen filter.
+static int sample_half_pel(const int32_t *previous, int width, int height, int base_x, int base_y, int half_x, int half_y) {
+  return ((g_motion_mode & 1) != 0) ? sample_6tap(previous, width, height, base_x, base_y, half_x, half_y)
+                                     : sample_bilinear(previous, width, height, base_x, base_y, half_x, half_y);
 }
 
 // Half-pel-grid sample at half-pel units (u, v): u,v in {0,1,2} where 0=integer, 1=half, 2=next integer.
@@ -2718,7 +2742,10 @@ static int sample_quarter_pel(const int32_t *previous, int width, int height, in
 
 static int sample_block_mv(const int32_t *previous, const int *mv, int width, int height, int block, int x, int y) {
   int mv_x = mv[block * 2], mv_y = mv[(block * 2) + 1];
-  return sample_quarter_pel(previous, width, height, x + (mv_x >> 2), y + (mv_y >> 2), mv_x & 3, mv_y & 3);
+  if (((g_motion_mode >> 1) & 1) != 0) {
+    return sample_quarter_pel(previous, width, height, x + (mv_x >> 2), y + (mv_y >> 2), mv_x & 3, mv_y & 3);
+  }
+  return sample_half_pel(previous, width, height, x + (mv_x >> 1), y + (mv_y >> 1), mv_x & 1, mv_y & 1);
 }
 
 // OBMC edge window over an m-pixel block axis: 2, 1 near each edge, 0 in the middle (m=16 -> ..,1,2 at
@@ -2830,32 +2857,37 @@ static void motion_estimate_cpu(const int32_t *current, const int32_t *reference
           }
         }
       }
-      // Quarter-pel refinement around the best half-pel (the warp now samples quarter-pel). The center
-      // (best_hx*2, best_hy*2) is included, so the result is never worse than the half-pel best.
-      int best_qx = best_hx * 2, best_qy = best_hy * 2;
-      long quarter_best = 0x7fffffffffffffffL;
-      for (int refine_y = -1; refine_y <= 1; refine_y++) {
-        for (int refine_x = -1; refine_x <= 1; refine_x++) {
-          int qx = (best_hx * 2) + refine_x, qy = (best_hy * 2) + refine_y;
-          long sad = 0;
-          for (int y = 0; (y < m) && ((origin_y + y) < height); y++) {
-            for (int x = 0; (x < m) && ((origin_x + x) < width); x++) {
-              int pred = sample_quarter_pel(reference, width, height,
-                                            (origin_x + x) + (qx >> 2), (origin_y + y) + (qy >> 2), qx & 3, qy & 3);
-              int d = current[((origin_y + y) * width) + (origin_x + x)] - pred;
-              sad += (d < 0) ? -d : d;
+      // Quarter-pel mode: refine around the best half-pel (its 8 quarter neighbours; the centre is included,
+      // so never worse than the half-pel best) and store a quarter-pel MV. Half-pel mode: store the half-pel best.
+      if (((g_motion_mode >> 1) & 1) != 0) {
+        int best_qx = best_hx * 2, best_qy = best_hy * 2;
+        long quarter_best = 0x7fffffffffffffffL;
+        for (int refine_y = -1; refine_y <= 1; refine_y++) {
+          for (int refine_x = -1; refine_x <= 1; refine_x++) {
+            int qx = (best_hx * 2) + refine_x, qy = (best_hy * 2) + refine_y;
+            long sad = 0;
+            for (int y = 0; (y < m) && ((origin_y + y) < height); y++) {
+              for (int x = 0; (x < m) && ((origin_x + x) < width); x++) {
+                int pred = sample_quarter_pel(reference, width, height,
+                                              (origin_x + x) + (qx >> 2), (origin_y + y) + (qy >> 2), qx & 3, qy & 3);
+                int d = current[((origin_y + y) * width) + (origin_x + x)] - pred;
+                sad += (d < 0) ? -d : d;
+              }
+            }
+            sad += (long)((((qx < 0) ? -qx : qx) + ((qy < 0) ? -qy : qy)) >> 1);   // rate bias (quarter-pel >> 1 = half-pel scale)
+            if (sad < quarter_best) {
+              quarter_best = sad;
+              best_qx = qx;
+              best_qy = qy;
             }
           }
-          sad += (long)((((qx < 0) ? -qx : qx) + ((qy < 0) ? -qy : qy)) >> 1);   // rate bias (quarter-pel >> 1 = half-pel scale)
-          if (sad < quarter_best) {
-            quarter_best = sad;
-            best_qx = qx;
-            best_qy = qy;
-          }
         }
+        mv[((by * blocks_x) + bx) * 2] = best_qx;          // quarter-pel units
+        mv[(((by * blocks_x) + bx) * 2) + 1] = best_qy;
+      } else {
+        mv[((by * blocks_x) + bx) * 2] = best_hx;          // half-pel units
+        mv[(((by * blocks_x) + bx) * 2) + 1] = best_hy;
       }
-      mv[((by * blocks_x) + bx) * 2] = best_qx;          // quarter-pel units
-      mv[(((by * blocks_x) + bx) * 2) + 1] = best_qy;
     }
   }
 }

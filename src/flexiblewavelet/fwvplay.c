@@ -308,9 +308,9 @@ static VkPipeline create_compute_pipeline_motion(const char *spirv_path, VkPipel
   VkShaderModule module;
   VK_CHECK(vkCreateShaderModule(device, &module_info, 0, &module));
   free(code);
-  int spec_values[2] = { motion_block, motion_block * motion_block };   // [0] = MB, [1] = per-block workgroup = MB*MB
-  VkSpecializationMapEntry entries[2] = { { 0, 0, sizeof(int) }, { 1, sizeof(int), sizeof(int) } };
-  VkSpecializationInfo spec = { 2, entries, sizeof(spec_values), spec_values };
+  int spec_values[3] = { motion_block, motion_block * motion_block, g_motion_mode };   // [0] = MB, [1] = per-block workgroup = MB*MB, [3] = MOTION_MODE (sub-pel variant)
+  VkSpecializationMapEntry entries[3] = { { 0, 0, sizeof(int) }, { 1, sizeof(int), sizeof(int) }, { 3, 2 * sizeof(int), sizeof(int) } };
+  VkSpecializationInfo spec = { 3, entries, sizeof(spec_values), spec_values };
   VkComputePipelineCreateInfo pipeline_info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
   pipeline_info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   pipeline_info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
@@ -1101,7 +1101,8 @@ int main(int argc, char **argv) {
     header.qpmap_size = 0;                     // off. Every later read seeks to an absolute on-disk offset, so this is safe.
   }
   g_decompress_frames = 1;                  // per-frame [method][raw_len] framing (method 1 = LZSS, 2 = LZBRRC, 0 = raw)
-  g_mv_codec = header.mv_codec;             // motion-vector entropy coder selector (0 = Exp-Golomb, 1 = range)
+  g_mv_codec = header.mv_codec & 1;         // bit0 = motion-vector entropy coder (0 = Exp-Golomb, 1 = range)
+  g_motion_mode = (header.mv_codec >> 1) & 3;   // bits1-2 = sub-pel mode (bit0 = 6-tap interp, bit1 = quarter-pel). Old files = 0 = bilinear + half-pel.
   int width = header.width;
   int height = header.height;
   int levels = header.levels;

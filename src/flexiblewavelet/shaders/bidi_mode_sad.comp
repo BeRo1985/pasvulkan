@@ -7,6 +7,9 @@
 layout(local_size_x_id = 1) in;               // workgroup = MB*MB threads, but the metric uses one thread per 4x4 tile
 layout(constant_id = 0) const int MB = 16;    // motion block size (8 / 16 / 32)
 layout(constant_id = 2) const int EMIT_SATD = 1;   // 1 = SATD (Hadamard, default), 0 = SAD (sum |residual|) — selected by --merge-metric
+layout(constant_id = 3) const int MOTION_MODE = 3;   // bit0 = 6-tap interpolation (else bilinear), bit1 = quarter-pel MVs (else half-pel)
+const int INTERP_6TAP = MOTION_MODE & 1;
+const int QUARTER_PEL = (MOTION_MODE >> 1) & 1;
 layout(std430, binding = 0)  readonly buffer Cur0   { int cur0[]; };
 layout(std430, binding = 1)  readonly buffer Cur1   { int cur1[]; };
 layout(std430, binding = 2)  readonly buffer Cur2   { int cur2[]; };
@@ -50,7 +53,22 @@ int tap6(int m2, int m1, int p0, int p1, int p2, int p3) {
   return (((m2 + p3) - (5 * (m1 + p2))) + (20 * (p0 + p1)));
 }
 
-int sample_half_pel(int which, int base_x, int base_y, int half_x, int half_y) {
+// Bilinear half-pel sample of one reference plane (legacy filter, MOTION_MODE bit0 = 0). Matches mc.comp.
+int sample_bilinear(int which, int base_x, int base_y, int half_x, int half_y) {
+  if ((half_x == 0) && (half_y == 0)) {
+    return sample_plane_at(which, base_x, base_y);
+  }
+  if ((half_x == 1) && (half_y == 0)) {
+    return (sample_plane_at(which, base_x, base_y) + sample_plane_at(which, base_x + 1, base_y) + 1) >> 1;
+  }
+  if ((half_x == 0) && (half_y == 1)) {
+    return (sample_plane_at(which, base_x, base_y) + sample_plane_at(which, base_x, base_y + 1) + 1) >> 1;
+  }
+  return (((sample_plane_at(which, base_x, base_y) + sample_plane_at(which, base_x + 1, base_y)) +
+           (sample_plane_at(which, base_x, base_y + 1) + sample_plane_at(which, base_x + 1, base_y + 1))) + 2) >> 2;
+}
+
+int sample_6tap(int which, int base_x, int base_y, int half_x, int half_y) {
   if ((half_x == 0) && (half_y == 0)) {
     return sample_plane_at(which, base_x, base_y);
   }
@@ -74,6 +92,11 @@ int sample_half_pel(int which, int base_x, int base_y, int half_x, int half_y) {
   int v5 = tap6(sample_plane_at(which, base_x + 3, base_y - 2), sample_plane_at(which, base_x + 3, base_y - 1), sample_plane_at(which, base_x + 3, base_y), sample_plane_at(which, base_x + 3, base_y + 1), sample_plane_at(which, base_x + 3, base_y + 2), sample_plane_at(which, base_x + 3, base_y + 3));
   int t = tap6(v0, v1, v2, v3, v4, v5);
   return (t + 512) >> 10;
+}
+
+// Half-pel interpolation, filter selected per stream by the MOTION_MODE spec constant (bit0).
+int sample_half_pel(int which, int base_x, int base_y, int half_x, int half_y) {
+  return (INTERP_6TAP != 0) ? sample_6tap(which, base_x, base_y, half_x, half_y) : sample_bilinear(which, base_x, base_y, half_x, half_y);
 }
 
 // Half-pel-grid sample at half-pel units (u, v): u,v in {0,1,2} where 0=integer, 1=half, 2=next integer.
@@ -156,8 +179,10 @@ void main() {
           int x = clamp_int(tx0 + xx, 0, push.width - 1), y = clamp_int(ty0 + yy, 0, push.height - 1);
           int index = (y * push.width) + x;
           int cur = decode_current((plane == 0) ? cur0[index] : ((plane == 1) ? cur1[index] : cur2[index]));
-          int a = sample_quarter_pel(plane,     (x + (m0x >> 2)), (y + (m0y >> 2)), m0x & 3, m0y & 3);   // MC0
-          int b = sample_quarter_pel(plane + 3, (x + (m1x >> 2)), (y + (m1y >> 2)), m1x & 3, m1y & 3);   // MC1
+          int a = (QUARTER_PEL != 0) ? sample_quarter_pel(plane,     (x + (m0x >> 2)), (y + (m0y >> 2)), m0x & 3, m0y & 3)
+                                     : sample_half_pel(plane,        (x + (m0x >> 1)), (y + (m0y >> 1)), m0x & 1, m0y & 1);   // MC0
+          int b = (QUARTER_PEL != 0) ? sample_quarter_pel(plane + 3, (x + (m1x >> 2)), (y + (m1y >> 2)), m1x & 3, m1y & 3)
+                                     : sample_half_pel(plane + 3,    (x + (m1x >> 1)), (y + (m1y >> 1)), m1x & 1, m1y & 1);   // MC1
           int bi = (((push.weight0 * a) + (push.weight1 * b)) + 128) >> 8;
           int k = (yy * 4) + xx;
           rl0[k] = cur - a; rl1[k] = cur - b; rbi[k] = cur - bi;

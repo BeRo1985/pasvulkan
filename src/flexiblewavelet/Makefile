@@ -24,10 +24,14 @@ SPV = shaders/bitplane_unpack.spv shaders/dequant97.spv shaders/transpose_f.spv 
       shaders/color_hdr_alpha.spv shaders/color_hdr_scrgb_alpha.spv shaders/fwv_composite_present.spv \
       shaders/dering.spv shaders/apply_tile_aq.spv
 
-all: fwvwave fwvdec fwvenc fwvplay fwa
+all: fwvwave fwvdec fwvenc fwvplay fwa fwvtag
 
 fwvwave: fwvwave.c
 	$(CC) $(CFLAGS) -o $@ $< -lm
+
+# standalone container retag tool: set the motion_mode (interp + MV precision) byte in place, no re-encode
+fwvtag: fwvtag.c
+	$(CC) $(CFLAGS) -o $@ $<
 
 shaders/%.spv: shaders/%.comp
 	$(GLSLC) -O $< -o $@

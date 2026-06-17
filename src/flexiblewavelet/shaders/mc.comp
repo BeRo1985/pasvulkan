@@ -6,6 +6,9 @@
 // With mv=0 everywhere all three predictions equal previous, so OBMC is the identity -> colordiff.
 layout(local_size_x = 256) in;
 layout(constant_id = 0) const int MB = 16;   // motion block size (8 / 16 / 32) — flat per-pixel, the workgroup stays 256
+layout(constant_id = 3) const int MOTION_MODE = 3;   // bit0 = 6-tap interpolation (else bilinear), bit1 = quarter-pel MVs (else half-pel)
+const int INTERP_6TAP = MOTION_MODE & 1;
+const int QUARTER_PEL = (MOTION_MODE >> 1) & 1;
 const int MB_SHIFT = (MB == 8) ? 3 : ((MB == 16) ? 4 : 5);   // log2(MB): x / MB -> x >> MB_SHIFT (per-pixel here, so the shift/mask matters)
 const int MB_MASK = MB - 1;                                  // x % MB -> x & MB_MASK
 layout(std430, binding = 0) readonly  buffer Previous      { int previous[]; };
@@ -29,12 +32,27 @@ int tap6(int m2, int m1, int p0, int p1, int p2, int p3) {
   return (((m2 + p3) - (5 * (m1 + p2))) + (20 * (p0 + p1)));
 }
 
-// 6-tap half-pel interpolation of previous[] (replaces the old bilinear average). The MV's fractional bits
-// select the position: (0,0) integer, (1,0) horizontal half, (0,1) vertical half, (1,1) center = a 6-tap of
-// six vertically-6-tapped columns in full precision. All-integer + deterministic rounding so the GPU decode,
-// the encoder reconstruction and the CPU reference stay bit-for-bit identical. No value clamp: YCoCg is signed
-// and the 6-tap may legitimately overshoot — the residual corrects it.
-int sample_half_pel(int base_x, int base_y, int half_x, int half_y) {
+// Bilinear half-pel interpolation of previous[] (the legacy filter, MOTION_MODE bit0 = 0). Old files were
+// encoded against this, so it must stay bit-exact to decode them. Deterministic integer rounding.
+int sample_bilinear(int base_x, int base_y, int half_x, int half_y) {
+  if ((half_x == 0) && (half_y == 0)) {
+    return previous_at(base_x, base_y);
+  }
+  if ((half_x == 1) && (half_y == 0)) {
+    return (previous_at(base_x, base_y) + previous_at(base_x + 1, base_y) + 1) >> 1;
+  }
+  if ((half_x == 0) && (half_y == 1)) {
+    return (previous_at(base_x, base_y) + previous_at(base_x, base_y + 1) + 1) >> 1;
+  }
+  return (((previous_at(base_x, base_y) + previous_at(base_x + 1, base_y)) +
+           (previous_at(base_x, base_y + 1) + previous_at(base_x + 1, base_y + 1))) + 2) >> 2;
+}
+
+// 6-tap half-pel interpolation of previous[] (MOTION_MODE bit0 = 1). The MV's fractional bits select the
+// position: (0,0) integer, (1,0) horizontal half, (0,1) vertical half, (1,1) center = a 6-tap of six
+// vertically-6-tapped columns in full precision. All-integer + deterministic rounding so the GPU decode, the
+// encoder reconstruction and the CPU reference stay bit-for-bit identical. No value clamp: YCoCg is signed.
+int sample_6tap(int base_x, int base_y, int half_x, int half_y) {
   if ((half_x == 0) && (half_y == 0)) {
     return previous_at(base_x, base_y);
   }
@@ -58,6 +76,12 @@ int sample_half_pel(int base_x, int base_y, int half_x, int half_y) {
   int v5 = tap6(previous_at(base_x + 3, base_y - 2), previous_at(base_x + 3, base_y - 1), previous_at(base_x + 3, base_y), previous_at(base_x + 3, base_y + 1), previous_at(base_x + 3, base_y + 2), previous_at(base_x + 3, base_y + 3));
   int t = tap6(v0, v1, v2, v3, v4, v5);
   return (t + 512) >> 10;
+}
+
+// Half-pel interpolation; the filter is selected once per stream by the MOTION_MODE spec constant (bit0),
+// so the unused branch is compiled out. quarter-pel builds on this, so quarter inherits the chosen filter.
+int sample_half_pel(int base_x, int base_y, int half_x, int half_y) {
+  return (INTERP_6TAP != 0) ? sample_6tap(base_x, base_y, half_x, half_y) : sample_bilinear(base_x, base_y, half_x, half_y);
 }
 
 // Half-pel-grid sample at half-pel units (u, v): u,v in {0,1,2} where 0=integer, 1=half, 2=next integer.
@@ -86,7 +110,10 @@ int sample_quarter_pel(int base_x, int base_y, int qx, int qy) {
 
 int sample_block_mv(int block, int x, int y) {
   int mv_x = motion_vectors[block * 2], mv_y = motion_vectors[(block * 2) + 1];
-  return sample_quarter_pel(x + (mv_x >> 2), y + (mv_y >> 2), mv_x & 3, mv_y & 3);
+  if (QUARTER_PEL != 0) {
+    return sample_quarter_pel(x + (mv_x >> 2), y + (mv_y >> 2), mv_x & 3, mv_y & 3);
+  }
+  return sample_half_pel(x + (mv_x >> 1), y + (mv_y >> 1), mv_x & 1, mv_y & 1);
 }
 
 // OBMC edge window over an MB-pixel block axis: 2, 1 near each edge, 0 in the middle (MB=16 unchanged).

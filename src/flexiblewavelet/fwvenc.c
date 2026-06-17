@@ -251,9 +251,12 @@ static VkPipeline create_compute_pipeline_motion(const char *spirv_path, VkPipel
   // consumes sad_out as SATD; 0 for fixed/B so the cooperative SATD pass — and its r[16] register pressure — is
   // COMPILED OUT, restoring motion_estimate.comp occupancy). Only motion_estimate.comp declares constant_id=2; the
   // other motion shaders (mc, blend_mode, motion_estimate_bidi, mode_decide) ignore the unused entry (Vulkan-legal).
-  int spec_values[3] = { motion_block, motion_block * motion_block, (g_motion_variable && g_merge_satd) ? 1 : 0 };
-  VkSpecializationMapEntry entries[3] = { { 0, 0, sizeof(int) }, { 1, sizeof(int), sizeof(int) }, { 2, 2 * sizeof(int), sizeof(int) } };
-  VkSpecializationInfo spec = { 3, entries, sizeof(spec_values), spec_values };
+  // [3] = MOTION_MODE (bit0 = 6-tap interpolation, bit1 = quarter-pel MVs); selects the per-stream sub-pel
+  // variant of mc/motion_estimate/motion_estimate_bidi/bidi_mode_sad. The other motion shaders ignore the
+  // entries they do not declare (Vulkan-legal).
+  int spec_values[4] = { motion_block, motion_block * motion_block, (g_motion_variable && g_merge_satd) ? 1 : 0, g_motion_mode };
+  VkSpecializationMapEntry entries[4] = { { 0, 0, sizeof(int) }, { 1, sizeof(int), sizeof(int) }, { 2, 2 * sizeof(int), sizeof(int) }, { 3, 3 * sizeof(int), sizeof(int) } };
+  VkSpecializationInfo spec = { 4, entries, sizeof(spec_values), spec_values };
   VkComputePipelineCreateInfo pipeline_info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
   pipeline_info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   pipeline_info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
@@ -1291,6 +1294,8 @@ int main(int argc, char **argv) {
       "  misc:\n"
       "    --frame-codec=lzss|lzbrrc      per-frame compressor (default lzss = fast decode; lzbrrc = ~20%% smaller, ~37x slower decode)\n"
       "    --mv-codec=golomb|range        motion-vector entropy coder (default golomb; range = adaptive binary range coder, ~-6%% file, CPU-only)\n"
+      "    --interp=6tap|bilinear         sub-pel interpolation filter (default 6tap; bilinear = legacy)\n"
+      "    --mv-precision=quarter|half    motion-vector precision (default quarter; half = coarser, fewer MV bits)\n"
       "    --no-compress                  store frames raw (no per-frame compression)\n"
       "    --debug                        extra GPU-vs-CPU validation prints\n",
       argv[0]);
@@ -1382,6 +1387,10 @@ int main(int argc, char **argv) {
       g_frame_codec = strstr(argv[i] + 14, "lzbrrc") ? 1 : 0;   // frame compressor: lzss (default, fast decode) or lzbrrc (~20% smaller, slow decode)
     } else if (!strncmp(argv[i], "--mv-codec=", 11)) {
       g_mv_codec = strstr(argv[i] + 11, "range") ? 1 : 0;   // MV entropy coder: golomb (default) or range (~-6% file, CPU-only)
+    } else if (!strncmp(argv[i], "--interp=", 9)) {   // sub-pel interpolation filter (g_motion_mode bit0). Default 6-tap.
+      if (strstr(argv[i] + 9, "bilinear")) { g_motion_mode &= ~1; } else { g_motion_mode |= 1; }
+    } else if (!strncmp(argv[i], "--mv-precision=", 15)) {   // MV precision (g_motion_mode bit1). Default quarter.
+      if (strstr(argv[i] + 15, "half")) { g_motion_mode &= ~2; } else { g_motion_mode |= 2; }
     } else if (!strcmp(argv[i], "--motion-split")) {   // variable per-block motion (quadtree 32->16->8, R-D); B uses the joint mode-aware merge by default
       g_motion_variable = 1;
       g_motion_block = 8;
@@ -3946,7 +3955,7 @@ int main(int argc, char **argv) {
     memcpy(header.magic, "FWVC", 4);   // uppercase magic (dual H.264 + wavelet container)
     header.version = 1;
     header.header_size = (uint16_t)sizeof header;
-    header.mv_codec = (uint8_t)g_mv_codec;   // 0 = Exp-Golomb (default), 1 = range coder (--mv-codec range)
+    header.mv_codec = (uint8_t)((g_mv_codec & 1) | ((g_motion_mode & 3) << 1));   // bit0 = entropy coder (0 Exp-Golomb / 1 range); bits1-2 = motion_mode (interp + precision). Old files = 0 = golomb + bilinear + half-pel.
     header.prediction_method = mode_3ddwt ? (g_mctf ? (uint8_t)3 : (uint8_t)2) : (uint8_t)method;   // 3 = MCTF 3D-DWT, 2 = open-loop 3D-DWT GOP
     header.chroma_quant_x16 = (uint8_t)(g_chroma_quant * 16.0f + 0.5f);   // chroma quant weighting (16 = 1.0 = off)
     header.chroma_format = (uint8_t)g_chroma_format;

@@ -115,6 +115,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fGOP:TpvInt32;
        fMotionBlock:TpvInt32;
        fMVCodec:TpvInt32;
+       fMotionMode:TpvInt32;
        fMotionVariable:boolean;
        fChromaQuant:TpvFloat;
        fSampleWhite:TpvInt32;
@@ -556,8 +557,10 @@ begin
   fStream.ReadBuffer(fAQMaps[0],TpvInt64(fHeader.QPMapSize));
  end;
 
- // motion config: mv entropy coder, motion block size + the variable-quadtree flag (reserved2[5]==1)
- fMVCodec:=fHeader.MVCodec;
+ // motion config: mv entropy coder (bit0), sub-pel motion_mode (bits1-2), motion block size + variable flag.
+ // Old files have MVCodec=0 -> coder=golomb, motion_mode=0 (bilinear + half-pel) = exactly how they were encoded.
+ fMVCodec:=fHeader.MVCodec and 1;
+ fMotionMode:=(fHeader.MVCodec shr 1) and 3;   // bit0 = 6-tap interpolation, bit1 = quarter-pel; mirrors the MOTION_MODE shader spec constant
  fMotionVariable:=false;
  fMotionBlock:=16;
  if (fHeader.Reserved2[5]=8) or (fHeader.Reserved2[5]=16) or (fHeader.Reserved2[5]=32) then begin
@@ -743,10 +746,12 @@ begin
     Stage.AddSpecializationMapEntry(1,SizeOf(TpvInt32),SizeOf(TpvInt32));
     Stage.AddSpecializationDataFromMemory(@SpecValues[0],SizeOf(SpecValues),true);
    end else if aMotionBlockSpec then begin
-    // mc.comp bakes the motion block size into spec constant 0 (MB)
+    // mc.comp bakes the motion block size into spec constant 0 (MB) and the sub-pel mode into spec 3 (MOTION_MODE)
     SpecValues[0]:=fMotionBlock;
+    SpecValues[1]:=fMotionMode;
     Stage.AddSpecializationMapEntry(0,0,SizeOf(TpvInt32));
-    Stage.AddSpecializationDataFromMemory(@SpecValues[0],SizeOf(TpvInt32),true);
+    Stage.AddSpecializationMapEntry(3,SizeOf(TpvInt32),SizeOf(TpvInt32));
+    Stage.AddSpecializationDataFromMemory(@SpecValues[0],SizeOf(TpvInt32)*2,true);
    end;
 
    result:=TpvVulkanComputePipeline.Create(fDevice,fPipelineCache,0,Stage,aLayout,nil,0);
