@@ -65,7 +65,7 @@
  * the original); with an out.fwv it writes a full container (frames + index + optional audio: Vorbis / QOA-LE /
  * raw PCM / FWA). quality == 0 selects the lossless integer 5/3 path; quality >= 1 the lossy 9/7 path.
  *
- *     ./fwvenc in.(mp4|y4m) [out.fwv] [quality=8] [levels=5] [max_frames] [flags...]   (--help for the full list)
+ *     ./fwvenc in.(mp4|y4m) [out.fwv] [flags...]   (--help for the full list)
  */
 #define FWV_NO_MAIN
 #include "fwvwave.c"
@@ -1234,10 +1234,12 @@ int main(int argc, char **argv) {
   init_exe_dir();   // resolve shaders relative to the binary, so the tool works from any working directory
   if (argc < 2) {
     fprintf(stderr,
-      "usage: %s in.(mp4|y4m) [out.fwv] [quality=8] [levels=5] [max_frames] [gop=1] [flags...]\n"
+      "usage: %s in.(mp4|y4m) [out.fwv] [flags...]\n"
       "  with out.fwv -> write a container; otherwise run a PSNR self-test\n"
-      "  quality : 0 = lossless (reversible 5/3), >=1 = lossy (9/7)\n"
-      "  gop     : max keyframe interval (1 = all-intra)\n"
+      "    --quality=N    0 = lossless (reversible 5/3), >=1 = lossy (9/7) (default 8)\n"
+      "    --levels=N     spatial wavelet decomposition levels (default 5)\n"
+      "    --max-frames=N encode at most N frames (default 0 = all)\n"
+      "    --gop=N        max keyframe interval (1 = all-intra; default 10, or 16 for --mode 3ddwt)\n"
       "  rate control / P-frames:\n"
       "    --vbr <target_bpp>             lossy only: nudge Q per GOP toward target_bpp (per-GOP variable Q)\n"
       "    --pmode coefdiff|colordiff     P-frame method (default colordiff; coefdiff is Q0-only)\n"
@@ -1277,13 +1279,13 @@ int main(int argc, char **argv) {
       "    --alpha-qp <N>                 alpha quant step (-1 = follow the colour quality; default -1)\n"
       "    --alpha-bleed[=<N>]            dilate opaque RGB into the transparent pixels before the transform (less fringing; =N caps the passes, 0 = until done)\n"
       "  audio / colour / misc:\n"
-      "    --audio vorbis|qoa|rpcm|fwa   audio codec (default vorbis; fwa = Flexible Wavelet audio)\n"
-      "    --fwa-quality N               FWA: 0 = lossless (5/3), >= 1 = lossy 9/7 (default 8)\n"
-      "    --fwa-mode <m>                FWA mode: uniform|psycho|joint|packet|packet-psycho|lms (default: Q0 5/3, lossy joint-psycho)\n"
-      "    --fwa-lms-taps N              FWA lms mode tap count (default 4)\n"
+      "    --audio vorbis|qoa|rpcm|fwa    audio codec (default vorbis; fwa = Flexible Wavelet audio)\n"
+      "    --fwa-quality N                FWA: 0 = lossless (5/3), >= 1 = lossy 9/7 (default 8)\n"
+      "    --fwa-mode <m>                 FWA mode: uniform|psycho|joint|packet|packet-psycho|lms (default: Q0 5/3, lossy joint-psycho)\n"
+      "    --fwa-lms-taps N               FWA lms mode tap count (default 4)\n"
       "    --fwa-no-pair | --fwa-pair-ms  FWA multichannel pairing (default: adaptive pairwise M/S)\n"
-      "    --fwa-overlap                 FWA: cross-fade block overlap (lossy only) to soften block-boundary artefacts\n"
-      "    --fwa-overlap-amount N        FWA: shared samples per block boundary (default 1024)\n"
+      "    --fwa-overlap                  FWA: cross-fade block overlap (lossy only) to soften block-boundary artefacts\n"
+      "    --fwa-overlap-amount N         FWA: shared samples per block boundary (default 1024)\n"
       "    --hdr[=pq|hlg]                 12-bit BT.2020 HDR (transfer autodetected unless forced)\n"
       "    --frame-codec lzss|lzbrrc      per-frame compressor (default lzss = fast decode; lzbrrc = ~20%% smaller, ~37x slower decode)\n"
       "    --mv-codec golomb|range        motion-vector entropy coder (default golomb; range = adaptive binary range coder, ~-6%% file, CPU-only)\n"
@@ -1318,6 +1320,10 @@ int main(int argc, char **argv) {
   int fwa_overlap_amount = 1024;
   int want_h264 = 0;            // --h264: also embed a full-res H.264 Annex-B elementary stream
   double wavelet_scale = 1.0;   // --scale: down-scale ONLY the wavelet stream (e.g. 0.5 or 1/4)
+  int quality = 8;              // --quality=N: 0 = lossless 5/3, >= 1 = lossy 9/7 (default 8)
+  int levels = 5;               // --levels=N: spatial wavelet decomposition levels (default 5)
+  long max_frames = -1;         // --max-frames=N: encode at most N frames (default 0 = all; -1 = unset sentinel)
+  int gop = 0;                  // --gop=N: max keyframe interval (default 10 for I/P/B; 16 for 3D-DWT; 0 = unset sentinel)
   for (int i = 0; i < argc; i++) {
     if (!strcmp(argv[i], "--vbr") && (i + 1) < argc) {
       vbr = 1;
@@ -1451,21 +1457,28 @@ int main(int argc, char **argv) {
       } else if (strstr(argv[i], "pq")) {
         hdr_transfer = 16;        // --hdr=pq
       }
+    } else if (!strncmp(argv[i], "--quality=", 10)) {
+      quality = atoi(argv[i] + 10);    // 0 = lossless 5/3, >= 1 = lossy 9/7
+    } else if (!strncmp(argv[i], "--levels=", 9)) {
+      levels = atoi(argv[i] + 9);      // spatial wavelet decomposition levels
+    } else if (!strncmp(argv[i], "--max-frames=", 13)) {
+      max_frames = atol(argv[i] + 13); // encode at most N frames (0 = all)
+    } else if (!strncmp(argv[i], "--gop=", 6)) {
+      gop = atoi(argv[i] + 6);         // max keyframe interval
     } else if (positional_count < 16) {
       positional[positional_count++] = argv[i];
     }
   }
   const char *input = positional[1];
   const char *output = NULL;
-  int argument = 2;
   if (positional_count > 2 && (strstr(positional[2], ".fwv") || strstr(positional[2], ".FWV"))) {   // accept .FWV too
     output = positional[2];
-    argument = 3;
   }
-  int quality = (positional_count > argument) ? atoi(positional[argument]) : 8;
-  int levels = (positional_count > (argument + 1)) ? atoi(positional[argument + 1]) : 5;
-  long max_frames = (positional_count > (argument + 2)) ? atol(positional[argument + 2]) : (output ? 0 : 4);
-  int gop = (positional_count > (argument + 3)) ? atoi(positional[argument + 3]) : 1;   // max keyframe interval
+  // quality / levels / max-frames / gop now come from --flags (parsed above). Resolve the unset sentinels: max-frames
+  // defaults to all frames for a real encode (4 for the no-output self-test); gop defaults to 10 (3D-DWT keeps 16 below).
+  if (max_frames < 0) {
+    max_frames = output ? 0 : 4;
+  }
   if (mode_3ddwt) {   // 3D-DWT GOP mode: the gop arg is the temporal decode unit (default 16, cap MAX_GOP)
     if (gop < 2) {
       gop = 16;
@@ -1479,6 +1492,9 @@ int main(int argc, char **argv) {
     if (g_temporal_levels > 6) {
       g_temporal_levels = 6;
     }
+  }
+  if (gop < 1) {   // unset (and not the 3D-DWT mode, which already chose 16 above) -> the default keyframe interval
+    gop = 10;
   }
   if (!mode_3ddwt) {
     g_mctf = 0;   // MCTF (motion-compensated temporal filtering) only applies to the 3D-DWT GOP mode
