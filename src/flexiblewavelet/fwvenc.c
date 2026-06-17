@@ -1233,6 +1233,18 @@ static void snapshot_motion_vectors(VkCommandBuffer cmd, VkBuffer src, VkBuffer 
   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &to_shader, 0, 0, 0, 0);
 }
 
+// --mv-predict=spatial: dispatch motion_refine (reads mv_target's neighbours -> mv_refine) then copy mv_refine back
+// into mv_target. The caller must have made the preceding motion_estimate's write to mv_target visible (a
+// memory_barrier()); snapshot_motion_vectors supplies the refine-write -> copy -> downstream-read barriers.
+static void spatial_refine_pass(VkCommandBuffer cmd, VkPipeline pipe, VkPipelineLayout layout, VkDescriptorSet set,
+                                VkBuffer mv_refine, VkBuffer mv_target, const int32_t *push, int blocks_x, int blocks_y) {
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipe);
+  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &set, 0, 0);
+  vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, push);
+  vkCmdDispatch(cmd, blocks_x * blocks_y, 1, 1);
+  snapshot_motion_vectors(cmd, mv_refine, mv_target, blocks_x, blocks_y);
+}
+
 int main(int argc, char **argv) {
   init_exe_dir();   // resolve shaders relative to the binary, so the tool works from any working directory
   if (argc < 2) {
@@ -1296,6 +1308,7 @@ int main(int argc, char **argv) {
       "    --mv-codec=golomb|range        motion-vector entropy coder (default golomb; range = adaptive binary range coder, ~-6%% file, CPU-only)\n"
       "    --interp=6tap|bilinear         sub-pel interpolation filter (default 6tap; bilinear = legacy)\n"
       "    --mv-precision=quarter|half    motion-vector precision (default quarter; half = coarser, fewer MV bits)\n"
+      "    --mv-predict=temporal|spatial  ME predictor (default temporal; spatial = 2nd pass toward the H.264 median, cheaper MVs)\n"
       "    --no-compress                  store frames raw (no per-frame compression)\n"
       "    --debug                        extra GPU-vs-CPU validation prints\n",
       argv[0]);
@@ -1391,6 +1404,8 @@ int main(int argc, char **argv) {
       if (strstr(argv[i] + 9, "bilinear")) { g_motion_mode &= ~1; } else { g_motion_mode |= 1; }
     } else if (!strncmp(argv[i], "--mv-precision=", 15)) {   // MV precision (g_motion_mode bit1). Default quarter.
       if (strstr(argv[i] + 15, "half")) { g_motion_mode &= ~2; } else { g_motion_mode |= 2; }
+    } else if (!strncmp(argv[i], "--mv-predict=", 13)) {   // ME predictor: temporal (default) or spatial median (2nd refine pass)
+      g_mv_predict_spatial = strstr(argv[i] + 13, "spatial") ? 1 : 0;
     } else if (!strcmp(argv[i], "--motion-split")) {   // variable per-block motion (quadtree 32->16->8, R-D); B uses the joint mode-aware merge by default
       g_motion_variable = 1;
       g_motion_block = 8;
@@ -1661,6 +1676,8 @@ int main(int argc, char **argv) {
   VkBuffer energy_buffer;                               // colordiff: single host-visible L1-residual counter (scene-cut detect)
   VkBuffer mv_buffer;                                   // motion: per-block [mv_x, mv_y] (half-pel) — the fine 8-grid in variable mode
   VkBuffer mv_prev_buffer;                              // previous frame's MVs (temporal predictor; device-local snapshot of mv_buffer)
+  VkBuffer mv_refine_buffer = 0;                        // --mv-predict=spatial: motion_refine output (a separate buffer so the neighbour reads are race-free)
+  VkDeviceMemory mv_refine_memory = 0;
   VkBuffer sad_buffer;                                  // motion_estimate SAD output (binding 8); fixed/B bind+ignore it, the variable R-D merge reads it as sad8
   VkBuffer mv8_buffer = 0, mv16_buffer = 0, mv32_buffer = 0, sad16_buffer = 0, sad32_buffer = 0;   // variable motion: per-size ME outputs
   VkBuffer mv8_prev_buffer = 0, mv16_prev_buffer = 0, mv32_prev_buffer = 0;   // variable motion: per-size previous-frame MVs (temporal predictor)
@@ -1705,6 +1722,9 @@ int main(int argc, char **argv) {
   int motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block, motion_blocks_y = ((height + g_motion_block) - 1) / g_motion_block;
   create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &mv_buffer, &mv_memory);
   create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, DEVICE_LOCAL, &mv_prev_buffer, &mv_prev_memory);
+  if (g_mv_predict_spatial) {
+    create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, DEVICE_LOCAL, &mv_refine_buffer, &mv_refine_memory);
+  }
   create_buffer(((size_t)motion_blocks_x * motion_blocks_y) * 4, HOST_VISIBLE_COHERENT, &sad_buffer, &sad_memory);   // ME SAD output (binding 8)
   if (g_motion_variable) {   // variable mode: motion_blocks here is the fine 8-grid; per-size ME outputs feed the R-D merge
     create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, DEVICE_LOCAL, &mv8_buffer, &mv8_memory);
@@ -1856,6 +1876,9 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_mc = create_compute_pipeline_motion("shaders/mc.spv", pipeline_layout_pack, g_motion_block);            // {prev, mv, mc_prev}, push 12
   VkPipeline pipeline_motion_add = create_compute_pipeline("shaders/motion_add.spv", pipeline_layout_pack);   // {coeff, mc_prev, prev}, push 8 (per-pixel, no motion grid)
   VkPipeline pipeline_motion_estimate = create_compute_pipeline_motion("shaders/motion_estimate.spv", pipeline_layout_motion_estimate, g_motion_block);   // {cur0..2, prev0..2, mv, mv_prev, sad}, push 16
+  // --mv-predict=spatial: the spatial-median refinement pass. Reuses the 9-buffer layout (binding 8 is an unused dummy);
+  // motion_refine.comp reads {cur0..2, ref0..2, mv_in@6} and writes mv_out@7.
+  VkPipeline pipeline_motion_refine = g_mv_predict_spatial ? create_compute_pipeline_motion("shaders/motion_refine.spv", pipeline_layout_motion_estimate, g_motion_block) : 0;
   // Variable motion: ME at 16 and 32 (the MB=8 search reuses pipeline_motion_estimate, since g_motion_block==8 here) + the R-D quadtree merge.
   VkPipeline pipeline_me_16 = g_motion_variable ? create_compute_pipeline_motion("shaders/motion_estimate.spv", pipeline_layout_motion_estimate, 16) : 0;
   VkPipeline pipeline_me_32 = g_motion_variable ? create_compute_pipeline_motion("shaders/motion_estimate.spv", pipeline_layout_motion_estimate, 32) : 0;
@@ -1963,6 +1986,18 @@ int main(int argc, char **argv) {
   set_motion_estimate = allocate_descriptor_set(descriptor_pool, layout_9_buffers);
   bind_storage_buffers(set_motion_estimate, (VkBuffer[]){ coeff_buffer[0], coeff_buffer[1], coeff_buffer[2],
                        previous_buffer[0], previous_buffer[1], previous_buffer[2], mv_buffer, mv_prev_buffer, sad_buffer }, 9);
+  // --mv-predict=spatial refine sets: reuse layout_9_buffers, binding 8 is an unused dummy (sad_buffer). P refine is
+  // bound once (stable previous_buffer); the B refine sets are re-bound per frame (ref0/ref1 slots change).
+  VkDescriptorSet set_refine_p = 0, set_refine_b0 = 0, set_refine_b1 = 0;
+  if (g_mv_predict_spatial) {
+    set_refine_p = allocate_descriptor_set(descriptor_pool, layout_9_buffers);
+    bind_storage_buffers(set_refine_p, (VkBuffer[]){ coeff_buffer[0], coeff_buffer[1], coeff_buffer[2],
+                         previous_buffer[0], previous_buffer[1], previous_buffer[2], mv_buffer, mv_refine_buffer, sad_buffer }, 9);
+    if (use_bframes) {
+      set_refine_b0 = allocate_descriptor_set(descriptor_pool, layout_9_buffers);
+      set_refine_b1 = allocate_descriptor_set(descriptor_pool, layout_9_buffers);
+    }
+  }
   VkDescriptorSet set_row_scratch = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
   bind_storage_buffers(set_row_scratch, (VkBuffer[]){ scratch_buffer }, 1);
 
@@ -2882,6 +2917,10 @@ int main(int argc, char **argv) {
         if (b_ref0_slot >= 0) {
           bind_storage_buffers(set_me_b0, (VkBuffer[]){ coeff_buffer[0], coeff_buffer[1], coeff_buffer[2],
                                dpb_buffer[b_ref0_slot][0], dpb_buffer[b_ref0_slot][1], dpb_buffer[b_ref0_slot][2], mv_buffer, mv_zero_buffer, sad_buffer }, 9);
+          if (g_mv_predict_spatial) {   // spatial refine of the L0 MVs (ref0)
+            bind_storage_buffers(set_refine_b0, (VkBuffer[]){ coeff_buffer[0], coeff_buffer[1], coeff_buffer[2],
+                                 dpb_buffer[b_ref0_slot][0], dpb_buffer[b_ref0_slot][1], dpb_buffer[b_ref0_slot][2], mv_buffer, mv_refine_buffer, sad_buffer }, 9);
+          }
           if (g_motion_variable && g_motion_split_bidi) {   // joint B: the 3-size L0 search reads ref0, writes mv8/16/32 (zero predictor)
             bind_storage_buffers(set_me_var8_b0, (VkBuffer[]){ coeff_buffer[0], coeff_buffer[1], coeff_buffer[2],
                                  dpb_buffer[b_ref0_slot][0], dpb_buffer[b_ref0_slot][1], dpb_buffer[b_ref0_slot][2], mv8_buffer, mv_zero_buffer, sad_buffer }, 9);
@@ -2893,6 +2932,10 @@ int main(int argc, char **argv) {
           if (b_ref1_slot >= 0) {
             bind_storage_buffers(set_me_b1, (VkBuffer[]){ coeff_buffer[0], coeff_buffer[1], coeff_buffer[2],
                                  dpb_buffer[b_ref1_slot][0], dpb_buffer[b_ref1_slot][1], dpb_buffer[b_ref1_slot][2], mv1_buffer, mv_zero_buffer, sad_buffer }, 9);
+            if (g_mv_predict_spatial) {   // spatial refine of the L1 MVs (ref1)
+              bind_storage_buffers(set_refine_b1, (VkBuffer[]){ coeff_buffer[0], coeff_buffer[1], coeff_buffer[2],
+                                   dpb_buffer[b_ref1_slot][0], dpb_buffer[b_ref1_slot][1], dpb_buffer[b_ref1_slot][2], mv1_buffer, mv_refine_buffer, sad_buffer }, 9);
+            }
             if (g_motion_variable && g_motion_split_bidi) {   // joint B: the 3-size L1 search reads ref1, writes mv1_8/16/32 + the bidi_mode_sad sets
               bind_storage_buffers(set_me_var8_b1, (VkBuffer[]){ coeff_buffer[0], coeff_buffer[1], coeff_buffer[2],
                                    dpb_buffer[b_ref1_slot][0], dpb_buffer[b_ref1_slot][1], dpb_buffer[b_ref1_slot][2], mv1_8_buffer, mv_zero_buffer, sad_buffer }, 9);
@@ -3122,6 +3165,9 @@ int main(int argc, char **argv) {
         vkCmdPushConstants(command_buffer, pipeline_layout_motion_estimate, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, me_push);
         vkCmdDispatch(command_buffer, motion_blocks_x * motion_blocks_y, 1, 1);
         memory_barrier();
+        if (g_mv_predict_spatial) {   // 2nd pass: refine mv_buffer toward the spatial median (cheaper MVs)
+          spatial_refine_pass(command_buffer, pipeline_motion_refine, pipeline_layout_motion_estimate, set_refine_p, mv_refine_buffer, mv_buffer, me_push, motion_blocks_x, motion_blocks_y);
+        }
       }
 
       // Variable-motion P-frame: motion-search at 8/16/32 (mv8/16/32 + sad8/16/32, zero predictor), then the
@@ -3188,11 +3234,17 @@ int main(int argc, char **argv) {
         vkCmdPushConstants(command_buffer, pipeline_layout_motion_estimate, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, me_push);
         vkCmdDispatch(command_buffer, motion_blocks_x * motion_blocks_y, 1, 1);
         memory_barrier();
+        if (g_mv_predict_spatial && !g_motion_variable) {   // refine the L0 MVs toward the spatial median
+          spatial_refine_pass(command_buffer, pipeline_motion_refine, pipeline_layout_motion_estimate, set_refine_b0, mv_refine_buffer, mv_buffer, me_push, motion_blocks_x, motion_blocks_y);
+        }
         if (b_ref1_slot >= 0) {
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_motion_estimate, 0, 1, &set_me_b1, 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_motion_estimate, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, me_push);
           vkCmdDispatch(command_buffer, motion_blocks_x * motion_blocks_y, 1, 1);
           memory_barrier();
+          if (g_mv_predict_spatial && !g_motion_variable) {   // refine the L1 MVs toward the spatial median
+            spatial_refine_pass(command_buffer, pipeline_motion_refine, pipeline_layout_motion_estimate, set_refine_b1, mv_refine_buffer, mv1_buffer, me_push, motion_blocks_x, motion_blocks_y);
+          }
         }
       }
 
