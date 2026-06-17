@@ -192,6 +192,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fRingModeBuffer:array of TpvVulkanBuffer;
        fRingSetUnpack:array of array[0..3] of TpvVulkanDescriptorSet; // bound once: {ring data, ring offset, shared coeff}
        fRingSetDequant:array of array[0..3] of TpvVulkanDescriptorSet; // bound once: {shared coeff, ring step}
+       fRingSetApplyAQ:array of array[0..3] of TpvVulkanDescriptorSet; // AQ apply (B-frame ring): {ring step, tile codes, weight LUT, ring step (in-place)}
        fRingSetGMC0:array of array[0..3] of TpvVulkanDescriptorSet; // rebound per frame
        fRingSetGMC1:array of array[0..3] of TpvVulkanDescriptorSet;
        fRingSetGBlend:array of array[0..3] of TpvVulkanDescriptorSet;
@@ -218,10 +219,12 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fDSL1:TpvVulkanDescriptorSetLayout; // 1 storage buffer
        fDSL2:TpvVulkanDescriptorSetLayout; // 2 storage buffers
        fDSL3:TpvVulkanDescriptorSetLayout; // 3 storage buffers
+       fDSL4:TpvVulkanDescriptorSetLayout; // 4 storage buffers (AQ apply: base step, tile codes, weight LUT, modulated step)
        fDSLColour:TpvVulkanDescriptorSetLayout; // 3 storage buffers + 1 storage image
        fDSLColourAlpha:TpvVulkanDescriptorSetLayout; // alpha variant: 3 buffers + 1 image + 1 alpha buffer (bindings 0,1,2,3=image,4=alpha)
        fPLUnpack:TpvVulkanPipelineLayout;
        fPLDequant:TpvVulkanPipelineLayout;
+       fPLApplyAQ:TpvVulkanPipelineLayout; // AQ apply: fDSL4 + 20-byte push {width,height,levels,tile_cols,tile_rows}
        fPLTranspose:TpvVulkanPipelineLayout;
        fPLRow:TpvVulkanPipelineLayout;
        fPLRound:TpvVulkanPipelineLayout;
@@ -232,6 +235,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fPLColourHDRAlpha:TpvVulkanPipelineLayout; // HDR alpha variant: fDSLColourAlpha (5 bindings) + the 32-byte HDR push
        fPipeUnpack:TpvVulkanComputePipeline;
        fPipeDequant:TpvVulkanComputePipeline;
+       fPipeApplyAQ:TpvVulkanComputePipeline; // apply_tile_aq.comp: GPU per-tile AQ step modulation (replaces the per-frame CPU ApplyAQ)
        fPipeTranspose:TpvVulkanComputePipeline;
        fPipeIDWT97:TpvVulkanComputePipeline;
        fPipeIDWT53:TpvVulkanComputePipeline;
@@ -263,6 +267,9 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fAlphaRingSetDequant:array of TpvVulkanDescriptorSet; // [slot] {shared coeff[3], ring step}
        fOffsetBuffer:array[0..3] of TpvVulkanBuffer;
        fStepBuffer:array[0..3] of TpvVulkanBuffer;
+       fWeightLUTBuffer:TpvVulkanBuffer;  // AQ (GPU): 256 log-spaced weights (= aq_weight_from_code), uploaded once
+       fTileCodesBuffer:TpvVulkanBuffer;  // AQ (GPU): this frame's raw qpmap tile codes (4 codes per uint), uploaded per frame
+       fAQPush:array[0..4] of TpvInt32;   // AQ (GPU): apply_tile_aq push {width,height,levels,tile_cols,tile_rows} (recording is sequential)
        fCoeffBuffer:array[0..3] of TpvVulkanBuffer;
        fPreviousBuffer:array[0..3] of TpvVulkanBuffer; // P-frame reference (coefficients / reconstructed YCoCg), GPU-resident across frames
        fMVBuffer:TpvVulkanBuffer; // colordiff (B): per-block [mv_x, mv_y] (half-pel), host-visible
@@ -279,6 +286,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fOutputImageFlags:TVkImageCreateFlags;
        fSetUnpack:array[0..3] of TpvVulkanDescriptorSet;
        fSetDequant:array[0..3] of TpvVulkanDescriptorSet;
+       fSetApplyAQ:array[0..3] of TpvVulkanDescriptorSet; // AQ apply (I/P + 3D-DWT prefetch): {fStepBuffer, tile codes, weight LUT, fStepBuffer (in-place)}
        fSetAdd:array[0..3] of TpvVulkanDescriptorSet; // coefdiff (A): {coeff, previous}
        fSetMCPlay:array[0..3] of TpvVulkanDescriptorSet; // colordiff (B): {previous, mv, scratch=mc_prev}
        fSetMotionAddPlay:array[0..3] of TpvVulkanDescriptorSet; // colordiff (B): {coeff, scratch=mc_prev, previous}
@@ -345,7 +353,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        procedure RecordDispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aPipeline:TpvVulkanComputePipeline;const aLayout:TpvVulkanPipelineLayout;const aSet:TpvVulkanDescriptorSet;const aPushConstants:Pointer;const aPushSize:TpvUInt32;const aGroupsX,aGroupsY,aGroupsZ:TpvUInt32);
        function EnsureStepCacheSlot(const aQuality:TpvInt32):TpvInt32; // build (once) + return the step-map cache slot for a quality
        procedure SetAQCurrentMap(const aCodingIndex:TpvInt32); // AQ: select this coding frame's per-tile QP map (no-op if AQ off)
-       procedure ApplyAQ(const aStep:PpvInt32Array;const aWidth,aHeight:TpvInt32); // AQ: modulate a just-uploaded step map in-place
+       procedure UploadTileCodes; // AQ (GPU): copy the current frame's raw qpmap tile codes into fTileCodesBuffer for apply_tile_aq.comp
        procedure UploadFrame(const aFrameIndex:TpvInt32);
        procedure RecordDecode(const aCommandBuffer:TpvVulkanCommandBuffer;const aIsPredicted:boolean);
        // Optional alpha (colour_flags bit2): one intra, full-res 8-bit plane appended per frame. The colour is decoded
@@ -361,6 +369,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        function ActiveDataBuffer:TpvVulkanBuffer;
        function ActiveOffsetBuffer(const aPlane:TpvInt32):TpvVulkanBuffer;
        function ActiveStepBuffer(const aPlane:TpvInt32):TpvVulkanBuffer;
+       function ActiveSetApplyAQ(const aPlane:TpvInt32):TpvVulkanDescriptorSet; // AQ apply set bound to the active step buffer (shared vs ring slot)
        function ActiveMVBuffer:TpvVulkanBuffer;
        function ActiveMV1Buffer:TpvVulkanBuffer;
        function ActiveModeBuffer:TpvVulkanBuffer;
@@ -813,6 +822,9 @@ begin
  fDSL1:=CreateDescriptorSetLayout(1,false);
  fDSL2:=CreateDescriptorSetLayout(2,false);
  fDSL3:=CreateDescriptorSetLayout(3,false);
+ if fAQEnabled then begin
+  fDSL4:=CreateDescriptorSetLayout(4,false); // AQ apply: base step, tile codes, weight LUT, modulated step
+ end;
  fDSLColour:=CreateDescriptorSetLayout(3,true);
 
  // colour_alpha layout: bindings 0,1,2 = coeff buffers, 3 = output image, 4 = alpha buffer (the image is NOT last, so
@@ -830,6 +842,9 @@ begin
  // pipeline layouts (push-constant sizes match the C shaders)
  fPLUnpack:=CreatePipelineLayout(fDSL3,16);
  fPLDequant:=CreatePipelineLayout(fDSL2,8);
+ if fAQEnabled then begin
+  fPLApplyAQ:=CreatePipelineLayout(fDSL4,20); // push {width,height,levels,tile_cols,tile_rows}
+ end;
  fPLTranspose:=CreatePipelineLayout(fDSL2,16);
  fPLRow:=CreatePipelineLayout(fDSL1,16);
  fPLRound:=CreatePipelineLayout(fDSL1,4);
@@ -846,6 +861,9 @@ begin
  // intra-decode compute pipelines from the embedded SPIR-V
  fPipeUnpack:=CreateComputePipeline(FlexibleWaveletVideoBitplaneUnpackSPIRVData,FlexibleWaveletVideoBitplaneUnpackSPIRVDataSize,fPLUnpack,true);
  fPipeDequant:=CreateComputePipeline(FlexibleWaveletVideoDequant97SPIRVData,FlexibleWaveletVideoDequant97SPIRVDataSize,fPLDequant,false);
+ if fAQEnabled then begin
+  fPipeApplyAQ:=CreateComputePipeline(FlexibleWaveletVideoApplyTileAqSPIRVData,FlexibleWaveletVideoApplyTileAqSPIRVDataSize,fPLApplyAQ,false);
+ end;
  fPipeTranspose:=CreateComputePipeline(FlexibleWaveletVideoTransposeFSPIRVData,FlexibleWaveletVideoTransposeFSPIRVDataSize,fPLTranspose,false);
  fPipeIDWT97:=CreateComputePipeline(FlexibleWaveletVideoIdwt97rowSPIRVData,FlexibleWaveletVideoIdwt97rowSPIRVDataSize,fPLRow,false);
  fPipeIDWT53:=CreateComputePipeline(FlexibleWaveletVideoIdwt53rowSPIRVData,FlexibleWaveletVideoIdwt53rowSPIRVDataSize,fPLRow,false);
@@ -889,6 +907,9 @@ var Plane,SlotIndex:TpvInt32;
     RequiresDedicated,PrefersDedicated:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
     ImageHandle:TVkImage;
+    AQWeightPointer:PpvFloatArray; // AQ: the weight LUT host mapping while filling it
+    AQLogSpan:TpvFloat;
+    AQCodeIndex:TpvInt32;
 begin
 
  // host-visible payload buffer (bitplane data + per-block offsets) + per-plane host-visible offset buffers
@@ -903,6 +924,23 @@ begin
   fStepBuffer[Plane]:=CreateStorageBuffer(PlaneBytes,false,'FWV.step');
   fCoeffBuffer[Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.coeff');
   fPreviousBuffer[Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.previous'); // P-frame reference, GPU-resident across frames
+ end;
+
+ // AQ (GPU): the one-time weight LUT (code -> log-spaced weight, IDENTICAL to ApplyTileAQ / aq_weight_from_code) + the
+ // per-frame raw qpmap tile codes, so apply_tile_aq.comp modulates the base step on the GPU (no per-pixel CPU work).
+ if fAQEnabled then begin
+  fWeightLUTBuffer:=CreateStorageBuffer(256*SizeOf(TpvFloat),false,'FWV.aqlut');
+  AQLogSpan:=Ln(TpvFlexibleWaveletVideo.AQWeightMax/TpvFlexibleWaveletVideo.AQWeightMin);
+  AQWeightPointer:=PpvFloatArray(fWeightLUTBuffer.Memory.MapMemory);
+  try
+   for AQCodeIndex:=0 to 255 do begin
+    AQWeightPointer^[AQCodeIndex]:=TpvFlexibleWaveletVideo.AQWeightMin*Exp((TpvFloat(AQCodeIndex)/255.0)*AQLogSpan);
+   end;
+  finally
+   fWeightLUTBuffer.Memory.UnmapMemory;
+  end;
+  // tile codes: rounded up to a multiple of 4 so apply_tile_aq's packed-uint reads (4 codes/uint) stay in bounds
+  fTileCodesBuffer:=CreateStorageBuffer(TVkDeviceSize(((fAQMapBytes+3) div 4)*4),false,'FWV.aqcodes');
  end;
 
  // optional alpha plane (index 3): a full-res (luma-sized) intra plane. Its own data buffer keeps the alpha block
@@ -1059,6 +1097,10 @@ begin
   MaxSets:=MaxSets+24;
   MaxBuffers:=MaxBuffers+48;
  end;
+ if fAQEnabled then begin // apply_tile_aq sets: 3 shared (I/P + 3D-DWT prefetch) + 3 per B-frame ring slot, 4 buffers each
+  MaxSets:=MaxSets+3+(fBufferRingSize*3);
+  MaxBuffers:=MaxBuffers+12+(fBufferRingSize*12);
+ end;
  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),MaxSets);
  fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,MaxBuffers);
  fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,3); // fSetColour + (optional) fSetColourAlpha
@@ -1077,6 +1119,15 @@ begin
   BindStorageBuffer(fSetDequant[Plane],0,fCoeffBuffer[Plane]);
   BindStorageBuffer(fSetDequant[Plane],1,fStepBuffer[Plane]);
   fSetDequant[Plane].Flush;
+
+  if fAQEnabled then begin // AQ apply (I/P + 3D-DWT prefetch): base + tile codes + weight LUT -> the same step buffer (in-place)
+   fSetApplyAQ[Plane]:=AllocateSet(fDSL4);
+   BindStorageBuffer(fSetApplyAQ[Plane],0,fStepBuffer[Plane]);   // base step (the per-frame copy of the cached base lands here)
+   BindStorageBuffer(fSetApplyAQ[Plane],1,fTileCodesBuffer);
+   BindStorageBuffer(fSetApplyAQ[Plane],2,fWeightLUTBuffer);
+   BindStorageBuffer(fSetApplyAQ[Plane],3,fStepBuffer[Plane]);   // modulated step the dequant reads (same buffer, in-place)
+   fSetApplyAQ[Plane].Flush;
+  end;
 
   fSetAdd[Plane]:=AllocateSet(fDSL2); // coefdiff (A): {coeff, previous}
   BindStorageBuffer(fSetAdd[Plane],0,fCoeffBuffer[Plane]);
@@ -1329,10 +1380,30 @@ begin
  end;
 end;
 
-procedure TpvFlexibleWaveletVideoDecoder.ApplyAQ(const aStep:PpvInt32Array;const aWidth,aHeight:TpvInt32);
+// AQ (GPU): upload the current frame's raw qpmap tile codes; apply_tile_aq.comp then modulates the base step (copied
+// into the step buffer each frame) IN PLACE on the GPU, so there is no per-pixel CPU work (the old ApplyAQ is gone).
+procedure TpvFlexibleWaveletVideoDecoder.UploadTileCodes;
+var DataPointer:PpvUInt8Array;
 begin
  if fAQEnabled and assigned(fAQCurrentMap) then begin
-  ApplyTileAQ(aStep,aWidth,aHeight,fLevels,fAQCurrentMap,fAQCols,fAQRows);
+  DataPointer:=PpvUInt8Array(fTileCodesBuffer.Memory.MapMemory);
+  try
+   Move(fAQCurrentMap^[0],DataPointer^[0],TpvSizeUInt(fAQMapBytes));
+  finally
+   fTileCodesBuffer.Memory.UnmapMemory;
+  end;
+ end;
+end;
+
+// The apply_tile_aq set bound to the ACTIVE step buffer (shared fStepBuffer when fBufferRingSlot<0, else the B ring
+// slot's). base and modulated are the SAME buffer (in-place) — safe because each invocation only touches its own gid
+// and the base is freshly copied into the step buffer each frame, so there is no cross-frame accumulation.
+function TpvFlexibleWaveletVideoDecoder.ActiveSetApplyAQ(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
+begin
+ if fBufferRingSlot<0 then begin
+  result:=fSetApplyAQ[aPlane];
+ end else begin
+  result:=fRingSetApplyAQ[fBufferRingSlot][aPlane];
  end;
 end;
 
@@ -1358,6 +1429,7 @@ begin
  end;
  Entry:=@fFrameEntries[aFrameIndex];
  SetAQCurrentMap(aFrameIndex); // AQ: this coding frame's per-tile QP map (no-op when AQ off)
+ UploadTileCodes; // AQ (GPU): stage the raw tile codes for apply_tile_aq.comp
 
  // Read the compressed container payload for this frame.
  CompressedLength:=Entry^.Size;
@@ -1391,7 +1463,7 @@ begin
    DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
    try
     Move(fStepCacheData[(StepSlot*fNumPlanes)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
-    ApplyAQ(PpvInt32Array(@DataPointer^[0]),PlaneWidth(Plane),PlaneHeight(Plane)); // AQ: modulate the base step by this frame's per-tile map
+    // AQ: the base step lands here; the GPU apply_tile_aq pass (recorded below) modulates it in place (no CPU work)
    finally
     ActiveStepBuffer(Plane).Memory.UnmapMemory;
    end;
@@ -1561,6 +1633,15 @@ begin
     ChromaMultiplier:=fChromaQuant;
    end;
    DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
+   if fAQEnabled then begin // GPU AQ: modulate the base step (in the step buffer) by this frame's tile map, in place, before dequant
+    fAQPush[0]:=PlaneWidth(Plane);
+    fAQPush[1]:=PlaneHeight(Plane);
+    fAQPush[2]:=fLevels;
+    fAQPush[3]:=fAQCols;
+    fAQPush[4]:=fAQRows;
+    RecordDispatch(aCommandBuffer,fPipeApplyAQ,fPLApplyAQ,ActiveSetApplyAQ(Plane),@fAQPush[0],20,PlanePixelWorkgroups,1,1);
+    RecordComputeBarrier(aCommandBuffer);
+   end;
    RecordDispatch(aCommandBuffer,fPipeDequant,fPLDequant,ActiveSetDequant(Plane),@DequantPush[0],8,PlanePixelWorkgroups,1,1);
    RecordComputeBarrier(aCommandBuffer);
   end;
@@ -2055,6 +2136,7 @@ begin
  SetLength(fRingModeBuffer,fBufferRingSize);
  SetLength(fRingSetUnpack,fBufferRingSize);
  SetLength(fRingSetDequant,fBufferRingSize);
+ SetLength(fRingSetApplyAQ,fBufferRingSize); // AQ apply set per ring slot (bound only when AQ is enabled)
  SetLength(fRingSetGMC0,fBufferRingSize);
  SetLength(fRingSetGMC1,fBufferRingSize);
  SetLength(fRingSetGBlend,fBufferRingSize);
@@ -2080,6 +2162,14 @@ begin
    BindStorageBuffer(fRingSetDequant[Slot][Plane],0,fCoeffBuffer[Plane]);
    BindStorageBuffer(fRingSetDequant[Slot][Plane],1,fRingStepBuffer[Slot][Plane]);
    fRingSetDequant[Slot][Plane].Flush;
+   if fAQEnabled then begin // AQ apply: this ring slot's step buffer is base + modulated (in-place)
+    fRingSetApplyAQ[Slot][Plane]:=AllocateSet(fDSL4);
+    BindStorageBuffer(fRingSetApplyAQ[Slot][Plane],0,fRingStepBuffer[Slot][Plane]);
+    BindStorageBuffer(fRingSetApplyAQ[Slot][Plane],1,fTileCodesBuffer);
+    BindStorageBuffer(fRingSetApplyAQ[Slot][Plane],2,fWeightLUTBuffer);
+    BindStorageBuffer(fRingSetApplyAQ[Slot][Plane],3,fRingStepBuffer[Slot][Plane]);
+    fRingSetApplyAQ[Slot][Plane].Flush;
+   end;
    fRingSetGMC0[Slot][Plane]:=AllocateSet(fDSL3);
    fRingSetGMC1[Slot][Plane]:=AllocateSet(fDSL3);
    fRingSetGBlend[Slot][Plane]:=AllocateSet(fDSL3);
@@ -2116,6 +2206,7 @@ begin
 
  Entry:=@fFrameEntries[aCodingIndex];
  SetAQCurrentMap(aCodingIndex); // AQ: this coding frame's per-tile QP map (no-op when AQ off)
+ UploadTileCodes; // AQ (GPU): stage the raw tile codes for apply_tile_aq.comp
 
  // Read + decompress the coding frame (same framing as the non-B path).
  CompressedLength:=Entry^.Size;
@@ -2144,7 +2235,7 @@ begin
    DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
    try
     Move(fStepCacheData[(StepSlot*fNumPlanes)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
-    ApplyAQ(PpvInt32Array(@DataPointer^[0]),PlaneWidth(Plane),PlaneHeight(Plane)); // AQ: modulate the base step by this frame's per-tile map
+    // AQ: the base step lands here; the GPU apply_tile_aq pass (recorded below) modulates it in place (no CPU work)
    finally
     ActiveStepBuffer(Plane).Memory.UnmapMemory;
    end;
@@ -2340,6 +2431,15 @@ begin
     ChromaMultiplier:=fChromaQuant;
    end;
    DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
+   if fAQEnabled then begin // GPU AQ: modulate the base step (in the step buffer) by this frame's tile map, in place, before dequant
+    fAQPush[0]:=PlaneWidth(Plane);
+    fAQPush[1]:=PlaneHeight(Plane);
+    fAQPush[2]:=fLevels;
+    fAQPush[3]:=fAQCols;
+    fAQPush[4]:=fAQRows;
+    RecordDispatch(aCommandBuffer,fPipeApplyAQ,fPLApplyAQ,ActiveSetApplyAQ(Plane),@fAQPush[0],20,PlanePixelWorkgroups,1,1);
+    RecordComputeBarrier(aCommandBuffer);
+   end;
    RecordDispatch(aCommandBuffer,fPipeDequant,fPLDequant,ActiveSetDequant(Plane),@DequantPush[0],8,PlanePixelWorkgroups,1,1);
    RecordComputeBarrier(aCommandBuffer);
   end;
@@ -2715,6 +2815,7 @@ begin
 
  Entry:=@fFrameEntries[aCodingIndex];
  SetAQCurrentMap(aCodingIndex); // AQ: this coding frame's per-tile QP map (no-op when AQ off)
+ UploadTileCodes; // AQ (GPU): stage the raw tile codes for apply_tile_aq.comp
 
  CompressedLength:=Entry^.Size;
  if TpvSizeUInt(Length(fCompressedScratch))<(CompressedLength+8) then begin
@@ -2748,7 +2849,7 @@ begin
    DataPointer:=PpvUInt8Array(fStepBuffer[Plane].Memory.MapMemory);
    try
     Move(fStepCacheData[(StepSlot*fNumPlanes)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
-    ApplyAQ(PpvInt32Array(@DataPointer^[0]),PlaneWidth(Plane),PlaneHeight(Plane)); // AQ: modulate the base step by this frame's per-tile map
+    // AQ: the base step lands here; the GPU apply_tile_aq pass (recorded below) modulates it in place (no CPU work)
    finally
     fStepBuffer[Plane].Memory.UnmapMemory;
    end;
@@ -2860,6 +2961,15 @@ begin
     ChromaMultiplier:=fChromaQuant;
    end;
    DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
+   if fAQEnabled then begin // GPU AQ: the prefetch decodes into fStepBuffer (fSetDequantPF), so modulate it in place via fSetApplyAQ
+    fAQPush[0]:=PlaneWidth(Plane);
+    fAQPush[1]:=PlaneHeight(Plane);
+    fAQPush[2]:=fLevels;
+    fAQPush[3]:=fAQCols;
+    fAQPush[4]:=fAQRows;
+    RecordDispatch(aCommandBuffer,fPipeApplyAQ,fPLApplyAQ,fSetApplyAQ[Plane],@fAQPush[0],20,PlanePixelWorkgroups,1,1);
+    RecordComputeBarrier(aCommandBuffer);
+   end;
    RecordDispatch(aCommandBuffer,fPipeDequant,fPLDequant,fSetDequantPF[Plane],@DequantPush[0],8,PlanePixelWorkgroups,1,1);
    RecordComputeBarrier(aCommandBuffer);
   end;
@@ -3535,6 +3645,7 @@ begin
  for Plane:=0 to fNumPlanes-1 do begin
   FreeAndNil(fSetUnpack[Plane]);
   FreeAndNil(fSetDequant[Plane]);
+  FreeAndNil(fSetApplyAQ[Plane]);
   FreeAndNil(fSetAdd[Plane]);
   FreeAndNil(fSetMCPlay[Plane]);
   FreeAndNil(fSetMotionAddPlay[Plane]);
@@ -3560,6 +3671,7 @@ begin
   for Plane:=0 to fNumPlanes-1 do begin
    FreeAndNil(fRingSetUnpack[SlotIndex][Plane]);
    FreeAndNil(fRingSetDequant[SlotIndex][Plane]);
+   FreeAndNil(fRingSetApplyAQ[SlotIndex][Plane]);
    FreeAndNil(fRingSetGMC0[SlotIndex][Plane]);
    FreeAndNil(fRingSetGMC1[SlotIndex][Plane]);
    FreeAndNil(fRingSetGBlend[SlotIndex][Plane]);
@@ -3634,6 +3746,9 @@ begin
  FreeAndNil(fPipeIDWT53);
  FreeAndNil(fPipeIDWT97);
  FreeAndNil(fPipeTranspose);
+ FreeAndNil(fPipeApplyAQ);
+ FreeAndNil(fWeightLUTBuffer);
+ FreeAndNil(fTileCodesBuffer);
  FreeAndNil(fPipeDequant);
  FreeAndNil(fPipeUnpack);
 
@@ -3647,11 +3762,13 @@ begin
  FreeAndNil(fPLRound);
  FreeAndNil(fPLRow);
  FreeAndNil(fPLTranspose);
+ FreeAndNil(fPLApplyAQ);
  FreeAndNil(fPLDequant);
  FreeAndNil(fPLUnpack);
 
  FreeAndNil(fDSLColourAlpha);
  FreeAndNil(fDSLColour);
+ FreeAndNil(fDSL4);
  FreeAndNil(fDSL3);
  FreeAndNil(fDSL2);
  FreeAndNil(fDSL1);

@@ -2776,7 +2776,7 @@ int main(int argc, char **argv) {
           }
         }
         // Self-test: CPU-decode the whole GOP (decode_gop_3ddwt) and score PSNR per frame vs the source.
-        decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed);
+        decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, 0, 0, 0);
         for (int f = 0; f < filled; f++) {
           double mean_squared_error = 0;
           size_t pixel_stride = (size_t)g_channels * g_sample_bytes, rgb_bytes = (size_t)3 * g_sample_bytes;

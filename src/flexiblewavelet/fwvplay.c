@@ -797,7 +797,8 @@ static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32
 
 // Verify only: CPU-decode a whole GOP (decode_gop_3ddwt) into cpu_gop_rgb to compare the GPU decode against.
 static void cpu_decode_gop(FILE *file, const FrameEntry *index, uint32_t gop_start, int gop_count,
-                           int width, int height, int levels, int quality, uint8_t **cpu_gop_rgb) {
+                           int width, int height, int levels, int quality, uint8_t **cpu_gop_rgb,
+                           const uint8_t *qpmaps, int aq_cols, int aq_rows) {
   uint8_t *payload[MAX_GOP];
   size_t payload_length[MAX_GOP];
   for (int g = 0; g < gop_count; g++) {
@@ -806,7 +807,8 @@ static void cpu_decode_gop(FILE *file, const FrameEntry *index, uint32_t gop_sta
     size_t payload_capacity = 0;
     payload_length[g] = read_frame(file, &index[source_index], &payload[g], &payload_capacity);
   }
-  decode_gop_3ddwt(payload, payload_length, gop_count, width, height, levels, quality, cpu_gop_rgb);
+  decode_gop_3ddwt(payload, payload_length, gop_count, width, height, levels, quality, cpu_gop_rgb,
+                   qpmaps, aq_cols, aq_rows, (long)gop_start);
   for (int g = 0; g < gop_count; g++) {
     free(payload[g]);
   }
@@ -2161,7 +2163,7 @@ int main(int argc, char **argv) {
     decode3d_finish_gop(&d3d, 0, cur_gop_count, mctf_mv);
     vkWaitForFences(device, 1, &prefetch_fence, VK_TRUE, UINT64_MAX);   // GOP 0 fully decoded
     if (verify) {
-      cpu_decode_gop(file, index, 0, cur_gop_count, width, height, levels, quality, cpu_gop_rgb);
+      cpu_decode_gop(file, index, 0, cur_gop_count, width, height, levels, quality, cpu_gop_rgb, g_aq_enabled ? all_qpmaps : NULL, aq_cols, aq_rows);
     }
     // Begin prefetching GOP 1 (one subband per displayed frame, below).
     pf_gop_start = (uint32_t)cur_gop_count;
@@ -2288,7 +2290,7 @@ int main(int argc, char **argv) {
       cur_gop_start = pf_gop_start;
       cur_gop_count = pf_gop_count;
       if (verify) {
-        cpu_decode_gop(file, index, cur_gop_start, cur_gop_count, width, height, levels, quality, cpu_gop_rgb);
+        cpu_decode_gop(file, index, cur_gop_start, cur_gop_count, width, height, levels, quality, cpu_gop_rgb, g_aq_enabled ? all_qpmaps : NULL, aq_cols, aq_rows);
       }
       pf_buf = 1 - cur_buf;
       pf_gop_start = cur_gop_start + (uint32_t)cur_gop_count;

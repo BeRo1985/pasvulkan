@@ -203,6 +203,7 @@ begin
   ConvertFile('shaders/virtualreality/blit_frag.spv','VirtualRealityBlitFragmentSPIRV');
   // Flexible Wavelet Video (FWV) compute shaders (src/flexiblewavelet/shaders/*.spv)
   ConvertFile('../flexiblewavelet/shaders/apply_pcrd.spv','FlexibleWaveletVideoApplyPcrdSPIRV');
+  ConvertFile('../flexiblewavelet/shaders/apply_tile_aq.spv','FlexibleWaveletVideoApplyTileAqSPIRV');
   ConvertFile('../flexiblewavelet/shaders/bidi_blend.spv','FlexibleWaveletVideoBidiBlendSPIRV');
   ConvertFile('../flexiblewavelet/shaders/bidi_mode_sad.spv','FlexibleWaveletVideoBidiModeSadSPIRV');
   ConvertFile('../flexiblewavelet/shaders/bitplane_pack.spv','FlexibleWaveletVideoBitplanePackSPIRV');

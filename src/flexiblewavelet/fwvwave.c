@@ -4843,8 +4843,12 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
 
 // Decode a GOP: spatial-inverse each temporal-subband frame, then inverse the temporal transform
 // across the frames, then YCoCg-R -> RGB. rgb_out[f] receives the reconstructed frame in display order.
+// qpmaps (or NULL): the transmitted per-subband per-tile AQ maps, indexed by coding index. When non-NULL each subband
+// f applies its map (coding index base_coding_index + f) to the colour-plane quant steps exactly as the GPU decode
+// does — so --verify (GPU vs CPU) holds for --aq 3D-DWT. Alpha is never AQ-modulated. NULL = no AQ (self-test callers).
 static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames, int width, int height,
-                             int levels, int base_quality, uint8_t **rgb_out) {
+                             int levels, int base_quality, uint8_t **rgb_out,
+                             const uint8_t *qpmaps, int aq_cols, int aq_rows, long base_coding_index) {
   (void)frame_len;
   int pixel_count = width * height;
   int lossless = (base_quality == 0);
@@ -4912,6 +4916,9 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
         decode_motion_vectors(&mv_reader, fmv, motion_blocks_x, motion_blocks_y);
       }
     }
+    if (qpmaps) {   // verify: this subband's transmitted AQ map (coding index base + f), applied to the colour planes
+      aq_set_current_map(qpmaps + ((size_t)(base_coding_index + f) * ((size_t)aq_cols * (size_t)aq_rows)), aq_cols, aq_rows);
+    }
     for (int plane = 0; plane < g_num_planes; plane++) {
       int pw = plane_w[plane], ph = plane_h[plane], pp = plane_pixels[plane];
       decode_plane(data, offsets[plane], coefficients, pw, ph, cdl);
@@ -4942,6 +4949,9 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
         die("corrupt alpha section");
       }
       decode_plane(alpha_data, alpha_offsets, coefficients, width, height, alpha_data_length);
+      if (qpmaps) {   // alpha is never AQ-modulated — clear the map so its maybe_apply stays a no-op (matches the encoder)
+        aq_set_current_map(NULL, 0, 0);
+      }
       build_quantization_steps(step, width, height, levels, alpha_qp);
       maybe_apply_tile_aq(step, width, height, levels);
       reconstruct_plane(coefficients, float_plane, step, width, height, levels, alpha_qp, 1.0f);
@@ -4951,6 +4961,9 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
     for (int plane = 0; plane < g_num_planes; plane++) {
       free(offsets[plane]);
     }
+  }
+  if (qpmaps) {   // don't leak the last subband's map into any later maybe_apply caller
+    aq_set_current_map(NULL, 0, 0);
   }
   free(step);
   free(float_plane);
@@ -5678,7 +5691,7 @@ int main(int argc, char **argv) {
       double t0 = now_milliseconds();
       encode_gop_3ddwt(gop_rgb, filled, width, height, levels, quality, gop_encoded, gop_encoded_length);
       double t1 = now_milliseconds();
-      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed);
+      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, 0, 0, 0);
       double t2 = now_milliseconds();
       for (int g = 0; g < filled; g++) {
         double mean_squared_error = 0;
