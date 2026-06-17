@@ -2483,6 +2483,35 @@ int main(int argc, char **argv) {
         if (!lossless && (effective_quality < 1)) {
           effective_quality = 1;
         }
+        // AQ (fwvpertileqp): compute THIS temporal-subband frame's per-tile QP map from its OWN spatial luma, read
+        // straight back from the GPU temporal output (gop_buffer[0], subband f) — no CPU re-derivation, so the map is
+        // built from the exact data the spatial quant sees. Stored by coding index (= frame_index + f, the order the
+        // write loop below emits the subbands) and made current so the per-plane maybe_apply_tile_aq below quantizes
+        // with it; the same map is transmitted in the qpmap section so the decoder dequantizes identically.
+        if (g_aq_enabled && !lossless) {
+          long coding_index = frame_index + f;
+          if (coding_index >= aq_capacity) {
+            long want = (aq_capacity > 0) ? (aq_capacity * 2) : 256;
+            while (want <= coding_index) {
+              want *= 2;
+            }
+            all_qpmaps = realloc(all_qpmaps, (size_t)want * aq_map_bytes);
+            if (!all_qpmaps) {
+              die("qpmap alloc");
+            }
+            aq_capacity = want;
+          }
+          begin_recording();   // read subband f's luma plane back from the GPU temporal output
+          VkBufferCopy luma_copy = { (VkDeviceSize)f * plane_bytes, 0, plane_bytes };
+          vkCmdCopyBuffer(command_buffer, gop_buffer[0], data_buffer, 1, &luma_copy);
+          submit_and_wait();
+          for (int i = 0; i < pixel_count; i++) {   // MCTF temporal subbands are integer; open-loop lossy ones are float
+            aq_luma[i] = g_mctf ? ((const int32_t *)data_map)[i] : (int32_t)((const float *)data_map)[i];
+          }
+          uint8_t *frame_map = all_qpmaps + ((size_t)coding_index * aq_map_bytes);
+          compute_tile_aq_map(aq_luma, width, height, g_aq_strength, frame_map);
+          aq_set_current_map(frame_map, aq_cols, aq_rows);
+        }
         begin_recording();
         for (int plane = 0; plane < g_num_planes; plane++) {
           int pw = plane_w[plane], ph = plane_h[plane], pp = plane_pixels[plane];
@@ -2896,16 +2925,22 @@ int main(int argc, char **argv) {
           if (!all_qpmaps) { die("qpmap alloc"); }
           aq_capacity = want;
         }
+        // Source THIS coding step's frame: B mode (use_bframes) has its driver (bgpu_next) write every B/P/I source
+        // into rgb_map (rgb stays stale for B, incl. HDR — bgpu_next does the rgb48le->12-bit ingest into the slots),
+        // while the I/P path leaves the source in rgb. Reading the right buffer fixes B-frames previously building the
+        // QP map from the stale rgb. compute_tile_aq_map normalises per-frame activity, so the rgb48le-vs-12-bit scale
+        // difference between the two HDR sources doesn't matter; a file is all-one-mode, so the maps stay consistent.
         if (hdr_mode) {
-          const int16_t *source16 = (const int16_t *)rgb;
-          for (int p = 0; p < pixel_count; p++) {   // YCoCg-R luma from the 12-bit code (only relative activity matters)
+          const int16_t *source16 = (const int16_t *)(use_bframes ? rgb_map : (void *)rgb);
+          for (int p = 0; p < pixel_count; p++) {   // YCoCg-R luma (only relative activity matters)
             int r = source16[(p * g_channels) + 0], g = source16[(p * g_channels) + 1], b = source16[(p * g_channels) + 2];
             int co = r - b, t = b + (co >> 1), cg = g - t;
             aq_luma[p] = t + (cg >> 1);
           }
         } else {
+          const uint8_t *source = (const uint8_t *)(use_bframes ? rgb_map : (void *)rgb);
           for (int p = 0; p < pixel_count; p++) {
-            int r = rgb[(p * g_channels) + 0], g = rgb[(p * g_channels) + 1], b = rgb[(p * g_channels) + 2];
+            int r = source[(p * g_channels) + 0], g = source[(p * g_channels) + 1], b = source[(p * g_channels) + 2];
             int co = r - b, t = b + (co >> 1), cg = g - t;
             aq_luma[p] = t + (cg >> 1);
           }

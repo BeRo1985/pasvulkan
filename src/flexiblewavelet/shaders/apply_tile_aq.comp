@@ -1,15 +1,16 @@
 #version 450
-// apply_tile_aq.comp — GPU side of AQ (per-tile adaptive quantization). For each coefficient it finds its Mallat
-// subband + tile (exactly the same walk as the CPU ApplyTileAQ / BuildQuantizationSteps), looks up the transmitted
-// per-tile weight, and writes weight*base_step (rounded, >=1) into the modulated step map the dequant pass then reads.
-// Runs ONLY under --aq, so the dequant shader stays untouched; the host uploads the tiny per-tile weight table per
-// frame instead of CPU-modulating + re-uploading the full step map every frame (the old per-pixel CPU bottleneck).
-// The weights are computed on the CPU (aq_weight_from_code) and uploaded, so there is no GPU exp/log and the result
-// is bit-identical to the CPU ApplyTileAQ.
+// apply_tile_aq.comp — GPU side of AQ (per-tile adaptive quantization), fully on the GPU. For each coefficient it
+// finds its Mallat subband + tile (exactly the same walk as the CPU ApplyTileAQ / BuildQuantizationSteps), reads the
+// transmitted per-tile code straight from the (raw, packed) qpmap bytes, looks up its weight, and writes
+// weight*base_step (rounded, >=1) into the modulated step map the dequant pass then reads. Runs ONLY under --aq, so
+// the dequant shader stays untouched; per frame the host only memcpy-uploads the tiny raw qpmap byte slice (no CPU
+// computation at all — the old per-pixel CPU step modulation is gone). The weight LUT is computed once on the CPU
+// (aq_weight_from_code) and uploaded once, so there is no GPU exp/log and the result is bit-identical to the CPU path.
 layout(local_size_x = 256) in;
-layout(std430, binding = 0) readonly buffer BaseSteps      { int base_steps[]; };          // per-quality step map (cached)
-layout(std430, binding = 1) readonly buffer TileWeights    { float tile_weights[]; };       // tile_cols * tile_rows (per frame)
-layout(std430, binding = 2)          buffer ModulatedSteps { int modulated_steps[]; };       // output: the step the dequant reads
+layout(std430, binding = 0) readonly buffer BaseSteps      { int base_steps[]; };           // per-quality step map (cached)
+layout(std430, binding = 1) readonly buffer TileCodes      { uint tile_codes_packed[]; };    // raw qpmap bytes, 4 codes per uint (per frame)
+layout(std430, binding = 2) readonly buffer WeightLUT      { float weight_lut[]; };           // 256 log-spaced weights (uploaded once)
+layout(std430, binding = 3)          buffer ModulatedSteps { int modulated_steps[]; };        // output: the step the dequant reads
 layout(push_constant) uniform PushConstants { int width; int height; int levels; int tile_cols; int tile_rows; } push;
 
 void main() {
@@ -47,7 +48,9 @@ void main() {
   if (tile_column >= push.tile_cols) { tile_column = push.tile_cols - 1; }
   if (tile_row    >= push.tile_rows) { tile_row    = push.tile_rows - 1; }
 
-  float weight = tile_weights[(tile_row * push.tile_cols) + tile_column];
+  int tile = (tile_row * push.tile_cols) + tile_column;
+  uint code = (tile_codes_packed[tile >> 2] >> (uint(tile & 3) * 8u)) & 0xFFu;   // unpack the raw u8 qpmap code
+  float weight = weight_lut[code];
   int q = int((float(base_steps[gid]) * weight) + 0.5);
   if (q < 1) {
     q = 1;
