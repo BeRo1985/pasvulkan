@@ -8,6 +8,6 @@ for shader in *.comp; do
 done
 # color.comp is compiled a second time with -DHAS_ALPHA: the alpha-aware variant that also writes the decoded alpha plane.
 glslc -O --target-env=vulkan -fshader-stage=compute -DHAS_ALPHA color.comp -o color_alpha.spv
-# the HDR colour shaders likewise get -DHAS_ALPHA variants (write the decoded alpha plane into the HDR / scRGB swapchain A).
+# the HDR color shaders likewise get -DHAS_ALPHA variants (write the decoded alpha plane into the HDR / scRGB swapchain A).
 glslc -O --target-env=vulkan -fshader-stage=compute -DHAS_ALPHA color_hdr.comp -o color_hdr_alpha.spv
 glslc -O --target-env=vulkan -fshader-stage=compute -DHAS_ALPHA color_hdr_scrgb.comp -o color_hdr_scrgb_alpha.spv

@@ -2,7 +2,7 @@
 // extract_alpha.comp — copy the alpha lane (rgba byte 3) into the alpha coefficient plane (plane 3).
 // Mirrors rgb2ycor/rgb2yco for a single channel: Q0 (lossless 5/3) writes the raw int, Q8 (lossy 9/7)
 // writes a float bit-pattern, so the int / float forward wavelet that follows reads the matching type.
-// SDR (rgba8) only — HDR alpha (rgba16) is a separate path, like the colour HDR extract.
+// SDR (rgba8) only — HDR alpha (rgba16) is a separate path, like the color HDR extract.
 layout(local_size_x = 256) in;
 layout(std430, binding = 0) readonly buffer PackedRgb { uint packed_rgb[]; };   // rgba8: one 32-bit-aligned uint per pixel
 layout(std430, binding = 1) buffer Alpha { int alpha[]; };

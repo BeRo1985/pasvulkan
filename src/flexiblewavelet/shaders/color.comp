@@ -1,5 +1,5 @@
 #version 450
-// color.comp — inverse YCoCg-R colour transform. Reads the three reconstructed integer planes and
+// color.comp — inverse YCoCg-R color transform. Reads the three reconstructed integer planes and
 // writes the RGB result into an rgba8 storage image. float(v)/255 into an rgba8_unorm image
 // round-trips exactly for integer v in [0,255], so this is bit-exact. Same integer math as the
 // CPU ycocg_to_rgb(). In a real engine a fragment shader would sample this image directly.

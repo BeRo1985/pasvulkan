@@ -3,7 +3,7 @@
 // PQ-bt2020 code; this decodes PQ -> linear, converts bt2020 -> Rec.709, applies a per-channel
 // Reinhard tonemap (x exposure) and sRGB gamma, into the rgba8 swapchain image. Mirrors the CPU
 // pq_bt2020_to_srgb8(). (A true HDR display would instead write scRGB-linear FP16 to an
-// EXTENDED_SRGB_LINEAR swapchain — same colour math minus the tonemap/gamma.)
+// EXTENDED_SRGB_LINEAR swapchain — same color math minus the tonemap/gamma.)
 layout(local_size_x = 256) in;
 layout(std430, binding = 0) readonly buffer Luma         { int luma[]; };
 layout(std430, binding = 1) readonly buffer ChromaOrange { int chroma_orange[]; };

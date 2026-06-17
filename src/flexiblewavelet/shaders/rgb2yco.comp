@@ -1,5 +1,5 @@
 #version 450
-// rgb2yco.comp — RGB (packed uint8) -> YCoCg-R colour transform, for the LOSSY 9/7 path. The
+// rgb2yco.comp — RGB (packed uint8) -> YCoCg-R color transform, for the LOSSY 9/7 path. The
 // three integer planes are written as FLOAT bit-patterns so the float forward wavelet that
 // follows can reinterpret the same buffers. (The lossless path uses rgb2ycor, which writes int.)
 layout(local_size_x = 256) in;

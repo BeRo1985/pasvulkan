@@ -56,7 +56,7 @@ type TScreenMain=class(TpvApplicationScreen)
        fDecTimeCount:TpvInt32;
        fPaused:boolean;
        fPresentBlit:boolean; // False = textured-quad (A, default), True = blit (B)
-       fBlendBackgroundMode:TpvInt32; // present path A composite background: 0 = checkerboard, 1 = solid colour ('G' toggles)
+       fBlendBackgroundMode:TpvInt32; // present path A composite background: 0 = checkerboard, 1 = solid color ('G' toggles)
        fOutputImageLayout:TVkImageLayout; // tracked layout of the player's OutputImage between passes
        fPlayerInitPending:boolean; // defer the heavy CreatePlayer (~0.5 s of compute-pipeline compiling) out of Show
        fBlackFramePresented:boolean; // set once Draw has cleared the swapchain to black while no player exists yet
@@ -114,11 +114,11 @@ implementation
 // a RUNTIME asset (assets/shaders/fwv_composite.frag.spv, built by src/assets/shaders/compileshaders.sh) loaded via
 // pvApplication.Assets, NOT embedded.
 type TFWVCompositePush=packed record
-      Mode:TpvInt32;          // 0 = checkerboard, 1 = solid colour
+      Mode:TpvInt32;          // 0 = checkerboard, 1 = solid color
       Premultiplied:TpvInt32; // 1 = video RGB premultiplied by alpha
       CheckerSize:TpvFloat;   // checkerboard cell size in pixels
       Pad:TpvFloat;
-      SolidColour:array[0..3] of TpvFloat;
+      SolidColor:array[0..3] of TpvFloat;
      end;
 
 constructor TScreenMain.Create;
@@ -131,7 +131,7 @@ begin
  fPaused:=false;
  fPresentBlit:=GetEnvironmentVariable('FWV_BLIT')='1'; // start in present path B (else A); toggle live with B
  if GetEnvironmentVariable('FWV_BLENDBG')='1' then begin
-  fBlendBackgroundMode:=1; // start on the solid-colour background ('G' toggles to/from the checkerboard)
+  fBlendBackgroundMode:=1; // start on the solid-color background ('G' toggles to/from the checkerboard)
  end else begin
   fBlendBackgroundMode:=0; // default = checkerboard (classic transparency view)
  end;
@@ -150,7 +150,7 @@ var ForceSCRGB:boolean;
     ParamIndex:TpvInt32;
 begin
  // --scrgb command-line flag: force scRGB FP16 decode even on an SDR swapchain — a sanity check that the FP16 decode +
- // present path runs without crashing on a non-HDR machine (the colours look clipped/washed on SDR, but no crash = ok).
+ // present path runs without crashing on a non-HDR machine (the colors look clipped/washed on SDR, but no crash = ok).
  ForceSCRGB:=false;
  for ParamIndex:=1 to ParamCount do begin
   if ParamStr(ParamIndex)='--scrgb' then begin
@@ -661,7 +661,7 @@ begin
     result:=true;
    end;
    KEYCODE_G:begin
-    fBlendBackgroundMode:=1-fBlendBackgroundMode; // toggle present path A composite background: checkerboard <-> solid colour
+    fBlendBackgroundMode:=1-fBlendBackgroundMode; // toggle present path A composite background: checkerboard <-> solid color
     result:=true;
    end;
    KEYCODE_R:begin
@@ -836,7 +836,7 @@ begin
    CommandBuffer.CmdSetScissor(0,1,@ScissorRect);
    CommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fGraphicsPipeline.Handle);
    CommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fPipelineLayout.Handle,0,1,@fDescriptorSet.Handle,0,nil);
-   // composite params: the background ('G' toggles checker<->colour) + the stream's premultiplied-alpha flag. For an
+   // composite params: the background ('G' toggles checker<->color) + the stream's premultiplied-alpha flag. For an
    // opaque stream (A=1) the shader shows the video unchanged regardless, so this is harmless for non-alpha streams.
    CompositePush.Mode:=fBlendBackgroundMode;
    if fPlayer.AlphaPremultiplied then begin
@@ -846,10 +846,10 @@ begin
    end;
    CompositePush.CheckerSize:=16.0;
    CompositePush.Pad:=0.0;
-   CompositePush.SolidColour[0]:=0.10; // background colour for mode 1 (a muted blue-grey)
-   CompositePush.SolidColour[1]:=0.12;
-   CompositePush.SolidColour[2]:=0.18;
-   CompositePush.SolidColour[3]:=1.0;
+   CompositePush.SolidColor[0]:=0.10; // background color for mode 1 (a muted blue-grey)
+   CompositePush.SolidColor[1]:=0.12;
+   CompositePush.SolidColor[2]:=0.18;
+   CompositePush.SolidColor[3]:=1.0;
    CommandBuffer.CmdPushConstants(fPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TFWVCompositePush),@CompositePush);
    CommandBuffer.CmdDraw(3,1,0,0);
   end;

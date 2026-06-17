@@ -5,7 +5,7 @@
 // reconstruction does that afterwards (via coeff_add on the reconstructed samples), so the reference
 // is the reconstructed frame (no lossy drift), not the unquantised current frame.
 //
-// The current samples are in the colour pass's representation: plain int for the lossless 5/3 path,
+// The current samples are in the color pass's representation: plain int for the lossless 5/3 path,
 // float bit-patterns for the lossy 9/7 path. The reference (from round97 / the lossless inverse) is
 // always plain int, so the lossy case must subtract in float and re-pack the bits.
 layout(local_size_x = 256) in;

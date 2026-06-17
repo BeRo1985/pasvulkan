@@ -2,16 +2,16 @@
 // videoexample present path A: composite the decoded FWV video (rgba, A = the decoded alpha plane) over a chosen
 // background so the alpha channel is actually visible. Replaces the engine's plain ToScreenBlit frag (it keeps the
 // same fullscreen-triangle vertex shader + binding 0 sampler). For an opaque (non-alpha) stream A=1 -> the video is
-// shown unchanged, so this is a safe drop-in. mode 0 = checkerboard, 1 = solid colour; key 'G' toggles it live.
+// shown unchanged, so this is a safe drop-in. mode 0 = checkerboard, 1 = solid color; key 'G' toggles it live.
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 0) out vec4 outColor;
 layout(set = 0, binding = 0) uniform sampler2D uTexture;
 layout(push_constant) uniform PushConstants {
-  int mode;          // 0 = checkerboard, 1 = solid colour
+  int mode;          // 0 = checkerboard, 1 = solid color
   int premultiplied; // 1 = the video RGB is premultiplied by alpha (over = rgb + bg*(1-a))
   float checkerSize; // checkerboard cell size in pixels
   float pad;
-  vec4 solidColour;  // background for mode 1
+  vec4 solidColor;  // background for mode 1
 } push;
 void main(){
   vec3 bg;
@@ -19,10 +19,10 @@ void main(){
     ivec2 cell = ivec2(floor(gl_FragCoord.xy / max(push.checkerSize, 1.0)));
     bg = (((cell.x + cell.y) & 1) == 0) ? vec3(0.75) : vec3(0.45);
   } else {
-    bg = push.solidColour.rgb;
+    bg = push.solidColor.rgb;
   }
   // The decoded frame is STRAIGHT alpha (RGB not premultiplied) unless the stream flags premultiplied content. Plain
-  // bilinear filtering of straight alpha leaks the transparent-area RGB across alpha edges (a colour fringe): invisible
+  // bilinear filtering of straight alpha leaks the transparent-area RGB across alpha edges (a color fringe): invisible
   // for SDR (RGB ~[0..1]) but for HDR/scRGB the transparent RGB is huge (scRGB-linear >> 1) -> bright halos. So filter
   // the straight case with PREMULTIPLIED bilinear (premultiply each of the 4 taps BEFORE blending); already-premultiplied
   // content filters correctly with plain bilinear. After filtering, both branches hold a premultiplied (rgb*a, a) value.
