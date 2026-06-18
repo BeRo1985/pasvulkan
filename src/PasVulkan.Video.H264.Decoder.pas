@@ -40,7 +40,7 @@ uses SysUtils,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Framework,
-     PasVulkan.Assets;
+     PasVulkan.Assets.Video;
 
 const H264ReorderDepth=8; // matches the C reference REORDER: bump the lowest-key frame once more than this are buffered
 

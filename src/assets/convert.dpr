@@ -108,7 +108,9 @@ program convert;
 
 uses SysUtils,Classes;
 
-var StringList:TStringList;
+var StringList:TStringList;        // -> PasVulkanAssets.inc (fonts + canvas + VR; PasVulkan.Assets.pas stays slim)
+    VideoStringList:TStringList;   // -> PasVulkanVideoAssets.inc (FlexibleWaveletVideo* shaders; PasVulkan.Assets.Video.pas)
+    TargetList:TStringList;        // the list ConvertFile currently writes into (switched per group below)
 
 procedure ConvertFile(SrcFileName,ArrayName:string);
 var ms:TMemoryStream;
@@ -119,9 +121,9 @@ begin
  ms:=TMemoryStream.Create;
  try
   ms.LoadFromFile(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+StringReplace(StringReplace(SrcFileName,'/',SysUtils.PathDelim,[rfReplaceAll]),'\',SysUtils.PathDelim,[rfReplaceAll]));
-  StringList.Add('const '+ArrayName+'DataSize='+IntToStr(ms.Size)+';');
-  StringList.Add('      '+ArrayName+'Data:array[0..'+ArrayName+'DataSize-1] of byte=');
-  StringList.Add('       (');
+  TargetList.Add('const '+ArrayName+'DataSize='+IntToStr(ms.Size)+';');
+  TargetList.Add('      '+ArrayName+'Data:array[0..'+ArrayName+'DataSize-1] of byte=');
+  TargetList.Add('       (');
   s:='        ';
   j:=0;
   for i:=1 to ms.Size do begin
@@ -133,13 +135,13 @@ begin
    inc(j);
    if j>=16 then begin
     j:=0;
-    StringList.Add(s);
+    TargetList.Add(s);
     s:='        ';
    end;
   end;
-  StringList.Add(s);
-  StringList.Add('       );');
-  StringList.Add('');
+  TargetList.Add(s);
+  TargetList.Add('       );');
+  TargetList.Add('');
  finally
   ms.Free;
  end;
@@ -147,6 +149,8 @@ end;
 
 begin
  StringList:=TStringList.Create;
+ VideoStringList:=TStringList.Create;
+ TargetList:=StringList;   // fonts + canvas + VR go into PasVulkanAssets.inc (the FlexibleWaveletVideo* block switches below)
  try
   ConvertFile('fonts/notosans.ttf','GUIStandardTrueTypeFontSansFont');
   ConvertFile('fonts/notosansbold.ttf','GUIStandardTrueTypeFontSansBoldFont');
@@ -201,7 +205,9 @@ begin
   ConvertFile('shaders/virtualreality/fullscreen_vert.spv','VirtualRealityFullscreenVertexSPIRV');
   ConvertFile('shaders/virtualreality/contentprojection_frag.spv','VirtualRealityContentProjectionFragmentSPIRV');
   ConvertFile('shaders/virtualreality/blit_frag.spv','VirtualRealityBlitFragmentSPIRV');
-  // Flexible Wavelet Video (FWV) compute shaders (src/flexiblewavelet/shaders/*.spv)
+  // Flexible Wavelet Video (FWV) compute shaders (src/flexiblewavelet/shaders/*.spv) -> PasVulkanVideoAssets.inc,
+  // so PasVulkan.Assets.pas (fonts + canvas + VR) stays slim and only PasVulkan.Assets.Video.pas carries these.
+  TargetList:=VideoStringList;
   ConvertFile('../flexiblewavelet/shaders/apply_pcrd.spv','FlexibleWaveletVideoApplyPcrdSPIRV');
   ConvertFile('../flexiblewavelet/shaders/apply_tile_aq.spv','FlexibleWaveletVideoApplyTileAqSPIRV');
   ConvertFile('../flexiblewavelet/shaders/bidi_blend.spv','FlexibleWaveletVideoBidiBlendSPIRV');
@@ -250,8 +256,10 @@ begin
   ConvertFile('../flexiblewavelet/shaders/transpose_f.spv','FlexibleWaveletVideoTransposeFSPIRV');
   ConvertFile('../flexiblewavelet/shaders/ycocg_diff.spv','FlexibleWaveletVideoYcocgDiffSPIRV');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');
+  VideoStringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanVideoAssets.inc');
  finally
   FreeAndNil(StringList);
+  FreeAndNil(VideoStringList);
  end;
 (*StringList:=TStringList.Create;
  try

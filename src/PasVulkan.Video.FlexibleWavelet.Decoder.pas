@@ -82,7 +82,7 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
-     PasVulkan.Assets,
+     PasVulkan.Assets.Video,
      PasVulkan.Video.FlexibleWavelet;
 
 type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
