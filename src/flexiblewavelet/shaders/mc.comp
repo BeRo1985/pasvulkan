@@ -6,9 +6,9 @@
 // With mv=0 everywhere all three predictions equal previous, so OBMC is the identity -> colordiff.
 layout(local_size_x = 256) in;
 layout(constant_id = 0) const int MB = 16;   // motion block size (8 / 16 / 32) — flat per-pixel, the workgroup stays 256
-layout(constant_id = 3) const int MOTION_MODE = 3;   // bit0 = 6-tap interpolation (else bilinear), bit1 = quarter-pel MVs (else half-pel)
-const int INTERP_6TAP = MOTION_MODE & 1;
-const int QUARTER_PEL = (MOTION_MODE >> 1) & 1;
+layout(constant_id = 3) const int MOTION_MODE = 5;   // bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bit2 = quarter-pel MVs (else half-pel)
+const int INTERP = MOTION_MODE & 3;
+const int QUARTER_PEL = (MOTION_MODE >> 2) & 1;
 const int MB_SHIFT = (MB == 8) ? 3 : ((MB == 16) ? 4 : 5);   // log2(MB): x / MB -> x >> MB_SHIFT (per-pixel here, so the shift/mask matters)
 const int MB_MASK = MB - 1;                                  // x % MB -> x & MB_MASK
 layout(std430, binding = 0) readonly  buffer Previous      { int previous[]; };
@@ -78,10 +78,61 @@ int sample_6tap(int base_x, int base_y, int half_x, int half_y) {
   return (t + 512) >> 10;
 }
 
-// Half-pel interpolation; the filter is selected once per stream by the MOTION_MODE spec constant (bit0),
-// so the unused branch is compiled out. quarter-pel builds on this, so quarter inherits the chosen filter.
+// HEVC 8-tap luma interpolation of 8 consecutive samples (offsets base-3..base+4) at quarter phase p:
+// 0 = integer, 1 = 1/4, 2 = 1/2, 3 = 3/4. Returns full precision (scale 64); the caller rounds. Phase 2 is
+// the symmetric DCTIF half-pel filter; phases 1 and 3 are the asymmetric 7-tap quarter filters (mirror pair).
+int hevc8(int phase, int s0, int s1, int s2, int s3, int s4, int s5, int s6, int s7) {
+  if (phase == 0) {
+    return s3 << 6;
+  }
+  if (phase == 1) {
+    return (((4 * s1) + (58 * s3) + (17 * s4) + s6) - (s0 + (10 * s2) + (5 * s5)));
+  }
+  if (phase == 2) {
+    return (((4 * (s1 + s6)) + (40 * (s3 + s4))) - ((s0 + s7) + (11 * (s2 + s5))));
+  }
+  return (((4 * s6) + (58 * s4) + (17 * s3) + s1) - (s7 + (10 * s5) + (5 * s2)));
+}
+
+// 8-tap DCTIF interpolation at quarter position (qx, qy) in 0..3 (fully separable; quarter phases pick the
+// asymmetric 7-tap rows, half picks the symmetric DCTIF row). All-integer + deterministic rounding so the GPU
+// decode, the encoder reconstruction and the CPU reference stay bit-for-bit identical. Half-pel streams route
+// here too with phases doubled (0/2). This is the literature-faithful HEVC luma filter (Lv et al.).
+int sample_8tap_pel(int base_x, int base_y, int qx, int qy) {
+  if ((qx == 0) && (qy == 0)) {
+    return previous_at(base_x, base_y);
+  }
+  if (qy == 0) {
+    int t = hevc8(qx, previous_at(base_x - 3, base_y), previous_at(base_x - 2, base_y),
+                      previous_at(base_x - 1, base_y), previous_at(base_x,     base_y),
+                      previous_at(base_x + 1, base_y), previous_at(base_x + 2, base_y),
+                      previous_at(base_x + 3, base_y), previous_at(base_x + 4, base_y));
+    return (t + 32) >> 6;
+  }
+  if (qx == 0) {
+    int t = hevc8(qy, previous_at(base_x, base_y - 3), previous_at(base_x, base_y - 2),
+                      previous_at(base_x, base_y - 1), previous_at(base_x, base_y),
+                      previous_at(base_x, base_y + 1), previous_at(base_x, base_y + 2),
+                      previous_at(base_x, base_y + 3), previous_at(base_x, base_y + 4));
+    return (t + 32) >> 6;
+  }
+  int c0 = hevc8(qy, previous_at(base_x - 3, base_y - 3), previous_at(base_x - 3, base_y - 2), previous_at(base_x - 3, base_y - 1), previous_at(base_x - 3, base_y), previous_at(base_x - 3, base_y + 1), previous_at(base_x - 3, base_y + 2), previous_at(base_x - 3, base_y + 3), previous_at(base_x - 3, base_y + 4));
+  int c1 = hevc8(qy, previous_at(base_x - 2, base_y - 3), previous_at(base_x - 2, base_y - 2), previous_at(base_x - 2, base_y - 1), previous_at(base_x - 2, base_y), previous_at(base_x - 2, base_y + 1), previous_at(base_x - 2, base_y + 2), previous_at(base_x - 2, base_y + 3), previous_at(base_x - 2, base_y + 4));
+  int c2 = hevc8(qy, previous_at(base_x - 1, base_y - 3), previous_at(base_x - 1, base_y - 2), previous_at(base_x - 1, base_y - 1), previous_at(base_x - 1, base_y), previous_at(base_x - 1, base_y + 1), previous_at(base_x - 1, base_y + 2), previous_at(base_x - 1, base_y + 3), previous_at(base_x - 1, base_y + 4));
+  int c3 = hevc8(qy, previous_at(base_x,     base_y - 3), previous_at(base_x,     base_y - 2), previous_at(base_x,     base_y - 1), previous_at(base_x,     base_y), previous_at(base_x,     base_y + 1), previous_at(base_x,     base_y + 2), previous_at(base_x,     base_y + 3), previous_at(base_x,     base_y + 4));
+  int c4 = hevc8(qy, previous_at(base_x + 1, base_y - 3), previous_at(base_x + 1, base_y - 2), previous_at(base_x + 1, base_y - 1), previous_at(base_x + 1, base_y), previous_at(base_x + 1, base_y + 1), previous_at(base_x + 1, base_y + 2), previous_at(base_x + 1, base_y + 3), previous_at(base_x + 1, base_y + 4));
+  int c5 = hevc8(qy, previous_at(base_x + 2, base_y - 3), previous_at(base_x + 2, base_y - 2), previous_at(base_x + 2, base_y - 1), previous_at(base_x + 2, base_y), previous_at(base_x + 2, base_y + 1), previous_at(base_x + 2, base_y + 2), previous_at(base_x + 2, base_y + 3), previous_at(base_x + 2, base_y + 4));
+  int c6 = hevc8(qy, previous_at(base_x + 3, base_y - 3), previous_at(base_x + 3, base_y - 2), previous_at(base_x + 3, base_y - 1), previous_at(base_x + 3, base_y), previous_at(base_x + 3, base_y + 1), previous_at(base_x + 3, base_y + 2), previous_at(base_x + 3, base_y + 3), previous_at(base_x + 3, base_y + 4));
+  int c7 = hevc8(qy, previous_at(base_x + 4, base_y - 3), previous_at(base_x + 4, base_y - 2), previous_at(base_x + 4, base_y - 1), previous_at(base_x + 4, base_y), previous_at(base_x + 4, base_y + 1), previous_at(base_x + 4, base_y + 2), previous_at(base_x + 4, base_y + 3), previous_at(base_x + 4, base_y + 4));
+  int t = hevc8(qx, c0, c1, c2, c3, c4, c5, c6, c7);
+  return (t + 2048) >> 12;
+}
+
+// Half-pel interpolation for the bilinear/6-tap filters; selected once per stream by the MOTION_MODE spec
+// constant (bits0-1), so the unused branch is compiled out. The 8-tap path bypasses this via sample_8tap_pel.
+// quarter-pel builds on this, so quarter inherits the chosen filter.
 int sample_half_pel(int base_x, int base_y, int half_x, int half_y) {
-  return (INTERP_6TAP != 0) ? sample_6tap(base_x, base_y, half_x, half_y) : sample_bilinear(base_x, base_y, half_x, half_y);
+  return (INTERP == 1) ? sample_6tap(base_x, base_y, half_x, half_y) : sample_bilinear(base_x, base_y, half_x, half_y);
 }
 
 // Half-pel-grid sample at half-pel units (u, v): u,v in {0,1,2} where 0=integer, 1=half, 2=next integer.
@@ -111,7 +162,13 @@ int sample_quarter_pel(int base_x, int base_y, int qx, int qy) {
 int sample_block_mv(int block, int x, int y) {
   int mv_x = motion_vectors[block * 2], mv_y = motion_vectors[(block * 2) + 1];
   if (QUARTER_PEL != 0) {
+    if (INTERP == 2) {
+      return sample_8tap_pel(x + (mv_x >> 2), y + (mv_y >> 2), mv_x & 3, mv_y & 3);
+    }
     return sample_quarter_pel(x + (mv_x >> 2), y + (mv_y >> 2), mv_x & 3, mv_y & 3);
+  }
+  if (INTERP == 2) {
+    return sample_8tap_pel(x + (mv_x >> 1), y + (mv_y >> 1), (mv_x & 1) << 1, (mv_y & 1) << 1);
   }
   return sample_half_pel(x + (mv_x >> 1), y + (mv_y >> 1), mv_x & 1, mv_y & 1);
 }

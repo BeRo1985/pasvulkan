@@ -7,9 +7,9 @@
 layout(local_size_x_id = 1) in;               // workgroup = MB*MB threads, but the metric uses one thread per 4x4 tile
 layout(constant_id = 0) const int MB = 16;    // motion block size (8 / 16 / 32)
 layout(constant_id = 2) const int EMIT_SATD = 1;   // 1 = SATD (Hadamard, default), 0 = SAD (sum |residual|) — selected by --merge-metric
-layout(constant_id = 3) const int MOTION_MODE = 3;   // bit0 = 6-tap interpolation (else bilinear), bit1 = quarter-pel MVs (else half-pel)
-const int INTERP_6TAP = MOTION_MODE & 1;
-const int QUARTER_PEL = (MOTION_MODE >> 1) & 1;
+layout(constant_id = 3) const int MOTION_MODE = 5;   // bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bit2 = quarter-pel MVs (else half-pel)
+const int INTERP = MOTION_MODE & 3;
+const int QUARTER_PEL = (MOTION_MODE >> 2) & 1;
 layout(std430, binding = 0)  readonly buffer Cur0   { int cur0[]; };
 layout(std430, binding = 1)  readonly buffer Cur1   { int cur1[]; };
 layout(std430, binding = 2)  readonly buffer Cur2   { int cur2[]; };
@@ -94,9 +94,56 @@ int sample_6tap(int which, int base_x, int base_y, int half_x, int half_y) {
   return (t + 512) >> 10;
 }
 
-// Half-pel interpolation, filter selected per stream by the MOTION_MODE spec constant (bit0).
+// HEVC 8-tap luma interpolation of 8 consecutive samples (offsets base-3..base+4) at quarter phase p.
+// Returns full precision (scale 64); the caller rounds. Same kernel + rounding as mc.comp. Phase 2 = half.
+int hevc8(int phase, int s0, int s1, int s2, int s3, int s4, int s5, int s6, int s7) {
+  if (phase == 0) {
+    return s3 << 6;
+  }
+  if (phase == 1) {
+    return (((4 * s1) + (58 * s3) + (17 * s4) + s6) - (s0 + (10 * s2) + (5 * s5)));
+  }
+  if (phase == 2) {
+    return (((4 * (s1 + s6)) + (40 * (s3 + s4))) - ((s0 + s7) + (11 * (s2 + s5))));
+  }
+  return (((4 * s6) + (58 * s4) + (17 * s3) + s1) - (s7 + (10 * s5) + (5 * s2)));
+}
+
+// 8-tap DCTIF interpolation at quarter position (qx, qy) in 0..3 (separable). Same as mc.comp. (Variant B2.)
+int sample_8tap_pel(int which, int base_x, int base_y, int qx, int qy) {
+  if ((qx == 0) && (qy == 0)) {
+    return sample_plane_at(which, base_x, base_y);
+  }
+  if (qy == 0) {
+    int t = hevc8(qx, sample_plane_at(which, base_x - 3, base_y), sample_plane_at(which, base_x - 2, base_y),
+                      sample_plane_at(which, base_x - 1, base_y), sample_plane_at(which, base_x,     base_y),
+                      sample_plane_at(which, base_x + 1, base_y), sample_plane_at(which, base_x + 2, base_y),
+                      sample_plane_at(which, base_x + 3, base_y), sample_plane_at(which, base_x + 4, base_y));
+    return (t + 32) >> 6;
+  }
+  if (qx == 0) {
+    int t = hevc8(qy, sample_plane_at(which, base_x, base_y - 3), sample_plane_at(which, base_x, base_y - 2),
+                      sample_plane_at(which, base_x, base_y - 1), sample_plane_at(which, base_x, base_y),
+                      sample_plane_at(which, base_x, base_y + 1), sample_plane_at(which, base_x, base_y + 2),
+                      sample_plane_at(which, base_x, base_y + 3), sample_plane_at(which, base_x, base_y + 4));
+    return (t + 32) >> 6;
+  }
+  int c0 = hevc8(qy, sample_plane_at(which, base_x - 3, base_y - 3), sample_plane_at(which, base_x - 3, base_y - 2), sample_plane_at(which, base_x - 3, base_y - 1), sample_plane_at(which, base_x - 3, base_y), sample_plane_at(which, base_x - 3, base_y + 1), sample_plane_at(which, base_x - 3, base_y + 2), sample_plane_at(which, base_x - 3, base_y + 3), sample_plane_at(which, base_x - 3, base_y + 4));
+  int c1 = hevc8(qy, sample_plane_at(which, base_x - 2, base_y - 3), sample_plane_at(which, base_x - 2, base_y - 2), sample_plane_at(which, base_x - 2, base_y - 1), sample_plane_at(which, base_x - 2, base_y), sample_plane_at(which, base_x - 2, base_y + 1), sample_plane_at(which, base_x - 2, base_y + 2), sample_plane_at(which, base_x - 2, base_y + 3), sample_plane_at(which, base_x - 2, base_y + 4));
+  int c2 = hevc8(qy, sample_plane_at(which, base_x - 1, base_y - 3), sample_plane_at(which, base_x - 1, base_y - 2), sample_plane_at(which, base_x - 1, base_y - 1), sample_plane_at(which, base_x - 1, base_y), sample_plane_at(which, base_x - 1, base_y + 1), sample_plane_at(which, base_x - 1, base_y + 2), sample_plane_at(which, base_x - 1, base_y + 3), sample_plane_at(which, base_x - 1, base_y + 4));
+  int c3 = hevc8(qy, sample_plane_at(which, base_x,     base_y - 3), sample_plane_at(which, base_x,     base_y - 2), sample_plane_at(which, base_x,     base_y - 1), sample_plane_at(which, base_x,     base_y), sample_plane_at(which, base_x,     base_y + 1), sample_plane_at(which, base_x,     base_y + 2), sample_plane_at(which, base_x,     base_y + 3), sample_plane_at(which, base_x,     base_y + 4));
+  int c4 = hevc8(qy, sample_plane_at(which, base_x + 1, base_y - 3), sample_plane_at(which, base_x + 1, base_y - 2), sample_plane_at(which, base_x + 1, base_y - 1), sample_plane_at(which, base_x + 1, base_y), sample_plane_at(which, base_x + 1, base_y + 1), sample_plane_at(which, base_x + 1, base_y + 2), sample_plane_at(which, base_x + 1, base_y + 3), sample_plane_at(which, base_x + 1, base_y + 4));
+  int c5 = hevc8(qy, sample_plane_at(which, base_x + 2, base_y - 3), sample_plane_at(which, base_x + 2, base_y - 2), sample_plane_at(which, base_x + 2, base_y - 1), sample_plane_at(which, base_x + 2, base_y), sample_plane_at(which, base_x + 2, base_y + 1), sample_plane_at(which, base_x + 2, base_y + 2), sample_plane_at(which, base_x + 2, base_y + 3), sample_plane_at(which, base_x + 2, base_y + 4));
+  int c6 = hevc8(qy, sample_plane_at(which, base_x + 3, base_y - 3), sample_plane_at(which, base_x + 3, base_y - 2), sample_plane_at(which, base_x + 3, base_y - 1), sample_plane_at(which, base_x + 3, base_y), sample_plane_at(which, base_x + 3, base_y + 1), sample_plane_at(which, base_x + 3, base_y + 2), sample_plane_at(which, base_x + 3, base_y + 3), sample_plane_at(which, base_x + 3, base_y + 4));
+  int c7 = hevc8(qy, sample_plane_at(which, base_x + 4, base_y - 3), sample_plane_at(which, base_x + 4, base_y - 2), sample_plane_at(which, base_x + 4, base_y - 1), sample_plane_at(which, base_x + 4, base_y), sample_plane_at(which, base_x + 4, base_y + 1), sample_plane_at(which, base_x + 4, base_y + 2), sample_plane_at(which, base_x + 4, base_y + 3), sample_plane_at(which, base_x + 4, base_y + 4));
+  int t = hevc8(qx, c0, c1, c2, c3, c4, c5, c6, c7);
+  return (t + 2048) >> 12;
+}
+
+// Half-pel interpolation for the bilinear/6-tap filters, selected per stream by MOTION_MODE bits0-1.
+// The 8-tap path bypasses this via sample_8tap_pel.
 int sample_half_pel(int which, int base_x, int base_y, int half_x, int half_y) {
-  return (INTERP_6TAP != 0) ? sample_6tap(which, base_x, base_y, half_x, half_y) : sample_bilinear(which, base_x, base_y, half_x, half_y);
+  return (INTERP == 1) ? sample_6tap(which, base_x, base_y, half_x, half_y) : sample_bilinear(which, base_x, base_y, half_x, half_y);
 }
 
 // Half-pel-grid sample at half-pel units (u, v): u,v in {0,1,2} where 0=integer, 1=half, 2=next integer.
@@ -119,6 +166,18 @@ int sample_quarter_pel(int which, int base_x, int base_y, int qx, int qy) {
   }
   return (((half_grid(which, base_x, base_y, hx, hy) + half_grid(which, base_x, base_y, hx + 1, hy)) +
            (half_grid(which, base_x, base_y, hx, hy + 1) + half_grid(which, base_x, base_y, hx + 1, hy + 1))) + 2) >> 2;
+}
+
+// Filter-aware scoring wrappers: route to the 8-tap kernel when selected (half-pel doubles the phase),
+// else to the bilinear/6-tap half-pel grid.
+int sample_half_any(int which, int base_x, int base_y, int half_x, int half_y) {
+  return (INTERP == 2) ? sample_8tap_pel(which, base_x, base_y, half_x << 1, half_y << 1)
+                       : sample_half_pel(which, base_x, base_y, half_x, half_y);
+}
+
+int sample_quarter_any(int which, int base_x, int base_y, int qx, int qy) {
+  return (INTERP == 2) ? sample_8tap_pel(which, base_x, base_y, qx, qy)
+                       : sample_quarter_pel(which, base_x, base_y, qx, qy);
 }
 
 // 4x4 SATD: separable Hadamard (rows then columns) of the residual tile, then sum of absolute coefficients. Better
@@ -179,10 +238,10 @@ void main() {
           int x = clamp_int(tx0 + xx, 0, push.width - 1), y = clamp_int(ty0 + yy, 0, push.height - 1);
           int index = (y * push.width) + x;
           int cur = decode_current((plane == 0) ? cur0[index] : ((plane == 1) ? cur1[index] : cur2[index]));
-          int a = (QUARTER_PEL != 0) ? sample_quarter_pel(plane,     (x + (m0x >> 2)), (y + (m0y >> 2)), m0x & 3, m0y & 3)
-                                     : sample_half_pel(plane,        (x + (m0x >> 1)), (y + (m0y >> 1)), m0x & 1, m0y & 1);   // MC0
-          int b = (QUARTER_PEL != 0) ? sample_quarter_pel(plane + 3, (x + (m1x >> 2)), (y + (m1y >> 2)), m1x & 3, m1y & 3)
-                                     : sample_half_pel(plane + 3,    (x + (m1x >> 1)), (y + (m1y >> 1)), m1x & 1, m1y & 1);   // MC1
+          int a = (QUARTER_PEL != 0) ? sample_quarter_any(plane,     (x + (m0x >> 2)), (y + (m0y >> 2)), m0x & 3, m0y & 3)
+                                     : sample_half_any(plane,        (x + (m0x >> 1)), (y + (m0y >> 1)), m0x & 1, m0y & 1);   // MC0
+          int b = (QUARTER_PEL != 0) ? sample_quarter_any(plane + 3, (x + (m1x >> 2)), (y + (m1y >> 2)), m1x & 3, m1y & 3)
+                                     : sample_half_any(plane + 3,    (x + (m1x >> 1)), (y + (m1y >> 1)), m1x & 1, m1y & 1);   // MC1
           int bi = (((push.weight0 * a) + (push.weight1 * b)) + 128) >> 8;
           int k = (yy * 4) + xx;
           rl0[k] = cur - a; rl1[k] = cur - b; rbi[k] = cur - bi;

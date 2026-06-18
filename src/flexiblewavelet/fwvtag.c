@@ -1,15 +1,15 @@
 // fwvtag.c — retag an existing .fwv container's motion_mode in place, WITHOUT re-encoding.
 //
 // The sub-pel mode (interpolation filter + MV precision) lives in the container header's mv_codec byte:
-//   bit0 = entropy coder (0 = Exp-Golomb, 1 = range)   <- left untouched
-//   bit1 = interpolation (0 = bilinear, 1 = 6-tap)
-//   bit2 = MV precision  (0 = half-pel, 1 = quarter-pel)
+//   bit0    = entropy coder (0 = Exp-Golomb, 1 = range)   <- left untouched
+//   bits1-2 = interpolation filter (0 = bilinear, 1 = 6-tap, 2 = 8-tap DCTIF)
+//   bit3    = MV precision  (0 = half-pel, 1 = quarter-pel)
 // Files written before the multi-mode encoder have these bits = 0 (bilinear + half-pel), which is exactly how
-// they were encoded — so they need no patch. Files encoded by an unconditional 6-tap / quarter build (their
-// header still says 0) DO need patching to declare their true mode. This tool writes that one byte.
+// they were encoded — so they need no patch. Note the layout change: 6-tap + quarter-pel files written by an
+// earlier build (old mv_codec 0x06) must be retagged to the new value (0x0a). This tool writes that one byte.
 //
 // usage:
-//   ./fwvtag [--interp=6tap|bilinear] [--mv-precision=quarter|half] file.fwv [more.fwv ...]
+//   ./fwvtag [--interp=6tap|8tap|bilinear] [--mv-precision=quarter|half] file.fwv [more.fwv ...]
 //   ./fwvtag --show file.fwv                 (print the current mode, change nothing)
 
 #include <stdio.h>
@@ -46,12 +46,14 @@ typedef struct {
   uint8_t  mv_codec;
 } ContainerHeaderPrefix;
 
-static const char *mode_name(int mv_codec) {
-  int interp = (mv_codec >> 1) & 1, precision = (mv_codec >> 2) & 1;
-  if (!interp && !precision) { return "bilinear + half-pel (legacy)"; }
-  if ( interp && !precision) { return "6-tap + half-pel"; }
-  if (!interp &&  precision) { return "bilinear + quarter-pel"; }
-  return "6-tap + quarter-pel";
+// Writes the human-readable mode into the caller's buffer and returns it. The caller supplies the buffer so
+// two mode_name() results can coexist in one printf (a single shared static buffer would alias them).
+static const char *mode_name(int mv_codec, char *buffer, size_t buffer_size) {
+  int interp = (mv_codec >> 1) & 3, precision = (mv_codec >> 3) & 1;
+  const char *filter = (interp == 0) ? "bilinear" : ((interp == 1) ? "6-tap" : ((interp == 2) ? "8-tap" : "reserved"));
+  const char *prec = precision ? "quarter-pel" : "half-pel";
+  snprintf(buffer, buffer_size, "%s + %s%s", filter, prec, ((interp == 0) && !precision) ? " (legacy)" : "");
+  return buffer;
 }
 
 int main(int argc, char **argv) {
@@ -60,7 +62,7 @@ int main(int argc, char **argv) {
   int file_count = 0;
   for (int i = 1; i < argc; i++) {
     if (!strncmp(argv[i], "--interp=", 9)) {
-      set_interp = strstr(argv[i] + 9, "bilinear") ? 0 : 1;
+      set_interp = strstr(argv[i] + 9, "8tap") ? 2 : (strstr(argv[i] + 9, "bilinear") ? 0 : 1);
     } else if (!strncmp(argv[i], "--mv-precision=", 15)) {
       set_precision = strstr(argv[i] + 15, "half") ? 0 : 1;
     } else if (!strcmp(argv[i], "--show")) {
@@ -70,7 +72,7 @@ int main(int argc, char **argv) {
     }
   }
   if (file_count == 0) {
-    fprintf(stderr, "usage: %s [--interp=6tap|bilinear] [--mv-precision=quarter|half] file.fwv [...]\n"
+    fprintf(stderr, "usage: %s [--interp=6tap|8tap|bilinear] [--mv-precision=quarter|half] file.fwv [...]\n"
                     "       %s --show file.fwv\n", argv[0], argv[0]);
     return 2;
   }
@@ -105,17 +107,18 @@ int main(int argc, char **argv) {
       continue;
     }
     if (show_only) {
+      char name_buffer[48];
       printf("%-40s mv_codec=0x%02x  coder=%s  %s\n", files[f], old_byte,
-             (old_byte & 1) ? "range" : "golomb", mode_name(old_byte));
+             (old_byte & 1) ? "range" : "golomb", mode_name(old_byte, name_buffer, sizeof name_buffer));
       fclose(file);
       continue;
     }
     int new_byte = old_byte;
     if (set_interp >= 0) {
-      new_byte = (new_byte & ~2) | (set_interp << 1);
+      new_byte = (new_byte & ~6) | (set_interp << 1);
     }
     if (set_precision >= 0) {
-      new_byte = (new_byte & ~4) | (set_precision << 2);
+      new_byte = (new_byte & ~8) | (set_precision << 3);
     }
     if (new_byte != old_byte) {
       if (fseek(file, (long)offset, SEEK_SET) != 0) {
@@ -126,7 +129,8 @@ int main(int argc, char **argv) {
       }
       fputc(new_byte, file);
     }
-    printf("%-40s %s -> %s\n", files[f], mode_name(old_byte), mode_name(new_byte));
+    char old_name[48], new_name[48];
+    printf("%-40s %s -> %s\n", files[f], mode_name(old_byte, old_name, sizeof old_name), mode_name(new_byte, new_name, sizeof new_name));
     fclose(file);
   }
   return failures ? 1 : 0;

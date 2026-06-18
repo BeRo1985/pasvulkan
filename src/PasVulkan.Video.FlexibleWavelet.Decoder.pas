@@ -560,7 +560,7 @@ begin
  // motion config: mv entropy coder (bit0), sub-pel motion_mode (bits1-2), motion block size + variable flag.
  // Old files have MVCodec=0 -> coder=golomb, motion_mode=0 (bilinear + half-pel) = exactly how they were encoded.
  fMVCodec:=fHeader.MVCodec and 1;
- fMotionMode:=(fHeader.MVCodec shr 1) and 3;   // bit0 = 6-tap interpolation, bit1 = quarter-pel; mirrors the MOTION_MODE shader spec constant
+ fMotionMode:=(fHeader.MVCodec shr 1) and 7;   // bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bit2 = quarter-pel; mirrors the MOTION_MODE shader spec constant
  fMotionVariable:=false;
  fMotionBlock:=16;
  if (fHeader.Reserved2[5]=8) or (fHeader.Reserved2[5]=16) or (fHeader.Reserved2[5]=32) then begin

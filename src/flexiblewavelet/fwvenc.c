@@ -1307,7 +1307,7 @@ int main(int argc, char **argv) {
       "  misc:\n"
       "    --frame-codec=lzss|lzbrrc      per-frame compressor (default lzss = fast decode; lzbrrc = ~20%% smaller, ~37x slower decode)\n"
       "    --mv-codec=golomb|range        motion-vector entropy coder (default golomb; range = adaptive binary range coder, ~-6%% file, CPU-only)\n"
-      "    --interp=6tap|bilinear         sub-pel interpolation filter (default 6tap; bilinear = legacy)\n"
+      "    --interp=6tap|8tap|bilinear    sub-pel interpolation filter (default 6tap; 8tap = HEVC DCTIF, sharper; bilinear = legacy)\n"
       "    --mv-precision=quarter|half    motion-vector precision (default quarter; half = coarser, fewer MV bits)\n"
       "    --mv-predict=temporal |        ME predictor (default temporal; spatial = 2nd pass toward the H.264 median; spatial-full = fuller search, weaker bias)\n"
       "                 spatial |\n"
@@ -1404,10 +1404,11 @@ int main(int argc, char **argv) {
       g_frame_codec = strstr(argv[i] + 14, "lzbrrc") ? 1 : 0;   // frame compressor: lzss (default, fast decode) or lzbrrc (~20% smaller, slow decode)
     } else if (!strncmp(argv[i], "--mv-codec=", 11)) {
       g_mv_codec = strstr(argv[i] + 11, "range") ? 1 : 0;   // MV entropy coder: golomb (default) or range (~-6% file, CPU-only)
-    } else if (!strncmp(argv[i], "--interp=", 9)) {   // sub-pel interpolation filter (g_motion_mode bit0). Default 6-tap.
-      if (strstr(argv[i] + 9, "bilinear")) { g_motion_mode &= ~1; } else { g_motion_mode |= 1; }
-    } else if (!strncmp(argv[i], "--mv-precision=", 15)) {   // MV precision (g_motion_mode bit1). Default quarter.
-      if (strstr(argv[i] + 15, "half")) { g_motion_mode &= ~2; } else { g_motion_mode |= 2; }
+    } else if (!strncmp(argv[i], "--interp=", 9)) {   // sub-pel interpolation filter (g_motion_mode bits0-1: 0 bilinear, 1 6-tap, 2 8-tap DCTIF). Default 6-tap.
+      g_motion_mode &= ~3;
+      if (strstr(argv[i] + 9, "8tap")) { g_motion_mode |= 2; } else if (!strstr(argv[i] + 9, "bilinear")) { g_motion_mode |= 1; }
+    } else if (!strncmp(argv[i], "--mv-precision=", 15)) {   // MV precision (g_motion_mode bit2). Default quarter.
+      if (strstr(argv[i] + 15, "half")) { g_motion_mode &= ~4; } else { g_motion_mode |= 4; }
     } else if (!strncmp(argv[i], "--mv-predict=", 13)) {   // ME predictor: temporal (default), spatial median (2nd refine pass), or spatial-full (fuller search, weaker bias)
       g_mv_predict_spatial = strstr(argv[i] + 13, "spatial") ? 1 : 0;
       g_mv_predict_full = strstr(argv[i] + 13, "spatial-full") ? 1 : 0;
@@ -4016,7 +4017,7 @@ int main(int argc, char **argv) {
     memcpy(header.magic, "FWVC", 4);   // uppercase magic (dual H.264 + wavelet container)
     header.version = 1;
     header.header_size = (uint16_t)sizeof header;
-    header.mv_codec = (uint8_t)((g_mv_codec & 1) | ((g_motion_mode & 3) << 1));   // bit0 = entropy coder (0 Exp-Golomb / 1 range); bits1-2 = motion_mode (interp + precision). Old files = 0 = golomb + bilinear + half-pel.
+    header.mv_codec = (uint8_t)((g_mv_codec & 1) | ((g_motion_mode & 7) << 1));   // bit0 = entropy coder (0 Exp-Golomb / 1 range); bits1-3 = motion_mode (bits1-2 interp filter, bit3 quarter-pel). Old files = 0 = golomb + bilinear + half-pel.
     header.prediction_method = mode_3ddwt ? (g_mctf ? (uint8_t)3 : (uint8_t)2) : (uint8_t)method;   // 3 = MCTF 3D-DWT, 2 = open-loop 3D-DWT GOP
     header.chroma_quant_x16 = (uint8_t)(g_chroma_quant * 16.0f + 0.5f);   // chroma quant weighting (16 = 1.0 = off)
     header.chroma_format = (uint8_t)g_chroma_format;

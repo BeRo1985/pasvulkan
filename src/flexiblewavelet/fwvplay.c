@@ -1102,7 +1102,7 @@ int main(int argc, char **argv) {
   }
   g_decompress_frames = 1;                  // per-frame [method][raw_len] framing (method 1 = LZSS, 2 = LZBRRC, 0 = raw)
   g_mv_codec = header.mv_codec & 1;         // bit0 = motion-vector entropy coder (0 = Exp-Golomb, 1 = range)
-  g_motion_mode = (header.mv_codec >> 1) & 3;   // bits1-2 = sub-pel mode (bit0 = 6-tap interp, bit1 = quarter-pel). Old files = 0 = bilinear + half-pel.
+  g_motion_mode = (header.mv_codec >> 1) & 7;   // bits1-3 = sub-pel mode (bits1-2 = interp filter 0 bilinear/1 6-tap/2 8-tap, bit3 = quarter-pel). Old files = 0 = bilinear + half-pel.
   int width = header.width;
   int height = header.height;
   int levels = header.levels;
