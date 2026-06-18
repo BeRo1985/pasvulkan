@@ -1439,6 +1439,11 @@ int main(int argc, char **argv) {
     create_buffer(plane_bytes, DEVICE_LOCAL, &previous_buffer[plane], &previous_memory[plane]);
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[plane], &step_memory[plane]);
   }
+  VkBuffer cdef_temp_buffer = 0;   // --cdef: scratch for the in-loop dering (cdef.comp writes here, then it is copied back into previous_buffer)
+  VkDeviceMemory cdef_temp_memory = 0;
+  if (g_cdef_active) {
+    create_buffer(plane_bytes, DEVICE_LOCAL, &cdef_temp_buffer, &cdef_temp_memory);
+  }
   // AQ (GPU): a one-time weight LUT (code -> log-spaced weight, exactly aq_weight_from_code) + the per-frame raw qpmap
   // tile codes, so apply_tile_aq.comp modulates the cached BASE step on the GPU (no per-pixel CPU work per frame). The
   // per-quality base step lives in the step_cache; step_buffer[plane] holds this frame's GPU-modulated step the dequant reads.
@@ -1589,6 +1594,8 @@ int main(int argc, char **argv) {
   VkDescriptorSetLayout layout_4_buffers = g_aq_enabled ? create_descriptor_set_layout(4, 0) : 0;   // AQ: { base_step, tile_codes, weight_lut, modulated_step }
   VkPipelineLayout pipeline_layout_apply_aq = g_aq_enabled ? create_pipeline_layout(layout_4_buffers, 20) : 0;   // { width, height, levels, tile_cols, tile_rows }
   VkPipelineLayout pipeline_layout_coeff_add = create_pipeline_layout(layout_2_buffers, 8);
+  VkPipelineLayout pipeline_layout_cdef = g_cdef_active ? create_pipeline_layout(layout_2_buffers, 28) : 0;   // cdef.comp: {src, dst} + push {w,h,pri,sec,damping,dir_shift,center}
+  VkPipeline pipeline_cdef = g_cdef_active ? create_compute_pipeline("shaders/cdef.spv", pipeline_layout_cdef) : 0;   // in-loop deringing of the reconstructed reference
   VkPipelineLayout pipeline_layout_transpose = create_pipeline_layout(layout_2_buffers, 16);
   VkPipelineLayout pipeline_layout_row = create_pipeline_layout(layout_1_buffer, 16);
   VkPipelineLayout pipeline_layout_round = create_pipeline_layout(layout_1_buffer, 4);
@@ -1650,11 +1657,11 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_motion_add = create_compute_pipeline("shaders/motion_add.spv", pipeline_layout_unpack);   // {coeff, mc_prev=scratch, prev}, push 8
 
   VkDescriptorPoolSize pool_sizes[2] = {
-    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 240 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode (Phase 2) + MCTF (3 mc + 3 add) sets
+    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 256 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode (Phase 2) + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6
     { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 5 },   // set_color + set_color_alpha + set_composite (present blend) + set_dering (2: src+dst)
   };
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 100;   // +6 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff[3] + set_color_alpha) + 1 for set_composite   // B1b bidi (6) + B2 motion (6) + Phase 2 mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6)
+  pool_info.maxSets = 112;   // +6 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff[3] + set_color_alpha) + 1 for set_composite   // B1b bidi (6) + B2 motion (6) + Phase 2 mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6) + CDEF set_cdef_play[3]
   pool_info.poolSizeCount = 2;
   pool_info.pPoolSizes = pool_sizes;
   VkDescriptorPool descriptor_pool;
@@ -1662,6 +1669,7 @@ int main(int argc, char **argv) {
 
   VkDescriptorSet set_unpack[MAX_PLANES], set_dequant[MAX_PLANES], set_add[MAX_PLANES], set_coeff_to_scratch[MAX_PLANES], set_scratch_to_coeff[MAX_PLANES], set_row[MAX_PLANES];
   VkDescriptorSet set_mc_play[MAX_PLANES], set_motion_add_play[MAX_PLANES];   // motion (mc_prev reuses scratch_buffer, transient per plane)
+  VkDescriptorSet set_cdef_play[MAX_PLANES] = { 0 };   // --cdef: in-loop dering of previous_buffer[plane] (mirrors the encoder)
   VkDescriptorSet set_apply_aq[MAX_PLANES] = { 0 };   // AQ (GPU): { base_step, tile_codes, weight_lut, modulated_step = step_buffer }
   VkDescriptorSet set_row_scratch, set_color;
   for (int plane = 0; plane < g_num_planes; plane++) {
@@ -1681,6 +1689,10 @@ int main(int argc, char **argv) {
     bind_storage_buffers(set_mc_play[plane], (VkBuffer[]){ previous_buffer[plane], mv_buffer, scratch_buffer }, 3);
     set_motion_add_play[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
     bind_storage_buffers(set_motion_add_play[plane], (VkBuffer[]){ coeff_buffer[plane], scratch_buffer, previous_buffer[plane] }, 3);
+    if (g_cdef_active) {   // in-loop dering: cdef.comp reads previous_buffer[plane] -> cdef_temp_buffer, then it is copied back
+      set_cdef_play[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+      bind_storage_buffers(set_cdef_play[plane], (VkBuffer[]){ previous_buffer[plane], cdef_temp_buffer }, 2);
+    }
     set_coeff_to_scratch[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     bind_storage_buffers(set_coeff_to_scratch[plane], (VkBuffer[]){ coeff_buffer[plane], scratch_buffer }, 2);
     set_scratch_to_coeff[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
@@ -2968,6 +2980,38 @@ int main(int argc, char **argv) {
           memory_barrier();
         }
       }
+      // CDEF (--cdef, lossy): in-loop dering the reconstructed reference (previous_buffer) on the GPU with exactly the
+      // strengths the encoder chose (from the container table), before it is colour-converted + reused as the next
+      // frame's reference. Mirrors the CPU oracle (cdef_apply_decode_plane). Per plane: cdef.comp -> cdef_temp -> copy back.
+      if (g_cdef_active && !lossless) {
+        int cdef_damping = cdef_damping_from_quality(current_quality);
+        if (cdef_damping > 0) {
+          for (int plane = 0; plane < g_num_planes; plane++) {
+            int pri = cdef_table ? cdef_table[(frame_index * 4) + ((plane == 0) ? 0 : 2)] : 0;
+            int sec = cdef_table ? cdef_table[(frame_index * 4) + ((plane == 0) ? 1 : 3)] : 0;
+            if ((pri == 0) && (sec == 0)) {
+              continue;   // identity -> skip (exactly matches the CPU oracle's skip)
+            }
+            int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
+            int dir_shift = (plane == 0) ? 0 : 1, center = (plane == 0) ? 128 : 0;
+            int32_t cdef_push[7] = { plane_w, plane_h, pri, sec, cdef_damping, dir_shift, center };
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_cdef);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_cdef, 0, 1, &set_cdef_play[plane], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_cdef, VK_SHADER_STAGE_COMPUTE_BIT, 0, 28, cdef_push);
+            vkCmdDispatch(command_buffer, (uint32_t)((plane_w + 7) / 8), (uint32_t)((plane_h + 7) / 8), 1);
+            VkMemoryBarrier cdef_to_copy = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT };
+            vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &cdef_to_copy, 0, 0, 0, 0);
+            // motion_add/coeff_add wrote the reconstruction into BOTH previous_buffer (the reference) and coeff_buffer
+            // (what the colour pass displays), so copy the deringed result into both — display + reference stay in sync.
+            VkBufferCopy cdef_copy = { 0, 0, (VkDeviceSize)plane_w * plane_h * 4 };
+            vkCmdCopyBuffer(command_buffer, cdef_temp_buffer, previous_buffer[plane], 1, &cdef_copy);
+            vkCmdCopyBuffer(command_buffer, cdef_temp_buffer, coeff_buffer[plane], 1, &cdef_copy);
+            VkMemoryBarrier copy_to_shader = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT };
+            vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &copy_to_shader, 0, 0, 0, 0);
+          }
+        }
+      }
+
       if (g_has_alpha) {   // GPU-decode the alpha plane (intra): unpack -> dequant (lossy) -> inverse DWT -> round, into coeff[3]
         int aw = width, ah = height, a_scratch_stride = (aw > ah) ? aw : ah, a_pixels = aw * ah;
         int a_blocks_x = block_count_x(aw), a_blocks_y = block_count_y(ah), a_block_count = a_blocks_x * a_blocks_y;
@@ -3155,6 +3199,12 @@ int main(int argc, char **argv) {
         if (mode_3ddwt) {
           memcpy(cpu_rgb, cpu_gop_rgb[frame_index - cur_gop_start], frame_bytes);   // CPU reference from the per-GOP decode above
         } else if (header.prediction_method == 1) {
+          if (g_cdef_active && cdef_table) {   // load this frame's CDEF strengths so the CPU decode deringes bit-exactly like the GPU
+            g_cdef_pri_luma = cdef_table[(frame_index * 4) + 0];
+            g_cdef_sec_luma = cdef_table[(frame_index * 4) + 1];
+            g_cdef_pri_chroma = cdef_table[(frame_index * 4) + 2];
+            g_cdef_sec_chroma = cdef_table[(frame_index * 4) + 3];
+          }
           decode_frame_colordiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
         } else {
           decode_frame_coefdiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
