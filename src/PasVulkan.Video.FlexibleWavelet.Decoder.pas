@@ -96,6 +96,15 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
              Ref1Slot:TpvInt32;
              Weight0:TpvInt32;
              Weight1:TpvInt32;
+             // CDEF per-frame state: PrepareFrameBidi sets the scalar fCDEF*/fActiveBidiDstSlot fields per planned frame,
+             // but the GPU replay runs all RecordBidiDecode AFTER all the planning — so the per-frame values must be
+             // captured here and restored before each replay, else every frame would dering with the LAST frame's state.
+             DstSlot:TpvInt32;
+             CDEFPriLuma:TpvInt32;
+             CDEFSecLuma:TpvInt32;
+             CDEFPriChroma:TpvInt32;
+             CDEFSecChroma:TpvInt32;
+             CDEFDamping:TpvInt32;
             end;
             TBidiPlans=array of TBidiPlan;
       private
@@ -3728,6 +3737,12 @@ begin
   fBidiPlan[fBidiPlanCount].Ref1Slot:=Ref1Slot;
   fBidiPlan[fBidiPlanCount].Weight0:=Weight0;
   fBidiPlan[fBidiPlanCount].Weight1:=Weight1;
+  fBidiPlan[fBidiPlanCount].DstSlot:=fActiveBidiDstSlot; // CDEF: this frame's dering target + strengths (set by PrepareBidiFrame)
+  fBidiPlan[fBidiPlanCount].CDEFPriLuma:=fCDEFPriLuma;
+  fBidiPlan[fBidiPlanCount].CDEFSecLuma:=fCDEFSecLuma;
+  fBidiPlan[fBidiPlanCount].CDEFPriChroma:=fCDEFPriChroma;
+  fBidiPlan[fBidiPlanCount].CDEFSecChroma:=fCDEFSecChroma;
+  fBidiPlan[fBidiPlanCount].CDEFDamping:=fCDEFDamping;
   inc(fBidiPlanCount);
   inc(RingIndex);
   inc(fBidiRingCursor);
@@ -3748,6 +3763,12 @@ begin
  // descriptor bindings PrepareFrameBidi made), then record the display.
  for PlanIndex:=0 to fBidiPlanCount-1 do begin
   fBufferRingSlot:=fBidiPlan[PlanIndex].RingSlot;
+  fActiveBidiDstSlot:=fBidiPlan[PlanIndex].DstSlot; // CDEF: restore this frame's dering target + strengths for RecordCDEF
+  fCDEFPriLuma:=fBidiPlan[PlanIndex].CDEFPriLuma;
+  fCDEFSecLuma:=fBidiPlan[PlanIndex].CDEFSecLuma;
+  fCDEFPriChroma:=fBidiPlan[PlanIndex].CDEFPriChroma;
+  fCDEFSecChroma:=fBidiPlan[PlanIndex].CDEFSecChroma;
+  fCDEFDamping:=fBidiPlan[PlanIndex].CDEFDamping;
   RecordBidiDecode(aCommandBuffer,fBidiPlan[PlanIndex].IsPredicted,fBidiPlan[PlanIndex].Ref1Slot,fBidiPlan[PlanIndex].Weight0,fBidiPlan[PlanIndex].Weight1);
  end;
  fBufferRingSlot:=-1;
