@@ -1976,6 +1976,17 @@ static void decode_motion_vectors(BitReader *reader, int *mv, int blocks_x, int 
 
 static int g_motion_variable = 0;   // 1 = variable quadtree motion (root 32 -> 8); 0 = the fixed g_motion_block grid
 static int g_motion_mode = 5;       // sub-pel mode: bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bits2-3 = MV precision (0 half, 1 quarter, 2 eighth [reserved], 3 amvr [reserved]). Default 5 = 6-tap + quarter. Old files = 0 = bilinear + half. Mirrors the MOTION_MODE shader spec constant.
+static int g_cdef = 0;              // --cdef: AV1-style in-loop directional deringing on the reconstructed YCoCg reference (encoder GPU search + apply; lossy-only). 0 = off (default).
+
+// CDEF damping derived from the per-GOP quality so encoder + decoder agree without signalling it. Higher quality
+// (lower number toward Q1) = stronger reconstruction = less ringing = lighter damping; coarser Q = more damping.
+static int cdef_damping_from_quality(int quality) {
+  if (quality <= 0) {
+    return 0;   // Q0 = lossless: CDEF is disabled, damping unused
+  }
+  int damping = 3 + (quality / 4);   // Q1..3 -> 3, Q4..7 -> 4, Q8..11 -> 5, Q12+ -> 6 (clamped)
+  return (damping > 6) ? 6 : damping;
+}
 static int g_mv_predict_spatial = 0;   // --mv-predict=spatial: a 2nd ME pass refines MVs toward the H.264 spatial median (the real coder predictor). Encoder-only; the bitstream/decoder are unchanged. Default 0 = temporal predictor only.
 static int g_mv_predict_full = 0;      // --mv-predict=spatial-full: the spatial refine with a fuller search + weaker bias (motion_refine_full.spv). Implies g_mv_predict_spatial.
 static int g_search_range = 16;        // --search-range=N: the +-N integer search floor in motion_estimate (the SEARCH spec constant). Bigger = catches faster motion, slower encode. Default 16.

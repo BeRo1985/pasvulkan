@@ -1282,6 +1282,7 @@ int main(int argc, char **argv) {
       "  perceptual / adaptive quant (lossy):\n"
       "    --aq[=<strength>]              spatially-adaptive quantization: per-tile QP from luma activity (default 0.5; finer in flat/edge tiles, coarser in busy/masked ones)\n"
       "    --prdo[=<strength>]            perceptual RDO: zero coefficients below a per-tile masked threshold before quant; decoder-transparent (default 1.0; ~0.3 = sweet spot)\n"
+      "    --cdef                         in-loop directional deringing (AV1 CDEF) on the reconstructed reference; lossy only; per-frame GPU strength search (luma + chroma)\n"
       "  3D-DWT (open-loop temporal) mode:\n"
       "    --mode=3ddwt                   temporal 3D-DWT over the GOP\n"
       "    --twavelet=haar|53|97          temporal wavelet (default haar; ignored with --mctf)\n"
@@ -1477,6 +1478,8 @@ int main(int argc, char **argv) {
       if (argv[i][6] == '=') {
         g_prdo_strength = (float)atof(argv[i] + 7);
       }
+    } else if (!strcmp(argv[i], "--cdef")) {
+      g_cdef = 1;   // in-loop directional deringing on the reconstructed reference (lossy only; per-frame GPU strength search)
     } else if (!strncmp(argv[i], "--chroma-format", 15)) {   // --chroma-format=420|422|444 (must precede --chroma, which is a prefix)
       g_chroma_format = strstr(argv[i], "420") ? 2 : (strstr(argv[i], "422") ? 1 : 0);
     } else if (!strcmp(argv[i], "--420")) {
@@ -1722,6 +1725,20 @@ int main(int argc, char **argv) {
     create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &offset_buffer[3], &offset_memory[3]);
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[3], &step_memory[3]);
   }
+  // CDEF in-loop deringing (--cdef): a per-plane copy of the source YCoCg (the SSE search target, taken before the
+  // DWT overwrites coeff_buffer), one scratch buffer for the filtered output, and a host-visible 64-bit SSE counter
+  // (sse[0] = low, sse[1] = carry). DEVICE_LOCAL planes are sized at the full plane_bytes (chroma uses its subsampled
+  // sub-region). Only allocated when CDEF is on.
+  VkBuffer source_ycocg[MAX_PLANES] = { 0 }, cdef_temp_buffer = 0, cdef_sse_buffer = 0;
+  VkDeviceMemory source_ycocg_memory[MAX_PLANES] = { 0 }, cdef_temp_memory = 0, cdef_sse_memory = 0;
+  if (g_cdef) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
+      create_buffer(plane_bytes, DEVICE_LOCAL, &source_ycocg[plane], &source_ycocg_memory[plane]);
+    }
+    create_buffer(plane_bytes, DEVICE_LOCAL, &cdef_temp_buffer, &cdef_temp_memory);
+    create_buffer(8, HOST_VISIBLE_COHERENT, &cdef_sse_buffer, &cdef_sse_memory);
+  }
+
   // DWT transpose scratch: a W x H plane is transposed to H x W and stored with row stride
   // max(W,H), spanning max(W,H) rows -> max(W,H)^2 elements. Sizing this at pixel_count (W*H) is too
   // small for non-square planes (1920x1080 needs 1920^2, not 1920*1080), so the transpose wrote/read
@@ -1841,6 +1858,8 @@ int main(int argc, char **argv) {
   VkPipelineLayout pipeline_layout_size = create_pipeline_layout(layout_2_buffers, 16);
   VkPipelineLayout pipeline_layout_pack = create_pipeline_layout(layout_3_buffers, 16);
   VkPipelineLayout pipeline_layout_coeff_diff = create_pipeline_layout(layout_3_buffers, 4);
+  VkPipelineLayout pipeline_layout_cdef = g_cdef ? create_pipeline_layout(layout_2_buffers, 28) : 0;     // cdef.comp: {src, dst} + push {w, h, pri, sec, damping, dir_shift, center}
+  VkPipelineLayout pipeline_layout_cdef_sse = g_cdef ? create_pipeline_layout(layout_3_buffers, 4) : 0;  // cdef_sse.comp: {a, b, sse} + push {pixel_count}
   VkPipelineLayout pipeline_layout_motion_estimate = create_pipeline_layout(layout_9_buffers, 16);
   VkPipelineLayout pipeline_layout_merge = create_pipeline_layout(layout_7_buffers, 28);   // variable-motion R-D merge: push {fgx,fgy,g16x,g16y,g32x,g32y,lambda_abs}
   VkPipelineLayout pipeline_layout_bidi_sad = create_pipeline_layout(layout_12_buffers, 24);   // variable B bidi_mode_sad: push {w,h,blocks_x,lossless,weight0,weight1}
@@ -1856,6 +1875,8 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_pthresh = g_prdo_enabled ? create_compute_pipeline("shaders/pthresh.spv", pipeline_layout_quant) : 0;   // B: reuses the 2-buffer layout
   VkPipeline pipeline_chroma_downsample = create_compute_pipeline("shaders/chroma_downsample.spv", pipeline_layout_chroma_downsample);   // box-average Co/Cg to subsampled size (Variante A; float 9/7 path)
   VkPipeline pipeline_chroma_downsample_int = create_compute_pipeline_bs("shaders/chroma_downsample.spv", pipeline_layout_chroma_downsample, 1);   // INT_MODE=1: integer box-average for the MCTF path (gop is integer YCoCg)
+  VkPipeline pipeline_cdef = g_cdef ? create_compute_pipeline("shaders/cdef.spv", pipeline_layout_cdef) : 0;             // in-loop deringing filter
+  VkPipeline pipeline_cdef_sse = g_cdef ? create_compute_pipeline("shaders/cdef_sse.spv", pipeline_layout_cdef_sse) : 0; // per-frame strength search: SSE vs the source
   // 128 uses the cooperative shaders (one workgroup/block + shared-memory pyramid) so the few large blocks
   // don't watchdog-timeout the GPU; 32/64 keep the cheaper one-thread-per-block path.
   VkPipeline pipeline_size = create_compute_pipeline_bs((g_block_size == 128) ? "shaders/bitplane_size_coop.spv" : "shaders/bitplane_size.spv", pipeline_layout_size, g_block_size);
@@ -1919,9 +1940,9 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_inverse_row = lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
   VkPipeline pipeline_bidi_blend = create_compute_pipeline("shaders/bidi_blend.spv", pipeline_layout_pack);   // weighted 2-ref prediction (3 buffers + 12-byte push)
 
-  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 512 };   // + MCTF: 1 ME (9) + 3 mc (3x3) + 3 diff (3x3) = 27
+  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 640 };   // + MCTF: 1 ME (9) + 3 mc (3x3) + 3 diff (3x3) = 27; + CDEF 3x{set_cdef(2)+set_cdef_sse(3)} = 15
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 128;   // + MCTF (set_mctf_me + set_mctf_mc[3] + set_mctf_diff[3] = 7)
+  pool_info.maxSets = 160;   // + MCTF (set_mctf_me + set_mctf_mc[3] + set_mctf_diff[3] = 7); + CDEF (set_cdef[3] + set_cdef_sse[3] = 6)
   pool_info.poolSizeCount = 1;
   pool_info.pPoolSizes = &pool_size;
   VkDescriptorPool descriptor_pool;
@@ -1992,6 +2013,18 @@ int main(int argc, char **argv) {
     bind_storage_buffers(set_size[3], (VkBuffer[]){ coeff_buffer[3], size_buffer[3] }, 2);
     set_pack[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
     bind_storage_buffers(set_pack[3], (VkBuffer[]){ coeff_buffer[3], offset_buffer[3], data_buffer }, 3);
+  }
+  // CDEF (--cdef): per plane, the filter set {reconstructed reference -> filtered scratch} and the SSE set
+  // {filtered scratch, source YCoCg, sse counter}. The filter reads previous_buffer (the reconstruct) into
+  // cdef_temp_buffer; the search compares cdef_temp against the saved source_ycocg.
+  VkDescriptorSet set_cdef[MAX_PLANES] = { 0 }, set_cdef_sse[MAX_PLANES] = { 0 };
+  if (g_cdef) {
+    for (int plane = 0; plane < g_num_planes; plane++) {
+      set_cdef[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+      bind_storage_buffers(set_cdef[plane], (VkBuffer[]){ previous_buffer[plane], cdef_temp_buffer }, 2);
+      set_cdef_sse[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+      bind_storage_buffers(set_cdef_sse[plane], (VkBuffer[]){ cdef_temp_buffer, source_ycocg[plane], cdef_sse_buffer }, 3);
+    }
   }
   // Motion search reads the luma (plane 0) of the current frame and the previous reconstructed frame.
   set_motion_estimate = allocate_descriptor_set(descriptor_pool, layout_9_buffers);
