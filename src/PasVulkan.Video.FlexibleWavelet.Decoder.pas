@@ -215,6 +215,14 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fAlphaPremultiplied:boolean; // color_flags bit3: the RGB is premultiplied by alpha
        fAlphaQP:TpvInt32;     // the alpha section's own quantization level (parsed per frame; 0 = lossless 5/3)
        fAlphaLossless:boolean; // fAlphaQP=0 -> reversible 5/3 alpha inverse transform
+       fHasCDEF:boolean;      // color_flags bit4: AV1 CDEF in-loop deringing (a per-frame strength table follows the index)
+       fCDEFTable:array of TpvUInt8; // per coding-order frame: 4 bytes {pri_luma, sec_luma, pri_chroma, sec_chroma}
+       fCDEFPriLuma:TpvInt32; // the active frame's strengths + damping (loaded by SetCDEFFrame, consumed by RecordCDEF)
+       fCDEFSecLuma:TpvInt32;
+       fCDEFPriChroma:TpvInt32;
+       fCDEFSecChroma:TpvInt32;
+       fCDEFDamping:TpvInt32;
+       fActiveBidiDstSlot:TpvInt32; // B path: the DPB slot the current PrepareBidiFrame reconstructs into (the CDEF target)
        fUseSCRGB:boolean;
        fOutputFormat:TVkFormat;
        fPipelineCache:TpvVulkanPipelineCache;
@@ -248,6 +256,8 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fPipeBidiBlend:TpvVulkanComputePipeline; // B-frames: weighted L0/L1 blend
        fPipeBlendMode:TpvVulkanComputePipeline; // B-frames: per-block L0/L1/BI mode blend
        fPLBlendMode:TpvVulkanPipelineLayout; // DSL3 + 20-byte push
+       fPipeCDEF:TpvVulkanComputePipeline; // cdef.comp: AV1 in-loop directional deringing
+       fPLCDEF:TpvVulkanPipelineLayout; // cdef.comp: DSL2 {src, dst} + 28-byte push {w,h,pri,sec,damping,dir_shift,center}
        fPipeColor:TpvVulkanComputePipeline;
        fPipeColorAlpha:TpvVulkanComputePipeline; // color_alpha.spv: also writes the decoded alpha plane (binding 4) into output A
        fPipeColorHDR:TpvVulkanComputePipeline;
@@ -280,6 +290,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fDPBBuffer:array of array[0..3] of TpvVulkanBuffer; // B-frame decoded-picture-buffer slots (YCoCg), device-local
        fGMCBuffer:array[0..1] of array[0..3] of TpvVulkanBuffer; // B-frames: the L0/L1 motion-compensated references, device-local
        fScratchBuffer:TpvVulkanBuffer;
+       fCDEFTempBuffer:TpvVulkanBuffer; // CDEF scratch: cdef.comp writes the deringed plane here, then it is copied back
        fOutputImage:TpvVulkanImage;
        fOutputImageMemory:TpvVulkanDeviceMemoryBlock;
        fOutputImageView:TpvVulkanImageView;        // sample / present view (sRGB for SDR -> samples to linear; FP16 for HDR)
@@ -297,6 +308,8 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fSetGBlend:array[0..3] of TpvVulkanDescriptorSet; // B-frames: {gmc0, gmc1, scratch}
        fSetGBlendMode:array[0..3] of TpvVulkanDescriptorSet; // B-frames: {gmc0, gmc1, mode}
        fSetGAdd:array[0..3] of TpvVulkanDescriptorSet; // B-frames: {coeff, prediction, dpb[dst]}
+       fSetCDEF:array[0..2] of TpvVulkanDescriptorSet; // CDEF {src, cdef_temp}: I/P+3D-DWT bind src=coeff; B (mode A) rebinds src=dpb[dst]
+       fRingSetCDEF:array of array[0..2] of TpvVulkanDescriptorSet; // CDEF per B-frame ring slot (mode B): rebound to dpb[dst] per frame
        fSetCoeffToScratch:array[0..3] of TpvVulkanDescriptorSet;
        fSetScratchToCoeff:array[0..3] of TpvVulkanDescriptorSet;
        fSetRow:array[0..3] of TpvVulkanDescriptorSet;
@@ -355,6 +368,10 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        procedure RecordDispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aPipeline:TpvVulkanComputePipeline;const aLayout:TpvVulkanPipelineLayout;const aSet:TpvVulkanDescriptorSet;const aPushConstants:Pointer;const aPushSize:TpvUInt32;const aGroupsX,aGroupsY,aGroupsZ:TpvUInt32);
        function EnsureStepCacheSlot(const aQuality:TpvInt32):TpvInt32; // build (once) + return the step-map cache slot for a quality
        procedure SetAQCurrentMap(const aCodingIndex:TpvInt32); // AQ: select this coding frame's per-tile QP map (no-op if AQ off)
+       class function CdefDampingFromQuality(const aQuality:TpvInt32):TpvInt32; static; // AV1 CDEF damping derived from the frame's quality
+       procedure SetCDEFFrame(const aCodingIndex:TpvInt32); // CDEF: load this coding frame's strengths + damping (no-op if CDEF off / lossless)
+       function ActiveSetCDEF(const aPlane:TpvInt32):TpvVulkanDescriptorSet; // CDEF set: shared (mode A) or the active ring slot's (mode B)
+       procedure RecordCDEF(const aCommandBuffer:TpvVulkanCommandBuffer;const aSet:TpvVulkanDescriptorSet;const aDst,aDst2:TpvVulkanBuffer;const aPlane:TpvInt32); // dispatch cdef -> temp -> copy back into aDst(+aDst2)
        procedure UploadTileCodes; // AQ (GPU): copy the current frame's raw qpmap tile codes into fTileCodesBuffer for apply_tile_aq.comp
        procedure UploadFrame(const aFrameIndex:TpvInt32);
        procedure RecordDecode(const aCommandBuffer:TpvVulkanCommandBuffer;const aIsPredicted:boolean);
@@ -581,6 +598,21 @@ begin
  // A color-only decoder ignores the section (it sits past the color payload within FrameEntry.Size).
  fHasAlpha:=(fHeader.ColorFlags and 4)<>0;
  fAlphaPremultiplied:=(fHeader.ColorFlags and 8)<>0;
+ // CDEF (color_flags bit4): the encoder appended a per-frame 4-byte strength table {pri_luma,sec_luma,pri_chroma,sec_chroma}
+ // in coding order immediately AFTER the index (at index_offset + FrameCount*SizeOf(FrameEntry)). Old files (bit4=0) have none.
+ fHasCDEF:=(fHeader.ColorFlags and 16)<>0;
+ fCDEFTable:=nil;
+ if fHasCDEF and (fFrameCount>0) then begin
+  SetLength(fCDEFTable,fFrameCount*4);
+  fStream.Position:=TpvInt64(fHeader.IndexOffset)+(TpvInt64(fFrameCount)*SizeOf(TFrameEntry));
+  fStream.ReadBuffer(fCDEFTable[0],TpvInt64(fFrameCount)*4);
+ end;
+ fCDEFPriLuma:=0;
+ fCDEFSecLuma:=0;
+ fCDEFPriChroma:=0;
+ fCDEFSecChroma:=0;
+ fCDEFDamping:=0;
+ fActiveBidiDstSlot:=0;
  fAlphaQP:=0;
  fAlphaLossless:=true;
  fAlphaRingSize:=4; // MaxInFlightFrames (3) + 1 -> frame N's alpha slot is not reused until N+4, by when N's decode is done
@@ -856,6 +888,9 @@ begin
  fPLRow:=CreatePipelineLayout(fDSL1,16);
  fPLRound:=CreatePipelineLayout(fDSL1,4);
  fPLCoeffAdd:=CreatePipelineLayout(fDSL2,8); // coefdiff (A) P-frame coeff_add: {coeff, previous}, push [pixel_count, is_predicted]
+ if fHasCDEF then begin
+  fPLCDEF:=CreatePipelineLayout(fDSL2,28); // cdef.comp: {src, dst} + push {w,h,pri,sec,damping,dir_shift,center}
+ end;
  fPLColor:=CreatePipelineLayout(fDSLColor,24);
  if fHasAlpha then begin
   fPLColorAlpha:=CreatePipelineLayout(fDSLColorAlpha,24); // same 24-byte push as fPipeColor
@@ -876,6 +911,9 @@ begin
  fPipeIDWT53:=CreateComputePipeline(FlexibleWaveletVideoIdwt53rowSPIRVData,FlexibleWaveletVideoIdwt53rowSPIRVDataSize,fPLRow,false);
  fPipeRound:=CreateComputePipeline(FlexibleWaveletVideoRound97SPIRVData,FlexibleWaveletVideoRound97SPIRVDataSize,fPLRound,false);
  fPipeCoeffAdd:=CreateComputePipeline(FlexibleWaveletVideoCoeffAddSPIRVData,FlexibleWaveletVideoCoeffAddSPIRVDataSize,fPLCoeffAdd,false);
+ if fHasCDEF then begin
+  fPipeCDEF:=CreateComputePipeline(FlexibleWaveletVideoCdefSPIRVData,FlexibleWaveletVideoCdefSPIRVDataSize,fPLCDEF,false);
+ end;
  // colordiff (B): mc (3 buffers + motion-block spec const, push 12) + motion_add (3 buffers, push 8), both on the unpack layout
  fPipeMC:=CreateComputePipeline(FlexibleWaveletVideoMcSPIRVData,FlexibleWaveletVideoMcSPIRVDataSize,fPLUnpack,false,true);
  fPipeMotionAdd:=CreateComputePipeline(FlexibleWaveletVideoMotionAddSPIRVData,FlexibleWaveletVideoMotionAddSPIRVDataSize,fPLUnpack,false);
@@ -973,6 +1011,11 @@ begin
   ScratchSide:=fHeight;
  end;
  fScratchBuffer:=CreateStorageBuffer(ScratchSide*ScratchSide*4,true,'FWV.scratch');
+
+ // CDEF dering scratch: cdef.comp filters a plane into here; full-luma-sized so it holds any plane (chroma is smaller)
+ if fHasCDEF then begin
+  fCDEFTempBuffer:=CreateStorageBuffer(TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4,true,'FWV.cdeftemp');
+ end;
 
  // colordiff (B) motion-vector field: per luma motion block [mv_x, mv_y] (half-pel), host-visible
  fMVBuffer:=CreateStorageBuffer(TVkDeviceSize(MotionBlocksX(fWidth))*TVkDeviceSize(MotionBlocksY(fHeight))*2*4,false,'FWV.mv');
@@ -1108,6 +1151,14 @@ begin
   MaxSets:=MaxSets+3+(fBufferRingSize*3);
   MaxBuffers:=MaxBuffers+12+(fBufferRingSize*12);
  end;
+ if fHasCDEF then begin // CDEF sets: 3 shared {src, cdef_temp} + 3 per B-frame ring slot (mode B), 2 buffers each
+  MaxSets:=MaxSets+3;
+  MaxBuffers:=MaxBuffers+6;
+  if fHasBFrames and (fSubmitMode=1) then begin
+   MaxSets:=MaxSets+(fBufferRingSize*3);
+   MaxBuffers:=MaxBuffers+(fBufferRingSize*6);
+  end;
+ end;
  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),MaxSets);
  fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,MaxBuffers);
  fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,3); // fSetColor + (optional) fSetColorAlpha
@@ -1140,6 +1191,13 @@ begin
   BindStorageBuffer(fSetAdd[Plane],0,fCoeffBuffer[Plane]);
   BindStorageBuffer(fSetAdd[Plane],1,fPreviousBuffer[Plane]);
   fSetAdd[Plane].Flush;
+
+  if fHasCDEF and (Plane<3) then begin // CDEF set: src=coeff (I/P + 3D-DWT); the B path rebinds binding 0 to the DPB slot per frame
+   fSetCDEF[Plane]:=AllocateSet(fDSL2);
+   BindStorageBuffer(fSetCDEF[Plane],0,fCoeffBuffer[Plane]);
+   BindStorageBuffer(fSetCDEF[Plane],1,fCDEFTempBuffer);
+   fSetCDEF[Plane].Flush;
+  end;
 
   fSetMCPlay[Plane]:=AllocateSet(fDSL3); // colordiff (B) mc: {previous, mv, scratch=mc_prev}
   BindStorageBuffer(fSetMCPlay[Plane],0,fPreviousBuffer[Plane]);
@@ -1387,6 +1445,114 @@ begin
  end;
 end;
 
+// AV1 CDEF damping, derived deterministically from the frame's quality (matches the C cdef_damping_from_quality):
+// Q0 = lossless -> 0 (CDEF off); else 3 + quality/4, clamped to 6.
+class function TpvFlexibleWaveletVideoDecoder.CdefDampingFromQuality(const aQuality:TpvInt32):TpvInt32;
+begin
+ if aQuality<=0 then begin
+  result:=0;
+ end else begin
+  result:=3+(aQuality div 4);
+  if result>6 then begin
+   result:=6;
+  end;
+ end;
+end;
+
+// CDEF: load this coding frame's strengths + damping into fields (consumed by RecordCDEF). Damping derives from the
+// frame's OWN stored quality (FrameEntry.Quality) — the exact value the encoder's search used, uniformly across modes.
+procedure TpvFlexibleWaveletVideoDecoder.SetCDEFFrame(const aCodingIndex:TpvInt32);
+var Quality:TpvInt32;
+begin
+ fCDEFPriLuma:=0;
+ fCDEFSecLuma:=0;
+ fCDEFPriChroma:=0;
+ fCDEFSecChroma:=0;
+ fCDEFDamping:=0;
+ if fHasCDEF and (aCodingIndex>=0) and (aCodingIndex<fFrameCount) and (((aCodingIndex*4)+3)<length(fCDEFTable)) then begin
+  Quality:=fFrameEntries[aCodingIndex].Quality;
+  fCDEFDamping:=CdefDampingFromQuality(Quality);
+  if fCDEFDamping>0 then begin
+   fCDEFPriLuma:=fCDEFTable[(aCodingIndex*4)+0];
+   fCDEFSecLuma:=fCDEFTable[(aCodingIndex*4)+1];
+   fCDEFPriChroma:=fCDEFTable[(aCodingIndex*4)+2];
+   fCDEFSecChroma:=fCDEFTable[(aCodingIndex*4)+3];
+  end;
+ end;
+end;
+
+// CDEF set: the shared set (modes A/C) or the active B-frame ring slot's (mode B) — mirrors ActiveSetGAdd.
+function TpvFlexibleWaveletVideoDecoder.ActiveSetCDEF(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
+begin
+ if fBufferRingSlot<0 then begin
+  result:=fSetCDEF[aPlane];
+ end else begin
+  result:=fRingSetCDEF[fBufferRingSlot][aPlane];
+ end;
+end;
+
+// Record one plane's CDEF: cdef.comp filters aSet's src buffer into fCDEFTempBuffer, then copies it back into aDst (and
+// aDst2 when non-nil — the I/P path feeds the deringed result into BOTH the display coeff and the reference). A null
+// filter (pri=sec=0) or damping 0 (lossless) is skipped, exactly matching the encoder + the C oracle.
+procedure TpvFlexibleWaveletVideoDecoder.RecordCDEF(const aCommandBuffer:TpvVulkanCommandBuffer;const aSet:TpvVulkanDescriptorSet;const aDst,aDst2:TpvVulkanBuffer;const aPlane:TpvInt32);
+var Pri,Sec,PlaneW,PlaneH,DirShift,Center:TpvInt32;
+    Push:array[0..6] of TpvInt32;
+    Barrier:TVkMemoryBarrier;
+    BufferCopy:TVkBufferCopy;
+begin
+ if (not fHasCDEF) or (fCDEFDamping<=0) then begin
+  exit;
+ end;
+ if aPlane=0 then begin
+  Pri:=fCDEFPriLuma;
+  Sec:=fCDEFSecLuma;
+  DirShift:=0;
+  Center:=128;
+ end else begin
+  Pri:=fCDEFPriChroma;
+  Sec:=fCDEFSecChroma;
+  DirShift:=1;
+  Center:=0;
+ end;
+ if (Pri=0) and (Sec=0) then begin
+  exit; // identity -> skip (matches the encoder + the C oracle)
+ end;
+ PlaneW:=PlaneWidth(aPlane);
+ PlaneH:=PlaneHeight(aPlane);
+ Push[0]:=PlaneW;
+ Push[1]:=PlaneH;
+ Push[2]:=Pri;
+ Push[3]:=Sec;
+ Push[4]:=fCDEFDamping;
+ Push[5]:=DirShift;
+ Push[6]:=Center;
+ RecordDispatch(aCommandBuffer,fPipeCDEF,fPLCDEF,aSet,@Push[0],28,(PlaneW+7) div 8,(PlaneH+7) div 8,1);
+
+ // cdef wrote fCDEFTempBuffer (compute) -> copy it back into the target(s) the next stage reads (transfer)
+ FillChar(Barrier,SizeOf(Barrier),#0);
+ Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+ Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+ Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   0,1,@Barrier,0,nil,0,nil);
+ FillChar(BufferCopy,SizeOf(BufferCopy),#0);
+ BufferCopy.srcOffset:=0;
+ BufferCopy.dstOffset:=0;
+ BufferCopy.size:=TVkDeviceSize(PlaneW)*TVkDeviceSize(PlaneH)*4;
+ aCommandBuffer.CmdCopyBuffer(fCDEFTempBuffer.Handle,aDst.Handle,1,@BufferCopy);
+ if assigned(aDst2) then begin
+  aCommandBuffer.CmdCopyBuffer(fCDEFTempBuffer.Handle,aDst2.Handle,1,@BufferCopy);
+ end;
+ FillChar(Barrier,SizeOf(Barrier),#0);
+ Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+ Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+ Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,1,@Barrier,0,nil,0,nil);
+end;
+
 // AQ (GPU): upload the current frame's raw qpmap tile codes; apply_tile_aq.comp then modulates the base step (copied
 // into the step buffer each frame) IN PLACE on the GPU, so there is no per-pixel CPU work (the old ApplyAQ is gone).
 procedure TpvFlexibleWaveletVideoDecoder.UploadTileCodes;
@@ -1438,6 +1604,7 @@ begin
  end;
  Entry:=@fFrameEntries[aFrameIndex];
  SetAQCurrentMap(aFrameIndex); // AQ: this coding frame's per-tile QP map (no-op when AQ off)
+ SetCDEFFrame(aFrameIndex); // CDEF: this coding frame's dering strengths + damping (no-op when CDEF off)
  UploadTileCodes; // AQ (GPU): stage the raw tile codes for apply_tile_aq.comp
 
  // Read the compressed container payload for this frame.
@@ -1728,6 +1895,15 @@ begin
    RecordComputeBarrier(aCommandBuffer);
   end;
 
+ end;
+
+ // CDEF (--cdef, lossy): in-loop dering the reconstructed YCoCg with this frame's encoder-chosen strengths, before it is
+ // colour-converted (display) and reused as the next frame's reference. coeff (display) AND previous (reference) both get
+ // the deringed result, mirroring the C player. The set reads coeff (the reconstruct); the buffers are shared, not ringed.
+ if fHasCDEF then begin
+  for Plane:=0 to 2 do begin
+   RecordCDEF(aCommandBuffer,fSetCDEF[Plane],fCoeffBuffer[Plane],fPreviousBuffer[Plane],Plane);
+  end;
  end;
 
  // optional alpha: GPU-decode the intra alpha plane into coeff[3] (the color pass below then writes it into output A).
@@ -2218,6 +2394,9 @@ begin
  SetLength(fRingSetGBlendMode,fBufferRingSize);
  SetLength(fRingSetGAdd,fBufferRingSize);
  SetLength(fRingSetMCPlay,fBufferRingSize);
+ if fHasCDEF then begin
+  SetLength(fRingSetCDEF,fBufferRingSize);
+ end;
  for Slot:=0 to fBufferRingSize-1 do begin
   fRingDataBuffer[Slot]:=CreateStorageBuffer(DataCapacity,false,'FWV.ring.data');
   fRingMVBuffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(MotionCells)*2*4,false,'FWV.ring.mv');
@@ -2255,6 +2434,10 @@ begin
    if fHasPerBlockMode then begin
     fRingSetGBlendMode[Slot][Plane]:=AllocateSet(fDSL3);
    end;
+   if fHasCDEF and (Plane<3) then begin // CDEF (mode B): binding 1 = cdef_temp (once); binding 0 rebound to the DPB slot per frame
+    fRingSetCDEF[Slot][Plane]:=AllocateSet(fDSL2);
+    BindStorageBuffer(fRingSetCDEF[Slot][Plane],1,fCDEFTempBuffer);
+   end;
    // intra/I-P motion comp set, bound once: {shared previous, ring mv, shared scratch} (mirrors fSetMCPlay)
    fRingSetMCPlay[Slot][Plane]:=AllocateSet(fDSL3);
    BindStorageBuffer(fRingSetMCPlay[Slot][Plane],0,fPreviousBuffer[Plane]);
@@ -2284,6 +2467,7 @@ begin
 
  Entry:=@fFrameEntries[aCodingIndex];
  SetAQCurrentMap(aCodingIndex); // AQ: this coding frame's per-tile QP map (no-op when AQ off)
+ SetCDEFFrame(aCodingIndex); // CDEF: this coding frame's dering strengths + damping (no-op when CDEF off)
  UploadTileCodes; // AQ (GPU): stage the raw tile codes for apply_tile_aq.comp
 
  // Read + decompress the coding frame (same framing as the non-B path).
@@ -2604,6 +2788,10 @@ begin
   RecordDispatch(aCommandBuffer,fPipeMotionAdd,fPLUnpack,ActiveSetGAdd(Plane),@AddPush[0],8,PlanePixelWorkgroups,1,1);
   RecordComputeBarrier(aCommandBuffer);
 
+  if fHasCDEF and (Plane<3) then begin // CDEF: in-loop dering of the reconstructed DPB slot before it becomes a reference / is displayed
+   RecordCDEF(aCommandBuffer,ActiveSetCDEF(Plane),fDPBBuffer[fActiveBidiDstSlot][Plane],nil,Plane);
+  end;
+
  end;
 
 end;
@@ -2708,7 +2896,12 @@ begin
   end;
   BindStorageBuffer(ActiveSetGAdd(Plane),2,fDPBBuffer[DstSlot][Plane]);
   ActiveSetGAdd(Plane).Flush;
+  if fHasCDEF and (Plane<3) then begin // CDEF reads the reconstructed DPB slot (in-loop), so bind src to dpb[dst] this frame
+   BindStorageBuffer(ActiveSetCDEF(Plane),0,fDPBBuffer[DstSlot][Plane]);
+   ActiveSetCDEF(Plane).Flush;
+  end;
  end;
+ fActiveBidiDstSlot:=DstSlot; // RecordBidiDecode derings this slot after the reconstruct
 
  // register this frame in the DPB (CPU bookkeeping; the GPU writes dpb[dst] on the upcoming submit)
  fGDPBSlotCoding[DstSlot]:=CodingIndex;
@@ -2893,6 +3086,7 @@ begin
 
  Entry:=@fFrameEntries[aCodingIndex];
  SetAQCurrentMap(aCodingIndex); // AQ: this coding frame's per-tile QP map (no-op when AQ off)
+ SetCDEFFrame(aCodingIndex); // CDEF: this coding frame's dering strengths + damping (no-op when CDEF off)
  UploadTileCodes; // AQ (GPU): stage the raw tile codes for apply_tile_aq.comp
 
  CompressedLength:=Entry^.Size;
@@ -3306,6 +3500,16 @@ begin
    PixelCountPush:=PlanePixels;
    RecordDispatch(aCommandBuffer,fPipeRound,fPLRound,fSetRow[Plane],@PixelCountPush,4,(PlanePixels+255) div 256,1,1);
    RecordComputeBarrier(aCommandBuffer);
+  end;
+ end;
+
+ // CDEF (--cdef, lossy): the 3D-DWT mode is open-loop, so deringing is a per-frame POST filter on the (rounded) subsampled
+ // YCoCg the colour pass reads. Upload + display are decoupled here, so load THIS displayed frame's strengths now
+ // (coding order == display order == fCur3DGopStart + aSlot). No reference feedback -> coeff only.
+ if fHasCDEF then begin
+  SetCDEFFrame(fCur3DGopStart+aSlot);
+  for Plane:=0 to 2 do begin
+   RecordCDEF(aCommandBuffer,fSetCDEF[Plane],fCoeffBuffer[Plane],nil,Plane);
   end;
  end;
 
@@ -3725,6 +3929,9 @@ begin
   FreeAndNil(fSetDequant[Plane]);
   FreeAndNil(fSetApplyAQ[Plane]);
   FreeAndNil(fSetAdd[Plane]);
+  if Plane<3 then begin
+   FreeAndNil(fSetCDEF[Plane]);
+  end;
   FreeAndNil(fSetMCPlay[Plane]);
   FreeAndNil(fSetMotionAddPlay[Plane]);
   FreeAndNil(fSetGMC0[Plane]);
@@ -3755,6 +3962,9 @@ begin
    FreeAndNil(fRingSetGBlend[SlotIndex][Plane]);
    FreeAndNil(fRingSetGBlendMode[SlotIndex][Plane]);
    FreeAndNil(fRingSetGAdd[SlotIndex][Plane]);
+   if (Plane<3) and (SlotIndex<length(fRingSetCDEF)) then begin
+    FreeAndNil(fRingSetCDEF[SlotIndex][Plane]);
+   end;
    FreeAndNil(fRingSetMCPlay[SlotIndex][Plane]);
    FreeAndNil(fRingOffsetBuffer[SlotIndex][Plane]);
    FreeAndNil(fRingStepBuffer[SlotIndex][Plane]);
@@ -3794,6 +4004,7 @@ begin
  end;
  FreeAndNil(fMVBuffer);
  FreeAndNil(fScratchBuffer);
+ FreeAndNil(fCDEFTempBuffer);
  for Plane:=0 to fNumPlanes-1 do begin
   FreeAndNil(fPreviousBuffer[Plane]);
   FreeAndNil(fCoeffBuffer[Plane]);
@@ -3820,6 +4031,7 @@ begin
  FreeAndNil(fPipeColor);
  FreeAndNil(fPipeMotionAdd);
  FreeAndNil(fPipeMC);
+ FreeAndNil(fPipeCDEF);
  FreeAndNil(fPipeCoeffAdd);
  FreeAndNil(fPipeRound);
  FreeAndNil(fPipeIDWT53);
@@ -3837,6 +4049,7 @@ begin
  FreeAndNil(fPLColorHDR);
  FreeAndNil(fPLColorAlpha);
  FreeAndNil(fPLColor);
+ FreeAndNil(fPLCDEF);
  FreeAndNil(fPLCoeffAdd);
  FreeAndNil(fPLRound);
  FreeAndNil(fPLRow);
