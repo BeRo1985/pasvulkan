@@ -206,6 +206,7 @@ static VkPipeline create_compute_pipeline(const char *spirv_path, VkPipelineLayo
   pipeline_info.layout = layout;
   VkPipeline pipeline;
   VK_CHECK(vkCreateComputePipelines(device, 0, 1, &pipeline_info, 0, &pipeline));
+  vkDestroyShaderModule(device, module, 0);   // the pipeline keeps its own copy; the module can go now
   return pipeline;
 }
 
@@ -232,6 +233,7 @@ static VkPipeline create_compute_pipeline_bs(const char *spirv_path, VkPipelineL
   pipeline_info.layout = layout;
   VkPipeline pipeline;
   VK_CHECK(vkCreateComputePipelines(device, 0, 1, &pipeline_info, 0, &pipeline));
+  vkDestroyShaderModule(device, module, 0);   // the pipeline keeps its own copy; the module can go now
   return pipeline;
 }
 
@@ -267,6 +269,7 @@ static VkPipeline create_compute_pipeline_motion(const char *spirv_path, VkPipel
   pipeline_info.layout = layout;
   VkPipeline pipeline;
   VK_CHECK(vkCreateComputePipelines(device, 0, 1, &pipeline_info, 0, &pipeline));
+  vkDestroyShaderModule(device, module, 0);   // the pipeline keeps its own copy; the module can go now
   return pipeline;
 }
 
@@ -396,6 +399,18 @@ static void cdef_apply(CdefContext *ctx, int plane, int plane_w, int plane_h, in
   vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &write_barrier, 0, 0, 0, 0);
   VkBufferCopy copy = { 0, 0, (VkDeviceSize)plane_w * plane_h * 4 };
   vkCmdCopyBuffer(command_buffer, ctx->cdef_temp, ctx->reference[plane], 1, &copy);
+  submit_and_wait();
+}
+
+// Stage a host-side int32 plane into a DEVICE_LOCAL search buffer (3D-DWT open-loop: the reconstruction is on the
+// CPU, so the GPU search inputs are uploaded). One submit: copy staging -> dst, then transfer-write -> shader-read.
+static void cdef_upload_plane(VkBuffer staging, void *staging_map, VkBuffer dst, const int32_t *src, int count) {
+  memcpy(staging_map, src, (size_t)count * 4);
+  begin_recording();
+  VkBufferCopy copy = { 0, 0, (VkDeviceSize)count * 4 };
+  vkCmdCopyBuffer(command_buffer, staging, dst, 1, &copy);
+  VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
+  vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barrier, 0, 0, 0, 0);
   submit_and_wait();
 }
 
@@ -1793,9 +1808,9 @@ int main(int argc, char **argv) {
   // ---- buffers ----
   size_t plane_bytes = (size_t)pixel_count * 4;
   size_t data_capacity = ((size_t)pixel_count * 4) + ((size_t)block_count * 16);
-  VkBuffer rgb_buffer, coeff_buffer[MAX_PLANES], scratch_buffer, step_buffer[MAX_PLANES], size_buffer[MAX_PLANES], offset_buffer[MAX_PLANES], data_buffer;
-  VkBuffer previous_buffer[MAX_PLANES], difference_buffer[MAX_PLANES];   // P-frame coefficient reference + difference
-  VkBuffer size_buffer_diff[MAX_PLANES];                        // P-frame: packed block sizes of the difference (for the I/P decision)
+  VkBuffer rgb_buffer = 0, coeff_buffer[MAX_PLANES] = { 0 }, scratch_buffer = 0, step_buffer[MAX_PLANES] = { 0 }, size_buffer[MAX_PLANES] = { 0 }, offset_buffer[MAX_PLANES] = { 0 }, data_buffer = 0;
+  VkBuffer previous_buffer[MAX_PLANES] = { 0 }, difference_buffer[MAX_PLANES] = { 0 };   // P-frame coefficient reference + difference
+  VkBuffer size_buffer_diff[MAX_PLANES] = { 0 };               // P-frame: packed block sizes of the difference (for the I/P decision)
   VkBuffer energy_buffer;                               // colordiff: single host-visible L1-residual counter (scene-cut detect)
   VkBuffer mv_buffer;                                   // motion: per-block [mv_x, mv_y] (half-pel) — the fine 8-grid in variable mode
   VkBuffer mv_prev_buffer;                              // previous frame's MVs (temporal predictor; device-local snapshot of mv_buffer)
@@ -1806,11 +1821,11 @@ int main(int argc, char **argv) {
   VkBuffer mv8_prev_buffer = 0, mv16_prev_buffer = 0, mv32_prev_buffer = 0;   // variable motion: per-size previous-frame MVs (temporal predictor)
   VkBuffer mv1_8_buffer = 0, mv1_16_buffer = 0, mv1_32_buffer = 0;            // variable B: per-size L1 (vs ref1) ME outputs
   VkBuffer modesad8_buffer = 0, modesad16_buffer = 0, modesad32_buffer = 0;   // variable B: per-size [sadL0,sadL1,sadBI] from bidi_mode_sad
-  VkDeviceMemory rgb_memory, coeff_memory[MAX_PLANES], scratch_memory, step_memory[MAX_PLANES], size_memory[MAX_PLANES], offset_memory[MAX_PLANES], data_memory;
+  VkDeviceMemory rgb_memory = 0, coeff_memory[MAX_PLANES] = { 0 }, scratch_memory = 0, step_memory[MAX_PLANES] = { 0 }, size_memory[MAX_PLANES] = { 0 }, offset_memory[MAX_PLANES] = { 0 }, data_memory = 0;
   VkBuffer threshold_buffer[MAX_PLANES] = { 0 };   // perceptual RDO (--prdo): per-coefficient perceptual drop thresholds (pthresh.comp)
   VkDeviceMemory threshold_memory[MAX_PLANES] = { 0 };
   void *threshold_map[MAX_PLANES] = { 0 };
-  VkDeviceMemory previous_memory[MAX_PLANES], difference_memory[MAX_PLANES], size_memory_diff[MAX_PLANES], energy_memory, mv_memory, mv_prev_memory, sad_memory;
+  VkDeviceMemory previous_memory[MAX_PLANES] = { 0 }, difference_memory[MAX_PLANES] = { 0 }, size_memory_diff[MAX_PLANES] = { 0 }, energy_memory = 0, mv_memory = 0, mv_prev_memory = 0, sad_memory = 0;
   VkDeviceMemory mv8_memory = 0, mv16_memory = 0, mv32_memory = 0, sad16_memory = 0, sad32_memory = 0;
   VkDeviceMemory mv8_prev_memory = 0, mv16_prev_memory = 0, mv32_prev_memory = 0;
   VkDeviceMemory mv1_8_memory = 0, mv1_16_memory = 0, mv1_32_memory = 0, modesad8_memory = 0, modesad16_memory = 0, modesad32_memory = 0;
@@ -1838,9 +1853,9 @@ int main(int argc, char **argv) {
   // DWT overwrites coeff_buffer), one scratch buffer for the filtered output, and a host-visible 64-bit SSE counter
   // (sse[0] = low, sse[1] = carry). DEVICE_LOCAL planes are sized at the full plane_bytes (chroma uses its subsampled
   // sub-region). Only allocated when CDEF is on.
-  VkBuffer source_ycocg[MAX_PLANES] = { 0 }, cdef_temp_buffer = 0, cdef_sse_buffer = 0;
-  VkDeviceMemory source_ycocg_memory[MAX_PLANES] = { 0 }, cdef_temp_memory = 0, cdef_sse_memory = 0;
-  void *cdef_sse_map = 0;
+  VkBuffer source_ycocg[MAX_PLANES] = { 0 }, cdef_temp_buffer = 0, cdef_sse_buffer = 0, cdef_upload_buffer = 0;
+  VkDeviceMemory source_ycocg_memory[MAX_PLANES] = { 0 }, cdef_temp_memory = 0, cdef_sse_memory = 0, cdef_upload_memory = 0;
+  void *cdef_sse_map = 0, *cdef_upload_map = 0;
   if (g_cdef) {
     for (int plane = 0; plane < g_num_planes; plane++) {
       create_buffer(plane_bytes, DEVICE_LOCAL, &source_ycocg[plane], &source_ycocg_memory[plane]);
@@ -1848,6 +1863,10 @@ int main(int argc, char **argv) {
     create_buffer(plane_bytes, DEVICE_LOCAL, &cdef_temp_buffer, &cdef_temp_memory);
     create_buffer(8, HOST_VISIBLE_COHERENT, &cdef_sse_buffer, &cdef_sse_memory);
     VK_CHECK(vkMapMemory(device, cdef_sse_memory, 0, 8, 0, &cdef_sse_map));
+    if (mode_3ddwt) {   // 3D-DWT search reconstructs on the CPU (open-loop), so it needs a host-visible staging buffer to upload each frame's YCoCg into the GPU search buffers
+      create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &cdef_upload_buffer, &cdef_upload_memory);
+      VK_CHECK(vkMapMemory(device, cdef_upload_memory, 0, VK_WHOLE_SIZE, 0, &cdef_upload_map));
+    }
   }
 
   // DWT transpose scratch: a W x H plane is transposed to H x W and stored with row stride
@@ -1896,8 +1915,8 @@ int main(int argc, char **argv) {
   // per position within the current anchor pair (slot 0 = lo anchor, slot `period` = hi anchor). The
   // coding-order driver reconstructs each frame into its slot; the bidi blend reads two slots.
   int dpb_slots = use_bframes ? (bframes + 2) : 0;   // period + 1, with one spare
-  VkBuffer dpb_buffer[18][MAX_PLANES];
-  VkDeviceMemory dpb_memory[18][MAX_PLANES];
+  VkBuffer dpb_buffer[18][MAX_PLANES] = {{ 0 }};
+  VkDeviceMemory dpb_memory[18][MAX_PLANES] = {{ 0 }};
   for (int slot = 0; slot < dpb_slots; slot++) {
     for (int plane = 0; plane < g_num_planes; plane++) {
       create_buffer(plane_bytes, DEVICE_LOCAL, &dpb_buffer[slot][plane], &dpb_memory[slot][plane]);
@@ -2986,6 +3005,47 @@ int main(int argc, char **argv) {
       }
 
       if (output) {
+        // CDEF (--cdef): per-frame GPU strength search for this GOP. The 3D-DWT mode is open-loop, so the search runs
+        // as a POST filter on the CPU-reconstructed subsampled YCoCg (decode_gop_3ddwt hands out the pre-dering planes),
+        // measuring each AV1 strength against the original subsampled YCoCg. Coding order == display order here.
+        uint8_t gop_cdef[MAX_GOP][4];
+        memset(gop_cdef, 0, sizeof(gop_cdef));
+        if (g_cdef && !lossless) {
+          int32_t *recon_ycocg[MAX_PLANES] = { NULL, NULL, NULL };
+          for (int plane = 0; plane < g_num_planes; plane++) {
+            recon_ycocg[plane] = checked_malloc(((size_t)filled * plane_pixels[plane]) * 4);
+          }
+          decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, recon_ycocg, NULL, 0, 0, 0);
+          int32_t *original_luma = checked_malloc((size_t)pixel_count * 4);
+          int32_t *original_orange = checked_malloc((size_t)pixel_count * 4);
+          int32_t *original_green = checked_malloc((size_t)pixel_count * 4);
+          int32_t *original_orange_small = checked_malloc((size_t)pixel_count * 4);
+          int32_t *original_green_small = checked_malloc((size_t)pixel_count * 4);
+          for (int f = 0; f < filled; f++) {
+            rgb_to_ycocg(gop_rgb[f], original_luma, original_orange, original_green, pixel_count);
+            int32_t *original_plane[MAX_PLANES] = { original_luma, original_orange, original_green };
+            if (g_chroma_format != 0) {   // match the decoder's subsampled-chroma domain (the dering target)
+              downsample_chroma(original_orange, original_orange_small, width, height);
+              downsample_chroma(original_green, original_green_small, width, height);
+              original_plane[1] = original_orange_small;
+              original_plane[2] = original_green_small;
+            }
+            for (int plane = 0; plane < g_num_planes; plane++) {   // upload the reconstruct (to dering) + the original (SSE target) into the GPU search buffers
+              cdef_upload_plane(cdef_upload_buffer, cdef_upload_map, previous_buffer[plane], recon_ycocg[plane] + ((size_t)f * plane_pixels[plane]), plane_pixels[plane]);
+              cdef_upload_plane(cdef_upload_buffer, cdef_upload_map, source_ycocg[plane], original_plane[plane], plane_pixels[plane]);
+            }
+            cdef_dering_frame(&cdef_ctx, quality, gop_cdef[f]);
+          }
+          free(original_luma);
+          free(original_orange);
+          free(original_green);
+          free(original_orange_small);
+          free(original_green_small);
+          for (int plane = 0; plane < g_num_planes; plane++) {
+            free(recon_ycocg[plane]);
+          }
+        }
+
         // Write each subband frame; type 0 marks the GOP start (seek point), 2 the continuations.
         for (int f = 0; f < filled; f++) {
           if (frame_index >= index_capacity) {
@@ -2993,6 +3053,12 @@ int main(int argc, char **argv) {
             index = realloc(index, (size_t)index_capacity * sizeof(FrameEntry));
             if (!index) {
               die("realloc");
+            }
+            if (g_cdef) {
+              cdef_table = realloc(cdef_table, (size_t)index_capacity * 4);
+              if (!cdef_table) {
+                die("realloc");
+              }
             }
           }
           index[frame_index].offset = (uint64_t)ftello(container_file);
@@ -3004,6 +3070,12 @@ int main(int argc, char **argv) {
           index[frame_index].temporal_id = 0;
           index[frame_index].pad = 0;
           index[frame_index].size = (uint32_t)fwrite_frame(container_file, gop_encoded[f], gop_encoded_length[f]);
+          if (g_cdef) {   // the per-frame CDEF strengths chosen by the search, in coding order
+            cdef_table[(frame_index * 4) + 0] = gop_cdef[f][0];
+            cdef_table[(frame_index * 4) + 1] = gop_cdef[f][1];
+            cdef_table[(frame_index * 4) + 2] = gop_cdef[f][2];
+            cdef_table[(frame_index * 4) + 3] = gop_cdef[f][3];
+          }
           frame_index++;
         }
         print_encode_progress(frame_index, total_frames, fps_value, now_milliseconds() - encode_start);
@@ -3019,7 +3091,7 @@ int main(int argc, char **argv) {
           }
         }
         // Self-test: CPU-decode the whole GOP (decode_gop_3ddwt) and score PSNR per frame vs the source.
-        decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, 0, 0, 0);
+        decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, NULL, 0, 0, 0);
         for (int f = 0; f < filled; f++) {
           double mean_squared_error = 0;
           size_t pixel_stride = (size_t)g_channels * g_sample_bytes, rgb_bytes = (size_t)3 * g_sample_bytes;
@@ -4315,13 +4387,106 @@ int main(int argc, char **argv) {
              (double)written_video_bytes / 1e6, audio_size / 1e6,
              ((double)written_video_bytes * 8.0) / ((double)frame_index * pixel_count));
     }
-    return 0;
+  } else {
+    double raw_megabytes = ((double)frame_index * frame_bytes) / 1e6;
+    double encoded_megabytes = (double)total_bytes / 1e6;
+    printf("%ld frames | GPU-encode: %.2f MB (%.1f:1, %.2f bpp) | PSNR(orig) %.2f dB\n",
+           frame_index, encoded_megabytes, raw_megabytes / encoded_megabytes,
+           ((double)total_bytes * 8.0) / ((double)frame_index * pixel_count), frame_index ? (sum_psnr / frame_index) : 0);
   }
 
-  double raw_megabytes = ((double)frame_index * frame_bytes) / 1e6;
-  double encoded_megabytes = (double)total_bytes / 1e6;
-  printf("%ld frames | GPU-encode: %.2f MB (%.1f:1, %.2f bpp) | PSNR(orig) %.2f dB\n",
-         frame_index, encoded_megabytes, raw_megabytes / encoded_megabytes,
-         ((double)total_bytes * 8.0) / ((double)frame_index * pixel_count), frame_index ? (sum_psnr / frame_index) : 0);
+  // ============================ teardown ============================
+  // Mirror every Vulkan allocation made above. All handles were zero-initialised, so the conditionally-created
+  // ones are VK_NULL_HANDLE when their feature was off — vkDestroy*/vkFree* treat a null handle as a no-op, so the
+  // unconditional sweeps below are safe. The descriptor pool frees its sets; the command pool frees its buffer.
+  vkDeviceWaitIdle(device);
+
+  VkPipeline destroy_pipelines[] = {
+    pipeline_color_97, pipeline_extract_alpha, pipeline_extract_alpha16, pipeline_transpose,
+    pipeline_forward_row_97, pipeline_quant, pipeline_pthresh, pipeline_chroma_downsample,
+    pipeline_chroma_downsample_int, pipeline_cdef, pipeline_cdef_sse, pipeline_size, pipeline_pack,
+    pipeline_coeff_diff, pipeline_int2float, pipeline_forward_row_53, pipeline_color_53,
+    pipeline_color_97_hdr, pipeline_color_53_hdr, pipeline_ycocg_diff, pipeline_energy, pipeline_mc,
+    pipeline_motion_add, pipeline_motion_estimate, pipeline_motion_refine, pipeline_me_16, pipeline_me_32,
+    pipeline_merge, pipeline_bidi_sad_8, pipeline_bidi_sad_16, pipeline_bidi_sad_32, pipeline_merge_bidi,
+    pipeline_me_bidi, pipeline_mode_decide, pipeline_mode_decide_root, pipeline_blend_mode,
+    pipeline_dequant_inverse, pipeline_apply_pcrd, pipeline_round, pipeline_inverse_row_97,
+    pipeline_inverse_row_53, pipeline_bidi_blend, pipeline_temporal_int, pipeline_temporal_float,
+  };
+  for (size_t i = 0; i < sizeof(destroy_pipelines) / sizeof(destroy_pipelines[0]); i++) {
+    vkDestroyPipeline(device, destroy_pipelines[i], 0);
+  }
+
+  VkPipelineLayout destroy_layouts[] = {
+    pipeline_layout_color, pipeline_layout_transpose, pipeline_layout_row, pipeline_layout_quant,
+    pipeline_layout_chroma_downsample, pipeline_layout_size, pipeline_layout_pack, pipeline_layout_coeff_diff,
+    pipeline_layout_cdef, pipeline_layout_cdef_sse, pipeline_layout_motion_estimate, pipeline_layout_merge,
+    pipeline_layout_bidi_sad, pipeline_layout_merge_bidi, pipeline_layout_extract_alpha, pipeline_layout_add,
+    pipeline_layout_me_bidi, pipeline_layout_mode_decide, pipeline_layout_mode_root, pipeline_layout_blend_mode,
+    pipeline_layout_pcrd, pipeline_layout_temporal,
+  };
+  for (size_t i = 0; i < sizeof(destroy_layouts) / sizeof(destroy_layouts[0]); i++) {
+    vkDestroyPipelineLayout(device, destroy_layouts[i], 0);
+  }
+
+  VkDescriptorSetLayout destroy_set_layouts[] = {
+    layout_1_buffer, layout_2_buffers, layout_3_buffers, layout_9_buffers, layout_7_buffers,
+    layout_12_buffers, layout_11_buffers, layout_10_buffers, layout_color,
+  };
+  for (size_t i = 0; i < sizeof(destroy_set_layouts) / sizeof(destroy_set_layouts[0]); i++) {
+    vkDestroyDescriptorSetLayout(device, destroy_set_layouts[i], 0);
+  }
+
+  for (int plane = 0; plane < MAX_PLANES; plane++) {   // per-plane (+ alpha plane 3) buffers and their memory
+    VkBuffer plane_buffers[] = {
+      coeff_buffer[plane], previous_buffer[plane], difference_buffer[plane], size_buffer[plane],
+      size_buffer_diff[plane], offset_buffer[plane], step_buffer[plane], threshold_buffer[plane],
+      source_ycocg[plane], gop_buffer[plane], mctf_pred[plane], mctf_scratch[plane], mc1_buffer[plane],
+    };
+    VkDeviceMemory plane_memories[] = {
+      coeff_memory[plane], previous_memory[plane], difference_memory[plane], size_memory[plane],
+      size_memory_diff[plane], offset_memory[plane], step_memory[plane], threshold_memory[plane],
+      source_ycocg_memory[plane], gop_memory[plane], mctf_pred_memory[plane], mctf_scratch_memory[plane], mc1_memory[plane],
+    };
+    for (size_t i = 0; i < sizeof(plane_buffers) / sizeof(plane_buffers[0]); i++) {
+      vkDestroyBuffer(device, plane_buffers[i], 0);
+      vkFreeMemory(device, plane_memories[i], 0);
+    }
+  }
+  for (int slot = 0; slot < 18; slot++) {   // B-frame DPB slots
+    for (int plane = 0; plane < MAX_PLANES; plane++) {
+      vkDestroyBuffer(device, dpb_buffer[slot][plane], 0);
+      vkFreeMemory(device, dpb_memory[slot][plane], 0);
+    }
+  }
+
+  VkBuffer single_buffers[] = {
+    rgb_buffer, scratch_buffer, data_buffer, energy_buffer, cdef_temp_buffer, cdef_sse_buffer, cdef_upload_buffer,
+    mv_buffer, mv_prev_buffer, mv_refine_buffer, sad_buffer,
+    mv8_buffer, mv16_buffer, mv32_buffer, sad16_buffer, sad32_buffer,
+    mv8_prev_buffer, mv16_prev_buffer, mv32_prev_buffer,
+    mv1_8_buffer, mv1_16_buffer, mv1_32_buffer,
+    modesad8_buffer, modesad16_buffer, modesad32_buffer,
+    mv1_buffer, mv_zero_buffer, mv_snap_buffer, mode_buffer,
+  };
+  VkDeviceMemory single_memories[] = {
+    rgb_memory, scratch_memory, data_memory, energy_memory, cdef_temp_memory, cdef_sse_memory, cdef_upload_memory,
+    mv_memory, mv_prev_memory, mv_refine_memory, sad_memory,
+    mv8_memory, mv16_memory, mv32_memory, sad16_memory, sad32_memory,
+    mv8_prev_memory, mv16_prev_memory, mv32_prev_memory,
+    mv1_8_memory, mv1_16_memory, mv1_32_memory,
+    modesad8_memory, modesad16_memory, modesad32_memory,
+    mv1_memory, mv_zero_memory, mv_snap_memory, mode_memory,
+  };
+  for (size_t i = 0; i < sizeof(single_buffers) / sizeof(single_buffers[0]); i++) {
+    vkDestroyBuffer(device, single_buffers[i], 0);
+    vkFreeMemory(device, single_memories[i], 0);
+  }
+
+  vkDestroyFence(device, fence, 0);
+  vkDestroyCommandPool(device, command_pool, 0);      // frees command_buffer
+  vkDestroyDescriptorPool(device, descriptor_pool, 0);   // frees every descriptor set
+  vkDestroyDevice(device, 0);
+  vkDestroyInstance(instance, 0);
   return 0;
 }

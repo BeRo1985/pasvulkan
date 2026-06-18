@@ -807,7 +807,7 @@ static void cpu_decode_gop(FILE *file, const FrameEntry *index, uint32_t gop_sta
     size_t payload_capacity = 0;
     payload_length[g] = read_frame(file, &index[source_index], &payload[g], &payload_capacity);
   }
-  decode_gop_3ddwt(payload, payload_length, gop_count, width, height, levels, quality, cpu_gop_rgb,
+  decode_gop_3ddwt(payload, payload_length, gop_count, width, height, levels, quality, cpu_gop_rgb, NULL,
                    qpmaps, aq_cols, aq_rows, (long)gop_start);
   for (int g = 0; g < gop_count; g++) {
     free(payload[g]);
@@ -1691,9 +1691,11 @@ int main(int argc, char **argv) {
     bind_storage_buffers(set_mc_play[plane], (VkBuffer[]){ previous_buffer[plane], mv_buffer, scratch_buffer }, 3);
     set_motion_add_play[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
     bind_storage_buffers(set_motion_add_play[plane], (VkBuffer[]){ coeff_buffer[plane], scratch_buffer, previous_buffer[plane] }, 3);
-    if (g_cdef_active) {   // in-loop dering: cdef.comp reads previous_buffer[plane] -> cdef_temp_buffer, then it is copied back
+    if (g_cdef_active) {   // dering: cdef.comp reads the reconstructed plane -> cdef_temp_buffer, then it is copied back
       set_cdef_play[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
-      bind_storage_buffers(set_cdef_play[plane], (VkBuffer[]){ previous_buffer[plane], cdef_temp_buffer }, 2);
+      // I/P reads previous_buffer (the reference); 3D-DWT is open-loop so it derings the display plane (coeff_buffer)
+      // directly; the B path rebinds this set to its DPB slot per frame.
+      bind_storage_buffers(set_cdef_play[plane], (VkBuffer[]){ mode_3ddwt ? coeff_buffer[plane] : previous_buffer[plane], cdef_temp_buffer }, 2);
     }
     set_coeff_to_scratch[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     bind_storage_buffers(set_coeff_to_scratch[plane], (VkBuffer[]){ coeff_buffer[plane], scratch_buffer }, 2);
@@ -2862,6 +2864,29 @@ int main(int argc, char **argv) {
           vkCmdPushConstants(command_buffer, pipeline_layout_round, VK_SHADER_STAGE_COMPUTE_BIT, 0, 4, &pixel_count_push);
           vkCmdDispatch(command_buffer, (pp + 255) / 256, 1, 1);
           memory_barrier();
+        }
+        // CDEF (--cdef, lossy): the 3D-DWT mode is open-loop, so deringing is a per-frame POST filter on the (rounded)
+        // subsampled YCoCg the colour pass reads — coding order == display order == frame_index. Mirrors the CPU oracle
+        // (decode_gop_3ddwt). cdef.comp reads coeff_buffer[plane] (set_cdef_play is bound to it in 3D-DWT mode) -> cdef_temp -> copy back.
+        if (g_cdef_active && !lossless) {
+          int cdef_damping = cdef_damping_from_quality(quality);
+          int pri = cdef_table ? cdef_table[(frame_index * 4) + ((plane == 0) ? 0 : 2)] : 0;
+          int sec = cdef_table ? cdef_table[(frame_index * 4) + ((plane == 0) ? 1 : 3)] : 0;
+          if ((cdef_damping > 0) && !((pri == 0) && (sec == 0))) {
+            int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
+            int dir_shift = (plane == 0) ? 0 : 1, center = (plane == 0) ? 128 : 0;
+            int32_t cdef_push[7] = { plane_w, plane_h, pri, sec, cdef_damping, dir_shift, center };
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_cdef);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_cdef, 0, 1, &set_cdef_play[plane], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_cdef, VK_SHADER_STAGE_COMPUTE_BIT, 0, 28, cdef_push);
+            vkCmdDispatch(command_buffer, (uint32_t)((plane_w + 7) / 8), (uint32_t)((plane_h + 7) / 8), 1);
+            VkMemoryBarrier cdef_to_copy = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT };
+            vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &cdef_to_copy, 0, 0, 0, 0);
+            VkBufferCopy cdef_copy = { 0, 0, (VkDeviceSize)plane_w * plane_h * 4 };
+            vkCmdCopyBuffer(command_buffer, cdef_temp_buffer, coeff_buffer[plane], 1, &cdef_copy);
+            VkMemoryBarrier copy_to_shader = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT };
+            vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &copy_to_shader, 0, 0, 0, 0);
+          }
         }
       }
     } else {

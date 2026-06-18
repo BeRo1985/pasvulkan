@@ -5226,7 +5226,7 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
 // f applies its map (coding index base_coding_index + f) to the color-plane quant steps exactly as the GPU decode
 // does — so --verify (GPU vs CPU) holds for --aq 3D-DWT. Alpha is never AQ-modulated. NULL = no AQ (self-test callers).
 static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames, int width, int height,
-                             int levels, int base_quality, uint8_t **rgb_out,
+                             int levels, int base_quality, uint8_t **rgb_out, int32_t **recon_ycocg_out,
                              const uint8_t *qpmaps, int aq_cols, int aq_rows, long base_coding_index) {
   (void)frame_len;
   int pixel_count = width * height;
@@ -5387,6 +5387,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
   int32_t *chroma_green = checked_malloc((size_t)pixel_count * 4);
   int32_t *co_full = checked_malloc((size_t)pixel_count * 4);
   int32_t *cg_full = checked_malloc((size_t)pixel_count * 4);
+  int32_t *cdef_scratch = g_cdef_active ? checked_malloc((size_t)pixel_count * 4) : NULL;   // --cdef: per-frame post-dering destination
   for (int f = 0; f < num_frames; f++) {
     int32_t *dst[MAX_PLANES] = { luma, chroma_orange, chroma_green };
     for (int plane = 0; plane < g_num_planes; plane++) {
@@ -5398,6 +5399,18 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
           dst[plane][i] = (int)lrintf(gop_float[plane][base + i]);
         }
       }
+    }
+    if (recon_ycocg_out) {   // encoder CDEF search: hand out the pre-dering subsampled YCoCg per plane (coding == display order)
+      for (int plane = 0; plane < g_num_planes; plane++) {
+        memcpy(recon_ycocg_out[plane] + ((size_t)f * plane_pixels[plane]), dst[plane], (size_t)plane_pixels[plane] * 4);
+      }
+    }
+    // CDEF (--cdef): the 3D-DWT mode is OPEN-LOOP (no per-frame prediction reference), so deringing is a per-frame
+    // POST filter on the reconstructed YCoCg (before colour) — encoder-search-optimised, same bit-exact kernel. The
+    // strengths are coding-order (3D-DWT: coding == display), so the global index is base_coding_index + f.
+    cdef_load_frame((uint32_t)(base_coding_index + f));
+    for (int plane = 0; plane < g_num_planes; plane++) {
+      cdef_apply_decode_plane(dst[plane], cdef_scratch, plane_width(plane, width), plane_height(plane, height), plane, base_quality);
     }
     int32_t *co = chroma_orange, *cg = chroma_green;
     if (g_chroma_format != 0) {   // bilinear-upsample the subsampled Co/Cg back to full resolution
@@ -5415,6 +5428,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
       }
     }
   }
+  free(cdef_scratch);
   free(luma);
   free(chroma_orange);
   free(chroma_green);
@@ -6070,7 +6084,7 @@ int main(int argc, char **argv) {
       double t0 = now_milliseconds();
       encode_gop_3ddwt(gop_rgb, filled, width, height, levels, quality, gop_encoded, gop_encoded_length);
       double t1 = now_milliseconds();
-      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, 0, 0, 0);
+      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, NULL, 0, 0, 0);
       double t2 = now_milliseconds();
       for (int g = 0; g < filled; g++) {
         double mean_squared_error = 0;
