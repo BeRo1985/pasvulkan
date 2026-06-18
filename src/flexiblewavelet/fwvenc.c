@@ -2364,6 +2364,7 @@ int main(int argc, char **argv) {
   FILE *container_file = NULL;
   FrameEntry *index = NULL;
   long index_capacity = 0;
+  uint8_t *cdef_table = NULL;   // --cdef: 4 per-frame strengths {pri_luma, sec_luma, pri_chroma, sec_chroma} in coding order, grown alongside index; written after the index when g_cdef
   uint64_t audio_size = 0;
   uint8_t *audio = NULL;
   uint8_t audio_codec_tag[4] = { 'O', 'G', 'G', 'V' };   // default OGG/Vorbis
@@ -3594,6 +3595,21 @@ int main(int argc, char **argv) {
         }
       }
 
+      // CDEF (--cdef): snapshot the source YCoCg at codec resolution (now, after chroma subsampling and BEFORE the
+      // per-plane forward DWT overwrites coeff_buffer in place) — it is the SSE target for the per-frame strength
+      // search run after the reconstruct. Lossy only (Q0 keeps the lossless reconstruction). I/P path; B uses the DPB.
+      if (g_cdef && !lossless && !use_bframes) {
+        VkMemoryBarrier source_pre = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0,
+          VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT };
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &source_pre, 0, 0, 0, 0);
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          int sw = plane_width(plane, width), sh = plane_height(plane, height);
+          VkBufferCopy source_copy = { 0, 0, (VkDeviceSize)sw * sh * 4 };
+          vkCmdCopyBuffer(command_buffer, coeff_buffer[plane], source_ycocg[plane], 1, &source_copy);
+        }
+      }
+
       for (int plane = 0; plane < g_num_planes; plane++) {
         // Per-plane dimensions: luma is full-res; chroma is subsampled when g_chroma_format != 0 (4:4:4 ->
         // these equal the frame dims, so 4:4:4 behaviour is unchanged). plane_w is the buffer ROW STRIDE.
@@ -4001,6 +4017,14 @@ int main(int argc, char **argv) {
       }
       submit_and_wait();
 
+      // CDEF in-loop deringing (--cdef, lossy I/P): previous_buffer is now the reconstructed reference; search the
+      // best per-frame strength on the GPU and apply it, so the NEXT frame predicts from the deringed reference (the
+      // decoder deringes identically -> lock-step). The chosen strengths go into the container's per-frame table.
+      uint8_t cdef_strengths[4] = { 0, 0, 0, 0 };
+      if (g_cdef && !lossless && !use_bframes) {
+        cdef_dering_frame(&cdef_ctx, current_quality, cdef_strengths);
+      }
+
       // ---- assemble the frame payload (block_count, u16 size tables, data) ----
       uint32_t *frame_sizes[MAX_PLANES];
       for (int plane = 0; plane < g_num_planes; plane++) {
@@ -4114,6 +4138,12 @@ int main(int argc, char **argv) {
           if (!index) {
             die("realloc");
           }
+          if (g_cdef) {
+            cdef_table = realloc(cdef_table, (size_t)index_capacity * 4);
+            if (!cdef_table) {
+              die("realloc");
+            }
+          }
         }
         index[frame_index].offset = (uint64_t)ftello(container_file);
         index[frame_index].type = (uint8_t)is_predicted;
@@ -4124,6 +4154,12 @@ int main(int argc, char **argv) {
         index[frame_index].ref1 = -1;                                    // single forward reference (no L1)
         index[frame_index].temporal_id = 0;
         index[frame_index].pad = 0;
+        if (g_cdef) {   // the per-frame CDEF strengths chosen by the search after this frame's reconstruct
+          cdef_table[(frame_index * 4) + 0] = cdef_strengths[0];
+          cdef_table[(frame_index * 4) + 1] = cdef_strengths[1];
+          cdef_table[(frame_index * 4) + 2] = cdef_strengths[2];
+          cdef_table[(frame_index * 4) + 3] = cdef_strengths[3];
+        }
         index[frame_index].size = (uint32_t)fwrite_frame(container_file, frame, total);
       } else {
         // Self-test: CPU-decode the GPU stream and measure PSNR against the original frame. Tracks the
@@ -4215,6 +4251,9 @@ int main(int argc, char **argv) {
     if (g_has_alpha) {
       header.color_flags |= 4;      // bit2 = has_alpha (each frame carries the appended alpha section)
     }
+    if (g_cdef) {
+      header.color_flags |= 16;     // bit4 = has_cdef (a per-frame 4-byte strength table follows the index)
+    }
     header.audio_offset = (uint64_t)ftello(container_file);
     if (audio) {
       fwrite(audio, 1, audio_size, container_file);
@@ -4235,6 +4274,9 @@ int main(int argc, char **argv) {
     }
     header.index_offset = (uint64_t)ftello(container_file);
     fwrite(index, sizeof(FrameEntry), frame_index, container_file);
+    if (g_cdef && cdef_table) {   // the per-frame CDEF strength table, immediately after the index (decoder reads it at index_offset + frame_count*sizeof(FrameEntry))
+      fwrite(cdef_table, 4, (size_t)frame_index, container_file);
+    }
     fseeko(container_file, 0, SEEK_SET);
     fwrite(&header, sizeof header, 1, container_file);
     fclose(container_file);
