@@ -1977,6 +1977,10 @@ static void decode_motion_vectors(BitReader *reader, int *mv, int blocks_x, int 
 static int g_motion_variable = 0;   // 1 = variable quadtree motion (root 32 -> 8); 0 = the fixed g_motion_block grid
 static int g_motion_mode = 5;       // sub-pel mode: bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bits2-3 = MV precision (0 half, 1 quarter, 2 eighth [reserved], 3 amvr [reserved]). Default 5 = 6-tap + quarter. Old files = 0 = bilinear + half. Mirrors the MOTION_MODE shader spec constant.
 static int g_cdef = 0;              // --cdef: AV1-style in-loop directional deringing on the reconstructed YCoCg reference (encoder GPU search + apply; lossy-only). 0 = off (default).
+// Decode-side CDEF state: set per frame by the decode driver from the container (color_flags has_cdef + the per-frame
+// strength table). The CPU decode applies the bit-exact mirror of the GPU cdef.comp on each reconstructed plane.
+static int g_cdef_active = 0;
+static int g_cdef_pri_luma = 0, g_cdef_sec_luma = 0, g_cdef_pri_chroma = 0, g_cdef_sec_chroma = 0;
 
 // CDEF damping derived from the per-GOP quality so encoder + decoder agree without signalling it. Higher quality
 // (lower number toward Q1) = stronger reconstruction = less ringing = lighter damping; coarser Q = more damping.
@@ -3009,6 +3013,29 @@ static void cdef_filter_plane(const int32_t *src, int32_t *dst, int width, int h
       }
     }
   }
+}
+
+// Decode-side in-place CDEF of one reconstructed YCoCg plane (uses `scratch` as the cdef destination, then copies it
+// back). Gated on g_cdef_active + a lossy quality (Q0 -> damping 0 -> off) + a non-zero strength (0,0 = identity).
+// EXACT mirror of the encoder's GPU apply; the strengths come from the container's per-frame table. Applied to the
+// reconstructed reference BEFORE it is saved as the next-frame reference / colour-converted, so encoder and decoder
+// references stay in lock-step.
+static void cdef_apply_decode_plane(int32_t *plane, int32_t *scratch, int plane_w, int plane_h, int plane_index, int quality) {
+  if (!g_cdef_active) {
+    return;
+  }
+  int damping = cdef_damping_from_quality(quality);
+  if (damping == 0) {
+    return;
+  }
+  int pri = (plane_index == 0) ? g_cdef_pri_luma : g_cdef_pri_chroma;
+  int sec = (plane_index == 0) ? g_cdef_sec_luma : g_cdef_sec_chroma;
+  if ((pri == 0) && (sec == 0)) {
+    return;
+  }
+  int dir_shift = (plane_index == 0) ? 0 : 1, center = (plane_index == 0) ? 128 : 0;
+  cdef_filter_plane(plane, scratch, plane_w, plane_h, pri, sec, damping, dir_shift, center);
+  memcpy(plane, scratch, (size_t)plane_w * plane_h * 4);
 }
 
 // ============================================ MCTF (motion-compensated temporal filtering) — // Predict-only MC-Haar at the FRAME level for the 3D-DWT mode: the temporal low band keeps the even frame, the
@@ -4756,6 +4783,7 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
         planes[plane][i] += mc_previous[i];   // add the motion-compensated previous reconstructed frame
       }
     }
+    cdef_apply_decode_plane(planes[plane], mc_previous, plane_w, plane_h, plane, base_quality);   // in-loop dering (mc_previous reused as scratch); before the reference save + colour convert
     if (previous_ycocg) {
       memcpy(previous_ycocg[plane], planes[plane], (size_t)plane_pixels * 4);   // this reconstructed frame is the next reference
     }

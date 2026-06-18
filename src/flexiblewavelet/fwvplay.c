@@ -1182,8 +1182,21 @@ int main(int argc, char **argv) {
       die("corrupt index: a bidirectional frame's two references share a POC (zero temporal distance)");
     }
   }
-  printf("play %s: %dx%d @ %.2f fps | %u frames | audio=%s\n",
-         argv[1], width, height, fps, header.frame_count, header.audio_size ? "yes" : "no");
+  // CDEF (--cdef, color_flags bit4): a per-frame strength table {pri_luma, sec_luma, pri_chroma, sec_chroma} sits
+  // immediately after the index. Read it so the decode reproduces the encoder's bit-exact in-loop deringing. The
+  // per-frame strengths are loaded into the g_cdef_* globals before each decode (GPU + CPU paths) below.
+  uint8_t *cdef_table = NULL;
+  g_cdef_active = (header.color_flags & 16) != 0;
+  if (g_cdef_active) {
+    cdef_table = checked_malloc((size_t)header.frame_count * 4);
+    fseeko(file, (off_t)(header.index_offset + ((uint64_t)header.frame_count * sizeof(FrameEntry))), SEEK_SET);
+    if (fread(cdef_table, 4, header.frame_count, file) != header.frame_count) {
+      die("cdef table");
+    }
+  }
+
+  printf("play %s: %dx%d @ %.2f fps | %u frames | audio=%s%s\n",
+         argv[1], width, height, fps, header.frame_count, header.audio_size ? "yes" : "no", g_cdef_active ? " | cdef" : "");
   const char *primaries_name = (header.color_primaries == 9) ? "BT.2020" : ((header.color_primaries == 12) ? "Display-P3" : "BT.709");
   const char *transfer_name = (header.transfer_function == 16) ? "PQ" : ((header.transfer_function == 18) ? "HLG" : ((header.transfer_function == 8) ? "linear" : "sRGB"));
   const char *chroma_name = (g_chroma_format == 2) ? "4:2:0" : ((g_chroma_format == 1) ? "4:2:2" : "4:4:4");   // g_chroma_format set above
