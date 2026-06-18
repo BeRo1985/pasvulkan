@@ -1981,6 +1981,17 @@ static int g_cdef = 0;              // --cdef: AV1-style in-loop directional der
 // strength table). The CPU decode applies the bit-exact mirror of the GPU cdef.comp on each reconstructed plane.
 static int g_cdef_active = 0;
 static int g_cdef_pri_luma = 0, g_cdef_sec_luma = 0, g_cdef_pri_chroma = 0, g_cdef_sec_chroma = 0;
+static const uint8_t *g_cdef_table = NULL;   // the container's per-frame strength table (coding order, 4 bytes/frame); set by the decode driver
+
+// Load one frame's CDEF strengths (coding-order index) into the g_cdef_* globals before a CPU decode_frame_* call.
+static void cdef_load_frame(uint32_t coding_index) {
+  if (g_cdef_active && g_cdef_table) {
+    g_cdef_pri_luma = g_cdef_table[(coding_index * 4) + 0];
+    g_cdef_sec_luma = g_cdef_table[(coding_index * 4) + 1];
+    g_cdef_pri_chroma = g_cdef_table[(coding_index * 4) + 2];
+    g_cdef_sec_chroma = g_cdef_table[(coding_index * 4) + 3];
+  }
+}
 
 // CDEF damping derived from the per-GOP quality so encoder + decoder agree without signalling it. Higher quality
 // (lower number toward Q1) = stronger reconstruction = less ringing = lighter damping; coarser Q = more damping.
@@ -4943,6 +4954,7 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
   int32_t *chroma_green = checked_malloc(pixel_count * 4);
   float *float_plane = checked_malloc(pixel_count * sizeof(float));
   int *step = checked_malloc(pixel_count * sizeof(int));
+  int32_t *cdef_scratch = g_cdef_active ? checked_malloc(pixel_count * 4) : NULL;   // --cdef: in-loop dering destination (then copied back)
   int block_counts[MAX_PLANES];
   for (int p = 0; p < g_num_planes; p++) {
     block_counts[p] = block_count_x(plane_width(p, width)) * block_count_y(plane_height(p, height));
@@ -4981,6 +4993,7 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
         }
       }
     }
+    cdef_apply_decode_plane(planes[plane], cdef_scratch, plane_w, plane_h, plane, base_quality);   // in-loop dering before the reference save + colour convert
     if (recon_out) {
       memcpy(recon_out[plane], planes[plane], (size_t)plane_pixels * 4);
     }
@@ -4999,6 +5012,7 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
     free(co_temp);
     free(cg_temp);
   }
+  free(cdef_scratch);
   free(luma);
   free(chroma_orange);
   free(chroma_green);

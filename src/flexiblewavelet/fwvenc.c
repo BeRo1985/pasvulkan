@@ -3596,9 +3596,10 @@ int main(int argc, char **argv) {
       }
 
       // CDEF (--cdef): snapshot the source YCoCg at codec resolution (now, after chroma subsampling and BEFORE the
-      // per-plane forward DWT overwrites coeff_buffer in place) — it is the SSE target for the per-frame strength
-      // search run after the reconstruct. Lossy only (Q0 keeps the lossless reconstruction). I/P path; B uses the DPB.
-      if (g_cdef && !lossless && !use_bframes) {
+      // per-plane forward DWT overwrites coeff_buffer in place — for B the per-plane ycocg_diff also happens in that
+      // loop, so coeff_buffer is still the clean source here) — the SSE target for the per-frame strength search run
+      // after the reconstruct. Lossy only (Q0 keeps the lossless reconstruction). Both the I/P and B paths.
+      if (g_cdef && !lossless) {
         VkMemoryBarrier source_pre = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0,
           VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -4021,7 +4022,14 @@ int main(int argc, char **argv) {
       // best per-frame strength on the GPU and apply it, so the NEXT frame predicts from the deringed reference (the
       // decoder deringes identically -> lock-step). The chosen strengths go into the container's per-frame table.
       uint8_t cdef_strengths[4] = { 0, 0, 0, 0 };
-      if (g_cdef && !lossless && !use_bframes) {
+      if (g_cdef && !lossless) {
+        if (use_bframes) {   // the reconstruct went into this frame's DPB slot — rebind the cdef sets + reference to it
+          for (int plane = 0; plane < g_num_planes; plane++) {
+            bind_storage_buffers(set_cdef[plane], (VkBuffer[]){ dpb_buffer[b_dst_slot][plane], cdef_temp_buffer }, 2);
+            bind_storage_buffers(set_cdef_sse[plane], (VkBuffer[]){ cdef_temp_buffer, source_ycocg[plane], cdef_sse_buffer }, 3);
+            cdef_ctx.reference[plane] = dpb_buffer[b_dst_slot][plane];
+          }
+        }
         cdef_dering_frame(&cdef_ctx, current_quality, cdef_strengths);
       }
 
@@ -4122,6 +4130,16 @@ int main(int argc, char **argv) {
         // B-stream: write the explicit coding-order index entry (poc + L0/L1 coding-order refs + temporal_id).
         bframe_append(container_file, &index, &index_capacity, frame_index, frame, total,
                       b_poc, b_ref0_coding, b_ref1_coding, (uint8_t)b_type, (uint8_t)frame_quality, (uint8_t)b_tid);
+        if (g_cdef) {   // store this B-frame's chosen CDEF strengths in coding order (bframe_append grew index_capacity if needed)
+          cdef_table = realloc(cdef_table, (size_t)index_capacity * 4);
+          if (!cdef_table) {
+            die("realloc");
+          }
+          cdef_table[(frame_index * 4) + 0] = cdef_strengths[0];
+          cdef_table[(frame_index * 4) + 1] = cdef_strengths[1];
+          cdef_table[(frame_index * 4) + 2] = cdef_strengths[2];
+          cdef_table[(frame_index * 4) + 3] = cdef_strengths[3];
+        }
         if (b_type == 0) {
           bf_i_count++;
         } else if (b_type == 1) {

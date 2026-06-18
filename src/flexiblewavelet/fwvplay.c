@@ -989,6 +989,7 @@ static void bstream_decode_until(BStream *bs, int target_poc) {
       bs->dpb[(c * g_num_planes) + p] = checked_malloc((size_t)bs->plane_pixels[p] * 4);
     }
     bs->rgb[entry->poc] = checked_malloc(bs->frame_bytes);
+    cdef_load_frame((uint32_t)c);   // coding-order strengths so the CPU B-decode deringes bit-exactly like the GPU
     decode_frame_bidi(bs->payload, payload_length, bs->width, bs->height, bs->levels, entry->quality,
                       ref0, ref1, weight0, weight1, &bs->dpb[c * g_num_planes], bs->rgb[entry->poc]);
     bs->cursor++;
@@ -1193,6 +1194,7 @@ int main(int argc, char **argv) {
     if (fread(cdef_table, 4, header.frame_count, file) != header.frame_count) {
       die("cdef table");
     }
+    g_cdef_table = cdef_table;   // the CPU decode_frame_* paths load the per-frame strengths via cdef_load_frame()
   }
 
   printf("play %s: %dx%d @ %.2f fps | %u frames | audio=%s%s\n",
@@ -2727,6 +2729,35 @@ int main(int argc, char **argv) {
           vkCmdDispatch(command_buffer, plane_pixel_workgroups, 1, 1);
           memory_barrier();
         }
+        // CDEF (--cdef, lossy): in-loop dering this frame's reconstructed DPB slot (gdpb_buffer[dst]) on the GPU with
+        // the encoder's chosen strengths, before it is reused as a reference / copied to coeff_buffer for display.
+        // Mirrors the CPU decode_frame_bidi (cdef_apply_decode_plane). Only the slot needs it (display copies the slot).
+        if (g_cdef_active && !lossless) {
+          int cdef_damping = cdef_damping_from_quality((int)entry->quality);
+          if ((cdef_damping > 0) && cdef_table) {
+            for (int plane = 0; plane < g_num_planes; plane++) {
+              int pri = cdef_table[(c * 4) + ((plane == 0) ? 0 : 2)];
+              int sec = cdef_table[(c * 4) + ((plane == 0) ? 1 : 3)];
+              if ((pri == 0) && (sec == 0)) {
+                continue;
+              }
+              int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
+              int dir_shift = (plane == 0) ? 0 : 1, center = (plane == 0) ? 128 : 0;
+              bind_storage_buffers(set_cdef_play[plane], (VkBuffer[]){ gdpb_buffer[dst][plane], cdef_temp_buffer }, 2);   // rebind to this frame's slot
+              int32_t cdef_push[7] = { plane_w, plane_h, pri, sec, cdef_damping, dir_shift, center };
+              vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_cdef);
+              vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_cdef, 0, 1, &set_cdef_play[plane], 0, 0);
+              vkCmdPushConstants(command_buffer, pipeline_layout_cdef, VK_SHADER_STAGE_COMPUTE_BIT, 0, 28, cdef_push);
+              vkCmdDispatch(command_buffer, (uint32_t)((plane_w + 7) / 8), (uint32_t)((plane_h + 7) / 8), 1);
+              VkMemoryBarrier cdef_to_copy = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT };
+              vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &cdef_to_copy, 0, 0, 0, 0);
+              VkBufferCopy cdef_copy = { 0, 0, (VkDeviceSize)plane_w * plane_h * 4 };
+              vkCmdCopyBuffer(command_buffer, cdef_temp_buffer, gdpb_buffer[dst][plane], 1, &cdef_copy);
+              VkMemoryBarrier copy_to_shader = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT };
+              vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &copy_to_shader, 0, 0, 0, 0);
+            }
+          }
+        }
         vkEndCommandBuffer(command_buffer);
         VkSubmitInfo bdec_submit = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
         bdec_submit.commandBufferCount = 1;
@@ -3199,12 +3230,7 @@ int main(int argc, char **argv) {
         if (mode_3ddwt) {
           memcpy(cpu_rgb, cpu_gop_rgb[frame_index - cur_gop_start], frame_bytes);   // CPU reference from the per-GOP decode above
         } else if (header.prediction_method == 1) {
-          if (g_cdef_active && cdef_table) {   // load this frame's CDEF strengths so the CPU decode deringes bit-exactly like the GPU
-            g_cdef_pri_luma = cdef_table[(frame_index * 4) + 0];
-            g_cdef_sec_luma = cdef_table[(frame_index * 4) + 1];
-            g_cdef_pri_chroma = cdef_table[(frame_index * 4) + 2];
-            g_cdef_sec_chroma = cdef_table[(frame_index * 4) + 3];
-          }
+          cdef_load_frame(frame_index);   // load this frame's CDEF strengths so the CPU decode deringes bit-exactly like the GPU
           decode_frame_colordiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
         } else {
           decode_frame_coefdiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
