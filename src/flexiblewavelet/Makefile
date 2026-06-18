@@ -22,7 +22,8 @@ SPV = shaders/bitplane_unpack.spv shaders/dequant97.spv shaders/transpose_f.spv 
       shaders/bidi_mode_sad.spv shaders/motion_merge_bidi.spv shaders/mode_decide_root.spv \
       shaders/int2float.spv shaders/extract_alpha.spv shaders/extract_alpha16.spv shaders/color_alpha.spv \
       shaders/color_hdr_alpha.spv shaders/color_hdr_scrgb_alpha.spv shaders/fwv_composite_present.spv \
-      shaders/dering.spv shaders/apply_tile_aq.spv
+      shaders/dering.spv shaders/apply_tile_aq.spv \
+      shaders/cdef.spv shaders/cdef_sse.spv
 
 all: fwvwave fwvdec fwvenc fwvplay fwa fwvtag
 

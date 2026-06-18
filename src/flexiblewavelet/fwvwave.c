@@ -2845,6 +2845,161 @@ static void motion_compensate(const int32_t *previous, const int *mv, int32_t *m
   }
 }
 
+// ============================================ CDEF in-loop deringing filter ============================================
+// A faithful integer port of AV1's Constrained Directional Enhancement Filter, run IN-LOOP on the reconstructed
+// YCoCg reference planes (before they become the prediction reference for the next frame) — encoder and decoder
+// apply it identically, so it must be bit-exact GPU==CPU (EXACT mirror of cdef.comp). Lossy-only: at Q0 it stays
+// disabled so the reconstruction remains lossless. Per 8x8 block: find the dominant edge direction, then apply a
+// non-linear, strength-constrained filter with primary taps ALONG the edge + secondary taps across it. constrain()
+// makes strong edges contribute ~0 (preserved) while small ringing oscillations get averaged out.
+
+// floor(log2(value)) for value >= 1 (= the position of the most significant set bit).
+static int cdef_msb(int value) {
+  int bit = 0;
+  while (value > 1) {
+    value >>= 1;
+    bit++;
+  }
+  return bit;
+}
+
+// AV1 constrain: the signed amount a neighbour may pull the centre pixel. Large differences (real edges) clamp to
+// 0; small differences pass through up to `threshold`. All-integer, overflow-safe (threshold + |diff| are small).
+static int cdef_constrain(int difference, int threshold, int damping) {
+  if (threshold == 0) {
+    return 0;
+  }
+  int magnitude = (difference < 0) ? -difference : difference;
+  int shift = damping - cdef_msb(threshold);
+  if (shift < 0) {
+    shift = 0;
+  }
+  int limited = threshold - (magnitude >> shift);
+  if (limited < 0) {
+    limited = 0;
+  }
+  if (limited > magnitude) {
+    limited = magnitude;
+  }
+  return (difference < 0) ? -limited : limited;
+}
+
+// The two primary tap offsets (dy, dx) per direction; the secondary taps reuse this table at the (dir +- 2) dirs.
+static const int cdef_tap_offset[8][2][2] = {   // [direction][tap 0/1][0 = dy, 1 = dx]
+  { { -1, 1 }, { -2,  2 } },
+  { {  0, 1 }, { -1,  2 } },
+  { {  0, 1 }, {  0,  2 } },
+  { {  0, 1 }, {  1,  2 } },
+  { {  1, 1 }, {  2,  2 } },
+  { {  1, 0 }, {  2,  1 } },
+  { {  1, 0 }, {  2,  0 } },
+  { {  1, 0 }, {  2, -1 } }
+};
+static const int cdef_primary_taps[2][2] = { { 4, 2 }, { 3, 3 } };   // selected by (pri_strength & 1)
+static const int cdef_secondary_taps[2] = { 2, 1 };
+
+// AV1 cdef_find_dir over the 8x8 block at (origin_x, origin_y): pick the direction whose pixel lines are most
+// uniform (= the dominant edge direction). The value is brought into ~8-bit range (`>> dir_shift`, then minus
+// `center`) and clamped to [-128, 127] so the sum-of-squares cost can never overflow int32 — that keeps the GPU
+// (int32-only) and the CPU bit-identical. Edge pixels are replicate-clamped to fill the full 8x8.
+static int cdef_find_direction(const int32_t *plane, int width, int height, int origin_x, int origin_y,
+                               int dir_shift, int center) {
+  static const int div_table[9] = { 0, 840, 420, 280, 210, 168, 140, 120, 105 };
+  int cost[8];
+  int partial[8][15];
+  for (int d = 0; d < 8; d++) {
+    cost[d] = 0;
+    for (int k = 0; k < 15; k++) {
+      partial[d][k] = 0;
+    }
+  }
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      int value = (previous_at(plane, width, height, origin_x + j, origin_y + i) >> dir_shift) - center;
+      value = (value < -128) ? -128 : ((value > 127) ? 127 : value);
+      partial[0][i + j] += value;
+      partial[1][i + (j >> 1)] += value;
+      partial[2][i] += value;
+      partial[3][(3 + i) - (j >> 1)] += value;
+      partial[4][(7 + i) - j] += value;
+      partial[5][(3 - (i >> 1)) + j] += value;
+      partial[6][j] += value;
+      partial[7][(i >> 1) + j] += value;
+    }
+  }
+  for (int i = 0; i < 8; i++) {
+    cost[2] += partial[2][i] * partial[2][i];
+    cost[6] += partial[6][i] * partial[6][i];
+  }
+  cost[2] *= div_table[8];
+  cost[6] *= div_table[8];
+  for (int i = 0; i < 7; i++) {
+    cost[0] += ((partial[0][i] * partial[0][i]) + (partial[0][14 - i] * partial[0][14 - i])) * div_table[i + 1];
+    cost[4] += ((partial[4][i] * partial[4][i]) + (partial[4][14 - i] * partial[4][14 - i])) * div_table[i + 1];
+  }
+  cost[0] += (partial[0][7] * partial[0][7]) * div_table[8];
+  cost[4] += (partial[4][7] * partial[4][7]) * div_table[8];
+  for (int d = 1; d < 8; d += 2) {
+    for (int k = 0; k < 5; k++) {
+      cost[d] += partial[d][3 + k] * partial[d][3 + k];
+    }
+    cost[d] *= div_table[8];
+    for (int k = 0; k < 3; k++) {
+      cost[d] += ((partial[d][k] * partial[d][k]) + (partial[d][10 - k] * partial[d][10 - k])) * div_table[(2 * k) + 2];
+    }
+  }
+  int best_direction = 0, best_cost = 0;
+  for (int d = 0; d < 8; d++) {
+    if (cost[d] > best_cost) {
+      best_cost = cost[d];
+      best_direction = d;
+    }
+  }
+  return best_direction;
+}
+
+// Filter one pixel given its 8x8 block's direction. Reads the unfiltered plane (so src and dst must be SEPARATE
+// buffers). EXACT mirror of cdef.comp. pri/sec_strength == 0 => the filter is the identity for that part.
+static int cdef_filter_pixel(const int32_t *plane, int width, int height, int px, int py, int direction,
+                             int pri_strength, int sec_strength, int damping) {
+  int x = previous_at(plane, width, height, px, py);
+  const int *primary_tap = cdef_primary_taps[pri_strength & 1];
+  int dir_a = (direction + 2) & 7, dir_b = (direction + 6) & 7;
+  int sum = 0;
+  for (int k = 0; k < 2; k++) {
+    int pdy = cdef_tap_offset[direction][k][0], pdx = cdef_tap_offset[direction][k][1];
+    int p0 = previous_at(plane, width, height, px + pdx, py + pdy);
+    int p1 = previous_at(plane, width, height, px - pdx, py - pdy);
+    sum += primary_tap[k] * (cdef_constrain(p0 - x, pri_strength, damping) + cdef_constrain(p1 - x, pri_strength, damping));
+    int ady = cdef_tap_offset[dir_a][k][0], adx = cdef_tap_offset[dir_a][k][1];
+    int bdy = cdef_tap_offset[dir_b][k][0], bdx = cdef_tap_offset[dir_b][k][1];
+    int s0 = previous_at(plane, width, height, px + adx, py + ady);
+    int s1 = previous_at(plane, width, height, px - adx, py - ady);
+    int s2 = previous_at(plane, width, height, px + bdx, py + bdy);
+    int s3 = previous_at(plane, width, height, px - bdx, py - bdy);
+    sum += cdef_secondary_taps[k] * ((cdef_constrain(s0 - x, sec_strength, damping) + cdef_constrain(s1 - x, sec_strength, damping)) +
+                                     (cdef_constrain(s2 - x, sec_strength, damping) + cdef_constrain(s3 - x, sec_strength, damping)));
+  }
+  return x + ((8 + sum - ((sum < 0) ? 1 : 0)) >> 4);
+}
+
+// Apply CDEF to one reconstructed plane (src -> dst, SEPARATE buffers). Per 8x8 block: one direction, then filter
+// every pixel. pri_strength == 0 && sec_strength == 0 is the identity, so a zero-strength frame is a pure copy.
+static void cdef_filter_plane(const int32_t *src, int32_t *dst, int width, int height,
+                              int pri_strength, int sec_strength, int damping, int dir_shift, int center) {
+  for (int by = 0; by < height; by += 8) {
+    for (int bx = 0; bx < width; bx += 8) {
+      int direction = cdef_find_direction(src, width, height, bx, by, dir_shift, center);
+      for (int yy = 0; (yy < 8) && ((by + yy) < height); yy++) {
+        for (int xx = 0; (xx < 8) && ((bx + xx) < width); xx++) {
+          dst[((by + yy) * width) + (bx + xx)] = cdef_filter_pixel(src, width, height, bx + xx, by + yy,
+                                                                   direction, pri_strength, sec_strength, damping);
+        }
+      }
+    }
+  }
+}
+
 // ============================================ MCTF (motion-compensated temporal filtering) — // Predict-only MC-Haar at the FRAME level for the 3D-DWT mode: the temporal low band keeps the even frame, the
 // high band is the motion-compensated residual H = odd - OBMC(even). Lifting is invertible from the FORWARD motion
 // alone (odd = H + OBMC(even) at decode), so no inverse warp / occlusion handling is needed. Motion is estimated on

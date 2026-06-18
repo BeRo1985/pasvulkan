@@ -1,0 +1,160 @@
+#version 450
+// cdef.comp — AV1's Constrained Directional Enhancement Filter, run IN-LOOP as a deringing pass on a reconstructed
+// YCoCg plane (before it becomes the prediction reference). One workgroup per 8x8 block: thread 0 finds the block's
+// dominant edge direction, then all 64 threads filter their own pixel along it. EXACT integer mirror of fwvwave.c's
+// cdef_filter_plane — bit-for-bit identical GPU==CPU. src and dst MUST be separate buffers (all taps read src).
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(std430, binding = 0) readonly  buffer Src { int src[]; };
+layout(std430, binding = 1) writeonly buffer Dst { int dst[]; };
+layout(push_constant) uniform PushConstants {
+  int width;
+  int height;
+  int pri_strength;
+  int sec_strength;
+  int damping;
+  int dir_shift;   // bring the plane into ~8-bit range before the direction search (luma 0, chroma 1) so int32 can't overflow
+  int center;      // DC offset removed before the direction search (luma 128, chroma 0)
+} push;
+
+shared int s_direction;
+
+int clamp_int(int value, int low, int high) {
+  return (value < low) ? low : ((value > high) ? high : value);
+}
+
+// One src[] sample with replicate-edge coordinate clamping.
+int src_at(int sample_x, int sample_y) {
+  int cx = clamp_int(sample_x, 0, push.width - 1);
+  int cy = clamp_int(sample_y, 0, push.height - 1);
+  return src[(cy * push.width) + cx];
+}
+
+// floor(log2(value)) for value >= 1.
+int cdef_msb(int value) {
+  int bit = 0;
+  while (value > 1) {
+    value >>= 1;
+    bit++;
+  }
+  return bit;
+}
+
+// AV1 constrain: the signed amount a neighbour may pull the centre pixel; large edges clamp to 0.
+int cdef_constrain(int difference, int threshold, int damping) {
+  if (threshold == 0) {
+    return 0;
+  }
+  int magnitude = (difference < 0) ? -difference : difference;
+  int shift = damping - cdef_msb(threshold);
+  if (shift < 0) {
+    shift = 0;
+  }
+  int limited = threshold - (magnitude >> shift);
+  if (limited < 0) {
+    limited = 0;
+  }
+  if (limited > magnitude) {
+    limited = magnitude;
+  }
+  return (difference < 0) ? -limited : limited;
+}
+
+// Primary tap offsets (dy, dx) flattened as [direction*2 + tap]; secondary taps reuse this at the (dir +- 2) dirs.
+const int cdef_tap_dy[16] = int[16](-1, -2,  0, -1,  0,  0,  0,  1,  1,  2,  1,  2,  1,  2,  1,  2);
+const int cdef_tap_dx[16] = int[16]( 1,  2,  1,  2,  1,  2,  1,  2,  1,  2,  0,  1,  0,  0,  0, -1);
+const int cdef_pri_tap[4] = int[4](4, 2, 3, 3);   // [(pri_strength & 1) * 2 + tap]
+const int cdef_sec_tap[2] = int[2](2, 1);
+const int div_table[9] = int[9](0, 840, 420, 280, 210, 168, 140, 120, 105);
+
+// AV1 cdef_find_dir over the 8x8 block at (ox, oy): the direction whose pixel lines are most uniform. Value is
+// brought into [-128, 127] (>> dir_shift, minus center, then clamp) so the sum-of-squares cost stays within int32.
+int cdef_find_direction(int ox, int oy) {
+  int cost[8];
+  int partial[8][15];
+  for (int d = 0; d < 8; d++) {
+    cost[d] = 0;
+    for (int k = 0; k < 15; k++) {
+      partial[d][k] = 0;
+    }
+  }
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      int value = (src_at(ox + j, oy + i) >> push.dir_shift) - push.center;
+      value = clamp_int(value, -128, 127);
+      partial[0][i + j] += value;
+      partial[1][i + (j >> 1)] += value;
+      partial[2][i] += value;
+      partial[3][(3 + i) - (j >> 1)] += value;
+      partial[4][(7 + i) - j] += value;
+      partial[5][(3 - (i >> 1)) + j] += value;
+      partial[6][j] += value;
+      partial[7][(i >> 1) + j] += value;
+    }
+  }
+  for (int i = 0; i < 8; i++) {
+    cost[2] += partial[2][i] * partial[2][i];
+    cost[6] += partial[6][i] * partial[6][i];
+  }
+  cost[2] *= div_table[8];
+  cost[6] *= div_table[8];
+  for (int i = 0; i < 7; i++) {
+    cost[0] += ((partial[0][i] * partial[0][i]) + (partial[0][14 - i] * partial[0][14 - i])) * div_table[i + 1];
+    cost[4] += ((partial[4][i] * partial[4][i]) + (partial[4][14 - i] * partial[4][14 - i])) * div_table[i + 1];
+  }
+  cost[0] += (partial[0][7] * partial[0][7]) * div_table[8];
+  cost[4] += (partial[4][7] * partial[4][7]) * div_table[8];
+  for (int d = 1; d < 8; d += 2) {
+    for (int k = 0; k < 5; k++) {
+      cost[d] += partial[d][3 + k] * partial[d][3 + k];
+    }
+    cost[d] *= div_table[8];
+    for (int k = 0; k < 3; k++) {
+      cost[d] += ((partial[d][k] * partial[d][k]) + (partial[d][10 - k] * partial[d][10 - k])) * div_table[(2 * k) + 2];
+    }
+  }
+  int best_direction = 0, best_cost = 0;
+  for (int d = 0; d < 8; d++) {
+    if (cost[d] > best_cost) {
+      best_cost = cost[d];
+      best_direction = d;
+    }
+  }
+  return best_direction;
+}
+
+// Filter one pixel given its block's direction. Reads src[] only (all taps), writes dst[].
+int cdef_filter_pixel(int px, int py, int direction) {
+  int x = src_at(px, py);
+  int parity = push.pri_strength & 1;
+  int dir_a = (direction + 2) & 7, dir_b = (direction + 6) & 7;
+  int sum = 0;
+  for (int k = 0; k < 2; k++) {
+    int pdy = cdef_tap_dy[(direction * 2) + k], pdx = cdef_tap_dx[(direction * 2) + k];
+    int p0 = src_at(px + pdx, py + pdy);
+    int p1 = src_at(px - pdx, py - pdy);
+    sum += cdef_pri_tap[(parity * 2) + k] * (cdef_constrain(p0 - x, push.pri_strength, push.damping) + cdef_constrain(p1 - x, push.pri_strength, push.damping));
+    int ady = cdef_tap_dy[(dir_a * 2) + k], adx = cdef_tap_dx[(dir_a * 2) + k];
+    int bdy = cdef_tap_dy[(dir_b * 2) + k], bdx = cdef_tap_dx[(dir_b * 2) + k];
+    int s0 = src_at(px + adx, py + ady);
+    int s1 = src_at(px - adx, py - ady);
+    int s2 = src_at(px + bdx, py + bdy);
+    int s3 = src_at(px - bdx, py - bdy);
+    sum += cdef_sec_tap[k] * ((cdef_constrain(s0 - x, push.sec_strength, push.damping) + cdef_constrain(s1 - x, push.sec_strength, push.damping)) +
+                              (cdef_constrain(s2 - x, push.sec_strength, push.damping) + cdef_constrain(s3 - x, push.sec_strength, push.damping)));
+  }
+  return x + ((8 + sum - ((sum < 0) ? 1 : 0)) >> 4);
+}
+
+void main() {
+  int ox = int(gl_WorkGroupID.x) * 8;
+  int oy = int(gl_WorkGroupID.y) * 8;
+  if (gl_LocalInvocationIndex == 0u) {
+    s_direction = cdef_find_direction(ox, oy);
+  }
+  barrier();
+  int px = ox + int(gl_LocalInvocationID.x);
+  int py = oy + int(gl_LocalInvocationID.y);
+  if ((px < push.width) && (py < push.height)) {
+    dst[(py * push.width) + px] = cdef_filter_pixel(px, py, s_direction);
+  }
+}
