@@ -461,6 +461,39 @@ static void cdef_dering_frame(CdefContext *ctx, int quality, uint8_t out_strengt
   }
 }
 
+// The GPU bitplane pack writes each block 4-byte-aligned (at the rounded offsets in offset_map), because it stores
+// whole uints; but bitplane_unpack reads at byte granularity, so the container can hold TIGHT (byte-packed) data.
+// Compact each block to its ACTUAL size (size_map) into `out` (caller-sized to the padded upper bound), stripping the
+// inter-block padding (up to 3 bytes/block -> ~20KB/frame, the GPU-vs-CPU lossy size gap). Returns the tight total;
+// the colour planes [0,num_planes) come first (their tight length is written to *out_color_length), then the alpha
+// plane (index 3) when alpha_blocks > 0.
+static size_t compact_block_data(uint8_t *out, const uint8_t *padded,
+                                 void *const offset_map[], void *const size_map[],
+                                 const int *plane_blocks, int num_planes,
+                                 int alpha_blocks, size_t *out_color_length) {
+  size_t cursor = 0;
+  for (int plane = 0; plane < num_planes; plane++) {
+    const uint32_t *offsets = (const uint32_t *)offset_map[plane];
+    const uint32_t *sizes = (const uint32_t *)size_map[plane];
+    for (int block = 0; block < plane_blocks[plane]; block++) {
+      memcpy(out + cursor, padded + offsets[block], sizes[block]);
+      cursor += sizes[block];
+    }
+  }
+  if (out_color_length) {
+    *out_color_length = cursor;
+  }
+  if (alpha_blocks > 0) {
+    const uint32_t *offsets = (const uint32_t *)offset_map[3];
+    const uint32_t *sizes = (const uint32_t *)size_map[3];
+    for (int block = 0; block < alpha_blocks; block++) {
+      memcpy(out + cursor, padded + offsets[block], sizes[block]);
+      cursor += sizes[block];
+    }
+  }
+  return cursor;
+}
+
 // Extract the audio track to a temporary OGG/Vorbis blob via ffmpeg (returns NULL if there is none).
 static uint8_t *extract_audio(const char *input, uint64_t *out_size) {
   char command[4096];
@@ -2929,14 +2962,13 @@ int main(int argc, char **argv) {
           free(temporal_luma);
           free(gpu_spatial);
         }
-
         // prefix-sum the per-block sizes into byte offsets (per-plane; chroma has fewer blocks when subsampled).
         uint32_t cumulative = 0;
         for (int plane = 0; plane < g_num_planes; plane++) {
           const uint32_t *sizes = size_map[plane];
           for (int block = 0; block < plane_blocks[plane]; block++) {
             offsets[plane][block] = cumulative;
-            cumulative += sizes[block];
+            cumulative += (sizes[block] + 3u) & ~3u;   // pack offsets 4-byte-aligned (bitplane_pack writes whole uints); container stores actual size + tight data
           }
           memcpy(offset_map[plane], offsets[plane], (size_t)plane_blocks[plane] * 4);
         }
@@ -2947,7 +2979,7 @@ int main(int argc, char **argv) {
           const uint32_t *alpha_sizes = (const uint32_t *)size_map[3];
           for (int block = 0; block < alpha_block_count; block++) {
             offsets[3][block] = cumulative;
-            cumulative += alpha_sizes[block];
+            cumulative += (alpha_sizes[block] + 3u) & ~3u;
           }
           memcpy(offset_map[3], offsets[3], (size_t)alpha_block_count * 4);
           data_length = cumulative;
@@ -2990,14 +3022,19 @@ int main(int argc, char **argv) {
           }
         }
         uint8_t *frame;
+        // Compact the 4-byte-aligned GPU pack output into the tight byte-granular layout the container stores.
+        uint8_t *tight = checked_malloc(data_length ? data_length : 1);
+        size_t tight_color_length = 0;
+        size_t tight_total = compact_block_data(tight, (const uint8_t *)data_map, offset_map, size_map, plane_blocks, g_num_planes, g_has_alpha ? alpha_block_count : 0, &tight_color_length);
         size_t total = assemble_frame(plane_blocks,
                                       (uint32_t *[3]){ (uint32_t *)size_map[0], (uint32_t *)size_map[1], (uint32_t *)size_map[2] },
-                                      mv_blob, mv_blob_length, (const uint8_t *)data_map, color_data_length, &frame);
+                                      mv_blob, mv_blob_length, tight, tight_color_length, &frame);
         if (g_has_alpha) {   // append the alpha section (graceful-ignore) after the 3-plane color payload
           int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
           total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
-                                       (const uint8_t *)data_map + color_data_length, data_length - color_data_length);
+                                       tight + tight_color_length, tight_total - tight_color_length);
         }
+        free(tight);
         free(mv_blob);
         gop_encoded[f] = frame;
         gop_encoded_length[f] = total;
@@ -3964,7 +4001,7 @@ int main(int argc, char **argv) {
         const uint32_t *sizes = (method == 0 && is_predicted) ? size_map_diff[plane] : size_map[plane];
         for (int block = 0; block < block_counts[plane]; block++) {
           offsets[plane][block] = cumulative;
-          cumulative += sizes[block];
+          cumulative += (sizes[block] + 3u) & ~3u;   // pack offsets are 4-byte-aligned (bitplane_pack writes whole uints); the container stores the actual size + tight data
         }
         memcpy(offset_map[plane], offsets[plane], (size_t)block_counts[plane] * 4);
       }
@@ -3975,7 +4012,7 @@ int main(int argc, char **argv) {
         const uint32_t *alpha_sizes = (const uint32_t *)size_map[3];
         for (int block = 0; block < alpha_block_count; block++) {
           offsets[3][block] = cumulative;
-          cumulative += alpha_sizes[block];
+          cumulative += (alpha_sizes[block] + 3u) & ~3u;
         }
         memcpy(offset_map[3], offsets[3], (size_t)alpha_block_count * 4);
         data_length = cumulative;   // total payload now includes the alpha block data, packed after color
@@ -4190,12 +4227,18 @@ int main(int argc, char **argv) {
         }
       }
       uint8_t *frame;
-      size_t total = assemble_frame(block_counts, frame_sizes, mv_bytes, mv_length, (const uint8_t *)data_map, color_data_length, &frame);
+      // Compact the 4-byte-aligned GPU pack output into the tight byte-granular layout the container stores.
+      frame_sizes[3] = (uint32_t *)size_map[3];   // alpha always uses size_map (never the coefdiff-diff sizes)
+      uint8_t *tight = checked_malloc(data_length ? data_length : 1);
+      size_t tight_color_length = 0;
+      size_t tight_total = compact_block_data(tight, (const uint8_t *)data_map, offset_map, (void *const *)frame_sizes, block_counts, g_num_planes, g_has_alpha ? alpha_block_count : 0, &tight_color_length);
+      size_t total = assemble_frame(block_counts, frame_sizes, mv_bytes, mv_length, tight, tight_color_length, &frame);
       if (g_has_alpha) {   // append the alpha section (graceful-ignore) after the 3-plane color payload
         int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
         total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
-                                     (const uint8_t *)data_map + color_data_length, data_length - color_data_length);
+                                     tight + tight_color_length, tight_total - tight_color_length);
       }
+      free(tight);
       free(mv_bytes);
 
       if (output && use_bframes) {

@@ -111,6 +111,8 @@ void main() {
     if (quadtree_bits < best) best = quadtree_bits;
     total_bits += 2 + best;
   }
-  uint bytes = uint((total_bits + 7) / 8);
-  sizes[block] = (bytes + 3u) & ~3u;   // round up to a whole 4-byte word
+  // ACTUAL byte size of this block. The host rounds this UP to a 4-byte word ONLY for the pack's word-aligned
+  // offsets (bitplane_pack writes whole uints); the container then stores this actual size + tight (byte-granular)
+  // data, since bitplane_unpack reads at byte granularity. (Storing the rounded size wasted up to 3 bytes/block.)
+  sizes[block] = uint((total_bits + 7) / 8);
 }
