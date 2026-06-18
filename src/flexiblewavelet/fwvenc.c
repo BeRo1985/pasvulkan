@@ -337,6 +337,115 @@ static void begin_recording(void) {
   vkBeginCommandBuffer(command_buffer, &begin_info);
 }
 
+// ============================================ CDEF in-loop deringing (encoder GPU search + apply) ============================================
+// Resources bundled once; reference[plane] is the buffer to dering in place (previous_buffer for I/P, a DPB slot for
+// B). Per frame: search the AV1 strength grid on the GPU (filter -> SSE vs the saved source -> pick the lowest),
+// then apply the winner. The chosen strengths go into the container so the decoder reproduces the bit-exact filter.
+typedef struct {
+  VkBuffer reference[MAX_PLANES];           // deringed in place
+  VkBuffer cdef_temp;                       // filtered scratch (cdef dst, sse "a")
+  VkBuffer source[MAX_PLANES];              // saved source YCoCg (sse "b")
+  VkBuffer sse_buffer;
+  volatile uint32_t *sse_map;               // host-visible: [0] = low 32 bits, [1] = carry
+  VkDescriptorSet set_filter[MAX_PLANES];   // { reference[plane], cdef_temp }
+  VkDescriptorSet set_sse[MAX_PLANES];      // { cdef_temp, source[plane], sse_buffer }
+  VkPipeline pipeline_filter, pipeline_sse;
+  VkPipelineLayout layout_filter, layout_sse;
+  int width, height, num_planes;
+} CdefContext;
+
+static const int cdef_pri_luma_choices[6]   = { 0, 1, 2, 4, 8, 16 };   // AV1-style primary strength grid (luma)
+static const int cdef_sec_luma_choices[4]   = { 0, 1, 2, 4 };
+static const int cdef_pri_chroma_choices[4] = { 0, 1, 2, 4 };
+static const int cdef_sec_chroma_choices[3] = { 0, 1, 2 };
+
+// Record a cdef filter of reference[plane] -> cdef_temp at (pri, sec), then SSE(cdef_temp, source[plane]); one submit.
+static uint64_t cdef_measure(CdefContext *ctx, int plane, int plane_w, int plane_h, int pri, int sec, int damping) {
+  int dir_shift = (plane == 0) ? 0 : 1, center = (plane == 0) ? 128 : 0;
+  int plane_pixels = plane_w * plane_h;
+  int32_t filter_push[7] = { plane_w, plane_h, pri, sec, damping, dir_shift, center };
+  int32_t sse_push[1] = { plane_pixels };
+  begin_recording();
+  vkCmdFillBuffer(command_buffer, ctx->sse_buffer, 0, 8, 0);
+  VkMemoryBarrier fill_barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT };
+  vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &fill_barrier, 0, 0, 0, 0);
+  vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, ctx->pipeline_filter);
+  vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, ctx->layout_filter, 0, 1, &ctx->set_filter[plane], 0, 0);
+  vkCmdPushConstants(command_buffer, ctx->layout_filter, VK_SHADER_STAGE_COMPUTE_BIT, 0, 28, filter_push);
+  vkCmdDispatch(command_buffer, (uint32_t)((plane_w + 7) / 8), (uint32_t)((plane_h + 7) / 8), 1);
+  memory_barrier();   // cdef write -> sse read
+  vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, ctx->pipeline_sse);
+  vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, ctx->layout_sse, 0, 1, &ctx->set_sse[plane], 0, 0);
+  vkCmdPushConstants(command_buffer, ctx->layout_sse, VK_SHADER_STAGE_COMPUTE_BIT, 0, 4, sse_push);
+  vkCmdDispatch(command_buffer, (uint32_t)((plane_pixels + 255) / 256), 1, 1);
+  submit_and_wait();
+  return ((uint64_t)ctx->sse_map[1] << 32) | (uint64_t)ctx->sse_map[0];
+}
+
+// Record a cdef filter of reference[plane] -> cdef_temp at the chosen (pri, sec), then copy cdef_temp back into
+// reference[plane] (the deringed reconstruction the next frame predicts from). One submit.
+static void cdef_apply(CdefContext *ctx, int plane, int plane_w, int plane_h, int pri, int sec, int damping) {
+  int dir_shift = (plane == 0) ? 0 : 1, center = (plane == 0) ? 128 : 0;
+  int32_t filter_push[7] = { plane_w, plane_h, pri, sec, damping, dir_shift, center };
+  begin_recording();
+  vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, ctx->pipeline_filter);
+  vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, ctx->layout_filter, 0, 1, &ctx->set_filter[plane], 0, 0);
+  vkCmdPushConstants(command_buffer, ctx->layout_filter, VK_SHADER_STAGE_COMPUTE_BIT, 0, 28, filter_push);
+  vkCmdDispatch(command_buffer, (uint32_t)((plane_w + 7) / 8), (uint32_t)((plane_h + 7) / 8), 1);
+  VkMemoryBarrier write_barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT };
+  vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &write_barrier, 0, 0, 0, 0);
+  VkBufferCopy copy = { 0, 0, (VkDeviceSize)plane_w * plane_h * 4 };
+  vkCmdCopyBuffer(command_buffer, ctx->cdef_temp, ctx->reference[plane], 1, &copy);
+  submit_and_wait();
+}
+
+// Full per-frame CDEF: luma searched + applied on its own; the two chroma planes share one strength (AV1-style),
+// chosen by the summed Co+Cg SSE. damping derives from quality; Q0 (lossless) returns with all-zero strengths (off).
+static void cdef_dering_frame(CdefContext *ctx, int quality, uint8_t out_strengths[4]) {
+  int damping = cdef_damping_from_quality(quality);
+  out_strengths[0] = out_strengths[1] = out_strengths[2] = out_strengths[3] = 0;
+  if (damping == 0) {
+    return;
+  }
+  int luma_w = plane_width(0, ctx->width), luma_h = plane_height(0, ctx->height);
+  uint64_t best_sse = UINT64_MAX;
+  int best_pri = 0, best_sec = 0;
+  for (int pi = 0; pi < 6; pi++) {
+    for (int si = 0; si < 4; si++) {
+      uint64_t sse = cdef_measure(ctx, 0, luma_w, luma_h, cdef_pri_luma_choices[pi], cdef_sec_luma_choices[si], damping);
+      if (sse < best_sse) {
+        best_sse = sse;
+        best_pri = cdef_pri_luma_choices[pi];
+        best_sec = cdef_sec_luma_choices[si];
+      }
+    }
+  }
+  cdef_apply(ctx, 0, luma_w, luma_h, best_pri, best_sec, damping);
+  out_strengths[0] = (uint8_t)best_pri;
+  out_strengths[1] = (uint8_t)best_sec;
+  if (ctx->num_planes >= 3) {
+    int co_w = plane_width(1, ctx->width), co_h = plane_height(1, ctx->height);
+    int cg_w = plane_width(2, ctx->width), cg_h = plane_height(2, ctx->height);
+    uint64_t best_chroma = UINT64_MAX;
+    int best_cpri = 0, best_csec = 0;
+    for (int pi = 0; pi < 4; pi++) {
+      for (int si = 0; si < 3; si++) {
+        uint64_t sse = cdef_measure(ctx, 1, co_w, co_h, cdef_pri_chroma_choices[pi], cdef_sec_chroma_choices[si], damping)
+                     + cdef_measure(ctx, 2, cg_w, cg_h, cdef_pri_chroma_choices[pi], cdef_sec_chroma_choices[si], damping);
+        if (sse < best_chroma) {
+          best_chroma = sse;
+          best_cpri = cdef_pri_chroma_choices[pi];
+          best_csec = cdef_sec_chroma_choices[si];
+        }
+      }
+    }
+    cdef_apply(ctx, 1, co_w, co_h, best_cpri, best_csec, damping);
+    cdef_apply(ctx, 2, cg_w, cg_h, best_cpri, best_csec, damping);
+    out_strengths[2] = (uint8_t)best_cpri;
+    out_strengths[3] = (uint8_t)best_csec;
+  }
+}
+
 // Extract the audio track to a temporary OGG/Vorbis blob via ffmpeg (returns NULL if there is none).
 static uint8_t *extract_audio(const char *input, uint64_t *out_size) {
   char command[4096];
@@ -1731,12 +1840,14 @@ int main(int argc, char **argv) {
   // sub-region). Only allocated when CDEF is on.
   VkBuffer source_ycocg[MAX_PLANES] = { 0 }, cdef_temp_buffer = 0, cdef_sse_buffer = 0;
   VkDeviceMemory source_ycocg_memory[MAX_PLANES] = { 0 }, cdef_temp_memory = 0, cdef_sse_memory = 0;
+  void *cdef_sse_map = 0;
   if (g_cdef) {
     for (int plane = 0; plane < g_num_planes; plane++) {
       create_buffer(plane_bytes, DEVICE_LOCAL, &source_ycocg[plane], &source_ycocg_memory[plane]);
     }
     create_buffer(plane_bytes, DEVICE_LOCAL, &cdef_temp_buffer, &cdef_temp_memory);
     create_buffer(8, HOST_VISIBLE_COHERENT, &cdef_sse_buffer, &cdef_sse_memory);
+    VK_CHECK(vkMapMemory(device, cdef_sse_memory, 0, 8, 0, &cdef_sse_map));
   }
 
   // DWT transpose scratch: a W x H plane is transposed to H x W and stored with row stride
@@ -2018,13 +2129,28 @@ int main(int argc, char **argv) {
   // {filtered scratch, source YCoCg, sse counter}. The filter reads previous_buffer (the reconstruct) into
   // cdef_temp_buffer; the search compares cdef_temp against the saved source_ycocg.
   VkDescriptorSet set_cdef[MAX_PLANES] = { 0 }, set_cdef_sse[MAX_PLANES] = { 0 };
+  CdefContext cdef_ctx = { 0 };
   if (g_cdef) {
     for (int plane = 0; plane < g_num_planes; plane++) {
       set_cdef[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
       bind_storage_buffers(set_cdef[plane], (VkBuffer[]){ previous_buffer[plane], cdef_temp_buffer }, 2);
       set_cdef_sse[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
       bind_storage_buffers(set_cdef_sse[plane], (VkBuffer[]){ cdef_temp_buffer, source_ycocg[plane], cdef_sse_buffer }, 3);
+      cdef_ctx.reference[plane] = previous_buffer[plane];   // I/P path: the reconstruct reference (B uses DPB slots, set per-frame)
+      cdef_ctx.source[plane] = source_ycocg[plane];
+      cdef_ctx.set_filter[plane] = set_cdef[plane];
+      cdef_ctx.set_sse[plane] = set_cdef_sse[plane];
     }
+    cdef_ctx.cdef_temp = cdef_temp_buffer;
+    cdef_ctx.sse_buffer = cdef_sse_buffer;
+    cdef_ctx.sse_map = (volatile uint32_t *)cdef_sse_map;
+    cdef_ctx.pipeline_filter = pipeline_cdef;
+    cdef_ctx.layout_filter = pipeline_layout_cdef;
+    cdef_ctx.pipeline_sse = pipeline_cdef_sse;
+    cdef_ctx.layout_sse = pipeline_layout_cdef_sse;
+    cdef_ctx.width = width;
+    cdef_ctx.height = height;
+    cdef_ctx.num_planes = g_num_planes;
   }
   // Motion search reads the luma (plane 0) of the current frame and the previous reconstructed frame.
   set_motion_estimate = allocate_descriptor_set(descriptor_pool, layout_9_buffers);
