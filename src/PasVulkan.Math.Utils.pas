@@ -70,13 +70,13 @@ uses SysUtils,
  {$define HasSARLongint}
 {$else}
  {$undef HasSARLongint}
-{$endif}
+{$ifend}
 
 {$if declared(SARInt64)}
  {$define HasSARInt64}
 {$else}
  {$undef HasSARInt64}
-{$endif}
+{$ifend}
 
 {$if not defined(HasSARLongint)}
 function SARLongint(Value,Shift:longint):longint;

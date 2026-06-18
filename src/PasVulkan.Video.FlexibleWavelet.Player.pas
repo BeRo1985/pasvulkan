@@ -1,4 +1,4 @@
-unit PasVulkan.Video.FlexibleWavelet.Player;
+﻿unit PasVulkan.Video.FlexibleWavelet.Player;
 {$i PasVulkan.inc}
 
 // Poll-based playback facade over the Flexible Wavelet video decoders. The engine drives it with a clock (e.g. the
@@ -164,7 +164,7 @@ begin
  // peek the 126-byte container header for the time base + the backend decision, then rewind for the decoder
  fStream.Seek(0,soBeginning);
  fStream.ReadBuffer(fHeader,SizeOf(fHeader));
- if (CompareByte(fHeader.Magic[0],TpvFlexibleWaveletVideo.Magic[0],4)<>0) or (fHeader.Version<>TpvFlexibleWaveletVideo.FormatVersion) then begin
+ if (not CompareMem(@fHeader.Magic[0],@TpvFlexibleWaveletVideo.Magic[0],4)) or (fHeader.Version<>TpvFlexibleWaveletVideo.FormatVersion) then begin
   raise EpvFlexibleWaveletVideoPlayer.Create('Not a FWVC stream');
  end;
 

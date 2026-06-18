@@ -105,10 +105,10 @@ type EpvFlexibleWaveletAudioDecoder=class(EpvFlexibleWaveletAudio);
             end;
             TInt32Plane=array of TpvInt32;
             TInt32Planes=array of TInt32Plane;
-            TLMSStates=array of TLMSState;
+            TLMSStates=array of TpvFlexibleWaveletAudio.TLMSState;
       private
        fStream:TStream;
-       fHeader:THeader;
+       fHeader:TpvFlexibleWaveletAudio.THeader;
        fChannels:TpvInt32;
        fSampleRate:TpvInt32;
        fFrameCount:TpvInt64;
@@ -120,8 +120,8 @@ type EpvFlexibleWaveletAudioDecoder=class(EpvFlexibleWaveletAudio);
        fLMSAdaptShift:TpvInt32;
        fPairing:boolean;
        fPairCount:TpvInt32;
-       fPairs:array[0..MaxChannelPairs-1,0..1] of TpvInt32;
-       fPairModes:array[0..MaxChannelPairs-1] of TpvInt32;
+       fPairs:array[0..TpvFlexibleWaveletAudio.MaxChannelPairs-1,0..1] of TpvInt32;
+       fPairModes:array[0..TpvFlexibleWaveletAudio.MaxChannelPairs-1] of TpvInt32;
        fBaseStep:TpvFloat;
        fDataStart:TpvInt64;
        fCursor:TpvInt64;
@@ -159,7 +159,7 @@ type EpvFlexibleWaveletAudioDecoder=class(EpvFlexibleWaveletAudio);
        destructor Destroy; override;
        procedure Seek(const aSamplePosition:TpvUInt64);
        function Decode(const aBuffer:Pointer;const aCount:TpvSizeInt):TpvSizeInt;
-       procedure FullDecode(var aChannelBuffer:TAudioBuffers);
+       procedure FullDecode(var aChannelBuffer:TpvFlexibleWaveletAudio.TAudioBuffers);
        property Channels:TpvInt32 read fChannels;
        property SampleRate:TpvInt32 read fSampleRate;
        property FrameCount:TpvInt64 read fFrameCount;
@@ -645,7 +645,7 @@ begin
  result:=Produced;
 end;
 
-procedure TpvFlexibleWaveletAudioDecoder.FullDecode(var aChannelBuffer:TAudioBuffers);
+procedure TpvFlexibleWaveletAudioDecoder.FullDecode(var aChannelBuffer:TpvFlexibleWaveletAudio.TAudioBuffers);
 var Channel,BlockIndex:TpvInt32;
     Frame,Index:TpvInt64;
 begin

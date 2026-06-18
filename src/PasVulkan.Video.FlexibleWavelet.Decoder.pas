@@ -1,4 +1,4 @@
-(******************************************************************************
+﻿(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.Framework.pas                  *
@@ -110,8 +110,8 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
       private
        fStream:TStream;
        fDevice:TpvVulkanDevice;
-       fHeader:THeader;
-       fFrameEntries:TFrameEntries;
+       fHeader:TpvFlexibleWaveletVideo.THeader;
+       fFrameEntries:TpvFlexibleWaveletVideo.TFrameEntries;
        fFrameCount:TpvInt64;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
@@ -218,7 +218,7 @@ type EpvFlexibleWaveletVideoDecoder=class(EpvFlexibleWaveletVideo);
        fBidiDisplayPOC:TpvInt32;
        fBidiRingCursor:TpvInt32; // mode B: free-running ring-slot cursor; does NOT reset per display frame, so consecutive
                                  // (pipelined, in-flight) frames take DISJOINT input slots instead of clobbering each other
-       fHFGain:TSynthesisGains;
+       fHFGain:TpvFlexibleWaveletVideo.TSynthesisGains;
        fLLGain:TpvFloat;
        fHasAlpha:boolean;     // color_flags bit2: an optional appended 8-bit alpha section per frame (intra, full-res)
        fAlphaPremultiplied:boolean; // color_flags bit3: the RGB is premultiplied by alpha
@@ -516,7 +516,7 @@ begin
 
  // The 142-byte packed header (ReadBuffer-compatible, little-endian)
  fStream.ReadBuffer(fHeader,SizeOf(fHeader));
- if (CompareByte(fHeader.Magic[0],Magic[0],4)<>0) or (fHeader.Version<>FormatVersion) then begin
+ if (not CompareMem(@fHeader.Magic[0],@Magic[0],4)) or (fHeader.Version<>FormatVersion) then begin
   raise EpvFlexibleWaveletVideoDecoder.Create('Not a FWVC stream');
  end;
 
