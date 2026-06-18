@@ -1407,8 +1407,9 @@ int main(int argc, char **argv) {
     } else if (!strncmp(argv[i], "--interp=", 9)) {   // sub-pel interpolation filter (g_motion_mode bits0-1: 0 bilinear, 1 6-tap, 2 8-tap DCTIF). Default 6-tap.
       g_motion_mode &= ~3;
       if (strstr(argv[i] + 9, "8tap")) { g_motion_mode |= 2; } else if (!strstr(argv[i] + 9, "bilinear")) { g_motion_mode |= 1; }
-    } else if (!strncmp(argv[i], "--mv-precision=", 15)) {   // MV precision (g_motion_mode bit2). Default quarter.
-      if (strstr(argv[i] + 15, "half")) { g_motion_mode &= ~4; } else { g_motion_mode |= 4; }
+    } else if (!strncmp(argv[i], "--mv-precision=", 15)) {   // MV precision (g_motion_mode bits2-3: 0 half, 1 quarter, 2 eighth [reserved], 3 amvr [reserved]). Default quarter.
+      g_motion_mode &= ~12;
+      if (!strstr(argv[i] + 15, "half")) { g_motion_mode |= 4; }
     } else if (!strncmp(argv[i], "--mv-predict=", 13)) {   // ME predictor: temporal (default), spatial median (2nd refine pass), or spatial-full (fuller search, weaker bias)
       g_mv_predict_spatial = strstr(argv[i] + 13, "spatial") ? 1 : 0;
       g_mv_predict_full = strstr(argv[i] + 13, "spatial-full") ? 1 : 0;
@@ -4017,7 +4018,7 @@ int main(int argc, char **argv) {
     memcpy(header.magic, "FWVC", 4);   // uppercase magic (dual H.264 + wavelet container)
     header.version = 1;
     header.header_size = (uint16_t)sizeof header;
-    header.mv_codec = (uint8_t)((g_mv_codec & 1) | ((g_motion_mode & 7) << 1));   // bit0 = entropy coder (0 Exp-Golomb / 1 range); bits1-3 = motion_mode (bits1-2 interp filter, bit3 quarter-pel). Old files = 0 = golomb + bilinear + half-pel.
+    header.mv_codec = (uint8_t)((g_mv_codec & 1) | ((g_motion_mode & 15) << 1));   // bit0 = entropy coder (0 Exp-Golomb / 1 range); bits1-4 = motion_mode (bits1-2 interp filter, bits3-4 MV precision [0 half, 1 quarter, 2 eighth reserved, 3 amvr reserved]). Old files = 0 = golomb + bilinear + half-pel.
     header.prediction_method = mode_3ddwt ? (g_mctf ? (uint8_t)3 : (uint8_t)2) : (uint8_t)method;   // 3 = MCTF 3D-DWT, 2 = open-loop 3D-DWT GOP
     header.chroma_quant_x16 = (uint8_t)(g_chroma_quant * 16.0f + 0.5f);   // chroma quant weighting (16 = 1.0 = off)
     header.chroma_format = (uint8_t)g_chroma_format;

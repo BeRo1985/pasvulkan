@@ -7,7 +7,7 @@
 layout(local_size_x_id = 1) in;               // workgroup = MB*MB threads, but the metric uses one thread per 4x4 tile
 layout(constant_id = 0) const int MB = 16;    // motion block size (8 / 16 / 32)
 layout(constant_id = 2) const int EMIT_SATD = 1;   // 1 = SATD (Hadamard, default), 0 = SAD (sum |residual|) — selected by --merge-metric
-layout(constant_id = 3) const int MOTION_MODE = 5;   // bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bit2 = quarter-pel MVs (else half-pel)
+layout(constant_id = 3) const int MOTION_MODE = 5;   // bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bits2-3 = MV precision (0 half, 1 quarter, 2 eighth [reserved], 3 amvr [reserved])
 const int INTERP = MOTION_MODE & 3;
 const int QUARTER_PEL = (MOTION_MODE >> 2) & 1;
 layout(std430, binding = 0)  readonly buffer Cur0   { int cur0[]; };

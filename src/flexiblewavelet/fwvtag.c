@@ -3,7 +3,7 @@
 // The sub-pel mode (interpolation filter + MV precision) lives in the container header's mv_codec byte:
 //   bit0    = entropy coder (0 = Exp-Golomb, 1 = range)   <- left untouched
 //   bits1-2 = interpolation filter (0 = bilinear, 1 = 6-tap, 2 = 8-tap DCTIF)
-//   bit3    = MV precision  (0 = half-pel, 1 = quarter-pel)
+//   bits3-4 = MV precision  (0 = half-pel, 1 = quarter-pel, 2 = eighth-pel [reserved], 3 = amvr [reserved])
 // Files written before the multi-mode encoder have these bits = 0 (bilinear + half-pel), which is exactly how
 // they were encoded — so they need no patch. Note the layout change: 6-tap + quarter-pel files written by an
 // earlier build (old mv_codec 0x06) must be retagged to the new value (0x0a). This tool writes that one byte.
@@ -49,10 +49,10 @@ typedef struct {
 // Writes the human-readable mode into the caller's buffer and returns it. The caller supplies the buffer so
 // two mode_name() results can coexist in one printf (a single shared static buffer would alias them).
 static const char *mode_name(int mv_codec, char *buffer, size_t buffer_size) {
-  int interp = (mv_codec >> 1) & 3, precision = (mv_codec >> 3) & 1;
+  int interp = (mv_codec >> 1) & 3, precision = (mv_codec >> 3) & 3;
   const char *filter = (interp == 0) ? "bilinear" : ((interp == 1) ? "6-tap" : ((interp == 2) ? "8-tap" : "reserved"));
-  const char *prec = precision ? "quarter-pel" : "half-pel";
-  snprintf(buffer, buffer_size, "%s + %s%s", filter, prec, ((interp == 0) && !precision) ? " (legacy)" : "");
+  const char *prec = (precision == 0) ? "half-pel" : ((precision == 1) ? "quarter-pel" : ((precision == 2) ? "eighth-pel (reserved)" : "amvr (reserved)"));
+  snprintf(buffer, buffer_size, "%s + %s%s", filter, prec, ((interp == 0) && (precision == 0)) ? " (legacy)" : "");
   return buffer;
 }
 
@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
       new_byte = (new_byte & ~6) | (set_interp << 1);
     }
     if (set_precision >= 0) {
-      new_byte = (new_byte & ~8) | (set_precision << 3);
+      new_byte = (new_byte & ~24) | (set_precision << 3);
     }
     if (new_byte != old_byte) {
       if (fseek(file, (long)offset, SEEK_SET) != 0) {

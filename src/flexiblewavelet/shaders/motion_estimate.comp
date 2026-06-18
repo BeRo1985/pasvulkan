@@ -8,7 +8,7 @@
 layout(local_size_x_id = 1) in;               // workgroup = MB*MB threads, one per block pixel (64/256/1024 for MB=8/16/32)
 layout(constant_id = 0) const int MB = 16;    // motion block size (8 / 16 / 32)
 layout(constant_id = 2) const int EMIT_SATD = 1;   // 1 = write SATD to sad_out (variable-motion R-D merge); 0 = cheap SAD only (fixed/B path doesn't use sad_out → the SATD pass is compiled out, restoring occupancy)
-layout(constant_id = 3) const int MOTION_MODE = 5;   // bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bit2 = quarter-pel MVs (else half-pel)
+layout(constant_id = 3) const int MOTION_MODE = 5;   // bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bits2-3 = MV precision (0 half, 1 quarter, 2 eighth [reserved], 3 amvr [reserved])
 const int INTERP = MOTION_MODE & 3;
 const int QUARTER_PEL = (MOTION_MODE >> 2) & 1;
 const int MB_SHIFT = (MB == 8) ? 3 : ((MB == 16) ? 4 : 5);   // log2(MB): x / MB -> x >> MB_SHIFT (MB is a power of two)
