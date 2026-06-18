@@ -498,19 +498,28 @@ static size_t compact_block_data(uint8_t *out, const uint8_t *padded,
 static uint8_t *extract_audio(const char *input, uint64_t *out_size) {
   char command[4096];
   *out_size = 0;
-  snprintf(command, sizeof command, "ffprobe -v error -select_streams a:0 -show_entries stream=codec_type -of csv=p=0 \"%s\"", input);
+  // Probe the source audio codec by name: if it is already Vorbis, stream-copy it verbatim into an Ogg container
+  // (lossless, no re-encode); otherwise ffmpeg transcodes it to OGG/Vorbis.
+  snprintf(command, sizeof command, "ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 \"%s\"", input);
   FILE *probe = popen(command, "r");
-  char codec_type[64] = "";
+  char codec_name[64] = "";
   if (probe) {
-    if (!fgets(codec_type, sizeof codec_type, probe)) {
-      codec_type[0] = 0;
+    if (!fgets(codec_name, sizeof codec_name, probe)) {
+      codec_name[0] = 0;
     }
     pclose(probe);
   }
-  if (strncmp(codec_type, "audio", 5)) {
-    return 0;
+  codec_name[strcspn(codec_name, "\r\n")] = 0;   // drop the trailing newline ffprobe emits
+  if (codec_name[0] == 0) {
+    return 0;   // no audio stream
   }
-  snprintf(command, sizeof command, "ffmpeg -v error -y -i \"%s\" -vn -c:a libvorbis -q:a 5 /tmp/pvw2_a.ogg", input);
+  if (!strcmp(codec_name, "vorbis")) {
+    fprintf(stderr, "audio: ffmpeg COPIES source Ogg/Vorbis audio -> OGG (stream-copy, no re-encode)\n");
+    snprintf(command, sizeof command, "ffmpeg -v error -y -i \"%s\" -vn -c:a copy -f ogg /tmp/pvw2_a.ogg", input);
+  } else {
+    fprintf(stderr, "audio: ffmpeg RE-ENCODES source audio (%s) -> OGG/Vorbis (libvorbis q5; not a stream copy)\n", codec_name);
+    snprintf(command, sizeof command, "ffmpeg -v error -y -i \"%s\" -vn -c:a libvorbis -q:a 5 /tmp/pvw2_a.ogg", input);
+  }
   if (system(command)) {
     return 0;
   }
@@ -563,6 +572,7 @@ static short *extract_audio_pcm(const char *input, int *out_samples, int *out_ch
   if ((channels < 1) || (rate < 1)) {
     return NULL;
   }
+  fprintf(stderr, "audio: ffmpeg DECODES source audio -> raw s16 PCM (%d ch @ %d Hz); re-encoded by the chosen audio codec (not a stream copy)\n", channels, rate);
   snprintf(command, sizeof command, "ffmpeg -v error -y -i \"%s\" -vn -f s16le -acodec pcm_s16le -ac %d -ar %d /tmp/pvw2_a.raw", input, channels, rate);
   if (system(command)) {
     return NULL;
@@ -2356,6 +2366,8 @@ int main(int argc, char **argv) {
   if (wavelet_scale < 1.0) {   // down-scale the raw frames to the (reduced) wavelet dimensions
     snprintf(scale_filter, sizeof scale_filter, "-vf scale=%d:%d ", width, height);
   }
+  fprintf(stderr, "video: ffmpeg DECODES source -> raw %s frames%s; re-encoded by the wavelet codec (not a stream copy)\n",
+          pix_fmt, (scale_filter[0] ? " (scaled)" : ""));
   if (max_frames) {
     snprintf(command, sizeof command, "ffmpeg -v error -i \"%s\" -frames:v %ld %s-f rawvideo -pix_fmt %s -", input, max_frames, scale_filter, pix_fmt);
   } else {
