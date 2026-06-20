@@ -3227,6 +3227,18 @@ begin
   // spatial inverse: unpack -> [dequant] -> iDWT, into the PREFETCH coeff (so it never touches fCoeffBuffer, which the
   // present's display copy + color use) and the chosen GOP buffer; the scratch + row-scratch set are shared (the
   // present's display does not touch scratch).
+  // bitplane_unpack accumulates coefficients IN PLACE, assuming the output starts at 0 (it only writes set
+  // bits; all-zero coefficients/blocks are never touched). fPrefetchCoeff is reused across frames without
+  // zero-init, so stale values from a previous frame survived in never-written (e.g. flat-chroma) coefficients
+  // -> garbage. Clear it first. (Luma always carries energy so it masked this; flat chroma exposed it.)
+  aCommandBuffer.CmdFillBuffer(fPrefetchCoeff[Plane].Handle,0,TVkDeviceSize(PlanePixels)*4,0);
+  FillChar(Barrier,SizeOf(Barrier),#0);
+  Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,1,@Barrier,0,nil,0,nil);
   UnpackPush[0]:=PlaneW;
   UnpackPush[1]:=PlaneH;
   UnpackPush[2]:=PlaneBlocksX;

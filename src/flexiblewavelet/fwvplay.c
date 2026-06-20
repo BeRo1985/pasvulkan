@@ -448,7 +448,7 @@ static void decode3d_spatial(const Decode3D *d, int buf, int slot) {
     int pw = plane_width(plane, d->width), ph = plane_height(plane, d->height);   // chroma smaller when subsampled
     int pp = pw * ph;
     int plane_blocks = block_count_x(pw) * block_count_y(ph);
-    int block_workgroups = (plane_blocks + 63) / 64;
+    int block_workgroups = (g_block_size == 128) ? plane_blocks : ((plane_blocks + 63) / 64);   // COOP (128): bitplane_unpack runs one WORKGROUP per block; dispatch plane_blocks (latent: FWV defaults to 32 so never hit, but --block-size=128 + 3D-DWT would)
     int pixel_workgroups = (pp + 255) / 256;
     int level_width[16], level_height[16], level_count = 0, cw = pw, ch = ph;
     for (int level = 0; (level < d->levels) && (cw >= 2) && (ch >= 2); level++) {
@@ -458,6 +458,13 @@ static void decode3d_spatial(const Decode3D *d, int buf, int slot) {
       cw = (cw + 1) / 2;
       ch = (ch + 1) / 2;
     }
+    // bitplane_unpack accumulates coefficients IN PLACE, assuming the output starts at 0 (it only writes set
+    // bits; all-zero coefficients/blocks are never touched). prefetch_coeff is DEVICE_LOCAL and reused across
+    // frames without zero-init, so stale values from a previous frame survive in never-written (e.g. flat-chroma)
+    // coefficients -> garbage. Clear it first. (Latent: only manifests when the stale memory is non-zero.)
+    vkCmdFillBuffer(d->cmd, d->prefetch_coeff[plane], 0, (VkDeviceSize)pp * 4, 0);
+    VkMemoryBarrier fill_barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT };
+    vkCmdPipelineBarrier(d->cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &fill_barrier, 0, 0, 0, 0);
     int32_t unpack_push[4] = { pw, ph, block_count_x(pw), block_count_y(ph) };
     vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->unpack);
     vkCmdBindDescriptorSets(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->layout_unpack, 0, 1, &d->unpack_pf[plane], 0, 0);
@@ -1028,7 +1035,7 @@ int main(int argc, char **argv) {
       "usage: %s file.fwv [flags...]\n"
       "  playback (default: open a window and play with audio):\n"
       "    --exposure=<f>                 HDR exposure override (default: keep the file's)\n"
-      "    --output=scrgb|sdr             force scRGB FP16 swapchain or SDR tonemap (default: autodetect)\n"
+      "    --output=scrgb|sdr             force scRGB FP16 (real HDR display) or SDR tonemap (default: sdr)\n"
       "    --decoder=h264|wavelet|auto    pick the embedded stream when both exist (default auto: H.264 where HW-decodable)\n"
       "  B-frame decode (auto-detected from the container):\n"
       "    --cpu-decode                   force the slow CPU B-decode oracle (GPU bidi decode is the default)\n"
@@ -1042,7 +1049,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   float exposure_override = -1.0f;   // <0 = keep the default
-  int output_mode = 0;               // 0 = autodetect, 1 = force scRGB FP16, 2 = force SDR tonemap
+  int output_mode = 0;               // 0 = auto = SDR tonemap (scRGB opt-in), 1 = force scRGB FP16, 2 = force SDR tonemap
   int verify = 0;                    // --verify: GPU-decode vs CPU-decode PSNR check, no window
   int cpu_decode = 0;                // --cpu-decode: force the Stage A CPU B-decode (oracle/fallback); default for a B-stream is the GPU bidi decode (Stage B1b)
   int dump_first_frame = 0;          // --dump: write the GPU-decoded frame 0 to /tmp/fwv_frame0.ppm (.f16 when scRGB)
@@ -1378,12 +1385,12 @@ int main(int argc, char **argv) {
   vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, 0);
   VkSurfaceFormatKHR *formats = checked_malloc(format_count * sizeof(*formats));
   vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, formats);
-  // HDR output autodetect: on a real HDR display prefer scRGB FP16 (EXTENDED_SRGB_LINEAR); else (e.g.
-  // X11, no HDR) fall back to 8-bit sRGB (the tonemap path). --output=sdr forces the fallback, =scrgb forces the try.
-  int want_scrgb = is_hdr;
-  if (output_mode == 2) {
-    want_scrgb = 0;
-  } else if (output_mode == 1) {
+  // HDR output: scRGB FP16 (EXTENDED_SRGB_LINEAR) is OPT-IN via --output=scrgb. Autodetect can't be trusted here:
+  // NVIDIA on X11 advertises EXTENDED_SRGB_LINEAR support even with no HDR display connected, and actually creating
+  // that swapchain then segfaults inside the driver (vkCreateSwapchainKHR). So autodetect and --output=sdr both
+  // default to the 8-bit sRGB tonemap blit, which is always safe; pass --output=scrgb only on a real HDR display.
+  int want_scrgb = 0;
+  if (output_mode == 1) {
     want_scrgb = 1;
   }
   int use_scrgb_output = 0;
