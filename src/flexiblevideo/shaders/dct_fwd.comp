@@ -22,7 +22,11 @@ void main() {
 
   float alpha = (frequency == 0) ? 0.353553390593273762 : 0.5;
   basis[frequency][local_x] = alpha * cos((((float((2 * local_x) + 1)) * float(frequency)) * 3.14159265358979312) / 16.0);
-  block[frequency][local_x] = data[(((base_y + frequency) * push.width) + base_x) + local_x];
+  // Edge-replicate the read for partial blocks at the plane's right/bottom edge (plane dims not a multiple of 8,
+  // e.g. 4:2:0 chroma 960x540): clamp so the out-of-range rows/cols re-use the last valid sample instead of garbage.
+  int sample_y = min(base_y + frequency, push.height - 1);
+  int sample_x = min(base_x + local_x, push.width - 1);
+  block[frequency][local_x] = data[(sample_y * push.width) + sample_x];
   barrier();
 
   // Row pass: rows[r][u] = sum_x basis[u][x] * block[r][x]   (thread computes r = frequency, u = local_x)
