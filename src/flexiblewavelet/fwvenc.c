@@ -2888,6 +2888,9 @@ int main(int argc, char **argv) {
         // alpha is coded per-frame like the main I/P path. Load gop_rgb[f] into rgb_buffer, extract -> forward DWT
         // -> quant -> bitplane size, in the SAME pass-1 command buffer. Uses step_map[3] (built once at alpha_qp).
         if (g_has_alpha) {
+          // Alpha has its OWN lossless decision (alpha_qp == 0 -> reversible 5/3), independent of the frame quality, so
+          // a lossless alpha matte can ride on a lossy 3D-DWT colour frame; key the transform/quant on alpha_lossless.
+          int alpha_lossless = (((g_alpha_qp >= 0) ? g_alpha_qp : quality) == 0);
           memcpy(rgb_map, gop_rgb[f], frame_bytes);   // the original (display-order) frame f, with its alpha lane
           int aw = width, ah = height, a_scratch_stride = (aw > ah) ? aw : ah, a_pixels = aw * ah;
           int a_blocks_x = block_count_x(aw), a_blocks_y = block_count_y(ah), a_block_count = a_blocks_x * a_blocks_y;
@@ -2897,7 +2900,7 @@ int main(int argc, char **argv) {
           for (int level = 0; ((level < levels) && (acw >= 2)) && ach >= 2; level++) {
             alw[alc] = acw; alh[alc] = ach; alc++; acw = (acw + 1) / 2; ach = (ach + 1) / 2;
           }
-          int32_t a_extract_push[3] = { aw, ah, lossless };
+          int32_t a_extract_push[3] = { aw, ah, alpha_lossless };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, (g_sample_bytes == 2) ? pipeline_extract_alpha16 : pipeline_extract_alpha);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_extract_alpha, 0, 1, &set_extract_alpha, 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_extract_alpha, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, a_extract_push);
@@ -2906,7 +2909,7 @@ int main(int argc, char **argv) {
           for (int level = 0; level < alc; level++) {
             int level_w = alw[level], level_h = alh[level];
             int32_t row_push_1[4] = { aw, level_w, level_h, 1 };
-            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_forward_row);
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, alpha_lossless ? pipeline_forward_row_53 : pipeline_forward_row_97);
             vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row[3], 0, 0);
             vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_1);
             vkCmdDispatch(command_buffer, level_h, 1, 1);
@@ -2918,7 +2921,7 @@ int main(int argc, char **argv) {
             vkCmdDispatch(command_buffer, (level_w + 15) / 16, (level_h + 15) / 16, 1);
             memory_barrier();
             int32_t row_push_2[4] = { a_scratch_stride, level_h, level_w, 1 };
-            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_forward_row);
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, alpha_lossless ? pipeline_forward_row_53 : pipeline_forward_row_97);
             vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row_scratch, 0, 0);
             vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_2);
             vkCmdDispatch(command_buffer, level_w, 1, 1);
@@ -2930,7 +2933,7 @@ int main(int argc, char **argv) {
             vkCmdDispatch(command_buffer, (level_h + 15) / 16, (level_w + 15) / 16, 1);
             memory_barrier();
           }
-          if (!lossless) {
+          if (!alpha_lossless) {
             int32_t a_quant_push[2];
             a_quant_push[0] = a_pixels;
             float a_multiplier = 1.0f;   // alpha quantises like luma
@@ -3916,6 +3919,10 @@ int main(int argc, char **argv) {
       // Alpha plane 3 (intra): extract -> forward DWT -> quant (lossy) -> bitplane size, in the SAME pass-1
       // command buffer (no extra submit), mirroring the color forward sequence for one full-res plane.
       if (g_has_alpha) {
+        // Alpha has its OWN lossless decision (alpha_qp == 0 -> reversible 5/3), independent of the frame quality, so
+        // a lossless alpha matte can ride on a lossy colour frame (--alpha-qp=0); key the transform/quant on alpha_lossless,
+        // not the frame `lossless`, so the GPU forward matches the CPU reconstruct_plane (which uses alpha_qp).
+        int alpha_lossless = (((g_alpha_qp >= 0) ? g_alpha_qp : quality) == 0);
         int plane_w = width, plane_h = height;   // alpha is always full-res
         int scratch_stride = (plane_w > plane_h) ? plane_w : plane_h;
         int plane_pixels = plane_w * plane_h;
@@ -3931,7 +3938,7 @@ int main(int argc, char **argv) {
           cw = (cw + 1) / 2;
           ch = (ch + 1) / 2;
         }
-        int32_t extract_push[3] = { plane_w, plane_h, lossless };
+        int32_t extract_push[3] = { plane_w, plane_h, alpha_lossless };
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, (g_sample_bytes == 2) ? pipeline_extract_alpha16 : pipeline_extract_alpha);
         vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_extract_alpha, 0, 1, &set_extract_alpha, 0, 0);
         vkCmdPushConstants(command_buffer, pipeline_layout_extract_alpha, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, extract_push);
@@ -3940,7 +3947,7 @@ int main(int argc, char **argv) {
         for (int level = 0; level < level_count; level++) {
           int level_w = level_width[level], level_h = level_height[level];
           int32_t row_push_1[4] = { plane_w, level_w, level_h, 1 };
-          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_forward_row);
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, alpha_lossless ? pipeline_forward_row_53 : pipeline_forward_row_97);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row[3], 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_1);
           vkCmdDispatch(command_buffer, level_h, 1, 1);
@@ -3952,7 +3959,7 @@ int main(int argc, char **argv) {
           vkCmdDispatch(command_buffer, (level_w + 15) / 16, (level_h + 15) / 16, 1);
           memory_barrier();
           int32_t row_push_2[4] = { scratch_stride, level_h, level_w, 1 };
-          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_forward_row);
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, alpha_lossless ? pipeline_forward_row_53 : pipeline_forward_row_97);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row_scratch, 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_2);
           vkCmdDispatch(command_buffer, level_w, 1, 1);
@@ -3964,7 +3971,7 @@ int main(int argc, char **argv) {
           vkCmdDispatch(command_buffer, (level_h + 15) / 16, (level_w + 15) / 16, 1);
           memory_barrier();
         }
-        if (!lossless) {
+        if (!alpha_lossless) {
           int32_t quant_push[2];
           quant_push[0] = plane_pixels;
           float alpha_multiplier = 1.0f;   // alpha quantises like luma (no chroma weighting)
