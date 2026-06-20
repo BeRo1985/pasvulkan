@@ -1831,14 +1831,9 @@ int main(int argc, char **argv) {
     if (gop < (bframes + 1)) {
       gop = 0;   // gop too small to host an anchor refresh -> a single open GOP (only the first frame is I)
     }
-    // DCT-B routing: the GPU bidi DCT path now covers uniform 8x8 AND the adaptive quadtree (+ in-loop deblock),
-    // but 4:4:4 only (no subsampled-chroma GPU DCT encode, like the I/P GPU DCT path). A subsampled chroma format
-    // with --bframe-dct falls back to the CPU oracle (zero-motion). Plain 4:4:4 --bframe-dct [--quadtree --deblock]
-    // (no explicit --cpu-bframes) takes the GPU motion DCT path.
-    if ((g_bframe_dct && (g_chroma_format != 0)) && !cpu_bframes) {
-      cpu_bframes = 1;
-      printf("  note: --bframe-dct with subsampled chroma needs the CPU oracle (zero-motion); 4:4:4 uses the GPU motion path\n");
-    }
+    // DCT-B routing: the GPU bidi DCT path covers uniform 8x8 AND the adaptive quadtree (+ in-loop deblock) at ANY
+    // chroma format (4:4:4 / 4:2:2 / 4:2:0) — the per-plane rANS encode + the chroma downsample handle subsampled
+    // chroma on the GPU. No CPU fallback; --cpu-bframes is the only route to the CPU oracle.
   }
   int blocks_x = block_count_x(width);
   int blocks_y = block_count_y(height);
@@ -4408,14 +4403,15 @@ int main(int argc, char **argv) {
       uint8_t *dct_b_table[MAX_PLANES] = { NULL };    // DCT-B: per-plane rANS entropy-table blobs (appended after assemble)
       uint32_t dct_b_table_len[MAX_PLANES] = { 0 };
       if (g_bframe_dct && !g_quadtree) {
-        // ---- DCT-B GPU rANS encode (4:4:4, uniform 8x8): per plane histogram -> normalize -> table -> rANS
+        // ---- DCT-B GPU rANS encode (uniform 8x8): per plane histogram -> normalize -> table -> rANS
         // size -> CPU prefix-sum -> pack, exactly like the I/P GPU DCT encode but on the (motion) residual. ----
-        int tiles_per_plane = block_count_x(width) * block_count_y(height);
         uint32_t running_offset = 0;
         for (int plane = 0; plane < g_num_planes; plane++) {
+          int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);   // chroma is subsampled when g_chroma_format != 0; the rANS encode must use per-plane tiles/dims, not the luma count
+          int tiles_per_plane = block_count_x(plane_w) * block_count_y(plane_h);
           memset(rans_hist_map, 0, 273 * 4);
           begin_recording();
-          int32_t hist_push[3] = { width, height, g_block_size };
+          int32_t hist_push[3] = { plane_w, plane_h, g_block_size };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_hist);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_hist, 0, 1, &set_rans_hist[plane], 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_rans_hist, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, hist_push);
@@ -4448,7 +4444,7 @@ int main(int argc, char **argv) {
           dct_b_table[plane] = tw.bytes;
           dct_b_table_len[plane] = (uint32_t)tw.length;
           begin_recording();
-          int32_t size_push[4] = { width, height, g_block_size, rans_tile_stride };
+          int32_t size_push[4] = { plane_w, plane_h, g_block_size, rans_tile_stride };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_size);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_size, 0, 1, &set_rans_size[plane], 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_rans_size, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, size_push);
@@ -4590,13 +4586,14 @@ int main(int argc, char **argv) {
         }
         submit_and_wait();
         // 3) partition-aware GPU rANS encode per plane (hist -> normalize -> table -> size -> CPU prefix-sum -> pack).
-        int tiles_per_plane = block_count_x(width) * block_count_y(height);
-        int regions_x = qt_region_count(width);
         uint32_t running_offset = 0;
         for (int plane = 0; plane < g_num_planes; plane++) {
+          int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);   // per-plane (subsampled chroma): tiles, region grid + the shader push dims, not the luma count
+          int tiles_per_plane = block_count_x(plane_w) * block_count_y(plane_h);
+          int regions_x = qt_region_count(plane_w);
           memset(rans_hist_map, 0, 273 * 4);
           begin_recording();
-          int32_t hist_push[5] = { width, height, g_block_size, plane * qt_regions_per_plane, regions_x };
+          int32_t hist_push[5] = { plane_w, plane_h, g_block_size, plane * qt_regions_per_plane, regions_x };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_hist_qt);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_hist_qt, 0, 1, &set_rans_hist_qt[plane], 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_rans_hist_qt, VK_SHADER_STAGE_COMPUTE_BIT, 0, 20, hist_push);
@@ -4629,7 +4626,7 @@ int main(int argc, char **argv) {
           dct_b_table[plane] = tw.bytes;
           dct_b_table_len[plane] = (uint32_t)tw.length;
           begin_recording();
-          int32_t size_push[6] = { width, height, g_block_size, rans_tile_stride, plane * qt_regions_per_plane, regions_x };
+          int32_t size_push[6] = { plane_w, plane_h, g_block_size, rans_tile_stride, plane * qt_regions_per_plane, regions_x };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_size_qt);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_size_qt, 0, 1, &set_rans_size_qt[plane], 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_rans_size_qt, VK_SHADER_STAGE_COMPUTE_BIT, 0, 24, size_push);
