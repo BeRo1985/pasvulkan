@@ -404,10 +404,11 @@ void avi_close(AviWriter *writer) {
     patch32(w->file, w->aud_strh_pos + 32, (uint32_t)w->audio_written);   // audio strh.dwLength (sample frames)
   }
 
-  // Patch the video superindex (nEntriesInUse + the entries).
+  // Patch the video superindex (nEntriesInUse + the entries). aIndex[] starts at +24 from vid_indx_pos:
+  // wLongsPerEntry(2) + bIndexSubType(1) + bIndexType(1) + nEntriesInUse(4) + dwChunkId(4) + dwReserved[3](12).
   patch32(w->file, w->vid_indx_pos + 4, w->vid_super_count);
   for (uint32_t i = 0; i < w->vid_super_count; i++) {
-    off_t e = w->vid_indx_pos + 20 + ((off_t)i * 16);
+    off_t e = w->vid_indx_pos + 24 + ((off_t)i * 16);
     patch64(w->file, e, w->vid_super[i].offset);
     patch32(w->file, e + 8, w->vid_super[i].size);
     patch32(w->file, e + 12, w->vid_super[i].duration);
@@ -415,7 +416,7 @@ void avi_close(AviWriter *writer) {
   if (w->audio_pcm) {
     patch32(w->file, w->aud_indx_pos + 4, w->aud_super_count);
     for (uint32_t i = 0; i < w->aud_super_count; i++) {
-      off_t e = w->aud_indx_pos + 20 + ((off_t)i * 16);
+      off_t e = w->aud_indx_pos + 24 + ((off_t)i * 16);
       patch64(w->file, e, w->aud_super[i].offset);
       patch32(w->file, e + 8, w->aud_super[i].size);
       patch32(w->file, e + 12, w->aud_super[i].duration);
