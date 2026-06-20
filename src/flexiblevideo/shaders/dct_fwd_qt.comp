@@ -1,0 +1,54 @@
+#version 450
+// dct_fwd_qt.comp — forward orthonormal N x N block DCT-II (float) for the ADAPTIVE QUADTREE path. ONE workgroup
+// per leaf (sizes 8/16/32) driven by a host-built leaf list; local_size 32x32 (threads beyond the leaf size
+// idle). Reads the residual samples and writes the DCT coefficients in place (float bit-patterns), exactly like
+// dct_fwd.comp but size-parameterized. Basis + index order match dct_fwd.comp / the CPU forward_dct_one
+// (rows-then-columns; separable orthonormal). The inverse is dct_inv_qt.comp; used only when g_quadtree.
+layout(local_size_x = 32, local_size_y = 32) in;
+layout(std430, binding = 0)          buffer Plane  { float data[]; };
+layout(std430, binding = 1) readonly buffer Leaves { uint leaves[]; };   // per leaf: x, y, size (3 uints)
+layout(push_constant) uniform PushConstants { int width; int leaf_count; } push;
+
+shared float basis[32][32];   // basis[frequency][sample] = alpha(frequency) * cos(((2*sample)+1)*frequency*pi/(2N))
+shared float block[32][32];   // the loaded N x N sample block (block[row][col])
+shared float rows[32][32];    // after the row (horizontal) forward pass
+
+void main() {
+  int leaf = int(gl_WorkGroupID.x);
+  if (leaf >= push.leaf_count) {
+    return;
+  }
+  int base_x = int(leaves[(leaf * 3) + 0]);
+  int base_y = int(leaves[(leaf * 3) + 1]);
+  int n = int(leaves[(leaf * 3) + 2]);
+
+  int local_x = int(gl_LocalInvocationID.x);     // column index u / input column x ('sample' is a GLSL reserved word)
+  int frequency = int(gl_LocalInvocationID.y);   // row index v / input row y
+  bool in_leaf = (local_x < n) && (frequency < n);
+
+  if (in_leaf) {
+    float alpha = (frequency == 0) ? sqrt(1.0 / float(n)) : sqrt(2.0 / float(n));
+    basis[frequency][local_x] = alpha * cos((float((2 * local_x) + 1) * float(frequency) * 3.14159265358979312) / (2.0 * float(n)));
+    block[frequency][local_x] = data[(((base_y + frequency) * push.width) + base_x) + local_x];
+  }
+  barrier();
+
+  // Row (horizontal) forward: rows[r][u] = sum_x basis[u][x] * block[r][x]   (thread: r = frequency, u = local_x)
+  if (in_leaf) {
+    float row_sum = 0.0;
+    for (int x = 0; x < n; x++) {
+      row_sum += basis[local_x][x] * block[frequency][x];
+    }
+    rows[frequency][local_x] = row_sum;
+  }
+  barrier();
+
+  // Column (vertical) forward: out[v][u] = sum_y basis[v][y] * rows[y][u]   (thread: v = frequency, u = local_x)
+  if (in_leaf) {
+    float col_sum = 0.0;
+    for (int y = 0; y < n; y++) {
+      col_sum += basis[frequency][y] * rows[y][local_x];
+    }
+    data[(((base_y + frequency) * push.width) + base_x) + local_x] = col_sum;
+  }
+}

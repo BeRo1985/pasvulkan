@@ -1,0 +1,144 @@
+#version 450
+// rans_hist_qt.comp — GPU token histogram for the ADAPTIVE QUADTREE DCT rANS encode (mirror of rans_hist.comp
+// but quadtree-walked). ONE workgroup per coding tile (single invocation): walks the tile's 32x32 regions,
+// expands each region's partition code into leaves (8/16/32) in the exact qt_leaves order, tokenizes each leaf
+// (per-leaf zigzag + run/size, tile-wide DC-DPCM chain) EXACTLY like rans_size_qt / rans_unpack_qt, and
+// atomic-adds the symbol counts into the per-plane histogram: slots [0..16] = DC sizes, [17..272] = AC tokens.
+layout(local_size_x = 1) in;
+layout(std430, binding = 0) readonly buffer Coeffs    { int coeffs[]; };
+layout(std430, binding = 1)          buffer Hist      { uint hist[]; };          // 273 slots: 17 DC + 256 AC
+layout(std430, binding = 2) readonly buffer Partition { uint partition_words[]; };
+layout(push_constant) uniform PushConstants { int width; int height; int block_size; int qt_offset; int regions_x; } push;
+
+#define QT_REGION 32
+
+int g_zig8[64];
+int g_zig16[256];
+int g_zig32[1024];
+int g_dc_pred;
+
+void build_zigzag8()  { int idx = 0; for (int d = 0; d < 15; d++)  { if ((d & 1) == 0) { int r = (d < 8)  ? d : 7;   int c = d - r; while ((r >= 0) && (c < 8))  { g_zig8[idx++]  = (r * 8)  + c; r--; c++; } } else { int c = (d < 8)  ? d : 7;   int r = d - c; while ((c >= 0) && (r < 8))  { g_zig8[idx++]  = (r * 8)  + c; r++; c--; } } } }
+void build_zigzag16() { int idx = 0; for (int d = 0; d < 31; d++)  { if ((d & 1) == 0) { int r = (d < 16) ? d : 15;  int c = d - r; while ((r >= 0) && (c < 16)) { g_zig16[idx++] = (r * 16) + c; r--; c++; } } else { int c = (d < 16) ? d : 15;  int r = d - c; while ((c >= 0) && (r < 16)) { g_zig16[idx++] = (r * 16) + c; r++; c--; } } } }
+void build_zigzag32() { int idx = 0; for (int d = 0; d < 63; d++)  { if ((d & 1) == 0) { int r = (d < 32) ? d : 31;  int c = d - r; while ((r >= 0) && (c < 32)) { g_zig32[idx++] = (r * 32) + c; r--; c++; } } else { int c = (d < 32) ? d : 31;  int r = d - c; while ((c >= 0) && (r < 32)) { g_zig32[idx++] = (r * 32) + c; r++; c--; } } } }
+
+int zig_at(int n, int s) {
+  if (n == 8)  { return g_zig8[s];  }
+  if (n == 16) { return g_zig16[s]; }
+  return g_zig32[s];
+}
+
+uint read_partition(int region_index) {
+  uint pos = uint(push.qt_offset + region_index);
+  return (partition_words[pos >> 2u] >> ((pos & 3u) * 8u)) & 0xffu;
+}
+
+int value_size(int value) {
+  int magnitude = (value < 0) ? -value : value;
+  int size = 0;
+  while (magnitude > 0) {
+    size++;
+    magnitude >>= 1;
+  }
+  return size;
+}
+
+int leaf_coeff(int base_x, int base_y, int n, int k) {
+  int position = zig_at(n, k);
+  int row = position / n;
+  int col = position - (row * n);
+  return coeffs[(((base_y + row) * push.width) + base_x) + col];
+}
+
+// Histogram one n x n leaf (DC-DPCM + AC run/size), mirroring rans_size_qt's tokenize_leaf.
+void hist_leaf(int base_x, int base_y, int n) {
+  int total = n * n;
+  int dc = leaf_coeff(base_x, base_y, n, 0);
+  int dc_diff = dc - g_dc_pred;
+  g_dc_pred = dc;
+  atomicAdd(hist[value_size(dc_diff)], 1u);
+  int last_nonzero = 0;
+  for (int k = 1; k < total; k++) {
+    if (leaf_coeff(base_x, base_y, n, k) != 0) {
+      last_nonzero = k;
+    }
+  }
+  int run = 0;
+  for (int k = 1; k <= last_nonzero; k++) {
+    int value = leaf_coeff(base_x, base_y, n, k);
+    if (value == 0) {
+      run++;
+      if (run == 16) {
+        atomicAdd(hist[17 + 0xF0], 1u);   // ZRL
+        run = 0;
+      }
+      continue;
+    }
+    int ac_size = value_size(value);
+    atomicAdd(hist[17 + ((run << 4) | ac_size)], 1u);
+    run = 0;
+  }
+  if (last_nonzero < (total - 1)) {
+    atomicAdd(hist[17 + 0], 1u);   // EOB
+  }
+}
+
+// Walk one 32x32 region's leaves in qt_leaves order, clamped to (bound_x, bound_y). Mirrors qt_leaves / decode_region.
+void hist_region(int region_x, int region_y, uint code, int bound_x, int bound_y) {
+  if ((((region_x + 32) <= bound_x) && ((region_y + 32) <= bound_y)) && ((code & 1u) == 0u)) {
+    hist_leaf(region_x, region_y, 32);
+    return;
+  }
+  for (int qy = 0; qy < 2; qy++) {
+    for (int qx = 0; qx < 2; qx++) {
+      int quadrant = (qy * 2) + qx;
+      int quad_x = region_x + (qx * 16);
+      int quad_y = region_y + (qy * 16);
+      if ((quad_x >= bound_x) || (quad_y >= bound_y)) {
+        continue;
+      }
+      bool fits16 = ((quad_x + 16) <= bound_x) && ((quad_y + 16) <= bound_y);
+      if (fits16 && (((code >> uint(1 + quadrant)) & 1u) == 0u)) {
+        hist_leaf(quad_x, quad_y, 16);
+      } else {
+        for (int sy = 0; sy < 2; sy++) {
+          for (int sx = 0; sx < 2; sx++) {
+            int sub_x = quad_x + (sx * 8);
+            int sub_y = quad_y + (sy * 8);
+            if (((sub_x + 8) <= bound_x) && ((sub_y + 8) <= bound_y)) {
+              hist_leaf(sub_x, sub_y, 8);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void main() {
+  int tiles_x = (push.width + (push.block_size - 1)) / push.block_size;
+  int tiles_y = (push.height + (push.block_size - 1)) / push.block_size;
+  int tile = int(gl_WorkGroupID.x);
+  if (tile >= (tiles_x * tiles_y)) {
+    return;
+  }
+  int tile_x = (tile % tiles_x) * push.block_size;
+  int tile_y = (tile / tiles_x) * push.block_size;
+  int tile_w = min(push.block_size, push.width - tile_x);
+  int tile_h = min(push.block_size, push.height - tile_y);
+
+  build_zigzag8();
+  build_zigzag16();
+  build_zigzag32();
+
+  g_dc_pred = 0;
+  int bound_x = tile_x + tile_w;
+  int bound_y = tile_y + tile_h;
+  for (int ry = 0; ry < tile_h; ry += QT_REGION) {
+    for (int rx = 0; rx < tile_w; rx += QT_REGION) {
+      int region_x = tile_x + rx;
+      int region_y = tile_y + ry;
+      uint code = read_partition((((region_y / QT_REGION) * push.regions_x) + (region_x / QT_REGION)));
+      hist_region(region_x, region_y, code, bound_x, bound_y);
+    }
+  }
+}

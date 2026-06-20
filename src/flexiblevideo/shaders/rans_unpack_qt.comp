@@ -1,0 +1,227 @@
+#version 450
+// rans_unpack_qt.comp — GPU rANS decode for the ADAPTIVE QUADTREE transform-size path (mirror of the CPU
+// dct_decode_plane g_active_qt branch in fvdref.c). ONE workgroup per coding tile, single invocation: it
+// walks the tile's 32x32 regions, expands each region's partition code into leaf blocks (8/16/32) in the
+// exact qt_leaves order, and runs the serial rANS + run/size detokenize per leaf with a per-leaf zigzag and
+// a tile-wide DC-DPCM chain — byte-for-byte identical to the CPU. Used only when the stream is quadtree
+// (g_quadtree); the uniform path keeps using rans_unpack.comp untouched.
+layout(local_size_x = 1) in;
+layout(std430, binding = 0) readonly buffer Data       { uint data_words[]; };       // packed bytes, 4 per uint (LE)
+layout(std430, binding = 1) readonly buffer Offsets    { uint tile_offset[]; };      // per-tile byte offset into Data
+layout(std430, binding = 2)          buffer Coeffs     { int coeffs[]; };            // output coefficient plane
+layout(std430, binding = 3) readonly buffer Tables     { uint freq_table[]; };       // this plane's DC/AC norm+cum+slot
+layout(std430, binding = 4) readonly buffer Partition  { uint partition_words[]; };  // this plane's region codes (1 byte/region)
+
+// push: plane width/height, coding-block size, Data byte length, this plane's region base + regions-per-row.
+layout(push_constant) uniform PushConstants { int width; int height; int block_size; int data_length; int qt_offset; int regions_x; } push;
+
+#define RANS_PROB_BITS 12
+#define RANS_M  4096u
+#define RANS_L  8388608u          // 1 << 23
+#define QT_REGION 32
+
+// Frequency-table layout (uints), matching the host upload order:
+#define OFF_DC_NORM 0
+#define OFF_DC_CUM  17
+#define OFF_AC_NORM 34
+#define OFF_AC_CUM  290
+#define OFF_DC_SLOT 546
+#define OFF_AC_SLOT 4642
+
+// Per-size zigzag scans (row-major index per scan position); built once in main(). 8/16 use the front of the array.
+int g_zig8[64];
+int g_zig16[256];
+int g_zig32[1024];
+
+void build_zigzag8()  { int idx = 0; for (int d = 0; d < 15; d++)  { if ((d & 1) == 0) { int r = (d < 8)  ? d : 7;   int c = d - r; while ((r >= 0) && (c < 8))  { g_zig8[idx++]  = (r * 8)  + c; r--; c++; } } else { int c = (d < 8)  ? d : 7;   int r = d - c; while ((c >= 0) && (r < 8))  { g_zig8[idx++]  = (r * 8)  + c; r++; c--; } } } }
+void build_zigzag16() { int idx = 0; for (int d = 0; d < 31; d++)  { if ((d & 1) == 0) { int r = (d < 16) ? d : 15;  int c = d - r; while ((r >= 0) && (c < 16)) { g_zig16[idx++] = (r * 16) + c; r--; c++; } } else { int c = (d < 16) ? d : 15;  int r = d - c; while ((c >= 0) && (r < 16)) { g_zig16[idx++] = (r * 16) + c; r++; c--; } } } }
+void build_zigzag32() { int idx = 0; for (int d = 0; d < 63; d++)  { if ((d & 1) == 0) { int r = (d < 32) ? d : 31;  int c = d - r; while ((r >= 0) && (c < 32)) { g_zig32[idx++] = (r * 32) + c; r--; c++; } } else { int c = (d < 32) ? d : 31;  int r = d - c; while ((c >= 0) && (r < 32)) { g_zig32[idx++] = (r * 32) + c; r++; c--; } } } }
+
+int zig_at(int n, int s) {
+  if (n == 8)  { return g_zig8[s];  }
+  if (n == 16) { return g_zig16[s]; }
+  return g_zig32[s];
+}
+
+// ---- byte cursor over the packed Data buffer ----
+uint g_byte_pos;
+uint g_byte_end;
+
+uint read_byte(uint pos) {
+  return (data_words[pos >> 2u] >> ((pos & 3u) * 8u)) & 0xffu;
+}
+
+uint read_partition(int region_index) {
+  uint pos = uint(push.qt_offset + region_index);
+  return (partition_words[pos >> 2u] >> ((pos & 3u) * 8u)) & 0xffu;
+}
+
+// ---- MSB-first raw-bit reader ----
+uint g_bit_pos;
+
+uint get_bit() {
+  uint byte_index = g_bit_pos >> 3u;
+  uint bit_in_byte = 7u - (g_bit_pos & 7u);
+  g_bit_pos++;
+  return (read_byte(byte_index) >> bit_in_byte) & 1u;
+}
+
+uint get_bits(int count) {
+  uint value = 0u;
+  for (int i = 0; i < count; i++) {
+    value = (value << 1u) | get_bit();
+  }
+  return value;
+}
+
+int get_value(int size) {
+  int low = (size > 1) ? int(get_bits(size - 1)) : 0;
+  int magnitude = (1 << (size - 1)) + low;
+  int sign = int(get_bit());
+  return (sign != 0) ? -magnitude : magnitude;
+}
+
+// ---- rANS decoder state ----
+uint g_state;
+int g_dc_pred;
+
+void rans_init() {
+  uint s = 0u;
+  for (uint i = 0u; i < 4u; i++) {
+    uint b = (g_byte_pos < g_byte_end) ? read_byte(g_byte_pos) : 0u;
+    g_byte_pos++;
+    s |= b << (8u * i);
+  }
+  g_state = s;
+}
+
+uint rans_slot() {
+  return g_state & (RANS_M - 1u);
+}
+
+void rans_advance(uint cum, uint freq) {
+  uint slot = g_state & (RANS_M - 1u);
+  g_state = (freq * (g_state >> RANS_PROB_BITS)) + slot - cum;
+  while (g_state < RANS_L) {
+    uint b = (g_byte_pos < g_byte_end) ? read_byte(g_byte_pos) : 0u;
+    g_byte_pos++;
+    g_state = (g_state << 8u) | b;
+  }
+}
+
+// Decode one n x n leaf at (base_x, base_y) and scatter via the per-leaf zigzag. Mirrors dct_read_block.
+void decode_leaf(int base_x, int base_y, int n) {
+  int total = n * n;
+  int dc_size = int(freq_table[OFF_DC_SLOT + rans_slot()]);
+  rans_advance(freq_table[OFF_DC_CUM + uint(dc_size)], freq_table[OFF_DC_NORM + uint(dc_size)]);
+  int dc_diff = (dc_size > 0) ? get_value(dc_size) : 0;
+  int dc = g_dc_pred + dc_diff;
+  g_dc_pred = dc;
+  // The scatter writes only nonzero positions; clear the leaf first.
+  for (int yy = 0; yy < n; yy++) {
+    for (int xx = 0; xx < n; xx++) {
+      coeffs[(((base_y + yy) * push.width) + base_x) + xx] = 0;
+    }
+  }
+  coeffs[((base_y * push.width) + base_x)] = dc;   // DC is zigzag position 0 = (0,0)
+  int k = 1;
+  while (k < total) {
+    int token = int(freq_table[OFF_AC_SLOT + rans_slot()]);
+    rans_advance(freq_table[OFF_AC_CUM + uint(token)], freq_table[OFF_AC_NORM + uint(token)]);
+    if (token == 0) {
+      break;   // EOB
+    }
+    int run = token >> 4;
+    int ac_size = token & 0xf;
+    if (ac_size == 0) {
+      k += 16;   // ZRL
+      continue;
+    }
+    k += run;
+    if (k < total) {
+      int position = zig_at(n, k);
+      int row = position / n;
+      int col = position - (row * n);
+      coeffs[(((base_y + row) * push.width) + base_x) + col] = get_value(ac_size);
+      k++;
+    }
+  }
+}
+
+// Decode all leaves of one 32x32 region in the qt_leaves order, clamped to (bound_x, bound_y). Mirrors qt_leaves.
+void decode_region(int region_x, int region_y, uint code, int bound_x, int bound_y) {
+  if ((((region_x + 32) <= bound_x) && ((region_y + 32) <= bound_y)) && ((code & 1u) == 0u)) {
+    decode_leaf(region_x, region_y, 32);
+    return;
+  }
+  for (int qy = 0; qy < 2; qy++) {
+    for (int qx = 0; qx < 2; qx++) {
+      int quadrant = (qy * 2) + qx;
+      int quad_x = region_x + (qx * 16);
+      int quad_y = region_y + (qy * 16);
+      if ((quad_x >= bound_x) || (quad_y >= bound_y)) {
+        continue;
+      }
+      bool fits16 = ((quad_x + 16) <= bound_x) && ((quad_y + 16) <= bound_y);
+      if (fits16 && (((code >> uint(1 + quadrant)) & 1u) == 0u)) {
+        decode_leaf(quad_x, quad_y, 16);
+      } else {
+        for (int sy = 0; sy < 2; sy++) {
+          for (int sx = 0; sx < 2; sx++) {
+            int sub_x = quad_x + (sx * 8);
+            int sub_y = quad_y + (sy * 8);
+            if (((sub_x + 8) <= bound_x) && ((sub_y + 8) <= bound_y)) {
+              decode_leaf(sub_x, sub_y, 8);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void main() {
+  int tiles_x = (push.width + (push.block_size - 1)) / push.block_size;
+  int tiles_y = (push.height + (push.block_size - 1)) / push.block_size;
+  int tile = int(gl_WorkGroupID.x);
+  if (tile >= (tiles_x * tiles_y)) {
+    return;
+  }
+  int tile_x = (tile % tiles_x) * push.block_size;
+  int tile_y = (tile / tiles_x) * push.block_size;
+  int tile_w = min(push.block_size, push.width - tile_x);
+  int tile_h = min(push.block_size, push.height - tile_y);
+
+  build_zigzag8();
+  build_zigzag16();
+  build_zigzag32();
+
+  // Parse the per-tile header: [varint rans_length][rans bytes][raw bits].
+  uint cursor = tile_offset[tile];
+  uint rans_length = 0u;
+  int shift = 0;
+  uint byte;
+  do {
+    byte = read_byte(cursor);
+    cursor++;
+    rans_length |= (byte & 0x7fu) << uint(shift);
+    shift += 7;
+  } while ((byte & 0x80u) != 0u && shift < 35);
+
+  g_byte_pos = cursor;
+  g_byte_end = cursor + rans_length;
+  g_bit_pos = g_byte_end * 8u;
+  rans_init();
+
+  g_dc_pred = 0;
+  int bound_x = tile_x + tile_w;
+  int bound_y = tile_y + tile_h;
+  for (int ry = 0; ry < tile_h; ry += QT_REGION) {
+    for (int rx = 0; rx < tile_w; rx += QT_REGION) {
+      int region_x = tile_x + rx;
+      int region_y = tile_y + ry;
+      uint code = read_partition((((region_y / QT_REGION) * push.regions_x) + (region_x / QT_REGION)));
+      decode_region(region_x, region_y, code, bound_x, bound_y);
+    }
+  }
+}

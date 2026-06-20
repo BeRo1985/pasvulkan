@@ -1,0 +1,42 @@
+#version 450
+// dct_fwd.comp — forward orthonormal 8x8 block DCT-II (float), the DCT fork's spatial transform
+// (replaces the wavelet fwd-row + transpose level loop). One workgroup per 8x8 block, one thread per
+// coefficient. Reads/writes the plane as float bit-patterns (like fwd97row), so the following
+// quant97fwd reinterprets the same buffer. Mirrors the CPU forward_dct8x8 (orthonormal, separable
+// rows-then-columns); coefficient C(u,v) lands at intra-block position (row=v, col=u). Plane
+// dimensions are multiples of 8 (asserted host-side). Float math is not bit-exact across CPU/GPU, so
+// the lossy path is validated within a tolerance (the Q0 lossless path uses the integer transform).
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(std430, binding = 0) buffer Plane { float data[]; };
+layout(push_constant) uniform PushConstants { int width; int height; } push;
+
+shared float basis[8][8];   // basis[frequency][local_x] = alpha(frequency) * cos(((2*local_x)+1)*frequency*pi/16)
+shared float block[8][8];   // the loaded 8x8 sample block
+shared float rows[8][8];    // after the row (horizontal) DCT pass
+
+void main() {
+  int local_x = int(gl_LocalInvocationID.x);      // 0..7 (column / horizontal index)
+  int frequency = int(gl_LocalInvocationID.y);   // 0..7 (row / vertical index)
+  int base_x = int(gl_WorkGroupID.x) * 8;
+  int base_y = int(gl_WorkGroupID.y) * 8;
+
+  float alpha = (frequency == 0) ? 0.353553390593273762 : 0.5;
+  basis[frequency][local_x] = alpha * cos((((float((2 * local_x) + 1)) * float(frequency)) * 3.14159265358979312) / 16.0);
+  block[frequency][local_x] = data[(((base_y + frequency) * push.width) + base_x) + local_x];
+  barrier();
+
+  // Row pass: rows[r][u] = sum_x basis[u][x] * block[r][x]   (thread computes r = frequency, u = local_x)
+  float row_sum = 0.0;
+  for (int x = 0; x < 8; x++) {
+    row_sum += basis[local_x][x] * block[frequency][x];
+  }
+  rows[frequency][local_x] = row_sum;
+  barrier();
+
+  // Column pass: out[v][u] = sum_y basis[v][y] * rows[y][u]   (thread computes v = frequency, u = local_x)
+  float col_sum = 0.0;
+  for (int y = 0; y < 8; y++) {
+    col_sum += basis[frequency][y] * rows[y][local_x];
+  }
+  data[(((base_y + frequency) * push.width) + base_x) + local_x] = col_sum;
+}

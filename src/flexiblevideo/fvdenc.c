@@ -50,9 +50,9 @@
  *                                                                            *
  ******************************************************************************/
 /*
- * fwvenc.c — GPU ENCODER (the novel part — GPU-side wavelet encoding).
+ * fvdenc.c — GPU ENCODER (the novel part — GPU-side wavelet encoding).
  *
- * Includes fwvwave.c for the container format and the CPU reference decode. Per frame, in two
+ * Includes fvdref.c for the container format and the CPU reference decode. Per frame, in two
  * compute passes:
  *   Pass 1: upload RGB -> YCoCg-R -> forward wavelet -> quantize -> bitplane_size (bytes per block).
  *   (CPU)   prefix-sum the per-block sizes into byte offsets.
@@ -62,13 +62,13 @@
  * The spatial intra pipeline above is the base; on top the encoder also does inter prediction (P /
  * hierarchical B-frames with motion) and an open-loop / motion-compensated (MCTF) 3D-DWT temporal mode, plus
  * SDR/HDR and chroma subsampling. Without an output file it runs a self-test (CPU-decode the GPU stream, PSNR vs
- * the original); with an out.fwv it writes a full container (frames + index + optional audio: Vorbis / QOA-LE /
+ * the original); with an out.fvd it writes a full container (frames + index + optional audio: Vorbis / QOA-LE /
  * raw PCM / FWA). quality == 0 selects the lossless integer 5/3 path; quality >= 1 the lossy 9/7 path.
  *
- *     ./fwvenc in.(mp4|y4m) [out.fwv] [flags...]   (--help for the full list)
+ *     ./fvdenc in.(mp4|y4m) [out.fvd] [flags...]   (--help for the full list)
  */
-#define FWV_NO_MAIN
-#include "fwvwave.c"
+#define FVD_NO_MAIN
+#include "fvdref.c"
 #include "fwa_audio.h"   // the "FWA" wavelet-audio sub-codec (separate TU, linked via the Makefile)
 #include <unistd.h>   // readlink() for the exe-relative shader path
 #include <vulkan/vulkan.h>
@@ -601,13 +601,13 @@ static short *extract_audio_pcm(const char *input, int *out_samples, int *out_ch
   return pcm;
 }
 
-// .fwv container header (must match fwvplay's reader). version + header_size make it growable:
+// .fvd container header (must match fvdplay's reader). version + header_size make it growable:
 // future fields can be appended and older readers skip to the payload via header_size. The color
 // block uses CICP code points (ITU-T H.273) so a player / engine knows how to display the frames;
 // the codec itself is currently 8-bit SDR, the HDR fields are reserved for later.
 #pragma pack(push,1) // packed on-disk container layout — byte-exact, no padding
 typedef struct {
-  uint8_t  magic[4];            // "FWVC"
+  uint8_t  magic[4];            // "FVDC"
   uint16_t version;             // container format version
   uint16_t header_size;         // sizeof(ContainerHeader)
   uint32_t width, height, fps_num, fps_den, levels, quality, frame_count;
@@ -650,7 +650,7 @@ typedef struct {
 // changes). temporal_id is the hierarchy level (for QP-cascading / temporal scalability). I/P/3D-DWT
 // frames set poc=display index, ref0=prev/-1, ref1=-1, temporal_id=0 (behaviourally unchanged). For the
 // 3D-DWT path type stays 0 (GOP start) / 2 (continuation) — interpreted method-scoped (prediction_method
-// 2), so it never collides with the colordiff "2 = B". Must match fwvplay's reader.
+// 2), so it never collides with the colordiff "2 = B". Must match fvdplay's reader.
 typedef struct {
   uint64_t offset;
   uint32_t size;
@@ -707,8 +707,12 @@ static void print_encode_progress(long done, long total, double fps_value, doubl
 // profile / yuv420p / progressive to match the Vulkan video decode profile. Returns malloc'd blob.
 // ---- minimal pure-C MP4/MOV -> Annex-B H.264 demuxer (ffmpeg-free copy path) ----
 
-static uint32_t mp4_u32(const uint8_t *p) { return (((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16)) | (((uint32_t)p[2] << 8) | (uint32_t)p[3]); }
-static uint64_t mp4_u64(const uint8_t *p) { return ((uint64_t)mp4_u32(p) << 32) | (uint64_t)mp4_u32(p + 4); }
+static uint32_t mp4_u32(const uint8_t *p) {
+  return (((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16)) | (((uint32_t)p[2] << 8) | (uint32_t)p[3]);
+}
+static uint64_t mp4_u64(const uint8_t *p) {
+  return ((uint64_t)mp4_u32(p) << 32) | (uint64_t)mp4_u32(p + 4);
+}
 
 // Find a direct child box of `type` within [buf, buf+size); returns its body pointer + sets *body_size.
 static const uint8_t *mp4_child(const uint8_t *buf, size_t size, const char *type, size_t *body_size) {
@@ -1051,18 +1055,18 @@ static uint8_t *prepare_h264_stream(const char *input, long max_frames, uint64_t
   if (can_copy) {
     fprintf(stderr, "embedding H.264 stream (raw NAL stream-copy, no re-encode)...\n");
     snprintf(command, sizeof command,
-             "ffmpeg -hide_banner -loglevel error -stats -y -i \"%s\" -an %s-c:v copy -bsf:v h264_mp4toannexb -f h264 /tmp/fwv_v.h264", input, frames_arg);
+             "ffmpeg -hide_banner -loglevel error -stats -y -i \"%s\" -an %s-c:v copy -bsf:v h264_mp4toannexb -f h264 /tmp/fvd_v.h264", input, frames_arg);
   } else {
     fprintf(stderr, "encoding H.264 stream (libx264; source not copy-compatible H.264)...\n");
     snprintf(command, sizeof command,
-             "ffmpeg -hide_banner -loglevel error -stats -y -i \"%s\" -an %s-c:v libx264 -profile:v high -pix_fmt yuv420p -f h264 /tmp/fwv_v.h264", input, frames_arg);
+             "ffmpeg -hide_banner -loglevel error -stats -y -i \"%s\" -an %s-c:v libx264 -profile:v high -pix_fmt yuv420p -f h264 /tmp/fvd_v.h264", input, frames_arg);
   }
   int status = system(command);
   fprintf(stderr, "\n");   // finish ffmpeg's -stats progress line
   if (status) {
     return NULL;
   }
-  FILE *file = fopen("/tmp/fwv_v.h264", "rb");
+  FILE *file = fopen("/tmp/fvd_v.h264", "rb");
   if (!file) {
     return NULL;
   }
@@ -1417,18 +1421,26 @@ int main(int argc, char **argv) {
   init_exe_dir();   // resolve shaders relative to the binary, so the tool works from any working directory
   if (argc < 2) {
     fprintf(stderr,
-      "usage: %s in.(mp4|y4m) [out.fwv] [flags...]\n"
-      "  with out.fwv -> write a container; otherwise run a PSNR self-test\n"
-      "    --quality=N                    0 = lossless (reversible 5/3), >=1 = lossy (9/7) (default 8)\n"
-      "    --levels=N                     spatial wavelet decomposition levels (default 5)\n"
+      "usage: %s in.(mp4|y4m) [out.fvd] [flags...]\n"
+      "  with out.fvd -> write a container; otherwise run a PSNR self-test\n"
+      "    --quality=N                    0 = lossless, >=1 = lossy (default 8; max 255); DCT+rANS by default, wavelet with --dwt\n"
+      "    --levels=N                     spatial wavelet decomposition levels (default 5; wavelet mode only)\n"
       "    --max-frames=N                 encode at most N frames (default 0 = all)\n"
       "    --gop=N                        max keyframe interval (1 = all-intra; default 10, or 16 for --mode=3ddwt)\n"
+      "  spatial transform (default = DCT + rANS; --dwt = wavelet, FWV parity):\n"
+      "    --dwt                          wavelet instead of DCT: 5/3 (lossless) / 9-7 (lossy) + bit-plane (header bit7 clear)\n"
+      "    --gpu-encode[=0|1]             intra DCT on the GPU then CPU rANS (DEFAULT on; =0 forces CPU; alpha/HDR/Q0/quadtree/deblock always use the CPU path)\n"
+      "    --quadtree                     adaptive DCT transform sizes (32->16->8 R-D partitioning; CPU encode + decode)\n"
+      "    --qt-lambda[=<l>]              --quadtree R-D lambda (default 0.15)\n"
       "  rate control / P-frames:\n"
       "    --vbr=<target_bpp>             lossy only: nudge Q per GOP toward target_bpp (per-GOP variable Q)\n"
       "    --pmode=coefdiff|colordiff     P-frame method (default colordiff; coefdiff is Q0-only)\n"
       "    --pcrd[=<lambda>]              PCRD R-D bit-plane truncation (default off; lambda default 0.5)\n"
       "  hierarchical B-frames:\n"
       "    --bframes=<N>                  N hierarchical bidirectional B-frames between anchors (period = N+1; default 0 = I/P only)\n"
+      "    --bframe-dct                   force B-frames to DCT+rANS (DEFAULT in DCT mode; GPU motion path)\n"
+      "    --bframe-dwt                   force B-frames to wavelet+bit-plane even in DCT mode (inverse of --bframe-dct)\n"
+      "    --deblock                      in-loop deblocking filter on the DCT block edges (use with --bframe-dct)\n"
       "    --no-per-block-mode            disable Phase 2 per-block L0/L1/BI prediction mode (default ON; --per-block-mode re-enables)\n"
       "    --bi-penalty=<N>               mode-decision bias in SAD units added to BI's cost (default -4096; negative prefers BI)\n"
       "    --no-qp-cascade                disable Phase 3 temporal-id QP-cascading (default ON, lossy B-streams: deeper B = coarser quant; --qp-cascade re-enables)\n"
@@ -1499,6 +1511,8 @@ int main(int argc, char **argv) {
   int mode_3ddwt = 0;   // --mode=3ddwt: open-loop temporal 3D-DWT GOP mode
   int bframes = 0;      // --bframes N: N hierarchical B-frames between anchors (0 = off, I/P only)
   int cpu_bframes = 0;  // --cpu-bframes: force the CPU encode_frame_bidi oracle path (Stage A) instead of the GPU bidi path
+  int gpu_encode = 1;   // --gpu-encode[=0|1]: GPU intra DCT path (then CPU rANS) is the DEFAULT; --gpu-encode=0 forces the CPU encode
+  int bframe_mode_set = 0;   // 1 once --bframe-dct or --bframe-dwt is given; else B-frames follow the spatial mode (g_bframe_dct = g_spatial_dct)
   int joint_mv = 0;     // --joint: B2b joint/iterative bidirectional motion (EXPERIMENTAL, currently regresses vs independent); default = B2a independent
   int per_block_mode = 1;   // Phase 2 per-block L0/L1/BI prediction mode (default ON; --no-per-block-mode = always-BI)
   int bi_penalty = -4096;   // --bi-penalty=N: mode-decision bias (SAD units) added to BI's cost; negative = prefer BI (it averages noise / costs no extra residual since 2a always sends both MVs); tunable
@@ -1535,6 +1549,16 @@ int main(int argc, char **argv) {
       }
     } else if (!strcmp(argv[i], "--cpu-bframes")) {
       cpu_bframes = 1;             // force the CPU encode_frame_bidi oracle (Stage A) instead of the GPU bidi path
+    } else if (!strncmp(argv[i], "--bframe-dct", 12)) {   // B-frames use DCT+rANS. Default = the GPU bidi DCT path (motion); +--quadtree/--deblock or --cpu-bframes route to the CPU oracle (zero-motion) below.
+      g_bframe_dct = 1;
+      bframe_mode_set = 1;        // explicit B-mode -> don't override with the spatial-mode default (gpu_encode already defaults to 1)
+    } else if (!strncmp(argv[i], "--bframe-dwt", 12)) {   // inverse of --bframe-dct: force wavelet+bit-plane B-frames even in DCT mode
+      g_bframe_dct = 0;
+      bframe_mode_set = 1;
+    } else if (!strncmp(argv[i], "--gpu-encode", 12)) {
+      gpu_encode = (argv[i][12] == '=') ? atoi(argv[i] + 13) : 1;   // --gpu-encode[=0|1]: force GPU(1)/CPU(0) intra DCT encode; bare = 1
+    } else if (!strcmp(argv[i], "--dwt")) {
+      g_spatial_dct = 0;          // wavelet mode (FWV parity): 5/3(lossless)/9-7(lossy) + bit-plane entropy; header bit7 stays clear
     } else if (!strcmp(argv[i], "--joint")) {
       joint_mv = 1;               // EXPERIMENTAL B2b joint/iterative bidirectional motion refinement (currently regresses)
     } else if (!strcmp(argv[i], "--per-block-mode")) {
@@ -1574,17 +1598,27 @@ int main(int argc, char **argv) {
       g_mv_codec = strstr(argv[i] + 11, "range") ? 1 : 0;   // MV entropy coder: golomb (default) or range (~-6% file, CPU-only)
     } else if (!strncmp(argv[i], "--interp=", 9)) {   // sub-pel interpolation filter (g_motion_mode bits0-1: 0 bilinear, 1 6-tap, 2 8-tap DCTIF). Default 6-tap.
       g_motion_mode &= ~3;
-      if (strstr(argv[i] + 9, "8tap")) { g_motion_mode |= 2; } else if (!strstr(argv[i] + 9, "bilinear")) { g_motion_mode |= 1; }
+      if (strstr(argv[i] + 9, "8tap")) {
+        g_motion_mode |= 2;
+      } else if (!strstr(argv[i] + 9, "bilinear")) {
+        g_motion_mode |= 1;
+      }
     } else if (!strncmp(argv[i], "--mv-precision=", 15)) {   // MV precision (g_motion_mode bits2-3: 0 half, 1 quarter, 2 eighth [reserved], 3 amvr [reserved]). Default quarter.
       g_motion_mode &= ~12;
-      if (!strstr(argv[i] + 15, "half")) { g_motion_mode |= 4; }
+      if (!strstr(argv[i] + 15, "half")) {
+        g_motion_mode |= 4;
+      }
     } else if (!strncmp(argv[i], "--mv-predict=", 13)) {   // ME predictor: temporal (default), spatial median (2nd refine pass), or spatial-full (fuller search, weaker bias)
       g_mv_predict_spatial = strstr(argv[i] + 13, "spatial") ? 1 : 0;
       g_mv_predict_full = strstr(argv[i] + 13, "spatial-full") ? 1 : 0;
     } else if (!strncmp(argv[i], "--search-range=", 15)) {   // +-N integer motion-search floor (default 16); bigger = catches faster motion, slower encode
       g_search_range = atoi(argv[i] + 15);
-      if (g_search_range < 4) { g_search_range = 4; }
-      if (g_search_range > 64) { g_search_range = 64; }   // keep the packed (mv+64)*256 search representation in range
+      if (g_search_range < 4) {
+        g_search_range = 4;
+      }
+      if (g_search_range > 64) {
+        g_search_range = 64;
+      }  // keep the packed (mv+64)*256 search representation in range
     } else if (!strcmp(argv[i], "--motion-split")) {   // variable per-block motion (quadtree 32->16->8, R-D); B uses the joint mode-aware merge by default
       g_motion_variable = 1;
       g_motion_block = 8;
@@ -1647,6 +1681,12 @@ int main(int argc, char **argv) {
       }
     } else if (!strcmp(argv[i], "--cdef")) {
       g_cdef = 1;   // in-loop directional deringing on the reconstructed reference (lossy only; per-frame GPU strength search)
+    } else if (!strncmp(argv[i], "--quadtree", 10)) {   // adaptive transform-size partitioning (32->16->8); CPU encode path; decode is CPU for now
+      g_quadtree = 1;
+    } else if (!strncmp(argv[i], "--qt-lambda", 11)) {
+      g_qt_lambda = (argv[i][11] == '=') ? atof(argv[i] + 12) : 0.15;
+    } else if (!strncmp(argv[i], "--deblock", 9)) {   // in-loop deblocking filter on the DCT block edges; CPU encode path
+      g_deblock = 1;
     } else if (!strncmp(argv[i], "--chroma-format", 15)) {   // --chroma-format=420|422|444 (must precede --chroma, which is a prefix)
       g_chroma_format = strstr(argv[i], "420") ? 2 : (strstr(argv[i], "422") ? 1 : 0);
     } else if (!strcmp(argv[i], "--420")) {
@@ -1678,7 +1718,7 @@ int main(int argc, char **argv) {
   }
   const char *input = positional[1];
   const char *output = NULL;
-  if (positional_count > 2 && (strstr(positional[2], ".fwv") || strstr(positional[2], ".FWV"))) {   // accept .FWV too
+  if (positional_count > 2 && (strstr(positional[2], ".fvd") || strstr(positional[2], ".FVD"))) {   // accept .FVD too
     output = positional[2];
   }
   // quality / levels / max-frames / gop now come from --flags (parsed above). Resolve the unset sentinels: max-frames
@@ -1714,7 +1754,9 @@ int main(int argc, char **argv) {
     FILE *probe = popen(probe_cmd, "r");
     char transfer_name[64] = "";
     if (probe) {
-      if (!fgets(transfer_name, sizeof transfer_name, probe)) { transfer_name[0] = 0; }
+      if (!fgets(transfer_name, sizeof transfer_name, probe)) {
+        transfer_name[0] = 0;
+      }
       pclose(probe);
     }
     hdr_transfer = strstr(transfer_name, "arib-std-b67") ? 18 : 16;   // HLG, else PQ (default)
@@ -1772,16 +1814,30 @@ int main(int argc, char **argv) {
   // hierarchical B-frames (--bframes N). Stage A wires the validated CPU encode_frame_bidi
   // oracle into the real container (SDR colordiff only; mutually exclusive with the 3D-DWT GOP mode).
   int use_bframes = (bframes >= 1) && !mode_3ddwt;
+  // B-frame default: unless the user explicitly picked a B-mode (--bframe-dct/--bframe-dwt), B-frames follow the
+  // spatial transform — DCT mode -> DCT+rANS B-frames, wavelet mode (--dwt) -> wavelet+bit-plane B. (gpu_encode
+  // defaults to 1 globally; --gpu-encode=0 forces the CPU encode.)
+  if (use_bframes && !bframe_mode_set) {
+    g_bframe_dct = g_spatial_dct;
+  }
   if (use_bframes) {
     if (bframes > 15) {
       bframes = 15;   // period <= 16: keeps the per-pair DPB / hierarchy depth sane
     }
     if (!output) {
-      die("--bframes requires a container output (in.mp4 out.fwv ...)");
+      die("--bframes requires a container output (in.mp4 out.fvd ...)");
     }
     method = 1;   // B-frames live on the colordiff path; coefdiff (A) is not supported
     if (gop < (bframes + 1)) {
       gop = 0;   // gop too small to host an anchor refresh -> a single open GOP (only the first frame is I)
+    }
+    // DCT-B routing: the GPU bidi DCT path now covers uniform 8x8 AND the adaptive quadtree (+ in-loop deblock),
+    // but 4:4:4 only (no subsampled-chroma GPU DCT encode, like the I/P GPU DCT path). A subsampled chroma format
+    // with --bframe-dct falls back to the CPU oracle (zero-motion). Plain 4:4:4 --bframe-dct [--quadtree --deblock]
+    // (no explicit --cpu-bframes) takes the GPU motion DCT path.
+    if ((g_bframe_dct && (g_chroma_format != 0)) && !cpu_bframes) {
+      cpu_bframes = 1;
+      printf("  note: --bframe-dct with subsampled chroma needs the CPU oracle (zero-motion); 4:4:4 uses the GPU motion path\n");
     }
   }
   int blocks_x = block_count_x(width);
@@ -1813,12 +1869,12 @@ int main(int argc, char **argv) {
   uint32_t max_shared = device_properties.limits.maxComputeSharedMemorySize;
   while ((g_motion_block > 8) && (((uint32_t)(g_motion_block * g_motion_block) > max_invocations) ||
                                   ((uint32_t)((6 * g_motion_block * g_motion_block) * 4) > max_shared))) {
-    fprintf(stderr, "fwvenc: GPU limit (%u invocations / %u KiB shared) too small for motion block %d -> falling back to %d\n",
+    fprintf(stderr, "fvdenc: GPU limit (%u invocations / %u KiB shared) too small for motion block %d -> falling back to %d\n",
             max_invocations, max_shared >> 10, g_motion_block, g_motion_block >> 1);
     g_motion_block >>= 1;   // 32 -> 16 -> 8
   }
   if (per_block_mode && ((max_invocations < 1024) || (max_shared < 12288))) {
-    fprintf(stderr, "fwvenc: GPU limit (%u invocations / %u KiB shared) too small for the per-block-mode root reduction "
+    fprintf(stderr, "fvdenc: GPU limit (%u invocations / %u KiB shared) too small for the per-block-mode root reduction "
                     "(1024 threads / 12 KiB) -> disabling per-block mode\n", max_invocations, max_shared >> 10);
     per_block_mode = 0;
   }
@@ -1845,7 +1901,7 @@ int main(int argc, char **argv) {
   device_info.pQueueCreateInfos = &queue_info;
   VK_CHECK(vkCreateDevice(physical_device, &device_info, 0, &device));
   vkGetDeviceQueue(device, queue_family_index, 0, &queue);
-  printf("fwvenc GPU: %s | %dx%d quality=%d levels=%d | %d blocks\n",
+  printf("fvdenc GPU: %s | %dx%d quality=%d levels=%d | %d blocks\n",
          device_properties.deviceName, width, height, quality, levels, block_count);
 
   // ---- buffers ----
@@ -1919,6 +1975,57 @@ int main(int argc, char **argv) {
   size_t scratch_side = (size_t)((width > height) ? width : height);
   create_buffer(((scratch_side * scratch_side) * 4), DEVICE_LOCAL, &scratch_buffer, &scratch_memory);
   create_buffer(data_capacity, HOST_VISIBLE_COHERENT, &data_buffer, &data_memory);
+  VkBuffer coeff_readback_buffer = 0;   // --gpu-encode: host-visible staging for reading the GPU-quantized coeffs back for CPU rANS
+  VkDeviceMemory coeff_readback_memory = 0;
+  void *coeff_readback_map = 0;
+  // Full GPU-rANS-encode buffers: per-plane frequency table (host-built norm+cum, uploaded), the token histogram
+  // (GPU atomic-add, read back to normalize), and the big per-tile rANS scratch (sym + rans + raw + out regions).
+  VkBuffer rans_table_buffer[MAX_PLANES] = { 0 }, rans_hist_buffer = 0, rans_scratch_buffer = 0;
+  VkDeviceMemory rans_table_memory[MAX_PLANES] = { 0 }, rans_hist_memory = 0, rans_scratch_memory = 0;
+  void *rans_table_map[MAX_PLANES] = { 0 }, *rans_hist_map = 0;
+  int rans_tile_stride = 0;
+  if (gpu_encode) {
+    create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &coeff_readback_buffer, &coeff_readback_memory);
+    VK_CHECK(vkMapMemory(device, coeff_readback_memory, 0, VK_WHOLE_SIZE, 0, &coeff_readback_map));
+    int subs = (g_block_size / 8) * (g_block_size / 8);
+    int sym_words = subs * 65, rans_words = (subs * 33) + 4, raw_words = subs * 33;
+    rans_tile_stride = (sym_words + (2 * (rans_words + raw_words))) + 8;   // sym + rans + raw + out(+margin), in uints
+    create_buffer((size_t)block_count * (size_t)rans_tile_stride * 4, DEVICE_LOCAL, &rans_scratch_buffer, &rans_scratch_memory);
+    create_buffer(273 * 4, HOST_VISIBLE_COHERENT, &rans_hist_buffer, &rans_hist_memory);
+    VK_CHECK(vkMapMemory(device, rans_hist_memory, 0, VK_WHOLE_SIZE, 0, &rans_hist_map));
+    for (int plane = 0; plane < g_num_planes; plane++) {
+      create_buffer((size_t)RANS_GPU_TABLE_UINTS * 4, HOST_VISIBLE_COHERENT, &rans_table_buffer[plane], &rans_table_memory[plane]);
+      VK_CHECK(vkMapMemory(device, rans_table_memory[plane], 0, VK_WHOLE_SIZE, 0, &rans_table_map[plane]));
+    }
+  }
+  // DCT-B adaptive quadtree (Voll-GPU encode): per-plane partition codes, per-plane leaf lists (x,y,size), and
+  // (deblock) per-plane 8x8-cell leaf-id maps — host-visible, rebuilt + uploaded per frame. Mirrors the decoder
+  // (fvdplay). The partition decision itself runs on the CPU (qt_decide_partition on the read-back residual).
+  int qt_regions_per_plane = qt_region_count(width) * qt_region_count(height);
+  int qt_max_leaves = qt_regions_per_plane * QT_MAX_LEAVES;
+  int deblock_cells = (width / 8) * (height / 8);
+  VkBuffer partition_buffer = 0, leaf_list_buffer[MAX_PLANES] = { 0 }, cell_leaf_buffer[MAX_PLANES] = { 0 };
+  VkDeviceMemory partition_memory = 0, leaf_list_memory[MAX_PLANES] = { 0 }, cell_leaf_memory[MAX_PLANES] = { 0 };
+  void *partition_map = 0, *leaf_list_map[MAX_PLANES] = { 0 }, *cell_leaf_map[MAX_PLANES] = { 0 };
+  uint8_t *qt_map[MAX_PLANES] = { 0 };   // per-plane region codes (CPU partition decision output)
+  int qt_leaf_count[MAX_PLANES] = { 0 };
+  if (gpu_encode && g_quadtree) {
+    size_t partition_bytes = (size_t)qt_regions_per_plane * g_num_planes;
+    if (partition_bytes < 4) {
+      partition_bytes = 4;
+    }
+    create_buffer(partition_bytes, HOST_VISIBLE_COHERENT, &partition_buffer, &partition_memory);
+    VK_CHECK(vkMapMemory(device, partition_memory, 0, VK_WHOLE_SIZE, 0, &partition_map));
+    for (int plane = 0; plane < g_num_planes; plane++) {
+      create_buffer((size_t)qt_max_leaves * 3u * 4u, HOST_VISIBLE_COHERENT, &leaf_list_buffer[plane], &leaf_list_memory[plane]);
+      VK_CHECK(vkMapMemory(device, leaf_list_memory[plane], 0, VK_WHOLE_SIZE, 0, &leaf_list_map[plane]));
+      qt_map[plane] = checked_malloc((size_t)qt_regions_per_plane);
+      if (g_deblock) {
+        create_buffer((size_t)deblock_cells * 4u, HOST_VISIBLE_COHERENT, &cell_leaf_buffer[plane], &cell_leaf_memory[plane]);
+        VK_CHECK(vkMapMemory(device, cell_leaf_memory[plane], 0, VK_WHOLE_SIZE, 0, &cell_leaf_map[plane]));
+      }
+    }
+  }
   create_buffer(4, HOST_VISIBLE_COHERENT, &energy_buffer, &energy_memory);
   int motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block, motion_blocks_y = ((height + g_motion_block) - 1) / g_motion_block;
   create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &mv_buffer, &mv_memory);
@@ -2017,11 +2124,13 @@ int main(int argc, char **argv) {
   VkDescriptorSetLayout layout_1_buffer = create_descriptor_set_layout(1);
   VkDescriptorSetLayout layout_2_buffers = create_descriptor_set_layout(2);
   VkDescriptorSetLayout layout_3_buffers = create_descriptor_set_layout(3);
+  VkDescriptorSetLayout layout_4_buffers = create_descriptor_set_layout(4);   // GPU rANS encode: rans_size {coeff,table,scratch,size} / rans_pack {scratch,size,offset,data}
   VkDescriptorSetLayout layout_9_buffers = create_descriptor_set_layout(9);   // 3-plane predictive motion search: {cur0..2, prev0..2, mv, mv_prev, sad}
   VkDescriptorSetLayout layout_7_buffers = create_descriptor_set_layout(7);   // variable-motion R-D merge: {mv8, sad8, mv16, sad16, mv32, sad32, mv_out}
   VkDescriptorSetLayout layout_12_buffers = create_descriptor_set_layout(12);   // variable B: bidi_mode_sad {cur0..2,ref0_0..2,ref1_0..2,mv0,mv1,modesad} + merge_bidi {modesad8/16/32,mv0_8/16/32,mv1_8/16/32,mv0out,mv1out,modeout}
   VkDescriptorSetLayout layout_11_buffers = create_descriptor_set_layout(11);  // B2b joint search: {cur0..2, ref0..2, mc_other0..2, mv, mv_prev}
   VkDescriptorSetLayout layout_10_buffers = create_descriptor_set_layout(10);  // Phase 2 mode_decide: {cur0..2, mc0_0..2, mc1_0..2, modes}
+  VkDescriptorSetLayout layout_5_buffers = create_descriptor_set_layout(5);     // DCT-B quadtree rANS encode: rans_size_qt {coeff, table, scratch, size, partition}
   VkDescriptorSetLayout layout_color = create_descriptor_set_layout(4);
   VkPipelineLayout pipeline_layout_color = create_pipeline_layout(layout_color, 8);
   VkPipelineLayout pipeline_layout_transpose = create_pipeline_layout(layout_2_buffers, 16);
@@ -2045,6 +2154,25 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_transpose = create_compute_pipeline("shaders/transpose_f.spv", pipeline_layout_transpose);
   VkPipeline pipeline_forward_row_97 = create_compute_pipeline("shaders/fwd97row.spv", pipeline_layout_row);
   VkPipeline pipeline_quant = create_compute_pipeline("shaders/quant97fwd.spv", pipeline_layout_quant);
+  VkPipelineLayout pipeline_layout_dct = create_pipeline_layout(layout_1_buffer, 8);   // DCT --gpu-encode: { width, height }
+  VkPipeline pipeline_dct_fwd = gpu_encode ? create_compute_pipeline("shaders/dct_fwd.spv", pipeline_layout_dct) : 0;   // forward block DCT (validates the GPU forward transform)
+  VkPipeline pipeline_dct_inv = gpu_encode ? create_compute_pipeline("shaders/dct_inv.spv", pipeline_layout_dct) : 0;   // inverse block DCT for the DCT-B closed-loop reconstruct (mirror of the decoder)
+  VkPipelineLayout pipeline_layout_rans_hist = create_pipeline_layout(layout_2_buffers, 12);   // { width, height, block_size }
+  VkPipelineLayout pipeline_layout_rans_size = create_pipeline_layout(layout_4_buffers, 16);   // { width, height, block_size, scratch_stride }
+  VkPipelineLayout pipeline_layout_rans_pack = create_pipeline_layout(layout_4_buffers, 12);   // { tile_count, block_size, scratch_stride }
+  // DCT-B adaptive quadtree encode (Voll-GPU): forward/inverse quadtree DCT + partition-aware rANS + deblock.
+  VkPipelineLayout pipeline_layout_dct_qt = create_pipeline_layout(layout_2_buffers, 8);          // dct_fwd_qt / dct_inv_qt: {plane, leaves}, push { width, leaf_count }
+  VkPipelineLayout pipeline_layout_rans_hist_qt = create_pipeline_layout(layout_3_buffers, 20);   // rans_hist_qt: {coeff, hist, partition}, push { width, height, block_size, qt_offset, regions_x }
+  VkPipelineLayout pipeline_layout_rans_size_qt = create_pipeline_layout(layout_5_buffers, 24);   // rans_size_qt: {coeff, table, scratch, size, partition}, push { width, height, block_size, scratch_stride, qt_offset, regions_x }
+  VkPipelineLayout pipeline_layout_deblock = (g_bframe_dct && g_deblock) ? create_pipeline_layout(layout_2_buffers, 28) : 0;   // deblock: {coeff, cell_leaf}, push { width, height, cells_x, alpha, beta, tc, direction }
+  VkPipeline pipeline_dct_fwd_qt = (gpu_encode && g_quadtree) ? create_compute_pipeline("shaders/dct_fwd_qt.spv", pipeline_layout_dct_qt) : 0;
+  VkPipeline pipeline_dct_inv_qt = (gpu_encode && g_quadtree) ? create_compute_pipeline("shaders/dct_inv_qt.spv", pipeline_layout_dct_qt) : 0;
+  VkPipeline pipeline_rans_hist_qt = (gpu_encode && g_quadtree) ? create_compute_pipeline("shaders/rans_hist_qt.spv", pipeline_layout_rans_hist_qt) : 0;
+  VkPipeline pipeline_rans_size_qt = (gpu_encode && g_quadtree) ? create_compute_pipeline("shaders/rans_size_qt.spv", pipeline_layout_rans_size_qt) : 0;
+  VkPipeline pipeline_deblock = (g_bframe_dct && g_deblock) ? create_compute_pipeline("shaders/deblock.spv", pipeline_layout_deblock) : 0;
+  VkPipeline pipeline_rans_hist = gpu_encode ? create_compute_pipeline("shaders/rans_hist.spv", pipeline_layout_rans_hist) : 0;
+  VkPipeline pipeline_rans_size = gpu_encode ? create_compute_pipeline("shaders/rans_size.spv", pipeline_layout_rans_size) : 0;
+  VkPipeline pipeline_rans_pack = gpu_encode ? create_compute_pipeline("shaders/rans_pack.spv", pipeline_layout_rans_pack) : 0;
   VkPipeline pipeline_pthresh = g_prdo_enabled ? create_compute_pipeline("shaders/pthresh.spv", pipeline_layout_quant) : 0;   // B: reuses the 2-buffer layout
   VkPipeline pipeline_chroma_downsample = create_compute_pipeline("shaders/chroma_downsample.spv", pipeline_layout_chroma_downsample);   // box-average Co/Cg to subsampled size (Variante A; float 9/7 path)
   VkPipeline pipeline_chroma_downsample_int = create_compute_pipeline_bs("shaders/chroma_downsample.spv", pipeline_layout_chroma_downsample, 1);   // INT_MODE=1: integer box-average for the MCTF path (gop is integer YCoCg)
@@ -2113,9 +2241,9 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_inverse_row = lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
   VkPipeline pipeline_bidi_blend = create_compute_pipeline("shaders/bidi_blend.spv", pipeline_layout_pack);   // weighted 2-ref prediction (3 buffers + 12-byte push)
 
-  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 640 };   // + MCTF: 1 ME (9) + 3 mc (3x3) + 3 diff (3x3) = 27; + CDEF 3x{set_cdef(2)+set_cdef_sse(3)} = 15
+  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 760 };   // + MCTF 27 + CDEF 15 + DCT-B quadtree (dct_fwd_qt/dct_inv_qt/rans_hist_qt/rans_size_qt/deblock = ~15 sets/3 planes)
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 160;   // + MCTF (set_mctf_me + set_mctf_mc[3] + set_mctf_diff[3] = 7); + CDEF (set_cdef[3] + set_cdef_sse[3] = 6)
+  pool_info.maxSets = 200;   // + MCTF (7) + CDEF (6) + DCT-B quadtree encode sets
   pool_info.poolSizeCount = 1;
   pool_info.pPoolSizes = &pool_size;
   VkDescriptorPool descriptor_pool;
@@ -2126,6 +2254,8 @@ int main(int argc, char **argv) {
   VkDescriptorSet set_color = allocate_descriptor_set(descriptor_pool, layout_color);
   bind_storage_buffers(set_color, (VkBuffer[]){ rgb_buffer, coeff_buffer[0], coeff_buffer[1], coeff_buffer[2] }, 4);
   VkDescriptorSet set_coeff_to_scratch[MAX_PLANES], set_scratch_to_coeff[MAX_PLANES], set_row[MAX_PLANES], set_quant[MAX_PLANES], set_size[MAX_PLANES], set_pack[MAX_PLANES];
+  VkDescriptorSet set_rans_hist[MAX_PLANES] = { 0 }, set_rans_size[MAX_PLANES] = { 0 }, set_rans_pack[MAX_PLANES] = { 0 };   // full GPU rANS encode
+  VkDescriptorSet set_dct_qt[MAX_PLANES] = { 0 }, set_rans_hist_qt[MAX_PLANES] = { 0 }, set_rans_size_qt[MAX_PLANES] = { 0 }, set_deblock[MAX_PLANES] = { 0 };   // DCT-B quadtree encode
   VkDescriptorSet set_pthresh[MAX_PLANES] = { 0 };   // perceptual RDO (--prdo): { coeff, threshold } for pthresh.comp
   VkDescriptorSet set_diff[MAX_PLANES], set_size_diff[MAX_PLANES], set_pack_diff[MAX_PLANES];   // coefdiff (A) P-frame sets
   VkDescriptorSet set_ycocg[MAX_PLANES];                                      // colordiff (B): {coeff, prev_ycocg} for ycocg_diff + coeff_add
@@ -2149,6 +2279,25 @@ int main(int argc, char **argv) {
     bind_storage_buffers(set_size[plane], (VkBuffer[]){ coeff_buffer[plane], size_buffer[plane] }, 2);
     set_pack[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
     bind_storage_buffers(set_pack[plane], (VkBuffer[]){ coeff_buffer[plane], offset_buffer[plane], data_buffer }, 3);
+    if (gpu_encode) {   // full GPU rANS encode sets
+      set_rans_hist[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+      bind_storage_buffers(set_rans_hist[plane], (VkBuffer[]){ coeff_buffer[plane], rans_hist_buffer }, 2);
+      set_rans_size[plane] = allocate_descriptor_set(descriptor_pool, layout_4_buffers);
+      bind_storage_buffers(set_rans_size[plane], (VkBuffer[]){ coeff_buffer[plane], rans_table_buffer[plane], rans_scratch_buffer, size_buffer[plane] }, 4);
+      set_rans_pack[plane] = allocate_descriptor_set(descriptor_pool, layout_4_buffers);
+      bind_storage_buffers(set_rans_pack[plane], (VkBuffer[]){ rans_scratch_buffer, size_buffer[plane], offset_buffer[plane], data_buffer }, 4);
+      if (g_quadtree) {   // DCT-B quadtree encode sets (forward/inverse share {coeff, leaf_list}; rANS adds the partition)
+        set_dct_qt[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+        bind_storage_buffers(set_dct_qt[plane], (VkBuffer[]){ coeff_buffer[plane], leaf_list_buffer[plane] }, 2);
+        set_rans_hist_qt[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+        bind_storage_buffers(set_rans_hist_qt[plane], (VkBuffer[]){ coeff_buffer[plane], rans_hist_buffer, partition_buffer }, 3);
+        set_rans_size_qt[plane] = allocate_descriptor_set(descriptor_pool, layout_5_buffers);
+        bind_storage_buffers(set_rans_size_qt[plane], (VkBuffer[]){ coeff_buffer[plane], rans_table_buffer[plane], rans_scratch_buffer, size_buffer[plane], partition_buffer }, 5);
+        if (g_deblock) {   // deblock set is rebound per frame to this frame's DPB slot; allocate it here
+          set_deblock[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+        }
+      }
+    }
     // P-frame sets: coeff_diff (cur, prev, diff) + bitplane size/pack reading the difference buffer.
     set_diff[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
     bind_storage_buffers(set_diff[plane], (VkBuffer[]){ coeff_buffer[plane], previous_buffer[plane], difference_buffer[plane] }, 3);
@@ -2386,6 +2535,7 @@ int main(int argc, char **argv) {
     self_previous[plane] = checked_malloc((size_t)pixel_count * 4);
   }
   int *step = checked_malloc(pixel_count * sizeof(int));
+  float *qt_residual = (gpu_encode && g_quadtree) ? checked_malloc((size_t)pixel_count * sizeof(float)) : NULL;   // DCT-B quadtree: read-back residual (float) for the CPU partition decision
   // AQ: per-frame per-tile QP map from luma; all frames' maps concatenated by coding index (= frame_index
   // in the main loop) into all_qpmaps, written as the container qpmap section so the decoder dequantises identically.
   int aq_cols = aq_tile_cols(width), aq_rows = aq_tile_rows(height);
@@ -2520,7 +2670,209 @@ int main(int argc, char **argv) {
   }
   double encode_start = now_milliseconds();
 
-  if (use_bframes && cpu_bframes) {
+  if ((g_spatial_dct && !use_bframes) && !mode_3ddwt) {   // DCT-mode I/P (incl. lossless via the reversible integer DCT, Phase A3) + HDR; B-frames/3D-DWT keep their paths
+    // ---- DCT fork encode (Stage 1): the validated CPU oracle (RGB -> YCoCg -> block DCT -> quant -> rANS) per
+    // frame, into the container — the comparison reference; the GPU dct_fwd + GPU-rANS encode is the next step.
+    // The DECODER is full-GPU (fvdplay / fvddec). I/P only (B-frames, 3D-DWT, HDR, Q0 keep their existing paths). ----
+    printf("  DCT encode: CPU oracle (colour/DCT/quant/rANS) -> container, GPU decode | gop=%d chroma=%s\n",
+           gop, (g_chroma_format == 2) ? "4:2:0" : ((g_chroma_format == 1) ? "4:2:2" : "4:4:4"));
+    int32_t *prev_ycocg[MAX_PLANES] = { NULL };
+    int32_t *decode_prev[MAX_PLANES] = { NULL };
+    for (int plane = 0; plane < g_num_planes; plane++) {
+      prev_ycocg[plane] = checked_malloc((size_t)pixel_count * 4);
+      if (!output) {
+        decode_prev[plane] = checked_malloc((size_t)pixel_count * 4);
+      }
+    }
+    uint8_t *frame_rgb = checked_malloc(frame_bytes);
+    uint8_t *recon_rgb = output ? NULL : checked_malloc(frame_bytes);
+    // --gpu-encode (4:4:4 intra): the GPU runs colour -> dct_fwd -> quant, the coeffs are read back, and the
+    // validated CPU dct_encode_plane does the rANS. Validates the GPU forward DCT; files are identical to the CPU
+    // encode. P-frames / 4:2:x fall back to the CPU encode below (the frame format is the same either way).
+    int32_t *gpu_planes[MAX_PLANES] = { NULL };
+    uint32_t *gpu_offsets[MAX_PLANES] = { NULL };
+    int *gpu_step = NULL;
+    if (gpu_encode) {
+      gpu_step = checked_malloc(pixel_count * sizeof(int));
+      for (int plane = 0; plane < g_num_planes; plane++) {
+        gpu_planes[plane] = checked_malloc((size_t)pixel_count * 4);
+        gpu_offsets[plane] = checked_malloc((size_t)block_count * 4);
+      }
+    }
+    while ((fread(frame_rgb, 1, frame_bytes, input_pipe) == frame_bytes) && ((!max_frames) || (frame_index < max_frames))) {
+      if (g_sample_bytes == 2) {   // HDR: ffmpeg rgb48le delivers (value << 6); shift down to the codec's 12-bit code BEFORE any processing/encode (this I/P + DCT loop previously skipped it, unlike the bidi + threaded-reader paths, so bright codes wrapped negative as signed int16 -> inverted colours)
+        hdr_ingest_inplace(frame_rgb, width * height);
+      }
+      apply_alpha_bleed(frame_rgb, width, height);
+      int is_key = ((gop <= 1) || ((frame_index % gop) == 0));
+      int is_predicted = !is_key;   // keyframes reset the prediction chain (is_predicted = 0)
+      uint8_t *frame_payload = NULL;
+      size_t total;
+      if (((((((gpu_encode && !is_predicted) && (g_chroma_format == 0)) && !hdr_mode) && !g_quadtree) && !g_deblock) && !lossless) && !g_has_alpha) {   // GPU encode has no partition/deblock/lossless/alpha path -> quadtree+deblock+Q0+alpha use the CPU encoder (lossless = bit-plane, the GPU all-intra path is rANS-only + appends no alpha section)
+        // ---- GPU forward path: colour -> dct_fwd -> quant on the GPU, then CPU rANS ----
+        memcpy(rgb_map, frame_rgb, frame_bytes);
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          build_dct_quant_matrix(gpu_step, width, height, quality);
+          if (plane > 0) {
+            build_dct_quant_matrix_chroma(gpu_step, width, height, quality);
+          }
+          memcpy(step_map[plane], gpu_step, (size_t)pixel_count * 4);
+        }
+        begin_recording();
+        int32_t color_push[2] = { width, height };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_color);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_color, 0, 1, &set_color, 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_color, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, color_push);
+        vkCmdDispatch(command_buffer, (pixel_count + 255) / 256, 1, 1);
+        memory_barrier();
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          int32_t dct_push[2] = { width, height };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dct_fwd);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dct, 0, 1, &set_row[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_dct, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dct_push);
+          vkCmdDispatch(command_buffer, (width + 7) / 8, (height + 7) / 8, 1);
+          memory_barrier();
+          int32_t quant_push[2];
+          quant_push[0] = pixel_count;
+          float chroma_multiplier = (plane == 0) ? 1.0f : g_chroma_quant;
+          memcpy(&quant_push[1], &chroma_multiplier, sizeof(float));
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_quant);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, quant_push);
+          vkCmdDispatch(command_buffer, (pixel_count + 255) / 256, 1, 1);
+          memory_barrier();
+        }
+        submit_and_wait();
+        // ---- full GPU rANS encode: per plane histogram -> table -> rANS size -> prefix-sum -> pack ----
+        uint8_t *gpu_table[MAX_PLANES] = { NULL };
+        uint32_t gpu_table_len[MAX_PLANES] = { 0 };
+        int gpu_block_counts[MAX_PLANES];
+        int tiles_per_plane = block_count_x(width) * block_count_y(height);
+        uint32_t running_offset = 0;
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          gpu_block_counts[plane] = tiles_per_plane;
+          // 1. token histogram on the GPU
+          memset(rans_hist_map, 0, 273 * 4);
+          begin_recording();
+          int32_t hist_push[3] = { width, height, g_block_size };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_hist);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_hist, 0, 1, &set_rans_hist[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_rans_hist, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, hist_push);
+          vkCmdDispatch(command_buffer, tiles_per_plane, 1, 1);
+          submit_and_wait();
+          // 2. normalize -> GPU table (norm+cum) + the transmitted entropy blob (norm, exp-golomb)
+          uint32_t *hist = (uint32_t *)rans_hist_map;
+          uint32_t dc_norm[RANS_DC_SYMBOLS], ac_norm[RANS_AC_SYMBOLS], dc_cum[RANS_DC_SYMBOLS], ac_cum[RANS_AC_SYMBOLS];
+          rans_normalize(hist, RANS_DC_SYMBOLS, dc_norm);
+          rans_normalize(hist + RANS_DC_SYMBOLS, RANS_AC_SYMBOLS, ac_norm);
+          rans_build_cum(dc_norm, RANS_DC_SYMBOLS, dc_cum);
+          rans_build_cum(ac_norm, RANS_AC_SYMBOLS, ac_cum);
+          uint32_t *tbl = (uint32_t *)rans_table_map[plane];
+          for (int i = 0; i < RANS_DC_SYMBOLS; i++) {
+            tbl[RANS_GPU_OFF_DC_NORM + i] = dc_norm[i];
+            tbl[RANS_GPU_OFF_DC_CUM + i] = dc_cum[i];
+          }
+          for (int i = 0; i < RANS_AC_SYMBOLS; i++) {
+            tbl[RANS_GPU_OFF_AC_NORM + i] = ac_norm[i];
+            tbl[RANS_GPU_OFF_AC_CUM + i] = ac_cum[i];
+          }
+          BitWriter tw;
+          bitwriter_init(&tw);
+          for (int i = 0; i < RANS_DC_SYMBOLS; i++) {
+            bitwriter_put_unsigned_exp_golomb(&tw, dc_norm[i]);
+          }
+          for (int i = 0; i < RANS_AC_SYMBOLS; i++) {
+            bitwriter_put_unsigned_exp_golomb(&tw, ac_norm[i]);
+          }
+          bitwriter_flush(&tw);
+          gpu_table[plane] = tw.bytes;
+          gpu_table_len[plane] = (uint32_t)tw.length;
+          // 3. rANS-encode each tile into the scratch + write its byte length to size_buffer
+          begin_recording();
+          int32_t size_push[4] = { width, height, g_block_size, rans_tile_stride };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_size);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_size, 0, 1, &set_rans_size[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_rans_size, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, size_push);
+          vkCmdDispatch(command_buffer, tiles_per_plane, 1, 1);
+          submit_and_wait();
+          // 4. prefix-sum the per-tile sizes (each padded to 4 bytes, running across planes) into the offsets
+          uint32_t *sizes = (uint32_t *)size_map[plane];
+          uint32_t *offsets = (uint32_t *)offset_map[plane];
+          for (int t = 0; t < tiles_per_plane; t++) {
+            offsets[t] = running_offset;
+            running_offset += (sizes[t] + 3u) & ~3u;
+          }
+          // 5. copy each tile's blob from the scratch to its container offset in data_buffer
+          begin_recording();
+          int32_t pack_push[3] = { tiles_per_plane, g_block_size, rans_tile_stride };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_pack);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_pack, 0, 1, &set_rans_pack[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_rans_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, pack_push);
+          vkCmdDispatch(command_buffer, tiles_per_plane, 1, 1);
+          submit_and_wait();
+        }
+        // 6. compact out the 4-byte inter-tile padding, then assemble the frame + the entropy section
+        uint8_t *tight = checked_malloc(running_offset ? running_offset : 1);
+        size_t color_length = 0;
+        compact_block_data(tight, data_map, offset_map, size_map, gpu_block_counts, g_num_planes, 0, &color_length);
+        total = assemble_frame(gpu_block_counts, (uint32_t *[]){ (uint32_t *)size_map[0], (uint32_t *)size_map[1], (uint32_t *)size_map[2] },
+                               NULL, 0, tight, color_length, &frame_payload);
+        total = append_entropy_section(&frame_payload, total, gpu_table, gpu_table_len, g_num_planes);
+        free(tight);
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          free(gpu_table[plane]);
+        }
+      } else {
+        total = encode_frame_colordiff(frame_rgb, width, height, levels, quality, &frame_payload, prev_ycocg, is_predicted);
+      }
+      if (output) {
+        if (frame_index >= index_capacity) {
+          index_capacity = (index_capacity > 0) ? (index_capacity * 2) : 256;
+          index = realloc(index, (size_t)index_capacity * sizeof(FrameEntry));
+          if (!index) {
+            die("index realloc");
+          }
+        }
+        memset(&index[frame_index], 0, sizeof(FrameEntry));
+        index[frame_index].offset = (uint64_t)ftello(container_file);
+        index[frame_index].type = (uint8_t)is_predicted;
+        index[frame_index].quality = (uint8_t)quality;
+        index[frame_index].poc = (uint32_t)frame_index;
+        index[frame_index].ref0 = is_predicted ? ((int32_t)frame_index - 1) : -1;
+        index[frame_index].ref1 = -1;
+        index[frame_index].temporal_id = 0;
+        index[frame_index].size = (uint32_t)fwrite_frame(container_file, frame_payload, total);
+        predicted_frames += is_predicted;
+      } else {
+        decode_frame_colordiff(frame_payload, total, width, height, levels, quality, recon_rgb, decode_prev, is_predicted);
+        double mean_squared_error = 0;
+        for (size_t i = 0; i < frame_bytes; i++) {
+          if ((i % (size_t)g_channels) >= 3) {
+            continue;   // compare R/G/B, skip the alpha lane
+          }
+          int difference = (int)frame_rgb[i] - (int)recon_rgb[i];
+          mean_squared_error += (double)difference * difference;
+        }
+        mean_squared_error /= ((double)pixel_count * 3.0);
+        sum_psnr += (mean_squared_error == 0) ? 99.99 : (10.0 * log10((255.0 * 255.0) / mean_squared_error));
+      }
+      total_bytes += total;
+      frame_index++;
+      if (output) {
+        print_encode_progress(frame_index, total_frames, fps_value, now_milliseconds() - encode_start);
+      }
+      free(frame_payload);
+    }
+    for (int plane = 0; plane < g_num_planes; plane++) {
+      free(prev_ycocg[plane]);
+      free(decode_prev[plane]);
+      free(gpu_planes[plane]);
+      free(gpu_offsets[plane]);
+    }
+    free(gpu_step);
+    free(frame_rgb);
+    free(recon_rgb);
+  } else if (use_bframes && cpu_bframes) {
     // ---- hierarchical B-frame encode (Stage A CPU oracle: --cpu-bframes; the GPU bidi path below is the default) ----
     printf("  B-frame mode: %d B between anchors (period %d), keyframe interval %d, chroma=%s (CPU oracle)\n",
            bframes, bframes + 1, (gop > (bframes + 1)) ? (((int)(gop / (bframes + 1))) * (bframes + 1)) : 0,
@@ -3047,6 +3399,7 @@ int main(int argc, char **argv) {
         if (g_has_alpha) {   // append the alpha section (graceful-ignore) after the 3-plane color payload
           int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
           total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
+                                       NULL, 0,   // 3D-DWT is wavelet-mode -> alpha is bit-plane (no rANS table)
                                        tight + tight_color_length, tight_total - tight_color_length);
         }
         free(tight);
@@ -3148,7 +3501,9 @@ int main(int argc, char **argv) {
           double mean_squared_error = 0;
           size_t pixel_stride = (size_t)g_channels * g_sample_bytes, rgb_bytes = (size_t)3 * g_sample_bytes;
           for (size_t i = 0; i < frame_bytes; i++) {
-            if ((i % pixel_stride) >= rgb_bytes) { continue; }   // skip the alpha lane (compare R/G/B only)
+            if ((i % pixel_stride) >= rgb_bytes) {
+              continue;
+            }  // skip the alpha lane (compare R/G/B only)
             int difference = (int)gop_rgb[f][i] - (int)gop_reconstructed[f][i];
             mean_squared_error += (double)difference * difference;
           }
@@ -3295,9 +3650,13 @@ int main(int argc, char **argv) {
       if (g_aq_enabled && !lossless) {
         if (frame_index >= aq_capacity) {
           long want = (aq_capacity > 0) ? (aq_capacity * 2) : 256;
-          while (want <= frame_index) { want *= 2; }
+          while (want <= frame_index) {
+            want *= 2;
+          }
           all_qpmaps = realloc(all_qpmaps, (size_t)want * aq_map_bytes);
-          if (!all_qpmaps) { die("qpmap alloc"); }
+          if (!all_qpmaps) {
+            die("qpmap alloc");
+          }
           aq_capacity = want;
         }
         // Source THIS coding step's frame: B mode (use_bframes) has its driver (bgpu_next) write every B/P/I source
@@ -3360,8 +3719,12 @@ int main(int argc, char **argv) {
       int frame_quality = current_quality;
       if (((use_bframes && qp_cascade) && !lossless)) {
         frame_quality = (int)(((float)current_quality * temporal_quant_scale(b_tid)) + 0.5f);
-        if (frame_quality < 1) { frame_quality = 1; }
-        if (frame_quality > 255) { frame_quality = 255; }   // FrameEntry.quality is uint8; cap at storage limit, not an arbitrary 31 (old cap also clamped anchors, flooring the bitrate)
+        if (frame_quality < 1) {
+          frame_quality = 1;
+        }
+        if (frame_quality > 255) {   // FrameEntry.quality is a uint8; cap at its storage limit, not an arbitrary 31
+          frame_quality = 255;       // (the old 31 cap also wrongly clamped the anchors, flooring the achievable bitrate)
+        }
         for (int plane = 0; plane < g_num_planes; plane++) {
           int pw = plane_width(plane, width), ph = plane_height(plane, height);
           build_quantization_steps(step, pw, ph, levels, frame_quality);
@@ -3404,6 +3767,21 @@ int main(int argc, char **argv) {
           build_quantization_steps(step, pw, ph, levels, frame_quality);   // the canonical step the GPU quant uses
           build_prdo_thresholds(prdo_threshold, step, pw, ph, levels, prdo_masking, prdo_cols, prdo_rows);
           memcpy(threshold_map[plane], prdo_threshold, (size_t)(pw * ph) * sizeof(float));
+        }
+      }
+
+      // DCT-B (GPU motion path): the residual is coded with the block DCT + rANS, so override the wavelet step
+      // builds above with the JPEG-style DCT quant matrix per plane at this frame's (QP-cascaded) quality —
+      // exactly the matrix the I/P GPU DCT encode and the decoder use. Uniform 8x8 only (no AQ/PRDO on this path).
+      if ((g_bframe_dct && use_bframes) && !lossless) {
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          int pw = plane_width(plane, width), ph = plane_height(plane, height);
+          if (plane == 0) {
+            build_dct_quant_matrix(step, pw, ph, frame_quality);
+          } else {
+            build_dct_quant_matrix_chroma(step, pw, ph, frame_quality);
+          }
+          memcpy(step_map[plane], step, (size_t)(pw * ph) * 4);
         }
       }
 
@@ -3816,6 +4194,32 @@ int main(int argc, char **argv) {
           vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
           memory_barrier();
         }
+        if (g_bframe_dct) {
+          // DCT-B (GPU motion path): for the UNIFORM 8x8 path do the forward block DCT + quant on the residual
+          // here. For the QUADTREE path leave the residual in coeff_buffer untouched — the partition is decided on
+          // the CPU from the read-back residual after this pass's submit, then the forward quadtree DCT + quant run.
+          // Either way the rANS encode + per-tile sizing + the inverse-DCT closed-loop reconstruct run post-submit.
+          if (!g_quadtree) {
+            int32_t dct_fwd_push[2] = { plane_w, plane_h };
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dct_fwd);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dct, 0, 1, &set_row[plane], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_dct, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dct_fwd_push);
+            vkCmdDispatch(command_buffer, (plane_w + 7) / 8, (plane_h + 7) / 8, 1);
+            memory_barrier();
+            if (!lossless) {
+              int32_t dct_quant_push[2];
+              dct_quant_push[0] = plane_pixels;
+              float dct_chroma_multiplier = (plane == 0) ? 1.0f : g_chroma_quant;
+              memcpy(&dct_quant_push[1], &dct_chroma_multiplier, sizeof(float));
+              vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_quant);
+              vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[plane], 0, 0);
+              vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dct_quant_push);
+              vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+              memory_barrier();
+            }
+          }
+          continue;
+        }
         // Forward 2D wavelet: rows then columns at each level (finest first), with a transpose
         // turning the column pass into another row pass.
         for (int level = 0; level < level_count; level++) {
@@ -3916,12 +4320,13 @@ int main(int argc, char **argv) {
           memory_barrier();
         }
       }
-      // Alpha plane 3 (intra): extract -> forward DWT -> quant (lossy) -> bitplane size, in the SAME pass-1
-      // command buffer (no extra submit), mirroring the color forward sequence for one full-res plane.
-      if (g_has_alpha) {
-        // Alpha has its OWN lossless decision (alpha_qp == 0 -> reversible 5/3), independent of the frame quality, so
-        // a lossless alpha matte can ride on a lossy colour frame (--alpha-qp=0); key the transform/quant on alpha_lossless,
-        // not the frame `lossless`, so the GPU forward matches the CPU reconstruct_plane (which uses alpha_qp).
+      // Alpha plane 3 (intra), WAVELET mode only: extract -> forward DWT -> quant (lossy) -> bitplane size, in the
+      // SAME pass-1 command buffer (no extra submit), mirroring the color forward sequence for one full-res plane.
+      // DCT mode (g_spatial_dct) does the alpha on the CPU rANS+DCT coder after assemble (mirroring the I/P alpha).
+      if (g_has_alpha && !g_spatial_dct) {
+        // The alpha plane has its OWN lossless decision (alpha_qp == 0 -> reversible 5/3), independent of the frame's
+        // quality: a lossless alpha matte can ride on a lossy colour frame (--alpha-qp=0). Key the transform/quant on
+        // alpha_lossless, not the frame `lossless`, so the GPU forward matches the CPU reconstruct_plane (which uses alpha_qp).
         int alpha_lossless = (((g_alpha_qp >= 0) ? g_alpha_qp : quality) == 0);
         int plane_w = width, plane_h = height;   // alpha is always full-res
         int scratch_stride = (plane_w > plane_h) ? plane_w : plane_h;
@@ -3997,6 +4402,317 @@ int main(int argc, char **argv) {
         block_counts[plane] = block_count_x(plane_width(plane, width)) * block_count_y(plane_height(plane, height));
       }
 
+      size_t data_length = 0;            // total packed payload bytes (set by whichever residual-coding path runs)
+      size_t color_data_length = 0;      // color payload end; the alpha section (if any) starts here
+      int alpha_block_count = block_count_x(width) * block_count_y(height);
+      uint8_t *dct_b_table[MAX_PLANES] = { NULL };    // DCT-B: per-plane rANS entropy-table blobs (appended after assemble)
+      uint32_t dct_b_table_len[MAX_PLANES] = { 0 };
+      if (g_bframe_dct && !g_quadtree) {
+        // ---- DCT-B GPU rANS encode (4:4:4, uniform 8x8): per plane histogram -> normalize -> table -> rANS
+        // size -> CPU prefix-sum -> pack, exactly like the I/P GPU DCT encode but on the (motion) residual. ----
+        int tiles_per_plane = block_count_x(width) * block_count_y(height);
+        uint32_t running_offset = 0;
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          memset(rans_hist_map, 0, 273 * 4);
+          begin_recording();
+          int32_t hist_push[3] = { width, height, g_block_size };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_hist);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_hist, 0, 1, &set_rans_hist[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_rans_hist, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, hist_push);
+          vkCmdDispatch(command_buffer, tiles_per_plane, 1, 1);
+          submit_and_wait();
+          uint32_t *hist = (uint32_t *)rans_hist_map;
+          uint32_t dc_norm[RANS_DC_SYMBOLS], ac_norm[RANS_AC_SYMBOLS], dc_cum[RANS_DC_SYMBOLS], ac_cum[RANS_AC_SYMBOLS];
+          rans_normalize(hist, RANS_DC_SYMBOLS, dc_norm);
+          rans_normalize(hist + RANS_DC_SYMBOLS, RANS_AC_SYMBOLS, ac_norm);
+          rans_build_cum(dc_norm, RANS_DC_SYMBOLS, dc_cum);
+          rans_build_cum(ac_norm, RANS_AC_SYMBOLS, ac_cum);
+          uint32_t *tbl = (uint32_t *)rans_table_map[plane];
+          for (int i = 0; i < RANS_DC_SYMBOLS; i++) {
+            tbl[RANS_GPU_OFF_DC_NORM + i] = dc_norm[i];
+            tbl[RANS_GPU_OFF_DC_CUM + i] = dc_cum[i];
+          }
+          for (int i = 0; i < RANS_AC_SYMBOLS; i++) {
+            tbl[RANS_GPU_OFF_AC_NORM + i] = ac_norm[i];
+            tbl[RANS_GPU_OFF_AC_CUM + i] = ac_cum[i];
+          }
+          BitWriter tw;
+          bitwriter_init(&tw);
+          for (int i = 0; i < RANS_DC_SYMBOLS; i++) {
+            bitwriter_put_unsigned_exp_golomb(&tw, dc_norm[i]);
+          }
+          for (int i = 0; i < RANS_AC_SYMBOLS; i++) {
+            bitwriter_put_unsigned_exp_golomb(&tw, ac_norm[i]);
+          }
+          bitwriter_flush(&tw);
+          dct_b_table[plane] = tw.bytes;
+          dct_b_table_len[plane] = (uint32_t)tw.length;
+          begin_recording();
+          int32_t size_push[4] = { width, height, g_block_size, rans_tile_stride };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_size);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_size, 0, 1, &set_rans_size[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_rans_size, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, size_push);
+          vkCmdDispatch(command_buffer, tiles_per_plane, 1, 1);
+          submit_and_wait();
+          uint32_t *sizes = (uint32_t *)size_map[plane];
+          uint32_t *offs = (uint32_t *)offset_map[plane];
+          for (int t = 0; t < tiles_per_plane; t++) {
+            offs[t] = running_offset;
+            running_offset += (sizes[t] + 3u) & ~3u;
+          }
+          begin_recording();
+          int32_t pack_push[3] = { tiles_per_plane, g_block_size, rans_tile_stride };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_pack);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_pack, 0, 1, &set_rans_pack[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_rans_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, pack_push);
+          vkCmdDispatch(command_buffer, tiles_per_plane, 1, 1);
+          submit_and_wait();
+        }
+        data_length = running_offset;
+        color_data_length = data_length;
+        // ---- DCT-B closed-loop reconstruct: dequant + inverse DCT + round + motion_add into this frame's DPB
+        // slot, exactly as the decoder reconstructs, so the reference cannot drift (B references B). ----
+        begin_recording();
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
+          int plane_pixels = plane_w * plane_h;
+          int pixel_workgroups = (plane_pixels + 255) / 256;
+          if (!lossless) {
+            int32_t dequant_push[2];
+            dequant_push[0] = plane_pixels;
+            float dq_chroma = (plane == 0) ? 1.0f : g_chroma_quant;
+            memcpy(&dequant_push[1], &dq_chroma, sizeof(float));
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dequant_inverse);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[plane], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dequant_push);
+            vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+            memory_barrier();
+          }
+          int32_t dct_inv_push[2] = { plane_w, plane_h };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dct_inv);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dct, 0, 1, &set_row[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_dct, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dct_inv_push);
+          vkCmdDispatch(command_buffer, (plane_w + 7) / 8, (plane_h + 7) / 8, 1);
+          memory_barrier();
+          if (!lossless) {
+            int32_t round_push = plane_pixels;
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_round);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row[plane], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 4, &round_push);
+            vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+            memory_barrier();
+          }
+          int32_t add_push[2] = { plane_pixels, is_predicted };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_add);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_motion_add_bidi[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, add_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
+        }
+        submit_and_wait();
+      } else if (g_bframe_dct) {
+        // ---- DCT-B adaptive QUADTREE (Voll-GPU): CPU partition decision on the read-back residual, then GPU
+        // forward quadtree DCT + quant + partition-aware rANS encode + inverse-quadtree-DCT (+deblock) reconstruct. ----
+        // 1) read back the motion-compensated residual (coeff_buffer, int) per plane and decide the partition on the CPU.
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          int pw = plane_width(plane, width), ph = plane_height(plane, height);
+          int pp = pw * ph;
+          begin_recording();
+          VkBufferCopy rb = { 0, 0, (VkDeviceSize)pp * 4 };
+          vkCmdCopyBuffer(command_buffer, coeff_buffer[plane], coeff_readback_buffer, 1, &rb);
+          submit_and_wait();
+          const float *res = (const float *)coeff_readback_map;   // lossy residual is stored as float bit-patterns (ycocg_diff)
+          for (int i = 0; i < pp; i++) {
+            qt_residual[i] = res[i];
+          }
+          const int *quant_table = (plane == 0) ? JPEG_LUMA_QUANT : JPEG_CHROMA_QUANT;
+          float chroma_multiplier = (plane == 0) ? 1.0f : g_chroma_quant;
+          qt_decide_partition(qt_residual, pw, ph, frame_quality, quant_table, chroma_multiplier, qt_map[plane]);
+          build_quant_quadtree(step, pw, ph, qt_map[plane], frame_quality, quant_table);
+          memcpy(step_map[plane], step, (size_t)pp * 4);
+          memcpy((uint8_t *)partition_map + ((size_t)plane * qt_regions_per_plane), qt_map[plane], (size_t)qt_regions_per_plane);
+          int leaf_regions_x = qt_region_count(pw);
+          int lx[QT_MAX_LEAVES], ly[QT_MAX_LEAVES], ls[QT_MAX_LEAVES];
+          uint32_t *leaf_words = (uint32_t *)leaf_list_map[plane];
+          int count = 0;
+          for (int ry = 0; ry < ph; ry += QT_REGION) {
+            for (int rx = 0; rx < pw; rx += QT_REGION) {
+              uint8_t code = qt_map[plane][((ry / QT_REGION) * leaf_regions_x) + (rx / QT_REGION)];
+              int nleaf = qt_leaves(rx, ry, code, pw, ph, lx, ly, ls);
+              for (int i = 0; i < nleaf; i++) {
+                leaf_words[(count * 3) + 0] = (uint32_t)lx[i];
+                leaf_words[(count * 3) + 1] = (uint32_t)ly[i];
+                leaf_words[(count * 3) + 2] = (uint32_t)ls[i];
+                count++;
+              }
+            }
+          }
+          qt_leaf_count[plane] = count;
+          if (g_deblock) {
+            int cells_x = pw / 8;
+            int *cl = (int *)cell_leaf_map[plane];
+            for (int ry = 0; ry < ph; ry += QT_REGION) {
+              for (int rx = 0; rx < pw; rx += QT_REGION) {
+                uint8_t code = qt_map[plane][((ry / QT_REGION) * leaf_regions_x) + (rx / QT_REGION)];
+                int nleaf = qt_leaves(rx, ry, code, pw, ph, lx, ly, ls);
+                for (int i = 0; i < nleaf; i++) {
+                  int id = (ly[i] * pw) + lx[i];
+                  for (int cy = ly[i] / 8; cy < ((ly[i] + ls[i]) / 8); cy++) {
+                    for (int cx = lx[i] / 8; cx < ((lx[i] + ls[i]) / 8); cx++) {
+                      cl[(cy * cells_x) + cx] = id;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        // 2) GPU forward quadtree DCT + quant per plane (one submit).
+        begin_recording();
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          int pw = plane_width(plane, width), ph = plane_height(plane, height);
+          int pp = pw * ph;
+          int32_t fwd_push[2] = { pw, qt_leaf_count[plane] };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dct_fwd_qt);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dct_qt, 0, 1, &set_dct_qt[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_dct_qt, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, fwd_push);
+          vkCmdDispatch(command_buffer, qt_leaf_count[plane], 1, 1);
+          memory_barrier();
+          int32_t quant_push[2];
+          quant_push[0] = pp;
+          float chroma_multiplier = (plane == 0) ? 1.0f : g_chroma_quant;
+          memcpy(&quant_push[1], &chroma_multiplier, sizeof(float));
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_quant);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, quant_push);
+          vkCmdDispatch(command_buffer, (pp + 255) / 256, 1, 1);
+          memory_barrier();
+        }
+        submit_and_wait();
+        // 3) partition-aware GPU rANS encode per plane (hist -> normalize -> table -> size -> CPU prefix-sum -> pack).
+        int tiles_per_plane = block_count_x(width) * block_count_y(height);
+        int regions_x = qt_region_count(width);
+        uint32_t running_offset = 0;
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          memset(rans_hist_map, 0, 273 * 4);
+          begin_recording();
+          int32_t hist_push[5] = { width, height, g_block_size, plane * qt_regions_per_plane, regions_x };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_hist_qt);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_hist_qt, 0, 1, &set_rans_hist_qt[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_rans_hist_qt, VK_SHADER_STAGE_COMPUTE_BIT, 0, 20, hist_push);
+          vkCmdDispatch(command_buffer, tiles_per_plane, 1, 1);
+          submit_and_wait();
+          uint32_t *hist = (uint32_t *)rans_hist_map;
+          uint32_t dc_norm[RANS_DC_SYMBOLS], ac_norm[RANS_AC_SYMBOLS], dc_cum[RANS_DC_SYMBOLS], ac_cum[RANS_AC_SYMBOLS];
+          rans_normalize(hist, RANS_DC_SYMBOLS, dc_norm);
+          rans_normalize(hist + RANS_DC_SYMBOLS, RANS_AC_SYMBOLS, ac_norm);
+          rans_build_cum(dc_norm, RANS_DC_SYMBOLS, dc_cum);
+          rans_build_cum(ac_norm, RANS_AC_SYMBOLS, ac_cum);
+          uint32_t *tbl = (uint32_t *)rans_table_map[plane];
+          for (int i = 0; i < RANS_DC_SYMBOLS; i++) {
+            tbl[RANS_GPU_OFF_DC_NORM + i] = dc_norm[i];
+            tbl[RANS_GPU_OFF_DC_CUM + i] = dc_cum[i];
+          }
+          for (int i = 0; i < RANS_AC_SYMBOLS; i++) {
+            tbl[RANS_GPU_OFF_AC_NORM + i] = ac_norm[i];
+            tbl[RANS_GPU_OFF_AC_CUM + i] = ac_cum[i];
+          }
+          BitWriter tw;
+          bitwriter_init(&tw);
+          for (int i = 0; i < RANS_DC_SYMBOLS; i++) {
+            bitwriter_put_unsigned_exp_golomb(&tw, dc_norm[i]);
+          }
+          for (int i = 0; i < RANS_AC_SYMBOLS; i++) {
+            bitwriter_put_unsigned_exp_golomb(&tw, ac_norm[i]);
+          }
+          bitwriter_flush(&tw);
+          dct_b_table[plane] = tw.bytes;
+          dct_b_table_len[plane] = (uint32_t)tw.length;
+          begin_recording();
+          int32_t size_push[6] = { width, height, g_block_size, rans_tile_stride, plane * qt_regions_per_plane, regions_x };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_size_qt);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_size_qt, 0, 1, &set_rans_size_qt[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_rans_size_qt, VK_SHADER_STAGE_COMPUTE_BIT, 0, 24, size_push);
+          vkCmdDispatch(command_buffer, tiles_per_plane, 1, 1);
+          submit_and_wait();
+          uint32_t *sizes = (uint32_t *)size_map[plane];
+          uint32_t *offs = (uint32_t *)offset_map[plane];
+          for (int t = 0; t < tiles_per_plane; t++) {
+            offs[t] = running_offset;
+            running_offset += (sizes[t] + 3u) & ~3u;
+          }
+          begin_recording();
+          int32_t pack_push[3] = { tiles_per_plane, g_block_size, rans_tile_stride };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_pack);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_pack, 0, 1, &set_rans_pack[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_rans_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, pack_push);
+          vkCmdDispatch(command_buffer, tiles_per_plane, 1, 1);
+          submit_and_wait();
+        }
+        data_length = running_offset;
+        color_data_length = data_length;
+        // 4) closed-loop reconstruct: dequant + inverse quadtree DCT + round + motion_add (+ deblock) into the DPB slot.
+        if (g_deblock) {   // pre-bind the deblock sets to this frame's DPB slot (host descriptor update before recording)
+          for (int plane = 0; plane < g_num_planes; plane++) {
+            bind_storage_buffers(set_deblock[plane], (VkBuffer[]){ dpb_buffer[b_dst_slot][plane], cell_leaf_buffer[plane] }, 2);
+          }
+        }
+        begin_recording();
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          int pw = plane_width(plane, width), ph = plane_height(plane, height);
+          int pp = pw * ph;
+          int pixel_workgroups = (pp + 255) / 256;
+          int32_t dequant_push[2];
+          dequant_push[0] = pp;
+          float dq_chroma = (plane == 0) ? 1.0f : g_chroma_quant;
+          memcpy(&dequant_push[1], &dq_chroma, sizeof(float));
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dequant_inverse);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dequant_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
+          int32_t inv_push[2] = { pw, qt_leaf_count[plane] };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dct_inv_qt);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dct_qt, 0, 1, &set_dct_qt[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_dct_qt, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, inv_push);
+          vkCmdDispatch(command_buffer, qt_leaf_count[plane], 1, 1);
+          memory_barrier();
+          int32_t round_push = pp;
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_round);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 4, &round_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
+          int32_t add_push[2] = { pp, is_predicted };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_add);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_motion_add_bidi[plane], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, add_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
+        }
+        if (g_deblock) {   // in-loop deblock on the reconstructed DPB slot (V then H), bit-exact with the decoder
+          int dq = frame_quality * (g_sample_white / 256);
+          if (dq >= 1) {
+            int alpha = dq, beta = (dq >> 1) + 1, tc = (dq >> 2) + 1;
+            for (int plane = 0; plane < g_num_planes; plane++) {
+              int pw = plane_width(plane, width), ph = plane_height(plane, height);
+              int cells_x = pw / 8, cells_y = ph / 8;
+              int32_t dv[7] = { pw, ph, cells_x, alpha, beta, tc, 0 };
+              vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_deblock);
+              vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_deblock, 0, 1, &set_deblock[plane], 0, 0);
+              vkCmdPushConstants(command_buffer, pipeline_layout_deblock, VK_SHADER_STAGE_COMPUTE_BIT, 0, 28, dv);
+              vkCmdDispatch(command_buffer, (uint32_t)(((cells_x - 1) + 7) / 8), (uint32_t)((ph + 7) / 8), 1);
+              memory_barrier();
+              int32_t dh[7] = { pw, ph, cells_x, alpha, beta, tc, 1 };
+              vkCmdPushConstants(command_buffer, pipeline_layout_deblock, VK_SHADER_STAGE_COMPUTE_BIT, 0, 28, dh);
+              vkCmdDispatch(command_buffer, (uint32_t)((pw + 7) / 8), (uint32_t)(((cells_y - 1) + 7) / 8), 1);
+              memory_barrier();
+            }
+          }
+        }
+        submit_and_wait();
+      } else {
+
       // ---- size-based I/P decision: a P-frame only if the difference packs smaller than the intra frame.
       // A scene cut / sudden new content makes the difference large, so this falls back to an I-frame and
       // avoids spending bits (and, in lossy mode later, artefacts) on a useless prediction. ----
@@ -4024,10 +4740,10 @@ int main(int argc, char **argv) {
         }
         memcpy(offset_map[plane], offsets[plane], (size_t)block_counts[plane] * 4);
       }
-      size_t data_length = cumulative;
-      size_t color_data_length = data_length;   // color payload ends here; the appended alpha section's block data starts here
-      int alpha_block_count = block_count_x(width) * block_count_y(height);
-      if (g_has_alpha) {   // prefix-sum the alpha block sizes, continuing the cumulative byte offset after the color planes
+      data_length = cumulative;
+      color_data_length = data_length;   // color payload ends here; the appended alpha section's block data starts here
+      alpha_block_count = block_count_x(width) * block_count_y(height);
+      if (g_has_alpha && !g_spatial_dct) {   // wavelet mode: prefix-sum the alpha block sizes after the color planes (DCT mode codes the alpha on the CPU rANS coder)
         const uint32_t *alpha_sizes = (const uint32_t *)size_map[3];
         for (int block = 0; block < alpha_block_count; block++) {
           offsets[3][block] = cumulative;
@@ -4133,7 +4849,7 @@ int main(int argc, char **argv) {
           memory_barrier();
         }
       }
-      if (g_has_alpha) {   // alpha bitplane pack: write the alpha blocks into data_buffer at their (post-color) offsets
+      if (g_has_alpha && !g_spatial_dct) {   // wavelet mode: alpha bitplane pack into data_buffer at the (post-color) offsets (DCT mode codes the alpha on the CPU)
         int blocks_x = block_count_x(width), blocks_y = block_count_y(height);
         int a_block_count = blocks_x * blocks_y;
         int block_workgroups = (g_block_size == 128) ? a_block_count : ((a_block_count + 63) / 64);
@@ -4145,6 +4861,7 @@ int main(int argc, char **argv) {
         memory_barrier();
       }
       submit_and_wait();
+      }   // end of the wavelet/bitplane residual path (the DCT-B path above replaces it for g_bframe_dct)
 
       // CDEF in-loop deringing (--cdef, lossy I/P): previous_buffer is now the reconstructed reference; search the
       // best per-frame strength on the GPU and apply it, so the NEXT frame predicts from the deringed reference (the
@@ -4250,12 +4967,70 @@ int main(int argc, char **argv) {
       frame_sizes[3] = (uint32_t *)size_map[3];   // alpha always uses size_map (never the coefdiff-diff sizes)
       uint8_t *tight = checked_malloc(data_length ? data_length : 1);
       size_t tight_color_length = 0;
-      size_t tight_total = compact_block_data(tight, (const uint8_t *)data_map, offset_map, (void *const *)frame_sizes, block_counts, g_num_planes, g_has_alpha ? alpha_block_count : 0, &tight_color_length);
+      size_t tight_total = compact_block_data(tight, (const uint8_t *)data_map, offset_map, (void *const *)frame_sizes, block_counts, g_num_planes, (g_has_alpha && !g_spatial_dct) ? alpha_block_count : 0, &tight_color_length);
       size_t total = assemble_frame(block_counts, frame_sizes, mv_bytes, mv_length, tight, tight_color_length, &frame);
+      if (g_bframe_dct) {   // DCT-B: append the per-plane rANS frequency tables (the decoder rebuilds the GPU tables from them)
+        total = append_entropy_section(&frame, total, dct_b_table, dct_b_table_len, g_num_planes);
+        for (int plane = 0; plane < g_num_planes; plane++) {
+          free(dct_b_table[plane]);
+        }
+        if (g_quadtree) {   // DCT-B quadtree: the per-plane partition codes follow the entropy section (decoder parses entropy THEN partition)
+          total = append_partition_section(&frame, total, qt_map, qt_regions_per_plane, g_num_planes);
+        }
+      }
       if (g_has_alpha) {   // append the alpha section (graceful-ignore) after the 3-plane color payload
         int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
-        total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
-                                     tight + tight_color_length, tight_total - tight_color_length);
+        if (g_spatial_dct) {
+          // DCT mode: code the alpha on the CPU rANS+DCT coder (lossy float-DCT / lossless integer-DCT), exactly like
+          // the I/P alpha in encode_frame_colordiff. The alpha plane is intra, so the current coding frame's RGBA in
+          // rgb_map is the source (already alpha-bled + HDR-ingested, matching the GPU extract the wavelet path uses).
+          int alpha_pixels = width * height;
+          int alpha_blocks = block_count_x(width) * block_count_y(height);
+          int32_t *alpha = checked_malloc((size_t)alpha_pixels * 4);
+          if (g_sample_bytes == 2) {
+            const int16_t *src16 = (const int16_t *)rgb_map;
+            for (int i = 0; i < alpha_pixels; i++) {
+              alpha[i] = src16[(i * 4) + 3];
+            }
+          } else {
+            const uint8_t *src8 = (const uint8_t *)rgb_map;
+            for (int i = 0; i < alpha_pixels; i++) {
+              alpha[i] = src8[(i * 4) + 3];
+            }
+          }
+          int *alpha_step = checked_malloc((size_t)alpha_pixels * sizeof(int));
+          build_spatial_quant_steps(alpha_step, width, height, levels, alpha_qp);
+          maybe_apply_tile_aq(alpha_step, width, height, levels);
+          if (alpha_qp == 0) {
+            forward_spatial_int(alpha, width, height, levels);   // lossless: reversible integer-DCT
+          } else {
+            float *alpha_float = checked_malloc((size_t)alpha_pixels * sizeof(float));
+            for (int i = 0; i < alpha_pixels; i++) {
+              alpha_float[i] = (float)alpha[i];
+            }
+            forward_spatial(alpha_float, width, height, levels);   // lossy: float-DCT
+            quantize(alpha_float, alpha, alpha_step, alpha_pixels, 1.0f);
+            free(alpha_float);
+          }
+          BitWriter alpha_writer;
+          bitwriter_init(&alpha_writer);
+          uint32_t *alpha_offsets = checked_malloc((size_t)alpha_blocks * 4);
+          uint8_t *alpha_table = NULL;
+          uint32_t alpha_table_len = 0;
+          dct_encode_plane(&alpha_writer, alpha, width, height, alpha_offsets, &alpha_table, &alpha_table_len);
+          total = append_alpha_section(&frame, total, alpha_qp, alpha_offsets, alpha_blocks,
+                                       alpha_table, alpha_table_len, alpha_writer.bytes, alpha_writer.length);
+          free(alpha);
+          free(alpha_step);
+          free(alpha_writer.bytes);
+          free(alpha_offsets);
+          free(alpha_table);
+        } else {
+          // wavelet mode: the GPU bit-plane pack above wrote the alpha into the tight buffer after the colour planes
+          total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
+                                       NULL, 0,
+                                       tight + tight_color_length, tight_total - tight_color_length);
+        }
       }
       free(tight);
       free(mv_bytes);
@@ -4324,7 +5099,9 @@ int main(int argc, char **argv) {
         double mean_squared_error = 0;
         size_t pixel_stride = (size_t)g_channels * g_sample_bytes, rgb_bytes = (size_t)3 * g_sample_bytes;
         for (size_t i = 0; i < frame_bytes; i++) {
-          if ((i % pixel_stride) >= rgb_bytes) { continue; }   // skip the alpha lane (compare R/G/B only)
+          if ((i % pixel_stride) >= rgb_bytes) {
+            continue;
+          }  // skip the alpha lane (compare R/G/B only)
           int difference = (int)rgb[i] - (int)reconstructed[i];
           mean_squared_error += (double)difference * difference;
         }
@@ -4362,7 +5139,7 @@ int main(int argc, char **argv) {
     // Write the audio blob, then the per-frame index, then back-fill the header.
     ContainerHeader header;
     memset(&header, 0, sizeof header);   // zero the reserved + HDR10 fields
-    memcpy(header.magic, "FWVC", 4);   // uppercase magic (dual H.264 + wavelet container)
+    memcpy(header.magic, "FVDC", 4);   // uppercase magic (dual H.264 + wavelet container)
     header.version = 1;
     header.header_size = (uint16_t)sizeof header;
     header.mv_codec = (uint8_t)((g_mv_codec & 1) | ((g_motion_mode & 15) << 1));   // bit0 = entropy coder (0 Exp-Golomb / 1 range); bits1-4 = motion_mode (bits1-2 interp filter, bits3-4 MV precision [0 half, 1 quarter, 2 eighth reserved, 3 amvr reserved]). Old files = 0 = golomb + bilinear + half-pel.
@@ -4405,6 +5182,18 @@ int main(int argc, char **argv) {
     }
     if (g_cdef) {
       header.color_flags |= 16;     // bit4 = has_cdef (a per-frame 4-byte strength table follows the index)
+    }
+    if (g_quadtree) {
+      header.color_flags |= 8;      // bit3 = adaptive quadtree transform sizes (per-frame partition section)
+    }
+    if (g_deblock) {
+      header.color_flags |= 32;     // bit5 = in-loop deblocking filter
+    }
+    if (g_bframe_dct) {
+      header.color_flags |= 64;     // bit6 = B-frames use DCT+rANS (else wavelet+bit-plane)
+    }
+    if (g_spatial_dct) {
+      header.color_flags |= 128;    // bit7 = spatial mode: set = DCT + rANS, clear = wavelet + bit-plane (FWV parity)
     }
     header.audio_offset = (uint64_t)ftello(container_file);
     if (audio) {

@@ -1,0 +1,177 @@
+#version 450
+// rans_unpack.comp — GPU rANS decode of the quantized DCT coefficients (mirror of the CPU
+// dct_decode_plane in fvdref.c). ONE workgroup per coding tile (a BLOCK_SIZE x BLOCK_SIZE grid of 8x8
+// DCT sub-blocks); a single invocation runs the serial rANS decode + run/size detokenize for its tile
+// (per-tile-independent streams — the interleaved-state variant comes later). Reads the packed bytes,
+// the per-tile byte offset, and the per-plane frequency tables; writes the integer coefficients that
+// the existing dequant97 then dequantizes. The arithmetic mirrors the CPU rANS byte-for-byte.
+layout(local_size_x = 1) in;
+layout(std430, binding = 0) readonly buffer Data    { uint data_words[]; };    // packed bytes, 4 per uint (little-endian)
+layout(std430, binding = 1) readonly buffer Offsets { uint tile_offset[]; };   // per-tile byte offset into Data
+layout(std430, binding = 2)          buffer Coeffs  { int coeffs[]; };         // output coefficient plane
+layout(std430, binding = 3) readonly buffer Tables  { uint freq_table[]; };    // this plane's DC/AC norm+cum+slot
+
+// push: plane width/height, the coding-block size, and the byte length of the whole Data section.
+layout(push_constant) uniform PushConstants { int width; int height; int block_size; int data_length; } push;
+
+#define RANS_PROB_BITS 12
+#define RANS_M  4096u
+#define RANS_L  8388608u          // 1 << 23
+#define DC_SYMBOLS 17
+#define AC_SYMBOLS 256
+
+// Frequency-table layout (uints), matching the host upload order:
+#define OFF_DC_NORM 0
+#define OFF_DC_CUM  17
+#define OFF_AC_NORM 34
+#define OFF_AC_CUM  290
+#define OFF_DC_SLOT 546
+#define OFF_AC_SLOT 4642
+
+// zigzag scan: zigzag[scan_position] = row-major index inside the 8x8 block.
+const int ZIGZAG[64] = int[64](
+   0,  1,  8, 16,  9,  2,  3, 10,
+  17, 24, 32, 25, 18, 11,  4,  5,
+  12, 19, 26, 33, 40, 48, 41, 34,
+  27, 20, 13,  6,  7, 14, 21, 28,
+  35, 42, 49, 56, 57, 50, 43, 36,
+  29, 22, 15, 23, 30, 37, 44, 51,
+  58, 59, 52, 45, 38, 31, 39, 46,
+  53, 60, 61, 54, 47, 55, 62, 63);
+
+// ---- byte cursor over the packed Data buffer ----
+uint g_byte_pos;     // absolute byte position for the rANS renorm input
+uint g_byte_end;     // one past the last rANS byte (= start of the raw-bit substream)
+
+uint read_byte(uint pos) {
+  return (data_words[pos >> 2u] >> ((pos & 3u) * 8u)) & 0xffu;
+}
+
+// ---- MSB-first raw-bit reader (mirrors the CPU BitReader) ----
+uint g_bit_pos;      // absolute bit position (byte = bit>>3, bit-in-byte counted MSB-first)
+
+uint get_bit() {
+  uint byte_index = g_bit_pos >> 3u;
+  uint bit_in_byte = 7u - (g_bit_pos & 7u);
+  g_bit_pos++;
+  return (read_byte(byte_index) >> bit_in_byte) & 1u;
+}
+
+uint get_bits(int count) {
+  uint value = 0u;
+  for (int i = 0; i < count; i++) {
+    value = (value << 1u) | get_bit();
+  }
+  return value;
+}
+
+// magnitude-category reconstruction (mirrors dct_get_value_bits): size>0
+int get_value(int size) {
+  int low = (size > 1) ? int(get_bits(size - 1)) : 0;
+  int magnitude = (1 << (size - 1)) + low;
+  int sign = int(get_bit());
+  return (sign != 0) ? -magnitude : magnitude;
+}
+
+// ---- rANS decoder state ----
+uint g_state;
+
+void rans_init() {
+  uint s = 0u;
+  for (uint i = 0u; i < 4u; i++) {
+    uint b = (g_byte_pos < g_byte_end) ? read_byte(g_byte_pos) : 0u;
+    g_byte_pos++;
+    s |= b << (8u * i);
+  }
+  g_state = s;
+}
+
+uint rans_slot() {
+  return g_state & (RANS_M - 1u);
+}
+
+void rans_advance(uint cum, uint freq) {
+  uint slot = g_state & (RANS_M - 1u);
+  g_state = (freq * (g_state >> RANS_PROB_BITS)) + slot - cum;
+  while (g_state < RANS_L) {
+    uint b = (g_byte_pos < g_byte_end) ? read_byte(g_byte_pos) : 0u;
+    g_byte_pos++;
+    g_state = (g_state << 8u) | b;
+  }
+}
+
+void main() {
+  int tiles_x = (push.width + (push.block_size - 1)) / push.block_size;
+  int tiles_y = (push.height + (push.block_size - 1)) / push.block_size;
+  int tile = int(gl_WorkGroupID.x);
+  if (tile >= (tiles_x * tiles_y)) {
+    return;
+  }
+  int tile_x = (tile % tiles_x) * push.block_size;
+  int tile_y = (tile / tiles_x) * push.block_size;
+  int tile_w = min(push.block_size, push.width - tile_x);
+  int tile_h = min(push.block_size, push.height - tile_y);
+
+  // Parse the per-tile header: [varint rans_length][rans bytes][raw bits].
+  uint cursor = tile_offset[tile];
+  uint rans_length = 0u;
+  int shift = 0;
+  uint byte;
+  do {
+    byte = read_byte(cursor);
+    cursor++;
+    rans_length |= (byte & 0x7fu) << uint(shift);
+    shift += 7;
+  } while ((byte & 0x80u) != 0u && shift < 35);
+
+  g_byte_pos = cursor;                       // rANS renorm input begins right after the varint
+  g_byte_end = cursor + rans_length;
+  g_bit_pos = g_byte_end * 8u;               // the raw-bit substream begins after the rANS bytes
+  rans_init();
+
+  int dc_pred = 0;
+  for (int sy = 0; (sy * 8) < tile_h; sy++) {
+    for (int sx = 0; (sx * 8) < tile_w; sx++) {
+      int base_x = tile_x + (sx * 8);
+      int base_y = tile_y + (sy * 8);
+      int scan[64];
+      for (int k = 0; k < 64; k++) {
+        scan[k] = 0;
+      }
+      // DC (DPCM), DC size table
+      int dc_size = int(freq_table[OFF_DC_SLOT + rans_slot()]);
+      rans_advance(freq_table[OFF_DC_CUM + uint(dc_size)], freq_table[OFF_DC_NORM + uint(dc_size)]);
+      int dc_diff = (dc_size > 0) ? get_value(dc_size) : 0;
+      int dc = dc_pred + dc_diff;
+      dc_pred = dc;
+      scan[0] = dc;
+      // AC run/size tokens until EOB
+      int k = 1;
+      while (k < 64) {
+        int token = int(freq_table[OFF_AC_SLOT + rans_slot()]);
+        rans_advance(freq_table[OFF_AC_CUM + uint(token)], freq_table[OFF_AC_NORM + uint(token)]);
+        if (token == 0) {
+          break;   // EOB: the rest stays zero
+        }
+        int run = token >> 4;
+        int ac_size = token & 0xf;
+        if (ac_size == 0) {
+          k += 16;   // ZRL: 16 zeros
+          continue;
+        }
+        k += run;
+        if (k < 64) {
+          scan[k] = get_value(ac_size);
+          k++;
+        }
+      }
+      // inverse zigzag -> the coefficient plane
+      for (int s = 0; s < 64; s++) {
+        int position = ZIGZAG[s];
+        int row = position >> 3;
+        int col = position & 7;
+        coeffs[(((base_y + row) * push.width) + base_x) + col] = scan[s];
+      }
+    }
+  }
+}

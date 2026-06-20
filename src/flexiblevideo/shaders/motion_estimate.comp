@@ -1,0 +1,433 @@
+#version 450
+// motion_estimate.comp — per-16x16-block motion search over ALL THREE planes (luma + the two chroma).
+// ONE workgroup per block: caches the three current-block planes in shared memory and full-searches a
+// +-SEARCH window with a rate- + content-biased SAD summed over the three planes. The previous frame
+// is read straight from GLOBAL memory (no shared window) so the search range is not bounded block_row shared
+// memory. Reduces (parallel) to the best, refines to half-pel. Writes [mv_x, mv_y] (HALF-PEL) per block.
+// Searching all planes (not luma alone) stops luma-only grain matches that would wreck the chroma.
+layout(local_size_x_id = 1) in;               // workgroup = MB*MB threads, one per block pixel (64/256/1024 for MB=8/16/32)
+layout(constant_id = 0) const int MB = 16;    // motion block size (8 / 16 / 32)
+layout(constant_id = 2) const int EMIT_SATD = 1;   // 1 = write SATD to sad_out (variable-motion R-D merge); 0 = cheap SAD only (fixed/B path doesn't use sad_out → the SATD pass is compiled out, restoring occupancy)
+layout(constant_id = 3) const int MOTION_MODE = 5;   // bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bits2-3 = MV precision (0 half, 1 quarter, 2 eighth [reserved], 3 amvr [reserved])
+const int INTERP = MOTION_MODE & 3;
+const int QUARTER_PEL = (MOTION_MODE >> 2) & 1;
+const int MB_SHIFT = (MB == 8) ? 3 : ((MB == 16) ? 4 : 5);   // log2(MB): x / MB -> x >> MB_SHIFT (MB is a power of two)
+const int MB_MASK = MB - 1;                                  // x % MB -> x & MB_MASK
+// Shared arrays sized to the ACTUAL MB*MB (a spec constant), NOT a fixed 1024 — sizing for the 32-max would reserve
+// 4 KB/array even for MB=8/16 and crater occupancy (the per-block ME/mode shaders are shared-memory-bound).
+layout(std430, binding = 0) readonly  buffer Current0      { int current0[]; };
+layout(std430, binding = 1) readonly  buffer Current1      { int current1[]; };
+layout(std430, binding = 2) readonly  buffer Current2      { int current2[]; };
+layout(std430, binding = 3) readonly  buffer Previous0     { int previous0[]; };
+layout(std430, binding = 4) readonly  buffer Previous1     { int previous1[]; };
+layout(std430, binding = 5) readonly  buffer Previous2     { int previous2[]; };
+layout(std430, binding = 6) writeonly buffer MotionVectors     { int motion_vectors[]; };
+layout(std430, binding = 7) readonly  buffer MotionVectorsPrev { int motion_vectors_prev[]; };   // previous frame's MVs (temporal predictor)
+layout(std430, binding = 8) writeonly buffer SadOut            { int sad_out[]; };   // per block: the chosen MV's pure 3-plane SAD (drives the variable-motion R-D merge; ignored in fixed mode)
+layout(push_constant) uniform PushConstants { int width; int height; int blocks_x; int lossless; } push;
+
+layout(constant_id = 4) const int SEARCH = 16;   // +-SEARCH integer search range around zero (--search-range) — the guaranteed floor
+const int PREDICT = 4;                 // additional +-4 search around the temporal predictor (prev-frame co-located MV)
+const int LAMBDA = 64;                 // rate bias proportional to |mv|
+// Content-adaptive grain-RD margin: a small fixed floor (the MV's bit cost) plus a fraction of the
+// block's mv=0 SAD (its energy). Near-static/grainy blocks (tiny SAD0) keep mv=0; high-motion blocks
+// (large SAD0) easily clear it.
+const int ZERO_BIAS_FLOOR = 64;
+const int ZERO_BIAS_SHIFT = 3;         // fraction of SAD0 added to the floor = 1/8 (12.5%)
+
+shared int block_current0[MB * MB];
+shared int block_current1[MB * MB];
+shared int block_current2[MB * MB];
+shared int reduce_cost[MB * MB];
+shared int reduce_pack[MB * MB];
+shared int sad_zero;
+shared int s_qpx, s_qpy;   // thread-0 broadcasts the chosen quarter-pel MV so all threads can cooperatively SATD it
+
+int clamp_int(int v, int lo, int hi) { return (v < lo) ? lo : ((v > hi) ? hi : v); }
+
+int decode_current(int raw) { return (push.lossless != 0) ? raw : int(round(intBitsToFloat(raw))); }
+
+// 3-plane SAD between the cached current block and the previous frame at integer offset (mv_x, mv_y).
+int integer_sad(int origin_x, int origin_y, int mv_x, int mv_y) {
+  int sad = 0;
+  for (int y = 0; y < MB; y++) {
+    int sample_y = clamp_int((origin_y + y) + mv_y, 0, push.height - 1);
+    for (int x = 0; x < MB; x++) {
+      int sample_x = clamp_int((origin_x + x) + mv_x, 0, push.width - 1);
+      int index = (sample_y * push.width) + sample_x, b = (y * MB) + x;
+      int d0 = block_current0[b] - previous0[index];
+      int d1 = block_current1[b] - previous1[index];
+      int d2 = block_current2[b] - previous2[index];
+      sad += (((d0 < 0) ? -d0 : d0) + ((d1 < 0) ? -d1 : d1)) + ((d2 < 0) ? -d2 : d2);
+    }
+  }
+  return sad;
+}
+
+int previous_plane(int plane, int index) {
+  return (plane == 0) ? previous0[index] : ((plane == 1) ? previous1[index] : previous2[index]);
+}
+
+// One reference-plane sample with replicate-edge coordinate clamping.
+int previous_plane_at(int plane, int sample_x, int sample_y) {
+  int cx = clamp_int(sample_x, 0, push.width - 1);
+  int cy = clamp_int(sample_y, 0, push.height - 1);
+  return previous_plane(plane, (cy * push.width) + cx);
+}
+
+// 6-tap half-pel kernel (H.264 luma weights 1,-5,20,20,-5,1); the half-pel sits between p0 and p1.
+int tap6(int m2, int m1, int p0, int p1, int p2, int p3) {
+  return (((m2 + p3) - (5 * (m1 + p2))) + (20 * (p0 + p1)));
+}
+
+// Bilinear half-pel sample of one previous plane (legacy filter, MOTION_MODE bit0 = 0). Matches mc.comp.
+int sample_bilinear(int plane, int base_x, int base_y, int half_x, int half_y) {
+  if ((half_x == 0) && (half_y == 0)) {
+    return previous_plane_at(plane, base_x, base_y);
+  }
+  if ((half_x == 1) && (half_y == 0)) {
+    return (previous_plane_at(plane, base_x, base_y) + previous_plane_at(plane, base_x + 1, base_y) + 1) >> 1;
+  }
+  if ((half_x == 0) && (half_y == 1)) {
+    return (previous_plane_at(plane, base_x, base_y) + previous_plane_at(plane, base_x, base_y + 1) + 1) >> 1;
+  }
+  return (((previous_plane_at(plane, base_x, base_y) + previous_plane_at(plane, base_x + 1, base_y)) +
+           (previous_plane_at(plane, base_x, base_y + 1) + previous_plane_at(plane, base_x + 1, base_y + 1))) + 2) >> 2;
+}
+
+// 6-tap half-pel sample of one previous plane (MOTION_MODE bit0 = 1). Same filter + rounding as mc.comp, so
+// the refinement scores the MV exactly as the reconstruction will interpolate it.
+int sample_6tap(int plane, int base_x, int base_y, int half_x, int half_y) {
+  if ((half_x == 0) && (half_y == 0)) {
+    return previous_plane_at(plane, base_x, base_y);
+  }
+  if ((half_x == 1) && (half_y == 0)) {
+    int t = tap6(previous_plane_at(plane, base_x - 2, base_y), previous_plane_at(plane, base_x - 1, base_y),
+                 previous_plane_at(plane, base_x,     base_y), previous_plane_at(plane, base_x + 1, base_y),
+                 previous_plane_at(plane, base_x + 2, base_y), previous_plane_at(plane, base_x + 3, base_y));
+    return (t + 16) >> 5;
+  }
+  if ((half_x == 0) && (half_y == 1)) {
+    int t = tap6(previous_plane_at(plane, base_x, base_y - 2), previous_plane_at(plane, base_x, base_y - 1),
+                 previous_plane_at(plane, base_x, base_y),     previous_plane_at(plane, base_x, base_y + 1),
+                 previous_plane_at(plane, base_x, base_y + 2), previous_plane_at(plane, base_x, base_y + 3));
+    return (t + 16) >> 5;
+  }
+  int v0 = tap6(previous_plane_at(plane, base_x - 2, base_y - 2), previous_plane_at(plane, base_x - 2, base_y - 1), previous_plane_at(plane, base_x - 2, base_y), previous_plane_at(plane, base_x - 2, base_y + 1), previous_plane_at(plane, base_x - 2, base_y + 2), previous_plane_at(plane, base_x - 2, base_y + 3));
+  int v1 = tap6(previous_plane_at(plane, base_x - 1, base_y - 2), previous_plane_at(plane, base_x - 1, base_y - 1), previous_plane_at(plane, base_x - 1, base_y), previous_plane_at(plane, base_x - 1, base_y + 1), previous_plane_at(plane, base_x - 1, base_y + 2), previous_plane_at(plane, base_x - 1, base_y + 3));
+  int v2 = tap6(previous_plane_at(plane, base_x,     base_y - 2), previous_plane_at(plane, base_x,     base_y - 1), previous_plane_at(plane, base_x,     base_y), previous_plane_at(plane, base_x,     base_y + 1), previous_plane_at(plane, base_x,     base_y + 2), previous_plane_at(plane, base_x,     base_y + 3));
+  int v3 = tap6(previous_plane_at(plane, base_x + 1, base_y - 2), previous_plane_at(plane, base_x + 1, base_y - 1), previous_plane_at(plane, base_x + 1, base_y), previous_plane_at(plane, base_x + 1, base_y + 1), previous_plane_at(plane, base_x + 1, base_y + 2), previous_plane_at(plane, base_x + 1, base_y + 3));
+  int v4 = tap6(previous_plane_at(plane, base_x + 2, base_y - 2), previous_plane_at(plane, base_x + 2, base_y - 1), previous_plane_at(plane, base_x + 2, base_y), previous_plane_at(plane, base_x + 2, base_y + 1), previous_plane_at(plane, base_x + 2, base_y + 2), previous_plane_at(plane, base_x + 2, base_y + 3));
+  int v5 = tap6(previous_plane_at(plane, base_x + 3, base_y - 2), previous_plane_at(plane, base_x + 3, base_y - 1), previous_plane_at(plane, base_x + 3, base_y), previous_plane_at(plane, base_x + 3, base_y + 1), previous_plane_at(plane, base_x + 3, base_y + 2), previous_plane_at(plane, base_x + 3, base_y + 3));
+  int t = tap6(v0, v1, v2, v3, v4, v5);
+  return (t + 512) >> 10;
+}
+
+// HEVC 8-tap luma interpolation of 8 consecutive samples (offsets base-3..base+4) at quarter phase p.
+// Returns full precision (scale 64); the caller rounds. Same kernel + rounding as mc.comp, so the refinement
+// scores the MV exactly as the reconstruction will interpolate it. Phase 2 = symmetric DCTIF half-pel.
+int hevc8(int phase, int s0, int s1, int s2, int s3, int s4, int s5, int s6, int s7) {
+  if (phase == 0) {
+    return s3 << 6;
+  }
+  if (phase == 1) {
+    return (((4 * s1) + (58 * s3) + (17 * s4) + s6) - (s0 + (10 * s2) + (5 * s5)));
+  }
+  if (phase == 2) {
+    return (((4 * (s1 + s6)) + (40 * (s3 + s4))) - ((s0 + s7) + (11 * (s2 + s5))));
+  }
+  return (((4 * s6) + (58 * s4) + (17 * s3) + s1) - (s7 + (10 * s5) + (5 * s2)));
+}
+
+// 8-tap DCTIF interpolation at quarter position (qx, qy) in 0..3 (separable). Same as mc.comp. (Variant B2.)
+int sample_8tap_pel(int plane, int base_x, int base_y, int qx, int qy) {
+  if ((qx == 0) && (qy == 0)) {
+    return previous_plane_at(plane, base_x, base_y);
+  }
+  if (qy == 0) {
+    int t = hevc8(qx, previous_plane_at(plane, base_x - 3, base_y), previous_plane_at(plane, base_x - 2, base_y),
+                      previous_plane_at(plane, base_x - 1, base_y), previous_plane_at(plane, base_x,     base_y),
+                      previous_plane_at(plane, base_x + 1, base_y), previous_plane_at(plane, base_x + 2, base_y),
+                      previous_plane_at(plane, base_x + 3, base_y), previous_plane_at(plane, base_x + 4, base_y));
+    return (t + 32) >> 6;
+  }
+  if (qx == 0) {
+    int t = hevc8(qy, previous_plane_at(plane, base_x, base_y - 3), previous_plane_at(plane, base_x, base_y - 2),
+                      previous_plane_at(plane, base_x, base_y - 1), previous_plane_at(plane, base_x, base_y),
+                      previous_plane_at(plane, base_x, base_y + 1), previous_plane_at(plane, base_x, base_y + 2),
+                      previous_plane_at(plane, base_x, base_y + 3), previous_plane_at(plane, base_x, base_y + 4));
+    return (t + 32) >> 6;
+  }
+  int c0 = hevc8(qy, previous_plane_at(plane, base_x - 3, base_y - 3), previous_plane_at(plane, base_x - 3, base_y - 2), previous_plane_at(plane, base_x - 3, base_y - 1), previous_plane_at(plane, base_x - 3, base_y), previous_plane_at(plane, base_x - 3, base_y + 1), previous_plane_at(plane, base_x - 3, base_y + 2), previous_plane_at(plane, base_x - 3, base_y + 3), previous_plane_at(plane, base_x - 3, base_y + 4));
+  int c1 = hevc8(qy, previous_plane_at(plane, base_x - 2, base_y - 3), previous_plane_at(plane, base_x - 2, base_y - 2), previous_plane_at(plane, base_x - 2, base_y - 1), previous_plane_at(plane, base_x - 2, base_y), previous_plane_at(plane, base_x - 2, base_y + 1), previous_plane_at(plane, base_x - 2, base_y + 2), previous_plane_at(plane, base_x - 2, base_y + 3), previous_plane_at(plane, base_x - 2, base_y + 4));
+  int c2 = hevc8(qy, previous_plane_at(plane, base_x - 1, base_y - 3), previous_plane_at(plane, base_x - 1, base_y - 2), previous_plane_at(plane, base_x - 1, base_y - 1), previous_plane_at(plane, base_x - 1, base_y), previous_plane_at(plane, base_x - 1, base_y + 1), previous_plane_at(plane, base_x - 1, base_y + 2), previous_plane_at(plane, base_x - 1, base_y + 3), previous_plane_at(plane, base_x - 1, base_y + 4));
+  int c3 = hevc8(qy, previous_plane_at(plane, base_x,     base_y - 3), previous_plane_at(plane, base_x,     base_y - 2), previous_plane_at(plane, base_x,     base_y - 1), previous_plane_at(plane, base_x,     base_y), previous_plane_at(plane, base_x,     base_y + 1), previous_plane_at(plane, base_x,     base_y + 2), previous_plane_at(plane, base_x,     base_y + 3), previous_plane_at(plane, base_x,     base_y + 4));
+  int c4 = hevc8(qy, previous_plane_at(plane, base_x + 1, base_y - 3), previous_plane_at(plane, base_x + 1, base_y - 2), previous_plane_at(plane, base_x + 1, base_y - 1), previous_plane_at(plane, base_x + 1, base_y), previous_plane_at(plane, base_x + 1, base_y + 1), previous_plane_at(plane, base_x + 1, base_y + 2), previous_plane_at(plane, base_x + 1, base_y + 3), previous_plane_at(plane, base_x + 1, base_y + 4));
+  int c5 = hevc8(qy, previous_plane_at(plane, base_x + 2, base_y - 3), previous_plane_at(plane, base_x + 2, base_y - 2), previous_plane_at(plane, base_x + 2, base_y - 1), previous_plane_at(plane, base_x + 2, base_y), previous_plane_at(plane, base_x + 2, base_y + 1), previous_plane_at(plane, base_x + 2, base_y + 2), previous_plane_at(plane, base_x + 2, base_y + 3), previous_plane_at(plane, base_x + 2, base_y + 4));
+  int c6 = hevc8(qy, previous_plane_at(plane, base_x + 3, base_y - 3), previous_plane_at(plane, base_x + 3, base_y - 2), previous_plane_at(plane, base_x + 3, base_y - 1), previous_plane_at(plane, base_x + 3, base_y), previous_plane_at(plane, base_x + 3, base_y + 1), previous_plane_at(plane, base_x + 3, base_y + 2), previous_plane_at(plane, base_x + 3, base_y + 3), previous_plane_at(plane, base_x + 3, base_y + 4));
+  int c7 = hevc8(qy, previous_plane_at(plane, base_x + 4, base_y - 3), previous_plane_at(plane, base_x + 4, base_y - 2), previous_plane_at(plane, base_x + 4, base_y - 1), previous_plane_at(plane, base_x + 4, base_y), previous_plane_at(plane, base_x + 4, base_y + 1), previous_plane_at(plane, base_x + 4, base_y + 2), previous_plane_at(plane, base_x + 4, base_y + 3), previous_plane_at(plane, base_x + 4, base_y + 4));
+  int t = hevc8(qx, c0, c1, c2, c3, c4, c5, c6, c7);
+  return (t + 2048) >> 12;
+}
+
+// Half-pel interpolation for the bilinear/6-tap filters, selected per stream by MOTION_MODE bits0-1.
+// The 8-tap path bypasses this via sample_8tap_pel.
+int sample_half_pel(int plane, int base_x, int base_y, int half_x, int half_y) {
+  return (INTERP == 1) ? sample_6tap(plane, base_x, base_y, half_x, half_y) : sample_bilinear(plane, base_x, base_y, half_x, half_y);
+}
+
+// Half-pel-grid sample at half-pel units (u, v): u,v in {0,1,2} where 0=integer, 1=half, 2=next integer.
+int half_grid(int plane, int base_x, int base_y, int u, int v) {
+  return sample_half_pel(plane, base_x + (u >> 1), base_y + (v >> 1), u & 1, v & 1);
+}
+
+// Quarter-pel interpolation: rounded average of the bracketing 6-tap half-pel samples. qx,qy in 0..3.
+// Same as mc.comp, so the refinement scores the MV exactly as the reconstruction will interpolate it.
+int sample_quarter_pel(int plane, int base_x, int base_y, int qx, int qy) {
+  int ax = qx & 1, hx = qx >> 1;
+  int ay = qy & 1, hy = qy >> 1;
+  if ((ax == 0) && (ay == 0)) {
+    return half_grid(plane, base_x, base_y, hx, hy);
+  }
+  if (ay == 0) {
+    return (half_grid(plane, base_x, base_y, hx, hy) + half_grid(plane, base_x, base_y, hx + 1, hy) + 1) >> 1;
+  }
+  if (ax == 0) {
+    return (half_grid(plane, base_x, base_y, hx, hy) + half_grid(plane, base_x, base_y, hx, hy + 1) + 1) >> 1;
+  }
+  return (((half_grid(plane, base_x, base_y, hx, hy) + half_grid(plane, base_x, base_y, hx + 1, hy)) +
+           (half_grid(plane, base_x, base_y, hx, hy + 1) + half_grid(plane, base_x, base_y, hx + 1, hy + 1))) + 2) >> 2;
+}
+
+// Filter-aware scoring wrappers: route to the 8-tap kernel when selected (half-pel doubles the phase),
+// else to the bilinear/6-tap half-pel grid. Used by the refinement so the search scores the MV exactly as
+// the reconstruction will interpolate it.
+int sample_half_any(int plane, int base_x, int base_y, int half_x, int half_y) {
+  return (INTERP == 2) ? sample_8tap_pel(plane, base_x, base_y, half_x << 1, half_y << 1)
+                       : sample_half_pel(plane, base_x, base_y, half_x, half_y);
+}
+
+int sample_quarter_any(int plane, int base_x, int base_y, int qx, int qy) {
+  return (INTERP == 2) ? sample_8tap_pel(plane, base_x, base_y, qx, qy)
+                       : sample_quarter_pel(plane, base_x, base_y, qx, qy);
+}
+
+int block_current(int plane, int b) {
+  return (plane == 0) ? block_current0[b] : ((plane == 1) ? block_current1[b] : block_current2[b]);
+}
+
+// 4x4 SATD (separable Hadamard then sum of |coeffs|): the merge's residual cost, a better coded-bit predictor than
+// SAD. >>2 normalises the Hadamard gain back toward the SAD scale. Matches bidi_mode_sad.comp so 8/16/32 compare.
+int hadamard_satd_4x4(int r[16]) {
+  for (int i = 0; i < 4; i++) {
+    int o = i * 4;
+    int a = r[o], b = r[o + 1], c = r[o + 2], d = r[o + 3];
+    int t0 = a + b, t1 = a - b, t2 = c + d, t3 = c - d;
+    r[o] = t0 + t2; r[o + 1] = t1 + t3; r[o + 2] = t0 - t2; r[o + 3] = t1 - t3;
+  }
+  for (int j = 0; j < 4; j++) {
+    int a = r[j], b = r[j + 4], c = r[j + 8], d = r[j + 12];
+    int t0 = a + b, t1 = a - b, t2 = c + d, t3 = c - d;
+    r[j] = t0 + t2; r[j + 4] = t1 + t3; r[j + 8] = t0 - t2; r[j + 12] = t1 - t3;
+  }
+  int s = 0;
+  for (int k = 0; k < 16; k++) {
+    s += abs(r[k]);
+  }
+  return s >> 2;
+}
+
+void main() {
+  int block = int(gl_WorkGroupID.x);
+  int block_column = block % push.blocks_x, block_row = block / push.blocks_x;
+  int origin_x = block_column * MB, origin_y = block_row * MB;
+  uint local_index = gl_LocalInvocationID.x;
+
+  // Cache the three current-block planes (plain int for 5/3, a float bit-pattern for 9/7).
+  {
+    int pixel_x = clamp_int(origin_x + int(local_index & uint(MB_MASK)), 0, push.width - 1);
+    int pixel_y = clamp_int(origin_y + int(local_index >> uint(MB_SHIFT)), 0, push.height - 1);
+    int index = (pixel_y * push.width) + pixel_x;
+    block_current0[local_index] = decode_current(current0[index]);
+    block_current1[local_index] = decode_current(current1[index]);
+    block_current2[local_index] = decode_current(current2[index]);
+  }
+  barrier();
+
+  // Cooperative 3-plane SAD at mv=0 (each thread one pixel) -> drives the adaptive grain-RD margin.
+  {
+    int pixel_x = clamp_int(origin_x + int(local_index & uint(MB_MASK)), 0, push.width - 1);
+    int pixel_y = clamp_int(origin_y + int(local_index >> uint(MB_SHIFT)), 0, push.height - 1);
+    int index = (pixel_y * push.width) + pixel_x, b = int(local_index);
+    int d0 = block_current0[b] - previous0[index];
+    int d1 = block_current1[b] - previous1[index];
+    int d2 = block_current2[b] - previous2[index];
+    reduce_cost[local_index] = (((d0 < 0) ? -d0 : d0) + ((d1 < 0) ? -d1 : d1)) + ((d2 < 0) ? -d2 : d2);
+  }
+  barrier();
+  for (uint stride = gl_WorkGroupSize.x >> 1u; stride > 0u; stride >>= 1u) {
+    if (local_index < stride) {
+      reduce_cost[local_index] += reduce_cost[local_index + stride];
+    }
+    barrier();
+  }
+  if (local_index == 0u) {
+    sad_zero = reduce_cost[0];
+  }
+  barrier();
+  int zero_bias = ZERO_BIAS_FLOOR + (sad_zero >> ZERO_BIAS_SHIFT);
+
+  // Two search regions: the guaranteed +-SEARCH floor around zero (so the result is never worse than
+  // the plain full search) plus a small +-PREDICT window around the temporal predictor — the previous
+  // frame's co-located MV — which tracks sustained motion (camera pans) far beyond the floor, cheaply.
+  // (The clamp keeps the packed MV within range; real per-frame motion is well inside it.)
+  int predict_shift = (QUARTER_PEL != 0) ? 2 : 1;   // prev MV (quarter- or half-pel) -> integer-pel predictor
+  int predict_x = clamp_int(motion_vectors_prev[block * 2] >> predict_shift, -56, 56);
+  int predict_y = clamp_int(motion_vectors_prev[(block * 2) + 1] >> predict_shift, -56, 56);
+  int span_floor = (2 * SEARCH) + 1, count_floor = span_floor * span_floor;
+  int span_pred = (2 * PREDICT) + 1, count_pred = span_pred * span_pred;
+  int candidates = count_floor + count_pred;
+  int best_cost = 0x7fffffff, best_pack = (64 * 256) + 64;   // default mv=0
+  for (int c = int(local_index); c < candidates; c += int(gl_WorkGroupSize.x)) {
+    int mv_x, mv_y;
+    if (c < count_floor) {
+      mv_x = (c % span_floor) - SEARCH;
+      mv_y = (c / span_floor) - SEARCH;
+    } else {
+      int predictor_relative = c - count_floor;
+      mv_x = predict_x + ((predictor_relative % span_pred) - PREDICT);
+      mv_y = predict_y + ((predictor_relative / span_pred) - PREDICT);
+    }
+    // Rate is measured against the predictor — that is what the MV coder pays (mv - predicted) — so
+    // continuing an established motion is cheap. The grain-RD margin applies ONLY where the predictor
+    // is zero (a still block): there any non-zero MV is suspect (grain). Where motion is already
+    // established (predictor != 0) it is not penalised, and grain can never propagate into a predictor.
+    bool still_block = (predict_x == 0 && predict_y == 0);
+    int cost = (integer_sad(origin_x, origin_y, mv_x, mv_y)
+             + (LAMBDA * (abs(mv_x - predict_x) + abs(mv_y - predict_y))))
+             + ((still_block && (mv_x != 0 || mv_y != 0)) ? zero_bias : 0);
+    if (cost < best_cost) {
+      best_cost = cost;
+      best_pack = ((mv_x + 64) * 256) + (mv_y + 64);
+    }
+  }
+  reduce_cost[local_index] = best_cost;
+  reduce_pack[local_index] = best_pack;
+  barrier();
+  for (uint stride = gl_WorkGroupSize.x >> 1u; stride > 0u; stride >>= 1u) {
+    if (local_index < stride && reduce_cost[local_index + stride] < reduce_cost[local_index]) {
+      reduce_cost[local_index] = reduce_cost[local_index + stride];
+      reduce_pack[local_index] = reduce_pack[local_index + stride];
+    }
+    barrier();
+  }
+
+  // Thread 0: half-pel refinement (the integer best + its 8 half-pel neighbours); in quarter-pel mode a further
+  // quarter-pel refinement around that half-pel best. 3-plane SAD cost, pick. Each step includes its own centre,
+  // so it is never worse than the coarser one. Writes a half- or quarter-pel MV per MOTION_MODE.
+  if (local_index == 0u) {
+    int integer_mv_x = (reduce_pack[0] / 256) - 64, integer_mv_y = (reduce_pack[0] % 256) - 64;
+    int best_hx = integer_mv_x * 2, best_hy = integer_mv_y * 2, half_cost = 0x7fffffff, half_sad = 0;
+    for (int refine_y = -1; refine_y <= 1; refine_y++) {
+      for (int refine_x = -1; refine_x <= 1; refine_x++) {
+        int half_pel_x = (integer_mv_x * 2) + refine_x, half_pel_y = (integer_mv_y * 2) + refine_y;
+        int half_x = half_pel_x & 1, half_y = half_pel_y & 1;
+        int sad = 0;
+        for (int y = 0; y < MB; y++) {
+          for (int x = 0; x < MB; x++) {
+            int sample_x = (origin_x + x) + (half_pel_x >> 1), sample_y = (origin_y + y) + (half_pel_y >> 1);
+            int b = (y * MB) + x;
+            for (int plane = 0; plane < 3; plane++) {
+              int d = block_current(plane, b) - sample_half_any(plane, sample_x, sample_y, half_x, half_y);
+              sad += (d < 0) ? -d : d;
+            }
+          }
+        }
+        int cost = (sad + ((LAMBDA * (abs(half_pel_x) + abs(half_pel_y))) / 2)) + ((half_pel_x != 0 || half_pel_y != 0) ? zero_bias : 0);
+        if (cost < half_cost) {
+          half_cost = cost;
+          best_hx = half_pel_x;
+          best_hy = half_pel_y;
+          half_sad = sad;
+        }
+      }
+    }
+    int final_x = best_hx, final_y = best_hy, best_sad = half_sad;
+    if (QUARTER_PEL != 0) {
+      int final_qpx = best_hx * 2, final_qpy = best_hy * 2, refine_cost = 0x7fffffff, quarter_sad = 0;
+      for (int refine_y = -1; refine_y <= 1; refine_y++) {
+        for (int refine_x = -1; refine_x <= 1; refine_x++) {
+          int quarter_x = (best_hx * 2) + refine_x, quarter_y = (best_hy * 2) + refine_y;
+          int qfx = quarter_x & 3, qfy = quarter_y & 3;
+          int sad = 0;
+          for (int y = 0; y < MB; y++) {
+            for (int x = 0; x < MB; x++) {
+              int sample_x = (origin_x + x) + (quarter_x >> 2), sample_y = (origin_y + y) + (quarter_y >> 2);
+              int b = (y * MB) + x;
+              for (int plane = 0; plane < 3; plane++) {
+                int d = block_current(plane, b) - sample_quarter_any(plane, sample_x, sample_y, qfx, qfy);
+                sad += (d < 0) ? -d : d;
+              }
+            }
+          }
+          int cost = (sad + ((LAMBDA * (abs(quarter_x) + abs(quarter_y))) / 4)) + ((quarter_x != 0 || quarter_y != 0) ? zero_bias : 0);
+          if (cost < refine_cost) {
+            refine_cost = cost;
+            final_qpx = quarter_x;
+            final_qpy = quarter_y;
+            quarter_sad = sad;
+          }
+        }
+      }
+      final_x = final_qpx;
+      final_y = final_qpy;
+      best_sad = quarter_sad;
+    }
+    motion_vectors[block * 2] = final_x;
+    motion_vectors[(block * 2) + 1] = final_y;
+    if (EMIT_SATD != 0) {
+      s_qpx = final_x;   // broadcast the chosen MV for the cooperative SATD below
+      s_qpy = final_y;
+    } else {
+      sad_out[block] = best_sad;   // fixed/B path: cheap SAD (sad_out is unused; the SATD pass below is compiled out)
+    }
+  }
+
+  // Cooperative SATD of the residual at the chosen half-pel MV (one thread per 4x4 tile) -> sad_out, the variable-
+  // motion merge's R-D distortion term. EMIT_SATD is a spec constant, so for the fixed/B path (EMIT_SATD=0) this whole
+  // pass — and its r[16] register pressure — is COMPILED OUT, restoring motion_estimate.comp's occupancy.
+  if (EMIT_SATD != 0) {
+    barrier();
+    int tiles_per_row = MB >> 2;
+    int tile_count = tiles_per_row * tiles_per_row;
+    int satd = 0;
+    if (int(local_index) < tile_count) {
+      int tile = int(local_index);
+      int tlx = (tile % tiles_per_row) * 4, tly = (tile / tiles_per_row) * 4;   // tile origin within the block
+      for (int plane = 0; plane < 3; plane++) {
+        int r[16];
+        for (int yy = 0; yy < 4; yy++) {
+          for (int xx = 0; xx < 4; xx++) {
+            int b = ((tly + yy) * MB) + (tlx + xx);
+            int pred = (QUARTER_PEL != 0)
+              ? sample_quarter_any(plane, (origin_x + tlx + xx) + (s_qpx >> 2), (origin_y + tly + yy) + (s_qpy >> 2), s_qpx & 3, s_qpy & 3)
+              : sample_half_any(plane, (origin_x + tlx + xx) + (s_qpx >> 1), (origin_y + tly + yy) + (s_qpy >> 1), s_qpx & 1, s_qpy & 1);
+            r[(yy * 4) + xx] = block_current(plane, b) - pred;
+          }
+        }
+        satd += hadamard_satd_4x4(r);
+      }
+    }
+    reduce_cost[local_index] = satd;
+    barrier();
+    for (uint stride = gl_WorkGroupSize.x >> 1u; stride > 0u; stride >>= 1u) {
+      if (local_index < stride) {
+        reduce_cost[local_index] += reduce_cost[local_index + stride];
+      }
+      barrier();
+    }
+    if (local_index == 0u) {
+      sad_out[block] = reduce_cost[0];
+    }
+  }
+}

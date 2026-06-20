@@ -1,0 +1,82 @@
+#version 450
+// rans_hist.comp — GPU token histogram for the DCT rANS encode (so the encoder needs no coefficient readback).
+// One workgroup per coding tile (a single invocation), tokenizes the tile exactly like rans_size / the CPU
+// dct_tile_tokenize, and atomic-adds the symbol counts into the per-plane histogram: slots [0..16] = DC sizes,
+// slots [17..272] = AC run/size tokens. The host reads back the (tiny) histogram, normalizes it to the rANS
+// frequency table, and uploads that table for rans_size + the decoder.
+layout(local_size_x = 1) in;
+layout(std430, binding = 0) readonly buffer Coeffs { int coeffs[]; };
+layout(std430, binding = 1)          buffer Hist   { uint hist[]; };   // 273 slots: 17 DC + 256 AC
+layout(push_constant) uniform PushConstants { int width; int height; int block_size; } push;
+
+const int ZIGZAG[64] = int[64](
+   0,  1,  8, 16,  9,  2,  3, 10,
+  17, 24, 32, 25, 18, 11,  4,  5,
+  12, 19, 26, 33, 40, 48, 41, 34,
+  27, 20, 13,  6,  7, 14, 21, 28,
+  35, 42, 49, 56, 57, 50, 43, 36,
+  29, 22, 15, 23, 30, 37, 44, 51,
+  58, 59, 52, 45, 38, 31, 39, 46,
+  53, 60, 61, 54, 47, 55, 62, 63);
+
+int value_size(int value) {
+  int magnitude = (value < 0) ? -value : value;
+  int size = 0;
+  while (magnitude > 0) {
+    size++;
+    magnitude >>= 1;
+  }
+  return size;
+}
+
+void main() {
+  int tiles_x = (push.width + (push.block_size - 1)) / push.block_size;
+  int tiles_y = (push.height + (push.block_size - 1)) / push.block_size;
+  int tile = int(gl_WorkGroupID.x);
+  if (tile >= (tiles_x * tiles_y)) {
+    return;
+  }
+  int tile_x = (tile % tiles_x) * push.block_size;
+  int tile_y = (tile / tiles_x) * push.block_size;
+  int tile_w = min(push.block_size, push.width - tile_x);
+  int tile_h = min(push.block_size, push.height - tile_y);
+
+  int dc_pred = 0;
+  for (int sy = 0; (sy * 8) < tile_h; sy++) {
+    for (int sx = 0; (sx * 8) < tile_w; sx++) {
+      int base_x = tile_x + (sx * 8);
+      int base_y = tile_y + (sy * 8);
+      int scan[64];
+      for (int k = 0; k < 64; k++) {
+        int pos = ZIGZAG[k];
+        scan[k] = coeffs[(((base_y + (pos >> 3)) * push.width) + base_x) + (pos & 7)];
+      }
+      int dc_diff = scan[0] - dc_pred;
+      dc_pred = scan[0];
+      atomicAdd(hist[value_size(dc_diff)], 1u);
+      int last_nonzero = 0;
+      for (int k = 1; k < 64; k++) {
+        if (scan[k] != 0) {
+          last_nonzero = k;
+        }
+      }
+      int run = 0;
+      for (int k = 1; k <= last_nonzero; k++) {
+        if (scan[k] == 0) {
+          run++;
+          if (run == 16) {
+            atomicAdd(hist[17 + 0xF0], 1u);   // ZRL
+            run = 0;
+          }
+          continue;
+        }
+        int ac_size = value_size(scan[k]);
+        atomicAdd(hist[17 + ((run << 4) | ac_size)], 1u);
+        run = 0;
+      }
+      if (last_nonzero < 63) {
+        atomicAdd(hist[17 + 0], 1u);   // EOB
+      }
+    }
+  }
+}

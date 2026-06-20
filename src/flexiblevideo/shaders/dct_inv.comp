@@ -1,0 +1,41 @@
+#version 450
+// dct_inv.comp — inverse orthonormal 8x8 block DCT (float), the mirror of dct_fwd (replaces the
+// wavelet inverse-row + transpose level loop). One workgroup per 8x8 block, one thread per local_x.
+// Reads the dequantized DCT coefficients (float bit-patterns from dequant97) and writes the
+// reconstructed samples in place as float bit-patterns, so the following round97 reinterprets the
+// buffer. Mirrors the CPU inverse_dct8x8 (columns-then-rows; separable, so it composes back to the
+// identity for the orthonormal forward).
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(std430, binding = 0) buffer Plane { float data[]; };
+layout(push_constant) uniform PushConstants { int width; int height; } push;
+
+shared float basis[8][8];   // basis[frequency][local_x] = alpha(frequency) * cos(((2*local_x)+1)*frequency*pi/16)
+shared float block[8][8];   // the loaded 8x8 coefficient block (block[v][u])
+shared float cols[8][8];    // after the column (vertical) inverse pass
+
+void main() {
+  int local_x = int(gl_LocalInvocationID.x);      // 0..7 (column index u)
+  int frequency = int(gl_LocalInvocationID.y);   // 0..7 (row index v)
+  int base_x = int(gl_WorkGroupID.x) * 8;
+  int base_y = int(gl_WorkGroupID.y) * 8;
+
+  float alpha = (frequency == 0) ? 0.353553390593273762 : 0.5;
+  basis[frequency][local_x] = alpha * cos((((float((2 * local_x) + 1)) * float(frequency)) * 3.14159265358979312) / 16.0);
+  block[frequency][local_x] = data[(((base_y + frequency) * push.width) + base_x) + local_x];
+  barrier();
+
+  // Column (vertical) inverse: cols[y][u] = sum_v basis[v][y] * block[v][u]   (thread: y = frequency, u = local_x)
+  float col_sum = 0.0;
+  for (int v = 0; v < 8; v++) {
+    col_sum += basis[v][frequency] * block[v][local_x];
+  }
+  cols[frequency][local_x] = col_sum;
+  barrier();
+
+  // Row (horizontal) inverse: out[y][x] = sum_u basis[u][x] * cols[y][u]   (thread: y = frequency, x = local_x)
+  float row_sum = 0.0;
+  for (int u = 0; u < 8; u++) {
+    row_sum += basis[u][local_x] * cols[frequency][u];
+  }
+  data[(((base_y + frequency) * push.width) + base_x) + local_x] = row_sum;
+}

@@ -1,0 +1,29 @@
+#version 450
+// rans_pack.comp — copy each coding tile's assembled rANS blob from the scratch OUT region (filled by
+// rans_size) to its container byte offset in data_buffer. The host prefix-summed tile_size into tile_offset
+// with each tile padded to 4 bytes, so the offsets are 4-byte aligned and the copy is uint-granular. One
+// workgroup per tile; the OUT region base is recomputed from block_size + scratch_stride to match rans_size.
+layout(local_size_x = 64) in;
+layout(std430, binding = 0) readonly buffer Scratch { uint scratch[]; };
+layout(std430, binding = 1) readonly buffer Sizes   { uint tile_size[]; };
+layout(std430, binding = 2) readonly buffer Offsets { uint tile_offset[]; };   // byte offsets, 4-aligned
+layout(std430, binding = 3)          buffer Data    { uint data[]; };
+layout(push_constant) uniform PushConstants { int tile_count; int block_size; int scratch_stride; } push;
+
+void main() {
+  int tile = int(gl_WorkGroupID.x);
+  if (tile >= push.tile_count) {
+    return;
+  }
+  int subs = (push.block_size / 8) * (push.block_size / 8);
+  int sym_words = subs * 65;
+  int rans_words = (subs * 33) + 4;
+  int raw_words = (subs * 33);
+  int out_base = (tile * push.scratch_stride) + ((sym_words + rans_words) + raw_words);
+  uint size = tile_size[tile];
+  uint dst_word = tile_offset[tile] >> 2;   // 4-byte aligned
+  uint words = (size + 3u) >> 2;
+  for (uint i = uint(gl_LocalInvocationID.x); i < words; i += uint(gl_WorkGroupSize.x)) {
+    data[dst_word + i] = scratch[uint(out_base) + i];
+  }
+}

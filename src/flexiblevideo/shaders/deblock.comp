@@ -1,0 +1,67 @@
+#version 450
+// deblock.comp — in-loop deblocking of the DCT block edges, the exact integer mirror of fvdref.c deblock_plane.
+// Runs on the reconstructed YCoCg INT plane (after the dct_inv round, before cdef), in-place. Dispatched twice:
+// direction 0 = vertical edges (filter horizontally across column x), then direction 1 = horizontal edges — the
+// H.264 order, with a memory barrier between so the horizontal pass reads the vertical pass's output. Edges are
+// the 8-grid lines, but only where they are a TRUE leaf boundary (the per-8-cell leaf-id map differs across them;
+// for fixed-8 every cell is its own leaf -> every line is an edge). Block edges are 8 apart so in-place is safe.
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(std430, binding = 0)          buffer Plane    { int data[]; };
+layout(std430, binding = 1) readonly buffer CellLeaf { int cell_leaf[]; };
+layout(push_constant) uniform PushConstants {
+  int width;
+  int height;
+  int cells_x;
+  int alpha;
+  int beta;
+  int tc;
+  int direction;   // 0 = vertical edges, 1 = horizontal edges
+} push;
+
+void main() {
+  if (push.direction == 0) {
+    int boundary = int(gl_GlobalInvocationID.x) + 1;   // vertical boundary column index 1 .. cells_x-1
+    int y = int(gl_GlobalInvocationID.y);
+    if ((boundary >= push.cells_x) || (y >= push.height)) {
+      return;
+    }
+    int cy = y / 8;
+    if (cell_leaf[(cy * push.cells_x) + (boundary - 1)] == cell_leaf[(cy * push.cells_x) + boundary]) {
+      return;   // interior to one leaf -> not a transform edge
+    }
+    int x = boundary * 8;
+    int row = y * push.width;
+    int p1 = data[(row + x) - 2];
+    int p0 = data[(row + x) - 1];
+    int q0 = data[row + x];
+    int q1 = data[(row + x) + 1];
+    if (((abs(q0 - p0) < push.alpha) && (abs(p1 - p0) < push.beta)) && (abs(q1 - q0) < push.beta)) {
+      int delta = (((4 * (q0 - p0)) + (p1 - q1)) + 4) >> 3;
+      delta = clamp(delta, -push.tc, push.tc);
+      data[(row + x) - 1] = p0 + delta;
+      data[row + x] = q0 - delta;
+    }
+  } else {
+    int boundary = int(gl_GlobalInvocationID.y) + 1;   // horizontal boundary row index 1 .. cells_y-1
+    int x = int(gl_GlobalInvocationID.x);
+    int cells_y = push.height / 8;
+    if ((boundary >= cells_y) || (x >= push.width)) {
+      return;
+    }
+    int cx = x / 8;
+    if (cell_leaf[((boundary - 1) * push.cells_x) + cx] == cell_leaf[(boundary * push.cells_x) + cx]) {
+      return;
+    }
+    int y = boundary * 8;
+    int p1 = data[((y - 2) * push.width) + x];
+    int p0 = data[((y - 1) * push.width) + x];
+    int q0 = data[(y * push.width) + x];
+    int q1 = data[((y + 1) * push.width) + x];
+    if (((abs(q0 - p0) < push.alpha) && (abs(p1 - p0) < push.beta)) && (abs(q1 - q0) < push.beta)) {
+      int delta = (((4 * (q0 - p0)) + (p1 - q1)) + 4) >> 3;
+      delta = clamp(delta, -push.tc, push.tc);
+      data[((y - 1) * push.width) + x] = p0 + delta;
+      data[(y * push.width) + x] = q0 - delta;
+    }
+  }
+}

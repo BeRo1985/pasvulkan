@@ -1,0 +1,214 @@
+#version 450
+// rans_size.comp — GPU rANS ENCODE of one coding tile (mirror of the CPU dct_encode_plane per-tile path).
+// ONE workgroup per coding tile, a single serial invocation (the per-tile-independent stream model; the
+// interleaved-state variant comes later). Tokenizes the tile (DC-DPCM + AC run/size, identical to the CPU
+// dct_tile_tokenize), reverse-rANS-encodes the symbols, and assembles the on-wire block blob
+// [varint rans_length][rans bytes][raw magnitude/sign bytes] into this tile's slice of a global scratch
+// buffer, writing the blob byte length to tile_size[tile]. A later rans_pack copies the slice to the
+// container offset (the host prefix-sums tile_size, each padded to 4 bytes, into the offsets). The arithmetic
+// mirrors the CPU rANS byte-for-byte, so the GPU and CPU produce identical bitstreams.
+//
+// The per-tile scratch slice (scratch_stride uints) is split into four NON-overlapping regions, byte-addressed
+// from these uint bases: SYM (symbols, one uint each), RANS (reverse-emitted rANS bytes), RAW (raw bits), OUT
+// (the assembled blob, the only region rans_pack copies). Bases are derived from block_size below.
+layout(local_size_x = 1) in;
+layout(std430, binding = 0) readonly buffer Coeffs  { int coeffs[]; };       // quantized coefficient plane
+layout(std430, binding = 1) readonly buffer Tables  { uint freq_table[]; };  // this plane's DC/AC norm+cum (RANS_GPU_* layout)
+layout(std430, binding = 2)          buffer Scratch { uint scratch[]; };     // per-tile working slice
+layout(std430, binding = 3)          buffer Sizes   { uint tile_size[]; };   // out: per-tile blob byte length
+layout(push_constant) uniform PushConstants { int width; int height; int block_size; int scratch_stride; } push;
+
+#define RANS_PROB_BITS 12
+#define RANS_M  4096u
+#define RANS_L  8388608u          // 1 << 23
+#define OFF_DC_NORM 0
+#define OFF_DC_CUM  17
+#define OFF_AC_NORM 34
+#define OFF_AC_CUM  290
+
+const int ZIGZAG[64] = int[64](
+   0,  1,  8, 16,  9,  2,  3, 10,
+  17, 24, 32, 25, 18, 11,  4,  5,
+  12, 19, 26, 33, 40, 48, 41, 34,
+  27, 20, 13,  6,  7, 14, 21, 28,
+  35, 42, 49, 56, 57, 50, 43, 36,
+  29, 22, 15, 23, 30, 37, 44, 51,
+  58, 59, 52, 45, 38, 31, 39, 46,
+  53, 60, 61, 54, 47, 55, 62, 63);
+
+int value_size(int value) {
+  int magnitude = (value < 0) ? -value : value;
+  int size = 0;
+  while (magnitude > 0) {
+    size++;
+    magnitude >>= 1;
+  }
+  return size;
+}
+
+// byte store/load addressed from a uint base (single-threaded RMW; tiles never share words).
+void put_byte(int word_base, int byte_offset, uint value) {
+  int word = word_base + (byte_offset >> 2);
+  int shift = (byte_offset & 3) * 8;
+  scratch[word] = (scratch[word] & ~(0xffu << shift)) | ((value & 0xffu) << shift);
+}
+uint get_byte(int word_base, int byte_offset) {
+  return (scratch[word_base + (byte_offset >> 2)] >> ((byte_offset & 3) * 8)) & 0xffu;
+}
+
+// MSB-first raw-bit writer into the RAW region (g_raw_base words), tracking a byte+bit cursor.
+int g_raw_base;
+int g_raw_byte;
+int g_raw_bit;
+void raw_begin(int word_base) {
+  g_raw_base = word_base;
+  g_raw_byte = 0;
+  g_raw_bit = 0;
+  put_byte(g_raw_base, 0, 0u);
+}
+void raw_put_bit(uint bit) {
+  if (bit != 0u) {
+    put_byte(g_raw_base, g_raw_byte, get_byte(g_raw_base, g_raw_byte) | (1u << (7 - g_raw_bit)));
+  }
+  g_raw_bit++;
+  if (g_raw_bit == 8) {
+    g_raw_bit = 0;
+    g_raw_byte++;
+    put_byte(g_raw_base, g_raw_byte, 0u);
+  }
+}
+void raw_put_value(int value, int size) {
+  if (size > 1) {
+    int magnitude = (value < 0) ? -value : value;
+    int low = magnitude - (1 << (size - 1));
+    for (int b = size - 2; b >= 0; b--) {
+      raw_put_bit(uint((low >> b) & 1));
+    }
+  }
+  raw_put_bit((value < 0) ? 1u : 0u);
+}
+int raw_length() {
+  return (g_raw_bit > 0) ? (g_raw_byte + 1) : g_raw_byte;
+}
+
+void main() {
+  int tiles_x = (push.width + (push.block_size - 1)) / push.block_size;
+  int tiles_y = (push.height + (push.block_size - 1)) / push.block_size;
+  int tile = int(gl_WorkGroupID.x);
+  if (tile >= (tiles_x * tiles_y)) {
+    return;
+  }
+  int tile_x = (tile % tiles_x) * push.block_size;
+  int tile_y = (tile / tiles_x) * push.block_size;
+  int tile_w = min(push.block_size, push.width - tile_x);
+  int tile_h = min(push.block_size, push.height - tile_y);
+
+  // Region bases (uint indices) within this tile's slice. Sized for the worst case at this block size.
+  int subs = (push.block_size / 8) * (push.block_size / 8);
+  int sym_words = subs * 65;          // <= 1 DC + 64 AC tokens per sub-block
+  int rans_words = (subs * 33) + 4;   // <= ~2 bytes/symbol
+  int raw_words = (subs * 33);        // <= 16 bits per coefficient
+  int slice = tile * push.scratch_stride;
+  int sym_base = slice;
+  int rans_base = sym_base + sym_words;
+  int raw_base = rans_base + rans_words;
+  int out_base = raw_base + raw_words;
+
+  // ---- tokenize (forward): collect symbols (one uint each, bit15 = is_dc) + the raw bits ----
+  raw_begin(raw_base);
+  int sym_count = 0;
+  int dc_pred = 0;
+  for (int sy = 0; (sy * 8) < tile_h; sy++) {
+    for (int sx = 0; (sx * 8) < tile_w; sx++) {
+      int base_x = tile_x + (sx * 8);
+      int base_y = tile_y + (sy * 8);
+      int scan[64];
+      for (int k = 0; k < 64; k++) {
+        int pos = ZIGZAG[k];
+        scan[k] = coeffs[(((base_y + (pos >> 3)) * push.width) + base_x) + (pos & 7)];
+      }
+      int dc_diff = scan[0] - dc_pred;
+      dc_pred = scan[0];
+      int dc_size = value_size(dc_diff);
+      scratch[sym_base + sym_count] = 0x8000u | uint(dc_size);
+      sym_count++;
+      if (dc_size > 0) {
+        raw_put_value(dc_diff, dc_size);
+      }
+      int last_nonzero = 0;
+      for (int k = 1; k < 64; k++) {
+        if (scan[k] != 0) {
+          last_nonzero = k;
+        }
+      }
+      int run = 0;
+      for (int k = 1; k <= last_nonzero; k++) {
+        if (scan[k] == 0) {
+          run++;
+          if (run == 16) {
+            scratch[sym_base + sym_count] = 0xF0u;   // ZRL
+            sym_count++;
+            run = 0;
+          }
+          continue;
+        }
+        int ac_size = value_size(scan[k]);
+        scratch[sym_base + sym_count] = uint((run << 4) | ac_size);
+        sym_count++;
+        raw_put_value(scan[k], ac_size);
+        run = 0;
+      }
+      if (last_nonzero < 63) {
+        scratch[sym_base + sym_count] = 0u;   // EOB
+        sym_count++;
+      }
+    }
+  }
+  int raw_bytes = raw_length();
+
+  // ---- reverse rANS encode: emit bytes DOWNWARD into the RANS region; the valid bytes end at the region top ----
+  int rans_top = (rans_words * 4) - 1;   // byte offset of the highest slot in the RANS region
+  int rans_cursor = rans_top;
+  uint state = RANS_L;
+  for (int i = sym_count - 1; i >= 0; i--) {
+    uint s = scratch[sym_base + i];
+    bool is_dc = (s & 0x8000u) != 0u;
+    uint sym = s & 0x1ffu;
+    uint freq = is_dc ? freq_table[OFF_DC_NORM + sym] : freq_table[OFF_AC_NORM + sym];
+    uint cum  = is_dc ? freq_table[OFF_DC_CUM + sym]  : freq_table[OFF_AC_CUM + sym];
+    uint x = state;
+    uint x_max = ((RANS_L >> RANS_PROB_BITS) << 8) * freq;
+    while (x >= x_max) {
+      put_byte(rans_base, rans_cursor, x & 0xffu);
+      rans_cursor--;
+      x >>= 8;
+    }
+    state = (((x / freq) << RANS_PROB_BITS) + (x % freq)) + cum;
+  }
+  for (int b = 0; b < 4; b++) {   // flush the state, little-endian, below the renorm bytes
+    put_byte(rans_base, rans_cursor, (state >> (8u * uint(3 - b))) & 0xffu);
+    rans_cursor--;
+  }
+  int rans_first = rans_cursor + 1;
+  int rans_length = (rans_top + 1) - rans_first;
+
+  // ---- assemble [varint rans_length][rans bytes][raw bytes] into the OUT region ----
+  int out_pos = 0;
+  uint v = uint(rans_length);
+  while (v >= 0x80u) {
+    put_byte(out_base, out_pos, (v & 0x7fu) | 0x80u);
+    out_pos++;
+    v >>= 7;
+  }
+  put_byte(out_base, out_pos, v);
+  out_pos++;
+  for (int i = 0; i < rans_length; i++) {
+    put_byte(out_base, out_pos, get_byte(rans_base, rans_first + i));
+    out_pos++;
+  }
+  for (int i = 0; i < raw_bytes; i++) {
+    put_byte(out_base, out_pos, get_byte(raw_base, i));
+    out_pos++;
+  }
+  tile_size[tile] = uint(out_pos);
+}
