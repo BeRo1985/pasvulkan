@@ -27,6 +27,12 @@ layout(std430, binding = 8) writeonly buffer SadOut            { int sad_out[]; 
 layout(push_constant) uniform PushConstants { int width; int height; int blocks_x; int lossless; } push;
 
 layout(constant_id = 4) const int SEARCH = 16;   // +-SEARCH integer search range around zero (--search-range) — the guaranteed floor
+// Subsampled chroma (4:2:2 / 4:2:0): luma and chroma planes have DIFFERENT resolutions, but this shader reads all
+// three at the luma stride/extent — and at search time the reference (DPB) chroma is already subsampled, so the
+// chroma SAD would read garbage. LUMA_ONLY=1 (baked when g_chroma_format != 0) restricts the cost to luma; 4:4:4
+// keeps the 3-plane search.
+layout(constant_id = 5) const int LUMA_ONLY = 0;
+const int PLANE_COUNT = (LUMA_ONLY != 0) ? 1 : 3;
 const int PREDICT = 4;                 // additional +-4 search around the temporal predictor (prev-frame co-located MV)
 const int LAMBDA = 64;                 // rate bias proportional to |mv|
 // Content-adaptive grain-RD margin: a small fixed floor (the MV's bit cost) plus a fraction of the
@@ -56,9 +62,12 @@ int integer_sad(int origin_x, int origin_y, int mv_x, int mv_y) {
       int sample_x = clamp_int((origin_x + x) + mv_x, 0, push.width - 1);
       int index = (sample_y * push.width) + sample_x, b = (y * MB) + x;
       int d0 = block_current0[b] - previous0[index];
-      int d1 = block_current1[b] - previous1[index];
-      int d2 = block_current2[b] - previous2[index];
-      sad += (((d0 < 0) ? -d0 : d0) + ((d1 < 0) ? -d1 : d1)) + ((d2 < 0) ? -d2 : d2);
+      sad += ((d0 < 0) ? -d0 : d0);
+      if (LUMA_ONLY == 0) {
+        int d1 = block_current1[b] - previous1[index];
+        int d2 = block_current2[b] - previous2[index];
+        sad += (((d1 < 0) ? -d1 : d1) + ((d2 < 0) ? -d2 : d2));
+      }
     }
   }
   return sad;
@@ -260,9 +269,13 @@ void main() {
     int pixel_y = clamp_int(origin_y + int(local_index >> uint(MB_SHIFT)), 0, push.height - 1);
     int index = (pixel_y * push.width) + pixel_x, b = int(local_index);
     int d0 = block_current0[b] - previous0[index];
-    int d1 = block_current1[b] - previous1[index];
-    int d2 = block_current2[b] - previous2[index];
-    reduce_cost[local_index] = (((d0 < 0) ? -d0 : d0) + ((d1 < 0) ? -d1 : d1)) + ((d2 < 0) ? -d2 : d2);
+    int z = ((d0 < 0) ? -d0 : d0);
+    if (LUMA_ONLY == 0) {
+      int d1 = block_current1[b] - previous1[index];
+      int d2 = block_current2[b] - previous2[index];
+      z += (((d1 < 0) ? -d1 : d1) + ((d2 < 0) ? -d2 : d2));
+    }
+    reduce_cost[local_index] = z;
   }
   barrier();
   for (uint stride = gl_WorkGroupSize.x >> 1u; stride > 0u; stride >>= 1u) {
@@ -337,7 +350,7 @@ void main() {
           for (int x = 0; x < MB; x++) {
             int sample_x = (origin_x + x) + (half_pel_x >> 1), sample_y = (origin_y + y) + (half_pel_y >> 1);
             int b = (y * MB) + x;
-            for (int plane = 0; plane < 3; plane++) {
+            for (int plane = 0; plane < PLANE_COUNT; plane++) {
               int d = block_current(plane, b) - sample_half_any(plane, sample_x, sample_y, half_x, half_y);
               sad += (d < 0) ? -d : d;
             }
@@ -364,7 +377,7 @@ void main() {
             for (int x = 0; x < MB; x++) {
               int sample_x = (origin_x + x) + (quarter_x >> 2), sample_y = (origin_y + y) + (quarter_y >> 2);
               int b = (y * MB) + x;
-              for (int plane = 0; plane < 3; plane++) {
+              for (int plane = 0; plane < PLANE_COUNT; plane++) {
                 int d = block_current(plane, b) - sample_quarter_any(plane, sample_x, sample_y, qfx, qfy);
                 sad += (d < 0) ? -d : d;
               }
@@ -404,7 +417,7 @@ void main() {
     if (int(local_index) < tile_count) {
       int tile = int(local_index);
       int tlx = (tile % tiles_per_row) * 4, tly = (tile / tiles_per_row) * 4;   // tile origin within the block
-      for (int plane = 0; plane < 3; plane++) {
+      for (int plane = 0; plane < PLANE_COUNT; plane++) {
         int r[16];
         for (int yy = 0; yy < 4; yy++) {
           for (int xx = 0; xx < 4; xx++) {

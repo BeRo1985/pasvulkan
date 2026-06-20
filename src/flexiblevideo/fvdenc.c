@@ -257,9 +257,12 @@ static VkPipeline create_compute_pipeline_motion(const char *spirv_path, VkPipel
   // variant of mc/motion_estimate/motion_estimate_bidi/bidi_mode_sad. The other motion shaders ignore the
   // entries they do not declare (Vulkan-legal).
   // [4] = SEARCH (--search-range): the +-N integer search floor in motion_estimate/_bidi (others ignore it).
-  int spec_values[5] = { motion_block, motion_block * motion_block, (g_motion_variable && g_merge_satd) ? 1 : 0, g_motion_mode, g_search_range };
-  VkSpecializationMapEntry entries[5] = { { 0, 0, sizeof(int) }, { 1, sizeof(int), sizeof(int) }, { 2, 2 * sizeof(int), sizeof(int) }, { 3, 3 * sizeof(int), sizeof(int) }, { 4, 4 * sizeof(int), sizeof(int) } };
-  VkSpecializationInfo spec = { 5, entries, sizeof(spec_values), spec_values };
+  // [5] = LUMA_ONLY: subsampled chroma (4:2:2/4:2:0) -> the per-block cost shaders search luma only (the chroma
+  // planes are at a different resolution than the luma block grid, and the reference DPB chroma is subsampled, so a
+  // luma-stride 3-plane SAD reads garbage). 4:4:4 keeps the 3-plane search. Shaders that don't declare id 5 ignore it.
+  int spec_values[6] = { motion_block, motion_block * motion_block, (g_motion_variable && g_merge_satd) ? 1 : 0, g_motion_mode, g_search_range, (g_chroma_format != 0) ? 1 : 0 };
+  VkSpecializationMapEntry entries[6] = { { 0, 0, sizeof(int) }, { 1, sizeof(int), sizeof(int) }, { 2, 2 * sizeof(int), sizeof(int) }, { 3, 3 * sizeof(int), sizeof(int) }, { 4, 4 * sizeof(int), sizeof(int) }, { 5, 5 * sizeof(int), sizeof(int) } };
+  VkSpecializationInfo spec = { 6, entries, sizeof(spec_values), spec_values };
   VkComputePipelineCreateInfo pipeline_info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
   pipeline_info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   pipeline_info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;

@@ -10,6 +10,10 @@ layout(constant_id = 2) const int EMIT_SATD = 1;   // 1 = SATD (Hadamard, defaul
 layout(constant_id = 3) const int MOTION_MODE = 5;   // bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bits2-3 = MV precision (0 half, 1 quarter, 2 eighth [reserved], 3 amvr [reserved])
 const int INTERP = MOTION_MODE & 3;
 const int QUARTER_PEL = (MOTION_MODE >> 2) & 1;
+// Subsampled chroma: the chroma ref planes are at a different resolution than this luma-stride cost, so search luma
+// only (baked when g_chroma_format != 0). 4:4:4 keeps the 3-plane mode SAD.
+layout(constant_id = 5) const int LUMA_ONLY = 0;
+const int PLANE_COUNT = (LUMA_ONLY != 0) ? 1 : 3;
 layout(std430, binding = 0)  readonly buffer Cur0   { int cur0[]; };
 layout(std430, binding = 1)  readonly buffer Cur1   { int cur1[]; };
 layout(std430, binding = 2)  readonly buffer Cur2   { int cur2[]; };
@@ -231,7 +235,7 @@ void main() {
   if (int(local_index) < tile_count) {
     int tile = int(local_index);
     int tx0 = origin_x + ((tile % tiles_per_row) * 4), ty0 = origin_y + ((tile / tiles_per_row) * 4);
-    for (int plane = 0; plane < 3; plane++) {
+    for (int plane = 0; plane < PLANE_COUNT; plane++) {
       int rl0[16], rl1[16], rbi[16];
       for (int yy = 0; yy < 4; yy++) {
         for (int xx = 0; xx < 4; xx++) {
