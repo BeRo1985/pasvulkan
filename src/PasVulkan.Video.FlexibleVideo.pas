@@ -255,6 +255,14 @@ type EpvFlexibleVideo=class(Exception);
        class procedure BuildDCTQuantMatrix(const aStep:PpvInt32Array;const aWidth,aHeight,aBaseQuality,aSampleWhite:TpvInt32;const aChroma:boolean); static;
        // Adaptive quad-tree: regions across an extent (the per-region leaf list + quad-tree quant are added with the quad-tree path).
        class function QuadTreeRegionCount(const aExtent:TpvInt32):TpvInt32; static;
+       // Expand one 32x32 region's partition code into its leaf list (32 / 16 / 8 blocks, edge-clamped to the plane bound).
+       // Returns the leaf count; aLeafX/aLeafY/aLeafSize receive one entry per leaf. Mirror of the C qt_leaves.
+       class function QuadTreeLeaves(const aRegionX,aRegionY:TpvInt32;const aCode:TpvUInt8;const aBoundX,aBoundY:TpvInt32;const aLeafX,aLeafY,aLeafSize:PpvInt32Array):TpvInt32; static;
+       // Size-RD-calibration factor for a leaf of side aSize: (aSize/8)^exp, exp from QTEXP env (default 0.5). Mirror of qt_size_scale.
+       class function QuadTreeSizeScale(const aSize:TpvInt32):TpvFloat; static;
+       // Per-pixel quant step from the partition: each leaf uses its own size's quant matrix (sampled from the 8x8 base, tiled in
+       // the leaf, size-scaled). Chroma coarsening stays in the dequant chroma_multiplier. Mirror of build_quant_quadtree.
+       class procedure BuildQuantQuadtree(const aStep:PpvInt32Array;const aWidth,aHeight:TpvInt32;const aPartition:PpvUInt8Array;const aBaseQuality,aSampleWhite:TpvInt32;const aChroma:boolean); static;
       end;
 
 implementation
@@ -1546,7 +1554,8 @@ begin
  end;
 end;
 
-class procedure TpvFlexibleVideo.BuildDCTQuantMatrix(const aStep:PpvInt32Array;const aWidth,aHeight,aBaseQuality,aSampleWhite:TpvInt32;const aChroma:boolean);
+// The standard JPEG luminance / chrominance 8x8 quant tables, shared by the uniform (BuildDCTQuantMatrix) and the
+// adaptive quad-tree (BuildQuantQuadtree) quant-step builders.
 const JPEGLuminanceTable:array[0..63] of TpvInt32=(
        16,11,10,16,24,40,51,61, 12,12,14,19,26,58,60,55,
        14,13,16,24,40,57,69,56, 14,17,22,29,51,87,80,62,
@@ -1557,6 +1566,8 @@ const JPEGLuminanceTable:array[0..63] of TpvInt32=(
        24,26,56,99,99,99,99,99, 47,66,99,99,99,99,99,99,
        99,99,99,99,99,99,99,99, 99,99,99,99,99,99,99,99,
        99,99,99,99,99,99,99,99, 99,99,99,99,99,99,99,99);
+
+class procedure TpvFlexibleVideo.BuildDCTQuantMatrix(const aStep:PpvInt32Array;const aWidth,aHeight,aBaseQuality,aSampleWhite:TpvInt32;const aChroma:boolean);
 var PixelX,PixelY,BlockColumn,BlockRow,QuantStep,ScaledQuality,PaddedHeight:TpvInt32;
     QuantTable:PpvInt32Array;
 begin
@@ -1580,6 +1591,126 @@ begin
    end;
    aStep^[(TpvSizeInt(PixelY)*aWidth)+PixelX]:=QuantStep;
   end;
+ end;
+end;
+
+class function TpvFlexibleVideo.QuadTreeLeaves(const aRegionX,aRegionY:TpvInt32;const aCode:TpvUInt8;const aBoundX,aBoundY:TpvInt32;const aLeafX,aLeafY,aLeafSize:PpvInt32Array):TpvInt32;
+var Count,QuadrantX,QuadrantY,Quadrant,QuadX,QuadY,SubX,SubY,SubBlockX,SubBlockY:TpvInt32;
+    Fits16:boolean;
+begin
+ Count:=0;
+ // Whole 32x32 leaf: fits inside the bound and the region's split bit (bit 0) is clear.
+ if (((aRegionX+32)<=aBoundX) and ((aRegionY+32)<=aBoundY)) and ((aCode and 1)=0) then begin
+  aLeafX^[Count]:=aRegionX;
+  aLeafY^[Count]:=aRegionY;
+  aLeafSize^[Count]:=32;
+  inc(Count);
+  result:=Count;
+  exit;
+ end;
+ // Otherwise: each of the four 16x16 quadrants is either a 16-leaf (its split bit clear + fits) or split into 8x8 sub-blocks.
+ for QuadrantY:=0 to 1 do begin
+  for QuadrantX:=0 to 1 do begin
+   Quadrant:=(QuadrantY*2)+QuadrantX;
+   QuadX:=aRegionX+(QuadrantX*16);
+   QuadY:=aRegionY+(QuadrantY*16);
+   if (QuadX>=aBoundX) or (QuadY>=aBoundY) then begin
+    continue; // quadrant entirely outside the plane / tile
+   end;
+   Fits16:=((QuadX+16)<=aBoundX) and ((QuadY+16)<=aBoundY);
+   if Fits16 and (((aCode shr (1+Quadrant)) and 1)=0) then begin
+    aLeafX^[Count]:=QuadX;
+    aLeafY^[Count]:=QuadY;
+    aLeafSize^[Count]:=16;
+    inc(Count);
+   end else begin
+    for SubY:=0 to 1 do begin
+     for SubX:=0 to 1 do begin
+      SubBlockX:=QuadX+(SubX*8);
+      SubBlockY:=QuadY+(SubY*8);
+      if ((SubBlockX+8)<=aBoundX) and ((SubBlockY+8)<=aBoundY) then begin
+       aLeafX^[Count]:=SubBlockX;
+       aLeafY^[Count]:=SubBlockY;
+       aLeafSize^[Count]:=8;
+       inc(Count);
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+ result:=Count;
+end;
+
+var QuadTreeSizeExponent:TpvDouble=-1.0; // cached QTEXP (read once); -1 = not yet read
+
+class function TpvFlexibleVideo.QuadTreeSizeScale(const aSize:TpvInt32):TpvFloat;
+var EnvironmentValue:string;
+    Code:TpvInt32;
+begin
+ if QuadTreeSizeExponent<0.0 then begin
+  EnvironmentValue:=GetEnvironmentVariable('QTEXP'); // tuning override; default 0.5 = the tuned value (clear intra win, neutral inter)
+  if length(EnvironmentValue)>0 then begin
+   Val(EnvironmentValue,QuadTreeSizeExponent,Code);
+   if Code<>0 then begin
+    QuadTreeSizeExponent:=0.5;
+   end;
+  end else begin
+   QuadTreeSizeExponent:=0.5;
+  end;
+ end;
+ result:=Power(TpvFloat(aSize)/TpvFloat(DCTBlockSize),QuadTreeSizeExponent);
+end;
+
+class procedure TpvFlexibleVideo.BuildQuantQuadtree(const aStep:PpvInt32Array;const aWidth,aHeight:TpvInt32;const aPartition:PpvUInt8Array;const aBaseQuality,aSampleWhite:TpvInt32;const aChroma:boolean);
+var RegionsX,ScaledQuality,RegionX,RegionY,LeafCount,LeafIndex,LeafSize,LocalX,LocalY:TpvInt32;
+    SampleU,SampleV,TableValue,QuantStep:TpvInt32;
+    SizeScale:TpvFloat;
+    QuantTable:PpvInt32Array;
+    Code:TpvUInt8;
+    LeafX,LeafY,LeafSizes:array[0..QuadTreeMaximumLeaves-1] of TpvInt32;
+begin
+ if aChroma then begin
+  QuantTable:=PpvInt32Array(@JPEGChrominanceTable);
+ end else begin
+  QuantTable:=PpvInt32Array(@JPEGLuminanceTable);
+ end;
+ RegionsX:=QuadTreeRegionCount(aWidth);
+ ScaledQuality:=aBaseQuality*(aSampleWhite div 256);
+ RegionY:=0;
+ while RegionY<aHeight do begin
+  RegionX:=0;
+  while RegionX<aWidth do begin
+   Code:=aPartition^[((RegionY div QuadTreeRegion)*RegionsX)+(RegionX div QuadTreeRegion)];
+   LeafCount:=QuadTreeLeaves(RegionX,RegionY,Code,aWidth,aHeight,PpvInt32Array(@LeafX[0]),PpvInt32Array(@LeafY[0]),PpvInt32Array(@LeafSizes[0]));
+   for LeafIndex:=0 to LeafCount-1 do begin
+    LeafSize:=LeafSizes[LeafIndex];
+    SizeScale:=QuadTreeSizeScale(LeafSize); // size-RD-calibration (matches the encoder)
+    for LocalY:=0 to LeafSize-1 do begin
+     // Map the leaf's [0..size-1] frequency onto the 8x8 base table's [0..7].
+     if LeafSize=8 then begin
+      SampleV:=LocalY;
+     end else begin
+      SampleV:=(LocalY*7) div (LeafSize-1);
+     end;
+     for LocalX:=0 to LeafSize-1 do begin
+      if LeafSize=8 then begin
+       SampleU:=LocalX;
+      end else begin
+       SampleU:=(LocalX*7) div (LeafSize-1);
+      end;
+      TableValue:=QuantTable^[(SampleV*8)+SampleU];
+      QuantStep:=Trunc(((((ScaledQuality*TableValue)*SizeScale)/16.0))+0.5);
+      if QuantStep<1 then begin
+       QuantStep:=1;
+      end;
+      aStep^[(TpvSizeInt(LeafY[LeafIndex]+LocalY)*aWidth)+(LeafX[LeafIndex]+LocalX)]:=QuantStep;
+     end;
+    end;
+   end;
+   inc(RegionX,QuadTreeRegion);
+  end;
+  inc(RegionY,QuadTreeRegion);
  end;
 end;
 

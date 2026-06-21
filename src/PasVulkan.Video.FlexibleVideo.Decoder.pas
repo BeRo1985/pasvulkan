@@ -105,6 +105,11 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
              CDEFPriChroma:TpvInt32;
              CDEFSecChroma:TpvInt32;
              CDEFDamping:TpvInt32;
+             // DCT per-frame scalars the GPU replay needs (the rANS unpack push + the quad-tree inverse dispatch sizes);
+             // captured here for the same reason as the CDEF state: RecordFrameBidi replays AFTER all uploads.
+             DataLength:TpvUInt32;
+             QuadTreeLeafCount:array[0..3] of TpvInt32;
+             DeblockDQ:TpvInt32;
             end;
             TBidiPlans=array of TBidiPlan;
       private
@@ -205,6 +210,12 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fRingSetDequant:array of array[0..3] of TpvVulkanDescriptorSet; // bound once: {shared coeff, ring step}
        fRingRANSTableBuffer:array of array[0..3] of TpvVulkanBuffer; // DCT-B ring: per-slot per-plane host-visible GPU rANS frequency table
        fRingSetRANSUnpack:array of array[0..3] of TpvVulkanDescriptorSet; // DCT-B ring: bound once {ring data, ring offset, shared coeff, ring table}
+       fRingPartitionBuffer:array of TpvVulkanBuffer; // DCT-B quad-tree ring: per-slot partition codes (all planes)
+       fRingLeafListBuffer:array of array[0..3] of TpvVulkanBuffer; // DCT-B quad-tree ring: per-slot per-plane leaf list
+       fRingSetRANSUnpackQuadTree:array of array[0..3] of TpvVulkanDescriptorSet; // DCT-B quad-tree ring: {ring data, ring offset, shared coeff, ring table, ring partition}
+       fRingSetDCTQuadTree:array of array[0..3] of TpvVulkanDescriptorSet; // DCT-B quad-tree ring: {shared coeff, ring leaf list}
+       fRingCellLeafBuffer:array of array[0..3] of TpvVulkanBuffer; // DCT-B deblock ring: per-slot per-plane cell->leaf map
+       fRingSetDeblock:array of array[0..3] of TpvVulkanDescriptorSet; // DCT-B deblock ring: {dpb[dst] (rebound per frame), ring cell_leaf}
        fRingSetApplyAQ:array of array[0..3] of TpvVulkanDescriptorSet; // AQ apply (B-frame ring): {ring step, tile codes, weight LUT, ring step (in-place)}
        fRingSetGMC0:array of array[0..3] of TpvVulkanDescriptorSet; // rebound per frame
        fRingSetGMC1:array of array[0..3] of TpvVulkanDescriptorSet;
@@ -246,6 +257,7 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fDSL3:TpvVulkanDescriptorSetLayout; // 3 storage buffers
        fDSL4:TpvVulkanDescriptorSetLayout; // 4 storage buffers (AQ apply: base step, tile codes, weight LUT, modulated step)
        fDSLRANS4:TpvVulkanDescriptorSetLayout; // DCT rANS unpack: {data, offset, coeff, table}
+       fDSLRANS5:TpvVulkanDescriptorSetLayout; // DCT quad-tree rANS unpack: {data, offset, coeff, table, partition}
        fDSLColor:TpvVulkanDescriptorSetLayout; // 3 storage buffers + 1 storage image
        fDSLColorAlpha:TpvVulkanDescriptorSetLayout; // alpha variant: 3 buffers + 1 image + 1 alpha buffer (bindings 0,1,2,3=image,4=alpha)
        fPLUnpack:TpvVulkanPipelineLayout;
@@ -260,11 +272,15 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fPLColorHDR:TpvVulkanPipelineLayout;
        fPLColorHDRAlpha:TpvVulkanPipelineLayout; // HDR alpha variant: fDSLColorAlpha (5 bindings) + the 32-byte HDR push
        fPLRANSUnpack:TpvVulkanPipelineLayout; // DCT rANS unpack: fDSLRANS4 + 16-byte push {width,height,block_size,data_length}
+       fPLRANSUnpackQuadTree:TpvVulkanPipelineLayout; // DCT quad-tree rANS unpack: fDSLRANS5 + 24-byte push {width,height,block_size,data_length,partition_offset,regions_x}
        fPLDCTInverse:TpvVulkanPipelineLayout; // DCT inverse block transform: fDSL1 + 8-byte push {width,height}
+       fPLDCTInverseQuadTree:TpvVulkanPipelineLayout; // DCT quad-tree inverse: fDSL2 {coeff, leaf list} + 8-byte push {width, leaf_count}
        fPipeUnpack:TpvVulkanComputePipeline;
        fPipeRANSUnpack:TpvVulkanComputePipeline; // DCT path: rANS entropy unpack (replaces bitplane unpack)
+       fPipeRANSUnpackQuadTree:TpvVulkanComputePipeline; // DCT quad-tree path: rANS unpack walking the partition + per-leaf zigzag
        fPipeDCTInverse:TpvVulkanComputePipeline; // DCT path: inverse 8x8 block DCT (lossy float; replaces the wavelet level loop)
        fPipeDCTInverseInteger:TpvVulkanComputePipeline; // DCT path Q0: reversible integer inverse 8x8 block DCT (lossless; no dequant/round)
+       fPipeDCTInverseQuadTree:TpvVulkanComputePipeline; // DCT quad-tree path: per-leaf size-parameterized inverse DCT (one workgroup per leaf)
        fPipeDequant:TpvVulkanComputePipeline;
        fPipeApplyAQ:TpvVulkanComputePipeline; // apply_tile_aq.comp: GPU per-tile AQ step modulation (replaces the per-frame CPU ApplyAQ)
        fPipeTranspose:TpvVulkanComputePipeline;
@@ -279,6 +295,8 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fPLBlendMode:TpvVulkanPipelineLayout; // DSL3 + 20-byte push
        fPipeCDEF:TpvVulkanComputePipeline; // cdef.comp: AV1 in-loop directional deringing
        fPLCDEF:TpvVulkanPipelineLayout; // cdef.comp: DSL2 {src, dst} + 28-byte push {w,h,pri,sec,damping,dir_shift,center}
+       fPipeDeblock:TpvVulkanComputePipeline; // deblock.comp: in-loop deblocking at DCT leaf boundaries (lossy)
+       fPLDeblock:TpvVulkanPipelineLayout; // deblock.comp: DSL2 {plane (in place), cell_leaf} + 28-byte push {w,h,cells_x,alpha,beta,tc,direction}
        fPipeColor:TpvVulkanComputePipeline;
        fPipeColorAlpha:TpvVulkanComputePipeline; // color_alpha.spv: also writes the decoded alpha plane (binding 4) into output A
        fPipeColorHDR:TpvVulkanComputePipeline;
@@ -298,10 +316,22 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fAlphaRingStep:array of TpvVulkanBuffer;    // [slot] alpha quant steps (lossy)
        fAlphaRingSetUnpack:array of TpvVulkanDescriptorSet;  // [slot] {ring data, ring offset, shared coeff[3]}
        fAlphaRingSetDequant:array of TpvVulkanDescriptorSet; // [slot] {shared coeff[3], ring step}
+       fAlphaRingTable:array of TpvVulkanBuffer;             // [slot] DCT-mode alpha rANS frequency table (host-visible)
+       fAlphaRingSetRANSUnpack:array of TpvVulkanDescriptorSet; // [slot] DCT-mode alpha {ring data, ring offset, shared coeff[3], ring table}
+       fAlphaIsRANS:boolean;          // DCT-mode alpha (table_length>0): rANS entropy + inverse 8x8 DCT; else wavelet bit-plane
+       fAlphaCurrentDataLength:TpvUInt32; // DCT-mode alpha: this frame's block-data byte length (the rANS unpack push needs it)
        fOffsetBuffer:array[0..3] of TpvVulkanBuffer;
        fStepBuffer:array[0..3] of TpvVulkanBuffer;
        fRANSTableBuffer:array[0..3] of TpvVulkanBuffer; // DCT path: per-plane host-visible GPU rANS frequency table (RANSGPUTableUInt32Count uint32)
        fCurrentDataLength:TpvUInt32; // DCT path: the current frame's color block-data byte length (the rANS unpack push needs it; set by UploadFrame, read by RecordDecode)
+       fPartitionBuffer:TpvVulkanBuffer; // DCT quad-tree: this frame's per-plane partition codes (fQuadTreeRegionsPerPlane bytes per plane), host-visible
+       fLeafListBuffer:array[0..3] of TpvVulkanBuffer; // DCT quad-tree: per-plane host-built leaf list (3 uint32 {x,y,size} per leaf)
+       fQuadTreeRegionsPerPlane:TpvInt32; // QuadTreeRegionCount(width)*QuadTreeRegionCount(height) — partition codes per plane
+       fQuadTreeMaximumLeaves:TpvInt32; // fQuadTreeRegionsPerPlane*QuadTreeMaximumLeaves — leaf-list capacity per plane
+       fQuadTreeLeafCount:array[0..3] of TpvInt32; // per-plane leaf count of THIS frame's partition (the inverse-DCT dispatch size); set by UploadFrame
+       fCellLeafBuffer:array[0..3] of TpvVulkanBuffer; // deblock: per-plane cell->leaf-origin map (one int per 8x8 cell), host-built per frame
+       fDeblockCells:TpvInt32; // (width div 8)*(height div 8) — luma cell count, the cell_leaf buffer size for every plane
+       fCurrentDeblockDQ:TpvInt32; // deblock: this frame's quality*(white/256); 0 = skip; set by UploadFrame, read by RecordDeblock
        fWeightLUTBuffer:TpvVulkanBuffer;  // AQ (GPU): 256 log-spaced weights (= aq_weight_from_code), uploaded once
        fTileCodesBuffer:TpvVulkanBuffer;  // AQ (GPU): this frame's raw qpmap tile codes (4 codes per uint), uploaded per frame
        fAQPush:array[0..4] of TpvInt32;   // AQ (GPU): apply_tile_aq push {width,height,levels,tile_cols,tile_rows} (recording is sequential)
@@ -322,6 +352,9 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fOutputImageFlags:TVkImageCreateFlags;
        fSetUnpack:array[0..3] of TpvVulkanDescriptorSet;
        fSetRANSUnpack:array[0..3] of TpvVulkanDescriptorSet; // DCT path: {data, offset[plane], coeff[plane], table[plane]}
+       fSetRANSUnpackQuadTree:array[0..3] of TpvVulkanDescriptorSet; // DCT quad-tree: {data, offset[plane], coeff[plane], table[plane], partition}
+       fSetDCTQuadTree:array[0..3] of TpvVulkanDescriptorSet; // DCT quad-tree inverse: {coeff[plane], leaf list[plane]}
+       fSetDeblock:array[0..3] of TpvVulkanDescriptorSet; // deblock {plane (in place), cell_leaf}: I/P binds coeff; B (mode A) rebinds to dpb[dst]
        fSetDequant:array[0..3] of TpvVulkanDescriptorSet;
        fSetApplyAQ:array[0..3] of TpvVulkanDescriptorSet; // AQ apply (I/P + 3D-DWT prefetch): {fStepBuffer, tile codes, weight LUT, fStepBuffer (in-place)}
        fSetAdd:array[0..3] of TpvVulkanDescriptorSet; // coefdiff (A): {coeff, previous}
@@ -402,10 +435,12 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        // Optional alpha (color_flags bit2): one intra, full-res 8-bit plane appended per frame. The color is decoded
        // as usual into coeff[0..2]; ParseAlphaSection + UploadAlpha* stage the appended section, RecordAlphaDecode GPU-
        // decodes it into coeff[3], and the color pass swaps to fPipeColorAlpha (which writes coeff[3] into output A).
-       function ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32):boolean; // False = corrupt / truncated alpha section
+       function ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaTableOffset:TpvSizeUInt;out aAlphaTableLength:TpvUInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32):boolean; // False = corrupt / truncated alpha section. aAlphaTableLength>0 = DCT-mode rANS table
        procedure UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt);
        procedure UploadAlphaForDisplayedFrame(const aCodingIndex:TpvInt32);
        procedure RecordAlphaDecode(const aCommandBuffer:TpvVulkanCommandBuffer);
+       // DCT quad-tree: expand one plane's partition codes into its GPU leaf list ({x,y,size} triples) and return the leaf count.
+       procedure BuildQuadTreeLeafList(const aPlane:TpvInt32;const aPartitionCodes:PpvUInt8Array;const aLeafListBuffer:TpvVulkanBuffer;out aLeafCount:TpvInt32);
        // hierarchical B-frames (Stage E3). The Active* helpers return the shared buffer/set (fBufferRingSlot<0,
        // modes A/C) or the active ring slot's (fBufferRingSlot>=0, mode B), so UploadBidiFrame / RecordBidiDecode
        // are shared by all submit modes.
@@ -421,6 +456,16 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        function ActiveSetDequant(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
        function ActiveRANSTableBuffer(const aPlane:TpvInt32):TpvVulkanBuffer; // DCT path: the shared table (modes A/C) or the ring slot's table (mode B)
        function ActiveSetRANSUnpack(const aPlane:TpvInt32):TpvVulkanDescriptorSet; // DCT path: the shared rANS unpack set or the ring slot's set
+       function ActivePartitionBuffer:TpvVulkanBuffer; // DCT quad-tree: the shared partition buffer (modes A/C) or the ring slot's
+       function ActiveLeafListBuffer(const aPlane:TpvInt32):TpvVulkanBuffer; // DCT quad-tree: the shared leaf list (modes A/C) or the ring slot's
+       function ActiveSetRANSUnpackQuadTree(const aPlane:TpvInt32):TpvVulkanDescriptorSet; // DCT quad-tree: the shared rANS-qt set or the ring slot's
+       function ActiveSetDCTQuadTree(const aPlane:TpvInt32):TpvVulkanDescriptorSet; // DCT quad-tree: the shared inverse-DCT-qt set or the ring slot's
+       function ActiveCellLeafBuffer(const aPlane:TpvInt32):TpvVulkanBuffer; // deblock: the shared cell_leaf (modes A/C) or the ring slot's
+       function ActiveSetDeblock(const aPlane:TpvInt32):TpvVulkanDescriptorSet; // deblock: the shared set or the ring slot's
+       // deblock: build one plane's cell->leaf-origin map (uniform = each 8x8 cell its own leaf; quad-tree = each leaf's cells share its origin).
+       procedure BuildCellLeafMap(const aPlane:TpvInt32;const aPartitionCodes:PpvUInt8Array;const aCellLeafBuffer:TpvVulkanBuffer); // aPartitionCodes=nil -> uniform
+       // deblock: filter aFilteredBuffer (bound in aSet binding 0, in place) at leaf boundaries, V then H; aMirrorTarget<>nil mirrors the result (I/P -> previous).
+       procedure RecordDeblock(const aCommandBuffer:TpvVulkanCommandBuffer;const aSet:TpvVulkanDescriptorSet;const aFilteredBuffer,aMirrorTarget:TpvVulkanBuffer;const aPlane:TpvInt32);
        function ActiveSetGMC0(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
        function ActiveSetGMC1(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
        function ActiveSetGBlend(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
@@ -897,6 +942,9 @@ begin
  end;
  if fSpatialDCT then begin
   fDSLRANS4:=CreateDescriptorSetLayout(4,false); // DCT rANS unpack: {data, offset, coeff, table}
+  if fQuadtree then begin
+   fDSLRANS5:=CreateDescriptorSetLayout(5,false); // DCT quad-tree rANS unpack: {data, offset, coeff, table, partition}
+  end;
  end;
  fDSLColor:=CreateDescriptorSetLayout(3,true);
 
@@ -924,10 +972,17 @@ begin
  if fSpatialDCT then begin
   fPLRANSUnpack:=CreatePipelineLayout(fDSLRANS4,16); // push {width,height,block_size,data_length}
   fPLDCTInverse:=CreatePipelineLayout(fDSL1,8);      // push {width,height}
+  if fQuadtree then begin
+   fPLRANSUnpackQuadTree:=CreatePipelineLayout(fDSLRANS5,24); // push {width,height,block_size,data_length,partition_offset,regions_x}
+   fPLDCTInverseQuadTree:=CreatePipelineLayout(fDSL2,8);      // push {width, leaf_count}
+  end;
  end;
  fPLCoeffAdd:=CreatePipelineLayout(fDSL2,8); // coefdiff (A) P-frame coeff_add: {coeff, previous}, push [pixel_count, is_predicted]
  if fHasCDEF then begin
   fPLCDEF:=CreatePipelineLayout(fDSL2,28); // cdef.comp: {src, dst} + push {w,h,pri,sec,damping,dir_shift,center}
+ end;
+ if fDeblock then begin
+  fPLDeblock:=CreatePipelineLayout(fDSL2,28); // deblock.comp: {plane (in place), cell_leaf} + push {w,h,cells_x,alpha,beta,tc,direction}
  end;
  fPLColor:=CreatePipelineLayout(fDSLColor,24);
  if fHasAlpha then begin
@@ -944,6 +999,10 @@ begin
   fPipeRANSUnpack:=CreateComputePipeline(FlexibleVideoRansUnpackSPIRVData,FlexibleVideoRansUnpackSPIRVDataSize,fPLRANSUnpack,false);
   fPipeDCTInverse:=CreateComputePipeline(FlexibleVideoDctInvSPIRVData,FlexibleVideoDctInvSPIRVDataSize,fPLDCTInverse,false);
   fPipeDCTInverseInteger:=CreateComputePipeline(FlexibleVideoDctInvIntSPIRVData,FlexibleVideoDctInvIntSPIRVDataSize,fPLDCTInverse,false); // Q0 lossless reversible integer inverse
+  if fQuadtree then begin
+   fPipeRANSUnpackQuadTree:=CreateComputePipeline(FlexibleVideoRansUnpackQtSPIRVData,FlexibleVideoRansUnpackQtSPIRVDataSize,fPLRANSUnpackQuadTree,false);
+   fPipeDCTInverseQuadTree:=CreateComputePipeline(FlexibleVideoDctInvQtSPIRVData,FlexibleVideoDctInvQtSPIRVDataSize,fPLDCTInverseQuadTree,false);
+  end;
  end;
  fPipeDequant:=CreateComputePipeline(FlexibleVideoDequant97SPIRVData,FlexibleVideoDequant97SPIRVDataSize,fPLDequant,false);
  if fAQEnabled then begin
@@ -956,6 +1015,9 @@ begin
  fPipeCoeffAdd:=CreateComputePipeline(FlexibleVideoCoeffAddSPIRVData,FlexibleVideoCoeffAddSPIRVDataSize,fPLCoeffAdd,false);
  if fHasCDEF then begin
   fPipeCDEF:=CreateComputePipeline(FlexibleVideoCdefSPIRVData,FlexibleVideoCdefSPIRVDataSize,fPLCDEF,false);
+ end;
+ if fDeblock then begin
+  fPipeDeblock:=CreateComputePipeline(FlexibleVideoDeblockSPIRVData,FlexibleVideoDeblockSPIRVDataSize,fPLDeblock,false);
  end;
  // colordiff (B): mc (3 buffers + motion-block spec const, push 12) + motion_add (3 buffers, push 8), both on the unpack layout
  fPipeMC:=CreateComputePipeline(FlexibleVideoMcSPIRVData,FlexibleVideoMcSPIRVDataSize,fPLUnpack,false,true);
@@ -1005,6 +1067,11 @@ begin
  DataCapacity:=(TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4)+(TVkDeviceSize(LumaBlockCount)*16);
  fDataBuffer:=CreateStorageBuffer(DataCapacity,false,'FWV.data');
 
+ // DCT quad-tree partition dimensions: one code per 32x32 region (luma region grid), worst-case leaves per region.
+ fQuadTreeRegionsPerPlane:=TpvFlexibleVideo.QuadTreeRegionCount(fWidth)*TpvFlexibleVideo.QuadTreeRegionCount(fHeight);
+ fQuadTreeMaximumLeaves:=fQuadTreeRegionsPerPlane*TpvFlexibleVideo.QuadTreeMaximumLeaves;
+ fDeblockCells:=(fWidth div 8)*(fHeight div 8); // deblock cell_leaf map size (luma cell count; chroma reuses it, over-allocated)
+
  // per-plane working buffers. DCT mode pads the height to a multiple of 8 (the inverse 8x8 block DCT + rANS unpack
  // write the partial bottom block, e.g. 4:2:0 chroma 540 -> 544); for 4:4:4 / 4:2:2 this is a no-op (height already /8).
  for Plane:=0 to fNumPlanes-1 do begin
@@ -1019,7 +1086,18 @@ begin
   fPreviousBuffer[Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.previous'); // P-frame reference, GPU-resident across frames
   if fSpatialDCT then begin
    fRANSTableBuffer[Plane]:=CreateStorageBuffer(TpvFlexibleVideo.RANSGPUTableUInt32Count*4,false,'FVD.ranstable'); // host-visible per-plane GPU rANS table
+   if fQuadtree then begin
+    fLeafListBuffer[Plane]:=CreateStorageBuffer(TVkDeviceSize(fQuadTreeMaximumLeaves)*3*4,false,'FVD.qt.leaflist'); // host-built leaf list (3 uint32 {x,y,size} per leaf)
+   end;
   end;
+  if fDeblock then begin
+   fCellLeafBuffer[Plane]:=CreateStorageBuffer(TVkDeviceSize(fDeblockCells)*4,false,'FVD.deblock.cellleaf'); // host-built cell->leaf-origin map
+  end;
+ end;
+
+ // DCT quad-tree: this frame's per-plane partition codes (one byte per 32x32 region, luma region grid sized for all planes).
+ if fSpatialDCT and fQuadtree then begin
+  fPartitionBuffer:=CreateStorageBuffer(TVkDeviceSize(fQuadTreeRegionsPerPlane)*fNumPlanes,false,'FVD.qt.partition');
  end;
 
  // AQ (GPU): the one-time weight LUT (code -> log-spaced weight, IDENTICAL to ApplyTileAQ / aq_weight_from_code) + the
@@ -1043,15 +1121,26 @@ begin
  // offsets prefix-sums-from-0 (independent of where the color data lives), so the GPU alpha decode is uniform for
  // every mode (I/P, B, 3D-DWT, MCTF). No previous-buffer: the alpha is intra, never predicted.
  if fHasAlpha then begin
-  PlaneBytes:=TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4;
+  // DCT mode pads the alpha height to /8 (the inverse 8x8 block DCT + rANS write the partial bottom block); no-op for wavelet / heights already /8.
+  if fSpatialDCT then begin
+   PlaneBytes:=TVkDeviceSize(fWidth)*TVkDeviceSize(((fHeight+7) div 8)*8)*4;
+  end else begin
+   PlaneBytes:=TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4;
+  end;
   fCoeffBuffer[3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.alphacoeff'); // decoded alpha plane (device-local, GPU-written -> shared, like coeff[0..2])
   SetLength(fAlphaRingData,fAlphaRingSize);
   SetLength(fAlphaRingOffset,fAlphaRingSize);
   SetLength(fAlphaRingStep,fAlphaRingSize);
+  if fSpatialDCT then begin
+   SetLength(fAlphaRingTable,fAlphaRingSize); // DCT-mode alpha: per-slot rANS frequency table
+  end;
   for SlotIndex:=0 to fAlphaRingSize-1 do begin // host-visible input ring (one set of buffers per in-flight frame slot)
    fAlphaRingData[SlotIndex]:=CreateStorageBuffer(DataCapacity,false,'FWV.alphadata');
    fAlphaRingOffset[SlotIndex]:=CreateStorageBuffer(TVkDeviceSize(LumaBlockCount)*4,false,'FWV.alphaoffset');
    fAlphaRingStep[SlotIndex]:=CreateStorageBuffer(PlaneBytes,false,'FWV.alphastep');
+   if fSpatialDCT then begin
+    fAlphaRingTable[SlotIndex]:=CreateStorageBuffer(TpvFlexibleVideo.RANSGPUTableUInt32Count*4,false,'FVD.alphatable');
+   end;
   end;
  end;
 
@@ -1189,6 +1278,10 @@ begin
  if fHasAlpha then begin // alpha: per-slot unpack+dequant ring sets (fAlphaRingSize*2) + 4 shared sets (coeff<->scratch/row + color_alpha)
   MaxSets:=MaxSets+(fAlphaRingSize*2)+6;
   MaxBuffers:=MaxBuffers+(fAlphaRingSize*5)+12;
+  if fSpatialDCT then begin // DCT-mode alpha: an extra per-slot rANS unpack set {data, offset, coeff, table}
+   MaxSets:=MaxSets+fAlphaRingSize;
+   MaxBuffers:=MaxBuffers+(fAlphaRingSize*4);
+  end;
  end;
  if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin // the per-frame input ring (~24 sets / ~80 buffers per slot)
   MaxSets:=MaxSets+(fBufferRingSize*30);
@@ -1204,6 +1297,22 @@ begin
   if fHasBFrames and (fSubmitMode=1) then begin
    MaxSets:=MaxSets+(fBufferRingSize*fNumPlanes);
    MaxBuffers:=MaxBuffers+(fBufferRingSize*fNumPlanes*4);
+  end;
+  if fQuadtree then begin // quad-tree: rANS-qt set {data, offset, coeff, table, partition} (5) + dct-qt set {coeff, leaf list} (2), per plane (+ ring slots)
+   MaxSets:=MaxSets+(fNumPlanes*2);
+   MaxBuffers:=MaxBuffers+(fNumPlanes*7);
+   if fHasBFrames and (fSubmitMode=1) then begin
+    MaxSets:=MaxSets+(fBufferRingSize*fNumPlanes*2);
+    MaxBuffers:=MaxBuffers+(fBufferRingSize*fNumPlanes*7);
+   end;
+  end;
+ end;
+ if fDeblock then begin // deblock set {plane, cell_leaf} (2 buffers), per plane (+ ring slots for the B-frame ring)
+  MaxSets:=MaxSets+fNumPlanes;
+  MaxBuffers:=MaxBuffers+(fNumPlanes*2);
+  if fHasBFrames and (fSubmitMode=1) then begin
+   MaxSets:=MaxSets+(fBufferRingSize*fNumPlanes);
+   MaxBuffers:=MaxBuffers+(fBufferRingSize*fNumPlanes*2);
   end;
  end;
  if fAQEnabled then begin // apply_tile_aq sets: 3 shared (I/P + 3D-DWT prefetch) + 3 per B-frame ring slot, 4 buffers each
@@ -1239,6 +1348,26 @@ begin
    BindStorageBuffer(fSetRANSUnpack[Plane],2,fCoeffBuffer[Plane]);
    BindStorageBuffer(fSetRANSUnpack[Plane],3,fRANSTableBuffer[Plane]);
    fSetRANSUnpack[Plane].Flush;
+   if fQuadtree then begin // quad-tree rANS unpack: {data, offset, coeff, table, partition}; inverse DCT: {coeff, leaf list}
+    fSetRANSUnpackQuadTree[Plane]:=AllocateSet(fDSLRANS5);
+    BindStorageBuffer(fSetRANSUnpackQuadTree[Plane],0,fDataBuffer);
+    BindStorageBuffer(fSetRANSUnpackQuadTree[Plane],1,fOffsetBuffer[Plane]);
+    BindStorageBuffer(fSetRANSUnpackQuadTree[Plane],2,fCoeffBuffer[Plane]);
+    BindStorageBuffer(fSetRANSUnpackQuadTree[Plane],3,fRANSTableBuffer[Plane]);
+    BindStorageBuffer(fSetRANSUnpackQuadTree[Plane],4,fPartitionBuffer);
+    fSetRANSUnpackQuadTree[Plane].Flush;
+    fSetDCTQuadTree[Plane]:=AllocateSet(fDSL2);
+    BindStorageBuffer(fSetDCTQuadTree[Plane],0,fCoeffBuffer[Plane]);
+    BindStorageBuffer(fSetDCTQuadTree[Plane],1,fLeafListBuffer[Plane]);
+    fSetDCTQuadTree[Plane].Flush;
+   end;
+  end;
+
+  if fDeblock then begin // deblock set {plane (in place), cell_leaf}: I/P binds coeff; the B path rebinds binding 0 to dpb[dst] per frame
+   fSetDeblock[Plane]:=AllocateSet(fDSL2);
+   BindStorageBuffer(fSetDeblock[Plane],0,fCoeffBuffer[Plane]);
+   BindStorageBuffer(fSetDeblock[Plane],1,fCellLeafBuffer[Plane]);
+   fSetDeblock[Plane].Flush;
   end;
 
   fSetDequant[Plane]:=AllocateSet(fDSL2);
@@ -1314,6 +1443,9 @@ begin
   // shared coeff[3] / scratch / image, so one shared set each suffices.
   SetLength(fAlphaRingSetUnpack,fAlphaRingSize);
   SetLength(fAlphaRingSetDequant,fAlphaRingSize);
+  if fSpatialDCT then begin
+   SetLength(fAlphaRingSetRANSUnpack,fAlphaRingSize);
+  end;
   for SlotIndex:=0 to fAlphaRingSize-1 do begin
    fAlphaRingSetUnpack[SlotIndex]:=AllocateSet(fDSL3);
    BindStorageBuffer(fAlphaRingSetUnpack[SlotIndex],0,fAlphaRingData[SlotIndex]);
@@ -1325,6 +1457,15 @@ begin
    BindStorageBuffer(fAlphaRingSetDequant[SlotIndex],0,fCoeffBuffer[3]);
    BindStorageBuffer(fAlphaRingSetDequant[SlotIndex],1,fAlphaRingStep[SlotIndex]);
    fAlphaRingSetDequant[SlotIndex].Flush;
+
+   if fSpatialDCT then begin // DCT-mode alpha rANS unpack: {ring data, ring offset, shared coeff[3], ring table}
+    fAlphaRingSetRANSUnpack[SlotIndex]:=AllocateSet(fDSLRANS4);
+    BindStorageBuffer(fAlphaRingSetRANSUnpack[SlotIndex],0,fAlphaRingData[SlotIndex]);
+    BindStorageBuffer(fAlphaRingSetRANSUnpack[SlotIndex],1,fAlphaRingOffset[SlotIndex]);
+    BindStorageBuffer(fAlphaRingSetRANSUnpack[SlotIndex],2,fCoeffBuffer[3]);
+    BindStorageBuffer(fAlphaRingSetRANSUnpack[SlotIndex],3,fAlphaRingTable[SlotIndex]);
+    fAlphaRingSetRANSUnpack[SlotIndex].Flush;
+   end;
   end;
 
   fSetCoeffToScratch[3]:=AllocateSet(fDSL2);
@@ -1621,6 +1762,66 @@ begin
                                    0,1,@Barrier,0,nil,0,nil);
 end;
 
+// In-loop deblock for one plane: filter the buffer bound in aSet (binding 0, in place) at DCT leaf boundaries — the
+// vertical pass then the horizontal pass (each reads its neighbours). aMirrorTarget<>nil copies the deblocked result
+// there too (the I/P path mirrors coeff -> previous so display + reference stay in sync); the B path filters the DPB
+// slot in place (aMirrorTarget=nil). A null filter (lossless, or dq<1) is skipped, matching the C decoder + oracle.
+procedure TpvFlexibleVideoDecoder.RecordDeblock(const aCommandBuffer:TpvVulkanCommandBuffer;const aSet:TpvVulkanDescriptorSet;const aFilteredBuffer,aMirrorTarget:TpvVulkanBuffer;const aPlane:TpvInt32);
+var PlaneW,PlaneH,CellsX,CellsY,Alpha,Beta,Threshold:TpvInt32;
+    Push:array[0..6] of TpvInt32;
+    Barrier:TVkMemoryBarrier;
+    BufferCopy:TVkBufferCopy;
+begin
+ if (not fDeblock) or fLossless or (fCurrentDeblockDQ<1) then begin
+  exit;
+ end;
+ Alpha:=fCurrentDeblockDQ;
+ Beta:=(fCurrentDeblockDQ shr 1)+1;
+ Threshold:=(fCurrentDeblockDQ shr 2)+1;
+ PlaneW:=PlaneWidth(aPlane);
+ PlaneH:=PlaneHeight(aPlane);
+ CellsX:=PlaneW div 8;
+ CellsY:=PlaneH div 8;
+
+ // vertical pass (direction 0): one workgroup per 8x8 cell across the interior cell columns
+ Push[0]:=PlaneW;
+ Push[1]:=PlaneH;
+ Push[2]:=CellsX;
+ Push[3]:=Alpha;
+ Push[4]:=Beta;
+ Push[5]:=Threshold;
+ Push[6]:=0;
+ RecordDispatch(aCommandBuffer,fPipeDeblock,fPLDeblock,aSet,@Push[0],28,((CellsX-1)+7) div 8,(PlaneH+7) div 8,1);
+ RecordComputeBarrier(aCommandBuffer); // the vertical pass must finish before the horizontal pass reads it
+
+ // horizontal pass (direction 1)
+ Push[6]:=1;
+ RecordDispatch(aCommandBuffer,fPipeDeblock,fPLDeblock,aSet,@Push[0],28,(PlaneW+7) div 8,((CellsY-1)+7) div 8,1);
+ RecordComputeBarrier(aCommandBuffer);
+
+ if assigned(aMirrorTarget) then begin // I/P: mirror the deblocked reconstruction into the reference buffer
+  FillChar(Barrier,SizeOf(Barrier),#0);
+  Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,1,@Barrier,0,nil,0,nil);
+  FillChar(BufferCopy,SizeOf(BufferCopy),#0);
+  BufferCopy.srcOffset:=0;
+  BufferCopy.dstOffset:=0;
+  BufferCopy.size:=TVkDeviceSize(PlaneW)*TVkDeviceSize(PlaneH)*4;
+  aCommandBuffer.CmdCopyBuffer(aFilteredBuffer.Handle,aMirrorTarget.Handle,1,@BufferCopy);
+  FillChar(Barrier,SizeOf(Barrier),#0);
+  Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,1,@Barrier,0,nil,0,nil);
+ end;
+end;
+
 // AQ (GPU): upload the current frame's raw qpmap tile codes; apply_tile_aq.comp then modulates the base step (copied
 // into the step buffer each frame) IN PLACE on the GPU, so there is no per-pixel CPU work (the old ApplyAQ is gone).
 procedure TpvFlexibleVideoDecoder.UploadTileCodes;
@@ -1650,12 +1851,96 @@ begin
  end;
 end;
 
+procedure TpvFlexibleVideoDecoder.BuildQuadTreeLeafList(const aPlane:TpvInt32;const aPartitionCodes:PpvUInt8Array;const aLeafListBuffer:TpvVulkanBuffer;out aLeafCount:TpvInt32);
+var PlaneW,PlaneH,RegionsX,RegionX,RegionY,LeafCount,LeafIndex,Count:TpvInt32;
+    Code:TpvUInt8;
+    LeafX,LeafY,LeafSize:array[0..QuadTreeMaximumLeaves-1] of TpvInt32;
+    LeafWords:PpvUInt32Array;
+begin
+ PlaneW:=PlaneWidth(aPlane);
+ PlaneH:=PlaneHeight(aPlane);
+ RegionsX:=TpvFlexibleVideo.QuadTreeRegionCount(PlaneW); // per-plane region grid (chroma is subsampled -> fewer regions)
+ LeafWords:=PpvUInt32Array(aLeafListBuffer.Memory.MapMemory);
+ try
+  Count:=0;
+  RegionY:=0;
+  while RegionY<PlaneH do begin
+   RegionX:=0;
+   while RegionX<PlaneW do begin
+    Code:=aPartitionCodes^[((RegionY div QuadTreeRegion)*RegionsX)+(RegionX div QuadTreeRegion)];
+    LeafCount:=TpvFlexibleVideo.QuadTreeLeaves(RegionX,RegionY,Code,PlaneW,PlaneH,PpvInt32Array(@LeafX[0]),PpvInt32Array(@LeafY[0]),PpvInt32Array(@LeafSize[0]));
+    for LeafIndex:=0 to LeafCount-1 do begin
+     LeafWords^[(Count*3)+0]:=TpvUInt32(LeafX[LeafIndex]);
+     LeafWords^[(Count*3)+1]:=TpvUInt32(LeafY[LeafIndex]);
+     LeafWords^[(Count*3)+2]:=TpvUInt32(LeafSize[LeafIndex]);
+     inc(Count);
+    end;
+    inc(RegionX,QuadTreeRegion);
+   end;
+   inc(RegionY,QuadTreeRegion);
+  end;
+  aLeafCount:=Count;
+ finally
+  aLeafListBuffer.Memory.UnmapMemory;
+ end;
+end;
+
+procedure TpvFlexibleVideoDecoder.BuildCellLeafMap(const aPlane:TpvInt32;const aPartitionCodes:PpvUInt8Array;const aCellLeafBuffer:TpvVulkanBuffer);
+var PlaneW,PlaneH,CellsX,CellsY,CellX,CellY,RegionsX,RegionX,RegionY,LeafCount,LeafIndex,LeafId,FilledX,FilledY:TpvInt32;
+    Code:TpvUInt8;
+    LeafX,LeafY,LeafSize:array[0..QuadTreeMaximumLeaves-1] of TpvInt32;
+    CellLeaf:PpvInt32Array;
+begin
+ PlaneW:=PlaneWidth(aPlane);
+ PlaneH:=PlaneHeight(aPlane);
+ CellsX:=PlaneW div 8;
+ CellsY:=PlaneH div 8;
+ CellLeaf:=PpvInt32Array(aCellLeafBuffer.Memory.MapMemory);
+ try
+  if assigned(aPartitionCodes) then begin
+   // Quad-tree: every 8x8 cell covered by a leaf stores that leaf's top-left pixel offset (so the shader filters only true leaf edges).
+   RegionsX:=TpvFlexibleVideo.QuadTreeRegionCount(PlaneW);
+   RegionY:=0;
+   while RegionY<PlaneH do begin
+    RegionX:=0;
+    while RegionX<PlaneW do begin
+     Code:=aPartitionCodes^[((RegionY div QuadTreeRegion)*RegionsX)+(RegionX div QuadTreeRegion)];
+     LeafCount:=TpvFlexibleVideo.QuadTreeLeaves(RegionX,RegionY,Code,PlaneW,PlaneH,PpvInt32Array(@LeafX[0]),PpvInt32Array(@LeafY[0]),PpvInt32Array(@LeafSize[0]));
+     for LeafIndex:=0 to LeafCount-1 do begin
+      LeafId:=(LeafY[LeafIndex]*PlaneW)+LeafX[LeafIndex];
+      FilledY:=LeafY[LeafIndex] div 8;
+      while FilledY<((LeafY[LeafIndex]+LeafSize[LeafIndex]) div 8) do begin
+       FilledX:=LeafX[LeafIndex] div 8;
+       while FilledX<((LeafX[LeafIndex]+LeafSize[LeafIndex]) div 8) do begin
+        CellLeaf^[(FilledY*CellsX)+FilledX]:=LeafId;
+        inc(FilledX);
+       end;
+       inc(FilledY);
+      end;
+     end;
+     inc(RegionX,QuadTreeRegion);
+    end;
+    inc(RegionY,QuadTreeRegion);
+   end;
+  end else begin
+   // Uniform: each 8x8 cell is its own leaf at its top-left pixel offset.
+   for CellY:=0 to CellsY-1 do begin
+    for CellX:=0 to CellsX-1 do begin
+     CellLeaf^[(CellY*CellsX)+CellX]:=((CellY*8)*PlaneW)+(CellX*8);
+    end;
+   end;
+  end;
+ finally
+  aCellLeafBuffer.Memory.UnmapMemory;
+ end;
+end;
+
 procedure TpvFlexibleVideoDecoder.UploadFrame(const aFrameIndex:TpvInt32);
 var Plane,PlanePixels,StepSlot:TpvInt32;
     Entry:PFrameEntry;
     CompressedLength:TpvSizeUInt;
     RawLength,DataLength:TpvUInt32;
-    EntropyOffset,AlphaSectionOffset:TpvSizeUInt; // DCT: the entropy section sits between the block data and the alpha section
+    EntropyOffset,AlphaSectionOffset,PartitionOffset:TpvSizeUInt; // DCT: entropy + (quad-tree) partition sit between the block data and the alpha section
     TableLength:TpvUInt32;
     BlockCount:TBlockCounts;
     Offsets:TPlaneOffsets;
@@ -1703,7 +1988,9 @@ begin
    MeasureSynthesisGains(fLevels,fHFGain,fLLGain);
    fGainsComputed:=true;
   end;
-  if fSpatialDCT then begin
+  if fSpatialDCT and fQuadtree then begin
+   // Quad-tree: the per-leaf quant step depends on the partition, which is parsed after the block data -> built below.
+  end else if fSpatialDCT then begin
    // DCT mode: the dequant reads the JPEG DCT quant matrix (luma vs chroma table) per plane, not the wavelet step.
    for Plane:=0 to fNumPlanes-1 do begin
     DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
@@ -1781,6 +2068,41 @@ begin
    inc(EntropyOffset,TableLength);
   end;
   AlphaSectionOffset:=EntropyOffset;
+  if fQuadtree then begin
+   // The quad-tree partition section follows the entropy tables: fQuadTreeRegionsPerPlane bytes per plane, in plane order.
+   PartitionOffset:=EntropyOffset;
+   DataPointer:=PpvUInt8Array(fPartitionBuffer.Memory.MapMemory);
+   try
+    Move(fFrameScratch[PartitionOffset],DataPointer^[0],TpvSizeUInt(fQuadTreeRegionsPerPlane)*fNumPlanes);
+   finally
+    fPartitionBuffer.Memory.UnmapMemory;
+   end;
+   // Per plane: build the leaf list (the inverse-DCT dispatch) + the per-leaf quant step, both read from the partition codes.
+   for Plane:=0 to fNumPlanes-1 do begin
+    BuildQuadTreeLeafList(Plane,PpvUInt8Array(@fFrameScratch[PartitionOffset+(TpvSizeUInt(Plane)*fQuadTreeRegionsPerPlane)]),fLeafListBuffer[Plane],fQuadTreeLeafCount[Plane]);
+    DataPointer:=PpvUInt8Array(fStepBuffer[Plane].Memory.MapMemory);
+    try
+     TpvFlexibleVideo.BuildQuantQuadtree(PpvInt32Array(@DataPointer^[0]),PlaneWidth(Plane),PlaneHeight(Plane),PpvUInt8Array(@fFrameScratch[PartitionOffset+(TpvSizeUInt(Plane)*fQuadTreeRegionsPerPlane)]),Entry^.Quality,fSampleWhite,Plane in [1,2]);
+    finally
+     fStepBuffer[Plane].Memory.UnmapMemory;
+    end;
+   end;
+   inc(EntropyOffset,TpvSizeUInt(fQuadTreeRegionsPerPlane)*fNumPlanes);
+   AlphaSectionOffset:=EntropyOffset;
+  end;
+ end;
+
+ // In-loop deblock: build this frame's per-plane cell->leaf map (quad-tree = from the partition codes; uniform = each 8x8 cell
+ // its own leaf) + record the quality the filter strength derives from. The shared buffers/set match the rest of the I/P DCT path.
+ if fDeblock and not fLossless then begin
+  fCurrentDeblockDQ:=Entry^.Quality*(fSampleWhite div 256);
+  for Plane:=0 to fNumPlanes-1 do begin
+   if fQuadtree then begin
+    BuildCellLeafMap(Plane,PpvUInt8Array(@fFrameScratch[PartitionOffset+(TpvSizeUInt(Plane)*fQuadTreeRegionsPerPlane)]),fCellLeafBuffer[Plane]);
+   end else begin
+    BuildCellLeafMap(Plane,nil,fCellLeafBuffer[Plane]);
+   end;
+  end;
  end;
 
  // optional alpha (I/P colordiff/coefdiff path): the appended alpha section, already in fFrameScratch -> stage it for
@@ -1838,6 +2160,7 @@ var Plane,Level,LevelCount:TpvInt32;
     LevelWidth,LevelHeight:array[0..15] of TpvInt32;
     RowPipeline:TpvVulkanComputePipeline;
     UnpackPush:array[0..3] of TpvInt32;
+    QuadTreeUnpackPush:array[0..5] of TpvInt32; // quad-tree rANS unpack push {w,h,block_size,data_length,partition_offset,regions_x}
     DequantPush:array[0..1] of TpvInt32;
     AddPush:array[0..1] of TpvInt32;
     MCPush:array[0..2] of TpvInt32;
@@ -1887,9 +2210,17 @@ begin
    PlaneUnpackWorkgroups:=(PlaneBlockCount+63) div 64;
   end;
 
-  // unpack: packed bytes + per-block offsets -> coefficients. DCT mode = rANS (one workgroup per coding tile);
-  // wavelet mode = bit-plane unpack.
-  if fSpatialDCT then begin
+  // unpack: packed bytes + per-block offsets -> coefficients. DCT mode = rANS (one workgroup per coding tile;
+  // quad-tree walks the partition + per-leaf zigzag); wavelet mode = bit-plane unpack.
+  if fSpatialDCT and fQuadtree then begin
+   QuadTreeUnpackPush[0]:=PlaneW;
+   QuadTreeUnpackPush[1]:=PlaneH;
+   QuadTreeUnpackPush[2]:=fBlockSize;
+   QuadTreeUnpackPush[3]:=TpvInt32(fCurrentDataLength);
+   QuadTreeUnpackPush[4]:=Plane*fQuadTreeRegionsPerPlane; // byte offset of this plane's partition codes
+   QuadTreeUnpackPush[5]:=TpvFlexibleVideo.QuadTreeRegionCount(PlaneW); // per-plane region grid width
+   RecordDispatch(aCommandBuffer,fPipeRANSUnpackQuadTree,fPLRANSUnpackQuadTree,fSetRANSUnpackQuadTree[Plane],@QuadTreeUnpackPush[0],24,PlaneBlockCount,1,1);
+  end else if fSpatialDCT then begin
    UnpackPush[0]:=PlaneW;
    UnpackPush[1]:=PlaneH;
    UnpackPush[2]:=fBlockSize;
@@ -1922,7 +2253,7 @@ begin
     ChromaMultiplier:=fChromaQuant;
    end;
    DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
-   if fAQEnabled then begin // GPU AQ: modulate the base step (in the step buffer) by this frame's tile map, in place, before dequant
+   if fAQEnabled and not fQuadtree then begin // GPU AQ: modulate the base step by this frame's tile map (quad-tree built its own step in UploadFrame)
     fAQPush[0]:=PlaneWidth(Plane);
     fAQPush[1]:=PlaneHeight(Plane);
     fAQPush[2]:=fLevels;
@@ -1935,9 +2266,15 @@ begin
    RecordComputeBarrier(aCommandBuffer);
   end;
 
-  // Spatial inverse transform. DCT mode = a single inverse 8x8 block DCT (one workgroup per 8x8 block); wavelet
-  // mode = the inverse 2D wavelet level loop (coarsest first), the level pyramid per-plane from PlaneW/PlaneH.
-  if fSpatialDCT then begin
+  // Spatial inverse transform. DCT mode = a single inverse 8x8 block DCT (one workgroup per 8x8 block; quad-tree = one
+  // per size-parameterized leaf); wavelet mode = the inverse 2D wavelet level loop (coarsest first), per-plane.
+  if fSpatialDCT and fQuadtree then begin
+   // Adaptive quad-tree: one workgroup per leaf (from this plane's host-built leaf list), size-parameterized inverse DCT.
+   UnpackPush[0]:=PlaneW;
+   UnpackPush[1]:=fQuadTreeLeafCount[Plane];
+   RecordDispatch(aCommandBuffer,fPipeDCTInverseQuadTree,fPLDCTInverseQuadTree,fSetDCTQuadTree[Plane],@UnpackPush[0],8,fQuadTreeLeafCount[Plane],1,1);
+   RecordComputeBarrier(aCommandBuffer);
+  end else if fSpatialDCT then begin
    // Q0 lossless uses the reversible integer inverse (the coefficients came straight from the rANS unpack, no dequant); lossy uses the float inverse.
    UnpackPush[0]:=PlaneW;
    UnpackPush[1]:=PlaneH;
@@ -2023,6 +2360,14 @@ begin
 
  end;
 
+ // In-loop deblock (--deblock, lossy): filter the reconstructed YCoCg at leaf boundaries (V then H) before CDEF, then mirror
+ // the deblocked result into previous (the reference) so display + reference stay in sync. Exact mirror of the C decoder.
+ if fDeblock and not fLossless then begin
+  for Plane:=0 to 2 do begin
+   RecordDeblock(aCommandBuffer,fSetDeblock[Plane],fCoeffBuffer[Plane],fPreviousBuffer[Plane],Plane);
+  end;
+ end;
+
  // CDEF (--cdef, lossy): in-loop dering the reconstructed YCoCg with this frame's encoder-chosen strengths, before it is
  // colour-converted (display) and reused as the next frame's reference. coeff (display) AND previous (reference) both get
  // the deringed result, mirroring the C player. The set reads coeff (the reconstruct); the buffers are shared, not ringed.
@@ -2086,7 +2431,7 @@ begin
 
 end;
 
-function TpvFlexibleVideoDecoder.ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32):boolean;
+function TpvFlexibleVideoDecoder.ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaTableOffset:TpvSizeUInt;out aAlphaTableLength:TpvUInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32):boolean;
 var Cursor:TpvSizeUInt;
     SizeBlobLength,Running:TpvUInt32;
     SizeReader:TBitReader;
@@ -2095,13 +2440,15 @@ begin
 
  result:=false;
  aAlphaQP:=0;
+ aAlphaTableOffset:=0;
+ aAlphaTableLength:=0;
  aAlphaDataOffset:=0;
  aAlphaDataLength:=0;
 
  // The appended section (mirrors C parse_alpha_section): [u8 alpha_qp][u32 size_blob_length][size blob: unsigned
- // Exp-Golomb per-block sizes][u32 alpha_data_length][alpha block data]. The alpha is full-res, so block_count is the
- // luma block count. The per-block sizes prefix-sum into the alpha offset table (fAlphaOffsetScratch). Returns False
- // (without dereferencing past the frame) if any field would read beyond aFrameLength.
+ // Exp-Golomb per-block sizes][u32 alpha_table_length][rANS table blob (DCT mode; 0 = wavelet)][u32 alpha_data_length]
+ // [alpha block data]. The alpha is full-res, so block_count is the luma block count. The per-block sizes prefix-sum
+ // into the alpha offset table. Returns False (without dereferencing past the frame) if any field reads beyond aFrameLength.
  if (aSectionOffset+5)>aFrameLength then begin // alpha_qp (1) + size_blob_length (4)
   exit;
  end;
@@ -2125,6 +2472,18 @@ begin
  end;
  inc(Cursor,SizeBlobLength);
 
+ // DCT-mode alpha rANS frequency table (length 0 -> wavelet bit-plane, no table).
+ if (Cursor+4)>aFrameLength then begin
+  exit;
+ end;
+ aAlphaTableLength:=ReadU32LE(aFrameBuffer,Cursor);
+ inc(Cursor,4);
+ if (Cursor+TpvSizeUInt(aAlphaTableLength))>aFrameLength then begin
+  exit;
+ end;
+ aAlphaTableOffset:=Cursor;
+ inc(Cursor,aAlphaTableLength);
+
  if (Cursor+4)>aFrameLength then begin
   exit;
  end;
@@ -2141,8 +2500,8 @@ end;
 
 procedure TpvFlexibleVideoDecoder.UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt);
 var BlockCount,StepSlot:TpvInt32;
-    AlphaDataOffset:TpvSizeUInt;
-    AlphaDataLength:TpvUInt32;
+    AlphaTableOffset,AlphaDataOffset:TpvSizeUInt;
+    AlphaTableLength,AlphaDataLength:TpvUInt32;
     DataPointer:PpvUInt8Array;
 begin
 
@@ -2156,10 +2515,12 @@ begin
  end;
 
  BlockCount:=BlockCountX(fWidth)*BlockCountY(fHeight); // alpha is full-res -> the luma block count
- if not ParseAlphaSection(aFrameBuffer,aFrameLength,aSectionOffset,BlockCount,fAlphaQP,AlphaDataOffset,AlphaDataLength) then begin
+ if not ParseAlphaSection(aFrameBuffer,aFrameLength,aSectionOffset,BlockCount,fAlphaQP,AlphaTableOffset,AlphaTableLength,AlphaDataOffset,AlphaDataLength) then begin
   raise EpvFlexibleVideoDecoder.Create('Corrupt alpha section');
  end;
  fAlphaLossless:=fAlphaQP=0;
+ fAlphaIsRANS:=AlphaTableLength>0; // DCT-mode alpha = rANS entropy + inverse 8x8 DCT
+ fAlphaCurrentDataLength:=AlphaDataLength; // the rANS unpack push (RecordAlphaDecode) needs the block-data length
 
  // alpha block offsets -> this slot's offset buffer
  DataPointer:=PpvUInt8Array(fAlphaRingOffset[fAlphaCurrentSlot].Memory.MapMemory);
@@ -2177,22 +2538,42 @@ begin
   fAlphaRingData[fAlphaCurrentSlot].Memory.UnmapMemory;
  end;
 
- // lossy alpha: the quant step map for alpha_qp. The alpha is full-res, so it equals the LUMA (plane 0) step map for
- // quality = alpha_qp; reuse the per-quality step cache (a distinct alpha_qp just adds its own cache slot).
+ // lossy alpha: the quant step map for alpha_qp. The alpha is full-res + luma-like, so DCT mode reads the JPEG LUMA DCT
+ // quant matrix at alpha_qp, and wavelet mode reuses the per-quality luma step cache. The alpha is NOT AQ-modulated.
  if not fAlphaLossless then begin
-  if not fGainsComputed then begin
-   MeasureSynthesisGains(fLevels,fHFGain,fLLGain);
-   fGainsComputed:=true;
+  if fAlphaIsRANS then begin
+   DataPointer:=PpvUInt8Array(fAlphaRingStep[fAlphaCurrentSlot].Memory.MapMemory);
+   try
+    TpvFlexibleVideo.BuildDCTQuantMatrix(PpvInt32Array(@DataPointer^[0]),fWidth,fHeight,fAlphaQP,fSampleWhite,false);
+   finally
+    fAlphaRingStep[fAlphaCurrentSlot].Memory.UnmapMemory;
+   end;
+  end else begin
+   if not fGainsComputed then begin
+    MeasureSynthesisGains(fLevels,fHFGain,fLLGain);
+    fGainsComputed:=true;
+   end;
+   StepSlot:=EnsureStepCacheSlot(fAlphaQP);
+   DataPointer:=PpvUInt8Array(fAlphaRingStep[fAlphaCurrentSlot].Memory.MapMemory);
+   try
+    Move(fStepCacheData[(StepSlot*fNumPlanes)+0][0],DataPointer^[0],TpvSizeUInt(fWidth)*TpvSizeUInt(fHeight)*4);
+    // NOTE: the alpha plane is intentionally NOT AQ-modulated — the encoder quantises it with plain alpha_qp steps
+    // (step_map[3] is built once, before any per-frame tile map exists, and is never rebuilt under --aq), so the
+    // decode must dequantise alpha with the plain steps too. Applying the tile map here would mismatch the encoder.
+   finally
+    fAlphaRingStep[fAlphaCurrentSlot].Memory.UnmapMemory;
+   end;
   end;
-  StepSlot:=EnsureStepCacheSlot(fAlphaQP);
-  DataPointer:=PpvUInt8Array(fAlphaRingStep[fAlphaCurrentSlot].Memory.MapMemory);
+ end;
+
+ // DCT-mode alpha: build the GPU rANS frequency table from the appended table blob (needed for Q0 too — rANS is the entropy stage).
+ if fAlphaIsRANS then begin
+  DataPointer:=PpvUInt8Array(fAlphaRingTable[fAlphaCurrentSlot].Memory.MapMemory);
   try
-   Move(fStepCacheData[(StepSlot*fNumPlanes)+0][0],DataPointer^[0],TpvSizeUInt(fWidth)*TpvSizeUInt(fHeight)*4);
-   // NOTE: the alpha plane is intentionally NOT AQ-modulated — the encoder quantises it with plain alpha_qp steps
-   // (step_map[3] is built once, before any per-frame tile map exists, and is never rebuilt under --aq), so the
-   // decode must dequantise alpha with the plain steps too. Applying the tile map here would mismatch the encoder.
+   FillChar(DataPointer^[0],TpvFlexibleVideo.RANSGPUTableUInt32Count*4,#0);
+   TpvFlexibleVideo.BuildRANSGPUTable(PpvUInt8Array(@aFrameBuffer^[AlphaTableOffset]),AlphaTableLength,PpvUInt32Array(@DataPointer^[0]));
   finally
-   fAlphaRingStep[fAlphaCurrentSlot].Memory.UnmapMemory;
+   fAlphaRingTable[fAlphaCurrentSlot].Memory.UnmapMemory;
   end;
  end;
 
@@ -2201,11 +2582,11 @@ end;
 procedure TpvFlexibleVideoDecoder.UploadAlphaForDisplayedFrame(const aCodingIndex:TpvInt32);
 var Entry:PFrameEntry;
     CompressedLength:TpvSizeUInt;
-    RawLength,DataLength,MVLength:TpvUInt32;
+    RawLength,DataLength,MVLength,TableLength:TpvUInt32;
     BlockCount:TBlockCounts;
     Offsets:TPlaneOffsets;
     Plane,LeadingBlockCount:TpvInt32;
-    MVDataOffset,BlockDataOffset:TpvSizeUInt;
+    MVDataOffset,BlockDataOffset,AlphaSectionOffset:TpvSizeUInt;
 begin
 
  // B / 3D-DWT: the displayed frame's color was reconstructed earlier (from a DPB slot / GOP buffer), so its payload
@@ -2239,7 +2620,20 @@ begin
  end;
  DataLength:=ReadU32LE(PpvUInt8Array(@fAlphaFrameScratch[0]),BlockDataOffset-4);
 
- UploadAlphaFromBuffer(PpvUInt8Array(@fAlphaFrameScratch[0]),RawLength,BlockDataOffset+DataLength);
+ // Locate the appended alpha section. In DCT mode the per-plane rANS entropy tables (and the quad-tree partition) sit
+ // between the color block data and the alpha section, so skip them — exactly like UploadFrame's AlphaSectionOffset.
+ AlphaSectionOffset:=BlockDataOffset+DataLength;
+ if fSpatialDCT then begin
+  for Plane:=0 to fNumPlanes-1 do begin
+   TableLength:=ReadU32LE(PpvUInt8Array(@fAlphaFrameScratch[0]),AlphaSectionOffset);
+   inc(AlphaSectionOffset,4+TableLength);
+  end;
+  if fQuadtree then begin
+   inc(AlphaSectionOffset,TpvSizeUInt(fQuadTreeRegionsPerPlane)*fNumPlanes);
+  end;
+ end;
+
+ UploadAlphaFromBuffer(PpvUInt8Array(@fAlphaFrameScratch[0]),RawLength,AlphaSectionOffset);
 
 end;
 
@@ -2285,12 +2679,20 @@ begin
   PlaneUnpackWorkgroups:=(PlaneBlockCount+63) div 64;
  end;
 
- // unpack: packed alpha bytes + per-block offsets -> coefficients
- UnpackPush[0]:=PlaneW;
- UnpackPush[1]:=PlaneH;
- UnpackPush[2]:=PlaneBlocksX;
- UnpackPush[3]:=PlaneBlocksY;
- RecordDispatch(aCommandBuffer,fPipeUnpack,fPLUnpack,fAlphaRingSetUnpack[fAlphaCurrentSlot],@UnpackPush[0],16,PlaneUnpackWorkgroups,1,1);
+ // unpack: packed alpha bytes + per-block offsets -> coefficients. DCT mode = rANS (one workgroup per coding tile); wavelet = bit-plane.
+ if fAlphaIsRANS then begin
+  UnpackPush[0]:=PlaneW;
+  UnpackPush[1]:=PlaneH;
+  UnpackPush[2]:=fBlockSize;
+  UnpackPush[3]:=TpvInt32(fAlphaCurrentDataLength);
+  RecordDispatch(aCommandBuffer,fPipeRANSUnpack,fPLRANSUnpack,fAlphaRingSetRANSUnpack[fAlphaCurrentSlot],@UnpackPush[0],16,PlaneBlockCount,1,1);
+ end else begin
+  UnpackPush[0]:=PlaneW;
+  UnpackPush[1]:=PlaneH;
+  UnpackPush[2]:=PlaneBlocksX;
+  UnpackPush[3]:=PlaneBlocksY;
+  RecordDispatch(aCommandBuffer,fPipeUnpack,fPLUnpack,fAlphaRingSetUnpack[fAlphaCurrentSlot],@UnpackPush[0],16,PlaneUnpackWorkgroups,1,1);
+ end;
  RecordComputeBarrier(aCommandBuffer);
 
  // lossy: dequantize (single luma-like plane -> chroma multiplier 1.0)
@@ -2302,7 +2704,18 @@ begin
   RecordComputeBarrier(aCommandBuffer);
  end;
 
- // inverse 2D wavelet, coarsest level first (the level pyramid is the full-res pyramid)
+ // Spatial inverse transform. DCT mode = a single inverse 8x8 block DCT (Q0 = reversible integer inverse) into coeff[3];
+ // wavelet = the inverse 2D wavelet level loop (coarsest first).
+ if fAlphaIsRANS then begin
+  UnpackPush[0]:=PlaneW;
+  UnpackPush[1]:=PlaneH;
+  if fAlphaLossless then begin
+   RecordDispatch(aCommandBuffer,fPipeDCTInverseInteger,fPLDCTInverse,fSetRow[3],@UnpackPush[0],8,(PlaneW+7) div 8,(PlaneH+7) div 8,1);
+  end else begin
+   RecordDispatch(aCommandBuffer,fPipeDCTInverse,fPLDCTInverse,fSetRow[3],@UnpackPush[0],8,(PlaneW+7) div 8,(PlaneH+7) div 8,1);
+  end;
+  RecordComputeBarrier(aCommandBuffer);
+ end else begin
  LevelCount:=0;
  CurrentWidth:=PlaneW;
  CurrentHeight:=PlaneH;
@@ -2347,6 +2760,7 @@ begin
   RecordDispatch(aCommandBuffer,RowPipeline,fPLRow,fSetRow[3],@RowPush2[0],16,LevelH,1,1);
   RecordComputeBarrier(aCommandBuffer);
  end;
+ end; // wavelet level loop (else branch of fAlphaIsRANS)
 
  // lossy: round the float-scaled coefficients back to integer alpha bytes
  if not fAlphaLossless then begin
@@ -2456,6 +2870,60 @@ begin
  end;
 end;
 
+function TpvFlexibleVideoDecoder.ActivePartitionBuffer:TpvVulkanBuffer;
+begin
+ if fBufferRingSlot<0 then begin
+  result:=fPartitionBuffer;
+ end else begin
+  result:=fRingPartitionBuffer[fBufferRingSlot];
+ end;
+end;
+
+function TpvFlexibleVideoDecoder.ActiveLeafListBuffer(const aPlane:TpvInt32):TpvVulkanBuffer;
+begin
+ if fBufferRingSlot<0 then begin
+  result:=fLeafListBuffer[aPlane];
+ end else begin
+  result:=fRingLeafListBuffer[fBufferRingSlot][aPlane];
+ end;
+end;
+
+function TpvFlexibleVideoDecoder.ActiveSetRANSUnpackQuadTree(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
+begin
+ if fBufferRingSlot<0 then begin
+  result:=fSetRANSUnpackQuadTree[aPlane];
+ end else begin
+  result:=fRingSetRANSUnpackQuadTree[fBufferRingSlot][aPlane];
+ end;
+end;
+
+function TpvFlexibleVideoDecoder.ActiveSetDCTQuadTree(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
+begin
+ if fBufferRingSlot<0 then begin
+  result:=fSetDCTQuadTree[aPlane];
+ end else begin
+  result:=fRingSetDCTQuadTree[fBufferRingSlot][aPlane];
+ end;
+end;
+
+function TpvFlexibleVideoDecoder.ActiveCellLeafBuffer(const aPlane:TpvInt32):TpvVulkanBuffer;
+begin
+ if fBufferRingSlot<0 then begin
+  result:=fCellLeafBuffer[aPlane];
+ end else begin
+  result:=fRingCellLeafBuffer[fBufferRingSlot][aPlane];
+ end;
+end;
+
+function TpvFlexibleVideoDecoder.ActiveSetDeblock(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
+begin
+ if fBufferRingSlot<0 then begin
+  result:=fSetDeblock[aPlane];
+ end else begin
+  result:=fRingSetDeblock[fBufferRingSlot][aPlane];
+ end;
+end;
+
 function TpvFlexibleVideoDecoder.ActiveSetGMC0(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
 begin
  if fBufferRingSlot<0 then begin
@@ -2534,6 +3002,16 @@ begin
  if fSpatialDCT then begin // DCT path: per-slot per-plane rANS table + unpack set (the B-frame rANS decode mirrors the unpack/dequant ring)
   SetLength(fRingRANSTableBuffer,fBufferRingSize);
   SetLength(fRingSetRANSUnpack,fBufferRingSize);
+  if fQuadtree then begin // quad-tree: per-slot partition + per-slot per-plane leaf list + the two quad-tree sets
+   SetLength(fRingPartitionBuffer,fBufferRingSize);
+   SetLength(fRingLeafListBuffer,fBufferRingSize);
+   SetLength(fRingSetRANSUnpackQuadTree,fBufferRingSize);
+   SetLength(fRingSetDCTQuadTree,fBufferRingSize);
+  end;
+ end;
+ if fDeblock then begin // deblock: per-slot per-plane cell_leaf map + the deblock set
+  SetLength(fRingCellLeafBuffer,fBufferRingSize);
+  SetLength(fRingSetDeblock,fBufferRingSize);
  end;
  SetLength(fRingSetApplyAQ,fBufferRingSize); // AQ apply set per ring slot (bound only when AQ is enabled)
  SetLength(fRingSetGMC0,fBufferRingSize);
@@ -2552,6 +3030,9 @@ begin
   fRingModeBuffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(MotionCells)*4,false,'FWV.ring.mode');
   if fAQEnabled then begin // AQ: per-slot tile codes (sized like the shared buffer, rounded up to a multiple of 4)
    fRingTileCodesBuffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(((fAQMapBytes+3) div 4)*4),false,'FWV.ring.aqcodes');
+  end;
+  if fSpatialDCT and fQuadtree then begin // DCT-B quad-tree: per-slot partition codes (all planes), like the shared fPartitionBuffer
+   fRingPartitionBuffer[Slot]:=CreateStorageBuffer(TVkDeviceSize(fQuadTreeRegionsPerPlane)*fNumPlanes,false,'FVD.ring.qt.partition');
   end;
   for Plane:=0 to fNumPlanes-1 do begin
    // DCT pads the step height to /8 (mirrors the I/P step/coeff buffers: the dequant reads the /8-padded count); no-op for wavelet.
@@ -2580,6 +3061,20 @@ begin
     BindStorageBuffer(fRingSetRANSUnpack[Slot][Plane],2,fCoeffBuffer[Plane]);
     BindStorageBuffer(fRingSetRANSUnpack[Slot][Plane],3,fRingRANSTableBuffer[Slot][Plane]);
     fRingSetRANSUnpack[Slot][Plane].Flush;
+    if fQuadtree then begin // DCT-B quad-tree: rANS-qt set {ring data, ring offset, shared coeff, ring table, ring partition} + inverse {shared coeff, ring leaf list}
+     fRingLeafListBuffer[Slot][Plane]:=CreateStorageBuffer(TVkDeviceSize(fQuadTreeMaximumLeaves)*3*4,false,'FVD.ring.qt.leaflist');
+     fRingSetRANSUnpackQuadTree[Slot][Plane]:=AllocateSet(fDSLRANS5);
+     BindStorageBuffer(fRingSetRANSUnpackQuadTree[Slot][Plane],0,fRingDataBuffer[Slot]);
+     BindStorageBuffer(fRingSetRANSUnpackQuadTree[Slot][Plane],1,fRingOffsetBuffer[Slot][Plane]);
+     BindStorageBuffer(fRingSetRANSUnpackQuadTree[Slot][Plane],2,fCoeffBuffer[Plane]);
+     BindStorageBuffer(fRingSetRANSUnpackQuadTree[Slot][Plane],3,fRingRANSTableBuffer[Slot][Plane]);
+     BindStorageBuffer(fRingSetRANSUnpackQuadTree[Slot][Plane],4,fRingPartitionBuffer[Slot]);
+     fRingSetRANSUnpackQuadTree[Slot][Plane].Flush;
+     fRingSetDCTQuadTree[Slot][Plane]:=AllocateSet(fDSL2);
+     BindStorageBuffer(fRingSetDCTQuadTree[Slot][Plane],0,fCoeffBuffer[Plane]);
+     BindStorageBuffer(fRingSetDCTQuadTree[Slot][Plane],1,fRingLeafListBuffer[Slot][Plane]);
+     fRingSetDCTQuadTree[Slot][Plane].Flush;
+    end;
    end;
    if fAQEnabled then begin // AQ apply: this ring slot's step buffer is base + modulated (in-place)
     fRingSetApplyAQ[Slot][Plane]:=AllocateSet(fDSL4);
@@ -2600,6 +3095,11 @@ begin
     fRingSetCDEF[Slot][Plane]:=AllocateSet(fDSL2);
     BindStorageBuffer(fRingSetCDEF[Slot][Plane],1,fCDEFTempBuffer);
    end;
+   if fDeblock then begin // deblock (mode B): per-slot cell_leaf (bound once); binding 0 rebound to the DPB slot per frame
+    fRingCellLeafBuffer[Slot][Plane]:=CreateStorageBuffer(TVkDeviceSize(fDeblockCells)*4,false,'FVD.ring.deblock.cellleaf');
+    fRingSetDeblock[Slot][Plane]:=AllocateSet(fDSL2);
+    BindStorageBuffer(fRingSetDeblock[Slot][Plane],1,fRingCellLeafBuffer[Slot][Plane]);
+   end;
    // intra/I-P motion comp set, bound once: {shared previous, ring mv, shared scratch} (mirrors fSetMCPlay)
    fRingSetMCPlay[Slot][Plane]:=AllocateSet(fDSL3);
    BindStorageBuffer(fRingSetMCPlay[Slot][Plane],0,fPreviousBuffer[Plane]);
@@ -2618,7 +3118,7 @@ var Plane,PlanePixels,StepSlot:TpvInt32;
     BlockCount:TBlockCounts;
     Offsets:TPlaneOffsets;
     LeadingBlockCount:TpvInt32;
-    MVDataOffset,BlockDataOffset,EntropyOffset:TpvSizeUInt;
+    MVDataOffset,BlockDataOffset,EntropyOffset,PartitionOffset:TpvSizeUInt;
     MVLength,TableLength:TpvUInt32;
     DataPointer:PpvUInt8Array;
     HasMode,HasMV1,IsPredicted:boolean;
@@ -2653,7 +3153,9 @@ begin
    MeasureSynthesisGains(fLevels,fHFGain,fLLGain);
    fGainsComputed:=true;
   end;
-  if fSpatialDCT then begin
+  if fSpatialDCT and fQuadtree then begin
+   // Quad-tree: the per-leaf quant step depends on the partition, which is parsed after the block data -> built below.
+  end else if fSpatialDCT then begin
    // DCT mode: the dequant reads the JPEG DCT quant matrix (luma vs chroma table) per plane, not the wavelet step.
    for Plane:=0 to fNumPlanes-1 do begin
     DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
@@ -2720,6 +3222,39 @@ begin
     ActiveRANSTableBuffer(Plane).Memory.UnmapMemory;
    end;
    inc(EntropyOffset,TableLength);
+  end;
+  if fQuadtree then begin
+   // The quad-tree partition section follows the entropy tables: fQuadTreeRegionsPerPlane bytes per plane, in plane order.
+   PartitionOffset:=EntropyOffset;
+   DataPointer:=PpvUInt8Array(ActivePartitionBuffer.Memory.MapMemory);
+   try
+    Move(fFrameScratch[PartitionOffset],DataPointer^[0],TpvSizeUInt(fQuadTreeRegionsPerPlane)*fNumPlanes);
+   finally
+    ActivePartitionBuffer.Memory.UnmapMemory;
+   end;
+   // Per plane: build the leaf list (the inverse-DCT dispatch) + the per-leaf quant step, both read from the partition codes.
+   for Plane:=0 to fNumPlanes-1 do begin
+    BuildQuadTreeLeafList(Plane,PpvUInt8Array(@fFrameScratch[PartitionOffset+(TpvSizeUInt(Plane)*fQuadTreeRegionsPerPlane)]),ActiveLeafListBuffer(Plane),fQuadTreeLeafCount[Plane]);
+    DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
+    try
+     TpvFlexibleVideo.BuildQuantQuadtree(PpvInt32Array(@DataPointer^[0]),PlaneWidth(Plane),PlaneHeight(Plane),PpvUInt8Array(@fFrameScratch[PartitionOffset+(TpvSizeUInt(Plane)*fQuadTreeRegionsPerPlane)]),Entry^.Quality,fSampleWhite,Plane in [1,2]);
+    finally
+     ActiveStepBuffer(Plane).Memory.UnmapMemory;
+    end;
+   end;
+  end;
+ end;
+
+ // In-loop deblock: build this frame's per-plane cell->leaf map into the active (ring) cell_leaf buffer + record the
+ // filter-strength quality. The deblock set's binding 0 is rebound to this frame's DPB slot in PrepareBidiFrame.
+ if fDeblock and not fLossless then begin
+  fCurrentDeblockDQ:=Entry^.Quality*(fSampleWhite div 256);
+  for Plane:=0 to 2 do begin
+   if fQuadtree then begin
+    BuildCellLeafMap(Plane,PpvUInt8Array(@fFrameScratch[PartitionOffset+(TpvSizeUInt(Plane)*fQuadTreeRegionsPerPlane)]),ActiveCellLeafBuffer(Plane));
+   end else begin
+    BuildCellLeafMap(Plane,nil,ActiveCellLeafBuffer(Plane));
+   end;
   end;
  end;
 
@@ -2833,6 +3368,7 @@ var Plane,Level,LevelCount:TpvInt32;
     LevelWidth,LevelHeight:array[0..15] of TpvInt32;
     RowPipeline:TpvVulkanComputePipeline;
     UnpackPush:array[0..3] of TpvInt32;
+    QuadTreeUnpackPush:array[0..5] of TpvInt32; // quad-tree rANS unpack push {w,h,block_size,data_length,partition_offset,regions_x}
     DequantPush:array[0..1] of TpvInt32;
     TransposePush1,TransposePush2,RowPush1,RowPush2:array[0..3] of TpvInt32;
     PixelCountPush:TpvInt32;
@@ -2871,8 +3407,16 @@ begin
 
   // residual: unpack -> [dequant] -> inverse transform -> [round] (no coeff_add on the B/colordiff path).
   // The unpack/dequant SETS come from Active* (the per-frame ring slot for mode B, the shared set for modes A/C).
-  // DCT mode = rANS (one workgroup per coding tile); wavelet mode = bit-plane unpack.
-  if fSpatialDCT then begin
+  // DCT mode = rANS (one workgroup per coding tile; quad-tree walks the partition); wavelet mode = bit-plane unpack.
+  if fSpatialDCT and fQuadtree then begin
+   QuadTreeUnpackPush[0]:=PlaneW;
+   QuadTreeUnpackPush[1]:=PlaneH;
+   QuadTreeUnpackPush[2]:=fBlockSize;
+   QuadTreeUnpackPush[3]:=TpvInt32(fCurrentDataLength);
+   QuadTreeUnpackPush[4]:=Plane*fQuadTreeRegionsPerPlane; // byte offset of this plane's partition codes
+   QuadTreeUnpackPush[5]:=TpvFlexibleVideo.QuadTreeRegionCount(PlaneW); // per-plane region grid width
+   RecordDispatch(aCommandBuffer,fPipeRANSUnpackQuadTree,fPLRANSUnpackQuadTree,ActiveSetRANSUnpackQuadTree(Plane),@QuadTreeUnpackPush[0],24,PlaneBlockCount,1,1);
+  end else if fSpatialDCT then begin
    UnpackPush[0]:=PlaneW;
    UnpackPush[1]:=PlaneH;
    UnpackPush[2]:=fBlockSize;
@@ -2888,8 +3432,9 @@ begin
   RecordComputeBarrier(aCommandBuffer);
 
   if not fLossless then begin
-   // Uniform DCT-B dequantises the /8-padded height (partial bottom block rows, e.g. 4:2:0 chroma 540 -> 544); wavelet uses the exact count.
-   if fSpatialDCT then begin
+   // Uniform DCT-B dequantises the /8-padded height (partial bottom block rows, e.g. 4:2:0 chroma 540 -> 544); quad-tree
+   // (the leaf inverse handles partial regions) and wavelet use the exact pixel count.
+   if fSpatialDCT and not fQuadtree then begin
     DequantPixels:=PlaneW*(((PlaneH+7) div 8)*8);
    end else begin
     DequantPixels:=PlanePixels;
@@ -2902,7 +3447,7 @@ begin
     ChromaMultiplier:=fChromaQuant;
    end;
    DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
-   if fAQEnabled then begin // GPU AQ: modulate the base step (in the step buffer) by this frame's tile map, in place, before dequant
+   if fAQEnabled and not fQuadtree then begin // GPU AQ: modulate the base step by this frame's tile map (quad-tree built its own step in UploadBidiFrame)
     fAQPush[0]:=PlaneWidth(Plane);
     fAQPush[1]:=PlaneHeight(Plane);
     fAQPush[2]:=fLevels;
@@ -2915,9 +3460,15 @@ begin
    RecordComputeBarrier(aCommandBuffer);
   end;
 
-  // Spatial inverse transform. DCT-B = a single inverse 8x8 block DCT (Q0 = reversible integer inverse, lossy = float);
-  // wavelet B = the inverse 2D wavelet level loop (below). The mc/blend/motion_add that follows is shared by both.
-  if fSpatialDCT then begin
+  // Spatial inverse transform. DCT-B = a single inverse 8x8 block DCT (Q0 = reversible integer inverse, lossy = float;
+  // quad-tree = one workgroup per size-parameterized leaf); wavelet B = the inverse 2D wavelet level loop (below). The
+  // mc/blend/motion_add that follows is shared by both.
+  if fSpatialDCT and fQuadtree then begin
+   UnpackPush[0]:=PlaneW;
+   UnpackPush[1]:=fQuadTreeLeafCount[Plane];
+   RecordDispatch(aCommandBuffer,fPipeDCTInverseQuadTree,fPLDCTInverseQuadTree,ActiveSetDCTQuadTree(Plane),@UnpackPush[0],8,fQuadTreeLeafCount[Plane],1,1);
+   RecordComputeBarrier(aCommandBuffer);
+  end else if fSpatialDCT then begin
    UnpackPush[0]:=PlaneW;
    UnpackPush[1]:=PlaneH;
    if fLossless then begin
@@ -3009,6 +3560,10 @@ begin
   AddPush[1]:=aIsPredicted;
   RecordDispatch(aCommandBuffer,fPipeMotionAdd,fPLUnpack,ActiveSetGAdd(Plane),@AddPush[0],8,PlanePixelWorkgroups,1,1);
   RecordComputeBarrier(aCommandBuffer);
+
+  if fDeblock and (Plane<3) then begin // deblock: in-loop filter of the reconstructed DPB slot in place (before CDEF), no mirror (the slot is reference + display)
+   RecordDeblock(aCommandBuffer,ActiveSetDeblock(Plane),fDPBBuffer[fActiveBidiDstSlot][Plane],nil,Plane);
+  end;
 
   if fHasCDEF and (Plane<3) then begin // CDEF: in-loop dering of the reconstructed DPB slot before it becomes a reference / is displayed
    RecordCDEF(aCommandBuffer,ActiveSetCDEF(Plane),fDPBBuffer[fActiveBidiDstSlot][Plane],nil,Plane);
@@ -3121,6 +3676,10 @@ begin
   if fHasCDEF and (Plane<3) then begin // CDEF reads the reconstructed DPB slot (in-loop), so bind src to dpb[dst] this frame
    BindStorageBuffer(ActiveSetCDEF(Plane),0,fDPBBuffer[DstSlot][Plane]);
    ActiveSetCDEF(Plane).Flush;
+  end;
+  if fDeblock and (Plane<3) then begin // deblock filters the reconstructed DPB slot in place, so bind binding 0 to dpb[dst] this frame
+   BindStorageBuffer(ActiveSetDeblock(Plane),0,fDPBBuffer[DstSlot][Plane]);
+   ActiveSetDeblock(Plane).Flush;
   end;
  end;
  fActiveBidiDstSlot:=DstSlot; // RecordBidiDecode derings this slot after the reconstruct
@@ -3968,6 +4527,9 @@ begin
   fBidiPlan[fBidiPlanCount].CDEFPriChroma:=fCDEFPriChroma;
   fBidiPlan[fBidiPlanCount].CDEFSecChroma:=fCDEFSecChroma;
   fBidiPlan[fBidiPlanCount].CDEFDamping:=fCDEFDamping;
+  fBidiPlan[fBidiPlanCount].DataLength:=fCurrentDataLength; // DCT: this frame's rANS unpack data length (the GPU replay needs it per frame)
+  Move(fQuadTreeLeafCount[0],fBidiPlan[fBidiPlanCount].QuadTreeLeafCount[0],4*SizeOf(TpvInt32)); // DCT quad-tree: this frame's per-plane leaf counts (inverse dispatch sizes)
+  fBidiPlan[fBidiPlanCount].DeblockDQ:=fCurrentDeblockDQ; // deblock: this frame's filter-strength quality
   inc(fBidiPlanCount);
   inc(RingIndex);
   inc(fBidiRingCursor);
@@ -3994,6 +4556,9 @@ begin
   fCDEFPriChroma:=fBidiPlan[PlanIndex].CDEFPriChroma;
   fCDEFSecChroma:=fBidiPlan[PlanIndex].CDEFSecChroma;
   fCDEFDamping:=fBidiPlan[PlanIndex].CDEFDamping;
+  fCurrentDataLength:=fBidiPlan[PlanIndex].DataLength; // DCT: restore this frame's rANS unpack data length
+  Move(fBidiPlan[PlanIndex].QuadTreeLeafCount[0],fQuadTreeLeafCount[0],4*SizeOf(TpvInt32)); // DCT quad-tree: restore this frame's per-plane leaf counts
+  fCurrentDeblockDQ:=fBidiPlan[PlanIndex].DeblockDQ; // deblock: restore this frame's filter-strength quality
   RecordBidiDecode(aCommandBuffer,fBidiPlan[PlanIndex].IsPredicted,fBidiPlan[PlanIndex].Ref1Slot,fBidiPlan[PlanIndex].Weight0,fBidiPlan[PlanIndex].Weight1);
  end;
  fBufferRingSlot:=-1;
@@ -4166,6 +4731,9 @@ begin
  for SlotIndex:=0 to length(fAlphaRingSetUnpack)-1 do begin
   FreeAndNil(fAlphaRingSetUnpack[SlotIndex]);
   FreeAndNil(fAlphaRingSetDequant[SlotIndex]);
+  if SlotIndex<length(fAlphaRingSetRANSUnpack) then begin // DCT-mode alpha rANS set (allocated only when fSpatialDCT)
+   FreeAndNil(fAlphaRingSetRANSUnpack[SlotIndex]);
+  end;
  end;
  FreeAndNil(fSetCoeffToScratch[3]);
  FreeAndNil(fSetScratchToCoeff[3]);
@@ -4218,6 +4786,18 @@ begin
     FreeAndNil(fRingSetRANSUnpack[SlotIndex][Plane]);
     FreeAndNil(fRingRANSTableBuffer[SlotIndex][Plane]);
    end;
+   if SlotIndex<length(fRingLeafListBuffer) then begin // DCT-B quad-tree ring leaf list + the two quad-tree sets (allocated only when fSpatialDCT and fQuadtree)
+    FreeAndNil(fRingSetRANSUnpackQuadTree[SlotIndex][Plane]);
+    FreeAndNil(fRingSetDCTQuadTree[SlotIndex][Plane]);
+    FreeAndNil(fRingLeafListBuffer[SlotIndex][Plane]);
+   end;
+   if SlotIndex<length(fRingCellLeafBuffer) then begin // deblock ring cell_leaf + set (allocated only when fDeblock)
+    FreeAndNil(fRingSetDeblock[SlotIndex][Plane]);
+    FreeAndNil(fRingCellLeafBuffer[SlotIndex][Plane]);
+   end;
+  end;
+  if SlotIndex<length(fRingPartitionBuffer) then begin // DCT-B quad-tree ring partition (per slot)
+   FreeAndNil(fRingPartitionBuffer[SlotIndex]);
   end;
   FreeAndNil(fRingDataBuffer[SlotIndex]);
   FreeAndNil(fRingTileCodesBuffer[SlotIndex]);
@@ -4261,12 +4841,18 @@ begin
   FreeAndNil(fStepBuffer[Plane]);
   FreeAndNil(fOffsetBuffer[Plane]);
   FreeAndNil(fRANSTableBuffer[Plane]); // DCT path (nil when wavelet -> FreeAndNil is a no-op)
+  FreeAndNil(fLeafListBuffer[Plane]); // DCT quad-tree path (nil otherwise)
+  FreeAndNil(fCellLeafBuffer[Plane]); // deblock path (nil otherwise)
  end;
+ FreeAndNil(fPartitionBuffer); // DCT quad-tree (nil otherwise)
  FreeAndNil(fCoeffBuffer[3]); // the shared decoded-alpha plane (not covered by the loop above)
  for SlotIndex:=0 to length(fAlphaRingData)-1 do begin // the alpha host-input ring
   FreeAndNil(fAlphaRingData[SlotIndex]);
   FreeAndNil(fAlphaRingOffset[SlotIndex]);
   FreeAndNil(fAlphaRingStep[SlotIndex]);
+  if SlotIndex<length(fAlphaRingTable) then begin // DCT-mode alpha rANS table (allocated only when fSpatialDCT)
+   FreeAndNil(fAlphaRingTable[SlotIndex]);
+  end;
  end;
  FreeAndNil(fDataBuffer);
 
@@ -4291,12 +4877,18 @@ begin
  FreeAndNil(fPipeApplyAQ);
  FreeAndNil(fWeightLUTBuffer);
  FreeAndNil(fTileCodesBuffer);
+ FreeAndNil(fPipeDeblock); // deblock path (nil otherwise)
+ FreeAndNil(fPipeDCTInverseQuadTree); // DCT quad-tree path (nil otherwise)
+ FreeAndNil(fPipeRANSUnpackQuadTree);
  FreeAndNil(fPipeDCTInverseInteger); // DCT path (nil when wavelet)
  FreeAndNil(fPipeDCTInverse);
  FreeAndNil(fPipeRANSUnpack);
  FreeAndNil(fPipeDequant);
  FreeAndNil(fPipeUnpack);
 
+ FreeAndNil(fPLDeblock); // deblock path (nil otherwise)
+ FreeAndNil(fPLDCTInverseQuadTree); // DCT quad-tree path (nil otherwise)
+ FreeAndNil(fPLRANSUnpackQuadTree);
  FreeAndNil(fPLDCTInverse); // DCT path (nil when wavelet)
  FreeAndNil(fPLRANSUnpack);
  FreeAndNil(fPLTemporal);
@@ -4316,6 +4908,7 @@ begin
 
  FreeAndNil(fDSLColorAlpha);
  FreeAndNil(fDSLColor);
+ FreeAndNil(fDSLRANS5); // DCT quad-tree path (nil otherwise)
  FreeAndNil(fDSLRANS4); // DCT path (nil when wavelet)
  FreeAndNil(fDSL4);
  FreeAndNil(fDSL3);
