@@ -1828,6 +1828,10 @@ int main(int argc, char **argv) {
   if (use_bframes && !gpu_encode) {
     cpu_bframes = 1;
   }
+  // The bidi loop picks the spatial transform per frame: DCT for B-frames that use DCT (g_bframe_dct) OR for routed
+  // plain DCT I/P. DECOUPLED from container bit6 (set only for g_bframe_dct). Defined here so the GPU pipeline
+  // creation (deblock) can gate on it too.
+  int bidi_use_dct = g_bframe_dct || (g_spatial_dct && !use_bframes);
   if (use_bframes) {
     if (bframes > 15) {
       bframes = 15;   // period <= 16: keeps the per-pair DPB / hierarchy depth sane
@@ -2167,12 +2171,12 @@ int main(int argc, char **argv) {
   VkPipelineLayout pipeline_layout_dct_qt = create_pipeline_layout(layout_2_buffers, 8);          // dct_fwd_qt / dct_inv_qt: {plane, leaves}, push { width, leaf_count }
   VkPipelineLayout pipeline_layout_rans_hist_qt = create_pipeline_layout(layout_3_buffers, 20);   // rans_hist_qt: {coeff, hist, partition}, push { width, height, block_size, qt_offset, regions_x }
   VkPipelineLayout pipeline_layout_rans_size_qt = create_pipeline_layout(layout_5_buffers, 24);   // rans_size_qt: {coeff, table, scratch, size, partition}, push { width, height, block_size, scratch_stride, qt_offset, regions_x }
-  VkPipelineLayout pipeline_layout_deblock = (g_bframe_dct && g_deblock) ? create_pipeline_layout(layout_2_buffers, 28) : 0;   // deblock: {coeff, cell_leaf}, push { width, height, cells_x, alpha, beta, tc, direction }
+  VkPipelineLayout pipeline_layout_deblock = (bidi_use_dct && g_deblock) ? create_pipeline_layout(layout_2_buffers, 28) : 0;   // deblock: {coeff, cell_leaf}, push { width, height, cells_x, alpha, beta, tc, direction } — DCT-B AND routed plain DCT I/P
   VkPipeline pipeline_dct_fwd_qt = (gpu_encode && g_quadtree) ? create_compute_pipeline("shaders/dct_fwd_qt.spv", pipeline_layout_dct_qt) : 0;
   VkPipeline pipeline_dct_inv_qt = (gpu_encode && g_quadtree) ? create_compute_pipeline("shaders/dct_inv_qt.spv", pipeline_layout_dct_qt) : 0;
   VkPipeline pipeline_rans_hist_qt = (gpu_encode && g_quadtree) ? create_compute_pipeline("shaders/rans_hist_qt.spv", pipeline_layout_rans_hist_qt) : 0;
   VkPipeline pipeline_rans_size_qt = (gpu_encode && g_quadtree) ? create_compute_pipeline("shaders/rans_size_qt.spv", pipeline_layout_rans_size_qt) : 0;
-  VkPipeline pipeline_deblock = (g_bframe_dct && g_deblock) ? create_compute_pipeline("shaders/deblock.spv", pipeline_layout_deblock) : 0;
+  VkPipeline pipeline_deblock = (bidi_use_dct && g_deblock) ? create_compute_pipeline("shaders/deblock.spv", pipeline_layout_deblock) : 0;
   VkPipeline pipeline_rans_hist = gpu_encode ? create_compute_pipeline("shaders/rans_hist.spv", pipeline_layout_rans_hist) : 0;
   VkPipeline pipeline_rans_size = gpu_encode ? create_compute_pipeline("shaders/rans_size.spv", pipeline_layout_rans_size) : 0;
   VkPipeline pipeline_rans_pack = gpu_encode ? create_compute_pipeline("shaders/rans_pack.spv", pipeline_layout_rans_pack) : 0;
@@ -2676,13 +2680,12 @@ int main(int argc, char **argv) {
   // Stage 2: plain DCT I/P (lossy, no quadtree/deblock/HDR/Q0/alpha) is GPU-encoded by routing it through the
   // GPU bidi loop (use_bframes == 0), exactly like wavelet I/P. The CPU oracle (the loop just below) stays the
   // --gpu-encode=0 path and the home of the features the GPU bidi loop does not yet cover (those are later stages).
-  int dct_ip_gpu = ((((((g_spatial_dct && !use_bframes) && !mode_3ddwt) && gpu_encode) && !hdr_mode) && !g_quadtree) && !g_deblock) && !lossless && !g_has_alpha;
-  // The bidi loop picks the spatial transform per frame: DCT for B-frames that use DCT (g_bframe_dct) OR for
-  // routed plain DCT I/P. This is DECOUPLED from container bit6 (set only for g_bframe_dct), so a plain DCT I/P
-  // stream stays bit7-only and the decoder uses its existing GPU I/P path unchanged.
-  int bidi_use_dct = g_bframe_dct || (g_spatial_dct && !use_bframes);
+  // Stage 3: +alpha. Stage 4a: +quadtree. Stage 4b: +deblock BUT only with quadtree (the encoder deblock is
+  // quadtree-coupled — the uniform path never deblocked, even for DCT-B; uniform+deblock stays on the CPU oracle,
+  // which deblocks correctly). HDR + Q0-lossless still CPU-routed.
+  int dct_ip_gpu = ((((g_spatial_dct && !use_bframes) && !mode_3ddwt) && gpu_encode) && !lossless) && (!g_deblock || g_quadtree);   // Stage 5: +HDR (the bidi loop's use_bframes==0 path already does the rgb48le->12-bit ingest, like DCT-B). Only Q0-lossless still CPU-routed.
 
-  if (((g_spatial_dct && !use_bframes) && !mode_3ddwt) && !dct_ip_gpu) {   // DCT-mode I/P CPU oracle (--gpu-encode=0) + the features the GPU bidi loop doesn't cover yet (HDR/quadtree/deblock/Q0/alpha)
+  if (((g_spatial_dct && !use_bframes) && !mode_3ddwt) && !dct_ip_gpu) {   // DCT-mode I/P CPU oracle (--gpu-encode=0) + the features the GPU bidi loop doesn't cover yet (HDR/Q0/uniform-deblock)
     // ---- DCT fork encode (Stage 1): the validated CPU oracle (RGB -> YCoCg -> block DCT -> quant -> rANS) per
     // frame, into the container — the comparison reference; the GPU dct_fwd + GPU-rANS encode is the next step.
     // The DECODER is full-GPU (fvdplay / fvddec). I/P only (B-frames, 3D-DWT, HDR, Q0 keep their existing paths). ----
@@ -4672,9 +4675,9 @@ int main(int argc, char **argv) {
         data_length = running_offset;
         color_data_length = data_length;
         // 4) closed-loop reconstruct: dequant + inverse quadtree DCT + round + motion_add (+ deblock) into the DPB slot.
-        if (g_deblock) {   // pre-bind the deblock sets to this frame's DPB slot (host descriptor update before recording)
+        if (g_deblock) {   // pre-bind the deblock sets to this frame's reconstruction: the DPB slot for B, previous_buffer for plain DCT I/P
           for (int plane = 0; plane < g_num_planes; plane++) {
-            bind_storage_buffers(set_deblock[plane], (VkBuffer[]){ dpb_buffer[b_dst_slot][plane], cell_leaf_buffer[plane] }, 2);
+            bind_storage_buffers(set_deblock[plane], (VkBuffer[]){ use_bframes ? dpb_buffer[b_dst_slot][plane] : previous_buffer[plane], cell_leaf_buffer[plane] }, 2);
           }
         }
         begin_recording();
@@ -4705,7 +4708,7 @@ int main(int argc, char **argv) {
           memory_barrier();
           int32_t add_push[2] = { pp, is_predicted };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_add);
-          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_motion_add_bidi[plane], 0, 0);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, use_bframes ? &set_motion_add_bidi[plane] : &set_motion_add[plane], 0, 0);   // B -> DPB slot; plain DCT I/P quadtree -> previous_buffer
           vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, add_push);
           vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
           memory_barrier();
