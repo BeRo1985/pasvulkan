@@ -3521,7 +3521,7 @@ static void cdef_filter_plane(const int32_t *src, int32_t *dst, int width, int h
 // Decode-side in-place CDEF of one reconstructed YCoCg plane (uses `scratch` as the cdef destination, then copies it
 // back). Gated on g_cdef_active + a lossy quality (Q0 -> damping 0 -> off) + a non-zero strength (0,0 = identity).
 // EXACT mirror of the encoder's GPU apply; the strengths come from the container's per-frame table. Applied to the
-// reconstructed reference BEFORE it is saved as the next-frame reference / colour-converted, so encoder and decoder
+// reconstructed reference BEFORE it is saved as the next-frame reference / color-converted, so encoder and decoder
 // references stay in lock-step.
 static void cdef_apply_decode_plane(int32_t *plane, int32_t *scratch, int plane_w, int plane_h, int plane_index, int quality) {
   if (!g_cdef_active) {
@@ -6336,9 +6336,9 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
   uint8_t *plane_table[MAX_PLANES] = { NULL };   // DCT path: per-plane rANS frequency-table blobs (entropy section)
   uint32_t plane_table_len[MAX_PLANES] = { 0 };
   uint8_t *qt_map[MAX_PLANES] = { NULL };   // adaptive quadtree: per-plane partition (one code byte per 32x32 region)
-  // Quadtree needs only that the base 8x8 grid tiles cleanly (edge 16/32 leaves are clamped by qt_leaves); for
-  // now require 4:4:4 + dims divisible by 8. Subsampled chroma cleanly falls back to uniform.
-  int use_qt = g_quadtree && g_spatial_dct && (base_quality > 0) && (g_chroma_format == 0) &&
+  // Quadtree partitions per plane (chroma uses its own dims), so subsampled chroma is allowed; the base 8x8 grid
+  // must tile cleanly, and edge 16/32 leaves are clamped by qt_leaves. Requires the luma dims divisible by 8.
+  int use_qt = g_quadtree && g_spatial_dct && (base_quality > 0) &&
                ((width % DCT_BLOCK) == 0) && ((height % DCT_BLOCK) == 0);
   for (int plane = 0; plane < g_num_planes; plane++) {
     int plane_w = plane_width(plane, width);
@@ -6486,7 +6486,7 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
     uint32_t *alpha_offsets = checked_malloc((size_t)alpha_block_count * 4);
     uint8_t *alpha_table = NULL;
     uint32_t alpha_table_len = 0;
-    if (g_spatial_dct) {   // DCT mode: alpha on the rANS coder (lossy float-DCT / lossless integer-DCT), exactly like the colour planes
+    if (g_spatial_dct) {   // DCT mode: alpha on the rANS coder (lossy float-DCT / lossless integer-DCT), exactly like the color planes
       dct_encode_plane(&alpha_writer, alpha, width, height, alpha_offsets, &alpha_table, &alpha_table_len);
     } else {   // wavelet mode: bit-plane (FWV parity)
       encode_plane(&alpha_writer, alpha, width, height, alpha_offsets);
@@ -6547,8 +6547,8 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
   const uint8_t *plane_table[MAX_PLANES] = { NULL };
   uint32_t plane_table_len[MAX_PLANES] = { 0 };
   const uint8_t *qt_map[MAX_PLANES] = { NULL };
-  int use_qt = g_quadtree && g_spatial_dct && (base_quality > 0) && (g_chroma_format == 0) &&
-               ((width % DCT_BLOCK) == 0) && ((height % DCT_BLOCK) == 0);   // must match the encoder's gate exactly
+  int use_qt = g_quadtree && g_spatial_dct && (base_quality > 0) &&
+               ((width % DCT_BLOCK) == 0) && ((height % DCT_BLOCK) == 0);   // must match the encoder's gate exactly (per-plane partition -> subsampled chroma allowed)
   const uint8_t *alpha_base = data + cdl;
   if (g_spatial_dct) {   // DCT mode has the rANS entropy section (lossy + lossless integer-DCT); wavelet mode has none
     alpha_base = parse_entropy_section(data + cdl, g_num_planes, plane_table, plane_table_len);
@@ -6610,7 +6610,7 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
     if (g_deblock && (base_quality > 0)) {
       deblock_plane(planes[plane], plane_w, plane_h, base_quality, use_qt ? (uint8_t *)qt_map[plane] : NULL);   // in-loop, matches the encoder reconstruct
     }
-    cdef_apply_decode_plane(planes[plane], mc_previous, plane_w, plane_h, plane, base_quality);   // in-loop dering (mc_previous reused as scratch); before the reference save + colour convert
+    cdef_apply_decode_plane(planes[plane], mc_previous, plane_w, plane_h, plane, base_quality);   // in-loop dering (mc_previous reused as scratch); before the reference save + color convert
     if (previous_ycocg) {
       memcpy(previous_ycocg[plane], planes[plane], (size_t)plane_pixels * 4);   // this reconstructed frame is the next reference
     }
@@ -6707,7 +6707,7 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
   uint8_t *plane_table[MAX_PLANES] = { NULL };   // DCT-B: per-plane rANS frequency-table blobs (entropy section)
   uint32_t plane_table_len[MAX_PLANES] = { 0 };
   uint8_t *qt_map[MAX_PLANES] = { NULL };         // DCT-B quadtree: per-plane partition codes
-  int use_qt = ((((g_bframe_dct && g_quadtree) && (base_quality > 0)) && (g_chroma_format == 0)) && ((width % DCT_BLOCK) == 0)) && ((height % DCT_BLOCK) == 0);
+  int use_qt = (((g_bframe_dct && g_quadtree) && (base_quality > 0)) && ((width % DCT_BLOCK) == 0)) && ((height % DCT_BLOCK) == 0);   // per-plane partition -> subsampled chroma allowed
   for (int plane = 0; plane < g_num_planes; plane++) {
     int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
     int plane_pixels = plane_w * plane_h;
@@ -6901,7 +6901,7 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
   const uint8_t *plane_table[MAX_PLANES] = { NULL };
   uint32_t plane_table_len[MAX_PLANES] = { 0 };
   const uint8_t *qt_map[MAX_PLANES] = { NULL };
-  int use_qt = ((((g_bframe_dct && g_quadtree) && (base_quality > 0)) && (g_chroma_format == 0)) && ((width % DCT_BLOCK) == 0)) && ((height % DCT_BLOCK) == 0);
+  int use_qt = (((g_bframe_dct && g_quadtree) && (base_quality > 0)) && ((width % DCT_BLOCK) == 0)) && ((height % DCT_BLOCK) == 0);   // per-plane partition -> subsampled chroma allowed
   if (g_bframe_dct) {
     const uint8_t *after_entropy = parse_entropy_section(data + data_length, g_num_planes, plane_table, plane_table_len);
     if (use_qt) {
@@ -6964,7 +6964,7 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
     if ((g_bframe_dct && g_deblock) && (base_quality > 0)) {
       deblock_plane(planes[plane], plane_w, plane_h, base_quality, use_qt ? (uint8_t *)qt_map[plane] : NULL);   // in-loop, matches the encoder
     }
-    cdef_apply_decode_plane(planes[plane], cdef_scratch, plane_w, plane_h, plane, base_quality);   // in-loop dering before the reference save + colour convert
+    cdef_apply_decode_plane(planes[plane], cdef_scratch, plane_w, plane_h, plane, base_quality);   // in-loop dering before the reference save + color convert
     if (recon_out) {
       memcpy(recon_out[plane], planes[plane], (size_t)plane_pixels * 4);
     }
@@ -7391,7 +7391,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
       }
     }
     // CDEF (--cdef): the 3D-DWT mode is OPEN-LOOP (no per-frame prediction reference), so deringing is a per-frame
-    // POST filter on the reconstructed YCoCg (before colour) — encoder-search-optimised, same bit-exact kernel. The
+    // POST filter on the reconstructed YCoCg (before color) — encoder-search-optimised, same bit-exact kernel. The
     // strengths are coding-order (3D-DWT: coding == display), so the global index is base_coding_index + f.
     cdef_load_frame((uint32_t)(base_coding_index + f));
     for (int plane = 0; plane < g_num_planes; plane++) {

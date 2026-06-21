@@ -782,9 +782,9 @@ static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32
   int a_block_count = block_count_x(width) * block_count_y(height);
   uint32_t *a_off = checked_malloc((size_t)a_block_count * 4);
   float *float_scratch = checked_malloc((size_t)width * height * sizeof(float));
-  // The alpha section follows the colour data AND (DCT mode) the colour rANS entropy tables; wavelet mode has no entropy section.
+  // The alpha section follows the color data AND (DCT mode) the color rANS entropy tables; wavelet mode has no entropy section.
   const uint8_t *alpha_section_ptr = frame_data + cdl;
-  if (g_bframe_dct) {   // only DCT-B colour writes a rANS entropy section before the alpha; wavelet-B + 3D-DWT have none
+  if (g_bframe_dct) {   // only DCT-B color writes a rANS entropy section before the alpha; wavelet-B + 3D-DWT have none
     const uint8_t *etabs[MAX_PLANES];
     uint32_t etablens[MAX_PLANES];
     alpha_section_ptr = parse_entropy_section(frame_data + cdl, 3, etabs, etablens);
@@ -1517,7 +1517,7 @@ int main(int argc, char **argv) {
     create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &offset_buffer[3], &offset_memory[3]);   // CPU-decode the alpha plane straight into it (colordiff still GPU-decodes into it — both feed color_alpha).
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &coeff_buffer[3], &coeff_memory[3]);
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[3], &step_memory[3]);
-    create_buffer((size_t)RANS_GPU_TABLE_UINTS * 4, HOST_VISIBLE_COHERENT, &table_buffer[3], &table_memory[3]);   // DCT-mode alpha: GPU rANS frequency table (mirror of the colour planes)
+    create_buffer((size_t)RANS_GPU_TABLE_UINTS * 4, HOST_VISIBLE_COHERENT, &table_buffer[3], &table_memory[3]);   // DCT-mode alpha: GPU rANS frequency table (mirror of the color planes)
   }
   // DWT transpose scratch (also reused for motion compensation): a W x H plane transposes to H x W
   // stored with row stride max(W,H), spanning max(W,H)^2 elements. pixel_count (W*H) is too small for
@@ -1830,7 +1830,7 @@ int main(int argc, char **argv) {
   if (g_has_alpha) {   // alpha plane 3 decode sets (intra: unpack -> dequant -> idwt, reusing the color decode pipelines)
     set_unpack[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
     bind_storage_buffers(set_unpack[3], (VkBuffer[]){ data_buffer, offset_buffer[3], coeff_buffer[3] }, 3);
-    set_rans_unpack[3] = allocate_descriptor_set(descriptor_pool, layout_rans4);   // DCT-mode alpha: GPU rANS entropy (mirror of the colour planes)
+    set_rans_unpack[3] = allocate_descriptor_set(descriptor_pool, layout_rans4);   // DCT-mode alpha: GPU rANS entropy (mirror of the color planes)
     bind_storage_buffers(set_rans_unpack[3], (VkBuffer[]){ data_buffer, offset_buffer[3], coeff_buffer[3], table_buffer[3] }, 4);
     set_dequant[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     bind_storage_buffers(set_dequant[3], (VkBuffer[]){ coeff_buffer[3], step_buffer[3] }, 2);
@@ -2462,7 +2462,7 @@ int main(int argc, char **argv) {
     uint32_t ip_block_data_length = 0;   // DCT path: the block-data byte length (for the rANS unpack push + the entropy-section offset)
     int alpha_is_rans = 0;               // colordiff alpha entropy: 1 = rANS (DCT mode), 0 = bit-plane (wavelet mode)
     uint32_t alpha_section_data_length = 0;   // colordiff alpha entropy byte length (carried from the upload to the decode dispatch)
-    const uint8_t *alpha_section_start = NULL;   // where the alpha section begins (after colour data + entropy tables)
+    const uint8_t *alpha_section_start = NULL;   // where the alpha section begins (after color data + entropy tables)
     if (!mode_3ddwt && !has_bframes) {
       ip_frame_len = read_frame(file, &index[frame_index], &frame_buffer, &frame_buffer_capacity);
       // Prefix-sum the u16 sizes straight into the (host-visible) GPU offset buffers, then upload data.
@@ -2498,7 +2498,7 @@ int main(int argc, char **argv) {
       memcpy(&data_length, frame_data - 4, 4);
       memcpy(data_map, frame_data, data_length);
       ip_block_data_length = data_length;
-      alpha_section_start = frame_data + data_length;   // default (wavelet mode): alpha section right after the colour data
+      alpha_section_start = frame_data + data_length;   // default (wavelet mode): alpha section right after the color data
       // DCT path: parse the appended entropy section (right after the block data) and build the per-plane GPU rANS tables.
       // Present for both lossy (float DCT) and lossless (integer DCT) DCT-mode streams; absent in wavelet mode.
       if (g_spatial_dct) {
@@ -2516,17 +2516,19 @@ int main(int argc, char **argv) {
           for (int plane = 0; plane < g_num_planes; plane++) {
             memcpy((uint8_t *)partition_map + ((size_t)plane * qt_regions_per_plane), qt_blobs[plane], (size_t)qt_regions_per_plane);
           }
-          // Build each plane's leaf list for its inverse-DCT dispatch (per-plane partitions differ on real content).
-          int leaf_regions_x = qt_region_count(width);
+          // Build each plane's leaf list for its inverse-DCT dispatch (per-plane partitions differ on real content;
+          // chroma planes are subsampled, so each uses ITS OWN dims + region grid, not the luma's).
           int lx[QT_MAX_LEAVES], ly[QT_MAX_LEAVES], ls[QT_MAX_LEAVES];
           for (int plane = 0; plane < g_num_planes; plane++) {
+            int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
+            int leaf_regions_x = qt_region_count(plane_w);
             const uint8_t *plane_codes = (const uint8_t *)partition_map + ((size_t)plane * qt_regions_per_plane);
             uint32_t *leaf_words = (uint32_t *)leaf_list_map[plane];
             int count = 0;
-            for (int ry = 0; ry < height; ry += QT_REGION) {
-              for (int rx = 0; rx < width; rx += QT_REGION) {
+            for (int ry = 0; ry < plane_h; ry += QT_REGION) {
+              for (int rx = 0; rx < plane_w; rx += QT_REGION) {
                 uint8_t code = plane_codes[((ry / QT_REGION) * leaf_regions_x) + (rx / QT_REGION)];
-                int nleaf = qt_leaves(rx, ry, code, width, height, lx, ly, ls);
+                int nleaf = qt_leaves(rx, ry, code, plane_w, plane_h, lx, ly, ls);
                 for (int i = 0; i < nleaf; i++) {
                   leaf_words[(count * 3) + 0] = (uint32_t)lx[i];
                   leaf_words[(count * 3) + 1] = (uint32_t)ly[i];
@@ -2541,20 +2543,20 @@ int main(int argc, char **argv) {
         // Deblock: build each plane's per-8-cell leaf-id map (matches the CPU deblock_plane cell map). Quadtree ->
         // from the partition; else every 8-cell is its own leaf (every 8-grid line is an edge = the fixed-8 case).
         if (g_deblock) {
-          int cells_x = width / 8;
-          int cells_y = height / 8;
           for (int plane = 0; plane < g_num_planes; plane++) {
+            int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);   // per-plane: chroma is subsampled, its own cell grid
+            int cells_x = plane_w / 8, cells_y = plane_h / 8;
             int *cl = (int *)cell_leaf_map[plane];
             if (g_quadtree && partition_map) {
-              int regions_x = qt_region_count(width);
+              int regions_x = qt_region_count(plane_w);
               const uint8_t *plane_codes = (const uint8_t *)partition_map + ((size_t)plane * qt_regions_per_plane);
               int lx[QT_MAX_LEAVES], ly[QT_MAX_LEAVES], ls[QT_MAX_LEAVES];
-              for (int ry = 0; ry < height; ry += QT_REGION) {
-                for (int rx = 0; rx < width; rx += QT_REGION) {
+              for (int ry = 0; ry < plane_h; ry += QT_REGION) {
+                for (int rx = 0; rx < plane_w; rx += QT_REGION) {
                   uint8_t code = plane_codes[((ry / QT_REGION) * regions_x) + (rx / QT_REGION)];
-                  int n = qt_leaves(rx, ry, code, width, height, lx, ly, ls);
+                  int n = qt_leaves(rx, ry, code, plane_w, plane_h, lx, ly, ls);
                   for (int i = 0; i < n; i++) {
-                    int id = (ly[i] * width) + lx[i];
+                    int id = (ly[i] * plane_w) + lx[i];
                     for (int cy = ly[i] / 8; cy < ((ly[i] + ls[i]) / 8); cy++) {
                       for (int cx = lx[i] / 8; cx < ((lx[i] + ls[i]) / 8); cx++) {
                         cl[(cy * cells_x) + cx] = id;
@@ -2566,14 +2568,14 @@ int main(int argc, char **argv) {
             } else {
               for (int cy = 0; cy < cells_y; cy++) {
                 for (int cx = 0; cx < cells_x; cx++) {
-                  cl[(cy * cells_x) + cx] = ((cy * 8) * width) + (cx * 8);
+                  cl[(cy * cells_x) + cx] = ((cy * 8) * plane_w) + (cx * 8);
                 }
               }
             }
           }
         }
       }
-      if (g_has_alpha) {   // parse + upload the appended alpha section: its block data goes right after the colour data in data_buffer
+      if (g_has_alpha) {   // parse + upload the appended alpha section: its block data goes right after the color data in data_buffer
         int a_block_count = block_count_x(width) * block_count_y(height);
         uint32_t *a_off = (uint32_t *)offset_map[3];
         int alpha_qp;
@@ -2687,7 +2689,7 @@ int main(int argc, char **argv) {
         memcpy(data_map, frame_data, data_length);
         // DCT-B: parse the entropy (+ quadtree partition) sections that follow the residual data and build the
         // GPU rANS tables + the per-plane leaf/cell maps — exactly like the I/P path (reuses the same buffers).
-        int b_use_qt = (((g_bframe_dct && g_quadtree) && (g_chroma_format == 0)) && ((width % 8) == 0)) && ((height % 8) == 0);
+        int b_use_qt = ((g_bframe_dct && g_quadtree) && ((width % 8) == 0)) && ((height % 8) == 0);   // per-plane partition -> subsampled chroma allowed
         if (g_bframe_dct) {
           const uint8_t *table_blobs[MAX_PLANES];
           uint32_t table_lens[MAX_PLANES];
@@ -2701,16 +2703,17 @@ int main(int argc, char **argv) {
             for (int plane = 0; plane < g_num_planes; plane++) {
               memcpy((uint8_t *)partition_map + ((size_t)plane * qt_regions_per_plane), qt_blobs[plane], (size_t)qt_regions_per_plane);
             }
-            int leaf_regions_x = qt_region_count(width);
             int lx[QT_MAX_LEAVES], ly[QT_MAX_LEAVES], ls[QT_MAX_LEAVES];
             for (int plane = 0; plane < g_num_planes; plane++) {
+              int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);   // per-plane: chroma subsampled -> own dims + region grid
+              int leaf_regions_x = qt_region_count(plane_w);
               const uint8_t *plane_codes = (const uint8_t *)partition_map + ((size_t)plane * qt_regions_per_plane);
               uint32_t *leaf_words = (uint32_t *)leaf_list_map[plane];
               int count = 0;
-              for (int ry = 0; ry < height; ry += QT_REGION) {
-                for (int rx = 0; rx < width; rx += QT_REGION) {
+              for (int ry = 0; ry < plane_h; ry += QT_REGION) {
+                for (int rx = 0; rx < plane_w; rx += QT_REGION) {
                   uint8_t code = plane_codes[((ry / QT_REGION) * leaf_regions_x) + (rx / QT_REGION)];
-                  int nleaf = qt_leaves(rx, ry, code, width, height, lx, ly, ls);
+                  int nleaf = qt_leaves(rx, ry, code, plane_w, plane_h, lx, ly, ls);
                   for (int i = 0; i < nleaf; i++) {
                     leaf_words[(count * 3) + 0] = (uint32_t)lx[i];
                     leaf_words[(count * 3) + 1] = (uint32_t)ly[i];
@@ -2723,19 +2726,20 @@ int main(int argc, char **argv) {
             }
           }
           if (g_deblock) {
-            int cells_x = width / 8, cells_y = height / 8;
             for (int plane = 0; plane < g_num_planes; plane++) {
+              int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
+              int cells_x = plane_w / 8, cells_y = plane_h / 8;
               int *cl = (int *)cell_leaf_map[plane];
               if (b_use_qt) {
-                int regions_x = qt_region_count(width);
+                int regions_x = qt_region_count(plane_w);
                 const uint8_t *plane_codes = (const uint8_t *)partition_map + ((size_t)plane * qt_regions_per_plane);
                 int lx[QT_MAX_LEAVES], ly[QT_MAX_LEAVES], ls[QT_MAX_LEAVES];
-                for (int ry = 0; ry < height; ry += QT_REGION) {
-                  for (int rx = 0; rx < width; rx += QT_REGION) {
+                for (int ry = 0; ry < plane_h; ry += QT_REGION) {
+                  for (int rx = 0; rx < plane_w; rx += QT_REGION) {
                     uint8_t code = plane_codes[((ry / QT_REGION) * regions_x) + (rx / QT_REGION)];
-                    int n = qt_leaves(rx, ry, code, width, height, lx, ly, ls);
+                    int n = qt_leaves(rx, ry, code, plane_w, plane_h, lx, ly, ls);
                     for (int i = 0; i < n; i++) {
-                      int id = (ly[i] * width) + lx[i];
+                      int id = (ly[i] * plane_w) + lx[i];
                       for (int cy = ly[i] / 8; cy < ((ly[i] + ls[i]) / 8); cy++) {
                         for (int cx = lx[i] / 8; cx < ((lx[i] + ls[i]) / 8); cx++) {
                           cl[(cy * cells_x) + cx] = id;
@@ -2747,7 +2751,7 @@ int main(int argc, char **argv) {
               } else {
                 for (int cy = 0; cy < cells_y; cy++) {
                   for (int cx = 0; cx < cells_x; cx++) {
-                    cl[(cy * cells_x) + cx] = ((cy * 8) * width) + (cx * 8);
+                    cl[(cy * cells_x) + cx] = ((cy * 8) * plane_w) + (cx * 8);
                   }
                 }
               }
@@ -3247,7 +3251,7 @@ int main(int argc, char **argv) {
           memory_barrier();
         }
         // CDEF (--cdef, lossy): the 3D-DWT mode is open-loop, so deringing is a per-frame POST filter on the (rounded)
-        // subsampled YCoCg the colour pass reads — coding order == display order == frame_index. Mirrors the CPU oracle
+        // subsampled YCoCg the color pass reads — coding order == display order == frame_index. Mirrors the CPU oracle
         // (decode_gop_3ddwt). cdef.comp reads coeff_buffer[plane] (set_cdef_play is bound to it in 3D-DWT mode) -> cdef_temp -> copy back.
         if (g_cdef_active && !lossless) {
           int cdef_damping = cdef_damping_from_quality(quality);
@@ -3493,7 +3497,7 @@ int main(int argc, char **argv) {
             int32_t deblock_h[7] = { plane_w, plane_h, cells_x, alpha, beta, tc, 1 };
             vkCmdPushConstants(command_buffer, pipeline_layout_deblock, VK_SHADER_STAGE_COMPUTE_BIT, 0, 28, deblock_h);
             vkCmdDispatch(command_buffer, (uint32_t)((plane_w + 7) / 8), (uint32_t)(((cells_y - 1) + 7) / 8), 1);
-            memory_barrier();   // deblocked coeff_buffer visible to the colour pass + cdef
+            memory_barrier();   // deblocked coeff_buffer visible to the color pass + cdef
             VkMemoryBarrier db_to_copy = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT };
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &db_to_copy, 0, 0, 0, 0);
             VkBufferCopy db_copy = { 0, 0, (VkDeviceSize)plane_w * plane_h * 4 };
@@ -3504,7 +3508,7 @@ int main(int argc, char **argv) {
         }
       }
       // CDEF (--cdef, lossy): in-loop dering the reconstructed reference (previous_buffer) on the GPU with exactly the
-      // strengths the encoder chose (from the container table), before it is colour-converted + reused as the next
+      // strengths the encoder chose (from the container table), before it is color-converted + reused as the next
       // frame's reference. Mirrors the CPU oracle (cdef_apply_decode_plane). Per plane: cdef.comp -> cdef_temp -> copy back.
       if (g_cdef_active && !lossless) {
         int cdef_damping = cdef_damping_from_quality(current_quality);
@@ -3525,7 +3529,7 @@ int main(int argc, char **argv) {
             VkMemoryBarrier cdef_to_copy = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT };
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &cdef_to_copy, 0, 0, 0, 0);
             // motion_add/coeff_add wrote the reconstruction into BOTH previous_buffer (the reference) and coeff_buffer
-            // (what the colour pass displays), so copy the deringed result into both — display + reference stay in sync.
+            // (what the color pass displays), so copy the deringed result into both — display + reference stay in sync.
             VkBufferCopy cdef_copy = { 0, 0, (VkDeviceSize)plane_w * plane_h * 4 };
             vkCmdCopyBuffer(command_buffer, cdef_temp_buffer, previous_buffer[plane], 1, &cdef_copy);
             vkCmdCopyBuffer(command_buffer, cdef_temp_buffer, coeff_buffer[plane], 1, &cdef_copy);
@@ -3539,7 +3543,7 @@ int main(int argc, char **argv) {
         int aw = width, ah = height, a_scratch_stride = (aw > ah) ? aw : ah, a_pixels = aw * ah;
         int a_blocks_x = block_count_x(aw), a_blocks_y = block_count_y(ah), a_block_count = a_blocks_x * a_blocks_y;
         int a_pixel_wg = (a_pixels + 255) / 256;
-        if (alpha_is_rans) {   // DCT mode: GPU rANS entropy (one workgroup per coding tile, mirror of the colour planes)
+        if (alpha_is_rans) {   // DCT mode: GPU rANS entropy (one workgroup per coding tile, mirror of the color planes)
           int32_t a_rans_push[4] = { aw, ah, g_block_size, (int)alpha_section_data_length };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_rans_unpack);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_rans_unpack, 0, 1, &set_rans_unpack[3], 0, 0);

@@ -468,7 +468,7 @@ static void cdef_dering_frame(CdefContext *ctx, int quality, uint8_t out_strengt
 // whole uints; but bitplane_unpack reads at byte granularity, so the container can hold TIGHT (byte-packed) data.
 // Compact each block to its ACTUAL size (size_map) into `out` (caller-sized to the padded upper bound), stripping the
 // inter-block padding (up to 3 bytes/block -> ~20KB/frame, the GPU-vs-CPU lossy size gap). Returns the tight total;
-// the colour planes [0,num_planes) come first (their tight length is written to *out_color_length), then the alpha
+// the color planes [0,num_planes) come first (their tight length is written to *out_color_length), then the alpha
 // plane (index 3) when alpha_blocks > 0.
 static size_t compact_block_data(uint8_t *out, const uint8_t *padded,
                                  void *const offset_map[], void *const size_map[],
@@ -1432,8 +1432,9 @@ int main(int argc, char **argv) {
       "    --gop=N                        max keyframe interval (1 = all-intra; default 10, or 16 for --mode=3ddwt)\n"
       "  spatial transform (default = DCT + rANS; --dwt = wavelet, FWV parity):\n"
       "    --dwt                          wavelet instead of DCT: 5/3 (lossless) / 9-7 (lossy) + bit-plane (header bit7 clear)\n"
-      "    --gpu-encode[=0|1]             intra DCT on the GPU then CPU rANS (DEFAULT on; =0 forces CPU; alpha/HDR/Q0/quadtree/deblock always use the CPU path)\n"
-      "    --quadtree                     adaptive DCT transform sizes (32->16->8 R-D partitioning; CPU encode + decode)\n"
+      "    --gpu-encode[=0|1]             DCT I/P fully on the GPU (DEFAULT on; SDR/HDR, 4:4:4/4:2:2/4:2:0, +alpha/quadtree/deblock/Q0); =0 forces the CPU oracle\n"
+      "    --444-i-fastpath[=0|1]         all-intra 4:4:4 uses the lean GPU fast-path (skips the motion machinery); DEFAULT on; =0 routes it through the bidi loop\n"
+      "    --quadtree                     adaptive DCT transform sizes (32->16->8 R-D partitioning; GPU encode + decode, all chroma formats)\n"
       "    --qt-lambda[=<l>]              --quadtree R-D lambda (default 0.15)\n"
       "  rate control / P-frames:\n"
       "    --vbr=<target_bpp>             lossy only: nudge Q per GOP toward target_bpp (per-GOP variable Q)\n"
@@ -1515,6 +1516,7 @@ int main(int argc, char **argv) {
   int bframes = 0;      // --bframes N: N hierarchical B-frames between anchors (0 = off, I/P only)
   int cpu_bframes = 0;  // --cpu-bframes: force the CPU encode_frame_bidi oracle path instead of the GPU bidi path
   int gpu_encode = 1;   // --gpu-encode[=0|1]: GPU intra DCT path (then CPU rANS) is the DEFAULT; --gpu-encode=0 forces the CPU encode
+  int fast444_intra = 1;   // --444-i-fastpath[=0|1]: all-intra 4:4:4 uses the lean GPU color->dct->quant->rANS path (skips the bidi loop's motion machinery); 0 routes it through the bidi loop. GPU-rANS by default, CPU-rANS at --gpu-encode=0. Default 1.
   int bframe_mode_set = 0;   // 1 once --bframe-dct or --bframe-dwt is given; else B-frames follow the spatial mode (g_bframe_dct = g_spatial_dct)
   int joint_mv = 0;     // --joint: B2b joint/iterative bidirectional motion (EXPERIMENTAL, currently regresses vs independent); default = B2a independent
   int per_block_mode = 1;   // per-block L0/L1/BI prediction mode (default ON; --no-per-block-mode = always-BI)
@@ -1560,6 +1562,8 @@ int main(int argc, char **argv) {
       bframe_mode_set = 1;
     } else if (!strncmp(argv[i], "--gpu-encode", 12)) {
       gpu_encode = (argv[i][12] == '=') ? atoi(argv[i] + 13) : 1;   // --gpu-encode[=0|1]: force GPU(1)/CPU(0) intra DCT encode; bare = 1
+    } else if (!strncmp(argv[i], "--444-i-fastpath", 16)) {
+      fast444_intra = (argv[i][16] == '=') ? atoi(argv[i] + 17) : 1;   // --444-i-fastpath[=0|1]: lean all-intra 4:4:4 GPU path; bare = 1
     } else if (!strcmp(argv[i], "--dwt")) {
       g_spatial_dct = 0;          // wavelet mode (FWV parity): 5/3(lossless)/9-7(lossy) + bit-plane entropy; header bit7 stays clear
     } else if (!strcmp(argv[i], "--joint")) {
@@ -2016,20 +2020,35 @@ int main(int argc, char **argv) {
   void *partition_map = 0, *leaf_list_map[MAX_PLANES] = { 0 }, *cell_leaf_map[MAX_PLANES] = { 0 };
   uint8_t *qt_map[MAX_PLANES] = { 0 };   // per-plane region codes (CPU partition decision output)
   int qt_leaf_count[MAX_PLANES] = { 0 };
-  if (gpu_encode && g_quadtree) {
-    size_t partition_bytes = (size_t)qt_regions_per_plane * g_num_planes;
-    if (partition_bytes < 4) {
-      partition_bytes = 4;
+  if (gpu_encode && (g_quadtree || (bidi_use_dct && g_deblock))) {
+    if (g_quadtree) {   // partition + leaf list are quadtree-only; uniform deblock needs just the cell_leaf map
+      size_t partition_bytes = (size_t)qt_regions_per_plane * g_num_planes;
+      if (partition_bytes < 4) {
+        partition_bytes = 4;
+      }
+      create_buffer(partition_bytes, HOST_VISIBLE_COHERENT, &partition_buffer, &partition_memory);
+      VK_CHECK(vkMapMemory(device, partition_memory, 0, VK_WHOLE_SIZE, 0, &partition_map));
     }
-    create_buffer(partition_bytes, HOST_VISIBLE_COHERENT, &partition_buffer, &partition_memory);
-    VK_CHECK(vkMapMemory(device, partition_memory, 0, VK_WHOLE_SIZE, 0, &partition_map));
     for (int plane = 0; plane < g_num_planes; plane++) {
-      create_buffer((size_t)qt_max_leaves * 3u * 4u, HOST_VISIBLE_COHERENT, &leaf_list_buffer[plane], &leaf_list_memory[plane]);
-      VK_CHECK(vkMapMemory(device, leaf_list_memory[plane], 0, VK_WHOLE_SIZE, 0, &leaf_list_map[plane]));
-      qt_map[plane] = checked_malloc((size_t)qt_regions_per_plane);
-      if (g_deblock) {
+      if (g_quadtree) {
+        create_buffer((size_t)qt_max_leaves * 3u * 4u, HOST_VISIBLE_COHERENT, &leaf_list_buffer[plane], &leaf_list_memory[plane]);
+        VK_CHECK(vkMapMemory(device, leaf_list_memory[plane], 0, VK_WHOLE_SIZE, 0, &leaf_list_map[plane]));
+        qt_map[plane] = checked_malloc((size_t)qt_regions_per_plane);
+        memset(qt_map[plane], 0, (size_t)qt_regions_per_plane);   // subsampled chroma fills only its (smaller) region count; zero the luma-sized slot's tail so the stored partition is deterministic
+      }
+      if (g_deblock) {   // deblock cell->leaf map: quadtree builds it from the partition per frame, uniform = every 8-cell its own leaf (constant -> built once here)
         create_buffer((size_t)deblock_cells * 4u, HOST_VISIBLE_COHERENT, &cell_leaf_buffer[plane], &cell_leaf_memory[plane]);
         VK_CHECK(vkMapMemory(device, cell_leaf_memory[plane], 0, VK_WHOLE_SIZE, 0, &cell_leaf_map[plane]));
+        if (!g_quadtree) {
+          int pw = plane_width(plane, width), ph = plane_height(plane, height);
+          int cells_x = pw / 8, cells_y = ph / 8;
+          int *cl = (int *)cell_leaf_map[plane];
+          for (int cy = 0; cy < cells_y; cy++) {
+            for (int cx = 0; cx < cells_x; cx++) {
+              cl[(cy * cells_x) + cx] = ((cy * 8) * pw) + (cx * 8);   // each 8x8 cell is its own leaf (id = top-left pixel offset), matching the decoder's fixed-8 cell map
+            }
+          }
+        }
       }
     }
   }
@@ -2302,9 +2321,9 @@ int main(int argc, char **argv) {
         bind_storage_buffers(set_rans_hist_qt[plane], (VkBuffer[]){ coeff_buffer[plane], rans_hist_buffer, partition_buffer }, 3);
         set_rans_size_qt[plane] = allocate_descriptor_set(descriptor_pool, layout_5_buffers);
         bind_storage_buffers(set_rans_size_qt[plane], (VkBuffer[]){ coeff_buffer[plane], rans_table_buffer[plane], rans_scratch_buffer, size_buffer[plane], partition_buffer }, 5);
-        if (g_deblock) {   // deblock set is rebound per frame to this frame's DPB slot; allocate it here
-          set_deblock[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
-        }
+      }
+      if (g_deblock) {   // deblock set is rebound per frame to the reconstruction (DPB slot / previous_buffer); needed for uniform AND quadtree
+        set_deblock[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
       }
     }
     // P-frame sets: coeff_diff (cur, prev, diff) + bitplane size/pack reading the difference buffer.
@@ -2679,18 +2698,21 @@ int main(int argc, char **argv) {
   }
   double encode_start = now_milliseconds();
 
-  // Plain DCT I/P is GPU-encoded by routing it through the GPU bidi loop (use_bframes == 0), exactly like wavelet
-  // I/P: colour/DCT/quant/rANS + motion all run on the GPU, for SDR/HDR, 4:4:4/4:2:2/4:2:0, with optional alpha,
-  // quadtree and lossless (reversible integer DCT). The one combo kept on the CPU oracle is uniform + deblock: the
-  // encoder deblock is quadtree-coupled (the uniform reconstruct never deblocks), so deblock here requires quadtree;
-  // uniform + deblock falls back to the CPU oracle, which deblocks correctly. --gpu-encode=0 also forces the CPU oracle.
-  int dct_ip_gpu = (((g_spatial_dct && !use_bframes) && !mode_3ddwt) && gpu_encode) && (!g_deblock || g_quadtree);
+  // All-intra 4:4:4 (no features) takes the lean fast-path loop below: GPU color -> dct_fwd -> quant -> rANS per
+  // I-frame, skipping the bidi loop's motion machinery. GPU-rANS by default; --gpu-encode=0 falls to the CPU oracle
+  // (CPU-rANS) in the same loop. --444-i-fastpath=0 routes it through the bidi loop instead.
+  int use_444_fastpath = (((((((((fast444_intra && g_spatial_dct) && (g_chroma_format == 0)) && !use_bframes) && !mode_3ddwt) && !hdr_mode) && !g_quadtree) && !g_deblock) && !lossless) && !g_has_alpha) && (gop <= 1);
+  // Everything else DCT I/P is GPU-encoded through the GPU bidi loop (use_bframes == 0), exactly like wavelet I/P:
+  // color/DCT/quant/rANS + motion all on the GPU, for SDR/HDR, 4:4:4/4:2:2/4:2:0, +alpha, +quadtree, +deblock,
+  // +Q0-lossless. --gpu-encode=0 forces the CPU oracle (the loop just below).
+  int dct_ip_gpu = (((g_spatial_dct && !use_bframes) && !mode_3ddwt) && gpu_encode) && !use_444_fastpath;
 
-  if (((g_spatial_dct && !use_bframes) && !mode_3ddwt) && !dct_ip_gpu) {   // DCT-mode I/P CPU oracle (--gpu-encode=0, or uniform + deblock)
-    // ---- DCT fork encode: the validated CPU oracle (RGB -> YCoCg -> block DCT -> quant -> rANS) per
-    // frame, into the container — the comparison reference; the GPU dct_fwd + GPU-rANS encode is the next step.
-    // The DECODER is full-GPU (fvdplay / fvddec). I/P only (B-frames, 3D-DWT, HDR, Q0 keep their existing paths). ----
-    printf("  DCT encode: CPU oracle (colour/DCT/quant/rANS) -> container, GPU decode | gop=%d chroma=%s\n",
+  if ((((g_spatial_dct && !use_bframes) && !mode_3ddwt) && !dct_ip_gpu)) {   // the lean fast-path / CPU-oracle loop: all-intra 4:4:4 fast-path (GPU-rANS), or --gpu-encode=0 CPU oracle
+    // ---- DCT fork encode: the all-intra 4:4:4 GPU fast-path (color -> dct_fwd -> quant -> GPU rANS per I-frame,
+    // no motion machinery) when applicable; otherwise the CPU oracle (--gpu-encode=0, or features the GPU path skips).
+    // The DECODER is full-GPU (fvdplay / fvddec). I/P only (B-frames, 3D-DWT keep their own paths). ----
+    printf("  DCT encode: %s | gop=%d chroma=%s\n",
+           (use_444_fastpath && gpu_encode) ? "GPU all-intra 4:4:4 fast-path (color/DCT/quant/rANS)" : "CPU oracle (color/DCT/quant/rANS) -> container, GPU decode",
            gop, (g_chroma_format == 2) ? "4:2:0" : ((g_chroma_format == 1) ? "4:2:2" : "4:4:4"));
     int32_t *prev_ycocg[MAX_PLANES] = { NULL };
     int32_t *decode_prev[MAX_PLANES] = { NULL };
@@ -2702,7 +2724,7 @@ int main(int argc, char **argv) {
     }
     uint8_t *frame_rgb = checked_malloc(frame_bytes);
     uint8_t *recon_rgb = output ? NULL : checked_malloc(frame_bytes);
-    // --gpu-encode (4:4:4 intra): the GPU runs colour -> dct_fwd -> quant, the coeffs are read back, and the
+    // --gpu-encode (4:4:4 intra): the GPU runs color -> dct_fwd -> quant, the coeffs are read back, and the
     // validated CPU dct_encode_plane does the rANS. Validates the GPU forward DCT; files are identical to the CPU
     // encode. P-frames / 4:2:x fall back to the CPU encode below (the frame format is the same either way).
     int32_t *gpu_planes[MAX_PLANES] = { NULL };
@@ -2716,7 +2738,7 @@ int main(int argc, char **argv) {
       }
     }
     while ((fread(frame_rgb, 1, frame_bytes, input_pipe) == frame_bytes) && ((!max_frames) || (frame_index < max_frames))) {
-      if (g_sample_bytes == 2) {   // HDR: ffmpeg rgb48le delivers (value << 6); shift down to the codec's 12-bit code BEFORE any processing/encode (this I/P + DCT loop previously skipped it, unlike the bidi + threaded-reader paths, so bright codes wrapped negative as signed int16 -> inverted colours)
+      if (g_sample_bytes == 2) {   // HDR: ffmpeg rgb48le delivers (value << 6); shift down to the codec's 12-bit code BEFORE any processing/encode (this I/P + DCT loop previously skipped it, unlike the bidi + threaded-reader paths, so bright codes wrapped negative as signed int16 -> inverted colors)
         hdr_ingest_inplace(frame_rgb, width * height);
       }
       apply_alpha_bleed(frame_rgb, width, height);
@@ -2725,7 +2747,7 @@ int main(int argc, char **argv) {
       uint8_t *frame_payload = NULL;
       size_t total;
       if (((((((gpu_encode && !is_predicted) && (g_chroma_format == 0)) && !hdr_mode) && !g_quadtree) && !g_deblock) && !lossless) && !g_has_alpha) {   // GPU encode has no partition/deblock/lossless/alpha path -> quadtree+deblock+Q0+alpha use the CPU encoder (lossless = bit-plane, the GPU all-intra path is rANS-only + appends no alpha section)
-        // ---- GPU forward path: colour -> dct_fwd -> quant on the GPU, then CPU rANS ----
+        // ---- GPU forward path: color -> dct_fwd -> quant on the GPU, then CPU rANS ----
         memcpy(rgb_map, frame_rgb, frame_bytes);
         for (int plane = 0; plane < g_num_planes; plane++) {
           build_dct_quant_matrix(gpu_step, width, height, quality);
@@ -2955,7 +2977,7 @@ int main(int argc, char **argv) {
         apply_alpha_bleed(gop_rgb[bf], width, height);
       }
 
-      // Colour each frame (full res); chroma is down-sampled to its plane size; copy into the GOP slot.
+      // Color each frame (full res); chroma is down-sampled to its plane size; copy into the GOP slot.
       for (int f = 0; f < filled; f++) {
         if (hdr_mode) {   // HDR: rgb48le (10-bit << 6) -> 12-bit BT.2020 code, exactly as the intra/colordiff path does
           const uint16_t *source16 = (const uint16_t *)gop_rgb[f];   // (the 3D-DWT path was missing this >>4 -> 4x-too-large values overflowed the color shader -> corruption)
@@ -3257,7 +3279,7 @@ int main(int argc, char **argv) {
         // -> quant -> bitplane size, in the SAME pass-1 command buffer. Uses step_map[3] (built once at alpha_qp).
         if (g_has_alpha) {
           // Alpha has its OWN lossless decision (alpha_qp == 0 -> reversible 5/3), independent of the frame quality, so
-          // a lossless alpha matte can ride on a lossy 3D-DWT colour frame; key the transform/quant on alpha_lossless.
+          // a lossless alpha matte can ride on a lossy 3D-DWT color frame; key the transform/quant on alpha_lossless.
           int alpha_lossless = (((g_alpha_qp >= 0) ? g_alpha_qp : quality) == 0);
           memcpy(rgb_map, gop_rgb[f], frame_bytes);   // the original (display-order) frame f, with its alpha lane
           int aw = width, ah = height, a_scratch_stride = (aw > ah) ? aw : ah, a_pixels = aw * ah;
@@ -3570,7 +3592,7 @@ int main(int argc, char **argv) {
              per_block_mode ? ", per-block L0/L1/BI" : "",
              (qp_cascade && !lossless) ? ", QP-cascade" : "");
     } else if (bidi_use_dct) {
-      printf("  DCT encode: GPU (colour/DCT/quant/rANS + motion all on GPU) | gop=%d chroma=%s\n",
+      printf("  DCT encode: GPU (color/DCT/quant/rANS + motion all on GPU) | gop=%d chroma=%s\n",
              gop, (g_chroma_format == 2) ? "4:2:0" : ((g_chroma_format == 1) ? "4:2:2" : "4:4:4"));
     }
     for (;;) {
@@ -4346,7 +4368,7 @@ int main(int argc, char **argv) {
       // DCT mode (g_spatial_dct) does the alpha on the CPU rANS+DCT coder after assemble (mirroring the I/P alpha).
       if (g_has_alpha && !g_spatial_dct) {
         // The alpha plane has its OWN lossless decision (alpha_qp == 0 -> reversible 5/3), independent of the frame's
-        // quality: a lossless alpha matte can ride on a lossy colour frame (--alpha-qp=0). Key the transform/quant on
+        // quality: a lossless alpha matte can ride on a lossy color frame (--alpha-qp=0). Key the transform/quant on
         // alpha_lossless, not the frame `lossless`, so the GPU forward matches the CPU reconstruct_plane (which uses alpha_qp).
         int alpha_lossless = (((g_alpha_qp >= 0) ? g_alpha_qp : quality) == 0);
         int plane_w = width, plane_h = height;   // alpha is always full-res
@@ -4492,8 +4514,13 @@ int main(int argc, char **argv) {
         }
         data_length = running_offset;
         color_data_length = data_length;
-        // ---- DCT-B closed-loop reconstruct: dequant + inverse DCT + round + motion_add into this frame's DPB
-        // slot, exactly as the decoder reconstructs, so the reference cannot drift (B references B). ----
+        // ---- DCT-B closed-loop reconstruct: dequant + inverse DCT + round + motion_add (+ uniform deblock) into this
+        // frame's reconstruction (DPB slot for B, previous_buffer for I/P), exactly as the decoder, so it cannot drift. ----
+        if (g_deblock) {   // pre-bind the deblock sets (host-side, before recording) to this frame's reconstruction
+          for (int plane = 0; plane < g_num_planes; plane++) {
+            bind_storage_buffers(set_deblock[plane], (VkBuffer[]){ use_bframes ? dpb_buffer[b_dst_slot][plane] : previous_buffer[plane], cell_leaf_buffer[plane] }, 2);
+          }
+        }
         begin_recording();
         for (int plane = 0; plane < g_num_planes; plane++) {
           int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
@@ -4531,6 +4558,23 @@ int main(int argc, char **argv) {
           vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, add_push);
           vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
           memory_barrier();
+          if (g_deblock && !lossless) {   // uniform in-loop deblock on the reconstructed plane (V then H), bit-exact with the decoder's fixed-8 path
+            int dq = frame_quality * (g_sample_white / 256);
+            if (dq >= 1) {
+              int alpha = dq, beta = (dq >> 1) + 1, tc = (dq >> 2) + 1;
+              int cells_x = plane_w / 8, cells_y = plane_h / 8;
+              int32_t dv[7] = { plane_w, plane_h, cells_x, alpha, beta, tc, 0 };
+              vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_deblock);
+              vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_deblock, 0, 1, &set_deblock[plane], 0, 0);
+              vkCmdPushConstants(command_buffer, pipeline_layout_deblock, VK_SHADER_STAGE_COMPUTE_BIT, 0, 28, dv);
+              vkCmdDispatch(command_buffer, (uint32_t)(((cells_x - 1) + 7) / 8), (uint32_t)((plane_h + 7) / 8), 1);
+              memory_barrier();
+              int32_t dh[7] = { plane_w, plane_h, cells_x, alpha, beta, tc, 1 };
+              vkCmdPushConstants(command_buffer, pipeline_layout_deblock, VK_SHADER_STAGE_COMPUTE_BIT, 0, 28, dh);
+              vkCmdDispatch(command_buffer, (uint32_t)((plane_w + 7) / 8), (uint32_t)(((cells_y - 1) + 7) / 8), 1);
+              memory_barrier();
+            }
+          }
         }
         submit_and_wait();
       } else if (bidi_use_dct) {   // DCT + quadtree (DCT-B today; DCT I/P quadtree is a later stage, currently CPU-routed)
@@ -5050,7 +5094,7 @@ int main(int argc, char **argv) {
           free(alpha_offsets);
           free(alpha_table);
         } else {
-          // wavelet mode: the GPU bit-plane pack above wrote the alpha into the tight buffer after the colour planes
+          // wavelet mode: the GPU bit-plane pack above wrote the alpha into the tight buffer after the color planes
           total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
                                        NULL, 0,
                                        tight + tight_color_length, tight_total - tight_color_length);
