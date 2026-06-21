@@ -253,6 +253,7 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fOutputFormat:TVkFormat;
        fPipelineCache:TpvVulkanPipelineCache;
        fOwnsPipelineCache:boolean; // True = we created fPipelineCache (free it); False = the caller's shared cache (don't free)
+       fBreadcrumb:TpvVulkanBreadcrumbBuffer; // GPU breadcrumb trail for the decode dispatches (nil unless the device has --breadcrumbs); pinpoints the dispatch on a device-lost
        fDSL1:TpvVulkanDescriptorSetLayout; // 1 storage buffer
        fDSL2:TpvVulkanDescriptorSetLayout; // 2 storage buffers
        fDSL3:TpvVulkanDescriptorSetLayout; // 3 storage buffers
@@ -430,6 +431,7 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        procedure RecordComputeBarrier(const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure RecordImageBarrier(const aCommandBuffer:TpvVulkanCommandBuffer;const aOldLayout,aNewLayout:TVkImageLayout;const aSrcAccess,aDstAccess:TVkAccessFlags;const aSrcStage,aDstStage:TVkPipelineStageFlags);
        procedure RecordDispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aPipeline:TpvVulkanComputePipeline;const aLayout:TpvVulkanPipelineLayout;const aSet:TpvVulkanDescriptorSet;const aPushConstants:Pointer;const aPushSize:TpvUInt32;const aGroupsX,aGroupsY,aGroupsZ:TpvUInt32);
+       procedure Crumb(const aCommandBuffer:TpvVulkanCommandBuffer;const aInfo:TpvRawByteString); // GPU breadcrumb marker for the current decode stage (no-op unless --breadcrumbs); the device-lost handler dumps the trail
        function EnsureStepCacheSlot(const aQuality:TpvInt32):TpvInt32; // build (once) + return the step-map cache slot for a quality
        function EnsureDCTStepCacheSlot(const aQuality:TpvInt32):TpvInt32; // build (once) + return the /8-padded DCT step-matrix cache slot for a quality
        procedure SetAQCurrentMap(const aCodingIndex:TpvInt32); // AQ: select this coding frame's per-tile QP map (no-op if AQ off)
@@ -1627,6 +1629,16 @@ begin
  aCommandBuffer.CmdDispatch(aGroupsX,aGroupsY,aGroupsZ);
 end;
 
+procedure TpvFlexibleVideoDecoder.Crumb(const aCommandBuffer:TpvVulkanCommandBuffer;const aInfo:TpvRawByteString);
+begin
+ // one sequential marker per decode stage: close the previous (no-op if none), open a new one named aInfo. On a
+ // device-lost the breadcrumb dump shows the marker that was begun but not ended = the GPU op that died.
+ if assigned(fBreadcrumb) then begin
+  fBreadcrumb.EndBreadcrumb(aCommandBuffer.Handle);
+  fBreadcrumb.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,aInfo);
+ end;
+end;
+
 function TpvFlexibleVideoDecoder.EnsureStepCacheSlot(const aQuality:TpvInt32):TpvInt32;
 var Slot,Plane,PlanePixels:TpvInt32;
 begin
@@ -2220,6 +2232,10 @@ begin
  // (is_predicted=0) runs the add pass to SEED the reference (it just stores, without adding).
  Predictive:=(fGOP>1) and ((fPredictionMethod=1) or fLossless);
 
+ if assigned(fBreadcrumb) then begin
+  fBreadcrumb.PushZone('RecordDecode');
+ end;
+
  // The output image goes UNDEFINED -> GENERAL so the color shader can store into it.
  RecordImageBarrier(aCommandBuffer,
                     VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,
@@ -2227,6 +2243,7 @@ begin
                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
 
  for Plane:=0 to fNumPlanes-1 do begin
+  Crumb(aCommandBuffer,'ip:unpack');
 
   // Per-plane dimensions: luma is full-res, chroma is subsampled when the chroma format is not 4:4:4.
   PlaneW:=PlaneWidth(Plane);
@@ -2465,6 +2482,11 @@ begin
                     VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT));
+
+ if assigned(fBreadcrumb) then begin
+  fBreadcrumb.EndBreadcrumb(aCommandBuffer.Handle);
+  fBreadcrumb.PopZone;
+ end;
 
 end;
 
@@ -3427,6 +3449,10 @@ begin
   RowPipeline:=fPipeIDWT97;
  end;
 
+ if assigned(fBreadcrumb) then begin
+  fBreadcrumb.PushZone('RecordBidiDecode');
+ end;
+
  for Plane:=0 to fNumPlanes-1 do begin
 
   PlaneW:=PlaneWidth(Plane);
@@ -3450,6 +3476,7 @@ begin
   // residual: unpack -> [dequant] -> inverse transform -> [round] (no coeff_add on the B/colordiff path).
   // The unpack/dequant SETS come from Active* (the per-frame ring slot for mode B, the shared set for modes A/C).
   // DCT mode = rANS (one workgroup per coding tile; quad-tree walks the partition); wavelet mode = bit-plane unpack.
+  Crumb(aCommandBuffer,'b:unpack');
   if fSpatialDCT and fQuadtree then begin
    QuadTreeUnpackPush[0]:=PlaneW;
    QuadTreeUnpackPush[1]:=PlaneH;
@@ -3476,6 +3503,7 @@ begin
   if not fLossless then begin
    // Uniform DCT-B dequantises the /8-padded height (partial bottom block rows, e.g. 4:2:0 chroma 540 -> 544); quad-tree
    // (the leaf inverse handles partial regions) and wavelet use the exact pixel count.
+   Crumb(aCommandBuffer,'b:dequant');
    if fSpatialDCT and not fQuadtree then begin
     DequantPixels:=PlaneW*(((PlaneH+7) div 8)*8);
    end else begin
@@ -3505,6 +3533,7 @@ begin
   // Spatial inverse transform. DCT-B = a single inverse 8x8 block DCT (Q0 = reversible integer inverse, lossy = float;
   // quad-tree = one workgroup per size-parameterized leaf); wavelet B = the inverse 2D wavelet level loop (below). The
   // mc/blend/motion_add that follows is shared by both.
+  Crumb(aCommandBuffer,'b:inverse');
   if fSpatialDCT and fQuadtree then begin
    UnpackPush[0]:=PlaneW;
    UnpackPush[1]:=fQuadTreeLeafCount[Plane];
@@ -3563,6 +3592,7 @@ begin
   end; // wavelet level loop (else branch of fSpatialDCT)
 
   if not fLossless then begin
+   Crumb(aCommandBuffer,'b:round');
    PixelCountPush:=PlanePixels;
    RecordDispatch(aCommandBuffer,fPipeRound,fPLRound,fSetRow[Plane],@PixelCountPush,4,PlanePixelWorkgroups,1,1);
    RecordComputeBarrier(aCommandBuffer);
@@ -3571,6 +3601,7 @@ begin
   // bidirectional prediction: mc(L0) [+ mc(L1)] -> blend -> motion_add -> dpb[dst]. The sets are pre-bound by
   // DecodeFrameBidi. For a P-anchor (ref1<0) only mc0 runs and the bidi blend (w0=256, w1=0) reduces to gmc0.
   if aIsPredicted<>0 then begin
+   Crumb(aCommandBuffer,'b:mc');
    PlaneMotionBlocksX:=MotionBlocksX(PlaneW);
    MCPush[0]:=PlaneW;
    MCPush[1]:=PlaneH;
@@ -3598,19 +3629,27 @@ begin
    end;
   end;
 
+  Crumb(aCommandBuffer,'b:motion_add');
   AddPush[0]:=PlanePixels;
   AddPush[1]:=aIsPredicted;
   RecordDispatch(aCommandBuffer,fPipeMotionAdd,fPLUnpack,ActiveSetGAdd(Plane),@AddPush[0],8,PlanePixelWorkgroups,1,1);
   RecordComputeBarrier(aCommandBuffer);
 
   if fDeblock and (Plane<3) then begin // deblock: in-loop filter of the reconstructed DPB slot in place (before CDEF), no mirror (the slot is reference + display)
+   Crumb(aCommandBuffer,'b:deblock');
    RecordDeblock(aCommandBuffer,ActiveSetDeblock(Plane),fDPBBuffer[fActiveBidiDstSlot][Plane],nil,Plane);
   end;
 
   if fHasCDEF and (Plane<3) then begin // CDEF: in-loop dering of the reconstructed DPB slot before it becomes a reference / is displayed
+   Crumb(aCommandBuffer,'b:cdef');
    RecordCDEF(aCommandBuffer,ActiveSetCDEF(Plane),fDPBBuffer[fActiveBidiDstSlot][Plane],nil,Plane);
   end;
 
+ end;
+
+ if assigned(fBreadcrumb) then begin
+  fBreadcrumb.EndBreadcrumb(aCommandBuffer.Handle);
+  fBreadcrumb.PopZone;
  end;
 
 end;
@@ -3746,6 +3785,11 @@ begin
  // copy the display POC's reconstructed YCoCg DPB slot into coeff, then color-convert into the output image
  DisplaySlot:=fGDPBPOCToSlot[aDisplayPOC];
 
+ if assigned(fBreadcrumb) then begin
+  fBreadcrumb.PushZone('RecordBidiDisplay');
+ end;
+ Crumb(aCommandBuffer,'disp:copy');
+
  // optional alpha: re-read + stage the displayed frame's appended alpha section. Its container entry is the coding
  // index occupying this display POC's DPB slot (fGDPBSlotCoding[slot]) — the SAME map the color copy below uses.
  if fHasAlpha then begin
@@ -3778,6 +3822,7 @@ begin
   RecordAlphaDecode(aCommandBuffer);
  end;
 
+ Crumb(aCommandBuffer,'disp:color');
  PixelWorkgroups:=((fWidth*fHeight)+255) div 256;
  if fIsHDR then begin
   HDRPush[0]:=fWidth;
@@ -3820,6 +3865,11 @@ begin
                     VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT));
+
+ if assigned(fBreadcrumb) then begin
+  fBreadcrumb.EndBreadcrumb(aCommandBuffer.Handle);
+  fBreadcrumb.PopZone;
+ end;
 
 end;
 
@@ -4591,6 +4641,9 @@ begin
  // GPU: replay the captured decode-ahead plan into the caller command buffer (each frame's ring slot keeps the
  // descriptor bindings PrepareFrameBidi made), then record the display.
  for PlanIndex:=0 to fBidiPlanCount-1 do begin
+  if assigned(fBreadcrumb) then begin
+   fBreadcrumb.PushZone('bidi-decode-ahead#'+TpvRawByteString(IntToStr(PlanIndex)));
+  end;
   fBufferRingSlot:=fBidiPlan[PlanIndex].RingSlot;
   fActiveBidiDstSlot:=fBidiPlan[PlanIndex].DstSlot; // CDEF: restore this frame's dering target + strengths for RecordCDEF
   fCDEFPriLuma:=fBidiPlan[PlanIndex].CDEFPriLuma;
@@ -4602,6 +4655,9 @@ begin
   Move(fBidiPlan[PlanIndex].QuadTreeLeafCount[0],fQuadTreeLeafCount[0],4*SizeOf(TpvInt32)); // DCT quad-tree: restore this frame's per-plane leaf counts
   fCurrentDeblockDQ:=fBidiPlan[PlanIndex].DeblockDQ; // deblock: restore this frame's filter-strength quality
   RecordBidiDecode(aCommandBuffer,fBidiPlan[PlanIndex].IsPredicted,fBidiPlan[PlanIndex].Ref1Slot,fBidiPlan[PlanIndex].Weight0,fBidiPlan[PlanIndex].Weight1);
+  if assigned(fBreadcrumb) then begin
+   fBreadcrumb.PopZone;
+  end;
  end;
  fBufferRingSlot:=-1;
 
@@ -4708,6 +4764,14 @@ begin
  fDevice:=aDevice;
  fPreferSCRGB:=aPreferSCRGBForHDR; // consumed by ParseContainer (output format) below
  fSubmitMode:=aBSubmitMode;
+
+ // GPU breadcrumbs: only when the engine ran with --breadcrumbs (the device-lost handler then dumps the last-reached
+ // decode stage). nil = no-op; keeps the normal path free of overhead.
+ if assigned(fDevice) and fDevice.UseBreadcrumbs then begin
+  fBreadcrumb:=fDevice.BreadcrumbBuffer;
+ end else begin
+  fBreadcrumb:=nil;
+ end;
 
  // GPU capability floor: the row IDWT shaders run 256 invocations and cache a full 4096-sample line (16 KiB) in shared
  // memory. Every desktop GPU clears this (Vulkan's guaranteed minimum is only 128 / 16 KiB), so fail early with a clear
