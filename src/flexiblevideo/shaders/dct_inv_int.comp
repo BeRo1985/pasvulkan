@@ -1,6 +1,6 @@
 #version 450
 // dct_inv_int.comp — inverse REVERSIBLE INTEGER 8x8 block DCT (lifting, fixed-point F=12). The DCT-mode
-// LOSSLESS spatial inverse (Phase A3), bit-exact mirror of the CPU inverse_int_dct_blocks (fvdref.c):
+// LOSSLESS spatial inverse, bit-exact mirror of the CPU inverse_int_dct_blocks (fvdref.c):
 // columns-then-rows, each 1D inverse a sequence of 3-step lifting rotations. One workgroup per 8x8 block,
 // 8 threads (a thread is a column in pass 1, a row in pass 2). Integer-only -> bit-exact vs the CPU
 // (every K*value product fits int32 at F=12, so no int64 is needed). Reads/writes the int coefficient

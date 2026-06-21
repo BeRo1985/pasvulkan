@@ -1788,7 +1788,7 @@ static void inverse_spatial(float *plane, int width, int height, int levels) {
   }
 }
 
-// ----------------------------------- reversible integer 8x8 DCT (lifting, fixed-point) — Phase A3 --------
+// ----------------------------------- reversible integer 8x8 DCT (lifting, fixed-point) ----------------
 // The DCT-mode LOSSLESS spatial transform (mirror of the wavelet mode's reversible 5/3). Derived offline
 // (intdct_derive.py) from the orthonormal DCT-II: stage-1 butterflies split into an even (sum) and odd (diff)
 // 4-vector, each transformed by a 4x4 orthogonal sub-matrix factored into 6 Givens rotations, and each rotation
@@ -1930,7 +1930,7 @@ static void inverse_int_dct_blocks(int32_t *plane, int width, int height) {
   }
 }
 
-// Lossless spatial transform: DCT mode uses the reversible integer DCT (Phase A3), wavelet mode the 5/3 LeGall.
+// Lossless spatial transform: DCT mode uses the reversible integer DCT, wavelet mode the 5/3 LeGall.
 static void forward_spatial_int(int32_t *plane, int width, int height, int levels) {
   if (g_spatial_dct) {
     forward_int_dct_blocks(plane, width, height);
@@ -2466,7 +2466,7 @@ static void decode_motion_vectors(BitReader *reader, int *mv, int blocks_x, int 
 #define MOTION_LEAF 8    // finest leaf (px) = the fine MV-field cell
 
 static int g_motion_variable = 0;   // 1 = variable quadtree motion (root 32 -> 8); 0 = the fixed g_motion_block grid
-static int g_per_block_mode = 0;    // 1 = B-frame MV blobs carry a per-block L0/L1/BI mode array (Phase 2); the player sets it from the container header (reserved2[3]). The zero-MV CPU-oracle B-encode never writes it.
+static int g_per_block_mode = 0;    // 1 = B-frame MV blobs carry a per-block L0/L1/BI mode array; the player sets it from the container header (reserved2[3]). The zero-MV CPU-oracle B-encode never writes it.
 static int g_motion_mode = 5;       // sub-pel mode: bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bits2-3 = MV precision (0 half, 1 quarter, 2 eighth [reserved], 3 amvr [reserved]). Default 5 = 6-tap + quarter. Old files = 0 = bilinear + half. Mirrors the MOTION_MODE shader spec constant.
 static int g_cdef = 0;              // --cdef: AV1-style in-loop directional deringing on the reconstructed YCoCg reference (encoder GPU search + apply; lossy-only). 0 = off (default).
 // Decode-side CDEF state: set per frame by the decode driver from the container (color_flags has_cdef + the per-frame
@@ -6851,7 +6851,7 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
     die("corrupt bidi frame header");
   }
   int has_prediction = (ref0 != NULL);
-  // Decode the motion field — a per-block L0/L1/BI mode array (Phase 2 B-frames only) + the L0 MVs
+  // Decode the motion field — a per-block L0/L1/BI mode array (B-frames only) + the L0 MVs
   // [+ the L1 MVs for a B-frame], mirroring the GPU bidi decode. The CPU-oracle zero-MV B-encode carries no blob
   // (mv_length == 0): the MVs stay all-zero, so OBMC is the identity and the prediction reduces to the plain
   // weighted reference blend (the prior behaviour). The GPU-motion stream (mv_length > 0) is now fully decoded.
@@ -6939,7 +6939,7 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
       if (ref1 != NULL) {
         motion_compensate(ref1[plane], mv1, mc1, plane_w, plane_h, plane_motion_blocks_x);
         if (has_mode) {
-          // Phase 2 per-block mode: mc0 holds L0; pick per block (0 = L0, 1 = L1, 2 = BI weighted), mirroring blend_mode.comp.
+          // Per-block mode: mc0 holds L0; pick per block (0 = L0, 1 = L1, 2 = BI weighted), mirroring blend_mode.comp.
           for (int y = 0; y < plane_h; y++) {
             int by = y / MOTION_BLOCK;
             for (int x = 0; x < plane_w; x++) {
@@ -8036,7 +8036,7 @@ static int deblock_selftest(void) {
   return ok ? 0 : 1;
 }
 
-// Reversible integer DCT (Phase A3) self-test: 1D + 2D round-trip must be bit-exact; report DCT accuracy.
+// Reversible integer DCT self-test: 1D + 2D round-trip must be bit-exact; report DCT accuracy.
 static int int_dct_selftest(void) {
   srand(12345);
   int bad_1d = 0;
@@ -8100,7 +8100,7 @@ static int int_dct_selftest(void) {
 }
 
 int main(int argc, char **argv) {
-  if (argc >= 2 && !strcmp(argv[1], "intdcttest")) {   // reversible integer DCT (Phase A3) round-trip + accuracy self-test
+  if (argc >= 2 && !strcmp(argv[1], "intdcttest")) {   // reversible integer DCT round-trip + accuracy self-test
     return int_dct_selftest();
   }
   if (argc >= 2 && !strcmp(argv[1], "dctsizes")) {   // parameterized N-point DCT (8/16/32) round-trip self-test

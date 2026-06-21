@@ -1173,7 +1173,7 @@ int main(int argc, char **argv) {
     g_motion_variable = 1;   // variable quadtree motion (root 32 -> 8); the fine grid is 8, the blob is a quadtree
     g_motion_block = 8;
   }
-  g_per_block_mode = (header.reserved2[3] != 0);   // Phase 2: B MV blobs carry a per-block L0/L1/BI mode array (the CPU decode_frame_bidi oracle reads it too)
+  g_per_block_mode = (header.reserved2[3] != 0);   // B MV blobs carry a per-block L0/L1/BI mode array (the CPU decode_frame_bidi oracle reads it too)
   if (mode_3ddwt) {
     g_temporal_levels = header.reserved2[0] ? header.reserved2[0] : 2;
     g_temporal_wavelet = header.reserved2[1];
@@ -1697,7 +1697,7 @@ int main(int argc, char **argv) {
   VkPipelineLayout pipeline_layout_dct = create_pipeline_layout(layout_1_buffer, 8);          // push { width, height }
   VkPipeline pipeline_rans_unpack = create_compute_pipeline("shaders/rans_unpack.spv", pipeline_layout_rans_unpack);   // DCT path: GPU rANS decode
   VkPipeline pipeline_dct_inv = create_compute_pipeline("shaders/dct_inv.spv", pipeline_layout_dct);                   // DCT path: inverse block DCT (lossy, float)
-  VkPipeline pipeline_dct_inv_int = create_compute_pipeline("shaders/dct_inv_int.spv", pipeline_layout_dct);          // DCT path: inverse reversible integer block DCT (lossless, Phase A3)
+  VkPipeline pipeline_dct_inv_int = create_compute_pipeline("shaders/dct_inv_int.spv", pipeline_layout_dct);          // DCT path: inverse reversible integer block DCT (lossless)
   // Adaptive quadtree decode pipelines (created only when g_quadtree): rANS with a 5th partition binding (24-byte
   // push) + a leaf-list-driven inverse DCT (2 buffers, 8-byte push). The normal pipelines above stay untouched.
   VkDescriptorSetLayout layout_rans5_qt = g_quadtree ? create_descriptor_set_layout(5, 0) : 0;
@@ -1764,11 +1764,11 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_motion_add = create_compute_pipeline("shaders/motion_add.spv", pipeline_layout_unpack);   // {coeff, mc_prev=scratch, prev}, push 8
 
   VkDescriptorPoolSize pool_sizes[2] = {
-    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 256 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode (Phase 2) + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3)
+    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 256 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3)
     { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 5 },   // set_color + set_color_alpha + set_composite (present blend) + set_dering (2: src+dst)
   };
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 138;   // +7 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff/rans_unpack[3] + set_color_alpha) + 1 for set_composite   // B1b bidi (6) + B2 motion (6) + Phase 2 mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
+  pool_info.maxSets = 138;   // +7 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff/rans_unpack[3] + set_color_alpha) + 1 for set_composite   // B1b bidi (6) + B2 motion (6) + mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
   pool_info.poolSizeCount = 2;
   pool_info.pPoolSizes = pool_sizes;
   VkDescriptorPool descriptor_pool;
@@ -1846,7 +1846,7 @@ int main(int argc, char **argv) {
   // encoder). bidi_blend reuses pipeline_layout_unpack (3 buffers + 12-byte push); the reconstruct's
   // motion_add reuses pipeline_motion_add. Allocated only for --gpu-decode on a B-stream.
   int use_gpu_bdecode = has_bframes && !cpu_decode;   // 4b: the GPU bidi path now decodes DCT-B too (rANS + inverse DCT + quadtree + deblock); --cpu-decode forces the CPU oracle
-  int has_per_block_mode = use_gpu_bdecode && (header.reserved2[3] != 0);   // Phase 2: B MV blobs carry a per-block L0/L1/BI mode array
+  int has_per_block_mode = use_gpu_bdecode && (header.reserved2[3] != 0);   // B MV blobs carry a per-block L0/L1/BI mode array
   VkPipeline pipeline_bidi_blend = use_gpu_bdecode ? create_compute_pipeline("shaders/bidi_blend.spv", pipeline_layout_unpack) : 0;
   VkPipelineLayout pipeline_layout_blend_mode = has_per_block_mode ? create_pipeline_layout(layout_3_buffers, 20) : 0;   // {prediction, mc1, modes}, push {5 ints}
   VkPipeline pipeline_blend_mode = has_per_block_mode ? create_compute_pipeline_motion("shaders/blend_mode.spv", pipeline_layout_blend_mode, g_motion_block) : 0;
@@ -1854,7 +1854,7 @@ int main(int argc, char **argv) {
   // steady ~1 decode per displayed frame (smooth playback under Vsync). The pool holds the lead + the live
   // references, so size it 3*period + spare.
   int gdecode_period = header.reserved2[2] + 1;
-  // Phase 3 step-map cache: deeper B-frames use a coarser (temporal-id-cascaded) quant. Rather than rebuild
+  // Step-map cache: deeper B-frames use a coarser (temporal-id-cascaded) quant. Rather than rebuild
   // the full per-pixel step map every frame (O(width*height) CPU — ~50 ms/frame at 4K, the decode bottleneck),
   // cache one GPU step buffer set per distinct quality (only a few exist) and just rebind the dequant set.
   #define STEP_CACHE_MAX 16
@@ -1892,7 +1892,7 @@ int main(int argc, char **argv) {
     }
     create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &mv1_buffer, &mv1_memory);
     VK_CHECK(vkMapMemory(device, mv1_memory, 0, VK_WHOLE_SIZE, 0, &mv1_map));
-    if (has_per_block_mode) {   // Phase 2: per-block mode array, decoded from the MV blob into this host-visible buffer
+    if (has_per_block_mode) {   // Per-block mode array, decoded from the MV blob into this host-visible buffer
       create_buffer(((size_t)motion_blocks_x * motion_blocks_y) * 4, HOST_VISIBLE_COHERENT, &mode_buffer, &mode_memory);
       VK_CHECK(vkMapMemory(device, mode_memory, 0, VK_WHOLE_SIZE, 0, &mode_map));
     }
@@ -2759,7 +2759,7 @@ int main(int argc, char **argv) {
         // host-visible mv_buffer / mv1_buffer for mc.comp.
         if ((entry->ref0 >= 0) && (mv_length > 0)) {
           int mv_block_count = motion_blocks_x * motion_blocks_y;
-          int has_mode = (has_per_block_mode && (entry->ref1 >= 0));   // Phase 2: per-block mode array precedes the MVs
+          int has_mode = (has_per_block_mode && (entry->ref1 >= 0));   // per-block mode array precedes the MVs
           int has_mv1 = (entry->ref1 >= 0);
           if (g_motion_variable) {   // quadtree decode fills via leaf-expansion; clear first (partial edges / safety)
             if (has_mode) {
@@ -2869,7 +2869,7 @@ int main(int argc, char **argv) {
             bind_storage_buffers(set_deblock[plane], (VkBuffer[]){ gdpb_buffer[dst][plane], cell_leaf_buffer[plane] }, 2);
           }
         }
-        // Phase 3: pick this frame's dequant step map by its stored (temporal-id-cascaded) quality. Lazily
+        // Pick this frame's dequant step map by its stored (temporal-id-cascaded) quality. Lazily
         // build + cache one GPU step buffer set per distinct quality, then rebind the dequant set only when
         // the quality changes — no per-frame O(width*height) rebuild (the 4K CPU bottleneck).
         if (!lossless && g_bframe_dct) {
@@ -3064,7 +3064,7 @@ int main(int argc, char **argv) {
               vkCmdDispatch(command_buffer, plane_pixel_workgroups, 1, 1);
               memory_barrier();
             }
-            if (is_phase2_b) {   // Phase 2: apply the per-block mode (L0/L1/BI) into gmc0 in place
+            if (is_phase2_b) {   // apply the per-block mode (L0/L1/BI) into gmc0 in place
               int32_t mode_blend_push[5] = { plane_w, plane_h, plane_motion_blocks_x, w0, w1 };
               vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_blend_mode);
               vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_blend_mode, 0, 1, &set_blend_mode[plane], 0, 0);
@@ -3389,7 +3389,7 @@ int main(int argc, char **argv) {
           vkCmdDispatch(command_buffer, (plane_w + 7) / 8, (plane_h + 7) / 8, 1);
           memory_barrier();
         } else if (g_spatial_dct) {
-          // DCT mode lossless: reversible integer inverse 8x8 block DCT (Phase A3). rANS coeffs in, reconstructed
+          // DCT mode lossless: reversible integer inverse 8x8 block DCT. rANS coeffs in, reconstructed
           // ints out — no dequant/round in the lossless path (the integer DCT is the exact inverse).
           int32_t dct_push[2] = { plane_w, plane_h };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dct_inv_int);

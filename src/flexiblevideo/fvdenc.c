@@ -1444,9 +1444,9 @@ int main(int argc, char **argv) {
       "    --bframe-dct                   force B-frames to DCT+rANS (DEFAULT in DCT mode; GPU motion path)\n"
       "    --bframe-dwt                   force B-frames to wavelet+bit-plane even in DCT mode (inverse of --bframe-dct)\n"
       "    --deblock                      in-loop deblocking filter on the DCT block edges (use with --bframe-dct)\n"
-      "    --no-per-block-mode            disable Phase 2 per-block L0/L1/BI prediction mode (default ON; --per-block-mode re-enables)\n"
+      "    --no-per-block-mode            disable per-block L0/L1/BI prediction mode (default ON; --per-block-mode re-enables)\n"
       "    --bi-penalty=<N>               mode-decision bias in SAD units added to BI's cost (default -4096; negative prefers BI)\n"
-      "    --no-qp-cascade                disable Phase 3 temporal-id QP-cascading (default ON, lossy B-streams: deeper B = coarser quant; --qp-cascade re-enables)\n"
+      "    --no-qp-cascade                disable temporal-id QP-cascading (default ON, lossy B-streams: deeper B = coarser quant; --qp-cascade re-enables)\n"
       "    --joint                        EXPERIMENTAL joint/iterative bidirectional motion search (default off; ~neutral)\n"
       "    --cpu-bframes                  force the slow CPU reference B-encode oracle (instead of the GPU path)\n"
       "    --bidi-merge                   explicit joint mode-aware B merge (now the default; kept as an alias)\n"
@@ -1517,9 +1517,9 @@ int main(int argc, char **argv) {
   int gpu_encode = 1;   // --gpu-encode[=0|1]: GPU intra DCT path (then CPU rANS) is the DEFAULT; --gpu-encode=0 forces the CPU encode
   int bframe_mode_set = 0;   // 1 once --bframe-dct or --bframe-dwt is given; else B-frames follow the spatial mode (g_bframe_dct = g_spatial_dct)
   int joint_mv = 0;     // --joint: B2b joint/iterative bidirectional motion (EXPERIMENTAL, currently regresses vs independent); default = B2a independent
-  int per_block_mode = 1;   // Phase 2 per-block L0/L1/BI prediction mode (default ON; --no-per-block-mode = always-BI)
+  int per_block_mode = 1;   // per-block L0/L1/BI prediction mode (default ON; --no-per-block-mode = always-BI)
   int bi_penalty = -4096;   // --bi-penalty=N: mode-decision bias (SAD units) added to BI's cost; negative = prefer BI (it averages noise / costs no extra residual since 2a always sends both MVs); tunable
-  int qp_cascade = 1;       // Phase 3: deeper B-frames (higher temporal_id) get a coarser quant (lossy B-streams). Default ON (BeRo live-OK'd, big RD win); --no-qp-cascade disables
+  int qp_cascade = 1;       // deeper B-frames (higher temporal_id) get a coarser quant (lossy B-streams). Default ON (BeRo live-OK'd, big RD win); --no-qp-cascade disables
   int audio_codec_choice = 0;   // --audio: 0 = OGG/Vorbis (default), 1 = QOA-LE ("qoal"), 2 = RPCM (raw s16), 3 = FWA (wavelet)
   int fwa_quality = 8;            // --fwa-quality (default 8 = lossy joint-psycho; 0 = lossless 5/3)
   const char *fwa_mode = NULL;    // --fwa-mode (NULL -> derive: Q0 = 5/3, Q>0 = joint-psycho)
@@ -1565,11 +1565,11 @@ int main(int argc, char **argv) {
     } else if (!strcmp(argv[i], "--joint")) {
       joint_mv = 1;               // EXPERIMENTAL B2b joint/iterative bidirectional motion refinement (currently regresses)
     } else if (!strcmp(argv[i], "--per-block-mode")) {
-      per_block_mode = 1;         // Phase 2: per-block L0/L1/BI prediction mode (now the default; kept as a no-op alias)
+      per_block_mode = 1;         // per-block L0/L1/BI prediction mode (now the default; kept as a no-op alias)
     } else if (!strcmp(argv[i], "--no-per-block-mode")) {
       per_block_mode = 0;         // force the old always-BI B-prediction
     } else if (!strcmp(argv[i], "--qp-cascade")) {
-      qp_cascade = 1;             // Phase 3: temporal-id QP-cascading on B-frames (now the default; kept as a no-op alias)
+      qp_cascade = 1;             // temporal-id QP-cascading on B-frames (now the default; kept as a no-op alias)
     } else if (!strcmp(argv[i], "--no-qp-cascade")) {
       qp_cascade = 0;             // force a flat quant across the B-hierarchy
     } else if (!strncmp(argv[i], "--bi-penalty=", 13)) {
@@ -2089,7 +2089,7 @@ int main(int argc, char **argv) {
     create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &mv1_buffer, &mv1_memory);
     create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &mv_zero_buffer, &mv_zero_memory);
     create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, DEVICE_LOCAL, &mv_snap_buffer, &mv_snap_memory);   // B2b: snapshot of the independent MV, used as the joint-search predictor
-    create_buffer(((size_t)motion_blocks_x * motion_blocks_y) * 4, HOST_VISIBLE_COHERENT, &mode_buffer, &mode_memory);   // Phase 2: one prediction mode per 16x16 block
+    create_buffer(((size_t)motion_blocks_x * motion_blocks_y) * 4, HOST_VISIBLE_COHERENT, &mode_buffer, &mode_memory);   // one prediction mode per 16x16 block
     VK_CHECK(vkMapMemory(device, mv1_memory, 0, VK_WHOLE_SIZE, 0, &mv1_map));
     VK_CHECK(vkMapMemory(device, mv_zero_memory, 0, VK_WHOLE_SIZE, 0, &mv_zero_map));
     VK_CHECK(vkMapMemory(device, mode_memory, 0, VK_WHOLE_SIZE, 0, &mode_map));
@@ -2136,7 +2136,7 @@ int main(int argc, char **argv) {
   VkDescriptorSetLayout layout_7_buffers = create_descriptor_set_layout(7);   // variable-motion R-D merge: {mv8, sad8, mv16, sad16, mv32, sad32, mv_out}
   VkDescriptorSetLayout layout_12_buffers = create_descriptor_set_layout(12);   // variable B: bidi_mode_sad {cur0..2,ref0_0..2,ref1_0..2,mv0,mv1,modesad} + merge_bidi {modesad8/16/32,mv0_8/16/32,mv1_8/16/32,mv0out,mv1out,modeout}
   VkDescriptorSetLayout layout_11_buffers = create_descriptor_set_layout(11);  // B2b joint search: {cur0..2, ref0..2, mc_other0..2, mv, mv_prev}
-  VkDescriptorSetLayout layout_10_buffers = create_descriptor_set_layout(10);  // Phase 2 mode_decide: {cur0..2, mc0_0..2, mc1_0..2, modes}
+  VkDescriptorSetLayout layout_10_buffers = create_descriptor_set_layout(10);  // mode_decide: {cur0..2, mc0_0..2, mc1_0..2, modes}
   VkDescriptorSetLayout layout_5_buffers = create_descriptor_set_layout(5);     // DCT-B quadtree rANS encode: rans_size_qt {coeff, table, scratch, size, partition}
   VkDescriptorSetLayout layout_color = create_descriptor_set_layout(4);
   VkPipelineLayout pipeline_layout_color = create_pipeline_layout(layout_color, 8);
@@ -2234,12 +2234,12 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_merge_bidi  = var_b ? create_compute_pipeline("shaders/motion_merge_bidi.spv", pipeline_layout_merge_bidi) : 0;
   VkPipelineLayout pipeline_layout_me_bidi = create_pipeline_layout(layout_11_buffers, 24);   // B2b: {cur0..2, ref0..2, mc_other0..2, mv, mv_prev}, push {6 ints}
   VkPipeline pipeline_me_bidi = create_compute_pipeline_motion("shaders/motion_estimate_bidi.spv", pipeline_layout_me_bidi, g_motion_block);
-  VkPipelineLayout pipeline_layout_mode_decide = create_pipeline_layout(layout_10_buffers, 28);   // Phase 2: {cur0..2, mc0_0..2, mc1_0..2, modes}, push {7 ints}
+  VkPipelineLayout pipeline_layout_mode_decide = create_pipeline_layout(layout_10_buffers, 28);   // mode_decide: {cur0..2, mc0_0..2, mc1_0..2, modes}, push {7 ints}
   VkPipeline pipeline_mode_decide = create_compute_pipeline_motion("shaders/mode_decide.spv", pipeline_layout_mode_decide, g_motion_block);
   // --motion-split-fast: coarse per-32-root mode decision (16x fewer workgroups than per-8 mode_decide, + better RD), writing the 8-grid.
   VkPipelineLayout pipeline_layout_mode_root = create_pipeline_layout(layout_10_buffers, 36);   // push {w,h,fgx,fgy,g32x,lossless,w0,w1,bi_penalty}
   VkPipeline pipeline_mode_decide_root = ((g_motion_variable && use_bframes) && (!g_motion_split_bidi)) ? create_compute_pipeline("shaders/mode_decide_root.spv", pipeline_layout_mode_root) : 0;
-  VkPipelineLayout pipeline_layout_blend_mode = create_pipeline_layout(layout_3_buffers, 20);   // Phase 2: {prediction, mc1, modes}, push {5 ints}
+  VkPipelineLayout pipeline_layout_blend_mode = create_pipeline_layout(layout_3_buffers, 20);   // {prediction, mc1, modes}, push {5 ints}
   VkPipeline pipeline_blend_mode = create_compute_pipeline_motion("shaders/blend_mode.spv", pipeline_layout_blend_mode, g_motion_block);
   VkPipeline pipeline_dequant_inverse = create_compute_pipeline("shaders/dequant97.spv", pipeline_layout_quant);
   VkPipelineLayout pipeline_layout_pcrd = create_pipeline_layout(layout_1_buffer, 20);   // {coeff}, push {4 ints + lambda}
@@ -2444,7 +2444,7 @@ int main(int argc, char **argv) {
   // = MC(ref1,mv1) in mc1_buffer; refine mv1 against ref1 with MC_other = MC(ref0,mv0) in difference_buffer.
   VkDescriptorSet set_me_bidi0 = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_11_buffers) : 0;
   VkDescriptorSet set_me_bidi1 = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_11_buffers) : 0;
-  // Phase 2: mode_decide reads current + MC0(difference) + MC1(mc1) -> modes; blend_mode applies the per-block
+  // mode_decide reads current + MC0(difference) + MC1(mc1) -> modes; blend_mode applies the per-block
   // mode to the prediction slot per plane. Rebound per coding step (the DPB slots / MC buffers are fixed but
   // re-bound for clarity). set_mode_decide is bound once (fixed buffers); set_blend_mode[plane] per plane.
   VkDescriptorSet set_mode_decide = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_10_buffers) : 0;
@@ -2931,7 +2931,7 @@ int main(int argc, char **argv) {
     uint8_t **gop_encoded = checked_malloc((size_t)gop * sizeof(uint8_t *));
     size_t *gop_encoded_length = checked_malloc((size_t)gop * sizeof(size_t));
     // MCTF: per-high-pass-frame luma MV field (deinterleaved-position indexed), read back from mv_buffer after each
-    // pair's motion search and coded into the assemble_frame MV blob in Phase C (mirrors CPU encode_gop_3ddwt).
+    // pair's motion search and coded into the assemble_frame MV blob in the payload pass (mirrors CPU encode_gop_3ddwt).
     int *mctf_frame_mv = g_mctf ? checked_malloc(((size_t)gop * motion_blocks_x * motion_blocks_y * 2) * sizeof(int)) : NULL;
     if (g_mctf) {   // zero the motion_estimate temporal predictor once (never updated across pairs → predict=0, matching the CPU's no-predictor search)
       begin_recording();
@@ -2955,7 +2955,7 @@ int main(int argc, char **argv) {
         apply_alpha_bleed(gop_rgb[bf], width, height);
       }
 
-      // Phase A: color each frame (full res); chroma is down-sampled to its plane size; copy into the GOP slot.
+      // Colour each frame (full res); chroma is down-sampled to its plane size; copy into the GOP slot.
       for (int f = 0; f < filled; f++) {
         if (hdr_mode) {   // HDR: rgb48le (10-bit << 6) -> 12-bit BT.2020 code, exactly as the intra/colordiff path does
           const uint16_t *source16 = (const uint16_t *)gop_rgb[f];   // (the 3D-DWT path was missing this >>4 -> 4x-too-large values overflowed the color shader -> corruption)
@@ -3007,7 +3007,7 @@ int main(int argc, char **argv) {
         submit_and_wait();
       }
 
-      // Phase B: temporal forward transform along the frame axis. MCTF (--mctf) = frame-level predict-only MC-Haar
+      // Temporal forward transform along the frame axis. MCTF (--mctf) = frame-level predict-only MC-Haar
       // (motion-aligned; mirrors CPU mctf_forward), else the open-loop per-pixel-column temporal wavelet.
       if (g_mctf) {
         int luma_blocks = motion_blocks_x * motion_blocks_y;
@@ -3151,7 +3151,7 @@ int main(int argc, char **argv) {
         free(tmp_g);
       }
 
-      // Phase C: each temporal-subband frame -> spatial DWT + quant + bit-plane size/pack -> payload.
+      // Each temporal-subband frame -> spatial DWT + quant + bit-plane size/pack -> payload.
       for (int f = 0; f < filled; f++) {
         int level = temporal_quant_level(f, filled, g_temporal_levels);
         int effective_quality = lossless ? 0 : (int)(((float)quality * temporal_quant_scale(level)) + 0.5f);
@@ -3731,7 +3731,7 @@ int main(int argc, char **argv) {
       int p_eligible = ((!use_bframes) && predictive) && (frame_index % gop != 0);   // a P-frame is allowed; the decision below picks I or P
       int is_predicted = use_bframes ? (b_type != 0) : 0;   // B-stream: I=0, P/B predicted (the type comes from the coding-order driver)
 
-      // Phase 3: QP-cascading — deeper B-frames (higher temporal_id) get a coarser quant (they are referenced
+      // QP-cascading — deeper B-frames (higher temporal_id) get a coarser quant (they are referenced
       // less, so the coarser step saves bits with little visible loss). Rebuild the per-plane step map with the
       // cascaded quality; anchors (temporal_id 0 -> scale 1) keep the base quality. Lossy B-streams only; the
       // cascaded quality is stored per FrameEntry so the decoder dequantises identically.
@@ -4054,7 +4054,7 @@ int main(int argc, char **argv) {
         memory_barrier();
       }
 
-      // Phase 2: per-block prediction-mode decision (B-frames only). Compute MC0 (all planes) ->
+      // Per-block prediction-mode decision (B-frames only). Compute MC0 (all planes) ->
       // difference_buffer and MC1 (all planes) -> mc1_buffer, then mode_decide picks L0/L1/BI per block. The
       // per-plane loop below then applies the chosen mode (blend_mode) instead of an unconditional BI blend.
       if ((((use_bframes && per_block_mode) && is_predicted) && (b_ref1_slot >= 0))) {
@@ -4163,7 +4163,7 @@ int main(int argc, char **argv) {
           // difference (the weighted prediction); finally ycocg_diff subtracts it (the single-ref path).
           if (is_predicted) {
             if ((per_block_mode && b_ref1_slot >= 0)) {
-              // Phase 2: MC0 (difference) and MC1 (mc1) were computed for all planes in the pre-pass and the
+              // MC0 (difference) and MC1 (mc1) were computed for all planes in the pre-pass and the
               // per-block mode was decided; apply the chosen mode (L0/L1/BI) into difference_buffer in place.
               int32_t mode_blend_push[5] = { plane_w, plane_h, plane_motion_blocks_x, b_w0, b_w1 };
               vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_blend_mode);
@@ -4912,7 +4912,7 @@ int main(int argc, char **argv) {
       uint8_t *mv_bytes = NULL;
       size_t mv_length = 0;
       if (use_bframes && is_predicted) {
-        int has_mode = (per_block_mode && (b_ref1_slot >= 0));   // Phase 2: per-block L0/L1/BI mode array precedes the MVs
+        int has_mode = (per_block_mode && (b_ref1_slot >= 0));   // per-block L0/L1/BI mode array precedes the MVs
         int has_mv1 = (b_ref1_slot >= 0);                        // B-frame: a second (L1) MV set
         if (g_mv_codec == 1) {   // range codec: one adaptive stream for mode + mv0 [+ mv1]
           mv_length = mv_blob_encode_range(&mv_bytes, has_mode, (const int *)mode_map, g_motion_variable,
@@ -5178,7 +5178,7 @@ int main(int argc, char **argv) {
     }
     if (use_bframes) {   // B-stream marker + period hint (the player decodes in coding order, reorders by POC)
       header.reserved2[2] = (uint8_t)bframes;
-      header.reserved2[3] = (uint8_t)per_block_mode;   // Phase 2: B-frame MV blobs carry a per-block L0/L1/BI mode array
+      header.reserved2[3] = (uint8_t)per_block_mode;   // B-frame MV blobs carry a per-block L0/L1/BI mode array
     }
     header.width = width;
     header.height = height;

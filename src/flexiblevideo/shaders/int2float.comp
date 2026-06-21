@@ -1,5 +1,5 @@
 #version 450
-// int2float.comp — MCTF lossy Phase C helper. The temporal MC-Haar transform is purely INTEGER (predict-only,
+// int2float.comp — MCTF lossy helper. The temporal MC-Haar transform is purely INTEGER (predict-only,
 // no fractional lifting), so the temporal-subband coefficients in gop_buffer are integers. The lossy 9/7 spatial
 // path (fwd97row + quant97fwd) however reads/writes FLOAT bit-patterns. Convert each integer coefficient to its
 // float bit-pattern in place, once, before the spatial forward DWT. (Q0 uses the integer 5/3 path and skips this.)

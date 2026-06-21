@@ -1,5 +1,5 @@
 #version 450
-// blend_mode.comp — version2n Phase 2 mode-aware prediction. Per pixel, read its 16x16 block's mode and
+// blend_mode.comp — mode-aware prediction. Per pixel, read its 16x16 block's mode and
 // write the chosen prediction into the prediction slot (difference_buffer, which holds MC0 on entry), in
 // place: mode 0 = L0 (MC0, unchanged), 1 = L1 (MC1), 2 = BI ((w0*MC0 + w1*MC1 + 128)>>8). One plane per
 // dispatch (like bidi_blend); the block grid is per-plane (4:4:4 -> equals the luma/mode grid). The chosen

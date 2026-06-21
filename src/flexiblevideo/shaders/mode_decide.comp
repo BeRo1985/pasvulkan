@@ -1,5 +1,5 @@
 #version 450
-// mode_decide.comp — version2n Phase 2 per-block prediction-mode decision. ONE workgroup per 16x16 block:
+// mode_decide.comp — per-block prediction-mode decision. ONE workgroup per 16x16 block:
 // each thread sums |current - pred| over its pixel for the three candidate predictions (L0 = MC0, L1 =
 // MC1, BI = (w0*MC0 + w1*MC1 + 128)>>8), the workgroup reduces the three 3-plane SADs, and thread 0 picks
 // the cheapest mode (Stage 2a = min-SAD with a small BI bias to damp mode noise; the R-D bit term comes in
