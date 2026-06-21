@@ -35,9 +35,9 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.Assets,
      PasVulkan.Streams,
-     PasVulkan.Video.FlexibleWavelet,
-     PasVulkan.Video.FlexibleWavelet.Decoder,
-     PasVulkan.Video.FlexibleWavelet.Player,
+     PasVulkan.Video.FlexibleVideo,
+     PasVulkan.Video.FlexibleVideo.Decoder,
+     PasVulkan.Video.FlexibleVideo.Player,
      PasVulkan.Video.H264.Decoder;
 
 type TScreenMain=class(TpvApplicationScreen)
@@ -49,7 +49,7 @@ type TScreenMain=class(TpvApplicationScreen)
        // the video player + its backing stream
        fVideoPath:string;
        fStream:TFileStream;
-       fPlayer:TpvFlexibleWaveletVideoPlayer;
+       fPlayer:TpvFlexibleVideoPlayer;
        fPlaybackTime:TpvDouble;
        fAVLogTick:TpvInt32; // FWV_AVLOG diagnostic counter
        fDecTimeAccumUS,fDecTimeMaxUS:TpvInt64; // FWV_DECTIME: CPU DecodeTime cost accumulator
@@ -161,8 +161,8 @@ begin
   fStream:=TFileStream.Create(fVideoPath,fmOpenRead or fmShareDenyWrite);
   // If the engine got a real HDR swapchain (scRGB-linear FP16, see SwapChainHDR in Setup), let HDR streams output scRGB
   // FP16 for true HDR display; otherwise (SDR swapchain) the decoder stays on the rgba8 SDR / SDR-tonemap path.
-  fPlayer:=TpvFlexibleWaveletVideoPlayer.Create(fStream,pvApplication.VulkanDevice,
-                                                TpvFlexibleWaveletVideoPlayer.TDecoderChoice.Auto,
+  fPlayer:=TpvFlexibleVideoPlayer.Create(fStream,pvApplication.VulkanDevice,
+                                                TpvFlexibleVideoPlayer.TDecoderChoice.Auto,
                                                 (pvApplication.VulkanSwapChain.ImageFormat=VK_FORMAT_R16G16B16A16_SFLOAT) or ForceSCRGB);
   fPlaybackTime:=0.0;
   fOutputImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
@@ -195,7 +195,7 @@ end;
 
 procedure TScreenMain.TestH264Session;
 var FileStream:TFileStream;
-    Header:TpvFlexibleWaveletVideo.THeader;
+    Header:TpvFlexibleVideo.THeader;
     BlobStream:TMemoryStream;
     Decoder:TpvVideoH264Decoder;
 begin
@@ -233,7 +233,7 @@ end;
 
 procedure TScreenMain.TestH264Decode;
 var FileStream:TFileStream;
-    Header:TpvFlexibleWaveletVideo.THeader;
+    Header:TpvFlexibleVideo.THeader;
     BlobStream:TMemoryStream;
     Decoder:TpvVideoH264Decoder;
     ReadbackBuffer:TpvVulkanBuffer;

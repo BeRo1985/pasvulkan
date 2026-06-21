@@ -40,7 +40,7 @@ uses SysUtils,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Framework,
-     PasVulkan.Assets.Video;
+     PasVulkan.Assets.Video.FlexibleVideo;
 
 const H264ReorderDepth=8; // matches the C reference REORDER: bump the lowest-key frame once more than this are buffered
 
@@ -1385,8 +1385,8 @@ begin
  // ---- nv12rgb compute pipeline ----
  FillChar(ModuleInfo,SizeOf(ModuleInfo),#0);
  ModuleInfo.sType:=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
- ModuleInfo.codeSize:=FlexibleWaveletVideoNv12rgbSPIRVDataSize;
- ModuleInfo.pCode:=@FlexibleWaveletVideoNv12rgbSPIRVData[0];
+ ModuleInfo.codeSize:=FlexibleVideoNv12rgbSPIRVDataSize;
+ ModuleInfo.pCode:=@FlexibleVideoNv12rgbSPIRVData[0];
  if fDevice.Commands.CreateShaderModule(fDevice.Handle,@ModuleInfo,nil,@fComputeModule)<>VK_SUCCESS then begin
   raise EpvVideoH264.Create('nv12rgb shader module creation failed');
  end;

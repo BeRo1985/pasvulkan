@@ -109,7 +109,8 @@ program convert;
 uses SysUtils,Classes;
 
 var StringList:TStringList;        // -> PasVulkanAssets.inc (fonts + canvas + VR; PasVulkan.Assets.pas stays slim)
-    VideoStringList:TStringList;   // -> PasVulkanVideoAssets.inc (FlexibleWaveletVideo* shaders; PasVulkan.Assets.Video.pas)
+    VideoStringList:TStringList;   // -> PasVulkanFlexibleWaveletVideoAssets.inc (FlexibleWaveletVideo* shaders; PasVulkan.Assets.Video.FlexibleWavelet.pas)
+    FvdVideoStringList:TStringList;// -> PasVulkanFlexibleVideoAssets.inc (FlexibleVideo* shaders; PasVulkan.Assets.Video.FlexibleVideo.pas)
     TargetList:TStringList;        // the list ConvertFile currently writes into (switched per group below)
 
 procedure ConvertFile(SrcFileName,ArrayName:string);
@@ -150,6 +151,7 @@ end;
 begin
  StringList:=TStringList.Create;
  VideoStringList:=TStringList.Create;
+ FvdVideoStringList:=TStringList.Create;
  TargetList:=StringList;   // fonts + canvas + VR go into PasVulkanAssets.inc (the FlexibleWaveletVideo* block switches below)
  try
   ConvertFile('fonts/notosans.ttf','GUIStandardTrueTypeFontSansFont');
@@ -255,11 +257,69 @@ begin
   ConvertFile('../flexiblewavelet/shaders/tdwt_int.spv','FlexibleWaveletVideoTdwtIntSPIRV');
   ConvertFile('../flexiblewavelet/shaders/transpose_f.spv','FlexibleWaveletVideoTransposeFSPIRV');
   ConvertFile('../flexiblewavelet/shaders/ycocg_diff.spv','FlexibleWaveletVideoYcocgDiffSPIRV');
+  // Flexible Video (FVD, DCT fork) compute shaders (src/flexiblevideo/shaders/*.spv) -> PasVulkanFlexibleVideoAssets.inc
+  TargetList:=FvdVideoStringList;
+  ConvertFile('../flexiblevideo/shaders/apply_pcrd.spv','FlexibleVideoApplyPcrdSPIRV');
+  ConvertFile('../flexiblevideo/shaders/apply_tile_aq.spv','FlexibleVideoApplyTileAqSPIRV');
+  ConvertFile('../flexiblevideo/shaders/bidi_blend.spv','FlexibleVideoBidiBlendSPIRV');
+  ConvertFile('../flexiblevideo/shaders/bidi_mode_sad.spv','FlexibleVideoBidiModeSadSPIRV');
+  ConvertFile('../flexiblevideo/shaders/bitplane_pack.spv','FlexibleVideoBitplanePackSPIRV');
+  ConvertFile('../flexiblevideo/shaders/bitplane_pack_coop.spv','FlexibleVideoBitplanePackCoopSPIRV');
+  ConvertFile('../flexiblevideo/shaders/bitplane_size.spv','FlexibleVideoBitplaneSizeSPIRV');
+  ConvertFile('../flexiblevideo/shaders/bitplane_size_coop.spv','FlexibleVideoBitplaneSizeCoopSPIRV');
+  ConvertFile('../flexiblevideo/shaders/bitplane_unpack.spv','FlexibleVideoBitplaneUnpackSPIRV');
+  ConvertFile('../flexiblevideo/shaders/blend_mode.spv','FlexibleVideoBlendModeSPIRV');
+  ConvertFile('../flexiblevideo/shaders/chroma_downsample.spv','FlexibleVideoChromaDownsampleSPIRV');
+  ConvertFile('../flexiblevideo/shaders/coeff_add.spv','FlexibleVideoCoeffAddSPIRV');
+  ConvertFile('../flexiblevideo/shaders/coeff_diff.spv','FlexibleVideoCoeffDiffSPIRV');
+  ConvertFile('../flexiblevideo/shaders/color.spv','FlexibleVideoColorSPIRV');
+  ConvertFile('../flexiblevideo/shaders/color_hdr.spv','FlexibleVideoColorHdrSPIRV');
+  ConvertFile('../flexiblevideo/shaders/color_hdr_scrgb.spv','FlexibleVideoColorHdrScrgbSPIRV');
+  ConvertFile('../flexiblevideo/shaders/color_alpha.spv','FlexibleVideoColorAlphaSPIRV');
+  ConvertFile('../flexiblevideo/shaders/color_hdr_alpha.spv','FlexibleVideoColorHdrAlphaSPIRV');
+  ConvertFile('../flexiblevideo/shaders/color_hdr_scrgb_alpha.spv','FlexibleVideoColorHdrScrgbAlphaSPIRV');
+  ConvertFile('../flexiblevideo/shaders/dequant97.spv','FlexibleVideoDequant97SPIRV');
+  ConvertFile('../flexiblevideo/shaders/cdef.spv','FlexibleVideoCdefSPIRV');
+  ConvertFile('../flexiblevideo/shaders/dering.spv','FlexibleVideoDeringSPIRV');
+  ConvertFile('../flexiblevideo/shaders/frame_energy.spv','FlexibleVideoFrameEnergySPIRV');
+  ConvertFile('../flexiblevideo/shaders/fwd53row.spv','FlexibleVideoFwd53rowSPIRV');
+  ConvertFile('../flexiblevideo/shaders/fwd97row.spv','FlexibleVideoFwd97rowSPIRV');
+  ConvertFile('../flexiblevideo/shaders/idwt53row.spv','FlexibleVideoIdwt53rowSPIRV');
+  ConvertFile('../flexiblevideo/shaders/idwt97row.spv','FlexibleVideoIdwt97rowSPIRV');
+  ConvertFile('../flexiblevideo/shaders/int2float.spv','FlexibleVideoInt2floatSPIRV');
+  ConvertFile('../flexiblevideo/shaders/mc.spv','FlexibleVideoMcSPIRV');
+  ConvertFile('../flexiblevideo/shaders/mode_decide.spv','FlexibleVideoModeDecideSPIRV');
+  ConvertFile('../flexiblevideo/shaders/mode_decide_root.spv','FlexibleVideoModeDecideRootSPIRV');
+  ConvertFile('../flexiblevideo/shaders/motion_add.spv','FlexibleVideoMotionAddSPIRV');
+  ConvertFile('../flexiblevideo/shaders/motion_estimate.spv','FlexibleVideoMotionEstimateSPIRV');
+  ConvertFile('../flexiblevideo/shaders/motion_estimate_bidi.spv','FlexibleVideoMotionEstimateBidiSPIRV');
+  ConvertFile('../flexiblevideo/shaders/motion_merge.spv','FlexibleVideoMotionMergeSPIRV');
+  ConvertFile('../flexiblevideo/shaders/motion_merge_bidi.spv','FlexibleVideoMotionMergeBidiSPIRV');
+  ConvertFile('../flexiblevideo/shaders/nv12rgb.spv','FlexibleVideoNv12rgbSPIRV');
+  ConvertFile('../flexiblevideo/shaders/quant97fwd.spv','FlexibleVideoQuant97fwdSPIRV');
+  ConvertFile('../flexiblevideo/shaders/rgb2yco.spv','FlexibleVideoRgb2ycoSPIRV');
+  ConvertFile('../flexiblevideo/shaders/rgb2yco16.spv','FlexibleVideoRgb2yco16SPIRV');
+  ConvertFile('../flexiblevideo/shaders/rgb2ycor.spv','FlexibleVideoRgb2ycorSPIRV');
+  ConvertFile('../flexiblevideo/shaders/rgb2ycor16.spv','FlexibleVideoRgb2ycor16SPIRV');
+  ConvertFile('../flexiblevideo/shaders/round97.spv','FlexibleVideoRound97SPIRV');
+  ConvertFile('../flexiblevideo/shaders/tdwt_float.spv','FlexibleVideoTdwtFloatSPIRV');
+  ConvertFile('../flexiblevideo/shaders/tdwt_int.spv','FlexibleVideoTdwtIntSPIRV');
+  ConvertFile('../flexiblevideo/shaders/transpose_f.spv','FlexibleVideoTransposeFSPIRV');
+  ConvertFile('../flexiblevideo/shaders/ycocg_diff.spv','FlexibleVideoYcocgDiffSPIRV');
+  ConvertFile('../flexiblevideo/shaders/dct_inv.spv','FlexibleVideoDctInvSPIRV');
+  ConvertFile('../flexiblevideo/shaders/dct_inv_int.spv','FlexibleVideoDctInvIntSPIRV');
+  ConvertFile('../flexiblevideo/shaders/dct_inv_qt.spv','FlexibleVideoDctInvQtSPIRV');
+  ConvertFile('../flexiblevideo/shaders/rans_unpack.spv','FlexibleVideoRansUnpackSPIRV');
+  ConvertFile('../flexiblevideo/shaders/rans_unpack_qt.spv','FlexibleVideoRansUnpackQtSPIRV');
+  ConvertFile('../flexiblevideo/shaders/deblock.spv','FlexibleVideoDeblockSPIRV');
+  ConvertFile('../flexiblevideo/shaders/fvd_composite_present.spv','FlexibleVideoCompositePresentSPIRV');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');
-  VideoStringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanVideoAssets.inc');
+  VideoStringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanFlexibleWaveletVideoAssets.inc');
+  FvdVideoStringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanFlexibleVideoAssets.inc');
  finally
   FreeAndNil(StringList);
   FreeAndNil(VideoStringList);
+  FreeAndNil(FvdVideoStringList);
  end;
 (*StringList:=TStringList.Create;
  try

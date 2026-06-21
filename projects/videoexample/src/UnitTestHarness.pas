@@ -19,9 +19,9 @@ uses SysUtils,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Framework,
-     PasVulkan.Video.FlexibleWavelet,
-     PasVulkan.Video.FlexibleWavelet.Decoder,
-     PasVulkan.Video.FlexibleWavelet.Player,
+     PasVulkan.Video.FlexibleVideo,
+     PasVulkan.Video.FlexibleVideo.Decoder,
+     PasVulkan.Video.FlexibleVideo.Player,
      PasVulkan.Video.H264.Decoder,
      PasVulkan.Audio.QOAL,
      PasVulkan.Audio.RPCM,
@@ -33,7 +33,7 @@ uses SysUtils,
 // Decode frame aFrameIndex, read the output image back and write it to aPath: an 8-bit RGB PPM for the SDR
 // R8G8B8A8 format (matches the C --dump), or the raw RGBA16F bytes for the scRGB FP16 format. aSubmitMode 2
 // (mode C) drives the caller-step-loop: each B-frame decode-ahead step is its own submit+wait.
-procedure DecodeFrameToFile(const aDevice:TpvVulkanDevice;const aDecoder:TpvFlexibleWaveletVideoDecoder;const aFrameIndex:TpvInt32;const aPath:string;const aSubmitMode:TpvInt32);
+procedure DecodeFrameToFile(const aDevice:TpvVulkanDevice;const aDecoder:TpvFlexibleVideoDecoder;const aFrameIndex:TpvInt32;const aPath:string;const aSubmitMode:TpvInt32);
 var CommandPool:TpvVulkanCommandPool;
     CommandBuffer:TpvVulkanCommandBuffer;
     Fence:TpvVulkanFence;
@@ -137,7 +137,7 @@ end;
 
 procedure CheckOne(const aDevice:TpvVulkanDevice;const aPath:string);
 var Stream:TFileStream;
-    Decoder:TpvFlexibleWaveletVideoDecoder;
+    Decoder:TpvFlexibleVideoDecoder;
     FrameIndex,SubmitMode:TpvInt32;
     PreferSCRGB:boolean;
     Extension:string;
@@ -146,7 +146,7 @@ begin
  SubmitMode:=StrToIntDef(GetEnvironmentVariable('FWV_BMODE'),0); // 0=A self-submit, 1=B caller-CB, 2=C step-loop
  Stream:=TFileStream.Create(aPath,fmOpenRead);
  try
-  Decoder:=TpvFlexibleWaveletVideoDecoder.Create(Stream,aDevice,PreferSCRGB,SubmitMode);
+  Decoder:=TpvFlexibleVideoDecoder.Create(Stream,aDevice,PreferSCRGB,SubmitMode);
   try
    if Decoder.OutputFormat=VK_FORMAT_R16G16B16A16_SFLOAT then begin
     Extension:='.f16';
@@ -179,7 +179,7 @@ end;
 // the facade's time->frame mapping AND its two-phase split produce exactly the decoder's already-validated output.
 procedure CheckOnePlayer(const aDevice:TpvVulkanDevice;const aPath:string);
 var Stream:TFileStream;
-    Player:TpvFlexibleWaveletVideoPlayer;
+    Player:TpvFlexibleVideoPlayer;
     CommandPool:TpvVulkanCommandPool;
     CommandBuffer:TpvVulkanCommandBuffer;
     Fence:TpvVulkanFence;
@@ -196,7 +196,7 @@ var Stream:TFileStream;
 begin
  Stream:=TFileStream.Create(aPath,fmOpenRead);
  try
-  Player:=TpvFlexibleWaveletVideoPlayer.Create(Stream,aDevice);
+  Player:=TpvFlexibleVideoPlayer.Create(Stream,aDevice);
   try
    IsFP16:=Player.OutputFormat=VK_FORMAT_R16G16B16A16_SFLOAT;
    if IsFP16 then begin
@@ -539,7 +539,7 @@ end;
 // TpvVideoH264Decoder and print them in the exact format of the C /tmp/h264ref reference, for a byte-diff.
 procedure CheckH264Parse(const aPath:string);
 var FileStream:TFileStream;
-    Header:TpvFlexibleWaveletVideo.THeader;
+    Header:TpvFlexibleVideo.THeader;
     H264:array of TpvUInt8;
     RBSP:array of TpvUInt8;
     SPS:TpvVideoH264Decoder.TSPS;
@@ -635,7 +635,7 @@ end;
 // dump it in the exact format of the C /tmp/h264frames reference, for a byte-diff over all frames (not just 8 slices).
 procedure CheckH264Frames(const aPath:string);
 var FileStream:TFileStream;
-    Header:TpvFlexibleWaveletVideo.THeader;
+    Header:TpvFlexibleVideo.THeader;
     H264:array of TpvUInt8;
     SPS:TpvVideoH264Decoder.TSPS;
     PPS:TpvVideoH264Decoder.TPPS;
