@@ -547,8 +547,16 @@ static uint32_t find_memory_type(uint32_t type_bits, VkMemoryPropertyFlags wante
   return 0;
 }
 
+extern char g_exe_dir[1024]; // defined in fvdplay.c (the only binary fvd_h264.c is linked into)
+
 static uint32_t *load_spirv(const char *path, size_t *out_size) {
-  FILE *file = fopen(path, "rb");
+  char resolved[1024];
+  const char *open_path = path;
+  if ((g_exe_dir[0] != 0) && (path[0] != '/')) {   // resolve relative "shaders/x.spv" against the binary's dir (mirror of fvdplay.c)
+    snprintf(resolved, sizeof(resolved), "%s%s", g_exe_dir, path);
+    open_path = resolved;
+  }
+  FILE *file = fopen(open_path, "rb");
   if (!file) {
     die("open spv");
   }

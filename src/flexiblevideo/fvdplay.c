@@ -179,7 +179,7 @@ static void create_buffer(VkDeviceSize size, VkMemoryPropertyFlags properties, V
 
 // Directory of the running binary (+ trailing '/'), so the shaders load relative to the EXECUTABLE, not the current
 // working directory — otherwise running e.g. `path/to/fvdplay file.fvd` from elsewhere can't find shaders/*.spv.
-static char g_exe_dir[1024] = "";
+char g_exe_dir[1024] = ""; // global (not static): fvd_h264.c references this via extern to resolve its own shader paths
 static void init_exe_dir(void) {
   char exe[1024];
   ssize_t n = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
