@@ -73,7 +73,7 @@ uses {$if defined(Windows)}
      PasMP,
      PasVulkan.Types;
 
-const GFSDK_Aftermath_Version_API=$0000217;  // Version 2.23
+const GFSDK_Aftermath_Version_API=$000021A;  // Version 2.26
 
       // Default setting
       GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_None=$0;
@@ -391,6 +391,12 @@ const GFSDK_Aftermath_Version_API=$0000217;  // Version 2.23
       GFSDK_Aftermath_Client_VideoEncoder=12;
       GFSDK_Aftermath_Client_Other=13;
 
+      GFSDK_Aftermath_ResourceResidency_Unknown=0;
+      GFSDK_Aftermath_ResourceResidency_FullyResident=1;
+      GFSDK_Aftermath_ResourceResidency_Evicted=2;       // DX12 only
+      GFSDK_Aftermath_ResourceResidency_MemoryFreed=3;   // Vulkan only
+      GFSDK_Aftermath_ResourceResidency_MemoryUnbound=4; // Vulkan only
+
 type EGFSDK_Aftermath=class(Exception);
 
      TGFSDK_Aftermath_Version=TpvUInt32;
@@ -494,11 +500,20 @@ type EGFSDK_Aftermath=class(Exception);
 
      PGFSDK_Aftermath_GpuCrashDump_GpuInfo=^TGFSDK_Aftermath_GpuCrashDump_GpuInfo;
 
+     TGFSDK_Aftermath_FaultType=TpvUInt32;
+
+     TGFSDK_Aftermath_AccessType=TpvUInt32;
+
      TGFSDK_Aftermath_Engine=TpvUInt32;
 
      TGFSDK_Aftermath_Client=TpvUInt32;
 
+     TGFSDK_Aftermath_ResourceResidency=TpvUInt32;
+
      TGFSDK_Aftermath_GpuCrashDump_PageFaultInfo=record
+      faultingGpuVA:TpvUInt64;
+      faultType:TGFSDK_Aftermath_FaultType;
+      accessType:TGFSDK_Aftermath_AccessType;
       engine:TGFSDK_Aftermath_Engine;
       client:TGFSDK_Aftermath_Client;
       resourceInfoCount:TpvUInt32;
@@ -521,6 +536,7 @@ type EGFSDK_Aftermath=class(Exception);
       bIsRenderTargetOrDepthStencilViewHeap:TpvUInt32;
       bPlacedResource:TpvUInt32;
       bWasDestroyed:TpvUInt32;
+      residency:TGFSDK_Aftermath_ResourceResidency;
       createDestroyTickCount:TpvUInt32;
      end;
 
@@ -530,8 +546,8 @@ type EGFSDK_Aftermath=class(Exception);
 
      TGFSDK_Aftermath_GpuCrashDump_ShaderInfo=record
       shaderHash:TpvUInt64;
-      shaderInstance:TpvUInt64;
-      bIsInternal:TpvUInt32;
+      shaderDebugInfoUid:TpvUInt64;
+      isInternal:TpvUInt32;
       shaderType:TGFSDK_Aftermath_ShaderType;
      end;
 
@@ -572,7 +588,9 @@ type EGFSDK_Aftermath=class(Exception);
 
      TPFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb=procedure(addValue:TPFN_GFSDK_Aftermath_AddGpuCrashDumpDescription;pUserData:Pointer); cdecl;
 
-     TPFN_GFSDK_Aftermath_ResolveMarkerCb=procedure(pMarkerData:Pointer;markerDataSize:PpvUInt32;pUserData:Pointer;resolvedMarkerData:PPpvPointer;pResolvedMarkerDataSize:PpvPointer); cdecl;
+     TPFN_GFSDK_Aftermath_ResolveMarker=procedure(pResolvedMarkerData:Pointer;resolvedMarkerDataSize:TpvUInt32); cdecl;
+
+     TPFN_GFSDK_Aftermath_ResolveMarkerCb=procedure(pMarkerData:Pointer;markerDataSize:TpvUInt32;pUserData:Pointer;resolveMarker:TPFN_GFSDK_Aftermath_ResolveMarker); cdecl;
 
      TGFSDK_Aftermath_EnableGpuCrashDumps=function(apiVersion:TGFSDK_Aftermath_Version;
                                                    watchedApis:TpvUInt32;
@@ -1060,10 +1078,24 @@ begin
                               'GFSDK_Aftermath_Lib.x64.dll'
 {$elseif defined(Windows) and defined(cpux86)}
                               'GFSDK_Aftermath_Lib.x86.dll'
+{$elseif defined(Linux) and (defined(cpuamd64) or defined(cpux64) or defined(cpux86_64))}
+                              'libGFSDK_Aftermath_Lib.x64.so' // the Linux Nsight Aftermath SDK ships this exact name (lib/x64/)
 {$else}
-                              'libGFSDK_Aftermath.so'
+                              'libGFSDK_Aftermath_Lib.x86.so' // the Linux Nsight Aftermath SDK ships this exact name (lib/x64/)
 {$ifend}
                              );
+{$if not defined(Windows)}
+  // fallbacks: the bare/symlink name, then a relative path next to the binary (the SDK does not install into the system lib dirs)
+  if not assigned(GFSDK_Aftermath_LibHandle) then begin
+   GFSDK_Aftermath_LibHandle:=_LoadLibrary(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'libGFSDK_Aftermath.so');
+  end;
+  if not assigned(GFSDK_Aftermath_LibHandle) then begin
+   GFSDK_Aftermath_LibHandle:=_LoadLibrary(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'libGFSDK_Aftermath_Lib.x64.so');
+  end;
+  if not assigned(GFSDK_Aftermath_LibHandle) then begin
+   GFSDK_Aftermath_LibHandle:=_LoadLibrary(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'libGFSDK_Aftermath_Lib.x86.so');
+  end;
+{$ifend}
   if assigned(GFSDK_Aftermath_LibHandle) then begin
    @GFSDK_Aftermath_EnableGpuCrashDumps:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_EnableGpuCrashDumps');
    @GFSDK_Aftermath_DisableGpuCrashDumps:=_GetProcAddress(GFSDK_Aftermath_LibHandle,'GFSDK_Aftermath_DisableGpuCrashDumps');

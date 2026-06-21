@@ -636,6 +636,15 @@ var Blit:TVkImageBlit;
     ClearRange:TVkImageSubresourceRange;
     MemBarrier:TVkMemoryBarrier;
     DstX,DstY,DstW,DstH:TpvInt32;
+    Breadcrumb:TpvVulkanBreadcrumbBuffer; // GPU breadcrumb trail for the blit sub-steps (nil unless --breadcrumbs); the device-lost handler dumps it
+
+ procedure Crumb(const aInfo:TpvRawByteString); // one sequential marker per blit sub-step (close the previous, open a new one)
+ begin
+  if assigned(Breadcrumb) then begin
+   Breadcrumb.EndBreadcrumb(aCommandBuffer.Handle);
+   Breadcrumb.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.CopyBuffer,aInfo);
+  end;
+ end;
 
  procedure TransitionTarget(const aOldLayout,aNewLayout:TVkImageLayout;const aSrcAccess,aDstAccess:TVkAccessFlags;const aSrcStage,aDstStage:TVkPipelineStageFlags);
  begin
@@ -655,6 +664,13 @@ var Blit:TVkImageBlit;
  end;
 
 begin
+
+ if assigned(fDevice) and fDevice.UseBreadcrumbs then begin
+  Breadcrumb:=fDevice.BreadcrumbBuffer;
+  Breadcrumb.PushZone('BlitLastDecodedFrame');
+ end else begin
+  Breadcrumb:=nil;
+ end;
 
  // both backends leave OutputImage as a single persistent image in TRANSFER_SRC_OPTIMAL (the H.264 decoder copies its
  // current rotating pool slot into a stable display image), so the present path is identical for both
@@ -679,12 +695,14 @@ begin
  end;
 
  // bring the target to TRANSFER_DST
+ Crumb('blit:to-dst');
  TransitionTarget(aTargetOldLayout,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                   0,TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT));
 
  // letterbox: clear the whole target to black so the bars are black, then a barrier before the centred blit
  if (DstX>0) or (DstY>0) then begin
+  Crumb('blit:clear');
   FillChar(ClearColor,SizeOf(ClearColor),#0);
   ClearColor.float32[3]:=1.0;
   FillChar(ClearRange,SizeOf(ClearRange),#0);
@@ -713,13 +731,20 @@ begin
  Blit.dstOffsets[1].x:=DstX+DstW;
  Blit.dstOffsets[1].y:=DstY+DstH;
  Blit.dstOffsets[1].z:=1;
+ Crumb('blit:image'); // the CmdBlitImage itself: reads GetOutputImage (the decoder's output), writes the target
  aCommandBuffer.CmdBlitImage(GetOutputImage.Handle,SourceLayout,
                              aTargetImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                              1,@Blit,VK_FILTER_LINEAR);
 
+ Crumb('blit:to-final');
  TransitionTarget(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,aTargetNewLayout,
                   TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),0,
                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
+
+ if assigned(Breadcrumb) then begin
+  Breadcrumb.EndBreadcrumb(aCommandBuffer.Handle);
+  Breadcrumb.PopZone;
+ end;
 
 end;
 
