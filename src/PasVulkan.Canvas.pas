@@ -494,8 +494,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCanvas:TpvCanvas;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDescriptorSet:TpvVulkanDescriptorSet;
-       fDescriptorTexture:TObject;
-       fDescriptorMaskTexture:TObject;
+       fDescriptorTextureID:TpvUInt64;
+       fDescriptorMaskTextureID:TpvUInt64;
        fLastUsedFrameNumber:TpvNativeUInt;
       public
        constructor Create(const aCanvas:TpvCanvas); reintroduce;
@@ -504,14 +504,14 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property Canvas:TpvCanvas read fCanvas;
        property DescriptorPool:TpvVulkanDescriptorPool read fDescriptorPool write fDescriptorPool;
        property DescriptorSet:TpvVulkanDescriptorSet read fDescriptorSet write fDescriptorSet;
-       property DescriptorTexture:TObject read fDescriptorTexture write fDescriptorTexture;
-       property DescriptorMaskTexture:TObject read fDescriptorMaskTexture write fDescriptorMaskTexture;
+       property DescriptorTextureID:TpvUInt64 read fDescriptorTextureID write fDescriptorTextureID;
+       property DescriptorMaskTextureID:TpvUInt64 read fDescriptorMaskTextureID write fDescriptorMaskTextureID;
        property LastUsedFrameNumber:TpvNativeUInt read fLastUsedFrameNumber write fLastUsedFrameNumber;
      end;
 
      TpvCanvasTextureDescriptorSetHashMapKey=record
-      Texture:TObject;
-      MaskTexture:TObject;
+      TextureID:TpvUInt64;
+      MaskTextureID:TpvUInt64;
      end;
      PpvCanvasTextureDescriptorSetHashMapKey=^TpvCanvasTextureDescriptorSetHashMapKey;
 
@@ -3241,16 +3241,16 @@ begin
  fCanvas:=aCanvas;
  fDescriptorPool:=nil;
  fDescriptorSet:=nil;
- fDescriptorTexture:=nil;
- fDescriptorMaskTexture:=nil;
+ fDescriptorTextureID:=0;
+ fDescriptorMaskTextureID:=0;
 end;
 
 destructor TpvCanvasVulkanDescriptor.Destroy;
 begin
  FreeAndNil(fDescriptorSet);
  FreeAndNil(fDescriptorPool);
- fDescriptorTexture:=nil;
- fDescriptorMaskTexture:=nil;
+ fDescriptorTextureID:=0;
+ fDescriptorMaskTextureID:=0;
  inherited Destroy;
 end;
 
@@ -5107,6 +5107,20 @@ begin
          (TpvUInt32(fSignedDistanceFieldVariant) shl pvcvsSignedDistanceFieldVariantShift);
 end;
 
+function CanvasTextureUniqueID(const aTexture:TObject):TpvUInt64; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ // Map a canvas texture object to its process-wide unique id (0 = none -> shared dummy-texture descriptor). Keying the
+ // descriptor cache by this id instead of the object pointer prevents a freed-and-reallocated texture from aliasing a
+ // stale cached descriptor that still references the destroyed image view.
+ if aTexture is TpvVulkanTexture then begin
+  result:=TpvVulkanTexture(aTexture).UniqueID;
+ end else if aTexture is TpvSpriteAtlasArrayTexture then begin
+  result:=TpvSpriteAtlasArrayTexture(aTexture).Texture.UniqueID;
+ end else begin
+  result:=0;
+ end;
+end;
+
 procedure TpvCanvas.GarbageCollectDescriptors;
 var DescriptorLinkedListNode,PreviousDescriptorLinkedListNode:TpvCanvasVulkanDescriptorLinkedListNode;
     Descriptor:TpvCanvasVulkanDescriptor;
@@ -5121,8 +5135,8 @@ begin
   if assigned(Descriptor) and
      (TpvNativeInt(TpvNativeUInt(fCurrentFrameNumber-Descriptor.fLastUsedFrameNumber))>CountProcessingBuffers) then begin
    try
-    Key.Texture:=Descriptor.fDescriptorTexture;
-    Key.MaskTexture:=Descriptor.fDescriptorMaskTexture;
+    Key.TextureID:=Descriptor.fDescriptorTextureID;
+    Key.MaskTextureID:=Descriptor.fDescriptorMaskTextureID;
     fVulkanTextureDescriptorSetHashMap.Delete(Key);
    finally
     Descriptor.Free;
@@ -5270,8 +5284,8 @@ begin
     CurrentMaskTexture:=nil;
    end;
 
-   Key.Texture:=CurrentTexture;
-   Key.MaskTexture:=CurrentMaskTexture;
+   Key.TextureID:=CanvasTextureUniqueID(CurrentTexture);
+   Key.MaskTextureID:=CanvasTextureUniqueID(CurrentMaskTexture);
 
    if fVulkanTextureDescriptorSetHashMap.TryGet(Key,Descriptor) then begin
     // Move existent descriptor to front
@@ -5344,8 +5358,8 @@ begin
      end;
      Descriptor.fDescriptorSet.Flush;
     finally
-     Descriptor.fDescriptorTexture:=CurrentTexture;
-     Descriptor.fDescriptorMaskTexture:=CurrentMaskTexture;
+     Descriptor.fDescriptorTextureID:=Key.TextureID;
+     Descriptor.fDescriptorMaskTextureID:=Key.MaskTextureID;
      fVulkanDescriptors.Front.Insert(Descriptor);
      fVulkanTextureDescriptorSetHashMap.Add(Key,Descriptor);
     end;

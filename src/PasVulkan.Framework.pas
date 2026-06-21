@@ -3897,6 +3897,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanTexture=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
+       fUniqueID:TpvUInt64;
        fFormat:TVkFormat;
        fSRGBFormat:TVkFormat;
        fDeviceMemory:TVkDeviceMemory;
@@ -4176,6 +4177,7 @@ type EpvVulkanException=class(Exception);
                                  const aUsageFlags:TpvVulkanTextureUsageFlags=[];
                                  const aName:TpvUTF8String='');
        destructor Destroy; override;
+       procedure AfterConstruction; override;
        procedure Unload;
        class function GetMipMapSize(const aFormat:TVkFormat;const aMipMapWidth,aMipMapHeight:TpvInt32;out aMipMapSize:TVkUInt64;out aCompressed:boolean;const aRaise:Boolean):Boolean; static;
        class procedure SwapEndianness(const aData:TpvPointer;
@@ -4297,6 +4299,7 @@ type EpvVulkanException=class(Exception);
        procedure UpdateDescriptorImageInfo;
        property DescriptorImageInfo:TVkDescriptorImageInfo read fDescriptorImageInfo;
        property RawSize:TpvUInt64 read fRawSize;
+       property UniqueID:TpvUInt64 read fUniqueID;
       published
        property Device:TpvVulkanDevice read fDevice;
        property Format:TVkFormat read fFormat write fFormat;
@@ -28505,6 +28508,17 @@ begin
  end;
  fName:='';
  inherited Destroy;
+end;
+
+var VulkanTextureUniqueIDCounter:TpvUInt64=0; // global monotonic source for TpvVulkanTexture.fUniqueID (64-bit -> never wraps in practice)
+
+procedure TpvVulkanTexture.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ // Assign a process-wide unique id once, after any of the constructors ran. Caches that key by texture identity (e.g. the
+ // canvas descriptor cache) use this instead of the object pointer, so a freed-and-reallocated texture at the same address
+ // can never alias a stale cache entry.
+ fUniqueID:=TPasMPInterlocked.Increment(VulkanTextureUniqueIDCounter);
 end;
 
 procedure TpvVulkanTexture.Unload;

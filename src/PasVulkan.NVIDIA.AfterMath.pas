@@ -1434,7 +1434,7 @@ begin
      end;
     end;
 {$else}
-    FileStream:=FileStream.Create('shader-'+IntToStr(identifier.ID[0])+IntToStr(identifier.ID[1])+'.nvdbg',fmCreate or fmShareDenyWrite);
+    FileStream:=TFileStream.Create('shader-'+IntToStr(identifier.ID[0])+IntToStr(identifier.ID[1])+'.nvdbg',fmCreate or fmShareDenyWrite);
     try
      FileStream.Write(Bytes[0],shaderDebugInfoSize);
     finally
