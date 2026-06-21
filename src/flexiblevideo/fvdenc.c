@@ -1023,16 +1023,22 @@ static uint8_t *mp4_extract_h264_annexb(const char *input, long max_frames, uint
 // ALREADY decoder-compatible H.264 (8-bit yuv420p, progressive), copy its NAL units verbatim (lossless, no
 // re-encode) — preferring our own ffmpeg-free MP4 demuxer, then ffmpeg stream-copy; otherwise transcode
 // with libx264 (High / yuv420p). Returns malloc'd blob.
-static uint8_t *prepare_h264_stream(const char *input, long max_frames, uint64_t *out_size) {
+static uint8_t *prepare_h264_stream(const char *input, long max_frames, const char *h264_bitrate, uint64_t *out_size) {
   char command[4096];
   char frames_arg[64] = "";
+  char bitrate_arg[64] = "";
+  int force_transcode = (h264_bitrate && h264_bitrate[0]);   // --h264-bitrate: always (re)encode at the target rate, never copy
   *out_size = 0;
 
-  // Preferred: our own ffmpeg-free MP4/MOV demuxer (raw NAL copy). NULL -> fall through to ffmpeg.
-  uint8_t *mp4_blob = mp4_extract_h264_annexb(input, max_frames, out_size);
-  if (mp4_blob) {
-    fprintf(stderr, "embedding H.264 stream (pure-C MP4 demux, raw NAL copy, no ffmpeg)\n");
-    return mp4_blob;
+  if (force_transcode) {
+    snprintf(bitrate_arg, sizeof bitrate_arg, "-b:v %s ", h264_bitrate);
+  } else {
+    // Preferred (copy mode only): our own ffmpeg-free MP4/MOV demuxer (raw NAL copy). NULL -> fall through to ffmpeg.
+    uint8_t *mp4_blob = mp4_extract_h264_annexb(input, max_frames, out_size);
+    if (mp4_blob) {
+      fprintf(stderr, "embedding H.264 stream (pure-C MP4 demux, raw NAL copy, no ffmpeg)\n");
+      return mp4_blob;
+    }
   }
 
   if (max_frames > 0) {   // match the wavelet stream's frame count (dual streams cover the same frames)
@@ -1053,16 +1059,20 @@ static uint8_t *prepare_h264_stream(const char *input, long max_frames, uint64_t
   int is_h264 = (strstr(info, "codec_name=h264") != NULL);
   int is_420_8bit = ((strstr(info, "pix_fmt=yuv420p") != NULL) && (strstr(info, "pix_fmt=yuv420p1") == NULL));   // exclude 10/12-bit
   int progressive = (((strstr(info, "field_order=") == NULL) || (strstr(info, "field_order=progressive") != NULL)) || (strstr(info, "field_order=unknown") != NULL));
-  int can_copy = ((is_h264 && is_420_8bit) && progressive);
+  int can_copy = (!force_transcode) && ((is_h264 && is_420_8bit) && progressive);   // --h264-bitrate forces a transcode
 
   if (can_copy) {
     fprintf(stderr, "embedding H.264 stream (raw NAL stream-copy, no re-encode)...\n");
     snprintf(command, sizeof command,
              "ffmpeg -hide_banner -loglevel error -stats -y -i \"%s\" -an %s-c:v copy -bsf:v h264_mp4toannexb -f h264 /tmp/fvd_v.h264", input, frames_arg);
   } else {
-    fprintf(stderr, "encoding H.264 stream (libx264; source not copy-compatible H.264)...\n");
+    if (force_transcode) {
+      fprintf(stderr, "encoding H.264 stream (libx264 -b:v %s; --h264-bitrate forces transcode)...\n", h264_bitrate);
+    } else {
+      fprintf(stderr, "encoding H.264 stream (libx264; source not copy-compatible H.264)...\n");
+    }
     snprintf(command, sizeof command,
-             "ffmpeg -hide_banner -loglevel error -stats -y -i \"%s\" -an %s-c:v libx264 -profile:v high -pix_fmt yuv420p -f h264 /tmp/fvd_v.h264", input, frames_arg);
+             "ffmpeg -hide_banner -loglevel error -stats -y -i \"%s\" -an %s-c:v libx264 -profile:v high -pix_fmt yuv420p %s-f h264 /tmp/fvd_v.h264", input, frames_arg, bitrate_arg);
   }
   int status = system(command);
   fprintf(stderr, "\n");   // finish ffmpeg's -stats progress line
@@ -1473,6 +1483,7 @@ int main(int argc, char **argv) {
       "    --mctf                         motion-compensated temporal filtering (predict-only MC-Haar; SDR+HDR, 4:4:4/4:2:2/4:2:0)\n"
       "  dual video / scaling:\n"
       "    --h264                         also embed a full-res H.264 stream (player HW-decodes it where supported)\n"
+      "    --h264-bitrate=<rate>          target bitrate for the embedded H.264 (ffmpeg -b:v, e.g. 5M); forces a transcode (never stream-copy)\n"
       "    --scale=<f>                    down-scale ONLY the wavelet stream (e.g. 0.5 or 1/4); H.264 stays full-res\n"
       "  alpha (optional 8-bit plane, from an RGBA source):\n"
       "    --alpha                        encode the alpha plane (appended per frame; non-alpha streams stay byte-identical)\n"
@@ -1530,6 +1541,7 @@ int main(int argc, char **argv) {
   int fwa_overlap = 0;            // --fwa-overlap: cross-fade block overlap (lossy only, opt-in); samples via --fwa-overlap-amount (default 1024)
   int fwa_overlap_amount = 1024;
   int want_h264 = 0;            // --h264: also embed a full-res H.264 Annex-B elementary stream
+  const char *h264_bitrate = NULL;   // --h264-bitrate=<rate>: forwarded to ffmpeg as -b:v <rate>; forces a transcode (never stream-copy) when used with --h264
   double wavelet_scale = 1.0;   // --scale: down-scale ONLY the wavelet stream (e.g. 0.5 or 1/4)
   int quality = 8;              // --quality=N: 0 = lossless 5/3, >= 1 = lossy 9/7 (default 8)
   int levels = 5;               // --levels=N: spatial wavelet decomposition levels (default 5)
@@ -1659,6 +1671,8 @@ int main(int argc, char **argv) {
       fwa_overlap_amount = atoi(argv[i] + 21);   // FWA: shared samples per block boundary (default 1024)
     } else if (!strcmp(argv[i], "--h264")) {
       want_h264 = 1;   // also embed a full-res H.264 elementary stream (HW-decode path in the player)
+    } else if (!strncmp(argv[i], "--h264-bitrate=", 15)) {
+      h264_bitrate = argv[i] + 15;   // forwarded to ffmpeg as -b:v <rate>; forces a transcode (never stream-copy) with --h264
     } else if (!strncmp(argv[i], "--scale=", 8)) {
       const char *value = argv[i] + 8;   // "0.5" or "1/4" -> down-scale the wavelet stream only
       const char *slash = strchr(value, '/');
@@ -1817,6 +1831,9 @@ int main(int argc, char **argv) {
   int lossless = (quality == 0);   // Q0 = reversible integer 5/3, no quant
   if (lossless) {
     g_chroma_format = 0;   // lossless stays 4:4:4 (the codec only subsamples chroma in the lossy path)
+  }
+  if (h264_bitrate && !want_h264) {
+    fprintf(stderr, "note: --h264-bitrate=%s ignored without --h264 (no embedded H.264 stream)\n", h264_bitrate);
   }
   // hierarchical B-frames (--bframes N). The CPU oracle wires the validated CPU encode_frame_bidi
   // oracle into the real container (SDR colordiff only; mutually exclusive with the 3D-DWT GOP mode).
@@ -2674,7 +2691,7 @@ int main(int argc, char **argv) {
       }
     }
     if (want_h264) {   // additionally encode a full-res H.264 stream for the HW-decode path
-      h264_blob = prepare_h264_stream(input, max_frames, &h264_blob_size);
+      h264_blob = prepare_h264_stream(input, max_frames, h264_bitrate, &h264_blob_size);
       if (!h264_blob) {
         fprintf(stderr, "warning: --h264 requested but H.264 encode failed; writing wavelet-only\n");
       }
